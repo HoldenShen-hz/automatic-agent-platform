@@ -40,6 +40,9 @@
 | [085](./085-organization-governance-and-knowledge-boundary.md) | 组织治理、审批与知识边界 | Accepted | 2026-04-20 |
 | [086](./086-scale-ecosystem-and-cross-region-runtime.md) | 规模化生态与跨 Region 运行时 | Accepted | 2026-04-20 |
 | [087](./087-ops-maturity-runtime.md) | 运营成熟度运行时扩展层 | Accepted | 2026-04-20 |
+| [088](./088-platform-surface-communication-and-extensibility.md) | 平台表面、通信与扩展治理 | Accepted | 2026-04-20 |
+| [089](./089-ai-operations-governance-and-quality.md) | AI 运营治理与质量门禁 | Accepted | 2026-04-20 |
+| [090](./090-runtime-data-reliability-and-operations.md) | Runtime、数据可靠性与运维治理 | Accepted | 2026-04-20 |
 
 ## 状态说明
 

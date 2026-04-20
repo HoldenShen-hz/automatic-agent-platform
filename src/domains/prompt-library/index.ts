@@ -20,3 +20,5 @@ export type DomainPromptLibrary = z.infer<typeof DomainPromptLibrarySchema>;
 export function resolvePromptTemplate(library: DomainPromptLibrary, promptId: string): DomainPromptTemplate | null {
   return library.prompts.find((item) => item.promptId === promptId) ?? null;
 }
+
+export * from "./domain-prompt-governance-service.js";

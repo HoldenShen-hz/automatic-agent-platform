@@ -22,8 +22,9 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { createWorkspaceWritePolicy } from "../../control-plane/iam/sandbox-policy.js";
 
 import type { LlmModelCallResult } from "../execution-engine/model-call-provider.js";
-import { executeAgentRoundLoop } from "../../../core/runtime/planner/index.js";
-import { getMultiStepToolDefinitions, parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../../../core/runtime/planner/index.js";
+import { executeAgentRoundLoop } from "../execution-engine/multi-step-agent-round-loop.js";
+import { getMultiStepToolDefinitions } from "../execution-engine/multi-step-tool-definitions.js";
+import { parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../execution-engine/multi-step-utils.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 

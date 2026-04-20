@@ -11,7 +11,7 @@ import {
 } from "../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
 import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
 import type { StepOutputRecord } from "../../../../../src/platform/contracts/types/domain/task-types.js";
-import type { MultiStepOrchestrationResult } from "../../../../../src/core/runtime/orchestrator/types.js";
+import type { MultiStepOrchestrationResult } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
 
 function createMockPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
   return {

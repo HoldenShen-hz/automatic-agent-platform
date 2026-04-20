@@ -43,7 +43,7 @@ import type {
   StepResult,
   ExecutionResult,
 } from "./execute-bridge.js";
-import type { MultiStepOrchestrationResult } from "../../../core/runtime/orchestrator/types.js";
+import type { MultiStepOrchestrationResult } from "../../execution/execution-engine/multi-step-orchestration-types.js";
 import type { StepOutputRecord } from "../../contracts/types/domain/task-types.js";
 
 // ---------------------------------------------------------------------------

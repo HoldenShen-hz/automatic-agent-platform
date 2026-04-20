@@ -1,100 +1,107 @@
 # Architecture v2.7 Coverage Matrix
 
-> 范围：对照 `docs_zh/automatic_agent_patform_arthitecture_design.md` 的主章节，映射当前 authoritative ADR、contract、`src/`、`tests/` 覆盖面。
+> 范围：对照 [automatic_agent_patform_arthitecture_design.md](../automatic_agent_patform_arthitecture_design.md) 的主章节，建立 `architecture chapter -> ADR -> contract -> src -> tests` 的可追踪矩阵。
 >
 > 状态定义：
 >
-> - `exists`：已有稳定 ADR/contract/实现/测试闭环
-> - `partial`：已有主要边界，但仍缺部分 contract、实现或测试
-> - `missing`：缺 authoritative 设计与实现映射
-> - `skeleton`：目录或入口已建，但主体能力仍以空壳/barrel/最小 mock 为主
+> - `exists`：ADR / contract / src / tests 已形成闭环
+> - `partial`：已有 authoritative 设计与部分实现，但仍存在覆盖薄弱或章节内子能力未全落地
+> - `missing`：缺 authoritative 设计或实现映射
+> - `skeleton`：目录或导出存在，但主体仍以 helper / barrel / stub 为主
+>
+> 说明：
+>
+> - 原始架构文档未定义 `§34`、`§35`、`§45`、`§58`、`§70`，本矩阵保留源文档编号，不额外补号。
+> - `Src / Tests` 列展示 authoritative 入口，不枚举所有子文件。
 
-| 节 | 主题 | ADR | Contract | Src / Tests | 状态 |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 文档概述 | `001` | `architecture_governance_and_versioning_contract` | `docs_zh/`, `tests/unit/docs` | exists |
-| 2 | 平台根假设与设计目标 | `001`, `005` | `architecture_governance_and_versioning_contract` | `src/platform`, `tests/unit/docs` | exists |
-| 3 | 平台定义与非目标 | `001` | `project_structure_contract` | `src/`, `tests/unit/docs` | exists |
-| 4 | 五平面 + 控制织网 | `001`, `020` | `execution_plane_contract`, `data_plane_contract`, `governance_control_plane_contract`, `enterprise_operations_plane_contract` | `src/platform/*`, `tests/integration/platform` | exists |
-| 5 | 平面间通信契约 | `019`, `060` | `context_propagation_contract`, `result_envelope_contract`, `typed_event_bus_contract` | `src/platform/contracts`, `tests/integration/contract` | exists |
-| 6 | API 契约与版本化 | `009` | `api_surface_contract` | `src/apps/api`, `src/platform/interface/api`, `tests/integration/api` | partial |
-| 7 | 服务通信架构 | `013` | `event_bus_contract`, `event_reliability_matrix_contract` | `src/platform/state-evidence/events`, `tests/integration/events` | partial |
-| 8 | 可扩展性架构 | `015`, `066` | `plugin_spi_contract`, `ecosystem_extension_plane_contract` | `src/plugins`, `src/domains/registry`, `tests/unit/plugins` | partial |
-| 9 | 稳定性架构 | `009`, `075` | `slo_alerting_and_runbook_contract`, `startup_consistency_and_recovery_drill_contract` | `src/platform/shared/stability`, `tests/integration/stability` | exists |
-| 10 | 风险控制架构 | `005`, `008` | `policy_engine_contract`, `cost_and_budget_contract` | `src/platform/control-plane/policy-center`, `tests/integration/approvals` | exists |
-| 11 | 安全可靠架构 | `005` | `sandbox_and_auth_contract`, `enterprise_secret_management_contract`, `supply_chain_and_dependency_security_contract` | `src/platform/control-plane/iam`, `tests/integration/security` | exists |
-| 12 | 异常事件处理架构 | `009` | `observability_contract`, `trace_and_root_cause_observability_contract`, `event_registry_and_ops_threshold_contract` | `src/platform/shared/observability`, `tests/integration/observability` | exists |
-| 13 | OAPEFLIR 受控认知内核 | `016`, `060`, `072` | `oapeflir_loop_contract` | `src/platform/orchestration/oapeflir`, `tests/integration/platform/orchestration` | exists |
-| 14 | Runtime Execution Plane | `001`, `075` | `runtime_execution_contract`, `runtime_state_machine_contract`, `supervisor_contract` | `src/platform/execution`, `tests/integration/platform/execution` | exists |
-| 15 | LLM Provider 抽象与故障切换 | `006` | `tool_and_provider_execution_contract`, `prompt_model_policy_governance_contract` | `src/platform/model-gateway`, `tests/integration/platform/model-gateway` | exists |
-| 16 | Prompt 管理与版本化 | `006` | `prompt_model_policy_governance_contract` | `src/platform/prompt-engine`, `tests/integration/platform/prompt-engine` | partial |
-| 17 | 模型评估与质量门禁 | `072` | `quality_engineering_and_chaos_testing_contract`, `prompt_model_policy_governance_contract` | `src/domains/eval-framework`, `tests/integration/evaluation` | partial |
-| 18 | 成本管理与 Token 计量 | `008` | `cost_and_budget_contract`, `token_budget_allocation_contract`, `monetization_metering_plane_contract` | `src/platform/model-gateway/cost-tracker`, `tests/integration/cost` | exists |
-| 19 | Agent 间委托与协作 | `019` | `agent_contract`, `context_propagation_contract` | `src/platform/contracts/delegation-request`, `src/platform/execution/dispatcher`, `tests/unit/runtime` | exists |
-| 20 | 长时任务与 Workflow 休眠 | `018` | `lifecycle_and_termination_contract`, `task_and_workflow_contract` | `src/platform/interface/scheduler`, `src/platform/state-evidence/checkpoints`, `tests/integration/workflow` | partial |
-| 21 | 人机协作模式 | `016` | `approval_and_hitl_contract`, `hitl_experience_and_explainability_contract`, `admin_console_and_human_takeover_contract` | `src/platform/orchestration/hitl`, `tests/integration/approvals` | partial |
-| 22 | SDK 与开发者体验 | `066` | `plugin_spi_contract`, `tool_skill_plugin_contract` | `src/sdk`, `tests/integration/sdk` | partial |
-| 23 | 合规与数据治理 | `005` | `audit_lineage_and_retention_contract`, `data_classification_and_prompt_handling_contract`, `tenant_and_organization_contract` | `src/platform/compliance`, `tests/integration/compliance` | partial |
-| 24 | 配置治理 | `009` | `configuration_layers_and_defaults_contract`, `environment_and_configuration_governance_contract` | `config/`, `src/platform/control-plane/config-center`, `tests/integration/config` | exists |
-| 25 | 数据一致性模型 | `012`, `013` | `storage_schema_contract`, `runtime_repository_and_migration_contract`, `state_transition_matrix_contract` | `src/platform/state-evidence/truth`, `tests/integration/storage` | exists |
-| 26 | 存储抽象 | `012` | `runtime_repository_and_migration_contract`, `production_storage_and_queue_contract` | `src/platform/state-evidence/truth`, `tests/integration/migration` | exists |
-| 27 | 性能与 SLO | `009` | `slo_alerting_and_runbook_contract`, `quality_engineering_and_chaos_testing_contract` | `tests/performance`, `src/platform/shared/stability` | partial |
-| 28 | 事件、Projection、DLQ | `013` | `event_bus_contract`, `event_reliability_matrix_contract`, `typed_event_bus_contract` | `src/platform/state-evidence/events`, `src/platform/state-evidence/dlq`, `tests/integration/events` | partial |
-| 29 | Knowledge / Memory / Artifact / Learning | `017`, `020`, `078`, `079`, `080` | `knowledge_spi_contract`, `memory_decay_and_quality_contract`, `artifact_store_contract` | `src/platform/state-evidence/knowledge`, `src/platform/state-evidence/memory`, `tests/integration/memory` | partial |
-| 30 | Business Pack / Plugin 治理 | `015`, `066` | `tool_skill_plugin_contract`, `plugin_spi_contract`, `license_and_capability_boundary_contract` | `src/plugins`, `src/sdk/pack-sdk`, `tests/unit/plugins` | partial |
-| 31 | HA / 备份恢复 | `009`, `075` | `ha_coordinator_and_leader_election_contract`, `remote_coordination_and_disaster_recovery_contract` | `src/platform/execution/ha`, `tests/integration/reliability` | partial |
-| 32 | 部署架构 | `009` | `environment_readiness_registry_contract`, `platform_promote_criteria_contract` | `src/platform/shared/stability`, `tests/integration/deployment` | partial |
-| 33 | 路线图与 phase 规划 | `009` | `architecture_governance_and_versioning_contract` | `docs_zh/`, `tests/unit/docs` | partial |
-| 36 | 风险、约束、成功标准 | `005`, `009` | `architecture_governance_and_versioning_contract`, `platform_promote_criteria_contract` | `docs_zh/`, `tests/unit/docs` | partial |
-| 37 | DomainDescriptor 结构化领域建模 | `081` | `domain_descriptor_and_onboarding_contract` | `src/domains/registry`, `tests/unit/domains/registry` | partial |
-| 38 | 四阶段接入 Runbook | `081` | `domain_descriptor_and_onboarding_contract` | `src/domains/*`, `tests/integration/domains` | partial |
-| 39 | 自然语言任务入口 | `082` | `nl_entry_and_goal_decomposition_contract` | `src/interaction/nl-gateway`, `tests/unit/interaction/nl-gateway` | partial |
-| 40 | 目标分解引擎 | `082` | `nl_entry_and_goal_decomposition_contract` | `src/interaction/goal-decomposer`, `tests/unit/interaction/goal-decomposer` | partial |
-| 41 | 主动式 Agent | `083` | `proactive_agent_and_autonomy_contract` | `src/interaction/proactive-agent`, `tests/unit/interaction/proactive-agent` | partial |
-| 42 | 渐进式自主权 | `083` | `proactive_agent_and_autonomy_contract` | `src/interaction/autonomy`, `tests/unit/interaction/autonomy` | partial |
-| 43 | 统一运营看板 | `084` | `dashboard_and_operator_experience_contract` | `src/interaction/dashboard`, `tests/unit/interaction/dashboard` | partial |
-| 44 | 非技术用户 UX | `084` | `dashboard_and_operator_experience_contract` | `src/interaction/ux`, `tests/unit/interaction` | skeleton |
-| 46 | 组织层次模型 | `085` | `org_hierarchy_and_dynamic_approval_contract` | `src/org-governance/org-model`, `tests/unit/org-governance/org-model` | partial |
-| 47 | 组织架构审批路由 | `085` | `org_hierarchy_and_dynamic_approval_contract` | `src/org-governance/approval-routing`, `tests/integration/approvals` | skeleton |
-| 48 | 企业 SSO / SCIM 集成 | `085` | `sso_scim_and_identity_sync_contract` | `src/org-governance/sso-scim`, `tests/integration/org-governance` | skeleton |
-| 49 | 分部门合规策略 | `085` | `org_hierarchy_and_dynamic_approval_contract`, `delegated_governance_contract` | `src/org-governance/compliance-engine`, `tests/integration/org-governance` | skeleton |
-| 50 | 知识域隔离与受控共享 | `085` | `knowledge_boundary_and_federated_search_contract` | `src/org-governance/knowledge-boundary`, `tests/integration/org-governance` | skeleton |
-| 51 | 分级治理委托 | `085` | `delegated_governance_contract` | `src/org-governance/delegated-governance`, `tests/integration/org-governance` | skeleton |
-| 52 | 多 Region 部署 | `086` | `cross_region_routing_and_data_residency_contract` | `src/scale-ecosystem/multi-region`, `tests/integration/scale-ecosystem` | skeleton |
-| 53 | 规模化资源竞争管理 | `086` | `quota_preemption_and_fair_scheduling_contract` | `src/scale-ecosystem/resource-manager`, `tests/integration/platform/execution` | skeleton |
-| 54 | SLA 分级保障 | `086` | `sla_tier_contract` | `src/scale-ecosystem/sla-engine`, `tests/integration/scale-ecosystem` | skeleton |
-| 55 | Agent 市场与生态 | `086` | `marketplace_catalog_and_revenue_contract` | `src/scale-ecosystem/marketplace`, `tests/unit/scale-ecosystem/marketplace` | partial |
-| 56 | 反馈驱动持续改进 | `086` | `feedback_improvement_pipeline_contract` | `src/scale-ecosystem/feedback-loop`, `tests/unit/scale-ecosystem/feedback-loop` | partial |
-| 57 | 外部系统集成框架 | `086` | `connector_framework_contract` | `src/scale-ecosystem/integration`, `tests/integration/scale-ecosystem` | skeleton |
-| 59 | Agent 可解释性 | `087` | `explainability_and_stage_rationale_contract` | `src/ops-maturity/explainability`, `tests/integration/ops-maturity` | skeleton |
-| 60 | 紧急制动与全局熔断 | `087` | `platform_panic_and_resume_contract` | `src/ops-maturity/emergency`, `tests/integration/ops` | skeleton |
-| 61 | Agent 统一生命周期管理 | `087` | `agent_definition_lifecycle_contract` | `src/ops-maturity/agent-lifecycle`, `tests/integration/lifecycle` | skeleton |
-| 62 | 离线与边缘部署 | `087` | `edge_runtime_and_sync_contract` | `src/ops-maturity/edge-runtime`, `tests/integration/ops-maturity` | skeleton |
-| 63 | Agent 行为漂移检测 | `087` | `behavior_drift_detection_contract` | `src/ops-maturity/drift-detection`, `tests/integration/ops-maturity/drift-detection` | partial |
-| 64 | 成本归因与优化 | `087` | `cost_attribution_and_optimization_contract` | `src/ops-maturity/cost-optimizer`, `tests/integration/cost` | skeleton |
-| 65 | 工作流可视化调试器 | `087` | `workflow_debugger_contract` | `src/ops-maturity/workflow-debugger`, `tests/integration/platform/execution` | skeleton |
-| 66 | 合规报告自动生成 | `087` | `compliance_report_generation_contract` | `src/ops-maturity/compliance-reporter`, `tests/integration/compliance` | skeleton |
-| 67 | 容量规划与成本预测 | `087` | `capacity_planning_contract` | `src/ops-maturity/capacity-planner`, `tests/performance` | skeleton |
-| 68 | 多模态能力架构 | `087` | `multimodal_gateway_contract` | `src/ops-maturity/multimodal`, `tests/integration/providers` | skeleton |
-| 69 | 平台自运维 Agent | `087` | `platform_ops_agent_contract` | `src/ops-maturity/platform-ops-agent`, `tests/integration/ops` | skeleton |
+| 章 | 主题 | ADR | Contract | Src | Tests | 状态 | 备注 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 背景 / 目标 / 非目标 | `001` | `architecture_governance_and_versioning_contract` | `docs_zh/`, `src/platform` | `tests/unit/docs` | exists | 文档治理入口稳定 |
+| 2 | 根假设 / 设计宪法 / 硬目标 | `001`, `005` | `architecture_governance_and_versioning_contract` | `src/platform`, `src/platform/control-plane` | `tests/unit/docs` | exists | 宪法边界已沉淀到 contract |
+| 3 | 平台定义与非目标 | `001` | `project_structure_contract` | `src/` | `tests/unit/docs` | exists | 目录边界与非目标已固定 |
+| 4 | 五平面与 Reliability Fabric | `001`, `020`, `090` | `execution_plane_contract`, `data_plane_contract`, `governance_control_plane_contract`, `enterprise_operations_plane_contract` | `src/platform/*` | `tests/integration/platform` | exists | 平面拆分已形成主干实现 |
+| 5 | 平面间契约矩阵 | `019`, `060`, `088` | `context_propagation_contract`, `result_envelope_contract`, `typed_event_bus_contract` | `src/platform/contracts` | `tests/integration/platform/contracts` | exists | 关键 envelope / context / event 已有契约测试 |
+| 6 | API 分层与版本化 | `009`, `088` | `api_surface_contract` | `src/apps/api`, `src/platform/interface/api` | `tests/integration/platform/contracts/api-openapi-contract.test.ts` | partial | Public API 入口已定义，章节级资源覆盖仍偏薄 |
+| 7 | 服务通信架构 | `013`, `088` | `event_bus_contract`, `event_reliability_matrix_contract`, `typed_event_bus_contract` | `src/platform/state-evidence/events` | `tests/integration/platform/contracts` | partial | 事件边界稳定，outbox / 拓扑章节仍以已有总线能力映射 |
+| 8 | 可扩展性架构 | `015`, `066`, `088` | `plugin_spi_contract`, `ecosystem_extension_plane_contract` | `src/plugins`, `src/domains/registry` | `tests/unit/domains/registry`, `tests/unit/plugins` | partial | SPI 与 registry 已有，生态扩展运行面仍在持续增强 |
+| 9 | 稳定性架构 | `009`, `089`, `090` | `slo_alerting_and_runbook_contract`, `startup_consistency_and_recovery_drill_contract` | `src/platform/shared/stability` | `tests/integration/stability` | exists | 稳定性与恢复链路已成型 |
+| 10 | 风险控制架构 | `005`, `008`, `089` | `policy_engine_contract`, `cost_and_budget_contract` | `src/platform/control-plane/policy-center` | `tests/integration/approvals` | exists | 风险、预算、策略约束可追踪 |
+| 11 | 安全可靠架构 | `005`, `089` | `sandbox_and_auth_contract`, `enterprise_secret_management_contract`, `supply_chain_and_dependency_security_contract` | `src/platform/control-plane/iam` | `tests/integration/security` | exists | 安全边界已进入 authoritative contract |
+| 12 | 异常事件与可观测性 | `009`, `089`, `090` | `observability_contract`, `trace_and_root_cause_observability_contract`, `event_registry_and_ops_threshold_contract` | `src/platform/shared/observability` | `tests/integration/observability` | exists | Incident / tracing / alerting 已覆盖 |
+| 13 | OAPEFLIR 受控认知内核 | `016`, `060`, `072` | `oapeflir_loop_contract` | `src/platform/orchestration/oapeflir` | `tests/integration/platform/orchestration` | exists | 八阶段主环与测试策略闭环 |
+| 14 | Runtime Execution Plane | `001`, `075`, `090` | `runtime_execution_contract`, `runtime_state_machine_contract`, `supervisor_contract` | `src/platform/execution` | `tests/integration/platform/execution` | exists | 运行态与 supervisor 主链稳定 |
+| 15 | LLM Provider 抽象与故障切换 | `006`, `089` | `tool_and_provider_execution_contract`, `prompt_model_policy_governance_contract` | `src/platform/model-gateway` | `tests/integration/platform/model-gateway` | exists | provider 策略与降级链稳定 |
+| 16 | Prompt 管理与版本化 | `006`, `089` | `prompt_model_policy_governance_contract` | `src/platform/prompt-engine`, `src/domains/prompt-library`, `src/domains/prompt-library/domain-prompt-governance-service.ts` | `tests/integration/platform/prompt-engine`, `tests/unit/domains/domain-prompt-governance-service.test.ts`, `tests/integration/domains/prompt-eval-governance-integration.test.ts` | partial | 平台层已落地，领域 Prompt 版本/灰度/回滚治理已补齐，但章节级全平台灰度治理仍偏轻 |
+| 17 | 模型评估与质量门禁 | `072`, `089` | `quality_engineering_and_chaos_testing_contract`, `prompt_model_policy_governance_contract` | `src/domains/eval-framework`, `src/domains/eval-framework/domain-evaluation-gate-service.ts`, `src/ops-maturity/drift-detection` | `tests/unit/domains/domain-evaluation-gate-service.test.ts`, `tests/integration/domains/prompt-eval-governance-integration.test.ts`, `tests/integration/ops-maturity` | partial | 评估 gate、release report 与 drift 检测已落地，dataset / judge 生态仍偏概念映射 |
+| 18 | 成本管理与 Token 计量 | `008`, `089` | `cost_and_budget_contract`, `token_budget_allocation_contract`, `monetization_metering_plane_contract` | `src/platform/model-gateway/cost-tracker`, `src/ops-maturity/cost-optimizer` | `tests/integration/cost`, `tests/integration/ops-maturity/cost-optimization-integration.test.ts` | exists | 成本跟踪、归因、优化已串通 |
+| 19 | Agent 间委托与协作 | `019` | `agent_contract`, `context_propagation_contract` | `src/platform/contracts/delegation-request`, `src/platform/execution/dispatcher` | `tests/unit/runtime`, `tests/integration/platform/contracts` | exists | handoff 四层协议已稳定 |
+| 20 | 长时任务与 Workflow 休眠 | `018`, `090` | `lifecycle_and_termination_contract`, `task_and_workflow_contract` | `src/platform/interface/scheduler`, `src/platform/interface/scheduler/long-running-workflow-service.ts`, `src/platform/state-evidence/checkpoints` | `tests/unit/platform/interface/scheduler/long-running-workflow-service.test.ts`, `tests/integration/workflow/long-running-workflow-hitl-integration.test.ts`, `tests/integration/workflow` | partial | suspend / resume / timeout 已进入正式 service，跨部署 timer 恢复仍有扩展空间 |
+| 21 | 人机协作模式 | `016`, `088`, `089` | `approval_and_hitl_contract`, `hitl_experience_and_explainability_contract`, `admin_console_and_human_takeover_contract` | `src/platform/orchestration/hitl`, `src/platform/orchestration/hitl/hitl-approval-orchestration-service.ts`, `src/interaction/dashboard`, `src/ops-maturity/explainability` | `tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts`, `tests/integration/platform/control-plane/approval-center`, `tests/integration/workflow/long-running-workflow-hitl-integration.test.ts`, `tests/integration/ops-maturity/explainability-pipeline-integration.test.ts` | partial | 审批、解释、timeout 决策与 OAPEFLIR stage link 已串通，通知渠道与 takeover UI 仍可继续增强 |
+| 22 | SDK 与开发者体验 | `066`, `088` | `plugin_spi_contract`, `tool_skill_plugin_contract` | `src/sdk` | `tests/integration/sdk` | partial | SDK 核心边界在，开发者工作台仍偏轻 |
+| 23 | 合规与数据治理 | `005`, `089`, `090` | `audit_lineage_and_retention_contract`, `data_classification_and_prompt_handling_contract`, `tenant_and_organization_contract` | `src/platform/compliance`, `src/org-governance` | `tests/integration/compliance`, `tests/integration/org-governance` | partial | 生命周期与隔离已有实现，法规专题仍以 contract 约束为主 |
+| 24 | 配置治理 | `009`, `090` | `configuration_layers_and_defaults_contract`, `environment_and_configuration_governance_contract` | `config/`, `src/platform/control-plane/config-center` | `tests/integration/config` | exists | 配置分层与环境治理闭环 |
+| 25 | 数据一致性模型 | `012`, `013`, `090` | `storage_schema_contract`, `runtime_repository_and_migration_contract`, `state_transition_matrix_contract` | `src/platform/state-evidence/truth` | `tests/integration/storage` | exists | 真相表 / event log / projection 约束稳定 |
+| 26 | 存储抽象 | `012`, `090` | `runtime_repository_and_migration_contract`, `production_storage_and_queue_contract` | `src/platform/state-evidence/truth` | `tests/integration/migration` | exists | repository 抽象与迁移链稳定 |
+| 27 | 性能与 SLO | `009`, `072`, `090` | `slo_alerting_and_runbook_contract`, `quality_engineering_and_chaos_testing_contract` | `src/platform/shared/stability`, `src/ops-maturity/capacity-planner` | `tests/performance`, `tests/integration/ops-maturity/capacity-planning-integration.test.ts` | partial | 容量规划已实现，章节级性能基准仍未全量固化 |
+| 28 | 事件 / Projection / DLQ | `013`, `090` | `event_bus_contract`, `event_reliability_matrix_contract`, `typed_event_bus_contract` | `src/platform/state-evidence/events`, `src/platform/state-evidence/dlq` | `tests/integration/events`, `tests/integration/platform/contracts` | partial | 主链存在，25 个 namespace / 9 projections 尚未逐一落清单 |
+| 29 | Knowledge / Memory / Artifact / Learning | `017`, `020`, `078`, `079`, `080` | `knowledge_spi_contract`, `memory_decay_and_quality_contract`, `artifact_store_contract` | `src/platform/state-evidence/knowledge`, `src/platform/state-evidence/memory` | `tests/integration/memory` | partial | plane 已有，学习/提炼章节仍偏平台侧 |
+| 30 | Business Pack / Plugin 治理 | `015`, `066`, `088` | `tool_skill_plugin_contract`, `plugin_spi_contract`, `license_and_capability_boundary_contract` | `src/plugins`, `src/sdk/pack-sdk`, `src/scale-ecosystem/marketplace` | `tests/unit/plugins`, `tests/unit/scale-ecosystem/marketplace` | partial | 市场治理已增强，pack API 兼容性仍待继续加深 |
+| 31 | HA / 备份恢复 | `009`, `075`, `090` | `ha_coordinator_and_leader_election_contract`, `remote_coordination_and_disaster_recovery_contract` | `src/platform/execution/ha`, `src/scale-ecosystem/multi-region` | `tests/integration/reliability`, `tests/integration/scale-ecosystem` | partial | HA / DR 合同齐备，章节级恢复演练仍部分映射 |
+| 32 | 部署架构 | `009`, `090` | `environment_readiness_registry_contract`, `platform_promote_criteria_contract` | `src/platform/shared/stability` | `tests/integration/deployment` | partial | 发布与环境分层稳定，资源池章节仍偏文档治理 |
+| 33 | 路线图与 phase 规划 | `009`, `090` | `architecture_governance_and_versioning_contract` | `docs_zh/` | `tests/unit/docs` | partial | 文档可追踪，天然无运行时代码 |
+| 36 | 风险 / 约束 / 成功标准 | `005`, `009`, `089`, `090` | `architecture_governance_and_versioning_contract`, `platform_promote_criteria_contract` | `docs_zh/` | `tests/unit/docs` | partial | 设计约束闭环存在，成功标准主要为治理文档 |
+| 37 | DomainDescriptor 结构化领域建模 | `081` | `domain_descriptor_and_onboarding_contract` | `src/domains/registry`, `src/domains/domain-descriptor-orchestration-service.ts` | `tests/unit/domains/domain-descriptor-orchestration-service.test.ts`, `tests/unit/domains/registry` | exists | descriptor / risk / prompt / recipe / interaction 已由 orchestration 收敛 |
+| 38 | 四阶段接入 Runbook | `081` | `domain_descriptor_and_onboarding_contract` | `src/domains/operations`, `src/domains/domain-descriptor-orchestration-service.ts` | `tests/unit/domains/domain-onboarding-service.test.ts`, `tests/integration/domains/domain-descriptor-orchestration-integration.test.ts` | exists | runbook + evidence 驱动接入已可执行 |
+| 39 | 自然语言任务入口 | `082` | `nl_entry_and_goal_decomposition_contract` | `src/interaction/nl-gateway` | `tests/unit/interaction/nl-gateway/index.test.ts` | exists | intent / entity / locale 入口稳定 |
+| 40 | 目标分解引擎 | `082` | `nl_entry_and_goal_decomposition_contract` | `src/interaction/goal-decomposer` | `tests/unit/interaction/goal-decomposer/index.test.ts` | exists | decomposition / dependency / risk 已实现 |
+| 41 | 主动式 Agent | `083` | `proactive_agent_and_autonomy_contract` | `src/interaction/proactive-agent` | `tests/unit/interaction/proactive-agent/index.test.ts` | exists | trigger / cooldown / suggestion 已闭环 |
+| 42 | 渐进式自主权 | `083` | `proactive_agent_and_autonomy_contract` | `src/interaction/autonomy` | `tests/unit/interaction/autonomy-governance-service.test.ts` | exists | trust / downgrade / approval 约束已落地 |
+| 43 | 统一运营看板 | `084` | `dashboard_and_operator_experience_contract` | `src/interaction/dashboard` | `tests/unit/interaction/dashboard/index.test.ts` | exists | L1-L4 DTO 聚合已实现 |
+| 44 | 非技术用户 UX | `084` | `dashboard_and_operator_experience_contract` | `src/interaction/ux`, `src/interaction/ux/user-experience-orchestration-service.ts` | `tests/unit/interaction/user-experience-orchestration-service.test.ts`, `tests/integration/interaction/user-experience-orchestration-integration.test.ts` | partial | guided onboarding / builder 已实现，WCAG 等 UI 章节仍属于后续产品层 |
+| 46 | 组织层次模型 | `085` | `org_hierarchy_and_dynamic_approval_contract` | `src/org-governance/org-model` | `tests/unit/org-governance/org-model`, `tests/integration/org-governance/org-model/hr-integration.test.ts` | exists | org node 与 HR 映射闭环 |
+| 47 | 组织架构审批路由 | `085` | `org_hierarchy_and_dynamic_approval_contract` | `src/org-governance/approval-routing` | `tests/unit/org-governance/approval-routing-service.test.ts`, `tests/integration/org-governance/governance-services-integration.test.ts` | exists | delegation / escalation / route 已落地 |
+| 48 | 企业 SSO / SCIM 集成 | `085` | `sso_scim_and_identity_sync_contract` | `src/org-governance/sso-scim` | `tests/unit/org-governance/identity-sync-service.test.ts`, `tests/integration/org-governance/governance-services-integration.test.ts` | exists | identity sync 生命周期已实现 |
+| 49 | 分部门合规策略 | `085` | `org_hierarchy_and_dynamic_approval_contract`, `delegated_governance_contract` | `src/org-governance/compliance-engine` | `tests/unit/org-governance/compliance-governance-service.test.ts`, `tests/integration/org-governance/governance-services-integration.test.ts` | exists | 合规继承与证据采集已落地 |
+| 50 | 知识域隔离与受控共享 | `085` | `knowledge_boundary_and_federated_search_contract` | `src/org-governance/knowledge-boundary` | `tests/unit/org-governance/knowledge-boundary-service.test.ts`, `tests/integration/org-governance/governance-services-integration.test.ts` | exists | knowledge boundary / federated access 已实现 |
+| 51 | 分级治理委托 | `085` | `delegated_governance_contract` | `src/org-governance/delegated-governance` | `tests/unit/org-governance/delegated-governance-service.test.ts`, `tests/integration/org-governance/governance-services-integration.test.ts` | exists | scope / delegation / override 已落地 |
+| 52 | 多 Region 部署 | `086` | `cross_region_routing_and_data_residency_contract` | `src/scale-ecosystem/multi-region`, `src/scale-ecosystem/multi-region/cross-region-routing-service.ts` | `tests/unit/scale-ecosystem/cross-region-routing-service.test.ts`, `tests/integration/scale-ecosystem/runtime-orchestration-integration.test.ts` | exists | region routing / residency / failover 已由服务收敛 |
+| 53 | 规模化资源竞争管理 | `086` | `quota_preemption_and_fair_scheduling_contract` | `src/scale-ecosystem/resource-manager`, `src/scale-ecosystem/resource-manager/fair-scheduling-service.ts` | `tests/unit/scale-ecosystem/fair-scheduling-service.test.ts`, `tests/integration/scale-ecosystem/runtime-orchestration-integration.test.ts` | exists | quota / preemption / fair queue 已形成 orchestration |
+| 54 | SLA 分级保障 | `086` | `sla_tier_contract` | `src/scale-ecosystem/sla-engine`, `src/scale-ecosystem/sla-engine/sla-operations-service.ts` | `tests/unit/scale-ecosystem/sla-operations-service.test.ts`, `tests/integration/scale-ecosystem/runtime-orchestration-integration.test.ts` | exists | SLA-aware routing / breach / reserved capacity 已闭环 |
+| 55 | Agent 市场与生态 | `086` | `marketplace_catalog_and_revenue_contract` | `src/scale-ecosystem/marketplace` | `tests/unit/scale-ecosystem/marketplace`, `tests/integration/scale-ecosystem/marketplace` | exists | catalog / revenue / governance 已实现 |
+| 56 | 反馈驱动持续改进 | `086` | `feedback_improvement_pipeline_contract` | `src/scale-ecosystem/feedback-loop` | `tests/unit/scale-ecosystem/feedback-improvement-service.test.ts`, `tests/integration/scale-ecosystem/feedback-improvement-integration.test.ts` | exists | feedback -> improvement pipeline 已落地 |
+| 57 | 外部系统集成框架 | `086` | `connector_framework_contract` | `src/scale-ecosystem/integration` | `tests/unit/scale-ecosystem/connector-framework-service.test.ts`, `tests/integration/scale-ecosystem/connector-framework-integration.test.ts` | exists | connector lifecycle / registry / runtime 已实现 |
+| 59 | Agent 可解释性 | `087` | `explainability_and_stage_rationale_contract` | `src/ops-maturity/explainability` | `tests/unit/ops-maturity/explanation-pipeline-service.test.ts`, `tests/integration/ops-maturity/explainability-pipeline-integration.test.ts` | exists | rationale / cache / render 已闭环 |
+| 60 | 紧急制动与全局熔断 | `087` | `platform_panic_and_resume_contract` | `src/ops-maturity/emergency` | `tests/unit/ops-maturity/platform-panic-service.test.ts`, `tests/integration/ops-maturity/panic-platform-ops-integration.test.ts` | exists | panic / resume / forensic snapshot 已落地 |
+| 61 | Agent 统一生命周期管理 | `087` | `agent_definition_lifecycle_contract` | `src/ops-maturity/agent-lifecycle` | `tests/unit/ops-maturity/agent-lifecycle-service.test.ts`, `tests/integration/ops-maturity/agent-lifecycle-integration.test.ts` | exists | version / canary / retirement 已实现 |
+| 62 | 离线与边缘部署 | `087` | `edge_runtime_and_sync_contract` | `src/ops-maturity/edge-runtime` | `tests/unit/ops-maturity/edge-runtime-sync-service.test.ts`, `tests/integration/ops-maturity/edge-runtime-sync-integration.test.ts` | exists | edge sync / offline queue 已实现 |
+| 63 | Agent 行为漂移检测 | `087` | `behavior_drift_detection_contract` | `src/ops-maturity/drift-detection` | `tests/unit/ops-maturity/drift-detection`, `tests/integration/ops-maturity/drift-detection/evolution-integration.test.ts` | exists | fingerprint / promotion gate / response chain 已落地 |
+| 64 | 成本归因与优化 | `087` | `cost_attribution_and_optimization_contract` | `src/ops-maturity/cost-optimizer` | `tests/unit/ops-maturity/cost-optimization-service.test.ts`, `tests/integration/ops-maturity/cost-optimization-integration.test.ts` | exists | attribution / simulation / recommendation 已实现 |
+| 65 | 工作流可视化调试器 | `087` | `workflow_debugger_contract` | `src/ops-maturity/workflow-debugger` | `tests/unit/ops-maturity/workflow-debugger-service.test.ts`, `tests/integration/ops-maturity/workflow-debugger-integration.test.ts` | exists | timeline / comparator / breakpoint 已落地 |
+| 66 | 合规报告自动生成 | `087` | `compliance_report_generation_contract` | `src/ops-maturity/compliance-reporter` | `tests/unit/ops-maturity/compliance-report-pipeline-service.test.ts`, `tests/integration/ops-maturity/compliance-report-pipeline-integration.test.ts` | exists | report template / render / readonly access 已实现 |
+| 67 | 容量规划与成本预测 | `087` | `capacity_planning_contract` | `src/ops-maturity/capacity-planner` | `tests/unit/ops-maturity/capacity-planning-service.test.ts`, `tests/integration/ops-maturity/capacity-planning-integration.test.ts` | exists | forecast / simulator / budget support 已实现 |
+| 68 | 多模态能力架构 | `087` | `multimodal_gateway_contract` | `src/ops-maturity/multimodal` | `tests/unit/ops-maturity/multimodal-gateway-service.test.ts`, `tests/integration/ops-maturity/multimodal-gateway-integration.test.ts` | exists | multimodal routing / safety / cost tracking 已实现 |
+| 69 | 平台自运维 Agent | `087` | `platform_ops_agent_contract` | `src/ops-maturity/platform-ops-agent` | `tests/unit/ops-maturity/platform-ops-agent-service.test.ts`, `tests/integration/ops-maturity/panic-platform-ops-integration.test.ts` | exists | self-ops catalog / guardrails / maturity 已实现 |
 
-## 优先补齐清单
+## Gap Summary
 
-### Authoritative 设计优先
+### 仍为 `partial` 的章节
 
-1. `081`-`087` ADR 已补齐，用于收敛 `§37-§69` 的分组决策。
-2. `domains / interaction / org-governance / scale-ecosystem / ops-maturity` 对应 contract 需先成为 authoritative，再推进实现。
+- `§6-§8`：API / 通信 / 扩展治理已有 canonical 契约，但章节级子能力仍有扩展空间。
+- `§16-§17`：Prompt 与 Eval 领域编排已实现，平台级灰度发布、dataset / judge 生态仍偏薄。
+- `§20-§23`：长时 workflow、HITL、SDK、合规专题仍有若干章节以总线/治理能力映射。
+- `§27-§32`：性能、HA、部署章节已有 contract 与部分实现，但一些指标清单、恢复演练与资源池细节仍未完全下钻。
+- `§33`、`§36`：天然以治理文档为主，无完整运行时代码闭环。
+- `§44`：非技术 UX 的 guided onboarding / workflow builder 已落地，UI 产品层细节仍保留后续空间。
 
-### 实现优先级
+### 本轮新增收敛点
 
-1. `src/domains/*`
-2. `src/interaction/*`
-3. `src/org-governance/*`
-4. `src/scale-ecosystem/*`
-5. `src/ops-maturity/*`
-
-### 测试优先级
-
-1. schema / zod / state-machine unit tests
-2. cross-plane integration tests
-3. API / event / contract edge tests
-
+- `docs_zh/adr/088-090`：补齐平台表面、AI 运营治理、runtime/数据可靠性三组 ADR。
+- `src/domains/domain-descriptor-orchestration-service.ts`：把 domain support 层收敛成统一 orchestration service。
+- `src/interaction/ux/user-experience-orchestration-service.ts`：把 onboarding / wizard / template / builder 收敛成统一 UX 编排服务。
+- `src/domains/prompt-library/domain-prompt-governance-service.ts`
+- `src/domains/eval-framework/domain-evaluation-gate-service.ts`
+- `src/platform/interface/scheduler/long-running-workflow-service.ts`
+- `src/platform/orchestration/hitl/hitl-approval-orchestration-service.ts`
+- `src/scale-ecosystem/multi-region/cross-region-routing-service.ts`
+- `src/scale-ecosystem/resource-manager/fair-scheduling-service.ts`
+- `src/scale-ecosystem/sla-engine/sla-operations-service.ts`

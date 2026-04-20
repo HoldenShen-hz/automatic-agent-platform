@@ -20,3 +20,5 @@ export type DomainEvalFramework = z.infer<typeof DomainEvalFrameworkSchema>;
 export function listBlockingEvaluators(framework: DomainEvalFramework): DomainEvaluator[] {
   return framework.evaluators.filter((item) => item.blocking);
 }
+
+export * from "./domain-evaluation-gate-service.js";

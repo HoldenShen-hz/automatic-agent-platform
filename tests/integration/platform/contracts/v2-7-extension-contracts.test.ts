@@ -7,12 +7,24 @@ import * as orgGovernance from "../../../../src/org-governance/index.js";
 import * as scaleEcosystem from "../../../../src/scale-ecosystem/index.js";
 import * as opsMaturity from "../../../../src/ops-maturity/index.js";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
+import { DomainDescriptorOrchestrationService } from "../../../../src/domains/domain-descriptor-orchestration-service.js";
+import type { DomainEvalFramework } from "../../../../src/domains/eval-framework/index.js";
+import { DomainEvaluationGateService } from "../../../../src/domains/eval-framework/domain-evaluation-gate-service.js";
+import type { DomainPromptLibrary } from "../../../../src/domains/prompt-library/index.js";
+import { DomainPromptGovernanceService } from "../../../../src/domains/prompt-library/domain-prompt-governance-service.js";
 import { DomainTaskDesignService } from "../../../../src/domains/domain-task-design-service.js";
 import { DomainOnboardingService } from "../../../../src/domains/operations/domain-onboarding-service.js";
 import { ApprovalRoutingService } from "../../../../src/org-governance/approval-routing/approval-routing-service.js";
+import { ComplianceGovernanceService } from "../../../../src/org-governance/compliance-engine/compliance-governance-service.js";
+import { DelegatedGovernanceService } from "../../../../src/org-governance/delegated-governance/delegated-governance-service.js";
+import { KnowledgeBoundaryService } from "../../../../src/org-governance/knowledge-boundary/knowledge-boundary-service.js";
+import { IdentitySyncService } from "../../../../src/org-governance/sso-scim/identity-sync-service.js";
 import { RuntimeGovernanceService } from "../../../../src/scale-ecosystem/runtime-governance-service.js";
+import { CrossRegionRoutingService } from "../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
 import { FeedbackImprovementService } from "../../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
 import { ConnectorFrameworkService } from "../../../../src/scale-ecosystem/integration/connector-framework-service.js";
+import { FairSchedulingService } from "../../../../src/scale-ecosystem/resource-manager/fair-scheduling-service.js";
+import { SlaOperationsService } from "../../../../src/scale-ecosystem/sla-engine/sla-operations-service.js";
 import { PlatformPanicService } from "../../../../src/ops-maturity/emergency/platform-panic-service.js";
 import { ExplanationPipelineService } from "../../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
 import { PlatformOpsAgentService } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
@@ -24,19 +36,31 @@ import { CapacityPlanningService } from "../../../../src/ops-maturity/capacity-p
 import { CostOptimizationService } from "../../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
 import { MultimodalGatewayService } from "../../../../src/ops-maturity/multimodal/multimodal-gateway-service.js";
 import { AutonomyGovernanceService } from "../../../../src/interaction/autonomy/autonomy-governance-service.js";
+import { UserExperienceOrchestrationService } from "../../../../src/interaction/ux/user-experience-orchestration-service.js";
 import { WorkflowBuilderService } from "../../../../src/interaction/ux/workflow-builder-service.js";
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 
 test("contract: v2.7 extension barrels export canonical entrypoints", () => {
   assert.equal(typeof domains.computeDomainRiskLevel, "function");
+  assert.equal(typeof domains.DomainDescriptorOrchestrationService, "function");
+  assert.equal(typeof domains.DomainEvaluationGateService, "function");
+  assert.equal(typeof domains.DomainPromptGovernanceService, "function");
   assert.equal(typeof domains.DomainTaskDesignService, "function");
   assert.equal(typeof interaction.parseIntentTokens, "function");
   assert.equal(typeof interaction.AutonomyGovernanceService, "function");
+  assert.equal(typeof interaction.UserExperienceOrchestrationService, "function");
   assert.equal(typeof interaction.WorkflowBuilderService, "function");
   assert.equal(typeof orgGovernance.resolveApprovalRoute, "function");
+  assert.equal(typeof orgGovernance.ComplianceGovernanceService, "function");
+  assert.equal(typeof orgGovernance.DelegatedGovernanceService, "function");
+  assert.equal(typeof orgGovernance.KnowledgeBoundaryService, "function");
+  assert.equal(typeof orgGovernance.IdentitySyncService, "function");
   assert.equal(typeof scaleEcosystem.detectSlaBreach, "function");
+  assert.equal(typeof scaleEcosystem.CrossRegionRoutingService, "function");
   assert.equal(typeof scaleEcosystem.FeedbackImprovementService, "function");
+  assert.equal(typeof scaleEcosystem.FairSchedulingService, "function");
   assert.equal(typeof scaleEcosystem.ConnectorFrameworkService, "function");
+  assert.equal(typeof scaleEcosystem.SlaOperationsService, "function");
   assert.equal(typeof opsMaturity.renderStageExplanation, "function");
   assert.equal(typeof opsMaturity.PlatformPanicService, "function");
   assert.equal(typeof opsMaturity.ExplanationPipelineService, "function");
@@ -179,6 +203,80 @@ test("contract: DomainTaskDesignService preserves review and interaction constra
   assert.equal(design.interactionMode, "approval_required");
 });
 
+test("contract: prompt rollout cannot activate without lint/eval evidence and approval ticket for guarded prompt", () => {
+  const service = new DomainPromptGovernanceService();
+  const library: DomainPromptLibrary = {
+    libraryId: "prompt_release",
+    domainId: "coding",
+    prompts: [
+      {
+        promptId: "release_prompt",
+        stage: "release",
+        version: "2.0.0",
+        template: "Release with checks",
+        guardrails: ["approval_required"],
+      },
+      {
+        promptId: "release_prompt",
+        stage: "release",
+        version: "1.9.0",
+        template: "Release old",
+        guardrails: ["approval_required"],
+      },
+    ],
+  };
+
+  assert.throws(() => {
+    service.proposeRelease(library, {
+      promptId: "release_prompt",
+      owner: "eng_lead",
+      rolloutScope: ["tenant:alpha"],
+      rolloutMode: "shadow",
+      lintEvidence: ["lint:ok"],
+      evalEvidence: ["eval:ok"],
+    });
+  }, /prompt_governance\.approval_ticket_required/);
+
+  const release = service.proposeRelease(library, {
+    promptId: "release_prompt",
+    owner: "eng_lead",
+    rolloutScope: ["tenant:alpha"],
+    rolloutMode: "shadow",
+    lintEvidence: ["lint:ok"],
+    evalEvidence: ["eval:ok"],
+    approvalTicketId: "CHG-300",
+    rollbackVersion: "1.9.0",
+  });
+  assert.equal(service.activate(release.releaseId).status, "active");
+});
+
+test("contract: blocking regression gate failures must hold prompt promotion", () => {
+  const service = new DomainEvaluationGateService();
+  const framework: DomainEvalFramework = {
+    frameworkId: "eval_release",
+    domainId: "coding",
+    evaluators: [
+      { evaluatorId: "tests_pass", metric: "pass_rate", threshold: 0.95, blocking: true },
+      { evaluatorId: "latency", metric: "latency_score", threshold: 0.8, blocking: false },
+    ],
+    onlineMetrics: ["latency_score"],
+  };
+  const report = service.evaluateSuite(framework, {
+    suiteId: "suite_bad",
+    domainId: "coding",
+    releaseType: "pre_release",
+    executionMode: "supervised",
+    storageMode: "sqlite",
+    cases: [
+      { caseId: "case_1", metric: "pass_rate", score: 0.81, expectedClass: "coding" },
+      { caseId: "case_2", metric: "latency_score", score: 0.91, expectedClass: "coding" },
+    ],
+  });
+
+  assert.equal(report.releaseDecision, "hold");
+  assert.deepEqual(report.blockingFailures, ["tests_pass"]);
+});
+
 test("contract: ApprovalRoutingService preserves delegation and escalation constraints", () => {
   const orgNodes: OrgNode[] = [
     {
@@ -223,6 +321,109 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
   assert.deepEqual(result.approverChain, ["finance_backup", "cfo"]);
   assert.equal(result.delegated, true);
   assert.equal(result.escalatedTo, "cfo");
+});
+
+test("contract: ComplianceGovernanceService must deny missing required policy keys", () => {
+  const service = new ComplianceGovernanceService(
+    [
+      {
+        orgNodeId: "root",
+        nodeType: "enterprise",
+        displayName: "Root",
+        parentOrgNodeId: null,
+        ownerUserIds: ["ceo"],
+        active: true,
+      },
+    ],
+    {
+      root: [{ policyId: "p_root", rules: { approvalRequired: true } }],
+    },
+  );
+  const result = service.evaluate({
+    actorId: "ceo",
+    orgNodeId: "root",
+    action: "finance.export",
+    requiredPolicyKeys: ["approvalRequired", "retentionDays"],
+    occurredAt: "2026-04-20T00:00:00.000Z",
+  });
+  assert.equal(result.allowed, false);
+  assert.deepEqual(result.missingKeys, ["retentionDays"]);
+});
+
+test("contract: DelegatedGovernanceService only grants active scoped delegations", () => {
+  const service = new DelegatedGovernanceService([
+    {
+      delegationId: "del_1",
+      grantorId: "director",
+      granteeId: "manager",
+      orgNodeIds: ["dept_finance"],
+      domainIds: ["finance"],
+      capabilities: ["approve_budget"],
+      expiresAt: "2026-04-21T00:00:00.000Z",
+      revocable: true,
+      status: "active",
+    },
+  ]);
+  const result = service.resolve("manager", {
+    orgNodeId: "dept_finance",
+    domainId: "finance",
+    capability: "approve_budget",
+  }, "2026-04-20T00:00:00.000Z");
+  assert.equal(result.allowed, true);
+});
+
+test("contract: KnowledgeBoundaryService logs and redacts denied access", () => {
+  const service = new KnowledgeBoundaryService();
+  const result = service.evaluateAccess(
+    {
+      boundaryId: "kb_finance",
+      ownerOrgNodeId: "dept_finance",
+      namespaceIds: ["finance_docs"],
+      defaultVisibility: "private",
+      allowedOrgNodeIds: [],
+    },
+    "user_1",
+    "dept_hr",
+    "investigate",
+    [],
+    "2026-04-20T00:00:00.000Z",
+  );
+  assert.equal(result.allowed, false);
+  assert.ok(service.listRedactedLogs("kb_finance")[0]?.requesterId.startsWith("redacted:"));
+});
+
+test("contract: IdentitySyncService must drop terminal SCIM subjects from active set", () => {
+  const service = new IdentitySyncService();
+  const snapshot = service.bootstrap(
+    {
+      providerId: "oidc_main",
+      issuer: "https://id.example.com",
+      clientId: "client_1",
+      redirectUri: "https://app.example.com/callback",
+      scopes: ["openid", "profile"],
+    },
+    {
+      providerId: "saml_main",
+      entryPoint: "https://id.example.com/saml",
+      issuer: "app.example.com",
+      certificateFingerprint: "sha256:abc",
+    },
+    [
+      {
+        eventId: "evt_1",
+        action: "user_created",
+        subjectId: "user_a",
+        occurredAt: "2026-04-20T00:00:00.000Z",
+      },
+      {
+        eventId: "evt_2",
+        action: "user_disabled",
+        subjectId: "user_a",
+        occurredAt: "2026-04-20T00:01:00.000Z",
+      },
+    ],
+  );
+  assert.deepEqual(snapshot.activeSubjects, []);
 });
 
 test("contract: RuntimeGovernanceService surfaces quota, SLA, and failover state together", () => {
@@ -605,4 +806,178 @@ test("contract: illegal modality types cannot silently downgrade to text executi
       costBudget: { maxUsd: 1 },
     });
   }, /multimodal_gateway\.unsupported_modality/);
+});
+
+test("contract: domain descriptors without workflow/tool/prompt/eval anchors remain non-ready", () => {
+  const service = new DomainDescriptorOrchestrationService();
+  const review = service.review({
+    domainId: "finance",
+    displayName: "Finance",
+    description: "Finance operations",
+    ownerOrgNodeId: "org_finance",
+    lifecycleState: "draft",
+    version: 1,
+    riskProfile: {
+      profileId: "risk_finance",
+      domainId: "finance",
+      defaultRiskLevel: "medium",
+      dimensions: [],
+    },
+    knowledgeSchema: {
+      schemaId: "knowledge_finance",
+      domainId: "finance",
+      namespaceIds: [],
+      freshnessWindowHours: 24,
+      conflictResolution: "human_review",
+      retentionDays: 90,
+    },
+    evalFramework: {
+      frameworkId: "eval_finance",
+      domainId: "finance",
+      evaluators: [],
+      onlineMetrics: [],
+    },
+    promptLibrary: {
+      libraryId: "prompt_finance",
+      domainId: "finance",
+      prompts: [],
+    },
+    recipes: [],
+    defaultToolBundleIds: [],
+    defaultWorkflowIds: [],
+  });
+
+  assert.equal(review.onboardingReadiness, "needs_evidence");
+  assert.ok(review.findings.includes("domain_descriptor.default_workflow_missing"));
+  assert.ok(review.findings.includes("domain_descriptor.blocking_evaluator_missing"));
+});
+
+test("contract: guided onboarding must produce structured session and workflow draft DTOs", async () => {
+  const service = new UserExperienceOrchestrationService();
+  const result = await service.bootstrap({
+    session: {
+      userId: "user_ops",
+      tenantId: "tenant_ops",
+    },
+    context: {
+      memberCount: 5,
+      departmentCount: 1,
+      requiresSso: false,
+    },
+    userRole: "operator",
+    businessDescription: "Build approval notify flow",
+    template: {
+      templateId: "tmpl_ops",
+      title: "Ops Flow",
+      steps: ["approval", "notify"],
+    },
+    wizardSession: {
+      sessionId: "wizard_ops",
+      currentStepId: "capability_setup",
+      steps: [
+        { stepId: "business_type", title: "Business", completed: true },
+        { stepId: "capability_setup", title: "Capability", completed: true },
+      ],
+    },
+    components: [
+      {
+        componentId: "approval_gate",
+        name: "Approval",
+        icon: "shield",
+        domainId: "operations",
+        riskLevel: "medium",
+        configSchema: {},
+        previewDescription: "approval",
+      },
+      {
+        componentId: "output_notify",
+        name: "Notify",
+        icon: "message",
+        domainId: "operations",
+        riskLevel: "low",
+        configSchema: {},
+        previewDescription: "notify",
+      },
+    ],
+  });
+
+  assert.equal(typeof result.guidedSession.sessionId, "string");
+  assert.equal(result.guidedSession.currentStep, "capability_setup");
+  assert.deepEqual(result.draft.steps, ["approval", "notify"]);
+});
+
+test("contract: residency, quota, and SLA violations must surface as explicit structured decisions", () => {
+  const routing = new CrossRegionRoutingService();
+  const route = routing.route({
+    regions: [
+      { regionId: "cn-sh", jurisdiction: "CN", latencyScore: 20, residencyAllowed: true, capabilities: ["llm", "storage"] },
+      { regionId: "us-west-2", jurisdiction: "US", latencyScore: 10, residencyAllowed: true, capabilities: ["llm", "storage"] },
+    ],
+    policy: {
+      policyId: "cn_only",
+      allowedJurisdictions: ["CN"],
+      requiredCapabilities: ["llm", "storage"],
+      allowCrossBorder: false,
+    },
+    primaryRegionHealthy: false,
+  });
+  assert.equal(route.selectedRegionId, "cn-sh");
+  assert.ok(route.blockedRegions.includes("us-west-2"));
+
+  const scheduling = new FairSchedulingService();
+  const queue = scheduling.schedule({
+    quotaPolicy: {
+      scopeId: "tenant_a",
+      hardLimit: 5,
+      currentUsage: 4,
+    },
+    claim: {
+      claimId: "claim_a",
+      schedulingClass: {
+        tenantId: "tenant_a",
+        orgNodeId: "org_a",
+        domainId: "ops",
+        slaTierId: "enterprise",
+        priority: 10,
+      },
+      requestedUnits: 2,
+    },
+    queueItems: [
+      { itemId: "job_old", tenantId: "tenant_b", priority: 1, ageMs: 20 * 60_000 },
+      { itemId: "job_new", tenantId: "tenant_a", priority: 10, ageMs: 30_000 },
+    ],
+    preemptionCandidates: [
+      { executionId: "exec_low", priority: 1, progressPercent: 5 },
+    ],
+  });
+  assert.equal(queue.queue.quotaExceeded, true);
+  assert.equal(queue.preemption.victimExecutionId, "exec_low");
+
+  const sla = new SlaOperationsService();
+  const slaDecision = sla.evaluate({
+    tiers: [
+      {
+        tierId: "enterprise",
+        displayName: "Enterprise",
+        priority: 3,
+        reservedCapacityPercent: 40,
+        targetLatencyMs: 300,
+        targetSuccessRate: 0.995,
+        maxQueueWaitMs: 800,
+        preemptionPriority: 10,
+      },
+    ],
+    selectedTierId: "enterprise",
+    observation: {
+      latencyMs: 600,
+      successRate: 0.99,
+      queueWaitMs: 1200,
+    },
+    totalCapacityUnits: 20,
+    observedAt: "2026-04-20T00:00:00.000Z",
+  });
+  assert.deepEqual(
+    slaDecision.breachRecords[0]?.breachCodes,
+    ["sla.latency_breach", "sla.success_rate_breach", "sla.queue_wait_breach"],
+  );
 });

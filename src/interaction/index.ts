@@ -6,5 +6,6 @@ export * from "./nl-gateway/index.js";
 export * from "./proactive-agent/index.js";
 export * from "./ux/onboarding/index.js";
 export * from "./ux/template-engine/index.js";
+export * from "./ux/user-experience-orchestration-service.js";
 export * from "./ux/workflow-builder-service.js";
 export * from "./ux/wizard/index.js";
