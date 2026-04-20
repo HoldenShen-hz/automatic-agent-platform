@@ -1,8 +1,8 @@
 # Operations Tracker
 
+> **已迁移**：本文档内容已收敛到 `project_progress_tracker.md`、`implementation_plan.md`、`operations-roadmap.md`。
+> 本文件保留为轻量索引，不再维护重复的追踪正文。
 > Last updated: 2026-04-14
-> 本文件保留为轻量索引，避免继续维护重复的追踪正文。
-> 旧版整合追踪文档不再迁入新平台正式文档集。
 
 ## 当前入口
 

@@ -56,3 +56,23 @@ Accepted
 - contract tests：API / event / gateway envelope 不得绕过 contract。
 - integration tests：event bus、plugin lifecycle、marketplace install / publish 流必须能跨边界运行。
 - denial tests：未认证、未授权、未验证、未声明 capability 的扩展不得进入生产执行链。
+
+## 备选方案
+
+1. **为每种 API/SDK 动作单独创建 ADR**：避免架构决策碎片化，但导致 ADR 数量膨胀，难以维护一致性。
+2. **将 extension runtime 实现细节写入 ADR**：信息更全面，但 ADR 变得臃肿，且实现变更需要更新 ADR。
+3. **允许"内部 SDK 特权路径"**：降低开发门槛，但破坏平台边界，增加安全风险。
+4. **采用本决策**：统一治理平台表面，平衡扩展性与安全性。
+
+## 交叉引用
+
+- [ADR-066 Plugin SPI 框架](./066-plugin-spi-framework.md)
+- [ADR-089 AI Operations 治理与质量](./089-ai-operations-governance-and-quality.md)
+
+## 来源章节
+
+- `§6 Interface Plane`
+- `§7 Platform Contracts`
+- `§8 Extensibility`
+- `§22 SDK/DX`
+- `§30 Business Pack / Plugin`

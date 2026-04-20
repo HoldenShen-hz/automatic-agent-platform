@@ -275,7 +275,7 @@
 | -------------------------------- | ---- | --------------------- |
 | `loop-detection.ts`              | 443  | Agent 循环模式检测          |
 | `call-governance.ts`             | 747  | LLM 调用治理              |
-| `admission-controller.ts`        | ~300 | 请求准入控制                |
+| `admission-controller.ts`        | ~300 | 请求准入控制（`dispatcher/`）               |
 | `effect-buffer.ts`               | 549  | 副作用缓冲                 |
 | `license-enforcement-service.ts` | 584  | 许可证执行                 |
 | `hitl-explainability-service.ts` | 582  | HITL 可解释性             |

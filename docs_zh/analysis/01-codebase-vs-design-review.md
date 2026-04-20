@@ -6,6 +6,7 @@
 >
 > - `docs_zh/architecture/00-platform-architecture.md`
 > - `docs_zh/architecture/01-code-structure.md`
+> - `docs_zh/architecture/02-code-architecture-reference.md`
 > - `docs_zh/analysis/00-architecture-coverage-matrix.md`
 
 ## 1. 结论

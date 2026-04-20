@@ -2,6 +2,8 @@
 
 > 范围：对照 [../architecture/00-platform-architecture.md](../architecture/00-platform-architecture.md) 的主章节，建立 `architecture chapter -> ADR -> contract -> src -> tests` 的可追踪矩阵。
 >
+> 数据截止日期：2026-04-20（与 `01-codebase-vs-design-review.md` 审查日期同步）
+>
 > 状态定义：
 >
 > - `exists`：ADR / contract / src / tests 已形成闭环

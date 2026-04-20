@@ -51,7 +51,8 @@ new-platform/
 ├── tests/                  # 测试（镜像 src/ 结构）
 ├── config/                 # 版本化配置
 ├── divisions/              # Division 定义（迁移后适配 DomainDescriptor）
-├── doc/                    # 文档
+├── docs_zh/                # 中文文档
+├── docs_en/                # 英文文档
 ├── scripts/                # CI/构建脚本
 ├── deploy/                 # 部署清单
 └── [顶层配置文件]           # package.json / tsconfig.json / eslint.config.js / Dockerfile / ...
@@ -145,7 +146,6 @@ src/platform/
 │   │   ├── task-websocket-status-relay.ts
 │   │   └── index.ts
 │   ├── webhook/            #   Webhook 入站处理
-│   │   ├── webhook-receiver.ts
 │   │   └── index.ts
 │   ├── channel-gateway/    #   渠道网关（Telegram/Slack/Webhook/SSE）
 │   │   ├── channel-gateway-service.ts

@@ -327,7 +327,7 @@ platform/orchestration/
 │  │  oapeflir/  OAPEFLIR 受控认知内核                                  │        │
 │  │                                                                    │        │
 │  │  O ──▶ A ──▶ P ──▶ E ──▶ F ──▶ L ──▶ I ──▶ R                    │        │
-│  │  Observe  Analyze  Plan  Execute  Feedback  Learn  Improve  Rollout│        │
+│  │  Observe  Assess  Plan  Execute  Feedback  Learn  Improve  Rollout│        │
 │  │                                                                    │        │
 │  │  ┌──────────┐  ┌────────────────┐  ┌───────────────────┐         │        │
 │  │  │workflow/ │  │    learn/      │  │ improve-rollout/  │         │        │
@@ -1361,7 +1361,7 @@ Wave 4 (收尾)      移除 Facade；BC1 Core Task Engine 成为独立模块
 横切能力供给方式:
   X1 → platform/shared/stability/ + platform/execution/ 各 BC 内嵌
   X2 → platform/shared/observability/ 统一注入 (structured-logger · otel · metrics)
-  X3 → platform/ai-ops/compliance/ + org-governance/compliance-engine/
+  X3 → platform/compliance/ + org-governance/compliance-engine/
 ```
 
 ---
@@ -1394,24 +1394,24 @@ runtime ────────────────────────
 agent-loop ────────────────────────▶ platform/orchestration/oapeflir (P3)
 planning ──────────────────────────▶ platform/orchestration/planner (P3)
 orchestration ─────────────────────▶ platform/orchestration/routing (P3)
-providers ─────────────────────────▶ platform/ai-ops/model-gateway
-tools ─────────────────────────────▶ platform/ai-ops/tool-executor
-workflow ──────────────────────────▶ platform/ai-ops/workflow
+providers ─────────────────────────▶ platform/model-gateway/
+tools ─────────────────────────────▶ platform/execution/tool-executor/
+workflow ──────────────────────────▶ platform/orchestration/oapeflir/workflow/
 artifacts ─────────────────────────▶ platform/state-evidence/artifacts (P5 BC7)
 feedback ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
 learning ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
-evaluation ────────────────────────▶ ops-maturity/compliance-reporter (L7)
+evaluation ────────────────────────▶ platform/prompt-engine/eval/ (L7)
 
 domain-registry ───────────────────▶ domains/registry (L3)
 divisions ─────────────────────────▶ domains/governance (L3)
 plugins ───────────────────────────▶ plugins/ (跨层)
 
-memory ────────────────────────────▶ interaction/memory (L4, 新建 wrapper)
+memory ────────────────────────────▶ platform/state-evidence/memory/ (L5)
 knowledge ─────────────────────────▶ interaction/knowledge (L4, 新建 wrapper)
 messages ──────────────────────────▶ interaction/message (L4)
 gateway ───────────────────────────▶ platform/interface (P1) + interaction/nl-gw (L4)
 
-security ──────────────────────────▶ org-governance/sso-scim (L5)
+security ──────────────────────────▶ platform/control-plane/iam/ (L5)
 approvals ─────────────────────────▶ org-governance/approval-routing (L5)
 compliance ────────────────────────▶ org-governance/compliance-engine (L5)
 cost ──────────────────────────────▶ org-governance/cost (L5)
