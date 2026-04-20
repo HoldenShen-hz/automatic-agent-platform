@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   CLI_ENTRYPOINTS,
+  PackLifecycleOrchestrationService,
+  PackPluginCompatibilityService,
   SdkWorkbenchService,
   buildApiUrl,
   summarizeCapabilityMatrix,
@@ -21,6 +23,8 @@ test("sdk barrel exports cli, client, pack, and plugin surfaces", () => {
     entrypoint: "dist/index.js",
     capabilities: [{ name: "read", description: "Read", scopes: ["read"] }],
   }).pluginId, "plugin-a");
+  assert.equal(typeof PackLifecycleOrchestrationService, "function");
+  assert.equal(typeof PackPluginCompatibilityService, "function");
   assert.deepEqual(summarizeCapabilityMatrix({
     packId: "pack-a",
     version: "1.0.0",

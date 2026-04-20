@@ -70,8 +70,12 @@
   - 已补平台级 prompt release orchestration 与 dataset / judge gate，剩余缺口主要是 staged canary、judge 市场和更完整在线监控生态
 - `§20-§23`
   - 长时 workflow、HITL 通知与 takeover UI、SDK 工作台仍有产品层缺口；合规已补跨区导出与删除请求编排，但法规专题包仍不够厚
+- `§29`
+  - learning signals -> validated learning objects -> knowledge/evolution memory 的编排已补齐，但 Learn -> Improve -> Approval -> Rollout 的更深治理链仍待继续压实
+- `§30`
+  - pack/plugin 兼容性清单、license tier 判定、builtin plugin coverage，以及 pack development -> testing -> certification -> publish -> deprecate 生命周期已补齐，但 registry/marketplace 的更深联动仍可继续增强
 - `§27-§32`
-  - 已补 environment readiness / SLO / resource pool / failover drill 编排，剩余缺口主要是 benchmark inventory、coordinator 级恢复细节和 deployment 资源台账厚度
+  - 已补 environment readiness / SLO / resource pool / failover drill 编排，以及 event/projection/DLQ inventory；剩余缺口主要是 benchmark inventory、coordinator 级恢复细节、deployment 资源台账厚度和完整 projection 清单
 - `§33`、`§36`
   - 本质上是治理 / 成功标准章节，天然以文档和 contract 为主
 - `§44`

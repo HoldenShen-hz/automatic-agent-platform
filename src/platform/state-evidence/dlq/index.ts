@@ -16,6 +16,14 @@ export interface DeadLetterRecord {
   updatedAt: string;
 }
 
+export interface DeadLetterQueueSummary {
+  totalRecords: number;
+  statusCounts: Record<DeadLetterStatus, number>;
+  consumerCounts: Record<string, number>;
+  pendingConsumers: string[];
+  maxRetryCount: number;
+}
+
 export class DeadLetterQueueService {
   private readonly records = new Map<string, DeadLetterRecord>();
 
@@ -75,6 +83,32 @@ export class DeadLetterQueueService {
 
   public listByConsumer(consumerId: string): DeadLetterRecord[] {
     return [...this.records.values()].filter((record) => record.consumerId === consumerId);
+  }
+
+  public listAll(): DeadLetterRecord[] {
+    return [...this.records.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  public summarize(): DeadLetterQueueSummary {
+    const records = this.listAll();
+    const statusCounts: Record<DeadLetterStatus, number> = {
+      pending: 0,
+      retrying: 0,
+      discarded: 0,
+      resolved: 0,
+    };
+    const consumerCounts: Record<string, number> = {};
+    for (const record of records) {
+      statusCounts[record.status] += 1;
+      consumerCounts[record.consumerId] = (consumerCounts[record.consumerId] ?? 0) + 1;
+    }
+    return {
+      totalRecords: records.length,
+      statusCounts,
+      consumerCounts,
+      pendingConsumers: [...new Set(records.filter((record) => record.status === "pending" || record.status === "retrying").map((record) => record.consumerId))].sort(),
+      maxRetryCount: records.reduce((max, record) => Math.max(max, record.retryCount), 0),
+    };
   }
 
   private getRequired(deadLetterId: string): DeadLetterRecord {
