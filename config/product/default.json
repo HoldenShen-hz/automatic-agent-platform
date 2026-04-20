@@ -1,0 +1,107 @@
+{
+  "billingPlans": {
+    "community": {
+      "planId": "community",
+      "displayName": "Community",
+      "features": ["phase3.web_console"],
+      "quotas": {
+        "task_execution": {
+          "metricType": "task_execution",
+          "limitType": "hard",
+          "limitValue": 100,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0
+        },
+        "token_usage": {
+          "metricType": "token_usage",
+          "limitType": "hard",
+          "limitValue": 500000,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0
+        },
+        "artifact_storage_bytes": {
+          "metricType": "artifact_storage_bytes",
+          "limitType": "hard",
+          "limitValue": 104857600,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0
+        }
+      }
+    },
+    "pro": {
+      "planId": "pro",
+      "displayName": "Pro",
+      "features": ["phase3.web_console", "phase3.pmf_validation", "phase3.billing_export"],
+      "quotas": {
+        "task_execution": {
+          "metricType": "task_execution",
+          "limitType": "hard",
+          "limitValue": 1000,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.02
+        },
+        "token_usage": {
+          "metricType": "token_usage",
+          "limitType": "hard",
+          "limitValue": 5000000,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.000001
+        },
+        "artifact_storage_bytes": {
+          "metricType": "artifact_storage_bytes",
+          "limitType": "hard",
+          "limitValue": 1073741824,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.000000001
+        },
+        "premium_feature_activation": {
+          "metricType": "premium_feature_activation",
+          "limitType": "hard",
+          "limitValue": 250,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.1
+        }
+      }
+    },
+    "enterprise": {
+      "planId": "enterprise",
+      "displayName": "Enterprise",
+      "features": [
+        "phase3.web_console",
+        "phase3.pmf_validation",
+        "phase3.billing_export",
+        "phase3.perception_mvp"
+      ],
+      "quotas": {
+        "task_execution": {
+          "metricType": "task_execution",
+          "limitType": "burst",
+          "limitValue": 25000,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.015
+        },
+        "token_usage": {
+          "metricType": "token_usage",
+          "limitType": "burst",
+          "limitValue": 50000000,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.0000008
+        },
+        "artifact_storage_bytes": {
+          "metricType": "artifact_storage_bytes",
+          "limitType": "soft",
+          "limitValue": 10737418240,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.0000000008
+        },
+        "premium_feature_activation": {
+          "metricType": "premium_feature_activation",
+          "limitType": "burst",
+          "limitValue": 2000,
+          "resetPolicy": "calendar_month",
+          "unitPriceUsd": 0.08
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "defaultProvider": "openai",
+  "defaultModelProfile": "reasoning-medium"
+}

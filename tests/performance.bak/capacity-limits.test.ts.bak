@@ -1,0 +1,396 @@
+/**
+ * Performance Test: Capacity Limits
+ *
+ * Establishes capacity limits for the system.
+ * Tests how the system behaves at scale and identifies degradation points.
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { join } from "node:path";
+
+import { SqliteDatabase } from "../../src/core/storage/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/core/storage/authoritative-task-store.js";
+import { DurableEventBus } from "../../src/core/events/durable-event-bus.js";
+import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
+import { newId, nowIso } from "../../src/core/types/ids.js";
+
+test("capacity: system handles 1000 tasks without significant degradation", () => {
+  const workspace = createTempWorkspace("capacity-1k-tasks-");
+
+  try {
+    const dbPath = join(workspace, "capacity-1k.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const now = nowIso();
+    const iterations = 1000;
+
+    // Insert 1000 tasks
+    const start = performance.now();
+    db.transaction(() => {
+      for (let i = 0; i < iterations; i++) {
+        store.insertTask({
+          id: newId("task"),
+          parentId: null,
+          rootId: newId("root"),
+          divisionId: "general_ops",
+          title: `Capacity test task ${i}`,
+          status: "pending",
+          source: "user",
+          priority: "normal",
+          inputJson: "{}",
+          normalizedInputJson: "{}",
+          outputJson: null,
+          estimatedCostUsd: 0,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
+      }
+    });
+    const insertDuration = performance.now() - start;
+
+    // Query performance with 1000 tasks
+    const queryStart = performance.now();
+    for (let i = 0; i < 100; i++) {
+      store.listTasks(10);
+    }
+    const queryDuration = performance.now() - queryStart;
+    const avgQueryMs = queryDuration / 100;
+
+    // Verify all tasks were inserted
+    const allTasks = store.listTasks(2000);
+    assert.ok(
+      allTasks.length >= iterations,
+      `Expected at least ${iterations} tasks, got ${allTasks.length}`,
+    );
+
+    // Query performance should remain reasonable (< 10ms average)
+    assert.ok(
+      avgQueryMs < 10,
+      `Average query time ${avgQueryMs.toFixed(3)}ms exceeds 10ms threshold with 1000 tasks`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("capacity: event bus handles 500 events without significant latency growth", () => {
+  const workspace = createTempWorkspace("capacity-500-events-");
+
+  try {
+    const dbPath = join(workspace, "capacity-events.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const eventBus = new DurableEventBus(db, store);
+
+    const taskId = newId("task");
+    const now = nowIso();
+
+    // Create a task for the events
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Event capacity test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    // Measure first 100 events using registered event type
+    const first100Latencies: number[] = [];
+    for (let i = 0; i < 100; i++) {
+      const start = performance.now();
+      eventBus.publish({
+        eventType: "task:status_changed",
+        taskId,
+        payload: { fromStatus: "pending", toStatus: "created" },
+        traceId: newId("trace"),
+      });
+      first100Latencies.push(performance.now() - start);
+    }
+
+    // Measure last 100 events (after 400 already inserted)
+    const last100Latencies: number[] = [];
+    for (let i = 400; i < 500; i++) {
+      const start = performance.now();
+      eventBus.publish({
+        eventType: "task:status_changed",
+        taskId,
+        payload: { fromStatus: "pending", toStatus: "created" },
+        traceId: newId("trace"),
+      });
+      last100Latencies.push(performance.now() - start);
+    }
+
+    // Calculate average latency for first and last 100
+    const avgFirst = first100Latencies.reduce((a, b) => a + b, 0) / 100;
+    const avgLast = last100Latencies.reduce((a, b) => a + b, 0) / 100;
+
+    // Latency should not grow more than 3x
+    assert.ok(
+      avgLast < avgFirst * 3,
+      `Event latency grew from ${avgFirst.toFixed(3)}ms to ${avgLast.toFixed(3)}ms (${(avgLast / avgFirst).toFixed(1)}x), exceeds 3x threshold`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("capacity: large session with 100 messages remains performant", () => {
+  const workspace = createTempWorkspace("capacity-large-session-");
+
+  try {
+    const dbPath = join(workspace, "capacity-session.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const taskId = newId("task");
+    const sessionId = newId("sess");
+    const now = nowIso();
+
+    // Create task and session
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Large session test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      store.insertSession({
+        id: sessionId,
+        taskId,
+        channel: "cli",
+        status: "open",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Insert 100 messages
+    db.transaction(() => {
+      for (let i = 0; i < 100; i++) {
+        store.insertMessage({
+          id: newId("msg"),
+          sessionId,
+          direction: i % 2 === 0 ? "inbound" : "outbound",
+          messageType: "text",
+          content: `Message ${i}: This is test content for capacity testing.`,
+          partsJson: null,
+          attachmentsJson: null,
+          createdAt: now,
+        });
+      }
+    });
+
+    // Measure query latency for large session
+    const latencies: number[] = [];
+    for (let i = 0; i < 50; i++) {
+      const start = performance.now();
+      const messages = store.listMessagesBySession(sessionId);
+      const end = performance.now();
+      latencies.push(end - start);
+      assert.ok(
+        messages.length === 100,
+        `Expected 100 messages, got ${messages.length}`,
+      );
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(latencies.length * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 20ms even with 100 messages
+    assert.ok(
+      p95Latency < 20,
+      `Large session query P95 ${p95Latency.toFixed(3)}ms exceeds 20ms threshold`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("capacity: concurrent inserts maintain data integrity", () => {
+  const workspace = createTempWorkspace("capacity-concurrent-inserts-");
+
+  try {
+    const dbPath = join(workspace, "capacity-concurrent.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const now = nowIso();
+    const tasksPerWorker = 50;
+    const workerCount = 5;
+
+    // Simulate concurrent workers inserting tasks
+    const insertPromises = Array.from({ length: workerCount }, (_, workerId) =>
+      (async () => {
+        for (let i = 0; i < tasksPerWorker; i++) {
+          store.insertTask({
+            id: newId(`task-w${workerId}-${i}`),
+            parentId: null,
+            rootId: newId("root"),
+            divisionId: "general_ops",
+            title: `Worker ${workerId} task ${i}`,
+            status: "pending",
+            source: "user",
+            priority: "normal",
+            inputJson: "{}",
+            normalizedInputJson: "{}",
+            outputJson: null,
+            estimatedCostUsd: 0,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: null,
+          });
+        }
+      })(),
+    );
+
+    Promise.all(insertPromises);
+
+    // Verify all tasks were inserted
+    const allTasks = store.listTasks(500);
+    assert.strictEqual(
+      allTasks.length,
+      workerCount * tasksPerWorker,
+      `Expected ${workerCount * tasksPerWorker} tasks, got ${allTasks.length}`,
+    );
+
+    // Verify each task has correct data
+    const worker0Tasks = allTasks.filter((t) => t.title.startsWith("Worker 0"));
+    assert.strictEqual(
+      worker0Tasks.length,
+      tasksPerWorker,
+      "Worker 0 should have all its tasks",
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("capacity: task with many events (100+) remains queryable", () => {
+  const workspace = createTempWorkspace("capacity-many-events-");
+
+  try {
+    const dbPath = join(workspace, "capacity-many-events.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const eventBus = new DurableEventBus(db, store);
+
+    const taskId = newId("task");
+    const now = nowIso();
+
+    // Create task
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Many events test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    // Insert 100 events for the same task using registered event type
+    db.transaction(() => {
+      for (let i = 0; i < 100; i++) {
+        eventBus.publish({
+          eventType: "task:status_changed",
+          taskId,
+          payload: { fromStatus: "pending", toStatus: "created", sequence: i },
+          traceId: newId("trace"),
+        });
+      }
+    });
+
+    // Query events for task using raw SQL since listEventsForTask is not exposed
+    const latencies: number[] = [];
+    for (let i = 0; i < 50; i++) {
+      const start = performance.now();
+      const events = db.connection
+        .prepare("SELECT * FROM events WHERE task_id = ?")
+        .all(taskId) as Array<{ id: string }>;
+      const end = performance.now();
+      latencies.push(end - start);
+      assert.ok(
+        events.length >= 100,
+        `Expected at least 100 events, got ${events.length}`,
+      );
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(latencies.length * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 50ms even with 100 events
+    assert.ok(
+      p95Latency < 50,
+      `Many events query P95 ${p95Latency.toFixed(3)}ms exceeds 50ms threshold`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

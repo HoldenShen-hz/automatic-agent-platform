@@ -1,0 +1,131 @@
+version: "3.9"
+
+services:
+  api-server:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      AA_DB_PATH: /app/data/automatic-agent.db
+      AA_STORAGE_DRIVER: ${AA_STORAGE_DRIVER:-sqlite}
+      AA_PG_DSN: ${AA_PG_DSN:-postgres://automatic_agent:automatic_agent@postgres:5432/automatic_agent}
+      AA_REDIS_HOST: redis
+      AA_REDIS_PORT: "6379"
+      # AA_API_JWT_SECRET: ${AA_API_JWT_SECRET}  # Uncomment and set in production
+    volumes:
+      - phase1a-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/healthz', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    cpus: "1.0"
+    mem_limit: 512m
+    mem_reservation: 256m
+    pids_limit: 256
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - automatic-agent-network
+
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: automatic_agent
+      POSTGRES_USER: automatic_agent
+      POSTGRES_PASSWORD: automatic_agent
+    ports:
+      - "5432:5432"
+    volumes:
+      - automatic-agent-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U automatic_agent -d automatic_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - automatic-agent-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - automatic-agent-network
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/rules:/etc/prometheus/rules:ro
+    depends_on:
+      api-server:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - automatic-agent-network
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./deploy/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    depends_on:
+      api-server:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - automatic-agent-network
+
+volumes:
+  phase1a-data:
+    driver: local
+  automatic-agent-postgres:
+    driver: local
+
+networks:
+  automatic-agent-network:
+    driver: bridge

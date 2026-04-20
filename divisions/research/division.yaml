@@ -1,0 +1,35 @@
+id: research
+version: 1
+name: Research Division
+description: Technical research, literature review, competitive analysis, data analysis, research reports.
+priority: 40
+default_workflow: research_single_step
+orchestration_workflow: research_orchestration
+triggers:
+  - research
+  - survey
+  - investigate
+  - analyze
+  - compare
+  - review
+  - literature
+  - competitive analysis
+roles:
+  - id: lead_researcher
+    name: Lead Researcher
+    prompt: roles/research/lead.prompt.md
+    model: reasoning
+    tools: [read, web_search, web_fetch]
+    max_instances: 2
+  - id: researcher
+    name: Researcher
+    prompt: roles/research/researcher.prompt.md
+    model: balanced
+    tools: [read, web_search, web_fetch]
+    max_instances: 4
+  - id: data_analyst
+    name: Data Analyst
+    prompt: roles/research/data_analyst.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 2

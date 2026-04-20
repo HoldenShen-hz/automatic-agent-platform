@@ -1,0 +1,29 @@
+id: support
+version: 1
+name: Support Division
+description: Customer support, troubleshooting, issue resolution, help desk.
+priority: 25
+default_workflow: support_single_step
+orchestration_workflow: support_single_step
+triggers:
+  - support
+  - help
+  - troubleshoot
+  - issue
+  - problem
+  - error
+  - fix
+  - resolve
+roles:
+  - id: support_agent
+    name: Support Agent
+    prompt: roles/support/agent.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 5
+  - id: l2_support
+    name: L2 Support Engineer
+    prompt: roles/support/l2_engineer.prompt.md
+    model: reasoning
+    tools: [read, bash]
+    max_instances: 3

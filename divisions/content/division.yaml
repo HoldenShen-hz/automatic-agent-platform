@@ -1,0 +1,34 @@
+id: content
+version: 1
+name: Content Division
+description: Article writing, copywriting, translation, SEO optimization, content operations.
+priority: 30
+default_workflow: content_single_step
+orchestration_workflow: content_single_step
+triggers:
+  - write
+  - article
+  - blog
+  - content
+  - copywriting
+  - translate
+  - SEO
+roles:
+  - id: editor
+    name: Editor
+    prompt: roles/content/editor.prompt.md
+    model: reasoning
+    tools: [read, web_search, write]
+    max_instances: 2
+  - id: writer
+    name: Writer
+    prompt: roles/content/writer.prompt.md
+    model: balanced
+    tools: [read, web_search, write]
+    max_instances: 4
+  - id: translator
+    name: Translator
+    prompt: roles/content/translator.prompt.md
+    model: balanced
+    tools: [read]
+    max_instances: 2

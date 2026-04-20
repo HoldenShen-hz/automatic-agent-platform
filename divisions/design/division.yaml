@@ -1,0 +1,29 @@
+id: design
+version: 1
+name: Design Division
+description: UI/UX design, system design, architecture planning, prototyping.
+priority: 35
+default_workflow: design_single_step
+orchestration_workflow: design_single_step
+triggers:
+  - design
+  - UI
+  - UX
+  - prototype
+  - wireframe
+  - mockup
+  - architecture
+  - system design
+roles:
+  - id: designer
+    name: Designer
+    prompt: roles/design/designer.prompt.md
+    model: balanced
+    tools: [read, write]
+    max_instances: 3
+  - id: ux_researcher
+    name: UX Researcher
+    prompt: roles/design/ux_researcher.prompt.md
+    model: balanced
+    tools: [read, web_search]
+    max_instances: 2

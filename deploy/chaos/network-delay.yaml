@@ -1,0 +1,14 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: automatic-agent-network-delay
+spec:
+  action: delay
+  mode: all
+  selector:
+    labelSelectors:
+      app.kubernetes.io/name: automatic-agent
+  delay:
+    latency: "500ms"
+    jitter: "100ms"
+  duration: "2m"

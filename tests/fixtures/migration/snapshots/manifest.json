@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-04-15T10:14:57.336Z",
+  "latestVersion": 40,
+  "snapshots": [
+    {
+      "version": 1,
+      "name": "0001_phase1a_init",
+      "path": "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/fixtures/migration/snapshots/v1-snapshot.db",
+      "sizeBytes": 761856
+    },
+    {
+      "version": 5,
+      "name": "0005_remote_fallback_routing",
+      "path": "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/fixtures/migration/snapshots/v5-snapshot.db",
+      "sizeBytes": 761856
+    },
+    {
+      "version": 10,
+      "name": "0010_remote_log_aggregation",
+      "path": "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/fixtures/migration/snapshots/v10-snapshot.db",
+      "sizeBytes": 761856
+    },
+    {
+      "version": 20,
+      "name": "0020_perception_mvp",
+      "path": "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/fixtures/migration/snapshots/v20-snapshot.db",
+      "sizeBytes": 819200
+    },
+    {
+      "version": 30,
+      "name": "0030_workflow_dispatch_receipt_audit",
+      "path": "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/fixtures/migration/snapshots/v30-snapshot.db",
+      "sizeBytes": 1241088
+    },
+    {
+      "version": 40,
+      "name": "0040_session_events",
+      "path": "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/fixtures/migration/snapshots/v40-snapshot.db",
+      "sizeBytes": 1540096
+    }
+  ]
+}

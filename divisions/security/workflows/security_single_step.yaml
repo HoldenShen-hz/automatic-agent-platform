@@ -1,0 +1,9 @@
+id: security_single_step
+division_id: security
+steps:
+  - step_id: security_work
+    role_id: security_analyst
+    output_key: security_result
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

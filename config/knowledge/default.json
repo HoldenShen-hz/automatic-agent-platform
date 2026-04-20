@@ -1,0 +1,36 @@
+{
+  "namespaces": [
+    {
+      "namespaceId": "ns_shared_common",
+      "path": "shared/common",
+      "description": "Shared conventions and platform knowledge.",
+      "ownerDomainId": "shared",
+      "accessPolicy": "public",
+      "freshnessPolicy": {
+        "maxAgeDays": 90,
+        "staleAction": "warn",
+        "refreshStrategy": "manual",
+        "refreshIntervalHours": null
+      },
+      "trustLevel": "reviewed",
+      "maxDocuments": 500,
+      "maxTotalSizeBytes": 5242880
+    },
+    {
+      "namespaceId": "ns_coding_repo",
+      "path": "coding/repo",
+      "description": "Coding domain repository practices and troubleshooting knowledge.",
+      "ownerDomainId": "coding",
+      "accessPolicy": "domain_only",
+      "freshnessPolicy": {
+        "maxAgeDays": 30,
+        "staleAction": "warn",
+        "refreshStrategy": "manual",
+        "refreshIntervalHours": null
+      },
+      "trustLevel": "verified",
+      "maxDocuments": 1000,
+      "maxTotalSizeBytes": 10485760
+    }
+  ]
+}

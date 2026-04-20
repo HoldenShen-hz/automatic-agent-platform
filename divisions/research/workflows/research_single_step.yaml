@@ -1,0 +1,9 @@
+id: research_single_step
+division_id: research
+steps:
+  - step_id: research_work
+    role_id: researcher
+    output_key: research_result
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

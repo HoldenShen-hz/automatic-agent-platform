@@ -1,0 +1,27 @@
+id: engineering_ops
+version: 1
+name: Engineering Operations
+description: Handles software implementation, fixes, and code review workflows.
+priority: 50
+default_workflow: engineering_single_agent_minimal
+orchestration_workflow: engineering_multi_step_delivery
+triggers:
+  - code
+  - coding
+  - implement
+  - fix
+  - bug
+  - refactor
+roles:
+  - id: engineer
+    name: Engineer
+    prompt: roles/engineer.prompt.md
+    model: coding
+    tools: [read, edit, bash]
+    max_instances: 4
+  - id: reviewer
+    name: Reviewer
+    prompt: roles/reviewer.prompt.md
+    model: reasoning
+    tools: [read]
+    max_instances: 2

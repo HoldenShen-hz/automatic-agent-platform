@@ -1,0 +1,73 @@
+{
+  "manifests": [
+    {
+      "pluginId": "plugin.coding.retriever",
+      "name": "Coding Retriever",
+      "version": "1.0.0",
+      "owner": "system",
+      "domainIds": ["coding"],
+      "capabilityIds": ["knowledge.retrieve", "domain.observe"],
+      "spiTypes": ["retriever"],
+      "extensionKind": "domain_plugin",
+      "trustLevel": "trusted",
+      "publicSdkSurface": "src/plugins/retrievers/coding-retriever",
+      "settingsSchema": {},
+      "sandbox": {
+        "timeoutMs": 3000,
+        "allowFilesystemWrite": false,
+        "allowNetworkEgress": false,
+        "allowedKnowledgeNamespaces": ["coding/repo", "shared/common"],
+        "maxConcurrentInvocations": 1,
+        "maxQueuedInvocations": 8,
+        "runtimeIsolation": "serialized_in_process",
+        "cooldownMs": 0
+      }
+    },
+    {
+      "pluginId": "plugin.coding.presenter",
+      "name": "Coding Presenter",
+      "version": "1.0.0",
+      "owner": "system",
+      "domainIds": ["coding"],
+      "capabilityIds": ["present.output"],
+      "spiTypes": ["presenter"],
+      "extensionKind": "domain_plugin",
+      "trustLevel": "trusted",
+      "publicSdkSurface": "src/plugins/presenters/coding-presenter",
+      "settingsSchema": {},
+      "sandbox": {
+        "timeoutMs": 3000,
+        "allowFilesystemWrite": false,
+        "allowNetworkEgress": false,
+        "allowedKnowledgeNamespaces": [],
+        "maxConcurrentInvocations": 1,
+        "maxQueuedInvocations": 8,
+        "runtimeIsolation": "serialized_in_process",
+        "cooldownMs": 0
+      }
+    },
+    {
+      "pluginId": "plugin.shared.github_adapter",
+      "name": "GitHub Adapter",
+      "version": "1.0.0",
+      "owner": "system",
+      "domainIds": ["coding"],
+      "capabilityIds": ["external.github"],
+      "spiTypes": ["adapter"],
+      "extensionKind": "external_adapter",
+      "trustLevel": "trusted",
+      "publicSdkSurface": "src/plugins/adapters/github-adapter",
+      "settingsSchema": {},
+      "sandbox": {
+        "timeoutMs": 3000,
+        "allowFilesystemWrite": false,
+        "allowNetworkEgress": false,
+        "allowedKnowledgeNamespaces": [],
+        "maxConcurrentInvocations": 1,
+        "maxQueuedInvocations": 8,
+        "runtimeIsolation": "serialized_in_process",
+        "cooldownMs": 0
+      }
+    }
+  ]
+}

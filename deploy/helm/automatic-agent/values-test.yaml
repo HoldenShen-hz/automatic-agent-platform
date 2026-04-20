@@ -1,0 +1,33 @@
+# Test values for automatic-agent
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/holdenshen-hz/automatic-agent-platform
+  pullPolicy: Always
+  tag: ""
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+
+env:
+  AA_API_HOST: "0.0.0.0"
+  AA_API_PORT: "3000"
+  AA_LOG_LEVEL: "debug"
+  AA_STORAGE_DRIVER: "sqlite"
+  NODE_ENV: "test"
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+podDisruptionBudget:
+  enabled: false

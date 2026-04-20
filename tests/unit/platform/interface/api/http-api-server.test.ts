@@ -1,0 +1,1557 @@
+import assert from "node:assert/strict";
+import { request as httpRequest } from "node:http";
+import test from "node:test";
+import { brotliDecompressSync, gunzipSync } from "node:zlib";
+
+import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
+import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
+import type { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ApprovalDecision } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
+import type { ChannelGatewayDeliveryService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
+import type { ChannelGatewayService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js";
+import type { CoordinatorLoadBalancingService } from "../../../../../src/platform/execution/ha/coordinator-load-balancing-service.js";
+import type { GatewayTargetDirectoryService } from "../../../../../src/platform/interface/channel-gateway/gateway-target-directory-service.js";
+import type { InspectService } from "../../../../../src/platform/shared/observability/inspect-service.js";
+import type { MissionControlService } from "../../../../../src/platform/interface/api/mission-control-service.js";
+import type { BillingService } from "../../../../../src/scale-ecosystem/marketplace/billing-service.js";
+import type { PrometheusMetricsExporter } from "../../../../../src/platform/shared/observability/prometheus-metrics-exporter.js";
+
+// ─── Mock Implementations ────────────────────────────────────────────────────
+
+function createMockApprovalService(): ApprovalService {
+  return {
+    applyDecision: (decision: ApprovalDecision) => {
+      // No-op for testing
+    },
+  } as unknown as ApprovalService;
+}
+
+function createMockInspectService(): InspectService {
+  return {
+    getApprovalInspectView: (approvalId: string) => ({
+      task: {
+        id: approvalId,
+        title: "Test Task",
+        status: "in_progress",
+        tenantId: null,
+      },
+      workflowState: null,
+      execution: null,
+      session: null,
+      approval: {
+        id: approvalId,
+        taskId: "task_123",
+        status: "requested",
+        type: "human_review",
+        requestedBy: "agent_1",
+        requestedAt: new Date().toISOString(),
+        summary: "Test approval",
+        options: ["approve", "reject"],
+        riskLevel: "medium",
+        context: {},
+        timeoutMs: 300000,
+        deadline: null,
+        resolvedBy: null,
+        resolvedAt: null,
+        decision: null,
+        tenantId: null,
+        traceId: "trace_123",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      approvals: [],
+      operatorActions: [],
+      agentExecution: null,
+      dispatchDecisions: [],
+      remoteRoutingSummary: null,
+      leaseHandoverSummary: null,
+      recentEvents: [],
+      stepResults: [],
+      taskResult: null,
+      artifacts: [],
+      runtimeRecovery: {
+        candidates: [],
+        resumable: false,
+      },
+    }),
+    queryDecisionInspectSummaries: () => [],
+    queryTaskInspectSummaries: () => [],
+    getTaskInspectView: () => ({
+      task: {
+        id: "task_123",
+        title: "Test Task",
+        status: "in_progress",
+        tenantId: null,
+      },
+      workflow: null,
+      execution: null,
+      session: null,
+      events: [],
+      approvals: [],
+      operatorActions: [],
+      agentExecution: null,
+      dispatchDecisions: [],
+      remoteRoutingSummary: null,
+      leaseHandoverSummary: null,
+      stepResults: [],
+      taskResult: null,
+      artifacts: [],
+      runtimeRecovery: {
+        candidates: [],
+        resumable: false,
+      },
+    }),
+  } as unknown as InspectService;
+}
+
+function createMockMissionControlService(): MissionControlService {
+  const snapshot = {
+    generatedAt: new Date().toISOString(),
+    health: {
+      status: "ok",
+      uptimeSeconds: 100,
+      dbWritable: true,
+      providerHealth: "healthy",
+      providerSuccessRate: 1.0,
+      providerRecentCalls: 0,
+      activeExecutions: 0,
+      queuedTasks: 0,
+      eventLoopLagMs: null,
+      memoryRssMb: 64,
+      tier1AckBacklog: 0,
+      degradationMode: "none",
+      queueGovernance: {
+        tier1Pending: 0,
+        tier2Pending: 0,
+        tier3Pending: 0,
+        throughput: { p50Ms: 0, p99Ms: 0 },
+      },
+      workerHealth: {
+        totalWorkers: 0,
+        activeWorkers: 0,
+        idleWorkers: 0,
+      },
+      findings: [],
+    },
+    metrics: {
+      tasks: { total: 0, queued: 0, inProgress: 0, done: 0, failed: 0 },
+      executions: { active: 0, queued: 0, completed: 0, failed: 0 },
+    },
+    taskBoard: [],
+    pendingApprovals: [],
+    divisions: [],
+    productSignals: {
+      latestPmfReport: null,
+      billingAccounts: [],
+      perceptionBriefs: [],
+    },
+    gatewayTargets: [],
+  };
+
+  return {
+    getSnapshot: () => ({
+      ...snapshot,
+    }),
+    getHealthReportAsync: async () => snapshot.health,
+    getTaskCockpit: () => ({
+      snapshot: {
+        task: {
+          id: "task_123",
+          title: "Test Task",
+          status: "in_progress",
+          tenantId: null,
+        },
+        events: [],
+        artifacts: [],
+      },
+      inspect: {
+        task: {
+          id: "task_123",
+          title: "Test Task",
+          status: "in_progress",
+          tenantId: null,
+        },
+        workflow: null,
+        execution: null,
+        session: null,
+        events: [],
+        approvals: [],
+        operatorActions: [],
+        agentExecution: null,
+        dispatchDecisions: [],
+        remoteRoutingSummary: null,
+        leaseHandoverSummary: null,
+        stepResults: [],
+        taskResult: null,
+        artifacts: [],
+        runtimeRecovery: {
+          candidates: [],
+          resumable: false,
+        },
+      },
+      timeline: { entries: [] },
+    }),
+    getWorkflowCockpit: () => ({
+      summary: {
+        workflowId: "wf_123",
+        taskId: "task_123",
+        workflowStatus: "in_progress",
+        currentStepIndex: 0,
+        retryCount: 0,
+        pendingApprovalCount: 0,
+        resumableFromStep: null,
+      },
+      inspect: {
+        task: {
+          id: "task_123",
+          title: "Test Task",
+          status: "in_progress",
+          tenantId: null,
+        },
+        workflow: null,
+        execution: null,
+        session: null,
+        events: [],
+        approvals: [],
+        operatorActions: [],
+        agentExecution: null,
+        dispatchDecisions: [],
+        remoteRoutingSummary: null,
+        leaseHandoverSummary: null,
+        stepResults: [],
+        taskResult: null,
+        artifacts: [],
+        runtimeRecovery: {
+          candidates: [],
+          resumable: false,
+        },
+      },
+      timeline: { entries: [] },
+    }),
+    listWorkflowCockpits: () => [],
+    getStabilityPanel: () => ({
+      generatedAt: new Date().toISOString(),
+      health: {
+        status: "ok",
+        uptimeSeconds: 100,
+        dbWritable: true,
+        providerHealth: "healthy",
+        providerSuccessRate: 1.0,
+        providerRecentCalls: 0,
+        activeExecutions: 0,
+        queuedTasks: 0,
+        eventLoopLagMs: null,
+        memoryRssMb: 64,
+        tier1AckBacklog: 0,
+        degradationMode: "none",
+        queueGovernance: {
+          tier1Pending: 0,
+          tier2Pending: 0,
+          tier3Pending: 0,
+          throughput: { p50Ms: 0, p99Ms: 0 },
+        },
+        workerHealth: {
+          totalWorkers: 0,
+          activeWorkers: 0,
+          idleWorkers: 0,
+        },
+        findings: [],
+      },
+      activeTasks: [],
+      queuedTasks: [],
+      blockedTasks: [],
+      workflows: [],
+      pendingApprovals: [],
+      workers: [],
+      findings: [],
+    }),
+    getAdminTakeoverConsole: () => ({
+      generatedAt: new Date().toISOString(),
+      scope: {
+        taskId: "task_123",
+        divisionId: null,
+        workspaceId: null,
+        tenantId: null,
+      },
+      executionOwner: {
+        executionId: null,
+        workerId: null,
+        leaseId: null,
+        leaseStatus: null,
+      },
+      activeWorker: null,
+      latestPmfVerdict: null,
+      inspect: {
+        takeoverSessions: [],
+        operatorActions: [],
+      },
+      timeline: { entries: [] },
+    }),
+    listApprovalQueue: () => [],
+  } as unknown as MissionControlService;
+}
+
+function createMockGatewayTargetDirectoryService(): GatewayTargetDirectoryService {
+  return {
+    listTargets: () => [
+      {
+        targetId: "target_1",
+        channel: "telegram",
+        displayName: "Test Target",
+        source: "directory" as const,
+        lastSeenAt: null,
+      },
+    ],
+    resolveTarget: () => ({
+      targetId: "target_1",
+      channel: "telegram",
+      displayName: "Test Target",
+      source: "directory" as const,
+      lastSeenAt: null,
+    }),
+  } as unknown as GatewayTargetDirectoryService;
+}
+
+function createMockChannelGatewayService(): ChannelGatewayService {
+  return {
+    sendMessage: async (input: { text: string; channel?: string; query?: string; targetId?: string; metadata?: Record<string, unknown> }) => ({
+      deliveredAt: new Date().toISOString(),
+      channel: input.channel ?? "telegram",
+      targetId: input.targetId ?? "target_1",
+      externalTargetId: "external_1",
+      requestUrl: "https://example.com/webhook",
+      providerMessageId: "msg_123",
+    }),
+  } as unknown as ChannelGatewayService;
+}
+
+function createMockChannelGatewayDeliveryService(): ChannelGatewayDeliveryService {
+  return {
+    verifySignature: (payload: string, signature: string, timestamp: string | null, config: { secret: string; toleranceSeconds?: number }) => ({
+      valid: true,
+      error: null,
+    }),
+    verifyNonce: (nonce: string, toleranceSeconds: number) => ({
+      valid: true,
+      error: null,
+    }),
+    createDeliveryMessage: (channel: string, targetId: string, payload: Record<string, unknown>) => ({
+      messageId: "msg_delivery_123",
+      channel,
+      targetId,
+      status: "delivered" as const,
+      attempts: 1,
+      finalStatus: "success" as const,
+      firstAttemptAt: new Date().toISOString(),
+      lastAttemptAt: new Date().toISOString(),
+      providerMessageId: "provider_msg_123",
+    }),
+    recordAttempt: () => ({
+      attemptId: "attempt_1",
+      messageId: "msg_delivery_123",
+      channel: "webhook",
+      targetId: "target_1",
+      attemptNumber: 1,
+      status: "success" as const,
+      responseStatus: 200,
+      errorMessage: null,
+      nextRetryAt: null,
+      createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    }),
+  } as unknown as ChannelGatewayDeliveryService;
+}
+
+function createMockCoordinatorLoadBalancingService(): CoordinatorLoadBalancingService {
+  return {
+    buildSummary: () => ({
+      coordinators: [],
+      totalActive: 0,
+      totalBacklog: 0,
+    }),
+    selectCoordinator: (input: { queueName?: string; preferredRegion?: string; tenantId?: string; requestKey?: string }) => ({
+      outcome: "selected" as const,
+      selectedCoordinatorId: "coord_test_1",
+      evaluations: [],
+      reasonCode: "test",
+      requestKey: input.requestKey,
+    }),
+  } as unknown as CoordinatorLoadBalancingService;
+}
+
+function createMockBillingService(): BillingService {
+  return {
+    reconcilePaymentSession: (input: {
+      gatewayKind: "manual" | "stripe" | "paddle";
+      gatewaySessionRef: string;
+      status: "pending" | "paid" | "failed" | "cancelled";
+      occurredAt?: string;
+      failureCode?: string;
+    }) => ({
+      sessionRef: input.gatewaySessionRef,
+      status: input.status,
+      reconciledAt: new Date().toISOString(),
+    }),
+  } as unknown as BillingService;
+}
+
+function createMockPrometheusMetricsExporter(): PrometheusMetricsExporter {
+  return {
+    export: () => "# HELP test_metric Test metric\ntest_metric 1",
+    recordHttpRequest: (_method: string, _route: string, _statusCode: number, _durationMs?: number | null) => {},
+  } as unknown as PrometheusMetricsExporter;
+}
+
+// ─── Test Server Factory ─────────────────────────────────────────────────────
+
+function createTestServer(overrides: Partial<ConstructorParameters<typeof HttpApiServer>[0]> = {}) {
+  const authService = new ApiAuthService({
+    apiKeys: [
+      { apiKey: "test-operator-key", actorId: "operator_1", roles: ["viewer", "operator"] },
+      { apiKey: "test-admin-key", actorId: "admin_1", roles: ["viewer", "operator", "admin"] },
+      { apiKey: "test-viewer-key", actorId: "viewer_1", roles: ["viewer"] },
+    ],
+    jwtSecret: "test-jwt-secret",
+    tokenTtlMs: 60 * 60 * 1000,
+  });
+
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    gatewayTargetDirectoryService: createMockGatewayTargetDirectoryService(),
+    authService,
+    channelGatewayService: createMockChannelGatewayService(),
+    channelGatewayDeliveryService: createMockChannelGatewayDeliveryService(),
+    webhookSecret: "test-webhook-secret",
+    coordinatorLoadBalancingService: createMockCoordinatorLoadBalancingService(),
+    prometheusMetricsExporter: createMockPrometheusMetricsExporter(),
+    billingService: createMockBillingService(),
+    ...(overrides as Record<string, unknown>),
+  });
+
+  return { server, authService };
+}
+
+async function performNetworkRequest(input: {
+  method: string;
+  port: number;
+  path: string;
+  headers?: Record<string, string>;
+  body?: string;
+}): Promise<{ statusCode: number; headers: Record<string, string | string[] | undefined>; body: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest({
+      host: "127.0.0.1",
+      port: input.port,
+      path: input.path,
+      method: input.method,
+      headers: input.headers,
+    }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      res.on("end", () => {
+        resolve({
+          statusCode: res.statusCode ?? 0,
+          headers: res.headers,
+          body: Buffer.concat(chunks),
+        });
+      });
+    });
+    req.on("error", reject);
+    if (input.body != null) {
+      req.write(input.body);
+    }
+    req.end();
+  });
+}
+
+// ─── Route Tests ─────────────────────────────────────────────────────────────
+
+test("POST /v1/auth/token exchanges API key for bearer token", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      headers: { "x-api-key": "test-operator-key" },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { tokenType: string; accessToken: string; principal: unknown } }>();
+    assert.equal(body.data.tokenType, "Bearer");
+    assert.ok(typeof body.data.accessToken === "string");
+    assert.ok(body.data.accessToken.length > 0);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/auth/token rejects empty API key", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      headers: { "x-api-key": "" },
+    });
+
+    assert.equal(response.statusCode, 401);
+    const body = response.json<{ requestId: string; error: { code: string; message: string } }>();
+    assert.equal(body.error.code, "api.invalid_api_key");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/auth/token rejects missing API key", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      body: JSON.stringify({}),
+    });
+
+    assert.equal(response.statusCode, 401);
+    const body = response.json<{ requestId: string; error: { code: string; message: string } }>();
+    assert.equal(body.error.code, "api.invalid_api_key");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/auth/token rejects non-object payloads", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/auth/token",
+      body: JSON.stringify(["not-an-object"]),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_auth_payload:payload");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/billing/webhooks/reconcile requires valid billing payload", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/billing/webhooks/reconcile",
+      headers: {
+        "x-webhook-signature": "test-webhook-secret",
+      },
+      body: JSON.stringify({
+        gatewayKind: "stripe",
+        gatewaySessionRef: "session_123",
+        status: "paid",
+      }),
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { sessionRef: string; status: string } }>();
+    assert.equal(body.data.status, "paid");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/billing/webhooks/reconcile rejects payload without required fields", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/billing/webhooks/reconcile",
+      headers: {
+        "x-webhook-signature": "test-webhook-secret",
+      },
+      body: JSON.stringify({
+        gatewayKind: "stripe",
+        // missing gatewaySessionRef and status
+      }),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string; message: string } }>();
+    assert.equal(body.error.code, "api.invalid_billing_reconcile_payload:gatewaySessionRef");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/billing/webhooks/reconcile requires webhook signature without auth", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/billing/webhooks/reconcile",
+      headers: {},
+      body: JSON.stringify({
+        gatewayKind: "stripe",
+        gatewaySessionRef: "session_123",
+        status: "paid",
+      }),
+    });
+
+    assert.equal(response.statusCode, 401);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/billing/webhooks/reconcile rejects invalid occurredAt timestamp", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/billing/webhooks/reconcile",
+      headers: {
+        "x-webhook-signature": "test-webhook-secret",
+      },
+      body: JSON.stringify({
+        gatewayKind: "stripe",
+        gatewaySessionRef: "session_123",
+        status: "paid",
+        occurredAt: "not-a-timestamp",
+      }),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_billing_reconcile_payload:occurredAt");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/gateway/messages/send requires operator role", async () => {
+  const { server, authService } = createTestServer();
+  const viewerToken = authService.exchangeApiKey("test-viewer-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/messages/send",
+      headers: {
+        authorization: `Bearer ${viewerToken}`,
+      },
+      body: JSON.stringify({
+        text: "Hello, World!",
+        channel: "telegram",
+      }),
+    });
+
+    assert.equal(response.statusCode, 403);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.forbidden");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/gateway/messages/send succeeds with operator role", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/messages/send",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        text: "Hello, World!",
+        channel: "telegram",
+      }),
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { deliveredAt: string; channel: string; targetId: string } }>();
+    assert.equal(body.data.channel, "telegram");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/gateway/messages/send requires text field", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/messages/send",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        channel: "telegram",
+        // missing text
+      }),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_gateway_payload:text");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/gateway/webhooks/receive processes webhook with signature verification", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/webhooks/receive",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+        "x-webhook-signature": "test-webhook-secret",
+        "x-webhook-timestamp": new Date().toISOString(),
+      },
+      body: JSON.stringify({
+        targetId: "target_webhook_1",
+        channel: "webhook",
+        data: { key: "value" },
+      }),
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { received: boolean; messageId: string } }>();
+    assert.equal(body.data.received, true);
+    assert.ok(typeof body.data.messageId === "string");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/gateway/webhooks/receive rejects webhook without signature when secret configured", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/webhooks/receive",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+        // missing x-webhook-signature
+      },
+      body: JSON.stringify({
+        targetId: "target_webhook_1",
+        channel: "webhook",
+      }),
+    });
+
+    assert.equal(response.statusCode, 401);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "gateway.signature_required");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/approvals/:id/decision requires operator role", async () => {
+  const { server, authService } = createTestServer();
+  const viewerToken = authService.exchangeApiKey("test-viewer-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/approvals/approval_123/decision",
+      headers: {
+        authorization: `Bearer ${viewerToken}`,
+      },
+      body: JSON.stringify({
+        decisionType: "confirmed",
+      }),
+    });
+
+    assert.equal(response.statusCode, 403);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/approvals/:id/decision accepts valid decision payload", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/approvals/approval_test_123/decision",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        decisionType: "confirmed",
+      }),
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { approval: { id: string } } }>();
+    assert.equal(body.data.approval.id, "approval_test_123");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/approvals/:id/decision rejects invalid decision type", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/approvals/approval_123/decision",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        decisionType: "invalid_type",
+      }),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_decision_payload:decisionType");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/approvals/:id/decision requires selectedOptionId for option_selected", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/approvals/approval_123/decision",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        decisionType: "option_selected",
+        // missing selectedOptionId
+      }),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_decision_payload:selectedOptionId");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/approvals/:id/decision rejects invalid respondedAt timestamp", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/approvals/approval_123/decision",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        decisionType: "confirmed",
+        respondedAt: "later-maybe",
+      }),
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_decision_payload:respondedAt");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/admin/control-plane/load-balancing/select requires admin role", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/admin/control-plane/load-balancing/select",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        queueName: "default",
+      }),
+    });
+
+    assert.equal(response.statusCode, 403);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.forbidden");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/admin/control-plane/load-balancing/select succeeds with admin role", async () => {
+  const { server, authService } = createTestServer();
+  const adminToken = authService.exchangeApiKey("test-admin-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/admin/control-plane/load-balancing/select",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        queueName: "default",
+        preferredRegion: "us-west",
+      }),
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { outcome: string; selectedCoordinatorId: string } }>();
+    assert.equal(body.data.outcome, "selected");
+    assert.equal(body.data.selectedCoordinatorId, "coord_test_1");
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Authentication Middleware Tests ────────────────────────────────────────
+
+test("unauthenticated request returns 401 for protected routes", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/tasks",
+    });
+
+    assert.equal(response.statusCode, 401);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("unauthenticated request to /healthz returns 200", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+    });
+
+    assert.equal(response.statusCode, 200);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("bearer token authentication works", async () => {
+  const { server, authService } = createTestServer();
+  const token = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/tasks",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("x-api-key header authentication works", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/tasks",
+      headers: {
+        "x-api-key": "test-operator-key",
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("rejects expired tokens", async () => {
+  const authService = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer"] }],
+    jwtSecret: "test-secret",
+    tokenTtlMs: -1000, // Already expired
+  });
+
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    authService,
+  });
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/tasks",
+      headers: {
+        authorization: "Bearer invalid_token",
+      },
+    });
+
+    assert.equal(response.statusCode, 401);
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Body Parsing Tests ──────────────────────────────────────────────────────
+
+test("rejects request body exceeding 1MB limit", async () => {
+  const { server } = createTestServer();
+
+  // Create a body larger than 1MB
+  const largeBody = JSON.stringify({
+    data: "x".repeat(1_048_577), // 1MB + 1 byte
+  });
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/messages/send",
+      headers: {
+        "x-api-key": "test-operator-key",
+        "content-type": "application/json",
+      },
+      body: largeBody,
+    });
+
+    assert.equal(response.statusCode, 413);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.payload_too_large");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("accepts request body at exactly 1MB limit", async () => {
+  const { server, authService } = createTestServer();
+  const token = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  // Create a body at exactly 1MB
+  const bodyContent = JSON.stringify({
+    text: "x".repeat(1_000_000 - 100), // Adjust for JSON overhead
+  });
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/messages/send",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: bodyContent,
+    });
+
+    // Should not be 413 (payload too large)
+    assert.notEqual(response.statusCode, 413);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("rejects invalid JSON body", async () => {
+  const { server, authService } = createTestServer();
+  const token = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/gateway/messages/send",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: "{ invalid json }",
+    });
+
+    assert.equal(response.statusCode, 400);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.invalid_json");
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Route Not Found Tests ───────────────────────────────────────────────────
+
+test("returns 404 for unknown routes", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/unknown/route",
+    });
+
+    assert.equal(response.statusCode, 404);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.not_found");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("returns 404 for unsupported HTTP methods", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "DELETE",
+      url: "/v1/tasks",
+    });
+
+    assert.equal(response.statusCode, 404);
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Server Lifecycle Tests ─────────────────────────────────────────────────
+
+test("server starts and stops correctly", async (t) => {
+  const { server } = createTestServer();
+
+  try {
+    const address = await server.start({ host: "127.0.0.1", port: 0 });
+    assert.ok(address.port > 0);
+    assert.ok(address.baseUrl.startsWith("http://"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("sandbox denies local listen sockets");
+      return;
+    }
+    throw error;
+  } finally {
+    await server.stop();
+  }
+});
+
+test("server inject uses correct HTTP method default", async () => {
+  const { server } = createTestServer();
+
+  try {
+    // GET is the default method
+    const response = await server.inject({
+      url: "/healthz",
+    });
+
+    assert.equal(response.statusCode, 200);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("inject responses include API version headers", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+    });
+
+    assert.equal(response.headers["x-api-version"], "v1");
+    assert.equal(response.headers["x-app-version"], "0.1.0");
+    assert.ok(typeof response.headers["content-length"] === "string");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("network responses compress large JSON payloads with gzip and preserve headers", async (t) => {
+  const { server } = createTestServer();
+
+  try {
+    const address = await server.start({ host: "127.0.0.1", port: 0 });
+    const response = await performNetworkRequest({
+      method: "GET",
+      port: address.port,
+      path: "/v1/openapi.json",
+      headers: {
+        "accept-encoding": "gzip",
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers["content-encoding"], "gzip");
+    assert.equal(response.headers["x-api-version"], "v1");
+    assert.ok(String(response.headers["content-type"]).startsWith("application/json"));
+    const decompressed = gunzipSync(response.body).toString("utf8");
+    assert.match(decompressed, /"openapi"/);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("sandbox denies local listen sockets");
+      return;
+    }
+    throw error;
+  } finally {
+    await server.stop();
+  }
+});
+
+test("network responses reject oversized content-length before body read", async (t) => {
+  const { server } = createTestServer();
+
+  try {
+    const address = await server.start({ host: "127.0.0.1", port: 0 });
+    const response = await performNetworkRequest({
+      method: "POST",
+      port: address.port,
+      path: "/v1/gateway/messages/send",
+      headers: {
+        "x-api-key": "test-operator-key",
+        "content-type": "application/json",
+        "content-length": "1048577",
+      },
+    });
+
+    assert.equal(response.statusCode, 413);
+    const body = JSON.parse(response.body.toString("utf8")) as { requestId: string; error: { code: string } };
+    assert.equal(body.error.code, "api.payload_too_large");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("sandbox denies local listen sockets");
+      return;
+    }
+    throw error;
+  } finally {
+    await server.stop();
+  }
+});
+
+test("network responses compress large JSON payloads with brotli when preferred", async (t) => {
+  const { server } = createTestServer();
+
+  try {
+    const address = await server.start({ host: "127.0.0.1", port: 0 });
+    const response = await performNetworkRequest({
+      method: "GET",
+      port: address.port,
+      path: "/v1/openapi.json",
+      headers: {
+        "accept-encoding": "br, gzip",
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers["content-encoding"], "br");
+    const decompressed = brotliDecompressSync(response.body).toString("utf8");
+    assert.match(decompressed, /"openapi"/);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("sandbox denies local listen sockets");
+      return;
+    }
+    throw error;
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Response Format Tests ──────────────────────────────────────────────────
+
+test("JSON responses have correct envelope structure", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+    });
+
+    const body = response.json<{ requestId: string; data: unknown }>();
+    assert.ok(typeof body.requestId === "string");
+    assert.ok(body.requestId.length > 0);
+    assert.ok("data" in body);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("error responses have correct structure", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/unknown",
+    });
+
+    assert.equal(response.statusCode, 404);
+    const body = response.json<{ requestId: string; error: { code: string; message: string } }>();
+    assert.ok(typeof body.requestId === "string");
+    assert.ok(typeof body.error.code === "string");
+    assert.ok(typeof body.error.message === "string");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("responses include x-request-id header", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+      headers: {
+        "x-request-id": "custom-request-id",
+      },
+    });
+
+    assert.equal(response.headers["x-request-id"], "custom-request-id");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("generates request-id when not provided", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+    });
+
+    assert.ok(typeof response.headers["x-request-id"] === "string");
+    assert.ok((response.headers["x-request-id"] as string).startsWith("req_"));
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── OpenAPI Document Tests ─────────────────────────────────────────────────
+
+test("GET /v1/openapi.json returns OpenAPI document", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/openapi.json",
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ openapi: string; info: { title: string } }>();
+    assert.ok(typeof body.openapi === "string");
+    assert.ok(typeof body.info.title === "string");
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Tenant Scope Tests ─────────────────────────────────────────────────────
+
+test("tenant-scoped admin cannot access global endpoints", async () => {
+  const tenantScopedAuthService = new ApiAuthService({
+    apiKeys: [
+      { apiKey: "tenant-admin-key", actorId: "tenant_admin_1", roles: ["viewer", "operator", "admin"], tenantId: "tenant_1" },
+    ],
+    jwtSecret: "test-jwt-secret",
+    tokenTtlMs: 60 * 60 * 1000,
+  });
+
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    authService: tenantScopedAuthService,
+  });
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/admin/control-plane/load-balancing/select",
+      headers: {
+        authorization: `Bearer ${tenantScopedAuthService.exchangeApiKey("tenant-admin-key").accessToken}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    assert.equal(response.statusCode, 403);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.tenant_scope_unsupported");
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Gateway Target Directory Service Unavailable ────────────────────────────
+
+test("returns 503 when gateway target directory is not configured", async () => {
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    authService: new ApiAuthService({
+      apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer", "operator"] }],
+      jwtSecret: "test-secret",
+    }),
+    // gatewayTargetDirectoryService intentionally omitted
+  });
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/gateway/targets",
+      headers: { "x-api-key": "test-key" },
+    });
+
+    assert.equal(response.statusCode, 503);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.gateway_targets_unavailable");
+  } finally {
+    await server.stop();
+  }
+});
+
+// ─── Metrics Endpoint Tests ────────────────────────────────────────────────
+
+test("GET /metrics returns prometheus metrics when exporter configured", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/metrics",
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.headers["content-type"]?.startsWith("text/plain"));
+    assert.ok(response.body.includes("test_metric"));
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /metrics returns 503 when exporter not configured", async () => {
+  const server = new HttpApiServer({
+    approvalService: createMockApprovalService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+    authService: new ApiAuthService({
+      apiKeys: [{ apiKey: "test-key", actorId: "test-user", roles: ["viewer"] }],
+      jwtSecret: "test-secret",
+    }),
+    prometheusMetricsExporter: null, // Not configured
+  });
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/metrics",
+    });
+
+    assert.equal(response.statusCode, 503);
+    const body = response.json<{ requestId: string; error: { code: string } }>();
+    assert.equal(body.error.code, "api.metrics_unavailable");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("API responses include production security headers and CORS metadata", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/healthz",
+      headers: { origin: "https://console.example.test" },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers["x-frame-options"], "DENY");
+    assert.equal(response.headers["x-content-type-options"], "nosniff");
+    assert.equal(response.headers["referrer-policy"], "no-referrer");
+    assert.match(String(response.headers["content-security-policy"]), /default-src 'none'/);
+    assert.equal(response.headers["access-control-allow-origin"], "https://console.example.test");
+    assert.equal(response.headers["access-control-allow-credentials"], "true");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("OPTIONS preflight returns 204 with access-control headers", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "OPTIONS",
+      url: "/v1/tasks",
+      headers: {
+        origin: "https://console.example.test",
+        "access-control-request-method": "GET",
+      },
+    });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(response.headers["access-control-allow-origin"], "https://console.example.test");
+    assert.match(String(response.headers["access-control-allow-methods"]), /GET/);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /prometheus returns prometheus metrics when exporter configured", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/prometheus",
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.headers["content-type"]?.startsWith("text/plain"));
+    assert.ok(response.body.includes("test_metric"));
+  } finally {
+    await server.stop();
+  }
+});

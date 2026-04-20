@@ -1,0 +1,14 @@
+{
+  "environment": "staging",
+  "registry": "ghcr.io/holdenshen-hz",
+  "imageRepository": "automatic-agent-system",
+  "deploymentNamespace": "automatic-agent-staging",
+  "configPath": "config/runtime/default.json",
+  "configBundleRef": "config-bundle://runtime/staging",
+  "registryCredentialRef": "secret://system/registry/ghcr/staging",
+  "deploymentCredentialRef": "secret://system/deploy/kubeconfig/staging",
+  "deployWorkflowPath": ".github/workflows/deploy-environment.yml",
+  "publishWorkflowPath": ".github/workflows/publish-image.yml",
+  "clusterName": "staging-cluster",
+  "allowedRolloutStrategies": ["rolling", "canary", "blue_green"]
+}

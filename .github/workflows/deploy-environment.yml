@@ -1,0 +1,278 @@
+name: Deploy to Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, test, staging, pre-prod, prod]
+      image_tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      rollout_strategy:
+        description: 'Rollout strategy'
+        required: true
+        type: choice
+        options: [rolling, canary, blue_green]
+      deployment_secret_ref:
+        description: 'Deployment secret ref'
+        required: true
+        type: string
+      config_bundle_ref:
+        description: 'Config bundle ref'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Wait for image to become available
+        run: |
+          IMAGE_REF="ghcr.io/holdenshen-hz/${{ github.event.repository.name }}:${{ inputs.image_tag }}"
+          for attempt in $(seq 1 30); do
+            if docker manifest inspect "${IMAGE_REF}" >/dev/null 2>&1; then
+              echo "Image available: ${IMAGE_REF}"
+              exit 0
+            fi
+            echo "Waiting for image availability (${attempt}/30): ${IMAGE_REF}"
+            sleep 10
+          done
+          echo "::error::Image not available after waiting: ${IMAGE_REF}"
+          exit 1
+
+  deployment-preflight:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Validate deployment environment secrets
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+        run: |
+          missing=()
+          for name in AWS_DEPLOY_ROLE_ARN AWS_REGION EKS_CLUSTER_NAME; do
+            if [ -z "${!name}" ]; then
+              missing+=("${name}")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing GitHub environment secrets for deployment: ${missing[*]}"
+            echo "::error::Deployment binding is not complete for environment=${{ inputs.environment }}"
+            exit 1
+          fi
+
+  deploy:
+    needs: deployment-preflight
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      DEPLOYMENT_AUTH_TOKEN: ${{ inputs.deployment_secret_ref }}
+      CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
+      IMAGE_REPOSITORY: ghcr.io/holdenshen-hz/${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+
+      - name: Verify kube context
+        run: kubectl config get-contexts
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.16.3'
+
+      - name: Set deployment namespace
+        id: namespace
+        run: |
+          case "${{ inputs.environment }}" in
+            pre-prod)
+              echo "namespace=automatic-agent-preprod" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "namespace=automatic-agent-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Resolve rollout target
+        id: rollout
+        run: |
+          STRATEGY="${{ inputs.rollout_strategy }}"
+          if [ "$STRATEGY" = "canary" ]; then
+            echo "release_name=automatic-agent-canary" >> $GITHUB_OUTPUT
+            echo "fullname_override=automatic-agent-canary" >> $GITHUB_OUTPUT
+            echo "replica_count=1" >> $GITHUB_OUTPUT
+            echo "rollout_strategy=canary" >> $GITHUB_OUTPUT
+          elif [ "$STRATEGY" = "blue_green" ]; then
+            CURRENT_SELECTOR=$(kubectl get svc automatic-agent -n "${{ steps.namespace.outputs.namespace }}" -o jsonpath='{.spec.selector.app\.kubernetes\.io/instance}' 2>/dev/null || echo "")
+            SLOT="green"
+            if [ "$CURRENT_SELECTOR" = "automatic-agent-green" ]; then
+              SLOT="blue"
+            fi
+            echo "release_name=automatic-agent-${SLOT}" >> $GITHUB_OUTPUT
+            echo "fullname_override=automatic-agent-${SLOT}" >> $GITHUB_OUTPUT
+            echo "replica_count=2" >> $GITHUB_OUTPUT
+            echo "rollout_strategy=blue_green" >> $GITHUB_OUTPUT
+            echo "slot=${SLOT}" >> $GITHUB_OUTPUT
+          else
+            echo "release_name=automatic-agent" >> $GITHUB_OUTPUT
+            echo "fullname_override=" >> $GITHUB_OUTPUT
+            echo "replica_count=1" >> $GITHUB_OUTPUT
+            echo "rollout_strategy=rolling" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create namespace if not exists
+        run: kubectl create namespace ${{ steps.namespace.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy with Helm
+        run: |
+          HELM_ARGS=(
+            upgrade --install "${{ steps.rollout.outputs.release_name }}"
+            deploy/helm/automatic-agent
+            --namespace "${{ steps.namespace.outputs.namespace }}"
+            --create-namespace
+            -f "deploy/helm/automatic-agent/values-${{ inputs.environment }}.yaml"
+            --set "image.tag=${{ inputs.image_tag }}"
+            --set "image.repository=${IMAGE_REPOSITORY}"
+            --set "env.AA_BUILD_COMMIT=${{ github.sha }}"
+            --set "env.AA_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            --set "rolloutStrategy=${{ steps.rollout.outputs.rollout_strategy }}"
+            --set "replicaCount=${{ steps.rollout.outputs.replica_count }}"
+            --wait
+            --timeout 10m
+            --debug
+          )
+          if [ -n "${{ steps.rollout.outputs.fullname_override }}" ]; then
+            HELM_ARGS+=(--set "fullnameOverride=${{ steps.rollout.outputs.fullname_override }}")
+          fi
+          helm "${HELM_ARGS[@]}"
+
+      - name: Verify deployment
+        run: |
+          DEPLOYMENT_NAME="${{ steps.rollout.outputs.fullname_override }}"
+          if [ -z "$DEPLOYMENT_NAME" ]; then
+            DEPLOYMENT_NAME="automatic-agent"
+          fi
+          kubectl rollout status deployment/${DEPLOYMENT_NAME} \
+            -n ${{ steps.namespace.outputs.namespace }} \
+            --timeout=300s
+
+      - name: Promote rollout
+        run: |
+          STRATEGY="${{ inputs.rollout_strategy }}"
+          NAMESPACE="${{ steps.namespace.outputs.namespace }}"
+          if [ "$STRATEGY" = "canary" ]; then
+            helm upgrade --install automatic-agent deploy/helm/automatic-agent \
+              --namespace "$NAMESPACE" \
+              -f "deploy/helm/automatic-agent/values-${{ inputs.environment }}.yaml" \
+              --set "image.tag=${{ inputs.image_tag }}" \
+              --set "image.repository=${IMAGE_REPOSITORY}" \
+              --set "rolloutStrategy=rolling" \
+              --wait --timeout 10m
+            helm uninstall automatic-agent-canary --namespace "$NAMESPACE" || true
+          elif [ "$STRATEGY" = "blue_green" ]; then
+            kubectl patch svc automatic-agent -n "$NAMESPACE" --type merge \
+              -p "{\"spec\":{\"selector\":{\"app.kubernetes.io/name\":\"automatic-agent\",\"app.kubernetes.io/instance\":\"automatic-agent-${{ steps.rollout.outputs.slot }}\"}}}"
+          fi
+
+      - name: Health check
+        run: |
+          SERVICE_NAME="${{ steps.rollout.outputs.fullname_override }}"
+          if [ -z "$SERVICE_NAME" ]; then
+            SERVICE_NAME="automatic-agent"
+          fi
+          for i in $(seq 1 30); do
+            ENDPOINT_COUNT=$(kubectl get endpoints "${SERVICE_NAME}" \
+              -n "${{ steps.namespace.outputs.namespace }}" \
+              -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | awk '{print NF}')
+            if [ "${ENDPOINT_COUNT:-0}" -gt 0 ]; then
+              echo "Endpoint health check passed"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Endpoint health check failed"
+          exit 1
+
+      - name: Record deployment info
+        run: |
+          echo "Deployed image: ${IMAGE_REPOSITORY}:${{ inputs.image_tag }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Rollout strategy: ${{ inputs.rollout_strategy }}"
+          echo "Release name: ${{ steps.rollout.outputs.release_name }}"
+          echo "Build commit: ${{ github.sha }}"
+          echo "Build timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  rollback:
+    needs: deploy
+    if: ${{ always() && needs.deploy.result == 'failure' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      DEPLOYMENT_AUTH_TOKEN: ${{ inputs.deployment_secret_ref }}
+      CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Configure kubeconfig
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.16.3'
+      - name: Set namespace
+        id: namespace
+        run: |
+          case "${{ inputs.environment }}" in
+            pre-prod)
+              echo "namespace=automatic-agent-preprod" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "namespace=automatic-agent-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+      - name: Rollback
+        run: |
+          RELEASE_NAME="automatic-agent"
+          if [ "${{ inputs.rollout_strategy }}" = "canary" ]; then
+            RELEASE_NAME="automatic-agent-canary"
+          elif [ "${{ inputs.rollout_strategy }}" = "blue_green" ]; then
+            CURRENT_SELECTOR=$(kubectl get svc automatic-agent -n ${{ steps.namespace.outputs.namespace }} -o jsonpath='{.spec.selector.app\.kubernetes\.io/instance}' 2>/dev/null || echo "")
+            RELEASE_NAME="${CURRENT_SELECTOR:-automatic-agent}"
+          fi
+          PREVIOUS_REVISION=$(helm history "${RELEASE_NAME}" --namespace "${{ steps.namespace.outputs.namespace }}" -o json \
+            | node -e 'const history=JSON.parse(require("fs").readFileSync(0,"utf8")); const deployed=history.filter((row)=>row.status==="deployed"||row.status==="superseded"); const previous=deployed.length >= 2 ? deployed[deployed.length - 2].revision : null; if (previous == null) process.exit(1); process.stdout.write(String(previous));')
+          helm rollback ${RELEASE_NAME} ${PREVIOUS_REVISION} \
+            --namespace ${{ steps.namespace.outputs.namespace }} \
+            --wait --timeout 5m
+          echo "::warning::Deployment failed — rolled back to previous release"

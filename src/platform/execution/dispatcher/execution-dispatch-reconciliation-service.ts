@@ -1,0 +1,279 @@
+/**
+ * Execution Dispatch Reconciliation Service
+ *
+ * Reconciles execution dispatch tickets with actual execution state to detect
+ * and repair orphaned or inconsistent dispatch records. This service identifies
+ * tickets that reference terminal executions, lack valid leases, or have lease
+ * mismatches.
+ *
+ * The service scans for issues and can apply repairs including requeuing tickets
+ * and invalidating orphaned claims. All reconciliation actions emit audit events.
+ *
+ * @see {@link docs_zh/contracts/runtime_execution_contract.md}
+ * @see {@link docs_zh/contracts/task_lease_and_fencing_contract.md}
+ * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md}
+ * @see {@link docs_zh/governance/glossary_and_terminology.md}
+ */
+
+import type { ExecutionTicketRecord } from "../../contracts/types/domain.js";
+import type { ExecutionStatus } from "../../contracts/types/status.js";
+
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { ExecutionDispatchService } from "./execution-dispatch-service.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
+
+export interface DispatchReconciliationIssue {
+  issueType: "orphan_queue_claim" | "terminal_execution_ticket";
+  resolutionAction: "requeue_ticket" | "invalidate_ticket";
+  executionId: string;
+  taskId: string;
+  ticketId: string;
+  reasonCode: "missing_active_lease" | "lease_ticket_mismatch" | "lease_expired_unreclaimed" | "execution_terminal";
+  executionStatus: ExecutionStatus;
+}
+
+export interface DispatchReconciliationRepairResult {
+  issueType: DispatchReconciliationIssue["issueType"];
+  executionId: string;
+  taskId: string;
+  ticketId: string;
+  applied: boolean;
+  resolutionAction: DispatchReconciliationIssue["resolutionAction"];
+  replacementTicketId: string | null;
+}
+
+function parseJsonArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch (err) {
+    logger.log({
+      level: "warn",
+      message: "Failed to parse JSON array",
+      data: { error: err instanceof Error ? err.message : String(err), value: value.substring(0, 100) },
+    });
+    return [];
+  }
+}
+
+function isTerminalExecutionStatus(status: ExecutionStatus): boolean {
+  return status === "succeeded" || status === "failed" || status === "cancelled" || status === "superseded";
+}
+
+export class ExecutionDispatchReconciliationService {
+  private readonly dispatch: ExecutionDispatchService;
+
+  public constructor(
+    private readonly db: AuthoritativeSqlDatabase,
+    private readonly store: AuthoritativeTaskStore,
+  ) {
+    this.dispatch = new ExecutionDispatchService(db, store);
+  }
+
+  public scan(now: string = nowIso()): DispatchReconciliationIssue[] {
+    const tickets = this.store.worker.listExecutionTicketsByStatuses(["pending", "claimed"]);
+    return tickets
+      .map((ticket) => this.findIssueForTicket(ticket, now))
+      .filter((issue): issue is DispatchReconciliationIssue => issue != null);
+  }
+
+  public findIssueByTicketId(ticketId: string, now: string = nowIso()): DispatchReconciliationIssue | null {
+    const ticket = this.store.worker.getExecutionTicket(ticketId);
+    if (!ticket || (ticket.status !== "pending" && ticket.status !== "claimed")) {
+      return null;
+    }
+
+    return this.findIssueForTicket(ticket, now);
+  }
+
+  public repair(now: string = nowIso()): { issues: DispatchReconciliationIssue[]; applied: DispatchReconciliationRepairResult[] } {
+    const issues = this.scan(now);
+    const applied = issues.map((issue) => this.applyIssue(issue, now));
+    return {
+      issues,
+      applied,
+    };
+  }
+
+  public repairTicket(ticketId: string, now: string = nowIso()): DispatchReconciliationRepairResult | null {
+    const issue = this.findIssueByTicketId(ticketId, now);
+    if (!issue) {
+      return null;
+    }
+
+    return this.applyIssue(issue, now);
+  }
+
+  private findIssueForTicket(ticket: ExecutionTicketRecord, now: string): DispatchReconciliationIssue | null {
+    const execution = this.store.dispatch.getExecution(ticket.executionId);
+    if (!execution) {
+      return null;
+    }
+
+    if (isTerminalExecutionStatus(execution.status)) {
+      return {
+        issueType: "terminal_execution_ticket",
+        resolutionAction: "invalidate_ticket",
+        executionId: execution.id,
+        taskId: execution.taskId,
+        ticketId: ticket.id,
+        reasonCode: "execution_terminal",
+        executionStatus: execution.status,
+      };
+    }
+
+    if (ticket.status !== "claimed") {
+      return null;
+    }
+
+    const activeLease = this.store.worker.getActiveExecutionLease(ticket.executionId);
+    if (!activeLease) {
+      return {
+        issueType: "orphan_queue_claim",
+        resolutionAction: "requeue_ticket",
+        executionId: execution.id,
+        taskId: execution.taskId,
+        ticketId: ticket.id,
+        reasonCode: "missing_active_lease",
+        executionStatus: execution.status,
+      };
+    }
+
+    if (Date.parse(activeLease.expiresAt) < Date.parse(now)) {
+      return {
+        issueType: "orphan_queue_claim",
+        resolutionAction: "requeue_ticket",
+        executionId: execution.id,
+        taskId: execution.taskId,
+        ticketId: ticket.id,
+        reasonCode: "lease_expired_unreclaimed",
+        executionStatus: execution.status,
+      };
+    }
+
+    if (ticket.leaseId !== activeLease.id || ticket.assignedWorkerId !== activeLease.workerId) {
+      return {
+        issueType: "orphan_queue_claim",
+        resolutionAction: "requeue_ticket",
+        executionId: execution.id,
+        taskId: execution.taskId,
+        ticketId: ticket.id,
+        reasonCode: "lease_ticket_mismatch",
+        executionStatus: execution.status,
+      };
+    }
+
+    return null;
+  }
+
+  private applyIssue(issue: DispatchReconciliationIssue, occurredAt: string): DispatchReconciliationRepairResult {
+    const ticket = this.store.worker.getExecutionTicket(issue.ticketId);
+    if (!ticket) {
+      return {
+        issueType: issue.issueType,
+        executionId: issue.executionId,
+        taskId: issue.taskId,
+        ticketId: issue.ticketId,
+        applied: false,
+        resolutionAction: issue.resolutionAction,
+        replacementTicketId: null,
+      };
+    }
+
+    if (issue.issueType === "terminal_execution_ticket") {
+      this.db.transaction(() => {
+        this.store.worker.invalidateExecutionTicket({
+          ticketId: ticket.id,
+          status: "cancelled",
+          invalidatedAt: occurredAt,
+        });
+        this.recordReconciledEvent(ticket, issue, occurredAt, null);
+      });
+
+      return {
+        issueType: issue.issueType,
+        executionId: issue.executionId,
+        taskId: issue.taskId,
+        ticketId: issue.ticketId,
+        applied: true,
+        resolutionAction: issue.resolutionAction,
+        replacementTicketId: null,
+      };
+    }
+
+    this.db.transaction(() => {
+      this.store.worker.invalidateExecutionTicket({
+        ticketId: ticket.id,
+        status: "expired",
+        invalidatedAt: occurredAt,
+      });
+      this.recordReconciledEvent(ticket, issue, occurredAt, null);
+    });
+
+    const replacement = this.dispatch.createTicket({
+      executionId: ticket.executionId,
+      priority: ticket.priority,
+      queueName: ticket.queueName,
+      dispatchTarget: ticket.dispatchTarget ?? "any",
+      requiredIsolationLevel: ticket.requiredIsolationLevel ?? "standard",
+      requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+      dispatchAfter: ticket.dispatchAfter,
+      occurredAt,
+    });
+
+    this.db.transaction(() => {
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: ticket.taskId,
+        executionId: ticket.executionId,
+        eventType: "dispatch:ticket_requeued",
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          previousTicketId: ticket.id,
+          replacementTicketId: replacement.ticket.id,
+          reasonCode: issue.reasonCode,
+        }),
+        traceId: this.store.dispatch.getExecution(ticket.executionId)?.traceId ?? null,
+        createdAt: occurredAt,
+      });
+    });
+
+    return {
+      issueType: issue.issueType,
+      executionId: issue.executionId,
+      taskId: issue.taskId,
+      ticketId: issue.ticketId,
+      applied: true,
+      resolutionAction: issue.resolutionAction,
+      replacementTicketId: replacement.ticket.id,
+    };
+  }
+
+  private recordReconciledEvent(
+    ticket: ExecutionTicketRecord,
+    issue: DispatchReconciliationIssue,
+    occurredAt: string,
+    replacementTicketId: string | null,
+  ): void {
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: ticket.taskId,
+      executionId: ticket.executionId,
+      eventType: "dispatch:ticket_reconciled",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        ticketId: ticket.id,
+        issueType: issue.issueType,
+        reasonCode: issue.reasonCode,
+        resolutionAction: issue.resolutionAction,
+        replacementTicketId,
+      }),
+      traceId: this.store.dispatch.getExecution(ticket.executionId)?.traceId ?? null,
+      createdAt: occurredAt,
+    });
+  }
+}

@@ -1,0 +1,262 @@
+[
+  {
+    "method": "GET",
+    "path": "/healthz",
+    "summary": "Healthz alias-free health check",
+    "tags": [
+      "health"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "summary": "Compatibility health alias",
+    "tags": [
+      "health"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/metrics",
+    "summary": "Prometheus metrics endpoint",
+    "tags": [
+      "meta",
+      "metrics"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/metrics",
+    "summary": "Versioned Prometheus metrics endpoint",
+    "tags": [
+      "meta",
+      "metrics"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/prometheus",
+    "summary": "Standalone Prometheus scrape endpoint",
+    "tags": [
+      "meta",
+      "metrics"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/openapi.json",
+    "summary": "OpenAPI document",
+    "tags": [
+      "meta"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/auth/token",
+    "summary": "Exchange API key for bearer token",
+    "tags": [
+      "auth"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/dashboard/snapshot",
+    "summary": "Mission control shared snapshot",
+    "tags": [
+      "dashboard"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/divisions",
+    "summary": "List configured divisions",
+    "tags": [
+      "divisions"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gateway/targets",
+    "summary": "List gateway targets",
+    "tags": [
+      "gateway"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/gateway/targets/resolve",
+    "summary": "Resolve human-readable gateway target",
+    "tags": [
+      "gateway"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/gateway/messages/send",
+    "summary": "Send gateway message via configured channel adapter",
+    "tags": [
+      "gateway"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks",
+    "summary": "List tasks",
+    "tags": [
+      "tasks"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/{taskId}",
+    "summary": "Load task snapshot",
+    "tags": [
+      "tasks"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/{taskId}/events",
+    "summary": "List task events",
+    "tags": [
+      "tasks"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/tasks/{taskId}/inspect",
+    "summary": "Inspect task details",
+    "tags": [
+      "tasks"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/namespaces",
+    "summary": "List knowledge namespaces",
+    "tags": [
+      "knowledge"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/query",
+    "summary": "Query knowledge plane",
+    "tags": [
+      "knowledge"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/graph",
+    "summary": "Inspect semantic knowledge graph neighborhood",
+    "tags": [
+      "knowledge"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/semantic/inspect",
+    "summary": "Inspect semantic retrieval infrastructure",
+    "tags": [
+      "knowledge"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/knowledge/{namespace}/inspect",
+    "summary": "Inspect knowledge namespace",
+    "tags": [
+      "knowledge"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/domains",
+    "summary": "List registered domains",
+    "tags": [
+      "domains"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/domains/{domainId}",
+    "summary": "Load domain definition and capability entry",
+    "tags": [
+      "domains"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/domains/{domainId}/plugins",
+    "summary": "List plugins bound to a domain",
+    "tags": [
+      "domains",
+      "plugins"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/plugins",
+    "summary": "List plugin registry records",
+    "tags": [
+      "plugins"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/artifacts/publishes",
+    "summary": "List artifact publish ledger entries",
+    "tags": [
+      "artifacts"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/artifacts/bundles/preview",
+    "summary": "Build artifact bundle preview",
+    "tags": [
+      "artifacts"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/artifacts/bundles/publish",
+    "summary": "Publish artifact bundle",
+    "tags": [
+      "artifacts"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/approvals",
+    "summary": "List approvals",
+    "tags": [
+      "approvals"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/approvals/{approvalId}/decision",
+    "summary": "Submit approval decision",
+    "tags": [
+      "approvals"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/control-plane/load-balancing",
+    "summary": "Get control-plane load balancing summary",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/v1/admin/control-plane/load-balancing/select",
+    "summary": "Select coordinator for control-plane request",
+    "tags": [
+      "admin"
+    ]
+  }
+]

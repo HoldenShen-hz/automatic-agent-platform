@@ -1,0 +1,138 @@
+/**
+ * Evolution Registry
+ *
+ * Central registry for tracking all proposals, their status,
+ * evaluations, and rollout records.
+ */
+
+import type { ImprovementProposal, ProposalStatus } from './proposal-engine.js';
+import type { EvaluationReport } from './benchmark-runner.js';
+import type { RolloutRecord } from './rollout-manager.js';
+import type { ReflectionRecord } from './reflection-engine.js';
+
+export interface EvolutionRegistry {
+  // Proposal operations
+  saveProposal(proposal: ImprovementProposal): Promise<void>;
+  updateProposalStatus(id: string, status: ProposalStatus): Promise<void>;
+  getProposal(id: string): Promise<ImprovementProposal | null>;
+  listProposals(status?: ProposalStatus): Promise<ImprovementProposal[]>;
+
+  // Evaluation operations
+  saveEvaluation(report: EvaluationReport): Promise<void>;
+  getEvaluation(proposalId: string): Promise<EvaluationReport | null>;
+  listEvaluations(): Promise<EvaluationReport[]>;
+
+  // Rollout operations
+  saveRollout(record: RolloutRecord): Promise<void>;
+  getRollout(proposalId: string): Promise<RolloutRecord | null>;
+  listActiveRollouts(): Promise<RolloutRecord[]>;
+
+  // Reflection operations
+  saveReflection(reflection: ReflectionRecord): Promise<void>;
+  listReflections(taskType?: string): Promise<ReflectionRecord[]>;
+
+  // Statistics
+  getStatistics(): Promise<EvolutionStatistics>;
+}
+
+export interface EvolutionStatistics {
+  totalProposals: number;
+  byStatus: Record<ProposalStatus, number>;
+  activeCount: number;
+  rejectedCount: number;
+  averageSuccessLift: number;
+}
+
+export class InMemoryEvolutionRegistry implements EvolutionRegistry {
+  private proposals = new Map<string, ImprovementProposal>();
+  private evaluations = new Map<string, EvaluationReport>();
+  private rollouts = new Map<string, RolloutRecord>();
+  private reflections: ReflectionRecord[] = [];
+
+  async saveProposal(proposal: ImprovementProposal): Promise<void> {
+    this.proposals.set(proposal.id, proposal);
+  }
+
+  async updateProposalStatus(id: string, status: ProposalStatus): Promise<void> {
+    const proposal = this.proposals.get(id);
+    if (proposal) {
+      this.proposals.set(id, { ...proposal, status, updatedAt: new Date().toISOString() });
+    }
+  }
+
+  async getProposal(id: string): Promise<ImprovementProposal | null> {
+    return this.proposals.get(id) ?? null;
+  }
+
+  async listProposals(status?: ProposalStatus): Promise<ImprovementProposal[]> {
+    const all = Array.from(this.proposals.values());
+    return status ? all.filter((p) => p.status === status) : all;
+  }
+
+  async saveEvaluation(report: EvaluationReport): Promise<void> {
+    this.evaluations.set(report.proposalId, report);
+  }
+
+  async getEvaluation(proposalId: string): Promise<EvaluationReport | null> {
+    return this.evaluations.get(proposalId) ?? null;
+  }
+
+  async listEvaluations(): Promise<EvaluationReport[]> {
+    return Array.from(this.evaluations.values());
+  }
+
+  async saveRollout(record: RolloutRecord): Promise<void> {
+    this.rollouts.set(record.proposalId, record);
+  }
+
+  async getRollout(proposalId: string): Promise<RolloutRecord | null> {
+    return this.rollouts.get(proposalId) ?? null;
+  }
+
+  async listActiveRollouts(): Promise<RolloutRecord[]> {
+    return Array.from(this.rollouts.values()).filter((r) => r.status === 'running');
+  }
+
+  async saveReflection(reflection: ReflectionRecord): Promise<void> {
+    this.reflections.push(reflection);
+  }
+
+  async listReflections(taskType?: string): Promise<ReflectionRecord[]> {
+    return taskType
+      ? this.reflections.filter((r) => r.taskType === taskType)
+      : this.reflections;
+  }
+
+  async getStatistics(): Promise<EvolutionStatistics> {
+    const proposals = Array.from(this.proposals.values());
+
+    const byStatus: Record<ProposalStatus, number> = {
+      proposed: 0,
+      testing: 0,
+      canary: 0,
+      active: 0,
+      rejected: 0,
+      rolled_back: 0,
+    };
+
+    for (const proposal of proposals) {
+      byStatus[proposal.status] = (byStatus[proposal.status] ?? 0) + 1;
+    }
+
+    const activeCount = byStatus.testing + byStatus.canary;
+    const rejectedCount = byStatus.rejected + byStatus.rolled_back;
+
+    const evaluations = Array.from(this.evaluations.values());
+    const averageSuccessLift = evaluations.length > 0
+      ? evaluations.reduce((sum, e) => sum + (e.successRateAfter - e.successRateBefore), 0) / evaluations.length
+      : 0;
+
+    return {
+      totalProposals: proposals.length,
+      byStatus,
+      activeCount,
+      rejectedCount,
+      averageSuccessLift,
+    };
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "maxConcurrentTasks": 1,
+  "defaultTaskTimeoutMs": 300000,
+  "defaultStepTimeoutMs": 120000,
+  "maxAgentRounds": 6,
+  "maxToolCalls": 8
+}

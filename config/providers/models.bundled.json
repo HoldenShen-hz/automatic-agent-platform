@@ -1,0 +1,71 @@
+{
+  "version": "2026-04-05.bundled",
+  "providers": {
+    "openai": {
+      "status": "active",
+      "authMethods": ["api_key"]
+    },
+    "anthropic": {
+      "status": "active",
+      "authMethods": ["api_key"]
+    },
+    "minimax": {
+      "status": "active",
+      "authMethods": ["api_key"]
+    }
+  },
+  "profiles": {
+    "reasoning-medium": {
+      "provider": "openai",
+      "modelId": "gpt-5.2",
+      "tier": "reasoning",
+      "capabilities": ["reasoning", "tool_use", "json_mode"],
+      "contextWindowTokens": 204800,
+      "maxOutputTokens": 65536,
+      "pricing": {
+        "inputPer1kUsd": 0.002,
+        "outputPer1kUsd": 0.01
+      },
+      "metadataSource": "bundled_snapshot"
+    },
+    "coding-medium": {
+      "provider": "openai",
+      "modelId": "gpt-5.2",
+      "tier": "coding",
+      "capabilities": ["coding", "tool_use", "json_mode"],
+      "contextWindowTokens": 204800,
+      "maxOutputTokens": 65536,
+      "pricing": {
+        "inputPer1kUsd": 0.002,
+        "outputPer1kUsd": 0.01
+      },
+      "metadataSource": "bundled_snapshot"
+    },
+    "balanced": {
+      "provider": "anthropic",
+      "modelId": "claude-3-7-sonnet",
+      "tier": "balanced",
+      "capabilities": ["reasoning", "writing", "tool_use"],
+      "contextWindowTokens": 204800,
+      "maxOutputTokens": 65536,
+      "pricing": {
+        "inputPer1kUsd": 0.003,
+        "outputPer1kUsd": 0.015
+      },
+      "metadataSource": "bundled_snapshot"
+    },
+    "fast": {
+      "provider": "anthropic",
+      "modelId": "claude-3-5-haiku",
+      "tier": "fast",
+      "capabilities": ["classification", "summarization", "tool_use"],
+      "contextWindowTokens": 204800,
+      "maxOutputTokens": 65536,
+      "pricing": {
+        "inputPer1kUsd": 0.001,
+        "outputPer1kUsd": 0.005
+      },
+      "metadataSource": "bundled_snapshot"
+    }
+  }
+}

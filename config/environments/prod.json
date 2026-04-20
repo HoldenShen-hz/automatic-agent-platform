@@ -1,0 +1,14 @@
+{
+  "environment": "prod",
+  "registry": "ghcr.io/holdenshen-hz",
+  "imageRepository": "automatic-agent-system",
+  "deploymentNamespace": "automatic-agent-prod",
+  "configPath": "config/runtime/default.json",
+  "configBundleRef": "config-bundle://runtime/prod",
+  "registryCredentialRef": "secret://system/registry/ghcr/prod",
+  "deploymentCredentialRef": "secret://system/deploy/kubeconfig/prod",
+  "deployWorkflowPath": ".github/workflows/deploy-environment.yml",
+  "publishWorkflowPath": ".github/workflows/publish-image.yml",
+  "clusterName": "prod-cluster",
+  "allowedRolloutStrategies": ["canary", "blue_green"]
+}

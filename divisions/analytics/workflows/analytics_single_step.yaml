@@ -1,0 +1,9 @@
+id: analytics_single_step
+division_id: analytics
+steps:
+  - step_id: analyze_request
+    role_id: bi_analyst
+    output_key: analysis
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

@@ -1,0 +1,14 @@
+{
+  "environment": "test",
+  "registry": "ghcr.io/holdenshen-hz",
+  "imageRepository": "automatic-agent-system",
+  "deploymentNamespace": "automatic-agent-test",
+  "configPath": "config/runtime/default.json",
+  "configBundleRef": "config-bundle://runtime/test",
+  "registryCredentialRef": "secret://system/registry/ghcr/test",
+  "deploymentCredentialRef": "secret://system/deploy/kubeconfig/test",
+  "deployWorkflowPath": ".github/workflows/deploy-environment.yml",
+  "publishWorkflowPath": ".github/workflows/publish-image.yml",
+  "clusterName": "test-cluster",
+  "allowedRolloutStrategies": ["rolling", "canary"]
+}

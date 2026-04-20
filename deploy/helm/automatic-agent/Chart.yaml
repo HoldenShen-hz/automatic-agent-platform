@@ -1,0 +1,13 @@
+apiVersion: v2
+name: automatic-agent
+description: AI Agent Task Execution Platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai-agent
+  - task-execution
+  - stability-rehearsal
+home: https://github.com/automatic-agent/automatic-agent-platform
+sources:
+  - https://github.com/automatic-agent/automatic-agent-platform

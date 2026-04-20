@@ -1,0 +1,20 @@
+{
+  "100": false,
+  "reporter": ["text", "html", "lcov", "json-summary"],
+  "exclude": [
+    "dist/tests/**",
+    "tests/",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/node_modules/**",
+    "**/coverage/**",
+    "scripts/**",
+    "**/*.config.ts",
+    "**/*.config.js",
+    "dist/index.js"
+  ],
+  "all": true,
+  "include": [
+    "dist/src/**/*.js"
+  ]
+}

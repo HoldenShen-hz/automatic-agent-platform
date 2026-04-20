@@ -1,0 +1,131 @@
+{
+  "domains": [
+    {
+      "domainId": "coding",
+      "name": "Coding",
+      "description": "Coding workflows, tools, and plugin bindings.",
+      "version": 1,
+      "workflows": [
+        {
+          "workflowId": "coding-default",
+          "name": "Coding Default Workflow",
+          "triggerConditions": {},
+          "steps": [
+            {
+              "stepName": "analyze",
+              "toolHints": ["repo_map", "static_analysis"],
+              "modelHints": {
+                "preferredModel": "gpt-5.2"
+              },
+              "outputSchema": null,
+              "retryPolicy": {
+                "maxRetries": 1,
+                "backoffMs": 250
+              },
+              "requiresReview": false,
+              "timeoutMs": 60000,
+              "dependsOn": []
+            }
+          ]
+        }
+      ],
+      "toolBundles": [
+        {
+          "bundleId": "coding-default",
+          "tools": [
+            {
+              "toolName": "repo_map",
+              "enabled": true,
+              "configOverrides": {}
+            },
+            {
+              "toolName": "patch_apply",
+              "enabled": true,
+              "configOverrides": {}
+            },
+            {
+              "toolName": "test_runner",
+              "enabled": true,
+              "configOverrides": {}
+            },
+            {
+              "toolName": "static_analysis",
+              "enabled": true,
+              "configOverrides": {}
+            },
+            {
+              "toolName": "file_read",
+              "enabled": true,
+              "configOverrides": {}
+            },
+            {
+              "toolName": "file_write",
+              "enabled": true,
+              "configOverrides": {}
+            },
+            {
+              "toolName": "shell_exec",
+              "enabled": true,
+              "configOverrides": {}
+            }
+          ]
+        }
+      ],
+      "outputContracts": [
+        {
+          "contractId": "coding.patch",
+          "name": "Coding Patch Output",
+          "schema": {
+            "type": "object"
+          },
+          "validationLevel": "strict"
+        }
+      ],
+      "promptOverrides": {},
+      "capabilities": {
+        "supportedTaskTypes": ["bugfix", "refactor", "review"],
+        "requiredTools": ["repo_map", "patch_apply", "test_runner", "static_analysis", "file_read", "file_write", "shell_exec"],
+        "optionalTools": ["git_log", "dependency_graph", "benchmark_runner"],
+        "modelPreferences": {
+          "primary": "gpt-5.2"
+        },
+        "budgetLimits": {
+          "maxTokensPerTask": 12000,
+          "maxCostPerTask": 10
+        },
+        "securityLevel": "standard"
+      },
+      "status": "testing",
+      "externalAdapters": ["github"],
+      "pluginBindings": [
+        {
+          "bindingId": "coding.retriever",
+          "domainId": "coding",
+          "pluginType": "retriever",
+          "pluginId": "plugin.coding.retriever",
+          "priority": 10,
+          "enabled": true,
+          "config": {}
+        },
+        {
+          "bindingId": "coding.presenter",
+          "domainId": "coding",
+          "pluginType": "presenter",
+          "pluginId": "plugin.coding.presenter",
+          "priority": 5,
+          "enabled": true,
+          "config": {}
+        },
+        {
+          "bindingId": "coding.github",
+          "domainId": "coding",
+          "pluginType": "adapter",
+          "pluginId": "plugin.shared.github_adapter",
+          "priority": 3,
+          "enabled": true,
+          "config": {}
+        }
+      ]
+    }
+  ]
+}

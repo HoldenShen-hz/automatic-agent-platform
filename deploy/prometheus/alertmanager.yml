@@ -1,0 +1,32 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default-warning
+  group_by: ["alertname"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: pagerduty-critical
+    - matchers:
+        - severity="warning"
+      receiver: slack-warning
+
+receivers:
+  - name: default-warning
+    webhook_configs:
+      - url: http://api-server:3000/v1/alerts/webhook
+        send_resolved: true
+
+  - name: slack-warning
+    webhook_configs:
+      - url: http://api-server:3000/v1/alerts/webhook
+        send_resolved: true
+
+  - name: pagerduty-critical
+    webhook_configs:
+      - url: http://api-server:3000/v1/alerts/webhook
+        send_resolved: true

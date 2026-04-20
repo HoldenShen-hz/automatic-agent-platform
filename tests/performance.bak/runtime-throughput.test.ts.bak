@@ -1,0 +1,362 @@
+/**
+ * Performance Test: Runtime Throughput and Concurrency Stress
+ *
+ * Tests runtime services behavior under sustained load and concurrent access.
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { join } from "node:path";
+
+import { SqliteDatabase } from "../../src/core/storage/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/core/storage/authoritative-task-store.js";
+import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
+import { newId, nowIso } from "../../src/core/types/ids.js";
+
+test("performance: execution lease service handles concurrent lease operations", () => {
+  const workspace = createTempWorkspace("perf-lease-concurrent-");
+  const latencies: number[] = [];
+
+  try {
+    const dbPath = join(workspace, "lease-concurrent.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const taskId = newId("task");
+    const workerId = newId("worker");
+    const now = nowIso();
+
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Concurrent lease test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    const iterations = 100;
+    const executionIds = Array.from({ length: iterations }, () => newId("exec"));
+    const taskIds = Array.from({ length: iterations }, () => newId("task"));
+
+    db.transaction(() => {
+      for (let i = 0; i < iterations; i++) {
+        const tid = taskIds[i]!;
+        store.insertTask({
+          id: tid,
+          parentId: null,
+          rootId: tid,
+          divisionId: "general_ops",
+          title: `Concurrent lease test ${i}`,
+          status: "in_progress",
+          source: "user",
+          priority: "normal",
+          inputJson: "{}",
+          normalizedInputJson: "{}",
+          outputJson: null,
+          estimatedCostUsd: 0,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
+        store.insertExecution({
+          id: executionIds[i]!,
+          taskId: tid,
+          workflowId: null,
+          parentExecutionId: null,
+          agentId: workerId,
+          roleId: null,
+          runKind: "task_run",
+          status: "executing",
+          inputRef: null,
+          traceId: newId("trace"),
+          attempt: 1,
+          timeoutMs: 30000,
+          budgetUsdLimit: null,
+          requiresApproval: 0,
+          sandboxMode: null,
+          allowedToolsJson: null,
+          allowedPathsJson: null,
+          maxRetries: 0,
+          retryBackoff: "exponential",
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          startedAt: now,
+          finishedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    });
+
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      db.transaction(() => {
+        store.insertExecutionLease({
+          id: newId("lease"),
+          executionId: executionIds[i]!,
+          workerId: newId("worker"),
+          attempt: 1,
+          fencingToken: i + 1,
+          queueName: null,
+          status: "active",
+          leasedAt: nowIso(),
+          expiresAt: new Date(Date.now() + 30000).toISOString(),
+          lastHeartbeatAt: nowIso(),
+          releasedAt: null,
+          reasonCode: null,
+        });
+      });
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    latencies.sort((a, b) => a - b);
+    const p95Latency = latencies[Math.floor(iterations * 0.95)!]!;
+
+    assert.ok(
+      p95Latency < 50,
+      `Concurrent lease insert P95 latency ${p95Latency.toFixed(3)}ms exceeds 50ms target`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("stress: multiple concurrent tasks can be created rapidly", () => {
+  const workspace = createTempWorkspace("perf-task-burst-");
+  const durations: number[] = [];
+
+  try {
+    const dbPath = join(workspace, "task-burst.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const batchSize = 50;
+    const iterations = 10;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      const start = performance.now();
+      db.transaction(() => {
+        for (let i = 0; i < batchSize; i++) {
+          store.insertTask({
+            id: newId("task"),
+            parentId: null,
+            rootId: newId("task"),
+            divisionId: "general_ops",
+            title: `Burst task ${iter}-${i}`,
+            status: "pending",
+            source: "user",
+            priority: "normal",
+            inputJson: "{}",
+            normalizedInputJson: "{}",
+            outputJson: null,
+            estimatedCostUsd: 0,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
+            completedAt: null,
+          });
+        }
+      });
+      const end = performance.now();
+      durations.push(end - start);
+    }
+
+    const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+    const throughput = batchSize / (avgDuration / 1000);
+
+    assert.ok(
+      throughput > 500,
+      `Task burst throughput ${throughput.toFixed(0)} tasks/s below 500/s target`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("load: event bus handles rapid concurrent publishes", async () => {
+  const workspace = createTempWorkspace("perf-event-concurrent-");
+
+  try {
+    const dbPath = join(workspace, "event-concurrent.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const { DurableEventBus } = await import("../../src/core/events/durable-event-bus.js");
+
+    const eventBus = new DurableEventBus(db, store);
+
+    const taskId = newId("task");
+    const now = nowIso();
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Event concurrent test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    const iterations = 200;
+    const start = performance.now();
+
+    for (let i = 0; i < iterations; i++) {
+      eventBus.publish({
+        eventType: "perf:test_event",
+        taskId,
+        payload: { index: i },
+        traceId: newId("trace"),
+      });
+    }
+
+    const end = performance.now();
+    const duration = end - start;
+    const throughput = iterations / (duration / 1000);
+
+    assert.ok(
+      throughput > 1000,
+      `Concurrent event publish throughput ${throughput.toFixed(0)} events/s below 1000/s target`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("stress: database handles high-concurrency mixed operations", () => {
+  const workspace = createTempWorkspace("perf-mixed-concurrent-");
+  const durations: number[] = [];
+
+  try {
+    const dbPath = join(workspace, "mixed-concurrent.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+
+    const taskId = newId("task");
+    const now = nowIso();
+
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Mixed concurrent test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    const iterations = 100;
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      db.transaction(() => {
+        const task = store.getTask(taskId);
+        assert.ok(task, "Task should exist");
+        db.connection
+          .prepare("UPDATE tasks SET updated_at = ? WHERE id = ?")
+          .run(nowIso(), taskId);
+      });
+      const end = performance.now();
+      durations.push(end - start);
+    }
+
+    durations.sort((a, b) => a - b);
+    const p95Latency = durations[Math.floor(iterations * 0.95)!]!;
+
+    assert.ok(
+      p95Latency < 20,
+      `Mixed concurrent operations P95 latency ${p95Latency.toFixed(3)}ms exceeds 20ms target`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("load: circuit breaker handles burst of failing operations", async () => {
+  const workspace = createTempWorkspace("perf-circuit-burst-");
+
+  try {
+    const { CircuitBreaker } = await import("../../src/core/providers/circuit-breaker.js");
+
+    const breaker = new CircuitBreaker({
+      name: "burst-test",
+      failureThreshold: 5,
+      resetTimeoutMs: 1000,
+    });
+
+    const iterations = 20;
+    let openCount = 0;
+
+    for (let i = 0; i < iterations; i++) {
+      try {
+        breaker.onFailure();
+      } catch {
+        openCount++;
+      }
+    }
+
+    assert.ok(
+      openCount > 0 || breaker.getState() === "open",
+      "Circuit breaker should eventually open after failures",
+    );
+
+    const state = breaker.getState();
+    assert.ok(
+      state === "open" || state === "half_open",
+      "Circuit breaker should be open or half_open after failures",
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
+});

@@ -1,0 +1,9 @@
+id: devops_single_step
+division_id: devops
+steps:
+  - step_id: deploy_work
+    role_id: devops_engineer
+    output_key: deployment
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

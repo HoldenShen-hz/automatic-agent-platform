@@ -1,0 +1,33 @@
+id: research_orchestration
+division_id: research
+steps:
+  - step_id: intake_triage
+    role_id: researcher
+    output_key: triage
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+  - step_id: conduct_research
+    role_id: lead_researcher
+    input_keys: [triage]
+    output_key: research_result
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 180000
+    max_attempts: 2
+    depends_on: [intake_triage]
+  - step_id: analyze_findings
+    role_id: data_analyst
+    input_keys: [research_result]
+    output_key: analysis
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 2
+    depends_on: [conduct_research]
+  - step_id: final_review
+    role_id: lead_researcher
+    input_keys: [analysis]
+    output_key: final_report
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+    depends_on: [analyze_findings]

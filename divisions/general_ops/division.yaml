@@ -1,0 +1,32 @@
+id: general_ops
+version: 1
+name: General Operations
+description: General purpose fallback division for research, summaries, and operational requests.
+priority: 10
+default_workflow: single_agent_minimal
+orchestration_workflow: phase1b_single_division_orchestration
+triggers:
+  - summarize
+  - summary
+  - research
+  - analyze
+  - review
+roles:
+  - id: general_executor
+    name: General Executor
+    prompt: roles/general_executor.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 3
+  - id: intake_router
+    name: Intake Router
+    prompt: roles/intake_router.prompt.md
+    model: balanced
+    tools: [read]
+    max_instances: 2
+  - id: workflow_planner
+    name: Workflow Planner
+    prompt: roles/workflow_planner.prompt.md
+    model: reasoning
+    tools: [read]
+    max_instances: 2

@@ -1,0 +1,9 @@
+id: ops_orchestration
+division_id: operations
+steps:
+  - step_id: assess_task
+    role_id: ops_executor
+    output_key: task_assessment
+    output_schema: schemas/ops-output.json
+    timeout_ms: 30000
+    max_attempts: 1

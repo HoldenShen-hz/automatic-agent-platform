@@ -1,0 +1,131 @@
+# Default values for automatic-agent.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/holdenshen-hz/automatic-agent-platform
+  pullPolicy: IfNotPresent
+  tag: ""  # Overridden by CI
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""  # Defaults to release name
+
+service:
+  type: ClusterIP
+  port: 3000
+  metricsPort: 9090
+
+rolloutStrategy: rolling
+
+canary:
+  weight: 10
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: automatic-agent.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+env:
+  AA_API_HOST: "0.0.0.0"
+  AA_API_PORT: "3000"
+  AA_METRICS_PORT: "9090"
+  AA_LOG_LEVEL: "info"
+  AA_STORAGE_DRIVER: "sqlite"
+  NODE_ENV: "production"
+  AA_OTEL_ENABLED: "false"
+  AA_OTEL_SERVICE_NAME: "automatic-agent"
+
+secrets:
+  AA_API_JWT_SECRET: ""
+  ANTHROPIC_API_KEY: ""
+  OPENAI_API_KEY: ""
+  MINIMAX_API_KEY: ""
+
+externalSecret:
+  enabled: false
+  refreshInterval: 1h
+  secretStoreRef:
+    name: automatic-agent-secret-store
+    kind: ClusterSecretStore
+  data:
+    - secretKey: AA_API_JWT_SECRET
+      remoteRef:
+        key: automatic-agent/api
+        property: jwt_secret
+    - secretKey: OPENAI_API_KEY
+      remoteRef:
+        key: automatic-agent/providers
+        property: openai_api_key
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  mountPath: /app/data
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /healthz
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /healthz
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /healthz
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 30
+
+terminationGracePeriodSeconds: 30
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

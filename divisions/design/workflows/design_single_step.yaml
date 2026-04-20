@@ -1,0 +1,9 @@
+id: design_single_step
+division_id: design
+steps:
+  - step_id: design_work
+    role_id: designer
+    output_key: design
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

@@ -1,0 +1,204 @@
+/**
+ * Performance Test: Storage Query Baseline
+ *
+ * Establishes performance baselines for core storage operations.
+ * These tests verify P95 latency targets are met.
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+import { join } from "node:path";
+
+import { SqliteDatabase } from "../../src/core/storage/sqlite/sqlite-database.js";
+import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
+import { newId, nowIso } from "../../src/core/types/ids.js";
+
+test("performance: TaskRepository.getTask() meets P95 < 1ms baseline", () => {
+  const workspace = createTempWorkspace("perf-task-get-");
+  const latencies: number[] = [];
+
+  try {
+    const dbPath = join(workspace, "perf-task.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+
+    const taskId = newId("task");
+    const now = nowIso();
+
+    // Insert a task
+    db.connection
+      .prepare(
+        `INSERT INTO tasks (id, parent_id, root_id, division_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        taskId,
+        null,
+        taskId,
+        "general_ops",
+        "Performance test task",
+        "in_progress",
+        "user",
+        "normal",
+        "{}",
+        null,
+        null,
+        0,
+        0,
+        null,
+        now,
+        now,
+        null,
+      );
+
+    // Measure query latency over many iterations
+    const iterations = 1000;
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      db.connection.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(iterations * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 1ms for simple primary key lookup
+    assert.ok(
+      p95Latency < 1,
+      `TaskRepository.getTask() P95 latency ${p95Latency.toFixed(3)}ms exceeds 1ms baseline`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("performance: task list query with limit meets P95 < 5ms baseline", () => {
+  const workspace = createTempWorkspace("perf-task-list-");
+  const latencies: number[] = [];
+
+  try {
+    const dbPath = join(workspace, "perf-task-list.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+
+    const now = nowIso();
+
+    // Insert multiple tasks
+    for (let i = 0; i < 100; i++) {
+      db.connection
+        .prepare(
+          `INSERT INTO tasks (id, parent_id, root_id, division_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          newId("task"),
+          null,
+          newId("task"),
+          "general_ops",
+          `Task ${i}`,
+          "in_progress",
+          "user",
+          "normal",
+          "{}",
+          null,
+          null,
+          0,
+          0,
+          null,
+          now,
+          now,
+          null,
+        );
+    }
+
+    // Measure query latency
+    const iterations = 500;
+    for (let i = 0; i < iterations; i++) {
+      const start = performance.now();
+      db.connection.prepare("SELECT * FROM tasks WHERE status = ? LIMIT 10").all("in_progress");
+      const end = performance.now();
+      latencies.push(end - start);
+    }
+
+    // Calculate P95
+    latencies.sort((a, b) => a - b);
+    const p95Index = Math.floor(iterations * 0.95);
+    const p95Latency = latencies[p95Index]!;
+
+    // P95 should be < 5ms for paginated list query
+    assert.ok(
+      p95Latency < 5,
+      `Task list query P95 latency ${p95Latency.toFixed(3)}ms exceeds 5ms baseline`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("performance: bulk insert of 100 tasks meets throughput target", () => {
+  const workspace = createTempWorkspace("perf-bulk-insert-");
+  const durations: number[] = [];
+
+  try {
+    const dbPath = join(workspace, "perf-bulk.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+
+    // Measure bulk insert performance
+    const iterations = 10;
+    for (let iter = 0; iter < iterations; iter++) {
+      const start = performance.now();
+      db.transaction(() => {
+        for (let i = 0; i < 100; i++) {
+          db.connection
+            .prepare(
+              `INSERT INTO tasks (id, parent_id, root_id, division_id, title, status, source, priority, input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd, error_code, created_at, updated_at, completed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            )
+            .run(
+              newId("task"),
+              null,
+              newId("task"),
+              "general_ops",
+              `Bulk task ${i}`,
+              "in_progress",
+              "user",
+              "normal",
+              "{}",
+              null,
+              null,
+              0,
+              0,
+              null,
+              nowIso(),
+              nowIso(),
+              null,
+            );
+        }
+      });
+      const end = performance.now();
+      durations.push(end - start);
+    }
+
+    // Calculate average throughput
+    const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+    const throughput = 100 / (avgDuration / 1000); // tasks per second
+
+    // Should achieve at least 1000 tasks/second
+    assert.ok(
+      throughput > 1000,
+      `Bulk insert throughput ${throughput.toFixed(0)} tasks/s below 1000/s target`,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

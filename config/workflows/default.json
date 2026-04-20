@@ -1,0 +1,4 @@
+{
+  "defaultWorkflowId": "single_agent_minimal",
+  "allowCrossDivisionDag": false
+}

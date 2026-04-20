@@ -1,0 +1,22 @@
+id: analytics
+version: 1
+name: Analytics Division
+description: Business intelligence, metrics analysis, KPI tracking, reporting.
+priority: 30
+default_workflow: analytics_single_step
+orchestration_workflow: analytics_single_step
+triggers:
+  - analytics
+  - metrics
+  - KPI
+  - dashboard
+  - report
+  - business intelligence
+  - trends
+roles:
+  - id: bi_analyst
+    name: BI Analyst
+    prompt: roles/bi_analyst.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 3

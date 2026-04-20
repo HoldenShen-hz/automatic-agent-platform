@@ -1,0 +1,14 @@
+{
+  "environment": "dev",
+  "registry": "ghcr.io/holdenshen-hz",
+  "imageRepository": "automatic-agent-system",
+  "deploymentNamespace": "automatic-agent-dev",
+  "configPath": "config/runtime/default.json",
+  "configBundleRef": "config-bundle://runtime/dev",
+  "registryCredentialRef": "secret://system/registry/ghcr/dev",
+  "deploymentCredentialRef": "secret://system/deploy/kubeconfig/dev",
+  "deployWorkflowPath": ".github/workflows/deploy-environment.yml",
+  "publishWorkflowPath": ".github/workflows/publish-image.yml",
+  "clusterName": "dev-cluster",
+  "allowedRolloutStrategies": ["rolling", "canary"]
+}

@@ -1,0 +1,9 @@
+id: support_single_step
+division_id: support
+steps:
+  - step_id: support_work
+    role_id: support_agent
+    output_key: support_result
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

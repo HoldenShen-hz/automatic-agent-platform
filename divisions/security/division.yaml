@@ -1,0 +1,28 @@
+id: security
+version: 1
+name: Security Division
+description: Security auditing, vulnerability assessment, compliance checking, secure coding.
+priority: 60
+default_workflow: security_single_step
+orchestration_workflow: security_single_step
+triggers:
+  - security
+  - vulnerability
+  - audit
+  - CVE
+  - compliance
+  - secure
+  - pentest
+roles:
+  - id: security_analyst
+    name: Security Analyst
+    prompt: roles/security/analyst.prompt.md
+    model: reasoning
+    tools: [read, bash, web_search]
+    max_instances: 2
+  - id: compliance_officer
+    name: Compliance Officer
+    prompt: roles/security/compliance.prompt.md
+    model: balanced
+    tools: [read]
+    max_instances: 2

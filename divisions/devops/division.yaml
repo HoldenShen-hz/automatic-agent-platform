@@ -1,0 +1,31 @@
+id: devops
+version: 1
+name: DevOps Division
+description: CI/CD pipelines, infrastructure automation, deployment, monitoring.
+priority: 45
+default_workflow: devops_single_step
+orchestration_workflow: devops_single_step
+triggers:
+  - deploy
+  - deployment
+  - CI
+  - CD
+  - pipeline
+  - infrastructure
+  - kubernetes
+  - docker
+  - monitoring
+  - dockerfile
+roles:
+  - id: devops_engineer
+    name: DevOps Engineer
+    prompt: roles/devops/engineer.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 3
+  - id: sre
+    name: Site Reliability Engineer
+    prompt: roles/devops/sre.prompt.md
+    model: balanced
+    tools: [read, bash]
+    max_instances: 2

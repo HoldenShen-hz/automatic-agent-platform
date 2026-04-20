@@ -1,0 +1,9 @@
+id: content_single_step
+division_id: content
+steps:
+  - step_id: create_content
+    role_id: writer
+    output_key: content
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1

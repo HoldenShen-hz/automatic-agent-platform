@@ -1,0 +1,74 @@
+# Pre-production values for automatic-agent
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/holdenshen-hz/automatic-agent-platform
+  pullPolicy: Always
+  tag: ""
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: preprod.automatic-agent.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: automatic-agent-preprod-tls
+      hosts:
+        - preprod.automatic-agent.example.com
+
+env:
+  AA_API_HOST: "0.0.0.0"
+  AA_API_PORT: "3000"
+  AA_METRICS_PORT: "9090"
+  AA_LOG_LEVEL: "info"
+  AA_STORAGE_DRIVER: "postgres"
+  NODE_ENV: "production"
+
+externalSecret:
+  enabled: true
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  data:
+    - secretKey: AA_API_JWT_SECRET
+      remoteRef:
+        key: automatic-agent/pre-prod/api
+        property: jwt_secret
+    - secretKey: OPENAI_API_KEY
+      remoteRef:
+        key: automatic-agent/pre-prod/providers
+        property: openai_api_key
+    - secretKey: ANTHROPIC_API_KEY
+      remoteRef:
+        key: automatic-agent/pre-prod/providers
+        property: anthropic_api_key
+
+persistence:
+  enabled: true
+  storageClass: gp3
+  size: 50Gi
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

@@ -1,0 +1,5 @@
+{
+  "maxConcurrentTasks": 2,
+  "defaultTaskTimeoutMs": 180000,
+  "defaultStepTimeoutMs": 90000
+}

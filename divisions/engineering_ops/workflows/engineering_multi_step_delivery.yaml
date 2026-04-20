@@ -1,0 +1,25 @@
+id: engineering_multi_step_delivery
+division_id: engineering_ops
+steps:
+  - step_id: analyze_request
+    role_id: engineer
+    output_key: implementation_plan
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+  - step_id: implement_changes
+    role_id: engineer
+    input_keys: [implementation_plan]
+    output_key: code_changes
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 180000
+    max_attempts: 2
+    depends_on: [analyze_request]
+  - step_id: review_changes
+    role_id: reviewer
+    input_keys: [code_changes]
+    output_key: review_summary
+    output_schema: schemas/minimal-output.json
+    timeout_ms: 90000
+    max_attempts: 1
+    depends_on: [implement_changes]

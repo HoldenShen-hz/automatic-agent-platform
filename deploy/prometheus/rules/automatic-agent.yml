@@ -1,0 +1,29 @@
+groups:
+  - name: automatic-agent
+    rules:
+      - alert: AutomaticAgentHighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: automatic-agent 5xx error rate is above 5%
+          description: HTTP 5xx ratio has exceeded 5% for 10 minutes.
+
+      - alert: AutomaticAgentTaskFailureRate
+        expr: sum(rate(task_executions_total{status="failed"}[10m])) / clamp_min(sum(rate(task_executions_total[10m])), 1) > 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: task failure rate is above 10%
+          description: Task executions are failing above the warning threshold.
+
+      - alert: AutomaticAgentMemoryPressure
+        expr: process_meminfo_bytes{type="rss"} > 536870912
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent RSS exceeds 512MiB
+          description: Resident memory has stayed above the configured pressure threshold.
