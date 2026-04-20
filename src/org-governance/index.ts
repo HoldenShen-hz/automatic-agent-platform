@@ -1,6 +1,7 @@
 export * from "./approval-routing/delegation/index.js";
 export * from "./approval-routing/escalation/index.js";
 export * from "./approval-routing/route-engine/index.js";
+export * from "./approval-routing/approval-routing-service.js";
 export * from "./compliance-engine/audit-enforcer/index.js";
 export * from "./compliance-engine/inheritance/index.js";
 export * from "./compliance-engine/policy-resolver/index.js";

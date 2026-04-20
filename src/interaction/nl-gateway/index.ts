@@ -1,3 +1,7 @@
+export * from "./ambiguity-handler/index.js";
+export * from "./intent-parser/index.js";
+export * from "./slot-resolver/index.js";
+
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import {

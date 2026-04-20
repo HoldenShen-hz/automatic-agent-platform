@@ -1,4 +1,5 @@
 export * from "./coding/index.js";
+export * from "./domain-task-design-service.js";
 export * from "./eval-framework/index.js";
 export * from "./interaction-policy/index.js";
 export * from "./knowledge-schema/index.js";

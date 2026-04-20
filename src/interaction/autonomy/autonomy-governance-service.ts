@@ -1,0 +1,67 @@
+import type { AgentTrustProfile, AutonomyLevel, CapabilityTrustScore, TrustLevel } from "./index.js";
+import { compareAutonomyLevels, nextAutonomyLevel } from "./level-manager/index.js";
+import { assessPromotion } from "./promotion-engine/index.js";
+import { calculateTrustScore, mapTrustLevel } from "./trust-scorer/index.js";
+
+export interface AutonomyGovernanceDecision {
+  readonly agentId: string;
+  readonly capabilityId: string;
+  readonly currentLevel: AutonomyLevel;
+  readonly recommendedLevel: AutonomyLevel;
+  readonly trustScore: number;
+  readonly trustLevel: TrustLevel;
+  readonly promoted: boolean;
+  readonly reasonCodes: readonly string[];
+}
+
+export interface AutonomyGovernanceSnapshot {
+  readonly agentId: string;
+  readonly overallTrustScore: number;
+  readonly overallTrustLevel: TrustLevel;
+  readonly decisions: readonly AutonomyGovernanceDecision[];
+}
+
+export class AutonomyGovernanceService {
+  public evaluateProfile(profile: AgentTrustProfile): AutonomyGovernanceSnapshot {
+    const decisions = profile.capabilityScores.map((score) => this.evaluateCapability(profile.agentId, score));
+    const overallTrustScore = decisions.length === 0
+      ? 0
+      : Math.round(decisions.reduce((sum, item) => sum + item.trustScore, 0) / decisions.length);
+
+    return {
+      agentId: profile.agentId,
+      overallTrustScore,
+      overallTrustLevel: mapTrustLevel(overallTrustScore),
+      decisions,
+    };
+  }
+
+  public evaluateCapability(agentId: string, score: CapabilityTrustScore): AutonomyGovernanceDecision {
+    const trustScore = calculateTrustScore(score);
+    const trustLevel = mapTrustLevel(trustScore);
+    const promotion = assessPromotion(score);
+    const recommendedLevel = promotion.shouldPromote
+      ? promotion.targetLevel
+      : trustScore < 30
+        ? "suggestion"
+        : trustScore < 50 && compareAutonomyLevels(score.currentAutonomy, "supervised") > 0
+          ? "supervised"
+          : score.currentAutonomy;
+
+    return {
+      agentId,
+      capabilityId: score.capabilityId,
+      currentLevel: score.currentAutonomy,
+      recommendedLevel,
+      trustScore,
+      trustLevel,
+      promoted: compareAutonomyLevels(recommendedLevel, score.currentAutonomy) > 0
+        || (promotion.shouldPromote && recommendedLevel === nextAutonomyLevel(score.currentAutonomy)),
+      reasonCodes: promotion.shouldPromote
+        ? promotion.reasonCodes
+        : recommendedLevel !== score.currentAutonomy
+          ? ["autonomy.level_adjusted_by_trust"]
+          : ["autonomy.level_unchanged"],
+    };
+  }
+}

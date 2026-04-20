@@ -28,3 +28,5 @@ export function nextOnboardingPhase(phase: DomainOnboardingPhase): DomainOnboard
   const index = PHASE_ORDER.indexOf(phase);
   return index === -1 || index === PHASE_ORDER.length - 1 ? null : PHASE_ORDER[index + 1] ?? null;
 }
+
+export * from "./domain-onboarding-service.js";

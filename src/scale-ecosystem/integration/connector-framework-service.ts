@@ -1,0 +1,117 @@
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import {
+  ConnectorManifestSchema,
+  listEnabledConnectors,
+  type ConnectorManifest,
+  type NormalizedConnectorManifest,
+} from "./connector-registry/index.js";
+import {
+  buildConnectorExecutionKey,
+  type ConnectorExecutionRequest,
+  type ConnectorExecutionResult,
+} from "./connector-runtime/index.js";
+import {
+  summarizeConnectorHealth,
+  type ConnectorHealthReport,
+} from "./health-monitor/index.js";
+
+export interface ConnectorBinding {
+  readonly bindingId: string;
+  readonly connectorId: string;
+  readonly tenantId: string;
+  readonly environment: "dev" | "staging" | "prod";
+  readonly boundAt: string;
+}
+
+export type RegisteredConnectorManifest = NormalizedConnectorManifest;
+
+export class ConnectorFrameworkService {
+  private readonly manifests = new Map<string, RegisteredConnectorManifest>();
+  private readonly bindings = new Map<string, ConnectorBinding[]>();
+  private readonly health = new Map<string, ConnectorHealthReport[]>();
+
+  public register(manifest: ConnectorManifest): RegisteredConnectorManifest {
+    const parsed = ConnectorManifestSchema.parse(manifest) as RegisteredConnectorManifest;
+    this.manifests.set(parsed.connectorId, parsed);
+    return parsed;
+  }
+
+  public bind(connectorId: string, tenantId: string, environment: ConnectorBinding["environment"], boundAt = nowIso()): ConnectorBinding {
+    const manifest = this.requireManifest(connectorId);
+    if (environment === "prod" && manifest.lifecycleState !== "verified" && manifest.lifecycleState !== "enabled") {
+      throw new Error(`connector_framework.prod_requires_verified:${connectorId}`);
+    }
+    const binding: ConnectorBinding = {
+      bindingId: newId("connector_binding"),
+      connectorId,
+      tenantId,
+      environment,
+      boundAt,
+    };
+    this.bindings.set(connectorId, [...(this.bindings.get(connectorId) ?? []), binding]);
+    return binding;
+  }
+
+  public recordHealth(report: ConnectorHealthReport): ConnectorHealthReport {
+    this.requireManifest(report.connectorId);
+    this.health.set(report.connectorId, [...(this.health.get(report.connectorId) ?? []), report]);
+    return report;
+  }
+
+  public execute(
+    request: ConnectorExecutionRequest,
+    options: {
+      readonly environment: "dev" | "staging" | "prod";
+      readonly eventType?: string;
+      readonly executedAt?: string;
+    },
+  ): ConnectorExecutionResult & { readonly executionKey: string; readonly executedAt: string } {
+    const manifest = this.requireManifest(request.connectorId);
+    const executionKey = buildConnectorExecutionKey(request);
+    if (options.environment === "prod" && manifest.lifecycleState !== "verified" && manifest.lifecycleState !== "enabled") {
+      throw new Error(`connector_framework.prod_requires_verified:${request.connectorId}`);
+    }
+    if (options.eventType != null && !manifest.supportedEvents.includes(options.eventType)) {
+      return {
+        connectorId: request.connectorId,
+        success: false,
+        status: "failed",
+        executionKey,
+        executedAt: options.executedAt ?? nowIso(),
+      };
+    }
+
+    const reports = this.health.get(request.connectorId) ?? [];
+    const health = summarizeConnectorHealth(reports);
+    if (health === "failed") {
+      return {
+        connectorId: request.connectorId,
+        success: false,
+        status: "failed",
+        executionKey,
+        executedAt: options.executedAt ?? nowIso(),
+      };
+    }
+
+    return {
+      connectorId: request.connectorId,
+      success: true,
+      status: health === "degraded" ? "deferred" : "succeeded",
+      executionKey,
+      executedAt: options.executedAt ?? nowIso(),
+    };
+  }
+
+  public listEnabled(): RegisteredConnectorManifest[] {
+    const enabledIds = new Set(listEnabledConnectors([...this.manifests.values()]).map((item) => item.connectorId));
+    return [...this.manifests.values()].filter((item) => enabledIds.has(item.connectorId));
+  }
+
+  private requireManifest(connectorId: string): RegisteredConnectorManifest {
+    const manifest = this.manifests.get(connectorId);
+    if (manifest == null) {
+      throw new Error(`connector_framework.connector_not_found:${connectorId}`);
+    }
+    return manifest;
+  }
+}
