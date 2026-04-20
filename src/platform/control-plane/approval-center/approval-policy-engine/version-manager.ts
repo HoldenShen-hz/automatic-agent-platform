@@ -24,7 +24,7 @@
  * - Activation timestamp
  */
 
-import { newId, nowIso } from "../../../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
 import type {
   ApprovalPolicyBundle,
   VersionedPolicyBundle,
@@ -111,7 +111,10 @@ export class PolicyVersionManager {
       throw new Error(`Base version ${baseVersion} not found for bundle ${bundleId}`);
     }
 
-    const [major, minor, patch] = base.version.split(".").map(Number);
+    const versionParts = base.version.split(".").map(Number);
+    const major = versionParts[0] ?? 1;
+    const minor = versionParts[1] ?? 0;
+    const patch = versionParts[2] ?? 0;
     const newVersion = `${major}.${minor}.${patch + 1}`;
 
     const draft: VersionedPolicyBundle = {
@@ -122,8 +125,6 @@ export class PolicyVersionManager {
       previousVersion: base.version,
       createdAt: nowIso(),
       updatedAt: nowIso(),
-      approvedBy: undefined,
-      approvalRequestId: undefined,
     };
 
     return draft;

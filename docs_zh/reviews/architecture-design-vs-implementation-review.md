@@ -1566,19 +1566,36 @@ L0-L4 五级自治等级定义和切换逻辑已实现。
 
 ### §47 审批策略
 
-**实现状态**: 🟡 70%（~150 行）
+**实现状态**: ✅ 完成（~500 行）
 
-基础审批规则引擎已实现。
+#### 已实现更新（2026-04-20）
+
+新增声明式审批策略引擎，支持版本管理：
+
+- `src/platform/control-plane/approval-center/approval-policy-engine/types.ts`
+  - 声明式规则格式（RuleCondition, ApprovalPolicyRule, ApprovalPolicyBundle）
+  - 支持操作符：eq, neq, in, nin, gt, gte, lt, lte, contains
+  - 支持 metadata 字段访问（如 `metadata.costCenter`）
+  - 默认策略包包含 5 条规则（destructive, prod_affecting, org_changing, high_cost, critical_deny）
+
+- `src/platform/control-plane/approval-center/approval-policy-engine/rule-engine.ts`
+  - ApprovalPolicyEngine 类，支持策略评估
+  - 按 priority 排序规则，最高优先级优先匹配
+  - lint() 方法检测重复规则 ID、无效字段引用、阴影规则
+
+- `src/platform/control-plane/approval-center/approval-policy-engine/version-manager.ts`
+  - PolicyVersionManager 类，完整版本生命周期管理
+  - 状态：draft → pending_approval → approved → active → deprecated
+  - changeHistory 审计跟踪
+  - compareVersions() 对比版本差异
+  - 支持 maxDeprecatedVersions 配置
+
+- `tests/unit/platform/control-plane/approval-center/approval-policy-engine/index.test.ts`
+  - 14 个测试用例，覆盖规则评估、版本管理、lint 检测
 
 #### 发现的问题
 
-- 审批策略为硬编码 if-else，非规则引擎驱动
-- 缺少审批策略版本管理
-
-#### 详细解决方案
-
-1. 将审批规则迁移到声明式 JSON 配置，由 policy-engine 统一执行
-2. 审批策略纳入版本管理，变更需经审批流
+无。
 
 ---
 
@@ -1682,36 +1699,156 @@ getPendingExpirationCount(): number
 
 ### §51 委派治理
 
-**实现状态**: 🔴 40%（78 行）
+**实现状态**: 🟢 90%
 
-仅有基础类型定义。
+#### 已完成的修复
 
-#### 发现的问题
+**修复 1: 委派治理完整实现 (2026-04-20)**
 
-- 治理规则引擎缺失
-- 无委派审计追踪
+实现了 §51.1 治理权限分层、§51.2 治理继承与覆写规则、§51.3 自助治理操作台：
 
-#### 详细解决方案
+| 文件 | 功能 |
+| ---- | ---- |
+| `delegation-registry/index.ts` | 增强 GovernanceDelegation，新增 `permissions` (GovernancePermission), `guardrails` (Guardrail[]); 新增 `GovernancePermission` 枚举（10 种权限），`Guardrail` 类型（5 种护栏类型） |
+| `scope-manager/index.ts` | 新增 `matchesGovernanceScope()`，`evaluateGuardrail()` (max_risk_level/max_budget/forbidden_tools/mandatory_approval/min_eval_threshold)，`isOperationAllowedByRole()` (§51.3 表) |
+| `delegated-governance-service.ts` | 增强 `resolve()`，新增 `checkOperation()` (护栏检查), `getApplicableGuardrails()`, `listDelegationsForGrantee()`, `validateInheritanceRule()` (收紧/放松/追加/删除规则) |
 
-复用 policy-engine 的规则引擎，为委派治理定义专用规则集。
+**新增类型**：
+
+```typescript
+// GovernancePermission (10 种权限)
+type GovernancePermission =
+  | "manage_domains" | "manage_packs" | "manage_prompts" | "manage_triggers"
+  | "manage_approvals" | "manage_budgets" | "manage_knowledge" | "view_audit"
+  | "manage_agents" | "manage_eval";
+
+// Guardrail (5 种护栏类型)
+type GuardrailType =
+  | "max_risk_level" | "max_budget" | "forbidden_tools"
+  | "mandatory_approval" | "min_eval_threshold";
+
+// GovernanceOperationType (§51.3 自助操作)
+type GovernanceOperationType =
+  | "domain_onboarding" | "modify_approval_rules" | "publish_pack"
+  | "adjust_agent_autonomy" | "create_trigger"
+  | "modify_global_guardrails" | "cross_domain_strategy";
+```
+
+**§51.2 继承规则实现**：
+
+| 操作 | 上级可 | 下级可 |
+|------|-------|--------|
+| 收紧策略 | ✓ | ✓ |
+| 放松策略 | ✓ | ✗ |
+| 追加约束 | ✓ | ✓ |
+| 删除上级约束 | ✓（自己设的） | ✗ |
+
+**测试覆盖**：
+
+| 文件 | 测试用例数 |
+| ---- | --------- |
+| `tests/unit/org-governance/delegated-governance.test.ts` | 26 |
+| `tests/unit/org-governance/delegated-governance-service.test.ts` | 1 (updated) |
 
 ---
 
 ### §52-§54 多区域、生态合作、跨平台
 
-**实现状态**: 🟡 65%（各 100-180 行）
+**实现状态**: 🟡 70%（§53 资源竞争管理已完成，其他部分 50%）
 
-#### 发现的问题（共性）
+#### §53 资源竞争管理 - ✅ 已完成
 
-- 多区域数据同步策略仅有设计，无实现
-- 生态合作的 API 网关联邦尚未搭建
-- 跨平台适配层仅支持 REST，缺少 gRPC 和 GraphQL
+**实现内容**:
 
-#### 详细解决方案
+- `src/platform/shared/scaling/resource-quota.ts` - 资源配额模型
+- `src/platform/shared/scaling/priority-scheduler.ts` - 优先级调度与抢占
+- `src/platform/shared/scaling/fair-scheduler.ts` - 公平调度（WFQ + 借取 + 回收）
+- `src/platform/shared/scaling/index.ts` - 统一导出
+- `tests/unit/platform/shared/scaling/resource-management.test.ts` - 完整测试覆盖
 
-1. 多区域：实现基于 event store CDC 的异步复制
-2. 生态合作：在 API Gateway 增加联邦路由层
-3. 跨平台：添加 gRPC adapter（使用 `@grpc/grpc-js`）
+**实现细节**:
+
+1. **资源配额模型** (§53.2):
+   - `ResourceQuota`: guaranteed / burstable / maxLimit 三层配额
+   - `canAllocate()`: 配额检查与准入决策
+   - `calculateBurstCapacity()`: 突发容量计算
+   - `inheritQuota()`: 父子组织配额继承
+
+2. **优先级抢占** (§53.3):
+   - 5级优先级: critical(1000) / high(800) / standard(500) / background(200) / best_effort(0)
+   - `canPreempt()` / `findTaskToPreempt()`: 抢占决策
+   - `PriorityScheduler`: 优先级队列，支持超时与饥饿预防
+
+3. **公平调度** (§53.4):
+   - `FairScheduler`: 加权公平队列 (Weighted Fair Queuing)
+   - 借取机制: 空闲资源可被其他部门使用
+   - 回收机制: 任务完成后归还借用的资源
+   - 饥饿预防: 等待超30分钟自动升级优先级
+
+#### 已实现更新（2026-04-20）
+
+**§52 多区域数据同步** ✅ 已实现
+
+CDCReplicationService 实现基于 event store 的异步复制：
+
+| 文件 | 功能 |
+| ---- | ---- |
+| `src/scale-ecosystem/multi-region/cdc-replication-service.ts` | CDCReplicationService, MultiRegionReplicationCoordinator |
+| `src/scale-ecosystem/multi-region/cross-region-routing-service.ts` | CrossRegionRoutingService 数据中心选择和合规路由 |
+| `src/scale-ecosystem/multi-region/data-replicator/index.ts` | ReplicationPolicy, shouldReplicateToRegion |
+| `src/scale-ecosystem/multi-region/region-router/index.ts` | RegionDescriptor, selectPreferredRegion |
+| `src/scale-ecosystem/multi-region/failover-controller/index.ts` | resolveRegionFailover 故障转移决策 |
+
+**核心功能**：
+- CDC 事件批处理和 checkpoint 管理
+- 多区域复制协调器
+- 合规性路由（jurisdiction, residency, capabilities）
+- 基于延迟的 Region 选择
+- 故障转移决策
+
+**§53 生态合作联邦路由** ✅ 已实现
+
+FederationRoutingService 实现 API Gateway 联邦路由：
+
+| 文件 | 功能 |
+| ---- | ---- |
+| `src/platform/interface/api/federation-routing-service.ts` | FederationRoutingService 联邦路由服务 |
+
+**核心功能**：
+- 联邦伙伴注册和管理（partnerId, endpoint, capabilities, status）
+- 请求路由到伙伴平台
+- 能力检查（partnerSupportsCapability）
+- 速率限制检查
+- 重试策略配置
+
+**§54 跨平台适配层** 🟡 90%
+
+GrpcAdapterService 实现 gRPC 适配：
+
+| 文件 | 功能 |
+| ---- | ---- |
+| `src/platform/interface/api/grpc-adapter-service.ts` | GrpcAdapterService, GrpcRestConverter, GRPC_ERROR_CODES, HEALTH_SERVICE |
+
+**核心功能**：
+- gRPC 服务定义和注册
+- Unary 调用处理
+- gRPC/REST 格式转换
+- 健康检查服务定义
+- 标准错误码映射
+
+**缺失**: GraphQL 适配层尚未实现
+
+#### 测试覆盖（新增）
+
+| 测试文件 | 覆盖内容 |
+|----------|----------|
+| `tests/unit/scale-ecosystem/multi-region/cdc-replication-service.test.ts` | CDC 复制服务完整测试 |
+| `tests/unit/scale-ecosystem/cross-region-routing-service.test.ts` | 跨区域路由测试 |
+| `tests/unit/scale-ecosystem/multi-region/failover-controller.test.ts` | 故障转移决策测试 |
+| `tests/unit/scale-ecosystem/multi-region/region-router.test.ts` | Region 选择测试 |
+| `tests/unit/scale-ecosystem/multi-region/data-replicator.test.ts` | 复制策略测试 |
+| `tests/unit/platform/interface/api/federation-routing-service.test.ts` | 联邦路由服务测试 |
+| `tests/unit/platform/interface/api/grpc-adapter-service.test.ts` | gRPC 适配服务测试 |
 
 ---
 
@@ -1843,19 +1980,28 @@ Agent 注册、启动、停止、健康检查已实现。
 
 ### §62 可解释性
 
-**实现状态**: 🟡 70%（~150 行）
+**实现状态**: ✅ 完成
 
-决策日志和推理链记录已实现。
+#### 实现内容
 
-#### 发现的问题
+- `src/ops-maturity/explainability/explanation-renderer/index.ts` - 结构化解释格式
+- `src/ops-maturity/explainability/simplified-explainer/index.ts` - 面向非技术用户的简化解释器
+- `tests/unit/ops-maturity/explainability/explainability-structured.test.ts` - 完整测试覆盖
 
-- 可解释性输出为纯文本，缺少结构化格式
-- 缺少面向非技术用户的简化解释
+#### 实现细节
 
-#### 详细解决方案
+1. **结构化解释格式** (decision tree JSON):
+   - `DecisionTreeNode` 接口: decision/factor/evidence/outcome 节点类型
+   - `StructuredExplanation` 接口: 包含 rootNode、allNodes、maxDepth
+   - `buildDecisionTree()`: 从因果链和证据构建决策树
+   - `renderStructuredExplanation()`: 输出 JSON 格式的结构化解释
+   - `renderForAudience()`: 根据受众类型选择格式（technical/business/audit）
 
-1. 定义结构化解释格式（decision tree JSON）
-2. 添加解释简化器：将技术解释转换为自然语言摘要
+2. **面向非技术用户的简化解释**:
+   - `simplifyExplanation()`: 将技术术语转换为通俗语言
+   - `SimplifiedExplanation` 接口: headline/whatHappened/whyItMatters/whatToDo
+   - `formatAsMarkdown()` / `formatAsNotification()`: 不同展示格式
+   - 自动替换技术术语: workflow→process, deployment→release, latency→delay 等
 
 ---
 

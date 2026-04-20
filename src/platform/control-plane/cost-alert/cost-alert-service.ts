@@ -201,7 +201,7 @@ export class CostAlertService extends EventEmitter {
     const wasExceeded = previousCost >= (policy.limitCostUsd ?? Infinity);
     const isExceeded = thresholdRatio >= 1.0;
 
-    // Emit events if thresholds were crossed
+    // Emit events if thresholds were crossed (order matters: exceeded > critical > warning)
     if (!wasExceeded && isExceeded) {
       this.emitThresholdExceeded({
         scope: input.scope,
@@ -238,7 +238,11 @@ export class CostAlertService extends EventEmitter {
         stepId: input.stepId ?? null,
         actions: policy.actionsOnWarning,
       });
-    } else if (!wasWarning && isWarning) {
+    }
+
+    // Warning is checked separately from exceeded/critical to ensure it fires
+    // even when cost crosses warning threshold before exceeding
+    if (!wasWarning && isWarning && !isExceeded && !isCritical) {
       this.emitThresholdExceeded({
         scope: input.scope,
         scopeId: input.scopeId,

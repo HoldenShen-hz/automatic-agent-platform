@@ -216,6 +216,7 @@ export class DelegationGovernanceService {
     if (rule) {
       rule.enabled = false;
       return true;
+    }
     return false;
   }
 
