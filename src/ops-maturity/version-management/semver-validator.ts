@@ -289,7 +289,8 @@ export class SemverValidator {
       if (!match) continue;
 
       const [, operator, versionStr] = match;
-      const parsed = this.parse(versionStr);
+      const version = versionStr ?? "";
+      const parsed = this.parse(version);
       if (parsed.isValid) {
         constraints.push({ operator: operator ?? "=", version: parsed.version });
       }

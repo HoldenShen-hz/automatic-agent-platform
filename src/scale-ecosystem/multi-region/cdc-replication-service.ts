@@ -8,7 +8,6 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import type { EventRecord } from "../../platform/contracts/types/domain.js";
 
 /**
  * CDC replication event types
@@ -38,13 +37,25 @@ export interface CDCReplicationCheckpoint {
 }
 
 /**
+ * CDC replication event - extends EventRecord with sequence for ordering
+ */
+export interface CDCReplicationEvent {
+  readonly id: string;
+  readonly sequence: number;
+  readonly eventType: string;
+  readonly taskId: string;
+  readonly payloadJson: string;
+  readonly createdAt: string;
+}
+
+/**
  * CDC replication batch
  */
 export interface CDCReplicationBatch {
   readonly batchId: string;
   readonly sourceRegionId: string;
   readonly targetRegionId: string;
-  readonly events: readonly EventRecord[];
+  readonly events: readonly CDCReplicationEvent[];
   readonly startSequence: number;
   readonly endSequence: number;
   readonly createdAt: string;
@@ -125,7 +136,7 @@ export class CDCReplicationService {
   public prepareBatch(
     sourceRegionId: string,
     targetRegionId: string,
-    sourceEvents: readonly EventRecord[],
+    sourceEvents: readonly CDCReplicationEvent[],
   ): CDCReplicationBatch | null {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
     const checkpoint = this.checkpoints.get(key);
@@ -221,11 +232,13 @@ export class CDCReplicationService {
   /**
    * Get all registered region pairs
    */
-  public getRegisteredRegionPairs(): readonly { source: string; target: string }[] {
-    const pairs: { source: string; target: string }[] = [];
+  public getRegisteredRegionPairs(): readonly { sourceRegionId: string; targetRegionId: string }[] {
+    const pairs: { sourceRegionId: string; targetRegionId: string }[] = [];
     for (const key of this.configs.keys()) {
-      const [source, target] = key.split("->");
-      pairs.push({ source, target });
+      const parts = key.split("->");
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        pairs.push({ sourceRegionId: parts[0], targetRegionId: parts[1] });
+      }
     }
     return pairs;
   }

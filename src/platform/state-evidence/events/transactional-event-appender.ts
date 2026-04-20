@@ -39,7 +39,7 @@ export interface TransactionalAppendResult {
   /** The appended event record */
   event: EventRecord;
   /** The outbox entry ID if written to outbox */
-  outboxEntryId?: string;
+  outboxEntryId: string | undefined;
 }
 
 /**

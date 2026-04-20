@@ -159,9 +159,8 @@ export class InMemoryTenantRepository implements TenantRepository {
       throw new Error(`Tenant ${tenantId} not found`);
     }
 
-    const updated: TenantRecord = {
-      ...existing,
-      displayName: input.displayName ?? existing.displayName,
+    const record: TenantRecord = {
+      tenantId: existing.tenantId,
       organizationId: input.organizationId ?? existing.organizationId,
       storageScope: input.storageScope ?? existing.storageScope,
       identityScope: input.identityScope ?? existing.identityScope,
@@ -174,11 +173,16 @@ export class InMemoryTenantRepository implements TenantRepository {
       slaLevel: input.slaLevel ?? existing.slaLevel,
       allowedRegions: input.allowedRegions ?? existing.allowedRegions,
       quotas: toTenantQuotas(input.quotas) ?? existing.quotas,
+      createdAt: existing.createdAt,
       updatedAt: nowIso(),
     };
 
-    this.tenants.set(tenantId, updated);
-    return updated;
+    if (input.displayName !== undefined) {
+      record.displayName = input.displayName;
+    }
+
+    this.tenants.set(tenantId, record);
+    return record;
   }
 
   public async delete(tenantId: string): Promise<void> {

@@ -87,7 +87,7 @@ export function isTrustLevelAtOrAbove(
     : minimum;
 
   const order: CodeTrustLevel[] = ["untrusted", "external", "trusted"];
-  return order.indexOf(normalizedLevel) >= order.indexOf(normalizedMinimum);
+  return order.indexOf(normalizedLevel as CodeTrustLevel) >= order.indexOf(normalizedMinimum as CodeTrustLevel);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ export function isMemoryLayerAtOrAbove(
     : minimum;
 
   const order: CodeMemoryLayer[] = ["layer_3", "layer_4", "layer_5"];
-  return order.indexOf(normalizedLayer) >= order.indexOf(normalizedMinimum);
+  return order.indexOf(normalizedLayer as CodeMemoryLayer) >= order.indexOf(normalizedMinimum as CodeMemoryLayer);
 }
 
 /**

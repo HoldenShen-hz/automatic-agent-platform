@@ -173,10 +173,10 @@ export class CostAlertService extends EventEmitter {
     // Persist step usage record if stepId is provided
     if (input.stepId) {
       this.recordStepUsage({
-        tenantId: input.tenantId,
+        tenantId: input.tenantId ?? undefined,
         stepId: input.stepId,
-        taskId: input.taskId,
-        executionId: input.executionId,
+        taskId: input.taskId ?? undefined,
+        executionId: input.executionId ?? undefined,
         costUsd: input.actualCostUsd,
         tokens: input.tokens ?? 0,
         provider: input.provider,
@@ -522,9 +522,12 @@ export class CostAlertService extends EventEmitter {
         executionId: input.executionId ?? null,
         stepId: input.stepId,
         kind: "step_usage_record",
+        storagePath: `step-usage/${record.recordId}.json`,
         fileName: `step-usage-${input.stepId}-${record.timestamp}.json`,
-        contentJson: JSON.stringify(record),
+        mimeType: "application/json",
         sizeBytes: 0,
+        checksum: null,
+        lineageJson: null,
         createdAt: record.timestamp,
       });
     } catch {

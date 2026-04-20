@@ -139,13 +139,7 @@ export class DataReplicatorService {
   private readonly eventHandlers = new Map<string, (event: ReplicationEvent) => Promise<void>>();
 
   public constructor(config: DataReplicatorConfig) {
-    this.config = {
-      batchSize: 100,
-      flushIntervalMs: 5000,
-      retryAttempts: 3,
-      checksumAlgorithm: "sha256",
-      ...config,
-    };
+    this.config = { ...config };
     for (const regionId of config.targetRegionIds) {
       this.buffers.set(regionId, new ReplicationEventBuffer(this.config.batchSize, this.config.flushIntervalMs));
     }
@@ -332,12 +326,15 @@ export function createDataReplicator(
   sourceRegionId: string,
   targetRegionIds: readonly string[],
   policy: ReplicationPolicy,
-  options?: Partial<DataReplicatorConfig>,
+  options?: Partial<Omit<DataReplicatorConfig, "sourceRegionId" | "targetRegionIds" | "policy">>,
 ): DataReplicatorService {
   return new DataReplicatorService({
     sourceRegionId,
     targetRegionIds,
     policy,
-    ...options,
+    batchSize: options?.batchSize ?? 100,
+    flushIntervalMs: options?.flushIntervalMs ?? 5000,
+    retryAttempts: options?.retryAttempts ?? 3,
+    checksumAlgorithm: options?.checksumAlgorithm ?? "sha256",
   });
 }

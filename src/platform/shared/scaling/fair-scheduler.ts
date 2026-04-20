@@ -38,8 +38,8 @@ export interface SchedulingDecision {
   tenantId: string;
   taskId: string;
   allocatedResources: Partial<ResourceAllocation>;
-  waitReason?: string;
-  borrowedFrom?: string[];
+  waitReason?: string | undefined;
+  borrowedFrom?: string[] | undefined;
 }
 
 /**
@@ -208,7 +208,7 @@ export class FairScheduler {
     const tenant = this.tenants.get(tenantId);
     if (!tenant) return;
 
-    const borrowedKey = resourceType === "tokensPerMinute" ? "tokensPerMinute" : resourceType;
+    const borrowedKey: "workflows" | "workers" | "tokensPerMinute" = resourceType === "tokensPerMinute" ? "tokensPerMinute" : resourceType;
     const borrowedAmount = tenant.borrowedResources[borrowedKey];
     if (borrowedAmount <= 0) return;
 

@@ -79,7 +79,7 @@ export class ConversationTemplateRegistry {
   /**
    * Register a conversation template
    */
-  public register(template: ConversationTemplate): void {
+  public register(template: z.input<typeof ConversationTemplateSchema>): void {
     const validated = ConversationTemplateSchema.parse(template);
     this.templates.set(validated.templateId, validated);
   }
@@ -135,6 +135,7 @@ export class ConversationTemplateRegistry {
       templateId: "task_create_standard",
       name: "标准任务创建",
       description: "引导用户完成标准任务创建流程",
+      version: "1.0",
       intent: "task_create",
       steps: [
         {
@@ -182,6 +183,7 @@ export class ConversationTemplateRegistry {
       templateId: "task_query_status",
       name: "任务状态查询",
       description: "查询任务当前状态和进度",
+      version: "1.0",
       intent: "task_query",
       steps: [
         {
@@ -208,6 +210,7 @@ export class ConversationTemplateRegistry {
       templateId: "task_modify_update",
       name: "任务修改",
       description: "修改已有任务的内容或状态",
+      version: "1.0",
       intent: "task_modify",
       steps: [
         {
@@ -248,6 +251,7 @@ export class ConversationTemplateRegistry {
       templateId: "approval_request",
       name: "审批请求",
       description: "发起或处理审批请求",
+      version: "1.0",
       intent: "approval_action",
       steps: [
         {
@@ -288,6 +292,7 @@ export class ConversationTemplateRegistry {
       templateId: "status_inquiry_general",
       name: "状态查询",
       description: "通用状态查询对话",
+      version: "1.0",
       intent: "status_inquiry",
       steps: [
         {
@@ -355,7 +360,9 @@ export class ConversationTemplateExecutor {
 
     if (response !== undefined) {
       const currentStep = conversation.steps[conversation.currentStepIndex];
-      updatedContext[currentStep?.stepId] = response;
+      if (currentStep) {
+        updatedContext[currentStep.stepId] = response;
+      }
     }
 
     let nextIndex = conversation.currentStepIndex;
@@ -405,14 +412,15 @@ export class ConversationTemplateExecutor {
       ? Math.round((stepIndex / template.steps.length) * 100)
       : 100;
 
-    return {
+    const result: TemplatedConversation = {
       templateId: template.templateId,
       currentStepIndex: stepIndex,
       steps: template.steps,
       context,
       progress,
       isComplete,
-      nextPrompt: currentStep?.prompt,
+      ...(currentStep ? { nextPrompt: currentStep.prompt } : {}),
     };
+    return result;
   }
 }

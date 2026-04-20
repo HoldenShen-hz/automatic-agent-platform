@@ -162,7 +162,7 @@ export function validatePluginDefinition(definition: PluginDefinition): PluginDe
     name: definition.name,
     version: definition.version,
     type: definition.type,
-    description: definition.description,
+    description: definition.description ?? "Plugin description",
     capabilities: definition.capabilities,
     resourceLimits: definition.resourceLimits,
     dependencies: definition.dependencies,

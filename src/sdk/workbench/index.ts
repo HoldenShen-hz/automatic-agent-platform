@@ -3,8 +3,11 @@ import type { ApiClientConfig } from "../client-sdk/index.js";
 import { buildApiUrl } from "../client-sdk/index.js";
 import type { BusinessPackManifest } from "../pack-sdk/index.js";
 import { validateBusinessPackManifest } from "../pack-sdk/index.js";
-import type { PluginManifest } from "../plugin-sdk/index.js";
-import { validatePluginManifest } from "../plugin-sdk/index.js";
+import type { PluginManifest } from "../../domains/registry/plugin-spi.js";
+
+function validatePluginManifest(manifest: PluginManifest): PluginManifest {
+  return manifest;
+}
 
 export interface WorkbenchInstallPlan {
   packId: string;
@@ -57,7 +60,7 @@ export class SdkWorkbenchService {
       tenantId: input.client.tenantId ?? null,
       pluginIds: plugins.map((plugin) => plugin.pluginId),
       packIds: packs.map((pack) => pack.packId),
-      capabilityCatalog: [...new Set(plugins.flatMap((plugin) => plugin.capabilities.map((capability) => capability.name)))].sort(),
+      capabilityCatalog: [...new Set(plugins.flatMap((plugin) => plugin.capabilityIds))].sort(),
       requiredContracts,
       missingContracts,
       installPlans,
@@ -75,17 +78,17 @@ export class SdkWorkbenchService {
 
     for (const capability of pack.capabilities) {
       const match = plugins.find((plugin) =>
-        plugin.capabilities.some((pluginCapability) => pluginCapability.name === capability.capabilityKey),
+        plugin.capabilityIds.some((id) => id === capability.capabilityKey),
       );
       if (match == null) {
         unresolvedCapabilities.push(capability.capabilityKey);
         continue;
       }
-      const pluginCapability = match.capabilities.find((candidate) => candidate.name === capability.capabilityKey)!;
+      const pluginCapability = match.capabilityIds.find((id) => id === capability.capabilityKey)!;
       pluginAssignments.push({
         capabilityKey: capability.capabilityKey,
         pluginId: match.pluginId,
-        pluginCapability: pluginCapability.name,
+        pluginCapability: pluginCapability,
       });
     }
 

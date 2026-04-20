@@ -62,7 +62,7 @@ export interface ConfigRollout {
   updatedAt: string;
   targetPercentage: number;
   currentPercentage: number;
-  metadata?: Record<string, unknown>;
+  metadata: Record<string, unknown> | undefined;
 }
 
 /**
