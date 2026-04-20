@@ -5372,26 +5372,30 @@ Dispatcher(§14.2) considers SLA Tier when scheduling:
 
 # 55. Agent Market and Ecology
 
-> v2.5 新增。构建平台内部/外部的 Pack、Plugin、模板、连接器生态市场。
-> 关联：§30 Business Pack · §37.7 DomainRecipe · §22 SDK/DX
+> v2.5 New. Builds an internal/external ecosystem marketplace for Packs, Plugins, templates, and connectors.
+> Related: §30 Business Pack · §37.7 DomainRecipe · §22 SDK/DX
 
 ## 55.1 Market Architecture
 
 ```text
 ┌───────────────────────────────────────────┐
 │  Marketplace Registry                     │
-│  ├── Pack Store      (业务域 Pack)        │
-│  ├── Plugin Store    (功能插件)            │
-│  ├── Connector Store (外部系统连接器)      │
-│  ├── Template Store  (Workflow 模板)       │
-│  ├── Prompt Store    (领域 Prompt 库)      │
-│  └── Eval Store      (评估数据集)          │
+│  ├── Pack Store      (Business Domain Pack)│
+│  ├── Plugin Store    (Functional Plugins)  │
+│  ├── Connector Store (External System      │
+│  │                     Connectors)         │
+│  ├── Template Store  (Workflow Templates)  │
+│  ├── Prompt Store    (Domain Prompt       │
+│  │                     Library)           │
+│  └── Eval Store      (Evaluation Datasets)│
 ├───────────────────────────────────────────┤
 │  Quality & Security Gate                  │
-│  自动扫描 · 兼容性测试 · 沙箱验证          │
+│  Auto Scan · Compatibility Test ·         │
+│  Sandbox Verification                     │
 ├───────────────────────────────────────────┤
 │  Discovery & Recommendation               │
-│  搜索 · 分类 · 评分 · 智能推荐             │
+│  Search · Classification · Rating ·       │
+│  Smart Recommendation                     │
 └───────────────────────────────────────────┘
 ```
 
@@ -5441,7 +5445,7 @@ interface QualityMetrics {
 |---------|---------|---------|
 | free | No share | — |
 | enterprise_included | Included in the platform license, the publisher will receive credit points based on the number of installations | Quarterly |
-| paid (third_party) | publisher 70% / platform 30% | 月度 |
+| paid (third_party) | publisher 70% / platform 30% | Monthly |
 | paid (community) | publisher 80% / platform 20% (community contributions are encouraged) | monthly |
 ## 55.5 Entry obsolescence life cycle
 | Stage | Trigger condition | Platform action |
@@ -5453,38 +5457,38 @@ interface QualityMetrics {
 
 ## 55.6 Dependency Management
 
-- 每个 MarketplaceItem 声明 `dependencies: { item_id: string; version_range: string }[]`
-- 安装时自动解析依赖树，检测版本冲突（类似 npm/cargo resolution）
-- 卸载时检查反向依赖，若有其他 item 依赖则阻止卸载并提示
-- 依赖项被 deprecated 时，自动通知所有依赖方 publisher 和安装用户
+- Each MarketplaceItem declares `dependencies: { item_id: string; version_range: string }[]`
+- Automatically resolve dependency tree during installation, detect version conflicts (similar to npm/cargo resolution)
+- Check reverse dependencies during uninstallation; if other items depend on it, block uninstallation and prompt
+- When a dependency is deprecated, automatically notify all dependent publishers and install users
 
 ---
 
 # 56. Feedback-Driven Continuous Improvement Pipeline
 
-> v2.5 新增。将 §13 Learn/Improve 黑盒接口具象化为可运行的自动改进管线。
-> 关联：§13 OAPEFLIR L-I-R · §17 模型评估 · §37.5 DomainEvalFramework · §42 渐进式自主权
+> v2.5 New. Materializes §13 Learn/Improve black-box interface into a runnable automatic improvement pipeline.
+> Related: §13 OAPEFLIR L-I-R · §17 Model Evaluation · §37.5 DomainEvalFramework · §42 Progressive Autonomy
 
 ## 56.1 Improvement Pipeline Overview
 
 ```text
-生产执行数据
+Production Execution Data
     │
     ▼
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │ Signal       │────▶│ Analysis     │────▶│ Improvement  │
 │ Collector    │     │ Engine       │     │ Generator    │
-│ (信号采集)    │     │ (模式分析)    │     │ (改进生成)    │
+│ (Signal      │     │ (Pattern     │     │ (Improvement │
+│  Collection) │     │  Analysis)   │     │  Generation) │
 └──────────────┘     └──────────────┘     └──────┬───────┘
                                                   │
                                            ┌──────▼───────┐
-                                           │ Quality Gate │
-                                           │ (质量门禁)    │──▶ §17 Eval
+                                           │ Quality Gate │──▶ §17 Eval
                                            └──────┬───────┘
-                                                  │ 通过
+                                                  │ Pass
                                            ┌──────▼───────┐
                                            │ Gradual      │
-                                           │ Rollout      │──▶ §16 Prompt 灰度
+                                           │ Rollout      │──▶ §16 Prompt Gray-scale
                                            └──────────────┘
 ```
 
@@ -5501,15 +5505,15 @@ interface FeedbackSignal {
 }
 
 type FeedbackSignalType =
-  | "user_correction"          // 用户修改了 Agent 输出
-  | "user_approval"            // 用户接受了 Agent 输出（正样本）
-  | "user_rejection"           // 用户拒绝了 Agent 输出
-  | "human_override"           // 人工覆写 Agent 决策
-  | "task_success"             // 任务成功完成
-  | "task_failure"             // 任务失败
-  | "quality_drift"            // eval 质量下降
-  | "cost_anomaly"             // 成本异常
-  | "latency_anomaly";         // 延迟异常
+  | "user_correction"          // User modified Agent output
+  | "user_approval"            // User accepted Agent output (positive sample)
+  | "user_rejection"           // User rejected Agent output
+  | "human_override"           // Human overrode Agent decision
+  | "task_success"             // Task completed successfully
+  | "task_failure"             // Task failed
+  | "quality_drift"            // eval quality degraded
+  | "cost_anomaly"             // Cost anomaly
+  | "latency_anomaly";         // Latency anomaly
 ```
 ## 56.3 Automatic improvement types
 | Type of improvement | Trigger conditions | Degree of automation | Output |

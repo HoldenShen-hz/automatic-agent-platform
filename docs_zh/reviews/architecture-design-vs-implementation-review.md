@@ -134,60 +134,36 @@ export class PluginExecutorService {
 
 ### §5 平台契约（Platform Contracts）
 
-**实现状态**: 🟡 71%（5/7 契约已实现）
+**实现状态**: ✅ 100%（7/7 契约已实现）
 
-| 契约             | 位置                                       | 状态            |
-| ---------------- | ------------------------------------------ | --------------- |
-| TaskEnvelope     | `src/platform/contracts/task-envelope/`    | ✅ 已实现       |
-| ExecutionResult  | `src/platform/contracts/execution-result/` | ✅ 已实现       |
-| PolicyDecision   | `src/platform/contracts/policy-decision/`  | ✅ 已实现       |
-| ApprovalRequest  | `src/platform/contracts/approval-request/` | ✅ 已实现       |
-| AuditEntry       | `src/platform/contracts/audit-entry/`      | ✅ 已实现       |
-| EvidenceRecord   | `src/platform/contracts/evidence-record/`  | ⚠️ **位置错误** |
-| ProjectionUpdate | —                                          | ❌ **完全缺失** |
+| 契约             | 位置                                         | 状态    |
+| ---------------- | -------------------------------------------- | ------- |
+| TaskEnvelope     | `src/platform/contracts/task-envelope/`       | ✅ 已实现 |
+| ExecutionResult  | `src/platform/contracts/execution-result/`   | ✅ 已实现 |
+| PolicyDecision   | `src/platform/contracts/policy-decision/`     | ✅ 已实现 |
+| ApprovalRequest  | `src/platform/contracts/approval-request/`    | ✅ 已实现 |
+| AuditEntry       | `src/platform/contracts/audit-entry/`         | ✅ 已实现 |
+| EvidenceRecord   | `src/platform/contracts/evidence-record/`     | ✅ 已实现 |
+| ProjectionUpdate | `src/platform/contracts/projection-update/`   | ✅ 已实现 |
 
-#### 发现的问题
+#### 已完成的修复
 
-**问题 1: 契约双重定义**
+**修复 1: EvidenceRecord 和 ProjectionUpdate 实现**
 
-- 每个契约在 `contracts/{name}/index.ts` 有简化版
-- 完整规格在 `contracts/types/platform-contracts.ts` 中
-- 两处定义可能不一致，导致运行时类型不匹配
+在 `src/platform/contracts/types/platform-contracts.ts` 中新增了完整类型定义和工厂函数：
 
-**问题 2: EvidenceRecord 位置错误**
+- `EvidenceRecord` 接口 — 决策证据记录，包含 recordId/traceId/principal/category/targetRef/content/metadata
+- `createEvidenceRecord()` 工厂函数
+- `ProjectionUpdate` 接口 — 投影更新契约，包含 projectionId/projectionType/version/sourceEvents/patch/metadata
+- `createProjectionUpdate()` 工厂函数
 
-- 应在 `src/platform/contracts/evidence-record/` 下
-- 实际散落在 state-evidence 模块中
+新增导出目录：
+- `src/platform/contracts/evidence-record/index.ts` — re-export EvidenceRecord 相关类型
+- `src/platform/contracts/projection-update/index.ts` — re-export ProjectionUpdate 相关类型
 
-**问题 3: ProjectionUpdate 契约完全缺失**
+**修复 2: 契约统一导出**
 
-- 架构文档 §5 明确定义了 ProjectionUpdate 作为投影更新的标准契约
-- 代码库中无任何实现
-
-#### 详细解决方案
-
-```typescript
-// 1. 统一契约定义 — 删除 contracts/{name}/index.ts 中的简化版，
-//    全部引用 contracts/types/platform-contracts.ts 中的完整类型
-
-// 2. 创建 src/platform/contracts/evidence-record/index.ts
-export { EvidenceRecord } from "../types/platform-contracts";
-
-// 3. 创建 src/platform/contracts/projection-update/index.ts
-export interface ProjectionUpdate {
-  projectionId: string;
-  projectionType: string;
-  version: number;
-  timestamp: string;
-  sourceEvents: string[];
-  patch: Record<string, unknown>;
-  metadata: {
-    rebuiltAt?: string;
-    triggeredBy: string;
-    idempotencyKey: string;
-  };
-}
-```
+所有契约类型均通过 `contracts/types/platform-contracts.ts` 统一管理，子目录 `index.ts` 仅做 re-export，避免双重定义。
 
 ---
 

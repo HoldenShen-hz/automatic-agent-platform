@@ -523,55 +523,55 @@ interface
     │
 model-gateway
     │
-compliance (相对独立)
+compliance (relatively independent)
 ```
 
-### 6.2 跨层依赖矩阵
+### 6.2 Cross-Layer Dependency Matrix
 
 ```
-platform/  ←────── core/ (纯 re-export)
+platform/  ←────── core/ (pure re-export)
     ^
-    │  ┌──── domains/ ────── plugins/ (双向: plugin SPI)
+    │  ┌──── domains/ ────── plugins/ (bidirectional: plugin SPI)
     │  │         │
     │  │         └──→ scale-ecosystem/ (connector framework)
     │  │
     ├──┤──── interaction/ ──→ scale-ecosystem/ (cost estimation)
     │  │
-    ├──┤──── ops-maturity/ (仅依赖 platform/)
+    ├──┤──── ops-maturity/ (only depends on platform/)
     │  │
     ├──┤──── org-governance/ ──→ domains/ (division loader)
     │  │
-    ├──┤──── scale-ecosystem/ (仅依赖 platform/)
+    ├──┤──── scale-ecosystem/ (only depends on platform/)
     │  │
     └──┴──── sdk/ ──→ scale-ecosystem/, plugins/, domains/
 ```
 
-### 6.3 Platform 内部双向依赖
+### 6.3 Platform Internal Bidirectional Dependencies
 
-| 依赖对                         | 方向 | 导入数 | 说明                                       |
-| ------------------------------ | ---- | ------ | ------------------------------------------ |
-| execution ↔ state-evidence     | 双向 | 16 + 3 | 预期内：执行引擎读写状态                   |
-| execution ↔ orchestration      | 双向 | 7 + 1  | 执行引擎需要编排类型                       |
-| shared ↔ control-plane         | 双向 | 5 + 13 | stability/ 排练模块需要 control-plane 服务 |
-| state-evidence → model-gateway | 单向 | 2      | token 估算                                 |
-| state-evidence → prompt-engine | 单向 | 2      | eval schema                                |
-| state-evidence → domains       | 跨层 | 3      | plugin-spi, domain-registry                |
+| Dependency Pair                 | Direction | Import Count | Description                               |
+| ------------------------------ | --------- | ------------ | ----------------------------------------- |
+| execution ↔ state-evidence     | Bidirectional | 16 + 3    | Expected: execution engine reads/writes state |
+| execution ↔ orchestration      | Bidirectional | 7 + 1     | Execution engine needs orchestration types   |
+| shared ↔ control-plane         | Bidirectional | 5 + 13    | stability/ rehearsal modules need control-plane services |
+| state-evidence → model-gateway | Unidirectional | 2         | token estimation                            |
+| state-evidence → prompt-engine | Unidirectional | 2         | eval schema                                 |
+| state-evidence → domains       | Cross-layer | 3           | plugin-spi, domain-registry               |
 
-### 6.4 叶子模块（零内部依赖）
+### 6.4 Leaf Modules (Zero Internal Dependencies)
 
-| 模块                     | 行数 |
-| ------------------------ | ---- |
-| `contracts/errors.ts`    | 497  |
-| `contracts/constants/`   | 16   |
-| `contracts/types/ids.ts` | 47   |
-| `shared/utils/`          | 321  |
-| `apps/`                  | 50   |
+| Module                   | Lines |
+| ------------------------ | ----- |
+| `contracts/errors.ts`    | 497   |
+| `contracts/constants/`   | 16    |
+| `contracts/types/ids.ts` | 47    |
+| `shared/utils/`          | 321   |
+| `apps/`                  | 50    |
 
-### 6.5 工厂模式
+### 6.5 Factory Pattern
 
-| 工厂                     | 可选后端                     | 位置                          |
-| ------------------------ | ---------------------------- | ----------------------------- |
-| `StorageBackendFactory`  | SQLite / PostgreSQL          | `state-evidence/truth/`       |
+| Factory                  | Optional Backends                | Location                    |
+| ------------------------ | ------------------------------- | -------------------------- |
+| `StorageBackendFactory`  | SQLite / PostgreSQL             | `state-evidence/truth/`    |
 | `QueueAdapterFactory`    | SQLite / Redis               | `execution/queue/`            |
 | `DistributedLockFactory` | SQLite / PG Advisory / Redis | `execution/distributed-lock/` |
 
