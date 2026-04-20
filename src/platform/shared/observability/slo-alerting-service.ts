@@ -24,6 +24,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { rolloutFreezeManager } from "./rollout-freeze-manager.js";
 import {
   type AlertChannelKind,
   type AlertEvent,
@@ -74,6 +75,18 @@ export interface AlertDeliveryResult {
 export interface AlertChannel {
   readonly kind: AlertChannelKind;
   deliver(event: AlertEvent, config: Record<string, unknown>): AlertDeliveryResult;
+}
+
+/**
+ * Error budget degradation result.
+ */
+export interface ErrorBudgetDegradationResult {
+  degraded: boolean;
+  sloId: string;
+  sloStatus: SloStatus;
+  rolloutFrozen: boolean;
+  alertFired: boolean;
+  alertId: string | null;
 }
 
 /**
@@ -799,41 +812,25 @@ export class SloAlertingService {
 
   // ── Error Budget Auto-Degradation ──────────────────────────────────
 
-  private static rolloutFrozenDueToBudget = false;
-  private static frozenAt: string | null = null;
-  private static frozenSloId: string | null = null;
-
-  /**
-   * Error budget degradation result.
-   */
-  export interface ErrorBudgetDegradationResult {
-    degraded: boolean;
-    sloId: string;
-    sloStatus: SloStatus;
-    rolloutFrozen: boolean;
-    alertFired: boolean;
-    alertId: string | null;
-  }
-
   /**
    * Checks if rollouts are currently frozen due to error budget exhaustion.
    */
   public isRolloutFrozen(): boolean {
-    return SloAlertingService.rolloutFrozenDueToBudget;
+    return rolloutFreezeManager.isFrozen();
   }
 
   /**
    * Gets the timestamp when rollouts were frozen due to error budget, if applicable.
    */
   public getRolloutFrozenAt(): string | null {
-    return SloAlertingService.frozenAt;
+    return rolloutFreezeManager.getState().frozenAt;
   }
 
   /**
    * Gets the SLO ID that triggered the rollout freeze, if applicable.
    */
   public getFrozenBySloId(): string | null {
-    return SloAlertingService.frozenSloId;
+    return rolloutFreezeManager.getState().frozenBySloId;
   }
 
   /**
@@ -841,9 +838,7 @@ export class SloAlertingService {
    * Should be called after the SLO recovers and manual approval is given.
    */
   public unfreezeRollouts(): void {
-    SloAlertingService.rolloutFrozenDueToBudget = false;
-    SloAlertingService.frozenAt = null;
-    SloAlertingService.frozenSloId = null;
+    rolloutFreezeManager.unfreeze();
   }
 
   /**
@@ -864,16 +859,14 @@ export class SloAlertingService {
         degraded: false,
         sloId,
         sloStatus,
-        rolloutFrozen: SloAlertingService.rolloutFrozenDueToBudget,
+        rolloutFrozen: rolloutFreezeManager.isFrozen(),
         alertFired: false,
         alertId: null,
       };
     }
 
     // SLO is breached - trigger degradation
-    SloAlertingService.rolloutFrozenDueToBudget = true;
-    SloAlertingService.frozenAt = nowIso();
-    SloAlertingService.frozenSloId = sloId;
+    rolloutFreezeManager.freeze(sloId);
 
     // Fire a page-level alert to on-call
     const slo = this.getSlo(sloId);

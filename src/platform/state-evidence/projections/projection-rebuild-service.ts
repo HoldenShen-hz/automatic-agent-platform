@@ -127,6 +127,10 @@ export class ProjectionRebuildService {
     this.registry.register("incident_summary", this.incidentSummaryHandler.bind(this));
     // Generic event summary
     this.registry.register("event_summary", this.eventSummaryHandler.bind(this));
+    // §28: CostDashboard projection
+    this.registry.register("cost_dashboard", this.costDashboardHandler.bind(this));
+    // §28: DelegationTree projection
+    this.registry.register("delegation_tree", this.delegationTreeHandler.bind(this));
   }
 
   /**
@@ -357,6 +361,99 @@ export class ProjectionRebuildService {
       lastEventAt: event.createdAt,
       eventCount: ((state?.eventCount as number) ?? 0) + 1,
     };
+  }
+
+  /**
+   * §28: CostDashboard projection handler
+   * Tracks cost budgets and actuals across the platform
+   */
+  private costDashboardHandler(
+    state: Record<string, unknown> | null,
+    event: ProjectionInputEvent,
+  ): Record<string, unknown> {
+    const payload = this.parsePayload(event.payloadJson);
+    const newState = state ? { ...state } : {};
+
+    switch (event.eventType) {
+      case "cost:budget_created":
+        newState.budgetId = payload.budgetId;
+        newState.budgetName = payload.budgetName;
+        newState.limitUsd = payload.limitUsd;
+        newState.period = payload.period;
+        newState.currentCostUsd = 0;
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+
+      case "cost:budget_exceeded":
+        newState.currentCostUsd = payload.currentCostUsd;
+        newState.exceededAt = payload.exceededAt;
+        newState.autoBlock = payload.autoBlock;
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+
+      case "cost:actualized":
+        newState.lastCostId = payload.costId;
+        newState.lastAmountUsd = payload.amountUsd;
+        newState.lastCostCategory = payload.costCategory;
+        newState.totalCostUsd = ((state?.totalCostUsd as number) ?? 0) + (payload.amountUsd as number);
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+
+      case "cost:limit_reached":
+        newState.limitReachedAt = payload.occurredAt;
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+    }
+
+    newState.lastEventId = event.eventId;
+    newState.lastEventAt = event.createdAt;
+
+    return newState;
+  }
+
+  /**
+   * §28: DelegationTree projection handler
+   * Tracks task delegation hierarchy across agents
+   */
+  private delegationTreeHandler(
+    state: Record<string, unknown> | null,
+    event: ProjectionInputEvent,
+  ): Record<string, unknown> {
+    const payload = this.parsePayload(event.payloadJson);
+    const newState = state ? { ...state } : {};
+
+    switch (event.eventType) {
+      case "delegation:created":
+        newState.delegationId = payload.delegationId;
+        newState.sourceTaskId = payload.sourceTaskId;
+        newState.targetAgentId = payload.targetAgentId;
+        newState.delegatedBy = payload.delegatedBy;
+        newState.scope = payload.scope;
+        newState.status = "active";
+        newState.createdAt = event.createdAt;
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+
+      case "delegation:completed":
+        newState.status = "completed";
+        newState.completedAt = payload.completedAt;
+        newState.resultSummary = payload.resultSummary;
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+
+      case "delegation:failed":
+        newState.status = "failed";
+        newState.failedAt = payload.failedAt;
+        newState.reasonCode = payload.reasonCode;
+        newState.errorMessage = payload.errorMessage;
+        newState.eventCount = ((state?.eventCount as number) ?? 0) + 1;
+        break;
+    }
+
+    newState.lastEventId = event.eventId;
+    newState.lastEventAt = event.createdAt;
+
+    return newState;
   }
 
   /**

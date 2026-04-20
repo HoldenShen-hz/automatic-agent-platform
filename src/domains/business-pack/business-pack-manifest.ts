@@ -492,6 +492,6 @@ export function transitionLifecycle(
     from: currentStage,
     to: targetStage,
     allowed,
-    reason: allowed ? undefined : `Invalid transition from ${currentStage} to ${targetStage}`,
+    ...(allowed ? {} : { reason: `Invalid transition from ${currentStage} to ${targetStage}` }),
   };
 }

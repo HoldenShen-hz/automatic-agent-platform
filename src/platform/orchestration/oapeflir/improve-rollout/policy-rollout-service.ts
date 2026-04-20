@@ -4,6 +4,7 @@ import { GuardrailEvaluator } from "./guardrail-evaluator.js";
 import type { ImprovementCandidate } from "./improvement-candidate-registry.js";
 import { RolloutStateMachine } from "./rollout/rollout-state-machine.js";
 import type { StrategyReleaseLevel, StrategyVersion } from "./strategy-versioning.js";
+import { rolloutFreezeManager } from "../../../shared/observability/rollout-freeze-manager.js";
 
 export interface RolloutDecision {
   allowed: boolean;
@@ -36,6 +37,16 @@ export class PolicyRolloutService {
   }
 
   public decide(candidate: ImprovementCandidate, strategyVersion: StrategyVersion): RolloutDecision {
+    // Check if rollouts are frozen due to error budget exhaustion
+    if (rolloutFreezeManager.isFrozen()) {
+      return {
+        allowed: false,
+        releaseLevel: "suggest",
+        reasonCode: "rollout.frozen_error_budget",
+        reasonCodes: ["rollout.frozen_error_budget: rollouts are frozen due to error budget exhaustion"],
+      };
+    }
+
     const guardrailDecision = this.guardrails.evaluate(candidate, strategyVersion);
     if (!guardrailDecision.allowed) {
       return {

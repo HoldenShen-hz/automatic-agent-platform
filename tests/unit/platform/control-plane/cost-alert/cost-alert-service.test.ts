@@ -96,19 +96,11 @@ test("CostAlertService emits warning when approaching limit", () => {
     events.push(event);
   });
 
-  // Record cost at 75% of limit (under warning threshold)
+  // Record cost to cross 80% warning threshold in single call
   service.recordCost({
     scope: "tenant",
     scopeId: "tenant-1",
-    actualCostUsd: 75,
-    tenantId: "tenant-1",
-  });
-
-  // Record more to cross 80% warning threshold
-  service.recordCost({
-    scope: "tenant",
-    scopeId: "tenant-1",
-    actualCostUsd: 10,
+    actualCostUsd: 85, // 85% of limit, crosses warning threshold
     tenantId: "tenant-1",
   });
 

@@ -1,0 +1,123 @@
+name: DR Validation
+
+on:
+  schedule:
+    # Run monthly DR drill at 3 AM on the 15th of each month
+    - cron: '0 3 15 * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'DR drill mode'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - incremental
+          - verify
+      component:
+        description: 'Component to test'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - events
+          - truth
+          - projections
+
+jobs:
+  dr-drill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create data directories
+        run: |
+          mkdir -p data
+          mkdir -p .dr-reports
+          mkdir -p .backups
+          mkdir -p .dr-logs
+
+      - name: Initialize test databases
+        run: |
+          # Create minimal test databases for DR validation
+          if command -v sqlite3 &> /dev/null; then
+            sqlite3 data/events.db "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, eventType TEXT, taskId TEXT, payloadJson TEXT, createdAt TEXT);"
+            sqlite3 data/truth.db "CREATE TABLE IF NOT EXISTS tasks (taskId TEXT PRIMARY KEY, status TEXT, createdAt TEXT);"
+            # Insert test data
+            sqlite3 data/events.db "INSERT INTO events VALUES ('evt_test_1', 'task:created', 'task_1', '{}', '$(date -Iseconds)');"
+            sqlite3 data/truth.db "INSERT INTO tasks VALUES ('task_1', 'created', '$(date -Iseconds)');"
+          fi
+
+      - name: Run DR Drill
+        id: drill
+        run: |
+          OUTPUT_DIR=".dr-reports/drill_$(date +%Y%m%d_%H%M%S)"
+          chmod +x deploy/scripts/dr-drill.sh
+          ./deploy/scripts/dr-drill.sh \
+            --mode ${{ inputs.mode || 'full' }} \
+            --component ${{ inputs.component || 'all' }} \
+            --output-dir "$OUTPUT_DIR"
+        env:
+          NODE_ENV: test
+
+      - name: Verify DR Report Generated
+        run: |
+          if [ ! -f ".dr-reports/drill_*/drill_report.json" ]; then
+            echo "DR report not generated"
+            exit 1
+          fi
+          echo "DR report generated successfully"
+
+      - name: Check RTO/RPO Compliance
+        run: |
+          REPORT=$(find .dr-reports -name "rto_rpo_report.json" -type f | head -1)
+          if [ -z "$REPORT" ]; then
+            echo "RTO/RPO report not found"
+            exit 1
+          fi
+
+          # Check if rtoCompliance and rpoCompliance are true
+          RTO_COMPLIANT=$(grep -o '"rtoCompliance":\s*\(true\|false\)' "$REPORT" | cut -d: -f2 | tr -d ' ')
+          RPO_COMPLIANT=$(grep -o '"rpoCompliance":\s*\(true\|false\)' "$REPORT" | cut -d: -f2 | tr -d ' ')
+
+          echo "RTO Compliance: $RTO_COMPLIANT"
+          echo "RPO Compliance: $RPO_COMPLIANT"
+
+          if [ "$RTO_COMPLIANT" != "true" ] || [ "$RPO_COMPLIANT" != "true" ]; then
+            echo "RTO/RPO compliance check failed"
+            cat "$REPORT"
+            exit 1
+          fi
+
+          echo "RTO/RPO compliance verified"
+
+      - name: Upload DR Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dr-reports-${{ github.run_number }}
+          path: |
+            .dr-reports/
+            .dr-logs/
+          retention-days: 90
+
+      - name: DR Drill Summary
+        if: always()
+        run: |
+          SUMMARY=$(find .dr-reports -name "SUMMARY.txt" -type f | head -1)
+          if [ -n "$SUMMARY" ]; then
+            echo "=== DR Drill Summary ==="
+            cat "$SUMMARY"
+          fi

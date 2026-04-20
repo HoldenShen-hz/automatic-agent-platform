@@ -26,6 +26,8 @@ export interface PlannedTask {
   readonly delegationMode: "auto" | "supervised" | "manual";
   readonly estimatedDuration: string;
   readonly estimatedCost: CostEstimate;
+  /** @deprecated Use dependencyGraph instead - explicit depends_on for DAG scheduling */
+  readonly dependsOn?: readonly string[];
 }
 
 export interface TaskDependency {
@@ -48,6 +50,10 @@ export interface GoalDecomposition {
   readonly topologicallySortedTaskIds?: readonly string[];
   readonly parallelTaskGroups?: readonly (readonly string[])[];
   readonly criticalPathTaskIds?: readonly string[];
+  /** Actual depth used in decomposition (may be less than maxDepth if goal is simple) */
+  readonly depthUsed: number;
+  /** Whether maxDepth was reached during decomposition */
+  readonly maxDepthReached: boolean;
 }
 
 export type GoalDecompositionResult = GoalDecomposition;
@@ -58,6 +64,10 @@ export interface GoalDecompositionPort {
 
 export interface GoalDecompositionServiceOptions {
   readonly costEstimator?: { estimate(divisionId?: string | null): CostEstimate } | null;
+  /** Maximum decomposition depth to prevent infinite recursion (default: 5) */
+  readonly maxDepth?: number;
+  /** Current decomposition depth (used internally, do not set manually) */
+  readonly currentDepth?: number;
 }
 
 const DEFAULT_COST_ESTIMATE: CostEstimate = {
@@ -67,6 +77,9 @@ const DEFAULT_COST_ESTIMATE: CostEstimate = {
   divisionId: null,
   basedOn: "default",
 };
+
+/** Default maximum decomposition depth to prevent infinite recursion */
+const DEFAULT_MAX_DEPTH = 5;
 
 function normalizeGoal(goal: Goal | string): Goal {
   if (typeof goal !== "string") {
@@ -132,6 +145,10 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   public constructor(private readonly options: GoalDecompositionServiceOptions = {}) {}
 
   public async decompose(goalInput: Goal | string): Promise<GoalDecomposition> {
+    const maxDepth = this.options.maxDepth ?? DEFAULT_MAX_DEPTH;
+    const currentDepth = this.options.currentDepth ?? 0;
+    const maxDepthReached = currentDepth >= maxDepth;
+
     const goal = normalizeGoal(goalInput);
     const matchedTemplate = this.detectTemplate(goal.description);
     const tasks = this.buildTasks(goal, matchedTemplate);
@@ -162,6 +179,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       topologicallySortedTaskIds: graphAnalysis.topologicallySortedTaskIds,
       parallelTaskGroups: graphAnalysis.parallelTaskGroups,
       criticalPathTaskIds: graphAnalysis.criticalPathTaskIds,
+      depthUsed: currentDepth,
+      maxDepthReached,
     };
   }
 
@@ -225,23 +244,48 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   }
 
   private buildDependencies(tasks: readonly PlannedTask[], template: ReturnType<GoalDecompositionService["detectTemplate"]>): TaskDependency[] {
-    if (tasks.length < 2) {
-      return [];
+    const dependencies: TaskDependency[] = [];
+
+    // Build template-based dependencies
+    if (tasks.length >= 2) {
+      if (template === "marketing_campaign") {
+        dependencies.push(
+          { fromTask: tasks[0]!.taskId, toTask: tasks[1]!.taskId, type: "blocks", dataContract: "creative_review" },
+          { fromTask: tasks[1]!.taskId, toTask: tasks[2]!.taskId, type: "blocks", dataContract: "approved_creatives" },
+          { fromTask: tasks[2]!.taskId, toTask: tasks[3]!.taskId, type: "provides_input", dataContract: "campaign_tracking" },
+        );
+      } else {
+        // Default sequential dependencies
+        for (let i = 1; i < tasks.length; i++) {
+          dependencies.push({
+            fromTask: tasks[i - 1]!.taskId,
+            toTask: tasks[i]!.taskId,
+            type: i === tasks.length - 1 ? "provides_input" : "blocks",
+          });
+        }
+      }
     }
 
-    if (template === "marketing_campaign") {
-      return [
-        { fromTask: tasks[0]!.taskId, toTask: tasks[1]!.taskId, type: "blocks", dataContract: "creative_review" },
-        { fromTask: tasks[1]!.taskId, toTask: tasks[2]!.taskId, type: "blocks", dataContract: "approved_creatives" },
-        { fromTask: tasks[2]!.taskId, toTask: tasks[3]!.taskId, type: "provides_input", dataContract: "campaign_tracking" },
-      ];
+    // Convert dependsOn to edges (supports DAG parallel execution)
+    const taskIdSet = new Set(tasks.map((t) => t.taskId));
+    for (const task of tasks) {
+      if (task.dependsOn && task.dependsOn.length > 0) {
+        for (const depId of task.dependsOn) {
+          if (taskIdSet.has(depId)) {
+            // Avoid duplicate edges
+            if (!dependencies.some((d) => d.fromTask === depId && d.toTask === task.taskId)) {
+              dependencies.push({
+                fromTask: depId,
+                toTask: task.taskId,
+                type: "blocks",
+              });
+            }
+          }
+        }
+      }
     }
 
-    return tasks.slice(1).map((task, index) => ({
-      fromTask: tasks[index]!.taskId,
-      toTask: task.taskId,
-      type: index === tasks.length - 2 ? "provides_input" : "blocks",
-    }));
+    return dependencies;
   }
 
   private makeTask(domainId: string, description: string, goal: Goal, estimatedDuration: string): PlannedTask {

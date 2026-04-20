@@ -291,6 +291,10 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.run("updateApprovalDecision", () => this.inner.updateApprovalDecision(input));
   }
 
+  public updateApprovalRequest(input: { id: string; requestJson: string }): void {
+    return this.run("updateApprovalRequest", () => this.inner.updateApprovalRequest(input));
+  }
+
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
       eventTier?: EventRecord["eventTier"];
@@ -405,6 +409,10 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     respondedAt: string;
   }): void {
     return this.observe("updateApprovalDecision", () => this.inner.updateApprovalDecision(input));
+  }
+
+  public updateApprovalRequest(input: { id: string; requestJson: string }): void {
+    return this.observe("updateApprovalRequest", () => this.inner.updateApprovalRequest(input));
   }
 
   public insertEvent(

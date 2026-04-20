@@ -14,6 +14,7 @@ import {
 } from "../../../../../src/platform/shared/observability/slo-alerting-service.js";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+import { rolloutFreezeManager } from "../../../../../src/platform/shared/observability/rollout-freeze-manager.js";
 
 function createHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -546,6 +547,113 @@ test("listSlos returns all defined SLOs", () => {
     assert.equal(slos[0]!.name, "alpha");
     assert.equal(slos[1]!.name, "beta");
   } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+test("triggerErrorBudgetDegradation does nothing when SLO is met", () => {
+  const h = createHarness("aa-slo-no-degrade-");
+  try {
+    rolloutFreezeManager.unfreeze();
+    const service = new SloAlertingService(h.db);
+    const slo = service.defineSlo({
+      name: "good_slo",
+      description: "Error rate well under threshold",
+      sliKind: "error_rate",
+      targetValue: 1.0,
+      operator: "lte",
+      windowMinutes: 60,
+    });
+
+    service.collectSli(slo.id, 0.1, "%");
+    service.collectSli(slo.id, 0.2, "%");
+
+    const result = service.triggerErrorBudgetDegradation(slo.id);
+
+    assert.equal(result.degraded, false);
+    assert.equal(result.sloStatus, "met");
+    assert.equal(result.rolloutFrozen, false);
+    assert.equal(result.alertFired, false);
+    assert.equal(result.alertId, null);
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+test("triggerErrorBudgetDegradation freezes rollouts and fires alert when SLO breached", () => {
+  const h = createHarness("aa-slo-degrade-");
+  try {
+    rolloutFreezeManager.unfreeze();
+    const logChannel = new LogAlertChannel();
+    const service = new SloAlertingService(h.db, {
+      channels: { log: logChannel },
+    });
+    const slo = service.defineSlo({
+      name: "breached_slo",
+      description: "Error rate exceeded budget",
+      sliKind: "error_rate",
+      targetValue: 1.0,
+      operator: "lte",
+      windowMinutes: 60,
+    });
+
+    service.collectSli(slo.id, 5.0, "%");
+    service.collectSli(slo.id, 6.0, "%");
+
+    const result = service.triggerErrorBudgetDegradation(slo.id);
+
+    assert.equal(result.degraded, true);
+    assert.equal(result.sloStatus, "breached");
+    assert.equal(result.rolloutFrozen, true);
+    assert.equal(result.alertFired, true);
+    assert.ok(result.alertId !== null);
+    assert.equal(service.isRolloutFrozen(), true);
+    assert.equal(service.getFrozenBySloId(), slo.id);
+    assert.ok(service.getRolloutFrozenAt() !== null);
+  } finally {
+    rolloutFreezeManager.unfreeze();
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+test("isRolloutFrozen returns current freeze state", () => {
+  const h = createHarness("aa-slo-freeze-check-");
+  try {
+    rolloutFreezeManager.unfreeze();
+    const service = new SloAlertingService(h.db);
+
+    assert.equal(service.isRolloutFrozen(), false);
+
+    rolloutFreezeManager.freeze("slo_force_freeze");
+    assert.equal(service.isRolloutFrozen(), true);
+
+    rolloutFreezeManager.unfreeze();
+    assert.equal(service.isRolloutFrozen(), false);
+  } finally {
+    rolloutFreezeManager.unfreeze();
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+test("unfreezeRollouts clears rollout freeze state", () => {
+  const h = createHarness("aa-slo-unfreeze-");
+  try {
+    const service = new SloAlertingService(h.db);
+    rolloutFreezeManager.freeze("slo_to_unfreeze");
+
+    assert.equal(service.isRolloutFrozen(), true);
+
+    service.unfreezeRollouts();
+
+    assert.equal(service.isRolloutFrozen(), false);
+    assert.equal(service.getFrozenBySloId(), null);
+    assert.equal(service.getRolloutFrozenAt(), null);
+  } finally {
+    rolloutFreezeManager.unfreeze();
     h.db.close();
     cleanupPath(h.workspace);
   }

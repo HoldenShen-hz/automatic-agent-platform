@@ -1,0 +1,27 @@
+{
+  "conversationWindow": {
+    "defaultSize": 10,
+    "maxSize": 20,
+    "byTaskType": {
+      "task_create": 15,
+      "task_query": 8,
+      "task_modify": 12,
+      "status_inquiry": 5,
+      "approval_action": 6
+    }
+  },
+  "disambiguation": {
+    "threshold": 0.7,
+    "lowConfidenceThreshold": 0.5,
+    "maxClarificationQuestions": 3,
+    "enableProactiveClarification": true
+  },
+  "intent": {
+    "minConfidenceForAutoConfirm": 0.85,
+    "fallbackIntent": "task_query"
+  },
+  "entityExtraction": {
+    "requiredEntityCount": 1,
+    "minMessageLength": 6
+  }
+}

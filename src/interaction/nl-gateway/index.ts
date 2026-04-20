@@ -1,6 +1,32 @@
 export * from "./ambiguity-handler/index.js";
+export * from "./disambiguation-handler/index.js";
 export * from "./intent-parser/index.js";
 export * from "./slot-resolver/index.js";
+
+import {
+  loadNlGatewayConfig,
+  getConversationWindowSize,
+  shouldRequestClarification,
+  type NlGatewayConfig,
+  type ConversationWindowConfig,
+  type DisambiguationConfig,
+  type IntentConfig,
+  type EntityExtractionConfig,
+} from "./nl-gateway-config-loader.js";
+
+export {
+  loadNlGatewayConfig,
+  getConversationWindowSize,
+  shouldRequestClarification,
+} from "./nl-gateway-config-loader.js";
+
+export type {
+  NlGatewayConfig,
+  ConversationWindowConfig,
+  DisambiguationConfig,
+  IntentConfig,
+  EntityExtractionConfig,
+};
 
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
@@ -113,6 +139,27 @@ export interface NlEntryServiceOptions {
   readonly costEstimator?: CostEstimatorPort | null;
   readonly clarificationThreshold?: number;
   readonly localeConfig?: LocaleConfig;
+  readonly conversationWindowSize?: number;
+  readonly nlGatewayConfig?: NlGatewayConfig;
+}
+
+/**
+ * Conversation context for multi-turn dialogs
+ */
+export interface ConversationContext {
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly turnCount: number;
+  readonly maxTurns: number;
+  readonly turns: readonly ConversationTurn[];
+  readonly lastIntent?: DetectedIntent;
+}
+
+export interface ConversationTurn {
+  readonly turnNumber: number;
+  readonly message: string;
+  readonly detectedIntent: DetectedIntent;
+  readonly timestamp: string;
 }
 
 const DEFAULT_LOCALE_CONFIG: LocaleConfig = {
@@ -357,12 +404,38 @@ export class NlEntryService implements NlEntryPort {
   private readonly costEstimator: CostEstimatorPort | null;
   private readonly clarificationThreshold: number;
   private readonly localeConfig: LocaleConfig;
+  private readonly conversationWindowSize: number;
+  private readonly nlConfig: NlGatewayConfig;
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
     this.costEstimator = options.costEstimator ?? null;
     this.clarificationThreshold = options.clarificationThreshold ?? 0.7;
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;
+    this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
+    this.conversationWindowSize = options.conversationWindowSize
+      ?? this.nlConfig.conversationWindow.defaultSize;
+  }
+
+  /**
+   * Get the configured conversation window size for a given task type
+   */
+  public getConversationWindowSize(taskType?: string): number {
+    return getConversationWindowSize(this.nlConfig, taskType);
+  }
+
+  /**
+   * Get the configured clarification threshold
+   */
+  public getClarificationThreshold(): number {
+    return this.nlConfig.disambiguation.threshold;
+  }
+
+  /**
+   * Check if clarification should be requested based on config
+   */
+  public shouldRequestClarification(confidence: number): boolean {
+    return shouldRequestClarification(this.nlConfig, confidence);
   }
 
   public async parse(request: NlEntryRequest): Promise<NlEntryIntent> {
@@ -501,5 +574,108 @@ export class NlEntryService implements NlEntryPort {
       }
     }
     return this.localeConfig.defaultLocale;
+  }
+}
+
+/**
+ * Conversation Context Manager
+ *
+ * Manages multi-turn conversation context with configurable window size.
+ * Window size can be configured per task type via nlGatewayConfig.
+ */
+export class ConversationContextManager {
+  private readonly contexts = new Map<string, ConversationContext>();
+  private readonly nlConfig: NlGatewayConfig;
+
+  public constructor(nlConfig?: NlGatewayConfig) {
+    this.nlConfig = nlConfig ?? loadNlGatewayConfig();
+  }
+
+  /**
+   * Get or create a conversation context for a user
+   */
+  public getContext(tenantId: string, userId: string, taskType?: string): ConversationContext {
+    const key = `${tenantId}:${userId}`;
+    const existing = this.contexts.get(key);
+
+    if (existing) {
+      return existing;
+    }
+
+    const maxTurns = getConversationWindowSize(this.nlConfig, taskType);
+    return {
+      tenantId,
+      userId,
+      turnCount: 0,
+      maxTurns,
+      turns: [],
+    };
+  }
+
+  /**
+   * Add a turn to the conversation
+   */
+  public addTurn(
+    tenantId: string,
+    userId: string,
+    message: string,
+    intent: DetectedIntent,
+    taskType?: string,
+  ): ConversationContext {
+    const key = `${tenantId}:${userId}`;
+    const current = this.getContext(tenantId, userId, taskType);
+    const maxTurns = getConversationWindowSize(this.nlConfig, taskType);
+
+    const turn: ConversationTurn = {
+      turnNumber: current.turnCount + 1,
+      message,
+      detectedIntent: intent,
+      timestamp: new Date().toISOString(),
+    };
+
+    const updatedTurns = [...current.turns, turn];
+
+    // Prune to window size
+    const prunedTurns = updatedTurns.length > maxTurns
+      ? updatedTurns.slice(-maxTurns)
+      : updatedTurns;
+
+    const updatedContext: ConversationContext = {
+      tenantId,
+      userId,
+      turnCount: prunedTurns.length,
+      maxTurns,
+      turns: prunedTurns,
+      lastIntent: intent,
+    };
+
+    this.contexts.set(key, updatedContext);
+    return updatedContext;
+  }
+
+  /**
+   * Clear a conversation context
+   */
+  public clearContext(tenantId: string, userId: string): void {
+    const key = `${tenantId}:${userId}`;
+    this.contexts.delete(key);
+  }
+
+  /**
+   * Check if conversation is approaching window limit
+   */
+  public isNearWindowLimit(tenantId: string, userId: string): boolean {
+    const context = this.contexts.get(`${tenantId}:${userId}`);
+    if (!context) {
+      return false;
+    }
+    return context.turnCount >= context.maxTurns - 2;
+  }
+
+  /**
+   * Get window size for a specific task type
+   */
+  public getWindowSize(taskType?: string): number {
+    return getConversationWindowSize(this.nlConfig, taskType);
   }
 }

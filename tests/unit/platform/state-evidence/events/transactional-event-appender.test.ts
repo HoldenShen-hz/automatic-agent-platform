@@ -12,19 +12,32 @@ import { join } from "node:path";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { EventRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/event-repository.js";
 import { OutboxRepository } from "../../../../../src/platform/shared/outbox/outbox-repository.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TransactionalEventAppender } from "../../../../../src/platform/state-evidence/events/transactional-event-appender.js";
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
+import { OUTBOX_TABLE_DDL } from "../../../../../src/platform/shared/outbox/outbox-table.js";
+import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+
+function createDbWithOutbox(workspace: string): SqliteDatabase {
+  const db = new SqliteDatabase(join(workspace, "test.db"));
+  db.migrate();
+  // Create outbox table manually since it's not in the default migration plan
+  db.connection.exec(OUTBOX_TABLE_DDL);
+  return db;
+}
 
 test("TransactionalEventAppender.appendEvent inserts event successfully", () => {
   const workspace = createTempWorkspace("aa-txn-appender-");
   let db: SqliteDatabase;
 
   try {
-    db = new SqliteDatabase(join(workspace, "test.db"));
-    db.migrate();
+    db = createDbWithOutbox(workspace);
     const eventRepo = new EventRepository(db.connection);
     const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
     const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
 
     const result = appender.appendEvent({
       taskId: "task-1",
@@ -54,11 +67,13 @@ test("TransactionalEventAppender.appendEvent writes to outbox when option enable
   let db: SqliteDatabase;
 
   try {
-    db = new SqliteDatabase(join(workspace, "test.db"));
-    db.migrate();
+    db = createDbWithOutbox(workspace);
     const eventRepo = new EventRepository(db.connection);
     const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
     const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-123" });
 
     const result = appender.appendEvent(
       {
@@ -71,7 +86,7 @@ test("TransactionalEventAppender.appendEvent writes to outbox when option enable
 
     assert.ok(result.event.id, "Event should have an ID");
     assert.ok(result.outboxEntryId, "Outbox entry ID should be set");
-    assert.equal(result.outboxEntryId?.startsWith("outbox-"), true, "Outbox ID should have correct prefix");
+    assert.equal(result.outboxEntryId?.startsWith("outbox_"), true, "Outbox ID should have correct prefix");
 
     // Verify outbox entry was inserted
     const pending = outboxRepo.listPendingEntries(10);
@@ -90,11 +105,13 @@ test("TransactionalEventAppender.appendEvent does not write outbox when option d
   let db: SqliteDatabase;
 
   try {
-    db = new SqliteDatabase(join(workspace, "test.db"));
-    db.migrate();
+    db = createDbWithOutbox(workspace);
     const eventRepo = new EventRepository(db.connection);
     const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
     const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
 
     const result = appender.appendEvent({
       taskId: "task-1",
@@ -124,7 +141,10 @@ test("TransactionalEventAppender.appendEvents processes multiple events in one t
     db.migrate();
     const eventRepo = new EventRepository(db.connection);
     const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
     const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
 
     const results = appender.appendEvents([
       { taskId: "task-1", eventType: "task:created", payloadJson: JSON.stringify({}) },
@@ -152,11 +172,14 @@ test("TransactionalEventAppender.appendEvents with outbox writes all entries", (
   let db: SqliteDatabase;
 
   try {
-    db = new SqliteDatabase(join(workspace, "test.db"));
-    db.migrate();
+    db = createDbWithOutbox(workspace);
     const eventRepo = new EventRepository(db.connection);
     const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
     const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
+    seedTaskAndExecution(db, store, { taskId: "task-2", executionId: "exec-2", traceId: "trace-2" });
 
     const results = appender.appendEvents(
       [
@@ -189,7 +212,10 @@ test("TransactionalEventAppender rolls back on error", () => {
     db.migrate();
     const eventRepo = new EventRepository(db.connection);
     const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
     const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-rollback", executionId: "exec-rollback", traceId: "trace-r" });
 
     // Verify initial event count is 0
     const eventsBefore = eventRepo.listEventsByType("task:error_event");
@@ -197,8 +223,9 @@ test("TransactionalEventAppender rolls back on error", () => {
 
     // Attempt to insert invalid event (empty required fields)
     try {
+      // @ts-expect-error - intentionally missing required fields for testing
       appender.appendEvent({
-        // @ts-expect-error - intentionally missing required fields for testing
+        taskId: "task-rollback",
         eventType: "",
         payloadJson: "invalid",
       });

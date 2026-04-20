@@ -17,10 +17,33 @@ test("TIER_1_EVENT_TYPES contains expected events", () => {
   assert.ok(TIER_1_EVENT_TYPES.includes("subtask:completed"));
   assert.ok(TIER_1_EVENT_TYPES.includes("subtask:failed"));
   assert.ok(TIER_1_EVENT_TYPES.includes("cost:limit_reached"));
+  // §28 Missing namespaces
+  assert.ok(TIER_1_EVENT_TYPES.includes("delegation:created"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("delegation:completed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("delegation:failed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("prompt:injected"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("prompt:rendered"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("prompt:validation_failed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("cost:budget_created"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("cost:budget_exceeded"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("cost:actualized"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("tenant:provisioned"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("tenant:suspended"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("tenant:deleted"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("pack:installed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("pack:uninstalled"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("marketplace:listing_published"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("marketplace:listing_purchased"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("slo:breached"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("slo:recovered"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("compliance:audit_recorded"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("compliance:violation_detected"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("knowledge:document_indexed"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("knowledge:query_processed"));
 });
 
 test("TIER_1_EVENT_TYPES has correct length", () => {
-  assert.equal(TIER_1_EVENT_TYPES.length, 9);
+  assert.equal(TIER_1_EVENT_TYPES.length, 26);
 });
 
 test("getEventTier returns tier_1 for Tier 1 events", () => {
@@ -91,4 +114,99 @@ test("getRequiredConsumers returns readonly array", () => {
   const consumers = getRequiredConsumers("task:status_changed");
   // Verify it's readonly (doesn't have push)
   assert.equal(Array.isArray(consumers), true);
+});
+
+// §28: Tests for new event namespace consumers
+
+test("getRequiredConsumers returns consumers for delegation events", () => {
+  const created = getRequiredConsumers("delegation:created");
+  assert.ok(created.includes("delegation_projection"));
+  assert.ok(created.includes("inspect_projection"));
+
+  const completed = getRequiredConsumers("delegation:completed");
+  assert.ok(completed.includes("delegation_projection"));
+
+  const failed = getRequiredConsumers("delegation:failed");
+  assert.ok(failed.includes("delegation_projection"));
+});
+
+test("getRequiredConsumers returns consumers for prompt events", () => {
+  const injected = getRequiredConsumers("prompt:injected");
+  assert.ok(injected.includes("prompt_projection"));
+  assert.ok(injected.includes("inspect_projection"));
+
+  const rendered = getRequiredConsumers("prompt:rendered");
+  assert.ok(rendered.includes("prompt_projection"));
+
+  const validationFailed = getRequiredConsumers("prompt:validation_failed");
+  assert.ok(validationFailed.includes("prompt_projection"));
+});
+
+test("getRequiredConsumers returns consumers for cost events", () => {
+  const budgetCreated = getRequiredConsumers("cost:budget_created");
+  assert.ok(budgetCreated.includes("cost_dashboard"));
+  assert.ok(budgetCreated.includes("inspect_projection"));
+
+  const budgetExceeded = getRequiredConsumers("cost:budget_exceeded");
+  assert.ok(budgetExceeded.includes("cost_dashboard"));
+
+  const actualized = getRequiredConsumers("cost:actualized");
+  assert.ok(actualized.includes("cost_dashboard"));
+});
+
+test("getRequiredConsumers returns consumers for tenant events", () => {
+  const provisioned = getRequiredConsumers("tenant:provisioned");
+  assert.ok(provisioned.includes("tenant_projection"));
+  assert.ok(provisioned.includes("inspect_projection"));
+
+  const suspended = getRequiredConsumers("tenant:suspended");
+  assert.ok(suspended.includes("tenant_projection"));
+
+  const deleted = getRequiredConsumers("tenant:deleted");
+  assert.ok(deleted.includes("tenant_projection"));
+});
+
+test("getRequiredConsumers returns consumers for pack events", () => {
+  const installed = getRequiredConsumers("pack:installed");
+  assert.ok(installed.includes("pack_projection"));
+  assert.ok(installed.includes("inspect_projection"));
+
+  const uninstalled = getRequiredConsumers("pack:uninstalled");
+  assert.ok(uninstalled.includes("pack_projection"));
+});
+
+test("getRequiredConsumers returns consumers for marketplace events", () => {
+  const published = getRequiredConsumers("marketplace:listing_published");
+  assert.ok(published.includes("marketplace_projection"));
+  assert.ok(published.includes("inspect_projection"));
+
+  const purchased = getRequiredConsumers("marketplace:listing_purchased");
+  assert.ok(purchased.includes("marketplace_projection"));
+});
+
+test("getRequiredConsumers returns consumers for slo events", () => {
+  const breached = getRequiredConsumers("slo:breached");
+  assert.ok(breached.includes("slo_projection"));
+  assert.ok(breached.includes("inspect_projection"));
+
+  const recovered = getRequiredConsumers("slo:recovered");
+  assert.ok(recovered.includes("slo_projection"));
+});
+
+test("getRequiredConsumers returns consumers for compliance events", () => {
+  const auditRecorded = getRequiredConsumers("compliance:audit_recorded");
+  assert.ok(auditRecorded.includes("compliance_projection"));
+  assert.ok(auditRecorded.includes("inspect_projection"));
+
+  const violation = getRequiredConsumers("compliance:violation_detected");
+  assert.ok(violation.includes("compliance_projection"));
+});
+
+test("getRequiredConsumers returns consumers for knowledge events", () => {
+  const indexed = getRequiredConsumers("knowledge:document_indexed");
+  assert.ok(indexed.includes("knowledge_projection"));
+  assert.ok(indexed.includes("inspect_projection"));
+
+  const processed = getRequiredConsumers("knowledge:query_processed");
+  assert.ok(processed.includes("knowledge_projection"));
 });

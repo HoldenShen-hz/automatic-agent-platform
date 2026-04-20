@@ -184,3 +184,232 @@ test("Custom projection handler registration", () => {
   // Result should indicate an error because we can't actually rebuild without a DB
   assert.ok(result.errors !== undefined);
 });
+
+// §28: Tests for CostDashboard projection handler
+
+test("CostDashboard handler processes cost:budget_created event", () => {
+  const registry = new ProjectionHandlerRegistry();
+  const service = new ProjectionRebuildService({} as any);
+
+  // Access the private handler via rebind
+  const handler = service["costDashboardHandler"].bind(service);
+
+  const event: ProjectionInputEvent = {
+    eventId: "evt_cost_1",
+    eventType: "cost:budget_created",
+    taskId: null,
+    payloadJson: JSON.stringify({
+      budgetId: "budget_1",
+      budgetName: "Daily Limit",
+      limitUsd: 100.0,
+      period: "daily",
+    }),
+    createdAt: "2026-04-19T10:00:00Z",
+  };
+
+  const result = handler(null, event);
+
+  assert.equal(result.budgetId, "budget_1");
+  assert.equal(result.budgetName, "Daily Limit");
+  assert.equal(result.limitUsd, 100.0);
+  assert.equal(result.period, "daily");
+  assert.equal(result.currentCostUsd, 0);
+  assert.equal(result.eventCount, 1);
+});
+
+test("CostDashboard handler processes cost:actualized events cumulatively", () => {
+  const registry = new ProjectionHandlerRegistry();
+  const service = new ProjectionRebuildService({} as any);
+
+  const handler = service["costDashboardHandler"].bind(service);
+
+  const event1: ProjectionInputEvent = {
+    eventId: "evt_cost_2",
+    eventType: "cost:actualized",
+    taskId: null,
+    payloadJson: JSON.stringify({
+      costId: "cost_1",
+      budgetId: "budget_1",
+      amountUsd: 25.0,
+      costCategory: "llm",
+    }),
+    createdAt: "2026-04-19T11:00:00Z",
+  };
+
+  const event2: ProjectionInputEvent = {
+    eventId: "evt_cost_3",
+    eventType: "cost:actualized",
+    taskId: null,
+    payloadJson: JSON.stringify({
+      costId: "cost_2",
+      budgetId: "budget_1",
+      amountUsd: 30.0,
+      costCategory: "llm",
+    }),
+    createdAt: "2026-04-19T12:00:00Z",
+  };
+
+  const state1 = handler(null, event1);
+  const state2 = handler(state1, event2);
+
+  assert.equal(state1.totalCostUsd, 25.0);
+  assert.equal(state1.lastCostId, "cost_1");
+  assert.equal(state2.totalCostUsd, 55.0);
+  assert.equal(state2.lastCostId, "cost_2");
+  assert.equal(state2.eventCount, 2);
+});
+
+test("CostDashboard handler processes cost:budget_exceeded event", () => {
+  const service = new ProjectionRebuildService({} as any);
+  const handler = service["costDashboardHandler"].bind(service);
+
+  const event: ProjectionInputEvent = {
+    eventId: "evt_cost_4",
+    eventType: "cost:budget_exceeded",
+    taskId: null,
+    payloadJson: JSON.stringify({
+      budgetId: "budget_1",
+      currentCostUsd: 110.0,
+      limitUsd: 100.0,
+      exceededAt: "2026-04-19T12:00:00Z",
+      autoBlock: true,
+    }),
+    createdAt: "2026-04-19T12:00:00Z",
+  };
+
+  const result = handler(null, event);
+
+  assert.equal(result.currentCostUsd, 110.0);
+  assert.equal(result.exceededAt, "2026-04-19T12:00:00Z");
+  assert.equal(result.autoBlock, true);
+});
+
+// §28: Tests for DelegationTree projection handler
+
+test("DelegationTree handler processes delegation:created event", () => {
+  const service = new ProjectionRebuildService({} as any);
+  const handler = service["delegationTreeHandler"].bind(service);
+
+  const event: ProjectionInputEvent = {
+    eventId: "evt_deleg_1",
+    eventType: "delegation:created",
+    taskId: "task_1",
+    payloadJson: JSON.stringify({
+      delegationId: "deleg_1",
+      sourceTaskId: "task_1",
+      targetAgentId: "agent_2",
+      delegatedBy: "agent_1",
+      scope: ["read", "write"],
+    }),
+    createdAt: "2026-04-19T10:00:00Z",
+  };
+
+  const result = handler(null, event);
+
+  assert.equal(result.delegationId, "deleg_1");
+  assert.equal(result.sourceTaskId, "task_1");
+  assert.equal(result.targetAgentId, "agent_2");
+  assert.equal(result.delegatedBy, "agent_1");
+  assert.deepEqual(result.scope, ["read", "write"]);
+  assert.equal(result.status, "active");
+  assert.equal(result.eventCount, 1);
+});
+
+test("DelegationTree handler processes delegation:completed event", () => {
+  const service = new ProjectionRebuildService({} as any);
+  const handler = service["delegationTreeHandler"].bind(service);
+
+  const createdEvent: ProjectionInputEvent = {
+    eventId: "evt_deleg_2",
+    eventType: "delegation:created",
+    taskId: "task_1",
+    payloadJson: JSON.stringify({
+      delegationId: "deleg_2",
+      sourceTaskId: "task_1",
+      targetAgentId: "agent_2",
+      delegatedBy: "agent_1",
+      scope: ["read"],
+    }),
+    createdAt: "2026-04-19T10:00:00Z",
+  };
+
+  const completedEvent: ProjectionInputEvent = {
+    eventId: "evt_deleg_3",
+    eventType: "delegation:completed",
+    taskId: "task_1",
+    payloadJson: JSON.stringify({
+      delegationId: "deleg_2",
+      sourceTaskId: "task_1",
+      targetAgentId: "agent_2",
+      completedAt: "2026-04-19T11:00:00Z",
+      resultSummary: "Successfully completed",
+    }),
+    createdAt: "2026-04-19T11:00:00Z",
+  };
+
+  const state1 = handler(null, createdEvent);
+  const state2 = handler(state1, completedEvent);
+
+  assert.equal(state2.status, "completed");
+  assert.equal(state2.completedAt, "2026-04-19T11:00:00Z");
+  assert.equal(state2.resultSummary, "Successfully completed");
+  assert.equal(state2.eventCount, 2);
+});
+
+test("DelegationTree handler processes delegation:failed event", () => {
+  const service = new ProjectionRebuildService({} as any);
+  const handler = service["delegationTreeHandler"].bind(service);
+
+  const createdEvent: ProjectionInputEvent = {
+    eventId: "evt_deleg_4",
+    eventType: "delegation:created",
+    taskId: "task_1",
+    payloadJson: JSON.stringify({
+      delegationId: "deleg_3",
+      sourceTaskId: "task_1",
+      targetAgentId: "agent_2",
+      delegatedBy: "agent_1",
+      scope: ["read"],
+    }),
+    createdAt: "2026-04-19T10:00:00Z",
+  };
+
+  const failedEvent: ProjectionInputEvent = {
+    eventId: "evt_deleg_5",
+    eventType: "delegation:failed",
+    taskId: "task_1",
+    payloadJson: JSON.stringify({
+      delegationId: "deleg_3",
+      sourceTaskId: "task_1",
+      targetAgentId: "agent_2",
+      failedAt: "2026-04-19T10:30:00Z",
+      reasonCode: "timeout",
+      errorMessage: "Agent did not respond within timeout",
+    }),
+    createdAt: "2026-04-19T10:30:00Z",
+  };
+
+  const state1 = handler(null, createdEvent);
+  const state2 = handler(state1, failedEvent);
+
+  assert.equal(state2.status, "failed");
+  assert.equal(state2.failedAt, "2026-04-19T10:30:00Z");
+  assert.equal(state2.reasonCode, "timeout");
+  assert.equal(state2.errorMessage, "Agent did not respond within timeout");
+  assert.equal(state2.eventCount, 2);
+});
+
+// §28: Verify new handlers are registered in default handlers
+
+test("ProjectionRebuildService registers cost_dashboard and delegation_tree handlers", () => {
+  const service = new ProjectionRebuildService({} as any);
+
+  // Verify handlers are registered by attempting rebuild - it will fail without a real DB
+  // but we can verify the registration doesn't throw
+  const costResult = service.rebuildProjection("cost_dashboard");
+  const delegResult = service.rebuildProjection("delegation_tree");
+
+  // These should not have "Unknown projection" error since they're registered
+  assert.ok(!costResult.errors.some((e: string) => e.includes("Unknown projection")));
+  assert.ok(!delegResult.errors.some((e: string) => e.includes("Unknown projection")));
+});
