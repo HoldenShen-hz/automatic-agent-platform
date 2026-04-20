@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { ExecutionOutcomeEvaluator } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import { PostExecutionQualityGate } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
+import type { QualityGateConfig } from "../../../../../src/platform/prompt-engine/eval/types.js";
 
 const plan = {
   planId: "plan_1",
@@ -28,6 +29,32 @@ const plan = {
   ],
   createdAt: Date.now(),
 };
+
+function createDefaultConfig(): QualityGateConfig {
+  return {
+    qualityGate: {
+      defaultPassThreshold: 0.5,
+      criticalPassThreshold: 0.8,
+      enforcement: "blocking",
+    },
+    qualityScoreWeights: {
+      successSignal: 0.35,
+      completionOutcome: 0.45,
+      failureSignal: 0.3,
+      partialSignal: 0.1,
+    },
+    actionThresholds: {
+      completeMinScore: 0.5,
+      approvalRequiredScore: 0.3,
+      retryMaxFailures: 3,
+    },
+    evidence: {
+      enabled: false,
+      artifactKind: "quality-evaluation",
+      retentionDays: 90,
+    },
+  };
+}
 
 test("ExecutionOutcomeEvaluator and PostExecutionQualityGate accept successful feedback", () => {
   const evaluator = new ExecutionOutcomeEvaluator();
@@ -169,4 +196,216 @@ test("ExecutionOutcomeEvaluator routes to approve when approval signal is presen
   });
 
   assert.equal(evaluation.nextAction, "approve");
+});
+
+test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass threshold", () => {
+  const config: QualityGateConfig = {
+    qualityGate: {
+      defaultPassThreshold: 0.8,
+      criticalPassThreshold: 0.9,
+      enforcement: "blocking",
+    },
+    qualityScoreWeights: {
+      successSignal: 0.35,
+      completionOutcome: 0.45,
+      failureSignal: 0.3,
+      partialSignal: 0.1,
+    },
+    actionThresholds: {
+      completeMinScore: 0.8,
+      approvalRequiredScore: 0.5,
+      retryMaxFailures: 3,
+    },
+    evidence: {
+      enabled: false,
+      artifactKind: "quality-evaluation",
+      retentionDays: 90,
+    },
+  };
+
+  const evaluator = new ExecutionOutcomeEvaluator({ config });
+  const evaluation = evaluator.evaluate(plan, {
+    feedbackId: "fb_6",
+    taskId: "task_1",
+    executionId: null,
+    planId: "plan_1",
+    outcome: "completed",
+    signals: [
+      {
+        signalId: "sig_6",
+        source: "execution",
+        taskId: "task_1",
+        category: "success",
+        severity: "info",
+        payload: { summary: "single success" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+    ],
+    emittedAt: Date.now(),
+  });
+
+  assert.equal(evaluation.nextAction, "complete");
+  assert.equal(evaluation.passed, false);
+  assert.ok(evaluation.qualityScore < 0.8);
+});
+
+test("ExecutionOutcomeEvaluator uses configurable weights", () => {
+  const config: QualityGateConfig = {
+    qualityGate: {
+      defaultPassThreshold: 0.5,
+      criticalPassThreshold: 0.8,
+      enforcement: "blocking",
+    },
+    qualityScoreWeights: {
+      successSignal: 0.1,
+      completionOutcome: 0.9,
+      failureSignal: 0.3,
+      partialSignal: 0.1,
+    },
+    actionThresholds: {
+      completeMinScore: 0.5,
+      approvalRequiredScore: 0.3,
+      retryMaxFailures: 3,
+    },
+    evidence: {
+      enabled: false,
+      artifactKind: "quality-evaluation",
+      retentionDays: 90,
+    },
+  };
+
+  const evaluator = new ExecutionOutcomeEvaluator({ config });
+  const evaluation = evaluator.evaluate(plan, {
+    feedbackId: "fb_7",
+    taskId: "task_1",
+    executionId: null,
+    planId: "plan_1",
+    outcome: "completed",
+    signals: [
+      {
+        signalId: "sig_7",
+        source: "execution",
+        taskId: "task_1",
+        category: "success",
+        severity: "info",
+        payload: { summary: "ok" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+    ],
+    emittedAt: Date.now(),
+  });
+
+  assert.equal(evaluation.qualityScore, 1.0);
+  assert.equal(evaluation.passed, true);
+});
+
+test("ExecutionOutcomeEvaluator provides factor breakdown", () => {
+  const evaluator = new ExecutionOutcomeEvaluator();
+  const evaluation = evaluator.evaluate(plan, {
+    feedbackId: "fb_8",
+    taskId: "task_1",
+    executionId: null,
+    planId: "plan_1",
+    outcome: "completed",
+    signals: [
+      {
+        signalId: "sig_8a",
+        source: "execution",
+        taskId: "task_1",
+        category: "success",
+        severity: "info",
+        payload: { summary: "ok" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+      {
+        signalId: "sig_8b",
+        source: "execution",
+        taskId: "task_1",
+        category: "failure",
+        severity: "error",
+        payload: { summary: "error" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+    ],
+    emittedAt: Date.now(),
+  });
+
+  assert.equal(evaluation.factorBreakdown.successSignals, 1);
+  assert.equal(evaluation.factorBreakdown.failureSignals, 1);
+  assert.equal(evaluation.factorBreakdown.completionBonus, 0.45);
+  assert.equal(evaluation.factorBreakdown.failurePenalty, 0.3);
+});
+
+test("ExecutionOutcomeEvaluator escalates after max retries", () => {
+  const config: QualityGateConfig = {
+    qualityGate: {
+      defaultPassThreshold: 0.5,
+      criticalPassThreshold: 0.8,
+      enforcement: "blocking",
+    },
+    qualityScoreWeights: {
+      successSignal: 0.35,
+      completionOutcome: 0.45,
+      failureSignal: 0.3,
+      partialSignal: 0.1,
+    },
+    actionThresholds: {
+      completeMinScore: 0.5,
+      approvalRequiredScore: 0.3,
+      retryMaxFailures: 2,
+    },
+    evidence: {
+      enabled: false,
+      artifactKind: "quality-evaluation",
+      retentionDays: 90,
+    },
+  };
+
+  const evaluator = new ExecutionOutcomeEvaluator({ config });
+  const evaluation = evaluator.evaluate(plan, {
+    feedbackId: "fb_9",
+    taskId: "task_1",
+    executionId: null,
+    planId: "plan_1",
+    outcome: "failed",
+    signals: [
+      {
+        signalId: "sig_9a",
+        source: "execution",
+        taskId: "task_1",
+        category: "failure",
+        severity: "error",
+        payload: { summary: "fail 1" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+      {
+        signalId: "sig_9b",
+        source: "execution",
+        taskId: "task_1",
+        category: "failure",
+        severity: "error",
+        payload: { summary: "fail 2" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+      {
+        signalId: "sig_9c",
+        source: "execution",
+        taskId: "task_1",
+        category: "failure",
+        severity: "error",
+        payload: { summary: "fail 3" },
+        stepOutputRefs: [],
+        timestamp: Date.now(),
+      },
+    ],
+    emittedAt: Date.now(),
+  });
+
+  assert.equal(evaluation.nextAction, "escalate");
 });

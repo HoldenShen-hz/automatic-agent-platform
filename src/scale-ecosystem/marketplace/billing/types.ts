@@ -50,6 +50,7 @@ export interface RecordUsageInput {
   tenantId?: string | null;
   taskId?: string | null;
   executionId?: string | null;
+  stepId?: string | null;
   metricType: BillingMetricType;
   quantity: number;
   source: BillingUsageSource;

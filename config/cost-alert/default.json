@@ -1,0 +1,22 @@
+{
+  "$schema": "../../../src/platform/contracts/types/schemas/config-schema.ts",
+  "enabled": true,
+  "defaultWarningThreshold": 0.8,
+  "defaultCriticalThreshold": 0.95,
+  "platformBudgetPolicy": {
+    "scope": "platform",
+    "scopeId": "platform",
+    "period": "monthly",
+    "limitCostUsd": 100000,
+    "warningThreshold": 0.8,
+    "actionsOnWarning": ["sev2_alert"],
+    "actionsOnBreach": ["sev1_alert", "workflow_pause"]
+  },
+  "tenantBudgetPolicies": {},
+  "packBudgetPolicies": {},
+  "costTracking": {
+    "recordStepLevelUsage": true,
+    "recordProviderMetrics": true,
+    "cacheHitCostReduction": 0.5
+  }
+}

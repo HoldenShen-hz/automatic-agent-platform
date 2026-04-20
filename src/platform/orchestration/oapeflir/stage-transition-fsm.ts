@@ -8,6 +8,8 @@
  * and transition guards that determine whether progression is allowed.
  */
 
+import type { OapeflirStage } from "./stage-timeline.js";
+
 export const OAPEFLIR_STAGES = [
   "observe",
   "assess",
@@ -19,7 +21,7 @@ export const OAPEFLIR_STAGES = [
   "release",
 ] as const;
 
-export type OapeflirStage = typeof OAPEFLIR_STAGES[number];
+export type { OapeflirStage };
 
 export type StageStatus = "pending" | "completed" | "skipped" | "error" | "blocked";
 

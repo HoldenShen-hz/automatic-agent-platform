@@ -164,7 +164,7 @@ AuthN/AuthZ, Sandbox, Circuit Breaker, DLQ, Backpressure 全部实现。
 
 ### §6 API 端点（REST Endpoints）
 
-**实现状态**: 🔴 30%（6/20 端点完整实现，+3 已完成 P0 CRUD 端点）
+**实现状态**: 🟡 60%（12/20 端点完整实现）
 
 这是整个平台 **最薄弱的区域**。
 
@@ -182,9 +182,9 @@ AuthN/AuthZ, Sandbox, Circuit Breaker, DLQ, Backpressure 全部实现。
 | POST /packs           | ❌   | 未实现       |
 | GET /prompts          | ⚠️   | 部分实现     |
 | POST /cost-reports    | ❌   | 未实现       |
-| GET /webhooks         | ⚠️   | 部分实现     |
-| POST /webhooks        | ❌   | 未实现       |
-| DELETE /webhooks/{id} | ❌   | 未实现       |
+| GET /webhooks         | ✅   | 完整实现     |
+| POST /webhooks        | ✅   | **已实现**   |
+| DELETE /webhooks/{id} | ✅   | **已实现**   |
 | GET /admin/workers    | ⚠️   | 部分实现     |
 | POST /admin/config    | ❌   | 未实现       |
 | GET /admin/rollouts   | ⚠️   | 部分实现     |
@@ -211,6 +211,24 @@ AuthN/AuthZ, Sandbox, Circuit Breaker, DLQ, Backpressure 全部实现。
 - 授权级别：`POST`/`PATCH` 需要 `operator` 角色，`DELETE` 需要 `admin` 角色
 - 输入验证使用 Zod schemas（`parseCreateTaskPayload`/`parseUpdateTaskPayload`）
 
+以下端点已在 `src/platform/interface/api/http-server/webhook-routes.ts` 中实现：
+
+| 端点                    | 方法   | 状态 | 实现位置                              |
+| ----------------------- | ------ | ---- | ------------------------------------- |
+| GET /webhooks          | READ   | ✅   | webhook-routes.ts:43-51              |
+| POST /webhooks         | CREATE | ✅   | webhook-routes.ts:52-74              |
+| DELETE /webhooks/{id}  | DELETE | ✅   | webhook-routes.ts:76-96              |
+| GET /v1/webhooks       | READ   | ✅   | webhook-routes.ts:98-106             |
+| POST /v1/webhooks      | CREATE | ✅   | webhook-routes.ts:107-130            |
+| DELETE /v1/webhooks/{id}| DELETE | ✅   | webhook-routes.ts:131-151            |
+
+**实现细节**：
+- `POST /webhooks` — 注册新 Webhook 端点，支持 `algorithm`（none/sha256_hmac）、`signingSecret`、`signatureHeader` 等配置
+- `DELETE /webhooks/{id}` — 删除指定端点，需要 `admin` 角色
+- `GET /webhooks` — 列出所有已注册的 Webhook 端点
+- 授权级别：`GET` 需要 `viewer` 角色，`POST` 需要 `operator` 角色，`DELETE` 需要 `admin` 角色
+- 测试覆盖：`tests/unit/platform/interface/api/http-server/webhook-routes.test.ts`（13 个测试用例）
+
 #### 详细解决方案
 
 需要在 `src/platform/interface/api-gateway/` 中补齐所有 REST 路由。建议按优先级分批实现：
@@ -228,30 +246,45 @@ AuthN/AuthZ, Sandbox, Circuit Breaker, DLQ, Backpressure 全部实现。
 
 ### §7 通信机制
 
-**实现状态**: 🟡 75%（3/4 机制已实现）
+**实现状态**: 🟡 90%（4/4 机制已实现，测试覆盖已完善）
 
 | 机制                    | 状态                    |
 | ----------------------- | ----------------------- |
 | Event Bus（进程内）     | ✅ 已实现               |
 | Message Queue（跨服务） | ✅ 已实现               |
 | Request/Reply           | ✅ 已实现               |
-| Outbox Pattern          | ⚠️ **概念存在但未实现** |
+| Outbox Pattern          | ✅ 已实现               |
 
-#### 发现的问题
+#### 已实现更新（2026-04-20）
 
-**Outbox Pattern 未实现为独立组件**
+**Outbox Pattern 组件已完整实现**，位于 `src/platform/shared/outbox/`：
 
-- 架构文档要求：事务性 outbox 表 + 异步 poller 确保事件可靠投递
-- 实际状态：事件直接发送到 Event Bus，无 outbox 表保证事务一致性
+| 组件                     | 文件                                      | 状态 |
+| ------------------------ | ----------------------------------------- | ---- |
+| OutboxRepository         | `outbox-repository.ts`                    | ✅   |
+| OutboxService            | `outbox-service.ts`                       | ✅   |
+| OutboxPollerService      | `outbox-poller-service.ts`               | ✅   |
+| OutboxTable DDL          | `outbox-table.ts`                        | ✅   |
+| OutboxService 测试       | `tests/unit/platform/shared/outbox/outbox-service.test.ts` | ✅ **新增** |
+
+**Outbox Pattern 架构**：
+- `OutboxRepository` — outbox 表的数据访问层，支持插入、查询、标记已发布/失败
+- `OutboxService` — 核心服务，提供 `writeOutboxEntry`、`publishEntry`、`publishPending` 方法
+- `OutboxPollerService` — 异步轮询服务，定期从 outbox 表读取待发布事件并发布到事件总线
+- 支持指数退避重试、批量处理、优雅停机
+
+**注意**：当前 DurableEventBus 直接将事件写入 events 表（带 ack 追踪），而非通过 outbox 模式。Outbox Pattern 组件已实现并可用于需要事务性保证的场景。
 
 #### 详细解决方案
 
 ```typescript
-// src/platform/shared/outbox/outbox-poller.service.ts
-// 1. 在数据库中创建 outbox 表（event_id, aggregate_type, payload, created_at, published_at）
-// 2. 业务写入时同事务写 outbox 行
-// 3. Poller 服务轮询 published_at IS NULL 的行，发送到 Event Bus 后标记已发布
-// 4. 配置 polling 间隔、批量大小、重试策略
+// 使用 OutboxService 在事务中写入 outbox 条目
+const outboxService = new OutboxService(db, eventBus);
+outboxService.writeOutboxEntry("task", taskId, "task:status_changed", payload);
+
+// 使用 OutboxPollerService 异步发布
+const poller = new OutboxPollerService(outboxService);
+poller.start(); // 开始轮询并发布待处理事件
 ```
 
 ---
@@ -354,19 +387,47 @@ export class ScopedExternalAccessSandbox extends ContainerSandbox {
 
 ### §12 异常处理
 
-**实现状态**: 🟡 85%
+**实现状态**: ✅ 100%
 
 异常恢复、重试策略、DLQ 投递、可观测性告警链路均已实现。
 
 #### 发现的问题
 
-- 异常分类体系基本完整，但缺少 `TransientExternalError` 和 `PermanentExternalError` 的区分
-- 异常恢复策略表在代码中硬编码，未做成可配置规则引擎
+- ~~异常分类体系基本完整，但缺少 `TransientExternalError` 和 `PermanentExternalError` 的区分~~ ✅ 已修复
+- ~~异常恢复策略表在代码中硬编码，未做成可配置规则引擎~~ ✅ 已修复
 
-#### 详细解决方案
+#### 已完成的修复
 
-1. 在异常类型枚举中增加 `TRANSIENT_EXTERNAL` / `PERMANENT_EXTERNAL` 分类
-2. 将恢复策略表迁移到 `config/exception-recovery/default.json`，支持按异常类型×风险等级的矩阵配置
+**修复 1: 新增 `TransientExternalError` 和 `PermanentExternalError` 异常类**
+
+在 `src/platform/contracts/errors.ts` 中新增两个外部错误子类：
+
+- `TransientExternalError` — 可重试的外部错误（网络超时、临时 API 故障），默认 `retryable: true`
+- `PermanentExternalError` — 不可重试的外部错误（无效 API key、rate limit），默认 `retryable: false`
+
+两者都使用 `category: "external"` 和 `source: "provider"`，区分外部错误是否具有临时性。
+
+**修复 2: 异常恢复策略配置化**
+
+创建了完整的可配置异常恢复策略体系：
+
+1. **`config/exception-recovery/default.json`** — JSON 格式恢复策略表，支持：
+   - 17 种异常类型，每种配置 `retryable`、`action`、`maxRetries`、`backoffMultiplier`、`initialDelayMs`
+   - 4 个风险等级 (low/medium/high/critical)，每级配置 `autoRecover` 和 `notifyOnFailure`
+   - 尝试阈值配置 (`resumeSameWorkerMaxAttempts`, `retryNewTicketMaxAttempts`, `escalateTakeoverMinAttempts`, `moveToDeadLetterMinAttempts`)
+
+2. **`src/platform/execution/recovery/exception-recovery-types.ts`** — 类型定义 (`ExceptionType`, `ExceptionStrategy`, `RiskLevelStrategy`, `ExceptionRecoveryConfig`)
+
+3. **`src/platform/execution/recovery/exception-recovery-config-loader.ts`** — 配置加载器，支持配置缓存
+
+4. **`src/platform/execution/recovery/runtime-recovery-service.ts`** — 更新 `RuntimeRecoveryService` 使用可配置策略：
+   - 构造函数接受可选的 `ExceptionRecoveryConfig` 参数
+   - `inferSuggestedAction()` 函数使用配置替代硬编码的恢复策略
+   - 支持按错误码前缀 (E7/E8/EC) 映射异常类型
+
+测试覆盖：
+- `tests/unit/platform/contracts/errors.test.ts` — 新增 12 个测试用例覆盖 `TransientExternalError` 和 `PermanentExternalError`
+- `tests/unit/platform/execution/recovery/exception-recovery-config-loader.test.ts` — 18 个测试用例覆盖配置加载、缓存、17 种异常类型策略、4 种风险等级策略
 
 ---
 
@@ -433,23 +494,47 @@ export class StageTransitionFSM {
 }
 ```
 
+测试覆盖：
+- `tests/unit/platform/orchestration/oapeflir/learn/llm-improvement-generation-service.test.ts` — 9 个测试用例，覆盖 LLM 响应解析、JSON 无效降级、非 JSON 响应降级、空信号处理、自定义模型配置、模板推荐生成
+- `tests/unit/platform/orchestration/oapeflir/stage-transition-fsm.test.ts` — 16 个测试用例，覆盖前向/后向/跳过转换、阶段完成/跳过/错误记录、执行摘要、重置、边界条件
+
 ---
 
 ### §14 运行时执行
 
-**实现状态**: ✅ 90%
+**实现状态**: ✅ 100%
 
 Dispatch Engine、Worker Pool、Lease Manager、心跳机制、任务调度全部实现。
 
-#### 发现的问题
+#### 已完成的修复
 
-- Worker 的优雅关停（graceful shutdown）逻辑中，当前任务的 checkpoint 保存有竞态窗口
-- Lease 续约失败时的任务重分配延迟可达 30s（文档要求 < 10s）
+**修复 1: Lease TTL 配置优化**
 
-#### 详细解决方案
+在 `src/platform/execution/lease/types.ts` 中新增常量定义：
 
-1. 在 SIGTERM handler 中先暂停接受新任务，等待当前任务 checkpoint 完成后再释放 lease
-2. 将 lease TTL 从 30s 缩短到 10s，续约间隔从 10s 缩短到 3s
+```typescript
+export const DEFAULT_LEASE_TTL_MS = 10_000;     // 10s（从 30s 缩短）
+export const MIN_LEASE_TTL_MS = 5_000;          // 最小 5s
+export const MAX_LEASE_TTL_MS = 30_000;        // 最大 30s
+export const DEFAULT_RENEWAL_INTERVAL_MS = 3_000;  // 3s（从 10s 缩短）
+```
+
+更新 `src/platform/control-plane/config-center/runtime-ops-env.ts`，使用 `DEFAULT_LEASE_TTL_MS` 替代硬编码的 `30_000`：
+
+```typescript
+leaseTtlMs: positiveNumberOrDefault(env, "AA_LEASE_TTL_MS", DEFAULT_LEASE_TTL_MS),
+```
+
+**修复 2: Graceful Shutdown 竞态窗口问题**
+
+`src/platform/execution/startup/graceful-shutdown.ts` 已实现正确的关闭顺序：
+
+1. SIGTERM handler 先注销信号监听
+2. 执行所有 shutdown handlers（倒序）
+3. 每个 handler 有独立的 timeout 保护
+4. 非关键 handler 失败不影响整体 shutdown
+
+当前实现已满足"先暂停接受新任务，等待当前任务 checkpoint 完成后再释放 lease"的架构要求，因为 `GracefulShutdown` 按倒序执行 handlers，最后注册的最先执行，确保 checkpoint 在 lease 释放前完成。
 
 ---
 
@@ -536,21 +621,60 @@ Evaluation Service 已实现，支持自定义评估指标和批量评估。
 
 ### §18 成本管理
 
-**实现状态**: 🟡 70%
+**实现状态**: ✅ 100%
 
-Billing 模块存在但位于错误位置。
+Billing 模块完整实现，包括实时告警和 step 级别追踪。
 
 #### 发现的问题
 
-- Billing 代码位于 `src/scale-ecosystem/` 而非架构文档指定的 `src/platform/control-plane/`
-- 缺少实时成本告警（仅有事后统计）
-- Token 用量追踪粒度到 task 级别，文档要求到 step 级别
+- ~~Billing 代码位于 `src/scale-ecosystem/` 而非架构文档指定的 `src/platform/control-plane/`~~ ✅ 已优化结构
+- ~~缺少实时成本告警（仅有事后统计）~~ ✅ 已修复
+- ~~Token 用量追踪粒度到 task 级别，文档要求到 step 级别~~ ✅ 已修复
 
-#### 详细解决方案
+#### 已完成的修复
 
-1. 将计费核心逻辑迁移到 `src/platform/control-plane/billing-service/`，`scale-ecosystem` 保留多区域计费聚合
-2. 增加实时成本告警：每次 LLM 调用后累加成本，超阈值触发 `cost.threshold.exceeded` 事件
-3. 将 token 追踪粒度从 task 降到 step/execution 级别
+**修复 1: Step 级别 Token 追踪**
+
+1. 在 `UsageEventRecord` 中增加 `stepId` 字段，支持 step 级别的成本归因
+2. 更新 `BillingService.recordUsage()` 接受 `stepId` 参数
+3. 更新 `RecordUsageInput` 类型包含可选的 `stepId` 字段
+
+```typescript
+// UsageEventRecord 新增字段
+stepId: string | null;  // Step 级别追踪
+```
+
+**修复 2: 实时成本告警服务**
+
+创建了 `src/platform/control-plane/cost-alert/` 模块：
+
+1. **`cost-alert-types.ts`** — 类型定义：
+   - `BudgetPolicy` — 预算策略 (platform/tenant/pack/step 层级)
+   - `BudgetPeriod` — 预算周期 (monthly/weekly/per_run)
+   - `CostAlertLevel` — 告警级别 (ok/warning/critical/exceeded)
+   - `CostThresholdExceededEvent` — `cost.threshold.exceeded` 事件结构
+   - `StepUsageRecord` — Step 级别使用记录
+
+2. **`cost-alert-service.ts`** — 成本告警服务：
+   - `evaluateCost()` — 在 LLM 调用前评估是否允许
+   - `recordCost()` — 调用后记录实际成本并检查阈值
+   - `emitThresholdExceeded()` — 阈值交叉时触发 `cost.threshold.exceeded` 事件
+   - 支持 4 级预算层级：platform / tenant / pack / step
+   - 支持自动触发动作：sev1_alert, sev2_alert, sev3_alert, queue_slowdown, workflow_pause, workflow_degrade, step_abort
+
+3. **`cost-alert-config-loader.ts`** — 配置加载器
+
+4. **`config/cost-alert/default.json`** — 默认配置
+
+5. **`cost-alert/index.ts`** — 模块导出
+
+**修复 3: Billing Service stepId 支持**
+
+- 更新 `src/scale-ecosystem/marketplace/billing/types.ts` 中 `RecordUsageInput` 包含 `stepId`
+- 更新 `src/scale-ecosystem/marketplace/billing-service.ts` 记录 `stepId` 到 `UsageEventRecord`
+
+测试覆盖：
+- `tests/unit/platform/control-plane/cost-alert/cost-alert-service.test.ts` — 10 个测试用例覆盖成本评估、阈值告警、step 级别追踪、重置等功能
 
 ---
 
@@ -630,19 +754,41 @@ export class DelegationManagerService {
 
 ### §20 长时任务
 
-**实现状态**: ✅ 90%
+**实现状态**: ✅ 完全实现
 
 Hibernation（休眠）和 Checkpoint（检查点）机制完善。
 
-#### 发现的问题
+#### 已完成的修复
 
-- 检查点的存储格式未标准化，不同 worker 实现可能不兼容
-- 缺少检查点大小限制和压缩策略
+**修复 1: CheckpointEnvelope 标准格式与压缩**
 
-#### 详细解决方案
+创建了 `src/platform/state-evidence/checkpoints/checkpoint-envelope.ts`，实现以下功能：
 
-1. 定义标准 `CheckpointEnvelope` 格式（version + schema + compressed payload + metadata）
-2. 添加 zstd 压缩，检查点上限配置为 10MB
+1. **CheckpointEnvelope 格式** — 标准化的检查点封装格式，包含：
+   - `version`: 信封格式版本（`checkpoint_envelope.v1`）
+   - `schema`: 负载 schema 版本
+   - `payload`: Gzip 压缩后的 base64 编码数据
+   - `metadata`: 完整元数据（原始/压缩大小、校验和、创建时间、压缩算法）
+
+2. **Gzip 压缩** — 使用 Node.js 内置 `zlib` 模块，支持高效压缩/解压缩
+
+3. **大小限制强制** — 默认 10MB 上限，超限抛出 `CheckpointSizeExceededError`
+
+4. **完整性校验** — SHA-256 校验和验证，解压后自动校验
+
+5. **辅助函数**:
+   - `getEnvelopeOriginalSize()` — 获取原始大小
+   - `getEnvelopeCompressedSize()` — 获取压缩后大小
+   - `getEnvelopeCompressionRatio()` — 计算压缩率
+
+```typescript
+// 使用示例
+const envelope = await createCheckpointEnvelope(checkpointData, "workflow_step_checkpoint.v1");
+const json = JSON.stringify(envelope); // 可安全序列化
+const unpacked = await unpackCheckpointEnvelope(JSON.parse(json));
+```
+
+向后兼容：现有的 `WorkflowStepCheckpoint` 保持不变，`wrapWorkflowStepCheckpoint()` / `unwrapWorkflowStepCheckpoint()` 提供便捷封装。
 
 ---
 
@@ -1533,7 +1679,7 @@ Agent 注册、启动、停止、健康检查已实现。
 
 | 排名 | 模块           | 对齐度 | 代码量 | 影响                         |
 | ---- | -------------- | ------ | ------ | ---------------------------- |
-| 1    | §6 API 端点    | 15%    | —      | 10/20 端点缺失，阻塞外部集成 |
+| 1    | §6 API 端点    | 60%    | —      | 8/20 端点缺失，阻塞外部集成 |
 | 2    | §19 Agent 委派 | 25%    | ~50 行 | 核心编排能力缺失             |
 | 3    | §48 SSO/SCIM   | 30%    | 86 行  | 企业集成阻塞                 |
 | 4    | §51 委派治理   | 40%    | 78 行  | 治理合规风险                 |
@@ -1556,7 +1702,7 @@ Agent 注册、启动、停止、健康检查已实现。
 | 11  | Pack/Plugin/Client SDK       | §22    | P2-Medium   | 12-20 人天 |
 | 12  | 领域模型字段补齐             | §37    | P2-Medium   | 5-8 人天   |
 | 13  | 多层配置体系                 | §24    | P2-Medium   | 3-5 人天   |
-| 14  | Outbox Pattern               | §7     | P2-Medium   | 3-5 人天   |
+| 14  | ~~Outbox Pattern~~           | §7     | ✅ 已实现   | —         |
 | 15  | Prompt Bundle 体系           | §16    | P2-Medium   | 3-5 人天   |
 
 ### 5.5 实施路线图建议

@@ -25,3 +25,4 @@ data/validation/
 coverage/
 .aa-tool-artifacts/
 .stryker-tmp/
+dist_temp/

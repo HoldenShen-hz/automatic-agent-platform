@@ -259,6 +259,7 @@ export class BillingService {
       tenantId: input.tenantId ?? null,
       taskId: input.taskId ?? null,
       executionId: input.executionId ?? null,
+      stepId: input.stepId ?? null,
       metricType,
       quantity,
       source: input.source,

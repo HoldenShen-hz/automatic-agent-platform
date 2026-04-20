@@ -176,6 +176,26 @@ function requiredNumberEnv(env: NodeJS.ProcessEnv, name: string): number {
 }
 
 /**
+ * Reads a positive number from environment, returning fallback if missing.
+ * Throws if value exists but is not a positive number.
+ */
+function positiveNumberOrDefault(
+  env: NodeJS.ProcessEnv,
+  name: string,
+  fallback: number,
+): number {
+  const value = optionalEnv(env, name);
+  if (value == null) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return invalidEnv(name);
+  }
+  return parsed;
+}
+
+/**
  * Reads an optional enum value from environment, returning undefined if missing.
  * Throws if value exists but is not in the allowed list.
  */

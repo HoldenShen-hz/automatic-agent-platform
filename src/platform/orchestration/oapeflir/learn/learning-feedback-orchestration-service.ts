@@ -48,7 +48,7 @@ export class LearningFeedbackOrchestrationService {
   }
 
   public process(input: LearningFeedbackOrchestrationInput): LearningFeedbackOrchestrationResult {
-    const learned = this.strategyLearning.learn(input.signals);
+    const learned = this.strategyLearning.learnSync(input.signals);
     const learningObjects = dedupeLearningObjects(learned);
     const skippedDuplicateCount = learned.length - learningObjects.length;
     const promotedKnowledge = input.promoteToKnowledge === false

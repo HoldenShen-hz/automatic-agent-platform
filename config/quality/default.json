@@ -1,0 +1,23 @@
+{
+  "qualityGate": {
+    "defaultPassThreshold": 0.5,
+    "criticalPassThreshold": 0.8,
+    "enforcement": "blocking"
+  },
+  "qualityScoreWeights": {
+    "successSignal": 0.35,
+    "completionOutcome": 0.45,
+    "failureSignal": 0.3,
+    "partialSignal": 0.1
+  },
+  "actionThresholds": {
+    "completeMinScore": 0.5,
+    "approvalRequiredScore": 0.3,
+    "retryMaxFailures": 3
+  },
+  "evidence": {
+    "enabled": true,
+    "artifactKind": "quality-evaluation",
+    "retentionDays": 90
+  }
+}

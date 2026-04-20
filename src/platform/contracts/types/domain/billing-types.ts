@@ -104,6 +104,9 @@ export interface BillingPaymentSessionRecord {
  *
  * Every billable action (API calls, task executions, storage usage) generates
  * a usage event. Events are aggregated into invoices and reconciled against quotas.
+ *
+ * Step-level tracking (stepId) enables per-step cost attribution within a workflow,
+ * supporting fine-grained cost control and budget enforcement at the step granularity.
  */
 export interface UsageEventRecord {
   usageId: string;
@@ -113,6 +116,7 @@ export interface UsageEventRecord {
   tenantId: string | null;
   taskId: string | null;
   executionId: string | null;
+  stepId: string | null;
   metricType: string;
   quantity: number;
   source: BillingUsageSource;

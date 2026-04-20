@@ -59,6 +59,10 @@ export interface RuntimeLifecycleRepository {
     responseJson: string;
     respondedAt: string;
   }): void;
+  updateApprovalRequest(input: {
+    id: string;
+    requestJson: string;
+  }): void;
   insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
       eventTier?: EventRecord["eventTier"];
@@ -154,6 +158,10 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     respondedAt: string;
   }): void {
     this.store.approval.updateApprovalDecision(input);
+  }
+
+  public updateApprovalRequest(input: { id: string; requestJson: string }): void {
+    this.store.approval.updateApprovalRequest(input);
   }
 
   public insertEvent(

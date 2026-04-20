@@ -61,6 +61,12 @@ export interface ApprovalRequest {
   context: Record<string, unknown>;
   timeoutPolicy: "reject" | "approve" | "remain_pending";
   createdAt: string;
+  /** Number of approvals required for multi-party approval (N-of-M). Default: 1 */
+  requiredApprovals?: number;
+  /** Groups from which approvers can be selected. Empty means any approver. */
+  approverGroups?: readonly string[];
+  /** Current count of approvals received */
+  approvalsReceived?: number;
 }
 
 export interface ApprovalDecision {

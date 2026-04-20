@@ -302,7 +302,7 @@ export class DegradationController {
    */
   private async routeD3(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
     const templateKey = getTemplateKey(request.taskType);
-    const content = this.templates[templateKey] ?? this.templates["default"];
+    const content = this.templates[templateKey] ?? DEFAULT_TEMPLATE_RESPONSES["default"]!;
 
     return {
       content,
@@ -325,14 +325,35 @@ export class DegradationController {
   }
 
   /**
-   * Selects a fallback profile for D1.
+   * Selects a fallback profile for D1 using the fallback service.
    */
   private selectFallbackProfile(
     primaryProfileName: string,
   ): ModelFallbackCandidate | null {
-    // This would typically consult the fallback service with actual candidates
-    // For now, return null to indicate no fallback available
-    return null;
+    // Consult the fallback service for available candidates
+    const candidates = this.getFallbackCandidates();
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const decision = this.fallbackService.selectFallback({
+      primaryProfileName,
+      candidates,
+    });
+
+    if (decision.selectedProfileName == null) {
+      return null;
+    }
+
+    return candidates.find((c) => c.profileName === decision.selectedProfileName) ?? null;
+  }
+
+  /**
+   * Gets available fallback candidates from all providers.
+   * This would typically be enhanced to read from a provider registry.
+   */
+  private getFallbackCandidates(): ModelFallbackCandidate[] {
+    return [];
   }
 
   /**
