@@ -44,7 +44,7 @@ export class DelegationManagerService {
     const config: TopologyValidatorConfig = {
       maxDepth: options.maxDepth ?? 5,
       maxFanout: options.maxFanout ?? 10,
-      allowedPackIds: options.allowedPackIds,
+      ...(options.allowedPackIds ? { allowedPackIds: options.allowedPackIds } : {}),
     };
     this.topologyValidator = createTopologyValidator(config);
     this.defaultTimeout = options.defaultTimeout ?? 300000; // 5 minutes
@@ -99,7 +99,7 @@ export class DelegationManagerService {
       throw new ValidationError(
         "delegation.not_found",
         `Delegation ${delegationId} not found`,
-        { delegationId },
+        { details: { delegationId } },
       );
     }
 
@@ -107,7 +107,7 @@ export class DelegationManagerService {
       throw new ValidationError(
         "delegation.cannot_cancel",
         `Delegation ${delegationId} cannot be cancelled (status: ${delegation.status})`,
-        { delegationId, status: delegation.status },
+        { details: { delegationId, status: delegation.status } },
       );
     }
 
@@ -120,13 +120,13 @@ export class DelegationManagerService {
    * @param delegationId - Delegation to complete
    * @param outputRef - Optional reference to output artifact
    */
-  public async complete(delegationId: string, outputRef?: string): Promise<void> {
+  public async complete(delegationId: string, _outputRef?: string): Promise<void> {
     const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
       throw new ValidationError(
         "delegation.not_found",
         `Delegation ${delegationId} not found`,
-        { delegationId },
+        { details: { delegationId } },
       );
     }
 
@@ -139,13 +139,13 @@ export class DelegationManagerService {
    * @param delegationId - Delegation to fail
    * @param error - Error message
    */
-  public async fail(delegationId: string, error: string): Promise<void> {
+  public async fail(delegationId: string, _error: string): Promise<void> {
     const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
       throw new ValidationError(
         "delegation.not_found",
         `Delegation ${delegationId} not found`,
-        { delegationId },
+        { details: { delegationId } },
       );
     }
 

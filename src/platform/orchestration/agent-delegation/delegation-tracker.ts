@@ -145,7 +145,10 @@ export class DelegationTracker {
     }
 
     // Return root node (first node in chain)
-    return chain.nodes.length > 0 ? nodeMap.get(chain.nodes[0].delegationId) ?? null : null;
+    if (chain.nodes.length === 0) return null;
+    const firstNode = chain.nodes[0];
+    if (!firstNode) return null;
+    return nodeMap.get(firstNode.delegationId) ?? null;
   }
 
   /**

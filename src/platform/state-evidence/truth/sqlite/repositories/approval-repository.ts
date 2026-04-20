@@ -152,6 +152,20 @@ export class ApprovalRepository {
   }
 
   /**
+   * Update approval request JSON.
+   */
+  public updateApprovalRequest(input: { id: string; requestJson: string }): void {
+    execute(
+      this.conn,
+      `UPDATE approvals
+       SET request_json = ?
+       WHERE id = ?`,
+      input.requestJson,
+      input.id,
+    );
+  }
+
+  /**
    * List approvals by status.
    */
   public listApprovalsByStatus(status: ApprovalRecord["status"]): ApprovalRecord[] {

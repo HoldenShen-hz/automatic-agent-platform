@@ -262,6 +262,10 @@ export abstract class AuthoritativeTaskStoreDelegatingEngagement extends Authori
     return this.delegateLegacy("updateApprovalDecision", "approval", "updateApprovalDecision", ...args);
   }
 
+  public override updateApprovalRequest(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateApprovalRequest"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateApprovalRequest"]> {
+    return this.delegateLegacy("updateApprovalRequest", "approval", "updateApprovalRequest", ...args);
+  }
+
   public override listTakeoverSessionsByTask(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listTakeoverSessionsByTask"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listTakeoverSessionsByTask"]> {
     return this.delegateLegacy("listTakeoverSessionsByTask", "approval", "listTakeoverSessionsByTask", ...args);
   }

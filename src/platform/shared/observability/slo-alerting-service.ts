@@ -796,4 +796,179 @@ export class SloAlertingService {
       executedBy: String(row.executed_by ?? "system"),
     };
   }
+
+  // ── Error Budget Auto-Degradation ──────────────────────────────────
+
+  private static rolloutFrozenDueToBudget = false;
+  private static frozenAt: string | null = null;
+  private static frozenSloId: string | null = null;
+
+  /**
+   * Error budget degradation result.
+   */
+  export interface ErrorBudgetDegradationResult {
+    degraded: boolean;
+    sloId: string;
+    sloStatus: SloStatus;
+    rolloutFrozen: boolean;
+    alertFired: boolean;
+    alertId: string | null;
+  }
+
+  /**
+   * Checks if rollouts are currently frozen due to error budget exhaustion.
+   */
+  public isRolloutFrozen(): boolean {
+    return SloAlertingService.rolloutFrozenDueToBudget;
+  }
+
+  /**
+   * Gets the timestamp when rollouts were frozen due to error budget, if applicable.
+   */
+  public getRolloutFrozenAt(): string | null {
+    return SloAlertingService.frozenAt;
+  }
+
+  /**
+   * Gets the SLO ID that triggered the rollout freeze, if applicable.
+   */
+  public getFrozenBySloId(): string | null {
+    return SloAlertingService.frozenSloId;
+  }
+
+  /**
+   * Manually unfreezes rollouts after error budget has been restored.
+   * Should be called after the SLO recovers and manual approval is given.
+   */
+  public unfreezeRollouts(): void {
+    SloAlertingService.rolloutFrozenDueToBudget = false;
+    SloAlertingService.frozenAt = null;
+    SloAlertingService.frozenSloId = null;
+  }
+
+  /**
+   * Triggers error budget auto-degradation for an SLO.
+   *
+   * If the SLO is breached (error budget exhausted):
+   * 1. Sets rollout freeze flag
+   * 2. Fires a page-level alert to on-call
+   *
+   * Returns the degradation result including whether rollout was frozen and alert was fired.
+   */
+  public triggerErrorBudgetDegradation(sloId: string): ErrorBudgetDegradationResult {
+    const sloStatus = this.evaluateSlo(sloId);
+
+    // If SLO is not breached, no action needed
+    if (sloStatus !== "breached") {
+      return {
+        degraded: false,
+        sloId,
+        sloStatus,
+        rolloutFrozen: SloAlertingService.rolloutFrozenDueToBudget,
+        alertFired: false,
+        alertId: null,
+      };
+    }
+
+    // SLO is breached - trigger degradation
+    SloAlertingService.rolloutFrozenDueToBudget = true;
+    SloAlertingService.frozenAt = nowIso();
+    SloAlertingService.frozenSloId = sloId;
+
+    // Fire a page-level alert to on-call
+    const slo = this.getSlo(sloId);
+    const sloName = slo?.name ?? sloId;
+    const alert = this.fireAlertToPagerDuty(
+      `Error Budget Exhausted: ${sloName}`,
+      `SLO "${sloName}" (${sloId}) has breached its error budget. Rollouts have been automatically frozen. ` +
+      `Window: ${slo?.windowMinutes ?? "unknown"} minutes, Target: ${slo?.targetValue ?? "unknown"} ${slo?.sliKind ?? ""}. ` +
+      `Action required: Investigate error budget burn rate and restore service reliability.`,
+    );
+
+    return {
+      degraded: true,
+      sloId,
+      sloStatus,
+      rolloutFrozen: true,
+      alertFired: true,
+      alertId: alert.id,
+    };
+  }
+
+  /**
+   * Fires an alert specifically to PagerDuty for critical/error budget exhaustion.
+   * Falls back to log channel if PagerDuty is not configured.
+   */
+  private fireAlertToPagerDuty(title: string, detail: string): AlertEvent {
+    // First, try to find a pagerduty rule or create an inline alert event
+    const pagerDutyChannel = this.channels.get("pagerduty");
+    const sloChannel = pagerDutyChannel ?? this.channels.get("slack") ?? this.channels.get("log");
+
+    if (!pagerDutyChannel) {
+      // No PagerDuty configured - fire with log channel and add detail about needing PagerDuty
+      return this.fireAlertWithChannel(
+        "slo_error_budget_exhausted",
+        title,
+        detail + " (PagerDuty channel not configured - requires manual notification)",
+        "critical",
+        "log",
+      );
+    }
+
+    return this.fireAlertWithChannel(
+      "slo_error_budget_exhausted",
+      title,
+      detail,
+      "page",
+      "pagerduty",
+    );
+  }
+
+  /**
+   * Fires an alert with explicit channel specification.
+   */
+  private fireAlertWithChannel(
+    ruleId: string,
+    title: string,
+    detail: string,
+    severity: AlertSeverity,
+    channelKind: AlertChannelKind,
+  ): AlertEvent {
+    const now = nowIso();
+    const event: AlertEvent = {
+      id: newId("alert"),
+      ruleId,
+      severity,
+      status: "firing",
+      title,
+      detail,
+      channelKind,
+      deliveredAt: null,
+      acknowledgedBy: null,
+      resolvedAt: null,
+      firedAt: now,
+    };
+
+    this.db.connection
+      .prepare(
+        `INSERT INTO alert_events (id, rule_id, severity, status, title, detail, channel_kind, delivered_at, acknowledged_by, resolved_at, fired_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(event.id, event.ruleId, event.severity, event.status, event.title, event.detail, event.channelKind, event.deliveredAt, event.acknowledgedBy, event.resolvedAt, event.firedAt);
+
+    // Attempt delivery
+    const channel = this.channels.get(channelKind);
+    if (channel) {
+      const result = channel.deliver(event, {});
+      if (result.delivered) {
+        const deliveredAt = nowIso();
+        this.db.connection
+          .prepare(`UPDATE alert_events SET delivered_at = ? WHERE id = ?`)
+          .run(deliveredAt, event.id);
+        event.deliveredAt = deliveredAt;
+      }
+    }
+
+    return event;
+  }
 }

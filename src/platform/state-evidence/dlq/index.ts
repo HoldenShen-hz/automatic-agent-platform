@@ -14,6 +14,12 @@ export interface DeadLetterRecord {
   nextRetryAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** §28: Original timestamp when the failed event occurred */
+  originalTimestamp: string | null;
+  /** §28: Category classification for the failure */
+  failureCategory: string | null;
+  /** §28: Timestamp when all retries were exhausted */
+  retryExhaustedAt: string | null;
 }
 
 export interface DeadLetterQueueSummary {
@@ -32,6 +38,8 @@ export class DeadLetterQueueService {
     consumerId: string;
     errorCode: string;
     payloadJson: string;
+    originalTimestamp?: string | null;
+    failureCategory?: string | null;
   }): DeadLetterRecord {
     const now = nowIso();
     const record: DeadLetterRecord = {
@@ -45,6 +53,9 @@ export class DeadLetterQueueService {
       nextRetryAt: null,
       createdAt: now,
       updatedAt: now,
+      originalTimestamp: input.originalTimestamp ?? null,
+      failureCategory: input.failureCategory ?? null,
+      retryExhaustedAt: null,
     };
     this.records.set(record.deadLetterId, record);
     return record;
@@ -77,6 +88,32 @@ export class DeadLetterQueueService {
   public discard(deadLetterId: string, reason: string): DeadLetterRecord {
     const record = this.getRequired(deadLetterId);
     const updated = { ...record, status: "discarded" as const, errorCode: reason, nextRetryAt: null, updatedAt: nowIso() };
+    this.records.set(deadLetterId, updated);
+    return updated;
+  }
+
+  /** §28: Mark a DLQ entry as retry-exhausted */
+  public markRetryExhausted(deadLetterId: string): DeadLetterRecord {
+    const record = this.getRequired(deadLetterId);
+    const updated: DeadLetterRecord = {
+      ...record,
+      status: "pending",
+      retryExhaustedAt: nowIso(),
+      nextRetryAt: null,
+      updatedAt: nowIso(),
+    };
+    this.records.set(deadLetterId, updated);
+    return updated;
+  }
+
+  /** §28: Set failure category on a DLQ entry */
+  public setFailureCategory(deadLetterId: string, category: string): DeadLetterRecord {
+    const record = this.getRequired(deadLetterId);
+    const updated: DeadLetterRecord = {
+      ...record,
+      failureCategory: category,
+      updatedAt: nowIso(),
+    };
     this.records.set(deadLetterId, updated);
     return updated;
   }

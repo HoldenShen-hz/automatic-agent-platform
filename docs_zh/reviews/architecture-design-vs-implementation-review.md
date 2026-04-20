@@ -794,19 +794,50 @@ const unpacked = await unpackCheckpointEnvelope(JSON.parse(json));
 
 ### §21 人机协作（HITL）
 
-**实现状态**: 🟡 85%
+**实现状态**: ✅ 100%
 
-核心审批流程已实现，支持单人审批和超时升级。
+核心审批流程已实现，支持单人审批、多方审批（N-of-M）和超时升级。
 
-#### 发现的问题
+#### 已完成的修复
 
-- 缺少多方审批（multi-party approval）：文档要求支持 N-of-M 审批模式
-- 审批界面数据缺少上下文摘要生成（审批人需手动查看全部执行日志）
+**修复 1: 多方审批（multi-party approval）完整实现**
 
-#### 详细解决方案
+在 `src/platform/control-plane/approval-center/approval-service.ts` 中 `ApprovalRequest` 接口已支持：
 
-1. 扩展 ApprovalRequest 支持 `requiredApprovals: number` 和 `approverGroups: string[]`
-2. 在审批请求创建时调用 LLM 生成执行摘要，附在审批 payload 中
+```typescript
+export interface ApprovalRequest {
+  // ... base fields ...
+  /** Number of approvals required for multi-party approval (N-of-M). Default: 1 */
+  requiredApprovals?: number;
+  /** Groups from which approvers can be selected. Empty means any approver. */
+  approverGroups?: readonly string[];
+  /** Current count of approvals received */
+  approvalsReceived?: number;
+}
+```
+
+创建了 `src/platform/control-plane/approval-center/multi-party-approval-service.ts`，实现完整的 N-of-M 审批逻辑：
+
+- `createMultiPartyRequest()` — 创建多方审批请求
+- `applyDecision()` — 应用审批决策，自动跟踪 approvalsReceived
+- 当 `approvalsReceived >= requiredApprovals` 时自动批准
+
+**修复 2: 审批上下文摘要生成服务**
+
+创建了 `src/platform/orchestration/hitl/approval-context-summary-service.ts`，实现 LLM 生成执行摘要：
+
+```typescript
+export class ApprovalContextSummaryService {
+  async generateSummary(context: ExecutionContextForSummary): Promise<ApprovalContextSummary>
+  // 生成包含 summary、keyPoints、riskFactors、recommendedAction、confidence 的审批摘要
+  // 失败时自动降级到模板摘要
+}
+```
+
+摘要数据通过 `HitlOperatorConsoleService.explanationSummary` 字段展示在审批界面前，审批人无需手动查看执行日志。
+
+测试覆盖：
+- `tests/unit/platform/orchestration/hitl/approval-context-summary-service.test.ts` — 8 个测试用例，覆盖 LLM 响应解析、JSON 无效降级、非 JSON 响应降级、错误上下文摘要、阻塞上下文摘要、带完成步骤的上下文、空上下文处理、自定义模型配置
 
 ---
 
@@ -844,45 +875,51 @@ CLI 是整个 SDK 体系中唯一完整的组件。Pack SDK / Plugin SDK / Clien
 
 ### §23 合规体系
 
-**实现状态**: 🟡 70%
+**实现状态**: ✅ 完全实现
 
 基础合规检查、数据擦除、审计追踪已实现。
 
-#### 发现的问题
+#### 已完成的修复
 
-**关键缺失: 加密销毁（Crypto-shredding）**
+**修复 1: Crypto-shredding 完整实现**
 
-- 架构文档要求：使用 DEK（Data Encryption Key）加密个人数据，销毁时只需删除 DEK
-- 实际实现：直接擦除数据记录（DELETE 操作），无加密层
+创建了 `src/platform/compliance/crypto-shredding/`，实现以下功能：
 
-这意味着：
+1. **DEK 管理器 (`dek-manager.ts`)**:
+   - `DekStore` — DEK 存储，支持创建、轮换、销毁
+   - `DekManager` — DEK 生命周期管理
+   - AES-256-GCM 加密算法
+   - SHA-256 校验和验证
+   - 版本追踪支持密钥轮换
 
-- 无法保证已备份/已复制数据的彻底销毁
-- 不符合 GDPR 的 "right to be forgotten" 最佳实践
+2. **CryptoShreddingService (`crypto-shredding-service.ts`)**:
+   - `shred()` — 销毁主题的 DEK，使所有加密数据永久不可恢复
+   - `rotateSubjectKey()` — 轮换 DEK（保留旧 DEK 用于解密历史数据）
+   - `encryptRecordForSubject()` — 使用主题 DEK 加密 PII 字段
+   - `decryptField()` — 使用指定 DEK 解密字段
+   - `getShredRecord()` — 查询销毁操作的审计记录
 
-#### 详细解决方案
+3. **审计追踪**:
+   - `InMemoryShredAuditTrail` — 内存审计追踪实现
+   - 完整的销毁操作审计记录
 
 ```typescript
-// src/platform/compliance/crypto-shredding/
-// 1. DEK 管理器 — 为每个数据主体生成独立 DEK
-// 2. 加密拦截器 — 在写入 truth store 前用 DEK 加密 PII 字段
-// 3. 销毁服务 — 删除 DEK 即等同于销毁所有用该 DEK 加密的数据
-// 4. 密钥轮换 — 定期轮换 DEK，重加密活跃数据
+// 使用示例
+const service = new CryptoShreddingService();
+await manager.createForSubject("user-123");
 
-export class CryptoShreddingService {
-  async shred(subjectId: string): Promise<ShredResult> {
-    const dekId = await this.dekStore.findBySubject(subjectId);
-    await this.dekStore.destroy(dekId); // DEK 销毁 = 数据不可恢复
-    await this.auditTrail.record({
-      action: "crypto_shred",
-      subjectId,
-      dekId,
-      timestamp: new Date().toISOString(),
-    });
-    return { status: "shredded", dekId };
-  }
-}
+// 加密记录
+const encrypted = await service.encryptRecordForSubject("user-123", {
+  name: "John Doe",
+  email: "john@example.com"
+});
+
+// 销毁（GDPR合规）
+const result = await service.shred("user-123", "admin-001");
+// 销毁后，所有用 user-123 的 DEK 加密的数据永久不可恢复
 ```
+
+向后兼容：现有的 `ErasurePlanningService` 和 `FieldEncryptionService` 保持不变。
 
 ---
 
@@ -890,21 +927,53 @@ export class CryptoShreddingService {
 
 ### §24 配置治理
 
-**实现状态**: 🟡 60%
+**实现状态**: 🟡 85%（3/3 问题已解决，测试覆盖已完善）
 
 Config Manager 存在，支持 JSON 配置加载和环境覆盖。
 
-#### 发现的问题
+#### 已实现更新（2026-04-20）
 
-1. **缺少多层配置体系**: 文档定义 4 层：`platform → tenant → pack → task-type`，代码仅有 `platform` 层
-2. **缺少配置变更事件**: 配置更新后不发送 `config.changed` 事件，下游服务无法动态响应
-3. **缺少配置金丝雀发布**: 文档要求配置变更支持灰度发布（先 5% → 25% → 100%），代码为全量立即生效
+**问题 1: 多层配置体系** ✅ 已解决
 
-#### 详细解决方案
+新增 `HierarchicalConfigLoader`（`src/platform/control-plane/config-center/hierarchical-config-loader.ts`）：
 
-1. 扩展配置加载逻辑支持 4 层合并：`deepMerge(platform, tenant, pack, taskType)`
-2. 在 config-manager 写入操作后发布 `config.changed` 事件到 Event Bus
-3. 复用 rollout-controller 的灰度能力，为配置变更增加 `ConfigRolloutStrategy`
+| 功能 | 状态 |
+|------|------|
+| 4 层配置加载（platform → tenant → pack → task-type） | ✅ |
+| 深度合并（deep merge）嵌套对象 | ✅ |
+| 层溯源（layerMap 记录每个 key 来源层） | ✅ |
+| 版本计算（computeVersion） | ✅ |
+| 配置差异计算（computeDiff） | ✅ |
+
+**问题 2: 配置变更事件** ✅ 已解决
+
+`HierarchicalConfigLoader` 和 `ConfigRolloutService` 均支持事件发射：
+
+- `emitConfigChange(layer, sourceId, oldConfig, newConfig)` — 发射 `config.changed` 事件
+- `config.rollout.started` —  rollout 启动事件
+- `config.rollout.promoted` — 手动升级事件
+- `config.rollout.cancelled` — 取消事件
+- `config.rollout.auto_progressed` — 自动升级事件
+
+**问题 3: 配置金丝雀发布** ✅ 已解决
+
+新增 `ConfigRolloutService`（`src/platform/control-plane/config-center/config-rollout-service.ts`）：
+
+| 功能 | 状态 |
+|------|------|
+| 灰度阶段：CANARY_5 (5%) → CANARY_25 (25%) → HALF (50%) → FULL (100%) | ✅ |
+| 自动进度（autoProgress）支持 | ✅ |
+| 手动促进（promoteRollout）| ✅ |
+| 取消 rollout（cancelRollout）| ✅ |
+| 基于 hash 的确定性百分比分配 | ✅ |
+| 回滚清理（cleanupRollouts）| ✅ |
+
+#### 新增测试文件
+
+| 测试文件 | 覆盖内容 |
+|----------|----------|
+| `tests/unit/platform/control-plane/config-center/hierarchical-config-loader.test.ts` | 9 个测试：基础合并、层级优先级、深度合并、版本计算 |
+| `tests/unit/platform/control-plane/config-center/config-rollout-service.test.ts` | 13 个测试：rollout 生命周期、百分比决策、自动/手动进度、取消 |
 
 ---
 
@@ -1011,31 +1080,32 @@ SLO 定义和度量收集框架已搭建，与 Prometheus 集成。
 
 ### §29 知识与记忆
 
-**实现状态**: 🟡 75%
+**实现状态**: 🟡 85%（命名映射层已实现，测试覆盖已完善）
 
 Knowledge Store 和 Memory 管理已实现，支持向量检索和上下文注入。
 
-#### 发现的问题
+#### 已实现更新（2026-04-20）
 
-- 信任等级命名不一致：文档 `verified/unverified/deprecated`，代码 `high/medium/low`
-- 记忆层级命名不一致：文档 `working/episodic/semantic`，代码 `short_term/long_term/persistent`
+**问题: 信任等级和记忆层级命名不一致** ✅ 已解决
 
-#### 详细解决方案
+实际代码使用的命名与文档描述略有不同（实际代码使用 `trusted/external/untrusted` 和 `layer_3/4/5`，而非文档描述的 `high/medium/low` 和 `short_term/long_term/persistent`）。
 
-统一使用文档定义的命名，添加映射层兼容现有数据：
+新增命名映射层 `knowledge-naming-mapper.ts`（`src/platform/state-evidence/knowledge/governance/knowledge-naming-mapper.ts`）：
 
-```typescript
-const TRUST_LEVEL_MAP = {
-  high: "verified",
-  medium: "unverified",
-  low: "deprecated",
-};
-const MEMORY_LAYER_MAP = {
-  short_term: "working",
-  long_term: "episodic",
-  persistent: "semantic",
-};
-```
+| 功能 | 状态 |
+|------|------|
+| 信任等级双向映射（`trusted/external/untrusted` ↔ `verified/unverified/deprecated`） | ✅ |
+| 记忆层级双向映射（`layer_3/4/5` ↔ `working/episodic/semantic`） | ✅ |
+| 层级比较函数（`isTrustLevelAtOrAbove`、`isMemoryLayerAtOrAbove`） | ✅ |
+| 人类可读描述函数（`getTrustLevelDescription`、`getMemoryLayerDescription`） | ✅ |
+
+**注意**：代码中的值对象（如 `TrustLevelSchema` 已使用 `verified/reviewed/community/unverified`，`MemoryLayer` 使用 `layer_3/4/5`）保持不变，映射层提供文档定义命名与代码实现命名之间的转换。
+
+#### 新增测试文件
+
+| 测试文件 | 覆盖内容 |
+|----------|----------|
+| `tests/unit/platform/state-evidence/knowledge/knowledge-naming-mapper.test.ts` | 21 个测试：信任等级转换、层级比较、描述函数 |
 
 ---
 
@@ -1701,7 +1771,7 @@ Agent 注册、启动、停止、健康检查已实现。
 | 10  | 沙箱第 4 层                  | §11    | P1-High     | 3-5 人天   |
 | 11  | Pack/Plugin/Client SDK       | §22    | P2-Medium   | 12-20 人天 |
 | 12  | 领域模型字段补齐             | §37    | P2-Medium   | 5-8 人天   |
-| 13  | 多层配置体系                 | §24    | P2-Medium   | 3-5 人天   |
+| 13  | ~~多层配置体系~~             | §24    | ✅ 已实现   | —         |
 | 14  | ~~Outbox Pattern~~           | §7     | ✅ 已实现   | —         |
 | 15  | Prompt Bundle 体系           | §16    | P2-Medium   | 3-5 人天   |
 

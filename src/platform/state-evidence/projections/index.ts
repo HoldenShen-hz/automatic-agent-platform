@@ -48,9 +48,17 @@ export class EventProjectionService {
   }
 
   public listProjections(): ProjectionRecord[] {
-    return [...this.projections.values()];
+    return Array.from(this.projections.values());
   }
 }
+
+export {
+  ProjectionRebuildService,
+  ProjectionRebuildResult,
+  ProjectionRebuildOptions,
+  ProjectionHandler,
+  ProjectionHandlerRegistry,
+} from "./projection-rebuild-service.js";
 
 function projectionNameForEvent(eventType: string): string {
   if (eventType.startsWith("workflow:")) return "workflow_summary";

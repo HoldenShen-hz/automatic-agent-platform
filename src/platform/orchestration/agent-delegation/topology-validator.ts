@@ -33,7 +33,7 @@ export class DelegationDepthExceededError extends ValidationError {
     super(
       "delegation.depth_exceeded",
       `Delegation depth ${currentDepth} exceeds maximum ${maxDepth}`,
-      { currentDepth, maxDepth },
+      { details: { currentDepth, maxDepth } },
     );
   }
 }
@@ -43,7 +43,7 @@ export class DelegationFanoutExceededError extends ValidationError {
     super(
       "delegation.fanout_exceeded",
       `Delegation fanout ${currentFanout} exceeds maximum ${maxFanout}`,
-      { currentFanout, maxFanout },
+      { details: { currentFanout, maxFanout } },
     );
   }
 }
@@ -53,7 +53,7 @@ export class DelegationCycleDetectedError extends ValidationError {
     super(
       "delegation.cycle_detected",
       `Cycle detected: pack ${packId} already in delegation chain`,
-      { packId, chain },
+      { details: { packId, chain } },
     );
   }
 }
@@ -124,7 +124,7 @@ export class TopologyValidator {
       throw new ValidationError(
         "delegation.pack_id_not_allowed",
         `Pack ${packId} is not in the allowed delegation list`,
-        { packId, allowedPackIds: [...this.allowedPackIds] },
+        { details: { packId, allowedPackIds: [...this.allowedPackIds] } },
       );
     }
   }
@@ -169,9 +169,12 @@ export class TopologyValidator {
 export function createTopologyValidator(
   config?: Partial<TopologyValidatorConfig>,
 ): TopologyValidator {
-  return new TopologyValidator({
+  const fullConfig: TopologyValidatorConfig = {
     maxDepth: config?.maxDepth ?? DEFAULT_MAX_DEPTH,
     maxFanout: config?.maxFanout ?? DEFAULT_MAX_FANOUT,
-    allowedPackIds: config?.allowedPackIds,
-  });
+  };
+  if (config?.allowedPackIds) {
+    fullConfig.allowedPackIds = config.allowedPackIds;
+  }
+  return new TopologyValidator(fullConfig);
 }

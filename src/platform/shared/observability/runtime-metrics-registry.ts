@@ -110,6 +110,20 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
   }
 
+  public recordOapeflirStageEntry(stage: string): void {
+    this.incrementCounter("oapeflir_stage_entry_total", { stage }, 1);
+  }
+
+  public recordOapeflirStageExit(stage: string, result: string, durationSeconds: number): void {
+    this.observeHistogram("stage_duration_seconds", { stage }, durationSeconds);
+    this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
+  }
+
+  public recordLlmLatency(ttfbSeconds: number, totalSeconds: number, model: string, provider: string): void {
+    this.observeHistogram("llm_ttfb_seconds", { model, provider }, ttfbSeconds);
+    this.observeHistogram("llm_total_seconds", { model, provider }, totalSeconds);
+  }
+
   public recordKnowledgeQuery(operation: string, durationMs: number, result: string): void {
     this.observeHistogram("knowledge_query_duration_ms", { operation }, durationMs);
     this.incrementCounter("knowledge_query_total", { operation, result }, 1);

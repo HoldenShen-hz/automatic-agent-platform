@@ -184,7 +184,7 @@ export class MultiPartyApprovalService {
     this.transitions.transitionApprovalStatus({
       entityKind: "approval",
       entityId: approvalId,
-      fromStatus: existing.status,
+      fromStatus: existing.status as "approved" | "rejected" | "requested" | "expired" | "cancelled",
       toStatus: finalStatus,
       responseJson: JSON.stringify(decision),
       reasonCode: `approval.multi_party_${finalStatus}`,

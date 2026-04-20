@@ -178,6 +178,34 @@ export class PrometheusMetricsExporter {
     }
 
     lines.push("");
+    lines.push("# HELP oapeflir_stage_entry_total OAPEFLIR stage entry count.");
+    lines.push("# TYPE oapeflir_stage_entry_total counter");
+    for (const line of this.renderCounterSeries("oapeflir_stage_entry_total")) {
+      lines.push(line);
+    }
+
+    lines.push("");
+    lines.push("# HELP stage_duration_seconds OAPEFLIR stage duration in seconds (entry to exit).");
+    lines.push("# TYPE stage_duration_seconds histogram");
+    for (const line of this.renderHistogramSeries("stage_duration_seconds")) {
+      lines.push(line);
+    }
+
+    lines.push("");
+    lines.push("# HELP llm_ttfb_seconds LLM time-to-first-token latency in seconds.");
+    lines.push("# TYPE llm_ttfb_seconds histogram");
+    for (const line of this.renderHistogramSeries("llm_ttfb_seconds")) {
+      lines.push(line);
+    }
+
+    lines.push("");
+    lines.push("# HELP llm_total_seconds LLM total request latency in seconds.");
+    lines.push("# TYPE llm_total_seconds histogram");
+    for (const line of this.renderHistogramSeries("llm_total_seconds")) {
+      lines.push(line);
+    }
+
+    lines.push("");
     lines.push("# HELP knowledge_query_duration_ms Knowledge query duration in milliseconds.");
     lines.push("# TYPE knowledge_query_duration_ms histogram");
     for (const line of this.renderHistogramSeries("knowledge_query_duration_ms")) {

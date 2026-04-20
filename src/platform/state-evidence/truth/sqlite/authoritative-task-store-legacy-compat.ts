@@ -161,6 +161,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract getApproval(...args: RepoMethodArgs<ApprovalRepository, "getApproval">): RepoMethodResult<ApprovalRepository, "getApproval">;
   public abstract insertApproval(...args: RepoMethodArgs<ApprovalRepository, "insertApproval">): RepoMethodResult<ApprovalRepository, "insertApproval">;
   public abstract updateApprovalDecision(...args: RepoMethodArgs<ApprovalRepository, "updateApprovalDecision">): RepoMethodResult<ApprovalRepository, "updateApprovalDecision">;
+  public abstract updateApprovalRequest(...args: RepoMethodArgs<ApprovalRepository, "updateApprovalRequest">): RepoMethodResult<ApprovalRepository, "updateApprovalRequest">;
   public abstract listTakeoverSessionsByTask(...args: RepoMethodArgs<ApprovalRepository, "listTakeoverSessionsByTask">): RepoMethodResult<ApprovalRepository, "listTakeoverSessionsByTask">;
   public abstract insertTakeoverSession(...args: RepoMethodArgs<ApprovalRepository, "insertTakeoverSession">): RepoMethodResult<ApprovalRepository, "insertTakeoverSession">;
   public abstract getTakeoverSession(...args: RepoMethodArgs<ApprovalRepository, "getTakeoverSession">): RepoMethodResult<ApprovalRepository, "getTakeoverSession">;

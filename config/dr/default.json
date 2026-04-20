@@ -1,0 +1,22 @@
+{
+  "rtoSeconds": 3600,
+  "rpoSeconds": 300,
+  "backupRetentionDays": 90,
+  "backupSchedule": "0 2 * * *",
+  "drillSchedule": "0 3 15 * *",
+  "components": [
+    "events",
+    "truth",
+    "projections"
+  ],
+  "alertThresholds": {
+    "rtoBreachMinutes": 30,
+    "rpoBreachMinutes": 15,
+    "backupFailureCount": 3
+  },
+  "retentionPolicy": {
+    "dailyBackups": 7,
+    "weeklyBackups": 4,
+    "monthlyBackups": 12
+  }
+}

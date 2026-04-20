@@ -130,26 +130,31 @@ export class ContextIsolator {
     base: PermissionSet,
     override: PermissionSet,
   ): PermissionSet {
+    const mergedMaxDuration = Math.min(
+      base.constraints.maxDurationMs ?? Infinity,
+      override.constraints.maxDurationMs ?? Infinity,
+    );
+    const mergedMaxTokens = Math.min(
+      base.constraints.maxTokens ?? Infinity,
+      override.constraints.maxTokens ?? Infinity,
+    );
+    const mergedAllowedDomains = this.mergeDomainLists(
+      base.constraints.allowedDomains,
+      override.constraints.allowedDomains,
+    );
+    const mergedDeniedDomains = this.mergeDomainLists(
+      base.constraints.deniedDomains,
+      override.constraints.deniedDomains,
+    );
+
     return {
       resources: override.resources.length > 0 ? override.resources : base.resources,
       actions: this.mergeActions(base.actions, override.actions),
       constraints: {
-        maxDurationMs: Math.min(
-          base.constraints.maxDurationMs ?? Infinity,
-          override.constraints.maxDurationMs ?? Infinity,
-        ),
-        maxTokens: Math.min(
-          base.constraints.maxTokens ?? Infinity,
-          override.constraints.maxTokens ?? Infinity,
-        ),
-        allowedDomains: this.mergeDomainLists(
-          base.constraints.allowedDomains,
-          override.constraints.allowedDomains,
-        ),
-        deniedDomains: this.mergeDomainLists(
-          base.constraints.deniedDomains,
-          override.constraints.deniedDomains,
-        ),
+        ...(mergedMaxDuration !== Infinity ? { maxDurationMs: mergedMaxDuration } : {}),
+        ...(mergedMaxTokens !== Infinity ? { maxTokens: mergedMaxTokens } : {}),
+        ...(mergedAllowedDomains ? { allowedDomains: mergedAllowedDomains } : {}),
+        ...(mergedDeniedDomains ? { deniedDomains: mergedDeniedDomains } : {}),
       },
     };
   }
@@ -248,23 +253,28 @@ export class ContextIsolator {
     parent: PermissionSet["constraints"],
     child: PermissionSet["constraints"],
   ): PermissionSet["constraints"] {
+    const mergedMaxDuration = Math.min(
+      parent.maxDurationMs ?? Infinity,
+      child.maxDurationMs ?? Infinity,
+    );
+    const mergedMaxTokens = Math.min(
+      parent.maxTokens ?? Infinity,
+      child.maxTokens ?? Infinity,
+    );
+    const mergedAllowedDomains = this.mergeDomainLists(
+      parent.allowedDomains,
+      child.allowedDomains,
+    );
+    const mergedDeniedDomains = this.mergeDomainLists(
+      parent.deniedDomains,
+      child.deniedDomains,
+    );
+
     return {
-      maxDurationMs: Math.min(
-        parent.maxDurationMs ?? Infinity,
-        child.maxDurationMs ?? Infinity,
-      ),
-      maxTokens: Math.min(
-        parent.maxTokens ?? Infinity,
-        child.maxTokens ?? Infinity,
-      ),
-      allowedDomains: this.mergeDomainLists(
-        parent.allowedDomains,
-        child.allowedDomains,
-      ),
-      deniedDomains: this.mergeDomainLists(
-        parent.deniedDomains,
-        child.deniedDomains,
-      ),
+      ...(mergedMaxDuration !== Infinity ? { maxDurationMs: mergedMaxDuration } : {}),
+      ...(mergedMaxTokens !== Infinity ? { maxTokens: mergedMaxTokens } : {}),
+      ...(mergedAllowedDomains ? { allowedDomains: mergedAllowedDomains } : {}),
+      ...(mergedDeniedDomains ? { deniedDomains: mergedDeniedDomains } : {}),
     };
   }
 

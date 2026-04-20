@@ -158,6 +158,22 @@ export class EventRepository {
     return queryAll<EventRecord>(this.conn, sql, eventType);
   }
 
+  /**
+   * List all events with optional pagination and filtering.
+   * Used for projection rebuild to replay all events.
+   */
+  public listAllEvents(limit: number = 1000, offset: number = 0): EventRecord[] {
+    return queryAll<EventRecord>(
+      this.conn,
+      `SELECT ${EVENT_COLS}
+       FROM events
+       ORDER BY created_at ASC
+       LIMIT ? OFFSET ?`,
+      limit,
+      offset,
+    );
+  }
+
   public insertEventConsumerAck(ack: EventConsumerAckRecord): void {
     this.conn
       .prepare(

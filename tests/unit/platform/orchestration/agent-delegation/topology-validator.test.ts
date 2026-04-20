@@ -1,3 +1,13 @@
+/**
+ * TopologyValidator Unit Tests
+ *
+ * Tests for:
+ * - Depth validation
+ * - Fanout validation
+ * - Cycle detection
+ * - Pack ID validation
+ */
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -7,132 +17,229 @@ import {
   DelegationDepthExceededError,
   DelegationFanoutExceededError,
   DelegationCycleDetectedError,
-} from "../../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
-import type { DelegationOptions } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_FANOUT,
+} from "../../../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Topology Validator Tests
+// Configuration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("TopologyValidator rejects depth exceeding MAX_DEPTH", () => {
-  const validator = createTopologyValidator({ maxDepth: 3, maxFanout: 10 });
+test("createTopologyValidator uses default values", () => {
+  const validator = createTopologyValidator();
 
-  // Depth 0, 1, 2 should pass (valid depths)
-  validator.validateDepth(0);
-  validator.validateDepth(1);
-  validator.validateDepth(2);
-
-  // Depth 3 should fail
-  assert.throws(
-    () => validator.validateDepth(3),
-    DelegationDepthExceededError,
-  );
-
-  assert.throws(
-    () => validator.validateDepth(5),
-    DelegationDepthExceededError,
-  );
+  assert.equal(validator.getMaxDepth(), DEFAULT_MAX_DEPTH);
+  assert.equal(validator.getMaxFanout(), DEFAULT_MAX_FANOUT);
 });
 
-test("TopologyValidator rejects fanout exceeding MAX_FANOUT", () => {
-  const validator = createTopologyValidator({ maxDepth: 5, maxFanout: 3 });
+test("createTopologyValidator accepts custom config", () => {
+  const validator = createTopologyValidator({
+    maxDepth: 7,
+    maxFanout: 15,
+  });
 
-  // Fanout 0, 1, 2 should pass
-  validator.validateFanout(0);
-  validator.validateFanout(1);
-  validator.validateFanout(2);
-
-  // Fanout 3 should fail
-  assert.throws(
-    () => validator.validateFanout(3),
-    DelegationFanoutExceededError,
-  );
-
-  assert.throws(
-    () => validator.validateFanout(10),
-    DelegationFanoutExceededError,
-  );
+  assert.equal(validator.getMaxDepth(), 7);
+  assert.equal(validator.getMaxFanout(), 15);
 });
 
-test("TopologyValidator detects cycles in delegation chain", () => {
-  const validator = createTopologyValidator({ maxDepth: 5, maxFanout: 10 });
-
-  const chain = ["pack-a", "pack-b", "pack-c"];
-
-  // pack-d is not in chain, should pass
-  validator.detectCycle("pack-d", chain);
-
-  // pack-b IS in chain, should throw
-  assert.throws(
-    () => validator.detectCycle("pack-b", chain),
-    DelegationCycleDetectedError,
-  );
-});
-
-test("TopologyValidator validates pack_id against allowed list", () => {
+test("createTopologyValidator accepts allowedPackIds", () => {
   const validator = createTopologyValidator({
     maxDepth: 5,
     maxFanout: 10,
     allowedPackIds: ["pack-a", "pack-b"],
   });
 
-  // pack-a is allowed
+  // pack-a should be allowed
   validator.validatePackId("pack-a");
-  validator.validatePackId("pack-b");
 
-  // pack-c is not in allowed list
+  // pack-c should throw
   assert.throws(
     () => validator.validatePackId("pack-c"),
-    Error,
+    (err: Error) => err.message.includes("not in the allowed delegation list"),
   );
 });
 
-test("TopologyValidator allows any pack_id when allowedPackIds not set", () => {
-  const validator = createTopologyValidator({ maxDepth: 5, maxFanout: 10 });
+// ─────────────────────────────────────────────────────────────────────────────
+// Depth Validation Tests
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Should not throw for any pack ID
-  validator.validatePackId("any-pack");
-  validator.validatePackId("another-pack");
+test("validateDepth allows depth below maximum", () => {
+  const validator = createTopologyValidator({ maxDepth: 3 });
+
+  // Depth 2 should be allowed (since 2 < 3)
+  validator.validateDepth(2);
+  // No error means success
 });
 
-test("TopologyValidator full validate() checks all constraints", () => {
-  const validator = createTopologyValidator({ maxDepth: 3, maxFanout: 5 });
+test("validateDepth throws when depth equals maximum", () => {
+  const validator = createTopologyValidator({ maxDepth: 3 });
 
-  // Valid case
-  validator.validate({
-    currentDepth: 1,
-    activeDelegations: 2,
-    targetPackId: "pack-new",
-    delegationChain: ["pack-a", "pack-b"],
+  assert.throws(
+    () => validator.validateDepth(3),
+    (err: DelegationDepthExceededError) => {
+      return err instanceof DelegationDepthExceededError &&
+        err.message.includes("exceeds maximum");
+    },
+  );
+});
+
+test("validateDepth throws when depth exceeds maximum", () => {
+  const validator = createTopologyValidator({ maxDepth: 3 });
+
+  assert.throws(
+    () => validator.validateDepth(5),
+    (err: DelegationDepthExceededError) => {
+      return err instanceof DelegationDepthExceededError;
+    },
+  );
+});
+
+test("DelegationDepthExceededError contains correct details", () => {
+  const err = new DelegationDepthExceededError(5, 3);
+
+  assert.equal(err.code, "delegation.depth_exceeded");
+  assert.ok(err.message.includes("5"));
+  assert.ok(err.message.includes("3"));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fanout Validation Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("validateFanout allows fanout below maximum", () => {
+  const validator = createTopologyValidator({ maxFanout: 10 });
+
+  // Fanout 9 should be allowed (since 9 < 10)
+  validator.validateFanout(9);
+  // No error means success
+});
+
+test("validateFanout throws when fanout equals maximum", () => {
+  const validator = createTopologyValidator({ maxFanout: 10 });
+
+  assert.throws(
+    () => validator.validateFanout(10),
+    (err: DelegationFanoutExceededError) => {
+      return err instanceof DelegationFanoutExceededError;
+    },
+  );
+});
+
+test("validateFanout throws when fanout exceeds maximum", () => {
+  const validator = createTopologyValidator({ maxFanout: 10 });
+
+  assert.throws(
+    () => validator.validateFanout(15),
+    (err: DelegationFanoutExceededError) => {
+      return err instanceof DelegationFanoutExceededError;
+    },
+  );
+});
+
+test("DelegationFanoutExceededError contains correct details", () => {
+  const err = new DelegationFanoutExceededError(15, 10);
+
+  assert.equal(err.code, "delegation.fanout_exceeded");
+  assert.ok(err.message.includes("15"));
+  assert.ok(err.message.includes("10"));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cycle Detection Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("detectCycle allows non-cyclical chain", () => {
+  const validator = createTopologyValidator();
+
+  // chain is ["a", "b", "c"], adding "d" is fine
+  validator.detectCycle("d", ["a", "b", "c"]);
+  // No error means success
+});
+
+test("detectCycle throws when packId already in chain", () => {
+  const validator = createTopologyValidator();
+
+  assert.throws(
+    () => validator.detectCycle("b", ["a", "b", "c"]),
+    (err: DelegationCycleDetectedError) => {
+      return err instanceof DelegationCycleDetectedError;
+    },
+  );
+});
+
+test("detectCycle throws for single-element cycle", () => {
+  const validator = createTopologyValidator();
+
+  assert.throws(
+    () => validator.detectCycle("a", ["a"]),
+    (err: DelegationCycleDetectedError) => {
+      return err instanceof DelegationCycleDetectedError;
+    },
+  );
+});
+
+test("DelegationCycleDetectedError contains correct details", () => {
+  const err = new DelegationCycleDetectedError("b", ["a", "b", "c"]);
+
+  assert.equal(err.code, "delegation.cycle_detected");
+  assert.ok(err.message.includes("b"));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full Validation Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("validate performs all topology checks", () => {
+  const validator = createTopologyValidator({
+    maxDepth: 3,
+    maxFanout: 10,
+    allowedPackIds: ["pack-x"],
   });
 
-  // Invalid depth
+  // Valid parameters should not throw
+  validator.validate({
+    currentDepth: 1,
+    activeDelegations: 5,
+    targetPackId: "pack-x",
+    delegationChain: ["pack-a", "pack-b"],
+  });
+});
+
+test("validate fails depth check", () => {
+  const validator = createTopologyValidator({ maxDepth: 2 });
+
   assert.throws(
     () => validator.validate({
-      currentDepth: 3,
-      activeDelegations: 2,
-      targetPackId: "pack-new",
+      currentDepth: 2,
+      activeDelegations: 5,
+      targetPackId: "any-pack",
       delegationChain: [],
     }),
     DelegationDepthExceededError,
   );
+});
 
-  // Invalid fanout
+test("validate fails fanout check", () => {
+  const validator = createTopologyValidator({ maxFanout: 5 });
+
   assert.throws(
     () => validator.validate({
-      currentDepth: 1,
+      currentDepth: 0,
       activeDelegations: 5,
-      targetPackId: "pack-new",
+      targetPackId: "any-pack",
       delegationChain: [],
     }),
     DelegationFanoutExceededError,
   );
+});
 
-  // Cycle detected
+test("validate fails cycle check", () => {
+  const validator = createTopologyValidator();
+
   assert.throws(
     () => validator.validate({
-      currentDepth: 1,
-      activeDelegations: 2,
+      currentDepth: 0,
+      activeDelegations: 5,
       targetPackId: "pack-b",
       delegationChain: ["pack-a", "pack-b"],
     }),
@@ -140,39 +247,47 @@ test("TopologyValidator full validate() checks all constraints", () => {
   );
 });
 
-test("TopologyValidator getters return configured values", () => {
-  const validator = createTopologyValidator({ maxDepth: 7, maxFanout: 15 });
+test("validate fails packId check", () => {
+  const validator = createTopologyValidator({
+    allowedPackIds: ["allowed-pack"],
+  });
 
-  assert.equal(validator.getMaxDepth(), 7);
-  assert.equal(validator.getMaxFanout(), 15);
+  assert.throws(
+    () => validator.validate({
+      currentDepth: 0,
+      activeDelegations: 5,
+      targetPackId: "disallowed-pack",
+      delegationChain: [],
+    }),
+    (err: Error) => err.message.includes("not_allowed"),
+  );
 });
 
-test("TopologyValidator uses defaults when not specified", () => {
-  const validator = createTopologyValidator({});
+// ─────────────────────────────────────────────────────────────────────────────
+// Edge Cases
+// ─────────────────────────────────────────────────────────────────────────────
 
-  assert.equal(validator.getMaxDepth(), 3);
-  assert.equal(validator.getMaxFanout(), 10);
+test("validateDepth allows depth 0", () => {
+  const validator = createTopologyValidator({ maxDepth: 3 });
+
+  validator.validateDepth(0); // No error
 });
 
-test("DelegationDepthExceededError contains correct data", () => {
-  const error = new DelegationDepthExceededError(5, 3);
+test("validateFanout allows fanout 0", () => {
+  const validator = createTopologyValidator({ maxFanout: 10 });
 
-  assert.equal(error.code, "delegation.depth_exceeded");
-  assert.ok(error.message.includes("5"));
-  assert.ok(error.message.includes("3"));
+  validator.validateFanout(0); // No error
 });
 
-test("DelegationFanoutExceededError contains correct data", () => {
-  const error = new DelegationFanoutExceededError(10, 5);
+test("detectCycle handles empty chain", () => {
+  const validator = createTopologyValidator();
 
-  assert.equal(error.code, "delegation.fanout_exceeded");
-  assert.ok(error.message.includes("10"));
-  assert.ok(error.message.includes("5"));
+  validator.detectCycle("new-pack", []); // No error
 });
 
-test("DelegationCycleDetectedError contains cycle information", () => {
-  const error = new DelegationCycleDetectedError("pack-b", ["pack-a", "pack-b", "pack-c"]);
+test("validatePackId allows when no allowedPackIds configured", () => {
+  const validator = createTopologyValidator();
 
-  assert.equal(error.code, "delegation.cycle_detected");
-  assert.ok(error.message.includes("pack-b"));
+  // Should not throw since no whitelist is enforced
+  validator.validatePackId("any-pack");
 });

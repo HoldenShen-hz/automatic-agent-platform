@@ -61,12 +61,15 @@ export class PromptVersionManager {
       );
     }
 
+    const major = parseInt(match[1]!, 10);
+    const minor = parseInt(match[2]!, 10);
     const patchMatch = match[3];
-    return {
-      major: parseInt(match[1], 10),
-      minor: parseInt(match[2], 10),
-      patch: patchMatch !== undefined ? parseInt(patchMatch, 10) : undefined,
-    };
+    const patch = patchMatch !== undefined ? parseInt(patchMatch, 10) : undefined;
+    const result: SemanticVersion = { major, minor };
+    if (patch !== undefined) {
+      result.patch = patch;
+    }
+    return result;
   }
 
   /**
@@ -128,14 +131,16 @@ export class PromptVersionManager {
     const versions = this.getSortedVersions(bundleName);
     const currentIndex = versions.indexOf(currentVersion);
 
-    const previous = currentIndex > 0 ? versions[currentIndex - 1]! : undefined;
-    const next = currentIndex < versions.length - 1 ? versions[currentIndex + 1]! : undefined;
-
-    return {
-      current: currentVersion,
-      previous,
-      next,
-    };
+    const previous: string | undefined = currentIndex > 0 ? versions[currentIndex - 1]! : undefined;
+    const next: string | undefined = currentIndex < versions.length - 1 ? versions[currentIndex + 1]! : undefined;
+    const lineage: VersionLineage = { current: currentVersion };
+    if (previous !== undefined) {
+      lineage.previous = previous;
+    }
+    if (next !== undefined) {
+      lineage.next = next;
+    }
+    return lineage;
   }
 
   /**

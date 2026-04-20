@@ -179,3 +179,186 @@ export interface LearningKnowledgePromotedPayload {
   promotedCount: number;
   occurredAt: string;
 }
+
+// §28 Missing event namespaces
+
+// delegation.* namespace - task/agent delegation events
+export interface DelegationCreatedPayload {
+  delegationId: string;
+  sourceTaskId: string;
+  targetAgentId: string;
+  delegatedBy: string;
+  scope: string[];
+  occurredAt: string;
+}
+
+export interface DelegationCompletedPayload {
+  delegationId: string;
+  sourceTaskId: string;
+  targetAgentId: string;
+  completedAt: string;
+  resultSummary?: string | null;
+}
+
+export interface DelegationFailedPayload {
+  delegationId: string;
+  sourceTaskId: string;
+  targetAgentId: string;
+  failedAt: string;
+  reasonCode: string;
+  errorMessage?: string | null;
+}
+
+// prompt.* namespace - prompt template and injection events
+export interface PromptInjectedPayload {
+  promptId: string;
+  injectionType: string;
+  templateVersion: string;
+  occurredAt: string;
+  runtimeContext?: Record<string, unknown> | null;
+}
+
+export interface PromptRenderedPayload {
+  promptId: string;
+  renderId: string;
+  templateId: string;
+  renderDurationMs?: number;
+  occurredAt: string;
+}
+
+export interface PromptValidationFailedPayload {
+  promptId: string;
+  validationErrors: string[];
+  occurredAt: string;
+}
+
+// cost.* namespace - cost tracking and budget events
+export interface CostBudgetCreatedPayload {
+  budgetId: string;
+  budgetName: string;
+  limitUsd: number;
+  period: "hourly" | "daily" | "monthly";
+  createdAt: string;
+}
+
+export interface CostBudgetExceededPayload {
+  budgetId: string;
+  currentCostUsd: number;
+  limitUsd: number;
+  exceededAt: string;
+  autoBlock?: boolean;
+}
+
+export interface CostActualizedPayload {
+  costId: string;
+  budgetId: string;
+  amountUsd: number;
+  costCategory: string;
+  actualizedAt: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+// tenant.* namespace - multi-tenant lifecycle events
+export interface TenantProvisionedPayload {
+  tenantId: string;
+  plan: string;
+  provisionedAt: string;
+  region?: string | null;
+}
+
+export interface TenantSuspendedPayload {
+  tenantId: string;
+  reasonCode: string;
+  suspendedAt: string;
+}
+
+export interface TenantDeletedPayload {
+  tenantId: string;
+  deletedAt: string;
+  cascading?: boolean;
+}
+
+// pack.* namespace - plugin pack lifecycle events
+export interface PackInstalledPayload {
+  packId: string;
+  packVersion: string;
+  installedAt: string;
+  installedBy: string;
+}
+
+export interface PackUninstalledPayload {
+  packId: string;
+  packVersion: string;
+  uninstalledAt: string;
+  reasonCode?: string | null;
+}
+
+// marketplace.* namespace - marketplace events
+export interface MarketplaceListingPublishedPayload {
+  listingId: string;
+  packId: string;
+  publishedAt: string;
+  publisherId: string;
+}
+
+export interface MarketplaceListingPurchasedPayload {
+  listingId: string;
+  purchaseId: string;
+  purchaserTenantId: string;
+  purchasedAt: string;
+  amountUsd?: number;
+}
+
+// slo.* namespace - service level objective events
+export interface SloBreachedPayload {
+  sloId: string;
+  sloName: string;
+  currentValue: number;
+  targetValue: number;
+  breachedAt: string;
+  metricName: string;
+}
+
+export interface SloRecoveredPayload {
+  sloId: string;
+  sloName: string;
+  recoveredAt: string;
+  breachDurationMs?: number;
+}
+
+// compliance.* namespace - compliance and audit events
+export interface ComplianceAuditRecordedPayload {
+  auditId: string;
+  actorId: string;
+  action: string;
+  resourceKind: string;
+  resourceId: string;
+  recordedAt: string;
+  complianceFramework?: string | null;
+}
+
+export interface ComplianceViolationDetectedPayload {
+  violationId: string;
+  framework: string;
+  severity: "low" | "medium" | "high" | "critical";
+  detectedAt: string;
+  resourceId: string;
+  description: string;
+}
+
+// knowledge.* namespace - knowledge base events
+export interface KnowledgeDocumentIndexedPayload {
+  documentId: string;
+  namespace: string;
+  chunkCount: number;
+  indexedAt: string;
+  trustLevel: string;
+}
+
+export interface KnowledgeQueryProcessedPayload {
+  queryId: string;
+  namespace: string;
+  resultCount: number;
+  queryDurationMs?: number;
+  processedAt: string;
+}

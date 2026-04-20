@@ -274,8 +274,10 @@ export class OapeflirLoopService {
         })();
 
         if (validatedLearningObjects.length === 0) {
-          runtimeMetricsRegistry.recordOapeflirStage("improve", "skipped", 0);
-          runtimeMetricsRegistry.recordOapeflirStage("release", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
+          runtimeMetricsRegistry.recordOapeflirStageEntry("release");
+          runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
           timeline.record("improve", "skipped", null, "improvement.validation_failed");
           timeline.record("release", "skipped", null, "release.improve_skipped");
         } else {
@@ -306,8 +308,10 @@ export class OapeflirLoopService {
           }
           timeline.record("release", rolloutRecord ? "completed" : "skipped", rolloutRecord?.recordId ?? null, rolloutRecord ? null : "release.validation_failed");
         } else {
-          runtimeMetricsRegistry.recordOapeflirStage("improve", "skipped", 0);
-          runtimeMetricsRegistry.recordOapeflirStage("release", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
+          runtimeMetricsRegistry.recordOapeflirStageEntry("release");
+          runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
           timeline.record("improve", "skipped", null, boundary.reasonCode);
           timeline.record("release", "skipped", null, "release.improve_blocked");
         }
@@ -347,6 +351,7 @@ export class OapeflirLoopService {
     attributes: Record<string, unknown>,
   ): Promise<T> {
     const startedAt = Date.now();
+    runtimeMetricsRegistry.recordOapeflirStageEntry(stage);
     try {
       const result = await startActiveSpan(`oapeflir.${stage}`, {
         tracerName: "automatic-agent-platform.oapeflir",
@@ -355,10 +360,12 @@ export class OapeflirLoopService {
           ...attributes,
         },
       }, async () => await operation());
-      runtimeMetricsRegistry.recordOapeflirStage(stage, "completed", Date.now() - startedAt);
+      const durationSeconds = (Date.now() - startedAt) / 1000;
+      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "completed", durationSeconds);
       return result;
     } catch (error) {
-      runtimeMetricsRegistry.recordOapeflirStage(stage, "error", Date.now() - startedAt);
+      const durationSeconds = (Date.now() - startedAt) / 1000;
+      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "error", durationSeconds);
       throw error;
     }
   }

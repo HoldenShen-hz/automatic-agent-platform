@@ -16,6 +16,7 @@ import { OpenAIChatService, type OpenAIFunction, type OpenAIChatCompletionResult
 import { MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
 import { AppError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -243,30 +244,39 @@ export class UnifiedChatProvider {
     this.assertNotDisposed();
     const { provider, service } = this.getProviderForModel(request.model);
     const breaker = this.breakers.get(provider);
+    const startedAt = Date.now();
 
+    let result: ChatCompletionResult;
     switch (provider) {
       case "anthropic": {
         const anthropicService = service as AnthropicChatService;
-        const result = breaker
+        const chatResult = breaker
           ? await breaker.execute(() => anthropicService.createChatCompletion(this.toAnthropicRequest(request)))
           : await anthropicService.createChatCompletion(this.toAnthropicRequest(request));
-        return this.normalizeAnthropicResult(result, provider);
+        result = this.normalizeAnthropicResult(chatResult, provider);
+        break;
       }
       case "openai": {
         const openaiService = service as OpenAIChatService;
-        const result = breaker
+        const chatResult = breaker
           ? await breaker.execute(() => openaiService.createChatCompletion(this.toOpenAIRequest(request)))
           : await openaiService.createChatCompletion(this.toOpenAIRequest(request));
-        return this.normalizeOpenAIResult(result, provider);
+        result = this.normalizeOpenAIResult(chatResult, provider);
+        break;
       }
       case "minimax": {
         const minimaxService = service as MiniMaxChatService;
-        const result = breaker
+        const chatResult = breaker
           ? await breaker.execute(() => minimaxService.createChatCompletion(this.toMiniMaxRequest(request)))
           : await minimaxService.createChatCompletion(this.toMiniMaxRequest(request));
-        return this.normalizeMiniMaxResult(result, provider);
+        result = this.normalizeMiniMaxResult(chatResult, provider);
+        break;
       }
     }
+
+    const totalSeconds = (Date.now() - startedAt) / 1000;
+    runtimeMetricsRegistry.recordLlmLatency(totalSeconds, totalSeconds, result.model, result.provider);
+    return result;
   }
 
   public async createStreamingChatCompletion(

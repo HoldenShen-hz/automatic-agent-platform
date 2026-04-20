@@ -27,6 +27,153 @@ export interface ScaffoldResult {
   entryPointPath: string;
 }
 
+// Template file contents - defined first so TEMPLATE_STRUCTURE can reference them
+const MINIMAL_PACKAGE_JSON = `{
+  "name": "{{PACK_ID}}",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test tests/"
+  }
+}`;
+
+const MINIMAL_INDEX_TS = `export async function handleQuery(input: { query: string }) {
+  return { result: \`Processed: \${input.query}\` };
+}`;
+
+const MINIMAL_QUERY_TOOL = `import { defineTool } from "@platform/plugin-sdk";
+
+export const queryTool = defineTool({
+  toolId: "{{PACK_ID}}.query",
+  name: "Query",
+  description: "Execute a query",
+  async execute(input: { query: string }) {
+    return { result: \`Query executed: \${input.query}\` };
+  },
+});`;
+
+const MINIMAL_UNIT_TEST = `import { describe, it } from "node:test";
+import assert from "node:assert";
+
+describe("{{PACK_NAME}}", () => {
+  it("executes query", async () => {
+    const { handleQuery } = await import("../src/index.js");
+    const result = await handleQuery({ query: "test" });
+    assert.ok(result.result);
+  });
+});`;
+
+const STANDARD_TRANSFORM_TOOL = `import { defineTool } from "@platform/plugin-sdk";
+
+export const transformTool = defineTool({
+  toolId: "{{PACK_ID}}.transform",
+  name: "Transform",
+  description: "Transform data",
+  async execute(input: { data: unknown }) {
+    return { result: JSON.stringify(input.data) };
+  },
+});`;
+
+const STANDARD_HTTP_ADAPTER = `import { defineAdapter } from "@platform/plugin-sdk";
+
+export const httpAdapter = defineAdapter({
+  adapterId: "{{PACK_ID}}.http",
+  name: "HTTP Adapter",
+  async execute(input: { url: string; method: string }) {
+    return { status: 200, body: "OK" };
+  },
+});`;
+
+const STANDARD_RESULT_EVALUATOR = `import { defineEvaluator } from "@platform/plugin-sdk";
+
+export const resultEvaluator = defineEvaluator({
+  evaluatorId: "{{PACK_ID}}.result",
+  name: "Result Evaluator",
+  async evaluate(input: { result: unknown }) {
+    return { passed: true, score: 1.0 };
+  },
+});`;
+
+const STANDARD_INTEGRATION_TEST = `import { describe, it } from "node:test";
+import assert from "node:assert";
+
+describe("{{PACK_NAME}} integration", () => {
+  it("runs integration test", () => {
+    assert.ok(true);
+  });
+});`;
+
+const STANDARD_QUERY_TOOL = MINIMAL_QUERY_TOOL;
+const STANDARD_UNIT_TEST = MINIMAL_UNIT_TEST;
+const STANDARD_INDEX_TS = MINIMAL_INDEX_TS;
+const STANDARD_PACKAGE_JSON = MINIMAL_PACKAGE_JSON;
+
+const FULL_SEARCH_TOOL = `import { defineTool } from "@platform/plugin-sdk";
+
+export const searchTool = defineTool({
+  toolId: "{{PACK_ID}}.search",
+  name: "Search",
+  description: "Search resources",
+  async execute(input: { query: string }) {
+    return { results: [] };
+  },
+});`;
+
+const FULL_DB_ADAPTER = `import { defineAdapter } from "@platform/plugin-sdk";
+
+export const dbAdapter = defineAdapter({
+  adapterId: "{{PACK_ID}}.db",
+  name: "Database Adapter",
+  async execute(input: { query: string }) {
+    return { rows: [], affected: 0 };
+  },
+});`;
+
+const FULL_CONTEXT_RETRIEVER = `import { defineRetriever } from "@platform/plugin-sdk";
+
+export const contextRetriever = defineRetriever({
+  retrieverId: "{{PACK_ID}}.context",
+  name: "Context Retriever",
+  async retrieve(input: { query: string }) {
+    return { documents: [] };
+  },
+});`;
+
+const FULL_SAFETY_EVALUATOR = `import { defineEvaluator } from "@platform/plugin-sdk";
+
+export const safetyEvaluator = defineEvaluator({
+  evaluatorId: "{{PACK_ID}}.safety",
+  name: "Safety Evaluator",
+  async evaluate(input: { result: unknown }) {
+    return { passed: true, score: 1.0, findings: [] };
+  },
+});`;
+
+const FULL_SIMULATION_TEST = `import { describe, it } from "node:test";
+import assert from "node:assert";
+
+describe("{{PACK_NAME}} simulation", () => {
+  it("runs simulation", () => {
+    assert.ok(true);
+  });
+});`;
+
+const FULL_DEPLOY_SCRIPT = `#!/bin/bash
+echo "Deploying {{PACK_ID}}..."
+npm run build
+echo "Done"`;
+
+const FULL_INDEX_TS = MINIMAL_INDEX_TS;
+const FULL_QUERY_TOOL = STANDARD_QUERY_TOOL;
+const FULL_TRANSFORM_TOOL = STANDARD_TRANSFORM_TOOL;
+const FULL_HTTP_ADAPTER = STANDARD_HTTP_ADAPTER;
+const FULL_RESULT_EVALUATOR = STANDARD_RESULT_EVALUATOR;
+const FULL_UNIT_TEST = MINIMAL_UNIT_TEST;
+const FULL_INTEGRATION_TEST = STANDARD_INTEGRATION_TEST;
+const FULL_PACKAGE_JSON = MINIMAL_PACKAGE_JSON;
+
 const TEMPLATE_STRUCTURE: Record<PackTemplate, {
   files: Array<{ path: string; content: string }>;
   manifestCapabilities: Array<{ capabilityKey: string; maturity: "experimental" | "beta" | "ga"; requiredContracts: string[] }>;
@@ -170,140 +317,3 @@ function buildManifest(
     capabilities,
   };
 }
-
-// Template file contents
-const MINIMAL_PACKAGE_JSON = `{
-  "name": "{{PACK_ID}}",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc",
-    "test": "node --test tests/"
-  }
-}`;
-
-const MINIMAL_INDEX_TS = `export async function handleQuery(input: { query: string }) {
-  return { result: \`Processed: \${input.query}\` };
-}`;
-
-const MINIMAL_QUERY_TOOL = `import { defineTool } from "@platform/plugin-sdk";
-
-export const queryTool = defineTool({
-  toolId: "{{PACK_ID}}.query",
-  name: "Query",
-  description: "Execute a query",
-  async execute(input: { query: string }) {
-    return { result: \`Query executed: \${input.query}\` };
-  },
-});`;
-
-const MINIMAL_UNIT_TEST = `import { describe, it } from "node:test";
-import assert from "node:assert";
-
-describe("{{PACK_NAME}}", () => {
-  it("executes query", async () => {
-    const { handleQuery } = await import("../src/index.js");
-    const result = await handleQuery({ query: "test" });
-    assert.ok(result.result);
-  });
-});`;
-
-const STANDARD_PACKAGE_JSON = MINIMAL_PACKAGE_JSON;
-const STANDARD_INDEX_TS = MINIMAL_INDEX_TS;
-const STANDARD_QUERY_TOOL = MINIMAL_QUERY_TOOL;
-const STANDARD_TRANSFORM_TOOL = `import { defineTool } from "@platform/plugin-sdk";
-
-export const transformTool = defineTool({
-  toolId: "{{PACK_ID}}.transform",
-  name: "Transform",
-  description: "Transform data",
-  async execute(input: { data: unknown }) {
-    return { result: JSON.stringify(input.data) };
-  },
-});`;
-const STANDARD_HTTP_ADAPTER = `import { defineAdapter } from "@platform/plugin-sdk";
-
-export const httpAdapter = defineAdapter({
-  adapterId: "{{PACK_ID}}.http",
-  name: "HTTP Adapter",
-  async execute(input: { url: string; method: string }) {
-    return { status: 200, body: "OK" };
-  },
-});`;
-const STANDARD_RESULT_EVALUATOR = `import { defineEvaluator } from "@platform/plugin-sdk";
-
-export const resultEvaluator = defineEvaluator({
-  evaluatorId: "{{PACK_ID}}.result",
-  name: "Result Evaluator",
-  async evaluate(input: { result: unknown }) {
-    return { passed: true, score: 1.0 };
-  },
-});`;
-const STANDARD_UNIT_TEST = MINIMAL_UNIT_TEST;
-const STANDARD_INTEGRATION_TEST = `import { describe, it } from "node:test";
-import assert from "node:assert";
-
-describe("{{PACK_NAME}} integration", () => {
-  it("runs integration test", () => {
-    assert.ok(true);
-  });
-});`;
-
-const FULL_PACKAGE_JSON = MINIMAL_PACKAGE_JSON;
-const FULL_INDEX_TS = MINIMAL_INDEX_TS;
-const FULL_QUERY_TOOL = STANDARD_QUERY_TOOL;
-const FULL_TRANSFORM_TOOL = STANDARD_TRANSFORM_TOOL;
-const FULL_SEARCH_TOOL = `import { defineTool } from "@platform/plugin-sdk";
-
-export const searchTool = defineTool({
-  toolId: "{{PACK_ID}}.search",
-  name: "Search",
-  description: "Search resources",
-  async execute(input: { query: string }) {
-    return { results: [] };
-  },
-});`;
-const FULL_HTTP_ADAPTER = STANDARD_HTTP_ADAPTER;
-const FULL_DB_ADAPTER = `import { defineAdapter } from "@platform/plugin-sdk";
-
-export const dbAdapter = defineAdapter({
-  adapterId: "{{PACK_ID}}.db",
-  name: "Database Adapter",
-  async execute(input: { query: string }) {
-    return { rows: [], affected: 0 };
-  },
-});`;
-const FULL_CONTEXT_RETRIEVER = `import { defineRetriever } from "@platform/plugin-sdk";
-
-export const contextRetriever = defineRetriever({
-  retrieverId: "{{PACK_ID}}.context",
-  name: "Context Retriever",
-  async retrieve(input: { query: string }) {
-    return { documents: [] };
-  },
-});`;
-const FULL_RESULT_EVALUATOR = STANDARD_RESULT_EVALUATOR;
-const FULL_SAFETY_EVALUATOR = `import { defineEvaluator } from "@platform/plugin-sdk";
-
-export const safetyEvaluator = defineEvaluator({
-  evaluatorId: "{{PACK_ID}}.safety",
-  name: "Safety Evaluator",
-  async evaluate(input: { result: unknown }) {
-    return { passed: true, score: 1.0, findings: [] };
-  },
-});`;
-const FULL_UNIT_TEST = MINIMAL_UNIT_TEST;
-const FULL_INTEGRATION_TEST = STANDARD_INTEGRATION_TEST;
-const FULL_SIMULATION_TEST = `import { describe, it } from "node:test";
-import assert from "node:assert";
-
-describe("{{PACK_NAME}} simulation", () => {
-  it("runs simulation", () => {
-    assert.ok(true);
-  });
-});`;
-const FULL_DEPLOY_SCRIPT = `#!/bin/bash
-echo "Deploying {{PACK_ID}}..."
-npm run build
-echo "Done"`;
