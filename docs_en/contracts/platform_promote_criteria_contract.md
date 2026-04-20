@@ -2,22 +2,22 @@
 
 ## 1. Scope
 
-This contract defines the promote criteria that a module must satisfy when being promoted from "existing design or partial implementation" to "formal platform capability."
+This contract defines the promote criteria that modules must satisfy when being elevated from "existing design or partial implementation" to "formal platform capability".
 
-It answers the question: A module cannot be judged complete just because "there is a service, there is code, there is a contract"; additionally, what freeze, test, observability, runbook, rollback, and ownership conditions must be satisfied.
+It answers the question: a module cannot be judged complete simply because "it has a service, has code, has a contract"; what freeze, testing, observability, runbook, rollback, and ownership conditions must also be satisfied.
 
 Related documents:
 
-- `module_acceptance_criteria_matrix.md`
+- `doc/operations/operations-checklist.md`
 - `release_rollout_and_rollback_contract.md`
 - `slo_alerting_and_runbook_contract.md`
 - `quality_engineering_and_chaos_testing_contract.md`
 
 ## 2. Goals
 
-- Unify "from partial to platform-ready" judgment criteria.
-- Avoid judging module maturity by fake completion like "service exists," "tests are placeholders," "dashboard exists but no alert."
-- Make promote and rollback have formal evidence chain.
+- Unify criteria for judging "from partial to platform-ready".
+- Avoid false completion judgments of module maturity such as "service exists", "tests are placeholders", "has dashboard but no alerts".
+- Make promote and rollback have formal evidence chains.
 
 ## 3. Promote Criteria
 
@@ -31,7 +31,7 @@ Related documents:
 - `overall_verdict`
 - `blockers?`
 
-`current_status` recommended enumeration:
+`current_status` recommended enum:
 
 - `draft`
 - `partial`
@@ -39,7 +39,7 @@ Related documents:
 - `canary`
 - `production_ready`
 
-`overall_verdict` recommended enumeration:
+`overall_verdict` recommended enum:
 
 - `promote_approved`
 - `promote_blocked`
@@ -47,14 +47,19 @@ Related documents:
 
 ## 4. Required Criteria
 
-| criteria | Minimum Requirement |
+| Criteria | Minimum Requirement |
 | --- | --- |
-| `contracts_frozen` | Related main documents, contracts, ADRs are frozen and not conflicting |
+| `contracts_frozen` | Related main documents, contracts, and ADRs are frozen and mutually non-conflicting |
 | `conformance_tests` | Corresponding conformance / integration / recovery tests have passed |
-| `telemetry_instrumented` | Metrics, trace, alerts at minimum in place for current phase requirements |
-| `runbooks_documented` | Deployment, rollback, incident runbook exists |
+| `telemetry_instrumented` | Metrics, traces, and alerts are at least in place for current stage requirements |
+| `runbooks_documented` | Deployment, rollback, and incident runbooks exist |
 | `rollback_tested` | At least one successful rollback rehearsal or drill |
-| `ownership_defined` | Owner, backup, incident contact are clear |
+| `ownership_defined` | Owner, backup, and incident contact are clear |
+| `oapeflir_loop_tested` | OAPEFLIR loop and stage timeline have coverage |
+| `knowledge_plane_tested` | If knowledge is enabled, namespace / trust / freshness have been verified |
+| `memory_promotion_tested` | If memory promotion is enabled, promotion/demotion/revocation have been verified |
+| `plugin_spi_conformance` | If plugin SPI is enabled, shared contract suite has passed |
+| `rollout_rehearsed` | Release / rollback drill has passed |
 
 ## 5. Optional Criteria
 
@@ -65,21 +70,21 @@ Related documents:
 
 Rules:
 
-- Optional items cannot replace required items.
-- If target status is `production_ready`, recommended to at least supplement `performance_benchmarks` and `security_review`.
+- Optional items cannot substitute required items.
+- If target status is `production_ready`, it is recommended to at least add `performance_benchmarks` and `security_review`.
 
-## 6. Promote Phase Requirements
+## 6. Promote Stage Requirements
 
 | Path | Minimum Requirement |
 | --- | --- |
-| `draft -> partial` | Contract initial version, happy path tests, minimum owner clear |
-| `partial -> contract_frozen` | All current phase contracts frozen, tests pass, boundaries clear |
-| `contract_frozen -> canary` | Telemetry, runbook, ownership, rollback path in place |
-| `canary -> production_ready` | Rollback rehearsed, alerting, benchmarks, security review in place |
+| `draft -> partial` | Contract draft, happy path tests, minimum owner defined |
+| `partial -> contract_frozen` | All current-stage contracts frozen, tests passed, boundaries clear |
+| `contract_frozen -> canary` | Telemetry, runbook, ownership, and rollback path in place |
+| `canary -> production_ready` | Rollback rehearsal, alerting, benchmarks, and security review in place |
 
 ## 7. Anti-Patterns
 
-The following situations must not be used as promote basis:
+The following situations must not be used as promotion basis:
 
 - `service_exists_only`
 - `tests_without_assertions`
@@ -100,10 +105,12 @@ The following situations must not be used as promote basis:
 - `runbook_refs`
 - `rollback_rehearsal_refs`
 - `ownership_ref`
+- `oapeflir_evidence_refs?`
+- `rollout_refs?`
 - `created_at`
 
 ## 9. Closure Conclusion
 
-Platform maturity cannot be judged just by "looks finished."
+Platform maturity cannot be judged simply by "looks done".
 
-Only when contract, test, observability, runbook, rollback, and owner close together does a module qualify for promotion from "partial capability" to "formal platform capability."
+Only when contracts, tests, observability, runbooks, rollback, and owner close together does a module qualify to be promoted from "partial capability" to "formal platform capability".

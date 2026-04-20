@@ -92,7 +92,7 @@ Rules:
 ### 7.3 BYOK Distinction
 
 - In BYOK scenarios, "platform governance cost" and "user-provided model call cost" should be distinguished.
-- Platform payment and BYOK must not be mixed in the same billing口径.
+- Platform payment and BYOK must not be mixed in the same billing scope.
 
 ### 7.4 Implicit Cost Attribution
 

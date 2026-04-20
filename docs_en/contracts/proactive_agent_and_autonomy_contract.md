@@ -70,7 +70,7 @@ Each level must declare at minimum:
 ## 6. Operating Rules
 
 - Trigger firing does not guarantee automatic execution; final mode depends on autonomy level.
-- Continuous failures, risk escalation, or human否决 must support demotion or freezing.
+- Continuous failures, risk escalation, or human veto must support demotion or freezing.
 - Proactive suggestions must be trackable for acceptance rate and false positive rate.
 
 ## 7. Test Requirements

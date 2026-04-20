@@ -1,8 +1,25 @@
 # Gateway Message Contract
 
+---
+
+## OAPEFLIR Related
+
+This contract participates in the following stages of the OAPEFLIR 8-stage cycle:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution evaluation and risk assessment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines the unified message structure exchanged between channels such as CLI, Web, and Telegram and the platform.
+This contract defines the unified message structure exchanged between channels such as CLI, Web, Telegram and the platform.
 
 ## 2. Key Objects
 
@@ -22,7 +39,7 @@ This contract defines the unified message structure exchanged between channels s
 | `message_id` | `string` | External message ID |
 | `content` | `string` | Text content |
 | `attachments` | `Attachment[]?` | Attachments |
-| `created_at` | `timestamp` | Reception time |
+| `created_at` | `timestamp` | Reception timestamp |
 
 ## 4. GatewayReply Minimum Fields
 
@@ -35,7 +52,7 @@ This contract defines the unified message structure exchanged between channels s
 
 ## 5. Decision Interaction
 
-DecisionRequest at minimum needs:
+DecisionRequest minimum needs:
 
 - `decision_id`
 - `task_id`
@@ -43,7 +60,7 @@ DecisionRequest at minimum needs:
 - `options`
 - `deadline?`
 
-DecisionResponse at minimum needs:
+DecisionResponse minimum needs:
 
 - `decision_id`
 - `selected_option`
@@ -52,44 +69,44 @@ DecisionResponse at minimum needs:
 
 ## 6. Behavioral Constraints
 
-- Gateway layer only does adaptation and does not change platform semantics.
+- Gateway layer only adapts, does not change platform semantics.
 - Channel differences should be resolved through formatter / adapter.
-- Decision requests must be traceable back to specific tasks and escalation reasons.
+- Decision requests must be traceable back to specific task and escalation reason.
 
 ## 7. Supplementary Rules
 
-- Unified attachment model at minimum includes: `artifact_id`, `display_name`, `mime_type`, `size_bytes`, `download_ref`.
-- Channel capability matrix at minimum covers: `text`, `buttons`, `attachments`, `stream`, `notifications`.
-- Rich text and buttons must degrade to plain text + numbered options if not supported by channel.
-- Gateway can maintain `ChannelDirectory` or equivalent target registry, used to unify platform enumerable targets with historical session sources into a read-only target directory.
-- Before sending, if accepting human-readable target names, should first resolve to canonical target id; only exact match or unique prefix match is allowed; must fail-close on ambiguity.
-- New platform integration should not only modify adapter files; at minimum should simultaneously update platform enum, adapter factory, auth map, session source, tool delivery, cron delivery, and target directory entry.
+- Unified attachment model minimum includes: `artifact_id`, `display_name`, `mime_type`, `size_bytes`, `download_ref`.
+- Channel capability matrix minimum covers: `text`, `buttons`, `attachments`, `stream`, `notifications`.
+- Rich text and buttons if not supported by channel must degrade to plain text + numbered options.
+- Gateway may maintain `ChannelDirectory` or equivalent target registry, used to unify platform enumerable targets and historical session sources into read-only target directory.
+- If accepting human-readable target names before sending, should first resolve to canonical target id; only exact match or unique prefix match allowed; ambiguous must fail-close.
+- New platform onboarding should not only change adapter file; at minimum should simultaneously update platform enum, adapter factory, auth map, session source, tool delivery, cron delivery, and target directory entry.
 
-### 7.1 Integration with MessageParts
+### 7.1 Connection With MessageParts
 
-`GatewayMessage` is a channel-side inbound message; after entering the platform, it must be projected into a structured `MessagePart` sequence defined in `message_parts_contract.md`:
+`GatewayMessage` is inbound message from channel side; after entering platform must be projected into structured `MessagePart` sequence defined by `message_parts_contract.md`:
 
 | GatewayMessage Field | Projected MessagePart Type | Description |
 | --- | --- | --- |
 | `content` (plain text) | `text` | User message body |
-| `attachments` | `artifact_ref` | Each attachment generates an independent artifact; MessagePart holds reference |
+| `attachments` | `artifact_ref` | Each attachment generates independent artifact; MessagePart holds reference |
 | DecisionResponse (approval callback) | `decision_prompt` | Approval result as structured part; not mixed into plain text |
 
-`GatewayReply` is a platform outbound message, generated by reverse projection from internal `MessagePart` sequence:
+`GatewayReply` is platform outbound message; generated by reverse projection from internal `MessagePart` sequence:
 
 | MessagePart Type | Projected GatewayReply Field | Description |
 | --- | --- | --- |
 | `text` | `content` | Concatenated into channel display text |
 | `artifact_ref` | `artifacts` | Converted to channel attachments |
 | `decision_prompt` | `buttons` | Converted to channel buttons or numbered options |
-| `tool_use` / `tool_result` / `reasoning` and other runtime evidence | Not projected to channel by default | Only degrades to text display in debug mode or when user explicitly requests |
+| `tool_use` / `tool_result` / `reasoning` etc runtime evidence | Not projected to channel by default | Only degraded to text display in debug mode or when user explicitly requests |
 
 Rules:
 
-- Projection process must not lose structured semantics; `GatewayMessage.content` after entering the platform must be stored as `text` part and must not only keep the original string.
-- Part types not supported by channel must have clear degradation strategies (hide or convert to plain text) and must not be silently discarded.
-- Projection relationship is handled by gateway adapter layer and must not be scattered in runtime or workflow layers.
+- Projection process must not lose structured semantics; `GatewayMessage.content` after entering platform must be stored as `text` part; must not only retain raw string.
+- Part types not supported by channel must have explicit degradation strategy (hide or convert to plain text); must not silently drop.
+- Projection relationship is handled by gateway adapter layer; must not be scattered in runtime or workflow layer.
 
 Supplementary notes:
 
-- Channel capability matrix and naming boundaries follow the drill-down document `naming_and_engineering_boundary_contract.md`.
+- Channel capability matrix and naming boundary are governed by `naming_and_engineering_boundary_contract.md`.

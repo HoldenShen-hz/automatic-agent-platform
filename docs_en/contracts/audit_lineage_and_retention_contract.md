@@ -93,7 +93,7 @@ Set retention days by event tier:
 | tier | Default Retention | Description |
 | --- | --- | --- |
 | `tier_1` | `null` (never auto-delete) | Key factual events, require long-term traceability |
-| `tier_2` | `14` days | At-least-once events,过期后可清理 |
+| `tier_2` | `14` days | At-least-once events, cleanable after expiration |
 | `tier_3` | `3` days | Best-effort events, short-cycle cleanup |
 
 Event deletable conditions:

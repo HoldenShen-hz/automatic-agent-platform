@@ -1,17 +1,34 @@
 # Perception Intelligence Plane Contract
 
-> Compatibility note: Filename is kept to maintain historical reference stability; current target-state semantics align with `ObserveHub + AssessHub` dual stages, not a single perception plane.
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
+> Compatibility note: The filename is retained to maintain historical reference stability; current target-state semantics align with `ObserveHub + AssessHub` dual stages, not a single perception plane.
 
 ## 1. Scope
 
 This contract defines the Observe / Assess target-state plane, including source ingestion, dedupe, context build, assessment, and controlled suggestion output.
 
-It extends `perception_contract.md` to answer "how the system continuously collects signals, forms `TaskSituation`, and provides structured assessment suggestions in the Assess stage."
+It extends `perception_contract.md` to answer "how the system continuously collects signals, forms `TaskSituation`, and provides structured assessment suggestions during the Assess stage".
 
 ## 2. Goals
 
-- Elevate Observe and Assess from loosely auxiliary capabilities to independent stage planes.
-- Ensure signal flow is decoupled from the main task chain but can be connected to execution chain through authorization.
+- Promote Observe and Assess from loosely coupled auxiliary capabilities to independent stage planes.
+- Ensure signal flow is decoupled from the main task chain but can be authorized to connect to the execution chain.
 - Make cost, authorization, duplicate information, and assessment quality first-class capabilities.
 
 ## 3. Key Components
@@ -20,7 +37,10 @@ It extends `perception_contract.md` to answer "how the system continuously colle
 - `SignalNormalizer`
 - `DeduplicationService`
 - `TaskSituationBuilder`
+- `SystemSituationBuilder`
+- `ObservationAggregator`
 - `AssessmentEngine`
+- `ExecutionOutcomeEvaluator`
 
 ## 4. Key Objects
 
@@ -28,7 +48,10 @@ It extends `perception_contract.md` to answer "how the system continuously colle
 - `ObserveSignal`
 - `SignalCluster`
 - `TaskSituation`
+- `SystemSituation`
+- `UnifiedObservation`
 - `UnifiedAssessment`
+- `ExecutionAssessment`
 
 ## 5. UnifiedAssessment Minimum Fields
 
@@ -41,26 +64,41 @@ It extends `perception_contract.md` to answer "how the system continuously colle
 - `recommended_path`
 - `generated_at`
 
+## 5.1 ExecutionAssessment Minimum Fields (Post-Execution Assessment)
+
+`ExecutionAssessment` is a four-dimensional assessment after Execute stage completion:
+
+- `execution_id`
+- `correctness_score`: failure category proportion in feedback.signals (0-1)
+- `completeness_score`: steps completed / total steps (0-1)
+- `efficiency_score`: actual tokens / expected budget ratio (0-1)
+- `safety_score`: tool permission denial / sandbox violation signals (0-1)
+- `overall_score`: weighted average (correctness:0.3, completeness:0.3, efficiency:0.2, safety:0.2)
+- `verdict`: `pass (≥0.7) | marginal (0.5-0.7) | fail (<0.5)`
+- `generated_at`
+
+When verdict is `fail`, Replan is automatically triggered.
+
 ## 6. Behavioral Constraints
 
-- Observe / Assess by default only produce signals, situations, and suggestions and do not directly modify the main task chain.
-- Before actively triggering tasks, must pass authorization, budget, and governance verification.
+- Observe / Assess only produces signals, situations, and suggestions by default; does not directly modify the main task chain.
+- Active triggering before a task must pass authorization, budget, and governance checks.
 - Duplicate content must go through dedupe / cluster processing.
 - Assessment products must be traceable to signal ref / task situation ref.
 
 ## 7. Relationship with Existing Documents
 
-- `perception_contract.md` retains the Observe minimum object model.
+- `perception_contract.md` retains Observe minimum object model.
 - This contract defines Observe + Assess as the complete form of an independent plane.
-- `governance_control_plane_contract.md` should constrain the authorization path for action proposal / assessment recommendation.
+- `governance_control_plane_contract.md` should constrain the authorization path for action proposals / assessment recommendations.
 
 ## 8. Phased Introduction
 
 - Phase 3: source ingestion + task situation + assessment MVP.
-- Phase 4: enterprise sources, team sharing, and multi-tenant Observe/Assess boundaries.
+- Phase 4: enterprise sources, team-shared and multi-tenant Observe/Assess boundaries.
 
 ## 9. Supplementary Rules
 
-- Ranking at minimum synthesizes: relevance, importance, timeliness, source credibility, and post-deduplication coverage.
-- Source trust scoring at minimum divides: `low | medium | high | verified`.
-- Assessment freshness should define SLA by source type, e.g., short window for high-frequency sources, long window for low-frequency sources.
+- Ranking comprehensively considers at minimum: relevance, importance, timeliness, source credibility, post-deduplication coverage.
+- Source trust scoring at minimum divides into: `low | medium | high | verified`.
+- Assessment freshness should define SLA by source type: short window for high-frequency sources, long window for low-frequency sources.

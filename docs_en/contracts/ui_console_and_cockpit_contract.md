@@ -26,7 +26,7 @@ It answers the questions:
 - What object does the UI primarily serve
 - What does the homepage display first
 - What capabilities must task, approval, stability, and takeover pages at least have
-- How is page data truth source layered to avoid each page independently拼凑事实源
+- How is page data truth source layered to avoid each page independently patching together fact sources
 
 Related documents:
 
@@ -84,7 +84,7 @@ Recommended minimum information architecture:
 
 Rules:
 
-- Current stage does not require immediately铺满 all pages.
+- Current stage does not require immediately fully populating all pages.
 - But navigation grouping should from the beginning be organized by capability domain, not page-wall flat layout.
 
 ## 4. Homepage Prioritization Rules
@@ -237,7 +237,7 @@ Applicable to:
 
 Rules:
 
-- Cross-domain aggregation pages should prioritize reusing shared queries, rather than each page independently pulling散 API.
+- Cross-domain aggregation pages should prioritize reusing shared queries, rather than each page independently pulling a dispersed API.
 
 ### 6.3 `page_local_api`
 
@@ -252,7 +252,7 @@ Applicable to:
 Rules:
 
 - Domain-specific drill-down can have independent APIs.
-- But pages must not privately拼凑 authoritative state, should prioritize using inspect / resource APIs.
+- But pages must not privately patch together authoritative state, should prioritize using inspect / resource APIs.
 
 ## 7. Task-Flow Cockpit Drill-Down
 

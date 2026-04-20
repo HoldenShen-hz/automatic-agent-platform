@@ -33,7 +33,7 @@ This governance document regulates the following within the OAPEFLIR 8-stage cog
 - Define source of truth rules.
 - Define document update and conflict resolution rules.
 - Define cross-module boundaries, terminology, directory, and change governance methods.
-- Define unified写法 for canonical IDs, business aliases, and naming formats.
+- Define unified naming conventions for canonical IDs, business aliases, and naming formats.
 - Define unified meanings for high-frequency specialized terms across core objects, status, events, governance, security, storage, and operations.
 
 ## Writing Rules

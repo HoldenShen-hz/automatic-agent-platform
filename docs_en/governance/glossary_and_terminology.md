@@ -8,8 +8,8 @@ This file answers 4 questions:
 
 - What does a particular term mean in this system
 - Which terms are easily confused, and how should they be distinguished
-- Which写法 are recommended
-- Which写法 should be avoided in contracts, protocols, configurations, and code
+- Which naming conventions are recommended
+- Which naming conventions should be avoided in contracts, protocols, configurations, and code
 
 Related documents:
 
@@ -39,7 +39,7 @@ Related documents:
 | `artifact` | File-type or binary product; typically managed via artifact store | `output`, `step output` |
 | `output` | Result facing upstream steps or users; can be structured data or text, not necessarily a file | `artifact` |
 | `step output` | Structured result snapshot after a step completes | `artifact`, `final result` |
-| `result envelope` | Unified result封装 for success, partial success, failure, warnings, artifacts, and metrics | Single tool result |
+| `result envelope` | Unified result envelope for success, partial success, failure, warnings, artifacts, and metrics | Single tool result |
 
 ## 3A. OAPEFLIR Terminology
 
@@ -72,7 +72,7 @@ Related documents:
 | `stalled` | Process may not be dead, but no valid progress within specified time | `offline` |
 | `dead-letter` | Failure sink record that cannot be automatically recovered or should not continue retrying | Regular error log |
 | `checkpoint` | State snapshot at recoverable boundary | Any temporary variable |
-| `partial result` | Task not yet complete overall, but has preservable/auditable阶段性 results | `completed` |
+| `partial result` | Task not yet complete overall, but has preservable/auditable staged results | `completed` |
 | `compensation` | Action to rollback, reconcile, or manually repair steps with side effects already occurred | Regular retry |
 
 ## 5. Status and Lifecycle Terminology
@@ -138,7 +138,7 @@ Control layer roles use "canonical id + business alias" format uniformly in docu
 | `workflow_planner` | VP Orchestration | Cross-division breakdown, dependency graph, aggregation, failure escalation |
 | `division_lead` | Lead Agent | In-division workflow autonomous orchestration |
 
-Recommended写法:
+Recommended naming conventions:
 
 - `intake_router`（business alias: VP Operations）
 - `workflow_planner`（business alias: VP Orchestration）
@@ -227,7 +227,7 @@ Not recommended:
 | `golden task` | Fixed representative task used as version regression baseline |
 | `fixture` | Preset fixed input/output samples for stable testing |
 | `VCR` | Test mechanism for recording/playback of external calls |
-| `unit test` | Fine-grained test面向 single function, single module, single object |
+| `unit test` | Fine-grained test for single function, single module, single object |
 | `integration test` | Test across module collaboration |
 | `E2E` | End-to-end test from entry to result |
 | `chaos test` | Test that actively injects faults to verify recovery and resilience |
@@ -245,7 +245,7 @@ Not recommended:
 | `span` | Single operation segment within a trace |
 | `correlation id` | Unified identifier used for cross-module correlation of logs/events/requests |
 | `healthz` | Minimal health check entry point |
-| `inspect` | Debug query view面向 tasks, executions, sessions, workers |
+| `inspect` | Debug query view for tasks, executions, sessions, workers |
 | `backpressure` | Mechanism where system delays, degrades, or rejects new requests when overloaded |
 | `runbook` | On-call and incident handling manual |
 | `SLO` | Service objectives: success rate, latency, recovery time |
@@ -280,10 +280,10 @@ Not recommended:
 | `DDL` | Data Definition Language; commonly refers to table creation, index, constraint migration statements |
 | `WAL` | Write-Ahead Logging; pre-write logging mode for SQLite/databases |
 | `MCP` | Model Context Protocol or external capability access protocol type in this system |
-| `HITL` | Human In The Loop; decision环节 requiring human participation |
+| `HITL` | Human In The Loop; decision step requiring human participation |
 | `PII` | Personally Identifiable Information |
 | `TTL` | Time To Live; valid duration for data or cache |
-| `DLQ` | Dead Letter Queue / dead-letter storage; used to承接 messages or tasks that cannot continue processing |
+| `DLQ` | Dead Letter Queue / dead-letter storage; used to receive and process messages or tasks that cannot continue processing |
 | `HA` | High Availability |
 | `DR` | Disaster Recovery |
 | `OIDC` | OpenID Connect; used for identity authentication federation |

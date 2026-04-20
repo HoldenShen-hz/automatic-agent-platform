@@ -68,7 +68,7 @@ Recommended layers:
 | Layer | Responsible For | Forbidden Direct Dependencies |
 | --- | --- | --- |
 | `domain` | task, workflow, decision, result, policy objects | infra details, SDK clients |
-| `orchestration` | planner, orchestrator, transition service, recovery manager |底层 DB driver, specific web framework |
+| `orchestration` | planner, orchestrator, transition service, recovery manager | underlying DB driver, specific web framework |
 | `runtime` | execution, lease, worker, queue, sandbox, gateway | product narrative objects, UI components |
 | `infrastructure` | PostgreSQL, Redis, object store, provider adapter, observability adapter | business orchestration rules |
 
@@ -78,7 +78,7 @@ Boundary Rules:
 - "Upper layer directly stealing lower layer implementation details" is not allowed.
 - Domain objects must not hold infrastructure clients.
 - Prompt, workflow, and policy files must not replace mandatory system code boundaries.
-- Public facade must not反向 re-export private implementation, avoiding freezing accidental paths into de facto public contracts.
+- Public facade must not reverse re-export private implementation, avoiding freezing accidental paths into de facto public contracts.
 - Type layer / contract layer must not directly bind implementation shim; if lazy load is necessary, it should be received through explicit runtime boundary.
 
 ## 5. Version Governance Objects

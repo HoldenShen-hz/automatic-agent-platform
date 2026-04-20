@@ -155,7 +155,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 
 | Contract Category | File Count | Key Transformation Points |
 |-------------------|------------|---------------------------|
-| Agent Behavior Contracts | 8 | Need to add v2.7 §42渐进式自主权 + §41 Proactive Agent constraints |
+| Agent Behavior Contracts | 8 | Need to add v2.7 §42 Progressive Autonomy + §41 Proactive Agent constraints |
 | OAPEFLIR Loop Contracts | 5 | Need to extend Plan/Learn/Improve/Rollout phase contract details |
 | API Contracts | 6 | Need to add §39 NL entry + §44 Non-technical user endpoints |
 | Billing/Tenant Contracts | 4 | Need to add §46 Org hierarchy + §54 SLA tiering |
@@ -644,7 +644,7 @@ Grouped by test category:
 | fixtures/ | 4 | 459 | 1 | 3 | 0 |
 | **Total** | **1,069** | **~229,196** | **~903** | **~145** | **~17** |
 
-#### 5.10.9 Test Phase Migration对照表
+#### 5.10.9 Test Phase Migration Mapping Table
 
 | Porting Phase | Source Modules | Corresponding Test Directory | Test Files | Test Lines |
 |---------------|----------------|------------------------------|------------|------------|

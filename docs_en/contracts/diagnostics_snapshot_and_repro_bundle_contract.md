@@ -56,7 +56,7 @@ Supplementary rules:
 - Diagnostics / repro bundles should support exporting as a single compressed archive or equivalent shareable artifact for support and troubleshooting.
 - Before exporting, users must be explicitly reminded that bundles may contain session messages, logs, configuration, and other sensitive information.
 - Diagnostics exports must not include secret plaintext, unsanitized tokens, or sensitive fields in crash dumps by default.
-- If the system supports issue / incident creation assistance, it should prioritize generating "report入口 pre-filled with system information" rather than requiring users to manually collect environment information.
+- If the system supports issue / incident creation assistance, it should prioritize generating "report entry pre-filled with system information" rather than requiring users to manually collect environment information.
 - If the system supports multiple prompt templates, scheduled tasks, or enabled extensions, bundles should carry "actual effective version/manifest" as much as possible, rather than just exporting generic configuration.
 
 ## 5. `IncidentTimelineReport`

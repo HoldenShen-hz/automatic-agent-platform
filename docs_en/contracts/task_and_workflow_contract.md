@@ -1,8 +1,16 @@
 # Task And Workflow Contract
 
+> **OAPEFLIR Related**: This contract defines OAPEFLIR main chain tasks and workflows, corresponding to ADR-016.
+> **Last Updated**: 2026-04-17
+
 ## 1. Scope
 
-This contract defines tasks, subtasks, workflow states, step outputs, artifact references, and the runtime constraints that Phase 1a needs to stabilize.
+This contract defines task, sub-task, workflow status, step output, artifact references, and runtime constraints that Phase 1a must stabilize.
+
+For OAPEFLIR Phase 1-4 scope, this contract also freezes how workflow carries closed-loop stages, loop iterations, and feedback objects.
+
+Related documents:
+- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
 
 ## 2. Key Objects
 
@@ -20,12 +28,12 @@ This contract defines tasks, subtasks, workflow states, step outputs, artifact r
 | Field | Type | Description |
 | --- | --- | --- |
 | `id` | `string` | Task unique identifier |
-| `parent_id` | `string?` | Parent task ID, used when splitting across divisions |
+| `parent_id` | `string?` | Parent task ID, used when cross-division splitting |
 | `root_id` | `string` | Root task ID |
 | `division_id` | `string?` | Target division |
 | `title` | `string` | Task title |
 | `status` | `TaskStatus` | Task status |
-| `source` | `user \| perception \| system` | Task source |
+| `source` | `user \| observe \| system` | Task source |
 | `priority` | `low \| normal \| high \| urgent` | Priority |
 | `input` | `json` | Raw input |
 | `normalized_input` | `json?` | Normalized input |
@@ -34,34 +42,40 @@ This contract defines tasks, subtasks, workflow states, step outputs, artifact r
 | `estimated_cost_usd` | `number?` | Estimated cost |
 | `actual_cost_usd` | `number` | Actual cost |
 | `error_code` | `string?` | Failure reason code |
-| `created_at` | `timestamp` | Creation time |
-| `updated_at` | `timestamp` | Update time |
-| `completed_at` | `timestamp?` | Completion time |
+| `created_at` | `timestamp` | Created at |
+| `updated_at` | `timestamp` | Updated at |
+| `completed_at` | `timestamp?` | Completed at |
 
-`TaskStatus` is authoritative per [runtime_state_machine_contract.md](./runtime_state_machine_contract.md).
+`TaskStatus` takes precedence from [runtime_state_machine_contract.md](./runtime_state_machine_contract.md).
 
 ## 4. Task Runtime Constraints
 
-- `root_id` remains stable throughout the entire task tree.
-- Empty `parent_id` indicates a root task; when non-empty, it must point to an existing task.
-- `division_id` may be empty before HQ triage, but must be determined before entering division execution.
-- `actual_cost_usd` starts at `0` and only allows accumulated updates.
-- When entering a terminal state, `completed_at` or failure termination time must be written synchronously.
+- `root_id` remains stable throughout entire task tree.
+- Empty `parent_id` indicates root task; when non-empty must point to existing task.
+- `division_id` can be empty before HQ triage, but must be determined before entering division execution.
+- `actual_cost_usd` starts at `0`, only allows accumulate update.
+- When entering terminal state must simultaneously write `completed_at` or failure terminal time.
 
 ## 5. WorkflowState Authoritative Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `task_id` | `string` | Associated task |
-| `division_id` | `string` | Owning division |
+| `division_id` | `string` | Division |
 | `workflow_id` | `string` | Workflow definition identifier |
 | `current_step_index` | `number` | Current step index |
 | `status` | `WorkflowStatus` | Workflow status |
+| `current_stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | Current OAPEFLIR stage |
+| `loop_iteration` | `number` | Current closed-loop round, starting from 1 |
 | `outputs` | `Record<string, StepOutput>` | Step output mapping |
-| `last_error_code` | `string?` | Most recent error code |
-| `retry_count` | `number` | Current accumulated retry count |
-| `started_at` | `timestamp` | Start time |
-| `updated_at` | `timestamp` | Update time |
+| `feedback_signals` | `string[]?` | Associated feedback signal ID list |
+| `learning_objects` | `string[]?` | Associated learning object ID list |
+| `improvement_candidates` | `string[]?` | Associated improvement candidate ID list |
+| `rollout_records` | `string[]?` | Associated rollout record ID list |
+| `last_error_code` | `string?` | Latest error code |
+| `retry_count` | `number` | Current cumulative retry count |
+| `started_at` | `timestamp` | Started at |
+| `updated_at` | `timestamp` | Updated at |
 | `resumable_from_step` | `string?` | Resumable step identifier |
 
 ## 6. WorkflowStep Authoritative Fields
@@ -82,23 +96,51 @@ Each step contains at minimum:
 Rules:
 
 - `input_binding` must be resolvable to upstream output, task input, or system context.
-- `output_key` is unique within the same workflow.
-- `approval_policy` only defines whether escalation is needed, it does not carry channel interaction details.
+- `output_key` is unique within same workflow.
+- `approval_policy` only defines whether escalation is needed, does not carry channel interaction details.
+
+## 6A. OAPEFLIR Workflow Additional Objects
+
+`PlanDTO` minimum fields:
+
+- `task_id`
+- `workflow_id`
+- `loop_iteration`
+- `strategy`
+- `execution_graph`
+- `risk_summary?`
+- `domain_id?`
+
+`FeedbackSignal` is a first-class object in workflow, minimum fields:
+
+- `signal_id`
+- `kind` (`satisfaction | correction | quality_metric | failure_signal`)
+- `sentiment` (`positive | neutral | negative`)
+- `source` (`user | system | runtime`)
+- `evidence_ref?`
+- `recorded_at`
+
+Rules:
+
+- `current_stage` and `loop_iteration` are authoritative workflow fields, must not exist only in runtime in-memory state.
+- `FeedbackSignal` can be generated by execute post-collection, user correction, explanation chain, or approval write-back, but must link back to workflow.
+- `PlanDTO` is the authoritative handover object from plan stage to execute stage, cannot be replaced by temporary prompt text.
 
 ## 7. StepOutput Authoritative Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `step_id` | `string` | Step ID |
-| `role_id` | `string` | Executing role |
+| `role_id` | `string` | Execution role |
 | `status` | `succeeded \| failed \| partial_success` | Step result |
-| `data` | `json` | Primary output data |
+| `data` | `json` | Main output data |
 | `summary` | `string?` | Output summary |
 | `artifacts` | `ArtifactRef[]?` | Attachment references |
 | `token_cost` | `number` | Token cost |
 | `duration_ms` | `number` | Duration |
 | `validation` | `json?` | Schema validation result |
-| `produced_at` | `timestamp` | Production time |
+| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Stage output belongs to |
+| `produced_at` | `timestamp` | Produced at |
 
 ## 8. ArtifactRef Authoritative Fields
 
@@ -112,60 +154,63 @@ Rules:
 
 Rules:
 
-- Large text, files, images, and logs are preferably expressed through artifact references.
-- When artifacts are deleted or migrated, the auditability of completed tasks must not be broken.
+- Large text, files, images, and logs prioritize expression through artifact references.
+- When artifact is deleted or migrated, must not destroy auditability of completed tasks.
 
 ## 9. TaskDependency
 
-Phase 1a allows minimal dependency expression:
+Phase 1a allows minimum dependency expression:
 
 - `upstream_task_id`
 - `downstream_task_id`
 - `dependency_type`, values `hard \| soft`
 - `created_at`
 
-Phase 1a only requires expressing cross-task wait relationships, not full DAG query capability.
+Phase 1a only requires expressing cross-task wait relationships, does not require complete DAG query capability.
 
 ## 10. Behavioral Constraints
 
-- Workflow input bindings should be resolved at runtime, not simulated by string replacement.
-- Outputs must be validated against schema before writing to state.
-- `partial_success` must be explicitly recorded and not disguised as success.
+- Workflow input binding should be resolved at runtime, cannot rely on string substitution simulation.
+- Output must be validated against schema before writing status.
+- `partial_success` must be explicitly recorded, cannot be disguised as success.
 - Task terminal state and workflow terminal state must remain consistent in recovery logic.
+- Workflow's `current_stage` must be consistent with OAPEFLIR stage lifecycle in [runtime_state_machine_contract.md](./runtime_state_machine_contract.md).
+- `feedback_signals / learning_objects / improvement_candidates / rollout_records` must at minimum be stably trackable in inspect and audit, cannot remain only in log text.
 
 ## 11. Failure Semantics
 
-- Step failures proceed with limited retries first.
-- After retry limit is exceeded, hand over to workflow self-healing, escalation, or task failure handling.
+- Step failure first goes through limited retry.
+- After retry limit exceeded, handed to workflow self-healing, escalation, or task failure handling.
 - `cancelled` and `failed` must be distinguished.
-- Failures caused by invalid input should be marked as non-retryable.
+- Failures caused by illegal input should be marked as non-retryable.
 
 ### 11.1 Step Dependency Cascading Failure
 
-When workflow steps have dependencies (referencing upstream `output_key` via `input_binding`), upstream step failure or skip triggers cascading:
+When workflow step has dependency relationship (referencing upstream `output_key` through `input_binding`), upstream step failure or skip triggers cascading handling:
 
 | Upstream Step Status | Dependency Type | Downstream Step Handling |
 | --- | --- | --- |
 | `failed` | `hard` (default) | Downstream step marked as `skipped`, reason_code `upstream_dependency_failed` |
 | `failed` | `soft` | Downstream step can still execute, missing input filled with `null` or default value |
-| `skipped` | `hard` | Downstream step cascades to `skipped` |
+| `skipped` | `hard` | Downstream step cascades `skipped` |
 | `skipped` | `soft` | Downstream step can still execute |
 
 Rules:
 
-- Cascading `skipped` must propagate along the DAG, and must not leave more downstream steps indefinitely stuck in `blocked` after an intermediate step is interrupted.
-- Cascading determination should be completed before step scheduling, not discovered when the step actually starts executing.
-- All cascading skipped steps must record `StepOutput` (status=`skipped`), ensuring workflow output mapping completeness.
-- If cascading causes all critical steps to be skipped, workflow should enter `failed`, not `completed`.
-- Step dependency cascading is consistent with static analysis rules in `workflow_static_analysis_and_compensation_contract.md` Section 6.
+- Cascading `skipped` must propagate along DAG, must not have downstream steps stay indefinitely in `blocked` after intermediate step interruption.
+- Cascading judgment should be completed before step scheduling, must not discover input unavailable when step actually starts executing.
+- All cascaded skipped steps must record `StepOutput` (status=`skipped`), ensuring workflow output mapping is complete.
+- If cascading causes all critical steps to be skipped, workflow should enter `failed`, must not enter `completed`.
+- Step dependency cascading is consistent with static analysis rules in `workflow_static_analysis_and_compensation_contract.md` §6.
 
 ## 12. Supplementary Rules
 
 - Conditional branch DSL supports at minimum: `equals`, `exists`, `not_exists`, `greater_than`, `all_of`, `any_of`.
-- Subtask aggregation output includes at minimum: `summary`, `successful_children`, `failed_children`, `artifacts`, `warnings`.
-- Artifact lifecycle should be bound to task retention policy; GC must not execute before the audit window.
+- Sub-task aggregation output contains at minimum: `summary`, `successful_children`, `failed_children`, `artifacts`, `warnings`.
+- Artifact lifecycle should bind task retention policy, GC must not execute before audit window.
 
 Supplementary notes:
 
-- Unified executable unit abstraction is authoritative per `executable_unit_contract.md`.
-- Unified result envelope is authoritative per `result_envelope_contract.md`.
+- Unified execution unit abstraction is governed by drill-down document `executable_unit_contract.md`.
+- Unified result encapsulation is governed by drill-down document `result_envelope_contract.md`.
+- Closed-loop stage and state transition are governed by drill-down document `runtime_state_machine_contract.md`.

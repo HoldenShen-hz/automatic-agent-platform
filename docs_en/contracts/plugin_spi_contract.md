@@ -1,28 +1,37 @@
 # Plugin SPI Contract
 
+> **OAPEFLIR Association**: This contract defines the Plugin SPI interface system for the OAPEFLIR Domain Registry, corresponding to ADR-066.
+> **Update Date**: 2026-04-17
+
 ## 1. Scope
 
-This contract defines the Service Provider Interface (SPI) for the Plugin system, including four Plugin types and PluginSpiRegistry lifecycle management.
+This contract defines the Service Provider Interface (SPI) for the Plugin system, including four types of OAPEFLIR Domain Plugin and PluginSpiRegistry lifecycle management.
 
 Related documents:
-- `tool_skill_plugin_contract.md`: Relationship between Tool/Skill/Plugin.
-- `sandbox_and_auth_contract.md`: Plugin sandbox security boundary.
+- `tool_skill_plugin_contract.md`: Tool/Skill/Plugin relationships.
+- `sandbox_and_auth_contract.md`: Plugin sandbox security boundaries.
+- [ADR-066 Plugin SPI Framework](../adr/066-plugin-spi-framework.md)
 
-## 2. Four Plugin SPI Interfaces
+## 2. Four OAPEFLIR Domain Plugin SPI Interfaces
 
-### 2.1 RetrieverPlugin (Empty Shell Exists)
+### 2.1 DomainRetrieverPlugin
+
+Retrieves relevant content from knowledge base/memory/context.
 
 ```typescript
-interface RetrieverPlugin {
+interface DomainRetrieverPlugin {
   readonly pluginId: string;
   readonly pluginType: "retriever";
+  readonly domainId: string;  // e.g., "coding", "operations", "growth"
 
-  // Retrieve related knowledge
+  // Retrieve relevant knowledge
   retrieve(request: RetrievalRequest): Promise<RetrievalHit[]>;
 
   // Lifecycle
-  init(config: PluginConfig): Promise<void>;
-  destroy(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
 interface RetrievalRequest {
@@ -30,148 +39,215 @@ interface RetrievalRequest {
   namespace?: string;
   domainId?: string | null;
   limit?: number;
+  retrievalLevel?: 'quick' | 'standard' | 'deep';  // Corresponds to Knowledge Plane level 3 queries
 }
 ```
 
-** Builtin retriever**: `coding-retriever` (to implement, should connect to SemanticRepoMapService).
+### 2.2 DomainValidatorPlugin
 
-### 2.2 EvaluatorPlugin
+Validates whether execution input/output conforms to domain specifications.
 
 ```typescript
-interface EvaluatorPlugin {
+interface DomainValidatorPlugin {
   readonly pluginId: string;
-  readonly pluginType: "evaluator";
+  readonly pluginType: "validator";
+  readonly domainId: string;
 
-  // Evaluate input or output
-  evaluate(input: EvaluationInput): Promise<EvaluationResult>;
+  // Validate input/output
+  validate(input: unknown, context: ValidationContext): Promise<ValidationResult>;
 
-  init(config: PluginConfig): Promise<void>;
-  destroy(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
-interface EvaluationInput {
-  type: "pre-execution" | "post-execution" | "on-demand";
+interface ValidationContext {
+  phase: 'pre-execution' | 'post-execution' | 'on-demand';
   taskId: string;
-  target: unknown; // Plan | StepResult | Artifact
-  context: EvaluationContext;
+  target: unknown;  // Plan | StepResult | Artifact
+  domainContext: Record<string, unknown>;
 }
 
-interface EvaluationResult {
+interface ValidationResult {
+  valid: boolean;
   score: number;           // 0-1
   verdict: "pass" | "warn" | "fail";
   reasons: string[];
   suggestions?: string[];
+  violations?: ValidationViolation[];
+}
+
+interface ValidationViolation {
+  field: string;
+  code: string;
+  message: string;
+  severity: 'error' | 'warning';
 }
 ```
 
-** builtin evaluator**: `basic-evaluator` (to implement).
+### 2.3 DomainPlannerPlugin
 
-### 2.3 TransformerPlugin
+Generates customized execution plans for specific domains.
 
 ```typescript
-interface TransformerPlugin {
+interface DomainPlannerPlugin {
   readonly pluginId: string;
-  readonly pluginType: "transformer";
+  readonly pluginType: "planner";
+  readonly domainId: string;
 
-  // Transform input/output
-  transform(input: unknown, direction: "encode" | "decode"): Promise<unknown>;
+  // Generate plan for specific domain
+  plan(assessment: UnifiedAssessment, domain: DomainId): Promise<Plan>;
 
-  init(config: PluginConfig): Promise<void>;
-  destroy(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
+}
+
+interface UnifiedAssessment {
+  taskId: string;
+  complexity: 'low' | 'medium' | 'high' | 'very_high';
+  riskLevel: 'minimal' | 'low' | 'medium' | 'high' | 'critical';
+  resourceRequirements: ResourceEstimate;
+  estimatedDuration: number;
+  confidence: number;
+  metadata: Record<string, unknown>;
 }
 ```
 
-** builtin transformer**: `json-transformer` (to implement).
+### 2.4 DomainPresenterPlugin
 
-### 2.4 GuardPlugin
+Formats execution results into domain-specific output.
 
 ```typescript
-interface GuardPlugin {
+interface DomainPresenterPlugin {
   readonly pluginId: string;
-  readonly pluginType: "guard";
+  readonly pluginType: "presenter";
+  readonly domainId: string;
 
-  // Security check
-  guard(request: GuardRequest): Promise<GuardResult>;
+  // Format output
+  present(output: DualChannelStepOutput, format: OutputFormat): Promise<PresentedOutput>;
 
-  init(config: PluginConfig): Promise<void>;
-  destroy(): Promise<void>;
+  initialize(config: PluginConfig): Promise<void>;
+  activate(): Promise<void>;
+  suspend(): Promise<void>;
+  deactivate(): Promise<void>;
 }
 
-interface GuardRequest {
-  operation: "tool_call" | "file_access" | "network_access" | "code_execution";
-  target: string;
-  context: GuardContext;
+interface OutputFormat {
+  type: 'summary' | 'detailed' | 'diff' | 'stream';
+  includeMetrics?: boolean;
+  includeArtifacts?: boolean;
 }
 
-interface GuardResult {
-  allowed: boolean;
-  reason?: string;
-  fallbackAction?: "block" | "sanitize" | "allow_with_warning";
+interface PresentedOutput {
+  content: string;
+  format: OutputFormat;
+  artifacts?: ArtifactReference[];
+  metrics?: OutputMetrics;
 }
 ```
 
-** builtin guard**: `safety-guard` (to implement, should integrate OutboundUrlPolicy + FileRootPolicy).
+## 3. ExternalAdapterPlugin (8 Adapter Types)
 
-## 3. PluginSpiRegistry Lifecycle
+| Adapter | Purpose | Implementation Status |
+|---------|---------|----------------------|
+| `github` | GitHub API integration (issues/PRs/code search) | Implemented (github-adapter.ts, 120 lines) |
+| `jira` | Jira ticket management | Not implemented |
+| `notion` | Notion document/database integration | Not implemented |
+| `figma` | Figma design file preview | Not implemented |
+| `unity` | Unity Cloud Build integration | Not implemented |
+| `obs` | OBS live streaming control | Not implemented |
+| `ad-platforms` | Ad platform data integration | Not implemented |
+| `crm` | CRM system customer/interaction data | Not implemented |
+
+## 4. PluginSpiRegistry Lifecycle State Machine
 
 ```typescript
 class PluginSpiRegistry {
+  // States: unregistered → loading → registered → initialized → active ↔ suspended → inactive → unloaded
+
   // Register plugin
   register(plugin: BasePlugin): void;
+
+  // Initialize plugin
+  async initialize(pluginId: string, config: PluginConfig): Promise<void>;
+
+  // Activate plugin
+  async activate(pluginId: string): Promise<void>;
 
   // Find by type
   getPlugins(type: PluginType): BasePlugin[];
 
-  // Execute single plugin
-  async execute(
-    pluginId: string,
-    method: string,
-    args: unknown[]
-  ): Promise<unknown>;
+  // Invoke single plugin
+  async invoke(pluginId: string, method: string, args: unknown[]): Promise<unknown>;
 
-  // Batch execution (fan-out)
-  async executeAll(
-    type: PluginType,
-    method: string,
-    args: unknown[]
-  ): Promise<unknown[]>;
+  // Batch invoke (fan-out)
+  async invokeAll(type: PluginType, method: string, args: unknown[]): Promise<unknown[]>;
 
-  // Initialize all registered plugins
-  async initializeAll(): Promise<void>;
+  // Suspend plugin
+  async suspend(pluginId: string): Promise<void>;
 
-  // Destroy all plugins
-  async destroyAll(): Promise<void>;
+  // Deactivate plugin
+  async deactivate(pluginId: string): Promise<void>;
+
+  // Unload plugin
+  async unload(pluginId: string): Promise<void>;
 }
 ```
 
-## 4. Plugin Configuration Schema
+## 5. Plugin Configuration Schema
 
 ```typescript
 const PluginConfigSchema = z.object({
   pluginId: z.string(),
+  domainId: z.string().optional(),  // OAPEFLIR Domain ID
   enabled: z.boolean().default(true),
   priority: z.number().int().min(0).max(100).default(50),
   config: z.record(z.string(), z.unknown()).default({}),
   timeoutMs: z.number().int().positive().default(30000),
   retryPolicy: RetryPolicySchema.optional(),
+  isolationLevel: z.enum(['process', 'thread', 'sandbox']).default('process'),
+});
+
+const PluginDescriptorSchema = z.object({
+  pluginId: z.string(),
+  pluginType: z.enum(['retriever', 'validator', 'planner', 'presenter', 'adapter']),
+  domainId: z.string().optional(),
+  version: z.string(),
+  description: z.string().optional(),
+  capabilities: z.array(z.string()),
 });
 ```
 
-## 5. Builtin Plugin List
+## 6. Builtin Plugin List
 
-| pluginId | Type | Status | Description |
-|----------|------|--------|-------------|
-| `plugin.core.basic-evaluator` | evaluator | To implement | Basic scoring (correctness/completeness/efficiency/safety) |
-| `plugin.core.basic-planner` | retriever | To implement | Basic planning strategy retrieval |
-| `plugin.core.json-transformer` | transformer | To implement | JSON encode/decode |
-| `plugin.core.safety-guard` | guard | To implement | Integrate OutboundUrlPolicy + FileRootPolicy |
-| `plugin.builtin.coding-retriever` | retriever | To implement | Codebase semantic retrieval |
-| `plugin.builtin.coding-presenter` | transformer | To implement | Code diff formatting |
-| `plugin.builtin.github-adapter` | retriever | To implement | GitHub REST API integration |
+| pluginId | Type | Domain | Status | Description |
+|----------|------|--------|--------|-------------|
+| `plugin.core.basic-evaluator` | validator | — | Pending | Basic scoring (correctness/completeness/efficiency/safety) |
+| `plugin.core.basic-planner` | planner | — | Pending | Basic planning strategy retrieval |
+| `plugin.builtin.coding-retriever` | retriever | coding | Pending | Codebase semantic retrieval |
+| `plugin.builtin.coding-presenter` | presenter | coding | Pending | Code diff formatting |
+| `plugin.builtin.github-adapter` | adapter | — | Implemented | GitHub REST API integration |
 
-## 6. Constraints
+## 7. OAPEFLIR Stage Integration
 
-- Plugin must execute in independent process (`plugin-runtime-child.ts`).
-- Communication between Plugin and host through serialized protocol in `plugin-runtime-protocol.ts`.
-- Do not trust Plugin returned data: all return values must pass schema validation.
-- Plugin timeout: `timeoutMs` default 30s, three-level timeout handling (warn → kill → dead-letter).
+| OAPEFLIR Stage | Plugin Role |
+|--------------|-----------|
+| Observe | DomainRetrieverPlugin retrieves context knowledge |
+| Assess | DomainValidatorPlugin validates pre-execution conditions |
+| Plan | DomainPlannerPlugin generates domain-specific plans |
+| Execute | DomainValidatorPlugin validates execution output |
+| Feedback | DomainRetrieverPlugin collects feedback signals |
+| Learn | — |
+| Improve | — |
+| Rollout | DomainPresenterPlugin formats release reports |
+
+## 8. Constraints
+
+- Plugins must execute in independent processes (`plugin-runtime-host.ts`).
+- Communication between Plugin and host is through serialization protocol in `plugin-runtime-protocol.ts`.
+- Do not trust Plugin returned data: all return values must be validated against schema.
+- Plugin timeout: `timeoutMs` defaults to 30s, three-level timeout handling (warn → kill → dead-letter).
+- R4-TYPES constraint: Phase 1 only supports 3 types of learning Plugins; no extension allowed until constraint is lifted.

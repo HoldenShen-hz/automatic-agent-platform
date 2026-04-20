@@ -91,7 +91,7 @@ Recommended rules:
 | --- | --- |
 | `oapeflir` | Loop convergence rate, feedback positive/negative ratio, rollout success rate |
 | `business` | Task success rate, approval rate, business unit output, user upgrade rate |
-| `platform` | Throughput, queue backlog, recovery success rate, lease回收数 |
+| `platform` | Throughput, queue backlog, recovery success rate, lease recovery count |
 | `runtime` | Worker heartbeat, execution duration, retry rate, backpressure trigger rate |
 | `infra` | DB latency, cache hit, CPU, memory, event loop latency |
 

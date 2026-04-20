@@ -1,23 +1,40 @@
 # Monetization Metering Plane Contract
 
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines the commercial metering plane of the final platform, including usage metering, quota enforcement, entitlement evaluation, billing ledger, and plan catalog.
+This contract defines the commercial metering plane for the final platform, including usage metering, quota enforcement, entitlement evaluation, billing ledger, and plan catalog.
 
-It extends `billing_and_tenant_contract.md` and `cost_and_budget_contract.md` to answer "how the platform connects usage, permissions, quotas, and billing into a closed loop."
+It extends `billing_and_tenant_contract.md` and `cost_and_budget_contract.md` to answer "how the platform connects usage, permissions, quotas, and billing into a closed loop".
 
 ## 2. Goals
 
-- Elevate metering and quota from static fields to formal platform capabilities.
-- Let runtime, API, and workspace permissions all consume entitlement decisions.
-- Establish unified billing foundation for Pro and Enterprise charging models.
-- Make usage, quota, billing, and tenant / organization models connectable.
+- Promote metering and quota from static fields to formal platform capabilities.
+- Enable runtime, API, and workspace permissions to consume entitlement decisions.
+- Establish a unified billing foundation for Pro and Enterprise pricing models.
+- Enable usage, quota, billing, and tenant / organization models to connect.
 
 ## 3. Non-Goals
 
 - This contract does not specify payment channel or tax product selection.
-- This contract does not define market pricing strategy itself.
-- This contract does not replace per-execution budget guard definition.
+- This contract does not define market pricing strategies themselves.
+- This contract does not replace per-execution budget guard definitions.
 
 ## 4. Core Components
 
@@ -78,8 +95,8 @@ Examples:
 
 - Monthly token limit
 - Concurrent execution limit
-- Number of available workspaces
-- Number of enabled perception sources
+- Available workspace count
+- Number of observable sources that can be enabled
 
 ## 8. `EntitlementDecision` Minimum Fields
 
@@ -93,8 +110,8 @@ Examples:
 
 Rules:
 
-- Entitlement judgment must be able to be made before runtime execution.
-- `degrade` is used for capability degradation, not complete rejection.
+- Entitlement decisions must be made before runtime execution.
+- `degrade` is for capability degradation, not complete rejection.
 - `warn` can only be used in soft threshold scenarios that do not affect safety and billing correctness.
 
 ## 9. `QuotaCounter` and `LedgerEntry`
@@ -123,14 +140,14 @@ Rules:
 
 Rules:
 
-- Quota counter serves real-time limits.
-- Billing ledger serves billing and audit.
-- Ledger must not depend on temporary in-memory cumulative results.
-- Usage event, quota counter, and ledger entry must be reconcilable between each other and must not rely solely on final aggregated results.
+- Quota counter serves real-time limiting.
+- Billing ledger serves accounting and auditing.
+- Ledger must not rely on temporary in-memory accumulated results.
+- Usage event, quota counter, and ledger entry must be reconcilable with each other; relying solely on final aggregation results is not acceptable.
 
 ## 10. Metering Granularity
 
-Starting Phase 3, at minimum supports:
+Starting from Phase 3, at minimum support:
 
 - token / model usage
 - execution time
@@ -141,14 +158,14 @@ Starting Phase 3, at minimum supports:
 
 ## 11. Typical Decision Path
 
-1. User or system initiates action.
+1. User or system initiates an action.
 2. Runtime / API first requests `EntitlementEvaluator`.
 3. Evaluator reads plan entitlement, quota counter, tenant/org ownership.
 4. Returns `allow / deny / degrade / warn`.
-5. After action executes, `UsageIngestionPipeline` writes back usage event.
-6. Periodically or quasi-real-time aggregates into quota and ledger.
+5. After action execution, `UsageIngestionPipeline` writes back usage event.
+6. Periodic or near-real-time aggregation into quota and ledger.
 
-### 11.1 Commercial Closed-Loop Flow Diagram
+### 11.1 Commercial Closed-Loop Flowchart
 
 ```mermaid
 flowchart TD
@@ -181,48 +198,48 @@ flowchart LR
 
 ## 12. Quota Enforcement Rules
 
-- When quota is exceeded, there must be unified `deny / degrade / warn` semantics.
+- Quota exceeding must have unified `deny / degrade / warn` semantics.
 - High-cost or high-risk capabilities prioritize hard deny.
-- Experience capabilities can use degrade, e.g., reduce concurrency or delay execution.
-- Quota judgment results should be traceable to plan entitlement and current counter.
-- Entitlement decisions must not rely solely on stale cache; if authoritative counter is unavailable, should prioritize fail-closed or conservative degrade.
+- Experience-oriented capabilities can use degrade, such as reducing concurrency or delaying execution.
+- Quota decision results must be traceable to plan entitlement and current counter.
+- Entitlement decisions must not rely solely on stale cache; if authoritative counter is unavailable, prioritize fail-closed or conservative degrade.
 
 ## 13. Tenant / Organization Relationship
 
 - Workspace-level plans can map to org / tenant-level billing subjects.
 - Enterprise settlement should support organization-level aggregation.
-- Usage event must be attributable to workspace, tenant, or organization.
+- Usage events must be aggregable to workspace, tenant, or organization.
 
 ## 14. Relationship with Existing Documents
 
-- `billing_and_tenant_contract.md` is the subject model baseline.
+- `billing_and_tenant_contract.md` is the main model baseline.
 - `cost_and_budget_contract.md` is the per-execution budget baseline.
 - `tenant_and_organization_contract.md` defines ownership boundaries.
-- This contract defines the complete platform layer for product billing, quota, and billing.
+- This contract defines the complete platform layer for product billing, quota, and accounting.
 
 ## 15. Failure Mode
 
-Key areas to prevent:
+Key scenarios to prevent:
 
-- Action executes successfully but usage not written back.
+- Action executed successfully but usage not written back.
 - Ledger delay causes billing inconsistency.
 - Quota counter lags causing overdraft execution.
 - Tenant ownership error during organization aggregation.
 
 Handling principles:
 
-- High-cost actions prefer to be conservative and deny rather than execute without metering.
+- High-cost actions should prefer conservative deny over executing without metering.
 - Usage pipeline and ledger pipeline must have compensation paths.
-- Entitlement decisions prioritize authoritative counter over cached guess value.
-- If action executed but usage not written back, system must be able to reconcile through reconciliation task, not silently lose metering.
+- Entitlement decisions prioritize authoritative counter over cached speculative values.
+- If action has been executed but usage not written back, the system must be able to reconcile through a reconciliation task, not silently lose metering.
 
 ## 16. Phased Introduction
 
 - Phase 3: Pro usage metering + entitlement + quota enforcement.
-- Phase 4: Enterprise ledger, organization settlement, audit, and invoice boundary.
+- Phase 4: Enterprise ledger, organizational settlement, audit, and invoice boundaries.
 
 ## 17. Closure Conclusion
 
-The core of monetization plane is not "post-hoc billing" but forming a closed loop between runtime, permissions, quota, and billing before and after execution.
+The core of the monetization plane is not "billing after the fact", but forming a closed loop between runtime, permissions, quota, and accounting before and after execution.
 
-Any future billing capability that cannot connect to usage, entitlement, and ledger three chains should not be considered a formal commercial capability.
+Any subsequent billing capability that cannot connect to usage, entitlement, and ledger three chains should not be considered a formal commercial capability.

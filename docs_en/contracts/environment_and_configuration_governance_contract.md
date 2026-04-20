@@ -34,7 +34,7 @@ Related documents:
 - Clarify capability boundaries for dev, test, staging, pre-prod, and prod.
 - Give configurations version, approval, diff, rollback, and broadcast capabilities.
 - Make pre-release gates executable at the environment dimension rather than manually judged by experience.
-- Make external environment readiness a queryable registry rather than口头 status.
+- Make external environment readiness a queryable registry rather than verbal status.
 
 ## 3. Environment Layering
 

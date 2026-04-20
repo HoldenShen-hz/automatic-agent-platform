@@ -43,7 +43,7 @@ This contract defines the declarative configuration structure of divisions and t
 
 - Triggers are used for VP operations' first-round rule matching.
 - High-frequency user language should be prioritized in expressions.
-- Should not be overly broad to avoid multiple divisions大面积 overlapping matches.
+- Should not be overly broad to avoid multiple divisions extensively overlapping matches.
 
 ## 4. RoleRef Minimum Fields
 

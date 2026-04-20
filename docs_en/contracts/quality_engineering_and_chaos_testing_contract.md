@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the formal test matrix, regression baseline library, and chaos engineering scope.
+This contract defines the formal testing matrix, regression baseline library, and chaos engineering scope.
 
 Related documents:
 
@@ -13,34 +13,38 @@ Related documents:
 
 ## 2. Goals
 
-- Elevate quality engineering from "test type list" to "coverage matrix."
-- Establish regression baseline across execution modes, storage, and tenants.
-- Verify recovery, alerting, and loss-stopping logic through chaos drills.
+- Upgrade quality engineering from "test type list" to "coverage matrix".
+- Establish cross-execution-mode, cross-storage, cross-tenant regression baselines.
+- Verify recovery, alerting, and loss-control logic through chaos drills.
 
-## 3. Formal Test Matrix
+## 3. Formal Testing Matrix
 
-At minimum cover the following dimension crosses:
+At minimum cover the following dimension intersections:
 
-- single-machine / distributed
+- Standalone / distributed
 - SQLite / PostgreSQL
 - supervised / auto / full-auto
-- single-tenant / multi-tenant
-- local tools / MCP tools / remote workers
-- small context / ultra-long context / malicious input
+- Single-tenant / multi-tenant
+- Local tools / MCP tools / remote workers
+- Small context / ultra-long context / malicious input
+- OAPEFLIR closed-loop stages / rollout / feedback / learning
 
 ## 4. Regression Baseline Library
 
-Fixed task set at minimum contains:
+Fixed task set includes at minimum:
 
-- Programming type
-- Research type
-- Content type
-- Data type
-- Cross-business unit type
-- High-risk approval type
-- Crash recovery type
+- Programming class
+- Research class
+- Content class
+- Data class
+- Cross-division class
+- High-risk approval class
+- Crash recovery class
+- OAPEFLIR closed-loop class
+- Rollout / rollback class
+- Observe-compatible product chain class
 
-Each baseline task at minimum records:
+Each baseline task records at minimum:
 
 - expected class
 - success criteria
@@ -51,9 +55,9 @@ Each baseline task at minimum records:
 
 ## 5. Testability Design Requirements
 
-Key execution chains should preferentially expose narrow dependency injection surfaces rather than relying on global patches or module-level monkey patches.
+Key runtime chains should prioritize exposing narrow dependency injection surfaces rather than relying on global patches or module-level monkey patches.
 
-At minimum applicable to:
+At minimum applies to:
 
 - query / model call
 - compaction
@@ -63,13 +67,13 @@ At minimum applicable to:
 
 Rules:
 
-- Dependency injection surface should be as narrow as possible and only cover high-frequency change points.
-- Production implementation and test fake implementation should reuse the same signatures and avoid test-specific bypass interfaces.
-- If a module can only be tested through global state replacement, should be regarded as quality debt and enter governance ledger.
+- Dependency injection surfaces should be as narrow as possible, covering only high-frequency change points.
+- Production implementation and test mock implementation should reuse the same signature, avoiding test-specific bypass interfaces.
+- If a module can only be tested through global state replacement, it should be treated as quality debt and entered into governance ledger.
 
 ## 6. Chaos Engineering Scope
 
-Mature industrial platform at minimum drills:
+Mature industrial platform drills at minimum:
 
 - Random kill worker
 - Random provider 429 / 500
@@ -77,6 +81,8 @@ Mature industrial platform at minimum drills:
 - Random queue delay
 - Random event duplicate / loss
 - Random MCP timeout
+- Random OAPEFLIR stage interrupt
+- Random rollout gate block
 
 ## 7. Release Gate
 
@@ -87,6 +93,8 @@ Before release must have:
 - recovery drill pass
 - migration compatibility pass
 - chaos smoke scenario pass
+- OAPEFLIR loop regression pass
+- rollout / rollback regression pass
 
 ## 8. Test Artifacts
 
@@ -100,7 +108,7 @@ Before release must have:
 
 ## 8.1 Registry-backed Contract Suite
 
-For stable registries or ecosystem boundaries, prioritize establishing shared contract suites rather than writing scattered assertions for each integration surface.
+For stable registries or ecosystem boundaries, prioritize establishing shared contract suites rather than writing scattered assertions repeatedly for each integration surface.
 
 Applicable objects include:
 
@@ -111,12 +119,12 @@ Applicable objects include:
 
 Rules:
 
-- Shared contract suites should verify "whether registered, whether fields aligned, whether fallback as expected, whether ordering/output stable."
-- For long-term stable boundaries, allows retaining inventory baseline and explicitly reviewing differences when changes occur.
+- Shared contract suite should verify "whether registered, whether fields align, whether fallback meets expectations, whether ordering/output is stable".
+- For long-term stable boundaries, inventory baseline can be retained, with explicit diff review on changes.
 
 ## 8.2 Hook / Lifecycle Event Contract Suite
 
-For boundaries like hooks, lifecycle callbacks, and integration events, prioritize using formal event enumeration and contract suites rather than free strings.
+For boundaries like hook, lifecycle callback, and integration event, prioritize using formal event enumeration and contract suite rather than free-form strings.
 
 Applicable objects include:
 
@@ -128,16 +136,16 @@ Applicable objects include:
 Rules:
 
 - Hook event names should be centrally defined and versioned.
-- Plugins and integration layers must not arbitrarily create semantically similar but differently named event strings.
-- Related tests should verify: event name legal, order legal, clear failure semantics when key events are missing.
+- Plugins and integration layers are not allowed to arbitrarily create event strings with similar semantics but different names.
+- Related tests should verify: event name legality, order legality, and clear failure semantics when key events are missing.
 
 ## 9. Closure Conclusion
 
-Industrial-grade quality engineering is not "writing a few types of tests."
+Industrial-grade quality engineering is not "write several types of tests".
 
 It must answer:
 
 - Which scenarios are covered
 - Which environment combinations are verified
-- Which faults have been injected
-- Whether the system can recover and stop losses after failure
+- Which failures have been injected
+- Whether the system can recover and control losses after failure

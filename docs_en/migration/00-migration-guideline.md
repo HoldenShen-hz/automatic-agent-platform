@@ -95,7 +95,7 @@ Transformation rules:
 
 - Rewrite all content under the new platform's seven-layer model and current directory structure
 - Stop treating `reviews/` and `archive/` as active sources of truth
-- Formal documentation统一落到 `docs_zh/` and `docs_en/`
+- Formal documentation is now centralized in `docs_zh/` and `docs_en/`
 
 ## Materials That Are Retained for Reference Only
 

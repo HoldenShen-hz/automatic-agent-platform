@@ -62,7 +62,7 @@ It answers "how is the platform delivered, upgraded, audited, and monitored in a
 - Support / incident entry points must be able to correlate task, execution, release, and policy evidence.
 - SLA judgments must not rely on manual definitions and must have unified health and event definitions.
 - Environment registry, release bundle, upgrade plan, and rollback receipt must be mutually traceable and must not only retain the last state.
-- Private cloud / on-prem environments that lack certain托管 capabilities must explicitly declare degradation matrices rather than implicitly having fewer features.
+- Private cloud / on-prem environments that lack certain managed capabilities must explicitly declare degradation matrices rather than implicitly having fewer features.
 
 ## 7. Relationship with Existing Documents
 

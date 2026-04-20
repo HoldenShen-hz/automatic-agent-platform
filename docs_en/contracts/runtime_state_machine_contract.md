@@ -47,9 +47,9 @@ Loop semantics:
 
 Constraints:
 
-- Canonical写法 of `stage` must be the above enum, must not use synonyms like `perceive`, `analyze`, `deploy`.
+- Canonical notation of `stage` must be the above enum, must not use synonyms like `perceive`, `analyze`, `deploy`.
 - `skipped` can only be used for explicit controlled skip, must not be used as failure downgrade alias.
-- `release` is the current closed-loop stage, not equivalent to一定有 real external release; within current phase1-4 authoritative boundary, can only advance to `off / suggest / shadow`.
+- `release` is the current closed-loop stage, not equivalent to necessarily having real external release; within current phase1-4 authoritative boundary, can only advance to `off / suggest / shadow`.
 
 ## 2. TaskStatus
 

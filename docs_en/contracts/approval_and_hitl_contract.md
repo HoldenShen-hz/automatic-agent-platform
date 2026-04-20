@@ -82,7 +82,7 @@ Supplementary Rules:
 Supplementary Suggestions:
 
 - Approval policy should support gradual evolution from coarse-grained mode to fine-grained capability / risk class structured configuration, rather than only keeping a single boolean switch.
-- Reviewer routing should be explicitly modeled, e.g., default `user`, later introducing restricted guardian / reviewer subagent, but that reviewer can only give approval suggestions or handle代办, and cannot bypass final policy review.
+- Reviewer routing should be explicitly modeled, e.g., default `user`, later introducing restricted guardian / reviewer subagent, but that reviewer can only give approval suggestions or handle agency tasks, and cannot bypass final policy review.
 
 ## 7. Behavioral Constraints
 

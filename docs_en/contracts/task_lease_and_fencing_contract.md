@@ -1,10 +1,27 @@
 # Task Lease And Fencing Contract
 
+---
+
+## OAPEFLIR Related
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines industrial-grade execution plane task lease, renewal, reclaim, and fencing token rules.
+This contract defines task lease, renewal, reclaim, and fencing token rules in industrial-grade execution plane.
 
-It answers the question: When execution is dispatched to worker, how does the system ensure only current legitimate holder can continue writing results, avoiding double-write, dirty write, and stale worker writeback.
+It answers the question: after execution is dispatched to worker, how does the system ensure only current legitimate holder can continue writing results, avoiding double-write, dirty-write, and stale worker write-back.
 
 Related documents:
 
@@ -16,15 +33,15 @@ Related documents:
 ## 2. Goals
 
 - Establish authoritative lease for each active execution.
-- Use `visibility timeout` and `lease renew` to control execution rights lifecycle.
-- Use `fencing token` to reject old worker writeback.
-- Let recovery, takeover, retry, and dead-letter enter unified chain.
+- Control execution rights lifecycle through `visibility timeout` and `lease renew`.
+- Use `fencing token` to reject old worker's write-back.
+- Unify recovery, takeover, retry, and dead-letter into one link/chain.
 
 ## 3. Non-Goals
 
 - This contract does not specify specific queue product.
 - This contract does not replace task main state machine.
-- Phase 1a does not require complete distributed deployment, but contract from the start defines by multi-worker semantics.
+- Phase 1a does not require complete distributed deployment, but contract is defined from the start with multi-worker semantics.
 
 ## 4. Key Objects
 
@@ -46,14 +63,14 @@ Related documents:
 | `worker_id` | `string` | Current holder |
 | `attempt` | `integer` | Execution attempt |
 | `fencing_token` | `integer` | Monotonically increasing execution rights version |
-| `leased_at` | `timestamp` | Acquisition time |
+| `leased_at` | `timestamp` | Acquired at |
 | `expires_at` | `timestamp` | Current expiration time |
-| `status` | `active \| expired \| released \| reclaimed \| handed_over` | Lease status (`handed_over` see section 8A lease handover, aligned with `execution_plane_contract.md` section 9) |
+| `status` | `active \| expired \| released \| reclaimed \| handed_over` | Lease status (`handed_over` see §8A lease handover, aligned with `execution_plane_contract.md` §9) |
 
 Rules:
 
-- Same `execution_id` at any moment can only have one `active` lease.
-- Each time lease is re-dispatched, taken over, or reclaimed and re-granted, `fencing_token` must increase.
+- Same `execution_id` can only have one `active` lease at any moment.
+- Each time lease is re-dispatched, taken over, or reclaimed and re-granted, `fencing_token` must increment.
 - Any side-effect write must carry current `fencing_token`.
 
 ## 6. Lifecycle
@@ -75,7 +92,7 @@ flowchart TD
 ## 7. Renewal and Reclaim
 
 - Worker must complete renewal before `expires_at`.
-- After consecutive renewal failures reach threshold, lease enters `expired` and original worker loses execution rights.
+- After continuous renewal failure reaches threshold, lease enters `expired`, original worker loses execution rights.
 - Reclaim action must record `reason_code`, such as:
   - `heartbeat_missing`
   - `worker_disconnected`
@@ -85,16 +102,16 @@ flowchart TD
 
 ## 8. Fencing Token Rules
 
-- `fencing_token` is execution write permission version number and is not a display field.
-- Storage layer updates execution, artifact, step output, tool result must compare token.
-- Writes smaller than current authoritative token must be rejected and record `stale_write_rejected` audit event.
-- Even if old lease held by worker local cache has not yet perceived expiration, system must not accept it.
+- `fencing_token` is execution write permission version number, not a display field.
+- Storage layer when updating execution, artifact, step output, tool result must compare token.
+- Writes less than current authoritative token must be rejected, and `stale_write_rejected` audit event recorded.
+- Even if worker locally caches old lease that hasn't yet perceived expiration, system must not accept it.
 
 ## 8A. Lease Handover
 
 ### 8A.1 Semantics
 
-Handover refers to controlled operation where current worker actively transfers lease to new worker without interrupting execution. Unlike passive reclaim after lease expiration, handover is collaborative and traceable.
+Handover refers to controlled operation where current worker actively transfers lease to new worker without interrupting execution. Unlike passive reclaim after lease expiration, handover is collaborative and trackable.
 
 ### 8A.2 `HandoverExecutionLeaseInput`
 
@@ -104,7 +121,7 @@ Handover refers to controlled operation where current worker actively transfers 
 | `workerId` | `string` | Original worker (must be current holder) |
 | `newWorkerId` | `string` | Target worker |
 | `ttlMs` | `number` | New lease TTL |
-| `reasonCode?` | `string` | Handover reason (e.g., `worker_draining`, `load_rebalance`, `upgrade_migration`) |
+| `reasonCode?` | `string` | Handover reason (e.g. `worker_draining`, `load_rebalance`, `upgrade_migration`) |
 
 ### 8A.3 `ExecutionLeaseHandoverDecision`
 
@@ -119,18 +136,18 @@ Handover refers to controlled operation where current worker actively transfers 
 
 - Handover must complete in single transaction: release old lease → create new lease → increment fencing token → update execution owner and worker snapshot.
 - Only `active` lease can handover.
-- Old lease `workerId` must match workerId in request.
+- Old lease's `workerId` must match `workerId` in request.
 - After handover completes, must write `lease_audit` (event_type: `handover`), recording source worker, target worker, and lineage.
 - Handover failure should not cause execution to become ownerless.
 
 ### 8A.5 Typical Scenarios
 
-| Scenario | Triggered By | reasonCode |
+| Scenario | Trigger | reasonCode |
 | --- | --- | --- |
 | Worker entering draining | Worker itself | `worker_draining` |
-| Load rebalance | Control plane | `load_rebalance` |
-| Rolling upgrade | Ops | `upgrade_migration` |
-| Ops active switch | Operator | `operator_handover` |
+| Load rebalancing | Control plane | `load_rebalance` |
+| Rolling upgrade | Operations | `upgrade_migration` |
+| Operations active switch | Operator | `operator_handover` |
 
 ## 9. Relationship with Recovery Chain
 
@@ -166,9 +183,9 @@ Handover refers to controlled operation where current worker actively transfers 
 
 Rules:
 
-- Dispatch, lease, and final write permission rejection must be linked together as one audit chain.
-- Queue state answers "whether task has been dispatched, whether been taken, whether obtained lease".
-- Stale write rejection must be written to lease audit and cannot only go to temporary log.
+- Dispatch, lease, and final write permission rejection must be chainable into one audit chain.
+- Queue status answers "whether task has been dispatched, whether claimed, whether lease obtained".
+- Stale write rejection must write to lease audit, cannot only fall into temporary log.
 
 ## 11. Reconciliation
 
@@ -184,18 +201,18 @@ Rules:
 
 ### 11.1 Dispatch Reconciliation Scan
 
-Reconciliation service scans all execution tickets in `pending` or `claimed` state and detects the following anomalies:
+Reconciliation service scans all `pending` or `claimed` execution tickets, detecting following anomalies:
 
 | issue_type | Detection Condition | Fix Action |
 | --- | --- | --- |
-| `execution_terminal` | Ticket associated execution already in terminal state (`succeeded / failed / cancelled / superseded`) | Invalidate ticket (do not generate replacement ticket) |
+| `execution_terminal` | Ticket-associated execution reached terminal state (`succeeded / failed / cancelled / superseded`) | Invalidate ticket (do not generate replacement ticket) |
 | `missing_active_lease` | Ticket claimed but no active lease | Invalidate old ticket + create replacement ticket (requeue) |
 | `lease_ticket_mismatch` | Lease's leaseId or workerId does not match ticket | Invalidate old ticket + create replacement ticket |
 | `lease_expired_unreclaimed` | Lease passed `expires_at` but not reclaimed | Invalidate old ticket + create replacement ticket |
 
 ### 11.2 Requeue Semantics
 
-Replacement ticket inherits the following attributes from original ticket:
+Replacement ticket inherits following attributes from original:
 
 - `execution_id`, `priority`, `queue_name`
 - `dispatch_target`, `required_isolation_level`, `required_capabilities`
@@ -210,38 +227,38 @@ Replacement ticket resets: `status = pending`, new `ticket_id`, new `created_at`
 | `dispatch:ticket_reconciled` | Ticket invalidated due to issue |
 | `dispatch:ticket_requeued` | New replacement ticket created |
 
-Both atomically emitted in same transaction, event payload must include `issueType` and `reasonCode`.
+Both emitted atomically in same transaction, event payload must contain `issueType` and `reasonCode`.
 
 ### 11.4 Rules
 
 - System must periodically scan stale lease, duplicate owner, and orphan queue claim.
-- Reconciliation is authoritative repair behavior and must not rely only on manual log investigation.
-- After duplicate owner resolution, must explicitly record winner and write stale/fenced result for loser.
-- Terminal execution ticket only invalidated, not requeued, to avoid creating invalid ticket for already completed execution.
+- Reconciliation is authoritative repair behavior, must not rely only on manual log investigation.
+- After duplicate owner resolution, must explicitly record winner, and write stale/fenced result for loser.
+- Terminal execution ticket only invalidated, not requeued, avoiding creating invalid ticket for already completed execution.
 
 ## 12. Consistency Requirements
 
 Industrial-grade minimum consistency requirements:
 
-- Execution current lease: strongly consistent
-- Fencing token comparison: strongly consistent
-- Heartbeat display: eventually consistent
-- Worker UI state: eventually consistent
+- Execution current lease: strong consistency
+- Fencing token comparison: strong consistency
+- Heartbeat display: eventual consistency
+- Worker UI status: eventual consistency
 
 ## 13. Phase Boundaries
 
 Phase 1a / 1b:
 
-- Allows single-instance control plane
-- Allows lease authoritative store temporarily under SQLite/PG abstraction
+- Allow single-instance control plane
+- Allow lease authoritative store to temporarily land under SQLite/PG abstraction
 - Must first freeze token semantics and stale write rejection
 
 Phase 2+:
 
-- Expand to multi-worker, multi-queue, multi-tenant isolation
+- Extend to multi-worker, multi-queue, multi-tenant isolation
 
 ## 14. Closure Conclusion
 
-Lease solves "who can currently execute," fencing token solves "who can currently write results."
+Lease solves "who can execute now", fencing token solves "who can write results now".
 
-Industrial-grade system must have both layers simultaneously to avoid duplicate execution and old
+Industrial-grade systems must have both layers simultaneously to avoid duplicate execution and old results overwriting new results.

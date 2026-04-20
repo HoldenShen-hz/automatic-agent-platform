@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines Phase 1a platform core entities that must be persisted, minimum column sets, key indexes, foreign key strategy, and recovery semantics.
+This contract defines Phase 1a platform core entities that must be persisted, minimum column sets, key indexes, foreign key strategies, and recovery semantics.
 
 This version focuses on supplementing storage landing points corresponding to runtime execution, including:
 
@@ -13,22 +13,22 @@ This version focuses on supplementing storage landing points corresponding to ru
 
 Also defines OAPEFLIR closed-loop phased boundaries at storage layer:
 
-- phase1-4 authoritative: Current must stably exist and be able to support recovery, approval, event audit, artifact / memory minimum landing core tables.
-- transition / target-state extension: Extension table families and column semantics required for feedback, learning, improvement, release, knowledge, and high-order memory governance; allowed to evolve by phase, must not mistakenly write as all currently landed in database.
+- phase1-4 authoritative: current core tables that must stably exist and support recovery, approval, event audit, artifact / memory minimum persistence.
+- transition / target-state extension: extension table families and column semantics needed for feedback, learning, improvement, release, knowledge, and high-order memory governance; allowed to evolve by phase, must not be mistakenly written as all currently in database.
 
 ## 2. Storage Principles
 
 - Phase 1a defaults to using SQLite as single-machine authoritative store.
 - Table structure prioritizes serving task recovery, approval tracking, event audit, and runtime run reconstruction.
-- Large-volume data prioritizes landing to artifact, then retain index and reference in DB.
+- Large-volume data prioritizes landing in artifact, then keeping index and reference in DB.
 - Phase 1a explicitly enables `PRAGMA foreign_keys = ON`.
 - Phase 1a defaults to enabling `WAL`, `busy_timeout`, and explicit transaction boundary control.
-- High-frequency heartbeat and display traffic does not require heavy persistent per-record, should prioritize sampled snapshot or latest state.
-- Migration, backup, recovery, `integrity_check`, and corruption detection belong to Stable Core database backing requirements.
+- High-frequency heartbeat and display-class traffic do not require heavy persistence for every entry, should prioritize sampled snapshots or latest state.
+- migration, backup, recovery, `integrity_check`, and corruption detection belong to Stable Core database fallback requirements.
 
 ## 3. Core Tables and Extension Tables
 
-Authoritative schema at minimum contains the following core tables:
+Authoritative schema includes at minimum the following core tables:
 
 - `tasks`
 - `workflow_state`
@@ -47,16 +47,45 @@ Authoritative schema at minimum contains the following core tables:
 - `memories`
 - `tool_result_files`
 
-Explanation:
+Notes:
 
-- Above table defines Phase 1a minimum stable core table set, not the total tables implementation can have.
-- Current implementation also allows and actually contains multiple extension tables, for example:
+- Above defines Phase 1a minimum stable core table set, not all tables implementation may have.
+- Current implementation also allows and actually includes various extension tables, for example:
   - Organization and tenant domain: `organizations`, `workspaces`, `tenants`, `deployment_bindings`
   - Supply chain and governance domain: `skill_registry`, `skill_execution_policies`, `extension_packages`, `marketplace_*`
   - Security and key domain: `secret_registry`, `secret_leases`, `secret_usage_audits`, `secret_rotation_events`
   - Billing and data domain: `billing_accounts`, `usage_events`, `quota_counters`, `analytics_facts`, `archive_bundles`
-  - Evolution and perception domain: `evolution_*`, `perception_sources`, `intel_items`, `intel_briefs`
-- Therefore contract uses "minimum set" constraint on core tables; extension tables can continue to increase without breaking core constraints.
+  - Evolution and Observe-compatible domain: `evolution_*`, `perception_sources`, `intel_items`, `intel_briefs` (legacy table names preserved, semantics aligned with Observe)
+- Therefore contract uses "minimum set" constraint for core tables; extension tables can continue to be added without breaking core constraints.
+
+### 3A. OAPEFLIR Extension Table Families
+
+The following table families belong to canonical extension direction of storage schema per §K:
+
+- `feedback_signals`
+- `learning_objects`
+- `improvement_candidates`
+- `strategy_versions`
+- `rollout_records`
+- `knowledge_entries`
+- `knowledge_semantic_vectors`
+
+Constraints:
+
+- These table families may land in `Current -> Transition -> Target` way, not required for current repository to become authoritative operational dependency all at once.
+- But contracts, migration planning, diagnostics, and lineage documentation must reserve unified naming and minimum field semantics for these objects.
+
+Recommended minimum fields:
+
+| Table | Minimum Fields |
+| --- | --- |
+| `feedback_signals` | `id`, `task_id?`, `workflow_id?`, `kind`, `sentiment?`, `source`, `evidence_ref?`, `created_at` |
+| `learning_objects` | `id`, `source_refs_json`, `promotion_status`, `quality_score?`, `created_at` |
+| `improvement_candidates` | `id`, `change_scope`, `strategy_version?`, `status`, `created_at` |
+| `strategy_versions` | `id`, `version`, `diff_ref?`, `status`, `created_at` |
+| `rollout_records` | `id`, `strategy_version`, `stage`, `status`, `metrics_json?`, `created_at` |
+| `knowledge_entries` | `id`, `namespace`, `trust_tier`, `freshness_state`, `source_ref?`, `created_at` |
+| `knowledge_semantic_vectors` | `knowledge_ref`, `chunk_id`, `document_id`, `namespace`, `embedding_id?`, `embedding_model`, `embedding`, `updated_at` |
 
 ## 4. `tasks` Table Minimum Columns
 
@@ -70,12 +99,12 @@ Explanation:
 | `status` | `TEXT NOT NULL` | Task status enum |
 | `source` | `TEXT NOT NULL` | Source |
 | `priority` | `TEXT NOT NULL` | Priority |
-| `input_json` | `TEXT NOT NULL` | Original input JSON |
+| `input_json` | `TEXT NOT NULL` | Raw input JSON |
 | `normalized_input_json` | `TEXT NULL` | Normalized input |
 | `output_json` | `TEXT NULL` | Output summary |
 | `estimated_cost_usd` | `REAL NULL` | Estimated cost |
 | `actual_cost_usd` | `REAL NOT NULL DEFAULT 0` | Actual cost |
-| `error_code` | `TEXT NULL` | Most recent error code |
+| `error_code` | `TEXT NULL` | Latest error code |
 | `created_at` | `TEXT NOT NULL` | Created at |
 | `updated_at` | `TEXT NOT NULL` | Updated at |
 | `completed_at` | `TEXT NULL` | Completed at |
@@ -92,12 +121,12 @@ Index requirements:
 | Column | Type | Description |
 | --- | --- | --- |
 | `task_id` | `TEXT PRIMARY KEY` | Associated task |
-| `division_id` | `TEXT NOT NULL` | Owning division |
+| `division_id` | `TEXT NOT NULL` | Division |
 | `workflow_id` | `TEXT NOT NULL` | Workflow ID |
 | `current_step_index` | `INTEGER NOT NULL` | Current step index |
 | `status` | `TEXT NOT NULL` | Workflow status |
 | `outputs_json` | `TEXT NOT NULL` | Output snapshot |
-| `last_error_code` | `TEXT NULL` | Most recent error code |
+| `last_error_code` | `TEXT NULL` | Latest error code |
 | `retry_count` | `INTEGER NOT NULL DEFAULT 0` | Retry count |
 | `resumable_from_step` | `TEXT NULL` | Resumable step |
 | `started_at` | `TEXT NOT NULL` | Started at |
@@ -130,7 +159,7 @@ Index requirements:
 
 ## 7. `executions` Table Minimum Columns
 
-This table receives `ExecutionEnvelope` from `runtime_execution_contract.md`.
+This table inherits/captures the `ExecutionEnvelope` from `runtime_execution_contract.md`.
 
 | Column | Type | Description |
 | --- | --- | --- |
@@ -145,18 +174,18 @@ This table receives `ExecutionEnvelope` from `runtime_execution_contract.md`.
 | `input_ref` | `TEXT NULL` | Input snapshot or artifact reference |
 | `trace_id` | `TEXT NOT NULL` | Trace ID |
 | `attempt` | `INTEGER NOT NULL` | Attempt number |
-| `timeout_ms` | `INTEGER NOT NULL` | Max runtime |
-| `budget_usd_limit` | `REAL NULL` | Budget upper limit |
+| `timeout_ms` | `INTEGER NOT NULL` | Maximum runtime duration |
+| `budget_usd_limit` | `REAL NULL` | Budget limit |
 | `requires_approval` | `INTEGER NOT NULL DEFAULT 0` | Whether approval required |
 | `sandbox_mode` | `TEXT NULL` | Resolved sandbox mode |
 | `allowed_tools_json` | `TEXT NULL` | Execution-level tool whitelist; runtime direct tool / skill must consume, illegal JSON or illegal array items default fail-closed |
-| `allowed_paths_json` | `TEXT NULL` | Execution-level path whitelist; one of authoritative inputs for runtime tool path scope check, illegal JSON or illegal array items default fail-closed |
-| `max_retries` | `INTEGER NOT NULL DEFAULT 0` | Max retry count |
+| `allowed_paths_json` | `TEXT NULL` | Execution-level path whitelist; one authoritative input for runtime tool path scope check, illegal JSON or illegal array items default fail-closed |
+| `max_retries` | `INTEGER NOT NULL DEFAULT 0` | Max retries |
 | `retry_backoff` | `TEXT NOT NULL DEFAULT 'none'` | Retry strategy |
-| `last_error_code` | `TEXT NULL` | Most recent error code |
-| `last_error_message` | `TEXT NULL` | Most recent error message |
+| `last_error_code` | `TEXT NULL` | Latest error code |
+| `last_error_message` | `TEXT NULL` | Latest error message |
 | `started_at` | `TEXT NULL` | Actual start time |
-| `finished_at` | `TEXT NULL` | End time |
+| `finished_at` | `TEXT NULL` | Termination time |
 | `created_at` | `TEXT NOT NULL` | Created at |
 | `updated_at` | `TEXT NOT NULL` | Updated at |
 
@@ -171,7 +200,7 @@ Index requirements:
 
 ## 8. `execution_prechecks` Table Minimum Columns
 
-This table receives `ExecutionPrecheckResult`, used to retain authoritative result of each precheck.
+This table inherits/captures `ExecutionPrecheckResult`, used to preserve authoritative result of each precheck.
 
 - `id TEXT PRIMARY KEY`
 - `execution_id TEXT NOT NULL`
@@ -336,9 +365,19 @@ Index requirements:
 - `agent_id TEXT NULL`
 - `execution_id TEXT NULL`
 - `memory_layer TEXT NOT NULL`
+- `layer_level INTEGER NOT NULL`
 - `content_json TEXT NOT NULL`
 - `embedding_ref TEXT NULL`
+- `token_budget INTEGER NULL`
+- `freshness_state TEXT NOT NULL DEFAULT 'fresh'`
+- `source_refs_json TEXT NULL`
 - `created_at TEXT NOT NULL`
+
+Supplementary constraints:
+
+- `memory_layer` must be mappable to `L1-L6`.
+- `layer_level` recommended to correspond to `L1-L6` as `1-6` one-to-one, convenient for sorting and migration.
+- `source_refs_json` should prioritize storing `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`.
 
 `tool_result_files`:
 
@@ -374,11 +413,24 @@ Phase 1a explicitly adopts the following strategy:
 - `tool_result_files.task_id -> tasks.id`
 - `tool_result_files.execution_id -> executions.id`
 
-Explanation:
+Notes:
 
-- `events.task_id` and `events.execution_id` allow NULL, so not all events are forced to be bound to task or execution.
-- `memories` supports multi-source writes across task/session/agent/execution, Phase 1a does not force single foreign key.
-- All data that must be bound to task main line or runtime run should be directly constrained by SQLite foreign keys, not just relying on application layer conscientiousness.
+- `events.task_id` and `events.execution_id` are allowed to be null, so not all events are required to bind to task or execution.
+- `memories` supports multi-source writes across task/session/agent/execution, Phase 1a does not enforce single foreign key.
+- All data that must bind to task main line or runtime run should be directly constrained by SQLite foreign keys, not just relying on application layer self-discipline.
+
+## 14A. Transition / Target-State Supplementary Notes
+
+To maintain consistency with `runtime_repository_and_migration_contract.md`, storage layer adopts three-state migration semantics:
+
+- `Current`: core tables like `tasks / workflow / executions / approvals / events / artifacts / memories` are authoritative.
+- `Transition`: extension table families may first connect via append-only, shadow write, reporting-only, or evidence-only ways.
+- `Target`: `feedback / learning / improvement / rollout / knowledge / high-order memory` become stable governance objects and fully align with typed ref / lineage.
+
+Therefore:
+
+- This contract allows current implementation to still prioritize minimum core tables.
+- But when designing new schema, migration, inspection, or audit, must no longer introduce naming parallel conflicting with above table families.
 
 ## 15. SQLite Initial Version DDL Appendix
 
@@ -664,33 +716,33 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 
 ## 16. Runtime Storage Boundaries
 
-- `executions` is the authoritative main table for runtime run.
-- `runtime_repository_and_migration_contract.md` defines how these tables are consumed by repository and how migration evolves.
+- `executions` is the authoritative main table for runtime runs.
+- `runtime_repository_and_migration_contract.md` defines how these tables are consumed by repositories and how migrations evolve.
 - `execution_prechecks` records whether single execution truly passed precheck, not allowed to exist only in memory.
-- `dead_letters` records failure classification and landing result, does not replace task main state.
-- `heartbeat_snapshots` only retains sampled snapshot, does not pursue per-heartbeat full fact source.
-- `events` is responsible for fact events and recovery chain, `event_consumer_acks` is responsible for consumer acknowledgment by consumer, `heartbeat_snapshots` is responsible for liveness observation, do not mix these two.
+- `dead_letters` records failure classification and landing results, does not replace task main state.
+- `heartbeat_snapshots` only retains sampled snapshots, does not pursue every heartbeat as full fact source.
+- `events` is responsible for factual events and recovery chain, `event_consumer_acks` is responsible for per-consumer confirmation, `heartbeat_snapshots` is responsible for liveness observation; the three must not be mixed.
 - `file_locks` is authoritative storage for concurrent write protection, must not be retained only in process memory.
 
-## 17. Artifact Index Boundaries
+## 17. Artifact Index Boundary
 
-- Artifact main body stores in filesystem or object storage.
+- Artifact main body is stored in filesystem or object storage.
 - `tool_result_files` is responsible for Phase 1a minimum index.
-- If artifact types expand in future, should add independent `artifacts` index table, rather than backfilling BLOB into core task table.
+- If artifact types expand in future, should add independent `artifacts` index table, not backfill BLOB into core task table.
 
 ## 18. Recovery and Transaction Requirements
 
 - Key updates to task status, workflow status, and `executions.status` should be completed within the same transaction as much as possible.
-- When creating new execution, should simultaneously write initial `executions` record, cannot run first then fill account later.
-- After precheck completes, `execution_prechecks` and `executions.status` advancement should remain consistent.
-- When run enters `blocked` and reason is approval, approval record and wait state persistence must be reliable.
+- When creating new execution, should simultaneously write initial `executions` record, cannot run first then backfill.
+- After precheck completes, `execution_prechecks` and `executions.status` progression should remain consistent.
+- When run enters `blocked` and reason is approval, approval record and waiting state persistence must be reliable.
 - When run enters terminal state or dead-letter, final error code, attempt count, and terminal time must be recoverable.
-- Tier 1 event write cannot be bypassed by optional optimization path.
-- Expired file lock recovery must be based on joint judgment of `file_locks` and `executions`.
-- Recovery process at minimum must be able to reconstruct execution context based on `tasks`, `workflow_state`, `executions`, `execution_prechecks`, `events`, `file_locks`.
+- Tier 1 event writes cannot be bypassed by optional optimization paths.
+- Expired file lock recycling must be based on joint judgment of `file_locks` and `executions`.
+- Recovery process must at minimum be able to reconstruct execution context based on `tasks`, `workflow_state`, `executions`, `execution_prechecks`, `events`, `file_locks`.
 
 ## 19. Supplementary Rules
 
-- When migrating to PostgreSQL, primary key, unique constraint, foreign key, and timestamp semantics must remain consistent; SQLite shortcuts must not be brought into PG fact source.
-- Complete artifact index table at minimum splits into: artifact main record, artifact version, artifact access log.
-- Heartbeat snapshot can be retained compressed by window, but latest snapshot and window related to incident must not be compressed away.
+- During PostgreSQL migration, primary key, unique constraints, foreign keys, and timestamp semantics must remain consistent; SQLite shortcuts must not be carried into PG ground truth.
+- Complete artifact index table should at minimum split into: artifact main record, artifact version, artifact access log.
+- Heartbeat snapshots can be retained by window compression, but latest snapshot and windows related to incidents must not be compressed.

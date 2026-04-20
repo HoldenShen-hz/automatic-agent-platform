@@ -45,7 +45,7 @@ Rules:
 | --- | --- | --- |
 | `P0` | Platform core unavailable | New task cannot execute, authoritative DB not writable |
 | `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain largely failed |
-| `P2` | Single division or local capability significantly degraded |某 division failure rate spikes |
+| `P2` | Single division or local capability significantly degraded | A certain division failure rate spikes |
 | `P3` | Local anomaly or capacity warning | Queue delay increasing, cost drift high |
 
 ## 5. Alert Must Include
@@ -91,7 +91,7 @@ Allowed to auto-execute:
 - admission control tightening
 - provider failover
 - queue rate limiting
--某 tenant / division rate limiting
+- A specific tenant / division rate limiting
 
 Forbidden to auto-execute:
 

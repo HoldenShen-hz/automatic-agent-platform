@@ -248,3 +248,74 @@ export function createStateCommand<TPayload>(input: {
     payload: input.payload,
   };
 }
+
+export interface EvidenceRecord {
+  readonly recordId: string;
+  readonly traceId: string;
+  readonly principal: PlatformPrincipal;
+  readonly category: "decision" | "execution" | "approval" | "audit" | "compliance";
+  readonly targetRef: string;
+  readonly content: unknown;
+  readonly timestamp: string;
+  readonly metadata: Readonly<Record<string, string>>;
+}
+
+export interface ProjectionUpdate {
+  readonly projectionId: string;
+  readonly projectionType: string;
+  readonly version: number;
+  readonly timestamp: string;
+  readonly sourceEvents: readonly string[];
+  readonly patch: Readonly<Record<string, unknown>>;
+  readonly metadata: {
+    readonly rebuiltAt?: string | undefined;
+    readonly triggeredBy: string;
+    readonly idempotencyKey: string;
+  };
+}
+
+export function createEvidenceRecord(input: {
+  traceId: string;
+  principal: PlatformPrincipal;
+  category: EvidenceRecord["category"];
+  targetRef: string;
+  content: unknown;
+  metadata?: Readonly<Record<string, string>>;
+  recordId?: string;
+}): EvidenceRecord {
+  return {
+    recordId: input.recordId ?? newId("evid"),
+    traceId: input.traceId,
+    principal: input.principal,
+    category: input.category,
+    targetRef: input.targetRef,
+    content: input.content,
+    timestamp: nowIso(),
+    metadata: input.metadata ?? {},
+  };
+}
+
+export function createProjectionUpdate(input: {
+  projectionId: string;
+  projectionType: string;
+  version: number;
+  sourceEvents: readonly string[];
+  patch: Readonly<Record<string, unknown>>;
+  triggeredBy: string;
+  rebuiltAt?: string;
+  idempotencyKey?: string;
+}): ProjectionUpdate {
+  return {
+    projectionId: input.projectionId,
+    projectionType: input.projectionType,
+    version: input.version,
+    timestamp: nowIso(),
+    sourceEvents: input.sourceEvents,
+    patch: input.patch,
+    metadata: {
+      ...(input.rebuiltAt != null ? { rebuiltAt: input.rebuiltAt } : {}),
+      triggeredBy: input.triggeredBy,
+      idempotencyKey: input.idempotencyKey ?? newId("projupd"),
+    },
+  };
+}

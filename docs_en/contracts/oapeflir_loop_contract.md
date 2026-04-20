@@ -2,12 +2,12 @@
 
 ## 1. Scope
 
-This contract defines the interface contract, event protocol, and integration boundaries with external systems for the OAPEFLIR eight-phase cognitive loop (OapeflirLoopService).
+This contract defines the interface contract, event protocol, and integration boundaries with external systems for the OAPEFLIR eight-stage cognitive loop (OapeflirLoopService).
 
 Related documents:
 - `runtime_execution_contract.md`: Execute layer runtime integration.
 - `task_and_workflow_contract.md`: Task main chain.
-- `perception_contract.md`: Observe/Assess phase DTO.
+- `perception_contract.md`: Observe/Assess stage DTOs.
 
 ## 2. Core Interfaces
 
@@ -36,7 +36,7 @@ interface OapeflirLoopOutput {
 }
 
 class OapeflirLoopService {
-  // Main entry: Run complete eight-phase closed loop
+  // Main entry: run complete eight-stage closed loop
   async run(input: OapeflirLoopInput): Promise<OapeflirLoopOutput>;
 
   // Single stage execution (for debugging)
@@ -47,11 +47,11 @@ class OapeflirLoopService {
 }
 ```
 
-### 2.2 Eight-Phase DTO Input/Output
+### 2.2 Eight-Stage DTO Input/Output
 
-| Phase | Input DTO | Output DTO |
-|-------|-----------|-------------|
-| Observe | `LoopContext` (inherits prior state) | `UnifiedObservation` |
+| Stage | Input DTO | Output DTO |
+|------|---------|-----------|
+| Observe | `LoopContext` (inherits previous round state) | `UnifiedObservation` |
 | Assess | `UnifiedObservation` | `UnifiedAssessment` |
 | Plan | `UnifiedAssessment` | `Plan` |
 | Execute | `Plan + ExecutionContext` | `DualChannelStepOutput[]` |
@@ -62,7 +62,7 @@ class OapeflirLoopService {
 
 ## 3. ExecuteBridge Interface
 
-Execute phase calls real runtime through RuntimeExecuteBridge:
+The Execute stage calls the real runtime through RuntimeExecuteBridge:
 
 ```typescript
 interface ExecuteBridge {
@@ -72,9 +72,9 @@ interface ExecuteBridge {
 ```
 
 **Constraints**:
-- ExecuteBridge must call real AgentExecutor/CommandExecutor.
+- ExecuteBridge must call real AgentExecutor / CommandExecutor.
 - Must not return hardcoded mock data (GAP-V2-01).
-- Each step execution result must include `toolCallRecords` for Feedback phase.
+- Each step execution result must include `toolCallRecords` for the Feedback stage.
 
 ## 4. DualChannelStepOutput Format
 
@@ -84,7 +84,7 @@ interface DualChannelStepOutput {
   userFacingResult: {
     summary: string;         // User-visible summary
     artifacts?: string[];    // Artifact references
-    citations?: string[];    // Knowledge citations
+    citations?: string[];    // Knowledge references
   };
   systemTelemetry: {
     durationMs: number;
@@ -97,8 +97,8 @@ interface DualChannelStepOutput {
 
 ## 5. Event Contract
 
-| Event | Trigger Timing | Subscriber |
-|-------|---------------|------------|
+| Event | Trigger | Subscribers |
+|------|---------|-------|
 | `oapeflir.stage.started` | Each stage start | OTel, SLA alerting |
 | `oapeflir.stage.completed` | Each stage completion | Feedback, Learn |
 | `oapeflir.stage.failed` | Stage exception | Alerting, Recovery |
@@ -107,13 +107,13 @@ interface DualChannelStepOutput {
 
 ## 6. LoopContext Propagation Rules
 
-- `traceId`: Runs through entire loop, used for correlating logs and traces.
-- `sessionId`: Identifies multiple loops in the same user session.
-- `layer`: Current loop's Memory layer (L1-L6).
-- `priorSummaries`: Key summaries from prior loop (future migration to Handoff four-layer protocol).
+- `traceId`: runs through the entire loop for correlating logs and traces.
+- `sessionId`: identifies multiple loops within the same user session.
+- `layer`: the current Memory layer where the loop resides (L1-L6).
+- `priorSummaries`: key summaries from previous round of loop (future migration to Handoff four-layer protocol).
 
 ## 7. Constraints
 
-- Loop timeout: `loopTimeoutMs` default 300000ms (5 minutes), configurable.
+- Loop timeout: `loopTimeoutMs` defaults to 300000ms (5 minutes), configurable.
 - Infinite loop detection: 3 consecutive rounds of plan drift → abort and alert.
-- Graceful degradation: Secondary chain (F→L→I→R) exception does not affect primary chain (O→A→P→E) result return.
+- Graceful degradation: secondary chain (F→L→I→R) exceptions do not affect primary chain (O→A→P→E) result return.

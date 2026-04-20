@@ -139,7 +139,7 @@ Phase 1a explicitly does:
 Currently not doing:
 
 - Cross-process automatic context propagation
-- OpenTelemetry full链路 automatic injection
+- OpenTelemetry full chain automatic injection
 - Remote worker context federation
 
 ## 10. Test Requirements

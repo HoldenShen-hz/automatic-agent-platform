@@ -24,7 +24,7 @@ The platform must support at least four layers of views:
 - `platform_ops`
 - `fleet_admin`
 
-Each layer view must be mappable to structured DTOs, not UI-private拼接 (composition).
+Each layer view must be mappable to structured DTOs, not UI-private patching (composition).
 
 ## 4. `AttentionItem` Minimum Fields
 

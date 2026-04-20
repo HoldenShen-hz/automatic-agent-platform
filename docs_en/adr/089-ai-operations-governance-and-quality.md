@@ -18,9 +18,9 @@ The AI operations layer adopts a unified governance model:
 
 - LLM Provider must connect through ModelGateway abstraction, with routing, failover, observability, and degradation capabilities.
 - Prompt / model / policy must all be versioned, canaried, rollbackable, and auditable.
-- Eval and quality gates are part of the release pipeline, and cannot be treated as offline report附属能力.
-- Token / model costs must enter budget, metering, chargeback, and optimization闭环.
-- HITL is a formal control path, not a UI interaction特例.
+- Eval and quality gates are part of the release pipeline, and cannot be treated as offline report ancillary capability.
+- Token / model costs must enter budget, metering, chargeback, and optimization closed loop.
+- HITL is a formal control path, not a UI interaction special case.
 - Compliance, data classification, prompt handling, and SLO / error budget together determine whether AI actions can execute.
 
 ## Trade-offs

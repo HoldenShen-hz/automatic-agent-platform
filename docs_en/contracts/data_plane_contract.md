@@ -79,7 +79,7 @@ flowchart TD
 ## 6. Data Ownership Principles
 
 - Tasks, executions, approvals, and events are owned by `TransactionalStore`.
-- Artifact content本体 is owned by `ArtifactObjectStore`.
+- Artifact content itself is owned by `ArtifactObjectStore`.
 - Metrics and trend analysis are owned by `AnalyticsStore`.
 - Knowledge entries and namespace metadata are owned by `KnowledgePlane`.
 - Memory and archive materials are owned by `MemoryArchiveStore`.

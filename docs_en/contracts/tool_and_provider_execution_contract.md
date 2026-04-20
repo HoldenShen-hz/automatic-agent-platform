@@ -5,7 +5,7 @@
 
 ## 1. Scope
 
-This contract defines the minimum unified interface for LLM provider calls, tool execution, result封装, error semantics, and budget guards.
+This contract defines the minimum unified interface for LLM provider calls, tool execution, result encapsulation, error semantics, and budget guards.
 
 ## 2. Key Objects
 

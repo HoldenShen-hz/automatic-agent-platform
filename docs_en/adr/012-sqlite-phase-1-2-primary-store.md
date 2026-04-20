@@ -66,7 +66,7 @@ Costs:
 ## Key Invariants
 
 - SQLite is current default authoritative transaction source.
-- If PostgreSQL is enabled, must be接入through controlled storage adapter/migration/dual-run scheme, cannot form second set of business semantics without governance.
+- If PostgreSQL is enabled, must be integrated through controlled storage adapter/migration/dual-run scheme, cannot form second set of business semantics without governance.
 - `foreign_keys = ON` is formal operation requirement, not optional optimization.
 - High-value factual state must not exist only in memory.
 - Must not use "SQLite will migrate in future" as excuse to currently ignore consistency.
@@ -94,7 +94,7 @@ If any of the following occur, should re-decide:
 
 ## Implementation Impact
 
-Current must accompanying做到:
+Current must accompanying be done:
 
 - Schema, migration, repository, and recovery inspection all designed around SQLite boundary
 - FileLock, event ack, execution, approval all fall to SQLite authoritative tables

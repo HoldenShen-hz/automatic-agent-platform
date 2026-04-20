@@ -142,7 +142,7 @@ Can be default retryable; the following are not auto-retryable by default:
 
 Supplementary rules:
 
-- If provider returns `retry-after-ms`, `retry-after`, or equivalent header, should respect provider指示, not blindly follow local backoff curve.
+- If provider returns `retry-after-ms`, `retry-after`, or equivalent header, should respect provider instruction, not blindly follow local backoff curve.
 - If `retry-after` is HTTP date, should convert to relative wait time, subject to `max_delay_ms` cap.
 - When provider explicitly returns `is_retryable = false`, authentication failure, capability not supported, or context overflow, must not enter auto-retry.
 - Retry state should distinguish `transient_retryable`, `provider_throttled`, `permanent_provider_error`, avoiding UI and recovery strategy confusion.
@@ -241,4 +241,4 @@ Rules:
 ## 14. Supplementary Rules
 
 - When Phase 1b introduces lease, handover, and multi-worker semantics, execution attempt and fencing token must remain monotonically increasing.
-- Resource isolation at minimum细分: token budget, wall-clock timeout, worker class, sandbox quota.
+- Resource isolation at minimum granularity: token budget, wall-clock timeout, worker class, sandbox quota.

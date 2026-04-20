@@ -40,7 +40,7 @@ The multi-level matching chain must simultaneously solve two types of problems:
 - The matching chain must attempt in a fixed order, stopping at the first success.
 - The vaguer the matching level, the stricter the security constraints must be.
 - Any non-exact replacement must leave warnings and audit records.
-- When unique定位 is not possible, it must fail rather than "guess a close enough spot."
+- When unique positioning is not possible, it must fail rather than "guess a close enough spot."
 
 ## 4. `EditReplacementAttempt`
 

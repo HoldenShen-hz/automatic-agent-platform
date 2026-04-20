@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-`§20`, `§24`-`§32`, `§33`, and `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event / projection / DLQ, knowledge / memory / artifact, HA, deployment, and roadmap. These sections together constitute the production runtime foundation, but past ADRs mostly recorded single-point technical selections, lacking a unified decision面向长期运行.
+`§20`, `§24`-`§32`, `§33`, and `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event / projection / DLQ, knowledge / memory / artifact, HA, deployment, and roadmap. These sections together constitute the production runtime foundation, but past ADRs mostly recorded single-point technical selections, lacking a unified decision oriented toward long-running [scenarios].
 
 ## Decision
 

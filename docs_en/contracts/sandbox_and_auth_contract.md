@@ -108,4 +108,4 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 - Minimum command execution sandbox and browser / GUI automation sandbox should be managed in layers, not recommended to share same heavyweight image.
 - If browser sandbox needs Chromium, Xvfb or equivalent graphics dependencies, should be treated as independent capability profile, and enter separate readiness and cost evaluation.
 - If standalone command execution surface exists, should be modeled separately from task / workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
-- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout这类 execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
+- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout, and similar execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.

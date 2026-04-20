@@ -603,7 +603,7 @@ Before merging any PR, reviewer checks the following:
 | Gap Type | Description | Detection Layer |
 |----------|-------------|-----------------|
 | **File-level gap** | Entire source file has no tests | Layer 2 (Matrix) + Layer 3 (`all: true`) |
-| **Function-level gap** |某个 exported function has no tests | Layer 3 (function coverage) + Layer 5 (Review) |
+| **Function-level gap** | Some exported function has no tests | Layer 3 (function coverage) + Layer 5 (Review) |
 | **Branch-level gap** | if/else/switch some branch not covered | Layer 3 (branch coverage) + Layer 4 (Stryker) |
 | **Assertion-level gap** | Code executed but no result verification | Layer 4 (Stryker mutant survived) |
 | **Scenario-level gap** | Missing specific business scenario tests | Layer 5 (Review) |

@@ -1,18 +1,18 @@
 # Operations Tracker
 
 > Last updated: 2026-04-14
-> This file is kept as a lightweight index to avoid maintaining duplicate tracking content.
-> Old consolidated tracking documents have been archived to [archive/operations_tracker_20260414.md](./archive/operations_tracker_20260414.md).
+> This file is maintained as a lightweight index; do not continue maintaining duplicate tracking content.
+> Legacy consolidated tracking documents are not migrated to the new platform formal document set.
 
 ## Current Entry Points
 
-- Overall progress: See [project_progress_tracker.md](./project_progress_tracker.md)
-- Current todo: See [current_todo_list.md](./current_todo_list.md)
-- Module-level backlog: See [module_remediation_backlog.md](./module_remediation_backlog.md)
-- Phase and scope: See [implementation_plan.md](./implementation_plan.md)
+- Overall progress: [project_progress_tracker.md](./project_progress_tracker.md)
+- Phases and scope: [implementation_plan.md](./implementation_plan.md)
+- Development sequence: [operations-roadmap.md](./operations-roadmap.md)
+- Release and encoding checks: [operations-checklist.md](./operations-checklist.md)
 
 ## Usage Rules
 
-- Do not copy backlog, milestones, or historical completion lists into this file.
-- Any new todos only go into `current_todo_list.md` or `module_remediation_backlog.md`.
-- Any status changes only write back to `project_progress_tracker.md`.
+- Do not copy backlog, milestones, or historical completion lists in this file.
+- Any status change only backwrites to `project_progress_tracker.md`.
+- Any scope and sequence changes backwrite to `implementation_plan.md` and `operations-roadmap.md` respectively.

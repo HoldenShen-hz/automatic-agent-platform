@@ -10,7 +10,7 @@ Ensure that the same fact is maintained in only one master version, preventing c
 - Long-term architecture boundary issues defer to `01` ~ `07`.
 - Solution trade-off issues defer to `adr/`.
 - New platform design and migration boundaries defer to the two platform documents under `automatic_agent_platform/`.
-- Current推进 actions defer to `operations/`.
+- Current advancement actions defer to `operations/`.
 
 Supplementary:
 

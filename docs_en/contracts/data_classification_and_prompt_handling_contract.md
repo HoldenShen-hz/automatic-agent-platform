@@ -36,7 +36,7 @@ Related documents:
 
 ## 3. Control Dimensions
 
-Each classification level must约束 at minimum:
+Each classification level must constrain at minimum:
 
 - Whether it is allowed to enter prompts
 - Whether it is allowed to be written to logs

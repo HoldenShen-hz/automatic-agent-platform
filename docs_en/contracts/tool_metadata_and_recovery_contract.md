@@ -32,7 +32,7 @@ This contract answers three questions:
 | --- | --- | --- |
 | `tool_name` | `string` | Tool name |
 | `read_only` | `boolean` | Whether read-only |
-| `idempotent` | `boolean` | Whether默认为可重复执行 |
+| `idempotent` | `boolean` | Whether defaults to being idempotent |
 | `side_effect_scope` | `none \| local_file \| local_process \| remote_api \| billing \| org_state` | Side effect scope |
 | `recovery_strategy` | `retry_safe \| retry_with_check \| skip_if_verified \| manual_resume_required` | Recovery strategy |
 | `requires_confirmation` | `boolean` | Whether requires confirmation by default |

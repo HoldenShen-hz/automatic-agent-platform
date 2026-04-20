@@ -1,27 +1,38 @@
-# Automatic Agent Platform Docs
+# Automatic Agent Platform Documentation Portal
 
-`docs_en/` is the English-facing documentation entry for the new platform.
+`docs_zh/` is now organized by "purpose" rather than "historical source"; top-level directories only retain entry points, and scattered top-level overview documents are no longer accumulated.
 
-Start with these files:
+## Recommended Reading Order
 
-- [automatic_agent_patform_arthitecture_design.md](./automatic_agent_patform_arthitecture_design.md)
-- [migrate_guideline.md](./migrate_guideline.md)
-- [migration_scope.md](./migration_scope.md)
+1. First read [architecture/00-platform-architecture.md](./architecture/00-platform-architecture.md)
+2. Then read [migration/00-migration-guideline.md](./migration/00-migration-guideline.md)
+3. Then read [migration/01-migration-scope.md](./migration/01-migration-scope.md)
+4. When needing specifications, enter [contracts/README.md](./contracts/README.md) and [adr/README.md](./adr/README.md)
+5. When needing to implement, enter [operations/README.md](./operations/README.md)
 
-Reading order:
+## Directory Description
 
-1. Platform target architecture
-2. Migration scope and boundaries
+| Directory | Purpose | Source of Truth |
+| --- | --- | --- |
+| [architecture/](./architecture/README.md) | Platform skeleton, code structure, architecture reference, timing and diagrams | `yes` |
+| [migration/](./migration/README.md) | Migration principles, migration scope | `yes` |
+| [contracts/](./contracts/README.md) | Authoritative contracts, protocols, state machines, object boundaries | `yes` |
+| [adr/](./adr/README.md) | Architecture decision records | `yes` |
+| [governance/](./governance/README.md) | Long-term governance rules, terminology, naming and change rules | `yes` |
+| [guides/](./guides/quickstart.md) | Getting started and authoring guides | `yes` |
+| [operations/](./operations/README.md) | Current execution, validation, operations and maintenance documents | `yes` |
+| [quality/](./quality/README.md) | Testing handbook, release checklist | `yes` |
+| [analysis/](./analysis/README.md) | Coverage matrix, codebase cross-reference analysis and other auxiliary analysis | `no` |
 
-Current rule:
+## Naming and Numbering Rules
 
-- `docs_en/` and `docs_zh/` are the formal documentation roots for the new platform
-- legacy old-system reviews, archives, and one-off assessments are not part of the new platform knowledge base
+- Documents oriented toward reading entry points use `00-`, `01-`, `02-` incremental numbering.
+- ADRs continue to retain original ADR numbering, not mixed into top-level reading numbering.
+- Contracts maintain semantic naming without introducing extra sequence numbers.
+- Analysis documents enter `analysis/`, no longer mixed into formal entry points in `reviews/` form.
 
-Current retained formal document families:
+## Current Constraints
 
-- `contracts/`
-- `adr/`
-- `governance/`
-- `guides/`
-- `operations/`
+- `architecture/00-platform-architecture.md` is the sole upper-level design source for the system skeleton.
+- `analysis/` only does auxiliary judgment, does not replace architecture, contracts, ADR.
+- Historical reviews, archives, and one-off gap documents are no longer treated as formal entry points.

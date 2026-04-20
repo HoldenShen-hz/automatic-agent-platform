@@ -88,10 +88,10 @@ If any of the following occur, should re-evaluate and possibly upgrade:
 
 ## Implementation Impact
 
-Current implementation must做到:
+Current implementation must be done:
 
 - Clearly distinguish "reliable event factual source" and "memory distribution channel"
-- Event registry, ack threshold, recovery scanning, and replay tools同步建立
+- Event registry, ack threshold, recovery scanning, and replay tools established concurrently
 - Keep EventEmitter usage within intra-process adapter/projection scope
 - OAPEFLIR closed-loop related services even if first implemented with memory/lightweight registry should guarantee future migratability to more formal queue/bus through typed payload, reason code, and state machine constraints.
 
@@ -102,7 +102,7 @@ Benefits:
 - Current stage implementation is lightest.
 - Won't prematurely raise infrastructure complexity for possible future multi-process.
 - Consistent with existing Tier 1/Tier 2/Tier 3 event tiering documentation.
-- Allows OAPEFLIR main/secondary chain to first form closed loop in single process, then收敛reliability issues to contract and persistence layer.
+- Allows OAPEFLIR main/secondary chain to first form closed loop in single process, then consolidate reliability issues to contract and persistence layer.
 
 Costs:
 

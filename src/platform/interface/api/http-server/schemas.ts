@@ -343,3 +343,69 @@ export function parseControlPlaneLoadBalancingSelectionPayload(
     ...(payload.requestKey != null ? { requestKey: payload.requestKey } : {}),
   };
 }
+
+// ── Task Schemas ──────────────────────────────────────────────────────────────
+
+const createTaskPayloadSchema = z.object({
+  title: nonEmptyStringSchema,
+  divisionId: nonEmptyStringSchema.optional(),
+  parentId: nonEmptyStringSchema.optional(),
+  inputJson: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  source: z.enum(["api", "ui", "scheduler", "webhook", "system"]).optional(),
+}).strict();
+
+const updateTaskPayloadSchema = z.object({
+  title: nonEmptyStringSchema.optional(),
+  status: z.enum(["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"]).optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  outputJson: z.string().optional(),
+}).strict();
+
+export interface CreateTaskPayload {
+  title: string;
+  divisionId?: string;
+  parentId?: string;
+  inputJson?: string;
+  priority?: "low" | "medium" | "high" | "critical";
+  source?: "api" | "ui" | "scheduler" | "webhook" | "system";
+}
+
+export interface UpdateTaskPayload {
+  title?: string;
+  status?: "queued" | "pending" | "in_progress" | "awaiting_decision" | "done" | "failed" | "cancelled";
+  priority?: "low" | "medium" | "high" | "critical";
+  outputJson?: string;
+}
+
+export function parseCreateTaskPayload(body: unknown): CreateTaskPayload {
+  const payload = parseWithApiSchema(
+    createTaskPayloadSchema,
+    body,
+    "api.invalid_create_task_payload",
+    "Create task payload must be an object.",
+  );
+  return {
+    title: payload.title,
+    ...(payload.divisionId != null ? { divisionId: payload.divisionId } : {}),
+    ...(payload.parentId != null ? { parentId: payload.parentId } : {}),
+    ...(payload.inputJson != null ? { inputJson: payload.inputJson } : {}),
+    ...(payload.priority != null ? { priority: payload.priority } : {}),
+    ...(payload.source != null ? { source: payload.source } : {}),
+  };
+}
+
+export function parseUpdateTaskPayload(body: unknown): UpdateTaskPayload {
+  const payload = parseWithApiSchema(
+    updateTaskPayloadSchema,
+    body,
+    "api.invalid_update_task_payload",
+    "Update task payload must be an object.",
+  );
+  return {
+    ...(payload.title != null ? { title: payload.title } : {}),
+    ...(payload.status != null ? { status: payload.status } : {}),
+    ...(payload.priority != null ? { priority: payload.priority } : {}),
+    ...(payload.outputJson != null ? { outputJson: payload.outputJson } : {}),
+  };
+}

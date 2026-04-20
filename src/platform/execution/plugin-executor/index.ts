@@ -46,3 +46,7 @@ export class PluginExecutionService {
     return [...this.plugins.values()];
   }
 }
+
+// Re-export the new PluginExecutorService as well
+export { PluginExecutorService } from "./plugin-executor.service.js";
+export type { ExecutionContext, ExecutionResult, PluginExecutorOptions } from "./plugin-executor.service.js";

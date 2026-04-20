@@ -36,7 +36,7 @@ v2.7 `§59-§69` introduces the operations maturity layer. The current repositor
 - `src/ops-maturity/multimodal`
 - `src/ops-maturity/platform-ops-agent`
 
-Except for `drift-detection`, most are still偏骨架.
+Except for `drift-detection`, most are still mostly skeletal.
 
 ## Decision
 

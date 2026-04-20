@@ -28,7 +28,7 @@ The current repository already has `src/domains/*` directory and initial impleme
 
 - Inconsistent domain definition fields and lifecycle
 - Onboarding runbooks relying on verbal agreements
-- Many `src/domains/*` directories still停留在空壳 barrel
+- Many `src/domains/*` directories still remain as empty shells barrel
 
 ## Decision
 
