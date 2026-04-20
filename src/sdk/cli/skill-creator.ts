@@ -30,7 +30,7 @@
  *   - create: Scaffold a new skill with metadata and optional registry registration
  *   - validate: Verify skill structure without full creation
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for skill architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for skill architecture
  * @see {@link docs_zh/contracts/skill_registry_contract.md} for skill contracts
  */
 

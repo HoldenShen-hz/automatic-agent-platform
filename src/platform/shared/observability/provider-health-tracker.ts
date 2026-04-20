@@ -9,7 +9,7 @@
  * - Related: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/contracts/debug_inspect_health_backpressure_contract.md debug_inspect_health_backpressure_contract.md}
  * - Related: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/contracts/provider_reliability_contract.md provider_reliability_contract.md} (if exists)
  * - Glossary: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/governance/glossary_and_terminology.md Glossary - provider, model, backpressure, heartbeat, trace}
- * - Architecture: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/automatic_agent_patform_arthitecture_design.md 01_architecture_and_technical_design.md}
+ * - Architecture: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/architecture/00-platform-architecture.md 01_architecture_and_technical_design.md}
  *
  * @module
  */

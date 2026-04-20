@@ -1,6 +1,6 @@
 # Automatic Agent Platform
 
-Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The repository now follows the v2.7 seven-layer architecture defined in `docs_zh/automatic_agent_patform_arthitecture_design.md`, with ADR, contract, source, and test coverage tracked in `docs_zh/reviews/architecture_v2_7_coverage_matrix.md`.
+Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The repository now follows the v2.7 seven-layer architecture defined in `docs_zh/architecture/00-platform-architecture.md`, with ADR, contract, source, and test coverage tracked in `docs_zh/analysis/00-architecture-coverage-matrix.md`.
 
 ## Quick Start
 
@@ -22,13 +22,13 @@ npm run worker-writeback
 
 ## Documentation
 
-- `docs_zh/automatic_agent_patform_arthitecture_design.md` — v2.7 architecture source
-- `docs_zh/code_struct_design.md` — code structure design
-- `docs_zh/migrate_guideline.md` — migration rules
+- `docs_zh/architecture/00-platform-architecture.md` — v2.7 architecture source
+- `docs_zh/architecture/01-code-structure.md` — code structure design
+- `docs_zh/migration/00-migration-guideline.md` — migration rules
 - `docs_zh/adr/` — architectural decisions
 - `docs_zh/contracts/` — authoritative contracts
-- `docs_zh/reviews/architecture_v2_7_coverage_matrix.md` — chapter-to-code coverage matrix
-- `docs_zh/reviews/codebase_vs_design_review.md` — current codebase review
+- `docs_zh/analysis/00-architecture-coverage-matrix.md` — chapter-to-code coverage matrix
+- `docs_zh/analysis/01-codebase-vs-design-review.md` — current codebase review
 
 ## Project Structure
 

@@ -2,7 +2,7 @@
  * Stable event replay rehearsal: verifies failed consumer acknowledgements can be replayed cleanly.
  *
  * @documentation
- * - Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * - Architecture: docs_zh/architecture/00-platform-architecture.md
  * - Event reliability: docs_zh/contracts/event_reliability_matrix_contract.md
  * - Event bus: docs_zh/contracts/event_bus_contract.md
  * - Terminology: docs_zh/governance/glossary_and_terminology.md

@@ -16,7 +16,7 @@ This file is a lightweight engineering memory for the current repository layout.
 - ADR and contract completeness should be checked from:
   - `docs_zh/adr/README.md`
   - `docs_zh/contracts/README.md`
-  - `docs_zh/reviews/architecture_v2_7_coverage_matrix.md`
+  - `docs_zh/analysis/00-architecture-coverage-matrix.md`
 
 ## Validation Shortcuts
 

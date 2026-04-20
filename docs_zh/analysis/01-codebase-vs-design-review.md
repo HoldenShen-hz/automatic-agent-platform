@@ -4,9 +4,9 @@
 >
 > 审查基线：
 >
-> - `docs_zh/automatic_agent_patform_arthitecture_design.md`
-> - `docs_zh/code_struct_design.md`
-> - `docs_zh/reviews/architecture_v2_7_coverage_matrix.md`
+> - `docs_zh/architecture/00-platform-architecture.md`
+> - `docs_zh/architecture/01-code-structure.md`
+> - `docs_zh/analysis/00-architecture-coverage-matrix.md`
 
 ## 1. 结论
 
@@ -15,7 +15,7 @@
 当前更准确的判断是：
 
 - 七层目录结构已稳定存在，并且上层五个能力域都已形成 ADR -> contract -> src -> tests 的主闭环。
-- `docs_zh/reviews/architecture_v2_7_coverage_matrix.md` 已成为 authoritative 覆盖入口；大多数 v2.7 章节状态是 `exists`，剩余缺口主要集中在 `partial`，而不是 `missing` 或 `skeleton`。
+- `docs_zh/analysis/00-architecture-coverage-matrix.md` 已成为 authoritative 覆盖入口；大多数 v2.7 章节状态是 `exists`，剩余缺口主要集中在 `partial`，而不是 `missing` 或 `skeleton`。
 - `src/core/runtime/` 已收敛为兼容性 shim；canonical 多步编排实现位于 `src/platform/execution/execution-engine/`。
 
 ## 2. 本轮确认已完成的收敛
@@ -52,7 +52,7 @@
 
 ## 3. 当前状态应以覆盖矩阵为准
 
-请以 [architecture_v2_7_coverage_matrix.md](./architecture_v2_7_coverage_matrix.md) 作为当前状态入口。按该矩阵，以下章节已经形成 `exists` 闭环：
+请以 [00-architecture-coverage-matrix.md](./00-architecture-coverage-matrix.md) 作为当前状态入口。按该矩阵，以下章节已经形成 `exists` 闭环：
 
 - `§37-§44` 中除 `§44` 外的上层领域 / interaction 章节
 - `§46-§57`

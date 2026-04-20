@@ -9,7 +9,7 @@
  * - Related: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/contracts/trace_and_root_cause_observability_contract.md trace_and_root_cause_observability_contract.md}
  * - Related: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/contracts/debug_inspect_health_backpressure_contract.md debug_inspect_health_backpressure_contract.md}
  * - Glossary: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/governance/glossary_and_terminology.md Glossary - task, workflow, step, execution, artifact, trace, inspect}
- * - Architecture: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/automatic_agent_patform_arthitecture_design.md 01_architecture_and_technical_design.md}
+ * - Architecture: {@link https://github.com/anomalyco/opencode/tree/main/docs_zh/architecture/00-platform-architecture.md 01_architecture_and_technical_design.md}
  *
  * @module
  */

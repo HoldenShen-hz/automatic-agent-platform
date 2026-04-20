@@ -19,7 +19,7 @@
  *   Quality engineering contract defining concurrency and fail-closed behavior tests
  * @see {@link docs_zh/contracts/file_lock_contract.md}
  *   File lock contract defining lock lifecycle and expiration semantics
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md}
+ * @see {@link docs_zh/architecture/00-platform-architecture.md}
  *   Architecture document for concurrency control design
  * @see {@link docs_zh/governance/glossary_and_terminology.md}
  *   Glossary defining concurrency-related terminology (locks, leases, fencing)

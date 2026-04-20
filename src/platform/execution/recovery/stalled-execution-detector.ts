@@ -10,7 +10,7 @@
  * - Missing heartbeat detection triggers lease reclaim recommendations
  * - No progress detection triggers restart/escalation recommendations
  *
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/automatic_agent_patform_arthitecture_design.md | Architecture and Technical Design}
+ * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
  * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/runtime_execution_contract.md | Runtime Execution Contract}
  * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/task_lease_and_fencing_contract.md | Task Lease and Fencing Contract}
  * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}

@@ -15,7 +15,7 @@
  * - crash_recovery: Fault tolerance scenarios
  *
  * @see docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md for testing contracts
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for single-task execution architecture
+ * @see docs_zh/architecture/00-platform-architecture.md for single-task execution architecture
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";

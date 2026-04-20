@@ -27,7 +27,7 @@
  * - Dependency edges for step ordering (DAG construction)
  * - Agent assignments derived from role IDs
  *
- * @see Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * @see Architecture: docs_zh/architecture/00-platform-architecture.md
  * @see Workflow Routing ADR: docs_zh/adr/004-workflow-routing.md
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md (workflow_planner)
  */

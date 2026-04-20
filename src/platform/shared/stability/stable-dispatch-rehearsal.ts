@@ -12,7 +12,7 @@
  *
  * @see {@link docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md}
  *   Quality engineering contract defining dispatch and capability-based routing tests
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md}
+ * @see {@link docs_zh/architecture/00-platform-architecture.md}
  *   Main architecture document for dispatch service design
  * @see {@link docs_zh/governance/glossary_and_terminology.md}
  *   Glossary defining dispatch-related terminology (tickets, leases, capabilities)

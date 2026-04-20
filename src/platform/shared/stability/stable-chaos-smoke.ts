@@ -27,7 +27,7 @@
  * **Glossary terms:** `task`, `execution`, `session`, `lease`, `fencing token`, `execution ticket`,
  * `orphan queue claim`, `stale execution`, `startup consistency checker`, `runtime repair service`
  *
- * **Architecture:** {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/automatic_agent_patform_arthitecture_design.md | 01_architecture_and_technical_design.md}
+ * **Architecture:** {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/architecture/00-platform-architecture.md | 01_architecture_and_technical_design.md}
  */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";

@@ -9,7 +9,7 @@
  * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/diagnostics_snapshot_and_repro_bundle_contract.md | Diagnostics Snapshot and Repro Bundle Contract}
  * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/observability_contract.md | Observability Contract}
  * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
- * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/automatic_agent_patform_arthitecture_design.md | Architecture and Technical Design}
+ * @see {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
  */
 
 import type { ArtifactRecord, DispatchDecisionTrace, TraceContext } from "../../contracts/types/domain.js";

@@ -10,7 +10,7 @@ Accepted
 
 ## 背景
 
-`automatic_agent_patform_arthitecture_design.md` 的 `§6`、`§7`、`§8`、`§22`、`§30` 定义了 API、服务通信、可扩展性、SDK/DX、Business Pack / Plugin 治理。这些章节以前分散映射到 API、event bus、plugin SPI、tool/skill/plugin contract，但缺少一个统一 ADR 解释为什么这些边界必须作为平台表面能力统一治理。
+[`../architecture/00-platform-architecture.md`](../architecture/00-platform-architecture.md) 的 `§6`、`§7`、`§8`、`§22`、`§30` 定义了 API、服务通信、可扩展性、SDK/DX、Business Pack / Plugin 治理。这些章节以前分散映射到 API、event bus、plugin SPI、tool/skill/plugin contract，但缺少一个统一 ADR 解释为什么这些边界必须作为平台表面能力统一治理。
 
 ## 决策
 

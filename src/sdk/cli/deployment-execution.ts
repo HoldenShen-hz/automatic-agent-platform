@@ -16,7 +16,7 @@
  *   - AA_DEPLOYMENT_ARTIFACT_ROOT: Root directory for artifact storage
  *   - AA_DEPLOYMENT_RUNNER_MODE: "execute" for real execution, "simulate" for mock responses
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for deployment architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for deployment architecture
  * @see {@link docs_zh/contracts/release_rollout_and_rollback_contract.md} for deployment contracts
  */
 

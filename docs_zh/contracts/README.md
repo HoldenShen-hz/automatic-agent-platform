@@ -1,7 +1,7 @@
 # Contracts
 
 > `contracts/` 是平台 authoritative 规范层。
-> 这里定义 canonical object、最小字段、状态机、协议边界和测试要求；当前完成度统一记录在 `docs_zh/reviews/`，不写在 contract 正文里。
+> 这里定义 canonical object、最小字段、状态机、协议边界和测试要求；当前覆盖分析统一记录在 `docs_zh/analysis/`，不写在 contract 正文里。
 
 ## 1. 使用顺序
 
@@ -35,7 +35,7 @@
 说明：
 
 - 原始架构文档未定义 `§34`、`§35`、`§45`、`§58`、`§70`。
-- 覆盖状态见 [../reviews/architecture_v2_7_coverage_matrix.md](../reviews/architecture_v2_7_coverage_matrix.md)。
+- 覆盖状态见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)。
 
 ## 3. 分组索引
 
@@ -189,20 +189,20 @@
 - [multimodal_gateway_contract.md](./multimodal_gateway_contract.md)
 - [platform_ops_agent_contract.md](./platform_ops_agent_contract.md)
 
-## 4. 与 ADR / reviews 的关系
+## 4. 与 ADR / analysis 的关系
 
 - `adr/` 解释为什么做这个 contract。
 - `contracts/` 定义 authoritative 对象与约束。
-- `reviews/` 记录 contract 是否已被实现、哪些地方仍然偏弱。
+- `analysis/` 记录 contract 是否已被实现、哪些地方仍然偏弱。
 
 推荐入口：
 
 - ADR 索引见 [../adr/README.md](../adr/README.md)
-- 覆盖矩阵见 [../reviews/architecture_v2_7_coverage_matrix.md](../reviews/architecture_v2_7_coverage_matrix.md)
+- 覆盖矩阵见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
 ## 5. 维护规则
 
 - contract 只写规范，不写当前完成度。
 - 字段、状态枚举、事件名、协议语义一旦进入实现，必须在这里保持 authoritative。
 - 如果 contract 变化代表架构取舍变化，除修改 contract 外，还要补 ADR。
-- 若实现与 contract 暂时不一致，把差距记到 `reviews/`，不要把临时状态写进 contract。
+- 若实现与 contract 暂时不一致，把差距记到 `analysis/`，不要把临时状态写进 contract。

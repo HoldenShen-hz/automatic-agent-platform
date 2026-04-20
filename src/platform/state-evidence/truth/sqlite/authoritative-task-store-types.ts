@@ -337,7 +337,7 @@ export interface ExecutionAuthoritativeView {
  *
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/storage_schema_contract.md | Storage Schema Contract}
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
- * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/automatic_agent_patform_arthitecture_design.md | Architecture and Technical Design}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
  */
 export function mapRuntimeRecoveryRecord(row: Record<string, unknown>): RuntimeRecoveryRecord {
   const hasPrecheck = row.precheckId != null;

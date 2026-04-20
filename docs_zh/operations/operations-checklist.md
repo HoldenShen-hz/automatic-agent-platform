@@ -83,13 +83,13 @@
 
 | 模块 | 必须文档 |
 |------|---------|
-| 新增 API 路由 | `doc/contracts/api_*.md` 或更新 `api_surface_contract.md` |
-| 新增 Schema 变更 | `doc/contracts/storage_schema_contract.md` 更新 |
-| 新增事件类型 | `doc/contracts/event_*.md` 或更新 `event_bus_contract.md` |
-| 新增安全机制 | `doc/contracts/sandbox_and_auth_contract.md` 更新 |
-| 新增 provider | `doc/contracts/tool_and_provider_execution_contract.md` 更新 |
-| 新增 workflow 类型 | `doc/contracts/task_and_workflow_contract.md` 更新 |
-| 新增 contract | 必须创建 `doc/contracts/<name>_contract.md` |
+| 新增 API 路由 | 更新 `docs_zh/contracts/api_surface_contract.md` 或相关 API contract |
+| 新增 Schema 变更 | 更新 `docs_zh/contracts/storage_schema_contract.md` |
+| 新增事件类型 | 更新 `docs_zh/contracts/event_bus_contract.md` 或对应事件 contract |
+| 新增安全机制 | 更新 `docs_zh/contracts/sandbox_and_auth_contract.md` |
+| 新增 provider | 更新 `docs_zh/contracts/tool_and_provider_execution_contract.md` |
+| 新增 workflow 类型 | 更新 `docs_zh/contracts/task_and_workflow_contract.md` |
+| 新增 contract | 必须创建 `docs_zh/contracts/<name>_contract.md` |
 
 ---
 
@@ -97,7 +97,7 @@
 
 来源: `release_readiness_checklist.md`
 
-完整版本发布前必须通过，见 `doc/release-checklist.md`。
+完整版本发布前必须通过，见 [../quality/01-release-checklist.md](../quality/01-release-checklist.md)。
 
 ---
 

@@ -23,7 +23,7 @@
  *
  * @see {@link docs_zh/operations/} - Operational procedures
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Release pipeline terminology
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} - Architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
 import { dirname, join } from "node:path";

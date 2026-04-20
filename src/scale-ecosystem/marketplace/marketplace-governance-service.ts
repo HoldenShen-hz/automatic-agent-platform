@@ -17,7 +17,7 @@
  * - Internal packages do not require signature verification
  * - External packages must have signature verified before publication
  *
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for marketplace architecture
+ * @see docs_zh/architecture/00-platform-architecture.md for marketplace architecture
  */
 
 import { createHash } from "node:crypto";

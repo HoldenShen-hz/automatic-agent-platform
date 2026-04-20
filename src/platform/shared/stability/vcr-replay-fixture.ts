@@ -21,7 +21,7 @@
  * - Key parameters (temperature, reasoningLevel, topP)
  *
  * @see docs_zh/contracts/vcr_and_fixture_testing_contract.md for fixture schema
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for testing infrastructure
+ * @see docs_zh/architecture/00-platform-architecture.md for testing infrastructure
  * @see docs_zh/governance/glossary_and_terminology.md for VCR terminology
  */
 

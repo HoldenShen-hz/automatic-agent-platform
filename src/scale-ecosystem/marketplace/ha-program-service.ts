@@ -11,7 +11,7 @@
  * - Phase 2: Promote PostgreSQL authoritative store and migration compatibility
  * - Phase 3: Promote Redis queue and distributed locking with failover rehearsals
  *
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for HA architecture details
+ * @see docs_zh/architecture/00-platform-architecture.md for HA architecture details
  * @see docs_zh/contracts/release_rollout_and_rollback_contract.md for rollout phases
  */
 

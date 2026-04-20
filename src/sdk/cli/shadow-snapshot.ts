@@ -21,7 +21,7 @@
  *   - list: List all shadow snapshots
  *   - restore: Restore workspace from a snapshot
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for shadow snapshot architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for shadow snapshot architecture
  * @see {@link docs_zh/contracts/artifact_store_contract.md} for artifact contracts
  */
 

@@ -10,7 +10,7 @@
 - `Phase 1b` 只做单事业部工作流与最小编排。
 - 完整多 Agent 平台化能力在 `Phase 2` 再逐步引入。
 - 远程协调、Marketplace、多租户不允许在 `Phase 1a / 1b` 抢跑。
-- `research/analysis` 中出现的新推荐项，必须先进入 `../migration_scope.md` 的迁移边界判断，再决定是吸收到正式方案、后置到后续阶段，还是明确拒绝。
+- `research/analysis` 中出现的新推荐项，必须先进入 [../migration/01-migration-scope.md](../migration/01-migration-scope.md) 的迁移边界判断，再决定是吸收到正式方案、后置到后续阶段，还是明确拒绝。
 
 ## 统一执行口径
 
@@ -21,7 +21,6 @@
 | `implementation_plan.md` | 阶段与范围主计划 | 现在允许做哪个阶段、该阶段做什么、不做什么 | `是` |
 | `operations-roadmap.md` | 开发顺序与依赖 | 先做哪一批、哪些能并行、退出门槛是什么 | `是` |
 | `project_progress_tracker.md` | 实际项目进度 | 现在做到哪了、哪些完成、哪些阻塞 | `是` |
-| `current_todo_list.md` | 当前短期待办 | 这 1~2 个迭代具体做什么 | `是` |
 
 统一状态语义：
 
@@ -38,33 +37,32 @@
 - `工作包 done` 不自动等于 `阶段关闭 done`。
 - 若某阶段的开发工作包已完成，但阶段关闭证据被显式延期，例如 `24h / 72h` 长时验证，则应分别记录“开发工作包完成”和“阶段签收仍在进行中”。
 - 外部研究结论不允许直接跳过吸收矩阵进入实现；必须先通过 `research_analysis_absorption_matrix.md` 映射到 roadmap / backlog / contract / phase。
-- 参考型结论也必须走同一规则：先写明 `adopted / adapted / not_adopted`，再允许进入正式实现。当前边界结论见 [../migration_scope.md](../migration_scope.md)。
+- 参考型结论也必须走同一规则：先写明 `adopted / adapted / not_adopted`，再允许进入正式实现。当前边界结论见 [../migration/01-migration-scope.md](../migration/01-migration-scope.md)。
 
 统一更新规则：
 
 1. 阶段边界、非目标、允许范围变化时，先改 `implementation_plan.md`。
 2. 开发顺序、依赖、批次切换变化时，再改 `operations-roadmap.md`。
 3. 实际状态变化后，更新 `project_progress_tracker.md`。
-4. 当前 1~2 个迭代的活跃事项，只在 `current_todo_list.md` 维护。
-5. 若 4 份文档有冲突，以“范围 -> 顺序 -> 进度 -> 待办”的优先级判定。
-6. 若研究分析结论与当前方案冲突，以 [../migration_scope.md](../migration_scope.md) 与当前平台架构文档为准，再回写正式方案。
+4. 当前短期活跃事项统一收敛到 `project_progress_tracker.md` 的当前状态区。
+5. 若 3 份文档有冲突，以“范围 -> 顺序 -> 进度”的优先级判定。
+6. 若研究分析结论与当前方案冲突，以 [../migration/01-migration-scope.md](../migration/01-migration-scope.md) 与当前平台架构文档为准，再回写正式方案。
 
 ## 开工前门槛
 
 开始任何阶段实现前必须满足：
 
-- `operations/gap-analysis.md` 与 `operations/operations-checklist.md` 给出当前阶段可执行结论。
 - `operations/operations-checklist.md` 已通过当前阶段的文档签收。
 - `operations/operations-checklist.md` 中适用项已经通过。
 - `operations/operations-checklist.md` 中属于当前阶段的模块验收项已明确并可验证。
-- `operations/gap-analysis.md` 与 `operations/operations-checklist.md` 中无阻断当前阶段的 P0 文档缺口。
-- 若当前阶段目标含”可稳定运行”，则 `operations/gap-analysis.md` 与 `operations/operations-checklist.md` 已纳入执行基线。
+- `project_progress_tracker.md` 与 `operations/operations-checklist.md` 中无阻断当前阶段的 P0 文档缺口。
+- 若当前阶段目标含”可稳定运行”，则 `project_progress_tracker.md` 与 `operations/operations-checklist.md` 已纳入执行基线。
 
 ## 当前执行顺序
 
 在进入代码实现前，优先按 [operations-roadmap.md](./operations-roadmap.md) 的前 20 项收紧底座。
 若目标是先达到”可稳定运行”，则优先按 [operations-roadmap.md](./operations-roadmap.md) 的三批顺序推进。
-若新增外部参考或对比分析结论，则优先按 [../migration_scope.md](../migration_scope.md) 做吸收判定，再改 roadmap / backlog / phase 顺序。
+若新增外部参考或对比分析结论，则优先按 [../migration/01-migration-scope.md](../migration/01-migration-scope.md) 做吸收判定，再改 roadmap / backlog / phase 顺序。
 
 ## 当前实现批次
 
@@ -279,4 +277,4 @@
 - 当前 revision 已完成 `Phase 1a`、`Phase 1b`、`Phase 2a`、`Phase 2b` 与 `Phase 2c` 的开发工作包，并按当前决策进入 `Phase 3`；`Phase 1a` 的 `24h / 72h` 长时证据仍作为待关闭项保留。
 - 后续阶段文档已准备完毕，但仍应遵守阶段范围，不得借 `Phase 2a` 抢跑长期 remote platform / marketplace / tenant 平台层。
 - 改善项优先级以 `operations-roadmap.md`、`current_status_and_gap_analysis.md` 和专项 review 为准。
-- 实际项目状态以 `project_progress_tracker.md` 为准，当前短期执行项以 `current_todo_list.md` 为准。
+- 实际项目状态以 `project_progress_tracker.md` 为准。

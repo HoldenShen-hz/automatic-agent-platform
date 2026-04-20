@@ -8,7 +8,7 @@
  * @see {@link docs_zh/contracts/event_bus_contract.md}
  * @see {@link docs_zh/contracts/event_registry_and_ops_threshold_contract.md}
  * @see {@link docs_zh/contracts/typed_event_bus_contract.md}
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md}
+ * @see {@link docs_zh/architecture/00-platform-architecture.md}
  * @see {@link docs_zh/governance/glossary_and_terminology.md}
  */
 

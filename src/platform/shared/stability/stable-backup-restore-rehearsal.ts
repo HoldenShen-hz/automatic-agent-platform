@@ -2,7 +2,7 @@
  * Stable backup/restore rehearsal: validates SQLite backup/restore roundtrip integrity.
  *
  * @documentation
- * - Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * - Architecture: docs_zh/architecture/00-platform-architecture.md
  * - Disaster recovery: docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md
  * - Startup & recovery drills: docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md
  * - Terminology: docs_zh/governance/glossary_and_terminology.md

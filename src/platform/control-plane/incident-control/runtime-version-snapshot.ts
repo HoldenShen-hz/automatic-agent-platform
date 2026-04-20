@@ -7,7 +7,7 @@
  *
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/architecture_governance_and_versioning_contract.md | Architecture Governance Contract}
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
- * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/automatic_agent_patform_arthitecture_design.md | Architecture and Technical Design}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
  */
 
 import { readFileSync } from "node:fs";

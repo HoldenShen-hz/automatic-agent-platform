@@ -209,13 +209,13 @@ P2: 规模化与高可用增强
 - 阶段边界、非目标、允许范围变化时 → 修改 `implementation_plan.md`
 - 开发顺序、依赖、批次切换变化时 → 修改 `development_sequence_roadmap.md`（已整合到本文档）
 - 实际状态变化后 → 更新 `project_progress_tracker.md`
-- 当前 1~2 个迭代的活跃事项 → 仅在 `current_todo_list.md` 维护
+- 当前短期活跃事项 → 统一在 `project_progress_tracker.md` 维护当前快照
 
 ---
 
 ## 7. 参考文档
 
-- 完整实施任务清单（十大任务）: `doc/research/reference-alignment/reference_cross_analysis_and_todolist.md`
-- 90 天工业级路线图: `doc/research/reference-alignment/reference_industrial_goal.md`
-- 系统架构分析: `doc_en/18_code_architecture.md`
-- 参考研究文档: `doc/reviews/`
+- 平台骨架: `docs_zh/architecture/00-platform-architecture.md`
+- 迁移边界: `docs_zh/migration/01-migration-scope.md`
+- 代码架构参考: `docs_zh/architecture/02-code-architecture-reference.md`
+- 覆盖矩阵: `docs_zh/analysis/00-architecture-coverage-matrix.md`

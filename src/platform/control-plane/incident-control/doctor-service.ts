@@ -9,7 +9,7 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md | Startup Consistency Contract}
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/debug_inspect_health_backpressure_contract.md | Health and Backpressure Contract}
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
- * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/automatic_agent_patform_arthitecture_design.md | Architecture and Technical Design}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
  */
 
 import { dirname } from "node:path";

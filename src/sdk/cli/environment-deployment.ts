@@ -23,7 +23,7 @@
  *   - build: Build deployment report for target environment
  *   - export: Export deployment configuration with evidence
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for deployment architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for deployment architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for deployment terminology
  */
 

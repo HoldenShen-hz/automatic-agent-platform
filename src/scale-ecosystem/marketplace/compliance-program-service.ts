@@ -6,7 +6,7 @@
  * organization, and namespace data to produce compliance documentation artifacts.
  *
  * @see docs_zh/contracts/billing_contract.md for billing-related compliance requirements
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for architecture context
+ * @see docs_zh/architecture/00-platform-architecture.md for architecture context
  */
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";

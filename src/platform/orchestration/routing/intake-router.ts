@@ -25,7 +25,7 @@
  * - Division trigger patterns (matched against normalized input)
  * - Request complexity threshold (120 characters)
  *
- * @see Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * @see Architecture: docs_zh/architecture/00-platform-architecture.md
  * @see Workflow Routing ADR: docs_zh/adr/004-workflow-routing.md
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md (intake_router)
  */

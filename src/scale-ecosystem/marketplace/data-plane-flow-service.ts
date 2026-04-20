@@ -14,7 +14,7 @@
  *
  * Cross-namespace movement is prohibited at tenant, organization, and workspace boundaries.
  *
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for data plane architecture
+ * @see docs_zh/architecture/00-platform-architecture.md for data plane architecture
  */
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/state-evidence/artifacts/artifact-store.js";

@@ -14,7 +14,7 @@
  * @see {@link docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md} - Startup consistency
  * @see {@link docs_zh/contracts/storage_schema_contract.md} - SQLite schema
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} - Architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
 import { withCliStorage } from "./authoritative-storage.js";

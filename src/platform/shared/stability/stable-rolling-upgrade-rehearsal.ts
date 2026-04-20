@@ -2,7 +2,7 @@
  * Stable rolling upgrade rehearsal: validates repo-version-aware dispatch and step-boundary handover.
  *
  * @documentation
- * - Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * - Architecture: docs_zh/architecture/00-platform-architecture.md
  * - Version governance: docs_zh/contracts/architecture_governance_and_versioning_contract.md
  * - Runtime execution: docs_zh/contracts/runtime_execution_contract.md
  * - Lease and fencing: docs_zh/contracts/task_lease_and_fencing_contract.md

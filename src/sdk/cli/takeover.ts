@@ -25,7 +25,7 @@
  *   - skip_step: Skip the current step in the workflow
  *   - complete_task: Complete the task with a terminal status
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for takeover architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for takeover architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for workflow terminology
  */
 

@@ -9,7 +9,7 @@
  * Environment Variables:
  *   - AA_DB_PATH: Optional custom path to the SQLite database file
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for runtime repair architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for runtime repair architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for consistency and repair terminology
  * @see {@link docs_zh/contracts/} for stability and repair-related contracts
  */

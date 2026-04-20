@@ -14,7 +14,17 @@ import { fileURLToPath } from "node:url";
 const DOC_ROOT = join(fileURLToPath(import.meta.url), "../../../../..", "docs_zh");
 
 test("documentation: docs_zh directory has required structure", async () => {
-  const requiredDirs = ["contracts", "operations", "adr", "governance", "guides"];
+  const requiredDirs = [
+    "architecture",
+    "migration",
+    "quality",
+    "analysis",
+    "contracts",
+    "operations",
+    "adr",
+    "governance",
+    "guides",
+  ];
 
   for (const dir of requiredDirs) {
     const dirPath = join(DOC_ROOT, dir);
@@ -30,12 +40,15 @@ test("documentation: docs_zh directory has required structure", async () => {
 test("documentation: docs_zh root keeps required entry documents", async () => {
   const requiredFiles = [
     "README.md",
-    "automatic_agent_patform_arthitecture_design.md",
-    "migrate_guideline.md",
-    "migration_scope.md",
-    "18_code_architecture.md",
-    "release-checklist.md",
-    "runtime-sequence.md",
+    "architecture/00-platform-architecture.md",
+    "architecture/01-code-structure.md",
+    "architecture/02-code-architecture-reference.md",
+    "architecture/04-runtime-sequence.md",
+    "migration/00-migration-guideline.md",
+    "migration/01-migration-scope.md",
+    "quality/00-full-coverage-test-manual.md",
+    "quality/01-release-checklist.md",
+    "analysis/00-architecture-coverage-matrix.md",
   ];
 
   for (const file of requiredFiles) {

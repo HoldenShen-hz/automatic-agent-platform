@@ -10,7 +10,7 @@
  *   AA_PROFILE_HOME_CREATE=1 npm run profile-home  # Create directories
  *
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Profile home terminology
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} - Architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 
 import { ensureAgentProfileHome, resolveAgentProfileHome } from "../../platform/control-plane/config-center/profile-home.js";

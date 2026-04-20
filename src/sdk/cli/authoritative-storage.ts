@@ -8,7 +8,7 @@
  * CLI tools should use these utilities instead of directly opening storage to ensure
  * consistent behavior and proper cleanup on shutdown.
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for storage architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for storage architecture
  * @see {@link docs_zh/contracts/storage_schema_contract.md} for schema definitions
  */
 

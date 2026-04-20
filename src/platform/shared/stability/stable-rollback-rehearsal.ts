@@ -2,7 +2,7 @@
  * Stable rollback rehearsal: validates runtime repair and manual takeover rollback paths.
  *
  * @documentation
- * - Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * - Architecture: docs_zh/architecture/00-platform-architecture.md
  * - Release lifecycle: docs_zh/contracts/release_rollout_and_rollback_contract.md
  * - Startup & recovery drills: docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md
  * - Terminology: docs_zh/governance/glossary_and_terminology.md

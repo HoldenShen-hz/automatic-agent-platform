@@ -6,7 +6,7 @@ This file is the English summary entry for the migration guideline.
 
 The detailed Chinese baseline remains in:
 
-- `../docs_zh/migrate_guideline.md`
+- `../docs_zh/migration/00-migration-guideline.md`
 
 ## Core migration rules
 

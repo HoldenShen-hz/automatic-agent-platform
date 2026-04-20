@@ -11,7 +11,7 @@
  * - **standard**: Normal multi-step tasks (most tasks)
  * - **full**: Complex tasks (multi-file refactors, architecture analysis, QA mode)
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md}
+ * @see {@link docs_zh/architecture/00-platform-architecture.md}
  */
 
 import { nowIso } from "../../contracts/types/ids.js";

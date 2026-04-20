@@ -1,6 +1,6 @@
 # Architecture v2.7 Coverage Matrix
 
-> 范围：对照 [automatic_agent_patform_arthitecture_design.md](../automatic_agent_patform_arthitecture_design.md) 的主章节，建立 `architecture chapter -> ADR -> contract -> src -> tests` 的可追踪矩阵。
+> 范围：对照 [../architecture/00-platform-architecture.md](../architecture/00-platform-architecture.md) 的主章节，建立 `architecture chapter -> ADR -> contract -> src -> tests` 的可追踪矩阵。
 >
 > 状态定义：
 >

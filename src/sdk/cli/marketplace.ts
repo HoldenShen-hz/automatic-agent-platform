@@ -24,7 +24,7 @@
  *   - list_publications: List package publications
  *   - list_reports: List generated reports
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for marketplace architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for marketplace architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for marketplace terminology
  */
 

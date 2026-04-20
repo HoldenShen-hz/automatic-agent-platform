@@ -10,7 +10,7 @@
  * - Effect Buffer: Collects effects during transaction, executes after commit
  * - Effect Scope: Groups related effects for coordinated execution
  *
- * @see Architecture: docs_zh/automatic_agent_patform_arthitecture_design.md
+ * @see Architecture: docs_zh/architecture/00-platform-architecture.md
  * @see Runtime Execution Contract: docs_zh/contracts/runtime_execution_contract.md
  */
 

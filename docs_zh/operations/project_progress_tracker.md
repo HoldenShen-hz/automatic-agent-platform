@@ -2,7 +2,7 @@
 
 > Last updated: 2026-04-18
 > 本文件只维护当前进度快照。
-> 详细历史推进日志已归档到 [archive/project_progress_tracker_20260414.md](./archive/project_progress_tracker_20260414.md)。
+> 不再保留历史流水账入口，只保留当前有效状态。
 
 ## 1. 总体状态
 
@@ -35,7 +35,7 @@
   - `Observe` 复用 `observability/`，未额外创建 `observe/`
   - `Assess / Plan / Feedback / Learn / Improve` 已形成独立目录与测试
   - `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline 已落地，并已补齐 unit / targeted integration 回归
-- `Phase 2 / Phase 3 / 深化篇 / 长期 rollout` 对应的仓库内实现项也已纳入完成确认，详见 [../reviews/opeli_reference_completion_review.md](../reviews/opeli_reference_completion_review.md)。
+- `Phase 2 / Phase 3 / 深化篇 / 长期 rollout` 对应的仓库内实现项也已纳入完成确认，详细证据以当前仓库的 contract / ADR / tests / artifact 为准。
 - 上述四个 M2 子系统本轮又继续向运行时主路径推进：
   - `api-server` 已从 config 层 bootstrap domain / plugin manifest / knowledge namespace
   - Knowledge Plane 已具备本地 snapshot 持久化恢复
@@ -53,7 +53,7 @@
   - Plugin SPI 已补齐 `retriever / presenter / adapter` capability-specific isolated invoke path
   - Plugin SPI 已为 builtin plugin 提供 forked + sandboxed + launcher-based containerized subprocess runtime 基线；真实 container / microVM 级编排仍不应被表述为已完成
 - phase1-4 对应的 `contract / ADR / governance / operations / active docs` 已完成同步；当前剩余工作不再包含这四个 baseline 子系统
-- 进入真实生产前，仍以 [../reviews/readiness_review.md](../reviews/readiness_review.md) 为准。
+- 进入真实生产前，以当前 `quality/` 清单、`operations/` runbook 与验收工件为准。
 - 历史里程碑、旧测试计数和完整推进流水账已移入归档，避免继续污染活跃进度视图。
 
 ## 3. 当前剩余里程碑
@@ -69,7 +69,6 @@
 
 ## 4. 相关入口
 
-- 当前待办：[current_todo_list.md](./current_todo_list.md)
 - 阶段计划：[implementation_plan.md](./implementation_plan.md)
 - 路线图：[operations-roadmap.md](./operations-roadmap.md)
-- 历史进度归档：[archive/project_progress_tracker_20260414.md](./archive/project_progress_tracker_20260414.md)
+- 发布与执行检查：[operations-checklist.md](./operations-checklist.md)

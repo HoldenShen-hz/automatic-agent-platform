@@ -15,7 +15,7 @@
  *   - AA_DEPENDENCY_MANIFEST_PATH: Optional path to dependency manifest
  *   - AA_DEPENDENCY_LOCKFILE_PATH: Optional path to dependency lockfile
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for governance architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for governance architecture
  * @see {@link docs_zh/contracts/enterprise_governance_contract.md} for governance contracts
  */
 

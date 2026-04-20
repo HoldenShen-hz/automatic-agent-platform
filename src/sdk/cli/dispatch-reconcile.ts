@@ -11,7 +11,7 @@
  * @see {@link docs_zh/contracts/task_lease_and_fencing_contract.md} - Lease reconciliation
  * @see {@link docs_zh/contracts/idempotency_and_recovery_matrix_contract.md} - Idempotency and recovery
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} - Architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadDispatchReconcileCliEnv } from "../../platform/control-plane/config-center/ops-cli-env.js";

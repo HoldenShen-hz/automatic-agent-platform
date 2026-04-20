@@ -6,7 +6,7 @@
  * It extracts the common service initialization pattern to reduce code duplication
  * across CLI entry points.
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for governance architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for governance architecture
  */
 
 import { join } from "node:path";

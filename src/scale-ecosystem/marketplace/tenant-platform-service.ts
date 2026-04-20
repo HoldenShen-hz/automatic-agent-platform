@@ -13,7 +13,7 @@
  * - DeploymentBinding: Runtime deployment of a tenant in a specific environment/region
  * - DataNamespace: Data plane namespace scoped to a specific plane (transactional, analytics, etc.)
  *
- * @see docs_zh/automatic_agent_patform_arthitecture_design.md for topology architecture
+ * @see docs_zh/architecture/00-platform-architecture.md for topology architecture
  * @see docs_zh/contracts/billing_contract.md for billing-account binding rules
  */
 

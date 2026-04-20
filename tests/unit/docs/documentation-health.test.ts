@@ -7,7 +7,7 @@ const DOC_ROOT = join(process.cwd(), "docs_zh");
 const ADR_ROOT = join(DOC_ROOT, "adr");
 const ADR_README = join(ADR_ROOT, "README.md");
 const CONTRACTS_ROOT = join(DOC_ROOT, "contracts");
-const COVERAGE_MATRIX = join(DOC_ROOT, "reviews", "architecture_v2_7_coverage_matrix.md");
+const COVERAGE_MATRIX = join(DOC_ROOT, "analysis", "00-architecture-coverage-matrix.md");
 
 function listMarkdownFiles(root: string): string[] {
   const results: string[] = [];
@@ -77,6 +77,10 @@ test("documentation root contains required structural files", () => {
   assert.ok(existsSync(join(DOC_ROOT, "README.md")));
   assert.ok(existsSync(ADR_ROOT));
   assert.ok(existsSync(ADR_README));
+  assert.ok(existsSync(join(DOC_ROOT, "architecture", "README.md")));
+  assert.ok(existsSync(join(DOC_ROOT, "migration", "README.md")));
+  assert.ok(existsSync(join(DOC_ROOT, "quality", "README.md")));
+  assert.ok(existsSync(join(DOC_ROOT, "analysis", "README.md")));
 });
 
 test("v2.7 coverage matrix and new authoritative contracts exist", () => {

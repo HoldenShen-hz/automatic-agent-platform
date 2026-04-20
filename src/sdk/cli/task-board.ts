@@ -8,7 +8,7 @@
  * Usage: npm run task-board
  *
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for multi-step orchestration architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for multi-step orchestration architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for task board and queue terminology
  * @see {@link docs_zh/operations/phases/phase-1b-orchestration.md} for orchestration details
  */

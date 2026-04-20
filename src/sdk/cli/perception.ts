@@ -36,7 +36,7 @@
  *   - sources: List registered intelligence sources
  *   - briefs: List generated briefs
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for perception architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for perception architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for perception terminology
  */
 

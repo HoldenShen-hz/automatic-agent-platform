@@ -22,7 +22,7 @@
  *   - AA_MODEL_ROUTE_GOVERNANCE_SNAPSHOT_JSON: Inline governance snapshot JSON
  *   - AA_MODEL_ROUTE_LOAD_GOVERNANCE_SNAPSHOT: Whether to load snapshot from DB
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for model routing architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for model routing architecture
  * @see {@link docs_zh/contracts/model_routing_contract.md} for routing contracts
  */
 

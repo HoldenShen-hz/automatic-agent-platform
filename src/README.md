@@ -30,6 +30,6 @@ src/
 
 - `src/core/runtime/` 仅保留兼容性 re-export，不再承载 canonical 实现。
 - 结构设计与覆盖矩阵请参考：
-  - [平台架构设计](../docs_zh/automatic_agent_patform_arthitecture_design.md)
-  - [代码结构设计](../docs_zh/code_struct_design.md)
-  - [架构覆盖矩阵](../docs_zh/reviews/architecture_v2_7_coverage_matrix.md)
+  - [平台架构设计](../docs_zh/architecture/00-platform-architecture.md)
+  - [代码结构设计](../docs_zh/architecture/01-code-structure.md)
+  - [架构覆盖矩阵](../docs_zh/analysis/00-architecture-coverage-matrix.md)

@@ -4,7 +4,7 @@ This file provides repository context for coding agents working in this project.
 
 ## Project Overview
 
-Automatic Agent Platform is a multi-layered task execution platform with a five-plane `platform/` runtime core and upper-layer business capability domains. The authoritative design source is `docs_zh/automatic_agent_patform_arthitecture_design.md`.
+Automatic Agent Platform is a multi-layered task execution platform with a five-plane `platform/` runtime core and upper-layer business capability domains. The authoritative design source is `docs_zh/architecture/00-platform-architecture.md`.
 
 ## Build & Test Commands
 

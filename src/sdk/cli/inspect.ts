@@ -18,7 +18,7 @@
  *   AA_INSPECT_KIND=execution AA_EXECUTION_ID=<id> npm run inspect
  *   AA_INSPECT_KIND=approval AA_APPROVAL_ID=<id> npm run inspect
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for authoritative runtime architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for authoritative runtime architecture
  * @see {@link docs_zh/governance/glossary_and_terminology.md} for task, execution, and approval terminology
  * @see {@link docs_zh/contracts/} for observability contracts
  */

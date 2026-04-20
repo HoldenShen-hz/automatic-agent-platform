@@ -11,7 +11,7 @@
  * @see {@link docs_zh/contracts/runtime_state_machine_contract.md} - State transitions
  * @see {@link docs_zh/contracts/task_lease_and_fencing_contract.md} - Lease and fencing
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} - Architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 import { loadWorkerWritebackCliEnv } from "../../platform/control-plane/config-center/runtime-ops-env.js";
 import { ExecutionWorkerWritebackService } from "../../platform/execution/worker-pool/execution-worker-writeback-service.js";

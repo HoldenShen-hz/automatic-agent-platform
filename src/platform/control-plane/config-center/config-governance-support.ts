@@ -20,7 +20,7 @@
  *
  * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/configuration_layers_and_defaults_contract.md}
  * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/governance/glossary_and_terminology.md}
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/automatic_agent_patform_arthitecture_design.md}
+ * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/architecture/00-platform-architecture.md}
  *
  * @packageDocumentation
  */

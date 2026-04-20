@@ -19,7 +19,7 @@
  *
  * Usage: npm run api-server
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for system architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for system architecture
  * @see {@link docs_zh/contracts/observability_contract.md} for health and metrics
  */
 

@@ -16,7 +16,7 @@
  *   - select: Choose the best coordinator based on load and affinity
  *   - summary: List all coordinators with their status (default)
  *
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} for HA coordinator architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} for HA coordinator architecture
  * @see {@link docs_zh/contracts/ha_coordinator_and_leader_election_contract.md} for coordinator contracts
  */
 

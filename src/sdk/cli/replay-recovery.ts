@@ -15,7 +15,7 @@
  * @see {@link docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md} - Recovery drills
  * @see {@link docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md} - Disaster recovery
  * @see {@link docs_zh/governance/glossary_and_terminology.md} - Glossary
- * @see {@link docs_zh/automatic_agent_patform_arthitecture_design.md} - Architecture
+ * @see {@link docs_zh/architecture/00-platform-architecture.md} - Architecture
  */
 import { existsSync } from "node:fs";
 
