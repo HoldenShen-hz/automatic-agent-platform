@@ -78,11 +78,16 @@ const HIGH_RISK_PERMISSIONS = [
   "network:egress:all",
 ];
 
+const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/i;
+const INLINE_SOURCE_PREFIX = "inline:";
+
 export class PackSecurityService {
   public async runSecurityScan(input: SecurityScanInput): Promise<SecurityScanResult> {
     const scanId = newId("scan");
     const startTime = Date.now();
     const issues: SecurityIssue[] = [];
+
+    issues.push(...this.validateManifestChecksum(input));
 
     const sandboxResult = await this.runSandboxTest(input);
     issues.push(...sandboxResult.issues);
@@ -162,6 +167,36 @@ export class PackSecurityService {
     }
 
     return { issues };
+  }
+
+  private validateManifestChecksum(input: SecurityScanInput): SecurityIssue[] {
+    if (!SHA256_HEX_PATTERN.test(input.manifestChecksum)) {
+      return [{
+        severity: "critical",
+        category: "static_analysis",
+        code: "PKG001",
+        message: "Manifest checksum must be a 64 character SHA-256 hex digest",
+        location: "manifest.checksum",
+      }];
+    }
+
+    if (!input.sourceUri.startsWith(INLINE_SOURCE_PREFIX)) {
+      return [];
+    }
+
+    const inlineSource = input.sourceUri.slice(INLINE_SOURCE_PREFIX.length);
+    const fingerprint = createHash("sha256").update(inlineSource, "utf8").digest("hex");
+    if (fingerprint === input.manifestChecksum.toLowerCase()) {
+      return [];
+    }
+
+    return [{
+      severity: "critical",
+      category: "static_analysis",
+      code: "PKG002",
+      message: "Manifest checksum does not match inline source payload",
+      location: "manifest.checksum",
+    }];
   }
 
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {

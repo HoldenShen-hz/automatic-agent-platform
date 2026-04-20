@@ -94,6 +94,32 @@ export interface ScimPatchOperation {
   readonly value?: unknown;
 }
 
+export interface ScimBulkOperation {
+  readonly method: "POST" | "PUT" | "PATCH" | "DELETE";
+  readonly path: string;
+  readonly bulkId?: string;
+  readonly data?: unknown;
+}
+
+export interface ScimBulkRequest {
+  readonly schemas: readonly ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"];
+  readonly failOnErrors?: number;
+  readonly Operations: readonly ScimBulkOperation[];
+}
+
+export interface ScimBulkOperationResponse {
+  readonly method: ScimBulkOperation["method"];
+  readonly bulkId?: string;
+  readonly location: string;
+  readonly status: string;
+  readonly response?: unknown;
+}
+
+export interface ScimBulkResponse {
+  readonly schemas: readonly ["urn:ietf:params:scim:api:messages:2.0:BulkResponse"];
+  readonly Operations: readonly ScimBulkOperationResponse[];
+}
+
 export interface ScimProvisionEvent {
   readonly eventId: string;
   readonly action: "user_created" | "user_updated" | "user_disabled" | "user_deleted" | "group_updated";
@@ -540,7 +566,213 @@ export class ScimProvisionService {
     return this.groups.size;
   }
 
+  /**
+   * Processes a SCIM Bulk request.
+   *
+   * Supports POST/PUT/PATCH/DELETE for `/Users` and `/Groups` resources and resolves
+   * `bulkId` references within the same request.
+   */
+  public processBulkRequest(request: ScimBulkRequest, tenantId: string): ScimBulkResponse {
+    const bulkIdMap = new Map<string, string>();
+    const responses: ScimBulkOperationResponse[] = [];
+    const failOnErrors = request.failOnErrors ?? Number.POSITIVE_INFINITY;
+    let errorCount = 0;
+
+    for (const operation of request.Operations) {
+      if (errorCount >= failOnErrors) {
+        responses.push({
+          method: operation.method,
+          ...(operation.bulkId ? { bulkId: operation.bulkId } : {}),
+          location: this.resolveBulkLocation(operation.path, bulkIdMap),
+          status: "424",
+          response: { detail: "Skipped due to failOnErrors threshold" },
+        });
+        continue;
+      }
+
+      try {
+        const result = this.executeBulkOperation(operation, tenantId, bulkIdMap);
+        responses.push(result);
+        if (operation.bulkId && result.response && typeof result.response === "object" && "id" in (result.response as Record<string, unknown>)) {
+          bulkIdMap.set(operation.bulkId, String((result.response as Record<string, unknown>).id));
+        }
+      } catch (error) {
+        errorCount += 1;
+        responses.push({
+          method: operation.method,
+          ...(operation.bulkId ? { bulkId: operation.bulkId } : {}),
+          location: this.resolveBulkLocation(operation.path, bulkIdMap),
+          status: "400",
+          response: {
+            detail: error instanceof Error ? error.message : "Bulk operation failed",
+          },
+        });
+      }
+    }
+
+    return {
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkResponse"],
+      Operations: responses,
+    };
+  }
+
   // ─── Private Methods ─────────────────────────────────────────────────────
+
+  private executeBulkOperation(
+    operation: ScimBulkOperation,
+    tenantId: string,
+    bulkIdMap: Map<string, string>,
+  ): ScimBulkOperationResponse {
+    const resolvedPath = this.resolveBulkLocation(operation.path, bulkIdMap);
+    const resolvedData = this.resolveBulkReferences(operation.data, bulkIdMap);
+    const { resourceType, resourceId } = this.parseBulkPath(resolvedPath);
+
+    if (operation.method === "POST" && resourceId === null) {
+      if (resourceType === "Users") {
+        const user = this.createUser(resolvedData as Omit<ScimUser, "id" | "meta">, tenantId);
+        return {
+          method: operation.method,
+          ...(operation.bulkId ? { bulkId: operation.bulkId } : {}),
+          location: `/Users/${user.id}`,
+          status: "201",
+          response: user,
+        };
+      }
+      const group = this.createGroup(resolvedData as { displayName: string; members?: readonly { value: string; display: string }[] }, tenantId);
+      return {
+        method: operation.method,
+        ...(operation.bulkId ? { bulkId: operation.bulkId } : {}),
+        location: `/Groups/${group.id}`,
+        status: "201",
+        response: group,
+      };
+    }
+
+    if (resourceId == null) {
+      throw new Error(`bulk.invalid_path:${resolvedPath}`);
+    }
+
+    if (resourceType === "Users") {
+      return this.executeUserBulkOperation({ ...operation, data: resolvedData }, resourceId, tenantId);
+    }
+    return this.executeGroupBulkOperation({ ...operation, data: resolvedData }, resourceId, tenantId);
+  }
+
+  private executeUserBulkOperation(
+    operation: ScimBulkOperation,
+    userId: string,
+    tenantId: string,
+  ): ScimBulkOperationResponse {
+    if (operation.method === "PUT") {
+      const updated = this.updateUser(userId, operation.data as Partial<Omit<ScimUser, "id" | "meta">>, tenantId);
+      if (!updated) throw new Error(`bulk.user_not_found:${userId}`);
+      return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Users/${userId}`, status: "200", response: updated };
+    }
+
+    if (operation.method === "PATCH") {
+      const updated = this.patchUser(userId, operation.data as readonly ScimPatchOperation[], tenantId);
+      if (!updated) throw new Error(`bulk.user_not_found:${userId}`);
+      return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Users/${userId}`, status: "200", response: updated };
+    }
+
+    if (operation.method === "DELETE") {
+      const deleted = this.deleteUser(userId, tenantId);
+      if (!deleted) throw new Error(`bulk.user_not_found:${userId}`);
+      return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Users/${userId}`, status: "204" };
+    }
+
+    throw new Error(`bulk.unsupported_method:${operation.method}`);
+  }
+
+  private executeGroupBulkOperation(
+    operation: ScimBulkOperation,
+    groupId: string,
+    tenantId: string,
+  ): ScimBulkOperationResponse {
+    if (operation.method === "PUT") {
+      const updated = this.updateGroup(groupId, operation.data as Partial<Pick<ScimGroup, "displayName" | "members">>, tenantId);
+      if (!updated) throw new Error(`bulk.group_not_found:${groupId}`);
+      return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Groups/${groupId}`, status: "200", response: updated };
+    }
+
+    if (operation.method === "PATCH") {
+      const updated = this.patchGroup(groupId, operation.data as readonly ScimPatchOperation[], tenantId);
+      if (!updated) throw new Error(`bulk.group_not_found:${groupId}`);
+      return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Groups/${groupId}`, status: "200", response: updated };
+    }
+
+    if (operation.method === "DELETE") {
+      const deleted = this.deleteGroup(groupId, tenantId);
+      if (!deleted) throw new Error(`bulk.group_not_found:${groupId}`);
+      return { method: operation.method, ...(operation.bulkId ? { bulkId: operation.bulkId } : {}), location: `/Groups/${groupId}`, status: "204" };
+    }
+
+    throw new Error(`bulk.unsupported_method:${operation.method}`);
+  }
+
+  private patchUser(userId: string, operations: readonly ScimPatchOperation[], tenantId: string): ScimUser | null {
+    const user = this.users.get(userId);
+    if (!user) return null;
+
+    let next: Partial<Omit<ScimUser, "id" | "meta">> = {};
+    for (const operation of operations) {
+      switch (operation.op) {
+        case "replace":
+        case "add":
+          if (operation.path === "active" && typeof operation.value === "boolean") {
+            next = { ...next, active: operation.value };
+          } else if (operation.path === "displayName" && typeof operation.value === "string") {
+            next = { ...next, displayName: operation.value };
+          } else if (operation.path === "emails" && Array.isArray(operation.value)) {
+            next = { ...next, emails: operation.value as ScimUser["emails"] };
+          } else if (operation.path === "groups" && Array.isArray(operation.value)) {
+            next = { ...next, groups: operation.value as ScimUser["groups"] };
+          }
+          break;
+        case "remove":
+          if (operation.path === "groups") {
+            next = { ...next, groups: [] };
+          }
+          break;
+      }
+    }
+
+    return this.updateUser(userId, next, tenantId);
+  }
+
+  private parseBulkPath(path: string): { resourceType: "Users" | "Groups"; resourceId: string | null } {
+    const sanitized = path.replace(/^\/scim\/v2/, "");
+    const match = sanitized.match(/^\/(Users|Groups)(?:\/([^/]+))?$/);
+    if (!match) {
+      throw new Error(`bulk.invalid_path:${path}`);
+    }
+    return {
+      resourceType: match[1] as "Users" | "Groups",
+      resourceId: match[2] ?? null,
+    };
+  }
+
+  private resolveBulkLocation(path: string, bulkIdMap: Map<string, string>): string {
+    return path.replace(/bulkId:([A-Za-z0-9_.-]+)/g, (_match, bulkId) => bulkIdMap.get(String(bulkId)) ?? `bulkId:${String(bulkId)}`);
+  }
+
+  private resolveBulkReferences(value: unknown, bulkIdMap: Map<string, string>): unknown {
+    if (typeof value === "string") {
+      return this.resolveBulkLocation(value, bulkIdMap);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.resolveBulkReferences(entry, bulkIdMap));
+    }
+
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => [key, this.resolveBulkReferences(entry, bulkIdMap)]),
+      );
+    }
+
+    return value;
+  }
 
   private recordEvent(action: ScimProvisionEvent["action"], subjectId: string, tenantId: string): void {
     this.events.push({
@@ -557,7 +789,8 @@ export class ScimProvisionService {
     const match = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
     if (!match) return items;
 
-    const [, attr, op, value] = match;
+    const [, , op, value] = match;
+    const filterValue = value ?? "";
 
     return items.filter((item) => {
       let itemValue: string;
@@ -572,13 +805,13 @@ export class ScimProvisionService {
 
       switch (op) {
         case "eq":
-          return itemValue.toLowerCase() === value.toLowerCase();
+          return itemValue.toLowerCase() === filterValue.toLowerCase();
         case "ne":
-          return itemValue.toLowerCase() !== value.toLowerCase();
+          return itemValue.toLowerCase() !== filterValue.toLowerCase();
         case "co":
-          return itemValue.toLowerCase().includes(value.toLowerCase());
+          return itemValue.toLowerCase().includes(filterValue.toLowerCase());
         case "sw":
-          return itemValue.toLowerCase().startsWith(value.toLowerCase());
+          return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
         default:
           return true;
       }

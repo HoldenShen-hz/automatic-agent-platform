@@ -19,13 +19,13 @@
 
 ## 1. 范围
 
-本 contract 定义进入 Phase 1a-4 实现时的顶层目录、源码分层、配置分层和事业部目录约定。
+本 contract 定义当前仓库的顶层目录、源码分层、配置分层和事业部目录约定。
 
 ## 2. 顶层目录
 
-Phase 1a 允许并推荐存在以下顶层目录：
+当前 authoritative 顶层目录：
 
-- `doc/`: 文档体系与规范
+- `docs_zh/` / `docs_en/`: 文档体系与规范
 - `src/`: 平台源码
 - `config/`: 运行时与平台级配置
 - `divisions/`: 事业部定义与角色素材
@@ -41,7 +41,7 @@ Phase 1a 允许并推荐存在以下顶层目录：
 
 ## 3. `src/` authoritative 结构
 
-当前实现结构（Phase 1a-4）：
+当前实现结构：
 
 ```text
 src/
@@ -53,16 +53,16 @@ src/
     orchestration/               # OAPEFLIR, 路由,  planner, HITL
     state-evidence/              # Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
     interface/                   # API, Channel Gateway, Ingress, Scheduler
-    shared/                      # 可观测性, 稳定性, 工具元数据
+    shared/                      # 可观测性, 稳定性, 缓存, 通用基础设施
     model-gateway/               # 模型网关, 成本追踪
-    prompt-engine/                # Prompt引擎
-    compliance/                   # 合规相关（加密擦除等）
-    agent-delegation/             # 代理委托
-    cost-management/              # 成本管理
-    prompt-registry/              # Prompt注册表
+    prompt-engine/               # Prompt 渲染、版本、评测、发布
+    compliance/                  # 合规案例编排与数据治理
+    agent-delegation/            # 代理委托
+    cost-management/             # 成本管理
+    prompt-registry/             # Prompt 注册表
   interaction/                   # NL入口, 目标分解, 主动Agent, 仪表盘, UX
   org-governance/                # 组织层级, SSO/SCIM, 合规
-  ops-maturity/                 # 可解释性, 漂移检测, 边缘计算, 成本, 混沌工程
+  ops-maturity/                  # 可解释性, 漂移检测, 边缘计算, 成本, 混沌工程
   scale-ecosystem/               # 多区域, 公平调度, SLA, 连接器, 市场
   sdk/                           # CLI, Pack SDK, Plugin SDK, Client SDK
   domains/                       # 领域描述符, 接入, 注册表
@@ -79,41 +79,56 @@ src/
 - `src/platform/` 内部按五平面架构组织：control-plane, execution, orchestration, state-evidence, interface
 - 上层业务能力在对应上层目录（interaction, org-governance, ops-maturity等）
 
-Phase 1a 预留目录（当前不存在但为后续阶段预留）：
-
-```text
-src/
-  core/
-    memory/
-    supervisor/
-  perception/                    # Observe/Assess 语义（当前收敛在 ops-maturity/）
-```
-
 说明：
 
-- `memory/`、`supervisor/` 可以为后续阶段预留目录
-- 当前 Observe 语义优先收敛在 `src/platform/shared/observability/`、`src/ops-maturity/`
-- 若未来需要引入新顶层目录，必须先更新本 contract，再做迁移
+- `src/platform/` 是权威平台核心目录。
+- `src/core/` 仅保留兼容与迁移收口，不新增 canonical 平台能力。
+- `src/domains/`、`src/interaction/`、`src/org-governance/`、`src/scale-ecosystem/`、`src/ops-maturity/` 为架构 v2.7 上层能力域。
+- 若未来需要引入新的顶层域目录，必须先更新本 contract，再做迁移。
 
 ## 4. `config/` authoritative 结构
 
 ```text
 config/
   bootstrap/
+  conversation/
+  cost-alert/
+  domains/
+  dr/
+  environments/
+  exception-recovery/
+  gateways/
+  knowledge/
+  nl-gateway/
+  plugins/
+  product/
+  providers/
+  quality/
+  risk/
   runtime/
   security/
-  providers/
-  gateways/
   workflows/
 ```
 
 含义：
 
 - `bootstrap/`: 平台启动时必须加载的基础配置。
+- `conversation/`: 对话模板、线程与 UX 相关配置。
+- `cost-alert/`: 成本阈值与告警策略。
+- `domains/`: 领域描述符、接入与默认治理配置。
+- `dr/`: 跨 region / 故障恢复参数。
+- `environments/`: 环境级开关与 promote 门槛。
+- `exception-recovery/`: panic / resume / replay / repair 相关策略。
 - `runtime/`: 并发、超时、重试、队列等运行参数。
 - `security/`: 权限、审批阈值、危险操作策略。
 - `providers/`: LLM provider、模型路由、降级策略。
 - `gateways/`: CLI/Web/Telegram 等渠道配置。
+- `knowledge/`: knowledge / semantic backend / retention 配置。
+- `nl-gateway/`: 自然语言入口、歧义澄清与分解门禁。
+- `plugins/`: 插件、pack、连接器默认配置。
+- `product/`: 计费、市场、租户产品面配置。
+- `quality/`: eval、quality gate 与回归基线。
+- `risk/`: 风控评估与 deny/approve 配置。
 - `workflows/`: HQ 级共享 workflow 模板。
 
 补充说明：
@@ -143,7 +158,7 @@ divisions/
 
 ## 6. `data/` 结构约束
 
-Phase 1a 本地开发可采用：
+本地开发环境可采用：
 
 ```text
 data/
@@ -159,12 +174,12 @@ data/
 
 ## 7. 所有权与变更约束
 
-- 目录结构变更应先改本 contract，再改 `01` ~ `07`、`operations/` 与对应实现。
+- 目录结构变更应先改本 contract，再改 `docs_zh/architecture/00-04`、`operations/` 与对应实现。
 - 若需要引入 `apps/` 多进程结构，应新增 ADR，并更新本 contract。
-- Phase 1a 不引入过早的微服务拆分。
+- 当前阶段不引入过早的微服务拆分。
 
 ## 8. 补充规则
 
-- `server/api` 目录按资源命名，如 `tasks/`、`approvals/`、`health/`，避免按 HTTP 动词拆分。
+- `src/platform/interface/api/http-server/` 下的 route 模块应按资源命名，如 `task-routes.ts`、`approval-routes.ts`、`health-routes.ts`，避免按 HTTP 动词拆分。
 - `tests/` 最少分为 `unit/`、`integration/`、`e2e/` 三层，fixture 与 replay 资源单独放在共享目录。
 - 生产环境不依赖本地 `data/`，应替换为数据库、对象存储和集中日志/审计后端。

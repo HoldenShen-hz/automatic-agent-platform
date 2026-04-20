@@ -139,6 +139,11 @@ export interface GraphQLSchemaWithResolvers {
   readonly resolvers: Readonly<Record<string, GraphQLResolver>>;
 }
 
+interface ParsedGraphQLOperation {
+  readonly fieldName: string;
+  readonly arguments: Record<string, unknown>;
+}
+
 /**
  * GraphQL adapter for cross-platform communication
  */
@@ -301,6 +306,20 @@ export class GraphQLAdapterService {
       errors.push("Query must contain query, mutation, or subscription operation");
     }
 
+    if (errors.length === 0) {
+      try {
+        const operationType = this.detectOperationType(query);
+        const fieldName = this.parseOperation(query).fieldName;
+        const rootType = this.resolveRootType(schema.schema, operationType);
+        const field = this.findField(schema.schema, rootType, fieldName);
+        if (!field) {
+          errors.push(`Field '${fieldName}' not found on ${rootType}`);
+        }
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : "Failed to parse GraphQL query");
+      }
+    }
+
     return { valid: errors.length === 0, errors };
   }
 
@@ -343,27 +362,126 @@ export class GraphQLAdapterService {
     request: GraphQLRequest,
     context?: Partial<GraphQLContext>,
   ): Promise<T> {
-    // Simplified execution - real implementation would use graphql-js
-    // This returns a mock response structure
     const ctx: GraphQLContext = {
       requestId: `req_${Date.now()}`,
       headers: {},
       ...context,
     };
+    const operationType = this.detectOperationType(request.query);
+    const parsed = this.parseOperation(request.query, request.variables);
+    const rootType = this.resolveRootType(schema.schema, operationType);
+    const field = this.findField(schema.schema, rootType, parsed.fieldName);
 
-    // In a real implementation, we would:
-    // 1. Parse the query with graphql-js
-    // 2. Validate against the schema
-    // 3. Execute the appropriate resolver
-    // 4. Return the result
+    if (!field) {
+      throw new Error(`Field '${parsed.fieldName}' not found on ${rootType}`);
+    }
+
+    for (const arg of field.args ?? []) {
+      if (arg.required && parsed.arguments[arg.name] === undefined) {
+        throw new Error(`Missing required argument '${arg.name}' for field '${field.name}'`);
+      }
+    }
+
+    const resolverKeyCandidates = [
+      `${rootType}.${field.name}`,
+      `${operationType}.${field.name}`,
+      field.name,
+    ];
+    const resolver = resolverKeyCandidates
+      .map((key) => schema.resolvers[key])
+      .find((candidate): candidate is GraphQLResolver => candidate !== undefined);
+
+    const resolvedData = resolver
+      ? await resolver(parsed.arguments, ctx)
+      : {
+        _meta: {
+          operationName: request.operationName ?? "anonymous",
+          schema: rootType,
+          field: field.name,
+          context: ctx,
+        },
+      };
 
     return {
-      _meta: {
-        operationName: request.operationName ?? "anonymous",
-        schema: schema.schema.queryType,
-        context: ctx,
-      },
-    } as unknown as T;
+      [field.name]: resolvedData,
+    } as T;
+  }
+
+  private resolveRootType(schema: GraphQLSchemaDefinition, operationType: GraphQLOperationType): string {
+    if (operationType === "mutation") {
+      if (!schema.mutationType) {
+        throw new Error("Mutation type is not configured");
+      }
+      return schema.mutationType;
+    }
+    if (operationType === "subscription") {
+      if (!schema.subscriptionType) {
+        throw new Error("Subscription type is not configured");
+      }
+      return schema.subscriptionType;
+    }
+    return schema.queryType;
+  }
+
+  private findField(schema: GraphQLSchemaDefinition, typeName: string, fieldName: string): GraphQLFieldDefinition | null {
+    const type = schema.types.find((item) => item.name === typeName);
+    return type?.fields.find((field) => field.name === fieldName) ?? null;
+  }
+
+  private parseOperation(query: string, variables?: Record<string, unknown>): ParsedGraphQLOperation {
+    const bodyStart = query.indexOf("{");
+    const bodyEnd = query.lastIndexOf("}");
+    if (bodyStart < 0 || bodyEnd <= bodyStart) {
+      throw new Error("Query must include a selection set");
+    }
+
+    const body = query.slice(bodyStart + 1, bodyEnd).trim();
+    const match = body.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\(([^)]*)\))?/);
+    if (!match) {
+      throw new Error("Unable to determine root field from query");
+    }
+
+    const [, fieldName, argList] = match;
+    return {
+      fieldName: fieldName ?? "",
+      arguments: this.parseArguments(argList ?? "", variables),
+    };
+  }
+
+  private parseArguments(argList: string, variables?: Record<string, unknown>): Record<string, unknown> {
+    const args: Record<string, unknown> = {};
+    const trimmed = argList.trim();
+    if (trimmed.length === 0) {
+      return args;
+    }
+
+    for (const entry of trimmed.split(",").map((item) => item.trim()).filter(Boolean)) {
+      const separatorIndex = entry.indexOf(":");
+      if (separatorIndex < 0) {
+        continue;
+      }
+      const name = entry.slice(0, separatorIndex).trim();
+      const rawValue = entry.slice(separatorIndex + 1).trim();
+      args[name] = this.parseArgumentValue(rawValue, variables);
+    }
+
+    return args;
+  }
+
+  private parseArgumentValue(rawValue: string, variables?: Record<string, unknown>): unknown {
+    if (rawValue.startsWith("$")) {
+      return variables?.[rawValue.slice(1)];
+    }
+    if ((rawValue.startsWith("\"") && rawValue.endsWith("\"")) || (rawValue.startsWith("'") && rawValue.endsWith("'"))) {
+      return rawValue.slice(1, -1);
+    }
+    if (rawValue === "true") return true;
+    if (rawValue === "false") return false;
+    if (rawValue === "null") return null;
+    if (/^-?\d+(?:\.\d+)?$/.test(rawValue)) {
+      return Number(rawValue);
+    }
+    return rawValue;
   }
 }
 

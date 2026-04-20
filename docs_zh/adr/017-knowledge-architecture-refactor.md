@@ -46,3 +46,19 @@
 - GAP-V2-02（hash embedding → 真实 embedding）是后续 Knowledge 质量的核心工作。
 - GAP-V2-11（三级查询）已实现，QueryLevel 可通过 `KnowledgeQueryService` 使用。
 - AST Structural 索引（GAP-OAPEFLIR-06）待实现，完成后 Deep 查询可使用结构化代码索引。
+
+## 备选方案
+
+1. **继续使用 hash 伪向量**：成本低，但语义相似度计算退化，Knowledge 质量无法提升。
+2. **使用本地 embedding 模型**（如 TF-IDF / BM25）：无需外部依赖，但效果不如 LLM embedding。
+3. **采用本决策**：升级到 LLM provider embedding，为 semantic search 提供真实向量语义。
+
+## 交叉引用
+
+- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
+- [ADR-020 Memory 六层平面](./020-memory-six-plane-model.md)
+
+## 来源章节
+
+- `§10 Knowledge Plane`
+- `§29 Memory and Knowledge`

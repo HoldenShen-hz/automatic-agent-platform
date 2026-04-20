@@ -8,6 +8,7 @@ import {
   roundCurrency,
   monthWindow,
   buildBillingMarkdown,
+  PackSecurityService,
   type CostEstimate,
   type CreateBillingAccountInput,
   type EvaluateEntitlementInput,
@@ -137,4 +138,10 @@ test("CostEstimate type is exported from product barrel", () => {
     basedOn: "division_avg",
   };
   assert.equal(estimate.basedOn, "division_avg");
+});
+
+test("PackSecurityService is exported from product barrel", () => {
+  const service = new PackSecurityService();
+
+  assert.ok(service instanceof PackSecurityService);
 });

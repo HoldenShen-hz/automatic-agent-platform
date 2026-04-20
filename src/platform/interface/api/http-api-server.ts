@@ -6,6 +6,8 @@ import { GatewayTargetDirectoryService } from "../channel-gateway/gateway-target
 import { ChannelGatewayService } from "../channel-gateway/channel-gateway-service.js";
 import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-gateway-delivery-service.js";
 import type { ApprovalService } from "../../control-plane/approval-center/approval-service.js";
+import { ConfigRolloutService } from "../../control-plane/config-center/config-rollout-service.js";
+import { TenantBoundaryRegistryService } from "../../control-plane/tenant/index.js";
 import { ApiAuthService } from "./api-auth-service.js";
 import type { DivisionRegistry } from "../../../domains/governance/division-loader.js";
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
@@ -25,6 +27,11 @@ import { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
+import { IncidentCaseService } from "../../state-evidence/incident/index.js";
+import { PackCatalogService } from "./pack-catalog-service.js";
+import { CostReportService } from "./cost-report-service.js";
+import { AdminConfigService } from "./admin-config-service.js";
+import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
 import { readRequestId } from "./http-server/utils.js";
 import {
   MAX_BODY_BYTES,
@@ -48,6 +55,10 @@ import {
   createAdminRoutes,
   createConsoleRoutes,
   createPlaneRoutes,
+  createIncidentRoutes,
+  createPackRoutes,
+  createCostRoutes,
+  createPromptRoutes,
 } from "./http-server/index.js";
 import {
   buildPreflightHeaders,
@@ -73,6 +84,13 @@ export interface HttpApiServerOptions {
   coordinatorLoadBalancingService?: CoordinatorLoadBalancingService | null;
   prometheusMetricsExporter?: PrometheusMetricsExporter | null;
   billingService?: BillingService | null;
+  incidentService?: IncidentCaseService | null;
+  packCatalogService?: PackCatalogService | null;
+  costReportService?: CostReportService | null;
+  configRolloutService?: ConfigRolloutService | null;
+  tenantRegistryService?: TenantBoundaryRegistryService | null;
+  adminConfigService?: AdminConfigService | null;
+  promptRegistryService?: HierarchicalPromptRegistryService | null;
   knowledgePlaneService?: KnowledgePlaneService | null;
   artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
@@ -118,10 +136,24 @@ export class HttpApiServer {
   private readonly corsConfig: CorsConfig;
   private webSocketBridge: WebSocketBridge | null = null;
   private readonly rateLimiter: DistributedRateLimiter | null;
+  private readonly incidentService: IncidentCaseService;
+  private readonly packCatalogService: PackCatalogService;
+  private readonly costReportService: CostReportService;
+  private readonly configRolloutService: ConfigRolloutService;
+  private readonly tenantRegistryService: TenantBoundaryRegistryService;
+  private readonly adminConfigService: AdminConfigService;
+  private readonly promptRegistryService: HierarchicalPromptRegistryService;
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
     this.rateLimiter = options.rateLimiter ?? null;
+    this.incidentService = options.incidentService ?? new IncidentCaseService();
+    this.packCatalogService = options.packCatalogService ?? new PackCatalogService();
+    this.costReportService = options.costReportService ?? new CostReportService();
+    this.configRolloutService = options.configRolloutService ?? new ConfigRolloutService();
+    this.tenantRegistryService = options.tenantRegistryService ?? new TenantBoundaryRegistryService();
+    this.adminConfigService = options.adminConfigService ?? new AdminConfigService();
+    this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
     const corsConfigInput: Partial<CorsConfig> = {
       allowedOrigins: options.cors?.allowedOrigins ?? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"]),
     };
@@ -464,6 +496,10 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         missionControlService: this.options.missionControlService,
         coordinatorLoadBalancingService: this.options.coordinatorLoadBalancingService ?? null,
+        configRolloutService: this.configRolloutService,
+        tenantRegistryService: this.tenantRegistryService,
+        costReportService: this.costReportService,
+        adminConfigService: this.adminConfigService,
       }),
       ...createConsoleRoutes({
         authService: this.options.authService ?? null,
@@ -476,6 +512,22 @@ export class HttpApiServer {
         artifactPlaneService: this.options.artifactPlaneService ?? null,
         domainRegistryService: this.options.domainRegistryService ?? null,
         pluginRegistry: this.options.pluginRegistry ?? null,
+      }),
+      ...createIncidentRoutes({
+        authService: this.options.authService ?? null,
+        incidentService: this.incidentService,
+      }),
+      ...createPackRoutes({
+        authService: this.options.authService ?? null,
+        packCatalogService: this.packCatalogService,
+      }),
+      ...createCostRoutes({
+        authService: this.options.authService ?? null,
+        costReportService: this.costReportService,
+      }),
+      ...createPromptRoutes({
+        authService: this.options.authService ?? null,
+        promptRegistryService: this.promptRegistryService,
       }),
     ];
   }

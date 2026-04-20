@@ -140,6 +140,8 @@ test("AgentPerformanceProfiler tracks multiple versions for same agent", () => {
   const profiler = new AgentPerformanceProfiler();
   profiler.recordExecution(makeRecord({ versionId: "v1.0.0", status: "success" }));
   profiler.recordExecution(makeRecord({ versionId: "v2.0.0", status: "failed" }));
+  profiler.computeProfile("agent_ops_1", "v1.0.0");
+  profiler.computeProfile("agent_ops_1", "v2.0.0");
   const profileV1 = profiler.getProfile("agent_ops_1", "v1.0.0");
   const profileV2 = profiler.getProfile("agent_ops_1", "v2.0.0");
   assert.ok(profileV1 !== null);

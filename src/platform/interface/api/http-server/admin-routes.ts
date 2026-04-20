@@ -22,6 +22,10 @@ import { buildJsonResponse, requirePrincipal, assertGlobalTenantScopeSupported, 
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import type { CoordinatorLoadBalancingService } from "../../../execution/ha/coordinator-load-balancing-service.js";
+import type { ConfigRolloutService } from "../../../control-plane/config-center/config-rollout-service.js";
+import type { TenantBoundaryRegistryService } from "../../../control-plane/tenant/index.js";
+import type { CostReportService } from "../cost-report-service.js";
+import type { AdminConfigService } from "../admin-config-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import { z } from "zod";
 
@@ -59,6 +63,10 @@ export interface AdminRouteDeps {
   authService: ApiAuthService | null;
   missionControlService: MissionControlService;
   coordinatorLoadBalancingService: CoordinatorLoadBalancingService | null;
+  configRolloutService?: ConfigRolloutService | null;
+  tenantRegistryService?: TenantBoundaryRegistryService | null;
+  costReportService?: CostReportService | null;
+  adminConfigService?: AdminConfigService | null;
 }
 
 export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
@@ -153,15 +161,25 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin config update");
-        const payload = readValidatedJsonBody(ctx.request.body, adminConfigUpdateSchema);
+        const payload = readValidatedJsonBody(ctx.request.body, adminConfigUpdateSchema.parse);
 
-        // In production, this would update a config store
-        // For now, return success response
-        return buildJsonResponse(ctx.requestId, 200, {
+        const tenantId = resolveTenantScope(principal, payload.tenantId);
+        const record = deps.adminConfigService?.applyUpdate({
+          key: payload.key,
+          value: payload.value,
+          ...(tenantId !== undefined ? { tenantId } : {}),
+          updatedBy: principal.actorId,
+        }) ?? {
           success: true,
           key: payload.key,
+          value: payload.value,
+          tenantId: tenantId ?? null,
           updatedAt: new Date().toISOString(),
-          updatedBy: principal.subjectId,
+          updatedBy: principal.actorId,
+        };
+        return buildJsonResponse(ctx.requestId, 200, {
+          success: true,
+          record,
         });
       },
     },
@@ -170,14 +188,11 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/admin/rollouts",
       handler: (ctx) => {
-        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const tenantId = resolveTenantScope(principal);
-
-        void tenantId;
-        // Return empty rollouts - in production would query rollout service
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const rollouts = deps.configRolloutService?.getActiveRollouts() ?? [];
         return buildJsonResponse(ctx.requestId, 200, {
-          rollouts: [],
-          total: 0,
+          rollouts,
+          total: rollouts.length,
         });
       },
     },
@@ -189,13 +204,9 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin tenants list");
         const limit = readLimit(ctx.request, 50);
-
-        // Return stability panel data which includes tenant-scoped info
-        const panel = deps.missionControlService.getStabilityPanel(limit);
         return buildJsonResponse(ctx.requestId, 200, {
-          // In production would return actual tenant list
-          tenants: [],
-          total: 0,
+          tenants: deps.tenantRegistryService?.listTenants(limit) ?? [],
+          total: deps.tenantRegistryService?.listTenants(Number.MAX_SAFE_INTEGER).length ?? 0,
         });
       },
     },
@@ -205,13 +216,11 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       pathname: "/v1/admin/budgets",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
-        const tenantId = resolveTenantScope(principal);
-
-        void tenantId;
-        // Return empty budgets - in production would query billing service
+        const tenantId = resolveTenantScope(principal, undefined);
+        const budgets = deps.costReportService?.listBudgetSummaries(50, tenantId) ?? [];
         return buildJsonResponse(ctx.requestId, 200, {
-          budgets: [],
-          total: 0,
+          budgets,
+          total: budgets.length,
         });
       },
     },

@@ -183,6 +183,12 @@ export class TenantBoundaryRegistryService {
     return [...this.tenants.values()].filter((tenant) => organizationIds.has(tenant.organizationId));
   }
 
+  public listTenants(limit = 50): TenantRecord[] {
+    return [...this.tenants.values()]
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, Math.max(0, limit));
+  }
+
   private hasWorkspaceTenantAccess(userId: string, tenant: TenantRecord): boolean {
     for (const membership of this.workspaceMemberships.values()) {
       if (membership.userId !== userId) {

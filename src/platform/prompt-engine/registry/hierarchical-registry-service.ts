@@ -55,6 +55,8 @@ export class HierarchicalPromptRegistryService {
   private readonly domainBundles = new Map<string, Map<string, PromptBundle>>();
   private readonly packBundles = new Map<string, Map<string, PromptBundle>>();
   private readonly taskTypeBundles = new Map<string, Map<string, Map<string, PromptBundle>>>();
+  private readonly versionsByName = new Map<string, Map<string, PromptBundle>>();
+  private readonly versionsByScope = new Map<string, Map<string, PromptBundle>>();
 
   private readonly config: HierarchicalPromptRegistryConfig;
 
@@ -91,6 +93,7 @@ export class HierarchicalPromptRegistryService {
     };
 
     this.storeBundle(bundle, level, domain, packId);
+    this.storeVersion(bundle, level, domain, packId);
     return bundle;
   }
 
@@ -141,23 +144,17 @@ export class HierarchicalPromptRegistryService {
    * Lists all versions of a bundle across all levels.
    */
   public listBundleVersions(name: string): PromptBundleVersion[] {
-    const versions: PromptBundleVersion[] = [];
-
-    // Global versions
-    for (const [version, bundle] of this.globalBundles.entries()) {
-      if (bundle.name === name) {
-        versions.push({
-          version,
-          isCurrent: version === bundle.version,
-          isDefault: bundle.metadata.trafficAllocation.weight === 100,
-          trafficWeight: bundle.metadata.trafficAllocation.weight,
-          createdAt: bundle.createdAt,
-          deprecated: bundle.metadata.deprecated,
-        });
-      }
-    }
-
-    return versions.sort((a, b) => a.version.localeCompare(b.version));
+    const bundles = [...(this.versionsByName.get(name)?.values() ?? [])];
+    return bundles
+      .map((bundle) => ({
+        version: bundle.version,
+        isCurrent: bundle.metadata.deprecated !== true,
+        isDefault: bundle.metadata.trafficAllocation.weight === 100,
+        trafficWeight: bundle.metadata.trafficAllocation.weight,
+        createdAt: bundle.createdAt,
+        deprecated: bundle.metadata.deprecated,
+      }))
+      .sort((a, b) => a.version.localeCompare(b.version));
   }
 
   /**
@@ -223,18 +220,33 @@ export class HierarchicalPromptRegistryService {
     taskType: string,
     packId?: string,
     domain?: string,
+    trafficKey?: string,
   ): PromptBundle | null {
-    const candidate = this.getBundle(name, taskType, packId, domain);
-    if (!candidate) return null;
-
-    // If versioning disabled or single version, return as-is
-    if (!this.config.enableTrafficSplit) {
-      return candidate;
+    const candidates = this.getResolvedScopeBundles(name, taskType, packId, domain);
+    if (candidates.length === 0) {
+      return null;
     }
 
-    // For now, return the candidate as-is
-    // Traffic split logic would be implemented here based on traffic allocation config
-    return candidate;
+    if (!this.config.enableTrafficSplit || candidates.length === 1) {
+      return this.selectDefaultBundle(candidates);
+    }
+
+    const activeCandidates = candidates.filter((bundle) => this.isBundleTrafficActive(bundle));
+    const eligible = activeCandidates.length > 0 ? activeCandidates : candidates;
+    const totalWeight = eligible.reduce((sum, bundle) => sum + Math.max(0, bundle.metadata.trafficAllocation.weight), 0);
+    if (totalWeight <= 0) {
+      return this.selectDefaultBundle(eligible);
+    }
+
+    const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
+    let cursor = 0;
+    for (const bundle of eligible) {
+      cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);
+      if (slot < cursor) {
+        return bundle;
+      }
+    }
+    return this.selectDefaultBundle(eligible);
   }
 
   private buildBundleId(
@@ -340,6 +352,19 @@ export class HierarchicalPromptRegistryService {
     }
   }
 
+  private storeVersion(bundle: PromptBundle, level: RegistryLevel, domain?: string, packId?: string): void {
+    if (!this.versionsByName.has(bundle.name)) {
+      this.versionsByName.set(bundle.name, new Map());
+    }
+    this.versionsByName.get(bundle.name)!.set(bundle.bundleId, bundle);
+
+    const scopeKey = this.buildScopeKey(bundle.name, level, bundle.taskType, domain ?? bundle.domain, packId ?? bundle.packId);
+    if (!this.versionsByScope.has(scopeKey)) {
+      this.versionsByScope.set(scopeKey, new Map());
+    }
+    this.versionsByScope.get(scopeKey)!.set(bundle.version, bundle);
+  }
+
   private findBundle(
     name: string,
     version: string,
@@ -349,14 +374,15 @@ export class HierarchicalPromptRegistryService {
   ): PromptBundle | null {
     switch (level) {
       case "global":
-        return this.globalBundles.get(name) ?? null;
+        return this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId));
       case "domain":
-        return domain ? this.domainBundles.get(domain)?.get(name) ?? null : null;
+        return domain ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
       case "pack":
-        return packId ? this.packBundles.get(packId)?.get(name) ?? null : null;
+        return packId ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
       case "task-type":
         if (packId && domain) {
-          return this.taskTypeBundles.get(packId)?.get(domain)?.get(name) ?? null;
+          const scopeKey = this.buildScopeKey(name, level, domain, domain, packId);
+          return this.findCurrentScopeBundle(scopeKey);
         }
         return null;
     }
@@ -368,5 +394,89 @@ export class HierarchicalPromptRegistryService {
       availableVersions: this.listBundleVersions(bundle.name),
       currentVersion: bundle.version,
     };
+  }
+
+  private getResolvedScopeBundles(
+    name: string,
+    taskType: string,
+    packId?: string,
+    domain?: string,
+  ): PromptBundle[] {
+    const scopeKeys: string[] = [];
+    if (packId && domain) {
+      scopeKeys.push(this.buildScopeKey(name, "task-type", taskType, domain, packId));
+    }
+    if (packId) {
+      scopeKeys.push(this.buildScopeKey(name, "pack", undefined, domain, packId));
+    }
+    if (domain) {
+      scopeKeys.push(this.buildScopeKey(name, "domain", undefined, domain, undefined));
+    }
+    scopeKeys.push(this.buildScopeKey(name, "global", undefined, domain, undefined));
+
+    for (const scopeKey of scopeKeys) {
+      const bundles = [...(this.versionsByScope.get(scopeKey)?.values() ?? [])]
+        .filter((bundle) => bundle.metadata.deprecated !== true)
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      if (bundles.length > 0) {
+        return bundles;
+      }
+    }
+    return [];
+  }
+
+  private buildScopeKey(
+    name: string,
+    level: RegistryLevel,
+    taskType?: string,
+    domain?: string,
+    packId?: string,
+  ): string {
+    switch (level) {
+      case "global":
+        return [level, name].join(":");
+      case "domain":
+        return [level, domain ?? "", name].join(":");
+      case "pack":
+        return [level, packId ?? "", name].join(":");
+      case "task-type":
+        return [level, domain ?? "", packId ?? "", taskType ?? "", name].join(":");
+    }
+  }
+
+  private selectDefaultBundle(bundles: readonly PromptBundle[]): PromptBundle | null {
+    const eligible = bundles
+      .filter((bundle) => bundle.metadata.deprecated !== true)
+      .sort((left, right) => {
+        const weightOrder = right.metadata.trafficAllocation.weight - left.metadata.trafficAllocation.weight;
+        if (weightOrder !== 0) {
+          return weightOrder;
+        }
+        return right.createdAt.localeCompare(left.createdAt);
+      });
+    return eligible[0] ?? null;
+  }
+
+  private computeTrafficSlot(key: string): number {
+    let hash = 0;
+    for (const char of key) {
+      hash = ((hash << 5) - hash + char.charCodeAt(0)) >>> 0;
+    }
+    return hash % 100;
+  }
+
+  private isBundleTrafficActive(bundle: PromptBundle, now: Date = new Date()): boolean {
+    const allocation = bundle.metadata.trafficAllocation;
+    if (allocation.startTime != null && Date.parse(allocation.startTime) > now.getTime()) {
+      return false;
+    }
+    if (allocation.endTime != null && Date.parse(allocation.endTime) < now.getTime()) {
+      return false;
+    }
+    return allocation.weight > 0;
+  }
+
+  private findCurrentScopeBundle(scopeKey: string): PromptBundle | null {
+    return this.selectDefaultBundle([...(this.versionsByScope.get(scopeKey)?.values() ?? [])]);
   }
 }

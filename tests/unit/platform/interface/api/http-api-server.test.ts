@@ -5,6 +5,10 @@ import { brotliDecompressSync, gunzipSync } from "node:zlib";
 
 import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
+import { ConfigRolloutService } from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+import { TenantBoundaryRegistryService } from "../../../../../src/platform/control-plane/tenant/index.js";
+import { CostReportService } from "../../../../../src/platform/interface/api/cost-report-service.js";
+import { HierarchicalPromptRegistryService } from "../../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
 import type { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
 import type { ApprovalDecision } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
 import type { ChannelGatewayDeliveryService } from "../../../../../src/platform/interface/channel-gateway/channel-gateway-delivery-service.js";
@@ -935,6 +939,246 @@ test("POST /v1/admin/control-plane/load-balancing/select succeeds with admin rol
     const body = response.json<{ requestId: string; data: { outcome: string; selectedCoordinatorId: string } }>();
     assert.equal(body.data.outcome, "selected");
     assert.equal(body.data.selectedCoordinatorId, "coord_test_1");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/incidents is reachable through HttpApiServer", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "POST",
+      url: "/v1/incidents",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        severity: "high",
+        title: "API outage",
+      }),
+    });
+
+    assert.equal(response.statusCode, 201);
+    const body = response.json<{ requestId: string; data: { title: string; severity: string } }>();
+    assert.equal(body.data.title, "API outage");
+    assert.equal(body.data.severity, "high");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/packs creates pack and GET /v1/packs returns catalog entry", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+  const viewerToken = authService.exchangeApiKey("test-viewer-key").accessToken;
+
+  try {
+    const createResponse = await server.inject({
+      method: "POST",
+      url: "/v1/packs",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        packId: "pack.ops",
+        name: "Ops Pack",
+        version: "1.0.0",
+        domainId: "ops",
+      }),
+    });
+
+    assert.equal(createResponse.statusCode, 201);
+
+    const listResponse = await server.inject({
+      method: "GET",
+      url: "/v1/packs",
+      headers: {
+        authorization: `Bearer ${viewerToken}`,
+      },
+    });
+
+    assert.equal(listResponse.statusCode, 200);
+    const body = listResponse.json<{ requestId: string; data: { packs: Array<{ packId: string }> } }>();
+    assert.equal(body.data.packs[0]?.packId, "pack.ops");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("POST /v1/cost-reports creates report and GET /v1/cost-reports lists it", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+  const viewerToken = authService.exchangeApiKey("test-viewer-key").accessToken;
+
+  try {
+    const createResponse = await server.inject({
+      method: "POST",
+      url: "/v1/cost-reports",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+      body: JSON.stringify({
+        periodStart: "2026-04-01T00:00:00.000Z",
+        periodEnd: "2026-04-30T23:59:59.000Z",
+        totalCostUsd: 42,
+        resourceCosts: [
+          { resourceId: "openai", resourceType: "api", costUsd: 42 },
+        ],
+      }),
+    });
+
+    assert.equal(createResponse.statusCode, 201);
+
+    const listResponse = await server.inject({
+      method: "GET",
+      url: "/v1/cost-reports",
+      headers: {
+        authorization: `Bearer ${viewerToken}`,
+      },
+    });
+
+    assert.equal(listResponse.statusCode, 200);
+    const body = listResponse.json<{ requestId: string; data: { costReports: Array<{ totalCostUsd: number }> } }>();
+    assert.equal(body.data.costReports[0]?.totalCostUsd, 42);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /v1/admin/rollouts returns rollout data through HttpApiServer", async () => {
+  const configRolloutService = new ConfigRolloutService();
+  configRolloutService.startRollout("runtime.maxConcurrency", "platform", null, 25, { changedBy: "admin_1" });
+  const { server, authService } = createTestServer({ configRolloutService });
+  const viewerToken = authService.exchangeApiKey("test-viewer-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/admin/rollouts",
+      headers: {
+        authorization: `Bearer ${viewerToken}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { rollouts: Array<{ configPath: string }> } }>();
+    assert.equal(body.data.rollouts[0]?.configPath, "runtime.maxConcurrency");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /v1/admin/tenants returns tenant registry data through HttpApiServer", async () => {
+  const tenantRegistryService = new TenantBoundaryRegistryService({
+    organizations: [
+      {
+        organizationId: "org-1",
+        displayName: "Example Org",
+        billingAccountId: null,
+        defaultTenantId: "tenant-1",
+        createdAt: "2026-04-16T00:00:00.000Z",
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
+    ],
+    tenants: [
+      {
+        tenantId: "tenant-1",
+        organizationId: "org-1",
+        displayName: "Tenant One",
+        storageScope: "storage/tenant-1",
+        identityScope: "identity/tenant-1",
+        policyScope: "policy/tenant-1",
+        artifactScope: "artifacts/tenant-1",
+        isolationMode: "shared_logical",
+        deploymentMode: "cloud_shared",
+        status: "active",
+        createdAt: "2026-04-16T00:00:00.000Z",
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
+    ],
+  });
+  const { server, authService } = createTestServer({ tenantRegistryService });
+  const adminToken = authService.exchangeApiKey("test-admin-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/admin/tenants",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { tenants: Array<{ tenantId: string }> } }>();
+    assert.equal(body.data.tenants[0]?.tenantId, "tenant-1");
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /v1/admin/budgets returns budget summaries through HttpApiServer", async () => {
+  const costReportService = new CostReportService();
+  costReportService.createReport({
+    tenantId: "tenant-1",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-30T23:59:59.000Z",
+    totalCostUsd: 15,
+    resourceCosts: [{ resourceId: "openai", resourceType: "api", costUsd: 15, currency: "USD" }],
+    submittedBy: "operator_1",
+  });
+  const { server, authService } = createTestServer({ costReportService });
+  const adminToken = authService.exchangeApiKey("test-admin-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/admin/budgets",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { budgets: Array<{ totalCostUsd: number }> } }>();
+    assert.equal(body.data.budgets[0]?.totalCostUsd, 15);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", async () => {
+  const promptRegistryService = new HierarchicalPromptRegistryService();
+  promptRegistryService.registerBundle({
+    name: "system.default",
+    version: "1.0.0",
+    domain: "global",
+    taskType: "general",
+    packId: undefined,
+    systemPrompt: { content: "You are helpful.", templateVariables: [], channel: "system" },
+    userPrompt: undefined,
+    fewShotExamples: undefined,
+    constraints: undefined,
+    metadata: undefined,
+  }, "global");
+  const { server, authService } = createTestServer({ promptRegistryService });
+  const viewerToken = authService.exchangeApiKey("test-viewer-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/prompts",
+      headers: {
+        authorization: `Bearer ${viewerToken}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { prompts: Array<{ bundle: { name: string } }> } }>();
+    assert.equal(body.data.prompts[0]?.bundle.name, "system.default");
   } finally {
     await server.stop();
   }

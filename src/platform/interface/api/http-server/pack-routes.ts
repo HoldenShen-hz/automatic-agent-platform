@@ -15,6 +15,7 @@ import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } fr
 import type { ApiAuthService } from "../api-auth-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import { z } from "zod";
+import type { PackCatalogService } from "../pack-catalog-service.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -84,6 +85,7 @@ export interface CreatePackPayload {
 
 export interface PackRouteDeps {
   authService: ApiAuthService | null;
+  packCatalogService: PackCatalogService;
 }
 
 // ─── Route Factory ─────────────────────────────────────────────────────────
@@ -99,12 +101,9 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
         const limit = readLimit(ctx.request, 50);
 
         void tenantId;
-        void limit;
-
-        // Return empty pack list - in production would query pack registry
         return buildJsonResponse(ctx.requestId, 200, {
-          packs: [],
-          total: 0,
+          packs: deps.packCatalogService.listPacks(limit),
+          total: deps.packCatalogService.listPacks(Number.MAX_SAFE_INTEGER).length,
         });
       },
     },
@@ -122,10 +121,11 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
         const packId = segments[2]!;
 
         void principal;
-        void packId;
-
-        // Would query pack registry
-        throw new ApiError(404, "pack.not_found", `Pack ${packId} not found.`);
+        const pack = deps.packCatalogService.getPack(packId);
+        if (pack == null) {
+          throw new ApiError(404, "pack.not_found", `Pack ${packId} not found.`);
+        }
+        return buildJsonResponse(ctx.requestId, 200, pack);
       },
     },
     {
@@ -133,23 +133,23 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
       pathname: "/v1/packs",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = readValidatedJsonBody(ctx.request.body, createPackSchema);
-        const tenantId = resolveTenantScope(principal);
+        const payload = readValidatedJsonBody(ctx.request.body, createPackSchema.parse);
+        const tenantId = resolveTenantScope(principal, undefined);
 
         void tenantId;
-
-        // In production, would validate and store the pack
-        const pack = {
+        const pack = deps.packCatalogService.createPack({
           packId: payload.packId,
           name: payload.name,
           version: payload.version,
           domainId: payload.domainId,
-          description: payload.description ?? "",
-          lifecycleStage: "draft" as const,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          createdBy: principal.subjectId,
-        };
+          createdBy: principal.actorId,
+          ...(payload.description !== undefined ? { description: payload.description } : {}),
+          ...(payload.sandboxTier !== undefined ? { sandboxTier: payload.sandboxTier } : {}),
+          riskCount: payload.riskMatrix?.length ?? 0,
+          dependencyCount: payload.dependencies?.length ?? 0,
+          pluginCount: payload.pluginIds?.length ?? 0,
+          toolBundleCount: payload.toolBundles?.length ?? 0,
+        });
 
         return buildJsonResponse(ctx.requestId, 201, pack);
       },

@@ -14,7 +14,7 @@ test("ProjectionHandlerRegistry registers and retrieves handlers", () => {
   registry.register("test_projection", handler);
 
   assert.equal(registry.get("test_projection"), handler);
-  assert.equal(registry.listProjectionNames(), ["test_projection"]);
+  assert.deepEqual(registry.listProjectionNames(), ["test_projection"]);
 });
 
 test("ProjectionHandlerRegistry returns undefined for unknown projection", () => {

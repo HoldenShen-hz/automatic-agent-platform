@@ -58,7 +58,7 @@
 
 - [context_propagation_contract.md](./context_propagation_contract.md)
 - [app_error_contract.md](./app_error_contract.md)
-- [error_code_registry.md](./error_code_registry.md)
+- [error_code_registry_contract.md](./error_code_registry_contract.md)
 - [control_vs_intelligence_boundary_contract.md](./control_vs_intelligence_boundary_contract.md)
 - [architecture_governance_and_versioning_contract.md](./architecture_governance_and_versioning_contract.md)
 - [project_structure_contract.md](./project_structure_contract.md)
@@ -77,6 +77,7 @@
 
 - [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md)
 - [tool_and_provider_execution_contract.md](./tool_and_provider_execution_contract.md)
+- [model_gateway_routing_contract.md](./model_gateway_routing_contract.md)
 - [tool_metadata_and_recovery_contract.md](./tool_metadata_and_recovery_contract.md)
 - [idempotency_and_recovery_matrix_contract.md](./idempotency_and_recovery_matrix_contract.md)
 - [edit_replacement_chain_contract.md](./edit_replacement_chain_contract.md)
@@ -88,6 +89,7 @@
 
 ### 3.5 Prompt、质量、成本与 AI 治理
 
+- [prompt_engine_spi_contract.md](./prompt_engine_spi_contract.md)
 - [prompt_model_policy_governance_contract.md](./prompt_model_policy_governance_contract.md)
 - [quality_engineering_and_chaos_testing_contract.md](./quality_engineering_and_chaos_testing_contract.md)
 - [cost_and_budget_contract.md](./cost_and_budget_contract.md)
@@ -98,6 +100,7 @@
 
 ### 3.6 存储、Artifact、观测与恢复
 
+- [cache_contract.md](./cache_contract.md)
 - [storage_schema_contract.md](./storage_schema_contract.md)
 - [runtime_repository_and_migration_contract.md](./runtime_repository_and_migration_contract.md)
 - [file_lock_contract.md](./file_lock_contract.md)
@@ -133,6 +136,7 @@
 
 ### 3.8 配置、环境与平台表面
 
+- [sdk_surface_contract.md](./sdk_surface_contract.md)
 - [configuration_layers_and_defaults_contract.md](./configuration_layers_and_defaults_contract.md)
 - [environment_and_configuration_governance_contract.md](./environment_and_configuration_governance_contract.md)
 - [environment_readiness_registry_contract.md](./environment_readiness_registry_contract.md)

@@ -52,3 +52,15 @@ test("UserPortalService builds onboarding wizard and workflow builder", () => {
   assert.equal(builder.validation.valid, true);
   assert.ok(builder.componentPalette.some((category) => category.category === "action"));
 });
+
+test("UserPortalService marks finance payment workflows as critical risk", () => {
+  const service = new UserPortalService();
+
+  const builder = service.buildVisualWorkflowBuilder("我要做财务付款审批和工资发放自动化", ["finance"]);
+  const financeAction = builder.componentPalette
+    .flatMap((category) => category.components)
+    .find((component) => component.domainId === "finance");
+
+  assert.ok(financeAction);
+  assert.equal(financeAction?.riskLevel, "critical");
+});

@@ -17,5 +17,5 @@
  * @see tests/helpers/ for actual implementations
  */
 
-export { createTempWorkspace, createFile, cleanupPath, readFile, fileExists } from "../../tests/helpers/fs.js";
-export { createMockApiServer, createMockTaskStore, createMockEventBus } from "../../tests/helpers/api.js";
+export { createTempWorkspace, createFile, cleanupPath, createSymlink } from "../../tests/helpers/fs.js";
+export { createSeededApiContext } from "../../tests/helpers/api.js";

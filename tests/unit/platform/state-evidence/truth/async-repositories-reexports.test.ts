@@ -5,6 +5,8 @@ import * as AsyncRepositories from "../../../../../src/platform/state-evidence/t
 import { AsyncApprovalRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/approval-repository.js";
 import { AsyncArtifactRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/artifact-repository.js";
 import { AsyncBillingRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/billing-repository.js";
+import { AsyncCostManagementRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/cost-management-repository.js";
+import { AsyncDelegationRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/delegation-repository.js";
 import { AsyncDispatchRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/dispatch-repository.js";
 import { AsyncDivisionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/division-repository.js";
 import { AsyncEventRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/event-repository.js";
@@ -13,14 +15,17 @@ import { AsyncExecutionRepository } from "../../../../../src/platform/state-evid
 import { AsyncIntelligenceRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/intelligence-repository.js";
 import { AsyncLeaseRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/lease-repository.js";
 import { AsyncLockRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/lock-repository.js";
+import { AsyncMarketplaceListingRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository-ext.js";
 import { AsyncMarketplaceRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository.js";
 import { AsyncMemoryRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/memory-repository.js";
 import { AsyncOperationsRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/operations-repository.js";
 import { AsyncOrganizationRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/organization-repository.js";
+import { AsyncPromptRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/prompt-repository.js";
 import { AsyncReleaseRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/release-repository.js";
 import { AsyncSecretRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/secret-repository.js";
 import { AsyncSessionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/session-repository.js";
 import { AsyncTaskRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
+import { AsyncTenantRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/tenant-repository.js";
 import { AsyncWorkerRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/worker-repository.js";
 import { AsyncWorkflowRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/workflow-repository.js";
 
@@ -28,6 +33,8 @@ test("async repository barrel re-exports every repository implementation", () =>
   assert.equal(AsyncRepositories.AsyncApprovalRepository, AsyncApprovalRepository);
   assert.equal(AsyncRepositories.AsyncArtifactRepository, AsyncArtifactRepository);
   assert.equal(AsyncRepositories.AsyncBillingRepository, AsyncBillingRepository);
+  assert.equal(AsyncRepositories.AsyncCostManagementRepository, AsyncCostManagementRepository);
+  assert.equal(AsyncRepositories.AsyncDelegationRepository, AsyncDelegationRepository);
   assert.equal(AsyncRepositories.AsyncDispatchRepository, AsyncDispatchRepository);
   assert.equal(AsyncRepositories.AsyncDivisionRepository, AsyncDivisionRepository);
   assert.equal(AsyncRepositories.AsyncEventRepository, AsyncEventRepository);
@@ -36,14 +43,17 @@ test("async repository barrel re-exports every repository implementation", () =>
   assert.equal(AsyncRepositories.AsyncIntelligenceRepository, AsyncIntelligenceRepository);
   assert.equal(AsyncRepositories.AsyncLeaseRepository, AsyncLeaseRepository);
   assert.equal(AsyncRepositories.AsyncLockRepository, AsyncLockRepository);
+  assert.equal(AsyncRepositories.AsyncMarketplaceListingRepository, AsyncMarketplaceListingRepository);
   assert.equal(AsyncRepositories.AsyncMarketplaceRepository, AsyncMarketplaceRepository);
   assert.equal(AsyncRepositories.AsyncMemoryRepository, AsyncMemoryRepository);
   assert.equal(AsyncRepositories.AsyncOperationsRepository, AsyncOperationsRepository);
   assert.equal(AsyncRepositories.AsyncOrganizationRepository, AsyncOrganizationRepository);
+  assert.equal(AsyncRepositories.AsyncPromptRepository, AsyncPromptRepository);
   assert.equal(AsyncRepositories.AsyncReleaseRepository, AsyncReleaseRepository);
   assert.equal(AsyncRepositories.AsyncSecretRepository, AsyncSecretRepository);
   assert.equal(AsyncRepositories.AsyncSessionRepository, AsyncSessionRepository);
   assert.equal(AsyncRepositories.AsyncTaskRepository, AsyncTaskRepository);
+  assert.equal(AsyncRepositories.AsyncTenantRepository, AsyncTenantRepository);
   assert.equal(AsyncRepositories.AsyncWorkerRepository, AsyncWorkerRepository);
   assert.equal(AsyncRepositories.AsyncWorkflowRepository, AsyncWorkflowRepository);
 });

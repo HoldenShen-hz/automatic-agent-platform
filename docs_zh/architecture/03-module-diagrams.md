@@ -1,8 +1,8 @@
 # Automatic Agent Platform — 模块框架图集
 
-> **版本**: v1.1  
-> **日期**: 2026-04-19  
-> **配套文档**: `agent_platform_design_architecture.md` v2.7 · `code_file_structure.md` v1.0 · `migration_assessment.md` v1.1  
+> **版本**: v1.2  
+> **日期**: 2026-04-20  
+> **配套文档**: `00-platform-architecture.md` v2.7 · `01-code-structure.md` · `02-code-architecture-reference.md`  
 > **说明**: 本文档以 ASCII 框架图形式呈现系统全景及各层/各模块的内部结构与交互关系。
 
 ### 图类型约定
@@ -19,7 +19,7 @@
 
 ### 命名口径统一
 
-以下名称在本文档、`code_file_structure.md`、`migration_assessment.md` 三份文档中统一使用：
+以下名称在本文档、`01-code-structure.md`、`02-code-architecture-reference.md` 三份文档中统一使用：
 
 | 统一名称 | 不使用的别名 |
 |----------|-------------|

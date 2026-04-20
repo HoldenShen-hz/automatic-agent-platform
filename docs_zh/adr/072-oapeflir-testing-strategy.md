@@ -138,7 +138,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-018 Rollout 11 状态机](./018-rollout-eleven-state-machine.md)
-- `docs_zh/reviews/design_gap_analysis_v9.md` §7.1 G1 解决方案
+- `docs_zh/reviews/architecture-design-vs-implementation-review.md` §G1 解决方案（原始 design_gap_analysis_v9.md 已归档）
 
 ## 来源章节
 

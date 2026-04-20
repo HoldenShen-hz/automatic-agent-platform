@@ -10,10 +10,11 @@
 
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
-import { buildJsonResponse, requirePrincipal, resolveTenantScope } from "./utils.js";
+import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import { z } from "zod";
+import type { CostReportService } from "../cost-report-service.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -67,6 +68,7 @@ export interface CostReportPayload {
 
 export interface CostRouteDeps {
   authService: ApiAuthService | null;
+  costReportService: CostReportService;
 }
 
 // ─── Route Factory ─────────────────────────────────────────────────────────
@@ -78,21 +80,25 @@ export function createCostRoutes(deps: CostRouteDeps): RouteDefinition[] {
       pathname: "/v1/cost-reports",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = readValidatedJsonBody(ctx.request.body, createCostReportSchema);
+        const payload = readValidatedJsonBody(ctx.request.body, createCostReportSchema.parse);
         const tenantId = resolveTenantScope(principal, payload.tenantId);
 
-        // In production, would store and process the cost report
-        const report = {
-          reportId: `cost-${Date.now()}`,
-          tenantId,
+        const report = deps.costReportService.createReport({
+          ...(tenantId !== undefined ? { tenantId } : {}),
           periodStart: payload.periodStart,
           periodEnd: payload.periodEnd,
           totalCostUsd: payload.totalCostUsd,
-          currency: payload.currency ?? "USD",
-          resourceCount: payload.resourceCosts.length,
-          submittedBy: principal.subjectId,
-          submittedAt: payload.submittedAt ?? new Date().toISOString(),
-        };
+          submittedBy: principal.actorId,
+          ...(payload.submittedAt !== undefined ? { submittedAt: payload.submittedAt } : {}),
+          ...(payload.currency !== undefined ? { currency: payload.currency } : {}),
+          resourceCosts: payload.resourceCosts.map((resourceCost) => ({
+            resourceId: resourceCost.resourceId,
+            resourceType: resourceCost.resourceType,
+            costUsd: resourceCost.costUsd,
+            currency: resourceCost.currency ?? "USD",
+            ...(resourceCost.metadata !== undefined ? { metadata: resourceCost.metadata } : {}),
+          })),
+        });
 
         return buildJsonResponse(ctx.requestId, 201, report);
       },
@@ -102,14 +108,12 @@ export function createCostRoutes(deps: CostRouteDeps): RouteDefinition[] {
       pathname: "/v1/cost-reports",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const tenantId = resolveTenantScope(principal);
-
-        void tenantId;
-
-        // Return empty cost reports - in production would query cost service
+        const tenantId = resolveTenantScope(principal, undefined);
+        const limit = readLimit(ctx.request, 50);
+        const costReports = deps.costReportService.listReports(limit, tenantId);
         return buildJsonResponse(ctx.requestId, 200, {
-          costReports: [],
-          total: 0,
+          costReports,
+          total: costReports.length,
         });
       },
     },

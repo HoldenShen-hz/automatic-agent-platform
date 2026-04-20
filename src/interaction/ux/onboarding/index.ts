@@ -60,7 +60,7 @@ export interface DraggableComponent {
   readonly name: string;
   readonly icon: string;
   readonly domainId: string;
-  readonly riskLevel: "low" | "medium" | "high";
+  readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly configSchema: Record<string, unknown>;
   readonly previewDescription: string;
 }
@@ -270,7 +270,7 @@ export class UserPortalService implements UserPortalPort {
             name: `${domainId} 动作`,
             icon: "bolt",
             domainId,
-            riskLevel: domainId === "finance" ? "high" : "medium",
+            riskLevel: this.resolveDomainRiskLevel(domainId, description),
             configSchema: { type: "object", properties: { target: { type: "string" } } },
             previewDescription: `在 ${domainId} 域中执行核心动作。`,
           })),
@@ -317,5 +317,18 @@ export class UserPortalService implements UserPortalPort {
     if (/(code|engineering|deploy|bug|代码|研发|发布)/i.test(description)) recommendations.add("engineering_ops");
     if (recommendations.size === 0 && normalized.length > 0) recommendations.add("general_ops");
     return [...recommendations];
+  }
+
+  private resolveDomainRiskLevel(domainId: string, description: string): DraggableComponent["riskLevel"] {
+    if (domainId === "finance") {
+      if (/(payment|payroll|settlement|transfer|invoice approval|付款|工资|结算|转账)/i.test(description)) {
+        return "critical";
+      }
+      return "high";
+    }
+    if (domainId === "engineering_ops" && /(production|prod|发布到生产|线上变更)/i.test(description)) {
+      return "high";
+    }
+    return "medium";
   }
 }

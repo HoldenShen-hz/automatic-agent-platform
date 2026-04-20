@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createAdminRoutes } from "../../../../../../src/platform/interface/api/http-server/admin-routes.js";
+import { ConfigRolloutService } from "../../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+import { TenantBoundaryRegistryService } from "../../../../../../src/platform/control-plane/tenant/index.js";
+import { CostReportService } from "../../../../../../src/platform/interface/api/cost-report-service.js";
+import { AdminConfigService } from "../../../../../../src/platform/interface/api/admin-config-service.js";
 import type { MissionControlService } from "../../../../../../src/platform/interface/api/mission-control-service.js";
 import type { CoordinatorLoadBalancingService } from "../../../../../../src/platform/execution/ha/coordinator-load-balancing-service.js";
 import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
@@ -50,6 +54,37 @@ function createMockAuthService(roles: string[] = ["viewer"]): ApiAuthService {
   } as unknown as ApiAuthService;
 }
 
+function createTenantRegistryService(): TenantBoundaryRegistryService {
+  return new TenantBoundaryRegistryService({
+    organizations: [
+      {
+        organizationId: "org-1",
+        displayName: "Example Org",
+        billingAccountId: null,
+        defaultTenantId: "tenant-1",
+        createdAt: "2026-04-16T00:00:00.000Z",
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
+    ],
+    tenants: [
+      {
+        tenantId: "tenant-1",
+        organizationId: "org-1",
+        displayName: "Tenant One",
+        storageScope: "storage/tenant-1",
+        identityScope: "identity/tenant-1",
+        policyScope: "policy/tenant-1",
+        artifactScope: "artifacts/tenant-1",
+        isolationMode: "shared_logical",
+        deploymentMode: "cloud_shared",
+        status: "active",
+        createdAt: "2026-04-16T00:00:00.000Z",
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
+    ],
+  });
+}
+
 function createMockContext(pathname = "/v1/stability", segments: string[] = [], headers: Record<string, string | undefined> = {}, body: string | null = null): RouteContext {
   return {
     requestId: "req-123",
@@ -78,14 +113,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createAdminRoutes returns 4 routes", () => {
+test("createAdminRoutes returns 9 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 4);
+  assert.equal(routes.length, 9);
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -227,4 +262,93 @@ test("POST /v1/admin/control-plane/load-balancing/select rejects dangerous json 
   await assert.rejects(async () => {
     await callRoute(routes, ctx);
   }, (err: unknown) => typeof err === "object" && err != null && "code" in err && err.code === "api.invalid_json_key");
+});
+
+test("GET /v1/admin/workers returns workers list envelope", async () => {
+  const deps = {
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  };
+  const routes = createAdminRoutes(deps);
+  const ctx = createMockContext("/v1/admin/workers", ["v1", "admin", "workers"]);
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("\"workers\""));
+});
+
+test("POST /v1/admin/config returns update metadata", async () => {
+  const adminConfigService = new AdminConfigService();
+  const deps = {
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    adminConfigService,
+  };
+  const routes = createAdminRoutes(deps);
+  const ctx = createMockContext(
+    "/v1/admin/config",
+    ["v1", "admin", "config"],
+    {},
+    JSON.stringify({ key: "runtime.maxConcurrency", value: 8 }),
+  );
+  const response = await callRoute(routes, ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("runtime.maxConcurrency"));
+  assert.equal(adminConfigService.listUpdates(1)[0]?.key, "runtime.maxConcurrency");
+});
+
+test("GET /v1/admin/rollouts returns active rollouts", async () => {
+  const configRolloutService = new ConfigRolloutService();
+  configRolloutService.startRollout("runtime.maxConcurrency", "platform", null, 25, { changedBy: "admin" });
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["viewer"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    configRolloutService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/rollouts", ["v1", "admin", "rollouts"]));
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("runtime.maxConcurrency"));
+});
+
+test("GET /v1/admin/tenants returns tenant registry data", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    tenantRegistryService: createTenantRegistryService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/tenants", ["v1", "admin", "tenants"]));
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("Tenant One"));
+});
+
+test("GET /v1/admin/budgets returns aggregated budget summaries", async () => {
+  const costReportService = new CostReportService();
+  costReportService.createReport({
+    tenantId: "tenant-1",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-30T23:59:59.000Z",
+    totalCostUsd: 25,
+    resourceCosts: [{ resourceId: "openai", resourceType: "api", costUsd: 25, currency: "USD" }],
+    submittedBy: "operator-1",
+  });
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    costReportService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/budgets", ["v1", "admin", "budgets"]));
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("\"totalCostUsd\": 25"));
 });

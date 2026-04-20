@@ -56,3 +56,25 @@ AI 运营层采用统一治理模型：
 - unit tests：provider selection、prompt version policy、budget guard、quality gate。
 - integration tests：prompt/model release、HITL approval、cost attribution。
 - contract tests：未通过质量门禁、预算或数据分级的 AI 动作不得执行。
+
+## 备选方案
+
+1. **将模型供应商 API 作为平台主 contract**：信息明确，但增加供应商锁定风险。
+2. **允许 prompt 直接进入生产**：降低治理成本，但无法保证质量、合规和安全。
+3. **成本仅作为报表展示**：实现简单，但成本无法参与执行前守卫和执行后优化。
+4. **采用本决策**：统一治理 AI 运营层，确保质量、安全、合规和成本可控。
+
+## 交叉引用
+
+- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
+- [ADR-088 平台表面、通信与扩展性](./088-platform-surface-communication-and-extensibility.md)
+
+## 来源章节
+
+- `§15 LLM Provider`
+- `§16 Prompt`
+- `§17 Eval`
+- `§18 Cost`
+- `§21 HITL`
+- `§23 Compliance`
+- `§27 SLO`

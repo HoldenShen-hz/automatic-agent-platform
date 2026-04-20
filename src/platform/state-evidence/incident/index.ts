@@ -18,6 +18,8 @@ export interface IncidentCase {
 
 export class IncidentCaseService {
   private readonly incidents = new Map<string, IncidentCase>();
+  private readonly incidentOrder = new Map<string, number>();
+  private nextIncidentOrder = 1;
 
   public openIncident(input: {
     severity: IncidentSeverity;
@@ -37,6 +39,7 @@ export class IncidentCaseService {
       resolvedAt: null,
     };
     this.incidents.set(incident.incidentId, incident);
+    this.incidentOrder.set(incident.incidentId, this.nextIncidentOrder++);
     return incident;
   }
 
@@ -64,6 +67,18 @@ export class IncidentCaseService {
 
   public getIncident(incidentId: string): IncidentCase | null {
     return this.incidents.get(incidentId) ?? null;
+  }
+
+  public listIncidents(limit = 50): IncidentCase[] {
+    return [...this.incidents.values()]
+      .sort((left, right) => {
+        const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
+        if (createdAtOrder !== 0) {
+          return createdAtOrder;
+        }
+        return (this.incidentOrder.get(right.incidentId) ?? 0) - (this.incidentOrder.get(left.incidentId) ?? 0);
+      })
+      .slice(0, Math.max(0, limit));
   }
 
   private getRequired(incidentId: string): IncidentCase {

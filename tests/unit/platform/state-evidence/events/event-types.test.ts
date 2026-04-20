@@ -43,7 +43,7 @@ test("TIER_1_EVENT_TYPES contains expected events", () => {
 });
 
 test("TIER_1_EVENT_TYPES has correct length", () => {
-  assert.equal(TIER_1_EVENT_TYPES.length, 26);
+  assert.equal(TIER_1_EVENT_TYPES.length, 31);
 });
 
 test("getEventTier returns tier_1 for Tier 1 events", () => {

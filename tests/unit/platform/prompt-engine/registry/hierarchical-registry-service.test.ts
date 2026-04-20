@@ -13,11 +13,15 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
     version,
     domain,
     taskType: "classification",
+    packId: undefined,
     systemPrompt: {
       content: `You are a ${name} assistant.`,
       templateVariables: [],
       channel: "system",
     },
+    userPrompt: undefined,
+    fewShotExamples: undefined,
+    constraints: undefined,
     metadata: {
       owner: "test-owner",
       deprecated: false,
@@ -25,6 +29,9 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
       compatibilityTags: [],
       trafficAllocation: {
         weight: 100,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
       },
     },
   };
@@ -125,4 +132,41 @@ test("HierarchicalPromptRegistryService supports domain-level override", () => {
   assert.equal(globalBundle!.version, "v1.0");
   assert.ok(domainBundle !== null);
   assert.equal(domainBundle!.version, "v1.0-domain");
+});
+
+test("HierarchicalPromptRegistryService.listBundleVersions includes multiple registered versions", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  registry.registerBundle(createTestBundle("test-bundle", "v1.0"), "global");
+  registry.registerBundle(createTestBundle("test-bundle", "v1.1"), "global");
+
+  const versions = registry.listBundleVersions("test-bundle");
+
+  assert.equal(versions.length, 2);
+  assert.equal(versions[0]?.version, "v1.0");
+  assert.equal(versions[1]?.version, "v1.1");
+});
+
+test("HierarchicalPromptRegistryService.resolveBundleForTraffic honors weighted traffic split", () => {
+  const registry = new HierarchicalPromptRegistryService();
+  registry.registerBundle(createTestBundle("traffic-bundle", "v1.0"), "global");
+  registry.registerBundle({
+    ...createTestBundle("traffic-bundle", "v2.0"),
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 0,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
+  }, "global");
+
+  const resolved = registry.resolveBundleForTraffic("traffic-bundle", "classification", undefined, undefined, "stable-key");
+
+  assert.ok(resolved !== null);
+  assert.equal(resolved!.version, "v1.0");
 });

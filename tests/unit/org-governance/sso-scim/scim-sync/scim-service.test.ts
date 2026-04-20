@@ -267,6 +267,71 @@ test("ScimProvisionService lists groups", () => {
   assert.equal(result.Resources.length, 2);
 });
 
+test("ScimProvisionService processes bulk request with bulkId references", () => {
+  const service = new ScimProvisionService();
+
+  const response = service.processBulkRequest({
+    schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+    Operations: [
+      {
+        method: "POST",
+        path: "/Users",
+        bulkId: "user-alpha",
+        data: createTestUser({ userName: "bulk-user", displayName: "Bulk User" }),
+      },
+      {
+        method: "POST",
+        path: "/Groups",
+        bulkId: "group-alpha",
+        data: createTestGroup({ displayName: "Bulk Group", members: [{ value: "bulkId:user-alpha", display: "Bulk User" }] }),
+      },
+      {
+        method: "PATCH",
+        path: "/Groups/bulkId:group-alpha",
+        data: [{ op: "add", path: "members", value: [{ value: "bulkId:user-alpha" }] }],
+      },
+    ],
+  }, "tenant-1");
+
+  assert.equal(response.Operations.length, 3);
+  assert.equal(response.Operations[0]?.status, "201");
+  assert.equal(response.Operations[1]?.status, "201");
+  assert.equal(response.Operations[2]?.status, "200");
+
+  const createdUserId = (response.Operations[0]?.response as { id: string }).id;
+  const createdGroupId = (response.Operations[1]?.response as { id: string }).id;
+  const group = service.getGroup(createdGroupId);
+
+  assert.ok(createdUserId);
+  assert.ok(group);
+  assert.ok(group!.members.some((member) => member.value === createdUserId));
+});
+
+test("ScimProvisionService bulk request honors failOnErrors threshold", () => {
+  const service = new ScimProvisionService();
+
+  const response = service.processBulkRequest({
+    schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+    failOnErrors: 1,
+    Operations: [
+      {
+        method: "DELETE",
+        path: "/Users/missing-user",
+      },
+      {
+        method: "POST",
+        path: "/Users",
+        bulkId: "skipped-user",
+        data: createTestUser({ userName: "should-not-run" }),
+      },
+    ],
+  }, "tenant-1");
+
+  assert.equal(response.Operations[0]?.status, "400");
+  assert.equal(response.Operations[1]?.status, "424");
+  assert.equal(service.getUserCount(), 0);
+});
+
 test("ScimProvisionService deletes group", () => {
   const service = new ScimProvisionService();
   const created = service.createGroup(createTestGroup(), "tenant-1");

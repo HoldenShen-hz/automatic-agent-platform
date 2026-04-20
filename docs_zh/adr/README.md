@@ -8,7 +8,7 @@
 |------|------|------|----------|
 | [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
-| [003](./003-memory-seven-layers.md) | 六层记忆与 KV Cache 固定前缀 | **Superseded by ADR-020** | 2026-04-02 |
+| [003](./003-memory-six-layers.md) | 六层记忆与 KV Cache 固定前缀 | **Superseded by ADR-020** | 2026-04-02 |
 | [004](./004-workflow-routing.md) | 工作流与路由 | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | 安全模型 | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider 策略 | Accepted | 2026-04-02 |
@@ -54,4 +54,4 @@
 
 ## 创建新 ADR
 
-新 ADR 应遵循标准模板，编号顺序递增。详情参考 [../governance/source_of_truth.md](../governance/source_of_truth.md)。
+新 ADR 应遵循标准模板；编号按批次和演进阶段保留号段，不强制补齐历史间隙。详情参考 [../governance/source_of_truth.md](../governance/source_of_truth.md)。

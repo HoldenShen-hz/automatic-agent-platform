@@ -12,7 +12,7 @@ import {
   type GraphQLSchemaWithResolvers,
   type GraphQLRequest,
   GRAPHQL_ERROR_CODES,
-} from "../../../../src/platform/interface/api/graphql-adapter-service.js";
+} from "../../../../../src/platform/interface/api/graphql-adapter-service.js";
 
 function createTestSchema(): GraphQLSchemaWithResolvers {
   const schema = new GraphQLSchemaBuilder()
@@ -34,7 +34,10 @@ function createTestSchema(): GraphQLSchemaWithResolvers {
 
   return {
     schema,
-    resolvers: {},
+    resolvers: {
+      "Query.hello": async () => "world",
+      "Mutation.sendMessage": async (args) => args.message === "hello",
+    },
   };
 }
 
@@ -93,10 +96,36 @@ test("GraphQLAdapterService execute returns success for query", async () => {
 
   const request: GraphQLRequest = { query: "query { hello }" };
 
-  const result = await adapter.execute<{ _meta: unknown }>("test", request);
+  const result = await adapter.execute<{ hello: string }>("test", request);
 
   assert.equal(result.success, true);
-  assert.ok(result.data);
+  assert.deepEqual(result.data, { hello: "world" });
+});
+
+test("GraphQLAdapterService execute resolves mutation arguments from variables", async () => {
+  const adapter = new GraphQLAdapterService({ endpoint: "http://localhost:4000/graphql" });
+  adapter.registerSchema("test", createTestSchema());
+
+  const result = await adapter.execute<{ sendMessage: boolean }>("test", {
+    query: "mutation Send($message: String!) { sendMessage(message: $message) }",
+    operationName: "Send",
+    variables: { message: "hello" },
+  });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.data, { sendMessage: true });
+});
+
+test("GraphQLAdapterService execute validates required arguments", async () => {
+  const adapter = new GraphQLAdapterService({ endpoint: "http://localhost:4000/graphql" });
+  adapter.registerSchema("test", createTestSchema());
+
+  const result = await adapter.execute("test", {
+    query: "mutation { sendMessage }",
+  });
+
+  assert.equal(result.success, false);
+  assert.match(result.errors?.[0]?.message ?? "", /Missing required argument 'message'/);
 });
 
 test("GraphQLAdapterService subscribe returns operation result", () => {
@@ -155,6 +184,16 @@ test("GraphQLAdapterService validateQuery returns valid for good query", () => {
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
+});
+
+test("GraphQLAdapterService validateQuery returns error for missing field", () => {
+  const adapter = new GraphQLAdapterService({ endpoint: "http://localhost:4000/graphql" });
+  adapter.registerSchema("test", createTestSchema());
+
+  const result = adapter.validateQuery("test", "query { unknownField }");
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.includes("Field 'unknownField' not found")));
 });
 
 test("GraphQLAdapterService validateQuery returns error for empty query", () => {

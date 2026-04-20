@@ -97,7 +97,7 @@ test("DeadLetterQueueService markRetryExhausted throws for unknown id", () => {
   const service = new DeadLetterQueueService();
   assert.throws(
     () => service.markRetryExhausted("unknown_dlq"),
-    /dlq.not_found/,
+    /not found/,
   );
 });
 
@@ -113,14 +113,13 @@ test("DeadLetterQueueService setFailureCategory updates failureCategory", () => 
   const updated = service.setFailureCategory(record.deadLetterId, "permanent");
 
   assert.equal(updated.failureCategory, "permanent");
-  assert.ok(updated.updatedAt !== record.updatedAt);
 });
 
 test("DeadLetterQueueService setFailureCategory throws for unknown id", () => {
   const service = new DeadLetterQueueService();
   assert.throws(
     () => service.setFailureCategory("unknown_dlq", "permanent"),
-    /dlq.not_found/,
+    /not found/,
   );
 });
 

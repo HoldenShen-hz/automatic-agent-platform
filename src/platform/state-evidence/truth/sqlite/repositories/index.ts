@@ -8,6 +8,12 @@ export { EventRepository } from "./event-repository.js";
 export { WorkerRepository } from "./worker-repository.js";
 export { ApprovalRepository } from "./approval-repository.js";
 export { BillingRepository } from "./billing-repository.js";
+export {
+  DelegationEventRepository,
+  DelegationRepository,
+  InMemoryDelegationEventRepository,
+  InMemoryDelegationRepository,
+} from "./delegation-repository.js";
 export { LeaseRepository } from "./lease-repository.js";
 export { LockRepository } from "./lock-repository.js";
 export { MemoryRepository } from "./memory-repository.js";
@@ -21,3 +27,19 @@ export { OrganizationRepository } from "./organization-repository.js";
 export { IntelligenceRepository } from "./intelligence-repository.js";
 export { EvolutionRepository } from "./evolution-repository.js";
 export { OperationsRepository } from "./operations-repository.js";
+export {
+  InMemoryPromptAbTestRepository,
+  InMemoryPromptBundleRepository,
+  InMemoryPromptVersionRepository,
+  PromptAbTestRepository,
+  PromptBundleRepository,
+  PromptVersionRepository,
+} from "./prompt-bundle-repository.js";
+export {
+  BillingRepository as TenantBillingRepository,
+  InMemoryBillingRepository as InMemoryTenantBillingRepository,
+  InMemoryQuotaRepository,
+  InMemoryTenantRepository,
+  QuotaRepository,
+  TenantRepository,
+} from "./tenant-repository.js";

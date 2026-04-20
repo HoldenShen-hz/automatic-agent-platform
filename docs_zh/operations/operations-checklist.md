@@ -1,6 +1,6 @@
 # Operations Checklist
 
-> 本文件整合 `doc/operations/` 下的所有清单类文档。
+> 本文件整合 `docs_zh/operations/` 下的所有清单类文档。
 > 由 `research/reference-alignment/reference_cross_analysis_and_todolist.md` 的任务 9A 整合生成。
 
 ## 1. 发布就绪清单（Pre-Launch Top 20 Hard Checklist）
@@ -65,7 +65,7 @@
 - [ ] 无裸 `console.log`（使用 StructuredLogger）
 - [ ] 无直接 `process.env`（通过 config loader）
 - [ ] 公共 API 有类型签名
-- [ ] 错误码符合 `error_code_registry.md` 规范
+- [ ] 错误码符合 `error_code_registry_contract.md` 规范
 
 ### 测试
 

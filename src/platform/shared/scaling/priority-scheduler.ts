@@ -60,12 +60,11 @@ export const PRIORITY_CLASSES: Record<PriorityClassName, PriorityClass> = {
     queueTimeout: "1h",
     guaranteedStartSla: "best_effort",
   },
-  best_effort: {
+best_effort: {
     className: "best_effort",
     priorityValue: 0,
     preemptionPolicy: "never",
     queueTimeout: "∞",
-    guaranteedStartSla: undefined,
   },
 };
 
@@ -109,7 +108,12 @@ export function canPreempt(
     return { shouldPreempt: false, reason: "Preemptor has preemption_policy=never" };
   }
 
-  // Cannot preempt critical tasks (they are protected)
+  // Target with never policy cannot be preempted
+  if (targetClass.preemptionPolicy === "never") {
+    return { shouldPreempt: false, reason: "Target task has preemption_policy=never" };
+  }
+
+  // Cannot preempt critical tasks
   if (target.priorityClass === "critical") {
     return { shouldPreempt: false, reason: "Cannot preempt critical tasks" };
   }
@@ -309,7 +313,7 @@ export function parseTimeoutToMs(timeout: string): number {
   if (!match) {
     return Infinity;
   }
-  const value = parseInt(match[1], 10);
+  const value = parseInt(match[1]!, 10);
   switch (match[2]) {
     case "s": return value * 1000;
     case "m": return value * 60 * 1000;

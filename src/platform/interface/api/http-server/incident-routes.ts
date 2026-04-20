@@ -61,14 +61,10 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       pathname: "/v1/incidents",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const tenantId = resolveTenantScope(principal);
+        const tenantId = resolveTenantScope(principal, undefined);
         const limit = readLimit(ctx.request, 50);
-
-        const incidents: IncidentCase[] = [];
-        // In real implementation, would filter by tenantId
-        deps.incidentService;
         void tenantId;
-        void limit;
+        const incidents: IncidentCase[] = deps.incidentService.listIncidents(limit);
 
         return buildJsonResponse(ctx.requestId, 200, {
           incidents,
@@ -103,14 +99,14 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       pathname: "/v1/incidents",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema);
-        const tenantId = resolveTenantScope(principal);
+        const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
+        const tenantId = resolveTenantScope(principal, undefined);
 
         void tenantId;
         const incident = deps.incidentService.openIncident({
           severity: payload.severity as IncidentSeverity,
           title: payload.title,
-          linkedEvidenceRefs: payload.linkedEvidenceRefs,
+          ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
         });
 
         return buildJsonResponse(ctx.requestId, 201, incident);
@@ -128,7 +124,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const incidentId = segments[2]!;
-        const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema);
+        const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
 
         void principal;
         const incident = deps.incidentService.getIncident(incidentId);

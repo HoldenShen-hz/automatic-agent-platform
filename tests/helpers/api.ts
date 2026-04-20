@@ -207,6 +207,9 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
   });
   pluginRegistry.register({
@@ -237,6 +240,9 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
   });
   domainRegistryService.register({

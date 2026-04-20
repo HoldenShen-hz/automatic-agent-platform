@@ -99,9 +99,21 @@ export class InMemoryOidcStateStore implements OidcStateStore {
 // OIDC Identity Provider Service
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface SessionRecord {
+  sessionId: string;
+  userId: string;
+  accessToken: string;
+  refreshToken: string | undefined;
+  idToken: string;
+  expiresAt: string;
+  createdAt: string;
+  lastActivityAt: string;
+  providerId: string;
+}
+
 export class OidcIdentityService {
   private readonly config: OidcServiceConfig;
-  private readonly sessions = new Map<string, OidcSession>();
+  private readonly sessions = new Map<string, SessionRecord>();
   private readonly userSessions = new Map<string, Set<string>>();
   private readonly stateStore: OidcStateStore;
 
@@ -194,18 +206,26 @@ export class OidcIdentityService {
     const sessionId = newId("oidc_session");
     const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
 
-const session: OidcSession = {
+    const record: SessionRecord = {
       sessionId,
-      userId: userInfo
+      userId: userInfo.sub,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      idToken: tokens.idToken,
+      expiresAt,
+      createdAt: nowIso(),
+      lastActivityAt: nowIso(),
+      providerId: this.providerConfig.providerId,
+    };
 
-    this.sessions.set(sessionId, session);
+    this.sessions.set(sessionId, record);
 
     if (!this.userSessions.has(userInfo.sub)) {
       this.userSessions.set(userInfo.sub, new Set());
     }
     this.userSessions.get(userInfo.sub)!.add(sessionId);
 
-    return session;
+    return record;
   }
 
   /**
@@ -281,7 +301,6 @@ const session: OidcSession = {
     const sessionIds = this.userSessions.get(userId);
     if (!sessionIds) return [];
 
-    const now = Date.now();
     const activeSessions: OidcSession[] = [];
 
     for (const sessionId of sessionIds) {
@@ -319,7 +338,6 @@ const session: OidcSession = {
    * @returns Number of sessions cleaned up
    */
   public cleanupExpiredSessions(): number {
-    const now = Date.now();
     let cleaned = 0;
 
     for (const [sessionId, session] of this.sessions.entries()) {

@@ -53,3 +53,20 @@ interface HandoffSerializer {
 - Handoff 四层模型使 agent 间上下文传递从"自然语言黑盒"变为"结构化可分析"协议。
 - 结合 OAPEFLIR Loop，副链（F→L→I→R）中的 agent 间协作将受益于此协议。
 - 未来可基于 Handoff 日志分析 agent 协作瓶颈。
+
+## 备选方案
+
+1. **自然语言摘要（当前实现）**：实现简单，但 token 预算不可控，语义压缩质量不稳定。
+2. **仅传 L1/L2**：不传 L3/L4 可降低复杂度，但复杂多步骤场景缺少必要上下文。
+3. **完整状态序列化（如 JSON）**：信息最完整，但 token 开销大，且需要双方schema 对齐。
+4. **采用本决策**：四层模型，按场景选择层级，平衡信息完整性和 token 预算。
+
+## 交叉引用
+
+- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
+- [ADR-060 显式规划中心](./060-explicit-planning-hub.md)
+
+## 来源章节
+
+- `§12 Agent Handoff`
+- `§13 OAPEFLIR Loop`
