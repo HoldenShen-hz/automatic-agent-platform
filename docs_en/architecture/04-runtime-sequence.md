@@ -17,7 +17,7 @@
        │ POST /tasks      │                        │                       │
        │─────────────────>│                        │                       │
        │                  │                        │                       │
-       │                  │ routeTask()            │                       │
+       │                  │ routeTask()           │                       │
        │                  │───────────────────────>│                       │
        │                  │                        │                       │
        │                  │                        │ Division routing       │
@@ -70,7 +70,7 @@
            │                         │         fencing_token = latest + 1        │
            │                         │                      │                     │
            │ lease.acquired          │                      │                     │
-           │<───────────────────────────────────────────────│                     │
+           │<──────────────────────────────────────────────│                     │
            │                         │                      │                     │
            │ dispatch:ticket_claimed (Tier-2)               │                     │
            │                         │                      │                     │
@@ -161,12 +161,11 @@
        │                     │ Insert EventRecord │                    │
        │                     │───────────────────>│                    │
        │                     │                    │                    │
-       │                     │ Commit              │                    │
+       │                     │ Commit              │
        │                     │<───────────────────│                    │
        │                     │                    │                    │
        │                     │ dispatch to consumers│                   │
        │                     │ (tier-specific ack) │                    │
-       │                     │                    │                    │
        │                     │                    │                    │
        │                     │                    │  RuntimeRecoveryService
        │                     │                    │  detects anomaly   │

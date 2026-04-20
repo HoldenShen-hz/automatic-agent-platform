@@ -1,5 +1,22 @@
 # ADR-011 Whether Effect-TS as Core Runtime Foundation
 
+---
+
+## OAPEFLIR Association
+
+This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post-execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and Dual-Channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
+
+---
+
 - Status: Accepted
 - Decision Date: 2026-04-03
 
@@ -70,7 +87,7 @@ Costs:
 
 - Current code must not assume Effect-TS will definitely be introduced in the future.
 - Current code also must not be written in a form that "absolutely cannot introduce Effect-TS".
-- Error model, repository boundary, context propagation, and state push entry must be成立 independently of specific runtime framework.
+- Error model, repository boundary, context propagation, and state push entry must be established independently of specific runtime framework.
 
 ## Adoption Triggers
 
@@ -96,7 +113,7 @@ Requirements for current implementation:
 
 - Continue converging core capabilities as service + repository + contract.
 - Use `AppError`, transition service, policy engine, context propagation and other contracts instead of framework coupling.
-- Avoid forming隐式global dependencies in code that are difficult to replace.
+- Avoid forming implicit global dependencies in code that are difficult to replace.
 
 Requirements for subsequent evolution:
 

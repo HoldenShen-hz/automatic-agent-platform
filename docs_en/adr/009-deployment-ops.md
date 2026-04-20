@@ -1,21 +1,38 @@
 # ADR-009 Deployment and Operations
 
+---
+
+## OAPEFLIR Association
+
+This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback source types (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
+
+---
+
 - Status: Accepted
 - Decision Date: 2026-04-02
 
 ## Context
 
-The platform must support local CLI/TUI, but also server-side HTTP/Telegram/Web modes, and also meet crash recovery, observability, configuration hot reload, and subsequent multi-tenant expansion. Therefore, deployment and operations cannot only consider single-machine happy path.
+The platform must support both local CLI/TUI and server-side HTTP/Telegram/Web modes, and also meet crash recovery, observability, config hot-reload, and future multi-tenant scaling. Therefore, deployment and operations cannot consider only single-machine happy path.
 
 ## Decision
 
-Adopt TypeScript full-stack + phased infrastructure evolution roadmap:
+Adopt TypeScript full-stack with phased infrastructure evolution:
 
-- Core service layer unified in `src/core/`.
+- Core service layer uniformly placed in `src/core/`.
 - Access layer includes CLI, TUI, HTTP Server, Gateway, and Embedded Client.
 - Early persistence uses SQLite + WAL.
-- Support crash recovery through structured events, workflow state, artifact storage, and recovery algorithms.
-- Use Feature Flag to control phased capability enablement, avoiding premature coupling of immature capabilities to main path.
+- Support crash recovery via structured events, workflow state, artifact storage, and recovery algorithms.
+- Use Feature Flags to control phased capability enablement, avoiding premature coupling of immature capabilities to main path.
 
 ## Project Structure Principles
 
@@ -27,37 +44,37 @@ Code structure should be organized around responsibility boundaries:
 - `gateway/`: Multi-channel access.
 - `server/`: HTTP API.
 - `cli/`: CLI and TUI.
-- `perception/`: Active perception module.
+- `perception/`: Proactive perception module.
 
 ## Storage and Recovery
 
 Phase 1-2 uses SQLite but must acknowledge its boundaries:
 
 - Use WAL to improve read/write concurrency.
-- Avoid letting high-frequency data like heartbeat directly write to database.
-- Events and tool usage adopt batch or async write.
-- Clearly define upper limit for concurrent active Agents.
+- Avoid having heartbeat and other high-frequency data directly write to DB.
+- Events and tool usage adopt batch or async writes.
+- Explicitly state concurrent active Agent upper limit.
 
-To support recovery, at least need:
+To support recovery, at minimum need:
 
 - Task table.
 - workflow_state.
 - workflow_step_outputs.
 - sessions/messages.
 - events.
-- artifacts index.
+- Artifacts index.
 
 ## Access and API
 
-Platform access layer includes at least:
+Platform access layer includes at minimum:
 
 - CLI and TUI.
 - HTTP API.
 - SSE streaming events.
 - Embedded Client.
-- Gateway bridging Telegram, subsequently expanding to Slack/Feishu.
+- Gateway bridging Telegram; Slack/Feishu expansion later.
 
-These entry points should share the same service layer rather than duplicating business logic.
+These entry points should share the same service layer, not duplicate business logic.
 
 ## Configuration and Feature Flags
 
@@ -66,44 +83,44 @@ Configuration system should support:
 - YAML configuration.
 - Environment variable interpolation.
 - Configuration version migration.
-- Configuration hot reload.
+- Config hot-reload.
 - Feature Flag controlling phased capabilities.
 
-In production builds, Feature Flag can further be used for compile-time DCE to reduce unused feature bundle size.
+In production builds, Feature Flags can further enable compile-time DCE to reduce unused capability size.
 
 ## Testing and Observability
 
-Operations design must include testing and observation:
+Operations design must include testing and observability:
 
 - Testing pyramid and LLM mock.
 - VCR/record-replay testing.
 - Structured logging.
 - Core KPI and debug logging infrastructure.
-- Boundary testing to verify architecture and permission layers are not bypassed.
+- Boundary testing, verifying architecture and permission layers are not bypassed.
 
 ## Evolution Roadmap
 
-- Phase 1-2: SQLite single-machine architecture, clearly define concurrency limits.
+- Phase 1-2: SQLite single-machine architecture; explicit concurrency limits.
 - Phase 3: Enhanced channels, authentication, Web, and commercialization infrastructure.
 - Phase 4: Migrate to PostgreSQL, multi-tenant, queue system, and stronger enterprise capabilities.
 
-## Results
+## Consequences
 
-Benefits:
+Advantages:
 
-- Fast development speed, suitable for early single-person + AI team advancement.
-- Unified service layer reused across CLI, HTTP, Embedded Client.
-- Migration path is clear, avoiding early over-engineering.
+- Fast development speed; suitable for early solo + AI team progress.
+- Unified service layer reuses CLI, HTTP, Embedded Client.
+- Migration path is explicit; avoids early over-engineering.
 
 Costs:
 
-- SQLite concurrency limits must be hard-documented and acknowledged at runtime.
-- Phase migration requires strong testing and compatibility constraints, otherwise subsequent upgrade costs will be high.
-- If Web, multi-tenant, and commercialization capabilities are added too early, it will significantly slow down infrastructure maturity.
+- SQLite concurrency upper limit must be hard-acknowledged in documentation and runtime.
+- Phase migration needs strong testing and compatibility constraints; otherwise subsequent upgrade costs will be high.
+- Premature addition of Web, multi-tenant, and commercialization capabilities significantly slows infrastructure maturity.
 
 ## Cross-References
 
-- [ADR-001 Three-Layer Distributed Architecture](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation of Authority](./001-three-layer-architecture.md)
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 

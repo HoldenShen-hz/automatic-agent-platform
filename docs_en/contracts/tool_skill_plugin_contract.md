@@ -1,15 +1,36 @@
 # Tool Skill Plugin Contract
 
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines registration, permissions, dependencies, and execution boundaries for tools, skills, plugins, and MCP extensions.
+This contract defines the registration, permissions, dependencies, lifecycle, and execution boundaries for tools, skills, plugins, and MCP extensions.
 
-## 2. Key Objects
+The current authoritative scope is phase1-4 landed tools and skill governance; Plugin SPI, Domain Registry, and marketplace platform capabilities belong to the `M2` extension surface, interfaces may be defined in this document, but must not be miswritten as all currently delivered.
+
+## 2. Canonical Objects
 
 - `ToolDefinition`
 - `SkillDefinition`
-- `PluginDefinition`
+- `PluginManifest`
+- `PluginSpiRegistration`
 - `McpBinding`
+- `DomainToolBundle`
 
 ## 3. ToolDefinition Minimum Fields
 
@@ -21,6 +42,14 @@ This contract defines registration, permissions, dependencies, and execution bou
 - `permissions`
 - `execution_metadata`
 - `model_overrides?`
+- `recovery_policy?`
+- `idempotency_hint?`
+
+Constraints:
+
+- The authoritative input definition of a tool comes primarily from the structured schema, then the model-side / API-side schema is uniformly derived.
+- Tool recovery, security, and path semantics follow `tool_metadata_and_recovery_contract.md` as the authoritative drilling document.
+- Native wire-format tool calls always take priority; compatible fallback can only be limited to registered tool whitelist, with explicit audit markers.
 
 ## 4. SkillDefinition Minimum Fields
 
@@ -33,64 +62,167 @@ This contract defines registration, permissions, dependencies, and execution bou
 - `model_profile_name?`
 - `activation_conditions?`
 - `activation_paths?`
+- `cacheable?`
+- `cache_ttl_seconds?`
 
-## 5. PluginDefinition Minimum Fields
+Constraints:
+
+- A skill can only orchestrate authorized tools, and cannot implicitly expand permissions.
+- If a step declares `model_overrides`, the override target tool must also already be in the allowed set.
+- Skills not meeting `activation_conditions` / `activation_paths` can remain in the registry, but are not in the model-visible surface by default.
+
+## 5. Plugin Manifest and SPI Types
+
+### 5.1 `PluginManifest` Minimum Fields
 
 - `plugin_id`
 - `name`
-- `capabilities`
 - `version`
-- `auth_requirements?`
-- `trust_level?`
+- `owner`
+- `capabilities`
+- `spi_types`
+- `trust_level`
 - `settings_schema?`
+- `auth_requirements?`
+- `plugin_api_range?`
+- `built_with_platform_version?`
+- `min_runtime_version?`
 - `lifecycle_state?`
-- `compatibility?`
-- `public_sdk_surface?`
+- `public_sdk_surface`
 
-## 6. Behavioral Constraints
+Rules:
 
-- Tool, skill, plugin must all be versionable.
-- Skill can only orchestrate authorized tools and must not implicitly expand permissions.
-- If tool / skill step declares `model_overrides`, override target tool must also be declared and in allowed tools set.
-- Plugin / MCP extension must pass capability declaration and permission verification.
-- High-risk tools must be auditable and disableable.
-- Tool recovery, security, and path semantics must be based on metadata declaration in `tool_metadata_and_recovery_contract.md`.
-- Capability ownership should be as clear as possible attributed to plugin / extension; custom capabilities should not through core private reach-in temporarily splice.
-- Tool authoritative input definition should prioritize from structured schema, then uniformly derive model-side / API-side tool schema to avoid maintaining multiple handwritten parallel definitions.
+- All plugins / extensions must use manifest as the authoritative registration input.
+- Extension / plugin production code can only interact with core through public SDK surface, and must not directly import core private modules or other extension private implementations.
+- If a plugin needs a new runtime seam, should prioritize adding a clear public SDK subpath or facade, rather than exposing private implementation files.
 
-## 6A. Skill Execution Semantics
+### 5.2 Plugin SPI Four Canonical Interfaces
 
-### 6A.1 Step Failure Mode
+`§K` requires current document system to unify to four SPI types:
 
-`SkillStepDefinition.onFailure` defines strategy after step failure:
+- `DomainRetrieverPlugin`
+- `DomainValidatorPlugin`
+- `DomainPlannerPlugin`
+- `DomainPresenterPlugin`
+
+Minimum interface semantics:
+
+```ts
+interface PluginLifecycleContext {
+  pluginId: string;
+  domainId?: string;
+  capabilityIds: string[];
+}
+
+interface DomainRetrieverPlugin {
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  retrieve(input: unknown): Promise<unknown>;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+}
+
+interface DomainValidatorPlugin {
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  validate(input: unknown): Promise<unknown>;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+}
+
+interface DomainPlannerPlugin {
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  plan(input: unknown): Promise<unknown>;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+}
+
+interface DomainPresenterPlugin {
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  present(input: unknown): Promise<unknown>;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
+}
+```
+
+Constraints:
+
+- `onLoad / onActivate / onDeactivate / onUnload` are canonical hooks for plugin lifecycle.
+- Hook failures must not elevate permissions; default to disabling that SPI instance or blocking loading.
+- SPI can only consume capabilities and settings declared in manifest, and must not secretly expand permissions at runtime.
+
+## 6. Lifecycle and State Machine
+
+Plugin lifecycle must cover at least:
+
+`discovered -> installed -> enabled -> disabled -> reloaded -> removed`
+
+SPI runtime lifecycle must cover at least:
+
+`registered -> loaded -> active -> inactive -> unloaded`
+
+Supplementary rules:
+
+- `enabled` does not equal `active`; only allowed to enter active after passing compatibility, permission, and trust gates.
+- `reloaded` must preserve before/after version, configuration summary, and error reasons to facilitate audit and rollback.
+- Trust warnings, permission retries, and plugin settings can only serve as experience-layer safety valves, and cannot replace runtime policy, sandbox, and capability boundaries.
+
+## 7. Domain Tool Bundle
+
+As tool / skill / plugin scale increases, the system should organize capabilities by domain bundle, rather than defaulting to stuffing everything into prompts.
+
+`DomainToolBundle` minimum fields:
+
+- `domain_id`
+- `bundle_id`
+- `tool_names`
+- `skill_ids`
+- `plugin_ids`
+- `default_activation_policy`
+- `knowledge_namespaces?`
+
+Rules:
+
+- Ownership of capabilities should be clearly attributed to plugin / extension / domain bundle as much as possible.
+- Custom capabilities should not be temporarily assembled through core private reach-in.
+- Domain bundle is the minimum governance unit for recommendation, retrieval, lazy loading, and explainability.
+
+## 8. Skill Execution Semantics
+
+### 8.1 Step Failure Modes
+
+`SkillStepDefinition.onFailure` defines the handling strategy after step failure:
 
 | Mode | Meaning |
 | --- | --- |
 | `fail` | Immediately terminate entire skill execution (default) |
 | `continue` | Skip failed step, continue executing subsequent steps |
-| `retry` | Retry by `maxAttempts`, degrade to `fail` after exceeding count |
+| `retry` | Retry according to `maxAttempts`, degrade to `fail` after exceeding count |
 
 Rules:
 
-- `retry` mode does not carry backoff and retries immediately.
+- `retry` does not include backoff; retry immediately.
 - Retry scheduling must emit `skill:retry_scheduled` event.
 - Each retry counts as independent `skill:step_started` / `skill:step_failed` events.
 
-### 6A.2 Model Override Matching
+### 8.2 Model Override Matching
 
-Skill step can declare `modelOverrides` to select specific model profile at execution:
+Skill steps can declare `modelOverrides`:
 
-- `profileNames`: exact match of profile name (optional)
-- `tiers`: match model tier (optional)
-- `requiredCapabilities`: match capability tags (optional)
+- `profileNames`
+- `tiers`
+- `requiredCapabilities`
 
-Matching rules: all non-empty conditions are AND relationship, multiple values within same condition are OR relationship.
+Matching rules:
 
-### 6A.3 Skill Caching
+- All non-empty conditions are AND between each other.
+- Multiple values within the same condition are OR.
 
-Cacheable skills (`cacheable: true`) support result caching to skip duplicate execution.
+### 8.3 Skill Caching
 
-Cache key derivation (SHA256):
+Cache key derivation:
 
 ```
 SHA256(skillId + version + parameters + workingDirectory + gitHead + sourceHash)
@@ -99,102 +231,55 @@ SHA256(skillId + version + parameters + workingDirectory + gitHead + sourceHash)
 Cache eligibility conditions:
 
 - Skill declares `cacheable: true`
-- And `gitHead` or `sourceHash` at least one non-empty (ensures source code traceable)
+- And at least one of `gitHead` or `sourceHash` is non-empty
 
 Cache lifecycle:
 
-| Stage | Meaning |
+| Stage | Description |
 | --- | --- |
 | `disabled` | Cache not enabled |
 | `ineligible` | Does not meet eligibility conditions |
 | `miss` | Eligibility passed but no matching cache |
-| `hit` | Cache hit, skip execution, replay cached result |
+| `hit` | Cache hit, skip execution and replay result |
 | `stored` | Stored in cache after successful execution |
 
 Rules:
 
-- Cache only stores when all skill steps succeed; partial success not cached.
-- On cache hit, insert `StepOutput` record and mark `cacheHit: true`.
-- When cache reaches `cacheMaxEntries`, eliminate by LRU strategy.
-- Cache TTL controlled by `cacheTtlSeconds`.
-- Cache metadata must record `gitHead`, `sourceHash`, `cacheKey`, and timestamp to ensure provenance traceable.
+- Only store when all steps of the skill succeed.
+- When cache hits, insert `StepOutput` and mark `cacheHit: true`.
+- When `cacheMaxEntries` is reached, eliminate by LRU.
+- Cache metadata must record `gitHead`, `sourceHash`, `cacheKey`, and timestamp.
 
-### 6A.4 Conditional Activation
+## 9. Skill Creator / Authoring
 
-When skill quantity grows, skills must not default to all enter context.
+### 9.1 Skeleton Minimum Structure
 
-- `activation_conditions` used to express trigger conditions such as role, task type, repository characteristics, explicit user intent.
-- `activation_paths` used to express "in which directories, file patterns, or project structures it is worth activating".
-- Skills not meeting activation conditions can remain in registry but default not enter model-visible surface.
-
-## 6B. Skill Creator / Authoring Semantics
-
-### 6B.1 Goals
-
-System should provide minimum viable `skill creator` capability to initialize skill directory skeleton in a constrained way, rather than requiring authors to hand-assemble all files.
-
-### 6B.2 Skill Skeleton Minimum Structure
-
-Each skill generated by creator at minimum contains:
+Each skill generated through creator must contain at least:
 
 - `<skill_root>/<skill_slug>/SKILL.md`
 
-Creator can additionally initialize per request:
+Optional additional structure:
 
 - `<skill_root>/<skill_slug>/scripts/`
 - `<skill_root>/<skill_slug>/references/`
 - `<skill_root>/<skill_slug>/assets/`
 - `<skill_root>/<skill_slug>/agents/openai.yaml`
 
-### 6B.3 Naming Rules
+### 9.2 Naming and Content Constraints
 
 - `skill_slug` must use lowercase kebab-case.
-- `skill_id` should be consistent with `skill_slug` unless caller gives explicit compatible reason.
-- `name` can be human-readable title, but when landing in registry still needs binding to stable `skill_id`.
-
-### 6B.4 `SKILL.md` Minimum Content
-
-Creator-generated `SKILL.md` at minimum should contain:
-
-- `name`
-- `description`
-- `when to use`
-- `inputs`
-- `workflow`
-- `safety notes`
-
-Rules:
-
-- `SKILL.md` must be directly readable by humans and must not only output machine template placeholders.
-- If skill depends on `scripts/`, `references/`, or `assets/`, `SKILL.md` must explicitly explain usage order and boundaries.
+- `skill_id` should be consistent with `skill_slug`, unless explicitly explained for compatibility reasons.
+- `SKILL.md` must contain at least: `name`, `description`, `when to use`, `inputs`, `workflow`, `safety notes`.
 - `SKILL.md` must not declare implicit capabilities beyond `required_tools` / `required_permissions`.
 
-### 6B.5 Creator Security Boundaries
+### 9.3 Creator Security Boundaries
 
-- Creator must perform `realpath` normalization and allowed-root validation on target path.
-- Creator defaults to rejecting writing skill outside specified root via symlink.
-- Creator must not overwrite existing non-empty skill directory unless explicitly declaring `overwrite_allowed`.
-- Creator generated files must not write secrets, tokens, private endpoints, or environment-specific credentials.
+- Creator must do `realpath` normalization and allowed-root verification.
+- Default deny writing outside the specified root directory via symlinks.
+- Must not overwrite existing non-empty directories unless explicitly declaring `overwrite_allowed`.
+- Must not write secrets, tokens, private endpoints, or environment-specific credentials.
 
-### 6B.6 Creator Validation and Registration
-
-Creator at minimum should perform the following validations:
-
-- `skill_slug` format validation
-- `version` semver validation
-- `description` non-empty and length validation
-- `required_tools` deduplication and format validation
-- Directory conflict detection
-
-Optional registration semantics:
-
-- Creator can call skill governance registry for registration after skeleton generation.
-- If registration is enabled, `skill_id / version / required_tools / cache policy` in registry must be consistent with generated files.
-- If local file generation succeeds but registry registration fails, creator must return partial success status and explicit error and must not impersonate complete success.
-
-### 6B.7 Generation Result Object
-
-Creator returns result at minimum containing:
+### 9.4 Creator Return Object
 
 - `skill_id`
 - `skill_slug`
@@ -205,29 +290,50 @@ Creator returns result at minimum containing:
 - `registered`
 - `warnings`
 
-### 6B.8 Authoring Principles
+## 10. Registration, Review, and Validation
 
-- Creator is responsible for generating minimum maintainable skeleton and not responsible for auto-inferring complex business logic.
-- Skill authoring should prioritize going through scaffold + validate + governance register loop rather than directly skipping creator hand-scattering files.
-- Creator is authoring experience layer capability and cannot replace runtime policy, sandbox, and skill governance.
+Registry must record at minimum:
 
-## 7. Supplementary Rules
+- `id`
+- `version`
+- `permissions`
+- `risk_level`
+- `owner`
+- `compatibility`
+- `enabled`
 
-- Registry at minimum records: ID, version, permissions, risk level, owner, compatibility, enabled status.
-- Marketplace review at minimum checks: permission surface, external dependencies, auditability, revocation path, signature or source credibility.
-- Skill cache only allows caching read-only metadata, orchestration templates, or execution results based on deterministic key (see 6A.3) and must not cache cross-tenant sensitive runtime state.
-- Plugin lifecycle at minimum covers: `discovered -> installed -> enabled -> disabled -> reloaded -> removed`.
-- Permission retry, trust warning, plugin settings and other experience entry points can exist but must not replace runtime policy and capability boundary.
-- MCP / plugin / local tool presentation layer can be unified, but trust level and execution boundary must be explicitly distinguished at bottom layer.
-- External plugin at minimum should declare: `plugin_api_range`, `built_with_platform_version`, `min_runtime_version`.
-- Extension / plugin production code can only interact with core through public SDK surface and must not directly import core private modules or other extension private implementations.
-- For key extension boundaries, allows using inventory baseline / contract suite way for continuous validation rather than only relying on manual code review.
-- If plugin needs new runtime seam, should prioritize adding new explicit public SDK subpath or facade rather than directly exposing private implementation files.
-- When tool / skill / extension scale grows, should prioritize through recommend / search / deferred loading exposure rather than defaulting to stuff all into prompt.
-- Recipe / template / extension if first execution, source changed, or detected hidden characters/suspicious content, should before execution show trust warning, source description, and preview summary.
-- Trust warning can only serve as experience layer safety valve and cannot replace runtime policy, sandbox, and capability boundary.
-- Bundled / built-in extension list should not only require "can deserialize" but also do pre-release lint: intercept common field misuse, transport type and field mismatch, key execution field missing.
-- For example `streamable_http` type should explicitly require `uri`, `stdio` type should explicitly require `cmd`; such common errors should fail at offline validation stage rather than left to runtime.
-- Validation result for extension inventory should output readable error including at minimum entry number, name, ID, and suggested fix field to help authors quickly fix.
-- If providing tool-call text extraction fallback for local models or OpenAI-compatible non-standard implementations, it can only serve as compatibility safety net rather than main path.
-- Native wire-format tool call always has priority; fallback result must be limited to within registered tool whitelist and with explicit audit tag to avoid misjudging arbitrary JSON text as tool call.
+Bundled / built-in extension inventory must execute at least before release:
+
+- Manifest field lint
+- Transport and field matching validation
+- Critical execution field missing interception
+- Inventory baseline / contract suite validation
+
+For example:
+
+- `streamable_http` type must provide `uri`
+- `stdio` type must provide `cmd`
+
+Validation output must contain at minimum:
+
+- Item sequence number
+- Name
+- ID
+- Recommended correction fields
+
+## 11. Phase Boundary
+
+### Current phase1-4 authoritative scope
+
+- Tool registry, skill registry, permissions, and risk boundaries
+- Skill activation / cache / authoring contract
+- MCP / plugin / local tool can be unified at presentation layer, but trust levels must be explicitly distinguished at lower layer
+
+### `M2` target-state scope
+
+- Plugin SPI large-scale production use
+- Domain Registry as unified backend
+- External marketplace publish and revoke system
+- Complete platform control surface for per-domain tool bundle
+
+These contents can be defined in the contract in advance, but currently only allowed to state as target-state extensions, and must not be used as current completed readiness conclusions.

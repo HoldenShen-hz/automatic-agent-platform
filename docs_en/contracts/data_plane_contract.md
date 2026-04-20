@@ -1,23 +1,40 @@
 # Data Plane Contract
 
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines the final platform's data plane layering, including transactional data, artifact/object, analytics, knowledge, memory/archive, and replay data.
+This contract defines the layered data planes of the final platform, including transactional data, artifacts/objects, analytics, knowledge, memory/archive, and replay data.
 
-It is an upper-layer extension of `storage_schema_contract.md`, answering "where different data should be stored, who is responsible, how it flows, how long it is retained, and who is the source of truth."
+It is a upper-layer extension of `storage_schema_contract.md`, answering "where should different data be stored, who is responsible for it, how it flows, how long it is retained, and who is the authoritative source."
 
 ## 2. Goals
 
-- Clarify authoritative transaction store.
-- Clarify object / artifact namespace, lifecycle, and reference semantics.
-- Clarify analytics, memory, archive, and replay layered responsibilities.
+- Clarify the authoritative transaction store.
+- Clarify object / artifact naming conventions, lifecycle, and reference semantics.
+- Clarify layered responsibilities for analytics, memory, archive, and replay.
 - Clarify synchronization and writeback boundaries between different data planes.
 
 ## 3. Non-Goals
 
 - This contract does not specify specific database or object storage product selection.
-- This contract does not replace Phase 1a transaction table field definitions.
-- This contract does not require all data planes to go live in the same phase.
+- This contract does not replace Phase 1a transactional table field definitions.
+- This contract does not require all data planes to launch in the same phase at once.
 
 ## 4. Data Plane Layers
 
@@ -35,43 +52,43 @@ flowchart TD
     A --> D["MemoryArchiveStore"]
     A --> E["ReplayDatasetStore"]
     D --> E
-    C -. "Cannot reverse override truth" .-> A
-    E -. "Only used for verification/replay" .-> A
+    C -. "Cannot reverse-overwrite truth" .-> A
+    E -. "For verification/replay only" .-> A
 ```
 
-## 5. Layered Responsibilities
+## 5. Layer Responsibilities
 
 `TransactionalStore`
-: Stores transactional facts such as tasks, executions, approvals, events, and billing ledger refs. It is the primary source of authoritative truth for runtime.
+: Stores transactional facts such as tasks, executions, approvals, events, and billing ledger refs. It is the primary source of runtime authoritative truth.
 
 `ArtifactObjectStore`
-: Stores large files, reports, attachments, model outputs, evidence bundles, and binary artifacts. The transaction layer only stores refs and does not directly store BLOBs.
+: Stores large files, reports, attachments, model outputs, evidence bundles, and binary artifacts. The transactional layer only stores refs, not BLOBs directly.
 
 `AnalyticsStore`
-: Stores aggregated metrics, cost analysis, conversion, retention, usage aggregation, and business dashboard data. It consumes facts but does not reverse override act as a source of truth.
+: Stores aggregated metrics, cost analysis, conversions, retention, usage aggregations, and business dashboard data. It consumes facts from the truth layer but does not reverse-act as a source of truth.
 
 `KnowledgePlane`
 : Stores knowledge entries, retrieval indexes, trust/freshness metadata, and namespace boundaries. It is not an online transactional source of truth.
 
 `MemoryArchiveStore`
-: Stores long-term memory, compression summaries, evolution archives, handover bundles, and memory promotion materials. Provenance must be preserved.
+: Stores long-term memory, compressed summaries, evolution archives, handover bundles, and memory promotion materials. Provenance must be preserved.
 
 `ReplayDatasetStore`
 : Stores replays, evaluations, comparisons, regression, and golden datasets. Used for verification and learning, not as an online transactional source.
 
 ## 6. Data Ownership Principles
 
-- Tasks, executions, approvals, and events authoritative owner is `TransactionalStore`.
-- Artifact content body authoritative owner is `ArtifactObjectStore`.
-- Metrics and trend analysis authoritative owner is `AnalyticsStore`.
-- Knowledge entries and namespace metadata authoritative owner is `KnowledgePlane`.
-- Memory and archive materials authoritative owner is `MemoryArchiveStore`.
-- Evaluation and replay samples authoritative owner is `ReplayDatasetStore`.
+- Tasks, executions, approvals, and events are owned by `TransactionalStore`.
+- Artifact content本体 is owned by `ArtifactObjectStore`.
+- Metrics and trend analysis are owned by `AnalyticsStore`.
+- Knowledge entries and namespace metadata are owned by `KnowledgePlane`.
+- Memory and archive materials are owned by `MemoryArchiveStore`.
+- Evaluation and replay samples are owned by `ReplayDatasetStore`.
 
 Rules:
 
-- When any plane reads data from other planes, it should do so through refs, snapshots, or pipelines, not by privately copying semantics.
-- Analytics and replay must not reverse overwrite transaction truth.
+- When any plane reads data from another plane, it should be through refs, snapshots, or pipelines, not by privately copying semantics.
+- Analytics and replay must not reverse-overwrite transactional truth.
 
 ## 7. Key Objects
 
@@ -89,7 +106,7 @@ Rules:
 | Field | Type | Description |
 | --- | --- | --- |
 | `namespace_id` | `string` | Namespace ID |
-| `plane` | `transactional \| artifact \| analytics \| knowledge \| memory_archive \| replay` | Belongs to plane |
+| `plane` | `transactional \| artifact \| analytics \| knowledge \| memory_archive \| replay` | Belonging plane |
 | `tenant_scope` | `string?` | Tenant / org boundary |
 | `retention_policy` | `string` | Retention policy |
 | `encryption_policy` | `string` | Encryption policy |
@@ -108,7 +125,7 @@ Rules:
 
 Rules:
 
-- Transaction layer can only store `ArtifactRef` and cannot backfill artifact body.
+- The transactional layer can only store `ArtifactRef` and must not backfill artifact body.
 - Artifact refs must be stable, verifiable, and traceable.
 
 ## 10. `AnalyticsFact` Minimum Fields
@@ -124,8 +141,8 @@ Rules:
 
 Rules:
 
-- Analytics facts must be traceable to transactional truth or explicit snapshots.
-- The same metric must not mix real-time facts and manual estimates without distinction.
+- Analytics facts must be traceable to transactional truth or an explicit snapshot.
+- The same metric must not mix real-time facts with manual estimates without distinction.
 
 ## 11. `ArchiveBundle` and `ReplayDataset`
 
@@ -158,10 +175,10 @@ Allowed primary paths:
 
 Restrictions:
 
-- analytics -> transaction: Only allowed through explicit decision writeback, not direct fact overwriting.
+- analytics -> transaction: Only allowed through explicit decision writeback; direct fact overwriting is not permitted.
 - knowledge -> transaction: Only allowed through controlled retrieval, manual confirmation, or explicit governance writeback.
-- replay -> transaction: Forbidden from directly becoming online source of truth.
-- archive -> transaction: Can only write back through manual confirmation or explicit recovery process.
+- replay -> transaction: Forbidden from directly becoming an online source of truth.
+- archive -> transaction: Only allowed through manual confirmation or explicit recovery flows.
 
 ### 12.1 Data Flow Diagram
 
@@ -180,10 +197,10 @@ flowchart LR
     H --> I
     I --> J["ReplayDatasetStore"]
 
-    F -. "Only write back after explicit governance" .-> B
-    L -. "Only write back after controlled retrieval/governance" .-> B
-    H -. "Write back under recovery process" .-> B
-    J -. "Forbidden from direct writeback" .-> B
+    F -. "Writeback only after explicit governance" .-> B
+    L -. "Writeback only after controlled retrieval/governance" .-> B
+    H -. "Writeback under recovery flow" .-> B
+    J -. "Direct writeback forbidden" .-> B
 ```
 
 ### 12.2 Plane Ownership Diagram
@@ -215,19 +232,19 @@ flowchart TD
 
 ## 13. Retention and Lifecycle
 
-- Transaction records are retained according to operation and audit requirements.
-- Artifacts are retained according to type, tenant, and compliance requirements.
-- Analytics can do rollup, downsample, and TTL.
-- Knowledge should support namespace, trust tier, freshness decay, and expiration strategies.
-- Memory/archive should support compaction, but compaction must not break/damage provenance.
-- Replay datasets should support versioning and expiration strategies.
+- Transaction records are retained according to operational and audit requirements.
+- Artifacts are retained by type, tenant, and compliance requirements.
+- Analytics may undergo rollup, downsample, and TTL.
+- Knowledge should support namespace, trust tier, freshness decay, and expiration policies.
+- Memory/archive should support compaction, but compaction must not destroy provenance.
+- Replay datasets should support versioning and expiration policies.
 
 ## 14. Tenant / Security Constraints
 
-- All planes must be tenant-aware namespace.
-- Artifact/object and analytics cannot bypass tenant scope to directly share.
-- Archive and replay datasets must have explicit authorization before cross-tenant sharing.
-- Residency / encryption must be expressed at the namespace layer, not UI layer.
+- All planes must be tenant-aware with namespace support.
+- Artifacts/objects and analytics must not bypass tenant scope for direct sharing.
+- Archive and replay datasets require explicit authorization before cross-tenant sharing.
+- Residency / encryption must be expressed at the namespace layer, not the UI layer.
 
 ## 15. Data Movement Job
 
@@ -251,10 +268,10 @@ Use cases:
 
 ## 16. Relationship with Existing Documents
 
-- `storage_schema_contract.md` is the Phase 1a transaction baseline.
-- `artifact_store_contract.md` is the minimum boundary for object / artifact.
+- `storage_schema_contract.md` is the Phase 1a transactional baseline.
+- `artifact_store_contract.md` is the minimal boundary for objects/artifacts.
 - `monetization_metering_plane_contract.md` consumes analytics / transaction data.
-- This contract is responsible for the final platform's data plane layered evolution model.
+- This contract is responsible for the final platform data plane layered evolution model.
 
 ## 17. Phased Introduction
 
@@ -262,8 +279,8 @@ Use cases:
 - Phase 3: analytics / PMF data layer.
 - Phase 4: enterprise data governance, cross-plane migration, and residency control.
 
-## 18. Closure Conclusion
+## 18. Conclusion
 
-The key to Data plane is not "adding a few more libraries" but clarifying owner, retention, security, and writeback boundaries for each type of data.
+The key to the data plane is not "just add a few more stores," but rather establishing clear ownership, retention, security, and writeback boundaries for each type of data.
 
-Any future storage expansion should first determine which plane it belongs to, then decide the landing location/placement and source of truth priority.
+Any future storage extension should first determine which plane it belongs to, then decide its storage location and source-of-truth priority.

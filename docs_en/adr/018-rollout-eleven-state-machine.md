@@ -1,5 +1,22 @@
 # ADR-018 Rollout Eleven-State Machine and Six-Phase Release
 
+---
+
+## OAPEFLIR Association
+
+This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post-execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and Dual-Channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
+
+---
+
 - Status: Accepted
 - Decision Date: 2026-04-17
 

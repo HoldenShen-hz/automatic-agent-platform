@@ -1,29 +1,33 @@
 # Context Propagation Contract
 
+> **OAPEFLIR Related**: This contract defines context propagation for OAPEFLIR 8 stages, corresponding to ADR-016.
+> **Updated**: 2026-04-17
+
 ## 1. Scope
 
-This contract defines runtime context propagation rules based on `AsyncLocalStorage`, avoiding the need to pass `taskId / sessionId / agentId / traceId / workdir` through deep call chains.
+This contract defines runtime context propagation rules based on `AsyncLocalStorage`, avoiding `taskId / sessionId / agentId / traceId / workdir` from being passed through layer after layer in deep call chains.
 
-Related documents:
+Related Documents:
 
 - `runtime_execution_contract.md`
 - `app_error_contract.md`
 - `observability_contract.md`
 - `tool_and_provider_execution_contract.md`
+- [ADR-016 OAPEFLIR 8-Stage Model](../adr/016-oapeflir-loop-model.md)
 
 ## 2. Goals
 
-Phase 1a context propagation must at minimum guarantee:
+Phase 1a context propagation at minimum ensures:
 
 - Logs, DB, and tool execution can automatically get current task / execution / trace.
-- Cancellation, timeout, and recovery chains can read the same context snapshot.
-- Explicit parameters only retain tool-specific configuration and no longer carry global runtime identity.
+- Cancellation, timeout, and recovery chain can read the same context snapshot.
+- Explicit parameters only retain tool-specific configuration, no longer carrying global runtime identity.
 
 ## 3. `RuntimeContextSnapshot`
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `trace_id` | `string` | Trace ID primary key |
+| `trace_id` | `string` | Trace primary key |
 | `span_id` | `string?` | Current span (aligned with `trace_and_root_cause_observability_contract.md` §3) |
 | `parent_span_id` | `string?` | Parent span |
 | `task_id` | `string` | Current task |
@@ -33,7 +37,7 @@ Phase 1a context propagation must at minimum guarantee:
 | `agent_id` | `string?` | Current agent |
 | `division_id` | `string?` | Current division |
 | `oapeflir_stage` | `string?` | Current closed-loop stage |
-| `loop_iteration` | `integer?` | Current closed-loop iteration |
+| `loop_iteration` | `integer?` | Current closed-loop round |
 | `knowledge_namespace` | `string?` | Current knowledge namespace |
 | `memory_layer` | `string?` | Current memory layer |
 | `domain_id` | `string?` | Current domain |
@@ -41,19 +45,19 @@ Phase 1a context propagation must at minimum guarantee:
 | `workdir` | `string?` | Current working directory |
 | `request_id` | `string?` | Current external request |
 | `approval_id` | `string?` | Current approval context |
-| `abort_signal_ref` | `string?` | Cancellation signal reference |
+| `abort_signal_ref` | `string?` | Cancel signal reference |
 | `budget_scope_id` | `string?` | Budget aggregation scope |
 
-Note: `span_id` and `parent_span_id` are used to locate the current execution position in the trace tree. Each time entering a new agent step, tool call, or LLM call, `span_id` should be updated via `withContextPatch` and old `span_id` pushed into `parent_span_id`. Phase 1a may not implement a complete span tree, but field positions should be reserved to avoid future breaking changes.
+Explanation: `span_id` and `parent_span_id` are used to locate current execution position in trace tree. Each time entering a new agent step, tool call, or LLM call, `span_id` should be updated via `withContextPatch` and old `span_id` pushed into `parent_span_id`. Phase 1a may not implement complete span tree, but field positions should be reserved to avoid subsequent breaking changes.
 
 ## 4. Propagation Entrypoints
 
-Must explicitly `provideContext(...)` through one of the following entrypoints:
+Must explicitly `provideContext(...)` from one of the following entrypoints:
 
-- Gateway receives user request
-- Scheduler / runtime creates execution
-- Recovery chain re-takes over stale run
-- Approval resume restores execution
+- gateway receives user request
+- scheduler / runtime creates execution
+- recovery chain re-takes over stale run
+- approval resume resumes execution
 
 ```mermaid
 flowchart TD
@@ -67,7 +71,7 @@ flowchart TD
 
 ## 5. API Constraints
 
-Minimum runtime interface suggestions:
+Minimum runtime interface recommendations:
 
 - `provideContext(snapshot, fn)`
 - `getContext()`
@@ -77,13 +81,13 @@ Minimum runtime interface suggestions:
 
 Rules:
 
-- `getContext()` must explicitly throw error when no context, not return a fake default.
-- `withContextPatch` can only overwrite partial fields and must not silently lose existing identifiers.
-- Background detached tasks must explicitly copy or rebuild context and cannot rely on implicit inheritance.
+- `getContext()` must explicitly throw error when no context, and must not return pseudo default value.
+- `withContextPatch` can only overwrite local fields and must not silently lose existing identifiers.
+- Background detached tasks must explicitly copy or reconstruct context and cannot rely on implicit inheritance.
 
 ## 6. Boundary with Explicit Parameters
 
-Content to keep in explicit parameters:
+Content to keep as explicit parameters:
 
 - `timeout_ms`
 - `tool arguments`
@@ -91,7 +95,7 @@ Content to keep in explicit parameters:
 - `sandbox options`
 - `output destination`
 
-Content that should no longer be passed through explicit parameters layer by layer:
+Content that should no longer be passed through layer by layer as explicit parameters:
 
 - `task_id`
 - `session_id`
@@ -107,13 +111,13 @@ Content that should no longer be passed through explicit parameters layer by lay
 
 ## 7. Cancellation and Recovery Semantics
 
-- The same context snapshot should be associated with a queryable cancellation signal reference.
-- When resuming a new execution, a new `execution_id` must be created but the same `task_id / trace_id` lineage can be reused.
+- The same context snapshot should be associated with a queryable cancel signal reference.
+- When recovering new execution, new `execution_id` must be created, but same `task_id / trace_id` lineage can be reused.
 - Old execution's ALS context must not continue to be reused after recovery.
 
 ## 8. Observability and Audit Requirements
 
-All structured logs, events, and DB writes must at minimum be able to get from context:
+All structured logs, events, and DB writes must be able to get from context at minimum:
 
 - `trace_id`
 - `task_id`
@@ -122,8 +126,8 @@ All structured logs, events, and DB writes must at minimum be able to get from c
 
 Rules:
 
-- If the current operation lacks these key fields, it should fail early rather than write unassociable records.
-- `actor` in audit logs must not conflict with runtime context fields.
+- If current operation lacks these key fields, it should fail early rather than write unassociable records.
+- `actor` in audit logs and runtime context fields must not conflict with each other.
 
 ## 9. Phase Boundaries
 
@@ -132,21 +136,21 @@ Phase 1a explicitly does:
 - Single-process `AsyncLocalStorage`
 - Unified read entrypoints for runtime, tool, provider, logging, DB
 
-Currently does not do:
+Currently not doing:
 
 - Cross-process automatic context propagation
-- OpenTelemetry full chain automatic injection
+- OpenTelemetry full链路 automatic injection
 - Remote worker context federation
 
-## 10. Testing Requirements
+## 10. Test Requirements
 
-At minimum cover:
+At least cover:
 
 - Context not lost under nested async calls
-- Context does not cross-talk between concurrent tasks
+- Context not crossing between concurrent tasks
 - Detached tasks fail directly if context not explicitly provided
-- After recovering execution, `execution_id` is refreshed but `task_id / trace_id` maintains lineage continuity
+- After recovering execution, `execution_id` refreshed but `task_id / trace_id` maintains lineage continuity
 
-## 11. Closure Conclusion
+## 11. Conclusion
 
-The focus of context propagation is not "passing fewer parameters" but making "who is currently executing what" a fact that any layer of the runtime can reliably read.
+The focus of context propagation is not passing fewer parameters, but making "who is currently executing what" a fact that any runtime layer can reliably read.

@@ -1,34 +1,34 @@
 # Source Of Truth Governance
 
-## 1. Goal
+## 1. Objective
 
-Ensure the same fact is maintained in only one master version, and avoid platform design, main documents, ADRs, and contracts from conflicting with each other.
+Ensure that the same fact is maintained in only one master version, preventing conflicts between platform design, main documents, ADRs, and contracts.
 
-## 2. Main Rules
+## 2. Master Rules
 
-- Field, state, and protocol issues take `contracts/` as standard.
-- Long-term architecture boundary issues take `01` ~ `07` as standard.
-- Plan trade-off issues take `adr/` as standard.
-- New platform design and migration boundaries take the two platform documents under `automatic_agent_platform/` as standard.
-- Current push actions take `operations/` as standard.
+- Field, status, and protocol issues defer to `contracts/`.
+- Long-term architecture boundary issues defer to `01` ~ `07`.
+- Solution trade-off issues defer to `adr/`.
+- New platform design and migration boundaries defer to the two platform documents under `automatic_agent_platform/`.
+- Current推进 actions defer to `operations/`.
 
 Supplementary:
 
-- Old-system documents such as `18_code_architecture.md` remain migration references only and are not current sources of truth.
+- Legacy system `18_code_architecture.md` and other old documents serve as migration references only; they are no longer the current project source of truth.
 
 ## 3. Change Sequence
 
-1. Modify main documents.
-2. Modify contracts.
-3. Supplement ADR.
-4. Update governance/glossary/source-of-truth.
+1. Update main documents.
+2. Update contracts.
+3. Add ADRs.
+4. Update governance / glossary / source-of-truth.
 5. Update operations.
-6. If old-system comparison must be kept, add it to migration notes rather than reviving legacy reviews.
+6. If legacy system reference information needs to be preserved, only add it to migration documentation; do not backfill old reviews.
 
 ## 4. Prohibitions
 
-- Redefine contracts in legacy review documents.
-- Invent new state machines in operations.
-- Continue maintaining active designs in historical reference materials.
-- Write current completion in README.
-- Let ADR, contract, governance terminology long-term drift from current implementation boundaries.
+- Redefining contracts in old review documents.
+- Inventing new state machines in operations.
+- Continuing to maintain active designs in historical reference materials.
+- Writing current completion status in README.
+- Allowing terminology in ADRs, contracts, and governance to become misaligned with current implementation boundaries over time.

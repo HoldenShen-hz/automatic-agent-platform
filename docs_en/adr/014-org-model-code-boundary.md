@@ -1,11 +1,28 @@
 # ADR-014 Whether Organization Model Directly Maps to Code Objects
 
+---
+
+## OAPEFLIR Association
+
+This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post-execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and Dual-Channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
+
+---
+
 - Status: Accepted
 - Decision Date: 2026-04-03
 
 ## Context
 
-Automatic Agent uses anthropomorphic naming like CEO, VP, Lead, HR, and divisions in product narrative, which helps express system roles and collaboration methods. However, if these names directly enter code objects, protocol fields, and configuration primary keys, it will increase implementation complexity and make subsequent refactoring更容易被产品文案牵着走。
+Automatic Agent uses anthropomorphic naming like CEO, VP, Lead, HR, and divisions in product narrative, which helps express system roles and collaboration methods. However, if these names directly enter code objects, protocol fields, and configuration primary keys, it will increase implementation complexity and make subsequent refactoring easier to be led by product copy.
 
 Need to clarify:
 
@@ -56,7 +73,7 @@ Costs:
 ## Reasons for Choosing This Approach
 
 - Balances product expression and engineering maintainability.
--有利于把组织层叙事与调度层实现解耦。
+- Helps decouple organizational layer narrative from scheduling layer implementation.
 - Reduces the amplification effect of "CEO/VP/Lead" naming on code complexity.
 
 ## Key Invariants
@@ -77,7 +94,7 @@ All current HQ/division/role naming should follow this rule, especially:
 
 ## Exit Conditions
 
-This decision has no "complete exit" goal, but if major product narrative redesign occurs in the future, should still keep canonical id layer stable, no need to回灌business alias into implementation primary keys.
+This decision has no "complete exit" goal, but if major product narrative redesign occurs in the future, should still keep canonical id layer stable, no need to flood business alias back into implementation primary keys.
 
 ## Implementation Impact
 

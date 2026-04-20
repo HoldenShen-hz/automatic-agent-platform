@@ -1,8 +1,25 @@
 # Remote Coordination And Disaster Recovery Contract
 
+---
+
+## OAPEFLIR Related
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines file consistency, remote execution observation, and cross-region disaster recovery boundaries for Bridge / Worker remote coordination scenarios.
+This contract defines file consistency, remote execution observability, and cross-site disaster recovery boundaries for Bridge / Worker remote coordination scenarios.
 
 Related documents:
 
@@ -13,24 +30,24 @@ Related documents:
 
 ## 2. Goals
 
-- Make remote workers not just "able to connect" but have consistency and recoverability.
+- Enable remote workers to have consistency and recoverability, not just "able to connect".
 - Establish formal recovery paths for cross-region coordination, worker disconnection, and sync breakage.
-- Establish source of truth for future coordinator clusters and region-level failover.
+- Establish ground truth for future coordinator clusters and region-level failover.
 
 ## 3. Remote File Consistency
 
-At minimum define:
+Must define at minimum:
 
 - Conflict detection
-- Incremental verification
+- Incremental checksum
 - Hash reconciliation
 - Sync recovery after session disconnection
 - Large file sync rate limiting
 - Blocking execution rules after sync failure
 
-## 4. Remote Execution Observation
+## 4. Remote Execution Observability
 
-Each remote worker at minimum reports:
+Each remote worker must report at minimum:
 
 - saturation
 - active lease count
@@ -38,14 +55,14 @@ Each remote worker at minimum reports:
 - sandbox success rate
 - repo cache hit rate
 
-Should also at minimum support:
+Should also support at minimum:
 
 - bridge credential refresh success rate
 - stream resume success rate
 - last acknowledged stream offset
-- session consistency check result after reconnect
+- reconnect session consistency check result
 
-Remote session states at minimum distinguish:
+Remote session status must distinguish at minimum:
 
 - `connecting`
 - `connected`
@@ -56,23 +73,23 @@ Remote session states at minimum distinguish:
 
 ## 5. Disaster Recovery Capabilities
 
-Mature industrial platforms should gradually support:
+Mature industrial platforms should progressively support:
 
 - Region-level failover
 - Worker cross-region reassignment
 - Metadata store primary/secondary switch
-- queue / lease repair
+- Queue / lease repair
 
 ## 6. Key Invariants
 
-- After remote worker disconnection, old leases must not continue writing back to authoritative state.
-- File sync status must be verifiable and must not rely only on "looked successful last time".
+- After remote worker disconnection, old lease must not continue writing back to authoritative state.
+- File sync status must be verifiable, must not rely solely on "looked successful last time".
 - After region-level switch, control plane must be able to determine which executions need rebuild and which only need reconnect.
-- When sync hash inconsistent, repo version inconsistent, or lease ownership inconsistent, must not continue execution by default.
-- After bridge credential refresh, new epoch / session generation must overwrite old transport's write permissions.
-- Remote stream recovery should continue from acknowledged offset, not full replay by default.
-- `viewer_only` sessions can consume logs and status but must not send interrupts, approvals, dispatches, or write back to authoritative state.
-- Transient reconnect and permanent disconnect must be explicitly distinguished at event and UI layers to avoid misjudging short-term jitter as final failure.
+- When sync hash inconsistency, repo version inconsistency, or lease ownership inconsistency occurs, must not continue execution by default.
+- After bridge credential refresh, new epoch / session generation must override old transport's write permissions.
+- Remote stream recovery should continue from acknowledged offset, not default to full replay.
+- `viewer_only` sessions can consume logs and status, but must not send interrupts, approvals, dispatches, or write back to authoritative state.
+- Transient reconnect and permanent disconnect must be explicitly distinguished at event and UI layers, avoiding misidentifying short-term jitter as final failure.
 
 ## 7. Topology Diagram
 
@@ -84,16 +101,16 @@ flowchart LR
     C --> D
 ```
 
-## 8. Conclusion
+## 8. Closure Conclusion
 
-After remote coordination enters industrial grade, the focus is no longer "can it dispatch" but:
+After remote coordination enters industrial grade, the focus is no longer "can dispatch" but:
 
-- Are files and state consistent
-- Can workers be safely reclaimed after disconnection
-- Can region failures be controlled and switched
-- Can inconsistencies be timely blocked, rebuilt, and given clear recovery paths
+- Whether files and status are consistent
+- Whether workers are safely recoverable after disconnection
+- Whether region failure is controllable for switchover
+- Whether inconsistencies can be promptly blocked, rebuilt, and given clear recovery paths
 
 Supplementary notes:
 
-- Currently only borrowing common patterns from remote bridging: token refresh, 401 recovery, offset continuation.
-- Not directly writing external system's proprietary session / bridge protocols as this system's source of truth.
+- Currently only borrowing common patterns from remote bridging such as token refresh, 401 recovery, offset continuation streaming.
+- Do not directly write external system's proprietary session / bridge protocol as this system's ground truth.

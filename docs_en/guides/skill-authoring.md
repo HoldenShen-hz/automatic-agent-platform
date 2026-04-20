@@ -1,23 +1,23 @@
 # Skill Authoring
 
-## Goal
+## Objective
 
-This guide defines how to use the system's built-in `skill creator` generation feature to initialize skill skeleton and connect skill to existing governance/runtime.
+This guide defines how to use the built-in `skill creator` to generate a skill skeleton and integrate the skill into existing governance/runtime.
 
-## Minimum Flow
+## Minimum Process
 
-1. Use `skill creator` to generate skill directory skeleton.
-2. Edit generated `SKILL.md`, supplement real workflow, input constraints, and safety notes.
-3. If needed, register skill to skill registry.
-4. Before going online, execute scaffold validate, permission check, and authoring review.
+1. Use `skill creator` to generate the skill directory skeleton.
+2. Edit the generated `SKILL.md` to add real workflow, input constraints, and safety notes.
+3. If needed, register the skill in the skill registry.
+4. Before going live, execute scaffold validate, permission check, and authoring review.
 
 ## Minimum Structure
 
-Each skill should contain at least:
+Each skill should contain at minimum:
 
 - `SKILL.md`
 
-Creator optionally generates:
+Creator may optionally generate:
 
 - `scripts/`
 - `references/`
@@ -26,7 +26,7 @@ Creator optionally generates:
 
 ## Required Sections in `SKILL.md`
 
-Generated `SKILL.md` should at least retain and complete:
+The generated `SKILL.md` should at minimum retain and complete:
 
 - `Description`
 - `When To Use`
@@ -36,15 +36,15 @@ Generated `SKILL.md` should at least retain and complete:
 
 ## Authoring Rules
 
-- Skill name should use stable lowercase kebab-case `skill_id`.
-- `required_tools` should maintain least privilege principle.
+- Skill names should use stable lowercase kebab-case `skill_id`.
+- `required_tools` should follow the principle of least privilege.
 - `SKILL.md` must not contain secrets, private tokens, or environment-specific endpoints.
 - Skills depending on `scripts/` or `references/` must specify usage order in `Workflow`.
 
 ## Registration Recommendations
 
-- Skills needing platform governance should enter skill registry after scaffold generation.
-- Registry metadata should remain consistent with skill files, especially `skill_id/version/required_tools/cache policy`.
+- Skills that need to be under platform governance should enter the skill registry after scaffold generation.
+- Registry metadata should remain consistent with skill files, especially `skill_id / version / required_tools / cache policy`.
 
 ## Related Documents
 

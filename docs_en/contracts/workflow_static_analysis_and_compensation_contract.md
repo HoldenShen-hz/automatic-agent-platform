@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines workflow static analysis rules before execution, compensation transaction boundaries, and long-task sharding and partial commit semantics.
+This contract defines static analysis rules for workflows before execution, compensation transaction boundaries, and long-task sharding and partial commit semantics.
 
 Related documents:
 
@@ -11,26 +11,29 @@ Related documents:
 - `idempotency_and_recovery_matrix_contract.md`
 - `runtime_execution_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-- Block obvious errors before execution rather than exposing during execution.
-- Provide formal compensation model for steps with side effects.
-- Provide unified semantics for long tasks, subgraph recovery, and phased commit.
+- Block obvious errors before execution, rather than exposing them during execution.
+- Provide a formal compensation model for steps with side effects.
+- Provide unified semantics for long tasks, subgraph recovery, and phased commits.
 
-## 3. Static Analysis Minimum Checks
+## 3. Minimum Static Analysis Checks
 
-Before execution at minimum checks:
+Before execution, must check at least:
 
 - Infinite loop detection
 - Unreachable step detection
-- Dependency closed loop detection
+- Dependency cycle detection
 - Required input key missing
-- Schema incompatible
+- Schema incompatibility
 - Timeout / retry missing or illegal
-- Step type and side effect level inconsistent
-- Step id uniqueness check
+- Step type and side effect level inconsistency
+- Step ID uniqueness check
 - Output key duplicate check
 - Unknown dependency reference check
+- Whether OAPEFLIR stage order is legal
+- Whether plugin / domain tool bundle references exist
+- Whether release rollback declares compensating_action or equivalent compensation strategy
 
 ## 4. Analysis Result Objects
 
@@ -50,33 +53,33 @@ Each step with side effects must declare one of:
 - `compensating_action`
 - `manual_reconciliation_required`
 
-Compensation action at minimum should explain:
+Compensation action must at least explain:
 
-- trigger condition
-- compensation owner
-- compensation timeout
-- compensation idempotency
-- evidence artifact
+- Trigger condition
+- Compensation owner
+- Compensation timeout
+- Compensation idempotency
+- Evidence artifact
 
-## 6. Long Task Sharding
+## 6. Long-Task Sharding
 
-Long tasks at minimum support:
+Long tasks must support at least:
 
-- checkpoint sharding
-- subgraph recovery
-- phased commit
-- task-level partial commit
+- Checkpoint sharding
+- Subgraph recovery
+- Phased commit
+- Task-level partial commit
 
 Rules:
 
-- Checkpoint can only be established after side effect boundary.
+- Checkpoints can only be established after side effect boundaries.
 - Subgraph recovery must not cross steps with incomplete compensation.
 - Partial commit must be auditable and traceable to corresponding step group.
-- If upstream step enters `failed` or `skipped` and dependency can no longer be satisfied, downstream steps must not indefinitely remain `blocked`; system should have explicit cascade failure or cascade skip semantics.
+- If an upstream step enters `failed` or `skipped` and dependencies cannot be re-satisfied, downstream steps must not indefinitely remain `blocked`; the system should have clear cascade-fail or cascade-skip semantics.
 
 ## 6.1 Templated Workflow / Recipe
 
-If system supports workflow / recipe template, template at minimum should explicitly declare:
+If the system supports workflow / recipe templates, templates must explicitly declare:
 
 - `version`
 - `title`
@@ -88,11 +91,11 @@ If system supports workflow / recipe template, template at minimum should explic
 
 Rules:
 
-- Template must not be just free-text prompt; parameters, extension dependencies, and execution entry must be structured.
-- New template before entering shared directory, market, or team distribution should pass structural validation and minimum security scan.
-- Template author guide should clarify: which fields required, which extensions need trust confirmation, which parameters must be explicit input.
-- If system simultaneously has server, web console, desktop or other editing entry, template validation rules should as much as possible derive from unified authoritative schema artifact rather than hand-maintaining multiple parallel validation logics.
-- `$ref`, composite types, and dependent fields in template schema should be consistently parsed across all entrypoints to avoid "server passes, editor fails" or vice versa.
+- Templates should not be just free-text prompts; parameters, extension dependencies, and execution entries must be structured.
+- New templates should pass structural validation and minimum security scan before entering shared directory, marketplace, or team distribution.
+- Template author guide should clarify: which fields are required, which extensions need trust confirmation, which parameters must be explicitly input.
+- If the system simultaneously has server, web console, desktop, or other editing entries, template validation rules should be derived from a unified authoritative schema artifact as much as possible, rather than manually maintaining multiple parallel validation logics.
+- `$ref`, composite types, and dependency fields in template schema should be consistently parsed across all entries, avoiding "server passes but editor fails" or vice versa.
 
 ## 7. Pre-Execution Gate
 
@@ -113,6 +116,7 @@ Phase 1a:
 - Dependency cycle
 - Timeout / retry presence
 - Side effect declaration required
+- OAPEFLIR stage order validity
 
 Phase 1b / 2:
 
@@ -120,7 +124,15 @@ Phase 1b / 2:
 - More complete schema compatibility
 - Compensation templates
 - Partial commit orchestration
+- Release rollback orchestration
 
 ## 9. Closure Conclusion
 
-Industrial-grade workflow cannot only "run" — it must also be analyzable, compensable, and recoverable.
+Industrial-grade workflow cannot only "execute along the path".
+
+It must know before starting:
+
+- Whether structure is valid
+- Which steps have side effects
+- How to compensate after failure
+- How to shard-recover long tasks

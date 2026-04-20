@@ -5,9 +5,9 @@
 
 ## Context
 
-The platform is still in Phase 1a/1b basic closed-loop stage; priority is to stabilize task, workflow, execution, approval, event, session, and recovery paths, rather than一开始就上 layered data plane or multi-tenant transaction infrastructure from the beginning.
+The platform is still in Phase 1a/1b basic closed-loop stage; priority is to stabilize task, workflow, execution, approval, event, session, and recovery paths, rather than adopting a layered data plane or multi-tenant transaction infrastructure from the start.
 
-Question needing decision:
+Questions needing decision:
 
 - Whether to continue using SQLite as default primary transaction storage for Phase 1a/1b.
 - When must exit this decision.
@@ -18,7 +18,7 @@ Phase 1a and Phase 1b continue using SQLite as default/preferred primary transac
 
 At the same time clarify boundaries:
 
-- SQLite continues to serve as the current stage's most important single-machine authoritative transaction storage.
+- SQLite continues to serve as the current stage's primary single-machine authoritative transaction storage.
 - PostgreSQL backend can exist as a controlled alternative implementation for dual-write drills, concurrency verification, and subsequent migration preparation, but must not bypass existing storage contract.
 - Artifact main body can still be stored in file system or object storage, but index and factual state take SQLite as standard.
 - When entering more complex data plane, evolve into layered storage according to `data_plane_contract.md`.
@@ -37,7 +37,7 @@ Costs:
 
 - Significantly increased local development, testing, release, and operations complexity.
 - Current main risk is not DB ceiling but contract not yet fully mapped to code.
-- Early stage will exhaust大量精力on infrastructure rather than product closed loop.
+- Early stage will exhaust significant energy on infrastructure rather than product closed loop.
 
 ### Option B: SQLite + Other Cache/Queue Hybrid Solution
 
@@ -67,10 +67,10 @@ Costs:
 
 - SQLite is current default authoritative transaction source.
 - If PostgreSQL is enabled, must be接入through controlled storage adapter/migration/dual-run scheme, cannot form second set of business semantics without governance.
-- `foreign_keys = ON` is formal运行requirement, not optional optimization.
+- `foreign_keys = ON` is formal operation requirement, not optional optimization.
 - High-value factual state must not exist only in memory.
 - Must not use "SQLite will migrate in future" as excuse to currently ignore consistency.
-- OAPEFLIR evolution entities even if temporarily hosted by lightweight service or in-memory registry must be able to map back to SQLite authoritative fact boundary, cannot form不受治理的第二真相源.
+- OAPEFLIR evolution entities even if temporarily hosted by lightweight service or in-memory registry must be able to map back to SQLite authoritative fact boundary, cannot form an ungoverned second source of truth.
 
 ## Adoption Triggers
 
@@ -79,7 +79,7 @@ As long as system still meets:
 - Primarily single-machine
 - Phase 1a/1b main chain primarily
 - Concurrency scale still under control
-- Multi-tenant, remote worker, analytics plane not yet进入正式实现
+- Multi-tenant, remote worker, analytics plane not yet in formal implementation
 
 Continue to maintain this decision.
 
@@ -89,7 +89,7 @@ If any of the following occur, should re-decide:
 
 - Execution plane enters main implementation for multi-worker/queue/lease
 - Single-machine write bottleneck becomes persistent problem and backpressure/async batch insufficient to relieve
-- Multi-tenant or enterprise transaction isolation formally进入实现范围
+- Multi-tenant or enterprise transaction isolation formally enters implementation scope
 - Analytics/archive/replay needs independent data plane
 
 ## Implementation Impact
@@ -98,12 +98,12 @@ Current must accompanying做到:
 
 - Schema, migration, repository, and recovery inspection all designed around SQLite boundary
 - FileLock, event ack, execution, approval all fall to SQLite authoritative tables
-- Control over-stage concurrency through backpressure and运行constraints
+- Control over-stage concurrency through backpressure and operational constraints
 - When phase1-4 introduces new factual objects like `learning_objects`, `improvement_candidates`, `rollout_records`, contract and state machine must first clearly define authoritative responsibilities before expanding persistence implementation.
 
 Subsequent upgrade requirements:
 
-- If migrating to PostgreSQL, must not let business contract drift; should priority replace storage adapter/migration/queue layer rather than rewriting business main chain
+- If migrating to PostgreSQL, must not let business contract drift; should prioritize replace storage adapter/migration/queue layer rather than rewriting business main chain
 
 ## Results
 

@@ -1,8 +1,11 @@
 # Tool And Provider Execution Contract
 
+> **OAPEFLIR Association**: This contract defines the tool execution layer of the OAPEFLIR Execute Hub, corresponding to ADR-016.
+> **Update Date**: 2026-04-17
+
 ## 1. Scope
 
-This contract defines the minimum unified interface for LLM provider calls, tool execution, result encapsulation, error semantics, and budget guards.
+This contract defines the minimum unified interface for LLM provider calls, tool execution, result封装, error semantics, and budget guards.
 
 ## 2. Key Objects
 
@@ -20,10 +23,13 @@ This contract defines the minimum unified interface for LLM provider calls, tool
 | `request_id` | `string` | Request unique ID |
 | `task_id` | `string` | Associated task |
 | `agent_id` | `string` | Initiating role |
+| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Current loop stage |
+| `domain_id` | `string?` | Current domain |
 | `provider` | `string` | Provider identifier |
 | `model` | `string` | Target model |
 | `messages` | `Message[]` | Input messages |
 | `tools` | `string[]?` | Tools allowed for model to call |
+| `kv_cache_hint` | `json?` | KV cache partition hint |
 | `budget_limit_usd` | `number?` | Budget ceiling for this request |
 | `timeout_ms` | `number` | Timeout |
 
@@ -41,10 +47,10 @@ This contract defines the minimum unified interface for LLM provider calls, tool
 
 Rules:
 
-- Provider raw response can be archived, but upper layer only consumes unified model.
-- `usage` contains at minimum input/output token information.
-- If response contains tool calls, stable call id must be preserved.
-- Tool output sanitization rules before entering messages, events, and summary are defined by `tool_output_sanitization_contract.md`.
+- Provider raw response can be archived, but upper layers only consume the unified model.
+- `usage` must contain at least input / output token information.
+- If response contains tool calls, stable call IDs must be preserved.
+- Tool output sanitization rules before entering messages, events, and summaries are defined by `tool_output_sanitization_contract.md`.
 
 ## 5. ToolCallRequest Minimum Fields
 
@@ -52,6 +58,8 @@ Rules:
 - `task_id`
 - `agent_id`
 - `execution_id?`
+- `stage?`
+- `domain_id?`
 - `tool_name`
 - `arguments`
 - `timeout_ms`
@@ -69,6 +77,8 @@ Rules:
 - `data?`
 - `metadata?`
 - `artifacts?`
+- `feedback_signals?`
+- `knowledge_ref?`
 - `duration_ms`
 - `error?`
 - `follow_up_question?`
@@ -83,7 +93,7 @@ Rules:
 
 ## 7. BudgetCheckResult
 
-Contains at minimum:
+Must contain at least:
 
 - `allowed`
 - `estimated_cost_usd`
@@ -94,11 +104,11 @@ Rules:
 
 - LLM calls must pass through budget guard before execution.
 - High-risk tool execution must simultaneously pass budget and permission checks.
-- Before a workflow step actually executes, if structured input/output constraints exist, it should first pass `workflow_io_compatibility_precheck_contract.md`.
+- Before workflow step actual execution, if structured input/output constraints exist, must first pass `workflow_io_compatibility_precheck_contract.md`.
 
 ## 8. Error Semantics
 
-`ExecutionError` contains at minimum:
+`ExecutionError` must contain at least:
 
 - `code`
 - `message`
@@ -115,34 +125,36 @@ Rules:
 - `validation`
 - `system`
 
-## 9. Behavioral Constraints
+## 9. Behavior Constraints
 
-- Provider adapter must not leak vendor-specific fields into upper-layer primary semantic dependencies.
-- When tool returns a large file, the main result should be changed to an artifact reference.
-- If the call request does not explicitly provide `timeout_ms`, executor must first resolve `default_timeout_ms` from tool metadata before executing.
-- Failure retry must simultaneously consider tool metadata's recovery strategy and `retryable` in the result; blind fixed-count retry is not allowed.
-- If the call request carries `allowed_path_roots` or execution precheck has resolved `resolved_paths_json`, tool access paths must satisfy both sandbox and path scope constraints.
-- If execution holds `allowed_tools_json`, both direct tool and skill must validate `tool_name` against the whitelist at runtime; missing execution, malformed JSON, or null/non-string array items must fail-closed.
+- Provider adapters must not leak vendor-specific fields as upper-layer primary semantic dependencies.
+- When tools return large files, the main result should become an artifact reference.
+- If `timeout_ms` is not explicitly provided in the call request, executor must first resolve `default_timeout_ms` from tool metadata before execution.
+- Failure retry must be based on both the tool metadata's recovery strategy and the `retryable` flag in the result, not blind fixed count.
+- If call request carries `allowed_path_roots` or execution precheck has already resolved `resolved_paths_json`, tool access paths must satisfy both sandbox and path scope constraints.
+- If execution holds `allowed_tools_json`, both direct tool and skill must verify `tool_name` is in the whitelist at runtime; missing execution, illegal JSON, or empty/non-string array items must fail-closed.
 - All calls must be traceable back to `task_id`, `agent_id`, `trace_id`.
-- If different tools need to expose additional structured details, prioritize stable `data / metadata` fields over letting upper layer guess top-level fields by tool name.
-- Target locating rules for `edit / patch / replace` tools are defined by `edit_replacement_chain_contract.md`.
+- If different tools need to expose additional structured details, should prioritize stable `data / metadata` fields, rather than having upper layers guess top-level fields by tool name.
+- Target location rules for `edit / patch / replace` type tools are defined by `edit_replacement_chain_contract.md`.
 - Trimming and compaction rules when context approaches token limit are defined by `context_compaction_and_overflow_contract.md`.
-- Tools like `WebFetch`, `command_exec`, and `mcp_call` that may generate network egress must resolve and record `egress_targets` before execution, covering at minimum URL, ssh, s3, registry, and publish targets.
-- Provider / tool-side retry must not each maintain independent limiters; `retry-after`, breaker, provider limiter, tenant limiter, and task limiter should be combined into the same governance surface.
-- `question` type tools must return structured options, recommended items, timeout semantics, and skipped semantics; they must not degrade into plain text questions.
-- `todo_write` type tools must only modify session-level todo state, not cross-authority modify task master state.
-- If cheap-vs-strong model routing exists, routing must be conservative, explainable, and deterministic with the same input and same configuration; at minimum `routing_reason` or equivalent route trace must be recorded.
-- Multi-credential failover within the same provider should follow unified credential pool / cooldown semantics; adapters must not privately maintain "local exhausted state".
-- If turn-scoped fallback exists, within the current turn, temporary degraded results may be reused via explicit fallback lease, but the next turn must by default re-attempt the primary profile; fallback lease must not indefinitely stick as a new sticky profile.
-- For provider throttle and quota signals like `429 / 402 / retry-after / reset_at`, they should be uniformly written to provider governance state, not temporarily consumed only within a single request.
-- Tool name resolution should prioritize exact / alias / normalized exact; fuzzy correction is only allowed when there is a unique candidate, and correction trace must be preserved. Ambiguous candidates and suspicious strings must fail-closed.
-- If tool argument lenient correction is enabled, it must also be limited to type boundaries that schema explicitly states can safely converge; unknown fields, structural ambiguity, and high-risk parameters must not be silently auto-corrected.
-- If tool argument correction occurs, correction trace must be exposed to auditable result surfaces such as `metadata` or warnings; high-frequency tools like `command_exec`, `edit_replace`, `question`, and `todo_write` must not hide corrections in a black box.
-- For illegal types or structural ambiguity of high-risk tool parameters, executor must fail-closed with stable error code, rather than letting the underlying implementation crash from type exceptions.
+- Tools that may generate network egress such as `WebFetch`, `command_exec`, `mcp_call` must resolve and record `egress_targets` before execution, covering at least URL, ssh, s3, registry, publish targets.
+- Provider / tool side retries must not each maintain independent limiters; `retry-after`, breaker, provider limiter, tenant limiter, and task limiter should be combined into the same governance surface.
+- `question` type tools must return structured options, recommended items, timeout semantics, and skipped semantics, and must not degrade to ordinary text questions.
+- `todo_write` type tools must only modify session-level todo state, and must not cross-authority modify task master state.
+- If domain tool bundle exists, tool resolution must prioritize the allowed tool set for current `domain_id`; plugin SPI tools must not bypass equivalent sandbox / policy / path constraints.
+- `kv_cache_hint` can only provide construction suggestions for fixed prefix / domain block / variable suffix, and must not directly override budget or trimming strategy.
+- If cheap-vs-strong model route exists, routing must be conservative, explainable, and deterministic under the same input and same configuration; must record `routing_reason` or equivalent route trace at least.
+- Same-provider multi-credential failover should use unified credential pool / cooldown semantics, and must not let each adapter privately maintain "local exhausted state".
+- If turn-scoped fallback exists, the current turn allows reusing temporary degraded results through explicit fallback lease, but the next turn must retry the main profile by default; fallback lease must not indefinitely stick as a new sticky profile.
+- For provider throttle and quota signals like `429 / 402 / retry-after / reset_at`, should be uniformly written to provider governance state, not just temporarily consumed within a single request.
+- Tool name resolution should prioritize exact / alias / normalized exact; only allow fuzzy correction when there is a unique candidate, and must preserve correction trace; ambiguous candidates and suspicious strings must fail-closed.
+- If tool argument lenient correction is enabled, it must also be limited to type boundaries that the schema explicitly declares as safely convergeable; unknown fields, structural ambiguity, and high-risk parameters must not be silently auto-corrected.
+- If tool argument correction occurs, correction trace must be exposed to auditable result surfaces such as `metadata` or warnings; high-frequency tools like `command_exec`, `edit_replace`, `question`, `todo_write` must not hide corrections in a black box.
+- For illegal types or structural ambiguity of high-risk tool parameters, executor must fail-closed with stable error codes, rather than letting the underlying implementation crash from type exceptions.
 
 ## 10. Supplementary Rules
 
-- Streaming chunks contain uniformly at minimum: `stream_id`, `sequence`, `event_type`, `payload`.
-- Provider fallback observation records at minimum: original provider, fallback provider, trigger reason, switch time, impact scope.
-- Tool sandbox result summary records at minimum: exit status, sanitized summary, artifact refs, policy notes.
-- For user-visible text, tool output, and crawled content, NFC normalization should be applied first, then control characters and Unicode Tags block should be cleaned to avoid steganographic injection and display layer confusion.
+- Streaming chunks must uniformly contain at least: `stream_id`, `sequence`, `event_type`, `payload`.
+- Provider fallback observation must record at least: original provider, fallback provider, trigger reason, switch time, impact scope.
+- Tool sandbox result summary must record at least: exit status, sanitized summary, artifact refs, policy notes.
+- For user-visible text, tool output, and crawled content, NFC normalization should be done first, then control characters and Unicode Tags block should be cleaned to avoid steganographic injection and display layer confusion.

@@ -1,20 +1,26 @@
 # Release Rollout And Rollback Contract
 
+> **OAPEFLIR Related**: This contract defines the OAPEFLIR Improve Hub's controlled release and rollback mechanism, corresponding to ADR-075 and ADR-018.
+> **Last Updated**: 2026-04-17
+
 ## 1. Scope
 
-This contract defines industrial-grade release, gray-scale, rollback, and schema compatibility strategies.
+This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Rollout pipeline.
 
 Related documents:
 
 - `runtime_repository_and_migration_contract.md`
 - `prompt_model_policy_governance_contract.md`
 - `enterprise_operations_plane_contract.md`
+- [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md)
+- [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
 ## 2. Goals
 
-- Unify release path for code, configuration, prompt, role, skill.
-- Make any production release have controllable gray-scale and executable rollback.
+- Unify release paths for code, config, prompt, role, skill.
+- Make any production release have controllable canary and executable rollback.
 - Make schema changes comply with forward/backward compatibility.
+- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → RolloutRecord pipeline.
 
 ## 3. Release Objects
 
@@ -25,78 +31,187 @@ Related documents:
 - `role_bundle`
 - `skill_bundle`
 - `schema_migration`
+- `LearningObject` (corresponding to OAPEFLIR secondary chain)
 
-## 4. Release Modes
+## 4. Release Levels and RolloutStatus
 
-| Mode | Purpose |
+### 4.1 Six-Level Controlled Release (L0-L5)
+
+Corresponding to ADR-075 §1:
+
+| Level | Name | Traffic | AI Autonomy | Human Approval |
+| --- | --- | --- | --- | --- |
+| L0 | `off` | 0% | No operational authority, record only | — |
+| L1 | `shadow` | 0% (record only) | shadow | — |
+| L2 | `canary_5` | 5% | Parameter adjustment, strategy selection | critical/high require approval |
+| L3 | `partial_25` | 25% | Configuration suggestions | all require approval |
+| L4 | `stable_75` | 75% | Execute configuration changes | all must be approved |
+| L5 | `stable_100` | 100% | Fully autonomous (constrained by guardrail) | exceptions only for escalation |
+
+### 4.2 Rollout State Machine
+
+Complete state machine (see ADR-018 and ADR-075 §2):
+
+```
+candidate_created
+      ↓
+under_review (human approval)
+      ↓
+approved / rejected
+      ↓
+shadow_enabled (L1)
+      ↓
+canary_5 (L2) ←→ auto_rollback
+      ↓
+partial_25 (L3) ←→ auto_rollback
+      ↓
+stable_75 (L4) ←→ auto_rollback
+      ↓
+stable_100 (L5)
+      ↓
+released (continuous M days without issues)
+```
+
+### 4.3 Release Modes (Supplement)
+
+| Mode | Use Case |
 | --- | --- |
-| `blue_green` | Main chain major version, need quick whole-group switch |
-| `canary` | Small traffic verification |
-| `tenant_gray` | Designated tenant or business unit batch gray-scale |
-| `feature_flag` | Feature enable/disable and quick loss stopping |
+| `blue_green` | Main chain major version, need quick full-group switch |
+| `canary` | Small traffic validation |
+| `tenant_gray` | Designated tenant or division phased canary |
+| `feature_flag` | Feature enable/disable and quick damage control |
 
-## 5. Required Capabilities
+### 4.4 Auto-Rollback Conditions
 
-- Release batch ID
-- Release object version number
-- Gray-scale target scope
-- One-click rollback entry
-- Rollback prerequisite check
-- Post-release health validation
-- `config_bundle_ref / registry_credential_ref / deployment_credential_ref` injection plan
+Corresponding to ADR-075 §3.2:
 
-## 6. Schema Compatibility Matrix
+| Metric | Threshold | Window | Trigger Action |
+| --- | --- | --- | --- |
+| Error rate | > 1% | 5 minutes | L4→L3 |
+| P99 latency | > 500ms | 5 minutes | L4→L3 |
+| Success rate | < 99% | 5 minutes | L4→L3 |
+| Continuous failures | > 10 times | 10 minutes | Direct rollback to L1 |
+| Resource exhaustion | Memory > 90% | 1 minute | Direct rollback to L1 |
 
-Industrial-grade schema changes must first comply with:
+### 4.5 State Constraints
 
-1. Add before use
-2. First compatible then switch
-3. First forward then cleanup
+- `shadow` (L1): Background comparison, must not directly override user-visible results.
+- `canary_5` (L2) / `partial_25` (L3) / `stable_75` (L4): Must pass metrics gate to upgrade.
+- `stable_100` (L5): Full traffic, fully autonomous (constrained by guardrail).
+- `auto_rollback`: Automatic or manual rollback.
 
-Not allowed:
+## 5. OAPEFLIR Secondary Chain Integration
 
-- Directly delete columns being depended on by old version
-- Simultaneously go online "new code depends on new column" without compatibility window
-- Bind irreversible data conversion and application logic switch into one step
+```
+LearningObject(validated/promoted)
+    → ImprovementCandidate(candidate_created)
+    → under_review
+    → approved / rejected
+    → RolloutRecord(shadow → canary → partial → stable → released)
+```
 
-## 7. Release Process
+**Mandatory Conditions** (R4-EVIDENCE constraints):
+- LearningObject without evidence chain must not enter rollout.
+- Candidate not passing guardrail can only stay in candidate_created state, must not enter shadow.
+- `shadow` runtime should record guardrail reason codes for explainability and audit.
 
-```mermaid
-flowchart TD
-    A["Build Release Bundle"] --> B["Compatibility Check"]
-    B --> C["Canary / Gray Rollout"]
-    C --> D["Health Validation"]
-    D --> E{"Pass?"}
-    E -- "Yes" --> F["Expand Traffic"]
-    E -- "No" --> G["Rollback"]
-    G --> H["Incident / Postmortem"]
+## 6. ImprovementCandidate Interface
+
+```typescript
+interface ImprovementCandidate {
+  candidateId: string;
+  learningObjectId: string;      // Associated LearningObject
+  source: 'failure_pattern' | 'user_correction' | 'recovery_playbook';
+  targetScope: 'task' | 'workflow' | 'domain' | 'platform';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  status: ImprovementCandidateStatus;
+  rolloutLevel: RolloutLevel;
+  metrics: RolloutMetrics;
+  guardrails: ImprovementGuardrail[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
+```
+
+## 7. RolloutRecord Interface
+
+```typescript
+interface RolloutRecord {
+  recordId: string;
+  candidateId: string;
+  fromLevel: RolloutLevel;
+  toLevel: RolloutLevel;
+  triggeredBy: 'scheduler' | 'human' | 'auto_rollback';
+  triggerReason?: string;
+  metrics: RolloutMetrics;
+  auditContext: AuditContext;
+  createdAt: string;
+}
+
+interface RolloutMetrics {
+  errorRate: number;
+  latencyP99: number;
+  successRate: number;
+  sampleCount: number;
+}
 ```
 
 ## 8. Rollback Rules
 
 - Code rollback must be faster than data repair.
 - prompt / policy / feature flag should support independent rollback.
-- Schema rollback if irreversible must be declared in advance and prepare compensating migration.
+- Schema rollback if irreversible, must declare in advance and prepare compensating migration.
 - Rollback action must produce logs, audit, and incident records.
-- If involving local workspace file modification, allowed to use shadow snapshot / shadow git repo outside workspace as step-level undo / redo basis; but must not leak git state into user workspace.
-- Shadow snapshot at minimum should support: one operation one stable snapshot, common generated directory exclusion, super large directory protection, and on failure not pollute user repository.
+- If local workspace file modification is involved, allow using shadow snapshot / shadow git repo outside workspace as step-level undo / redo basis; but must not leak git state into user workspace.
+- Shadow snapshot should at least support: one stable snapshot per operation, common generation directory exclusion, oversized directory protection, and do not pollute user repository on failure.
+- Policy rollback must not be executed purely based on model suggestion; must be decided and recorded by system layer guardrail / policy code.
 
-## 9. Production Entry Threshold
+## 9. Required Capabilities
+
+- Release batch ID
+- Release object version
+- Canary target scope
+- One-click rollback entry
+- Rollback prerequisite check
+- Post-release health validation
+- `config_bundle_ref / registry_credential_ref / deployment_credential_ref` injection plan
+
+## 10. Schema Compatibility Matrix
+
+Industrial-grade schema changes must first comply with:
+
+1. Add before use
+2. Be compatible before switching
+3. Forward first, then clean up
+
+Not allowed:
+
+- Directly delete columns being depended on by old versions
+- Simultaneously launch "new code depends on new column" with no compatibility window
+- Bundle irreversible data conversion and application logic switching into one step
+
+## 11. Production Prerequisites
 
 - Has health validation step
 - Has tenant gray strategy
 - Has rollback owner
 - Has schema compatibility checklist
-- Has machine-readable secret/config injection plan, and workflow only consumes ref, does not consume plaintext secret
+- Has machine-readable secret/config injection plan, and workflow only consumes ref, not plaintext secret
 
-## 9.1 Current Execution Surface Requirements
+## 12. Autonomy Boundary
 
-- `release-pipeline` must simultaneously support `build / export / execute` three modes.
-- `execute` must execute real `docker build` and `gh workflow run publish` through command runner seam and allow `simulate` runner for sandboxable verification.
-- Publish path when consuming registry credential must first describe, then issue/revoke short-term lease per execute path; on failure must fail-close and recycle lease.
-- When `AA_RELEASE_TRIGGER_DEPLOY=true`, release execute must be able to chain-trigger `deployment-execution execute`, but still maintain release and deployment respective independent ledger / artifact.
-- Release execution result must not only land artifact, must additionally persist machine-readable execution ledger and record workflow dispatch run id / URL for subsequent audit, reconciliation, and replay.
+Corresponding to governance/autonomy_boundary_policy.md:
 
-## 10. Closure Conclusion
+| Level | AI Autonomy | Human Approval Required |
+| --- | --- | --- |
+| L0-L1 | Fully autonomous (record only) | Not required |
+| L2 | Parameter adjustment, strategy selection | Required for critical/high |
+| L3 | Configuration change suggestions | Required for all |
+| L4 | Execute configuration changes | Required for all |
+| L5 | Fully autonomous (constrained by guardrail) | Exceptions only for escalation |
 
-Industrial-grade release is not "can deploy" but "can gray-scale, can validate, can rollback, can review".
+## 13. Closure Conclusion
+
+Industrial-grade release is not "can deploy", but "can canary, can validate, can rollback, can review".

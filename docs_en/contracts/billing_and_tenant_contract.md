@@ -1,8 +1,25 @@
 # Billing And Tenant Contract
 
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
-This contract defines the minimum object model for metering, quotas, billing, plan boundaries, and future multi-tenant isolation.
+This contract defines the minimum object model for metering, quota, billing, plan boundaries, and future multi-tenant isolation.
 
 ## 2. Key Objects
 
@@ -40,16 +57,16 @@ This contract defines the minimum object model for metering, quotas, billing, pl
 
 ## 6. Behavioral Constraints
 
-- Metering, quotas, and billing must be traceable to tasks or principals.
-- Isolation between Pro and Enterprise cannot rely solely on UI distinction.
+- Metering, quota, and billing must be traceable to tasks or subjects.
+- Isolation strategies for Pro and Enterprise cannot be distinguished by UI alone.
 - Before multi-tenant design enters implementation, tenant-level storage boundaries and permission boundaries must be clarified.
-- Refunds, corrections, suspension due to arrears, and capability degradation must be expressed as independent accounting facts; do not directly rewrite historical usage.
+- Refunds, reversals, overdue freezes, and capability degradation must be expressed as independent billing facts, and must not directly rewrite historical usage.
 
 ## 7. Supplementary Rules
 
 ### 7.1 Payment Provider Interface
 
-Payment providers should at minimum support:
+Payment provider should at least support:
 
 - `create_subscription`
 - `update_plan`
@@ -59,10 +76,10 @@ Payment providers should at minimum support:
 
 ### 7.2 Invoices and Refunds
 
-- Invoices, refunds, and corrections must be traceable to `billing_account` and time window.
-- Refunds must not silently rewrite the usage ledger; they should be expressed as independent adjustment records.
+- Invoices, refunds, and reversals must be traceable to `billing_account` and time window.
+- Refunds must not silently modify usage ledger; should be expressed as independent adjustment records.
 
 ### 7.3 Enterprise Account Model
 
-- `organization_account` is the Enterprise billing and policy ownership principal.
-- Workspace / project resource consumption is ultimately aggregated to the organization-level accounting boundary.
+- `organization_account` is the Enterprise billing and policy attribution subject.
+- Resource consumption of workspace / project ultimately aggregates to organization-level billing boundary.

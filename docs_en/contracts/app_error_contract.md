@@ -1,5 +1,22 @@
 # App Error Contract
 
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR 8-stage loop:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
 This contract defines the platform's unified error model.
@@ -13,7 +30,7 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 | `code` | `string` | Stable error code |
 | `category` | `validation \| policy \| auth \| budget \| provider \| tool \| sandbox \| storage \| workflow \| runtime \| tenant \| monetization \| external \| internal` | Error category |
 | `retryable` | `boolean` | Whether automatic retry is allowed |
-| `user_message` | `string` | User-facing safe hint |
+| `user_message` | `string` | Safe hint for users |
 | `internal_details` | `json?` | Details for internal troubleshooting |
 | `source` | `gateway \| runtime \| workflow \| provider \| tool \| storage \| policy` | Primary source |
 | `trace_id` | `string?` | Trace ID |
@@ -31,28 +48,28 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 
 ## 4. Category Semantics
 
-| Category | Meaning | Default Retry Recommendation |
+| Category | Meaning | Default Retry Suggestion |
 | --- | --- | --- |
-| `validation` | Input, schema, or configuration invalid | No |
+| `validation` | Input, schema, or config invalid | No |
 | `policy` | Policy, approval, or sensitive action denial | No |
-| `auth` | Insufficient identity or permissions | No |
-| `budget` | Budget, quota, or cost exceeded | No |
+| `auth` | Identity or permission insufficient | No |
+| `budget` | Budget, quota, or cost overrun | No |
 | `provider` | LLM provider failure | Depends on error code |
 | `tool` | Tool execution failure | Depends on tool and idempotency |
-| `sandbox` | Path, network, or isolation denial | Usually no |
-| `storage` | Database, file, or indexing failure | Depends on error code |
-| `workflow` | Orchestration, dependency, or step inconsistency | Usually no |
+| `sandbox` | Path, network, or isolation denial | Usually No |
+| `storage` | Database, file, or index failure | Depends on error code |
+| `workflow` | Orchestration, dependency, or step inconsistency | Usually No |
 | `runtime` | Runtime, sandbox, timeout, or recovery failure | Depends on error code |
-| `tenant` | Tenant ownership, isolation, or organization boundary error | Usually no |
+| `tenant` | Tenant ownership, isolation, or organization boundary error | Usually No |
 | `monetization` | Entitlement, quota, ledger, or billing error | Depends on error code |
 | `external` | External system fluctuation | Depends on error code |
-| `internal` | Uncategorized internal error | No by default |
+| `internal` | Uncategorized internal error | Default No |
 
 ## 5. Relationship with Retry and Recovery
 
-- `retryable=true` only indicates permission to enter retry policy; it does not equal mandatory retry.
+- `retryable=true` only indicates entering retry policy is allowed, not that retry will definitely occur.
 - Retry still needs to consider `RetryPolicy`, remaining budget, tool idempotency, and execution mode.
-- When non-retryable errors enter dead-letter or human escalation, `AppError.code` must be preserved.
+- When non-retryable errors enter dead-letter or manual escalation, `AppError.code` must be preserved.
 
 ## 6. Standard Derived Types
 
@@ -77,6 +94,6 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 - `approval_and_hitl_contract.md`
 - `tool_and_provider_execution_contract.md`
 
-## 8. Closure Conclusion
+## 8. Conclusion
 
-The core of the error model is not "defining a few more exception classes" but ensuring that failures at any layer of the system can be uniformly classified, uniformly presented, and uniformly recovered.
+The core of the error model is not "defining a few more exception classes", but ensuring that failures at any layer of the system can be uniformly classified, uniformly presented, and uniformly recovered.

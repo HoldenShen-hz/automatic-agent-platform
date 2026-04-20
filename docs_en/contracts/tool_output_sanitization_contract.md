@@ -1,5 +1,22 @@
 # Tool Output Sanitization Contract
 
+---
+
+## OAPEFLIR Association
+
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
+
+---
+
 ## 1. Scope
 
 This contract defines the unified sanitization pipeline that all external tool outputs must pass through before entering messages, logs, events, and artifact indexes.
@@ -11,14 +28,14 @@ Related documents:
 - `observability_contract.md`
 - `policy_engine_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-Unified sanitization pipeline at minimum solves:
+The unified sanitization pipeline must at least address:
 
-- ANSI / control character pollution output
-- Over-length output dragging down context window
+- ANSI / control character contamination of output
+- Overlong output dragging down context windows
 - Sensitive information leakage such as credentials, tokens, cookies
-- Prompt injection fragments unmarked directly flowing into upstream summarization
+- Prompt injection fragments flowing unmarked into upstream summarization
 
 ## 3. `SanitizedToolOutput`
 
@@ -27,11 +44,13 @@ Unified sanitization pipeline at minimum solves:
 | `raw_ref` | `string?` | Raw output reference |
 | `sanitized_text` | `string` | Sanitized text body |
 | `truncated` | `boolean` | Whether truncated |
-| `redaction_count` | `number` | Desensitization count |
-| `control_chars_removed` | `number` | Control characters removed |
+| `redaction_count` | `number` | Redaction count |
+| `control_chars_removed` | `number` | Control characters removed count |
 | `ansi_removed` | `boolean` | Whether ANSI removed |
 | `injection_risk` | `none \| low \| medium \| high` | Injection risk rating |
 | `warnings` | `string[]` | Sanitization warnings |
+| `knowledge_ref` | `string?` | If output enters knowledge chain, corresponding knowledge reference |
+| `memory_ref` | `string?` | If output enters memory chain, corresponding memory reference |
 
 ## 4. Pipeline Order
 
@@ -48,52 +67,53 @@ flowchart LR
 
 Rules:
 
-- Order must not be reversed; desensitize then truncate to avoid sensitive information just happening to be in preserved window.
-- Original large output can be archived as artifact, but upper-layer message / summary by default only reads sanitized version.
-- If original output contains high-risk sensitive information, artifact retention must also have access control and scope tagging.
+- Order must not be reversed; sanitization before truncation avoids sensitive information just happening to fall in the preserved window.
+- Raw large output can be archived as artifact, but upper layer messages / summaries read the sanitized version by default.
+- If raw output contains high-risk sensitive information, artifact preservation also requires access control and scope tagging.
 
 ## 5. Minimum Sanitization Actions
 
 - Remove ANSI color codes
 - Remove illegal control characters
 - Normalize newlines and trailing whitespace
-- Desensitize common credential patterns
-- Truncate when exceeding threshold and retain beginning and ending summary
+- Redact common credential patterns
+- Truncate when exceeding threshold, preserving beginning and end summary
 - Mark obvious prompt injection fragments
 
 ## 6. Length Strategy
 
-Recommended to simultaneously maintain two threshold types:
+Recommend maintaining two types of thresholds simultaneously:
 
 - `stream_preview_limit_chars`
 - `persisted_message_limit_chars`
 
 Rules:
 
-- Streaming preview can be shorter, persisted summary can be slightly longer.
+- Streaming preview can be shorter; persisted summary can be slightly longer.
 - Truncated body should be accompanied by `raw_ref` or artifact reference for subsequent manual review.
 
 ## 7. Injection Risk Marking
 
-At minimum identify the following patterns:
+Must recognize at least the following patterns:
 
-- Request to ignore system instructions
-- Request to leak credentials
-- Request to execute unauthorized actions
-- Obviously disguised as system message or tool protocol
+- Requests to ignore system instructions
+- Requests to leak credentials
+- Requests to execute unauthorized actions
+- Obvious attempts to disguise as system messages or tool protocols
 
 Rules:
 
-- Risk marking does not equal auto-rejection; it goes to Policy Engine and upper-layer summarization logic for further processing.
-- `high` risk output must not be used as sole input fragment for subsequent LLM.
-- Output judged as `high` risk should by default not directly enter memory.
+- Risk marking does not equal automatic rejection; it is handed to Policy Engine and upper-layer summarization logic for further processing.
+- `high` risk output must not be used as the sole input fragment for subsequent LLMs.
+- Output judged as `high` risk should not directly enter memory by default.
 
 ## 8. Storage and Display Boundaries
 
-- `messages.content` stores sanitization result and does not by default store raw polluted text.
-- If original output needs retention, should land as artifact and tag access control.
-- Events, logs, summary by default only record sanitization result or its summary.
-- Debug dump by default reads sanitized version; if raw output truly needs viewing, should be protected by higher permissions and additional audit.
+- `messages.content` stores sanitized results, not raw polluted text by default.
+- If raw output needs to be preserved, it should go to artifact with access control tagging.
+- Events, logs, and summaries record sanitized results or their summaries by default.
+- Debug dump reads sanitized version by default; if raw output truly needs to be viewed, it should be protected by higher privileges and additional audit.
+- If output subsequently enters knowledge / memory / feedback chain, must preserve provenance marking, and must not disguise sanitized text as "native internal text".
 
 ## 9. Phase Boundaries
 
@@ -101,16 +121,16 @@ Phase 1a explicitly does:
 
 - ANSI cleanup
 - Control character cleanup
-- Credential desensitization
+- Credential redaction
 - Length truncation
 - Injection risk classification
 
 Currently does not do:
 
-- Complete DLP engine
+- Full DLP engine
 - Multi-language deep semantic sensitive information detection
 - Enterprise content review workflow
 
 ## 10. Closure Conclusion
 
-Tool output is not a "can be directly fed back to model" secure object; sanitization pipeline is the first gate converting external text
+Tool output is not a "safe object that can be directly fed back to the model" upon receipt; the sanitization pipeline is the first gate that transforms external text into trusted platform internal input.

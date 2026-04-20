@@ -1,12 +1,12 @@
 # Division Authoring
 
-## Goal
+## Objective
 
-Division is the basic unit for platform to extend business capabilities. This guide defines how to add or maintain a division configuration, and tries to ensure new business does not break platform main path constraints.
+A division is the basic unit for the platform to extend business capabilities. This guide defines how to add or maintain a division configuration, while ensuring new business does not break the platform's main chain constraints.
 
 ## Minimum Structure
 
-Each division should contain at least:
+Each division should contain at minimum:
 
 - `division.yaml`
 - `roles/*.prompt.md`
@@ -29,7 +29,7 @@ roles:
     tools: [read, write_doc]
 
   - id: developer
-    name: Development Engineer
+    name: Software Engineer
     prompt: roles/developer.prompt.md
     model: coding
     tools: [read, edit, bash]
@@ -53,72 +53,72 @@ retry:
 
 ## Required Design Items
 
-Each division should clarify:
+Each division should clearly define:
 
 - What types of tasks it handles.
 - How it is hit by VP Operations.
 - What roles it has and their respective boundaries.
-- How workflow passes inputs/outputs.
-- Which steps allow retry.
+- How workflow passes input and output.
+- Which steps allow retries.
 - Which outputs become artifacts.
 
 ## Role Design Rules
 
-- `id` should be stable, short, machine-friendly.
-- `triggers` should cover high-frequency expressions but avoid being too broad.
-- `roles` only declare truly needed roles, do not pile on roles to "look complete".
-- `tools` must follow least privilege principle.
+- `id` should be stable, concise, and machine-friendly.
+- `triggers` should cover high-frequency expressions but avoid being overly broad.
+- `roles` should only declare what is actually needed; do not pile on roles just to "look complete."
+- `tools` must follow the principle of least privilege.
 - `model` selection should match responsibility intensity.
-- Each role should clearly write responsibilities and boundaries, avoid two roles being able to do the same core thing.
+- Each role should have clear responsibilities and boundaries; avoid two roles being able to do the same core thing.
 
 ## Workflow Rules
 
-- When `input` references upstream output, field name must be traceable.
-- `output` should align with downstream consumer fields.
-- Large outputs prioritize artifact references over unlimited inline text.
-- Processes needing fallback or rework prioritize explicit steps and limited attempts modeling.
-- If certain step can naturally partially succeed, consider how to express through schema and precondition.
+- When `input` references upstream output, field names must be traceable.
+- `output` should align with downstream consuming fields.
+- Large outputs should be designed as artifact references rather than unlimited inline text.
+- Workflows that need rollback or rework should prioritize modeling through explicit steps and limited attempts.
+- If a step can naturally partially succeed, consider how to express it through schema and precondition.
 
 ## Contracts and Validation
 
-When adding new roles or steps, should check:
+When adding new roles or steps, check:
 
 - Whether input schema is satisfied by upstream output.
 - Whether output schema is clear enough.
 - Whether precondition is needed.
 - Whether it conflicts with existing role boundaries.
-- Whether it introduces high-risk tools never seen inside the division.
+- Whether it introduces high-risk tools never seen within the division.
 
 ## Boundary with HR Agent
 
-- HR Agent can only supplement roles within existing divisions.
-- HR Agent's workflow change suggestions are default just suggestions, do not automatically take effect.
-- New divisions must be manually added.
-- If new tool collection is needed, prioritize manual extension of division definition first, then consider letting HR use.
+- HR Agent can only add roles within existing divisions.
+- Workflow changes suggested by HR Agent are recommendations only; they do not take effect automatically.
+- New divisions must be added manually.
+- If new tool sets are needed, prioritize having humans extend division definitions first, then consider letting HR use them.
 
 ## Acceptance Recommendations
 
-After adding division, prepare at least:
+After adding a division, prepare at minimum:
 
 - One `fast` path task.
 - One `standard` or `full` path task.
 - One failure retry scenario.
 - One scenario requiring artifact output.
 
-## Template and Trust Tips
+## Templates and Trust Hints
 
-If later exposing division/workflow as distributable template or recipe:
+If later exposing division / workflow as distributable templates or recipes:
 
-- Template should explicitly show `title/description/instructions/parameters/required_extensions`.
-- When first executing or source changes, should show trust warning rather than directly silently running.
-- If template content detects hidden characters, suspicious control characters, or other risk signals, should default block or at least strongly alert.
-- Experience layer trust warning cannot replace runtime policy, sandbox, or capability validation.
+- Templates should explicitly display `title / description / instructions / parameters / required_extensions`.
+- On first execution or source change, display a trust warning instead of directly running silently.
+- If template content detects hidden characters, suspicious control characters, or other risk signals, default to blocking or at least strongly warn.
+- UX layer trust warnings cannot replace runtime policy, sandbox, or capability validation.
 
 ## Recommended Practices
 
-- First make division small, then gradually add roles.
-- First ensure `fast` or `standard` path runs through, then expand to `full`.
-- First verify hit rate and success rate with 1-2 high-frequency tasks, then continue adding capabilities.
+- Start small with divisions, then gradually add roles.
+- First ensure `fast` or `standard` path works, then expand to `full`.
+- First validate hit rate and success rate with 1-2 high-frequency tasks, then continue adding capabilities.
 
 ## Related Documents
 

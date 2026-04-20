@@ -22,7 +22,7 @@
 - [ ] `npm run test:unit` passes (all unit tests green)
 - [ ] `npm run test:integration` passes (all integration tests green)
 - [ ] `npm run test:golden` passes (all golden path tests green)
-- [ ] Code coverage meets thresholds: lines ≥ 60%, branches ≥ 50%
+- [ ] Code coverage meets thresholds: lines >= 60%, branches >= 50%
 - [ ] New code paths have corresponding unit tests
 
 ### Security

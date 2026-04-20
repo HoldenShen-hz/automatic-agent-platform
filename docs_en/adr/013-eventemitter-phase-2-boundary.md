@@ -21,7 +21,7 @@ But simultaneously freeze the following boundaries:
 - Tier 1 event authoritative source must be persistent event table and per-consumer ack.
 - EventEmitter only responsible for intra-process fan-out, does not bear reliable delivery semantics.
 - Whether to replace with more formal queue/bus in Phase 2 will be decided separately at that time.
-- Feedback/Learn/Improve/Release events introduced by OAPEFLIR similarly遵守上述边界; they can first go through intra-process fan-out but must not越过我persistence layer to define themselves as authoritative source.
+- Feedback/Learn/Improve/Release events introduced by OAPEFLIR similarly comply with the above boundaries; they can first go through intra-process fan-out but must not cross the persistence layer to define themselves as authoritative source.
 
 ## Alternatives
 
@@ -65,7 +65,7 @@ Costs:
 - EventEmitter failure must not become factual state rollback basis.
 - Recovery scanning and event replay only based on `events + event_consumer_acks`.
 - Tier 3 streaming chunks must not impersonate recoverable factual source.
-- If events like `feedback.signal_received`, `learning.object_promoted`, `release.rollout_*` are defined as high-value factual events, must priority satisfy persistence and ack constraints rather than relying on pure memory subscription success.
+- If events like `feedback.signal_received`, `learning.object_promoted`, `release.rollout_*` are defined as high-value factual events, must prioritize satisfy persistence and ack constraints rather than relying on pure memory subscription success.
 
 ## Adoption Triggers
 

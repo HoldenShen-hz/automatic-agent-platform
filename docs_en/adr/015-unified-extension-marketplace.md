@@ -1,5 +1,22 @@
 # ADR-015 Whether Skill and Plugin Converge to Single Marketplace
 
+---
+
+## OAPEFLIR Association
+
+This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post-execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and Dual-Channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
+
+---
+
 - Status: Accepted
 - Decision Date: 2026-04-03
 
@@ -80,7 +97,7 @@ Before formally entering the following topics, should continue to abide by this 
 If future evidence proves:
 
 - Skill and Plugin have completely different lifecycle, risk model, and business model
-- Unified governance complexity is反而更高
+- Unified governance complexity is actually higher
 
 Then may reopen ADR discussion on splitting, but cannot return to "multiple markets evolving in parallel" without new decision.
 
