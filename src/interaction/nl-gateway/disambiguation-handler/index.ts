@@ -156,18 +156,18 @@ export class DisambiguationHandler {
 
     // If multiple intents detected with similar confidence, ask user to choose
     if (allIntents.length > 1) {
-      const topIntents = allIntents
+      const topIntents = [...allIntents]
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 3);
 
-      if (topIntents.length > 1 && topIntents[0].confidence - topIntents[1].confidence < 0.15) {
+      if (topIntents.length > 1 && topIntents[0]!.confidence - topIntents[1]!.confidence < 0.15) {
         return {
           requiresClarification: true,
           questions: [
             {
               question: "我需要确认您的意图：",
               options: topIntents.map((i) => this.formatIntentOption(i.intentType)),
-              intentHint: topIntents[0].intentType,
+              intentHint: topIntents[0]!.intentType,
             },
           ],
           suggestedIntents: topIntents.map((i) => i.intentType),

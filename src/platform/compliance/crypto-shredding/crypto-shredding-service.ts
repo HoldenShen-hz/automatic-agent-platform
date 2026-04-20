@@ -338,7 +338,8 @@ export class CryptoShreddingService {
       // Handle array access like "items[0]"
       const arrayMatch = segment.match(/^([^\[]+)\[(\d+)\]$/);
       if (arrayMatch) {
-        const [, key, index] = arrayMatch;
+        const key = arrayMatch[1]!;
+        const index = arrayMatch[2]!;
         const obj = (cursor as Record<string, unknown>)[key];
         if (Array.isArray(obj)) {
           return obj[parseInt(index, 10)];
@@ -357,12 +358,13 @@ export class CryptoShreddingService {
     let cursor: Record<string, unknown> = record;
 
     for (let i = 0; i < segments.length - 1; i++) {
-      const segment = segments[i];
+      const segment = segments[i]!;
       // Handle array access like "items[0]"
       const arrayMatch = segment.match(/^([^\[]+)\[(\d+)\]$/);
       if (arrayMatch) {
-        const [, key, index] = arrayMatch;
-        const nextSegment = segments[i + 1];
+        const key = arrayMatch[1]!;
+        const index = arrayMatch[2]!;
+        const nextSegment = segments[i + 1]!;
         const nextIsArray = /^\d+$/.test(nextSegment) || nextSegment.includes("[");
         let arr: unknown[] = (cursor as Record<string, unknown>)[key] as unknown[];
         if (!Array.isArray(arr)) {
@@ -394,7 +396,8 @@ export class CryptoShreddingService {
     // Handle array access in last segment
     const lastArrayMatch = lastSegment.match(/^([^\[]+)\[(\d+)\]$/);
     if (lastArrayMatch) {
-      const [, key, index] = lastArrayMatch;
+      const key = lastArrayMatch[1]!;
+      const index = lastArrayMatch[2]!;
       const arr = (cursor[key] as unknown[]) ?? [];
       while (arr.length <= parseInt(index, 10)) {
         arr.push(null);

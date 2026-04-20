@@ -1,4 +1,4 @@
-export * from "./ambiguity-handler/index.js";
+export { detectAmbiguity } from "./ambiguity-handler/index.js";
 export * from "./disambiguation-handler/index.js";
 export * from "./intent-parser/index.js";
 export * from "./slot-resolver/index.js";

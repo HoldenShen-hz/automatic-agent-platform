@@ -97,7 +97,7 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
       pathname: "/v1/packs",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const tenantId = resolveTenantScope(principal);
+        const tenantId = resolveTenantScope(principal, undefined);
         const limit = readLimit(ctx.request, 50);
 
         void tenantId;

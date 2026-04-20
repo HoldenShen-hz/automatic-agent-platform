@@ -21,25 +21,49 @@
 // Re-export all types and services from orchestration/agent-delegation
 export {
   DelegationManagerService,
-  type DelegationRecord,
-  type DelegationScope,
-  type DelegationConstraints,
+  type DelegationExpirationConfig,
+  type ExpirationScanResult,
 } from "../orchestration/agent-delegation/delegation-manager.service.js";
+export { createDelegationManager } from "../orchestration/agent-delegation/delegation-manager.service.js";
 
 export {
   DelegationTracker,
-  type DelegationEvent,
+  type DelegationTreeNode,
+  type DelegationMetrics,
 } from "../orchestration/agent-delegation/delegation-tracker.js";
+export { createDelegationTracker } from "../orchestration/agent-delegation/delegation-tracker.js";
 
 export {
-  DelegationContextIsolator,
-  type DelegationContext,
+  ContextIsolator,
+  type IsolatedContext,
 } from "../orchestration/agent-delegation/context-isolator.js";
+export { createContextIsolator } from "../orchestration/agent-delegation/context-isolator.js";
 
 export {
   TopologyValidator,
   type TopologyValidatorConfig,
-  type DelegationTopology,
+} from "../orchestration/agent-delegation/topology-validator.js";
+export {
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_FANOUT,
+  DelegationDepthExceededError,
+  DelegationFanoutExceededError,
+  DelegationCycleDetectedError,
 } from "../orchestration/agent-delegation/topology-validator.js";
 
-export type { DelegationType, DelegationStatus } from "../orchestration/agent-delegation/delegation-types.js";
+export type {
+  AgentContext,
+  PermissionSet,
+  PermissionConstraints,
+  DelegationSpec,
+  DelegationResult,
+  DelegationStatus,
+  DelegationHandle,
+  DelegationChainNode,
+  DelegationChain,
+  DelegationCreatedEvent,
+  DelegationCompletedEvent,
+  DelegationFailedEvent,
+  DelegationEvent,
+  DelegationOptions,
+} from "../orchestration/agent-delegation/delegation-types.js";

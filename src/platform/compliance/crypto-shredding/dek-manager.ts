@@ -303,7 +303,7 @@ export class DekManager {
     const activeDek = await this.store.getActiveForSubject(subjectId);
     const newDek = await this.store.create({
       subjectId,
-      replacesDekId: activeDek?.dekId,
+      replacesDekId: activeDek?.dekId ?? null,
     });
 
     if (activeDek) {
@@ -426,9 +426,9 @@ export class DekManager {
     }
 
     const [ivHex, authTagHex, encryptedHex] = parts;
-    const iv = Buffer.from(ivHex, "hex");
-    const authTag = Buffer.from(authTagHex, "hex");
-    const encrypted = Buffer.from(encryptedHex, "hex");
+    const iv = Buffer.from(ivHex!, "hex");
+    const authTag = Buffer.from(authTagHex!, "hex");
+    const encrypted = Buffer.from(encryptedHex!, "hex");
 
     const decipher = createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(authTag);

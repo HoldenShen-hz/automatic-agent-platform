@@ -47,6 +47,23 @@ export interface OidcSession {
   readonly providerId: string;
 }
 
+export function toOidcSession(record: SessionRecord): OidcSession {
+  const result: OidcSession = {
+    sessionId: record.sessionId,
+    userId: record.userId,
+    accessToken: record.accessToken,
+    idToken: record.idToken,
+    expiresAt: record.expiresAt,
+    createdAt: record.createdAt,
+    lastActivityAt: record.lastActivityAt,
+    providerId: record.providerId,
+  };
+  if (record.refreshToken !== undefined) {
+    (result as { refreshToken?: string }).refreshToken = record.refreshToken;
+  }
+  return result;
+}
+
 export interface OidcStateStore {
   saveState(state: string, nonce: string, redirectUri: string): void;
   getState(state: string): { nonce: string; redirectUri: string } | null;
@@ -189,7 +206,7 @@ export class OidcIdentityService {
           this.revokeSession(session.sessionId);
           return null;
         }
-        return session;
+        return toOidcSession(session);
       }
     }
     return null;
@@ -225,7 +242,7 @@ export class OidcIdentityService {
     }
     this.userSessions.get(userInfo.sub)!.add(sessionId);
 
-    return record;
+    return toOidcSession(record);
   }
 
   /**
@@ -306,7 +323,7 @@ export class OidcIdentityService {
     for (const sessionId of sessionIds) {
       const session = this.sessions.get(sessionId);
       if (session && Date.now() <= new Date(session.expiresAt).getTime()) {
-        activeSessions.push(session);
+        activeSessions.push(toOidcSession(session));
       }
     }
 

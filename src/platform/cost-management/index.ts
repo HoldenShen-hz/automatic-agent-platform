@@ -22,5 +22,5 @@
 export {
   CostEstimationService,
   type CostEstimate,
-  type CostBreakdown,
+  type CostEstimationConfig,
 } from "../../../scale-ecosystem/marketplace/cost-estimation-service.js";

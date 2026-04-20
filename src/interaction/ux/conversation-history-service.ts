@@ -188,7 +188,7 @@ export class ConversationHistoryService {
       classification: "conversation_history",
       sourceTrustLevel: "system" as MemorySourceTrustLevel,
       qualityScore: 1.0,
-      kind: "conversation" as const,
+      kind: "episode",
       expiresAt,
     });
   }
@@ -206,7 +206,7 @@ export class ConversationHistoryService {
 
     const memories = await this.memoryService.recall({
       sessionId,
-      scope: this.defaultScope,
+      scopes: [this.defaultScope],
     });
 
     const sessionMemory = memories.find(
@@ -217,7 +217,7 @@ export class ConversationHistoryService {
       return null;
     }
 
-    return this.deserializeSession(sessionMemory.content);
+    return this.deserializeSession(sessionMemory.contentJson);
   }
 
   /**
@@ -233,13 +233,13 @@ export class ConversationHistoryService {
     }
 
     const memories = await this.memoryService.recall({
-      scope: this.defaultScope,
+      scopes: [this.defaultScope],
     });
 
     const userSessions: ConversationSessionRecord[] = [];
 
     for (const memory of memories) {
-      const session = this.tryDeserializeSession(memory.content);
+      const session = this.tryDeserializeSession(memory.contentJson);
       if (session && session.userId === userId && session.tenantId === tenantId) {
         userSessions.push(session);
       }
@@ -258,12 +258,12 @@ export class ConversationHistoryService {
    */
   private extractSessionId(memory: MemoryRecord): string | null {
     try {
-      if (typeof memory.content === "string") {
-        const parsed = JSON.parse(memory.content);
+      if (typeof memory.contentJson === "string") {
+        const parsed = JSON.parse(memory.contentJson);
         return parsed.sessionId ?? null;
       }
-      if (typeof memory.content === "object" && memory.content !== null) {
-        return (memory.content as Record<string, unknown>).sessionId as string ?? null;
+      if (typeof memory.contentJson === "object" && memory.contentJson !== null) {
+        return (memory.contentJson as Record<string, unknown>).sessionId as string ?? null;
       }
       return null;
     } catch {
