@@ -1,4 +1,7 @@
 import { nowIso } from "../../platform/contracts/types/ids.js";
+import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-service.js";
+
+export { autonomyAuditService, AutonomyAuditService };
 
 export type AutonomyLevel = "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
 export type TrustLevel = "untrusted" | "probation" | "supervised" | "semi_trusted" | "trusted" | "fully_trusted";
@@ -56,6 +59,20 @@ export interface ProgressiveAutonomyEvaluation {
   readonly changeEvents: readonly AutonomyChangeEvent[];
 }
 
+export interface AutonomyEvaluationOptions {
+  windowDays?: number;
+  freezeOnIncident?: boolean;
+  minVolumeForPromotion?: number;
+  minVolumeForDemotion?: number;
+}
+
+const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
+  windowDays: 30,
+  freezeOnIncident: true,
+  minVolumeForPromotion: 10,
+  minVolumeForDemotion: 3,
+};
+
 function successRate(score: CapabilityTrustScore): number {
   return score.totalExecutions === 0 ? 0 : score.successfulExecutions / score.totalExecutions;
 }
@@ -87,11 +104,17 @@ function scoreCapability(score: CapabilityTrustScore): number {
   );
 }
 
-function decideLevel(score: CapabilityTrustScore): AutonomyLevel {
+function decideLevel(
+  score: CapabilityTrustScore,
+  options: AutonomyEvaluationOptions = DEFAULT_OPTIONS,
+): AutonomyLevel {
   const success = successRate(score);
   const overrides = overrideRate(score);
 
-  if (score.incidents > 0 || score.failedExecutions >= 3) {
+  if (options.freezeOnIncident && score.incidents > 0) {
+    return "frozen";
+  }
+  if (score.failedExecutions >= (options.minVolumeForDemotion ?? 3)) {
     return "suggestion";
   }
   if (score.totalExecutions >= 500 && success >= 0.99 && overrides < 0.01) {
@@ -113,9 +136,14 @@ function lowestLevel(levels: readonly AutonomyLevel[]): AutonomyLevel {
 
 export class ProgressiveAutonomyService implements AutonomyPolicyPort {
   private readonly profiles = new Map<string, AgentTrustProfile>();
+  private readonly auditCallbacks: Array<(event: AutonomyChangeEvent) => void> = [];
 
   public registerProfile(profile: AgentTrustProfile): void {
     this.profiles.set(profile.agentId, profile);
+  }
+
+  public onAutonomyChange(callback: (event: AutonomyChangeEvent) => void): void {
+    this.auditCallbacks.push(callback);
   }
 
   public async evaluate(subjectId: string): Promise<AutonomyDecision> {
@@ -131,17 +159,27 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
     return this.evaluateProfile(profile).decision;
   }
 
-  public evaluateProfile(profile: AgentTrustProfile): ProgressiveAutonomyEvaluation {
+  public evaluateProfile(
+    profile: AgentTrustProfile,
+    options: AutonomyEvaluationOptions = DEFAULT_OPTIONS,
+  ): ProgressiveAutonomyEvaluation {
     const capabilityLevels: Record<string, AutonomyLevel> = {};
     const changeEvents: AutonomyChangeEvent[] = [];
     const recalculatedScores = profile.capabilityScores.map((item) => {
       const nextScore = scoreCapability(item);
-      const nextLevel = decideLevel(item);
+      const nextLevel = decideLevel(item, options);
       capabilityLevels[item.capabilityId] = nextLevel;
 
       if (nextLevel !== item.currentAutonomy) {
-        changeEvents.push({
-          eventType: nextLevel === "suggestion" ? "agent.autonomy.demoted" : "agent.autonomy.promoted",
+        const eventType: AutonomyChangeEvent["eventType"] =
+          nextLevel === "frozen"
+            ? "agent.autonomy.frozen"
+            : nextLevel === "suggestion" || compareLevels(nextLevel, item.currentAutonomy) < 0
+              ? "agent.autonomy.demoted"
+              : "agent.autonomy.promoted";
+
+        const changeEvent: AutonomyChangeEvent = {
+          eventType,
           agentId: profile.agentId,
           capabilityId: item.capabilityId,
           fromLevel: item.currentAutonomy,
@@ -152,9 +190,11 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
             successRate: successRate(item),
             totalExecutions: item.totalExecutions,
             incidentCount: item.incidents,
-            evaluationWindow: "30d",
+            evaluationWindow: `${options.windowDays ?? 30}d`,
           },
-        });
+        };
+        changeEvents.push(changeEvent);
+        this.auditCallbacks.forEach((cb) => cb(changeEvent));
       }
       return nextScore;
     });
@@ -177,4 +217,9 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
       changeEvents,
     };
   }
+}
+
+function compareLevels(left: AutonomyLevel, right: AutonomyLevel): number {
+  const order: readonly AutonomyLevel[] = ["frozen", "suggestion", "supervised", "semi_auto", "full_auto"];
+  return order.indexOf(left) - order.indexOf(right);
 }

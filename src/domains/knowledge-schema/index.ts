@@ -43,8 +43,8 @@ export const DomainKnowledgeSchemaSchema = z.object({
   retentionDays: z.number().int().positive().default(30),
   // §37.4 enhanced fields
   knowledgeSources: z.array(KnowledgeSourceSchema).default([]),
-  retrievalStrategy: RetrievalStrategySchema.default({}),
-  freshnessPolicy: FreshnessPolicySchema.default({}),
+  retrievalStrategy: RetrievalStrategySchema,
+  freshnessPolicy: FreshnessPolicySchema,
 });
 
 export type KnowledgeSource = z.infer<typeof KnowledgeSourceSchema>;
@@ -56,6 +56,7 @@ export function resolveKnowledgeNamespaces(
   schema: DomainKnowledgeSchema,
   additionalNamespaceIds: readonly string[] = [],
 ): string[] {
-  const combined = [...schema.namespaceIds, ...additionalNamespaceIds];
+  const namespaceIds = schema.namespaceIds ?? [];
+  const combined = [...namespaceIds, ...additionalNamespaceIds];
   return combined.filter((item, index) => combined.indexOf(item) === index);
 }

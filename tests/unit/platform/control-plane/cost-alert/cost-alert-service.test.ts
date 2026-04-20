@@ -96,16 +96,30 @@ test("CostAlertService emits warning when approaching limit", () => {
     events.push(event);
   });
 
-  // Record cost to cross 80% warning threshold in single call
+  // Record cost in stages to trigger threshold crossing
+  // First: 70 (70% of limit - under warning threshold of 80%)
   service.recordCost({
     scope: "tenant",
     scopeId: "tenant-1",
-    actualCostUsd: 85, // 85% of limit, crosses warning threshold
+    actualCostUsd: 70,
     tenantId: "tenant-1",
   });
 
+  // Then: cross 80% warning threshold with additional 15 (now at 85%)
+  service.recordCost({
+    scope: "tenant",
+    scopeId: "tenant-1",
+    actualCostUsd: 15, // Total now 85, crosses 80% warning
+    tenantId: "tenant-1",
+  });
+
+  // Debug: check accumulator state
+  const accumulator = service.getAccumulator("tenant", "tenant-1");
+  assert.ok(accumulator, "Accumulator should exist");
+  assert.equal(accumulator!.accumulatedCostUsd, 85, "Accumulated cost should be 85");
+
   // Should have emitted at least one warning event
-  assert.ok(events.length >= 1, "Should emit at least one event");
+  assert.ok(events.length >= 1, `Should emit at least one event, got ${events.length}`);
   const warningEvent = events.find((e) => e.alertLevel === "warning");
   assert.ok(warningEvent, "Should have a warning event");
 });

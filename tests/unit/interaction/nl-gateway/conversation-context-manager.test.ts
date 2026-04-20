@@ -79,8 +79,9 @@ test("ConversationContextManager prunes to window size", () => {
   // Add 4 turns to a window of 3
   manager.addTurn("tenant_1", "user_1", "消息1", intent);
   manager.addTurn("tenant_1", "user_1", "消息2", intent);
-  const context = manager.addTurn("tenant_1", "user_1", "消息3", intent);
-  manager.addTurn("tenant_1", "user_1", "消息4", intent);
+  manager.addTurn("tenant_1", "user_1", "消息3", intent);
+  // 4th turn should prune the first one
+  const context = manager.addTurn("tenant_1", "user_1", "消息4", intent);
 
   // Should be pruned to last 3
   assert.equal(context.turnCount, 3);

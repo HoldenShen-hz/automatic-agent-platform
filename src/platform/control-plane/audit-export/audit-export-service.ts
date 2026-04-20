@@ -12,6 +12,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { createAuditIntegrityRepository, type AuditIntegrityRepository, AUDIT_INTEGRITY_DDL } from "../iam/audit-integrity-repository.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -111,7 +112,14 @@ type RawRow = Record<string, unknown>;
  * with integrity chain verification for audit evidence.
  */
 export class AuditExportService {
-  constructor(private readonly db: AuthoritativeSqlDatabase) {}
+  constructor(
+    private readonly db: AuthoritativeSqlDatabase,
+    private readonly integrityRepository?: AuditIntegrityRepository,
+  ) {
+    if (!this.integrityRepository) {
+      this.integrityRepository = createAuditIntegrityRepository(db);
+    }
+  }
 
   // ── Export Request ─────────────────────────────────────────────────
 
@@ -249,37 +257,36 @@ export class AuditExportService {
   /**
    * Verifies the integrity chain of tier-1 events within a time window.
    *
-   * Checks for continuity of the integrity chain hash to detect any
+   * Uses the audit_integrity_records table (hash chain) to detect any
    * tampering or gaps in the audit trail.
    */
   verifyIntegrity(windowStart: string, windowEnd: string): IntegrityCheckResult {
-    const events = this.db.connection
-      .prepare(`SELECT * FROM events WHERE created_at >= ? AND created_at <= ? AND event_tier = 'tier_1' ORDER BY created_at`)
-      .all(windowStart, windowEnd) as RawRow[];
+    const integrityRecords = this.integrityRepository!.getIntegrityRecordsInRange(windowStart, windowEnd);
 
-    if (events.length === 0) {
+    if (integrityRecords.length === 0) {
       return { valid: true, eventsChecked: 0, chainBreaks: 0, firstBreakAt: null, details: "no_tier_1_events_in_window" };
     }
 
-    // Check integrity chain hash continuity
+    // Sort by chain position
+    const sorted = [...integrityRecords].sort((a, b) => a.chainPosition - b.chainPosition);
+
     let chainBreaks = 0;
     let firstBreakAt: string | null = null;
 
-    for (let i = 1; i < events.length; i++) {
-      const prev = events[i - 1]!;
-      const curr = events[i]!;
-      // If integrity_chain_hash exists, verify continuity
-      if (curr.integrity_prev_hash != null && prev.integrity_chain_hash != null) {
-        if (String(curr.integrity_prev_hash) !== String(prev.integrity_chain_hash)) {
-          chainBreaks++;
-          if (!firstBreakAt) firstBreakAt = String(curr.created_at);
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1]!;
+      const curr = sorted[i]!;
+      if (prev.chainHash !== curr.previousChainHash) {
+        chainBreaks++;
+        if (!firstBreakAt) {
+          firstBreakAt = curr.eventCreatedAt;
         }
       }
     }
 
     return {
       valid: chainBreaks === 0,
-      eventsChecked: events.length,
+      eventsChecked: integrityRecords.length,
       chainBreaks,
       firstBreakAt,
       details: chainBreaks === 0 ? "integrity_chain_valid" : `${chainBreaks}_chain_breaks_detected`,

@@ -339,11 +339,11 @@ test("FreshnessPolicySchema validates correctly", () => {
 });
 
 test("resolveKnowledgeNamespaces merges namespaces", () => {
-  const schema: DomainKnowledgeSchema = {
+  const schema = DomainKnowledgeSchemaSchema.parse({
     schemaId: "s1",
     domainId: "d1",
     namespaceIds: ["ns-a", "ns-b"],
-  };
+  });
 
   const result = resolveKnowledgeNamespaces(schema, ["ns-b", "ns-c"]);
   assert.ok(result.includes("ns-a"));
@@ -353,13 +353,24 @@ test("resolveKnowledgeNamespaces merges namespaces", () => {
 });
 
 test("resolveKnowledgeNamespaces handles empty additional", () => {
-  const schema: DomainKnowledgeSchema = {
+  const schema = DomainKnowledgeSchemaSchema.parse({
     schemaId: "s1",
     domainId: "d1",
     namespaceIds: ["ns-x"],
-  };
+  });
 
   const result = resolveKnowledgeNamespaces(schema);
   assert.equal(result.length, 1);
   assert.equal(result[0], "ns-x");
+});
+
+test("resolveKnowledgeNamespaces handles minimal schema", () => {
+  const schema = DomainKnowledgeSchemaSchema.parse({
+    schemaId: "s1",
+    domainId: "d1",
+  });
+
+  const result = resolveKnowledgeNamespaces(schema, ["ns-y"]);
+  assert.equal(result.length, 1);
+  assert.equal(result[0], "ns-y");
 });

@@ -297,17 +297,17 @@ test("ProactiveAgentService recordExecutionOutcome increments consecutive failur
 });
 
 test("ProactiveAgentService recordExecutionOutcome resets on success", () => {
-  const service = new ProactiveAgentService({ maxConsecutiveFailures: 2 });
+  const service = new ProactiveAgentService({ maxConsecutiveFailures: 3 });
   service.registerTrigger(makeTrigger());
 
   service.recordExecutionOutcome("trigger_daily_report", false);
   service.recordExecutionOutcome("trigger_daily_report", false);
-  service.recordExecutionOutcome("trigger_daily_report", true); // Reset
+  // Success resets consecutive failures
+  service.recordExecutionOutcome("trigger_daily_report", true);
 
-  // Now should be allowed again (but trigger should still be enabled since failures < max)
-  // Actually after 2 failures, maxConsecutiveFailures is reached and trigger is disabled
-  // Let me re-check: maxConsecutiveFailures=2 means after 2 failures it disables
-  // So let's use maxConsecutiveFailures=3
+  // Should still be allowed since maxConsecutiveFailures=3 and we've only had 2 failures
+  const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
+  assert.equal(decision.allowed, true);
 });
 
 test("ProactiveAgentService registerTrigger validates declared triggers", async () => {

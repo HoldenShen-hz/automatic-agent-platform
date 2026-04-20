@@ -1,6 +1,16 @@
 import { z } from "zod";
 
-export const OrgNodeTypeSchema = z.enum(["enterprise", "business_unit", "department", "team", "seat"]);
+/**
+ * Organization node types representing the 5-level hierarchy:
+ * - company: Top-level organization (maps to platform)
+ * - division: Business division (maps to tenant_group for budget aggregation)
+ * - department: Department (maps to tenant for isolation)
+ * - team: Team (maps to domain + pack_group)
+ * - member: Individual user/member (leaf node)
+ *
+ * As defined in architecture doc §46.1
+ */
+export const OrgNodeTypeSchema = z.enum(["company", "division", "department", "team", "member"]);
 
 export const OrgNodeSchema = z.object({
   orgNodeId: z.string().min(1),
@@ -9,11 +19,129 @@ export const OrgNodeSchema = z.object({
   parentOrgNodeId: z.string().min(1).nullable().default(null),
   ownerUserIds: z.array(z.string()).default([]),
   active: z.boolean().default(true),
+  costCenter: z.string().default(""),
+  metadata: z.record(z.string()).default({}),
 });
 
 export type OrgNodeType = z.infer<typeof OrgNodeTypeSchema>;
 export type OrgNode = z.infer<typeof OrgNodeSchema>;
 
+/**
+ * Cross-organization collaboration participant role.
+ * Used for guest access and inter-organization workflows.
+ */
+export type CollaboratorRole = "guest" | "consultant" | "contractor" | "partner";
+
+/**
+ * Cross-organization collaboration permission scope.
+ */
+export interface CollaborationScope {
+  readonly targetOrgNodeId: string;
+  readonly allowedDomains: readonly string[];
+  readonly allowedActions: readonly ("view" | "execute" | "admin")[];
+  readonly expiresAt: string | null;
+}
+
+/**
+ * Cross-organization collaborator record.
+ * Enables guest/partner access with scoped permissions.
+ */
+export interface CrossOrgCollaborator {
+  readonly collaboratorId: string;
+  readonly userId: string;
+  readonly homeOrgNodeId: string;
+  readonly targetOrgNodeId: string;
+  readonly role: CollaboratorRole;
+  readonly scope: CollaborationScope;
+  readonly grantedBy: string;
+  readonly grantedAt: string;
+  readonly active: boolean;
+}
+
+/**
+ * Full organization chart containing all nodes and metadata.
+ * As defined in architecture doc §46.1
+ */
+export interface OrgChart {
+  readonly root: OrgNode;
+  readonly nodes: readonly OrgNode[];
+  readonly syncSource: "scim" | "manual" | "hr_api";
+  readonly lastSyncedAt: string;
+}
+
+/**
+ * Reporting chain for an employee.
+ * Used for approval routing and escalation.
+ */
+export interface ReportingChain {
+  readonly employeeId: string;
+  readonly chain: readonly string[];
+}
+
+/**
+ * Organization change event for automatic adaptation.
+ * Maps to §46.3 org change events.
+ */
+export type OrgChangeEvent =
+  | { type: "employee_onboarding"; userId: string; teamId: string; managerId: string }
+  | { type: "employee_transfer"; userId: string; fromTeamId: string; toTeamId: string; newManagerId: string }
+  | { type: "employee_offboarding"; userId: string; teamId: string }
+  | { type: "department_merge"; sourceDeptId: string; targetDeptId: string }
+  | { type: "org_restructure"; affectedNodeIds: readonly string[] };
+
 export function isLeafOrgNode(node: OrgNode): boolean {
-  return node.nodeType === "seat";
+  return node.nodeType === "member";
+}
+
+/**
+ * Gets the platform mapping level for an org node type.
+ * Maps to architecture doc §46.2
+ */
+export function getPlatformMapping(nodeType: OrgNodeType): string {
+  const mappings: Record<OrgNodeType, string> = {
+    company: "platform",
+    division: "tenant_group",
+    department: "tenant",
+    team: "domain/pack_group",
+    member: "principal",
+  };
+  return mappings[nodeType];
+}
+
+/**
+ * Validates that intermediate layers are properly optional.
+ * The 5-level hierarchy allows division and department to be skipped.
+ */
+export function validateHierarchyDepth(nodes: readonly OrgNode[]): { valid: boolean; depth: number } {
+  if (nodes.length === 0) {
+    return { valid: true, depth: 0 };
+  }
+
+  const root = nodes.find((n) => n.parentOrgNodeId === null);
+  if (!root) {
+    return { valid: false, depth: 0 };
+  }
+
+  const getMaxDepth = (nodeId: string): number => {
+    const children = nodes.filter((n) => n.parentOrgNodeId === nodeId);
+    if (children.length === 0) return 1;
+    return 1 + Math.max(...children.map((c) => getMaxDepth(c.orgNodeId)));
+  };
+
+  const depth = getMaxDepth(root.orgNodeId);
+  return { valid: depth <= 5, depth };
+}
+
+/**
+ * Creates a cross-org collaborator with guest role and scoped permissions.
+ */
+export function createCrossOrgCollaborator(
+  input: Omit<CrossOrgCollaborator, "collaboratorId" | "grantedAt" | "active">,
+): CrossOrgCollaborator {
+  return {
+    ...input,
+    collaboratorId: `collab:${input.userId}:${input.targetOrgNodeId}`,
+    grantedAt: new Date().toISOString(),
+    active: true,
+  };
 }

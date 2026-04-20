@@ -48,3 +48,6 @@ export {
 
 // Re-export delegation tracker
 export { DelegationTracker, createDelegationTracker, type DelegationTreeNode, type DelegationMetrics } from "./delegation-tracker.js";
+
+// Re-export delegation manager types
+export type { DelegationExpirationConfig, ExpirationScanResult } from "./delegation-manager.service.js";

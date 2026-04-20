@@ -16,6 +16,7 @@ import { ValidationError } from "../../contracts/errors.js";
 import {
   TopologyValidator,
   createTopologyValidator,
+  DEFAULT_MAX_DEPTH,
   type TopologyValidatorConfig,
 } from "./topology-validator.js";
 import type {
@@ -30,6 +31,17 @@ import type {
   DelegationCreatedEvent,
 } from "./delegation-types.js";
 
+export interface DelegationExpirationConfig {
+  checkIntervalMs?: number;
+  batchSize?: number;
+}
+
+export interface ExpirationScanResult {
+  scanned: number;
+  expired: number;
+  errors: readonly string[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Manager Service
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +54,7 @@ export class DelegationManagerService {
 
   public constructor(options: DelegationOptions = {}) {
     const config: TopologyValidatorConfig = {
-      maxDepth: options.maxDepth ?? 5,
+      maxDepth: options.maxDepth ?? DEFAULT_MAX_DEPTH,
       maxFanout: options.maxFanout ?? 10,
       ...(options.allowedPackIds ? { allowedPackIds: options.allowedPackIds } : {}),
     };
@@ -182,6 +194,55 @@ export class DelegationManagerService {
         (d.parentAgentId === agentId || d.childAgentId === agentId) &&
         d.status === "active",
     );
+  }
+
+  /**
+   * §49: Scans all delegations and expires those past their expiresAt time.
+   * Returns the count of expired delegations.
+   */
+  public revokeExpiredDelegations(): ExpirationScanResult {
+    const now = nowIso();
+    const errors: string[] = [];
+    let expired = 0;
+
+    for (const delegation of this.delegationStore.values()) {
+      if (delegation.status === "pending" || delegation.status === "active") {
+        if (delegation.expiresAt < now) {
+          try {
+            delegation.status = "expired";
+            expired++;
+          } catch (err) {
+            errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      }
+    }
+
+    return {
+      scanned: this.delegationStore.size,
+      expired,
+      errors,
+    };
+  }
+
+  /**
+   * §49: Gets all expired delegations that haven't been marked as expired yet.
+   * Useful for auditing or cleanup verification.
+   */
+  public getExpiredDelegations(): DelegationResult[] {
+    const now = nowIso();
+    return [...this.delegationStore.values()].filter(
+      (d) =>
+        (d.status === "pending" || d.status === "active") &&
+        d.expiresAt < now,
+    );
+  }
+
+  /**
+   * §49: Gets the count of pending expirations (delegations past expiresAt but not yet processed).
+   */
+  public getPendingExpirationCount(): number {
+    return this.getExpiredDelegations().length;
   }
 
   // ── Private Methods ───────────────────────────────────────────────────────

@@ -1,0 +1,81 @@
+{
+  "templates": [
+    {
+      "templateId": "task_create_standard",
+      "name": "标准任务创建",
+      "description": "引导用户完成标准任务创建流程",
+      "intent": "task_create",
+      "steps": [
+        {
+          "stepId": "title",
+          "prompt": "请描述您要创建的任务标题：",
+          "isRequired": true
+        },
+        {
+          "stepId": "description",
+          "prompt": "请详细描述任务内容：",
+          "isRequired": false
+        },
+        {
+          "stepId": "priority",
+          "prompt": "任务的优先级是什么？（高/中/低）",
+          "expectedEntities": ["priority"],
+          "isRequired": false,
+          "allowSkip": true
+        },
+        {
+          "stepId": "confirm",
+          "prompt": "请确认任务信息无误，我将为您创建：",
+          "isRequired": true
+        }
+      ],
+      "estimatedDurationMinutes": 3,
+      "tags": ["task", "creation"]
+    },
+    {
+      "templateId": "task_query_status",
+      "name": "任务状态查询",
+      "description": "查询任务当前状态和进度",
+      "intent": "task_query",
+      "steps": [
+        {
+          "stepId": "task_id",
+          "prompt": "请提供要查询的任务ID或任务标题：",
+          "expectedEntities": ["taskId"],
+          "isRequired": true
+        }
+      ],
+      "estimatedDurationMinutes": 1,
+      "tags": ["task", "query"]
+    },
+    {
+      "templateId": "task_modify_update",
+      "name": "任务修改",
+      "description": "修改已有任务的内容或状态",
+      "intent": "task_modify",
+      "steps": [
+        {
+          "stepId": "identify",
+          "prompt": "请提供要修改的任务ID：",
+          "expectedEntities": ["taskId"],
+          "isRequired": true
+        },
+        {
+          "stepId": "field",
+          "prompt": "您想修改任务的哪个字段？",
+          "isRequired": true
+        },
+        {
+          "stepId": "confirm",
+          "prompt": "确定要应用这些修改吗？",
+          "isRequired": true
+        }
+      ],
+      "estimatedDurationMinutes": 2,
+      "tags": ["task", "modification"]
+    }
+  ],
+  "defaultTemplateId": "task_create_standard",
+  "maxStepsPerTemplate": 10,
+  "enableTemplateAutoSelection": true
+}

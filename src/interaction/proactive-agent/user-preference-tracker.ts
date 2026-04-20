@@ -127,7 +127,7 @@ export class UserPreferenceTracker {
       domainId,
       response,
       respondedAt: nowIso(),
-      latencyMs,
+      ...(latencyMs !== undefined ? { latencyMs } : {}),
     };
     this.feedback.push(feedback);
     return feedback;
@@ -307,7 +307,7 @@ export class UserPreferenceTracker {
       dismissedCount: stats.dismissedCount,
       ignoredCount: stats.ignoredCount,
       adoptionRate: stats.adoptionRate,
-      dismissalRate: stats.dismissovalRate,
+      dismissalRate: stats.dismissalRate,
       avgResponseLatencyMs: stats.avgResponseLatencyMs,
       lastUpdatedAt: stats.lastUpdatedAt,
     };
