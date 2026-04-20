@@ -97,7 +97,7 @@
 | Unverified        | No dedicated tests, or only compilation passes               |
 | Test-covered      | Unit/integration tests cover main paths                      |
 | Staging-verified  | Verified in staging-like environment                         |
-| Production-ready  | Confirmed via traffic validation, fault injection, monitoring闭环 |
+| Production-ready  | Confirmed via traffic validation, fault injection, monitoring closed-loop |
 
 > **No module in the current codebase has reached Staging-verified or Production-ready**.
 
@@ -575,153 +575,153 @@ platform/  ←────── core/ (pure re-export)
 | `QueueAdapterFactory`    | SQLite / Redis               | `execution/queue/`            |
 | `DistributedLockFactory` | SQLite / PG Advisory / Redis | `execution/distributed-lock/` |
 
-### 6.6 单例管理
+### 6.6 Singleton Management
 
-`shared/lifecycle/service-registry.ts`（268 行）管理: division-loader、tool-registry、middleware-context、agent-executor-context、network-egress-audit/policy、output-continuation、model-call-provider、graceful-shutdown、process-tracker。
+`shared/lifecycle/service-registry.ts` (268 lines) manages: division-loader, tool-registry, middleware-context, agent-executor-context, network-egress-audit/policy, output-continuation, model-call-provider, graceful-shutdown, process-tracker.
 
-### 6.7 Sync/Async 双模式
+### 6.7 Sync/Async Dual Mode
 
-多个服务同时提供同步（SQLite）和异步（PostgreSQL）版本:
-`ExecutionLeaseService`/Async、`HaCoordinatorService`/Async、`HotUpgradeService`/Async、`ExecutionDispatchService`/Async、`ExecutionWorkerHandshakeService`/Async、`ExecutionWorkerWritebackService`/Async、`DurableEventBus`/Async + 21 个 Async\*Repository。
-
----
-
-## 7. 代码质量问题
-
-### 7.1 类型安全
-
-| 问题                     | 数量              | 严重度 |
-| ------------------------ | ----------------- | ------ |
-| `as unknown as` 类型断言 | ~50 处（24 文件） | 中     |
-| `as any`                 | 3 处              | 低     |
-| 无 schema 校验的查询结果 | 全部 store 方法   | 中     |
-| 空值断言 `!`             | 多处（未统计）    | 中     |
-
-### 7.2 代码重复
-
-| 问题                                                                                                                    | 影响         | 严重度 |
-| ----------------------------------------------------------------------------------------------------------------------- | ------------ | ------ |
-| `HrRoleGovernanceService` 两份（`domains/governance/` 和 `org-governance/org-model/`，571 行 × 2，仅 2 行 import 不同） | 1,142 行冗余 | 高     |
-| CLI 治理文件共享大块初始化代码（doctor/ops-governance/enterprise-governance）                                           | ~300 行      | 中     |
-| `trust-scorer/index.ts`（21 行）与 `autonomy/index.ts` 中 `trustLevelFromScore` + `scoreCapability` 重复                | 21 行        | 低     |
-| CLI 输出方式不一致（`console.log` vs `process.stdout.write`）                                                           | ~50 处       | 低     |
-
-### 7.3 冗余代码
-
-| 问题                                                          | 行数    | 严重度 |
-| ------------------------------------------------------------- | ------- | ------ |
-| `src/core/runtime/` 8 个 re-export 垫片                       | 29      | 中     |
-| `platform/shared/lifecycle/evolution-mvp-service.ts` 1 行垫片 | 1       | 低     |
-| 4 个不完整 async 包装（marketplace 3 + drift-detection 1）    | ~205    | 中     |
-| 43 个空桩 `export {}` 文件                                    | 43 文件 | 中     |
-
-### 7.4 复杂度中心
-
-| 文件                           | 行数  | 模块            | 问题                |
-| ------------------------------ | ----- | --------------- | ------------------- |
-| `worker-repository.ts`         | 1,057 | state-evidence  | Repository 最大文件 |
-| `async worker-repository.ts`   | 1,052 | state-evidence  | 同步版镜像          |
-| `operations-repository.ts`     | 868   | state-evidence  | 运维数据访问复杂    |
-| `slo-alerting-service.ts`      | 799   | shared          | 5 通道告警          |
-| `execution-lease-service.ts`   | 796   | execution       | 多重验证链          |
-| `anomaly-detection-service.ts` | 795   | shared          | 统计逻辑复杂        |
-| `billing-service.ts`           | 791   | scale-ecosystem | 完整计费引擎        |
-| `patch-dsl-service.ts`         | 791   | execution       | DSL 解析            |
-| `plugin-spi-registry.ts`       | 829   | domains         | 单文件偏大          |
-
-### 7.5 文档路径过时
-
-6 个根级 Markdown（`src/README.md`、`MEMORY.md`、`CLAUDE.md`、`README.md`、`AGENTS.md`、`MIGRATION_BASELINE.md`）仍引用 `src/core/`、`src/cli/`、`src/gateway/` 等不存在路径。
+Multiple services provide both sync (SQLite) and async (PostgreSQL) versions:
+`ExecutionLeaseService`/Async, `HaCoordinatorService`/Async, `HotUpgradeService`/Async, `ExecutionDispatchService`/Async, `ExecutionWorkerHandshakeService`/Async, `ExecutionWorkerWritebackService`/Async, `DurableEventBus`/Async + 21 Async\*Repository.
 
 ---
 
-## 8. 安全与可靠性分析
+## 7. Code Quality Issues
 
-### 8.1 安全能力矩阵
+### 7.1 Type Safety
 
-| 能力             | 状态            | 位置                                                         | 评价                    |
-| ---------------- | --------------- | ------------------------------------------------------------ | ----------------------- |
-| Sandbox 路径验证 | **Implemented** | `control-plane/iam/sandbox-policy.ts` (327 行, 3 模式)       | realpath + symlink 检测 |
-| Shell 注入防御   | **Implemented** | `execution/tool-executor/command-executor.ts` 7 层防御       | 完整                    |
-| 命令策略         | **Implemented** | deny-by-default, 未知命令拒绝                                | 完整                    |
-| 输出清理         | **Implemented** | `execution/tool-executor/tool-output-sanitizer.ts`           | secret 脱敏 + 注入检测  |
-| OIDC/OAuth       | **Implemented** | `interface/api/oidc-oauth/`                                  | JWKS + IdP 令牌校验     |
-| JWT 认证         | **Implemented** | `interface/api/api-auth-service.ts`                          | 缺少算法白名单          |
-| Secret 管理      | **Implemented** | `control-plane/iam/` (510 行, 5 Provider)                    | 云 Provider 未生产验证  |
-| CVE 情报         | **Implemented** | `control-plane/iam/cve-intelligence-service.ts` (748 行)     | 完整                    |
-| 网络出口控制     | **Implemented** | `control-plane/iam/` network-egress-\* + outbound-url-policy | 完整                    |
-| 数据分类         | **Implemented** | `control-plane/iam/data-classification-service.ts` (730 行)  | PII/敏感数据            |
-| 审计完整性       | **Implemented** | `control-plane/iam/audit-event-integrity.ts`                 | Tier-1 审计事件链       |
-| MCP 工具防护     | **Implemented** | `execution/tool-executor/mcp-tool-guard.ts`                  | 完整                    |
+| Issue                        | Quantity              | Severity |
+| ---------------------------- | --------------------- | -------- |
+| `as unknown as` type assertions | ~50 occurrences (24 files) | Medium |
+| `as any`                    | 3 occurrences          | Low     |
+| Query results without schema validation | All store methods | Medium |
+| Non-null assertions `!`    | Multiple (uncounted)   | Medium   |
 
-### 8.2 可靠性能力矩阵
+### 7.2 Code Duplication
 
-| 能力                 | 状态             | 位置                                                          | 评价       |
-| -------------------- | ---------------- | ------------------------------------------------------------- | ---------- |
-| 租约 + fencing token | **Implemented**  | `execution/lease/` (796 行, 5 步验证)                         | 完整       |
-| 事务性状态更新       | **Implemented**  | `db.transaction()` 包裹状态变更                               | 完整       |
-| Tier-1 事件持久化    | **Implemented**  | `state-evidence/events/durable-event-bus.ts`                  | 完整       |
-| 优雅关闭             | **Implemented**  | `execution/startup/graceful-shutdown.ts` (276 行)             | 完整       |
-| 进程追踪             | **Implemented**  | `execution/resource/process-tracker.ts`                       | PID + PGID |
-| 循环检测             | **Implemented**  | `execution/execution-engine/loop-detection.ts` (443 行)       | 完整       |
-| 准入控制             | **Implemented**  | `execution/execution-engine/admission-controller.ts`          | 完整       |
-| 上下文压缩           | **Implemented**  | `execution/execution-engine/context-compaction-service.ts`    | 完整       |
-| Gateway 重试 + DLQ   | **Implemented**  | 指数退避, max 5 次, 限流, 死信队列                            | 完整       |
-| 断路器               | **Implemented**  | `model-gateway/provider-registry/circuit-breaker.ts` (289 行) | 需生产验证 |
-| 热升级               | **Experimental** | `execution/hot-upgrade/` (1,952 行)                           | 需验证     |
-| 跨区域部署           | **Experimental** | `execution/ha/cross-region-deployment-service.ts` (663 行)    | 需验证     |
-| 稳定性排练           | **Implemented**  | `shared/stability/` (32 文件, 13,328 行, 28+ 排练套件)        | 完整       |
+| Issue                                                                                                                      | Impact         | Severity |
+| ------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
+| `HrRoleGovernanceService` in two places (`domains/governance/` and `org-governance/org-model/`, 571 lines × 2, only 2 import lines different) | 1,142 lines redundant | High   |
+| CLI governance files share large chunks of initialization code (doctor/ops-governance/enterprise-governance)                | ~300 lines      | Medium   |
+| `trust-scorer/index.ts` (21 lines) duplicates `trustLevelFromScore` + `scoreCapability` in `autonomy/index.ts`             | 21 lines        | Low     |
+| Inconsistent CLI output methods (`console.log` vs `process.stdout.write`)                                                    | ~50 occurrences | Low     |
 
-### 8.3 可观测性能力矩阵
+### 7.3 Redundant Code
 
-| 能力            | 状态            | 位置                                                                                |
-| --------------- | --------------- | ----------------------------------------------------------------------------------- |
-| 结构化日志      | **Implemented** | `shared/observability/structured-logger.ts` (342 行, 环形缓冲)                      |
-| 健康检查        | **Implemented** | 4 级: ok → degraded → overloaded → unhealthy                                        |
-| Prometheus 导出 | **Implemented** | `shared/observability/prometheus-metrics-exporter.ts`                               |
-| OpenTelemetry   | **Implemented** | `shared/observability/otel-bootstrap.ts` + `otel-tracer.ts`                         |
-| 日志传输        | **Implemented** | 3 通道: Stdout / Fluentd / Datadog                                                  |
-| 诊断服务        | **Implemented** | `shared/observability/diagnostics-service.ts` + `diagnostics-support.ts` (1,165 行) |
-| 异常检测        | **Implemented** | `shared/observability/anomaly-detection-service.ts` (795 行)                        |
-| SLI/SLO 告警    | **Implemented** | `shared/observability/slo-alerting-service.ts` (799 行, 5 通道)                     |
-| 分布式追踪      | **Implemented** | `shared/observability/trace-context.ts` + OTel 集成                                 |
+| Issue                                                       | Lines    | Severity |
+| ----------------------------------------------------------- | -------- | -------- |
+| `src/core/runtime/` 8 re-export shims                       | 29       | Medium   |
+| `platform/shared/lifecycle/evolution-mvp-service.ts` 1-line shim | 1    | Low      |
+| 4 incomplete async wrappers (marketplace 3 + drift-detection 1) | ~205 | Medium   |
+| 43 empty stub `export {}` files                             | 43 files | Medium   |
+
+### 7.4 Complexity Centers
+
+| File                            | Lines | Module          | Issue                    |
+| ------------------------------ | ----- | --------------- | ------------------------ |
+| `worker-repository.ts`         | 1,057 | state-evidence  | Largest Repository file  |
+| `async worker-repository.ts`   | 1,052 | state-evidence  | Sync version mirror      |
+| `operations-repository.ts`     | 868   | state-evidence  | Complex ops data access  |
+| `slo-alerting-service.ts`      | 799   | shared          | 5-channel alerting       |
+| `execution-lease-service.ts`   | 796   | execution       | Multi-step verification chain |
+| `anomaly-detection-service.ts` | 795   | shared          | Complex statistical logic |
+| `billing-service.ts`           | 791   | scale-ecosystem | Complete billing engine  |
+| `patch-dsl-service.ts`         | 791   | execution       | DSL parsing              |
+| `plugin-spi-registry.ts`       | 829   | domains         | Single file too large     |
+
+### 7.5 Outdated Documentation Paths
+
+6 root-level Markdown files (`src/README.md`, `MEMORY.md`, `CLAUDE.md`, `README.md`, `AGENTS.md`, `MIGRATION_BASELINE.md`) still reference non-existent paths like `src/core/`, `src/cli/`, `src/gateway/`.
 
 ---
 
-## §9 测试体系分析
+## 8. Security and Reliability Analysis
 
-### 9.1 测试规模总览
+### 8.1 Security Capability Matrix
 
-| 维度         | 数值                               |
-| ------------ | ---------------------------------- |
-| 测试文件总数 | 1,018                              |
-| 测试代码行数 | 206,717                            |
-| 测试用例数   | ~9,255                             |
-| 辅助文件     | 19 (2,120 行)                      |
-| 夹具文件     | 4 (459 行)                         |
-| 黄金快照文件 | 3 (332 行)                         |
-| 测试框架     | `node:test` + `node:assert/strict` |
-| 外部测试依赖 | 无 (零 Jest/Mocha/Sinon/Chai)      |
-| 并发度       | `--test-concurrency=12`            |
+| Capability           | Status           | Location                                                        | Assessment             |
+| ------------------- | ---------------- | --------------------------------------------------------------- | ---------------------- |
+| Sandbox path verification | **Implemented** | `control-plane/iam/sandbox-policy.ts` (327 lines, 3 modes)     | realpath + symlink detection |
+| Shell injection defense | **Implemented** | `execution/tool-executor/command-executor.ts` 7-layer defense   | Complete              |
+| Command policy       | **Implemented** | deny-by-default, unknown commands rejected                       | Complete              |
+| Output sanitization  | **Implemented** | `execution/tool-executor/tool-output-sanitizer.ts`               | secret redaction + injection detection |
+| OIDC/OAuth          | **Implemented** | `interface/api/oidc-oauth/`                                     | JWKS + IdP token validation |
+| JWT authentication   | **Implemented** | `interface/api/api-auth-service.ts`                             | Algorithm whitelist missing |
+| Secret management    | **Implemented** | `control-plane/iam/` (510 lines, 5 Providers)                   | Cloud providers not production-verified |
+| CVE intelligence     | **Implemented** | `control-plane/iam/cve-intelligence-service.ts` (748 lines)    | Complete              |
+| Network egress control | **Implemented** | `control-plane/iam/` network-egress-* + outbound-url-policy | Complete              |
+| Data classification  | **Implemented** | `control-plane/iam/data-classification-service.ts` (730 lines) | PII/sensitive data    |
+| Audit integrity      | **Implemented** | `control-plane/iam/audit-event-integrity.ts`                   | Tier-1 audit event chain |
+| MCP tool guard      | **Implemented** | `execution/tool-executor/mcp-tool-guard.ts`                    | Complete              |
 
-### 9.2 按目录分布
+### 8.2 Reliability Capability Matrix
 
-| 目录                 |    文件数 |        行数 |
-| -------------------- | --------: | ----------: |
-| `tests/unit/`        |       704 |     148,154 |
-| `tests/integration/` |       289 |      53,317 |
-| `tests/e2e/`         |        10 |       2,807 |
-| `tests/golden/`      |         8 |       1,330 |
-| `tests/performance/` |         6 |         874 |
-| `tests/fixtures/`    |         1 |         235 |
-| **合计**             | **1,018** | **206,717** |
+| Capability              | Status            | Location                                                         | Assessment      |
+| --------------------- | ----------------- | ---------------------------------------------------------------- | -------------- |
+| Lease + fencing token | **Implemented**   | `execution/lease/` (796 lines, 5-step verification)              | Complete        |
+| Transactional state updates | **Implemented** | `db.transaction()` wrapped state changes                     | Complete        |
+| Tier-1 event persistence | **Implemented** | `state-evidence/events/durable-event-bus.ts`                   | Complete        |
+| Graceful shutdown     | **Implemented**   | `execution/startup/graceful-shutdown.ts` (276 lines)              | Complete        |
+| Process tracking      | **Implemented**   | `execution/resource/process-tracker.ts`                          | PID + PGID      |
+| Loop detection        | **Implemented**   | `execution/execution-engine/loop-detection.ts` (443 lines)        | Complete        |
+| Admission control     | **Implemented**   | `execution/execution-engine/admission-controller.ts`             | Complete        |
+| Context compression   | **Implemented**   | `execution/execution-engine/context-compaction-service.ts`      | Complete        |
+| Gateway retry + DLQ   | **Implemented**   | Exponential backoff, max 5, rate limiting, dead letter queue     | Complete        |
+| Circuit breaker       | **Implemented**   | `model-gateway/provider-registry/circuit-breaker.ts` (289 lines)  | Needs production verification |
+| Hot upgrade           | **Experimental**  | `execution/hot-upgrade/` (1,952 lines)                            | Needs verification |
+| Cross-region deployment | **Experimental** | `execution/ha/cross-region-deployment-service.ts` (663 lines)  | Needs verification |
+| Stability rehearsal   | **Implemented**   | `shared/stability/` (32 files, 13,328 lines, 28+ rehearsal suites) | Complete      |
 
-### 9.3 单元测试细分 (704 文件, 148,154 行)
+### 8.3 Observability Capability Matrix
 
-| 子区域                  | 文件数 |    行数 |
-| ----------------------- | -----: | ------: |
-| `unit/platform/`        |    519 | 111,903 |
-| `unit/runtime/`         |     45 |  15,050 |
+| Capability         | Status           | Location                                                                              |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------- |
+| Structured logging | **Implemented** | `shared/observability/structured-logger.ts` (342 lines, ring buffer)                    |
+| Health checks      | **Implemented** | 4 levels: ok → degraded → overloaded → unhealthy                                        |
+| Prometheus export  | **Implemented** | `shared/observability/prometheus-metrics-exporter.ts`                                   |
+| OpenTelemetry      | **Implemented** | `shared/observability/otel-bootstrap.ts` + `otel-tracer.ts`                            |
+| Log transmission   | **Implemented** | 3 channels: Stdout / Fluentd / Datadog                                                |
+| Diagnostics service | **Implemented** | `shared/observability/diagnostics-service.ts` + `diagnostics-support.ts` (1,165 lines) |
+| Anomaly detection  | **Implemented** | `shared/observability/anomaly-detection-service.ts` (795 lines)                        |
+| SLI/SLO alerting   | **Implemented** | `shared/observability/slo-alerting-service.ts` (799 lines, 5 channels)                 |
+| Distributed tracing | **Implemented** | `shared/observability/trace-context.ts` + OTel integration                             |
+
+---
+
+## §9 Testing System Analysis
+
+### 9.1 Test Scale Overview
+
+| Dimension          | Value                                |
+| ----------------- | ------------------------------------ |
+| Total test files  | 1,018                                |
+| Test code lines   | 206,717                              |
+| Test cases        | ~9,255                               |
+| Helper files      | 19 (2,120 lines)                     |
+| Fixture files     | 4 (459 lines)                        |
+| Golden snapshot files | 3 (332 lines)                    |
+| Test framework    | `node:test` + `node:assert/strict`   |
+| External test deps| None (zero Jest/Mocha/Sinon/Chai)   |
+| Concurrency       | `--test-concurrency=12`               |
+
+### 9.2 Distribution by Directory
+
+| Directory          | Files | Lines    |
+| ----------------- | -----:| --------:|
+| `tests/unit/`     |   704 | 148,154 |
+| `tests/integration/` | 289 |  53,317 |
+| `tests/e2e/`      |    10 |   2,807 |
+| `tests/golden/`   |     8 |   1,330 |
+| `tests/performance/` |   6 |     874 |
+| `tests/fixtures/` |     1 |     235 |
+| **Total**         |**1,018**|**206,717** |
+
+### 9.3 Unit Test Breakdown (704 files, 148,154 lines)
+
+| Sub-area           | Files |   Lines |
+| ------------------ | ----: | ------: |
+| `unit/platform/`   |   519 | 111,903 |
+| `unit/runtime/`   |    45 |  15,050 |
 | `unit/scale-ecosystem/` |     37 |   7,917 |
 | `unit/domains/`         |     25 |   4,520 |
 | `unit/ops-maturity/`    |     27 |   3,776 |
@@ -733,60 +733,60 @@ platform/  ←────── core/ (pure re-export)
 | `unit/docs/`            |      1 |     120 |
 | `unit/core/`            |      1 |      26 |
 
-**Platform 单元测试深度拆分 (519 文件, 111,903 行):**
+**Platform Unit Test Deep Breakdown (519 files, 111,903 lines):**
 
-| 子模块                          | 文件数 |   行数 |
-| ------------------------------- | -----: | -----: |
-| `unit/platform/state-evidence/` |    102 | 31,659 |
-| `unit/platform/shared/`         |     88 | 15,894 |
-| `unit/platform/control-plane/`  |     82 | 14,960 |
-| `unit/platform/execution/`      |     63 | 12,921 |
-| `unit/platform/orchestration/`  |     59 | 11,634 |
-| `unit/platform/interface/`      |     53 | 10,954 |
-| `unit/platform/contracts/`      |     33 |  6,482 |
-| `unit/platform/model-gateway/`  |     21 |  5,873 |
-| `unit/platform/prompt-engine/`  |     11 |  1,262 |
-| `unit/platform/compliance/`     |      6 |    244 |
+| Submodule                        | Files |   Lines |
+| -------------------------------- | ----: | ------: |
+| `unit/platform/state-evidence/`  |   102 |  31,659 |
+| `unit/platform/shared/`          |    88 |  15,894 |
+| `unit/platform/control-plane/`   |    82 |  14,960 |
+| `unit/platform/execution/`       |    63 |  12,921 |
+| `unit/platform/orchestration/`   |    59 |  11,634 |
+| `unit/platform/interface/`       |    53 |  10,954 |
+| `unit/platform/contracts/`       |    33 |   6,482 |
+| `unit/platform/model-gateway/`   |    21 |   5,873 |
+| `unit/platform/prompt-engine/`   |    11 |   1,262 |
+| `unit/platform/compliance/`       |     6 |     244 |
 
-### 9.4 集成测试细分 (289 文件, 53,317 行)
+### 9.4 Integration Test Breakdown (289 files, 53,317 lines)
 
-| 子区域                         | 文件数 |   行数 |
-| ------------------------------ | -----: | -----: |
-| `integration/platform/`        |    220 | 41,277 |
-| `integration/sdk/`             |     35 |  9,165 |
-| `integration/ops-maturity/`    |     12 |    783 |
-| `integration/domains/`         |      6 |    604 |
-| `integration/scale-ecosystem/` |      7 |    499 |
-| `integration/stability/`       |      2 |    263 |
-| `integration/workflow/`        |      2 |    218 |
-| `integration/org-governance/`  |      2 |    188 |
-| `integration/orchestration/`   |      1 |    185 |
-| `integration/interaction/`     |      2 |    135 |
+| Sub-area                        | Files |   Lines |
+| ------------------------------ | -----: | ------: |
+| `integration/platform/`         |   220 |  41,277 |
+| `integration/sdk/`              |    35 |   9,165 |
+| `integration/ops-maturity/`     |    12 |     783 |
+| `integration/domains/`          |     6 |     604 |
+| `integration/scale-ecosystem/` |     7 |     499 |
+| `integration/stability/`        |     2 |     263 |
+| `integration/workflow/`        |     2 |     218 |
+| `integration/org-governance/`   |     2 |     188 |
+| `integration/orchestration/`    |     1 |     185 |
+| `integration/interaction/`      |     2 |     135 |
 
-**Platform 集成测试深度拆分 (220 文件, 41,277 行):**
+**Platform Integration Test Deep Breakdown (220 files, 41,277 lines):**
 
-| 子模块                                 | 文件数 |   行数 |
-| -------------------------------------- | -----: | -----: |
-| `integration/platform/execution/`      |     83 | 15,735 |
-| `integration/platform/security/`       |     63 |  9,019 |
-| `integration/platform/state-evidence/` |     19 |  3,749 |
-| `integration/platform/contracts/`      |     13 |  3,266 |
-| `integration/platform/shared/`         |     13 |  3,124 |
-| `integration/platform/control-plane/`  |     10 |  2,842 |
-| `integration/platform/interface/`      |      4 |  1,167 |
-| `integration/platform/model-gateway/`  |      7 |  1,066 |
-| `integration/platform/orchestration/`  |      3 |    855 |
-| `integration/platform/prompt-engine/`  |      3 |    320 |
-| `integration/platform/compliance/`     |      2 |    134 |
+| Submodule                                | Files |   Lines |
+| ---------------------------------------- | -----: | ------: |
+| `integration/platform/execution/`         |    83 |  15,735 |
+| `integration/platform/security/`          |    63 |   9,019 |
+| `integration/platform/state-evidence/`    |    19 |   3,749 |
+| `integration/platform/contracts/`         |    13 |   3,266 |
+| `integration/platform/shared/`            |    13 |   3,124 |
+| `integration/platform/control-plane/`     |    10 |   2,842 |
+| `integration/platform/interface/`         |     4 |   1,167 |
+| `integration/platform/model-gateway/`     |     7 |   1,066 |
+| `integration/platform/orchestration/`     |     3 |     855 |
+| `integration/platform/prompt-engine/`     |     3 |     320 |
+| `integration/platform/compliance/`         |     2 |     134 |
 
-### 9.5 Top 15 最大测试文件
+### 9.5 Top 15 Largest Test Files
 
-| 排名 | 文件                                                                              |  行数 |
-| ---: | --------------------------------------------------------------------------------- | ----: |
-|    1 | `integration/sdk/cli/ops-cli.test.ts`                                             | 3,916 |
-|    2 | `unit/runtime/execution-handshake.test.ts`                                        | 1,873 |
-|    3 | `unit/platform/state-evidence/truth/async-repositories.test.ts`                   | 1,699 |
-|    4 | `integration/platform/execution/execution-dispatch-service.test.ts`               | 1,684 |
+| Rank | File                                                                          | Lines |
+| ---: | ---------------------------------------------------------------------------- | -----: |
+|    1 | `integration/sdk/cli/ops-cli.test.ts`                                        | 3,916 |
+|    2 | `unit/runtime/execution-handshake.test.ts`                                    | 1,873 |
+|    3 | `unit/platform/state-evidence/truth/async-repositories.test.ts`               | 1,699 |
+|    4 | `integration/platform/execution/execution-dispatch-service.test.ts`            | 1,684 |
 |    5 | `unit/platform/interface/api/http-api-server.test.ts`                             | 1,557 |
 |    6 | `unit/runtime/execution-dispatch-service.test.ts`                                 | 1,378 |
 |    7 | `unit/runtime/execution-lease-service.test.ts`                                    | 1,251 |
@@ -799,298 +799,298 @@ platform/  ←────── core/ (pure re-export)
 |   14 | `unit/platform/state-evidence/truth/repositories/organization-repository.test.ts` | 1,022 |
 |   15 | `integration/platform/contracts/v2-7-extension-contracts.test.ts`                 |   983 |
 
-### 9.6 测试框架与模式
+### 9.6 Test Framework and Patterns
 
-- **运行器**: `node:test` — 1,015/1,018 文件导入
-- **断言库**: `node:assert/strict` — 1,009 文件导入
-- **注册模式**: 扁平 `test()` 为主 (9,116 次), `it()` 仅 139 次, `describe()` 仅 8 次
-- **Mock**: `node:test` 内置 mock 对象, 仅 3 文件使用
-- **零外部依赖**: 不使用 Jest / Mocha / Sinon / Chai
+- **Runner**: `node:test` — imported in 1,015/1,018 files
+- **Assertion library**: `node:assert/strict` — imported in 1,009 files
+- **Registration pattern**: Flat `test()` predominant (9,116 times), `it()` only 139 times, `describe()` only 8 times
+- **Mock**: `node:test` built-in mock objects, used in only 3 files
+- **Zero external dependencies**: No Jest / Mocha / Sinon / Chai
 
-### 9.7 覆盖率配置
+### 9.7 Coverage Configuration
 
-**c8 覆盖率工具 (`.c8rc.json`)**:
+**c8 coverage tool (`.c8rc.json`)**:
 
-- 报告格式: `text`, `html`, `lcov`, `json-summary`
-- 范围: `dist/src/**/*.js`, 启用 `all: true` 全量插桩
-- 排除: `dist/tests/`, `node_modules/`, `scripts/`, 配置文件
+- Report formats: `text`, `html`, `lcov`, `json-summary`
+- Scope: `dist/src/**/*.js`, enabled `all: true` full instrumentation
+- Exclude: `dist/tests/`, `node_modules/`, `scripts/`, config files
 
-**覆盖率基线 (`.coverage-baseline.json`)**:
+**Coverage baseline (`.coverage-baseline.json`)**:
 
-| 指标   | 最低要求 |
-| ------ | -------: |
-| Lines  |    84.1% |
-| Stmts  |    84.1% |
-| Funcs  |    82.8% |
-| Branch |    79.8% |
+| Metric  | Minimum Required |
+| ------- | --------------: |
+| Lines   |           84.1% |
+| Stmts   |           84.1% |
+| Funcs   |           82.8% |
+| Branch  |           79.8% |
 
-- 跟踪 **42 个源码目录** 的独立指标
-- CI 门控: `scripts/ci/check-coverage-baseline.mjs` — 覆盖率下降即阻断
-- 棘轮更新: `scripts/ci/update-coverage-baseline.mjs` — 只允许向上调整
+- Tracks independent metrics for **42 source directories**
+- CI gate: `scripts/ci/check-coverage-baseline.mjs` — blocks on coverage degradation
+- Ratchet update: `scripts/ci/update-coverage-baseline.mjs` — only allows upward adjustment
 
-**变异测试 (Stryker)**:
+**Mutation testing (Stryker)**:
 
-- 9 个关键路径文件参与变异测试
-- 阈值: high=80, low=60, break=50
-- 目标: auth/billing/approval/gateway 路由 + OAPEFLIR 循环 + Redis 配置
+- 9 critical path files participate in mutation testing
+- Thresholds: high=80, low=60, break=50
+- Targets: auth/billing/approval/gateway routing + OAPEFLIR loop + Redis configuration
 
-### 9.8 测试脚本矩阵
+### 9.8 Test Script Matrix
 
-| 脚本                            | 用途                     |
-| ------------------------------- | ------------------------ |
-| `npm test`                      | 全量回归 + 覆盖率门控    |
-| `npm run test:unit`             | 仅单元测试               |
-| `npm run test:integration`      | 仅集成测试               |
-| `npm run test:golden`           | 仅黄金快照测试           |
-| `npm run test:pg-integration`   | PostgreSQL 集成 (并发=1) |
-| `npm run test:performance`      | 性能基准 (并发=1)        |
-| `npm run test:mutation`         | Stryker 变异测试         |
-| `npm run test:secret-providers` | 密钥提供者隔离测试       |
+| Script                        | Purpose                          |
+| ----------------------------- | -------------------------------- |
+| `npm test`                    | Full regression + coverage gate  |
+| `npm run test:unit`           | Unit tests only                  |
+| `npm run test:integration`    | Integration tests only           |
+| `npm run test:golden`         | Golden snapshot tests only       |
+| `npm run test:pg-integration` | PostgreSQL integration (concurrency=1) |
+| `npm run test:performance`    | Performance benchmarks (concurrency=1) |
+| `npm run test:mutation`       | Stryker mutation testing         |
+| `npm run test:secret-providers` | Secret provider isolation tests |
 
-### 9.9 测试辅助体系
+### 9.9 Test Helper System
 
-**`tests/helpers/` (19 文件, 2,120 行)** — 关键文件:
+**`tests/helpers/` (19 files, 2,120 lines) — Key files**:
 
-| 文件                     | 行数 | 用途              |
-| ------------------------ | ---: | ----------------- |
-| `api.ts`                 |  362 | HTTP API 测试辅助 |
-| `pmf.ts`                 |  251 | PMF 场景构建器    |
-| `fixtures/composite.ts`  |  227 | 复合夹具生成      |
-| `concurrent-runner.ts`   |  158 | 并发测试运行器    |
-| `typed-factories.ts`     |  143 | 类型安全工厂方法  |
-| `integration-context.ts` |  131 | 集成测试上下文    |
-| `e2e-harness.ts`         |  131 | E2E 测试工具      |
+| File                   | Lines | Purpose                    |
+| ---------------------- | ----: | -------------------------- |
+| `api.ts`               |   362 | HTTP API test helper       |
+| `pmf.ts`               |   251 | PMF scenario builder       |
+| `fixtures/composite.ts`|   227 | Composite fixture generation |
+| `concurrent-runner.ts` |   158 | Concurrent test runner      |
+| `typed-factories.ts`   |   143 | Type-safe factory methods   |
+| `integration-context.ts`|   131 | Integration test context    |
+| `e2e-harness.ts`       |   131 | E2E test harness            |
 
-### 9.10 测试体系评估
+### 9.10 Test System Assessment
 
-**优势**:
+**Strengths**:
 
-- 测试代码量 (206,717 行) 超过源码量 (191,611 行), 测试密度 1.08:1
-- 零外部测试依赖, 完全基于 Node.js 内置能力
-- 覆盖率基线门控 + 变异测试双重保障
-- 42 个目录级独立覆盖率追踪
+- Test code (206,717 lines) exceeds source code (191,611 lines), test density 1.08:1
+- Zero external test dependencies, entirely based on Node.js built-in capabilities
+- Coverage baseline gate + mutation testing dual guarantee
+- 42 directory-level independent coverage tracking
 
-**风险**:
+**Risks**:
 
-- E2E 测试仅 10 文件 (2,807 行), 缺少端到端场景覆盖
-- `tests/unit/runtime/` (45 文件) 未对齐到新 7 层结构, 应迁移至 `unit/platform/`
-- `tests/unit/core/` 和 `tests/unit/apps/` 各仅 1/4 文件, 覆盖率极低
-- 最大测试文件 (ops-cli.test.ts, 3,916 行) 过于庞大, 建议拆分
+- E2E tests only 10 files (2,807 lines), lacking end-to-end scenario coverage
+- `tests/unit/runtime/` (45 files) not aligned with new 7-layer structure, should migrate to `unit/platform/`
+- `tests/unit/core/` and `tests/unit/apps/` only 1/4 files each, extremely low coverage
+- Largest test file (ops-cli.test.ts, 3,916 lines) too large, recommend splitting
 
 ---
 
-## §10 配置与部署架构
+## §10 Configuration and Deployment Architecture
 
-### 10.1 配置体系
+### 10.1 Configuration System
 
-**27 个 JSON 文件, 652 行, 分布于 9 个子目录:**
+**27 JSON files, 652 lines, distributed across 9 subdirectories:**
 
-| 目录                   | 文件数 | 职责                                          |
-| ---------------------- | -----: | --------------------------------------------- |
-| `config/runtime/`      |      6 | 运行时参数: 并发数 / 任务超时 / 步骤超时      |
-| `config/security/`     |      6 | 审批模式 / 沙箱级别 / 破坏性操作控制          |
-| `config/environments/` |      5 | 部署描述符: 注册表 / 命名空间 / 发布策略      |
-| `config/providers/`    |      3 | 模型提供者: OpenAI / Anthropic / MiniMax 配置 |
-| `config/bootstrap/`    |      1 | 应用身份: 名称 / 阶段门控 / 核心启用          |
-| `config/domains/`      |      1 | 领域定义: Coding 工作流 / 工具包 / 模型偏好   |
-| `config/gateways/`     |      1 | 网关默认值: CLI 接口 / SSE 流                 |
-| `config/knowledge/`    |      1 | 知识命名空间: 访问策略 / 容量限制 / 新鲜度    |
-| `config/plugins/`      |      1 | 插件清单: 3 个内置插件的沙箱约束              |
-| `config/product/`      |      1 | 计费方案: Community / Pro / Enterprise 三档   |
+| Directory             | Files | Responsibilities                                         |
+| --------------------- | ----: | ------------------------------------------------------- |
+| `config/runtime/`     |     6 | Runtime parameters: concurrency / task timeout / step timeout |
+| `config/security/`    |     6 | Approval mode / sandbox level / destructive operation control |
+| `config/environments/`|     5 | Deployment descriptors: registry / namespace / release strategy |
+| `config/providers/`   |     3 | Model providers: OpenAI / Anthropic / MiniMax configuration |
+| `config/bootstrap/`   |     1 | Application identity: name / stage gating / core enablement |
+| `config/domains/`     |     1 | Domain definitions: Coding workflow / toolkit / model preferences |
+| `config/gateways/`    |     1 | Gateway defaults: CLI interface / SSE stream              |
+| `config/knowledge/`   |     1 | Knowledge namespace: access policy / capacity limit / freshness |
+| `config/plugins/`      |     1 | Plugin list: sandbox constraints for 3 built-in plugins    |
+| `config/product/`      |     1 | Billing plans: Community / Pro / Enterprise tiers          |
 
-### 10.2 环境梯度 (5 级)
+### 10.2 Environment Gradient (5 Levels)
 
-`dev` → `test` → `staging` → `pre-prod` → `prod`, 在 4 层配置中逐级收紧:
+`dev` → `test` → `staging` → `pre-prod` → `prod`, progressively tightened across 4 configuration layers:
 
-| 维度            | dev             | test            | staging     | pre-prod           | prod               |
-| --------------- | --------------- | --------------- | ----------- | ------------------ | ------------------ |
-| 审批模式        | auto            | supervised      | supervised  | supervised         | **strict**         |
-| 最大并发        | 1               | 2               | 4           | 6                  | **8**              |
-| 任务超时        | 120s            | 180s            | 240s        | 300s               | **600s**           |
-| 发布策略        | rolling, canary | rolling, canary | +blue_green | canary, blue_green | canary, blue_green |
-| 副本数          | 1               | 1               | 2           | 2                  | **3**              |
-| HPA             | 禁用            | 禁用            | 2-5         | 2-6                | **3-10**           |
-| PDB             | 禁用            | 禁用            | min 1       | min 1              | **min 2**          |
-| 存储驱动        | sqlite          | sqlite          | sqlite      | postgres           | **postgres**       |
-| ExternalSecrets | 禁用            | 禁用            | 禁用        | AWS SM             | **AWS SM**         |
-| 破坏性操作      | (未设)          | (未设)          | (未设)      | **false**          | **false**          |
+| Dimension         | dev           | test          | staging      | pre-prod         | prod              |
+| ---------------- | ------------- | ------------- | ------------ | ---------------- | ----------------- |
+| Approval mode    | auto          | supervised    | supervised   | supervised       | **strict**        |
+| Max concurrency  | 1             | 2             | 4            | 6                | **8**             |
+| Task timeout     | 120s          | 180s          | 240s         | 300s             | **600s**          |
+| Release strategy | rolling, canary| rolling, canary| +blue_green | canary, blue_green | canary, blue_green |
+| Replica count   | 1             | 1             | 2            | 2                | **3**             |
+| HPA             | disabled      | disabled      | 2-5          | 2-6              | **3-10**          |
+| PDB             | disabled      | disabled      | min 1        | min 1            | **min 2**         |
+| Storage driver  | sqlite        | sqlite        | sqlite       | postgres         | **postgres**      |
+| ExternalSecrets | disabled      | disabled      | disabled     | AWS SM           | **AWS SM**        |
+| Destructive ops | (not set)     | (not set)     | (not set)    | **false**        | **false**         |
 
-### 10.3 Docker 配置
+### 10.3 Docker Configuration
 
-**Dockerfile (46 行)** — 两阶段构建:
+**Dockerfile (46 lines)** — Two-stage build:
 
-| 阶段      | 基础镜像                | 用途                           |
-| --------- | ----------------------- | ------------------------------ |
-| `build`   | `node:22-bookworm-slim` | 全量依赖安装 + TypeScript 编译 |
-| `runtime` | `node:22-bookworm-slim` | 仅生产依赖 + 编译产物          |
+| Stage     | Base Image             | Purpose                              |
+| --------- | ---------------------- | ------------------------------------ |
+| `build`   | `node:22-bookworm-slim` | Full dependency install + TypeScript compilation |
+| `runtime` | `node:22-bookworm-slim` | Production dependencies only + compiled artifacts |
 
-安全加固:
+Security hardening:
 
-- 非 root 用户 `node` (UID 1000) 运行
-- 所有文件 `--chown=node:node`
-- 健康检查: `GET /healthz` (30s 间隔, 3 次重试)
-- 暴露端口: **3000**
+- Running as non-root user `node` (UID 1000)
+- All files `--chown=node:node`
+- Health check: `GET /healthz` (30s interval, 3 retries)
+- Exposed port: **3000**
 
-**docker-compose.yml (131 行)** — 5 个服务:
+**docker-compose.yml (131 lines)** — 5 services:
 
-| 服务           | 镜像                        | 端口 | 关键配置                                                       |
-| -------------- | --------------------------- | ---- | -------------------------------------------------------------- |
-| `api-server`   | 本地构建                    | 3000 | 只读文件系统, 64MB tmpfs, 1 CPU / 512MB / 256 PIDs, 全能力丢弃 |
-| `postgres`     | `postgres:16-bookworm`      | 5432 | 持久卷 `automatic-agent-postgres`                              |
-| `redis`        | `redis:7-alpine`            | 6379 | AOF 禁用, 256MB 上限, LRU 淘汰                                 |
-| `prometheus`   | `prom/prometheus:v2.54.1`   | 9090 | 挂载规则目录只读                                               |
-| `alertmanager` | `prom/alertmanager:v0.27.0` | 9093 | 挂载配置只读                                                   |
+| Service      | Image                        | Port | Key Configuration                                             |
+| ----------- | ---------------------------- | ---- | ------------------------------------------------------------- |
+| `api-server` | local build                  | 3000 | Read-only filesystem, 64MB tmpfs, 1 CPU / 512MB / 256 PIDs, all capabilities dropped |
+| `postgres`  | `postgres:16-bookworm`       | 5432 | Persistent volume `automatic-agent-postgres`                   |
+| `redis`     | `redis:7-alpine`            | 6379 | AOF disabled, 256MB limit, LRU eviction                       |
+| `prometheus`| `prom/prometheus:v2.54.1`    | 9090 | Mounted rules directory read-only                             |
+| `alertmanager`| `prom/alertmanager:v0.27.0` | 9093 | Mounted config read-only                                     |
 
-### 10.4 CI/CD 工作流 (4 个)
+### 10.4 CI/CD Workflows (4)
 
-**ci.yml (133 行)** — 主 CI 管线, 5 个作业:
+**ci.yml (133 lines)** — Main CI pipeline, 5 jobs:
 
-| 作业             | 触发条件     | 职责                                                                                  |
-| ---------------- | ------------ | ------------------------------------------------------------------------------------- |
-| `validate`       | push/PR      | lint → audit → typecheck → test → coverage gate → stable validation (Node 20+22 矩阵) |
-| `pg-integration` | push/PR      | PostgreSQL 16 服务容器, `test:pg-integration`                                         |
-| `mutation-test`  | push to main | Stryker 变异测试                                                                      |
-| `security`       | push/PR      | CodeQL TypeScript 静态分析                                                            |
-| `trivy-scan`     | push/PR      | Docker 镜像 CRITICAL/HIGH 漏洞扫描                                                    |
+| Job              | Trigger      | Responsibilities                                                                  |
+| --------------- | ------------ | --------------------------------------------------------------------------------- |
+| `validate`       | push/PR      | lint → audit → typecheck → test → coverage gate → stable validation (Node 20+22 matrix) |
+| `pg-integration` | push/PR      | PostgreSQL 16 service container, `test:pg-integration`                              |
+| `mutation-test`  | push to main | Stryker mutation testing                                                           |
+| `security`       | push/PR      | CodeQL TypeScript static analysis                                                 |
+| `trivy-scan`     | push/PR      | Docker image CRITICAL/HIGH vulnerability scanning                                   |
 
-**publish-image.yml (70 行)** — Docker 镜像发布:
+**publish-image.yml (70 lines)** — Docker image publishing:
 
-- 手动触发 (`workflow_dispatch`), 输入: 环境 / 标签 / 仓库
-- 预检 build → GHCR 登录 → Buildx 构建推送 (GHA 缓存)
+- Manual trigger (`workflow_dispatch`), input: environment / tag / repository
+- Pre-check build → GHCR login → Buildx build push (GHA cache)
 
-**deploy-environment.yml (278 行)** — 环境部署:
+**deploy-environment.yml (278 lines)** — Environment deployment:
 
-- 手动触发, 5 级环境选择
-- 支持 rolling / canary / blue_green 三策略
-- AWS OIDC 认证 → kubectl + Helm 3.16.3
-- 自动回滚: 部署失败时回退到上一 Helm 版本
+- Manual trigger, 5-level environment selection
+- Supports rolling / canary / blue_green three strategies
+- AWS OIDC authentication → kubectl + Helm 3.16.3
+- Auto rollback: rollback to previous Helm version on deployment failure
 
-**secret-provider-integration.yml (19 行)** — 密钥提供者集成测试
+**secret-provider-integration.yml (19 lines)** — Secret provider integration testing
 
-### 10.5 部署基础设施 (40 文件, ~2,533 行)
+### 10.5 Deployment Infrastructure (40 files, ~2,533 lines)
 
-| 类别            | 文件数 | 行数 | 工具               |
-| --------------- | -----: | ---: | ------------------ |
-| Helm Charts     |     18 |  720 | Helm 3.16.3        |
-| Terraform 模块  |      9 |  956 | Terraform + AWS    |
-| Prometheus 规则 |      3 |   74 | Prometheus v2.54.1 |
-| Grafana 仪表盘  |      2 |  348 | Grafana JSON       |
-| Chaos 工程      |      4 |   59 | Chaos Mesh         |
-| 部署脚本        |      3 |  323 | Bash               |
-| 运维手册        |      1 |   53 | Markdown           |
+| Category          | Files | Lines | Tool              |
+| ---------------- | -----: | ----: | ----------------- |
+| Helm Charts       |    18 |   720 | Helm 3.16.3        |
+| Terraform modules |     9 |   956 | Terraform + AWS   |
+| Prometheus rules  |     3 |    74 | Prometheus v2.54.1 |
+| Grafana dashboards|     2 |   348 | Grafana JSON      |
+| Chaos engineering |     4 |    59 | Chaos Mesh        |
+| Deployment scripts|     3 |   323 | Bash              |
+| Operations manual    |     1 |    53 | Markdown           |
 
-**Terraform 架构** (`terraform/main.tf`, 359 行):
+**Terraform architecture** (`terraform/main.tf`, 359 lines):
 
-- AWS 提供者 (~> 5.0)
-- VPC (3 AZ, 公有/私有子网, NAT 网关)
-- EKS: Kubernetes 1.29, 托管节点组
-- RDS: PostgreSQL 16.2, 加密, 生产多 AZ
-- ElastiCache: Redis 7.1, 加密, 生产 3 集群自动故障转移
-- ECR: 推送扫描, 14 天清理未标记镜像
+- AWS provider (~> 5.0)
+- VPC (3 AZ, public/private subnets, NAT gateway)
+- EKS: Kubernetes 1.29, managed node groups
+- RDS: PostgreSQL 16.2, encrypted, production multi-AZ
+- ElastiCache: Redis 7.1, encrypted, production 3-cluster auto-failover
+- ECR: push scanning, 14-day cleanup of untagged images
 
 **Helm Chart** (`automatic-agent` v0.1.0):
 
-- Deployment (滚动更新, 非 root UID 1000, 三探针 + preStop 钩子)
-- Service (ClusterIP, http + metrics 端口)
-- Ingress (nginx, TLS) + Canary Ingress (权重注解)
-- HPA (CPU + 内存自动伸缩) + PDB
-- ExternalSecret (AWS Secrets Manager 集成)
+- Deployment (rolling update, non-root UID 1000, three probes + preStop hook)
+- Service (ClusterIP, http + metrics ports)
+- Ingress (nginx, TLS) + Canary Ingress (weight annotations)
+- HPA (CPU + memory autoscaling) + PDB
+- ExternalSecret (AWS Secrets Manager integration)
 
-**Prometheus 告警规则** (3 条):
+**Prometheus alerting rules** (3 rules):
 
-- `AutomaticAgentHighErrorRate`: >5% 5xx 持续 10min → critical
-- `AutomaticAgentTaskFailureRate`: >10% 失败持续 15min → warning
-- `AutomaticAgentMemoryPressure`: RSS > 512MiB 持续 10min → warning
+- `AutomaticAgentHighErrorRate`: >5% 5xx for 10min → critical
+- `AutomaticAgentTaskFailureRate`: >10% failure for 15min → warning
+- `AutomaticAgentMemoryPressure`: RSS > 512MiB for 10min → warning
 
-**Grafana 仪表盘** ("Automatic Agent Platform", 13 面板):
+**Grafana dashboards** ("Automatic Agent Platform", 13 panels):
 
-- 请求指标: 速率 / P50/P95/P99 延迟
-- 执行与队列: 活跃执行 / 队列深度 / 提供者成功率
-- OAPEFLIR 与知识: 阶段耗时 / 结果分布
-- 系统健康: 内存 / 事件循环延迟 / Worker 健康比 / DLQ 大小
+- Request metrics: rate / P50/P95/P99 latency
+- Execution & queue: active executions / queue depth / provider success rate
+- OAPEFLIR & knowledge: stage duration / result distribution
+- System health: memory / event loop delay / Worker health ratio / DLQ size
 
-**Chaos 工程** (4 场景):
+**Chaos engineering** (4 scenarios):
 
-- Pod 杀死 (30s), 网络延迟 (500ms + 100ms 抖动, 2min)
-- PostgreSQL 断连 (60s), Redis 断连 (60s)
+- Pod kill (30s), network latency (500ms + 100ms jitter, 2min)
+- PostgreSQL disconnect (60s), Redis disconnect (60s)
 
-### 10.6 脚本体系 (10 文件, 1,236 行)
+### 10.6 Script System (10 files, 1,236 lines)
 
-| 脚本                                  | 行数 | 用途                            |
-| ------------------------------------- | ---: | ------------------------------- |
-| `reorg-code-structure.mjs`            |  754 | 代码结构重组: 旧平面 → 7 层架构 |
-| `generate-src-module-test-matrix.mjs` |  200 | 生成源码-测试覆盖矩阵           |
-| `restore-sqlite.sh`                   |   85 | SQLite 恢复 + 完整性校验        |
-| `backup-sqlite.sh`                    |   84 | WAL 安全在线备份 + 保留策略     |
-| `check-coverage-baseline.mjs`         |   42 | 覆盖率基线门控                  |
-| `check-changelog.mjs`                 |   22 | 变更日志版本校验                |
-| `update-coverage-baseline.mjs`        |   16 | 覆盖率基线棘轮更新              |
-| `clean-dist.mjs`                      |   15 | 构建产物清理                    |
-| `mutation-critical-tests.sh`          |   10 | 关键路径变异测试子集            |
-| `generate-coverage-report.mjs`        |    8 | 覆盖率报告生成                  |
-
----
-
-## §11 重构优先级与结论
-
-### 11.1 P0 — 架构阻断项 (立即处理)
-
-| 编号 | 问题                       | 影响                                                                            | 建议操作                                       |
-| ---- | -------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- |
-| B1   | PostgreSQL 异步/同步不兼容 | 生产环境 (pre-prod/prod) 必须使用 postgres 驱动, 但大量仓储仍为同步 SQLite 实现 | 统一异步接口, 将 SQLite 降级为开发/测试后端    |
-| B2   | `src/core/` 遗留垫片       | 8 个文件仅 29 行, 全部为单行 re-export, 增加路径混乱                            | 删除 `src/core/`, 直接引用 `src/platform/`     |
-| B3   | E2E 覆盖率不足             | 仅 10 文件 / 2,807 行, 无法验证完整用户旅程                                     | 补充核心场景: 任务提交→调度→执行→结果交付→计费 |
-
-### 11.2 P1 — 结构优化 (本迭代)
-
-| 编号 | 问题                              | 建议操作                                              |
-| ---- | --------------------------------- | ----------------------------------------------------- |
-| S1   | CLI 启动入口碎片化 (79 个入口)    | 统一 CLI 框架, 子命令路由替代独立文件                 |
-| S2   | `tests/unit/runtime/` 未对齐      | 迁移 45 文件至 `tests/unit/platform/` 对应子模块      |
-| S3   | `shared ↔ control-plane` 双向依赖 | 提取稳定性排演为独立模块, 消除反向引用                |
-| S4   | 26 个 re-export 桶文件            | 评估保留价值, 合并或删除冗余层                        |
-| S5   | `execution` 跨模块耦合 (386 行)   | 引入 contracts 抽象, 减少对 state-evidence 的直接依赖 |
-
-### 11.3 P2 — 质量提升 (下迭代)
-
-| 编号 | 问题                       | 建议操作                                              |
-| ---- | -------------------------- | ----------------------------------------------------- |
-| Q1   | `as unknown as` 58 处      | 逐步替换为类型守卫或泛型约束                          |
-| Q2   | 覆盖率基线部分目录低于 50% | 重点补充 `org-governance`, `interaction`, `apps` 测试 |
-| Q3   | HA 验证仅在稳定性排演中    | 补充真实多副本 HA 集成测试                            |
-| Q4   | Stryker 仅覆盖 9 个文件    | 扩展至 state-evidence 和 control-plane 关键路径       |
-| Q5   | ops-cli.test.ts (3,916 行) | 拆分为按功能域的独立测试文件                          |
-
-### 11.4 执行阶段建议
-
-```
-Phase 1 (Week 1-2):  B1 PostgreSQL 统一 + B2 core/ 删除
-Phase 2 (Week 3-4):  S1 CLI 统一 + S2 测试目录对齐 + S3 双向依赖消除
-Phase 3 (Week 5-6):  B3 E2E 覆盖 + Q1 类型安全 + Q2 覆盖率提升
-Phase 4 (Week 7-8):  S4/S5 结构优化 + Q3/Q4/Q5 质量收尾
-```
-
-### 11.5 综合评估
-
-| 维度       |       评分 | 说明                                                                                 |
-| ---------- | ---------: | ------------------------------------------------------------------------------------ |
-| 架构分层   |   **8/10** | 7 层职责清晰, 但 shared ↔ control-plane 双向依赖待解                                 |
-| 代码规模   |   **9/10** | 1,052 文件 / 191,611 行, 模块粒度合理                                                |
-| 测试密度   |   **8/10** | 1.08:1 测试/源码比, 覆盖率 84.1%, E2E 不足                                           |
-| 安全加固   |   **9/10** | 12 项安全能力全部已实现, Trivy + CodeQL + 变异测试                                   |
-| 可观测性   |   **9/10** | 9 项能力全部已实现, OTel + Prometheus + Grafana 完整链路                             |
-| 可靠性     |   **8/10** | 13 项能力已实现, 缺少真实多副本 HA 验证                                              |
-| 部署成熟度 |   **9/10** | 5 级环境梯度, Helm + Terraform + Chaos 全链路                                        |
-| 配置管理   |   **8/10** | 27 文件 / 11 类别 / 4 层环境覆盖, 棘轮门控                                           |
-| **综合**   | **8.5/10** | 从 v9 单层 core/ 到 v10 七层架构的重构已基本完成, 剩余工作集中在 P0 阻断项和测试补充 |
+| Script                                 | Lines | Purpose                                 |
+| ------------------------------------- | ----: | -------------------------------------- |
+| `reorg-code-structure.mjs`             |   754 | Code structure reorganization: old flat → 7-layer architecture |
+| `generate-src-module-test-matrix.mjs` |   200 | Generate source-test coverage matrix      |
+| `restore-sqlite.sh`                   |    85 | SQLite restore + integrity verification  |
+| `backup-sqlite.sh`                    |    84 | WAL safe online backup + retention policy |
+| `check-coverage-baseline.mjs`         |    42 | Coverage baseline gate                  |
+| `check-changelog.mjs`                |    22 | Changelog version validation            |
+| `update-coverage-baseline.mjs`        |    16 | Coverage baseline ratchet update         |
+| `clean-dist.mjs`                      |    15 | Build artifact cleanup                  |
+| `mutation-critical-tests.sh`           |    10 | Critical path mutation test subset      |
+| `generate-coverage-report.mjs`         |     8 | Coverage report generation              |
 
 ---
 
-## 附录
+## §11 Refactoring Priorities and Conclusions
 
-### 附录 A: Top 20 源码文件 (按行数)
+### 11.1 P0 — Architecture Blockers (Immediate Action)
 
-| 排名 |  行数 | 文件路径                                                                         |
+| ID   | Issue                            | Impact                                                                        | Recommended Action                                |
+| ---- | -------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
+| B1   | PostgreSQL async/sync incompatibility | Production environment (pre-prod/prod) must use postgres driver, but many repositories still sync SQLite implementation | Unify async interface, demote SQLite to dev/test backend |
+| B2   | `src/core/` legacy shim          | 8 files only 29 lines, all single-line re-exports, adds path confusion    | Delete `src/core/`, directly reference `src/platform/` |
+| B3   | E2E coverage insufficient        | Only 10 files / 2,807 lines, cannot verify complete user journey           | Add core scenarios: task submission→dispatch→execution→result delivery→billing |
+
+### 11.2 P1 — Structure Optimization (This Iteration)
+
+| ID   | Issue                            | Recommended Action                                      |
+| ---- | -------------------------------- | --------------------------------------------------------|
+| S1   | CLI startup entry fragmentation (79 entry points) | Unify CLI framework, subcommand routing instead of independent files |
+| S2   | `tests/unit/runtime/` misaligned | Migrate 45 files to corresponding submodules in `tests/unit/platform/` |
+| S3   | `shared ↔ control-plane` bidirectional dependency | Extract stability rehearsal as independent module, eliminate reverse references |
+| S4   | 26 re-export barrel files         | Evaluate retention value, merge or delete redundant layers |
+| S5   | `execution` cross-module coupling (386 lines) | Introduce contracts abstraction, reduce direct dependency on state-evidence |
+
+### 11.3 P2 — Quality Improvement (Next Iteration)
+
+| ID   | Issue                            | Recommended Action                                      |
+| ---- | -------------------------------- | --------------------------------------------------------|
+| Q1   | `as unknown as` 58 occurrences   | Gradually replace with type guards or generic constraints |
+| Q2   | Coverage baseline some directories below 50% | Focus on supplementing `org-governance`, `interaction`, `apps` tests |
+| Q3   | HA verification only in stability rehearsal | Add real multi-replica HA integration tests |
+| Q4   | Stryker only covers 9 files     | Expand to state-evidence and control-plane critical paths |
+| Q5   | ops-cli.test.ts (3,916 lines)   | Split into independent test files by functional domain   |
+
+### 11.4 Execution Phase Recommendations
+
+```
+Phase 1 (Week 1-2):  B1 PostgreSQL unification + B2 core/ deletion
+Phase 2 (Week 3-4):  S1 CLI unification + S2 test directory alignment + S3 bidirectional dependency elimination
+Phase 3 (Week 5-6):  B3 E2E coverage + Q1 type safety + Q2 coverage improvement
+Phase 4 (Week 7-8):  S4/S5 structure optimization + Q3/Q4/Q5 quality finalization
+```
+
+### 11.5 Comprehensive Assessment
+
+| Dimension          | Score     | Description                                                                                  |
+| ---------------- | --------: | -------------------------------------------------------------------------------------------- |
+| Architecture layering | **8/10** | 7-layer responsibilities clear, but shared ↔ control-plane bidirectional dependency needs resolution |
+| Code scale        |   **9/10** | 1,052 files / 191,611 lines, reasonable module granularity                                   |
+| Test density      |   **8/10** | 1.08:1 test/source ratio, 84.1% coverage, insufficient E2E                                   |
+| Security hardening |   **9/10** | 12 security capabilities all implemented, Trivy + CodeQL + mutation testing                     |
+| Observability      |   **9/10** | 9 capabilities all implemented, OTel + Prometheus + Grafana complete chain                    |
+| Reliability        |   **8/10** | 13 capabilities implemented, lacking real multi-replica HA verification                        |
+| Deployment maturity|   **9/10** | 5-level environment gradient, Helm + Terraform + Chaos full chain                              |
+| Configuration mgmt |   **8/10** | 27 files / 11 categories / 4-layer environment coverage, ratchet gate                           |
+| **Overall**       | **8.5/10** | Refactoring from v9 single-layer core/ to v10 seven-layer architecture basically complete, remaining work focused on P0 blockers and test supplementation |
+
+---
+
+## Appendix
+
+### Appendix A: Top 20 Source Files (by Lines)
+
+| Rank | Lines | File Path                                                                         |
 | ---: | ----: | -------------------------------------------------------------------------------- |
 |    1 | 1,057 | `src/platform/state-evidence/truth/sqlite/repositories/worker-repository.ts`     |
 |    2 | 1,052 | `src/platform/state-evidence/truth/async-repositories/worker-repository.ts`      |
@@ -1113,25 +1113,25 @@ Phase 4 (Week 7-8):  S4/S5 结构优化 + Q3/Q4/Q5 质量收尾
 |   19 |   773 | `src/platform/control-plane/incident-control/enterprise-governance-service.ts`   |
 |   20 |   768 | `src/platform/control-plane/incident-control/auto-stop-loss-service.ts`          |
 
-### 附录 B: `as unknown as` 分布
+### Appendix B: `as unknown as` Distribution
 
-| 目录                           | 出现次数 |
-| ------------------------------ | -------: |
-| `src/platform/execution/`      |       29 |
-| `src/platform/state-evidence/` |       19 |
-| `src/domains/governance/`      |        3 |
-| `src/platform/shared/`         |        2 |
-| `src/sdk/`                     |        2 |
-| `src/platform/control-plane/`  |        1 |
-| `src/domains/registry/`        |        1 |
-| `src/plugins/`                 |        1 |
-| **合计**                       |   **58** |
+| Directory                         | Occurrences |
+| ------------------------------ | ----------: |
+| `src/platform/execution/`       |          29 |
+| `src/platform/state-evidence/`  |          19 |
+| `src/domains/governance/`      |           3 |
+| `src/platform/shared/`          |           2 |
+| `src/sdk/`                     |           2 |
+| `src/platform/control-plane/`   |           1 |
+| `src/domains/registry/`         |           1 |
+| `src/plugins/`                 |           1 |
+| **Total**                      |      **58** |
 
-### 附录 C: 跨模块耦合矩阵 (Platform 层)
+### Appendix C: Cross-Module Coupling Matrix (Platform Layer)
 
-源模块 → 目标引用行数:
+Source module → Target reference line counts:
 
-| 源模块 ↓ / 目标 →  | contracts | state-evidence | shared | control-plane | execution | orchestration | model-gateway | interface | prompt-engine |
+| Source ↓ / Target → | contracts | state-evidence | shared | control-plane | execution | orchestration | model-gateway | interface | prompt-engine |
 | ------------------ | --------: | -------------: | -----: | ------------: | --------: | ------------: | ------------: | --------: | ------------: |
 | **execution**      |       140 |            127 |     63 |            34 |         — |            12 |             6 |         4 |             — |
 | **shared**         |        48 |             63 |      — |            15 |        80 |             4 |             — |         1 |             — |
@@ -1144,35 +1144,35 @@ Phase 4 (Week 7-8):  S4/S5 结构优化 + Q3/Q4/Q5 质量收尾
 | **compliance**     |         5 |              — |      — |             2 |         — |             — |             — |         — |             — |
 | **contracts**      |         — |              — |      1 |             — |         — |             1 |             — |         — |             — |
 
-耦合比 (跨模块文件/总文件):
+Coupling ratio (cross-module files/total files):
 
-| 模块           | 跨模块文件 | 总文件 |   耦合比 |
-| -------------- | ---------: | -----: | -------: |
-| control-plane  |         64 |     75 |    85.3% |
-| prompt-engine  |          8 |     11 |    72.7% |
-| execution      |        121 |    167 |    72.5% |
-| compliance     |          4 |      6 |    66.7% |
-| model-gateway  |         11 |     17 |    64.7% |
-| interface      |         33 |     51 |    64.7% |
-| state-evidence |         94 |    169 |    55.6% |
-| shared         |         52 |    101 |    51.5% |
-| orchestration  |         22 |     80 |    27.5% |
-| contracts      |          2 |     34 | **5.9%** |
+| Module          | Cross-Module Files | Total Files | Coupling Ratio |
+| -------------- | -----------------: | ----------: | -------------: |
+| control-plane   |                 64 |          75 |          85.3% |
+| prompt-engine   |                  8 |          11 |          72.7% |
+| execution       |                121 |         167 |          72.5% |
+| compliance      |                  4 |           6 |          66.7% |
+| model-gateway   |                 11 |          17 |          64.7% |
+| interface       |                 33 |          51 |          64.7% |
+| state-evidence  |                 94 |         169 |          55.6% |
+| shared          |                 52 |         101 |          51.5% |
+| orchestration   |                 22 |          80 |          27.5% |
+| contracts       |                  2 |          34 |         **5.9%** |
 
-### 附录 D: 版本历史
+### Appendix D: Version History
 
-| 版本 | 日期       | 主要变更                                                                                                                                                                                                             |
+| Version | Date       | Major Changes                                                                                                                                                                                                             |
 | ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| v2   | —          | 初始版本, 基于 `src/core/` 单层架构                                                                                                                                                                                  |
-| v3   | —          | 添加 CLI 层 (`src/cli/`)                                                                                                                                                                                             |
-| v4   | —          | 添加 Gateway 层 (`src/gateway/`)                                                                                                                                                                                     |
-| v5   | —          | 引入双维度状态系统                                                                                                                                                                                                   |
-| v6   | —          | 安全矩阵扩展                                                                                                                                                                                                         |
-| v7   | —          | 配置与部署章节                                                                                                                                                                                                       |
-| v8   | —          | 测试体系分析                                                                                                                                                                                                         |
-| v9   | —          | 1,541 行, 覆盖 core/ + cli/ + gateway/ 三层完整分析                                                                                                                                                                  |
-| v10  | 2026-04-20 | **完全重写**: 7 层架构 (platform/domains/interaction/org-governance/scale-ecosystem/ops-maturity/plugins/sdk/apps), 1,052 文件 / 191,611 行源码, 1,018 文件 / 206,717 行测试, 全新配置与部署架构章节, 跨模块耦合矩阵 |
+| v2   | —          | Initial version, based on `src/core/` single-layer architecture                                                                                                                                                        |
+| v3   | —          | Added CLI layer (`src/cli/`)                                                                                                                                                                                             |
+| v4   | —          | Added Gateway layer (`src/gateway/`)                                                                                                                                                                                     |
+| v5   | —          | Introduced dual-dimensional status system                                                                                                                                                                               |
+| v6   | —          | Security matrix expansion                                                                                                                                                                                                 |
+| v7   | —          | Configuration and deployment chapter                                                                                                                                                                                     |
+| v8   | —          | Testing system analysis                                                                                                                                                                                                   |
+| v9   | —          | 1,541 lines, covering core/ + cli/ + gateway/ three-layer complete analysis                                                                                                                                             |
+| v10  | 2026-04-20 | **Complete rewrite**: 7-layer architecture (platform/domains/interaction/org-governance/scale-ecosystem/ops-maturity/plugins/sdk/apps), 1,052 files / 191,611 lines source, 1,018 files / 206,717 lines tests, all-new configuration and deployment architecture chapter, cross-module coupling matrix |
 
 ---
 
-_文档版本: v10 | 生成日期: 2026-04-20 | 源码快照: 1,052 文件 / 191,611 行 | 测试快照: 1,018 文件 / 206,717 行_
+_Document version: v10 | Generated: 2026-04-20 | Source snapshot: 1,052 files / 191,611 lines | Test snapshot: 1,018 files / 206,717 lines_

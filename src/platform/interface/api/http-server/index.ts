@@ -14,6 +14,7 @@ export { createDivisionRoutes, type DivisionRouteDeps } from "./division-routes.
 export { createDashboardRoutes, type DashboardRouteDeps } from "./dashboard-routes.js";
 export { createGatewayRoutes, type GatewayRouteDeps } from "./gateway-routes.js";
 export { createTaskRoutes, type TaskRouteDeps } from "./task-routes.js";
+export { createWebhookRoutes, type WebhookRouteDeps } from "./webhook-routes.js";
 export { createApprovalRoutes, type ApprovalRouteDeps } from "./approval-routes.js";
 export { createAdminRoutes, type AdminRouteDeps } from "./admin-routes.js";
 export { createConsoleRoutes, type ConsoleRouteDeps } from "./console-routes.js";

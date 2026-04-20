@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { StrategyLearningService } from "../../../../../../src/platform/orchestration/oapeflir/learn/strategy-learning-service.js";
+import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 test("StrategyLearningService turns learning signals into learning objects", () => {
   const service = new StrategyLearningService();
-  const objects = service.learn([
+  const objects = service.learnSync([
     {
       learningSignalId: "ls_1",
       taskId: "task_1",
@@ -41,13 +42,13 @@ test("StrategyLearningService turns learning signals into learning objects", () 
 
 test("StrategyLearningService returns empty array for empty signals", () => {
   const service = new StrategyLearningService();
-  const objects = service.learn([]);
+  const objects = service.learnSync([]);
   assert.equal(objects.length, 0);
 });
 
 test("StrategyLearningService handles single learning signal", () => {
   const service = new StrategyLearningService();
-  const objects = service.learn([
+  const objects = service.learnSync([
     {
       learningSignalId: "ls_3",
       taskId: "task_2",
@@ -69,7 +70,7 @@ test("StrategyLearningService handles single learning signal", () => {
 
 test("StrategyLearningService assigns validated status to high-confidence signals", () => {
   const service = new StrategyLearningService();
-  const objects = service.learn([
+  const objects = service.learnSync([
     {
       learningSignalId: "ls_4",
       taskId: "task_3",
@@ -87,4 +88,40 @@ test("StrategyLearningService assigns validated status to high-confidence signal
 
   assert.equal(objects[0]?.promotionStatus, "validated");
   assert.ok(objects[0]?.confidence >= 0.9);
+});
+
+test("StrategyLearningService async learn uses LLM for non-failure signals", async () => {
+  const service = new StrategyLearningService();
+  const signals: readonly LearningSignal[] = [
+    {
+      learningSignalId: "ls_5",
+      taskId: "task_4",
+      sourceFeedbackId: "fb_4",
+      learningType: "failure_pattern",
+      confidence: 0.75,
+      valueSummary: "schema mismatch in output",
+      evidenceRefs: ["artifact:e"],
+      sourceSignalIds: ["signal_5"],
+      relatedSignalIds: [],
+      evidence: { source: "execution", category: "failure" },
+      generatedAt: Date.now(),
+    },
+    {
+      learningSignalId: "ls_6",
+      taskId: "task_4",
+      sourceFeedbackId: "fb_4",
+      learningType: "user_correction",
+      confidence: 0.9,
+      valueSummary: "user corrected the approach",
+      evidenceRefs: ["artifact:f"],
+      sourceSignalIds: ["signal_6"],
+      relatedSignalIds: [],
+      evidence: { source: "user", category: "correction" },
+      generatedAt: Date.now(),
+    },
+  ];
+
+  const objects = await service.learn(signals);
+  assert.ok(objects.length >= 1);
+  assert.ok(objects.some((item) => item.learningType === "failure_pattern"));
 });

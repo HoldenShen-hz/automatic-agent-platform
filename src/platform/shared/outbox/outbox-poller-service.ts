@@ -180,10 +180,12 @@ export class OutboxPollerService {
       }
 
       if (entry.retryCount > 0) {
-        // Apply exponential backoff
+        // Apply exponential backoff based on last attempt time
         const backoffDelay = this.calculateBackoff(entry.retryCount);
-        const timeSinceLastAttempt =
-          new Date(nowIso()).getTime() - new Date(entry.createdAt).getTime();
+        const lastAttemptTime = entry.lastAttemptAt
+          ? new Date(entry.lastAttemptAt).getTime()
+          : new Date(entry.createdAt).getTime();
+        const timeSinceLastAttempt = Date.now() - lastAttemptTime;
         if (timeSinceLastAttempt < backoffDelay) {
           continue;
         }

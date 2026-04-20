@@ -23,6 +23,7 @@ import { DomainRegistryService } from "../../../domains/registry/domain-registry
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
 import { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
+import type { WebhookIngressService } from "../webhook/index.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import { readRequestId } from "./http-server/utils.js";
 import {
@@ -42,6 +43,7 @@ import {
   createDashboardRoutes,
   createGatewayRoutes,
   createTaskRoutes,
+  createWebhookRoutes,
   createApprovalRoutes,
   createAdminRoutes,
   createConsoleRoutes,
@@ -66,6 +68,7 @@ export interface HttpApiServerOptions {
   authService?: ApiAuthService | null;
   channelGatewayService?: ChannelGatewayService | null;
   channelGatewayDeliveryService?: ChannelGatewayDeliveryService | null;
+  webhookIngressService?: WebhookIngressService | null;
   webhookSecret?: string | null;
   coordinatorLoadBalancingService?: CoordinatorLoadBalancingService | null;
   prometheusMetricsExporter?: PrometheusMetricsExporter | null;
@@ -446,6 +449,12 @@ export class HttpApiServer {
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
       }),
+      ...(this.options.webhookIngressService != null
+        ? createWebhookRoutes({
+            authService: this.options.authService ?? null,
+            webhookIngressService: this.options.webhookIngressService,
+          })
+        : []),
       ...createApprovalRoutes({
         authService: this.options.authService ?? null,
         approvalService: this.options.approvalService,

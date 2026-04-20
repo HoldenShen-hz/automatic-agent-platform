@@ -35,6 +35,12 @@ export const PluginSandboxPolicySchema = z.object({
   runtimeIsolation: PluginRuntimeIsolationSchema.default("serialized_in_process"),
   runtimeContainerImage: z.string().min(1).optional(),
   cooldownMs: z.number().int().nonnegative().default(0),
+  /** External domains allowed for scoped_external_access sandbox tier */
+  allowedExternalDomains: z.array(z.string().min(1)).optional().default([]),
+  /** Maximum response size in bytes for external API calls */
+  maxResponseSizeBytes: z.number().int().positive().optional().default(5 * 1024 * 1024),
+  /** Rate limit per minute for each external domain */
+  rateLimitPerMinute: z.number().int().positive().optional().default(60),
 });
 
 export const PluginManifestSchema = z.object({

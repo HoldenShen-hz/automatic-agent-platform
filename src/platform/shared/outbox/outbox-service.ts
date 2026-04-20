@@ -137,9 +137,10 @@ export class OutboxService {
    * @param id - Outbox entry ID
    * @param error - Error message
    * @param retryCount - Current retry count
+   * @param lastAttemptAt - Timestamp of the last attempt
    */
-  public markFailed(id: string, error: string, retryCount: number): void {
-    this.repo.markFailed(id, error, retryCount);
+  public markFailed(id: string, error: string, retryCount: number, lastAttemptAt: string): void {
+    this.repo.markFailed(id, error, retryCount, lastAttemptAt);
   }
 
   /**
@@ -176,7 +177,7 @@ export class OutboxService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const newRetryCount = entry.retryCount + 1;
-      this.repo.markFailed(entry.id, errorMessage, newRetryCount);
+      this.repo.markFailed(entry.id, errorMessage, newRetryCount, nowIso());
 
       logger.log({
         level: "warn",

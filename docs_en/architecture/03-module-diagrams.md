@@ -39,34 +39,34 @@ The following names are used consistently across this document, `code_file_struc
 
 | Section | Diagram Type | Content |
 |---------|--------------|---------|
-| §一 | Structure diagram | System overview framework (seven layers + five planes + cross-layer) |
-| §二 | Data flow diagram | Layer 1-2 `platform/` five-plane backbone protocol flow |
-| §三 | Structure diagram | P1 Interface Plane module ownership diagram |
-| §四 | Structure diagram | P2 Control Plane module ownership diagram |
-| §五 | Structure diagram | P3 Orchestration Plane module ownership diagram |
-| §六 | Structure diagram + Sequence diagram | P4 Execution Plane (BC framework + execution sequence + tool security) |
-| §七 | Structure diagram | P5 State & Evidence Plane (grouped by Bounded Context) |
-| §八 | Structure diagram | AI Runtime Support Stack (Model Gateway · Prompt Engine · Compliance) |
-| §九 | Data flow diagram | Platform protocol diagram (Contracts cross-plane protocol chain + Shared infrastructure) |
-| §十 | Structure diagram | Layer 3 `domains/` business domain access layer |
-| §十一 | Structure diagram | Layer 4 `interaction/` intelligent interaction layer |
-| §十二 | Structure diagram | Layer 5 `org-governance/` organization governance layer |
-| §十三 | Structure diagram | Layer 6 `scale-ecosystem/` scale ecosystem + ecology layer |
-| §十四 | Structure diagram | Layer 7 `ops-maturity/` operations maturity layer |
-| §十五 | Structure diagram | Cross-layer modules (plugins · sdk · apps) |
-| §十六 | Data flow diagram | End-to-end data flow overview diagram |
-| §十七 | Constraint diagram | Dependency direction and layering constraints |
-| §十八 | Structure diagram | Stability seven-layer model |
-| §十九 | Structure diagram | P4 Runtime Bounded Context special diagram |
-| §二十 | Structure diagram | P5 Storage Bounded Context special diagram |
-| §二一 | Structure diagram | Cross-cutting capability control plane diagram |
-| §二二 | Structure diagram | Old system modules → new platform landing diagram |
-| §二三 | Sequence diagram | Migration wave roadmap |
-| §二四 | Data flow diagram | Interaction · Governance · Platform three-axis collaboration diagram |
+| §1 | Structure diagram | System overview framework (seven layers + five planes + cross-layer) |
+| §2 | Data flow diagram | Layer 1-2 `platform/` five-plane backbone protocol flow |
+| §3 | Structure diagram | P1 Interface Plane module ownership diagram |
+| §4 | Structure diagram | P2 Control Plane module ownership diagram |
+| §5 | Structure diagram | P3 Orchestration Plane module ownership diagram |
+| §6 | Structure diagram + Sequence diagram | P4 Execution Plane (BC framework + execution sequence + tool security) |
+| §7 | Structure diagram | P5 State & Evidence Plane (grouped by Bounded Context) |
+| §8 | Structure diagram | AI Runtime Support Stack (Model Gateway · Prompt Engine · Compliance) |
+| §9 | Data flow diagram | Platform protocol diagram (Contracts cross-plane protocol chain + Shared infrastructure) |
+| §10 | Structure diagram | Layer 3 `domains/` business domain access layer |
+| §11 | Structure diagram | Layer 4 `interaction/` intelligent interaction layer |
+| §12 | Structure diagram | Layer 5 `org-governance/` organization governance layer |
+| §13 | Structure diagram | Layer 6 `scale-ecosystem/` scale ecosystem + ecology layer |
+| §14 | Structure diagram | Layer 7 `ops-maturity/` operations maturity layer |
+| §15 | Structure diagram | Cross-layer modules (plugins · sdk · apps) |
+| §16 | Data flow diagram | End-to-end data flow overview diagram |
+| §16 | Constraint diagram | Dependency direction and layering constraints |
+| §18 | Structure diagram | Stability seven-layer model |
+| §19 | Structure diagram | P4 Runtime Bounded Context special diagram |
+| §20 | Structure diagram | P5 Storage Bounded Context special diagram |
+| §21 | Structure diagram | Cross-cutting capability control plane diagram |
+| §22 | Structure diagram | Old system modules → new platform landing diagram |
+| §23 | Sequence diagram | Migration wave roadmap |
+| §24 | Data flow diagram | Interaction · Governance · Platform three-axis collaboration diagram |
 
 ---
 
-## §一 System Overview Framework Diagram
+## §1 System Overview Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the logical ownership relationship of seven layers + five planes + cross-layer. Does not express runtime invocation order.
 >
@@ -149,7 +149,7 @@ X1 is not a separate directory, but rather a **cross-cutting capability band** c
 
 ---
 
-## §二 Layer 1-2 `platform/` Five-plane Backbone Protocol Flow
+## §2 Layer 1-2 `platform/` Five-plane Backbone Protocol Flow
 
 > **Diagram type: Data flow diagram** — Expresses the main protocol transmission direction between the five planes, and the lateral support relationship of AI operations modules. Does not express module internal implementation details.
 
@@ -205,13 +205,13 @@ platform/
 │   │  shared/    (utils · lifecycle · cache · observability · stability)│     │
 │   └──────────────────────────────────────────────────────────────────┘      │
 │                                                                             │
-│   ═══════ X1 Reliability & Security Fabric (crosscuts all layers, see §一) ═══════   │
+│   ═══════ X1 Reliability & Security Fabric (crosscuts all layers, see §1) ═══════   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §三 P1 Interface Plane Module Ownership Diagram
+## §3 P1 Interface Plane Module Ownership Diagram
 
 > **Diagram type: Structure diagram** — Expresses P1 internal module ownership and the division of three responsibility areas. Does not express runtime invocation order or code dependencies.
 
@@ -259,7 +259,7 @@ platform/interface/
 
 ---
 
-## §四 P2 Control Plane Module Ownership Diagram
+## §4 P2 Control Plane Module Ownership Diagram
 
 > **Diagram type: Structure diagram** — Expresses P2 internal module ownership and four responsibility areas. Does not express runtime invocation order.
 
@@ -318,7 +318,7 @@ platform/control-plane/
 
 ---
 
-## §五 P3 Orchestration Plane Module Ownership Diagram
+## §5 P3 Orchestration Plane Module Ownership Diagram
 
 > **Diagram type: Structure diagram** — Expresses P3 internal module ownership and collaboration direction. Does not express runtime invocation order or code dependencies.
 
@@ -366,11 +366,11 @@ platform/orchestration/
 
 ---
 
-## §六 P4 Execution Plane Module Framework Diagram
+## §6 P4 Execution Plane Module Framework Diagram
 
 > P4 is the plane with the most modules; the following three different types of diagrams are used to show it.
 
-### §六.1 P4 Bounded Context Framework Diagram
+### §6.1 P4 Bounded Context Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and grouping of 14 BC-level modules within P4. Does not express runtime invocation order.
 
@@ -395,7 +395,7 @@ platform/execution/
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### §六.2 P4 Execution Sequence Diagram
+### §6.2 P4 Execution Sequence Diagram
 
 > **Diagram type: Sequence diagram** — Expresses the runtime step sequence of a single task execution. Does not express module ownership or code dependencies.
 
@@ -431,7 +431,7 @@ Exception paths:
     version-change ──▶ hot-upgrade ──▶ graceful-migrate
 ```
 
-### §六.3 P4 Tool Invocation Security Diagram
+### §6.3 P4 Tool Invocation Security Diagram
 
 > **Diagram type: Data flow diagram** — Expresses security control points in the tool invocation chain. Does not express module ownership.
 
@@ -455,11 +455,11 @@ plugin-executor
 
 ---
 
-## §七 P5 State & Evidence Plane Module Ownership Diagram
+## §7 P5 State & Evidence Plane Module Ownership Diagram
 
 > **Diagram type: Structure diagram** — Expresses P5 internal module ownership grouped by 7 Bounded Contexts, and the Truth / Derived / Evidence three-tier data partition. Does not express runtime read/write sequencing or specific table structures.
 
-### §七.1 BC Grouping Structure Diagram
+### §7.1 BC Grouping Structure Diagram
 
 ```text
 platform/state-evidence/
@@ -541,7 +541,7 @@ platform/state-evidence/
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### §七.2 Data Flow Overview Diagram
+### §7.2 Data Flow Overview Diagram
 
 ```text
   P4 state-command
@@ -562,7 +562,7 @@ platform/state-evidence/
                    └──────────┘      └──────────┘        └──────────┘
 ```
 
-### §七.3 BC Grouping Boundary Rules
+### §7.3 BC Grouping Boundary Rules
 
 | Rule | Description |
 |------|-------------|
@@ -574,11 +574,11 @@ platform/state-evidence/
 
 ---
 
-## §八 AI Runtime Support Stack Module Ownership Diagram
+## §8 AI Runtime Support Stack Module Ownership Diagram
 
 > **Diagram type: Structure diagram** — Expresses the module ownership and responsibility division of the three AI operations sidecar components (Model Gateway · Prompt Engine · Compliance). Does not express model invocation sequencing or Prompt rendering details.
 >
-> **Positioning note**: These three components belong to the "AI Operations sidecar" visual band in the §一 overview diagram, **parallel support** (dashed cross-plane relationship) with the five-plane main kernel, not sub-modules of any single plane. P3/P4 call model-gateway and prompt-engine through contracts, P5 calls compliance through contracts.
+> **Positioning note**: These three components belong to the "AI Operations sidecar" visual band in the §1 overview diagram, **parallel support** (dashed cross-plane relationship) with the five-plane main kernel, not sub-modules of any single plane. P3/P4 call model-gateway and prompt-engine through contracts, P5 calls compliance through contracts.
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -623,7 +623,7 @@ platform/state-evidence/
 
 ---
 
-## §九 Platform Protocol Diagram (Contracts Cross-plane Protocol Chain + Shared Infrastructure)
+## §9 Platform Protocol Diagram (Contracts Cross-plane Protocol Chain + Shared Infrastructure)
 
 > **Diagram type: Data flow diagram** — Expresses the transmission direction of cross-plane contracts and the service scope of shared infrastructure. Does not express contract internal field definitions or shared module implementation details.
 >
@@ -695,7 +695,7 @@ platform/state-evidence/
 
 ---
 
-## §十 Layer 3 `domains/` Business Domain Access Layer Framework Diagram
+## §10 Layer 3 `domains/` Business Domain Access Layer Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under domains/. Does not express the runtime flow of domain registration or Plugin SPI invocation details.
 
@@ -747,7 +747,7 @@ domains/
 
 ---
 
-## §十一 Layer 4 `interaction/` Intelligent Interaction Layer Framework Diagram
+## §11 Layer 4 `interaction/` Intelligent Interaction Layer Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under interaction/. Does not express natural language parsing pipeline and autonomy state machine transition details.
 >
@@ -814,7 +814,7 @@ interaction/
 
 ---
 
-## §十二 Layer 5 `org-governance/` Organization Governance Layer Framework Diagram
+## §12 Layer 5 `org-governance/` Organization Governance Layer Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under org-governance/. Does not express approval routing algorithms or SCIM synchronization protocol details.
 
@@ -883,7 +883,7 @@ org-governance/
 
 ---
 
-## §十三 Layer 6 `scale-ecosystem/` Scale Ecosystem + Ecology Layer Framework Diagram
+## §13 Layer 6 `scale-ecosystem/` Scale Ecosystem + Ecology Layer Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under scale-ecosystem/. Does not express cross-Region data synchronization protocol or SLA tiering algorithm details.
 
@@ -953,7 +953,7 @@ scale-ecosystem/
 
 ---
 
-## §十四 Layer 7 `ops-maturity/` Operations Maturity Layer Framework Diagram
+## §14 Layer 7 `ops-maturity/` Operations Maturity Layer Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of 11 modules under ops-maturity/. Does not express evidence chain collection pipeline or drift detection algorithm details.
 >
@@ -1018,7 +1018,7 @@ ops-maturity/
 
 ---
 
-## §十五 Cross-layer Module Framework Diagram (plugins · sdk · apps)
+## §15 Cross-layer Module Framework Diagram (plugins · sdk · apps)
 
 > **Diagram type: Structure diagram** — Expresses the module ownership of plugins/ · sdk/ · apps/ and cross-layer invocation entry points. Does not express plugin sandbox isolation mechanism or CLI command implementation details.
 
@@ -1075,7 +1075,7 @@ ops-maturity/
 
 ---
 
-## §十六 End-to-End Data Flow Overview Diagram
+## §16 End-to-End Data Flow Overview Diagram
 
 > **Diagram type: Data flow diagram** — Expresses the complete signal transmission path from P1 to P5 for user requests, and the event subscription relationship of upper-layer systems. Does not express module internal processing logic or error branches.
 
@@ -1130,7 +1130,7 @@ ops-maturity/
 
 ---
 
-## §十七 Dependency Direction and Layering Constraints Diagram
+## §16 Dependency Direction and Layering Constraints Diagram
 
 > **Diagram type: Constraint diagram** — Expresses the allowed and prohibited dependency directions between layers, and same-layer decoupling methods. Does not express specific import paths or runtime invocation chains.
 
@@ -1176,7 +1176,7 @@ Dependency direction rules: Upper layers can depend on lower layers, lower layer
 
 ---
 
-## §十八 Stability Seven-Layer Model Framework Diagram
+## §18 Stability Seven-Layer Model Framework Diagram
 
 > **Diagram type: Structure diagram** — Expresses the layer division of the stability seven-layer model and the capability modules contained in each layer. Does not express runtime trigger sequencing between layers or degradation decision logic.
 >
@@ -1233,13 +1233,13 @@ Dependency direction rules: Upper layers can depend on lower layers, lower layer
 
 ---
 
-## §十九 P4 Runtime Bounded Context Special Diagram
+## §19 P4 Runtime Bounded Context Special Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and dependency relationships of the 12 Bounded Contexts resulting from splitting `core/runtime/` within the P4 Execution Plane. Does not express BC internal class/method-level implementation details.
 >
 > **Background**: The old system `core/runtime/` is a monolithic module (101 files / 30K lines) that needs to be split into independent BCs to reduce coupling. 6 BCs have zero internal dependencies (can be extracted independently), and 2 are composite roots (remain in runtime/ core).
 
-### §十九.1 BC Ownership and Dependency Diagram
+### §19.1 BC Ownership and Dependency Diagram
 
 ```text
 platform/execution/
@@ -1299,7 +1299,7 @@ platform/execution/
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### §十九.2 Extraction Wave Plan
+### §19.2 Extraction Wave Plan
 
 ```text
 Wave 1 (Zero risk)    BC3 + BC5 + BC6 + BC8              6,136 lines  20%
@@ -1317,13 +1317,13 @@ Wave 4 (Cleanup)      BC1 + BC10 refine as runtime/ core   5,171 lines  17%
 
 ---
 
-## §二十 P5 Storage Bounded Context Special Diagram
+## §20 P5 Storage Bounded Context Special Diagram
 
 > **Diagram type: Structure diagram** — Expresses the ownership and communication rules of the 7 Bounded Contexts resulting from splitting `AuthoritativeTaskStore` within the P5 State & Evidence Plane. Does not express BC internal SQL table structure or query details.
 >
 > **Background**: The old system `AuthoritativeTaskStore` is a god object (~278 methods + 21 Repository + ~123 consumers) that needs to be split into independent BCs communicating via Event Bus.
 
-### §二十.1 BC Ownership Diagram
+### §20.1 BC Ownership Diagram
 
 ```text
 platform/state-evidence/
@@ -1389,7 +1389,7 @@ platform/state-evidence/
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### §二十.2 Split Wave Plan
+### §20.2 Split Wave Plan
 
 ```text
 Wave 1 (Low risk)    BC3 Event Infra → BC7 Memory & Artifacts
@@ -1408,7 +1408,7 @@ Wave 4 (Cleanup)      Remove Facade; BC1 Core Task Engine becomes independent
 
 ---
 
-## §二一 Cross-cutting Capability Control Plane Diagram
+## §21 Cross-cutting Capability Control Plane Diagram
 
 > **Diagram type: Structure diagram** — Expresses how three types of cross-cutting capabilities (X1 Stability · X2 Observability · X3 Security & Compliance) provide unified services across the five planes. Does not express the internal implementation or configuration parameters of each cross-cutting capability.
 
@@ -1441,9 +1441,9 @@ Cross-cutting capability delivery methods:
 
 ---
 
-## §二二 Old System Modules → New Platform Landing Diagram
+## §22 Old System Modules → New Platform Landing Diagram
 
-> **Diagram type: Structure diagram** — Expresses the landing mapping of 42 old system `src/core/` modules migrating to the new platform's 7-layer architecture. Does not express migration steps or time sequence (see §二三).
+> **Diagram type: Structure diagram** — Expresses the landing mapping of 42 old system `src/core/` modules migrating to the new platform's 7-layer architecture. Does not express migration steps or time sequence (see §23).
 
 ```text
 Old system src/core/ (42 modules)        New platform src/ (7 layers + cross-layer)
@@ -1505,7 +1505,7 @@ reliability ──────────────────────�
 cli ───────────────────────────────▶ sdk/cli (cross-layer)
 ```
 
-### §二二.1 Migration Type Statistics
+### §22.1 Migration Type Statistics
 
 | Mapping Type | Module Count | Description |
 |--------------|--------------|-------------|
@@ -1517,7 +1517,7 @@ cli ─────────────────────────�
 
 ---
 
-## §二三 Migration Wave Roadmap
+## §23 Migration Wave Roadmap
 
 > **Diagram type: Sequence diagram** — Expresses the sequence and dependency relationships of ten-phase code migration. Does not express internal task decomposition of each phase.
 
@@ -1568,7 +1568,7 @@ Total: ~1,868 files / ~406K lines / 70-100 person-days
 (excluding 24 brand-new module developments)
 ```
 
-### §二三.1 Dual-track Parallel Strategy
+### §23.1 Dual-track Parallel Strategy
 
 ```text
 Lane A (Migration)         Lane B (New Capabilities)
@@ -1590,7 +1590,7 @@ New modules that must wait for migration completion:
 
 ---
 
-## §二四 Interaction · Governance · Platform Three-axis Collaboration Diagram
+## §24 Interaction · Governance · Platform Three-axis Collaboration Diagram
 
 > **Diagram type: Data flow diagram** — Expresses the collaboration signal flow between the three main system axes: interaction (L4) · org-governance (L5) · platform (L1-2). Does not express the invocation relationships between modules within each axis.
 
@@ -1668,22 +1668,22 @@ Three-axis collaboration invariants:
 
 | Section | Diagram Type | v1.1 Change Description |
 |---------|--------------|------------------------|
-| §一 | Structure diagram | Corrected visual weight; divided into three visual bands |
-| §二 | Data flow diagram | Annotated AI operations as parallel support |
-| §三 | Structure diagram | Split into 3 responsibility areas |
-| §四 | Structure diagram | Reorganized into 4 areas |
-| §五 | Structure diagram | Added module boundary rules table |
-| §六 | Structure diagram + Sequence diagram | Split into 3 independent diagrams |
-| §七 | Structure diagram | **Rewritten**: 7 BC grouping + Truth/Derived/Evidence three zones |
-| §八 | Structure diagram | **Rewritten**: Renamed + parallel support positioning note |
-| §九 | Data flow diagram | **Rewritten**: Upgraded to platform protocol diagram + protocol chain series |
-| §十~§十五 | Structure diagram | Added "expresses/does not express" declarations |
-| §十六 | Data flow diagram | Added "expresses/does not express" declaration |
-| §十七 | Constraint diagram | Added "expresses/does not express" declaration |
-| §十八 | Structure diagram | Added "expresses/does not express" declaration |
-| §十九 | Structure diagram | **New**: P4 Runtime 12 BC special diagram |
-| §二十 | Structure diagram | **New**: P5 Storage 7 BC special diagram |
-| §二一 | Structure diagram | **New**: Cross-cutting capability control plane diagram |
-| §二二 | Structure diagram | **New**: Old system → new platform landing diagram |
-| §二三 | Sequence diagram | **New**: Migration wave roadmap |
-| §二四 | Data flow diagram | **New**: Three-axis collaboration diagram |
+| §1 | Structure diagram | Corrected visual weight; divided into three visual bands |
+| §2 | Data flow diagram | Annotated AI operations as parallel support |
+| §3 | Structure diagram | Split into 3 responsibility areas |
+| §4 | Structure diagram | Reorganized into 4 areas |
+| §5 | Structure diagram | Added module boundary rules table |
+| §6 | Structure diagram + Sequence diagram | Split into 3 independent diagrams |
+| §7 | Structure diagram | **Rewritten**: 7 BC grouping + Truth/Derived/Evidence three zones |
+| §8 | Structure diagram | **Rewritten**: Renamed + parallel support positioning note |
+| §9 | Data flow diagram | **Rewritten**: Upgraded to platform protocol diagram + protocol chain series |
+| §10~§15 | Structure diagram | Added "expresses/does not express" declarations |
+| §16 | Data flow diagram | Added "expresses/does not express" declaration |
+| §16 | Constraint diagram | Added "expresses/does not express" declaration |
+| §18 | Structure diagram | Added "expresses/does not express" declaration |
+| §19 | Structure diagram | **New**: P4 Runtime 12 BC special diagram |
+| §20 | Structure diagram | **New**: P5 Storage 7 BC special diagram |
+| §21 | Structure diagram | **New**: Cross-cutting capability control plane diagram |
+| §22 | Structure diagram | **New**: Old system → new platform landing diagram |
+| §23 | Sequence diagram | **New**: Migration wave roadmap |
+| §24 | Data flow diagram | **New**: Three-axis collaboration diagram |

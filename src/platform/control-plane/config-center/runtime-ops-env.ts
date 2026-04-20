@@ -1,5 +1,6 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { readTrimmedEnv } from "./runtime-env.js";
+import { DEFAULT_LEASE_TTL_MS } from "../../execution/lease/types.js";
 
 /** Log levels for remote worker logging */
 type RemoteLogLevel = "debug" | "info" | "warn" | "error";
@@ -175,25 +176,6 @@ function requiredNumberEnv(env: NodeJS.ProcessEnv, name: string): number {
 }
 
 /**
- * Parses a positive number from environment, returning fallback if missing.
- * Throws if value exists but is not a positive number.
- */
-function positiveNumberOrDefault(
-  env: NodeJS.ProcessEnv,
-  name: string,
-  fallback: number,
-): number {
-  const parsed = optionalNumberEnv(env, name);
-  if (parsed == null) {
-    return fallback;
-  }
-  if (parsed <= 0) {
-    return invalidEnv(name);
-  }
-  return parsed;
-}
-
-/**
  * Reads an optional enum value from environment, returning undefined if missing.
  * Throws if value exists but is not in the allowed list.
  */
@@ -309,7 +291,7 @@ export function loadDispatchExecutionCliEnv(
     dispatchAfter: optionalNullableEnv(env, "AA_DISPATCH_AFTER"),
     createOnly: readTrimmedEnv(env, "AA_DISPATCH_CREATE_ONLY") === "1",
     preferredWorkerId: optionalNullableEnv(env, "AA_PREFERRED_WORKER_ID"),
-    leaseTtlMs: positiveNumberOrDefault(env, "AA_LEASE_TTL_MS", 30_000),
+    leaseTtlMs: positiveNumberOrDefault(env, "AA_LEASE_TTL_MS", DEFAULT_LEASE_TTL_MS),
     includeDegraded: readTrimmedEnv(env, "AA_INCLUDE_DEGRADED") === "1",
   };
 }
@@ -329,7 +311,7 @@ export function loadWorkerHandshakeCliEnv(
     workerId: requiredEnv(env, "AA_WORKER_ID"),
     leaseId: requiredEnv(env, "AA_LEASE_ID"),
     fencingToken: requiredNumberEnv(env, "AA_FENCING_TOKEN"),
-    leaseTtlMs: positiveNumberOrDefault(env, "AA_LEASE_TTL_MS", 30_000),
+    leaseTtlMs: positiveNumberOrDefault(env, "AA_LEASE_TTL_MS", DEFAULT_LEASE_TTL_MS),
     occurredAt: optionalEnv(env, "AA_OCCURRED_AT"),
     cpuPct: optionalNumberEnv(env, "AA_CPU_PCT"),
     memoryMb: optionalNumberEnv(env, "AA_MEMORY_MB"),

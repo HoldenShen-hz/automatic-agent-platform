@@ -12,3 +12,5 @@ export * from './validation-report.js';
 export * from './release-record.js';
 export * from './failure-classification.js';
 export * from './repair-pipeline.js';
+export * from './exception-recovery-types.js';
+export * from './exception-recovery-config-loader.js';

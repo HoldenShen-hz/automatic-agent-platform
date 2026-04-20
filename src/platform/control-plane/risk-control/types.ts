@@ -63,13 +63,12 @@ export interface RiskEvaluationRequest {
 /**
  * Risk evaluation result output per §10.3
  */
-export interface RiskEvaluationResult {
+export interface RiskEvaluationResultBase {
   readonly taskId: string;
   readonly riskScore: number;
   readonly riskLevel: RiskLevel;
   readonly actions: readonly string[];
   readonly requiresApproval: boolean;
-  readonly approvalType?: "standard" | "break_glass";
   readonly evidenceLevel: "basic" | "enhanced" | "full" | "legal";
   readonly logLevel: "info" | "warn" | "error" | "critical";
   readonly autoExecute: boolean;
@@ -81,6 +80,18 @@ export interface RiskEvaluationResult {
     readonly weightedValue: number;
   }[];
 }
+
+export interface RiskEvaluationResultRequiresApproval extends RiskEvaluationResultBase {
+  readonly requiresApproval: true;
+  readonly approvalType: "standard" | "break_glass";
+}
+
+export interface RiskEvaluationResultNoApproval extends RiskEvaluationResultBase {
+  readonly requiresApproval: false;
+  readonly approvalType?: undefined;
+}
+
+export type RiskEvaluationResult = RiskEvaluationResultRequiresApproval | RiskEvaluationResultNoApproval;
 
 /**
  * Risk evaluation engine options

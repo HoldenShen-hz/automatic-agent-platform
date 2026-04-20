@@ -51,7 +51,16 @@ import {
   type WorkflowStepCheckpointSummary,
 } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { StorageError } from "../../contracts/errors.js";
+import { StorageError, AppError, isAppError } from "../../contracts/errors.js";
+import {
+  loadExceptionRecoveryConfig,
+  type ExceptionRecoveryConfig,
+} from "./exception-recovery-config-loader.js";
+import {
+  type ExceptionType,
+  ERROR_CLASS_TO_EXCEPTION_TYPE,
+  CATEGORY_TO_EXCEPTION_TYPE,
+} from "./exception-recovery-types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -197,11 +206,19 @@ export interface DivisionRecoveryOverview {
  * State modifications are performed by RuntimeRepairService.
  */
 export class RuntimeRecoveryService {
+  private readonly config: ExceptionRecoveryConfig;
+
   /**
    * Creates a new RuntimeRecoveryService instance.
    * @param store - The AuthoritativeTaskStore used for querying execution and task data
+   * @param config - Optional exception recovery configuration (defaults to loading from config/exception-recovery/default.json)
    */
-  public constructor(private readonly store: AuthoritativeTaskStore) {}
+  public constructor(
+    private readonly store: AuthoritativeTaskStore,
+    config?: ExceptionRecoveryConfig,
+  ) {
+    this.config = config ?? loadExceptionRecoveryConfig();
+  }
 
   /**
    * Lists all executions that are currently in an active state (executing,
@@ -213,7 +230,7 @@ export class RuntimeRecoveryService {
    * @returns Array of recovery candidates that are in active execution states
    */
   public listRecoverableExecutingRuns(now: string = nowIso(), tenantId?: string | null): RuntimeRecoveryCandidate[] {
-    return this.store.operations.listRecoverableExecutingRuns(now, tenantId).map((record) => toCandidate(record, "active_execution"));
+    return this.store.operations.listRecoverableExecutingRuns(now, tenantId).map((record) => toCandidate(record, "active_execution", this.config));
   }
 
   /**
@@ -226,7 +243,7 @@ export class RuntimeRecoveryService {
   public listBlockedRunsAwaitingApproval(tenantId?: string | null): RuntimeRecoveryCandidate[] {
     return this.store
       .listBlockedRunsAwaitingApproval(tenantId)
-      .map((record) => toCandidate(record, "approval_pending"));
+      .map((record) => toCandidate(record, "approval_pending", this.config));
   }
 
   /**
@@ -239,7 +256,7 @@ export class RuntimeRecoveryService {
    * @returns Array of stale recovery candidates
    */
   public listStaleRuns(staleBefore: string, tenantId?: string | null): RuntimeRecoveryCandidate[] {
-    return this.store.operations.listStaleRuns(staleBefore, tenantId).map((record) => toCandidate(record, "stale_execution"));
+    return this.store.operations.listStaleRuns(staleBefore, tenantId).map((record) => toCandidate(record, "stale_execution", this.config));
   }
 
   /**
@@ -267,7 +284,7 @@ export class RuntimeRecoveryService {
     return {
       taskId,
       divisionId: task.divisionId,
-      candidates: this.store.operations.buildRuntimeRecoveryView(taskId, tenantId).map((record) => toCandidate(record, inferReason(record))),
+      candidates: this.store.operations.buildRuntimeRecoveryView(taskId, tenantId).map((record) => toCandidate(record, inferReason(record), this.config)),
       requestedApprovals: this.store.approval.listApprovalsByTask(taskId, tenantId).filter((approval) => approval.status === "requested"),
       deadLetters: this.store.dispatch.listDeadLettersByTask(taskId, tenantId),
       latestCheckpoint: findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
@@ -375,9 +392,10 @@ function inferReason(record: RuntimeRecoveryRecord): string {
  *
  * @param record - Raw record from the database
  * @param reason - Pre-computed reason string
+ * @param config - The exception recovery configuration
  * @returns Typed recovery candidate interface
  */
-function toCandidate(record: RuntimeRecoveryRecord, reason: string): RuntimeRecoveryCandidate {
+function toCandidate(record: RuntimeRecoveryRecord, reason: string, config: ExceptionRecoveryConfig): RuntimeRecoveryCandidate {
   return {
     executionId: record.executionId,
     taskId: record.taskId,
@@ -407,19 +425,27 @@ function toCandidate(record: RuntimeRecoveryRecord, reason: string): RuntimeReco
             checkedAt: record.latestPrecheck.checkedAt,
           },
     reason,
-    suggestedAction: inferSuggestedAction(record, reason),
+    suggestedAction: inferSuggestedAction(record, reason, config),
   };
 }
 
 /**
  * Determines the appropriate recovery action based on the reason
  * and execution state. Maps failure modes to recovery strategies.
+ * Uses the configurable recovery strategy table from config/exception-recovery/default.json.
  *
  * @param record - The runtime recovery record
  * @param reason - The inferred reason string
+ * @param config - The exception recovery configuration
  * @returns The suggested recovery action
  */
-function inferSuggestedAction(record: RuntimeRecoveryRecord, reason: string): RecoverySuggestedAction {
+function inferSuggestedAction(
+  record: RuntimeRecoveryRecord,
+  reason: string,
+  config: ExceptionRecoveryConfig,
+): RecoverySuggestedAction {
+  const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
+
   // Approval blocked or inconsistent blocked state requires escalation
   if (reason === "approval_pending" || reason === "blocked_without_approval") {
     return "escalate_takeover";
@@ -432,16 +458,66 @@ function inferSuggestedAction(record: RuntimeRecoveryRecord, reason: string): Re
   if (reason.startsWith("precheck_denied:")) {
     return "cancel";
   }
-  // Execution errors after multiple attempts go to dead letter
-  if (reason.startsWith("execution_error:") && record.attempt >= 2) {
-    return "move_dead_letter";
+  // Execution errors - use configurable strategy based on error type
+  if (reason.startsWith("execution_error:")) {
+    const errorCode = reason.split(":")[1] ?? "unknown_error";
+    const exceptionType = resolveExceptionType(record.latestErrorCode, errorCode);
+    const strategy = config.recoveryStrategyTable.byExceptionType[exceptionType];
+
+    // Check attempt thresholds for action determination
+    if (record.attempt >= thresholds.moveToDeadLetterMinAttempts) {
+      return "move_dead_letter";
+    }
+    if (record.attempt >= thresholds.retryNewTicketMaxAttempts) {
+      return "move_dead_letter";
+    }
+    return strategy.action;
   }
   // Active statuses can potentially be resumed
   if (record.status === "executing" || record.status === "prechecking" || record.status === "created") {
+    if (record.attempt >= thresholds.resumeSameWorkerMaxAttempts) {
+      return "retry_new_ticket";
+    }
     return "resume_same_worker";
   }
   // Default: no action recommended
   return "none";
+}
+
+/**
+ * Resolves the exception type from an error code and error class.
+ *
+ * @param errorCode - The error code from the execution record
+ * @param reasonCode - The reason code extracted from the error
+ * @returns The resolved exception type
+ */
+function resolveExceptionType(errorCode: string | null, reasonCode: string): ExceptionType {
+  // First try to map from error code prefix
+  if (errorCode) {
+    // E7 = LockingError
+    if (errorCode.startsWith("E7")) {
+      return "locking_error";
+    }
+    // E8 = MemoryError
+    if (errorCode.startsWith("E8")) {
+      return "memory_error";
+    }
+    // EC = RuntimeError
+    if (errorCode.startsWith("EC")) {
+      return "runtime_error";
+    }
+  }
+
+  // Try to map from reason code
+  const normalizedReason = reasonCode.toLowerCase().replace(/[._-]/g, "_");
+  for (const [key, value] of Object.entries(ERROR_CLASS_TO_EXCEPTION_TYPE)) {
+    if (normalizedReason.includes(key.toLowerCase())) {
+      return value;
+    }
+  }
+
+  // Default to unknown_error if no match found
+  return "unknown_error";
 }
 
 /**

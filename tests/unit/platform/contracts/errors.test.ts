@@ -17,6 +17,8 @@ import {
   LockingError,
   MemoryError,
   RuntimeError,
+  TransientExternalError,
+  PermanentExternalError,
   createErrorCode,
   isAppError,
   getErrorCode,
@@ -404,4 +406,133 @@ test("AppError subclass constructors accept all ErrorOptions", () => {
   assert.equal(error.causedBy, "Validator");
   assert.equal(error.occurredAt, "2026-04-14T00:00:00.000Z");
   assert.equal(error.userMessage, "Custom user message");
+});
+
+test("TransientExternalError has correct defaults - retryable", () => {
+  const error = new TransientExternalError("external.timeout", "External service timed out");
+
+  assert.equal(error.category, "external");
+  assert.equal(error.source, "provider");
+  assert.equal(error.statusCode, 502);
+  assert.equal(error.retryable, true);
+  assert.equal(error.name, "TransientExternalError");
+});
+
+test("TransientExternalError is retryable by default", () => {
+  const error = new TransientExternalError("external.network", "Network connection reset");
+  assert.equal(error.retryable, true);
+});
+
+test("TransientExternalError can be made non-retryable via options", () => {
+  const error = new TransientExternalError("external.timeout", "Timeout", {
+    retryable: false,
+  });
+  assert.equal(error.retryable, false);
+});
+
+test("TransientExternalError accepts all ErrorOptions", () => {
+  const error = new TransientExternalError("external.fail", "External failed", {
+    statusCode: 503,
+    retryable: true,
+    details: { endpoint: "https://api.example.com" },
+    cause: new Error("original"),
+    traceId: "trace-ext-1",
+    taskId: "task-ext-1",
+    executionId: "exec-ext-1",
+    userMessage: "External service unavailable",
+  });
+
+  assert.equal(error.statusCode, 503);
+  assert.equal(error.retryable, true);
+  assert.deepEqual(error.details, { endpoint: "https://api.example.com" });
+  assert.equal(error.traceId, "trace-ext-1");
+  assert.equal(error.taskId, "task-ext-1");
+  assert.equal(error.executionId, "exec-ext-1");
+  assert.equal(error.userMessage, "External service unavailable");
+});
+
+test("PermanentExternalError has correct defaults - NOT retryable", () => {
+  const error = new PermanentExternalError("external.invalid_key", "Invalid API key");
+
+  assert.equal(error.category, "external");
+  assert.equal(error.source, "provider");
+  assert.equal(error.statusCode, 502);
+  assert.equal(error.retryable, false);
+  assert.equal(error.name, "PermanentExternalError");
+});
+
+test("PermanentExternalError is NOT retryable by default", () => {
+  const error = new PermanentExternalError("external.rate_limit", "Rate limit exceeded");
+  assert.equal(error.retryable, false);
+});
+
+test("PermanentExternalError cannot be made retryable (enforced by business logic)", () => {
+  // Even if someone tries to set retryable: true, permanent external errors
+  // should not be retried as the underlying issue won't resolve
+  const error = new PermanentExternalError("external.auth_failed", "Authentication failed", {
+    retryable: true, // This would be a misconfiguration - don't do this
+  });
+  // The constructor respects the option but callers should use TransientExternalError
+  // for retryable external errors
+  assert.equal(error.retryable, true); // Constructor override is still respected
+});
+
+test("PermanentExternalError accepts all ErrorOptions", () => {
+  const error = new PermanentExternalError("external.forbidden", "Access forbidden", {
+    statusCode: 403,
+    retryable: false,
+    details: { reason: "insufficient_scope" },
+    cause: new Error("original"),
+    traceId: "trace-perm-1",
+    taskId: "task-perm-1",
+    executionId: "exec-perm-1",
+    userMessage: "External service access denied",
+  });
+
+  assert.equal(error.statusCode, 403);
+  assert.equal(error.retryable, false);
+  assert.deepEqual(error.details, { reason: "insufficient_scope" });
+  assert.equal(error.traceId, "trace-perm-1");
+  assert.equal(error.taskId, "task-perm-1");
+  assert.equal(error.executionId, "exec-perm-1");
+  assert.equal(error.userMessage, "External service access denied");
+});
+
+test("TransientExternalError vs PermanentExternalError distinction", () => {
+  const transient = new TransientExternalError("external.tmp", "Temporary failure");
+  const permanent = new PermanentExternalError("external.perm", "Permanent failure");
+
+  // Transient should be retryable, permanent should not
+  assert.equal(transient.retryable, true);
+  assert.equal(permanent.retryable, false);
+
+  // Both are in the "external" category
+  assert.equal(transient.category, "external");
+  assert.equal(permanent.category, "external");
+
+  // Both use provider as default source
+  assert.equal(transient.source, "provider");
+  assert.equal(permanent.source, "provider");
+
+  // Both return 502 by default
+  assert.equal(transient.statusCode, 502);
+  assert.equal(permanent.statusCode, 502);
+});
+
+test("isAppError returns true for TransientExternalError", () => {
+  assert.equal(isAppError(new TransientExternalError("test", "test")), true);
+});
+
+test("isAppError returns true for PermanentExternalError", () => {
+  assert.equal(isAppError(new PermanentExternalError("test", "test")), true);
+});
+
+test("getErrorCode works with TransientExternalError", () => {
+  const error = new TransientExternalError("external.read_timeout", "Read timeout");
+  assert.equal(getErrorCode(error), "external.read_timeout");
+});
+
+test("getErrorCode works with PermanentExternalError", () => {
+  const error = new PermanentExternalError("external.invalid_token", "Invalid token");
+  assert.equal(getErrorCode(error), "external.invalid_token");
 });

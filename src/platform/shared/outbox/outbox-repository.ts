@@ -16,7 +16,8 @@ const OUTBOX_COLS = `id,
   created_at AS createdAt,
   published_at AS publishedAt,
   retry_count AS retryCount,
-  last_error AS lastError`;
+  last_error AS lastError,
+  last_attempt_at AS lastAttemptAt`;
 
 export class OutboxRepository {
   public constructor(private readonly conn: SqliteConnection) {}
@@ -34,8 +35,8 @@ export class OutboxRepository {
       .prepare(
         `INSERT INTO outbox (
           id, aggregate_type, aggregate_id, event_type,
-          payload_json, trace_id, created_at, published_at, retry_count, last_error
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL)`,
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`,
       )
       .run(id, aggregateType, aggregateId, eventType, payloadJson, traceId, createdAt);
 
@@ -50,6 +51,7 @@ export class OutboxRepository {
       publishedAt: null,
       retryCount: 0,
       lastError: null,
+      lastAttemptAt: null,
     };
   }
 
@@ -83,15 +85,17 @@ export class OutboxRepository {
     );
   }
 
-  public markFailed(id: string, error: string, newRetryCount: number): void {
+  public markFailed(id: string, error: string, newRetryCount: number, lastAttemptAt: string): void {
     execute(
       this.conn,
       `UPDATE outbox
        SET last_error = ?,
-           retry_count = ?
+           retry_count = ?,
+           last_attempt_at = ?
        WHERE id = ?`,
       error,
       newRetryCount,
+      lastAttemptAt,
       id,
     );
   }

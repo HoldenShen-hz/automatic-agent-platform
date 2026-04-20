@@ -5527,17 +5527,17 @@ type FeedbackSignalType =
 
 ## 56.4 Security Guardrails
 
-- 自动改进**永远不能**放松安全策略或合规控制
-- 全自动改进仅限**非风险变更**（few-shot 增加、路由优化、知识刷新）
-- 涉及 Prompt 核心逻辑或风控规则的变更必须经人工审核
-- 所有自动改进记录到 event_log，可审计可回滚
+- Automatic improvement **must never** relax security policies or compliance controls
+- Fully automatic improvement is limited to **non-risk changes** (few-shot additions, routing optimization, knowledge refresh)
+- Changes involving Prompt core logic or risk control rules must undergo manual review
+- All automatic improvements are recorded to event_log, auditable androllable
 
 ---
 
 # 57. External System Integration Framework
 
-> v2.5 新增。提供标准化连接器框架和预构建连接器目录，使 Agent 能对接真实业务系统。
-> 关联：§14.4 Executor · §11.5 出站控制 · §37.4 KnowledgeSource · §55 Marketplace
+> v2.5 New. Provides a standardized connector framework and pre-built connector directory, enabling Agents to integrate with real business systems.
+> Related: §14.4 Executor · §11.5 Egress Control · §37.4 KnowledgeSource · §55 Marketplace
 
 ## 57.1 Connector Abstraction
 
@@ -5549,28 +5549,28 @@ interface Connector {
   auth_method: "oauth2" | "api_key" | "basic" | "certificate" | "custom";
   capabilities: ConnectorCapability[];
   rate_limits: RateLimitSpec;
-  data_classification: string;             // 该连接器涉及的数据分级
+  data_classification: string;             // Data classification involved in this connector
   health_check: HealthCheckConfig;
 }
 
 type ConnectorCategory =
-  | "payment"          // 支付: Stripe, 支付宝, 微信支付
-  | "ecommerce"        // 电商: Shopify, 有赞, 拼多多
-  | "crm"              // CRM: Salesforce, 飞书 CRM
-  | "communication"    // 通信: 邮件, 短信, 企微, 飞书, 钉钉
-  | "social_media"     // 社交: 微信, 抖音, 微博, 小红书
-  | "finance"          // 财务: 用友, 金蝶, SAP
-  | "storage"          // 存储: OSS, S3, Google Drive
-  | "devtools"         // 开发: GitHub, GitLab, Jira
-  | "analytics"        // 分析: Google Analytics, 神策
-  | "ai_service"       // AI: OpenAI, Anthropic, 百度文心
-  | "database"         // 数据库: MySQL, PostgreSQL, MongoDB
-  | "custom";          // 自定义 API
+  | "payment"          // Payment: Stripe, Alipay, WeChat Pay
+  | "ecommerce"        // E-commerce: Shopify, Youzan, Pinduoduo
+  | "crm"              // CRM: Salesforce, Feishu CRM
+  | "communication"    // Communication: Email, SMS, Qiwei, Feishu, DingTalk
+  | "social_media"     // Social: WeChat, Douyin, Weibo, Xiaohongshu
+  | "finance"          // Finance: Yonyou, Kingdee, SAP
+  | "storage"          // Storage: OSS, S3, Google Drive
+  | "devtools"         // Development: GitHub, GitLab, Jira
+  | "analytics"        // Analytics: Google Analytics, Shence
+  | "ai_service"       // AI: OpenAI, Anthropic, Baidu Wenxin
+  | "database"         // Database: MySQL, PostgreSQL, MongoDB
+  | "custom";          // Custom API
 
 interface ConnectorCapability {
   capability_id: string;
   operations: ("read" | "write" | "subscribe" | "webhook")[];
-  schema: Record<string, unknown>;         // 输入输出 schema
+  schema: Record<string, unknown>;         // Input/output schema
 }
 ```
 
@@ -5579,14 +5579,15 @@ interface ConnectorCapability {
 ```text
 ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
 │ Install  │────▶│ Configure│────▶│ Authorize│────▶│ Active   │
-│ (安装)    │     │ (配置)    │     │ (授权)    │     │ (运行中)  │
+│ (Install)│     │ (Config) │     │ (Authorize│    │ (Running) │
 └──────────┘     └──────────┘     └──────────┘     └────┬─────┘
                                                         │
                                                  ┌──────▼─────┐
                                                  │ Monitor    │
-                                                 │ (健康监控)  │
+                                                 │ (Health    │
+                                                 │  Monitor)  │
                                                  └──────┬─────┘
-                                                        │ 异常
+                                                        │ Exception
                                                  ┌──────▼─────┐
                                                  │ Degrade/   │
                                                  │ Reconnect  │
@@ -5618,42 +5619,42 @@ interface ConnectorSDK {
 }
 ```
 
-社区和企业内部团队可通过 Connector SDK 开发自定义连接器，发布到 Marketplace(§55)。
+Community and enterprise internal teams can develop custom connectors through the Connector SDK and publish them to Marketplace(§55).
 
 ---
 
 # 59. Agent Explainability and Decision Transparency Architecture
 
-> v2.6 新增。为每个 Agent 决策构建面向用户的因果解释能力，满足 EU AI Act / GDPR Article 22 合规要求，并为渐进式自主权(§42)提供信任基础。
-> 关联：§12.7 Tracing · §13 OAPEFLIR · §17 质量门禁 · §23.6 数据血缘 · §39 NL 入口 · §42 渐进式自主权
+> v2.6 New. Builds user-facing causal explanation capabilities for every Agent decision, meeting EU AI Act / GDPR Article 22 compliance requirements and providing trust foundation for progressive autonomy (§42).
+> Related: §12.7 Tracing · §13 OAPEFLIR · §17 Quality Gate · §23.6 Data Lineage · §39 NL Entry · §42 Progressive Autonomy
 
 ## 59.1 Design Principles
 
-* 每个 OAPEFLIR 循环的每个阶段**必须**生成 `StageRationale` 记录
-* 解释按需生成（lazy），不增加正常执行路径开销
-* 解释深度按领域配置：金融需要 forensic-level，客服需要 summary-level
-* 解释缓存避免重复 LLM 调用
-* 解释不可篡改，纳入 Evidence Plane
+* Each stage of each OAPEFLIR loop **must** generate a `StageRationale` record
+* Explanations are generated on-demand (lazy), not adding overhead to normal execution paths
+* Explanation depth is configured by domain: finance requires forensic-level, customer service requires summary-level
+* Explanation caching avoids repeated LLM calls
+* Explanations are tamper-proof and incorporated into Evidence Plane
 
 ## 59.2 Explanation Pipeline
 
 ```text
-用户问"为什么？"
+User asks "Why?"
     │
     ▼
 ExplanationRequest { workflow_id, step_id?, depth }
     │
     ▼
 ┌─────────────────┐
-│ EvidenceCollector│  ← 从 P5 收集 StageRationale + ToolCallLog + KnowledgeCitation
+│ EvidenceCollector│  ← Collect StageRationale + ToolCallLog + KnowledgeCitation from P5
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ CausalChainBuilder│  ← 构建 Observe→Assess→Plan→Execute 的因果链
+│ CausalChainBuilder│  ← Build Observe→Assess→Plan→Execute causal chain
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ ExplanationRenderer│  ← 按 depth 和 locale 渲染为 NL 文本
+│ ExplanationRenderer│  ← Render to NL text by depth and locale
 └────────┬────────┘
          ▼
 ExplanationResponse { summary, causal_chain[], evidence_refs[], confidence }
@@ -5681,7 +5682,7 @@ interface StageRationale {
 
 ## 59.5 Integration with NL Entry
 
-§39 NL 交互管线增加 `why` Intent 类型：
+§39 NL interaction pipeline adds `why` Intent type：
 
 ```typescript
 interface WhyQuery {
@@ -5691,20 +5692,20 @@ interface WhyQuery {
 }
 ```
 
-用户可通过自然语言问"上次发布为什么回滚了？"，系统解析为 WhyQuery 并调用解释管线。
+Users can ask "Why was the last release rolled back?" in natural language, and the system parses it as WhyQuery and calls the explanation pipeline.
 
 ## 59.6 Explanation Cache and Security
 
-* L1/L2 解释缓存 TTL = 24h，L3 不缓存（确保最新证据）
-* 解释内容受 §50 知识域隔离约束——只能看到自己有权限的证据
-* 解释日志本身纳入审计(§23)，记录谁在什么时候查看了什么解释
+* L1/L2 explanation cache TTL = 24h, L3 is not cached (ensuring latest evidence)
+* Explanation content is subject to §50 knowledge domain isolation — can only see evidence you have permission to view
+* Explanation logs themselves are incorporated into audit (§23), recording who viewed what explanation at what time
 
 ---
 
 # 60. Emergency Braking and Global Circuit Breaker Architecture
 
-> v2.6 新增。提供单一原子操作在 < 5 秒内停止全平台所有 Agent 执行，用于安全事件、Prompt injection 攻击、Agent 逃逸等紧急场景。
-> 关联：§9 稳定性 · §10 风险控制 · §11 安全 · §12 异常事件 · §52 多 Region
+> v2.6 New. Provides a single atomic operation to stop all platform-wide Agent execution in < 5 seconds, for emergency scenarios such as security incidents, Prompt injection attacks, and Agent escape.
+> Related: §9 Stability · §10 Risk Control · §11 Security · §12 Exceptional Events · §52 Multi-Region
 
 ## 60.1 PlatformPanicDirective
 
@@ -5733,17 +5734,17 @@ type PanicAction =
 ```text
 PlatformPanicDirective
     │
-    ├──▶ P1 Interface Plane: 拒绝所有新请求(503), 关闭 WebSocket
+    ├──▶ P1 Interface Plane: Reject all new requests (503), close WebSocket
     │
-    ├──▶ P2 Control Plane: 撤销所有 active Agent token
+    ├──▶ P2 Control Plane: Revoke all active Agent tokens
     │
-    ├──▶ P3 Orchestration Plane: 挂起所有 in-flight OAPEFLIR 循环
+    ├──▶ P3 Orchestration Plane: Suspend all in-flight OAPEFLIR loops
     │
-    ├──▶ P4 Execution Plane: 中止所有 worker, 回滚未提交 side effect
+    ├──▶ P4 Execution Plane: Abort all workers, rollback uncommitted side effects
     │
-    ├──▶ P5 State Plane: 生成 ForensicSnapshot, 设置 read-only 模式
+    ├──▶ P5 State Plane: Generate ForensicSnapshot, set read-only mode
     │
-    └──▶ X1 Fabric: 阻断所有 egress, 触发告警到所有渠道
+    └──▶ X1 Fabric: Block all egress, trigger alerts to all channels
 ```
 **SLA**: From the time the Directive is issued to the confirmation stop on all planes < 5 seconds (same region), < 15 seconds (cross-region). 
 
@@ -5757,16 +5758,16 @@ PlatformPanicDirective
 
 ## 60.4 Regular Drills
 
-* 每季度至少一次紧急制动演练（选定 tenant 范围）
-* 演练结果纳入 §36 成功标准
-* 演练期间产生的 ForensicSnapshot 用于验证取证完整性
+* At least one emergency brake drill per quarter (selected tenant scope)
+* Drill results are incorporated into §36 success criteria
+* ForensicSnapshots generated during drills are used to verify forensics completeness
 
 ---
 
 # 61. Agent Unified Lifecycle Management Architecture
 
-> v2.6 新增。将 Agent 建模为一等实体——Pack + Prompt Bundle + Model Binding + Trust Profile + Trigger Set + Autonomy Config 的复合体，管理从创建到退役的完整生命周期。
-> 关联：§16 Prompt · §30 Pack · §42 渐进式自主权 · §41 主动式 Agent · §55 Marketplace
+> v2.6 New. Models Agent as a first-class entity — a composite of Pack + Prompt Bundle + Model Binding + Trust Profile + Trigger Set + Autonomy Config — managing the complete lifecycle from creation to retirement.
+> Related: §16 Prompt · §30 Pack · §42 Progressive Autonomy · §41 Proactive Agent · §55 Marketplace
 
 ## 61.1 AgentDefinition Composite Entity
 
@@ -5845,11 +5846,11 @@ draft ──▶ testing ──▶ staging ──▶ canary ──▶ active
 
 ## 61.4 Composite Grayscale Release
 
-Agent 灰度以 AgentVersion 为单位（非单组件）：
+Agent grayscale release is based on AgentVersion (not individual components):
 
-* **流量分割**：canary 版本接收 5%→20%→50%→100% 流量
-* **复合回滚**：一键回退到上一个 AgentVersion（所有组件原子回退）
-* **比较测试**：对同一输入同时运行两个 AgentVersion，比较输出差异
+* **Traffic Split**: Canary version receives 5%→20%→50%→100% traffic
+* **Composite Rollback**: One-click rollback to previous AgentVersion (all components atomic rollback)
+* **Comparison Test**: Run two AgentVersions simultaneously on the same input, compare output differences
 
 ## 61.5 Agent Retirement and Responsibility Transfer
 
@@ -5867,14 +5868,14 @@ interface AgentRetirement {
 
 # 62. Offline and Edge Deployment Architecture
 
-> v2.6 新增。支持工厂车间、零售门店、移动设备等间歇连接场景下的 Agent 执行，以本地优先+最终同步模式运行。
-> 关联：§15 ModelGateway · §32 部署 · §52 多 Region · §10 风险控制
+> v2.6 New. Supports Agent execution in intermittent connectivity scenarios such as factory workshops, retail stores, and mobile devices, running in local-first + eventual sync mode.
+> Related: §15 ModelGateway · §32 Deployment · §52 Multi-Region · §10 Risk Control
 
 ## 62.1 EdgeRuntime Minimal Runtime
 
 ```text
 ┌─────────────────────────────────────────┐
-│  EdgeRuntime（本地设备/门店服务器）          │
+│  EdgeRuntime (Local Device/Store Server)     │
 │                                         │
 │  ┌──────────┐  ┌──────────┐  ┌────────┐│
 │  │P3-Lite   │  │P4-Lite   │  │P5-Local││
@@ -5885,7 +5886,7 @@ interface AgentRetirement {
 │  │(sLLM)   │  │(offline) │            │
 │  └──────────┘  └──────────┘            │
 └─────────────────────────────────────────┘
-         ▲ 连接恢复时 ▼
+         ▲ Upon Connection Recovery ▼
 ┌─────────────────────────────────────────┐
 │  Central Platform (Cloud)               │
 │  P1 + P2 + P3 + P4 + P5 + X1           │
@@ -5900,7 +5901,7 @@ interface AgentRetirement {
 | Approval pending | Steps that require approval enter the pending state, waiting for the connection to be restored |
 | Cache plan | EdgeRuntime periodically pre-pulls the ExecutionPlan template from Central |
 
-## 62.3 同步协议
+## 62.3 Sync Protocol
 
 ```typescript
 interface SyncProtocol {
@@ -5933,8 +5934,8 @@ interface ConflictReport {
 
 # 63. Agent Behavior Drift Detection Architecture
 
-> v2.6 新增。超越单维度质量指标，建立多维行为画像和长周期变点检测，在 Agent 行为渐变导致业务风险前发出预警。
-> 关联：§17 质量门禁 · §42 渐进式自主权 · §43 看板 · §56 反馈改进
+> v2.6 New. Goes beyond single-dimensional quality metrics, establishes multi-dimensional behavior profiling and long-cycle change point detection, issuing warnings before Agent behavior drift causes business risks.
+> Related: §17 Quality Gate · §42 Progressive Autonomy · §43 Kanban · §56 Feedback Improvement
 
 ## 63.1 Behavior Fingerprint Model
 
@@ -5967,23 +5968,23 @@ interface BehaviorFingerprint {
 ```text
 BehaviorDriftAlert { agent_id, dimension, severity, drift_score }
     │
-    ├── severity=low  → 记录到 §43 看板，标记 "drift_warning"
+    ├── severity=low  → Record to §43 Kanban, mark "drift_warning"
     │
-    ├── severity=medium → 通知域管理员 + 自动降低 autonomy_level 一级(§42)
+    ├── severity=medium → Notify domain admin + automatically reduce autonomy_level by one level (§42)
     │
-    └── severity=high → 暂停 Agent(§61 paused) + 触发 Incident(§12) + 要求人工审查
+    └── severity=high → Pause Agent (§61 paused) + trigger Incident (§12) + require human review
 ```
 
 ## 63.4 Cross-Agent Anomaly Detection
 
-同一 DomainDescriptor 下的多个 Agent 形成对照组。当一个 Agent 的行为指纹与对照组显著偏离时，即使该 Agent 自身没有触发单 Agent 阈值，也应发出 `CrossAgentDriftAlert`。
+Multiple Agents under the same DomainDescriptor form a control group. When one Agent's behavior fingerprint significantly deviates from the control group, even if that Agent itself has not triggered the single Agent threshold, a `CrossAgentDriftAlert` should be issued.
 
 ---
 
 # 64. Cost Attribution and Optimization Engine
 
-> v2.6 新增。在 §18 成本计量的基础上，增加决策级成本归因、自动优化建议、What-if 仿真，使成本数据从"可看"变为"可行动"。
-> 关联：§18 成本管理 · §15 ModelGateway · §43 看板 · §54 SLA
+> v2.6 New. Adds decision-level cost attribution, automatic optimization suggestions, and What-if simulation on top of §18 cost measurement, turning cost data from "viewable" to "actionable".
+> Related: §18 Cost Management · §15 ModelGateway · §43 Kanban · §54 SLA
 
 ## 64.1 Decision-Level Cost Attribution
 
@@ -6008,7 +6009,7 @@ interface CostAttribution {
 |---------|---------|---------|---------|
 | ModelDowngrade | Low-risk step using high-end models | Switch to cost_optimized routing | 30-60% |
 | CacheHit | Repeated calls to the same query | Enable semantic cache | 40-80% |
-| TokenTrim | 平均 input_tokens > 4x output_tokens | 优化 Prompt 或启用 context compression | 20-40% |
+| TokenTrim | Average input_tokens > 4x output_tokens | Optimize Prompt or enable context compression | 20-40% |
 | BatchMerge | Multiple independent steps can be merged | Merged into a single LLM call | 50-70% |
 | ScheduleShift | Non-urgent tasks are executed during peak hours | Scheduled to low-cost times | 10-30% |
 
@@ -6078,16 +6079,17 @@ WebSocket /ws/v1/debug/{workflow_id}
 ┌──────────────────────────────────────────────────────────┐
 │  Timeline View                                           │
 │  ┌────┐  ┌────┐  ┌────┐  ┌─────┐  ┌────┐               │
-│  │ S1 │─▶│ S2 │─▶│ S3 │─▶│ S4  │─▶│ S5 │  ← 当前执行位置│
+│  │ S1 │─▶│ S2 │─▶│ S3 │─▶│ S4  │─▶│ S5 │  ← Current execution position│
 │  │ ✓  │  │ ✓  │  │ ▶  │  │ ... │  │ ...│               │
 │  └────┘  └────┘  └────┘  └─────┘  └────┘               │
 │                     │                                    │
 │              ┌──────┴──────┐                             │
-│              │ OAPEFLIR 展开│                             │
-│              │ O: 收集到 3 个信号                          │
-│              │ A: 风险评分 0.4 (medium)                    │
-│              │ P: 选择方案 B (理由:...)                     │
-│              │ E: ▶ 执行中...                              │
+│              │ OAPEFLIR     │                             │
+│              │ Expansion    │                             │
+│              │ O: Collected 3 signals                    │
+│              │ A: Risk score 0.4 (medium)                │
+│              │ P: Choose Option B (reason:...)            │
+│              │ E: ▶ Executing...                         │
 │              └─────────────┘                             │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -6132,8 +6134,8 @@ interface ComparisonResult {
 
 # 66. Compliance Report Automatic Generation Engine
 
-> v2.6 新增。将平台收集的证据自动组装为审计就绪的合规报告，支持 SOC2 Type II / SOX / HIPAA / GDPR / PCI-DSS 等多框架。
-> 关联：§23 合规 · §49 分部门合规 · §12 异常事件 · §50 知识隔离
+> v2.6 New. Automatically assembles evidence collected by the platform into audit-ready compliance reports, supporting SOC2 Type II / SOX / HIPAA / GDPR / PCI-DSS and other frameworks.
+> Related: §23 Compliance · §49 Sub-department Compliance · §12 Exceptional Events · §50 Knowledge Isolation
 
 ## 66.1 Report Template Registry
 
@@ -6163,19 +6165,19 @@ ScheduledTrigger / OnDemandRequest
     │
     ▼
 ┌─────────────────┐
-│ EvidenceCollector│  ← 从 P5、审计日志、配置快照、metrics 收集证据
+│ EvidenceCollector│  ← Collect evidence from P5, audit logs, config snapshots, metrics
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ ControlMapper   │  ← 将证据映射到控制点，标记 pass/fail/partial
+│ ControlMapper   │  ← Map evidence to control points, mark pass/fail/partial
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ GapAnalyzer     │  ← 识别证据不足的控制点，生成补救建议
+│ GapAnalyzer     │  ← Identify control points with insufficient evidence, generate remediation suggestions
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ ReportRenderer  │  ← 按框架模板生成 PDF + CSV + JSON
+│ ReportRenderer  │  ← Generate PDF + CSV + JSON according to framework template
 └────────┬────────┘
          ▼
 ComplianceReport { framework, period, controls_passed, controls_failed, gaps[], export_urls }
@@ -6190,7 +6192,7 @@ ComplianceReport { framework, period, controls_passed, controls_failed, gaps[], 
 | PCI-DSS | Quarterly | Payment Domain | QSA |
 | ISO 27001 | Half a Year | Full Platform | CISO |
 
-## 66.4 审计员只读访问
+## 66.4 Auditor Read-Only Access
 
 ```typescript
 interface AuditorRole {
@@ -6222,11 +6224,11 @@ interface AuditorRole {
 | Number of concurrent workers | P4 Execution Plane | Current capacity 80% |
 | Storage usage | P5 State Plane | Current capacity 85% |
 | LLM Token consumption/day | §18 CostTracker | Monthly budget 70% |
-| API QPS | P1 Interface Plane | 当前容量 75% |
+| API QPS | P1 Interface Plane | Current capacity 75% |
 | Event Log Growth Rate | P5 Event Store | Storage Capacity 80% |
 | Queue Depth | P4 Fair Queue | Average Waiting Time > SLA 50% |
 
-## 67.2 预测模型
+## 67.2 Prediction Model
 
 ```typescript
 interface CapacityForecast {
@@ -6251,7 +6253,7 @@ interface CapacityForecast {
 }
 ```
 
-## 67.3 What-if 容量仿真
+## 67.3 What-if Capacity Simulation
 
 ```typescript
 interface CapacitySimulation {
@@ -6279,20 +6281,20 @@ interface CapacityImpact {
 }
 ```
 
-## 67.4 财务预算支持
+## 67.4 Financial Budget Support
 
-* 月度成本趋势报告（实际 vs 预算 vs 预测）
-* 季度容量规划建议（面向财务团队审批预算）
-* 年度 TCO 预测（含硬件 + LLM API + 人力成本）
+* Monthly cost trend report (actual vs budget vs forecast)
+* Quarterly capacity planning suggestions (for finance team budget approval)
+* Annual TCO prediction (including hardware + LLM API + labor costs)
 
 ---
 
-# 68. 多模态能力架构
+# 68. Multimodal Capability Architecture
 
-> v2.6 新增。扩展 ModelGateway 支持图像、语音、文档等多模态输入/输出，使平台能承接素材制作、客服图片处理、语音交互等场景。
-> 关联：§15 ModelGateway · §26 存储 · §37 业务域 · §39 NL 入口
+> v2.6 New. Expands ModelGateway to support multimodal input/output such as images, voice, and documents, enabling the platform to handle material production, customer service image processing, voice interaction and other scenarios.
+> Related: §15 ModelGateway · §26 Storage · §37 Business Domain · §39 NL Entry
 
-## 68.1 多模态 ModelGateway 扩展
+## 68.1 Multimodal ModelGateway Extension
 
 ```typescript
 interface MultimodalModelGateway extends ModelGateway {
@@ -6304,7 +6306,7 @@ interface MultimodalModelGateway extends ModelGateway {
 }
 ```
 
-## 68.2 多模态 ModelRequest 扩展
+## 68.2 Multimodal ModelRequest Extension
 
 ```typescript
 interface MultimodalModelRequest extends ModelRequest {
@@ -6330,16 +6332,16 @@ type MultimodalContent =
 | Text-to-Speech | Azure TTS / ElevenLabs | CosyVoice (self-hosted) | per-character |
 | Document Parse | Document Intelligence | Marker / Docling (self-hosted) | per-page |
 
-## 68.4 多模态安全
+## 68.4 Multimodal Security
 
-* 图像输入经过 content moderation（色情/暴力/敏感信息检测）
-* 生成图像附带 C2PA 元数据水印
-* 语音输入 PII 检测（电话号码、身份证号自动脱敏）
-* 文档解析结果受 §50 知识域隔离约束
+* Image input undergoes content moderation (pornography/violence/sensitive information detection)
+* Generated images are attached with C2PA metadata watermark
+* Voice input PII detection (phone numbers, ID numbers automatically anonymized)
+* Document parsing results are subject to §50 knowledge domain isolation
 
-## 68.5 多模态成本追踪
+## 68.5 Multimodal Cost Tracking
 
-§18 CostTracker 扩展 `modality` 维度：
+§18 CostTracker extends `modality` dimension：
 
 ```typescript
 interface MultimodalCostRecord extends CostRecord {
@@ -6351,10 +6353,10 @@ interface MultimodalCostRecord extends CostRecord {
 
 ---
 
-# 69. 平台自运维 Agent 架构
+# 69. Platform Self-Operation Agent Architecture
 
-> v2.6 新增。平台使用自身 Agent 能力进行自我运维（dog-fooding），覆盖 Incident 自动诊断、常见故障自修复、配置优化建议、开发者问答。
-> 关联：§12 异常事件 · §14 Execution · §37 业务域 · §41 主动 Agent · §43 看板
+> v2.6 New. Platform uses its own Agent capabilities for self-operation and maintenance (dog-fooding), covering automatic incident diagnosis, common fault self-repair, configuration optimization suggestions, and developer Q&A.
+> Related: §12 Exceptional Events · §14 Execution · §37 Business Domain · §41 Proactive Agent · §43 Kanban
 
 ## 69.1 PlatformOps DomainDescriptor
 

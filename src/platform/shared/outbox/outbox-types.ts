@@ -18,6 +18,7 @@ export interface OutboxRecord {
   publishedAt: string | null;
   retryCount: number;
   lastError: string | null;
+  lastAttemptAt: string | null;
 }
 
 export interface OutboxInsertPayload {

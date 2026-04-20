@@ -1,4 +1,13 @@
+/**
+ * Plugin Executor - Entry Point
+ *
+ * Re-exports PluginExecutionService (legacy) for backward compatibility,
+ * and the new PluginExecutorService with full lifecycle management.
+ */
+
 import { ValidationError } from "../../contracts/errors.js";
+
+// ─── Legacy types (backward compatibility) ─────────────────────────────────
 
 export interface PluginExecutionRequest {
   pluginId: string;
@@ -17,8 +26,12 @@ export interface PluginExecutionResult {
 export interface PluginRegistration {
   pluginId: string;
   actions: string[];
-  execute: (request: PluginExecutionRequest) => PluginExecutionResult | Promise<PluginExecutionResult>;
+  execute: (
+    request: PluginExecutionRequest,
+  ) => PluginExecutionResult | Promise<PluginExecutionResult>;
 }
+
+// ─── Legacy PluginExecutionService ──────────────────────────────────────────
 
 export class PluginExecutionService {
   private readonly plugins = new Map<string, PluginRegistration>();
@@ -27,7 +40,9 @@ export class PluginExecutionService {
     this.plugins.set(plugin.pluginId, plugin);
   }
 
-  public async execute(request: PluginExecutionRequest): Promise<PluginExecutionResult> {
+  public async execute(
+    request: PluginExecutionRequest,
+  ): Promise<PluginExecutionResult> {
     const plugin = this.plugins.get(request.pluginId);
     if (plugin == null) {
       throw new ValidationError("plugin_executor.plugin_not_found", "Plugin is not registered.", {
@@ -47,6 +62,23 @@ export class PluginExecutionService {
   }
 }
 
-// Re-export the new PluginExecutorService as well
-export { PluginExecutorService } from "./plugin-executor.service.js";
-export type { ExecutionContext, ExecutionResult, PluginExecutorOptions } from "./plugin-executor.service.js";
+// ─── New PluginExecutorService ───────────────────────────────────────────────
+
+export {
+  PluginExecutorService,
+  type ExecutionContext,
+  type ExecutionResult,
+  type PluginExecutorOptions,
+  type SandboxTier,
+} from "./plugin-executor.service.js";
+
+// ─── Scoped External Access Sandbox ─────────────────────────────────────────
+
+export {
+  ScopedExternalAccessSandbox,
+  createScopedExternalAccessSandbox,
+  type ScopedExternalAccessConfig,
+  type ExternalAccessRequest,
+  type ExternalAccessResponse,
+  type DomainRateLimit,
+} from "./scoped-external-access-sandbox.js";

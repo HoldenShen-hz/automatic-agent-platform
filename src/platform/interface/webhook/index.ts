@@ -144,6 +144,14 @@ export class WebhookIngressService {
   public getEndpoint(endpointId: string): WebhookEndpointRegistration | null {
     return this.endpoints.get(endpointId) ?? null;
   }
+
+  public deleteEndpoint(endpointId: string): boolean {
+    return this.endpoints.delete(endpointId);
+  }
+
+  public listEndpoints(): WebhookEndpointRegistration[] {
+    return [...this.endpoints.values()];
+  }
 }
 
 function verifySignature(input: {

@@ -6,5 +6,6 @@ export * from "./final-response.js";
 export * from "./assessment-service.js";
 export * from "./handoff-model.js";
 export * from "./stage-timeline.js";
+export * from "./stage-transition-fsm.js";
 export * from "./oapeflir-loop-service.js";
 export * from "./learn/index.js";

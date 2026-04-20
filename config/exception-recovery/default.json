@@ -1,0 +1,129 @@
+{
+  "$schema": "../../../src/platform/contracts/types/schemas/config-schema.ts",
+  "recoveryStrategyTable": {
+    "byExceptionType": {
+      "validation_error": {
+        "retryable": false,
+        "action": "cancel",
+        "maxRetries": 0
+      },
+      "policy_denied": {
+        "retryable": false,
+        "action": "cancel",
+        "maxRetries": 0
+      },
+      "auth_error": {
+        "retryable": false,
+        "action": "cancel",
+        "maxRetries": 0
+      },
+      "transient_external_error": {
+        "retryable": true,
+        "action": "retry_new_ticket",
+        "maxRetries": 3,
+        "backoffMultiplier": 1.5,
+        "initialDelayMs": 1000
+      },
+      "permanent_external_error": {
+        "retryable": false,
+        "action": "move_dead_letter",
+        "maxRetries": 0
+      },
+      "provider_error": {
+        "retryable": true,
+        "action": "retry_new_ticket",
+        "maxRetries": 3,
+        "backoffMultiplier": 2.0,
+        "initialDelayMs": 2000
+      },
+      "tool_execution_error": {
+        "retryable": false,
+        "action": "escalate_takeover",
+        "maxRetries": 0
+      },
+      "sandbox_error": {
+        "retryable": false,
+        "action": "cancel",
+        "maxRetries": 0
+      },
+      "storage_error": {
+        "retryable": true,
+        "action": "retry_new_ticket",
+        "maxRetries": 2,
+        "backoffMultiplier": 1.5,
+        "initialDelayMs": 500
+      },
+      "workflow_state_error": {
+        "retryable": false,
+        "action": "escalate_takeover",
+        "maxRetries": 0
+      },
+      "tenant_boundary_error": {
+        "retryable": false,
+        "action": "cancel",
+        "maxRetries": 0
+      },
+      "monetization_error": {
+        "retryable": false,
+        "action": "move_dead_letter",
+        "maxRetries": 0
+      },
+      "internal_error": {
+        "retryable": false,
+        "action": "move_dead_letter",
+        "maxRetries": 0
+      },
+      "locking_error": {
+        "retryable": true,
+        "action": "resume_same_worker",
+        "maxRetries": 1,
+        "backoffMultiplier": 1.0,
+        "initialDelayMs": 100
+      },
+      "memory_error": {
+        "retryable": false,
+        "action": "escalate_takeover",
+        "maxRetries": 0
+      },
+      "runtime_error": {
+        "retryable": true,
+        "action": "retry_new_ticket",
+        "maxRetries": 1,
+        "backoffMultiplier": 1.5,
+        "initialDelayMs": 1000
+      },
+      "unknown_error": {
+        "retryable": false,
+        "action": "move_dead_letter",
+        "maxRetries": 0
+      }
+    },
+    "byRiskLevel": {
+      "low": {
+        "autoRecover": true,
+        "notifyOnFailure": false
+      },
+      "medium": {
+        "autoRecover": true,
+        "notifyOnFailure": true
+      },
+      "high": {
+        "autoRecover": false,
+        "notifyOnFailure": true
+      },
+      "critical": {
+        "autoRecover": false,
+        "notifyOnFailure": true
+      }
+    },
+    "byAttemptThreshold": {
+      "resumeSameWorkerMaxAttempts": 2,
+      "retryNewTicketMaxAttempts": 3,
+      "escalateTakeoverMinAttempts": 1,
+      "moveToDeadLetterMinAttempts": 2
+    }
+  },
+  "defaultAction": "move_dead_letter",
+  "staleExecutionThresholdMs": 300000,
+  "heartbeatTimeoutMs": 60000
+}

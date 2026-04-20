@@ -51,7 +51,7 @@ export interface TaskRouteDeps {
   authService: ApiAuthService | null;
   inspectService: InspectService;
   missionControlService: MissionControlService;
-  taskStore: AuthoritativeTaskStore;
+  taskStore?: AuthoritativeTaskStore;
 }
 
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
@@ -287,12 +287,15 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/tasks",
       handler: (ctx) => {
-        const principal = requirePrincipal(ctx.request, deps.authService, "editor");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
         const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
 
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
         deps.taskStore.task.insertTask({
           id: taskId,
           parentId: payload.parentId ?? null,
@@ -301,8 +304,8 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           tenantId,
           title: payload.title,
           status: "queued",
-          source: payload.source ?? "api",
-          priority: payload.priority ?? "medium",
+          source: payload.source ?? "user",
+          priority: payload.priority ?? "normal",
           inputJson: payload.inputJson ?? "{}",
           normalizedInputJson: null,
           outputJson: null,
@@ -322,12 +325,15 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       method: "POST",
       pathname: "/v1/tasks",
       handler: (ctx) => {
-        const principal = requirePrincipal(ctx.request, deps.authService, "editor");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
         const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
 
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
         deps.taskStore.task.insertTask({
           id: taskId,
           parentId: payload.parentId ?? null,
@@ -336,8 +342,8 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           tenantId,
           title: payload.title,
           status: "queued",
-          source: payload.source ?? "api",
-          priority: payload.priority ?? "medium",
+          source: payload.source ?? "user",
+          priority: payload.priority ?? "normal",
           inputJson: payload.inputJson ?? "{}",
           normalizedInputJson: null,
           outputJson: null,
@@ -362,10 +368,13 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         if (segments[0] !== "tasks" || segments.length !== 2) {
           return null;
         }
-        const principal = requirePrincipal(ctx.request, deps.authService, "editor");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const taskId = validateTaskId(segments[1], "PATCH task");
         const payload = parseUpdateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
 
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
         const existing = deps.taskStore.task.getTask(taskId);
         if (!existing) {
           throw new ApiError(404, "api.task_not_found", "Task not found.");
@@ -377,7 +386,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           deps.taskStore.task.updateTaskInput(taskId, existing.inputJson, existing.normalizedInputJson ?? existing.inputJson, now);
         }
         if (payload.status != null) {
-          deps.taskStore.task.updateTaskStatus(taskId, payload.status, now);
+          deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);
         }
         if (payload.outputJson != null) {
           deps.taskStore.task.updateTaskOutput(taskId, payload.outputJson, now);
@@ -396,10 +405,13 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
           return null;
         }
-        const principal = requirePrincipal(ctx.request, deps.authService, "editor");
+        const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const taskId = validateTaskId(segments[2], "PATCH task");
         const payload = parseUpdateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
 
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
         const existing = deps.taskStore.task.getTask(taskId);
         if (!existing) {
           throw new ApiError(404, "api.task_not_found", "Task not found.");
@@ -411,7 +423,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           deps.taskStore.task.updateTaskInput(taskId, existing.inputJson, existing.normalizedInputJson ?? existing.inputJson, now);
         }
         if (payload.status != null) {
-          deps.taskStore.task.updateTaskStatus(taskId, payload.status, now);
+          deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);
         }
         if (payload.outputJson != null) {
           deps.taskStore.task.updateTaskOutput(taskId, payload.outputJson, now);
@@ -433,6 +445,9 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         const taskId = validateTaskId(segments[1], "DELETE task");
 
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
         const existing = deps.taskStore.task.getTask(taskId);
         if (!existing) {
           throw new ApiError(404, "api.task_not_found", "Task not found.");
@@ -440,7 +455,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         assertTaskTenantAccess(principal, existing.tenantId ?? null, "api.task_not_found", "Task not found.");
 
         const now = nowIso();
-        deps.taskStore.task.updateTaskStatus(taskId, "cancelled", now);
+        deps.taskStore.task.updateTaskStatus(taskId, "cancelled", now, null, now);
 
         return buildJsonResponse(ctx.requestId, 200, { taskId, status: "cancelled" });
       },
@@ -457,6 +472,9 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         const taskId = validateTaskId(segments[2], "DELETE task");
 
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
         const existing = deps.taskStore.task.getTask(taskId);
         if (!existing) {
           throw new ApiError(404, "api.task_not_found", "Task not found.");
@@ -464,7 +482,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         assertTaskTenantAccess(principal, existing.tenantId ?? null, "api.task_not_found", "Task not found.");
 
         const now = nowIso();
-        deps.taskStore.task.updateTaskStatus(taskId, "cancelled", now);
+        deps.taskStore.task.updateTaskStatus(taskId, "cancelled", now, null, now);
 
         return buildJsonResponse(ctx.requestId, 200, { taskId, status: "cancelled" });
       },

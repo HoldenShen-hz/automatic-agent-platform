@@ -351,14 +351,14 @@ const createTaskPayloadSchema = z.object({
   divisionId: nonEmptyStringSchema.optional(),
   parentId: nonEmptyStringSchema.optional(),
   inputJson: z.string().optional(),
-  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
-  source: z.enum(["api", "ui", "scheduler", "webhook", "system"]).optional(),
+  priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+  source: z.enum(["user", "perception", "system"]).optional(),
 }).strict();
 
 const updateTaskPayloadSchema = z.object({
   title: nonEmptyStringSchema.optional(),
   status: z.enum(["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"]).optional(),
-  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
   outputJson: z.string().optional(),
 }).strict();
 
@@ -367,14 +367,14 @@ export interface CreateTaskPayload {
   divisionId?: string;
   parentId?: string;
   inputJson?: string;
-  priority?: "low" | "medium" | "high" | "critical";
-  source?: "api" | "ui" | "scheduler" | "webhook" | "system";
+  priority?: "low" | "normal" | "high" | "urgent";
+  source?: "user" | "perception" | "system";
 }
 
 export interface UpdateTaskPayload {
   title?: string;
   status?: "queued" | "pending" | "in_progress" | "awaiting_decision" | "done" | "failed" | "cancelled";
-  priority?: "low" | "medium" | "high" | "critical";
+  priority?: "low" | "normal" | "high" | "urgent";
   outputJson?: string;
 }
 
@@ -407,5 +407,51 @@ export function parseUpdateTaskPayload(body: unknown): UpdateTaskPayload {
     ...(payload.status != null ? { status: payload.status } : {}),
     ...(payload.priority != null ? { priority: payload.priority } : {}),
     ...(payload.outputJson != null ? { outputJson: payload.outputJson } : {}),
+  };
+}
+
+// ── Webhook Schemas ─────────────────────────────────────────────────────────
+
+const createWebhookEndpointSchema = z.object({
+  endpointId: nonEmptyStringSchema,
+  source: nonEmptyStringSchema,
+  allowedEventTypes: z.array(z.string()).optional(),
+  algorithm: z.enum(["none", "sha256_hmac"]).optional(),
+  signingSecret: z.string().optional(),
+  signatureHeader: z.string().optional(),
+  idempotencyHeader: z.string().optional(),
+  dispatchTargetRef: nonEmptyStringSchema.optional(),
+  enabled: z.boolean().optional(),
+}).strict();
+
+export interface CreateWebhookEndpointPayload {
+  endpointId: string;
+  source: string;
+  allowedEventTypes?: string[];
+  algorithm?: "none" | "sha256_hmac";
+  signingSecret?: string;
+  signatureHeader?: string;
+  idempotencyHeader?: string;
+  dispatchTargetRef?: string;
+  enabled?: boolean;
+}
+
+export function parseCreateWebhookEndpointPayload(body: unknown): CreateWebhookEndpointPayload {
+  const payload = parseWithApiSchema(
+    createWebhookEndpointSchema,
+    body,
+    "api.invalid_webhook_endpoint_payload",
+    "Webhook endpoint payload must be an object.",
+  );
+  return {
+    endpointId: payload.endpointId,
+    source: payload.source,
+    ...(payload.allowedEventTypes != null ? { allowedEventTypes: payload.allowedEventTypes } : {}),
+    ...(payload.algorithm != null ? { algorithm: payload.algorithm } : {}),
+    ...(payload.signingSecret != null ? { signingSecret: payload.signingSecret } : {}),
+    ...(payload.signatureHeader != null ? { signatureHeader: payload.signatureHeader } : {}),
+    ...(payload.idempotencyHeader != null ? { idempotencyHeader: payload.idempotencyHeader } : {}),
+    ...(payload.dispatchTargetRef != null ? { dispatchTargetRef: payload.dispatchTargetRef } : {}),
+    ...(payload.enabled != null ? { enabled: payload.enabled } : {}),
   };
 }

@@ -81,19 +81,27 @@ export class RiskEvaluationEngine {
     const actions = this.determineActions(riskLevel);
     const actionConfig = this.config.riskLevelActions[riskLevel];
 
-    return {
+    const baseResult = {
       taskId: request.taskId,
       riskScore: Math.round(riskScore * 1000) / 1000,
       riskLevel,
       actions,
-      requiresApproval: actionConfig.requiresApproval,
-      approvalType: actionConfig.approvalType,
       evidenceLevel: actionConfig.evidenceLevel,
       logLevel: actionConfig.logLevel,
       autoExecute: actionConfig.autoExecute,
       sideEffect: actionConfig.sideEffect,
       factorBreakdown,
     };
+
+    if (actionConfig.requiresApproval) {
+      return {
+        ...baseResult,
+        requiresApproval: true as const,
+        approvalType: actionConfig.approvalType as "standard" | "break_glass",
+      };
+    }
+
+    return { ...baseResult, requiresApproval: false as const };
   }
 
   /**

@@ -26,6 +26,11 @@ import {
 } from "../../control-plane/iam/sandbox-policy.js";
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  ScopedExternalAccessSandbox,
+  createScopedExternalAccessSandbox,
+  type ScopedExternalAccessConfig,
+} from "./scoped-external-access-sandbox.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -291,10 +296,25 @@ export class PluginExecutorService {
     // Create sandbox context for execution
     const sandbox = this.createSandboxContext(pluginSandboxPolicy, sandboxTier);
 
+    // Create scoped external access sandbox if tier requires it
+    let scopedSandbox: ScopedExternalAccessSandbox | undefined;
+    if (sandboxTier === "scoped_external_access") {
+      // scoped_external_access sandbox gets configuration from plugin manifest's sandbox policy
+      // allowedExternalDomains and limits are defined in sandbox configuration
+      const sandboxConfig = instance.manifest.sandbox;
+      scopedSandbox = createScopedExternalAccessSandbox(
+        sandboxConfig.allowedExternalDomains ?? [],
+        {
+          maxResponseSizeBytes: sandboxConfig.maxResponseSizeBytes ?? 1024 * 1024,
+          rateLimitPerMinute: sandboxConfig.rateLimitPerMinute ?? 60,
+        },
+      );
+    }
+
     try {
       // Execute with timeout constraint
       const output = await this.executeWithTimeout(
-        () => this.invokePluginAction(instance.hooks, action, params, context),
+        () => this.invokePluginAction(instance.hooks, action, params, context, scopedSandbox),
         timeout,
       );
 
@@ -442,10 +462,15 @@ export class PluginExecutorService {
     action: string,
     params: Record<string, unknown>,
     context: ExecutionContext,
+    scopedSandbox?: ScopedExternalAccessSandbox,
   ): Promise<unknown> {
     const handler = (hooks as Record<string, unknown>)[action];
     if (typeof handler === "function") {
-      return handler.call(hooks, { ...params, context });
+      // Inject scoped sandbox into context if available
+      const executionContext = scopedSandbox
+        ? { ...params, context: { ...context, scopedSandbox } }
+        : { ...params, context };
+      return handler.call(hooks, executionContext);
     }
     throw new ValidationError(
       "plugin_executor.action_not_implemented",

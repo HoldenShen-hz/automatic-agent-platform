@@ -364,6 +364,42 @@ export class TenantBoundaryError extends AppError {
 }
 
 /**
+ * Error for transient external service failures (e.g., network timeouts, temporary API outages).
+ * These errors are retryable because the underlying issue may resolve on its own.
+ * Default HTTP status: 502 Bad Gateway, retryable by default
+ */
+export class TransientExternalError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "external",
+      source: options.source ?? "provider",
+      statusCode: options.statusCode ?? 502,
+      retryable: options.retryable ?? true,
+    });
+    this.name = "TransientExternalError";
+  }
+}
+
+/**
+ * Error for permanent external service failures (e.g., invalid API keys, rate limit exceeded with no recovery path).
+ * These errors are NOT retryable because retrying will not resolve the issue.
+ * Default HTTP status: 502 Bad Gateway, NOT retryable
+ */
+export class PermanentExternalError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "external",
+      source: options.source ?? "provider",
+      statusCode: options.statusCode ?? 502,
+      retryable: options.retryable ?? false,
+    });
+    this.name = "PermanentExternalError";
+  }
+}
+
+/**
  * Error for billing and payment failures.
  * Default HTTP status: 402 Payment Required
  */
