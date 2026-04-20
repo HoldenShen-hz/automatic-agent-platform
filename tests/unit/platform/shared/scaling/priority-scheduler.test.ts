@@ -26,11 +26,11 @@ test("PRIORITY_CLASSES high has lower_priority preemption policy", () => {
   assert.equal(PRIORITY_CLASSES.high.preemptionPolicy, "lower_priority");
 });
 
-test("canPreempt returns false for never policy target", () => {
+test("canPreempt returns false for never policy preemptor", () => {
   const preemptor: QueuedTask = {
     taskId: "task-1",
-    priorityClass: "high",
-    priorityValue: 800,
+    priorityClass: "standard", // standard has preemptionPolicy: "never"
+    priorityValue: 500,
     enqueuedAt: Date.now(),
     waitedMs: 0,
     canBePreempted: true,
@@ -39,15 +39,15 @@ test("canPreempt returns false for never policy target", () => {
 
   const target: QueuedTask = {
     taskId: "task-2",
-    priorityClass: "standard",
-    priorityValue: 500,
+    priorityClass: "background",
+    priorityValue: 200,
     enqueuedAt: Date.now(),
     waitedMs: 0,
     canBePreempted: true,
     requestedResources: {},
   };
 
-  // Standard has preemptionPolicy: "never"
+  // Standard has preemptionPolicy: "never" - cannot preempt any task
   const decision = canPreempt(preemptor, target);
 
   assert.equal(decision.shouldPreempt, false);

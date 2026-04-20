@@ -1,7 +1,8 @@
 # ADR-007 进化引擎
 
-- 状态：Accepted
+- 状态：Partially Superseded by ADR-075
 - 决策日期：2026-04-02
+- 部分取代：ADR-075 的六级发布模型已取代其中"Release 仅允许 off/suggest/shadow 三档"的描述
 
 ## 背景
 

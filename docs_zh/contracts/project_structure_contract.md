@@ -41,63 +41,59 @@ Phase 1a 允许并推荐存在以下顶层目录：
 
 ## 3. `src/` authoritative 结构
 
-Phase 1a 的推荐结构：
+当前实现结构（Phase 1a-4）：
 
 ```text
 src/
-  core/
-    api/
-    artifacts/
-    config/
-    divisions/
-    events/
-    memory/
-    observability/
-    providers/
+  core/                          # 兼容性运行时（仅保留旧代码迁移路径）
     runtime/
-    security/
-    storage/
-    tools/
-    workflow/
-    types/
-    approvals/
-    agent-loop/
-    assessment/
-    feedback/
-    improvement/
-    learning/
-    planning/
-    cost/
-    queue/
-  gateway/
-    stream/
-    targets/
-  cli/
+  platform/                      # 权威平台核心代码
+    control-plane/               # IAM, 配置中心, 审批中心, 事件控制
+    execution/                   # 调度器, 执行引擎, 恢复, Worker池
+    orchestration/               # OAPEFLIR, 路由,  planner, HITL
+    state-evidence/              # Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
+    interface/                   # API, Channel Gateway, Ingress, Scheduler
+    shared/                      # 可观测性, 稳定性, 工具元数据
+    model-gateway/               # 模型网关, 成本追踪
+    prompt-engine/                # Prompt引擎
+    compliance/                   # 合规相关（加密擦除等）
+    agent-delegation/             # 代理委托
+    cost-management/              # 成本管理
+    prompt-registry/              # Prompt注册表
+  interaction/                   # NL入口, 目标分解, 主动Agent, 仪表盘, UX
+  org-governance/                # 组织层级, SSO/SCIM, 合规
+  ops-maturity/                 # 可解释性, 漂移检测, 边缘计算, 成本, 混沌工程
+  scale-ecosystem/               # 多区域, 公平调度, SLA, 连接器, 市场
+  sdk/                           # CLI, Pack SDK, Plugin SDK, Client SDK
+  domains/                       # 领域描述符, 接入, 注册表
+  plugins/                       # 插件系统
+  testing/                       # 测试工具
+  benchmarks/                    # 性能基准测试
+  apps/                         # 应用入口
 ```
 
 规则：
 
-- `core/` 只放平台核心域模型和运行逻辑。
-- `gateway/` 负责渠道适配，不拥有任务编排语义。
-- API、tools、providers、division loader 在当前实现中统一收敛在 `src/core/` 下，而不是拆成 `src/server/` / `src/tools/` / `src/providers/` 顶层目录。
-- `src/core/divisions/` 只负责加载定义，不承载事业部业务内容本身。
+- `src/platform/` 是权威代码目录，包含所有核心运行时逻辑
+- `src/core/` 仅用于向后兼容，不新增canonical运行时逻辑
+- `src/platform/` 内部按五平面架构组织：control-plane, execution, orchestration, state-evidence, interface
+- 上层业务能力在对应上层目录（interaction, org-governance, ops-maturity等）
 
-可预留但非 Phase 1a 必做目录：
+Phase 1a 预留目录（当前不存在但为后续阶段预留）：
 
 ```text
 src/
   core/
     memory/
-  supervisor/
-  plugins/
-  domains/
+    supervisor/
+  perception/                    # Observe/Assess 语义（当前收敛在 ops-maturity/）
 ```
 
 说明：
 
-- `memory/`、`supervisor/`、`plugins/`、`domains/` 可以为后续阶段预留目录，但不应被误判为 Phase 1a 当前必做交付物。
-- 当前 Observe 语义优先收敛在 `src/core/observability/`、`src/core/agent-loop/` 与 `src/core/assessment/`，而不是新增顶层 `perception/` 目录。
-- 若未来需要把 `api` / `tools` / `providers` 从 `src/core/` 进一步拆到顶层目录，必须先更新本 contract，再做迁移。
+- `memory/`、`supervisor/` 可以为后续阶段预留目录
+- 当前 Observe 语义优先收敛在 `src/platform/shared/observability/`、`src/ops-maturity/`
+- 若未来需要引入新顶层目录，必须先更新本 contract，再做迁移
 
 ## 4. `config/` authoritative 结构
 

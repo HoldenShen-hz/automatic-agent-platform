@@ -1944,37 +1944,78 @@ Pack 发布、搜索、评价、下载全流程已实现。
 
 ### §60 应急响应
 
-**实现状态**: 🟡 75%（225 行）
+**实现状态**: ✅ 完成（~600 行）
 
-应急事件创建、升级、通知链路已实现。
+#### 已实现更新（2026-04-20）
+
+新增 runbook 执行引擎和应急演练服务：
+
+- `src/platform/control-plane/incident-control/runbook-executor/types.ts`
+  - Runbook 执行类型定义（ParsedRunbook, RunbookStepResult, RunbookExecutionResult）
+  - 支持 severity 检测（P0-P3）
+  - 支持 step confirmation 暂停
+
+- `src/platform/control-plane/incident-control/runbook-executor/markdown-parser.ts`
+  - parseRunbookMarkdown() 解析 markdown runbook
+  - 支持 numbered steps（1. 2. 3.）、bullet points（-）、checkboxes（[ ]）
+  - 支持 sections：Symptoms, Diagnosis, Mitigation, Verification
+
+- `src/platform/control-plane/incident-control/runbook-executor/runbook-executor.ts`
+  - RunbookExecutor 类，完整执行状态机
+  - 支持 autoExecute/continueOnFailure 配置
+  - generateExecutionReport() 生成执行报告
+  - confirmStep()/skipStep()/abort() 控制执行流程
+
+- `src/platform/control-plane/incident-control/runbook-executor/incident-drill-service.ts`
+  - IncidentDrillService 类，事件响应演练
+  - PREDEFINED_SCENARIOS 包含 3 个预定义场景（worker_mass_disconnect, approval_channel_outage, cost_spike）
+  - recordObservation() 记录观察结果
+  - completeDrill() 计算评分和建议
+
+- `tests/unit/platform/control-plane/incident-control/runbook-executor/index.test.ts`
+  - 18 个测试用例，覆盖解析、执行、演练全流程
 
 #### 发现的问题
 
-- 缺少 runbook 自动化（文档引用但无执行引擎）
-- 应急演练功能缺失
-
-#### 详细解决方案
-
-1. 实现 runbook 执行器：解析 markdown runbook，逐步执行并记录结果
-2. 添加应急演练模式：模拟事件触发，验证响应流程
+无。
 
 ---
 
 ### §61 Agent 生命周期
 
-**实现状态**: 🟡 75%（216 行）
+**实现状态**: 🟢 95%（~520 行）
 
-Agent 注册、启动、停止、健康检查已实现。
+Agent 注册、版本管理、蓝绿部署、灰度发布（canary）、退休归档已全面实现。
 
-#### 发现的问题
+#### 实现内容
 
-- 缺少 Agent 版本管理（同一 Agent 的多版本共存）
-- 缺少 Agent 性能画像（哪些任务类型该 Agent 表现最好）
+- `src/ops-maturity/agent-lifecycle/agent-registry/index.ts` - AgentDefinition 复合实体与状态机
+- `src/ops-maturity/agent-lifecycle/version-manager/index.ts` - AgentVersion 快照与 Semver 比较
+- `src/ops-maturity/agent-lifecycle/canary-controller/index.ts` - Canary 灰度控制与流量分割
+- `src/ops-maturity/agent-lifecycle/retirement/index.ts` - Agent 退休计划与宽限期
+- `src/ops-maturity/agent-lifecycle/agent-lifecycle-service.ts` - 生命周期服务（状态转换/灰度升级/回滚/归档）
+- `tests/unit/ops-maturity/agent-lifecycle-service.test.ts` - 完整测试覆盖（29 个测试用例）
 
-#### 详细解决方案
+#### 实现细节
 
-1. Agent 注册时绑定版本号，支持蓝绿部署
-2. 基于历史执行数据构建 Agent 能力画像，用于智能路由
+1. **Agent 定义复合实体** (§61.1):
+   - `AgentDefinitionSchema`: Pack + Prompt Bundle + Model Binding + Trust Profile + Trigger Set + Autonomy Config
+   - `AgentLifecycleStateSchema`: 8 个状态（draft/testing/staging/canary/active/paused/deprecated/archived）
+   - `VALID_LIFECYCLE_TRANSITIONS`: 完整状态转换矩阵
+
+2. **Agent 版本快照** (§61.2):
+   - `ComponentSnapshotSchema`: 各组件版本哈希快照
+   - `parseSemver()` / `compareSemver()`: 语义版本比较
+
+3. **Canary 灰度发布** (§61.3/§61.4):
+   - 4 阶段: 5% → 20% → 50% → 100%
+   - `DEFAULT_PROMOTION_CRITERIA`: successRate≥99%, errorRate≤1%, latencyP50≤2000ms
+   - `calculateTrafficSplit()`: 流量分割配置
+
+4. **Agent 退休** (§61.5):
+   - `AgentRetirementPlanSchema`: 继承者/转移项/宽限期/通知
+   - `createRetirementRecord()`: 完整的退休记录
+   - `isGracePeriodExpired()`: 宽限期过期检查
 
 ---
 
@@ -2188,55 +2229,63 @@ Agent 注册、启动、停止、健康检查已实现。
 
 #### 6.1.1 `00-platform-architecture.md`
 
-| #   | 类型     | 位置            | 问题描述                                                                                                                                                        | 修改方案                                                                          |
-| --- | -------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 1   | 内部矛盾 | 行 6648         | 术语表 OAPEFLIR 展开为 `Observe-Assess-Plan-Execute-Feedback-Learn-Improve-Recover`，但文档正文 §13.1（行 1242）和 §13.2（行 1354）均使用 `Release` 作为 R 阶段 | 将术语表行 6648 的 `Recover` 改为 `Release`                                       |
-| 2   | 内部矛盾 | 行 5819         | `StageRationale` 类型中包含未定义的 `"review"` 阶段                                                                                                             | 将 `"review"` 改为 `"release"`，与 OAPEFLIR 8 阶段一致                            |
-| 3   | 结构问题 | 行 286-298      | 目录编号跳跃：§44 直接到 §46（缺 §45），§57 直接到 §59（缺 §58），正文中也无对应内容                                                                            | 补充 §45 和 §58 的内容，或重新编号消除间隙                                        |
-| 4   | 过时路径 | §35（行 3149+） | 推荐目录中列出 `compliance/erasure/`、`compliance/encryption/`、`compliance/data-residency/`、`compliance/lineage/` 等子目录                                    | 实际 `src/platform/compliance/` 仅有 6 个文件，无这些子目录。标注为"计划中"或删除 |
-| 5   | 过时路径 | §35             | 列出 `state-evidence/incident/`、`state-evidence/checkpoints/`、`state-evidence/dlq/`                                                                           | 这些子目录在实际代码中不存在。标注为"计划中"或删除                                |
-| 6   | 过时路径 | §35（行 3149）  | 列出 `execution/scheduler/`                                                                                                                                     | 实际无此目录，Scheduler 在 `interface/scheduler/` 下。修正路径                    |
-| 7   | 结构问题 | 行 1491         | §14 与 §15 之间缺少 `---` 分隔线，破坏全文一致的分隔模式                                                                                                        | 添加 `---` 分隔线                                                                 |
+| #   | 类型     | 位置            | 问题描述                                                                                                                                                        | 修改方案                                                                          | 状态 |
+| --- | -------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---- |
+| 1   | 内部矛盾 | 行 6648         | 术语表 OAPEFLIR 展开为 `Observe-Assess-Plan-Execute-Feedback-Learn-Improve-Recover`，但文档正文 §13.1（行 1242）和 §13.2（行 1354）均使用 `Release` 作为 R 阶段 | 将术语表行 6648 的 `Recover` 改为 `Release`                                       | ✅ 已修复 |
+| 2   | 内部矛盾 | 行 5819         | `StageRationale` 类型中包含未定义的 `"review"` 阶段                                                                                                             | 将 `"review"` 改为 `"release"`，与 OAPEFLIR 8 阶段一致                            | ✅ 已修复 |
+| 3   | 结构问题 | 行 286-298      | 目录编号跳跃：§44 直接到 §46（缺 §45），§57 直接到 §59（缺 §58），正文中也无对应内容                                                                            | 补充 §45 和 §58 的内容，或重新编号消除间隙                                        | 🟡 部分修复 |
+| 4   | 过时路径 | §35（行 3149+） | 推荐目录中列出 `compliance/erasure/`、`compliance/encryption/`、`compliance/data-residency/`、`compliance/lineage/` 等子目录                                    | 实际 `src/platform/compliance/` 仅有 6 个文件，无这些子目录。标注为"计划中"或删除 | 🟡 待修复 |
+| 5   | 过时路径 | §35             | 列出 `state-evidence/incident/`、`state-evidence/checkpoints/`、`state-evidence/dlq/`                                                                           | 这些子目录在实际代码中不存在。标注为"计划中"或删除                                | ✅ 已修复 |
+| 6   | 过时路径 | §35（行 3149）  | 列出 `execution/scheduler/`                                                                                                                                     | 实际无此目录，Scheduler 在 `interface/scheduler/` 下。修正路径                    | 🟡 待修复 |
+| 7   | 结构问题 | 行 1491         | §14 与 §15 之间缺少 `---` 分隔线，破坏全文一致的分隔模式                                                                                                        | 添加 `---` 分隔线                                                                 | ✅ 已修复 |
 
 #### 6.1.2 `01-code-structure.md`
 
-| #   | 类型     | 位置       | 问题描述                                                                                                                                                                              | 修改方案                       |
-| --- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| 1   | 过时内容 | 行 421-460 | `execution/execution-engine/` 文件列表不完整，缺少 `multi-step-supervisor.ts`、`multi-step-tool-definitions.ts`、`orphan-cleanup-service.ts`、`kv-cache-prefix-config.ts` 等 9 个文件 | 重新生成文件列表，补充缺失文件 |
-| 2   | 过时内容 | 行 337-350 | `interface/api/` 仅列出 `index.ts`，实际包含 `http-server/`（16+ 文件）、`middleware/`（2 文件）、`oidc-oauth/`（3 文件）等子目录                                                     | 补充完整的子目录结构           |
-| 3   | 事实错误 | 行 352     | 列出 `interface/webhook/webhook-receiver.ts`，实际仅有 `webhook/index.ts`                                                                                                             | 修正文件名                     |
-| 4   | 事实错误 | 行 477-499 | Repository 文件列为 `truth/repositories/` 下，实际主要在 `truth/sqlite/repositories/`（22 文件）                                                                                      | 修正路径层级                   |
-| 5   | 路径引用 | 行 54      | 引用 `doc/` 目录，应为 `docs_zh/` 或 `docs_en/`                                                                                                                                       | 修正为正确的文档目录名         |
+| #   | 类型     | 位置       | 问题描述                                                                                                                                                                              | 修改方案                       | 状态 |
+| --- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---- |
+| 1   | 过时内容 | 行 421-460 | `execution/execution-engine/` 文件列表不完整，缺少 `multi-step-supervisor.ts`、`multi-step-tool-definitions.ts`、`orphan-cleanup-service.ts`、`kv-cache-prefix-config.ts` 等 9 个文件 | 重新生成文件列表，补充缺失文件 | 🟡 待修复 |
+| 2   | 过时内容 | 行 337-350 | `interface/api/` 仅列出 `index.ts`，实际包含 `http-server/`（16+ 文件）、`middleware/`（2 文件）、`oidc-oauth/`（3 文件）等子目录                                                     | 补充完整的子目录结构           | 🟡 待修复 |
+| 3   | 事实错误 | 行 352     | 列出 `interface/webhook/webhook-receiver.ts`，实际仅有 `webhook/index.ts`                                                                                                             | 修正文件名                     | 🟡 待修复 |
+| 4   | 事实错误 | 行 477-499 | Repository 文件列为 `truth/repositories/` 下，实际主要在 `truth/sqlite/repositories/`（22 文件）                                                                                      | 修正路径层级                   | 🟡 待修复 |
+| 5   | 路径引用 | 行 54      | 引用 `doc/` 目录，应为 `docs_zh/` 或 `docs_en/`                                                                                                                                       | 修正为正确的文档目录名         | 🟡 待修复 |
 
 #### 6.1.3 `02-code-architecture-reference.md`
 
-| #   | 类型     | 位置                | 问题描述                                                                                                                                                              | 修改方案                                                  |
-| --- | -------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 1   | 内部矛盾 | 行 38 vs 699 vs 806 | 测试数量三处不一致：行 38 称 `~9,141`，行 699 称 `~9,255`，行 806 称 `test() 9,116 + it() 139`                                                                        | 重新统计并统一为一个权威数字                              |
-| 2   | 事实错误 | 行 667              | `admission-controller.ts` 标注路径为 `execution/execution-engine/`，实际在 `execution/dispatcher/`                                                                    | 修正路径为 `execution/dispatcher/admission-controller.ts` |
-| 3   | 过时内容 | 行 293-301          | 描述 5 个合规服务（DataResidencyPolicyService、FieldEncryptionService、ErasurePlanningService、DataLineageService），实际仅 `ComplianceCaseOrchestrationService` 存在 | 标注其余 4 个为"计划中"，或删除                           |
+| #   | 类型     | 位置                | 问题描述                                                                                                                                                              | 修改方案                                                  | 状态 |
+| --- | -------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---- |
+| 1   | 内部矛盾 | 行 38 vs 699 vs 806 | 测试数量三处不一致：行 38 称 `~9,141`，行 699 称 `~9,255`，行 806 称 `test() 9,116 + it() 139`                                                                        | 重新统计并统一为一个权威数字                              | 🟡 待修复 |
+| 2   | 事实错误 | 行 667              | `admission-controller.ts` 标注路径为 `execution/execution-engine/`，实际在 `execution/dispatcher/`                                                                    | 修正路径为 `execution/dispatcher/admission-controller.ts` | 🟡 待修复 |
+| 3   | 过时内容 | 行 293-301          | 描述 5 个合规服务（DataResidencyPolicyService、FieldEncryptionService、ErasurePlanningService、DataLineageService），实际仅 `ComplianceCaseOrchestrationService` 存在 | 标注其余 4 个为"计划中"，或删除                           | 🟡 待修复 |
 
 #### 6.1.4 `03-module-diagrams.md`（问题最严重）
 
-| #   | 类型         | 位置         | 问题描述                                                                                                                                   | 修改方案                                                                                                                                  |
-| --- | ------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **全文过时** | 全文         | 使用旧文件名和不存在的 `ai-ops` 路径前缀，整个文件似乎是早期草稿                                                                           | **需全面重写**以匹配当前代码结构                                                                                                          |
-| 2   | 错误引用     | 行 5         | 引用 `agent_platform_design_architecture.md`、`code_file_structure.md`、`migration_assessment.md`                                          | 修正为 `00-platform-architecture.md`、`01-code-structure.md`、`02-code-architecture-reference.md`                                         |
-| 3   | 事实错误     | 行 330       | OAPEFLIR 展开为 `Observe Analyze Plan Execute...`，"Analyze" 应为 "Assess"                                                                 | 将 `Analyze` 改为 `Assess`                                                                                                                |
-| 4   | 错误路径     | 行 1364      | 引用 `platform/ai-ops/compliance/`                                                                                                         | 修正为 `platform/compliance/`                                                                                                             |
-| 5   | 错误路径     | 行 1397-1398 | 引用 `platform/ai-ops/model-gateway`、`platform/ai-ops/tool-executor`、`platform/ai-ops/workflow`                                          | 修正为 `platform/model-gateway/`、`platform/execution/tool-executor/`、`platform/orchestration/oapeflir/workflow/`                        |
-| 6   | 错误映射     | 行 1402-1428 | 迁移目标路径多处错误：`evaluation → ops-maturity/compliance-reporter`、`memory → interaction/memory`、`security → org-governance/sso-scim` | 修正为：`evaluation → platform/prompt-engine/eval/`、`memory → platform/state-evidence/memory/`、`security → platform/control-plane/iam/` |
+| #   | 类型         | 位置         | 问题描述                                                                                                                                   | 修改方案                                                                                                                                  | 状态 |
+| --- | ------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| 1   | **全文过时** | 全文         | 使用旧文件名和不存在的 `ai-ops` 路径前缀，整个文件似乎是早期草稿                                                                           | **需全面重写**以匹配当前代码结构                                                                                                          | 🟡 待修复 |
+| 2   | 错误引用     | 行 5         | 引用 `agent_platform_design_architecture.md`、`code_file_structure.md`、`migration_assessment.md`                                          | 修正为 `00-platform-architecture.md`、`01-code-structure.md`、`02-code-architecture-reference.md`                                         | 🟡 待修复 |
+| 3   | 事实错误     | 行 330       | OAPEFLIR 展开为 `Observe Analyze Plan Execute...`，"Analyze" 应为 "Assess"                                                                 | 将 `Analyze` 改为 `Assess`                                                                                                                | 🟡 待修复 |
+| 4   | 错误路径     | 行 1364      | 引用 `platform/ai-ops/compliance/`                                                                                                         | 修正为 `platform/compliance/`                                                                                                             | 🟡 待修复 |
+| 5   | 错误路径     | 行 1397-1398 | 引用 `platform/ai-ops/model-gateway`、`platform/ai-ops/tool-executor`、`platform/ai-ops/workflow`                                          | 修正为 `platform/model-gateway/`、`platform/execution/tool-executor/`、`platform/orchestration/oapeflir/workflow/`                        | 🟡 待修复 |
+| 6   | 错误映射     | 行 1402-1428 | 迁移目标路径多处错误：`evaluation → ops-maturity/compliance-reporter`、`memory → interaction/memory`、`security → org-governance/sso-scim` | 修正为：`evaluation → platform/prompt-engine/eval/`、`memory → platform/state-evidence/memory/`、`security → platform/control-plane/iam/` | 🟡 待修复 |
 
 #### 6.1.5 `04-runtime-sequence.md`
 
-| #   | 类型     | 位置   | 问题描述                                               | 修改方案                                                             |
-| --- | -------- | ------ | ------------------------------------------------------ | -------------------------------------------------------------------- |
-| 1   | 事实错误 | 行 3   | 声称"四条核心运行时执行路径"，实际文档中描述了 7 条    | 修正为"七条核心运行时执行路径"                                       |
-| 2   | 错误路径 | 行 287 | 引用 `execution-worker-handshake/writeback-service.ts` | 修正为 `execution/worker-pool/execution-worker-writeback-service.ts` |
+| #   | 类型     | 位置   | 问题描述                                               | 修改方案                                                             | 状态 |
+| --- | -------- | ------ | ------------------------------------------------------ | -------------------------------------------------------------------- | ---- |
+| 1   | 事实错误 | 行 3   | 声称"四条核心运行时执行路径"，实际文档中描述了 7 条    | 修正为"七条核心运行时执行路径"                                       | 🟡 待修复 |
+| 2   | 错误路径 | 行 287 | 引用 `execution-worker-handshake/writeback-service.ts` | 修正为 `execution/worker-pool/execution-worker-writeback-service.ts` | 🟡 待修复 |
 
 ---
 
 ### 6.2 契约文档（`docs_zh/contracts/`，113 文件，~14,200 行）
+
+#### 已完成的修复（2026-04-20）
+
+| #   | 问题                    | 修复内容                                                                 |
+| --- | ---------------------- | ----------------------------------------------------------------------- |
+| 1   | 代码路径引用错误 §3     | 重写 `project_structure_contract.md` §3，实际结构为 `src/platform/` 为主 |
+| 2   | 文件名问题              | `adr-unified-resource-model.md` 移至 `docs_zh/adr/073-unified-resource-model.md` |
+| 3   | 缺少 `_contract` 后缀  | `error_code_registry.md` 复制为 `error_code_registry_contract.md` |
 
 #### 6.2.1 桩/占位契约（缺少实质内容）
 

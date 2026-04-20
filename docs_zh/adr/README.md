@@ -8,11 +8,11 @@
 |------|------|------|----------|
 | [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
-| [003](./003-memory-seven-layers.md) | 六层记忆与 KV Cache 固定前缀 | Accepted | 2026-04-02 |
+| [003](./003-memory-seven-layers.md) | 六层记忆与 KV Cache 固定前缀 | **Superseded by ADR-020** | 2026-04-02 |
 | [004](./004-workflow-routing.md) | 工作流与路由 | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | 安全模型 | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider 策略 | Accepted | 2026-04-02 |
-| [007](./007-evolution-engine.md) | 进化引擎 | Accepted | 2026-04-02 |
+| [007](./007-evolution-engine.md) | 进化引擎 | **Partially Superseded by ADR-075** | 2026-04-02 |
 | [008](./008-cost-model.md) | 成本模型 | Accepted | 2026-04-02 |
 | [009](./009-deployment-ops.md) | 部署与运维 | Accepted | 2026-04-02 |
 | [010](./010-commercial-model.md) | 商业模型 | Accepted | 2026-04-02 |
@@ -23,7 +23,7 @@
 | [015](./015-unified-extension-marketplace.md) | Skill 与 Plugin 是否收敛为单市场 | Accepted | 2026-04-03 |
 | [016](./016-oapeflir-loop-model.md) | OAPEFLIR 八阶段认知循环模型 | Accepted | 2026-04-17 |
 | [017](./017-knowledge-architecture-refactor.md) | Knowledge 三索引架构重构 | Accepted | 2026-04-17 |
-| [018](./018-rollout-eleven-state-machine.md) | Rollout 十一态状态机与六阶段发布 | Accepted | 2026-04-17 |
+| [018](./018-rollout-eleven-state-machine.md) | Rollout 十一态状态机与六阶段发布 | **Superseded by ADR-075** | 2026-04-17 |
 | [019](./019-agent-handoff-four-layer-protocol.md) | Agent Handoff 四层序列化协议 | Accepted | 2026-04-17 |
 | [020](./020-memory-six-plane-model.md) | Memory 六层平面与自动晋升规则 | Accepted | 2026-04-17 |
 | [060](./060-explicit-planning-hub.md) | 显式规划层与 Plan Hub | Accepted | 2026-04-17 |

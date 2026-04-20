@@ -18,7 +18,7 @@
  * ```
  */
 
-import { newId, nowIso } from "../../../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
 import type {
   ParsedRunbook,
   RunbookSection,

@@ -6,75 +6,49 @@
 
 - [../architecture/00-platform-architecture.md](../architecture/00-platform-architecture.md)
 - [00-migration-guideline.md](./00-migration-guideline.md)
-- 旧系统 `automatic_agent_system/doc/18_code_architecture.md`
 
 规则：
 
 - 平台骨架文档定义目标态
 - 迁移指南定义迁移顺序和分级
-- 旧代码架构文档只作为存量资产与重构成本参考
+- 当前代码架构文档作为存量资产与重构成本参考
 
 ## 必须迁移的工程资产
 
-迁移基线必须覆盖以下工程资产：
+当前实现结构（Phase 1a-4）已覆盖以下工程资产：
 
-- `src/core/types`
-- `src/core/errors.ts`
-- `src/core/config`
-- `src/core/storage`
-- `src/core/events`
-- `src/core/cache`
-- `src/core/locking`
-- `src/core/queue`
-- `src/core/runtime`
-- `src/core/tools`
-- `src/core/providers`
-- `src/core/workflow`
-- `src/core/approvals`
-- `src/core/security`
-- `src/core/observability`
-- `src/core/stability`
-- `src/core/ops`
-- `src/core/api`
-- `src/core/artifacts`
-- `src/core/orchestration`
-- `src/core/agent-loop`
-- `src/core/planning`
-- `src/core/feedback`
-- `src/core/learning`
-- `src/core/improvement`
-- `src/core/domain-registry`
-- `src/core/knowledge`
-- `src/core/memory`
-- `src/core/messages`
-- `src/core/reliability`
-- `src/core/resource`
-- `src/core/results`
-- `src/cli`
-- `src/gateway`
-- `src/plugins`
+- `src/platform/control-plane/` — IAM, 配置中心, 审批中心, 事件控制
+- `src/platform/execution/` — 调度器, 执行引擎, 恢复, Worker池
+- `src/platform/orchestration/` — OAPEFLIR, 路由, planner, HITL
+- `src/platform/state-evidence/` — Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
+- `src/platform/interface/` — API, Channel Gateway, Ingress, Scheduler
+- `src/platform/shared/` — 可观测性, 稳定性, 工具元数据
+- `src/platform/model-gateway/` — 模型网关, 成本追踪
+- `src/platform/prompt-engine/` — Prompt引擎
+- `src/interaction/` — NL入口, 目标分解, 主动Agent, 仪表盘, UX
+- `src/org-governance/` — 组织层级, SSO/SCIM, 合规
+- `src/ops-maturity/` — 可解释性, 漂移检测, 边缘计算, 成本, 混沌工程
+- `src/scale-ecosystem/` — 多区域, 公平调度, SLA, 连接器, 市场
+- `src/sdk/` — CLI, Pack SDK, Plugin SDK, Client SDK
+- `src/domains/` — 领域描述符, 接入, 注册表
+- `src/plugins/` — 插件系统
+- `src/testing/` — 测试工具
+- `src/benchmarks/` — 性能基准测试
 - `config/`
 - `divisions/`
 - `deploy/`
 - `scripts/`
 - `tests/unit`
 - `tests/integration`
-- `tests/contracts`
-- `tests/reliability`
-- `tests/performance`
-
-这些不是“把旧设计照抄过来”，而是旧系统里仍可复用、能构成新平台基线的工程资产。
+- `tests/golden`
 
 ## 必须补上的新平台能力
 
-即使旧系统中实现不完整，新平台也必须显式具备：
+当前已实现：
 
-- `src/core/nl-entry`
-- `src/core/goal-decomposition`
-- `src/core/proactive-agent`
-- `src/core/autonomy`
-- `src/core/dashboard`
-- `src/gateway/user-portal`
+- `src/interaction/nl-gateway/` — NL入口
+- `src/interaction/proactive-agent/` — 主动Agent
+- `src/ops-maturity/drift-detection/` — 漂移检测
 
 ## 需要改造后迁移的文档族
 
@@ -86,14 +60,14 @@
 - `runtime-sequence.md`
 - `module-inventory.md`
 - `release-checklist.md`
-- 旧 `doc/contracts/`
-- 旧 `doc/adr/`
-- 旧 `doc/guides/`
-- 旧 `doc/governance/`
+- 旧 `docs_zh/contracts/`
+- 旧 `docs_zh/adr/`
+- 旧 `docs_zh/guides/`
+- 旧 `docs_zh/governance/`
 
 改造规则：
 
-- 全部改写成新平台七层模型和当前目录结构
+- 全部改写成新平台五平面架构和当前目录结构
 - 停止把 `reviews/` 和 `archive/` 当作活跃事实源
 - 正式文档统一落到 `docs_zh/` 与 `docs_en/`
 
@@ -101,8 +75,8 @@
 
 以下内容可留在旧仓库查阅，但不进入新平台正式文档集：
 
-- 旧 `doc/reference/`
-- 旧 `doc/research/`
+- 旧 `docs_zh/reference/`
+- 旧 `docs_zh/research/`
 - 旧 `system-status-matrix.md`
 - 竞品分析、reference alignment 研究
 - 一次性 gap analysis 与专项审查
@@ -111,18 +85,19 @@
 
 以下内容不进入新平台正式文档集：
 
-- 旧 `doc/reviews/`
-- 旧 `doc/archive/`
-- 旧 `doc/operations/archive/`
+- 旧 `docs_zh/reviews/`
+- 旧 `docs_zh/archive/`
+- 旧 `docs_zh/operations/archive/`
 - 历史 TODO、阶段快照、签收记录、一次性评估材料
 
 ## 结论
 
-这次迁移不是“把旧项目整体复制到新目录”。
+迁移已完成。当前 `src/platform/` 是权威代码目录，包含所有核心运行时逻辑。`src/core/` 仅用于向后兼容。
 
-而是：
+当前文档体系：
 
-1. 迁移可复用的代码、配置、测试与工程资产
-2. 补齐新架构要求的平台专属模块
-3. 只迁移仍有效的规范性文档
-4. 排除历史 review、archive 与一次性分析材料
+- `docs_zh/architecture/` — 5 个架构文档
+- `docs_zh/contracts/` — 113 个契约文档
+- `docs_zh/adr/` — 38 个 ADR 文档
+- `docs_zh/operations/` — 16 个运维文档
+- `docs_zh/reviews/` — 架构与实现差异评审

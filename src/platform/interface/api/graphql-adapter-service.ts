@@ -347,6 +347,7 @@ export class GraphQLAdapterService {
     // This returns a mock response structure
     const ctx: GraphQLContext = {
       requestId: `req_${Date.now()}`,
+      headers: {},
       ...context,
     };
 

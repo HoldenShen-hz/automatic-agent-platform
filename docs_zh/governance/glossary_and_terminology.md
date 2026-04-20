@@ -299,38 +299,38 @@
 
 ## 15. 容易混用的术语对
 
-### 13.1 `task` vs `session`
+### 15.1 `task` vs `session`
 
 - `task` 是业务工作单元
 - `session` 是交互会话
 - 一个 session 可以触发多个 task
 - 一个 task 也可能跨多个 session 更新状态
 
-### 13.2 `workflow` vs `execution`
+### 15.2 `workflow` vs `execution`
 
 - `workflow` 是结构
 - `execution` 是某次运行尝试
 - 同一 workflow 可以对应多个 execution attempt
 
-### 13.3 `agent` vs `worker`
+### 15.3 `agent` vs `worker`
 
 - `agent` 偏职责与智能体
 - `worker` 偏执行承载与资源位
 - `sub-agent` 不是远程 worker 的同义词
 
-### 13.4 `artifact` vs `output` vs `step output`
+### 15.4 `artifact` vs `output` vs `step output`
 
 - `artifact` 偏文件产物
 - `output` 偏结果语义
 - `step output` 偏步骤级结构化快照
 
-### 13.5 `permission` vs `policy`
+### 15.5 `permission` vs `policy`
 
 - `permission` 是授权结果或静态能力边界
 - `policy` 是裁决逻辑与规则体系
 - 不应把 prompt 中的口头限制当作正式 policy
 
-### 13.6 `queue` vs `lease`
+### 15.6 `queue` vs `lease`
 
 - `queue` 决定等待顺序
 - `lease` 决定当前执行权

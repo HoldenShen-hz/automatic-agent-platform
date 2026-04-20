@@ -7,9 +7,9 @@
 ## 2. 主规则
 
 - 字段、状态、协议问题以 `contracts/` 为准。
-- 长期架构边界问题以 `01` ~ `07` 为准。
+- 长期架构边界问题以 `docs_zh/architecture/00-*.md` ~ `04-*.md` 为准。
 - 方案取舍问题以 `adr/` 为准。
-- 新平台设计与迁移边界以 `automatic_agent_platform/` 下两份平台文档为准。
+- 新平台设计与迁移边界以本项目 `docs_zh/architecture/` 下的平台架构文档为准。
 - 当前推进动作以 `operations/` 为准。
 
 补充：

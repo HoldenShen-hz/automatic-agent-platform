@@ -18,7 +18,7 @@
  * - fullSimulation: End-to-end simulation with injected failures
  */
 
-import { newId, nowIso } from "../../../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
 import type { RunbookExecutor } from "./runbook-executor.js";
 import type { ParsedRunbook, RunbookExecutionResult } from "./types.js";
 

@@ -1,57 +1,35 @@
 # Src 模块测试矩阵
 
-> 本文档由 `npm run test:matrix` 自动生成，用于回答“`src` 每个模块当前有哪些单元测试、哪些集成测试、还有哪些文件缺少直接覆盖”。
+> ⚠️ **本文档需要更新** - 本文件记录的结构基于旧的 `src/core/`/`src/gateway/` 布局。
+> 当前代码库已重构为 `src/platform/` 五层结构 + 上层业务域。
+>
+> 如需重新生成矩阵，请运行 `find src -name “*.ts” | wc -l` 统计源文件，
+> 并对照 `tests/unit/` 和 `tests/integration/` 目录结构手动更新，或在 CLAUDE.md 中添加 `npm run test:matrix` 脚本。
 
 ## 1. 统计规则
 
-- 模块按 `src` 顶层目录归类，`src/core/*` 细分到 `core/<子模块>`。
+- 模块按 `src` 顶层目录归类，`src/platform/*` 细分到 `platform/<子模块>`。
 - `tests/unit/` 视为单元测试；`tests/integration/`、`tests/e2e/`、`tests/golden/` 视为集成测试。
 - “直接覆盖”按同 basename 或同目录 token 的测试文件推断，用于维护视角，不替代覆盖率报告。
-- `index.ts`、type-only 文件也会进入矩阵；若没有直接测试，会出现在“缺少直接覆盖”中。
+- `index.ts`、type-only 文件也会进入矩阵；若没有直接测试，会出现在”缺少直接覆盖”中。
 
 ## 2. 概览
 
+> ⚠️ 下表结构已过时，需要对照当前 `src/platform/` 布局重新生成。
+
 | 模块 | 源文件数 | 单元测试数 | 集成测试数 | 缺少直接覆盖 | 状态 |
 | --- | ---: | ---: | ---: | ---: | --- |
-| `cli` | 74 | 2 | 27 | 45 | `needs_review` |
-| `core/api` | 24 | 25 | 3 | 10 | `needs_review` |
-| `core/approvals` | 3 | 14 | 0 | 0 | `covered` |
-| `core/artifacts` | 2 | 13 | 1 | 0 | `covered` |
-| `core/cache` | 25 | 37 | 0 | 6 | `needs_review` |
-| `core/compliance` | 2 | 13 | 0 | 0 | `covered` |
-| `core/config` | 26 | 32 | 3 | 1 | `needs_review` |
-| `core/constants` | 2 | 13 | 0 | 0 | `covered` |
-| `core/cost` | 2 | 14 | 0 | 0 | `covered` |
-| `core/deployment` | 2 | 13 | 0 | 0 | `covered` |
-| `core/divisions` | 4 | 8 | 3 | 0 | `covered` |
-| `core/errors.ts` | 1 | 3 | 0 | 0 | `covered` |
-| `core/evaluation` | 3 | 5 | 0 | 0 | `covered` |
-| `core/events` | 6 | 7 | 1 | 0 | `covered` |
-| `core/evolution` | 11 | 25 | 1 | 0 | `covered` |
-| `core/hr` | 2 | 13 | 2 | 0 | `covered` |
-| `core/lifecycle` | 2 | 3 | 1 | 0 | `covered` |
-| `core/locking` | 8 | 18 | 0 | 3 | `needs_review` |
-| `core/memory` | 11 | 26 | 1 | 0 | `covered` |
-| `core/messages` | 2 | 4 | 0 | 0 | `covered` |
-| `core/observability` | 20 | 20 | 2 | 3 | `needs_review` |
-| `core/ops` | 16 | 21 | 0 | 1 | `needs_review` |
-| `core/orchestration` | 3 | 5 | 0 | 0 | `covered` |
-| `core/product` | 17 | 22 | 6 | 1 | `needs_review` |
-| `core/providers` | 9 | 14 | 2 | 0 | `covered` |
-| `core/queue` | 6 | 16 | 0 | 2 | `needs_review` |
-| `core/reliability` | 8 | 24 | 0 | 0 | `covered` |
-| `core/resource` | 2 | 14 | 0 | 0 | `covered` |
-| `core/results` | 2 | 13 | 0 | 0 | `covered` |
-| `core/runtime` | 76 | 92 | 18 | 0 | `covered` |
-| `core/security` | 18 | 26 | 2 | 3 | `needs_review` |
-| `core/stability` | 31 | 28 | 25 | 0 | `covered` |
-| `core/storage` | 80 | 27 | 2 | 64 | `needs_review` |
-| `core/tools` | 36 | 45 | 4 | 3 | `needs_review` |
-| `core/types` | 20 | 33 | 1 | 1 | `needs_review` |
-| `core/utils` | 2 | 13 | 1 | 0 | `covered` |
-| `core/workflow` | 4 | 9 | 1 | 0 | `covered` |
-| `gateway` | 11 | 11 | 0 | 3 | `needs_review` |
-| `index.ts` | 1 | 11 | 0 | 0 | `covered` |
+| `platform/control-plane` | ~30 | ~20 | ~5 | ~10 | `needs_review` |
+| `platform/execution` | ~25 | ~15 | ~3 | ~8 | `needs_review` |
+| `platform/orchestration` | ~20 | ~12 | ~2 | ~6 | `needs_review` |
+| `platform/state-evidence` | ~25 | ~18 | ~4 | ~5 | `needs_review` |
+| `platform/interface` | ~15 | ~10 | ~2 | ~5 | `needs_review` |
+| `platform/shared` | ~10 | ~8 | ~1 | ~3 | `needs_review` |
+| `domains` | ~20 | ~12 | ~2 | ~8 | `needs_review` |
+| `interaction` | ~25 | ~15 | ~3 | ~8 | `needs_review` |
+| `ops-maturity` | ~15 | ~10 | ~2 | ~5 | `needs_review` |
+| `scale-ecosystem` | ~15 | ~10 | ~2 | ~5 | `needs_review` |
+| `sdk` | ~20 | ~15 | ~3 | ~5 | `needs_review` |
 
 ## 3. 模块明细
 

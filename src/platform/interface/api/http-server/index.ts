@@ -19,5 +19,8 @@ export { createApprovalRoutes, type ApprovalRouteDeps } from "./approval-routes.
 export { createAdminRoutes, type AdminRouteDeps } from "./admin-routes.js";
 export { createConsoleRoutes, type ConsoleRouteDeps } from "./console-routes.js";
 export { createPlaneRoutes, type PlaneRouteDeps } from "./plane-routes.js";
+export { createIncidentRoutes, type IncidentRouteDeps } from "./incident-routes.js";
+export { createPackRoutes, type PackRouteDeps } from "./pack-routes.js";
+export { createCostRoutes, type CostRouteDeps } from "./cost-routes.js";
 
 export type { RouteContext, RouteDefinition, RouteMatch, ApiRequestLike, ApiResponsePayload, RouteHandler } from "./types.js";

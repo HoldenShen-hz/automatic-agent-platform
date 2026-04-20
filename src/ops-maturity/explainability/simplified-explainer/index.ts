@@ -47,7 +47,7 @@ export function simplifyExplanation(
   causalLinks: readonly CausalLink[],
   riskLevel: string = "medium",
 ): SimplifiedExplanation {
-  const riskInfo = RISK_MAPPING[riskLevel.toLowerCase()] ?? RISK_MAPPING.unknown;
+  const riskInfo = (RISK_MAPPING[riskLevel.toLowerCase()] ?? RISK_MAPPING.unknown) as { level: SimplifiedExplanation["riskLevel"]; icon: string };
 
   // Generate headline from stage and summary
   const headline = generateHeadline(stageName, summary, riskInfo.icon);

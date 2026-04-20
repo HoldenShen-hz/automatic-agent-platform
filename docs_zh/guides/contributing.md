@@ -6,8 +6,8 @@
 
 ## 文档分工
 
-- `docs_zh/automatic-agent-architecture.md`
-  只保留目标、总览、核心流程、阶段计划和导航。
+- `docs_zh/architecture/00-platform-architecture.md`
+  平台架构总览，包含目标、总览、核心流程、阶段计划和导航。
 - `docs_zh/adr/`
   存放稳定的架构决策，强调背景、决策、结果和交叉引用。
 - `docs_zh/guides/`

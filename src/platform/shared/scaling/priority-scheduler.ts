@@ -104,20 +104,22 @@ export function canPreempt(
   const preemptorClass = PRIORITY_CLASSES[preemptor.priorityClass];
   const targetClass = PRIORITY_CLASSES[target.priorityClass];
 
-  // Never preemption policy
-  if (targetClass.preemptionPolicy === "never") {
-    return { shouldPreempt: false, reason: "Target task has preemption_policy=never" };
+  // Check if preemptor has a preemption capability
+  if (preemptorClass.preemptionPolicy === "never") {
+    return { shouldPreempt: false, reason: "Preemptor has preemption_policy=never" };
   }
 
-  // Any non-critical can be preempted by critical
+  // Cannot preempt critical tasks (they are protected)
+  if (target.priorityClass === "critical") {
+    return { shouldPreempt: false, reason: "Cannot preempt critical tasks" };
+  }
+
+  // any_non_critical can preempt any non-critical target
   if (preemptorClass.preemptionPolicy === "any_non_critical") {
-    if (target.priorityClass === "critical") {
-      return { shouldPreempt: false, reason: "Cannot preempt critical tasks" };
-    }
     return { shouldPreempt: true, preemptedTaskId: target.taskId, reason: "Critical can preempt any non-critical" };
   }
 
-  // Lower priority preemption
+  // lower_priority can preempt lower priority targets
   if (preemptorClass.preemptionPolicy === "lower_priority") {
     if (target.priorityValue < preemptor.priorityValue) {
       return { shouldPreempt: true, preemptedTaskId: target.taskId, reason: `Higher priority (${preemptor.priorityValue}) vs lower (${target.priorityValue})` };

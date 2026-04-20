@@ -75,8 +75,9 @@ export class AgentLifecycleService {
   }
 
   public listActive(): ManagedAgentDefinition[] {
-    const activeIds = new Set(listActiveAgents([...this.agents.values()]).map((item) => item.agentId));
-    return [...this.agents.values()].filter((item) => activeIds.has(item.agentId));
+    const agents = [...this.agents.values()];
+    const activeIds = new Set(listActiveAgents(agents).map((item) => item.agentId));
+    return agents.filter((item) => activeIds.has(item.agentId));
   }
 
   /**

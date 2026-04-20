@@ -121,8 +121,19 @@ export class FairScheduler {
         tenant.borrowedResources.workers += borrowResult.workersBorrowed ?? 0;
         tenant.borrowedResources.tokensPerMinute += borrowResult.tokensBorrowed ?? 0;
 
-        // Now retry admission
-        return this.admitTask(tenantId, taskId, requested);
+        // Admit the task
+        used.maxConcurrentWorkflows += requested.maxConcurrentWorkflows ?? 0;
+        used.maxConcurrentWorkers += requested.maxConcurrentWorkers ?? 0;
+        used.llmTokensPerMinute += requested.llmTokensPerMinute ?? 0;
+        used.llmRequestsPerMinute += requested.llmRequestsPerMinute ?? 0;
+
+        return {
+          admitted: true,
+          tenantId,
+          taskId,
+          allocatedResources: requested,
+          borrowedFrom: borrowResult.lenders,
+        };
       }
 
       return {

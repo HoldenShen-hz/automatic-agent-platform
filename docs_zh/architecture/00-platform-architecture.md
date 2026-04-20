@@ -1488,6 +1488,8 @@ LeaseReclaimer · ExecutionRecoveryWorker · WorkflowRepairWorker · ProjectionR
 
 模式切换权归 P2 Control Plane，通过 `ControlDirective(type: "mode_switch")` 下发。
 
+---
+
 # 15. LLM Provider 抽象与故障切换架构
 
 > v2.0 未涉及 LLM 层架构。v2.1 将 LLM 视为平台最关键的外部依赖，定义 provider 抽象、路由策略和不可用时的降级模式。
@@ -3146,7 +3148,6 @@ src/
       hitl/
 
     execution/          # P4
-      scheduler/
       dispatcher/
       execution-engine/
       worker-pool/
@@ -3156,6 +3157,7 @@ src/
       browser-executor/
       human-wait-executor/
       recovery/
+      # 注：scheduler 在 interface/scheduler/ 下
 
     state-evidence/     # P5
       truth/
@@ -3165,9 +3167,9 @@ src/
       memory/
       knowledge/
       audit/
-      incident/
-      checkpoints/
-      dlq/
+      incident/        # (计划中)
+      checkpoints/     # (计划中)
+      dlq/             # (计划中)
 
     model-gateway/      # LLM 抽象层（v2.1）
       provider-registry/
@@ -3183,10 +3185,11 @@ src/
       eval/
 
     compliance/         # 合规与数据治理（v2.1）
-      erasure/
-      encryption/
-      data-residency/
-      lineage/
+      crypto-shredding/
+      data-residency/  # (计划中)
+      erasure/          # (计划中)
+      encryption/       # (计划中)
+      lineage/          # (计划中)
 
     contracts/          # 平面间契约
       request-envelope/
@@ -5816,7 +5819,7 @@ ExplanationResponse { summary, causal_chain[], evidence_refs[], confidence }
 
 ```typescript
 interface StageRationale {
-  stage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "review";
+  stage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release";
   inputs_summary: string;
   reasoning: string;
   alternatives_considered: { option: string; rejected_reason: string }[];
@@ -6645,7 +6648,7 @@ const platformOpsDomain: DomainDescriptor = {
 
 | 缩写/术语 | 全称 | 说明 |
 |-----------|------|------|
-| OAPEFLIR | Observe-Assess-Plan-Execute-Feedback-Learn-Improve-Recover | Agent 核心循环的八个阶段(§13) |
+| OAPEFLIR | Observe-Assess-Plan-Execute-Feedback-Learn-Improve-Release | Agent 核心循环的八个阶段(§13) |
 | HITL | Human-In-The-Loop | 人机协作模式，人工参与 Agent 决策链(§21) |
 | DLQ | Dead Letter Queue | 死信队列，无法处理的消息/事件的暂存区(§28.6) |
 | CAS | Compare-And-Swap | 乐观并发控制原语，用于 StateCommand 幂等写入(§5.4) |

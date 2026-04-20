@@ -194,17 +194,9 @@ export class OidcIdentityService {
     const sessionId = newId("oidc_session");
     const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000).toISOString();
 
-    const session: OidcSession = {
+const session: OidcSession = {
       sessionId,
-      userId: userInfo.sub,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      idToken: tokens.idToken,
-      expiresAt,
-      createdAt: nowIso(),
-      lastActivityAt: nowIso(),
-      providerId: this.providerConfig.providerId,
-    };
+      userId: userInfo
 
     this.sessions.set(sessionId, session);
 

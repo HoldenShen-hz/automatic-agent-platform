@@ -146,7 +146,9 @@ test("FairScheduler getTenantStats returns correct utilization", () => {
   const stats = scheduler.getTenantStats("tenant-1");
   assert.ok(stats !== null);
   assert.equal(stats?.used.maxConcurrentWorkflows, 5);
-  assert.equal(stats?.utilizationPercent, 50); // 5/10 = 50%
+  // Utilization is calculated across all resource types
+  // (5 + 2 + 5000) / (10 + 5 + 10000) = 5007/10015 ≈ 49.99%
+  assert.ok(Math.abs(stats!.utilizationPercent - 49.99) < 0.1);
 });
 
 test("FairScheduler getAllUtilization returns all tenants", () => {
@@ -269,8 +271,15 @@ test("FairScheduler utilization isBorrowing flag", () => {
     llmRequestsPerMinute: 100,
   });
 
+  // tenant-1 uses 40 of its 50 guaranteed
   scheduler.admitTask("tenant-1", "task-1", { maxConcurrentWorkflows: 40 });
-  scheduler.admitTask("tenant-2", "task-2", { maxConcurrentWorkflows: 8 });
+  // tenant-2 uses all 10 of its guaranteed
+  scheduler.admitTask("tenant-2", "task-2", { maxConcurrentWorkflows: 10 });
+  // tenant-2 tries to exceed its guaranteed - should borrow from tenant-1's idle 10
+  const decision = scheduler.admitTask("tenant-2", "task-3", { maxConcurrentWorkflows: 5 });
+
+  assert.equal(decision.admitted, true);
+  assert.equal(decision.borrowedFrom?.length ?? 0, 1);
 
   const utilization = scheduler.getAllUtilization();
   const tenant2 = utilization.find((t) => t.tenantId === "tenant-2");

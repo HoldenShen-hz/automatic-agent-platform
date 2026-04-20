@@ -13,7 +13,7 @@
 |---|--------|----------|
 | 1 | `npm run build` 无错误 | 本地 build |
 | 2 | `npm run typecheck` 零错误 | 本地 typecheck |
-| 3 | `npm run test` 全量通过 (2383+/2383) | 本地测试 |
+| 3 | `npm run test` 全量通过 | 本地测试（实际测试数见 `project_progress_tracker.md` 最新值） |
 | 4 | 所有 webhook 走签名验证 | 代码审查 |
 | 5 | `authService` 为空时拒绝启动，不默认信任请求头 | 代码审查 |
 | 6 | 所有密钥比较使用 `timingSafeEqual` | `grep` 搜索 |

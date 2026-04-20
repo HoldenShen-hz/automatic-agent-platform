@@ -1,5 +1,9 @@
 # Implementation Plan
 
+> ⚠️ **结构迁移说明** - 本文档引用旧结构 `src/core/`、`src/cli/`、`src/gateway/`。
+> 当前代码库已迁移至 `src/platform/` 五层结构 + 上层业务域 (`domains/`、`interaction/`、`ops-maturity/` 等)。
+> 本文档的计划内容可能需要对照 [architecture/README.md](../../architecture/README.md) 重新核实执行状态。
+
 ## 目标
 
 在不动摇现有文档结构的前提下，按 Phase 1a -> 1b -> 2a -> 2b -> 2c -> 3 -> 4 的顺序推进实现与产品化。

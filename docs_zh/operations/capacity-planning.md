@@ -19,6 +19,6 @@
 - Redis memory budget: `active_keys * average_value_size * 1.5`.
 
 ## Validation Loop
-1. Run `tests/performance/capacity-limits.test.ts` as the reproducible baseline.
+1. Run `tests/integration/ops-maturity/capacity-planning-integration.test.ts` as the reproducible baseline (see `tests/unit/ops-maturity/capacity-planning-service.test.ts` for unit tests).
 2. Increase concurrency in controlled steps and record CPU, memory, queue depth, and DB waiters.
 3. Update this document when a new release changes pod efficiency or query behavior.

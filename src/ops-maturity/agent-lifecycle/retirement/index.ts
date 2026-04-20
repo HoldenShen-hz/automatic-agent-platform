@@ -33,7 +33,7 @@ export type AgentRetirementPlan = z.infer<typeof AgentRetirementPlanSchema>;
 export interface AgentRetirementRecord {
   readonly retiringAgentId: string;
   readonly successorAgentId: string | null;
-  readonly transferItems: readonly TransferItemSchema[];
+  readonly transferItems: readonly TransferItem[];
   readonly gracePeriodDays: number;
   readonly notificationTargets: readonly string[];
   readonly initiatedAt: string;

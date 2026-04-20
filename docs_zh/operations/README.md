@@ -12,6 +12,11 @@
 | [`operations-checklist.md`](./operations-checklist.md) | 编码前检查、发布前检查、文档完成门控 | 发布前 |
 | [`operations-tracker.md`](./operations-tracker.md) | 轻量索引页 | 较少更新 |
 | [`runbook.md`](./runbook.md) | 运维总 runbook 入口 | 预案变更时 |
+| [`runbooks/incident-response-playbook.md`](./runbooks/incident-response-playbook.md) | 事件响应 | 预案变更时 |
+| [`runbooks/runbook-plugin-failure.md`](./runbooks/runbook-plugin-failure.md) | 插件失败处理 | 预案变更时 |
+| [`runbooks/runbook-high-error-rate.md`](./runbooks/runbook-high-error-rate.md) | 高错误率处理 | 预案变更时 |
+| [`runbooks/runbook-database-issues.md`](./runbooks/runbook-database-issues.md) | 数据库问题处理 | 预案变更时 |
+| [`runbooks/runbook-memory-pressure.md`](./runbooks/runbook-memory-pressure.md) | 内存压力处理 | 预案变更时 |
 | [`src_module_test_matrix.md`](./src_module_test_matrix.md) | 源码模块测试矩阵 | 测试结构变化时 |
 | [`test_coverage_baseline_gate.md`](./test_coverage_baseline_gate.md) | 覆盖率基线门槛 | 覆盖规则变化时 |
 | [`capacity-planning.md`](./capacity-planning.md) | 容量规划 | 规划周期更新时 |

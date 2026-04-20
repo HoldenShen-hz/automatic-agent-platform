@@ -187,8 +187,8 @@ export class TimeTravelDebugService {
       eventIndex,
     };
 
-    const existing = this.snapshots.get(sessionId) ?? [];
-    this.snapshots.set(sessionId, [...existing, snapshot]);
+    const existing = this.snapshots.get(session.sessionId) ?? [];
+    this.snapshots.set(session.sessionId, [...existing, snapshot]);
   }
 
   private buildReplayState(
