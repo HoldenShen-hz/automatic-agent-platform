@@ -1,20 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validatePluginManifest } from "../../../../src/sdk/plugin-sdk/index.js";
+import { definePlugin } from "../../../../src/sdk/plugin-sdk/index.js";
 
-test("plugin-sdk validates and normalizes plugin manifests", () => {
-  const manifest = validatePluginManifest({
-    pluginId: " ops-plugin ",
+test("plugin-sdk defines and validates plugin definitions", () => {
+  const plugin = definePlugin({
+    pluginId: "ops-plugin",
+    name: "Ops Plugin",
     version: "1.0.0",
-    owner: "ops@example.com",
-    runtime: "sandboxed",
-    entrypoint: " ./dist/index.js ",
-    capabilities: [
-      { name: "query", description: "Run query", scopes: ["read", "read", "events"] },
-    ],
+    type: "tool",
+    capabilities: [{
+      name: "query",
+      description: "Run query",
+      inputSchema: { type: "object" },
+      outputSchema: { type: "object" },
+    }],
   });
 
-  assert.equal(manifest.pluginId, "ops-plugin");
-  assert.deepEqual(manifest.capabilities[0]?.scopes, ["read", "events"]);
+  assert.equal(plugin.pluginId, "ops-plugin");
+  assert.equal(plugin.name, "Ops Plugin");
+  assert.equal(plugin.type, "tool");
 });

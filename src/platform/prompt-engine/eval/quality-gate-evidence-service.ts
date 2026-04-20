@@ -101,7 +101,7 @@ export class QualityGateEvidenceService {
     return {
       evaluationId: evaluation.evaluationId,
       taskId: evaluation.taskId,
-      executionId,
+      ...(executionId !== undefined && { executionId }),
       qualityScore: evaluation.qualityScore,
       passed: evaluation.passed,
       verdict,

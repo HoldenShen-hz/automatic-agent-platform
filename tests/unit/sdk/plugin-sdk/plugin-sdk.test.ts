@@ -13,15 +13,15 @@ import {
   defineEvaluator,
   validatePluginDefinition,
   type PluginDefinition,
-} from "../../../src/sdk/plugin-sdk/plugin-definition.js";
+} from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 import {
   PluginContext,
   type PluginContextConfig,
-} from "../../../src/sdk/plugin-sdk/plugin-context.js";
+} from "../../../../src/sdk/plugin-sdk/plugin-context.js";
 import {
   PluginTestHarness,
   type TestCase,
-} from "../../../src/sdk/plugin-sdk/plugin-test-harness.js";
+} from "../../../../src/sdk/plugin-sdk/plugin-test-harness.js";
 
 test("definePlugin creates valid plugin definition", () => {
   const plugin = definePlugin({

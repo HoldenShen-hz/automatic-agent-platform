@@ -256,19 +256,22 @@ export class GrpcAdapterService {
       };
 
       let response: T | undefined;
-      const callback: GrpcServerCallback<T> = (error, res) => {
+      const callback: GrpcServerCallback<unknown> = (error, res) => {
         if (error) {
           throw error;
         }
-        response = res;
+        response = res as T;
       };
 
       methodHandler(call, callback);
 
-      return {
+      const result: GrpcCallResponse<T> = {
         success: true,
-        data: response,
       };
+      if (response !== undefined) {
+        (result as { data?: T }).data = response;
+      }
+      return result;
     } catch (error) {
       return {
         success: false,

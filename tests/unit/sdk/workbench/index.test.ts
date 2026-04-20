@@ -14,13 +14,12 @@ test("SdkWorkbenchService builds install plans and missing contract summaries", 
     plugins: [
       {
         pluginId: "deploy-plugin",
+        name: "Deploy Plugin",
         version: "1.0.0",
         owner: "ops@example.com",
-        runtime: "sandboxed",
-        entrypoint: "dist/deploy.js",
-        capabilities: [
-          { name: "deploy", description: "Deploy changes", scopes: ["release"] },
-        ],
+        publicSdkSurface: "1.0.0",
+        spiTypes: ["adapter"],
+        capabilityIds: ["deploy"],
       },
     ],
     packs: [
@@ -54,13 +53,12 @@ test("SdkWorkbenchService builds publish readiness previews", () => {
     plugins: [
       {
         pluginId: "triage-plugin",
+        name: "Triage Plugin",
         version: "1.0.0",
         owner: "ops@example.com",
-        runtime: "local",
-        entrypoint: "dist/triage.js",
-        capabilities: [
-          { name: "triage", description: "Triage incidents", scopes: ["read", "write"] },
-        ],
+        publicSdkSurface: "1.0.0",
+        spiTypes: ["adapter"],
+        capabilityIds: ["triage"],
       },
     ],
     packs: [

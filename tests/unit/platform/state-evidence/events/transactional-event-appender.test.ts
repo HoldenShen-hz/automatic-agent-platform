@@ -223,7 +223,6 @@ test("TransactionalEventAppender rolls back on error", () => {
 
     // Attempt to insert invalid event (empty required fields)
     try {
-      // @ts-expect-error - intentionally missing required fields for testing
       appender.appendEvent({
         taskId: "task-rollback",
         eventType: "",

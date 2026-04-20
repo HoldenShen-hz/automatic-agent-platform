@@ -159,6 +159,12 @@ export class InMemoryTenantRepository implements TenantRepository {
       throw new Error(`Tenant ${tenantId} not found`);
     }
 
+    const quotas = toTenantQuotas(input.quotas) ?? existing.quotas;
+    const billingPlan = input.billingPlan ?? existing.billingPlan;
+    const slaLevel = input.slaLevel ?? existing.slaLevel;
+    const allowedRegions = input.allowedRegions ?? existing.allowedRegions;
+    const status = input.status ?? existing.status;
+
     const record: TenantRecord = {
       tenantId: existing.tenantId,
       organizationId: input.organizationId ?? existing.organizationId,
@@ -168,14 +174,15 @@ export class InMemoryTenantRepository implements TenantRepository {
       artifactScope: input.artifactScope ?? existing.artifactScope,
       isolationMode: input.isolationMode ?? existing.isolationMode,
       deploymentMode: input.deploymentMode ?? existing.deploymentMode,
-      status: input.status ?? existing.status,
-      billingPlan: input.billingPlan ?? existing.billingPlan,
-      slaLevel: input.slaLevel ?? existing.slaLevel,
-      allowedRegions: input.allowedRegions ?? existing.allowedRegions,
-      quotas: toTenantQuotas(input.quotas) ?? existing.quotas,
       createdAt: existing.createdAt,
       updatedAt: nowIso(),
     };
+
+    if (quotas) record.quotas = quotas;
+    if (billingPlan) record.billingPlan = billingPlan;
+    if (slaLevel) record.slaLevel = slaLevel;
+    if (allowedRegions) record.allowedRegions = allowedRegions;
+    if (status !== undefined) record.status = status as "active" | "suspended" | "terminated";
 
     if (input.displayName !== undefined) {
       record.displayName = input.displayName;

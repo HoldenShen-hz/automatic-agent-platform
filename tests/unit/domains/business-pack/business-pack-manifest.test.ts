@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert";
 import {
   type BusinessPackManifest,
+  type ManifestValidationResult,
+  type ManifestValidationIssue,
   BusinessPackManifestSchema,
   isValidLifecycleTransition,
   isExecutableStage,
@@ -9,7 +11,7 @@ import {
   transitionLifecycle,
   validateBusinessPackManifest,
   type BusinessPackLifecycleStage,
-} from "../../../../../src/domains/business-pack/business-pack-manifest.js";
+} from "../../../../src/domains/business-pack/business-pack-manifest.js";
 
 describe("BusinessPackManifestSchema", () => {
   it("should parse a valid minimal manifest", () => {

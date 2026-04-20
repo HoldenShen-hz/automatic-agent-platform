@@ -307,7 +307,7 @@ export class RegionHealthCheckService {
       return "degraded";
     }
 
-    const config = this.configs.get(metrics[0]?.metricName);
+    const config = this.configs.get(metrics[0]!.metricName ?? "");
     if (config && latencyMs > config.thresholds.maxLatencyMs) {
       return "degraded";
     }

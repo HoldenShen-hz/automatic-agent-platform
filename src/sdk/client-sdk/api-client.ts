@@ -102,7 +102,7 @@ export class RetryableApiClient {
    * Make a GET request with automatic retry.
    */
   async get<T>(path: string, query?: Record<string, string | number | boolean | null | undefined>): Promise<ApiResponse<T>> {
-    return this.request<T>({ path, method: "GET", query: query ?? undefined });
+    return this.request<T>({ path, method: "GET", ...(query !== undefined ? { query } : {})});
   }
 
   /**
@@ -140,16 +140,19 @@ export class RetryableApiClient {
 
     const response = await this.get<T[]>(path, query);
     const nextCursor = response.headers["x-next-cursor"] ?? null;
+    const totalCountHeader = response.headers["x-total-count"];
+    const totalCount = totalCountHeader !== undefined ? parseInt(totalCountHeader, 10) : undefined;
 
-    return {
+    const result: PaginatedResponse<T> = {
       data: response.data,
       status: response.status,
       headers: response.headers,
       nextCursor: nextCursor as string | null,
-      totalCount: response.headers["x-total-count"]
-        ? parseInt(response.headers["x-total-count"], 10)
-        : undefined as number | undefined,
     };
+    if (totalCount !== undefined) {
+      (result as { totalCount?: number }).totalCount = totalCount;
+    }
+    return result;
   }
 
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {

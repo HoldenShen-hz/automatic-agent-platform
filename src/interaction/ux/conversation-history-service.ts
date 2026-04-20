@@ -114,7 +114,7 @@ export class ConversationHistoryService {
       ...session,
       turns: [...session.turns, turnRecord],
       updatedAt: timestamp,
-      lastIntent: turn.intent,
+      ...(turn.intent ? { lastIntent: turn.intent } : {}),
     };
 
     // Persist to memory store if available

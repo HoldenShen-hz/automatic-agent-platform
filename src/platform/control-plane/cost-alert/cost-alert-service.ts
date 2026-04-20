@@ -173,17 +173,17 @@ export class CostAlertService extends EventEmitter {
     // Persist step usage record if stepId is provided
     if (input.stepId) {
       this.recordStepUsage({
-        tenantId: input.tenantId ?? undefined,
+        tenantId: input.tenantId ?? "unknown",
         stepId: input.stepId,
-        taskId: input.taskId ?? undefined,
-        executionId: input.executionId ?? undefined,
+        taskId: input.taskId ?? null,
+        executionId: input.executionId ?? null,
         costUsd: input.actualCostUsd,
         tokens: input.tokens ?? 0,
-        provider: input.provider,
-        model: input.model,
-        promptTokens: input.promptTokens,
-        completionTokens: input.completionTokens,
-        cached: input.cached,
+        provider: input.provider ?? "unknown",
+        model: input.model ?? "unknown",
+        promptTokens: input.promptTokens ?? 0,
+        completionTokens: input.completionTokens ?? 0,
+        cached: input.cached ?? false,
       });
     }
 
@@ -502,7 +502,7 @@ export class CostAlertService extends EventEmitter {
         recordId: newId("stepusage"),
         timestamp: nowIso(),
         tenantId: input.tenantId ?? "unknown",
-        workflowRunId: input.executionId,
+        workflowRunId: input.executionId ?? null,
         stepId: input.stepId,
         provider: input.provider ?? "unknown",
         model: input.model ?? "unknown",

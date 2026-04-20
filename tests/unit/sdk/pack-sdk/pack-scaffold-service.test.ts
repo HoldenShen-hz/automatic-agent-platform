@@ -11,12 +11,12 @@ import { join } from "node:path";
 import {
   PackScaffoldService,
   type ScaffoldConfig,
-} from "../../../src/sdk/pack-sdk/pack-scaffold-service.js";
+} from "../../../../src/sdk/pack-sdk/pack-scaffold-service.js";
 import {
   PackTestLocalService,
   type TestOptions,
-} from "../../../src/sdk/pack-sdk/pack-test-local-service.js";
-import { validateBusinessPackManifest } from "../../../src/sdk/pack-sdk/pack-manifest.js";
+} from "../../../../src/sdk/pack-sdk/pack-test-local-service.js";
+import { validateBusinessPackManifest } from "../../../../src/sdk/pack-sdk/pack-manifest.js";
 
 test("PackScaffoldService.listTemplates returns all template types", () => {
   const service = new PackScaffoldService();

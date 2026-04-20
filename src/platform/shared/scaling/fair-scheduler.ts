@@ -234,7 +234,13 @@ export class FairScheduler {
 
       const lenderTenant = this.tenants.get(lender.lenderId);
       if (lenderTenant) {
-        lenderTenant.currentlyUsed[borrowedKey] += amountToReturn;
+        const keyMapping: Record<string, keyof ResourceAllocation> = {
+          workflows: "maxConcurrentWorkflows",
+          workers: "maxConcurrentWorkers",
+          tokensPerMinute: "llmTokensPerMinute",
+        } as const;
+        const key = keyMapping[borrowedKey] as keyof ResourceAllocation;
+        (lenderTenant.currentlyUsed as Record<keyof ResourceAllocation, number>)[key] += amountToReturn;
       }
     }
 

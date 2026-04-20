@@ -521,8 +521,8 @@ export class GraphQLSchemaBuilder {
 
     return {
       queryType: this.queryType,
-      mutationType: this.mutationType,
-      subscriptionType: this.subscriptionType,
+      ...(this.mutationType !== undefined && { mutationType: this.mutationType }),
+      ...(this.subscriptionType !== undefined && { subscriptionType: this.subscriptionType }),
       types: this.types,
     };
   }

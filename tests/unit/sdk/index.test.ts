@@ -8,21 +8,21 @@ import {
   SdkWorkbenchService,
   buildApiUrl,
   summarizeCapabilityMatrix,
-  validatePluginManifest,
+  validatePluginDefinition,
+  definePlugin,
 } from "../../../src/sdk/index.js";
 
 test("sdk barrel exports cli, client, pack, and plugin surfaces", () => {
   assert.ok(CLI_ENTRYPOINTS.includes("doctor"));
   assert.equal(typeof SdkWorkbenchService, "function");
   assert.match(buildApiUrl({ baseUrl: "https://api.example.com", apiVersion: "v1" }, { path: "health" }), /\/v1\/health$/);
-  assert.equal(validatePluginManifest({
+  assert.equal(validatePluginDefinition(definePlugin({
     pluginId: "plugin-a",
+    name: "Plugin A",
     version: "1.0.0",
-    owner: "owner",
-    runtime: "local",
-    entrypoint: "dist/index.js",
-    capabilities: [{ name: "read", description: "Read", scopes: ["read"] }],
-  }).pluginId, "plugin-a");
+    type: "tool",
+    capabilities: [{ name: "read", description: "Read", inputSchema: {}, outputSchema: {} }],
+  })).pluginId, "plugin-a");
   assert.equal(typeof PackLifecycleOrchestrationService, "function");
   assert.equal(typeof PackPluginCompatibilityService, "function");
   assert.deepEqual(summarizeCapabilityMatrix({
