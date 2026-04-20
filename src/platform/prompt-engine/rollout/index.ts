@@ -64,7 +64,10 @@ export class PromptRolloutService {
   public activateRollout(rolloutId: string): PromptRolloutRecord {
     const record = this.getRequired(rolloutId);
     if (record.status !== "ready") {
-      throw new ValidationError(`prompt_rollout.invalid_transition:${record.status}->active`);
+      throw new ValidationError(
+        `prompt_rollout.invalid_transition:${record.status}->active`,
+        `Prompt rollout in status ${record.status} cannot transition to active.`,
+      );
     }
     const updated = { ...record, status: "active" as const, updatedAt: nowIso() };
     this.rollouts.set(rolloutId, updated);
@@ -108,8 +111,10 @@ export class PromptRolloutService {
   private getRequired(rolloutId: string): PromptRolloutRecord {
     const record = this.rollouts.get(rolloutId);
     if (record == null) {
-      throw new ValidationError(`prompt_rollout.not_found:${rolloutId}`);
+      throw new ValidationError(`prompt_rollout.not_found:${rolloutId}`, `Prompt rollout ${rolloutId} was not found.`);
     }
     return record;
   }
 }
+
+export * from "./platform-prompt-release-orchestration-service.js";

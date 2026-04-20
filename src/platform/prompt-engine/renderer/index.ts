@@ -38,7 +38,10 @@ export class PromptRendererService {
     }
 
     if (unresolvedVariables.length > 0) {
-      throw new ValidationError(`prompt_renderer.missing_required_variables:${unresolvedVariables.join(",")}`);
+      throw new ValidationError(
+        `prompt_renderer.missing_required_variables:${unresolvedVariables.join(",")}`,
+        `Prompt rendering requires variables: ${unresolvedVariables.join(", ")}.`,
+      );
     }
 
     const variableSuffix = input.template.variableSuffixTemplate.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, key) => {

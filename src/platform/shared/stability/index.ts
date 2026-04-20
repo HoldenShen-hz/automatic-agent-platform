@@ -1,3 +1,4 @@
+export * from "./environment-readiness-orchestration-service.js";
 export * from "./golden-task-runner.js";
 export * from "./stable-acceptance-line.js";
 export * from "./stable-backup-restore-rehearsal.js";

@@ -107,6 +107,30 @@ export class ConnectorFrameworkService {
     return [...this.manifests.values()].filter((item) => enabledIds.has(item.connectorId));
   }
 
+  public getManifest(connectorId: string): RegisteredConnectorManifest | null {
+    return this.manifests.get(connectorId) ?? null;
+  }
+
+  public listBindings(options: {
+    connectorId?: string;
+    tenantId?: string;
+    environment?: ConnectorBinding["environment"];
+  } = {}): ConnectorBinding[] {
+    const allBindings = [...this.bindings.values()].flatMap((items) => items);
+    return allBindings.filter((binding) => {
+      if (options.connectorId != null && binding.connectorId !== options.connectorId) {
+        return false;
+      }
+      if (options.tenantId != null && binding.tenantId !== options.tenantId) {
+        return false;
+      }
+      if (options.environment != null && binding.environment !== options.environment) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   private requireManifest(connectorId: string): RegisteredConnectorManifest {
     const manifest = this.manifests.get(connectorId);
     if (manifest == null) {

@@ -343,6 +343,7 @@ export class HITLExplainabilityService {
     context?: {
       executionId?: string | null;
       takeoverSessionId?: string | null;
+      contextSnapshot?: Record<string, unknown>;
     },
   ): DecisionExplanation {
     const factors: DecisionFactor[] = [];

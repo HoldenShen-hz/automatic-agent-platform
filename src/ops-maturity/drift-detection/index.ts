@@ -26,3 +26,6 @@ export * from './rollout-manager.js';
 
 // Central registry
 export * from './evolution-registry.js';
+export * from './changepoint-detector/index.js';
+export * from './cross-agent-analyzer/index.js';
+export * from './fingerprint-builder/index.js';

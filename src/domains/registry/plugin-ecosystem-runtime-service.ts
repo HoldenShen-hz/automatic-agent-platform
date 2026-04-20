@@ -1,0 +1,155 @@
+import { ValidationError } from "../../platform/contracts/errors.js";
+import { newId } from "../../platform/contracts/types/ids.js";
+import { ConnectorFrameworkService, type ConnectorBinding } from "../../scale-ecosystem/integration/connector-framework-service.js";
+import { DomainRegistryService } from "./domain-registry-service.js";
+import { PluginSpiRegistry, type RegisteredPluginRecord } from "./plugin-spi-registry.js";
+
+export interface EcosystemRuntimePluginTarget {
+  pluginId: string;
+  pluginType: string;
+  lifecycleState: string;
+  healthy: boolean;
+  runtimeIsolation: string;
+  domainId: string;
+}
+
+export interface EcosystemRuntimeConnectorTarget {
+  connectorId: string;
+  bound: boolean;
+  environment: "dev" | "staging" | "prod";
+  lifecycleState: string | null;
+}
+
+export interface EcosystemRuntimePlan {
+  planId: string;
+  domainId: string;
+  tenantId: string;
+  environment: "dev" | "staging" | "prod";
+  pluginTargets: EcosystemRuntimePluginTarget[];
+  connectorTargets: EcosystemRuntimeConnectorTarget[];
+  ready: boolean;
+  findings: string[];
+}
+
+export interface EcosystemRuntimeActivation {
+  activationId: string;
+  plan: EcosystemRuntimePlan;
+  activatedPluginIds: string[];
+  connectorBindings: ConnectorBinding[];
+}
+
+export class PluginEcosystemRuntimeService {
+  public constructor(
+    private readonly domains: DomainRegistryService,
+    private readonly plugins: PluginSpiRegistry,
+    private readonly connectors: ConnectorFrameworkService,
+  ) {}
+
+  public buildPlan(input: {
+    domainId: string;
+    tenantId: string;
+    environment: "dev" | "staging" | "prod";
+    connectorIds?: readonly string[];
+  }): EcosystemRuntimePlan {
+    const domain = this.domains.get(input.domainId);
+    if (domain == null) {
+      throw new ValidationError("plugin_ecosystem.domain_not_found", "Domain is not registered.", {
+        details: { domainId: input.domainId },
+      });
+    }
+    const pluginTargets = this.domains.getPluginBindings(input.domainId).map((binding) => {
+      const record = this.plugins.get(binding.pluginId);
+      return toPluginTarget(binding.pluginId, binding.pluginType, input.domainId, record);
+    });
+    const connectorTargets = (input.connectorIds ?? []).map((connectorId) => {
+      const manifest = this.connectors.getManifest(connectorId);
+      const binding = this.connectors
+        .listBindings({ connectorId, tenantId: input.tenantId, environment: input.environment })[0] ?? null;
+      return {
+        connectorId,
+        bound: binding != null,
+        environment: input.environment,
+        lifecycleState: manifest?.lifecycleState ?? null,
+      } satisfies EcosystemRuntimeConnectorTarget;
+    });
+    const findings: string[] = [];
+    for (const target of pluginTargets) {
+      if (!target.healthy) {
+        findings.push(`plugin not ready: ${target.pluginId}`);
+      }
+    }
+    for (const target of connectorTargets) {
+      if (!target.bound) {
+        findings.push(`connector not bound: ${target.connectorId}`);
+      }
+      if (input.environment === "prod" && target.lifecycleState !== "verified" && target.lifecycleState !== "enabled") {
+        findings.push(`connector not prod-ready: ${target.connectorId}`);
+      }
+    }
+    return {
+      planId: newId("ecosystem_plan"),
+      domainId: input.domainId,
+      tenantId: input.tenantId,
+      environment: input.environment,
+      pluginTargets,
+      connectorTargets,
+      ready: findings.length === 0 && domain.status === "active",
+      findings,
+    };
+  }
+
+  public async activateRuntime(input: {
+    domainId: string;
+    tenantId: string;
+    environment: "dev" | "staging" | "prod";
+    connectorIds?: readonly string[];
+    autoBindConnectors?: boolean;
+  }): Promise<EcosystemRuntimeActivation> {
+    const plan = this.buildPlan(input);
+    const activatedPluginIds: string[] = [];
+    for (const binding of this.domains.getPluginBindings(input.domainId)) {
+      await this.plugins.ensureActive(binding.pluginId, {
+        domainId: input.domainId,
+        bindingId: binding.bindingId,
+      });
+      activatedPluginIds.push(binding.pluginId);
+    }
+    const connectorBindings: ConnectorBinding[] = [];
+    if (input.autoBindConnectors === true) {
+      for (const connectorId of input.connectorIds ?? []) {
+        const existing = this.connectors.listBindings({
+          connectorId,
+          tenantId: input.tenantId,
+          environment: input.environment,
+        })[0];
+        if (existing) {
+          connectorBindings.push(existing);
+          continue;
+        }
+        connectorBindings.push(this.connectors.bind(connectorId, input.tenantId, input.environment));
+      }
+    }
+    return {
+      activationId: newId("ecosystem_activation"),
+      plan: this.buildPlan(input),
+      activatedPluginIds,
+      connectorBindings,
+    };
+  }
+}
+
+function toPluginTarget(
+  pluginId: string,
+  pluginType: string,
+  domainId: string,
+  record: RegisteredPluginRecord | null,
+): EcosystemRuntimePluginTarget {
+  return {
+    pluginId,
+    pluginType,
+    lifecycleState: record?.lifecycleState ?? "missing",
+    healthy: record != null && record.lifecycleState !== "disabled" && record.lifecycleState !== "degraded",
+    runtimeIsolation: record?.manifest.sandbox.runtimeIsolation ?? "unknown",
+    domainId,
+  };
+}

@@ -44,7 +44,7 @@ export class DeadLetterQueueService {
 
   public scheduleRetry(deadLetterId: string, delayMs: number): DeadLetterRecord {
     if (!Number.isFinite(delayMs) || delayMs < 0) {
-      throw new ValidationError("dlq.invalid_retry_delay");
+      throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
     const record = this.getRequired(deadLetterId);
     const now = nowIso();
@@ -80,7 +80,7 @@ export class DeadLetterQueueService {
   private getRequired(deadLetterId: string): DeadLetterRecord {
     const record = this.records.get(deadLetterId);
     if (record == null) {
-      throw new ValidationError(`dlq.not_found:${deadLetterId}`);
+      throw new ValidationError(`dlq.not_found:${deadLetterId}`, `Dead-letter record ${deadLetterId} was not found.`);
     }
     return record;
   }

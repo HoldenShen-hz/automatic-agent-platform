@@ -3,6 +3,7 @@ import test from "node:test";
 
 // Re-export test for barrel file
 import {
+  EnvironmentReadinessOrchestrationService,
   REQUIRED_GOLDEN_TASK_CLASSES,
   SINGLE_TASK_GOLDEN_TASKS,
   type GoldenTaskClass,
@@ -85,4 +86,8 @@ test("GoldenTaskCase structure is correct", () => {
   assert.equal(taskCase.metadata.expectedClass, "coding");
   assert.equal(taskCase.metadata.costCeilingUsd, 1.00);
   assert.equal(taskCase.expected.taskStatus, "done");
+});
+
+test("stability barrel exposes environment readiness orchestration", () => {
+  assert.equal(typeof EnvironmentReadinessOrchestrationService, "function");
 });

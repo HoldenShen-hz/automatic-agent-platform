@@ -48,7 +48,10 @@ export class IncidentCaseService {
   public startMitigation(incidentId: string): IncidentCase {
     const incident = this.getRequired(incidentId);
     if (incident.status === "open") {
-      throw new ValidationError("incident.must_acknowledge_before_mitigation");
+      throw new ValidationError(
+        "incident.must_acknowledge_before_mitigation",
+        "Incident must be acknowledged before mitigation can begin.",
+      );
     }
     return this.update(incidentId, { ...incident, status: "mitigating", updatedAt: nowIso() });
   }
@@ -66,7 +69,7 @@ export class IncidentCaseService {
   private getRequired(incidentId: string): IncidentCase {
     const incident = this.getIncident(incidentId);
     if (incident == null) {
-      throw new ValidationError(`incident.not_found:${incidentId}`);
+      throw new ValidationError(`incident.not_found:${incidentId}`, `Incident ${incidentId} was not found.`);
     }
     return incident;
   }

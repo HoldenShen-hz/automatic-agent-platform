@@ -3,6 +3,7 @@ import test from "node:test";
 
 // Barrel test for evaluation module
 import {
+  EvalDatasetJudgeService,
   LLM_EVAL_DDL,
   PROMPT_MODEL_POLICY_GOVERNANCE_DDL,
 } from "../../../../../src/platform/prompt-engine/eval/index.js";
@@ -41,4 +42,8 @@ test("PROMPT_MODEL_POLICY_GOVERNANCE_DDL contains governance_releases table", ()
 
 test("PROMPT_MODEL_POLICY_GOVERNANCE_DDL contains governance_gate_events table", () => {
   assert.ok(PROMPT_MODEL_POLICY_GOVERNANCE_DDL.includes("governance_gate_events"));
+});
+
+test("eval barrel exposes dataset and judge orchestration service", () => {
+  assert.equal(typeof EvalDatasetJudgeService, "function");
 });

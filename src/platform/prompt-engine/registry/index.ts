@@ -55,7 +55,10 @@ export class PromptTemplateRegistryService {
 
     const templateVersions = this.templates.get(templateKey) ?? new Map<string, PromptTemplateRecord>();
     if (templateVersions.has(version)) {
-      throw new ValidationError(`prompt_template.version_conflict:${templateKey}:${version}`);
+      throw new ValidationError(
+        `prompt_template.version_conflict:${templateKey}:${version}`,
+        `Prompt template ${templateKey}@${version} is already registered.`,
+      );
     }
 
     const record: PromptTemplateRecord = {
@@ -97,7 +100,7 @@ export function hashPromptPrefix(fixedPrefix: string): string {
 function normalizeRequired(value: string, field: string): string {
   const normalized = value.trim();
   if (normalized.length === 0) {
-    throw new ValidationError(`prompt_template.invalid_${field}`);
+    throw new ValidationError(`prompt_template.invalid_${field}`, `Prompt template field ${field} must be a non-empty string.`);
   }
   return normalized;
 }

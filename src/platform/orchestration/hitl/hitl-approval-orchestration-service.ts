@@ -147,7 +147,17 @@ export class HitlApprovalOrchestrationService {
         policy: "approval_and_hitl_contract",
         classification: String(request.context?.classification ?? "unspecified"),
       },
-      { executionId: request.executionId ?? null },
+      {
+        executionId: request.executionId ?? null,
+        contextSnapshot: {
+          ...(request.context ?? {}),
+          taskId: request.taskId,
+          executionId: request.executionId ?? null,
+          title: request.title,
+          stageRef: request.stageRef,
+          recommendedOptionId: request.recommendedOptionId ?? null,
+        },
+      },
     );
     const feedbackLink: ApprovalFeedbackLink = {
       approvalId: approval.approvalId,

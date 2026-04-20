@@ -26,7 +26,7 @@ export class FieldEncryptionService {
     keyRef: string;
   }): FieldProtectionResult {
     if (input.keyRef.trim().length === 0) {
-      throw new ValidationError("field_encryption.missing_key_ref");
+      throw new ValidationError("field_encryption.missing_key_ref", "Field encryption requires a non-empty key reference.");
     }
     const protectedRecord = structuredClone(input.record) as Record<string, unknown>;
     const protectedFields: ProtectedField[] = [];
@@ -52,7 +52,7 @@ export class FieldEncryptionService {
   public revealField(input: { ciphertext: string; keyRef: string }): string {
     const prefix = `enc:${fingerprintKey(input.keyRef)}:`;
     if (!input.ciphertext.startsWith(prefix)) {
-      throw new ValidationError("field_encryption.key_mismatch");
+      throw new ValidationError("field_encryption.key_mismatch", "Ciphertext does not match the provided key reference.");
     }
     return Buffer.from(input.ciphertext.slice(prefix.length), "base64url").toString("utf8");
   }

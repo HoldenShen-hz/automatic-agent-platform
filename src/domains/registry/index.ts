@@ -8,3 +8,4 @@ export * from "./tool-bundle-registry.js";
 export * from "./contract-registry.js";
 export * from "./domain-smoke-test.js";
 export * from "./domain-event-payload.js";
+export * from "./plugin-ecosystem-runtime-service.js";

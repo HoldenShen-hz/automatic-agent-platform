@@ -67,11 +67,11 @@
 - `§6-§8`
   - API 资源粒度、通信拓扑、扩展生态运行面的章节级覆盖仍偏轻
 - `§16-§17`
-  - Prompt 全平台灰度治理、dataset / judge 生态仍不够厚
+  - 已补平台级 prompt release orchestration 与 dataset / judge gate，剩余缺口主要是 staged canary、judge 市场和更完整在线监控生态
 - `§20-§23`
-  - 长时 workflow、HITL 通知与 takeover UI、SDK 工作台、合规专题仍有产品层/专题层缺口
+  - 长时 workflow、HITL 通知与 takeover UI、SDK 工作台仍有产品层缺口；合规已补跨区导出与删除请求编排，但法规专题包仍不够厚
 - `§27-§32`
-  - 性能基准、HA/DR 演练、部署资源池和恢复演练尚未全部细化成代码清单
+  - 已补 environment readiness / SLO / resource pool / failover drill 编排，剩余缺口主要是 benchmark inventory、coordinator 级恢复细节和 deployment 资源台账厚度
 - `§33`、`§36`
   - 本质上是治理 / 成功标准章节，天然以文档和 contract 为主
 - `§44`

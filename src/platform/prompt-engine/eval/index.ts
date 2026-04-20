@@ -8,3 +8,6 @@
 export * from "./prompt-model-policy-governance-schema.js";
 export * from "./execution-outcome-evaluator.js";
 export * from "./post-execution-quality-gate.js";
+export * from "./llm-eval-service.js";
+export * from "./prompt-model-policy-governance-service.js";
+export * from "./eval-dataset-judge-service.js";

@@ -37,7 +37,7 @@ export class ErasurePlanningService {
     slaHours: number;
   }): ErasurePlan {
     if (!Number.isFinite(input.slaHours) || input.slaHours <= 0) {
-      throw new ValidationError("erasure.invalid_sla");
+      throw new ValidationError("erasure.invalid_sla", "Erasure SLA hours must be a positive finite number.");
     }
     const createdAt = nowIso();
     const dueAt = new Date(Date.parse(createdAt) + input.slaHours * 60 * 60 * 1000).toISOString();
