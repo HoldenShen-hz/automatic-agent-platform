@@ -646,7 +646,7 @@ test("edit replacement service handles empty edits array in batch", async () => 
   }
 });
 
-test("edit replacement service fail-closes when execution allowed paths contain malformed entries", () => {
+test("edit replacement service fail-closes when execution allowed paths contain malformed entries", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "invalid-paths.ts");
 
@@ -658,7 +658,7 @@ test("edit replacement service fail-closes when execution allowed paths contain 
   try {
     createFile(filePath, "const value = 1;\n");
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "call-invalid-paths-json",
       taskId: "task-edit",
       executionId: "exec-edit",
@@ -741,7 +741,7 @@ test("edit replacement service fails with lock conflict in batch mode when anoth
   }
 });
 
-test("edit replacement service reports already_applied in batch mode when file already contains newString", () => {
+test("edit replacement service reports already_applied in batch mode when file already contains newString", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-already.ts");
 
@@ -845,7 +845,7 @@ test("edit replacement service rolls back all edits atomically when second edit 
   }
 });
 
-test("edit replacement service handles empty edits array in batch gracefully", () => {
+test("edit replacement service handles empty edits array in batch gracefully", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-truly-empty.ts");
 
