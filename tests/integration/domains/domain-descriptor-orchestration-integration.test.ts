@@ -80,8 +80,10 @@ test("integration: domain descriptor review and onboarding checklist drive activ
     evalFramework: {
       frameworkId: "eval_coding",
       domainId: "coding",
+      fewShotExamples: [],
       evaluators: [{ evaluatorId: "tests", metric: "pass_rate", threshold: 0.95, blocking: true }],
       onlineMetrics: [],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     promptLibrary: {
       libraryId: "prompt_coding",

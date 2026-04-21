@@ -76,6 +76,7 @@ test("integration: org-governance services compose policy, delegation, knowledge
     "dept_finance",
     "approve budget",
     [],
+    undefined,
     "2026-04-20T00:00:00.000Z",
   );
   const sync = identity.bootstrap(

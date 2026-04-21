@@ -9,11 +9,13 @@ import { DomainPromptGovernanceService } from "../../../src/domains/prompt-libra
 const FRAMEWORK: DomainEvalFramework = {
   frameworkId: "eval_release",
   domainId: "coding",
+  fewShotExamples: [],
   evaluators: [
     { evaluatorId: "tests_pass", metric: "pass_rate", threshold: 0.95, blocking: true },
     { evaluatorId: "security_checks", metric: "security_score", threshold: 0.9, blocking: true },
   ],
   onlineMetrics: ["latency_score"],
+  releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
 };
 
 const LIBRARY: DomainPromptLibrary = {

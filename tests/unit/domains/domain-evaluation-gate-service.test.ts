@@ -7,11 +7,13 @@ import { DomainEvaluationGateService } from "../../../src/domains/eval-framework
 const FRAMEWORK: DomainEvalFramework = {
   frameworkId: "eval_coding",
   domainId: "coding",
+  fewShotExamples: [],
   evaluators: [
     { evaluatorId: "tests_pass", metric: "pass_rate", threshold: 0.95, blocking: true },
     { evaluatorId: "latency", metric: "latency_score", threshold: 0.8, blocking: false },
   ],
   onlineMetrics: ["latency_score", "approval_match"],
+  releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
 };
 
 test("DomainEvaluationGateService promotes suites that satisfy blocking evaluators", () => {

@@ -168,10 +168,12 @@ test("contract: DomainTaskDesignService preserves review and interaction constra
     evalFramework: {
       frameworkId: "eval_coding",
       domainId: "coding",
+      fewShotExamples: [],
       evaluators: [
         { evaluatorId: "tests_pass", metric: "tests_pass", threshold: 0.95, blocking: true },
       ],
       onlineMetrics: [],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     knowledgeSchema: {
       schemaId: "knowledge_coding",
@@ -258,11 +260,13 @@ test("contract: blocking regression gate failures must hold prompt promotion", (
   const framework: DomainEvalFramework = {
     frameworkId: "eval_release",
     domainId: "coding",
+    fewShotExamples: [],
     evaluators: [
       { evaluatorId: "tests_pass", metric: "pass_rate", threshold: 0.95, blocking: true },
       { evaluatorId: "latency", metric: "latency_score", threshold: 0.8, blocking: false },
     ],
     onlineMetrics: ["latency_score"],
+    releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
   };
   const report = service.evaluateSuite(framework, {
     suiteId: "suite_bad",
@@ -394,6 +398,7 @@ test("contract: KnowledgeBoundaryService logs and redacts denied access", () => 
     "dept_hr",
     "investigate",
     [],
+    undefined,
     "2026-04-20T00:00:00.000Z",
   );
   assert.equal(result.allowed, false);
@@ -864,8 +869,10 @@ test("contract: domain descriptors without workflow/tool/prompt/eval anchors rem
     evalFramework: {
       frameworkId: "eval_finance",
       domainId: "finance",
+      fewShotExamples: [],
       evaluators: [],
       onlineMetrics: [],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     promptLibrary: {
       libraryId: "prompt_finance",

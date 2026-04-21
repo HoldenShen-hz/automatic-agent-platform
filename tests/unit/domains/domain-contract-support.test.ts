@@ -44,11 +44,13 @@ test("domain support modules expose contract-aligned helpers", () => {
     listBlockingEvaluators({
       frameworkId: "eval_1",
       domainId: "coding",
+      fewShotExamples: [],
       evaluators: [
         { evaluatorId: "tests", metric: "pass_rate", threshold: 0.95, blocking: true },
         { evaluatorId: "style", metric: "lint", threshold: 0.9, blocking: false },
       ],
       onlineMetrics: [],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     }).length,
     1,
   );

@@ -32,10 +32,12 @@ test("DomainDescriptorOrchestrationService summarizes descriptor readiness and r
     evalFramework: {
       frameworkId: "eval_coding",
       domainId: "coding",
+      fewShotExamples: [],
       evaluators: [
         { evaluatorId: "tests", metric: "pass_rate", threshold: 0.95, blocking: true },
       ],
       onlineMetrics: ["latency"],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     promptLibrary: {
       libraryId: "prompt_coding",
@@ -102,8 +104,10 @@ test("DomainDescriptorOrchestrationService flags missing authoritative inputs", 
     evalFramework: {
       frameworkId: "eval_ops",
       domainId: "ops",
+      fewShotExamples: [],
       evaluators: [],
       onlineMetrics: [],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     promptLibrary: {
       libraryId: "prompt_ops",

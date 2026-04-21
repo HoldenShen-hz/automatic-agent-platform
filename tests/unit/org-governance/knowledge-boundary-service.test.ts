@@ -19,6 +19,7 @@ test("KnowledgeBoundaryService evaluates access and redacts audit logs", () => {
     "dept_hr",
     "investigate",
     [],
+    undefined,
     "2026-04-20T00:00:00.000Z",
   );
   assert.equal(denied.allowed, false);
@@ -35,6 +36,7 @@ test("KnowledgeBoundaryService evaluates access and redacts audit logs", () => {
       purpose: "audit",
       expiresAt: "2026-04-21T00:00:00.000Z",
     }],
+    undefined,
     "2026-04-20T00:00:00.000Z",
   );
   assert.equal(granted.allowed, true);

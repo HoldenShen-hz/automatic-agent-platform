@@ -128,7 +128,7 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   );
   assert.equal(orderEdgeSyncQueue([{ envelopeId: "a", priority: 1 }, { envelopeId: "b", priority: 3 }])[0]?.envelopeId, "b");
 
-  assert.equal(buildForensicSnapshot("snap_1", "platform", "2026-04-20T00:00:00.000Z", ["art_1"]).artifactIds.length, 1);
+  assert.equal(buildForensicSnapshot({ snapshotId: "snap_1", scope: "platform", collectedAt: "2026-04-20T00:00:00.000Z", artifactIds: ["art_1"] }).artifactIds.length, 1);
   assert.equal(shouldEnterPanicMode({ scope: "platform", reasonCode: "security.compromise", activeIncidents: 0 }), true);
   assert.equal(canResumeFromPanic({ scope: "platform", approvedBy: "sre", checkpointsVerified: true }), true);
 

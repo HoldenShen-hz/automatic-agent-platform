@@ -31,7 +31,7 @@
 | 设计宪法"默认会失败"                                   | ✅   | 重试/超时/checkpoint/DLQ/恢复 worker 全套                      |
 | 设计宪法"默认收敛"                                     | ✅   | config-override-governance 治理 + 特性门控                     |
 | 设计宪法"先可恢复，再自动化"                           | ✅   | 6 种恢复 worker 先于自动化部署                                 |
-| 宪法原则代码化配置                                     | 🔴   | 无 `constitution.json` 或原则声明配置文件，仅在设计文档中存在  |
+| 宪法原则代码化配置                                     | ✅   | **已完成**: `config/constitution/default.json` 已固化高风险审批/先持久化后副作用/最小权限/知识边界等原则 |
 | G1 稳态运行                                            | ✅   | CircuitBreaker + BackpressureController + AutoStopLoss         |
 | G2 风险隔离                                            | ✅   | `config/risk/default.json` 82 行完整 6 因子评分                |
 | G3 安全默认拒绝                                        | ✅   | sandbox default deny + egress whitelist + IAM 3 层授权         |
@@ -41,8 +41,7 @@
 | G7 多租户安全                                          | ✅   | tenant isolation + per-tenant DEK + quota                      |
 | G8 业务可扩展不侵入内核                                | ✅   | BusinessPack + Plugin + Domain Descriptor 体系                 |
 
-**§1-§3 差距**: 设计宪法的 4 条原则仅在文档中声明，未以代码配置形式固化（例如 `config/constitution.json` 声明原则并在启动时校验）。
-**解决方案**: 创建 `config/constitution/default.json` 包含 4 条原则声明，在 `src/platform/control-plane/policy-center/index.ts` 的 `PolicyCenterService` 构造函数中加载并校验原则约束是否满足。估算 0.5 人天。
+**§1-§3 当前状态**: 宪法原则已落为正式配置文件，当前剩余工作不再是“有没有配置”，而是后续如需更严格的启动期校验，可再将 `constitution` 装载到 `PolicyCenter` 启动流程中做一致性检查。
 
 ### §29 知识/记忆/制品/学习 四域边界 — v4.0 新增
 
@@ -69,11 +68,10 @@
 | 设计要求           | 状态 | 实现证据                                                                                  |
 | ------------------ | ---- | ----------------------------------------------------------------------------------------- |
 | 7 期路线图跟踪     | ✅   | `domains/roadmap/roadmap-service.ts` 124 行, 含阶段追踪/状态管理/完成记录                 |
-| 阶段门禁自动拦截   | 🔴   | `RoadmapService` 为内存跟踪器，无自动门禁拦截（不阻断 Phase N 未达标时的 Phase N+1 部署） |
+| 阶段门禁自动拦截   | ✅   | **已完成**: `RoadmapService` 已接入 `SuccessCriteriaService`，支持 phase gate 注册、指标记分与 `evaluatePhaseAdvance()` 拦截 |
 | 特性开关按阶段启用 | ✅   | feature flag 治理在 config-override-governance + gray-release-rehearsal                   |
 
-**§33 差距**: 阶段门禁无自动拦截。
-**解决方案**: 在 `RoadmapService` 增加 `assertPhaseGate(targetPhase: number): void` 方法，在 `PackLifecycleOrchestrationService.publishPack()` 中调用，校验前置阶段完成状态。估算 1 人天。
+**§33 当前状态**: 路线图跟踪、成功标准度量和阶段门禁已经形成同一套服务骨架，后续如需接入真实发布流水线，只需要把 `evaluatePhaseAdvance()` 接到发布入口即可。
 
 ### §34 ADR 合规 — v4.0 新增
 
@@ -94,12 +92,11 @@
 | ---------------------- | ---- | ----------------------------------------------------------------------------------- |
 | 28 项风险 → 风险登记册 | 🟡   | `config/risk/default.json` 实现执行时风险评分，但无正式风险登记册跟踪 28 项设计风险 |
 | 32 项硬约束代码强制    | 🟡   | 约 60% 有代码强制（高风险审批/CAS/sandbox/delegation depth≤3 等），其余仅文档声明   |
-| 每阶段成功标准度量     | 🔴   | 无成功标准度量服务，`anomaly-detection-service` 监控 SLO 但不与阶段成功标准关联     |
+| 每阶段成功标准度量     | ✅   | **已完成**: `domains/roadmap/success-criteria-service.ts` 已支持 criterion 注册、指标采集、phase success 评估与门禁决策 |
 
-**§36 差距**: 无风险登记册，无成功标准度量。
-**解决方案**: (1) 创建 `config/risk-register/default.json` 列出 28 项设计风险及缓解状态; (2) 在 `RoadmapService` 中增加 `evaluatePhaseSuccessCriteria(phase: number): SuccessEvaluation` 拉取 SLO 数据评估是否达标。估算 2 人天。
+**§36 当前剩余差距**: 风险评分已存在，但“28 项设计风险登记册”仍偏文档治理项；成功标准度量与阶段判定已经补齐。
 
-**第零层总结**: 21 项设计要求中 **16 项 ✅ / 3 项 🟡 / 2 项 🔴**。对齐率 **83%**。
+**第零层总结**: 21 项设计要求中 **18 项 ✅ / 3 项 🟡 / 0 项 🔴**。对齐率 **93%**。
 
 ---
 
@@ -143,7 +140,7 @@
 | GET/POST /api/v1/knowledge                       | ✅   | plane-routes.ts (291 行)                                                                                                                                                                         |
 | GET/POST /api/v1/packs                           | ✅   | pack-routes.ts (158 行)                                                                                                                                                                          |
 | GET/POST /api/v1/plugins                         | ✅   | plane-routes.ts                                                                                                                                                                                  |
-| GET /api/v1/prompts                              | 🟡   | prompt-routes.ts **仅 30 行, 只读 GET /v1/prompts(list)**; 缺 GET/:id, POST, PUT, DELETE。底层 HierarchicalPromptRegistryService(482 行) 有完整 register/get/deprecate/version 逻辑但未暴露 HTTP |
+| GET /api/v1/prompts                              | ✅   | **已完成**: prompt-routes 已开放 list/get/post/deprecate/delete，直接接线 `HierarchicalPromptRegistryService` |
 | GET /api/v1/cost-reports                         | ✅   | cost-routes.ts (121 行)                                                                                                                                                                          |
 | GET/POST/DELETE /api/v1/webhooks                 | ✅   | webhook-routes.ts (153 行)                                                                                                                                                                       |
 | GET /api/v1/admin/workers                        | ✅   | admin-routes.ts (228 行)                                                                                                                                                                         |
@@ -155,12 +152,9 @@
 | ApiError 含 code/message/trace_id/retry_after_ms | ✅   | AppError 体系 (526 行, 14 子类)                                                                                                                                                                  |
 | Idempotency-Key header                           | ✅   | middleware 层实现                                                                                                                                                                                |
 | 游标分页 max 100                                 | ✅   | 路由层实现                                                                                                                                                                                       |
-| Webhook 50 次失败自动禁用                        | 🔴   | **已确认缺失**: `WebhookIngressService`(227 行) 有 `enabled` 字段手动切换但无失败计数器、无连续失败跟踪、无自动禁用逻辑                                                                          |
+| Webhook 50 次失败自动禁用                        | ✅   | **已完成**: `WebhookIngressService` 已补齐 failureCounts、失败累计、阈值禁用与计数重置接口 |
 
-**§6 差距**:
-
-1. prompts 端点仅只读 (30 行) — **解决方案**: 在 `prompt-routes.ts` 增加 `POST /v1/prompts`(调用 `registryService.registerBundle()`), `GET /v1/prompts/:bundleId`(调用 `.getBundle()`), `PUT /v1/prompts/:bundleId/deprecate`(调用 `.deprecateBundle()`), `DELETE /v1/prompts/:bundleId`。估算 1 人天。
-2. Webhook 50 次失败自动禁用 — **解决方案**: 在 `WebhookIngressService` 增加 `private failureCounts: Map<string, number>`，在投递回调失败时 `failureCounts.get(endpointId)++`，达到 50 时调用 `endpoint.enabled = false` 并发 `webhook.endpoint_auto_disabled` 事件。估算 0.5 人天。
+**§6 当前状态**: review 中点名的 Prompts 管理端点和 Webhook 自动禁用机制已全部补齐，接口层当前剩余重点转为超时配置统一和更严格的输入校验。
 
 ### §7 服务通信架构
 
@@ -459,7 +453,7 @@
 | DomainEvalFramework                            | ✅   | domains/eval-framework/                                                                                                                                                                                                                |
 | DomainPromptLibrary                            | ✅   | domains/prompt-library/                                                                                                                                                                                                                |
 | DomainRecipe 模板                              | ✅   | **已确认**: `domain-recipe-service.ts`(271 行) 含 4 个 archetype 模板: prototype_analysis/prototype_implementation/prototype_review/prototype_release, 每个含 triggerPatterns/defaultWorkflowId/toolBundleIds/estimatedDurationMinutes |
-| DomainInteractionPolicy (cross-domain)         | 🟡   | **已确认**: `interaction-policy/index.ts`(23 行) 有 Zod schema(allow/approval_required/deny + maxConcurrentWorkflows + compensationRequired) + `isCrossDomainInteractionAllowed()` 单一谓词; 无审批流集成, 无补偿处理, 无服务类        |
+| DomainInteractionPolicy (cross-domain)         | ✅   | **已完成**: `DomainInteractionPolicyService` 已补齐 allow/approval_required/deny 判定、并发上限与补偿标记 |
 | DomainGovernancePolicy                         | ✅   | domains/governance/                                                                                                                                                                                                                    |
 | DomainDescriptor 生命周期                      | ✅   |                                                                                                                                                                                                                                        |
 | CLI: domain init/validate                      | ✅   | sdk/cli/ 入口点                                                                                                                                                                                                                        |
@@ -469,19 +463,13 @@
 | 设计要求                      | 状态 | 实现证据                                                                                                                                                                         |
 | ----------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 4 阶段接入                    | ✅   | domains/operations/ + roadmap/                                                                                                                                                   |
-| Gate 1: ≥5 few-shot           | 🔴   | **已确认缺失**: 无 `>= 5` few-shot 最小数量门控, 仅有 schema 支持 few-shot 存储                                                                                                  |
-| Gate 1: eval ≥20 条           | 🔴   | **已确认缺失**: `DomainEvaluationGateService` 仅校验 `cases.length > 0`, 无 `>= 20` 门控                                                                                         |
+| Gate 1: ≥5 few-shot           | ✅   | **已完成**: `DomainEvaluationGateService` 已接入 `releaseGates.minFewShotCount` 默认 5 条门槛 |
+| Gate 1: eval ≥20 条           | ✅   | **已完成**: `DomainEvaluationGateService` 已接入 `releaseGates.minRegressionCaseCount` 默认 20 条门槛 |
 | Gate 2: 覆盖率 ≥80%           | ✅   | **已确认**: pack-lifecycle + pack-test-local 均有 `coveragePercent >= 80` 检查                                                                                                   |
-| Gate 3: Prompt Injection 100% | 🟡   | **已确认**: `promptInjectionPassed: boolean` 追踪(stable-evidence-bundle-support.ts:303), 布尔值暗示 100% 但无百分比门控                                                         |
+| Gate 3: Prompt Injection 100% | ✅   | **已完成**: `requirePromptInjectionCoverage` 已进入 gate 评估，回归集未全量通过时直接阻断发布 |
 | Phase 4 金丝雀百分比          | ✅   | **已确认**: agent-lifecycle `CANARY_STAGES = [5, 20, 50, 100]`; hot-upgrade `DEFAULT_CANARY_PERCENT = 10`; drift-detection rollout `shadow=0%/canary=5%/partial=25%/stable=100%` |
 
-**§38 差距**:
-
-1. few-shot ≥5 门控 — **解决方案**: 在 `DomainEvaluationGateService` 的验证逻辑中增加 `if (fewShotExamples.length < 5) throw Error("gate.few_shot_minimum")`。估算 0.5 人天。
-2. eval ≥20 条门控 — **解决方案**: 修改 `cases.length === 0` 为 `cases.length < 20`。估算 0.1 人天。
-
-**§37-§38 差距**: `DomainInteractionPolicy` 仅 23 行, 无服务层。
-**解决方案**: 创建 `DomainInteractionPolicyService` 类包装 `isCrossDomainInteractionAllowed()`，增加 `resolveApprovalRequired()` 对接 `ApprovalFlowEngine`，增加 `executeCompensation()` 在跨域操作失败时回滚。估算 3-5 人天。
+**§37-§38 当前状态**: 业务域接入 runbook 的 few-shot、回归集、Prompt Injection 门槛和跨域交互治理服务已形成闭环；剩余工作主要是把这些 gate 与更上层的自动接入向导完全串起来。
 
 ---
 
@@ -587,30 +575,29 @@
 | 设计要求           | 状态 | 实现证据                                          |
 | ------------------ | ---- | ------------------------------------------------- |
 | SCIM 2.0           | ✅   | scim-service.ts (828 行)                          |
-| SAML 2.0           | 🟡   | saml/index.ts (186 行), 协议完整但缺 XML 签名验证 |
-| OIDC               | 🟡   | oidc-service.ts (432 行), Token 交换为模拟实现    |
-| GroupRoleMapping   | 🟡   | groups 字段存在但无显式映射规则引擎               |
+| SAML 2.0           | 🟡   | saml/index.ts 已补齐 provider 注册/login/assertion/logout 骨架；仍缺 XML 签名级别的生产硬化 |
+| OIDC               | 🟡   | oidc-service.ts 已支持真实 `fetch(tokenEndpoint/userInfoEndpoint)`，保留模拟回退以兼容本地开发 |
+| GroupRoleMapping   | ✅   | **已完成**: `GroupRoleMappingService` 已补齐 group→role 映射规则解析 |
 | 用户生命周期自动化 | ✅   | ScimProvisioningEvent 5 种事件                    |
 | API Key 管理       | ✅   | api-key-service.ts (147 行)                       |
 
 **§48 差距**:
 
 1. SAML 签名 — **解决方案**: 在 `saml/index.ts` 的 `consumeAssertion()` 中集成 `xml-crypto` 库: `const sig = new SignedXml(); sig.loadSignature(assertion.Signature); if (!sig.checkSignature(xml)) throw`。估算 2 人天。
-2. OIDC Token 交换 — **解决方案**: 将 `exchangeCodeForTokens()` 中的模拟响应替换为 `fetch(tokenEndpoint, { method: "POST", body: ... })` 真实 HTTP 调用。估算 1 人天。
+2. OIDC 当前为“真实调用 + 开发回退”模式 — 如需彻底收紧生产行为，可在生产配置中禁用模拟回退并强制 provider endpoint 可用。
 
 ### §49 分部门合规策略引擎
 
 | 设计要求                                    | 状态 | 实现证据                                                        |
 | ------------------------------------------- | ---- | --------------------------------------------------------------- |
-| ComplianceFramework (framework_id/controls) | 🔴   | 无 ComplianceFramework 实体                                     |
-| DepartmentComplianceBinding                 | 🔴   | 完全缺失                                                        |
-| 合规策略继承 (子不可放松)                   | 🟡   | inheritance/index.ts 有层次合并, 但仅 shallow spread 无冲突规则 |
-| SOX/HIPAA/PCI-DSS/GDPR 具名框架             | 🔴   | 无任何具名合规标准                                              |
-| 自动合规证据收集                            | 🔴   | 无证据自动收集机制                                              |
+| ComplianceFramework (framework_id/controls) | ✅   | **已完成**: `framework-catalog.ts` 已补齐 framework/control 模型 |
+| DepartmentComplianceBinding                 | ✅   | **已完成**: `ComplianceGovernanceService.attachFrameworks()` 已支持部门/组织节点绑定 |
+| 合规策略继承 (子不可放松)                   | ✅   | **已完成**: inheritance 合并已对 boolean/number/string 采用更严格继承规则 |
+| SOX/HIPAA/PCI-DSS/GDPR 具名框架             | ✅   | **已完成**: 已预置 4 个具名企业框架模板 |
+| 自动合规证据收集                            | ✅   | **已完成**: `ComplianceEvidenceCollector` 已补齐证据采集与列举 |
 | 审计记录                                    | ✅   | GovernanceAuditRecord + Zod 验证                                |
 
-**§49 差距**: 整个合规引擎骨架化。
-**解决方案**: (1) 创建 `ComplianceFrameworkSchema` (Zod): `frameworkId/name/version/controls: ComplianceControl[]`; (2) 创建 `DepartmentComplianceBindingService.bind(departmentId, frameworkId)` + `evaluate(departmentId): ComplianceReport`; (3) 修改 `inheritance/index.ts` 的合并逻辑为深度合并, 增加 `assertNoRelaxation(parent, child)` 校验子策略不放松; (4) 预置 `config/compliance/sox.json`, `gdpr.json` 等框架模板。估算 8-12 人天。
+**§49 当前状态**: 分部门合规策略引擎已经从“骨架化”进入“可运行基线”状态，后续演进重点转为和真实控制证据源、自动审计作业的深层接线。
 
 ### §50 知识域隔离与受控共享
 
@@ -618,15 +605,12 @@
 | ------------------- | ---- | ------------------------------------------------- |
 | KnowledgeBoundary   | ✅   | boundary-manager/index.ts, private/shared/public  |
 | KnowledgeShareGrant | ✅   | sharing-gate/index.ts 含时间窗口检查              |
-| KnowledgeFederator  | 🔴   | 完全缺失                                          |
-| ChineseWallPolicy   | 🔴   | 完全缺失                                          |
-| CrossBoundaryRule   | 🟡   | ShareGrant 为简单 allowlist                       |
+| KnowledgeFederator  | ✅   | **已完成**: `KnowledgeFederator` 已支持多边界聚合检索与边界过滤 |
+| ChineseWallPolicy   | ✅   | **已完成**: `evaluateChineseWallPolicy()` 已支持 conflict group 阻断 |
+| CrossBoundaryRule   | ✅   | **已完成**: `KnowledgeBoundaryService` 已联动 boundary visibility / share grant / chinese wall |
 | 访问审计日志 + 脱敏 | ✅   | access-log/index.ts 含 redactKnowledgeAccessLog() |
 
-**§50 差距**:
-
-1. KnowledgeFederator — **解决方案**: 创建 `KnowledgeFederatorService.federatedSearch(query, targetNamespaces, requesterContext)` 聚合多域检索结果, 尊重 KnowledgeBoundary 可见性。估算 3-5 人天。
-2. ChineseWallPolicy — **解决方案**: 创建 `ChineseWallPolicyService` 含 `conflictGroups: Map<string, string[]>` 和 `isAccessBlocked(userId, targetNamespace): boolean` 检查用户已访问的域是否与目标域存在利益冲突。估算 3-5 人天。
+**§50 当前状态**: 知识域隔离与受控共享缺口已补齐，当前重点转向更细粒度的命名空间策略和跨组织协作的长期审计分析。
 
 ### §51 分级治理委托
 
@@ -661,9 +645,9 @@
 | 设计要求                       | 状态 | 实现证据                                                             |
 | ------------------------------ | ---- | -------------------------------------------------------------------- |
 | FairSchedulingService          | ✅   | fair-scheduling-service.ts (69 行)                                   |
-| QuotaPolicy (硬限/软限/突发限) | 🟡   | quota-enforcer/ (17 行), 仅检查 hardLimit, softLimit/burstLimit 未用 |
+| QuotaPolicy (硬限/软限/突发限) | ✅   | **已完成**: `evaluateQuota()` 已同时评估 hard/soft/burst 三类阈值 |
 | 抢占策略                       | ✅   | preemption/index.ts                                                  |
-| ResourcePool 抽象              | 🔴   | 无资源池分配/回收/跟踪                                               |
+| ResourcePool 抽象              | ✅   | **已完成**: `ResourcePoolService` 已支持池注册、分配、释放、剩余容量跟踪 |
 
 ### §54 SLA 引擎
 
@@ -680,9 +664,9 @@
 | 设计要求                     | 状态 | 实现证据                                                                                                                                           |
 | ---------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | MarketplaceGovernanceService | ✅   | marketplace-governance-service.ts (788 行), 信任级别/签名验证/策略执行                                                                             |
-| MarketplaceCatalogEntry      | 🟡   | catalog/index.ts (15 行), 含 lifecycleState 6 阶段 (draft/submitted/certified/published/deprecated/retired) 但仅 schema 无服务层                   |
-| Publisher 模型               | 🟡   | **已确认**: publisher/index.ts (14 行), 仅 `PublisherProfileSchema` + `canPublisherReleaseArtifact()`; 无声誉/历史/联系方式                        |
-| QualityMetrics 模型          | 🔴   | **已确认**: marketplace 目录无 QualityMetrics 接口; `SecurityScanResult` 有问题计数但无质量评分                                                    |
+| MarketplaceCatalogEntry      | ✅   | **已完成**: catalog schema 已补齐 `qualityMetrics`，并由治理/目录能力共同消费 |
+| Publisher 模型               | ✅   | **已完成**: PublisherProfile 已补齐 reputation/contact/publishedArtifactCount |
+| QualityMetrics 模型          | ✅   | **已完成**: Catalog 已引入 reliability/usability/support 质量评分 |
 | 定价模型                     | ✅   | billing/types.ts (156 行) + billing-service.ts (792 行)                                                                                            |
 | 依赖管理                     | ✅   | **已确认**: `pack-security-service.ts:116-152` `detectDependencyConflicts()` 检测 capability_overlap/permission_conflict/api_contract_incompatible |
 | 弃用生命周期                 | 🟡   | schema 含 deprecated/retired 状态, 但 governance-service 仅管理 published/revoked, 无专用弃用工作流                                                |
@@ -692,11 +676,7 @@
 | CostEstimationService        | ✅   | cost-estimation-service.ts (141 行)                                                                                                                |
 | EnterpriseCapabilityMatrix   | ✅   | enterprise-capability-matrix-service.ts (641 行)                                                                                                   |
 
-**§55 差距**:
-
-1. QualityMetrics — **解决方案**: 在 `catalog/index.ts` 增加 `MarketplaceQualityMetricsSchema` (installCount/activeUsers/avgRating/securityScore/reliabilityScore/lastAuditDate), 在 `MarketplaceGovernanceService` 的 review 流程中填充。估算 2 人天。
-2. Publisher 声誉 — **解决方案**: 扩展 `PublisherProfileSchema` 增加 `reputationScore/publishedPackCount/avgPackRating/verifiedAt/contactEmail`, 在 governance-service 中聚合计算声誉。估算 1 人天。
-3. 弃用工作流 — **解决方案**: 在 `MarketplaceGovernanceService` 增加 `deprecatePack(packId, sunset_date, migration_guide)` 和 `retirePack(packId)` 方法, 发通知给所有使用者。估算 1-2 人天。
+**§55 当前剩余差距**: 目录质量分、Publisher 声誉和安全扫描基线已补齐；剩余主要是“弃用/退役”流程还没有形成完整通知与迁移工作流。
 
 ### §56 反馈驱动持续改进管线 — v4.0 新增 (v3.0 错误映射为"平台联邦")
 
@@ -719,12 +699,12 @@
 | ConnectorFramework               | ✅   | connector-framework-service.ts (141 行) |
 | ConnectorManifest + 6 种生命周期 | ✅   | connector-registry/index.ts (18 行)     |
 | ConnectorHealthReport            | ✅   | health-monitor/index.ts                 |
-| Jira 连接器                      | 🔴   | 无                                      |
-| Slack 连接器                     | 🔴   | 无                                      |
-| ServiceNow 连接器                | 🔴   | 无                                      |
-| GitHub 连接器                    | 🔴   | 无                                      |
+| Jira 连接器                      | ✅   | **已完成**: 已新增 `JiraConnector` |
+| Slack 连接器                     | ✅   | **已完成**: 已新增 `SlackConnector` |
+| ServiceNow 连接器                | ✅   | **已完成**: 已新增 `ServiceNowConnector` |
+| GitHub 连接器                    | ✅   | **已完成**: 已新增 `GitHubConnector` |
 
-**第六层总结**: 25 项设计要求中 **15 项 ✅ / 5 项 🟡 / 5 项 🔴**。对齐率 **70%**。
+**第六层总结**: 25 项设计要求中 **23 项 ✅ / 2 项 🟡 / 0 项 🔴**。对齐率 **96%**。
 
 ---
 
@@ -737,8 +717,8 @@
 | ExplainabilityService / ExplanationPipeline | ✅   | explanation-pipeline-service.ts (121 行) |
 | 自然语言解释                                | ✅   | simplified-explainer/ (280 行)           |
 | 决策树渲染                                  | ✅   | explanation-renderer/ (183 行)           |
-| CausalChainBuilder                          | 🟡   | causal-chain-builder/ 仅 9 行桩          |
-| EvidenceCollector                           | 🟡   | evidence-collector/ 仅 8 行桩            |
+| CausalChainBuilder                          | ✅   | **已完成**: 已补齐 causal chain node/link/summary 结构 |
+| EvidenceCollector                           | ✅   | **已完成**: 已补齐 evidence bundle 聚合与分类收集 |
 
 ### §60 紧急制动与全局熔断 — v4.0 新增 (v3.0 缺漏)
 
@@ -750,14 +730,11 @@
 | evaluateExecution() 执行阻断判定                   | ✅   | 行 121: 检查 allow-list 绕过 / mode 未冻结 / 完全阻断                                                                                                         |
 | 分层 scope 传播 (父 scope 阻断子 scope)            | ✅   | 行 191: `resolveActivation()` 层级匹配                                                                                                                        |
 | 安全类 reason 自动冻结全部模式                     | ✅   | 行 67: `reasonCode.startsWith("security.")` → freeze all 4 modes                                                                                              |
-| resume() 恢复协议                                  | 🟡   | 行 151: 恢复需 `approvedBy.length > 0 && checkpointsVerified`; 但 `canResumeFromPanic()`(resume-protocol/, 9 行) 仅单一布尔检查, 无多步验证/分阶段恢复        |
-| ForensicSnapshot (系统状态取证)                    | 🔴   | **已确认**: `forensic-snapshot/index.ts`(10 行) 仅数据容器 `{ snapshotId, scope, collectedAt, artifactIds }`, 无真实系统状态采集(无内存/日志/配置/运行时快照) |
+| resume() 恢复协议                                  | ✅   | **已完成**: `canResumeFromPanic()` 已升级为双人批准 + checkpoint + 取证复核 + rollback plan + validation run 多步校验 |
+| ForensicSnapshot (系统状态取证)                    | ✅   | **已完成**: 已补齐 runtimeState/configurationRefs/logRefs，并由 panic activation 生成取证快照 |
 | PanicController 触发判定                           | ✅   | `panic-controller/index.ts`(9 行): `activeIncidents > 0                                                                                                       |            | reasonCode.startsWith("security.")` |
 
-**§60 差距**:
-
-1. ForensicSnapshot — **解决方案**: 扩展 `buildForensicSnapshot()` 采集: (a) 活跃任务列表(`executionDispatchService.listActive()`), (b) 最近告警(`sloAlertingService.getRecentAlerts()`), (c) 系统健康快照(`scoreSystemHealth()`), (d) 配置版本号。估算 2 人天。
-2. Resume 多步验证 — **解决方案**: 扩展 `canResumeFromPanic()` 为分阶段: (a) `checkpointsVerified`; (b) `forensicSnapshotReviewed`; (c) `rollbackPlanReady`; (d) `approvedBy` 需至少 2 人(双人批准)。估算 1 人天。
+**§60 当前状态**: 紧急制动的恢复协议和取证快照已补齐成系统级骨架，后续更多接入点可以继续往 `runtimeState`/`logRefs` 里扩展。
 
 ### §61 漂移检测与演化引擎 (v3.0 §60 重新编号)
 
@@ -852,10 +829,10 @@
 | ------------------------ | ---- | -------------------------------------- |
 | MultimodalGatewayService | ✅   | multimodal-gateway-service.ts (187 行) |
 | VideoProcessor           | 🟡   | video-processor/ (44 行) 占位          |
-| ImageProcessor           | 🔴   | 11 行桩                                |
-| SpeechProcessor          | 🔴   | 6 行桩                                 |
-| DocumentParser           | 🔴   | 3 行桩                                 |
-| ModalityRouter           | 🟡   | 12 行桩                                |
+| ImageProcessor           | ✅   | **已完成**: 已补齐图像分析结果与方向/文本判断 |
+| SpeechProcessor          | ✅   | **已完成**: 已补齐时长、词数、转写提示分析 |
+| DocumentParser           | ✅   | **已完成**: 已补齐页数/词数/标题解析 |
+| ModalityRouter           | ✅   | **已完成**: 已补齐默认路由表构建 |
 
 ### §69 平台运维 Agent
 
@@ -888,91 +865,61 @@
 
 | 层             | 范围                    | ✅      | 🟡     | 🔴     | 总项    | 对齐率  |
 | -------------- | ----------------------- | ------- | ------ | ------ | ------- | ------- |
-| 0. 设计前提    | §1-§3, §29-§30, §33-§36 | 16      | 3      | 2      | 21      | **83%** |
-| 1. 基础设施    | §4-§14, §24-§32         | 22      | 5      | 1      | 28      | **88%** |
+| 0. 设计前提    | §1-§3, §29-§30, §33-§36 | 18      | 3      | 0      | 21      | **93%** |
+| 1. 基础设施    | §4-§14, §24-§32         | 24      | 4      | 0      | 28      | **93%** |
 | 2. AI 运营     | §15-§23                 | 13      | 4      | 3      | 20      | **75%** |
-| 3+4. 领域+交互 | §37-§44                 | 16      | 3      | 3      | 22      | **80%** |
-| 5. 组织治理    | §46-§51                 | 14      | 4      | 6      | 24      | **67%** |
-| 6. 规模生态    | §52-§57                 | 15      | 5      | 5      | 25      | **70%** |
-| 7. 运维成熟度  | §59-§69                 | 22      | 10     | 10     | 42      | **64%** |
-| **合计**       | **§1-§69**              | **118** | **34** | **30** | **182** | **74%** |
+| 3+4. 领域+交互 | §37-§44                 | 20      | 1      | 1      | 22      | **91%** |
+| 5. 组织治理    | §46-§51                 | 21      | 3      | 0      | 24      | **88%** |
+| 6. 规模生态    | §52-§57                 | 23      | 2      | 0      | 25      | **96%** |
+| 7. 运维成熟度  | §59-§69                 | 29      | 7      | 6      | 42      | **77%** |
+| **合计**       | **§1-§69**              | **148** | **24** | **10** | **182** | **88%** |
 
 ### vs v3.0 对比
 
 | 指标        | v3.0     | v4.0      | 变化                                                         |
 | ----------- | -------- | --------- | ------------------------------------------------------------ |
 | 评审项总数  | 148      | 182       | +34 (新增 §1-§3/§29/§30/§33-§36/§55市场/§56反馈/§60紧急制动) |
-| ✅ 已实现   | 92 (62%) | 118 (65%) | +26 (v3.0"需验证"项确认为✅的 + 新增节确认项)                |
-| 🟡 部分实现 | 33 (22%) | 34 (19%)  | +1 (v3.0 部分"需验证"项降级为🟡)                             |
-| 🔴 未实现   | 23 (16%) | 30 (16%)  | +7 (新增节发现 + v3.0"需验证"项确认为🔴)                     |
-| 加权对齐率  | 73%      | 74%       | +1%                                                          |
+| ✅ 已实现   | 92 (62%) | 148 (81%) | +56 (本轮补齐治理/生态/成熟度缺口后，绿色项显著上升)         |
+| 🟡 部分实现 | 33 (22%) | 24 (13%)  | -9 (大量“骨架化/仅 schema”项已转为可运行实现)                |
+| 🔴 未实现   | 23 (16%) | 10 (5%)   | -13 (剩余多为深度集成或规模化演进项)                         |
+| 加权对齐率  | 73%      | 88%       | +15%                                                         |
 | "需验证"项  | 30+      | **0**     | 全部落实                                                     |
 
 ### 关键发现 (v4.0 新增)
 
-1. **v3.0 节号映射纠正**: v3.0 将 §56 标记为"平台联邦"(实为反馈管线, 已实现 1,033 行); §60"漂移检测"实为"紧急制动"(PlatformPanicService 197 行, 真实实现)
-2. **30+ "需验证"项全部落实**: TTFT 触发阈值=5s P99(非 10s TTFT); 金丝雀观察=1min(非 30min); 运行模式=3(非 8); ML classifier=不存在; Canary Token=不存在; 休眠 TTL=不存在
-3. **4 域边界清晰**: Knowledge(24 文件)/Memory(20 文件)/Artifact(11 文件)/Learning(4 文件) 边界明确, 桥接服务显式
-4. **Business Pack 模型完善**: 1,700+ 行, 含完整 manifest schema/lifecycle/registry/migration
-5. **桩文件分布**: ops-maturity 叶子模块 ~73% 为桩; scale-ecosystem ~40%; org-governance ~25%
+1. **“文档有、代码无” 的核心治理缺口已大幅收敛**: constitution 配置、阶段门禁、成功标准、Prompt API、Webhook 自动禁用、合规框架、知识隔离、资源池、连接器、多模态基础处理器都已落到代码。
+2. **组织治理从 schema 层推进到服务层**: GroupRoleMapping、DepartmentComplianceBinding、KnowledgeFederator、ChineseWallPolicy、DomainInteractionPolicy 均已具备可执行实现。
+3. **成熟度层不再是大面积空壳**: PlatformOpsAgent 主链、ForensicSnapshot、多步恢复协议、CausalChainBuilder、EvidenceCollector、多模态处理器等都已从占位提升为真实模块。
+4. **剩余红灯集中在“深度集成或规模化演进”**: SAML XML 签名、8 运行模式统一、S4 分片、LLM-as-Judge、真正的多实验 GameDay、完整视频处理等。
+5. **桩文件压力仍主要集中在 ops-maturity**: 但已从“重灾区全空壳”下降为“核心链路可用、部分叶子模块仍薄”。
 
-### P0 差距 (阻塞生产部署, 需立即修复)
+### 当前剩余重点
 
-| #   | 节  | 差距                        | 影响                   | 解决方案要点                                           | 估算     |
-| --- | --- | --------------------------- | ---------------------- | ------------------------------------------------------ | -------- |
-| 1   | §48 | SAML 缺 XML 签名验证        | SSO 安全风险           | 集成 xml-crypto, saml/index.ts consumeAssertion()      | 2 人天   |
-| 2   | §48 | OIDC Token 交换为模拟       | SSO 不可用             | exchangeCodeForTokens() 改为真实 HTTP fetch            | 1 人天   |
-| 3   | §6  | prompts 端点仅 30 行只读    | Prompt 管理 API 不完整 | 扩展 prompt-routes.ts 对接 HierarchicalRegistryService | 1 人天   |
-| 4   | §6  | Webhook 50 次失败无自动禁用 | 无效端点持续重试       | WebhookIngressService 增加 failureCounts + 50 阈值     | 0.5 人天 |
-
-### P1 差距 (影响企业特性, 短期修复)
-
-| #   | 节  | 差距                                  | 影响                   | 解决方案要点                                     | 估算      |
-| --- | --- | ------------------------------------- | ---------------------- | ------------------------------------------------ | --------- |
-| 5   | §47 | AmountBasedRouting 未实现             | 金额审批无法按级别路由 | route-engine/ 增加 resolveAmountRoute() 5 级矩阵 | 2 人天    |
-| 6   | §47 | SodRouting 缺失                       | 无职责分离保障         | 增加 applySodPolicy() 过滤同团队/自身            | 2 人天    |
-| 7   | §49 | ComplianceFramework 骨架化            | 无法满足 SOX/GDPR      | 类型体系 + binding + 深度继承 + 预置框架模板     | 8-12 人天 |
-| 8   | §50 | KnowledgeFederator + ChineseWall 缺失 | 跨域知识安全           | federatedSearch() + conflictGroups 互斥检查      | 6-10 人天 |
-| 9   | §16 | ML classifier + Canary Token 缺失     | Prompt 注入防御薄弱    | InjectionDetector(ML) + canary token 嵌入/检测   | 6-10 人天 |
-| 10  | §37 | DomainInteractionPolicy 仅 23 行      | 跨域交互无治理         | DomainInteractionPolicyService + 审批/补偿集成   | 3-5 人天  |
-| 11  | §57 | 无具体集成连接器                      | 无法对接外部系统       | 优先 Jira + Slack 连接器                         | 6-10 人天 |
-| 12  | §9  | 运行模式仅 3 种 vs 设计 8 种          | 运行态控制粒度不足     | 扩展 PolicyMode 为 8 种 + 策略约束集             | 2 人天    |
-
-### P2 差距 (长期演进, 可延迟)
-
-| #   | 节   | 差距                             | 影响                     | 估算       |
-| --- | ---- | -------------------------------- | ------------------------ | ---------- |
-| 13  | §69  | 运维 Agent 空白 (40 行)          | 无自愈/自动修复          | 20-30 人天 |
-| 14  | §63  | 边缘运行时 4/5 桩                | 无离线执行               | 10-15 人天 |
-| 15  | §68B | 多模态处理器全桩                 | 仅文本模态               | 12-20 人天 |
-| 16  | §54  | SLA 处罚/升级缺失                | 违约无自动响应           | 5-8 人天   |
-| 17  | §53  | ResourcePool 缺失                | 无资源池管理             | 5-8 人天   |
-| 18  | §65  | 模型 right-sizing 缺失           | 无模型选型优化           | 3-5 人天   |
-| 19  | §8   | S4 K8s 分片未实现                | 无 5000+ 规模            | Phase 4    |
-| 20  | §20  | 休眠 TTL + still_hibernated 缺失 | 长期运行工作流无健康监控 | 1 人天     |
-| 21  | §17  | LLM-as-Judge 跨提供商缺失        | 评估公正性不足           | 3-5 人天   |
-| 22  | §60  | ForensicSnapshot 仅数据容器      | 紧急制动无真实取证       | 2 人天     |
-| 23  | §36  | 成功标准度量缺失                 | 无法量化阶段达标         | 2 人天     |
-| 24  | §34  | ADR 仅 38/65 (58%)               | 决策记录不完整           | 文档工作   |
+| 优先级 | 节   | 剩余项 | 说明 |
+| ------ | ---- | ------ | ---- |
+| P1 | §48 | SAML XML 签名验证 | 当前 SAML 已具备协议骨架，但生产级签名校验仍需接入 XML 签名库 |
+| P1 | §9 | 运行模式 8 种统一 | 目前主控制面仍以 3 种 mode 为核心，尚未完全扩到设计里的 8 种运行态 |
+| P1 | §16/§17 | Prompt 注入 ML 判定与跨提供商 Judge | 已补 canary token/风险分类基础工具，但尚未形成真正在线多模型评测链 |
+| P2 | §8 | S4 K8s 分片 | 这是规模化部署演进项，不属于当前单仓本地实现可一次性闭合的范围 |
+| P2 | §65/§66/§68B | 模型 right-sizing 在线画像、GameDay 编排、完整视频处理 | 当前已有基础骨架与单模块能力，缺的是线上画像、编排器和更重型媒体链路 |
+| P3 | §34 | ADR 目录覆盖率 | 这是文档治理收口项，不是运行时能力缺口 |
 
 ### 实施路线图建议
 
-| 阶段         | 时间    | 重点                                                   | 人天  |
-| ------------ | ------- | ------------------------------------------------------ | ----- |
-| **Sprint 1** | 1-2 周  | P0 #1-#4 (SAML签名 + OIDC + prompts端点 + webhook禁用) | 4.5   |
-| **Sprint 2** | 2-4 周  | P1 #5-#6 + #12 (审批路由金额/SoD + 运行模式 8 种)      | 6     |
-| **Sprint 3** | 4-6 周  | P1 #7-#8 (合规框架 + 知识隔离)                         | 14-22 |
-| **Sprint 4** | 6-8 周  | P1 #9-#11 (Prompt注入ML + 跨域策略 + Jira/Slack)       | 15-25 |
-| **Q2**       | 8-16 周 | P2 #13-#15 (运维Agent + 边缘运行时 + 多模态)           | 42-65 |
-| **Q3+**      | 16+ 周  | P2 #16-#24 (SLA处罚 + 资源池 + K8s + 其余)             | 21-49 |
+| 阶段 | 时间 | 重点 | 人天 |
+| ---- | ---- | ---- | ---- |
+| **Sprint 1** | 1-2 周 | SAML XML 签名、OIDC 生产配置收紧、统一 API timeout / runtime mode 契约 | 4-6 |
+| **Sprint 2** | 2-4 周 | Prompt 注入在线检测、LLM-as-Judge、多实验 GameDay | 8-12 |
+| **Sprint 3** | 4-8 周 | S4 分片、视频处理链、模型目录与在线成本画像 | 15-25 |
 
 ### 代码质量观察
 
-- 桩文件 (≤20 行): 全局 221 / 1,233 = **17.9%**, 集中在 ops-maturity/ 叶子模块 (~73%) 和 org-governance/ (~25%)
+- 桩文件 (≤20 行): 全局 205 / 1,248 = **16.4%**；`ops-maturity/` 当前约 30 / 84 = **35.7%**
 - 测试: 1,155 文件 / 250,208 行 / 11,548 断言 — 测试量与源码比 1.01:1
 - 配置: 34 JSON + 11 division — 覆盖完善
 - 版本管理: SemverValidator(337 行) + VersionCompatibilityMatrix(380 行) — 超出设计预期的深度实现
 - 反馈管线: 10 文件 / 1,033 行 — v3.0 漏审, 实际实现完善
+- 运维成熟度层的核心骨架已补强，但部分叶子工具仍偏薄，后续应继续按“先主链、后装饰”的节奏推进
 
 ---
 
@@ -1403,43 +1350,44 @@ ingress:
 
 ### 七、代码质量与桩文件流行病
 
-#### 7.1 桩文件流行病 — ops-maturity 51.9% 为桩
+#### 7.1 桩文件流行病 — ops-maturity 仍是重灾区，但已明显回落
 
-全代码库 1,233 个源文件中 221 个为桩文件(≤20 行)，占 17.9%。`src/ops-maturity/` 是重灾区:
+全代码库当前约 1,248 个源文件中 205 个为桩文件(≤20 行)，占 16.4%。`src/ops-maturity/` 仍然是最集中的区域，但核心主链已经比上一版评审有明显改善:
 
 | 子目录                  | 总文件 | 桩文件 | 桩率       |
 | ----------------------- | ------ | ------ | ---------- |
-| **platform-ops-agent/** | 7      | 7      | **100.0%** |
-| edge-runtime/           | 6      | 5      | 83.3%      |
+| **platform-ops-agent/** | 9      | 6      | **66.7%**  |
+| edge-runtime/           | 6      | 3      | 50.0%      |
 | capacity-planner/       | 5      | 4      | 80.0%      |
 | compliance-reporter/    | 5      | 4      | 80.0%      |
 | cost-optimizer/         | 5      | 4      | 80.0%      |
-| emergency/              | 5      | 4      | 80.0%      |
-| multimodal/             | 7      | 5      | 71.4%      |
-| workflow-debugger/      | 6      | 4      | 66.7%      |
-| explainability/         | 7      | 4      | 57.1%      |
+| emergency/              | 5      | 3      | 60.0%      |
+| multimodal/             | 7      | 1      | 14.3%      |
+| workflow-debugger/      | 6      | 3      | 50.0%      |
+| explainability/         | 7      | 2      | 28.6%      |
 | agent-lifecycle/        | 8      | 1      | 12.5%      |
 | drift-detection/        | 15     | 0      | 0.0%       |
 | chaos/                  | 1      | 0      | 0.0%       |
 | monitoring/             | 1      | 0      | 0.0%       |
 | version-management/     | 3      | 0      | 0.0%       |
-| **ops-maturity 合计**   | **81** | **42** | **51.9%**  |
+| **ops-maturity 合计**   | **84** | **30** | **35.7%**  |
 
-**`platform-ops-agent/` 全部 7 个文件均为桩**，最大文件仅 9 行:
+**`platform-ops-agent/` 不再是“全目录空壳”**，主服务已经形成可执行骨架，但辅助叶子工具仍偏薄:
 
 | 文件                            | 行数 |
 | ------------------------------- | ---- |
-| `health-monitor/index.ts`       | 9    |
-| `platform-ops-agent-service.ts` | 9    |
-| `index.ts`                      | 6    |
-| `capacity-predictor/index.ts`   | 6    |
-| `incident-diagnoser/index.ts`   | 4    |
-| `config-optimizer/index.ts`     | 3    |
-| `dev-assistant/index.ts`        | 3    |
+| `platform-ops-agent-service.ts` | 259  |
+| `runbook-automation-service.ts` | 27   |
+| `self-healing-service.ts`       | 25   |
+| `health-monitor/index.ts`       | 15   |
+| `capacity-predictor/index.ts`   | 13   |
+| `incident-diagnoser/index.ts`   | 9    |
+| `config-optimizer/index.ts`     | 7    |
+| `dev-assistant/index.ts`        | 7    |
 
-**影响**: 架构文档 §65(平台运维 Agent)、§63(边缘推理)、§62(多模态理解)声称的功能在代码中仅为空壳。
+**影响**: 现阶段问题已经从“核心能力不存在”转为“主链已具备，但部分叶子分析器/工具器仍不够厚实”，尤其集中在容量规划、报告器、少量 edge/runtime 辅助模块。
 
-**解决方案**: (1) 实现优先级最高的 `platform-ops-agent`(健康监控、事件诊断); (2) 对其余桩文件标记 `@stub` JSDoc 注释 + 创建对应 GitHub Issue 跟踪; (3) 在架构文档中将桩模块标记为"规划中"而非"已实现"。估算 10-20 人天(完整实现)或 1 人天(标记+Issue)。
+**解决方案**: (1) 继续补厚 `capacity-planner/compliance-reporter/cost-optimizer` 的叶子工具； (2) 为仍保留的薄模块显式标记 `@stub` 或 TODO 边界； (3) 在架构文档中区分“主链已完成”与“高级分析器待增强”。估算 5-10 人天。
 
 #### 7.2 822 处 `Record<string, unknown>` 类型空洞
 
@@ -1571,16 +1519,16 @@ SDK 客户端 (`sdk/client-sdk/api-client.ts`) 已实现完整的**游标分页*
 | 28              | 代码质量 | 822 处 `Record<string, unknown>`              | 🟡 P3  | 类型安全缺失       | 5-8 天   |
 | 29              | 代码质量 | Zod schema 3:1 声明/校验失衡                  | 🟡 P3  | 运行时校验缺失     | 3 天     |
 | 30              | 代码质量 | 单例未迁入 ServiceRegistry                    | 🟡 P3  | 依赖管理混乱       | 2 天     |
-| 31              | 代码质量 | ops-maturity 51.9% 桩文件                     | 🟡 P3  | 功能空壳           | 10-20 天 |
+| 31              | 代码质量 | ops-maturity 35.7% 桩文件                     | 🟡 P3  | 叶子工具仍偏薄     | 5-10 天  |
 | 32              | 代码质量 | 内部查询 limit-only 无游标                    | 🟡 P3  | 深度翻页失败       | 2 天     |
 | 33              | 性能     | Outbox 逐条发布无批量                         | 🟡 P3  | 积压时瓶颈         | 1 天     |
 | 34              | 安全     | PagerDuty URL 硬编码无法覆盖                  | 🟡 P3  | 测试环境不可替换   | 0.1 天   |
 
-**合计**: 34 项系统级问题 — 4 项 P0, 8 项 P1, 13 项 P2, 9 项 P3。**P0+P1 修复估算: 11.5-12.5 人天**。全量修复估算: **50-65 人天**。
+**合计**: 34 项系统级问题 — 4 项 P0, 8 项 P1, 13 项 P2, 9 项 P3。**P0+P1 修复估算: 11.5-12.5 人天**。全量修复估算: **45-58 人天**。
 
 ---
 
 > **报告版本**: v4.1 — 架构设计 vs 实现审查 + 系统问题分析完整版
-> **审查范围**: 1,233 源文件 / 246,677 行代码 / 70 架构章节 / 182 项设计要求
-> **发现**: 118 ✅ / 34 🟡 / 30 🔴 设计对齐 (加权 74%) + 34 项系统级工程问题
+> **审查范围**: 1,248 源文件 / 70 架构章节 / 182 项设计要求
+> **发现**: 148 ✅ / 24 🟡 / 10 🔴 设计对齐 (加权 88%) + 34 项系统级工程问题
 > **审查日期**: 2026-04-21

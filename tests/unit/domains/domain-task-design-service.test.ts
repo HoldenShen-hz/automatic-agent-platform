@@ -36,11 +36,13 @@ test("DomainTaskDesignService assembles recipe, prompt, risk, evaluation, and in
     evalFramework: {
       frameworkId: "eval_coding",
       domainId: "coding",
+      fewShotExamples: [],
       evaluators: [
         { evaluatorId: "tests_pass", metric: "tests_pass", threshold: 0.95, blocking: true },
         { evaluatorId: "docs_sync", metric: "docs_sync", threshold: 0.8, blocking: false },
       ],
       onlineMetrics: ["latency"],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     knowledgeSchema: {
       schemaId: "knowledge_coding",

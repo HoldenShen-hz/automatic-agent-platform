@@ -36,10 +36,12 @@ test("integration: domain support modules flow into a single domain task design 
     evalFramework: {
       frameworkId: "eval_coding",
       domainId: "coding",
+      fewShotExamples: [],
       evaluators: [
         { evaluatorId: "tests_pass", metric: "tests_pass", threshold: 0.9, blocking: true },
       ],
       onlineMetrics: [],
+      releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     knowledgeSchema: {
       schemaId: "knowledge_coding",
