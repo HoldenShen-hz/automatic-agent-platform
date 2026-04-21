@@ -96,6 +96,72 @@ export const LogFileMaxBytesSchema = PositiveInteger.nullable();
  */
 export const LogFileMaxFilesSchema = PositiveInteger.optional();
 
+/**
+ * Schema for AA_LOG_FILE_PATH — file path for structured JSON logging.
+ * Optional: required when AA_LOG_FILE_MAX_BYTES is set.
+ */
+export const LogFilePathSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_LOG_FLUENTD_HOST — Fluentd server hostname.
+ * Optional: all fluentd settings must be present together.
+ */
+export const LogFluentdHostSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_LOG_FLUENTD_PORT — Fluentd server port.
+ * Optional: all fluentd settings must be present together.
+ */
+export const LogFluentdPortSchema = PositivePort.optional();
+
+/**
+ * Schema for AA_LOG_FLUENTD_TAG — Fluentd tag for log routing.
+ * Optional: all fluentd settings must be present together.
+ */
+export const LogFluentdTagSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_LOG_DATADOG_API_KEY — Datadog API key.
+ * Optional: all datadog settings must be present together.
+ */
+export const LogDatadogApiKeySchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_LOG_DATADOG_SITE — Datadog site (e.g., datadoghq.com, datadoghq.eu).
+ * Optional: all datadog settings must be present together.
+ */
+export const LogDatadogSiteSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_LOG_DATADOG_SERVICE — Datadog service name.
+ * Optional: all datadog settings must be present together.
+ */
+export const LogDatadogServiceSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_API_KEYS_JSON — JSON array of API key records.
+ * Optional: each record must have apiKey, actorId, and roles.
+ */
+export const ApiKeysJsonSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_WEBHOOK_SECRET — secret for webhook signature verification.
+ * Optional: used when webhook endpoints are configured.
+ */
+export const WebhookSecretSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_API_ENABLE_WEBSOCKET — enable WebSocket bridge on API server.
+ * Optional: defaults to true.
+ */
+export const ApiEnableWebSocketSchema = BooleanString.optional();
+
+/**
+ * Schema for AA_METRICS_PORT — dedicated metrics server port.
+ * Optional: must be in range 1-65535 if provided.
+ */
+export const MetricsPortSchema = PositivePort.optional();
+
 // ---------------------------------------------------------------------------
 // Execution resource ceiling schemas (P0 — misconfig can cause resource exhaustion)
 // ---------------------------------------------------------------------------
@@ -233,8 +299,19 @@ export const StartupEnvSchema = z.object({
   AA_API_PORT: ApiPortSchema,
   AA_API_HOST: ApiHostSchema,
   AA_LOG_STDOUT: LogStdoutSchema,
+  AA_LOG_FILE_PATH: LogFilePathSchema,
   AA_LOG_FILE_MAX_BYTES: LogFileMaxBytesSchema,
   AA_LOG_FILE_MAX_FILES: LogFileMaxFilesSchema,
+  AA_LOG_FLUENTD_HOST: LogFluentdHostSchema,
+  AA_LOG_FLUENTD_PORT: LogFluentdPortSchema,
+  AA_LOG_FLUENTD_TAG: LogFluentdTagSchema,
+  AA_LOG_DATADOG_API_KEY: LogDatadogApiKeySchema,
+  AA_LOG_DATADOG_SITE: LogDatadogSiteSchema,
+  AA_LOG_DATADOG_SERVICE: LogDatadogServiceSchema,
+  AA_API_KEYS_JSON: ApiKeysJsonSchema,
+  AA_WEBHOOK_SECRET: WebhookSecretSchema,
+  AA_API_ENABLE_WEBSOCKET: ApiEnableWebSocketSchema,
+  AA_METRICS_PORT: MetricsPortSchema,
   AA_MAX_AGENT_TOOL_CALLS: MaxAgentToolCallsSchema,
   AA_MAX_AGENT_MEMORY_MB: MaxAgentMemoryMbSchema,
   AA_MAX_AGENT_ELAPSED_MS: MaxAgentElapsedMsSchema,
@@ -286,8 +363,19 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_API_PORT: env["AA_API_PORT"] ?? undefined,
     AA_API_HOST: env["AA_API_HOST"] ?? undefined,
     AA_LOG_STDOUT: env["AA_LOG_STDOUT"] ?? undefined,
+    AA_LOG_FILE_PATH: env["AA_LOG_FILE_PATH"] ?? undefined,
     AA_LOG_FILE_MAX_BYTES: env["AA_LOG_FILE_MAX_BYTES"] ?? null,
     AA_LOG_FILE_MAX_FILES: env["AA_LOG_FILE_MAX_FILES"] ?? undefined,
+    AA_LOG_FLUENTD_HOST: env["AA_LOG_FLUENTD_HOST"] ?? undefined,
+    AA_LOG_FLUENTD_PORT: env["AA_LOG_FLUENTD_PORT"] ?? undefined,
+    AA_LOG_FLUENTD_TAG: env["AA_LOG_FLUENTD_TAG"] ?? undefined,
+    AA_LOG_DATADOG_API_KEY: env["AA_LOG_DATADOG_API_KEY"] ?? undefined,
+    AA_LOG_DATADOG_SITE: env["AA_LOG_DATADOG_SITE"] ?? undefined,
+    AA_LOG_DATADOG_SERVICE: env["AA_LOG_DATADOG_SERVICE"] ?? undefined,
+    AA_API_KEYS_JSON: env["AA_API_KEYS_JSON"] ?? undefined,
+    AA_WEBHOOK_SECRET: env["AA_WEBHOOK_SECRET"] ?? undefined,
+    AA_API_ENABLE_WEBSOCKET: env["AA_API_ENABLE_WEBSOCKET"] ?? undefined,
+    AA_METRICS_PORT: env["AA_METRICS_PORT"] ?? undefined,
     AA_MAX_AGENT_TOOL_CALLS: env["AA_MAX_AGENT_TOOL_CALLS"] ?? null,
     AA_MAX_AGENT_MEMORY_MB: env["AA_MAX_AGENT_MEMORY_MB"] ?? null,
     AA_MAX_AGENT_ELAPSED_MS: env["AA_MAX_AGENT_ELAPSED_MS"] ?? null,
