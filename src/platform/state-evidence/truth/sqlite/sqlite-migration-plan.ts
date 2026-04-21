@@ -53,6 +53,7 @@ import {
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
+import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";
 
 /**
  * Defines a SQLite database migration with version, name, SQL, and checksum.
@@ -337,6 +338,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(39, "0039_event_dead_letters", EVENT_DEAD_LETTERS_SQL),
   defineMigration(40, "0040_session_events", SESSION_EVENTS_SQL),
   defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
+  defineMigration(42, "0042_outbox_schema", OUTBOX_SCHEMA_SQL),
 ] as const;
 
 /**

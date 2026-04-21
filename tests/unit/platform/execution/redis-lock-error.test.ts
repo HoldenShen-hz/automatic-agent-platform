@@ -1,10 +1,15 @@
 import { EventEmitter } from "node:events";
+import { createRequire } from "node:module";
 
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import { RedisLockAdapter } from "../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
 import { LockingError } from "../../../../src/platform/contracts/errors.js";
+import { StructuredLogger, type StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
+
+const require = createRequire(import.meta.url);
+const ioredisPath = require.resolve("ioredis");
 
 // =============================================================================
 // Mock redis helper
@@ -45,43 +50,86 @@ function createAdapterWithMockRedis(mockRedis: ReturnType<typeof createMockRedis
   return adapter;
 }
 
-test("[SYS-REL-2.1] Redis lock adapter logs error on connection failure", () => {
-  const logs: Array<{ level: string; message: string; data: Record<string, unknown> }> = [];
-  const mockLogger = {
-    log(entry: { level: string; message: string; data: Record<string, unknown> }) {
-      logs.push(entry);
-    },
-  };
+async function withMockRedisCtor<T>(
+  run: (MockRedisClient: new () => EventEmitter) => Promise<T>,
+): Promise<T> {
+  require(ioredisPath);
+  const moduleEntry = require.cache[ioredisPath];
+  assert.ok(moduleEntry, "ioredis module must be present in require cache");
+  const originalExports = moduleEntry.exports;
 
-  const mockRedis = new EventEmitter();
-  const adapter = new RedisLockAdapter({
-    host: "invalid-host",
-    port: 9999,
+  class MockRedisClient extends EventEmitter {
+    public status = "ready";
+    public async connect(): Promise<void> {}
+    public async set(): Promise<string | null> { return "OK"; }
+    public async get(): Promise<string | null> { return null; }
+    public async del(): Promise<number> { return 1; }
+    public async eval(): Promise<unknown> { return 1; }
+    public async scan(): Promise<[string, string[]]> { return ["0", []]; }
+    public async mget(): Promise<(string | null)[]> { return []; }
+    public async quit(): Promise<void> {}
+    public disconnect(): void {}
+  }
+
+  moduleEntry.exports = MockRedisClient;
+  try {
+    return await run(MockRedisClient);
+  } finally {
+    moduleEntry.exports = originalExports;
+  }
+}
+
+async function captureLockLogs(action: () => Promise<void>): Promise<StructuredLogEntry[]> {
+  const entries: StructuredLogEntry[] = [];
+  const transportName = `test-lock-log-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  StructuredLogger.addTransport({
+    name: transportName,
+    write(entry) {
+      if (entry.level === "error") {
+        entries.push(entry);
+      }
+    },
+  });
+  try {
+    await action();
+    await StructuredLogger.flushTransports();
+    return entries;
+  } finally {
+    StructuredLogger.removeTransport(transportName);
+  }
+}
+
+test("[SYS-REL-2.1] Redis lock adapter logs error on connection failure", async () => {
+  const logs = await captureLockLogs(async () => {
+    await withMockRedisCtor(async () => {
+      const adapter = new RedisLockAdapter({ host: "mock-host", port: 6379 });
+      try {
+        const client = (adapter as unknown as { redis: EventEmitter }).redis;
+        client.emit("error", new Error("ECONNREFUSED"));
+      } finally {
+        await adapter.close();
+      }
+    });
   });
 
-  (adapter as unknown as { redis: EventEmitter }).redis = mockRedis;
-
-  mockRedis.emit("error", new Error("ECONNREFUSED"));
-
-  assert.ok(logs.length > 0, "Error must be logged");
-  assert.ok(logs[0]?.message.includes("redis.connection_error"), "Error message must be preserved");
+  assert.ok(
+    logs.some((entry) => entry.message === "redis.connection_error" && entry.data?.err === "ECONNREFUSED"),
+    "Connection failure must be logged via lockLogger",
+  );
 });
 
-test("[SYS-REL-2.1] Redis lock adapter error handler should not be empty", () => {
-  const mockRedis = new EventEmitter();
-  const adapter = new RedisLockAdapter({
-    host: "invalid-host",
-    port: 9999,
+test("[SYS-REL-2.1] Redis lock adapter error handler should not be empty", async () => {
+  await withMockRedisCtor(async () => {
+    const adapter = new RedisLockAdapter({ host: "mock-host", port: 6379 });
+    try {
+      const client = (adapter as unknown as { redis: EventEmitter }).redis;
+      const errorHandlers = client.listeners("error");
+      assert.ok(errorHandlers.length > 0, "Error handler should be registered");
+      assert.ok(errorHandlers.some((handler) => typeof handler === "function"), "Registered handler must be callable");
+    } finally {
+      await adapter.close();
+    }
   });
-
-  (adapter as unknown as { redis: EventEmitter }).redis = mockRedis;
-
-  const errorHandlers = mockRedis.listeners("error");
-  assert.ok(errorHandlers.length > 0, "Error handler should be registered");
-
-  // Current implementation logs error - this test verifies logging happens
-  mockRedis.emit("error", new Error("ECONNREFUSED"));
-  assert.ok(true, "Error handler should not be empty after fix");
 });
 
 // =============================================================================

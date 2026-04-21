@@ -160,11 +160,18 @@ test.describe("Outbox transition integration tests", () => {
     assert.strictEqual(statusChangeEntry!.aggregateId, taskId, "Outbox entry aggregate ID should match task ID");
 
     // Verify payload contains status change information
-    const payload = JSON.parse(statusChangeEntry!.payloadJson);
-    assert.strictEqual(payload.entityKind, "task", "Payload should contain entityKind");
-    assert.strictEqual(payload.entityId, taskId, "Payload should contain entityId");
-    assert.strictEqual(payload.fromStatus, "queued", "Payload should contain fromStatus");
-    assert.strictEqual(payload.toStatus, "in_progress", "Payload should contain toStatus");
+    const payload = JSON.parse(statusChangeEntry!.payloadJson) as {
+      payload?: {
+        entityKind?: string;
+        entityId?: string;
+        fromStatus?: string;
+        toStatus?: string;
+      };
+    };
+    assert.strictEqual(payload.payload?.entityKind, "task", "Payload should contain entityKind");
+    assert.strictEqual(payload.payload?.entityId, taskId, "Payload should contain entityId");
+    assert.strictEqual(payload.payload?.fromStatus, "queued", "Payload should contain fromStatus");
+    assert.strictEqual(payload.payload?.toStatus, "in_progress", "Payload should contain toStatus");
   });
 
   test("task state transition does not write duplicate outbox entries on same transition", () => {

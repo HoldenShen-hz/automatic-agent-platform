@@ -660,6 +660,134 @@ CREATE INDEX IF NOT EXISTS idx_memories_layer_scope_created_at
   ON memories(memory_layer, scope, created_at DESC);
 `);
         return true;
+      case 24:
+        this.connection.exec(`
+CREATE TABLE IF NOT EXISTS organizations (
+  organization_id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  billing_account_id TEXT NULL,
+  default_tenant_id TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(billing_account_id) REFERENCES billing_accounts(account_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_organizations_billing_account_updated_at
+  ON organizations(billing_account_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS workspaces (
+  workspace_id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  plan_id TEXT NOT NULL,
+  default_policy_set TEXT NOT NULL,
+  organization_id TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(organization_id) REFERENCES organizations(organization_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workspaces_owner_updated_at
+  ON workspaces(owner_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workspaces_organization_updated_at
+  ON workspaces(organization_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS workspace_memberships (
+  workspace_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  joined_at TEXT NOT NULL,
+  PRIMARY KEY (workspace_id, user_id),
+  FOREIGN KEY(workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_workspace_memberships_user_workspace
+  ON workspace_memberships(user_id, workspace_id);
+
+CREATE TABLE IF NOT EXISTS organization_memberships (
+  organization_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  joined_at TEXT NOT NULL,
+  PRIMARY KEY (organization_id, user_id),
+  FOREIGN KEY(organization_id) REFERENCES organizations(organization_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_organization_memberships_user_organization
+  ON organization_memberships(user_id, organization_id);
+`);
+        this.ensureColumn(
+          "tenants",
+          "organization_id",
+          "ALTER TABLE tenants ADD COLUMN organization_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "tenants",
+          "storage_scope",
+          "ALTER TABLE tenants ADD COLUMN storage_scope TEXT NOT NULL DEFAULT 'tenant';",
+        );
+        this.ensureColumn(
+          "tenants",
+          "identity_scope",
+          "ALTER TABLE tenants ADD COLUMN identity_scope TEXT NOT NULL DEFAULT 'tenant';",
+        );
+        this.ensureColumn(
+          "tenants",
+          "policy_scope",
+          "ALTER TABLE tenants ADD COLUMN policy_scope TEXT NOT NULL DEFAULT 'tenant';",
+        );
+        this.ensureColumn(
+          "tenants",
+          "artifact_scope",
+          "ALTER TABLE tenants ADD COLUMN artifact_scope TEXT NOT NULL DEFAULT 'tenant';",
+        );
+        this.ensureColumn(
+          "tenants",
+          "isolation_mode",
+          "ALTER TABLE tenants ADD COLUMN isolation_mode TEXT NOT NULL DEFAULT 'shared';",
+        );
+        this.ensureColumn(
+          "tenants",
+          "deployment_mode",
+          "ALTER TABLE tenants ADD COLUMN deployment_mode TEXT NOT NULL DEFAULT 'single_region';",
+        );
+        this.connection.exec(`
+CREATE INDEX IF NOT EXISTS idx_tenants_organization_updated_at
+  ON tenants(organization_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS deployment_bindings (
+  binding_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  environment_id TEXT NOT NULL,
+  deployment_mode TEXT NOT NULL,
+  region TEXT NOT NULL,
+  network_boundary TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_deployment_bindings_tenant_environment
+  ON deployment_bindings(tenant_id, environment_id);
+
+CREATE TABLE IF NOT EXISTS data_namespaces (
+  namespace_id TEXT PRIMARY KEY,
+  plane TEXT NOT NULL,
+  tenant_id TEXT NULL,
+  organization_id TEXT NULL,
+  workspace_id TEXT NULL,
+  retention_policy TEXT NOT NULL,
+  encryption_policy TEXT NOT NULL,
+  residency_policy TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  FOREIGN KEY(organization_id) REFERENCES organizations(organization_id) ON DELETE SET NULL,
+  FOREIGN KEY(workspace_id) REFERENCES workspaces(workspace_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_data_namespaces_plane_updated_at
+  ON data_namespaces(plane, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_data_namespaces_tenant_plane
+  ON data_namespaces(tenant_id, plane, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_data_namespaces_workspace_plane
+  ON data_namespaces(workspace_id, plane, updated_at DESC);
+`);
+        return true;
       default:
         return false;
     }
