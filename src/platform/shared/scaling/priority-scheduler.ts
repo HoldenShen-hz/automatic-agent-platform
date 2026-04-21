@@ -101,16 +101,14 @@ export function canPreempt(
   target: QueuedTask,
 ): PreemptionDecision {
   const preemptorClass = PRIORITY_CLASSES[preemptor.priorityClass];
-  const targetClass = PRIORITY_CLASSES[target.priorityClass];
 
   // Check if preemptor has a preemption capability
   if (preemptorClass.preemptionPolicy === "never") {
     return { shouldPreempt: false, reason: "Preemptor has preemption_policy=never" };
   }
 
-  // Target with never policy cannot be preempted
-  if (targetClass.preemptionPolicy === "never") {
-    return { shouldPreempt: false, reason: "Target task has preemption_policy=never" };
+  if (!target.canBePreempted) {
+    return { shouldPreempt: false, reason: "Target task is marked non-preemptible" };
   }
 
   // Cannot preempt critical tasks

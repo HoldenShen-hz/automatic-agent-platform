@@ -202,7 +202,7 @@ export class HorizontalScalingController {
    * Simplified: desiredWorkers = ceil(queueDepth / targetWorkersPerWorker)
    */
   computeWorkerCount(queueStats: QueueStats, targetWorkersPerWorker: number = 5): number {
-    const pending = queueStats.waiting + queueStats.active;
+    const pending = queueStats.waiting + queueStats.delayed + queueStats.active;
     return Math.max(1, Math.ceil(pending / targetWorkersPerWorker));
   }
 

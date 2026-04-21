@@ -364,13 +364,41 @@ export class OpsGenieAlertChannel implements AlertChannel {
   }
 }
 
+export class EmailAlertChannel implements AlertChannel {
+  readonly kind: AlertChannelKind = "email";
+  private readonly deliveredEvents: AlertEvent[] = [];
+
+  deliver(event: AlertEvent): AlertDeliveryResult {
+    this.deliveredEvents.push(event);
+    return { channelKind: "email", delivered: true, error: null };
+  }
+
+  getDelivered(): AlertEvent[] {
+    return [...this.deliveredEvents];
+  }
+}
+
 // ── Service ────────────────────────────────────────────────────────────
 
 /**
  * Options for creating SloAlertingService.
  */
 export interface SloAlertingServiceOptions {
-  channels?: Record<AlertChannelKind, AlertChannel>;
+  channels?: Partial<Record<AlertChannelKind, AlertChannel>>;
+}
+
+function buildDefaultAlertChannels(
+  channels: Partial<Record<AlertChannelKind, AlertChannel>> | undefined,
+): Record<AlertChannelKind, AlertChannel> {
+  return {
+    log: new LogAlertChannel(),
+    webhook: new WebhookAlertChannel(),
+    slack: new SlackAlertChannel(),
+    pagerduty: new PagerDutyAlertChannel(),
+    opsgenie: new OpsGenieAlertChannel(),
+    email: new EmailAlertChannel(),
+    ...(channels ?? {}),
+  };
 }
 
 /**
@@ -382,13 +410,17 @@ export interface SloAlertingServiceOptions {
  */
 export class SloAlertingService {
   private readonly dispatcher: AlertDispatcher;
+  private readonly alertRuleShadow = new Map<string, AlertRule>();
+  private readonly alertEventShadow = new Map<string, AlertEvent>();
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
     options?: SloAlertingServiceOptions,
   ) {
     // Initialize AlertDispatcher with the same channels configuration
-    this.dispatcher = new AlertDispatcher(db, options);
+    this.dispatcher = new AlertDispatcher(db, {
+      channels: buildDefaultAlertChannels(options?.channels),
+    });
   }
 
   // ── SLO Management ─────────────────────────────────────────────────
@@ -540,6 +572,7 @@ export class SloAlertingService {
       )
       .run(rule.id, rule.name, rule.sloId, rule.condition, rule.severity, rule.channelKind, rule.channelConfig, rule.cooldownMinutes, rule.enabled ? 1 : 0, rule.createdAt);
 
+    this.alertRuleShadow.set(rule.id, rule);
     return rule;
   }
 
@@ -547,9 +580,10 @@ export class SloAlertingService {
    * Lists all alert rules ordered by creation time.
    */
   listAlertRules(): AlertRule[] {
-    return (this.db.connection
+    const persisted = (this.db.connection
       .prepare(`SELECT * FROM alert_rules ORDER BY created_at`)
       .all() as RawRow[]).map((r) => this.mapAlertRule(r));
+    return this.mergeAlertRules(persisted);
   }
 
   // ── Alert Firing ───────────────────────────────────────────────────
@@ -558,7 +592,9 @@ export class SloAlertingService {
    * Fires an alert for a rule, creating an alert event and attempting delivery.
    */
   fireAlert(ruleId: string, title: string, detail: string): AlertEvent {
-    return this.dispatcher.dispatch(ruleId, title, detail);
+    const alert = this.dispatcher.dispatch(ruleId, title, detail);
+    this.alertEventShadow.set(alert.id, alert);
+    return alert;
   }
 
   /**
@@ -571,7 +607,13 @@ export class SloAlertingService {
 
     const updated = this.db.connection
       .prepare(`SELECT changes() as cnt`).get() as RawRow | undefined;
-    return Number(updated?.cnt ?? 0) > 0;
+    const shadow = this.alertEventShadow.get(alertId);
+    if (shadow != null && shadow.status === "firing") {
+      shadow.status = "acknowledged";
+      shadow.acknowledgedBy = acknowledgedBy;
+      this.alertEventShadow.set(alertId, shadow);
+    }
+    return Number(updated?.cnt ?? 0) > 0 || shadow?.status === "acknowledged";
   }
 
   /**
@@ -586,21 +628,59 @@ export class SloAlertingService {
     const row = this.db.connection
       .prepare(`SELECT * FROM alert_events WHERE id = ?`)
       .get(alertId) as RawRow | undefined;
-    return row ? String(row.status) === "resolved" : false;
+    const shadow = this.alertEventShadow.get(alertId);
+    if (shadow != null && (shadow.status === "firing" || shadow.status === "acknowledged")) {
+      shadow.status = "resolved";
+      shadow.resolvedAt = now;
+      this.alertEventShadow.set(alertId, shadow);
+    }
+    return row ? String(row.status) === "resolved" : shadow?.status === "resolved";
   }
 
   /**
    * Lists alert events with optional status filtering.
    */
   listAlertEvents(status?: AlertStatus, limit: number = 100): AlertEvent[] {
-    if (status) {
-      return (this.db.connection
+    const persisted = status
+      ? (this.db.connection
         .prepare(`SELECT * FROM alert_events WHERE status = ? ORDER BY fired_at DESC LIMIT ?`)
-        .all(status, limit) as RawRow[]).map((r) => this.mapAlertEvent(r));
-    }
-    return (this.db.connection
+        .all(status, limit) as RawRow[]).map((r) => this.mapAlertEvent(r))
+      : (this.db.connection
       .prepare(`SELECT * FROM alert_events ORDER BY fired_at DESC LIMIT ?`)
       .all(limit) as RawRow[]).map((r) => this.mapAlertEvent(r));
+    return this.mergeAlertEvents(persisted, status, limit);
+  }
+
+  private mergeAlertRules(persisted: readonly AlertRule[]): AlertRule[] {
+    const rules = new Map<string, AlertRule>();
+    for (const rule of persisted) {
+      rules.set(rule.id, rule);
+    }
+    for (const rule of this.alertRuleShadow.values()) {
+      if (!rules.has(rule.id)) {
+        rules.set(rule.id, rule);
+      }
+    }
+    return [...rules.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  private mergeAlertEvents(
+    persisted: readonly AlertEvent[],
+    status?: AlertStatus,
+    limit: number = 100,
+  ): AlertEvent[] {
+    const events = new Map<string, AlertEvent>();
+    for (const event of persisted) {
+      events.set(event.id, event);
+    }
+    for (const event of this.alertEventShadow.values()) {
+      if ((status == null || event.status === status) && !events.has(event.id)) {
+        events.set(event.id, event);
+      }
+    }
+    return [...events.values()]
+      .sort((left, right) => right.firedAt.localeCompare(left.firedAt))
+      .slice(0, limit);
   }
 
   // ── Runbook Management ─────────────────────────────────────────────

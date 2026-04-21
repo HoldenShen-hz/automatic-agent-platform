@@ -5,7 +5,7 @@
       "cron": "*/20 * * * *",
       "prompt": "多个agent 同时工作",
       "createdAt": 1776792454554,
-      "lastFiredAt": 1776798481890,
+      "lastFiredAt": 1776799681611,
       "recurring": true
     }
   ]

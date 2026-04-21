@@ -62,7 +62,7 @@ export class SlaOperationsService {
       request.totalCapacityUnits,
       request.reservedCapacityPlan ?? request.tiers.map((tier) => ({
         tierId: tier.tierId,
-        reservedPercent: tier.reservedCapacityPercent,
+        reservedPercent: tier.reservedCapacityPercent ?? 0,
       })),
     );
 

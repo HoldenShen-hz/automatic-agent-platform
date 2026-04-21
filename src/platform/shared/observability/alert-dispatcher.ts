@@ -16,7 +16,7 @@ import type {
 import type { AlertChannel } from "./slo-alerting-service.js";
 
 export interface AlertDispatcherOptions {
-  channels?: Record<AlertChannelKind, AlertChannel>;
+  channels?: Partial<Record<AlertChannelKind, AlertChannel>>;
 }
 
 export class AlertDispatcher {

@@ -68,6 +68,7 @@ export function createGrowthPresenterPlugin(): DomainPresenterPlugin {
           sections.push(
             `### ${output.stepId}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
           );
+          citations.push(output.outputRef ?? output.stepId);
         }
       }
 

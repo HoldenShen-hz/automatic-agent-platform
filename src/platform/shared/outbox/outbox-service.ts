@@ -48,6 +48,7 @@ const DEFAULT_CONFIG: OutboxServiceConfig = {
 export class OutboxService {
   private readonly repo: OutboxRepository;
   private readonly config: OutboxServiceConfig;
+  private readonly localEntries = new Map<string, OutboxRecord>();
 
   public constructor(
     db: AuthoritativeSqlDatabase,
@@ -76,7 +77,7 @@ export class OutboxService {
     payload: Record<string, unknown>,
     traceId?: string | null,
   ): OutboxRecord {
-    return this.repo.insertOutboxEntry(
+    const entry = this.repo.insertOutboxEntry(
       aggregateType,
       aggregateId,
       eventType,
@@ -84,6 +85,8 @@ export class OutboxService {
       traceId ?? null,
       nowIso(),
     );
+    this.localEntries.set(entry.id, entry);
+    return entry;
   }
 
   /**
@@ -93,7 +96,11 @@ export class OutboxService {
    * @param entries - Array of outbox entry payloads
    */
   public writeOutboxEntries(entries: OutboxInsertPayload[]): OutboxRecord[] {
-    return this.repo.insertOutboxEntries(entries);
+    const records = this.repo.insertOutboxEntries(entries);
+    for (const record of records) {
+      this.localEntries.set(record.id, record);
+    }
+    return records;
   }
 
   /**
@@ -103,21 +110,31 @@ export class OutboxService {
    * @param limit - Maximum number of entries to return
    */
   public getPendingEntries(limit?: number): OutboxRecord[] {
-    return this.repo.listPendingEntries(limit ?? this.config.maxBatchSize);
+    const effectiveLimit = limit ?? this.config.maxBatchSize;
+    const repoEntries = this.repo.listPendingEntries(effectiveLimit);
+    const merged = this.mergeEntries(repoEntries);
+    return merged
+      .filter((entry) => entry.publishedAt == null)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      .slice(0, effectiveLimit);
   }
 
   /**
    * Gets count of pending outbox entries.
    */
   public getPendingCount(): number {
-    return this.repo.countPending();
+    const repoPending = this.repo.listPendingEntries(Number.MAX_SAFE_INTEGER);
+    return this.mergeEntries(repoPending).filter((entry) => entry.publishedAt == null).length;
   }
 
   /**
    * Gets count of failed outbox entries.
    */
   public getFailedCount(): number {
-    return this.repo.countFailed();
+    const repoFailed = this.repo.listFailedEntries(Number.MAX_SAFE_INTEGER);
+    return this.mergeEntries(repoFailed)
+      .filter((entry) => entry.publishedAt == null && entry.retryCount > 0)
+      .length;
   }
 
   /**
@@ -127,7 +144,12 @@ export class OutboxService {
    * @param id - Outbox entry ID
    */
   public markPublished(id: string): void {
-    this.repo.markPublished(id, nowIso());
+    const publishedAt = nowIso();
+    this.repo.markPublished(id, publishedAt);
+    const localEntry = this.localEntries.get(id);
+    if (localEntry != null) {
+      this.localEntries.delete(id);
+    }
   }
 
   /**
@@ -141,6 +163,13 @@ export class OutboxService {
    */
   public markFailed(id: string, error: string, retryCount: number, lastAttemptAt: string): void {
     this.repo.markFailed(id, error, retryCount, lastAttemptAt);
+    const localEntry = this.localEntries.get(id);
+    if (localEntry != null) {
+      localEntry.lastError = error;
+      localEntry.retryCount = retryCount;
+      localEntry.lastAttemptAt = lastAttemptAt;
+      this.localEntries.set(id, localEntry);
+    }
   }
 
   /**
@@ -162,6 +191,7 @@ export class OutboxService {
       });
 
       this.repo.markPublished(entry.id, nowIso());
+      this.localEntries.delete(entry.id);
       logger.log({
         level: "debug",
         message: "outbox.published",
@@ -178,6 +208,7 @@ export class OutboxService {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const newRetryCount = entry.retryCount + 1;
       this.repo.markFailed(entry.id, errorMessage, newRetryCount, nowIso());
+      this.updateLocalFailure(entry.id, errorMessage, newRetryCount);
 
       logger.log({
         level: "warn",
@@ -226,6 +257,9 @@ export class OutboxService {
       // Mark all entries as published in a single batch
       const successfulIds = entries.map((entry) => entry.id);
       this.repo.markPublishedBatch(successfulIds, now);
+      for (const id of successfulIds) {
+        this.localEntries.delete(id);
+      }
 
       logger.log({
         level: "debug",
@@ -245,6 +279,7 @@ export class OutboxService {
       for (const entry of entries) {
         const newRetryCount = entry.retryCount + 1;
         this.repo.markFailed(entry.id, errorMessage, newRetryCount, now);
+        this.updateLocalFailure(entry.id, errorMessage, newRetryCount, now);
         failedEntries.push(entry.id);
 
         logger.log({
@@ -295,6 +330,7 @@ export class OutboxService {
         const errorMessage = error instanceof Error ? error.message : String(error);
         const newRetryCount = entry.retryCount + 1;
         this.repo.markFailed(entry.id, errorMessage, newRetryCount, now);
+        this.updateLocalFailure(entry.id, errorMessage, newRetryCount, now);
         failedEntries.push(entry.id);
 
         logger.log({
@@ -313,6 +349,9 @@ export class OutboxService {
     // Batch update successful entries
     if (successfulIds.length > 0) {
       this.repo.markPublishedBatch(successfulIds, now);
+      for (const id of successfulIds) {
+        this.localEntries.delete(id);
+      }
 
       logger.log({
         level: "debug",
@@ -325,5 +364,33 @@ export class OutboxService {
     }
 
     return { published: successfulIds.length, failed: failedEntries.length };
+  }
+
+  private mergeEntries(repoEntries: readonly OutboxRecord[]): OutboxRecord[] {
+    const merged = new Map<string, OutboxRecord>();
+    for (const entry of repoEntries) {
+      merged.set(entry.id, entry);
+    }
+    for (const entry of this.localEntries.values()) {
+      if (!merged.has(entry.id)) {
+        merged.set(entry.id, entry);
+      }
+    }
+    return [...merged.values()];
+  }
+
+  private updateLocalFailure(
+    id: string,
+    error: string,
+    retryCount: number,
+    lastAttemptAt: string = nowIso(),
+  ): void {
+    const localEntry = this.localEntries.get(id);
+    if (localEntry != null) {
+      localEntry.lastError = error;
+      localEntry.retryCount = retryCount;
+      localEntry.lastAttemptAt = lastAttemptAt;
+      this.localEntries.set(id, localEntry);
+    }
   }
 }

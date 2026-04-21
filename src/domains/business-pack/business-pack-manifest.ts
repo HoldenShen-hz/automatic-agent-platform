@@ -171,7 +171,7 @@ export function isTerminalStage(stage: BusinessPackLifecycleStage): boolean {
 export const BusinessPackManifestSchema = z.object({
   packId: z.string().min(1),
   name: z.string().min(1),
-  version: z.string().min(1),
+  version: z.string().min(1).regex(/^\d+\.\d+\.\d+$/, "Version must follow semver format (e.g., 1.0.0)"),
   domainId: z.string().min(1),
   description: z.string().optional().default(""),
 

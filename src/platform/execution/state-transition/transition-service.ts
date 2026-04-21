@@ -390,6 +390,7 @@ export class ExecutionTransitionService {
       command.toStatus === "succeeded" || command.toStatus === "failed" || command.toStatus === "cancelled"
         ? command.occurredAt
         : null;
+    const lastErrorCode = command.toStatus === "failed" ? command.reasonCode ?? null : null;
 
     // RT-01: CAS on status. If another transaction already moved the execution
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
@@ -401,6 +402,7 @@ export class ExecutionTransitionService {
       command.occurredAt,
       startedAt,
       finishedAt,
+      lastErrorCode,
     );
     if (affected === 0) {
       throw new Error(

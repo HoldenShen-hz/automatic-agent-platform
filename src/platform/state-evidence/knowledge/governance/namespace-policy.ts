@@ -161,11 +161,12 @@ export class NamespacePolicyStore {
 
   /**
    * Checks if a namespace path is valid.
-   * §50 Strategy: Paths must be lowercase, dot-separated, and start with domain prefix.
+   * §50 Strategy: Paths must be lowercase, dot- or slash-separated, and start with domain prefix.
+   * Segment names may contain hyphens (e.g., "test/file-default" is valid).
    */
   private isValidNamespacePath(path: string): boolean {
-    // Valid path format: domain.subdomain.name (e.g., "finance.payments.reports")
-    const pathPattern = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$/;
+    // Valid path format: domain.subdomain.name or domain/subdomain/name (e.g., "finance.payments.reports" or "test/file-default")
+    const pathPattern = /^[a-z][a-z0-9]*([./][a-z][a-z0-9-]*)*$/;
     return pathPattern.test(path);
   }
 

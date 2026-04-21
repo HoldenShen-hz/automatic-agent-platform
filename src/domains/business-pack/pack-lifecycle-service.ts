@@ -176,6 +176,7 @@ export class PackLifecycleService {
    */
   public deprecatePack(packId: string, reason: string): LifecycleTransitionResult {
     const state = this.requireState(packId);
+    const fromStage = state.stage;
 
     if (!isValidLifecycleTransition(state.stage, "deprecated")) {
       return this.rejectTransition(state.stage, "deprecated");
@@ -189,7 +190,7 @@ export class PackLifecycleService {
 
     return {
       success: true,
-      fromStage: state.stage,
+      fromStage,
       toStage: "deprecated",
     };
   }
@@ -201,6 +202,7 @@ export class PackLifecycleService {
    */
   public archivePack(packId: string): LifecycleTransitionResult {
     const state = this.requireState(packId);
+    const fromStage = state.stage;
 
     if (!isValidLifecycleTransition(state.stage, "archived")) {
       return this.rejectTransition(state.stage, "archived");
@@ -213,7 +215,7 @@ export class PackLifecycleService {
 
     return {
       success: true,
-      fromStage: state.stage,
+      fromStage,
       toStage: "archived",
     };
   }
@@ -293,12 +295,13 @@ export class PackLifecycleService {
 
   private transitionTo(packId: string, targetStage: BusinessPackLifecycleStage): LifecycleTransitionResult {
     const state = this.requireState(packId);
+    const fromStage = state.stage;
     const updatedState = this.packStates.get(packId)!;
     updatedState.stage = targetStage;
     updatedState.updatedAt = nowIso();
     return {
       success: true,
-      fromStage: state.stage,
+      fromStage,
       toStage: targetStage,
     };
   }

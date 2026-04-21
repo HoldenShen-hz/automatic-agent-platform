@@ -89,7 +89,7 @@ export class PolicyVersionManager {
         ...initialBundle,
         status: "active",
       };
-      this.versions.set(initialBundle.bundleId, versioned);
+      this.versions.set(`${initialBundle.bundleId}:${initialBundle.version}`, versioned);
     }
   }
 
