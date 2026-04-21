@@ -47,7 +47,9 @@ export class RedisLockAdapter implements DistributedLockAdapter {
       connectTimeout: config?.connectTimeout ?? this.connectTimeoutMs,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 1,
     }));
-    this.redis.on("error", () => {});
+    this.redis.on("error", (err) => {
+      lockLogger.log({ level: "error", message: "redis.connection_error", data: { err: err instanceof Error ? err.message : String(err) } });
+    });
   }
 
   private async ensureConnected(): Promise<void> {
