@@ -267,6 +267,20 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     ));
   }
 
+  public updateWorkflowStateCas(
+    taskId: string,
+    expectedVersion: number,
+    status: string,
+    currentStepIndex: number,
+    outputsJson: string,
+    updatedAt: string,
+    resumableFromStep: string | null = null,
+  ): number {
+    return this.run("updateWorkflowStateCas", () => this.inner.updateWorkflowStateCas(
+      taskId, expectedVersion, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep,
+    ));
+  }
+
   public updateSessionStatus(sessionId: string, status: string, updatedAt: string): void {
     return this.run("updateSessionStatus", () => this.inner.updateSessionStatus(sessionId, status, updatedAt));
   }
@@ -384,6 +398,20 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
       outputsJson,
       updatedAt,
       resumableFromStep,
+    ));
+  }
+
+  public updateWorkflowStateCas(
+    taskId: string,
+    expectedVersion: number,
+    status: string,
+    currentStepIndex: number,
+    outputsJson: string,
+    updatedAt: string,
+    resumableFromStep: string | null = null,
+  ): number {
+    return this.observe("updateWorkflowStateCas", () => this.inner.updateWorkflowStateCas(
+      taskId, expectedVersion, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep,
     ));
   }
 

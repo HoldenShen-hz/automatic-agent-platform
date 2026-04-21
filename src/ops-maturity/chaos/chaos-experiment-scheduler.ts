@@ -8,6 +8,12 @@
  * - Experiment result classification (success/failure/inconclusive)
  *
  * §68 混沌工程 - 实验调度 + 自动化稳态验证
+ *
+ * §66 GameDay 编排器 (P2 Enhancement for Phase 3):
+ * 当前 scheduleGameDay() / startGameDay() / refreshGameDayStatus() 已实现基础调度骨架。
+ * 要实现完整的 GameDay 编排能力，需要：真实故障注入执行、与监控系统联动验证稳态、
+ * 多实验并行编排、以及 GameDay 报告生成。当前 ChaosExperimentScheduler 缺少与外部
+ * 故障注入系统的集成和真实稳态验证流水线。
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";

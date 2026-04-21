@@ -154,6 +154,72 @@ export const OtelServiceVersionSchema = NonEmptyString.optional();
 export const ExpectedGovernanceVersionSchema = NonEmptyString.nullable();
 
 // ---------------------------------------------------------------------------
+// Plugin & sandbox schemas (P1 — system starts without plugins but functionality is reduced)
+// ---------------------------------------------------------------------------
+
+/**
+ * Schema for AA_PLUGIN_REGISTRY_URL — plugin registry endpoint.
+ * Optional: defaults to built-in plugin catalog.
+ */
+export const PluginRegistryUrlSchema = NonEmptyString.url().optional();
+
+/**
+ * Schema for AA_PLUGIN_ALLOW_UNVERIFIED — allow loading plugins without signature verification.
+ * Optional: defaults to false in production.
+ */
+export const PluginAllowUnverifiedSchema = BooleanString.optional();
+
+/**
+ * Schema for AA_SANDBOX_MAX_MEMORY_MB — maximum memory per sandboxed execution.
+ * Optional: null means use platform default.
+ */
+export const SandboxMaxMemoryMbSchema = PositiveInteger.nullable();
+
+/**
+ * Schema for AA_SANDBOX_TIMEOUT_MS — maximum time for sandboxed execution.
+ * Optional: null means use platform default.
+ */
+export const SandboxTimeoutMsSchema = PositiveInteger.nullable();
+
+// ---------------------------------------------------------------------------
+// Security schemas (P0 — tamper detection & access control)
+// ---------------------------------------------------------------------------
+
+/**
+ * Schema for AA_API_JWT_SECRET — JWT signing secret for API authentication.
+ * Optional: null means use shared secret from config center.
+ */
+export const ApiJwtSecretSchema = NonEmptyString.nullable();
+
+/**
+ * Schema for AA_SECURITY_ENFORCE_SANDBOX — enforce sandbox isolation for all executions.
+ * Optional: defaults to true in prod, false in dev.
+ */
+export const SecurityEnforceSandboxSchema = BooleanString.optional();
+
+/**
+ * Schema for AA_SECURITY_ALLOWED_HOSTS — comma-separated list of allowed request origins.
+ * Optional: defaults to all origins in dev, specific hosts in prod.
+ */
+export const SecurityAllowedHostsSchema = NonEmptyString.optional();
+
+// ---------------------------------------------------------------------------
+// Redis connection schemas (P1 — system may start without Redis but caching is disabled)
+// ---------------------------------------------------------------------------
+
+/**
+ * Schema for AA_REDIS_HOST — Redis server hostname.
+ * Optional: defaults to localhost.
+ */
+export const RedisHostSchema = NonEmptyString.optional();
+
+/**
+ * Schema for AA_REDIS_PORT — Redis server port.
+ * Optional: defaults to 6379.
+ */
+export const RedisPortSchema = PositivePort.optional();
+
+// ---------------------------------------------------------------------------
 // Composite startup config
 // ---------------------------------------------------------------------------
 
@@ -174,6 +240,15 @@ export const StartupEnvSchema = z.object({
   AA_OTEL_SERVICE_NAME: OtelServiceNameSchema,
   AA_OTEL_SERVICE_VERSION: OtelServiceVersionSchema,
   AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION: ExpectedGovernanceVersionSchema,
+  AA_PLUGIN_REGISTRY_URL: PluginRegistryUrlSchema,
+  AA_PLUGIN_ALLOW_UNVERIFIED: PluginAllowUnverifiedSchema,
+  AA_SANDBOX_MAX_MEMORY_MB: SandboxMaxMemoryMbSchema,
+  AA_SANDBOX_TIMEOUT_MS: SandboxTimeoutMsSchema,
+  AA_API_JWT_SECRET: ApiJwtSecretSchema,
+  AA_SECURITY_ENFORCE_SANDBOX: SecurityEnforceSandboxSchema,
+  AA_SECURITY_ALLOWED_HOSTS: SecurityAllowedHostsSchema,
+  AA_REDIS_HOST: RedisHostSchema,
+  AA_REDIS_PORT: RedisPortSchema,
 });
 
 export type StartupEnv = z.infer<typeof StartupEnvSchema>;
@@ -218,6 +293,15 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_OTEL_SERVICE_NAME: env["AA_OTEL_SERVICE_NAME"] ?? undefined,
     AA_OTEL_SERVICE_VERSION: env["AA_OTEL_SERVICE_VERSION"] ?? undefined,
     AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION: env["AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION"] ?? null,
+    AA_PLUGIN_REGISTRY_URL: env["AA_PLUGIN_REGISTRY_URL"] ?? undefined,
+    AA_PLUGIN_ALLOW_UNVERIFIED: env["AA_PLUGIN_ALLOW_UNVERIFIED"] ?? undefined,
+    AA_SANDBOX_MAX_MEMORY_MB: env["AA_SANDBOX_MAX_MEMORY_MB"] ?? null,
+    AA_SANDBOX_TIMEOUT_MS: env["AA_SANDBOX_TIMEOUT_MS"] ?? null,
+    AA_API_JWT_SECRET: env["AA_API_JWT_SECRET"] ?? null,
+    AA_SECURITY_ENFORCE_SANDBOX: env["AA_SECURITY_ENFORCE_SANDBOX"] ?? undefined,
+    AA_SECURITY_ALLOWED_HOSTS: env["AA_SECURITY_ALLOWED_HOSTS"] ?? undefined,
+    AA_REDIS_HOST: env["AA_REDIS_HOST"] ?? undefined,
+    AA_REDIS_PORT: env["AA_REDIS_PORT"] ?? undefined,
   };
 
   const result = StartupEnvSchema.safeParse(raw);

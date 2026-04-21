@@ -827,6 +827,14 @@ When a single node is not enough, shard according to the following dimensions:
 | S3 distributed | Microservices + PostgreSQL + event bus | 500 concurrency, 100 workers |
 | S4 Cluster | Kubernetes + PG Sharding + Multi-AZ | 5000+ Concurrency |
 
+> **TODO (Phase 3 Infrastructure)**: S4 Kubernetes cluster sharding requires:
+> - Multi-tenant scheduler with tenant-aware Pod placement
+> - Cross-Pod coordination for distributed lease management
+> - PG sharding strategy (e.g., Citus, CockroachDB, or manual sharding)
+> - Multi-AZ failover and data locality
+> - Service mesh (Istio/Linkerd) for cross-Pod communication
+> This is not yet implemented; tracked for Phase 3.
+
 ---
 
 # 9. Stability Architecture
@@ -4742,6 +4750,15 @@ interface PlatformMode {
 
 **Audit & Testing**: axe-core scan runs automatically before each frontend release; WCAG AA violations are treated as release blockers.
 
+> **Note**: WCAG 2.1 AA compliance requires a frontend implementation. The current codebase is backend-focused and does not include a frontend UI. Accessibility compliance will need to be verified when a frontend is developed, following these guidelines:
+> - Use semantic HTML elements
+> - Ensure keyboard navigability (Tab, Enter, Esc)
+> - Provide alt text for all images and data table alternatives for charts
+> - Use ARIA annotations for interactive controls
+> - Ensure color is not the only information carrier
+> - Run automated axe-core scans before each frontend release
+> Frontend implementation is tracked separately and not yet in scope for the current backend-focused implementation phase.
+
 ---
 
 # 46. Organizational Hierarchy Model
@@ -5515,6 +5532,21 @@ type FeedbackSignalType =
   | "cost_anomaly"             // Cost anomaly
   | "latency_anomaly";         // Latency anomaly
 ```
+
+> **Design Decision: 3D FeedbackSignal vs Flat 9-Type Enum**
+>
+> The actual implementation uses a 3-dimensional FeedbackSignal model (source × category × severity)
+> rather than a flat 9-type enum. This design is more flexible because:
+> - **Extensibility**: New signal types can be composed from existing dimensions without adding enum values
+> - **Precision**: A signal can be classified along multiple axes simultaneously (e.g., source=execution + category=failure + severity=critical)
+> - **Query Flexibility**: Each dimension can be queried independently for analytics
+>
+> Implementation uses three orthogonal enums:
+> - `FeedbackSource`: execution | user | hitl | validation | system
+> - `FeedbackCategory`: success | failure | correction | timeout | partial
+> - `FeedbackSeverity`: info | warning | error | critical
+>
+> This replaces a flat 9-type enum with a combinatorial space of 5×5×4=100 possible signal types.
 ## 56.3 Automatic improvement types
 | Type of improvement | Trigger conditions | Degree of automation | Output |
 |---------|---------|----------|------|

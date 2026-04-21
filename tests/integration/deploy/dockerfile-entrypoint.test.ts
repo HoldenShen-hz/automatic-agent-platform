@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync } from "fs";
 import { resolve } from "path";
 
 /**
@@ -20,7 +20,8 @@ test("[SYS-DEPLOY-6.3] Dockerfile CMD path exists after build", () => {
   const cmdMatch = content.match(/CMD\s*\[\s*"node"\s*,\s*"[^"]*"\s*,\s*"([^"]+)"\s*\]/);
   assert.ok(cmdMatch, "Dockerfile must have a CMD instruction with node entrypoint");
 
-  const entrypointPath = cmdMatch[1];
+  const entrypointPath = cmdMatch?.[1] ?? "";
+  assert.ok(entrypointPath, "CMD entrypoint path must be defined");
   assert.ok(
     entrypointPath.startsWith("dist/"),
     `CMD path must be in dist/ directory, got: ${entrypointPath}`,

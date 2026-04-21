@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { nowIso } from "../../../contracts/types/ids.js";
+import { checkToolPathScope } from "../../../execution/tool-executor/tool-path-scope.js";
 import type { KnowledgeNamespace } from "../knowledge-model.js";
 import type { ArchivedKnowledgeRecord } from "./knowledge-archive.js";
 
@@ -19,6 +20,10 @@ export class KnowledgeSnapshotStore {
   private readonly snapshotPath: string;
 
   public constructor(options: KnowledgeSnapshotStoreOptions) {
+    const scopeCheck = checkToolPathScope(options.snapshotPath, null);
+    if (!scopeCheck.allowed) {
+      throw new Error(`knowledge_snapshot_store.path_scope_denied: ${scopeCheck.normalizedPath}`);
+    }
     this.snapshotPath = options.snapshotPath;
   }
 

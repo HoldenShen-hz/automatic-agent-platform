@@ -340,6 +340,54 @@ export class SecretManagementService {
   }
 
   /**
+   * Starts a daily scheduler that checks for secrets due for rotation.
+   *
+   * §23: Daily scheduler for 90-day secret rotation.
+   * Uses a simple interval check to trigger rotation requests for secrets
+   * whose nextRotationDueAt has passed.
+   *
+   * @param intervalMs - Check interval in milliseconds (default 24 hours)
+   * @returns A timer handle that can be used to stop the scheduler
+   */
+  public startDailyRotationScheduler(intervalMs: number = 24 * 60 * 60 * 1000): NodeJS.Timer {
+    const rotationInterval = setInterval(() => {
+      try {
+        const asOf = nowIso();
+        const rotated = this.requestDueRotations(asOf);
+        if (rotated.length > 0) {
+          console.log(`secret.rotation.scheduled`, {
+            count: rotated.length,
+            asOf,
+            requestedBy: "system.rotation.scheduler",
+          });
+        }
+      } catch (err) {
+        console.error("secret.rotation.scheduler_error", {
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }, intervalMs);
+
+    // Run immediately on start
+    try {
+      const asOf = nowIso();
+      const rotated = this.requestDueRotations(asOf);
+      if (rotated.length > 0) {
+        console.log(`secret.rotation.scheduled_initial`, {
+          count: rotated.length,
+          asOf,
+        });
+      }
+    } catch (err) {
+      console.error("secret.rotation.initial_check_error", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    return rotationInterval;
+  }
+
+  /**
    * Issues a time-limited lease for a secret.
    */
   public async issueSecretLease(input: IssueSecretLeaseInput): Promise<ManagedSecretLease> {

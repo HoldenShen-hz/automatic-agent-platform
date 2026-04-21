@@ -49,7 +49,7 @@ services:
     environment:
       POSTGRES_DB: automatic_agent
       POSTGRES_USER: automatic_agent
-      POSTGRES_PASSWORD: automatic_agent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
     ports:
       - "5432:5432"
     volumes:

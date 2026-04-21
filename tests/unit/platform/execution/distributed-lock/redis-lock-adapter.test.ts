@@ -65,7 +65,8 @@ function createMockRedis(overrides: Partial<{
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
   eval: (script: string, numKeys: number, ...args: string[]) => Promise<unknown>;
-  keys: (pattern: string) => Promise<string[]>;
+  scan: (cursor: number, ...args: Array<string | number>) => Promise<[string, string[]]>;
+  mget: (...keys: string[]) => Promise<(string | null)[]>;
   quit: () => Promise<unknown>;
   disconnect: () => void;
 }> = {}): RedisLockAdapter["redis"] {
@@ -76,7 +77,8 @@ function createMockRedis(overrides: Partial<{
     get: async () => null,
     del: async () => 1,
     eval: async () => 1,
-    keys: async () => [],
+    scan: async () => ["0", []],
+    mget: async () => [],
     quit: async () => {},
     disconnect: () => {},
     on: () => {},
@@ -494,4 +496,188 @@ test("RedisLockAdapter ensureConnected throws when reconnect fails after status 
     (error: unknown) =>
       (error as any)?.code === "E7lock.redis_connection_closed",
   );
+});
+
+// =============================================================================
+// P0 Security Denial-Path Tests
+// =============================================================================
+
+test("RedisLockAdapter acquireAsync throws LockingError when Redis connection is closed during acquireAsync", async () => {
+  const adapter = new RedisLockAdapter({
+    host: "localhost",
+    port: 6379,
+  });
+
+  const redis = (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis;
+  Object.defineProperty(redis, "status", { value: "end", writable: true });
+
+  redis.connect = async () => {
+    throw new Error("Connection refused");
+  };
+
+  await assert.rejects(
+    adapter.acquireAsync({
+      lockKey: "test-lock",
+      owner: "test-owner",
+      ttlMs: 30_000,
+    }),
+    (err: unknown) => (err as any)?.code === "E7lock.redis_connection_closed",
+  );
+
+  await adapter.close();
+});
+
+test("RedisLockAdapter ensureConnected throws on reconnection failure", async () => {
+  const adapter = new RedisLockAdapter({
+    host: "localhost",
+    port: 6379,
+  });
+
+  const redis = (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis;
+  Object.defineProperty(redis, "status", { value: "end", writable: true });
+
+  redis.connect = async () => {
+    throw new Error("Connection refused - host unreachable");
+  };
+
+  await assert.rejects(
+    (adapter as unknown as { ensureConnected(): Promise<void> }).ensureConnected.call(adapter),
+    (err: unknown) =>
+      (err as any)?.code === "E7lock.redis_connection_closed",
+  );
+
+  await adapter.close();
+});
+
+test("RedisLockAdapter.releaseAsync throws when Lua script evaluation fails", async () => {
+  const mockRedis = createMockRedis({
+    status: "ready",
+    eval: async () => {
+      throw new Error("Lua script error: ERR Error running script");
+    },
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(
+    adapter.releaseAsync("test-lock", "test-owner"),
+    (err: unknown) => err instanceof Error,
+  );
+});
+
+test("RedisLockAdapter.extendAsync throws when Lua script evaluation fails", async () => {
+  const mockRedis = createMockRedis({
+    status: "ready",
+    eval: async () => {
+      throw new Error("ERR Error running script (related key not found)");
+    },
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(
+    adapter.extendAsync("test-lock", "test-owner", 60_000),
+    (err: unknown) => err instanceof Error,
+  );
+});
+
+test("RedisLockAdapter.fencingCounter increments per acquireAsync call", async () => {
+  const adapter = new RedisLockAdapter({
+    host: "localhost",
+    port: 6379,
+  });
+
+  const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
+
+  const initialCount = getFencingCounter();
+
+  const mockRedis = createMockRedis({
+    status: "ready",
+    set: async () => "OK",
+  });
+  (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis = mockRedis;
+
+  await adapter.acquireAsync({
+    lockKey: "lock1",
+    owner: "owner1",
+    ttlMs: 30_000,
+  });
+
+  assert.equal(getFencingCounter(), initialCount + 1);
+
+  await adapter.acquireAsync({
+    lockKey: "lock2",
+    owner: "owner2",
+    ttlMs: 30_000,
+  });
+
+  assert.equal(getFencingCounter(), initialCount + 2);
+
+  await adapter.close();
+});
+
+test("RedisLockAdapter forceStealAsync increments fencing counter", async () => {
+  const adapter = new RedisLockAdapter({
+    host: "localhost",
+    port: 6379,
+  });
+
+  const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
+
+  const initialCount = getFencingCounter();
+
+  const mockRedis = createMockRedis({
+    status: "ready",
+    set: async () => "OK",
+  });
+  (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis = mockRedis;
+
+  await adapter.forceStealAsync("test-lock", "new-owner", "test-reason");
+
+  assert.equal(getFencingCounter(), initialCount + 1);
+
+  await adapter.close();
+});
+
+test("RedisLockAdapter inspectAsync handles malformed lock data", async () => {
+  const mockRedis = createMockRedis({
+    status: "ready",
+    get: async () => "not valid json {{{",
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(
+    adapter.inspectAsync("test-lock"),
+    (err: unknown) => err instanceof Error,
+  );
+});
+
+test("RedisLockAdapter listHeldAsync handles scan errors gracefully", async () => {
+  const mockRedis = createMockRedis({
+    status: "ready",
+    scan: async () => {
+      throw new Error("CLUSTER DOWN");
+    },
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  await assert.rejects(
+    adapter.listHeldAsync(100),
+    (err: unknown) => err instanceof Error,
+  );
+});
+
+test("RedisLockAdapter acquireAsync returns not acquired when lock already held", async () => {
+  const mockRedis = createMockRedis({
+    status: "ready",
+    set: async () => null, // NX fails, lock exists
+  });
+  const adapter = createAdapterWithMockRedis(mockRedis);
+
+  const result = await adapter.acquireAsync({
+    lockKey: "already-held-lock",
+    owner: "new-owner",
+    ttlMs: 30_000,
+  });
+
+  assert.equal(result.acquired, false);
+  assert.equal(result.lock, undefined);
 });

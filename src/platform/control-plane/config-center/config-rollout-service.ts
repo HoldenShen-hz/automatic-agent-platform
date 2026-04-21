@@ -43,7 +43,7 @@ export interface RolloutStage {
  */
 export const DEFAULT_ROLLOUT_STAGES: RolloutStage[] = [
   { phase: RolloutPhase.PENDING, percentage: 0, minDurationMs: 0, autoProgress: false },
-  { phase: RolloutPhase.CANARY_5, percentage: 5, minDurationMs: 60000, autoProgress: true },
+  { phase: RolloutPhase.CANARY_5, percentage: 5, minDurationMs: 1800000, autoProgress: true },
   { phase: RolloutPhase.CANARY_25, percentage: 25, minDurationMs: 300000, autoProgress: true },
   { phase: RolloutPhase.HALF, percentage: 50, minDurationMs: 600000, autoProgress: true },
   { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },

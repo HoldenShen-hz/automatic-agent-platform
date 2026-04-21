@@ -24,6 +24,7 @@
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { AlertDispatcher } from "./alert-dispatcher.js";
 import { rolloutFreezeManager } from "./rollout-freeze-manager.js";
 import {
   type AlertChannelKind,
@@ -360,24 +361,18 @@ export interface SloAlertingServiceOptions {
  * SloAlertingService manages SLOs, SLIs, alert rules, alert events, and runbooks.
  * It provides a complete alerting pipeline from measurement collection through
  * alert firing to runbook execution.
+ *
+ * Internally uses AlertDispatcher for alert event persistence and delivery.
  */
 export class SloAlertingService {
-  private readonly channels: Map<AlertChannelKind, AlertChannel>;
+  private readonly dispatcher: AlertDispatcher;
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
     options?: SloAlertingServiceOptions,
   ) {
-    this.channels = new Map();
-    if (options?.channels) {
-      for (const [kind, channel] of Object.entries(options.channels)) {
-        this.channels.set(kind as AlertChannelKind, channel);
-      }
-    }
-    // Ensure a log channel is always available
-    if (!this.channels.has("log")) {
-      this.channels.set("log", new LogAlertChannel());
-    }
+    // Initialize AlertDispatcher with the same channels configuration
+    this.dispatcher = new AlertDispatcher(db, options);
   }
 
   // ── SLO Management ─────────────────────────────────────────────────
@@ -547,52 +542,7 @@ export class SloAlertingService {
    * Fires an alert for a rule, creating an alert event and attempting delivery.
    */
   fireAlert(ruleId: string, title: string, detail: string): AlertEvent {
-    const now = nowIso();
-    const rule = (this.db.connection
-      .prepare(`SELECT * FROM alert_rules WHERE id = ?`)
-      .get(ruleId) as RawRow | undefined);
-
-    // Extract severity and channel from rule
-    const severity: AlertSeverity = rule ? String(rule.severity) as AlertSeverity : "warning";
-    const channelKind: AlertChannelKind = rule ? String(rule.channel_kind) as AlertChannelKind : "log";
-
-    const event: AlertEvent = {
-      id: newId("alert"),
-      ruleId,
-      severity,
-      status: "firing",
-      title,
-      detail,
-      channelKind,
-      deliveredAt: null,
-      acknowledgedBy: null,
-      resolvedAt: null,
-      firedAt: now,
-    };
-
-    // Persist alert event
-    this.db.connection
-      .prepare(
-        `INSERT INTO alert_events (id, rule_id, severity, status, title, detail, channel_kind, delivered_at, acknowledged_by, resolved_at, fired_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(event.id, event.ruleId, event.severity, event.status, event.title, event.detail, event.channelKind, event.deliveredAt, event.acknowledgedBy, event.resolvedAt, event.firedAt);
-
-    // Attempt delivery through the configured channel
-    const channel = this.channels.get(channelKind);
-    if (channel) {
-      const config = rule ? JSON.parse(String(rule.channel_config ?? "{}")) : {};
-      const result = channel.deliver(event, config);
-      if (result.delivered) {
-        const deliveredAt = nowIso();
-        this.db.connection
-          .prepare(`UPDATE alert_events SET delivered_at = ? WHERE id = ?`)
-          .run(deliveredAt, event.id);
-        event.deliveredAt = deliveredAt;
-      }
-    }
-
-    return event;
+    return this.dispatcher.dispatch(ruleId, title, detail);
   }
 
   /**
@@ -845,6 +795,59 @@ export class SloAlertingService {
   }
 
   /**
+   * Computes the burn rate for an SLO over a given time window.
+   *
+   * Burn rate = (actual error budget consumed) / (expected error budget consumed over time)
+   * A burn rate > 1 indicates the error budget is being consumed faster than expected.
+   *
+   * @param sloId - The SLO ID to compute burn rate for
+   * @param windowMs - Time window in milliseconds to evaluate
+   * @returns Burn rate (1.0 = at budget pace, >1 = burning faster than expected, <1 = burning slower)
+   */
+  public computeBurnRate(sloId: string, windowMs: number): number {
+    const slo = this.getSlo(sloId);
+    if (!slo) return 0;
+
+    const windowStart = new Date(Date.now() - windowMs).toISOString();
+    const samples = this.db.connection
+      .prepare(`SELECT value FROM sli_samples WHERE slo_id = ? AND collected_at >= ? ORDER BY collected_at`)
+      .all(sloId, windowStart) as RawRow[];
+
+    if (samples.length === 0) return 0;
+
+    // Calculate average SLI value in the window
+    const values = samples.map((r) => Number(r.value));
+    const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+
+    // Calculate expected value based on target and window
+    const windowMinutes = windowMs / 60_000;
+    const windowFraction = windowMinutes / (slo.windowMinutes || 1);
+
+    // Error budget consumption
+    // For operators like "gte" (higher is better), we measure how far below target we are
+    // For operators like "lte" (lower is better), we measure how far above target we are
+    let errorBudgetConsumed: number;
+    if (slo.operator === "gte") {
+      // Higher is better (e.g., success rate)
+      // Error budget consumed = how much we fell short of target
+      errorBudgetConsumed = Math.max(0, slo.targetValue - avgValue);
+    } else {
+      // Lower is better (e.g., latency, error rate)
+      // Error budget consumed = how much we exceeded target
+      errorBudgetConsumed = Math.max(0, avgValue - slo.targetValue);
+    }
+
+    // Expected error budget consumption based on time elapsed
+    // If target is 99% over 60 minutes, then in 30 minutes we'd expect 0.5% error budget consumed
+    // Burn rate = actual_consumed / expected_consumed
+    const expectedConsumption = slo.targetValue * windowFraction;
+
+    if (expectedConsumption === 0) return 0;
+
+    return errorBudgetConsumed / expectedConsumption;
+  }
+
+  /**
    * Triggers error budget auto-degradation for an SLO.
    *
    * If the SLO is breached (error budget exhausted):
@@ -896,13 +899,12 @@ export class SloAlertingService {
    * Falls back to log channel if PagerDuty is not configured.
    */
   private fireAlertToPagerDuty(title: string, detail: string): AlertEvent {
-    // First, try to find a pagerduty rule or create an inline alert event
-    const pagerDutyChannel = this.channels.get("pagerduty");
-    const sloChannel = pagerDutyChannel ?? this.channels.get("slack") ?? this.channels.get("log");
+    // First, try to find a pagerduty channel
+    const pagerDutyChannel = this.dispatcher.getChannel("pagerduty");
 
     if (!pagerDutyChannel) {
       // No PagerDuty configured - fire with log channel and add detail about needing PagerDuty
-      return this.fireAlertWithChannel(
+      return this.dispatcher.dispatchRaw(
         "slo_error_budget_exhausted",
         title,
         detail + " (PagerDuty channel not configured - requires manual notification)",
@@ -911,7 +913,7 @@ export class SloAlertingService {
       );
     }
 
-    return this.fireAlertWithChannel(
+    return this.dispatcher.dispatchRaw(
       "slo_error_budget_exhausted",
       title,
       detail,
@@ -930,41 +932,6 @@ export class SloAlertingService {
     severity: AlertSeverity,
     channelKind: AlertChannelKind,
   ): AlertEvent {
-    const now = nowIso();
-    const event: AlertEvent = {
-      id: newId("alert"),
-      ruleId,
-      severity,
-      status: "firing",
-      title,
-      detail,
-      channelKind,
-      deliveredAt: null,
-      acknowledgedBy: null,
-      resolvedAt: null,
-      firedAt: now,
-    };
-
-    this.db.connection
-      .prepare(
-        `INSERT INTO alert_events (id, rule_id, severity, status, title, detail, channel_kind, delivered_at, acknowledged_by, resolved_at, fired_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(event.id, event.ruleId, event.severity, event.status, event.title, event.detail, event.channelKind, event.deliveredAt, event.acknowledgedBy, event.resolvedAt, event.firedAt);
-
-    // Attempt delivery
-    const channel = this.channels.get(channelKind);
-    if (channel) {
-      const result = channel.deliver(event, {});
-      if (result.delivered) {
-        const deliveredAt = nowIso();
-        this.db.connection
-          .prepare(`UPDATE alert_events SET delivered_at = ? WHERE id = ?`)
-          .run(deliveredAt, event.id);
-        event.deliveredAt = deliveredAt;
-      }
-    }
-
-    return event;
+    return this.dispatcher.dispatchRaw(ruleId, title, detail, severity, channelKind);
   }
 }

@@ -157,6 +157,23 @@ export class WorkflowRepository {
     );
   }
 
+  public updateWorkflowStateCas(
+    taskId: string,
+    expectedVersion: number,
+    status: string,
+    currentStepIndex: number,
+    outputsJson: string,
+    updatedAt: string,
+    resumableFromStep: string | null = null,
+  ): number {
+    const result = this.conn.prepare(
+      `UPDATE workflow_state
+       SET status = ?, current_step_index = ?, outputs_json = ?, updated_at = ?, resumable_from_step = ?
+       WHERE task_id = ? AND current_step_index = ?`,
+    ).run(status, currentStepIndex, outputsJson, updatedAt, resumableFromStep, taskId, expectedVersion);
+    return Number(result.changes);
+  }
+
   public updateWorkflowRecoveryState(input: {
     taskId: string;
     status: string;

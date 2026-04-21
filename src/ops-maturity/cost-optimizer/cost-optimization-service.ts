@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Cost Optimization Service
+ *
+ * Provides cost attribution, aggregation, recommendations, and simulation.
+ *
+ * §65 模型 right-sizing 在线画像能力 (P2 Enhancement for Phase 3):
+ * 当前实现支持基于历史成本数据的推荐生成和模拟。要实现"在线画像"能力，
+ * 需要接入实时流量分析，动态构建模型使用分布画像，并基于实际流量模式
+ * 生成 right-sizing 建议。当前 recommendation-engine 可基于 model-metadata-registry
+ * 做静态推荐，缺少实时流量驱动的动态优化。
+ */
+
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import { aggregateCostAttribution } from "./attribution-engine/index.js";
 import {

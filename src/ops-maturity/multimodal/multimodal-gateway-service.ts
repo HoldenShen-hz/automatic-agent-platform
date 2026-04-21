@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Multimodal Gateway Service
+ *
+ * Provides unified multimodal input processing across text, image, audio, document, and video.
+ *
+ * §68B 多模态视频处理流水线 (P2 Enhancement for Phase 3):
+ * 当前 VideoProcessor 实现基于 URI metadata 解析和模拟转写（extractVideoMetadata /
+ * transcribeVideo / extractVideoKeyFrames）。要实现完整视频处理流水线，需要：
+ * 端到端编解码支持、真实媒体链路集成（视频帧提取、场景检测、内容分析），
+ * 以及与外部视频处理服务（FFmpeg/媒体云）的深度集成。当前仅有 metadata
+ * 解析和模拟转写骨架。
+ */
+
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { countDocumentPages } from "./document-parser/index.js";
 import { normalizeImageAspectRatio, type ImageMetadata } from "./image-processor/index.js";

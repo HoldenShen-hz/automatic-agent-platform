@@ -2,6 +2,73 @@ import { SignedXml } from "xml-crypto";
 import { z } from "zod";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
+/**
+ * SAML XML Signature Verification - Production Hardening
+ *
+ * This module implements SAML 2.0 XML Signature validation for production use.
+ *
+ * Security considerations:
+ * 1. Always validate XML signatures on SAML responses using xml-crypto
+ * 2. Use a trusted certificate store for signature verification
+ * 3. Reject responses with invalid or missing signatures when required by policy
+ * 4. Validate the certificate fingerprint against known IdP certificates
+ * 5. Check signature algorithm to prevent algorithm confusion attacks
+ *
+ * TODO (SAML production hardening - Phase 2):
+ * - Add X.509 certificate validation with proper trust chain verification
+ * - Implement XML signature canonicalization (C14N) validation
+ * - Add replay attack prevention with assertion ID tracking
+ * - Support for encrypted assertions
+ */
+
+export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", "http://www.w3.org/2000/09/xmldsig#rsa-sha1"] as const;
+export type SamlSignatureAlgorithm = (typeof SAML_SIGNATURE_ALGORITHMS)[number];
+
+/**
+ * Validates XML signature using xml-crypto library
+ * @param signature - The XML signature to validate
+ * @param xml - The raw XML document to verify against
+ * @param options - Optional configuration for key resolution
+ * @returns Validation result with detailed error if failed
+ */
+export function validateXmlSignature(
+  signature: string,
+  xml: string,
+  options: {
+    signatureAlgorithm?: string;
+    keyProviderFn?: (keyInfo: string | object) => string | null;
+  } = {},
+): { valid: boolean; error?: string } {
+  try {
+    const sig = new SignedXml({
+      signatureAlgorithm: options.signatureAlgorithm ?? "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
+    });
+
+    sig.loadSignature(signature);
+
+    // Set up key resolution if provider function is provided
+    if (options.keyProviderFn) {
+      (sig as any).keyProviderFn = options.keyProviderFn;
+    }
+
+    const isValid = sig.checkSignature(xml);
+    if (!isValid) {
+      const err = (sig as any).validationErrors;
+      return {
+        valid: false,
+        error: Array.isArray(err) ? err.join("; ") : "Signature validation failed",
+      };
+    }
+
+    return { valid: true };
+  } catch (err) {
+    return {
+      valid: false,
+      error: err instanceof Error ? err.message : "Unknown signature validation error",
+    };
+  }
+}
+
 export const SamlProviderConfigSchema = z.object({
   providerId: z.string().min(1),
   entryPoint: z.string().min(1),
@@ -128,10 +195,11 @@ export class SamlService {
       throw new Error(`saml.invalid_issuer:${providerId}`);
     }
     if (assertion.xmlSignature && assertion.rawXml) {
-      const sig = new SignedXml();
-      sig.loadSignature(assertion.xmlSignature);
-      if (!sig.checkSignature(assertion.rawXml)) {
-        throw new Error(`saml.invalid_signature:${providerId}`);
+      // Production SAML: Always validate XML signatures when present
+      // This uses xml-crypto for signature verification
+      const result = validateXmlSignature(assertion.xmlSignature, assertion.rawXml);
+      if (!result.valid) {
+        throw new Error(`saml.invalid_signature:${providerId}:${result.error ?? "validation failed"}`);
       }
     }
     if (assertion.fingerprint !== provider.certificateFingerprint) {

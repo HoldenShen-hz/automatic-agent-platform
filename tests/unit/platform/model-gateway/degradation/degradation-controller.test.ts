@@ -483,6 +483,7 @@ describe("DegradationController", () => {
         failedRequests: 1,
         errorRate: 1,
         latencyP99Ms: 500,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
       controller.evaluateHealth(metrics); // Should maintain at D2
@@ -520,6 +521,7 @@ describe("DegradationController", () => {
         failedRequests: 60,
         errorRate: 60,
         latencyP99Ms: 1000,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -538,6 +540,7 @@ describe("DegradationController", () => {
         failedRequests: 5,
         errorRate: 5,
         latencyP99Ms: 6000,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -556,6 +559,7 @@ describe("DegradationController", () => {
         failedRequests: 90,
         errorRate: 90,
         latencyP99Ms: 10000,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -573,6 +577,7 @@ describe("DegradationController", () => {
         failedRequests: 2,
         errorRate: 2,
         latencyP99Ms: 1000,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -594,6 +599,7 @@ describe("DegradationController", () => {
         failedRequests: 1,
         errorRate: 1,
         latencyP99Ms: 500,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
 
@@ -624,6 +630,7 @@ describe("DegradationController", () => {
         failedRequests: 1,
         errorRate: 1,
         latencyP99Ms: 500,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
       controller.evaluateHealth(healthyMetrics);
@@ -636,6 +643,7 @@ describe("DegradationController", () => {
         failedRequests: 10,
         errorRate: 10,
         latencyP99Ms: 1000,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
       const result = controller.evaluateHealth(marginalMetrics);
@@ -656,6 +664,7 @@ describe("DegradationController", () => {
         failedRequests: 1,
         errorRate: 1,
         latencyP99Ms: 500,
+        ttftP99Ms: 1000,
         lastUpdated: new Date().toISOString(),
       };
 
