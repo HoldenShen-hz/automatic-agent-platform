@@ -16,21 +16,41 @@ import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-e
 // Mock implementations
 const createMockDb = (overrides: Partial<AuthoritativeSqlDatabase> = {}): AuthoritativeSqlDatabase => ({
   transaction: <T>(fn: () => T) => fn(),
+  readTransaction: <T>(fn: () => T) => fn(),
+  filePath: ":memory:",
+  backendType: "sqlite" as const,
+  connection: { exec: () => {}, prepare: () => ({ all: () => [], run: () => {}, get: () => ({}) }) } as any,
+  migrate: () => {},
+  getSchemaStatus: () => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
+  assertSchemaCurrent: () => {},
+  integrityCheck: () => [],
+  healthCheck: () => Promise.resolve(true),
   ...overrides,
-});
+} as any);
 
-const createMockStore = (overrides: Partial<AuthoritativeTaskStore> = {}): AuthoritativeTaskStore => ({
-  session: {
-    listCompactionRecordsBySession: () => [],
-    insertCompactionRecord: () => {},
-    ...overrides,
-  },
-  dispatch: {
-    listMessagesBySession: () => [],
-    ...overrides,
-  },
-  ...overrides,
-} as unknown as AuthoritativeTaskStore);
+const createMockStore = (overrides: Partial<AuthoritativeTaskStore> = {}): AuthoritativeTaskStore => {
+  const baseStore: AuthoritativeTaskStore = {
+    session: {
+      listCompactionRecordsBySession: () => [],
+      insertCompactionRecord: () => {},
+      listSessionsByTask: () => [],
+      listGatewayTargetsByChannel: () => [],
+    } as any,
+    dispatch: {
+      listMessagesBySession: () => [],
+      listExecutionsByStatuses: () => [],
+      getExecution: () => null,
+      getExecutionPrecheck: () => null,
+      getDeadLetterByExecutionId: () => null,
+      listDeadLettersByTask: () => [],
+      getSession: () => null,
+      selectLatestSessionByTask: () => null,
+      getGatewayTarget: () => null,
+      listGatewayTargets: () => [],
+    } as any,
+  } as any;
+  return { ...baseStore, ...overrides };
+};
 
 const createMessage = (overrides: Partial<{
   id: string;
@@ -38,14 +58,20 @@ const createMessage = (overrides: Partial<{
   messageType: string;
   content: string;
   partsJson: string | null;
+  sessionId: string;
+  attachmentsJson: string | null;
+  createdAt: string;
 }> = {}) => ({
   id: "msg_1",
   direction: "inbound" as const,
   messageType: "user_request",
   content: "Test message",
   partsJson: null,
+  sessionId: "session_1",
+  attachmentsJson: null,
+  createdAt: "2024-01-01T00:00:00Z",
   ...overrides,
-});
+} as any);
 
 test("ContextCompactionService compactContext returns empty result for no messages", () => {
   const mockStore = createMockStore({
