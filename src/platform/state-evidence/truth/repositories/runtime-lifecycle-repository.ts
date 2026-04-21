@@ -1,4 +1,4 @@
-import type { ApprovalRecord, EventRecord } from "../../../contracts/types/domain.js";
+import type { ApprovalRecord, EventRecord, WorkflowStateRecord } from "../../../contracts/types/domain.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
 import { AuthoritativeTaskStore } from "../authoritative-task-store.js";
 
@@ -38,12 +38,14 @@ export interface RuntimeLifecycleRepository {
   updateWorkflowStateCas(
     taskId: string,
     expectedVersion: number,
+    expectedStatus: string,
     status: string,
     currentStepIndex: number,
     outputsJson: string,
     updatedAt: string,
     resumableFromStep?: string | null,
   ): number;
+  getWorkflowState(taskId: string): WorkflowStateRecord | null;
   updateSessionStatus(sessionId: string, status: string, updatedAt: string): void;
   updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number;
   updateExecutionStatus(
@@ -144,13 +146,18 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
   public updateWorkflowStateCas(
     taskId: string,
     expectedVersion: number,
+    expectedStatus: string,
     status: string,
     currentStepIndex: number,
     outputsJson: string,
     updatedAt: string,
     resumableFromStep: string | null = null,
   ): number {
-    return this.store.workflow.updateWorkflowStateCas(taskId, expectedVersion, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep);
+    return this.store.workflow.updateWorkflowStateCas(taskId, expectedVersion, expectedStatus, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep);
+  }
+
+  public getWorkflowState(taskId: string): WorkflowStateRecord | null {
+    return this.store.workflow.getWorkflowState(taskId);
   }
 
   public updateSessionStatus(sessionId: string, status: string, updatedAt: string): void {
@@ -313,6 +320,7 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   public updateWorkflowStateCas(
     taskId: string,
     expectedVersion: number,
+    expectedStatus: string,
     status: string,
     currentStepIndex: number,
     outputsJson: string,
@@ -320,12 +328,16 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     resumableFromStep: string | null = null,
   ): number {
     return this.run("updateWorkflowStateCas", () => this.inner.updateWorkflowStateCas(
-      taskId, expectedVersion, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep,
+      taskId, expectedVersion, expectedStatus, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep,
     ));
   }
 
   public updateSessionStatus(sessionId: string, status: string, updatedAt: string): void {
     return this.run("updateSessionStatus", () => this.inner.updateSessionStatus(sessionId, status, updatedAt));
+  }
+
+  public getWorkflowState(taskId: string): WorkflowStateRecord | null {
+    return this.run("getWorkflowState", () => this.inner.getWorkflowState(taskId));
   }
 
   public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
@@ -467,6 +479,7 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   public updateWorkflowStateCas(
     taskId: string,
     expectedVersion: number,
+    expectedStatus: string,
     status: string,
     currentStepIndex: number,
     outputsJson: string,
@@ -474,12 +487,16 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     resumableFromStep: string | null = null,
   ): number {
     return this.observe("updateWorkflowStateCas", () => this.inner.updateWorkflowStateCas(
-      taskId, expectedVersion, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep,
+      taskId, expectedVersion, expectedStatus, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep,
     ));
   }
 
   public updateSessionStatus(sessionId: string, status: string, updatedAt: string): void {
     return this.observe("updateSessionStatus", () => this.inner.updateSessionStatus(sessionId, status, updatedAt));
+  }
+
+  public getWorkflowState(taskId: string): WorkflowStateRecord | null {
+    return this.observe("getWorkflowState", () => this.inner.getWorkflowState(taskId));
   }
 
   public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {

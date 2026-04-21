@@ -160,6 +160,7 @@ export class WorkflowRepository {
   public updateWorkflowStateCas(
     taskId: string,
     expectedVersion: number,
+    expectedStatus: string,
     status: string,
     currentStepIndex: number,
     outputsJson: string,
@@ -169,8 +170,8 @@ export class WorkflowRepository {
     const result = this.conn.prepare(
       `UPDATE workflow_state
        SET status = ?, current_step_index = ?, outputs_json = ?, updated_at = ?, resumable_from_step = ?
-       WHERE task_id = ? AND current_step_index = ?`,
-    ).run(status, currentStepIndex, outputsJson, updatedAt, resumableFromStep, taskId, expectedVersion);
+       WHERE task_id = ? AND current_step_index = ? AND status = ?`,
+    ).run(status, currentStepIndex, outputsJson, updatedAt, resumableFromStep, taskId, expectedVersion, expectedStatus);
     return Number(result.changes);
   }
 

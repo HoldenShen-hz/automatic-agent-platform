@@ -39,6 +39,9 @@ env:
   AA_METRICS_PORT: "9090"
   AA_LOG_LEVEL: "info"
   AA_STORAGE_DRIVER: "postgres"
+  AA_OTEL_ENABLED: "true"
+  AA_OTEL_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
+  AA_OTEL_SERVICE_NAME: "automatic-agent"
   NODE_ENV: "production"
 
 externalSecret:

@@ -144,4 +144,30 @@ export class SqliteDeadLetterQueueRepository implements DeadLetterQueueRepositor
       consumerId,
     );
   }
+
+  public listRetryable(asOf: string): DeadLetterRecord[] {
+    return queryAll<DeadLetterRecord>(
+      this.conn,
+      `SELECT
+        dead_letter_id AS deadLetterId,
+        source_event_id AS sourceEventId,
+        consumer_id AS consumerId,
+        error_code AS errorCode,
+        payload_json AS payloadJson,
+        status,
+        retry_count AS retryCount,
+        next_retry_at AS nextRetryAt,
+        created_at AS createdAt,
+        updated_at AS updatedAt,
+        original_timestamp AS originalTimestamp,
+        failure_category AS failureCategory,
+        retry_exhausted_at AS retryExhaustedAt
+       FROM dlq_records
+       WHERE status = 'retrying'
+         AND next_retry_at IS NOT NULL
+         AND next_retry_at <= ?
+       ORDER BY next_retry_at ASC, created_at ASC`,
+      asOf,
+    );
+  }
 }

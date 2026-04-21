@@ -30,6 +30,7 @@ test("PrometheusMetricsExporterOptions interface is correct", () => {
 
 test("PrometheusMetricsExporter exports histogram and runtime gauges", () => {
   runtimeMetricsRegistry.reset();
+  runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-rate-limiter" }, 2);
   const exporter = new PrometheusMetricsExporter(
     {
       connection: {
@@ -69,6 +70,10 @@ test("PrometheusMetricsExporter exports histogram and runtime gauges", () => {
   assert.match(output, /http_request_duration_ms_bucket\{method="GET",path="\/health",status="200",le="50"\} 1/);
   assert.match(output, /active_executions 2/);
   assert.match(output, /queued_tasks 7/);
+  assert.match(output, /redis_connection_errors\{component="redis-rate-limiter"\} 2/);
+  assert.match(output, /disk_total_bytes \d+/);
+  assert.match(output, /disk_free_bytes \d+/);
+  assert.match(output, /disk_used_ratio \d+(\.\d+)?/);
   assert.match(output, /oapeflir_stage_outcome_total\{stage="execute",result="completed"\} 1/);
   assert.match(output, /knowledge_query_total\{operation="domain",result="ok"\} 1/);
 });

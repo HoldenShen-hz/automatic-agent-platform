@@ -1,283 +1,228 @@
 /**
- * [SYS-REL-2.7] Workflow Transitions Lack CAS Tests
+ * [SYS-REL-2.7] Workflow Transition CAS Tests
  *
- * Tests for concurrent workflow transitions to verify conflict detection.
- * Task transitions have CAS protection but workflow transitions do not.
- *
- * Defect: transition-service.ts WorkflowTransitionService.apply() does not use
- * CAS (compare-and-swap) when updating workflow status, allowing concurrent
- * transitions to overwrite each other.
+ * Verifies workflow transitions reject conflicting concurrent updates.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { join } from "node:path";
-import { rmSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
+import type { WorkflowStateRecord } from "../../../../src/platform/contracts/types/domain.js";
+import { WorkflowTransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
+import type { RuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import { runConcurrentInvariant } from "../../../helpers/concurrent-runner.js";
 
+function createWorkflowRepository(initial: WorkflowStateRecord, staleReadsRemaining = 0): RuntimeLifecycleRepository {
+  let current = { ...initial };
+  const staleSnapshot = { ...initial };
+  let staleReads = staleReadsRemaining;
+
+  return {
+    updateTaskStatus(): void {},
+    updateTaskStatusCas(): number { return 0; },
+    updateTaskOutput(): void {},
+    updateWorkflowState(): void {},
+    updateWorkflowStateCas(
+      taskId: string,
+      expectedVersion: number,
+      expectedStatus: string,
+      status: string,
+      currentStepIndex: number,
+      outputsJson: string,
+      updatedAt: string,
+      resumableFromStep: string | null = null,
+    ): number {
+      if (taskId !== current.taskId || expectedVersion !== current.currentStepIndex || expectedStatus !== current.status) {
+        return 0;
+      }
+      current = {
+        ...current,
+        status,
+        currentStepIndex,
+        outputsJson,
+        updatedAt,
+        resumableFromStep,
+      };
+      return 1;
+    },
+    getWorkflowState(taskId: string): WorkflowStateRecord | null {
+      if (taskId !== current.taskId) {
+        return null;
+      }
+      if (staleReads > 0) {
+        staleReads -= 1;
+        return { ...staleSnapshot };
+      }
+      return { ...current };
+    },
+    updateSessionStatus(): void {},
+    updateSessionStatusCas(): number { return 0; },
+    updateExecutionStatus(): void {},
+    updateExecutionStatusCas(): number { return 0; },
+    createTier1StatusEvent() {
+      throw new Error("unused");
+    },
+    insertApproval(): void {},
+    getApproval() { return null; },
+    listApprovalsByTask() { return []; },
+    updateApprovalDecision(): void {},
+    updateApprovalDecisionCas(): number { return 0; },
+    updateApprovalRequest(): void {},
+    insertEvent() {
+      throw new Error("unused");
+    },
+  };
+}
+
 test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () => {
-  const workspace = createTempWorkspace("aa-workflow-cas-");
-  const dbPath = join(workspace, "cas-test.db");
+  const now = new Date().toISOString();
+  const repository = createWorkflowRepository({
+    taskId: "workflow-cas-test-001",
+    divisionId: "general_ops",
+    workflowId: "multi_step_v1",
+    currentStepIndex: 0,
+    status: "running",
+    outputsJson: "{}",
+    lastErrorCode: null,
+    retryCount: 0,
+    resumableFromStep: null,
+    startedAt: now,
+    updatedAt: now,
+  }, 2);
+  const service = new WorkflowTransitionService(repository);
 
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const repository = createRuntimeLifecycleRepository(store);
-    const transitionService = new TransitionService(db, store, repository);
+  const results = await Promise.allSettled([
+    Promise.resolve().then(() => service.transition({
+      entityKind: "workflow",
+      entityId: "workflow-cas-test-001",
+      fromStatus: "running",
+      toStatus: "completed",
+      currentStepIndex: 1,
+      outputsJson: "{\"result\":\"success\"}",
+      traceId: "trace-cas-1",
+      correlationId: "workflow-cas-test-001",
+      idempotencyKey: "",
+      metadataJson: "",
+      reasonCode: "",
+      reasonDetail: "",
+      actorType: "system",
+      actorId: "",
+      occurredAt: now,
+    })),
+    Promise.resolve().then(() => service.transition({
+      entityKind: "workflow",
+      entityId: "workflow-cas-test-001",
+      fromStatus: "running",
+      toStatus: "failed",
+      currentStepIndex: 0,
+      outputsJson: "{\"error\":\"failed\"}",
+      traceId: "trace-cas-2",
+      correlationId: "workflow-cas-test-001",
+      idempotencyKey: "",
+      metadataJson: "",
+      reasonCode: "WF_FAILED",
+      reasonDetail: "Workflow failed",
+      actorType: "system",
+      actorId: "",
+      occurredAt: now,
+    })),
+  ]);
 
-    const now = new Date().toISOString();
-    const workflowId = "workflow-cas-test-001";
+  const succeeded = results.filter((result) => result.status === "fulfilled");
+  const rejected = results.filter((result) => result.status === "rejected");
 
-    // Insert a workflow in running state
-    db.transaction(() => {
-      store.insertTask({
-        id: workflowId,
-        parentId: null,
-        rootId: workflowId,
-        divisionId: "general_ops",
-        tenantId: null,
-        title: "CAS workflow test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: JSON.stringify({ workflowId }),
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-    });
-
-    // Set workflow status via repository
-    repository.updateWorkflowState(workflowId, "running", 0, "{}", now);
-
-    // Attempt two concurrent transitions: running -> completed and running -> failed
-    const results = await Promise.allSettled([
-      new Promise<void>((resolve, reject) => {
-        try {
-          transitionService.transitionWorkflowStatus({
-            entityKind: "workflow",
-            entityId: workflowId,
-            fromStatus: "running",
-            toStatus: "completed",
-            currentStepIndex: 1,
-            outputsJson: '{"result":"success"}',
-            traceId: "trace-cas-1",
-            correlationId: workflowId,
-            idempotencyKey: "",
-            metadataJson: "",
-            reasonCode: "",
-            reasonDetail: "",
-            actorType: "system",
-            actorId: "",
-            occurredAt: now,
-          });
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }),
-      new Promise<void>((resolve, reject) => {
-        try {
-          transitionService.transitionWorkflowStatus({
-            entityKind: "workflow",
-            entityId: workflowId,
-            fromStatus: "running",
-            toStatus: "failed",
-            currentStepIndex: 0,
-            outputsJson: '{"error":"failed"}',
-            traceId: "trace-cas-2",
-            correlationId: workflowId,
-            idempotencyKey: "",
-            metadataJson: "",
-            reasonCode: "WF_FAILED",
-            reasonDetail: "Workflow failed",
-            actorType: "system",
-            actorId: "",
-            occurredAt: new Date().toISOString(),
-          });
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      }),
-    ]);
-
-    // With proper CAS, exactly one transition should succeed and the other should be rejected
-    const succeeded = results.filter((r) => r.status === "fulfilled");
-    const rejected = results.filter((r) => r.status === "rejected");
-
-    // After fix: one should succeed, one should be rejected
-    // Currently (with bug): both might succeed because there's no CAS
-    assert.ok(
-      succeeded.length === 1 && rejected.length === 1,
-      `Expected 1 succeeded and 1 rejected, got ${succeeded.length} succeeded and ${rejected.length} rejected (defect: workflow transitions lack CAS)`,
-    );
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+  assert.equal(succeeded.length, 1);
+  assert.equal(rejected.length, 1);
+  assert.match(String((rejected[0] as PromiseRejectedResult | undefined)?.reason), /workflow\.transition_cas_failed/);
 });
 
 test("[SYS-REL-2.7] workflow CAS error thrown when fromStatus doesn't match", () => {
-  const workspace = createTempWorkspace("aa-workflow-cas-error-");
-  const dbPath = join(workspace, "cas-error-test.db");
+  const now = new Date().toISOString();
+  const repository = createWorkflowRepository({
+    taskId: "workflow-cas-error-001",
+    divisionId: "general_ops",
+    workflowId: "multi_step_v1",
+    currentStepIndex: 1,
+    status: "completed",
+    outputsJson: "{}",
+    lastErrorCode: null,
+    retryCount: 0,
+    resumableFromStep: null,
+    startedAt: now,
+    updatedAt: now,
+  });
+  const service = new WorkflowTransitionService(repository);
 
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const repository = createRuntimeLifecycleRepository(store);
-    const transitionService = new TransitionService(db, store, repository);
-
-    const now = new Date().toISOString();
-    const workflowId = "workflow-cas-error-001";
-
-    // Insert workflow
-    db.transaction(() => {
-      store.insertTask({
-        id: workflowId,
-        parentId: null,
-        rootId: workflowId,
-        divisionId: "general_ops",
-        tenantId: null,
-        title: "CAS error test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: JSON.stringify({ workflowId }),
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
+  assert.throws(() => {
+    service.transition({
+      entityKind: "workflow",
+      entityId: "workflow-cas-error-001",
+      fromStatus: "running",
+      toStatus: "failed",
+      currentStepIndex: 0,
+      outputsJson: "{}",
+      traceId: "trace-error",
+      correlationId: "workflow-cas-error-001",
+      idempotencyKey: "",
+      metadataJson: "",
+      reasonCode: "",
+      reasonDetail: "",
+      actorType: "system",
+      actorId: "",
+      occurredAt: now,
     });
-
-    // Set workflow to completed state first
-    repository.updateWorkflowState(workflowId, "completed", 1, "{}", now);
-
-    // Now try to transition from 'running' to 'failed' - should fail because current state is 'completed'
-    assert.throws(() => {
-      transitionService.transitionWorkflowStatus({
-        entityKind: "workflow",
-        entityId: workflowId,
-        fromStatus: "running", // This doesn't match current state
-        toStatus: "failed",
-        currentStepIndex: 0,
-        outputsJson: "{}",
-        traceId: "trace-error",
-        correlationId: workflowId,
-        idempotencyKey: "",
-        metadataJson: "",
-        reasonCode: "",
-        reasonDetail: "",
-        actorType: "system",
-        actorId: "",
-        occurredAt: now,
-      });
-    }, /fromStatus/);
-  } finally {
-    cleanupPath(workspace);
-  }
+  }, /fromStatus/);
 });
 
 test("[SYS-REL-2.7] multiple concurrent transitions on same workflow", async () => {
-  const workspace = createTempWorkspace("aa-workflow-multi-");
-  const dbPath = join(workspace, "multi-transition.db");
+  const now = new Date().toISOString();
+  const repository = createWorkflowRepository({
+    taskId: "workflow-multi-001",
+    divisionId: "general_ops",
+    workflowId: "multi_step_v1",
+    currentStepIndex: 0,
+    status: "running",
+    outputsJson: "{}",
+    lastErrorCode: null,
+    retryCount: 0,
+    resumableFromStep: null,
+    startedAt: now,
+    updatedAt: now,
+  }, 5);
+  const service = new WorkflowTransitionService(repository);
 
-  try {
-    const db = new SqliteDatabase(dbPath);
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const repository = createRuntimeLifecycleRepository(store);
-    const transitionService = new TransitionService(db, store, repository);
+  const result = await runConcurrentInvariant(
+    async (workerId) => {
+      try {
+        service.transition({
+          entityKind: "workflow",
+          entityId: "workflow-multi-001",
+          fromStatus: "running",
+          toStatus: "completed",
+          currentStepIndex: workerId,
+          outputsJson: JSON.stringify({ workerId }),
+          traceId: `trace-${workerId}`,
+          correlationId: "workflow-multi-001",
+          idempotencyKey: "",
+          metadataJson: "",
+          reasonCode: "",
+          reasonDetail: "",
+          actorType: "system",
+          actorId: "",
+          occurredAt: now,
+        });
+        return { success: true, workerId };
+      } catch (error) {
+        return { success: false, workerId, error };
+      }
+    },
+    { concurrency: 5 },
+  );
 
-    const now = new Date().toISOString();
-    const workflowId = "workflow-multi-001";
+  const successfulTransitions = result.values.filter((value) => value.success);
+  const failedTransitions = result.values.filter((value) => !value.success);
 
-    db.transaction(() => {
-      store.insertTask({
-        id: workflowId,
-        parentId: null,
-        rootId: workflowId,
-        divisionId: "general_ops",
-        tenantId: null,
-        title: "Multi transition test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: JSON.stringify({ workflowId }),
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-    });
-
-    repository.updateWorkflowState(workflowId, "running", 0, "{}", now);
-
-    // Run 5 concurrent transitions all trying to complete the workflow
-    const result = await runConcurrentInvariant(
-      async (workerId) => {
-        try {
-          transitionService.transitionWorkflowStatus({
-            entityKind: "workflow",
-            entityId: workflowId,
-            fromStatus: "running",
-            toStatus: "completed",
-            currentStepIndex: workerId,
-            outputsJson: JSON.stringify({ workerId }),
-            traceId: `trace-${workerId}`,
-            correlationId: workflowId,
-            idempotencyKey: "",
-            metadataJson: "",
-            reasonCode: "",
-            reasonDetail: "",
-            actorType: "system",
-            actorId: "",
-            occurredAt: now,
-          });
-          return { success: true, workerId };
-        } catch (err) {
-          return { success: false, workerId, error: err };
-        }
-      },
-      { concurrency: 5 },
-    );
-
-    const successfulTransitions = result.values.filter((v) => v.success);
-    const failedTransitions = result.values.filter((v) => !v.success);
-
-    // With proper CAS, only one should succeed
-    // Without CAS (current bug), all might succeed
-    assert.equal(
-      successfulTransitions.length,
-      1,
-      `Expected exactly 1 successful transition due to CAS, got ${successfulTransitions.length} (defect: no CAS protection)`,
-    );
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+  assert.equal(successfulTransitions.length, 1);
+  assert.equal(failedTransitions.length, 4);
+  assert.ok(failedTransitions.every((value) => String(value.error).includes("workflow.transition_cas_failed")));
 });

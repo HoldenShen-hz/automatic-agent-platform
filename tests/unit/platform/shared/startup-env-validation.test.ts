@@ -78,13 +78,17 @@ test("[SYS-SEC-4.1] startup env schema validates required AA_DB_PATH rejects emp
 });
 
 test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars are present", () => {
-  const schemaKeys = Object.keys(StartupEnvSchema.shape);
+  // ZodEffects wraps the ZodObject; access inner shape via _def.schema.shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schemaKeys = Object.keys((StartupEnvSchema as any)._def.schema.shape);
   const criticalVars = [
     "AA_STORAGE_DRIVER",
     "AA_API_HOST",
     "AA_API_PORT",
     "AA_PLUGIN_SANDBOX_ROOT",
     "AA_LOG_LEVEL",
+    "AA_STORAGE_POSTGRES_DSN",
+    "AA_PG_DSN",
   ];
 
   const missing: string[] = [];
@@ -131,7 +135,9 @@ test("[SYS-SEC-4.1] validateStartupEnv returns structured result with errors arr
 
 test("[SYS-SEC-4.1] validateStartupEnv succeeds with valid env", () => {
   const previousVars: Record<string, string | undefined> = {};
-  const aaVars = Object.keys(StartupEnvSchema.shape);
+  // ZodEffects wraps the ZodObject; access inner shape via _def.schema.shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aaVars = Object.keys((StartupEnvSchema as any)._def.schema.shape);
 
   try {
     for (const key of aaVars) {
@@ -141,6 +147,7 @@ test("[SYS-SEC-4.1] validateStartupEnv succeeds with valid env", () => {
     // Set minimal valid env
     process.env.AA_DB_PATH = "/tmp/valid.db";
     process.env.AA_CONFIG_ENV = "dev";
+    process.env.AA_STORAGE_DRIVER = "sqlite";
 
     const result = validateStartupEnv();
     assert.ok(result.success, `Validation should succeed with valid env: ${JSON.stringify(result.errors)}`);
@@ -151,6 +158,60 @@ test("[SYS-SEC-4.1] validateStartupEnv succeeds with valid env", () => {
         delete process.env[key];
       } else {
         process.env[key] = val;
+      }
+    }
+  }
+});
+
+test("[SYS-SEC-4.1] validateStartupEnv requires postgres DSN when AA_STORAGE_DRIVER=postgres", () => {
+  const previousEnv = {
+    AA_DB_PATH: process.env.AA_DB_PATH,
+    AA_STORAGE_DRIVER: process.env.AA_STORAGE_DRIVER,
+    AA_STORAGE_POSTGRES_DSN: process.env.AA_STORAGE_POSTGRES_DSN,
+    AA_PG_DSN: process.env.AA_PG_DSN,
+  };
+
+  try {
+    process.env.AA_DB_PATH = "/tmp/postgres.db";
+    process.env.AA_STORAGE_DRIVER = "postgres";
+    delete process.env.AA_STORAGE_POSTGRES_DSN;
+    delete process.env.AA_PG_DSN;
+
+    const result = validateStartupEnv();
+    assert.equal(result.success, false, "postgres driver without DSN must fail validation");
+    assert.ok(result.errors.some((error) => error.key === "AA_STORAGE_POSTGRES_DSN"));
+  } finally {
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value == null) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+});
+
+test("[SYS-SEC-4.1] validateStartupEnv requires sandbox root when plugin egress policy is configured", () => {
+  const previousEnv = {
+    AA_DB_PATH: process.env.AA_DB_PATH,
+    AA_PLUGIN_ALLOW_NETWORK_EGRESS: process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS,
+    AA_PLUGIN_SANDBOX_ROOT: process.env.AA_PLUGIN_SANDBOX_ROOT,
+  };
+
+  try {
+    process.env.AA_DB_PATH = "/tmp/plugin.db";
+    process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS = "false";
+    delete process.env.AA_PLUGIN_SANDBOX_ROOT;
+
+    const result = validateStartupEnv();
+    assert.equal(result.success, false, "plugin sandbox runtime without root must fail validation");
+    assert.ok(result.errors.some((error) => error.key === "AA_PLUGIN_SANDBOX_ROOT"));
+  } finally {
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value == null) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
       }
     }
   }

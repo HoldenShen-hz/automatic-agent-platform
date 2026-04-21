@@ -295,13 +295,29 @@ export class WorkflowTransitionService {
    */
   public apply(command: WorkflowStatusTransitionCommand): void {
     workflowStateMachine.assertTransition(command.fromStatus, command.toStatus);
-    this.repository.updateWorkflowState(
+    const current = this.repository.getWorkflowState(command.entityId);
+    if (current == null) {
+      throw new Error(`workflow.not_found:${command.entityId}`);
+    }
+    if (current.status !== command.fromStatus) {
+      throw new Error(
+        `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
+      );
+    }
+    const affected = this.repository.updateWorkflowStateCas(
       command.entityId,
+      current.currentStepIndex,
+      current.status,
       command.toStatus,
       command.currentStepIndex,
       command.outputsJson,
       command.occurredAt,
     );
+    if (affected === 0) {
+      throw new Error(
+        `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+      );
+    }
   }
 }
 

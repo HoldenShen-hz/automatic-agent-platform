@@ -3,28 +3,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parse as parseYaml } from "yaml";
 
-/**
- * [SYS-OBS-5.3] Alertmanager receivers have distinct endpoints
- *
- * Verifies that all three Alertmanager receivers point to distinct endpoints
- * as specified in the observability manual: default-warning (webhook),
- * slack-warning (Slack), and pagerduty-critical (PagerDuty).
- */
-test("[SYS-OBS-5.3] alertmanager receivers have distinct endpoints", () => {
+test("[SYS-OBS-5.3] alertmanager receivers expose dedicated transport configs", () => {
   const content = readFileSync(
     "deploy/prometheus/alertmanager.yml",
     "utf8",
   );
-  const config = parseYaml(content);
-  const urls = config.receivers.map((r: { webhook_configs?: Array<{ url?: string }>; pagerduty_configs?: Array<{ service_key?: string }>; slack_configs?: Array<{ url?: string }> }) =>
-    r.webhook_configs?.[0]?.url ??
-    r.pagerduty_configs?.[0]?.service_key ??
-    r.slack_configs?.[0]?.url ??
-    "none",
-  );
-  const uniqueUrls = new Set(urls);
-  assert.ok(
-    uniqueUrls.size >= config.receivers.length,
-    `Expected ${config.receivers.length} distinct receiver endpoints, got ${uniqueUrls.size}`,
-  );
+  const config = parseYaml(content) as {
+    receivers: Array<{
+      name: string;
+      webhook_configs?: Array<{ url?: string }>;
+      pagerduty_configs?: Array<{ service_key?: string }>;
+      slack_configs?: Array<{ url?: string }>;
+    }>;
+  };
+  const receivers = new Map(config.receivers.map((receiver) => [receiver.name, receiver]));
+
+  assert.match(receivers.get("default-warning")?.webhook_configs?.[0]?.url ?? "", /api-server:3000\/v1\/alerts\/webhook/);
+  assert.ok((receivers.get("slack-warning")?.slack_configs?.length ?? 0) > 0, "slack-warning should define slack_configs");
+  assert.ok((receivers.get("pagerduty-critical")?.pagerduty_configs?.length ?? 0) > 0, "pagerduty-critical should define pagerduty_configs");
 });

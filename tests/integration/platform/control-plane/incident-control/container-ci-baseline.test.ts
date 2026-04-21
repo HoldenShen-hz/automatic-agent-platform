@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../..");
+const REPO_ROOT = resolve(__dirname, "../../../../../");
 
 test("dockerfile defines a multi-stage non-root runtime image", () => {
   const dockerfile = readFileSync(join(REPO_ROOT, "Dockerfile"), "utf8");
@@ -16,7 +16,7 @@ test("dockerfile defines a multi-stage non-root runtime image", () => {
   assert.match(dockerfile, /RUN npm run build/);
   assert.match(dockerfile, /COPY --from=build(?: --chown=node:node)? \/app\/dist \.\/dist/);
   assert.match(dockerfile, /^USER node$/m);
-  assert.match(dockerfile, /CMD \["node", "--enable-source-maps", "dist\/src\/cli\/api-server\.js"\]/);
+  assert.match(dockerfile, /CMD \["node", "--enable-source-maps", "dist\/src\/sdk\/cli\/api-server\.js"\]/);
 });
 
 test("ci workflow runs install typecheck tests and stable validation", () => {
@@ -52,6 +52,7 @@ test("docker compose includes postgres service for production-like local validat
   assert.match(compose, /^  postgres:$/m);
   assert.match(compose, /image:\s+postgres:16-bookworm/);
   assert.match(compose, /POSTGRES_DB:\s+automatic_agent/);
+  assert.match(compose, /POSTGRES_PASSWORD:\s+\$\{POSTGRES_PASSWORD:\?required\}/);
   assert.match(compose, /^  redis:$/m);
   assert.match(compose, /image:\s+redis:7-alpine/);
   assert.match(compose, /test:\s+\["CMD", "redis-cli", "ping"\]/);

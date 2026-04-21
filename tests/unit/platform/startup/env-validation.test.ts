@@ -8,6 +8,7 @@ import {
   DbPathSchema,
   ConfigEnvSchema,
   ApiPortSchema,
+  validateStartupEnv,
 } from "../../../../src/platform/control-plane/config-center/startup-env-schema.js";
 
 test("[SYS-SEC-4.1] startup env schema validates DB path is non-empty", () => {
@@ -50,10 +51,11 @@ test("[SYS-SEC-4.1] startup env schema accepts valid complete config", () => {
     AA_DB_PATH: "/tmp/test.db",
     AA_CONFIG_ENV: "test" as const,
     AA_API_PORT: "3000",
+    AA_STORAGE_DRIVER: "sqlite" as const,
   };
 
-  const result = StartupEnvSchema.safeParse(validConfig);
-  assert.equal(result.success, true, "Valid config should be accepted");
+  const result = validateStartupEnv(validConfig);
+  assert.equal(result.success, true, `Valid config should be accepted: ${JSON.stringify(result.errors)}`);
 });
 
 test("[SYS-SEC-4.1] startup env schema requires AA_DB_PATH", () => {
@@ -65,13 +67,17 @@ test("[SYS-SEC-4.1] startup env schema requires AA_DB_PATH", () => {
   assert.equal(result.success, false, "Missing AA_DB_PATH should be rejected");
 });
 
-test("[SYS-SEC-4.1] AA_PLUGIN_SANDBOX_ROOT should be in startup env schema (currently missing)", () => {
-  const schemaShape = StartupEnvSchema.shape;
+test("[SYS-SEC-4.1] AA_PLUGIN_SANDBOX_ROOT should be in startup env schema", () => {
+  const schemaShape = StartupEnvSchema.innerType().shape;
   const hasSandboxRoot = "AA_PLUGIN_SANDBOX_ROOT" in schemaShape;
+  assert.equal(hasSandboxRoot, true, "AA_PLUGIN_SANDBOX_ROOT should be in schema");
+});
 
-  if (!hasSandboxRoot) {
-    assert.ok(true, "Documenting: AA_PLUGIN_SANDBOX_ROOT missing from schema (needs fix)");
-  } else {
-    assert.equal(hasSandboxRoot, true, "AA_PLUGIN_SANDBOX_ROOT should be in schema after fix");
-  }
+test("[SYS-SEC-4.1] startup env schema requires postgres DSN when postgres storage is selected", () => {
+  const result = validateStartupEnv({
+    AA_DB_PATH: "/tmp/test.db",
+    AA_STORAGE_DRIVER: "postgres",
+  });
+  assert.equal(result.success, false);
+  assert.ok(result.errors.some((error) => error.key === "AA_STORAGE_POSTGRES_DSN"));
 });

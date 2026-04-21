@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DeadLetterQueueService } from "../../../../../src/platform/state-evidence/dlq/index.js";
+import { DeadLetterQueueRetryWorker, DeadLetterQueueService } from "../../../../../src/platform/state-evidence/dlq/index.js";
 
 test("DeadLetterQueueService tracks retries and resolution state", () => {
   const service = new DeadLetterQueueService();
@@ -136,4 +136,88 @@ test("DeadLetterQueueService discard does not set retryExhaustedAt", () => {
 
   assert.equal(discarded.status, "discarded");
   assert.equal(discarded.retryExhaustedAt, null);
+});
+
+test("DeadLetterQueueService lists retryable records due by timestamp", () => {
+  const service = new DeadLetterQueueService();
+  const first = service.enqueue({
+    sourceEventId: "evt_8",
+    consumerId: "projection_a",
+    errorCode: "delivery.failed",
+    payloadJson: "{\"step\":8}",
+  });
+  const second = service.enqueue({
+    sourceEventId: "evt_9",
+    consumerId: "projection_b",
+    errorCode: "delivery.failed",
+    payloadJson: "{\"step\":9}",
+  });
+
+  service.scheduleRetry(first.deadLetterId, 0);
+  service.scheduleRetry(second.deadLetterId, 60_000);
+
+  const due = service.listRetryable(new Date(Date.now() + 1_000).toISOString());
+
+  assert.equal(due.length, 1);
+  assert.equal(due[0]?.deadLetterId, first.deadLetterId);
+});
+
+test("DeadLetterQueueRetryWorker resolves and reschedules due retries", async () => {
+  const service = new DeadLetterQueueService();
+  const resolved = service.enqueue({
+    sourceEventId: "evt_10",
+    consumerId: "consumer_resolve",
+    errorCode: "delivery.failed",
+    payloadJson: "{\"step\":10}",
+  });
+  const retried = service.enqueue({
+    sourceEventId: "evt_11",
+    consumerId: "consumer_retry",
+    errorCode: "delivery.failed",
+    payloadJson: "{\"step\":11}",
+  });
+
+  service.scheduleRetry(resolved.deadLetterId, 0);
+  service.scheduleRetry(retried.deadLetterId, 0);
+
+  const worker = new DeadLetterQueueRetryWorker(service);
+  const result = await worker.runDueRetries((record) => (
+    record.deadLetterId === resolved.deadLetterId
+      ? { outcome: "resolved" }
+      : { outcome: "retry", delayMs: 5_000 }
+  ));
+
+  assert.deepEqual(result, {
+    attempted: 2,
+    resolved: 1,
+    rescheduled: 1,
+    failed: 0,
+  });
+  assert.equal(service.get(resolved.deadLetterId)?.status, "resolved");
+  assert.equal(service.get(retried.deadLetterId)?.status, "retrying");
+  assert.ok(service.get(retried.deadLetterId)?.nextRetryAt != null);
+});
+
+test("DeadLetterQueueRetryWorker counts callback failures without mutating record", async () => {
+  const service = new DeadLetterQueueService();
+  const record = service.enqueue({
+    sourceEventId: "evt_12",
+    consumerId: "consumer_fail",
+    errorCode: "delivery.failed",
+    payloadJson: "{\"step\":12}",
+  });
+  service.scheduleRetry(record.deadLetterId, 0);
+
+  const worker = new DeadLetterQueueRetryWorker(service);
+  const result = await worker.runDueRetries(async () => {
+    throw new Error("retry callback failed");
+  });
+
+  assert.deepEqual(result, {
+    attempted: 1,
+    resolved: 0,
+    rescheduled: 0,
+    failed: 1,
+  });
+  assert.equal(service.get(record.deadLetterId)?.status, "retrying");
 });

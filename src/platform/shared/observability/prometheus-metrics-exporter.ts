@@ -14,6 +14,7 @@ import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/author
 import type { MetricsService } from "./metrics-service.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { runtimeMetricsRegistry } from "./runtime-metrics-registry.js";
+import { statfsSync } from "node:fs";
 
 export interface HttpRequestMetric {
   method: string;
@@ -154,6 +155,13 @@ export class PrometheusMetricsExporter {
     lines.push(`event_loop_lag_ms ${summary.runtimeMetrics.eventLoopLagMs ?? 0}`);
 
     lines.push("");
+    lines.push("# HELP redis_connection_errors Total Redis connection errors observed by runtime components.");
+    lines.push("# TYPE redis_connection_errors counter");
+    for (const line of this.renderCounterSeries("redis_connection_errors")) {
+      lines.push(line);
+    }
+
+    lines.push("");
     lines.push("# HELP healthy_workers Healthy workers available.");
     lines.push("# TYPE healthy_workers gauge");
     lines.push(`healthy_workers ${summary.runtimeMetrics.workerHealth.healthyWorkers}`);
@@ -162,6 +170,22 @@ export class PrometheusMetricsExporter {
     lines.push("# HELP total_workers Total workers registered.");
     lines.push("# TYPE total_workers gauge");
     lines.push(`total_workers ${summary.runtimeMetrics.workerHealth.totalWorkers}`);
+
+    const diskUsage = this.getDiskUsage();
+    lines.push("");
+    lines.push("# HELP disk_total_bytes Total bytes available in the current workspace filesystem.");
+    lines.push("# TYPE disk_total_bytes gauge");
+    lines.push(`disk_total_bytes ${diskUsage.totalBytes}`);
+
+    lines.push("");
+    lines.push("# HELP disk_free_bytes Free bytes available in the current workspace filesystem.");
+    lines.push("# TYPE disk_free_bytes gauge");
+    lines.push(`disk_free_bytes ${diskUsage.freeBytes}`);
+
+    lines.push("");
+    lines.push("# HELP disk_used_ratio Used ratio of the current workspace filesystem.");
+    lines.push("# TYPE disk_used_ratio gauge");
+    lines.push(`disk_used_ratio ${diskUsage.usedRatio}`);
 
     lines.push("");
     lines.push("# HELP oapeflir_loop_duration_ms OAPEFLIR stage duration in milliseconds.");
@@ -236,6 +260,18 @@ export class PrometheusMetricsExporter {
       heapUsed: mem.heapUsed,
       external: mem.external,
     };
+  }
+
+  private getDiskUsage(): { totalBytes: number; freeBytes: number; usedRatio: number } {
+    try {
+      const stat = statfsSync(process.cwd());
+      const totalBytes = Number(stat.blocks * stat.bsize);
+      const freeBytes = Number(stat.bavail * stat.bsize);
+      const usedRatio = totalBytes > 0 ? Number(((totalBytes - freeBytes) / totalBytes).toFixed(6)) : 0;
+      return { totalBytes, freeBytes, usedRatio };
+    } catch {
+      return { totalBytes: 0, freeBytes: 0, usedRatio: 0 };
+    }
   }
 
   private getExecutionMetrics(): Record<string, number> {

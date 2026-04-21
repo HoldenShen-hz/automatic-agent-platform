@@ -111,6 +111,7 @@ export class AsyncWorkflowRepository {
   public async updateWorkflowStateCas(
     taskId: string,
     expectedVersion: number,
+    expectedStatus: string,
     status: string,
     currentStepIndex: number,
     outputsJson: string,
@@ -119,8 +120,8 @@ export class AsyncWorkflowRepository {
   ): Promise<number> {
     return asyncExecute(
       this.conn,
-      `UPDATE workflow_state SET status = $1, current_step_index = $2, outputs_json = $3, updated_at = $4, resumable_from_step = $5 WHERE task_id = $6 AND current_step_index = $7`,
-      status, currentStepIndex, outputsJson, updatedAt, resumableFromStep, taskId, expectedVersion,
+      `UPDATE workflow_state SET status = $1, current_step_index = $2, outputs_json = $3, updated_at = $4, resumable_from_step = $5 WHERE task_id = $6 AND current_step_index = $7 AND status = $8`,
+      status, currentStepIndex, outputsJson, updatedAt, resumableFromStep, taskId, expectedVersion, expectedStatus,
     );
   }
 }

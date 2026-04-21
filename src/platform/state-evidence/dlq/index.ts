@@ -45,6 +45,8 @@ export interface DeadLetterQueueRepository {
   listAll(): DeadLetterRecord[];
   /** List DLQ records by consumer ID */
   listByConsumer(consumerId: string): DeadLetterRecord[];
+  /** List retryable DLQ records due by the specified instant */
+  listRetryable(asOf: string): DeadLetterRecord[];
 }
 
 /**
@@ -75,6 +77,12 @@ export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueReposit
 
   public listByConsumer(consumerId: string): DeadLetterRecord[] {
     return [...this.records.values()].filter((record) => record.consumerId === consumerId);
+  }
+
+  public listRetryable(asOf: string): DeadLetterRecord[] {
+    return [...this.records.values()]
+      .filter((record) => record.status === "retrying" && record.nextRetryAt != null && record.nextRetryAt <= asOf)
+      .sort((left, right) => left.nextRetryAt!.localeCompare(right.nextRetryAt!));
   }
 }
 
@@ -182,6 +190,14 @@ export class DeadLetterQueueService {
     return this.repo.listAll();
   }
 
+  public get(deadLetterId: string): DeadLetterRecord | null {
+    return this.repo.findById(deadLetterId);
+  }
+
+  public listRetryable(asOf: string = nowIso()): DeadLetterRecord[] {
+    return this.repo.listRetryable(asOf);
+  }
+
   public summarize(): DeadLetterQueueSummary {
     const records = this.listAll();
     const statusCounts: Record<DeadLetterStatus, number> = {
@@ -210,5 +226,53 @@ export class DeadLetterQueueService {
       throw new ValidationError(`dlq.not_found:${deadLetterId}`, `Dead-letter record ${deadLetterId} was not found.`);
     }
     return record;
+  }
+}
+
+export interface DeadLetterQueueRetryWorkerResult {
+  attempted: number;
+  resolved: number;
+  rescheduled: number;
+  failed: number;
+}
+
+export class DeadLetterQueueRetryWorker {
+  public constructor(private readonly queue: DeadLetterQueueService) {}
+
+  public runDueRetries(
+    retry: (record: DeadLetterRecord) => { outcome: "resolved" | "retry"; delayMs?: number } | Promise<{ outcome: "resolved" | "retry"; delayMs?: number }>,
+    asOf: string = nowIso(),
+  ): Promise<DeadLetterQueueRetryWorkerResult> {
+    return this.process(this.queue.listRetryable(asOf), retry);
+  }
+
+  private async process(
+    records: readonly DeadLetterRecord[],
+    retry: (record: DeadLetterRecord) => { outcome: "resolved" | "retry"; delayMs?: number } | Promise<{ outcome: "resolved" | "retry"; delayMs?: number }>,
+  ): Promise<DeadLetterQueueRetryWorkerResult> {
+    const result: DeadLetterQueueRetryWorkerResult = {
+      attempted: 0,
+      resolved: 0,
+      rescheduled: 0,
+      failed: 0,
+    };
+
+    for (const record of records) {
+      result.attempted += 1;
+      try {
+        const decision = await retry(record);
+        if (decision.outcome === "resolved") {
+          this.queue.markResolved(record.deadLetterId);
+          result.resolved += 1;
+          continue;
+        }
+        this.queue.scheduleRetry(record.deadLetterId, decision.delayMs ?? 0);
+        result.rescheduled += 1;
+      } catch {
+        result.failed += 1;
+      }
+    }
+
+    return result;
   }
 }
