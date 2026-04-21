@@ -235,16 +235,19 @@ export class SlackAlertChannel implements AlertChannel {
 export interface PagerDutyAlertChannelOptions {
   fetchImpl?: FetchLike;
   timeoutMs?: number;
+  endpoint?: string;
 }
 
 export class PagerDutyAlertChannel implements AlertChannel {
   readonly kind: AlertChannelKind = "pagerduty";
   private readonly fetchImpl: FetchLike;
   private readonly timeoutMs: number;
+  private readonly pagerdutyEndpoint: string;
 
   constructor(options: PagerDutyAlertChannelOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 10_000;
+    this.pagerdutyEndpoint = options.endpoint ?? "https://events.pagerduty.com/v2/enqueue";
   }
 
   deliver(event: AlertEvent, config: Record<string, unknown>): AlertDeliveryResult {
@@ -273,7 +276,7 @@ export class PagerDutyAlertChannel implements AlertChannel {
       },
     };
 
-    this.fetchImpl("https://events.pagerduty.com/v2/enqueue", {
+    this.fetchImpl(this.pagerdutyEndpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),

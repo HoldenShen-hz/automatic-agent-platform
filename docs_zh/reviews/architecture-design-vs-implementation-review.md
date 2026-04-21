@@ -175,7 +175,7 @@
 | S1 单机 (SQLite, 5 workers, 10 并发)  | ✅   | 当前默认配置                                                                                         |
 | S2 多进程 (SQLite + Redis)            | ✅   | Redis 集成 (ioredis)                                                                                 |
 | S3 分布式 (PostgreSQL)                | 🟡   | PG 后端存在 (dual-run shadow SQLite); **已确认无 S3 对象存储/async 镜像**, 系统使用 PG+SQLite 双运行 |
-| S4 K8s 集群 (PG sharded, 5000+)       | 🔴   | 无分片实现                                                                                           |
+| S4 K8s 集群 (PG sharded, 5000+)       | 🔴   | 无分片实现; **TODO(Phase3)**: K8s 分片需要多租户调度和跨 Pod 协调，属于基础设施演进项，不适合在当前单仓实现                                   |
 | HorizontalScalingController           | ✅   | `shared/scaling/`                                                                                    |
 
 ### §9 稳定性架构（7 层）
@@ -772,6 +772,8 @@
 
 ### §65 成本优化器 (v3.0 §64)
 
+**TODO(P2 Enhancement)**: 模型 right-sizing 在线画像能力需要接入真实流量分析和成本优化算法，当前仅有基础骨架。
+
 | 设计要求                | 状态 | 实现证据                              |
 | ----------------------- | ---- | ------------------------------------- |
 | CostOptimizationService | ✅   | cost-optimization-service.ts (117 行) |
@@ -781,6 +783,8 @@
 | Dashboard 切片          | ✅   | buildDashboardSlice()                 |
 
 ### §66 混沌工程 (v3.0 §65)
+
+**TODO(P2 Enhancement)**: GameDay 编排器需要真实的故障注入和稳态验证流水线，当前仅完成调度骨架。
 
 | 设计要求                 | 状态 | 实现证据                               |
 | ------------------------ | ---- | -------------------------------------- |
@@ -812,6 +816,8 @@
 | 趋势分析器              | ✅   | trend-analyzer 已支持波动度估算 |
 
 ### §68B 多模态 (v3.0 §68)
+
+**TODO(P2 Enhancement)**: 完整视频处理流水线需要端到端编解码和媒体链路集成，当前仅有 metadata 解析和转写骨架。
 
 | 设计要求                 | 状态 | 实现证据                               |
 | ------------------------ | ---- | -------------------------------------- |

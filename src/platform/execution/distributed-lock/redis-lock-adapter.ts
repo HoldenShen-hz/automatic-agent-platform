@@ -24,7 +24,8 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     get(key: string): Promise<string | null>;
     del(key: string): Promise<number>;
     eval(script: string, numberOfKeys: number, ...args: string[]): Promise<unknown>;
-    keys(pattern: string): Promise<string[]>;
+    scan(cursor: number, ...args: Array<string>): Promise<[string, string[]]>;
+    mget(...keys: string[]): Promise<(string | null)[]>;
     quit(): Promise<unknown>;
     disconnect(): void;
     on(event: "error", listener: (error: unknown) => void): void;
@@ -62,50 +63,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   }
 
   public acquire(input: AcquireLockInput): AcquireLockResult {
-    const { lockKey, owner } = input;
-    const ttlMs = input.ttlMs ?? 30_000;
-    const ttlSec = Math.ceil(ttlMs / 1000);
-    const now = new Date().toISOString();
-    this.fencingCounter += 1;
-    const fencingToken = this.fencingCounter;
-    try {
-      const fullKey = `lock:${lockKey}`;
-      const lockData: LockData = {
-        id: `lock_${Date.now()}_${this.fencingCounter}`,
-        owner,
-        fencingToken,
-        ttlMs,
-        acquiredAt: now,
-        metadata: null,
-      };
-      const result = spawnSync(
-        this.cliPath,
-        ["-h", this.host, "-p", String(this.port), "SET", fullKey, JSON.stringify(lockData), "NX", "EX", String(ttlSec)],
-        { timeout: this.connectTimeoutMs, encoding: "utf8" },
-      );
-      if (result.status === 0 && result.stdout?.trim() === "OK") {
-        return {
-          acquired: true,
-          lock: {
-            lockKey,
-            owner,
-            fencingToken,
-            status: "held",
-            acquiredAt: now,
-            ttlMs,
-            metadata: null,
-          },
-        };
-      }
-      return { acquired: false };
-    } catch (error) {
-      lockLogger.log({
-        level: "warn",
-        message: "Redis lock acquire failed",
-        data: { lockKey, owner, error: error instanceof Error ? error.message : String(error) },
-      });
-      return { acquired: false };
-    }
+    throw new LockingError("lock.sync_acquire_deprecated", "lock.sync_acquire_deprecated: Use acquireAsync instead");
   }
 
   public release(_lockKey: string, _owner: string): boolean {
@@ -166,17 +124,20 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async extendAsync(lockKey: string, owner: string, additionalMs: number): Promise<LockRecord | null> {
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
+    const extendLua = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('pexpire', KEYS[1], ARGV[2])
+else return 0 end`;
+    const newTtlMs = Math.min(additionalMs, 600_000);
+    const result = await this.redis.eval(extendLua, 1, key, JSON.stringify({ owner }), newTtlMs);
+    if (result !== 1) {
+      return null;
+    }
     const current = await this.redis.get(key);
     if (!current) {
       return null;
     }
     const data = JSON.parse(current) as LockData;
-    if (data.owner !== owner) {
-      return null;
-    }
-    const newTtlMs = Math.min(additionalMs, 600_000);
-    data.ttlMs = newTtlMs;
-    await this.redis.set(key, JSON.stringify(data), "EX", Math.ceil(newTtlMs / 1000));
     return {
       lockKey,
       owner: data.owner,
@@ -191,7 +152,6 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async forceStealAsync(lockKey: string, newOwner: string, reason: string): Promise<LockRecord> {
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
-    await this.redis.del(key);
     const now = new Date().toISOString();
     this.fencingCounter += 1;
     const ttlMs = 30_000;
@@ -203,7 +163,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
     };
-    await this.redis.set(key, JSON.stringify(lockData), "EX", Math.ceil(ttlMs / 1000));
+    await this.redis.set(key, JSON.stringify(lockData), "EX", Math.ceil(ttlMs / 1000), "XX");
     return {
       lockKey,
       owner: newOwner,
@@ -235,24 +195,37 @@ export class RedisLockAdapter implements DistributedLockAdapter {
 
   public async listHeldAsync(limit: number = 100): Promise<LockRecord[]> {
     await this.ensureConnected();
-    const keys = await this.redis.keys("lock:*");
     const records: LockRecord[] = [];
-    for (const key of keys.slice(0, limit)) {
-      const current = await this.redis.get(key);
-      if (!current) {
-        continue;
+    let cursor = 0;
+    const lockPrefix = "lock:";
+    const prefixLen = lockPrefix.length;
+
+    do {
+      const [nextCursor, keys] = await this.redis.scan(cursor, 'COUNT', 100);
+      cursor = parseInt(nextCursor, 10);
+
+      if (keys.length > 0) {
+        const values = await this.redis.mget(...keys);
+        for (let i = 0; i < keys.length; i++) {
+          if (records.length >= limit) break;
+          const key = keys[i]!;
+          const value = values[i];
+          if (!value) continue;
+
+          const data = JSON.parse(value) as LockData;
+          records.push({
+            lockKey: key.slice(prefixLen),
+            owner: data.owner,
+            fencingToken: data.fencingToken,
+            status: "held",
+            acquiredAt: data.acquiredAt,
+            ttlMs: data.ttlMs,
+            metadata: data.metadata,
+          });
+        }
       }
-      const data = JSON.parse(current) as LockData;
-      records.push({
-        lockKey: key.slice(5),
-        owner: data.owner,
-        fencingToken: data.fencingToken,
-        status: "held",
-        acquiredAt: data.acquiredAt,
-        ttlMs: data.ttlMs,
-        metadata: data.metadata,
-      });
-    }
+    } while (cursor !== 0 && records.length < limit);
+
     return records;
   }
 

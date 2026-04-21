@@ -47,6 +47,8 @@ export interface ProviderMetrics {
   failedRequests: number;
   errorRate: number;
   latencyP99Ms: number;
+  /** Time To First Token P99 in milliseconds (TTFT >10s triggers escalation per §15) */
+  ttftP99Ms: number;
   lastUpdated: string;
 }
 
@@ -387,9 +389,21 @@ export class DegradationController {
     newLevel: DegradationLevel;
     reason: string;
   } {
-    const { errorRate, latencyP99Ms } = metrics;
+    const { errorRate, latencyP99Ms, ttftP99Ms } = metrics;
 
     // Check for escalation conditions
+    // §15: TTFT >10s triggers escalation
+    if (ttftP99Ms > 10000) {
+      if (this.currentLevel < DegradationLevel.D4) {
+        this.escalate();
+        return {
+          action: "escalate",
+          newLevel: this.currentLevel,
+          reason: `ttft_p99:${ttftP99Ms}ms`,
+        };
+      }
+    }
+
     const shouldEscalate =
       errorRate > this.config.escalateErrorRateThreshold ||
       latencyP99Ms > this.config.escalateLatencyP99Ms;

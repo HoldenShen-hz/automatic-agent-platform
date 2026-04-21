@@ -202,18 +202,59 @@ export class OutboxService {
    */
   public async publishPending(): Promise<{ published: number; failed: number }> {
     const entries = this.getPendingEntries();
-    let published = 0;
-    let failed = 0;
+    if (entries.length === 0) {
+      return { published: 0, failed: 0 };
+    }
 
+    const now = nowIso();
+    const successfulIds: string[] = [];
+    const failedEntries: string[] = [];
+
+    // Batch publish entries
     for (const entry of entries) {
-      const success = await this.publishEntry(entry);
-      if (success) {
-        published++;
-      } else {
-        failed++;
+      try {
+        const payload = JSON.parse(entry.payloadJson);
+        this.eventBus.publish({
+          eventType: entry.eventType,
+          taskId: entry.aggregateType === "task" ? entry.aggregateId : null,
+          executionId: entry.aggregateType === "execution" ? entry.aggregateId : null,
+          traceId: entry.traceId,
+          payload,
+        });
+        successfulIds.push(entry.id);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const newRetryCount = entry.retryCount + 1;
+        this.repo.markFailed(entry.id, errorMessage, newRetryCount, now);
+        failedEntries.push(entry.id);
+
+        logger.log({
+          level: "warn",
+          message: "outbox.publish_failed",
+          data: {
+            id: entry.id,
+            eventType: entry.eventType,
+            errorMessage,
+            retryCount: newRetryCount,
+          },
+        });
       }
     }
 
-    return { published, failed };
+    // Batch update successful entries
+    if (successfulIds.length > 0) {
+      this.repo.markPublishedBatch(successfulIds, now);
+
+      logger.log({
+        level: "debug",
+        message: "outbox.published_batch",
+        data: {
+          count: successfulIds.length,
+          ids: successfulIds,
+        },
+      });
+    }
+
+    return { published: successfulIds.length, failed: failedEntries.length };
   }
 }

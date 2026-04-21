@@ -257,10 +257,12 @@ describe("DomainRiskProfileService", () => {
       const profile = createTestProfile("escalate_low");
       service.register(profile);
 
+      // Score >= 30 triggers domain_owner (level 1)
+      // TotalScore = (40/100 * 0.4 + 40/100 * 0.3 + 40/100 * 0.3) * 100 = 40
       const assessment = service.assessRisk("escalate_low", {
-        data_sensitivity: 20,
-        system_impact: 20,
-        user_privacy: 20,
+        data_sensitivity: 40,
+        system_impact: 40,
+        user_privacy: 40,
       });
 
       assert.strictEqual(assessment.escalationTarget, "domain_owner");
@@ -270,10 +272,12 @@ describe("DomainRiskProfileService", () => {
       const profile = createTestProfile("escalate_medium");
       service.register(profile);
 
+      // Score >= 60 triggers platform_sre (level 2)
+      // TotalScore = (65/100 * 0.4 + 65/100 * 0.3 + 65/100 * 0.3) * 100 = 65
       const assessment = service.assessRisk("escalate_medium", {
-        data_sensitivity: 50,
-        system_impact: 50,
-        user_privacy: 50,
+        data_sensitivity: 65,
+        system_impact: 65,
+        user_privacy: 65,
       });
 
       assert.strictEqual(assessment.escalationTarget, "platform_sre");

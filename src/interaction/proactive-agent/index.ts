@@ -215,7 +215,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (!state.trigger.enabled) {
       reasons.push("proactive_agent.trigger_disabled");
     }
-    if (state.consecutiveFailures >= this.maxConsecutiveFailures) {
+    if (state.consecutiveFailures >= this.maxConsecutiveFailures - 1) {
       reasons.push("proactive_agent.circuit_open");
     }
     const now = new Date(input.now ?? nowIso()).getTime();
@@ -261,9 +261,11 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     }
     const actionMode = state.trigger.action.requireConfirmation
       ? "suggest"
-      : state.trigger.action.actionType === "update_dashboard"
+      : state.trigger.riskLevel === "critical"
         ? "silent_record"
-        : "auto_execute";
+        : state.trigger.action.actionType === "update_dashboard"
+          ? "silent_record"
+          : "auto_execute";
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
 
     return {

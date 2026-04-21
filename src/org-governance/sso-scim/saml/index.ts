@@ -1,3 +1,4 @@
+import { SignedXml } from "xml-crypto";
 import { z } from "zod";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
@@ -31,6 +32,8 @@ export interface SamlAssertionInput {
   readonly sessionIndex?: string;
   readonly notBefore?: string;
   readonly notOnOrAfter?: string;
+  readonly xmlSignature?: string;
+  readonly rawXml?: string;
 }
 
 export interface SamlSession {
@@ -123,6 +126,13 @@ export class SamlService {
     const provider = this.requireProvider(providerId);
     if (assertion.issuer !== provider.issuer) {
       throw new Error(`saml.invalid_issuer:${providerId}`);
+    }
+    if (assertion.xmlSignature && assertion.rawXml) {
+      const sig = new SignedXml();
+      sig.loadSignature(assertion.xmlSignature);
+      if (!sig.checkSignature(assertion.rawXml)) {
+        throw new Error(`saml.invalid_signature:${providerId}`);
+      }
     }
     if (assertion.fingerprint !== provider.certificateFingerprint) {
       throw new Error(`saml.invalid_fingerprint:${providerId}`);

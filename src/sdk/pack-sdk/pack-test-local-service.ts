@@ -236,6 +236,8 @@ export class PackTestLocalService {
           passed: true,
           coverageWeight: 1,
           requiredToolIds: [] as string[],
+          fixtureId: undefined as string | undefined,
+          requiresEvalDataset: undefined as boolean | undefined,
         }))
       : fixtures;
 

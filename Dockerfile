@@ -43,4 +43,4 @@ ENV AA_API_PORT=3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.AA_API_PORT || '3000') + '/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-CMD ["node", "--enable-source-maps", "dist/src/cli/api-server.js"]
+CMD ["node", "--enable-source-maps", "dist/src/sdk/cli/api-server.js"]

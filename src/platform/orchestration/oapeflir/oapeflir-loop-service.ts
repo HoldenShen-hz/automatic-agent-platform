@@ -35,6 +35,7 @@ import type { ExecuteBridge, ExecutionContext } from "./execute-bridge.js";
 import { RuntimeExecuteBridge, MockExecuteBridge } from "./runtime-execute-bridge.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { startActiveSpan } from "../../shared/observability/otel-tracer.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import {
   validateTaskSituation,
   validateUnifiedAssessment,

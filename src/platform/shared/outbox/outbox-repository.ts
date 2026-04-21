@@ -85,6 +85,19 @@ export class OutboxRepository {
     );
   }
 
+  public markPublishedBatch(ids: string[], publishedAt: string): void {
+    if (ids.length === 0) return;
+    const placeholders = ids.map(() => "?").join(", ");
+    execute(
+      this.conn,
+      `UPDATE outbox
+       SET published_at = ?
+       WHERE id IN (${placeholders})`,
+      publishedAt,
+      ...ids,
+    );
+  }
+
   public markFailed(id: string, error: string, newRetryCount: number, lastAttemptAt: string): void {
     execute(
       this.conn,

@@ -34,6 +34,16 @@ export interface RuntimeLifecycleRepository {
     updatedAt: string,
     resumableFromStep?: string | null,
   ): void;
+  // CAS variant for workflow status with expected version check.
+  updateWorkflowStateCas(
+    taskId: string,
+    expectedVersion: number,
+    status: string,
+    currentStepIndex: number,
+    outputsJson: string,
+    updatedAt: string,
+    resumableFromStep?: string | null,
+  ): number;
   updateSessionStatus(sessionId: string, status: string, updatedAt: string): void;
   updateExecutionStatus(
     executionId: string,

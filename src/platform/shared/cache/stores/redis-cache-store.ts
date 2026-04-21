@@ -25,7 +25,9 @@ export class RedisCacheStore implements CacheStore {
     this.redis = new Redis(buildRedisClientOptions(config, {
       keyPrefix: this.prefix,
     }));
-    this.redis.on("error", () => {});
+    this.redis.on("error", (err) => {
+      console.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
+    });
   }
 
   private cacheKey(namespace: string, key: string): string {

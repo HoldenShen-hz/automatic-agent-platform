@@ -30,7 +30,9 @@ export class RedisRateLimiter {
       maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
       connectTimeout: config.connectTimeout ?? 500,
     }));
-    this.redis.on("error", () => {});
+    this.redis.on("error", (err) => {
+      console.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
+    });
   }
 
   /**

@@ -22,6 +22,9 @@ import {
   RolloutRecordSchema,
 } from "../types/index.js";
 import { LearningObjectSchema } from "../learn/learning-object-model.js";
+import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
+
+const boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
 
 /** Boundary name for logging and error attribution */
 export type BoundaryName =
@@ -81,7 +84,9 @@ export function validateTaskSituation(data: unknown): ValidationResult<ReturnTyp
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["O→A"];
-    console.warn(`[boundary:O→A] validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:O→A] validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "O→A" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -94,7 +99,9 @@ export function validateUnifiedAssessment(data: unknown): ValidationResult<Retur
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["A→P"];
-    console.warn(`[boundary:A→P] validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:A→P] validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "A→P" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -107,7 +114,9 @@ export function validatePlan(data: unknown): ValidationResult<ReturnType<typeof 
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["P→E"];
-    console.warn(`[boundary:P→E] validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:P→E] validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "P→E" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -121,7 +130,9 @@ export function validateStepOutputs(data: unknown): ValidationResult<ReturnType<
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["E→F"];
-    console.warn(`[boundary:E→F] stepOutputs validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:E→F] stepOutputs validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "E→F" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -135,7 +146,9 @@ export function validateFeedbackSignals(data: unknown): ValidationResult<ReturnT
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["E→F"];
-    console.warn(`[boundary:E→F] feedbackSignals validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:E→F] feedbackSignals validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "E→F" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -149,7 +162,9 @@ export function validateImprovementCandidates(data: unknown): ValidationResult<R
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["L→I"];
-    console.warn(`[boundary:L→I] validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:L→I] validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "L→I" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -163,7 +178,9 @@ export function validateLearningObjects(data: unknown): ValidationResult<ReturnT
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["L→I"];
-    console.warn(`[boundary:L→I] LearningObjects validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:L→I] LearningObjects validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "L→I" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -176,7 +193,9 @@ export function validateRolloutRecord(data: unknown): ValidationResult<ReturnTyp
   } catch (err) {
     const zerr = err as ZodError;
     const strategy = BOUNDARY_STRATEGY["I→R"];
-    console.warn(`[boundary:I→R] validation failed — strategy: ${strategy}\n${formatZodError(zerr)}`);
+    boundaryLogger.warn(`[boundary:I→R] validation failed — strategy: ${strategy}`, {
+      data: { error: formatZodError(zerr), boundary: "I→R" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: zerr };
   }
@@ -189,7 +208,9 @@ export function validateRolloutRecord(data: unknown): ValidationResult<ReturnTyp
 export function validateLearningSignalsArray(data: unknown): ValidationResult<unknown[]> {
   const strategy = BOUNDARY_STRATEGY["F→L"];
   if (!Array.isArray(data) || data.length === 0) {
-    console.warn(`[boundary:F→L] learningSignals is empty or not an array — strategy: ${strategy}`);
+    boundaryLogger.warn(`[boundary:F→L] learningSignals is empty or not an array — strategy: ${strategy}`, {
+      data: { boundary: "F→L" },
+    });
     if (strategy === "skip") return { ok: false, skipped: true };
     return { ok: false, error: new Error("learningSignals must be a non-empty array") };
   }

@@ -52,11 +52,24 @@ export interface AgentCapabilityProfile {
 export class AgentPerformanceProfiler {
   private readonly executionRecords = new Map<string, ExecutionRecord[]>();
   private readonly profiles = new Map<string, AgentCapabilityProfile>();
+  private readonly maxRecordsEntries = 1000;
+  private recordCleanupAt = 0;
 
   public recordExecution(record: ExecutionRecord): void {
     const key = `${record.agentId}:${record.versionId}`;
     const existing = this.executionRecords.get(key) ?? [];
     this.executionRecords.set(key, [...existing, record]);
+    this.evictExpired();
+  }
+
+  private evictExpired(): void {
+    const now = Date.now();
+    if (now - this.recordCleanupAt < 60000) return;
+    this.recordCleanupAt = now;
+    if (this.executionRecords.size <= this.maxRecordsEntries) return;
+    const keys = Array.from(this.executionRecords.keys());
+    const toRemove = keys.slice(0, Math.floor(this.maxRecordsEntries * 0.2));
+    for (const k of toRemove) this.executionRecords.delete(k);
   }
 
   public computeProfile(agentId: string, versionId: string): AgentCapabilityProfile {
