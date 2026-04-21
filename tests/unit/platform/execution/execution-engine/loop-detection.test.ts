@@ -201,8 +201,9 @@ test("LoopDetectionState uses custom hash function", () => {
   const customHashFn = (toolName: string, input: unknown) => `custom_${toolName}_${JSON.stringify(input)}`;
   const state = new LoopDetectionState({ hashFn: customHashFn });
 
-  const pattern = state.recordToolCall("test_tool", { arg: "value" });
+  const { pattern, action } = state.recordToolCall("test_tool", { arg: "value" });
 
+  assert.equal(action, "continue");
   assert.ok(pattern.inputHash.startsWith("custom_"), "Should use custom hash function");
 });
 
@@ -219,7 +220,7 @@ test("createLoopDetectionMiddleware runs before_agent hook", async () => {
 
   // No loops detected yet, should succeed
   const result = await middleware.run(
-    { runtime: { traceId: "test" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
+    { runtime: { traceId: "test", taskId: "task_1" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
     { request: "test request", history: [] }
   );
 
@@ -242,7 +243,7 @@ test("createLoopDetectionMiddlewareFull beforeAgent blocks escalated patterns", 
   state.recordToolCall("bad_tool", { x: 1 });
 
   const result = await beforeAgent.run(
-    { runtime: { traceId: "test" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
+    { runtime: { traceId: "test", taskId: "task_1" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
     { request: "test", history: [] }
   );
 
@@ -260,7 +261,7 @@ test("createLoopDetectionMiddlewareFull wrapToolCall throws on escalation", asyn
   await assert.rejects(
     async () => {
       await wrapToolCall.run(
-        { runtime: { traceId: "test" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
+        { runtime: { traceId: "test", taskId: "task_1" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
         { toolName: "bad_tool", args: { x: 1 } },
         async () => "should not reach here"
       );

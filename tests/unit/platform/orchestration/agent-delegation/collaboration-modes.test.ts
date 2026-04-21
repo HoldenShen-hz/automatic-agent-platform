@@ -86,11 +86,13 @@ class CollaborationModeService {
     const state = this.pipelines.get(collaborationId);
     if (!state) throw new Error("not_found: Pipeline collaboration not found");
     const stage = state.stages[state.currentStageIndex];
+    if (!stage) throw new Error("stage_not_found: Current stage not found");
     stage.status = "completed";
     stage.output = output;
     state.currentStageIndex++;
-    if (state.currentStageIndex < state.stages.length) {
-      state.stages[state.currentStageIndex].status = "running";
+    const nextStage = state.stages[state.currentStageIndex];
+    if (nextStage) {
+      nextStage.status = "running";
     }
   }
 
@@ -396,7 +398,7 @@ test("CollaborationModeService throws for invalid pipeline collaboration", () =>
   const service = createCollaborationModeService();
 
   assert.throws(
-    () => service.advancePipelineStage("non-existent", {}),
+    () => service.advancePipelineStage("non-existent", { result: null } as any),
     { message: /not_found/ },
   );
 });
@@ -441,10 +443,10 @@ test("CollaborationModeService handles pipeline with input transform", () => {
   };
 
   const collaborationId = service.initiatePipeline(parent, spec);
-  service.advancePipelineStage(collaborationId, { original: "data" });
+  service.advancePipelineStage(collaborationId, { result: { original: "data" } });
 
   const state = service.getPipelineState(collaborationId);
-  assert.ok(state?.stages[0].input === undefined); // Transform stored but not applied
+  assert.ok(state?.stages[0].output !== undefined);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

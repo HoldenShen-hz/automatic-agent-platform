@@ -13,6 +13,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 HELM_DIR="${PROJECT_ROOT}/deploy/helm/automatic-agent"
 
+# Dry run
+if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${1:-}" == "--dry-run" ]]; then
+  echo "[DRY RUN] Would rollback automatic-agent with args: $@"
+  exit 0
+fi
+
 ENVIRONMENT="${1:-}"
 REVISION="${2:-0}"
 

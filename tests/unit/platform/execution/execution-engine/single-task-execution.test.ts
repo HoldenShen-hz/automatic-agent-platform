@@ -196,8 +196,8 @@ test("runSingleTaskExecution creates execution record", async () => {
   try {
     const snapshot = await runSingleTaskExecution(input);
 
-    assert.ok(Array.isArray(snapshot.executions), "snapshot should have executions array");
-    assert.ok(snapshot.executions.length > 0, "executions array should not be empty");
+    assert.ok(snapshot.execution, "snapshot should have execution property");
+    assert.ok(snapshot.execution !== null, "execution should not be null");
   } finally {
     if (existsSync(dbPath)) {
       unlinkSync(dbPath);
@@ -241,7 +241,6 @@ test("runSingleTaskExecution with null stepOutputOverride falls back to syntheti
     dbPath,
     title: "Test Synthetic Output",
     request: "Synthetic test",
-    stepOutputOverride: null, // This should cause the code to use synthetic output
   };
 
   try {

@@ -195,6 +195,75 @@ export class OutboxService {
   }
 
   /**
+   * Publishes multiple outbox entries to the event bus in a single batch operation.
+   * This is more efficient than publishing entries one-by-one, especially during backpressure.
+   * All entries are published in a single eventBus.publishBatch() call.
+   *
+   * @param entries - The outbox entries to publish
+   * @returns Object with counts of published and failed entries
+   */
+  public async publishEntriesBatch(entries: OutboxRecord[]): Promise<{ published: number; failed: number }> {
+    if (entries.length === 0) {
+      return { published: 0, failed: 0 };
+    }
+
+    const now = nowIso();
+    const publishInputs = entries.map((entry) => {
+      const payload = JSON.parse(entry.payloadJson);
+      return {
+        eventType: entry.eventType,
+        taskId: entry.aggregateType === "task" ? entry.aggregateId : null,
+        executionId: entry.aggregateType === "execution" ? entry.aggregateId : null,
+        traceId: entry.traceId,
+        payload,
+      };
+    });
+
+    try {
+      // Publish all entries in a single batch operation
+      this.eventBus.publishBatch(publishInputs);
+
+      // Mark all entries as published in a single batch
+      const successfulIds = entries.map((entry) => entry.id);
+      this.repo.markPublishedBatch(successfulIds, now);
+
+      logger.log({
+        level: "debug",
+        message: "outbox.published_batch",
+        data: {
+          count: successfulIds.length,
+          ids: successfulIds,
+        },
+      });
+
+      return { published: successfulIds.length, failed: 0 };
+    } catch (error) {
+      // If the batch fails, fall back to marking all as failed
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const failedEntries: string[] = [];
+
+      for (const entry of entries) {
+        const newRetryCount = entry.retryCount + 1;
+        this.repo.markFailed(entry.id, errorMessage, newRetryCount, now);
+        failedEntries.push(entry.id);
+
+        logger.log({
+          level: "warn",
+          message: "outbox.publish_batch_failed",
+          data: {
+            id: entry.id,
+            eventType: entry.eventType,
+            errorMessage,
+            retryCount: newRetryCount,
+          },
+        });
+      }
+
+      return { published: 0, failed: failedEntries.length };
+    }
+  }
+
+  /**
    * Publishes all pending outbox entries to the event bus.
    * Used by the OutboxPollerService during polling cycles.
    *

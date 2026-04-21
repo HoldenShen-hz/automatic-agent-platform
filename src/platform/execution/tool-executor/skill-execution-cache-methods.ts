@@ -1,5 +1,4 @@
 
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
@@ -107,11 +106,12 @@ export const skillExecutionCacheMethods = {
       };
     });
   },
-  resolveCacheLookup(this: SkillExecutionService, skill: SkillDefinition, policy: SkillExecutionCachePolicy | undefined): CacheLookup {
+  async resolveCacheLookup(this: SkillExecutionService, skill: SkillDefinition, policy: SkillExecutionCachePolicy | undefined): Promise<CacheLookup> {
     const enabled = policy?.enabled !== false;
     const workingDirectory = normalizeWorkingDirectory(policy?.workingDirectory);
     const sourceHash = policy?.sourceHash?.trim() || null;
-    const gitHead = workingDirectory == null ? null : this.gitHeadResolver(workingDirectory);
+    const gitHeadResult = workingDirectory == null ? null : this.gitHeadResolver(workingDirectory);
+    const gitHead = gitHeadResult instanceof Promise ? await gitHeadResult : gitHeadResult;
 
     if (!enabled) {
       return {

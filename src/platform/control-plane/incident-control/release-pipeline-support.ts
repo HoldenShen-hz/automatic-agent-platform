@@ -13,7 +13,7 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { join } from "node:path";
 
 import { type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";

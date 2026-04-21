@@ -190,20 +190,18 @@ test("[SYS-REL-2.4] redis queue adapter pipeline error must be caught and re-thr
   // Verify that pipeline errors in enqueue are properly caught and re-thrown
   // with the queue.enqueue_failed prefix
 
+  const mockPipeline = {
+    exec: async () => {
+      throw new Error("MISCONF - Redis is configured to persist");
+    },
+    hmset: function (_key: string, _data: Record<string, string>) { return mockPipeline; },
+    expire: function (_key: string, _seconds: number) { return mockPipeline; },
+    sadd: function (_key: string, _member: string) { return mockPipeline; },
+    zadd: function (_key: string, _score: number, _member: string) { return mockPipeline; },
+  };
+
   const mockRedis = {
-    pipeline: () => ({
-      hmset: () => ({
-        expire: () => ({
-          sadd: () => ({
-            zadd: () => ({
-              exec: async () => {
-                throw new Error("MISCONF - Redis is configured to persist");
-              },
-            }),
-          }),
-        }),
-      }),
-    }),
+    pipeline: () => mockPipeline,
   };
 
   let caughtError: Error | null = null;
@@ -230,20 +228,18 @@ test("[SYS-REL-2.4] sync enqueue should not silently drop tasks on Redis error",
 
   let errorHandler: ((err: Error) => void) | null = null;
 
+  const mockPipeline = {
+    exec: async () => {
+      throw new Error("BUSY - Redis is busy");
+    },
+    hmset: function (_key: string, _data: Record<string, string>) { return mockPipeline; },
+    expire: function (_key: string, _seconds: number) { return mockPipeline; },
+    sadd: function (_key: string, _member: string) { return mockPipeline; },
+    zadd: function (_key: string, _score: number, _member: string) { return mockPipeline; },
+  };
+
   const mockRedis = {
-    pipeline: () => ({
-      hmset: () => ({
-        expire: () => ({
-          sadd: () => ({
-            zadd: () => ({
-              exec: async () => {
-                throw new Error("BUSY - Redis is busy");
-              },
-            }),
-          }),
-        }),
-      }),
-    }),
+    pipeline: () => mockPipeline,
     on: (_event: string, handler: (...args: unknown[]) => void) => {
       if (_event === "error") {
         errorHandler = handler as (err: Error) => void;

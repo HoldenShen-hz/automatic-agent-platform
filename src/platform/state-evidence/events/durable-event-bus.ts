@@ -170,6 +170,71 @@ export class DurableEventBus {
   }
 
   /**
+   * Publishes multiple events to the bus in a single batch operation.
+   * All events are validated, inserted in a single transaction, and dispatched together.
+   * This is more efficient than publishing events one-by-one during backpressure.
+   *
+   * @param inputs - Array of event data to publish
+   * @returns Array of persisted event records
+   */
+  public publishBatch(inputs: Array<{
+    eventType: string;
+    taskId?: string | null;
+    sessionId?: string | null;
+    executionId?: string | null;
+    traceId?: string | null;
+    traceContext?: TraceContext | null;
+    payload: Record<string, unknown>;
+  }>): EventRecord[] {
+    this.assertNotDisposed();
+
+    // Validate all payloads upfront before any database writes
+    const validatedPayloads = inputs.map((input) => {
+      const validatedPayload = validateEventPayload(
+        input.eventType,
+        injectTraceContext(input.payload, input.traceContext ?? null),
+      );
+      // V-03: Validate payload size before storing
+      const payloadSize = JSON.stringify(validatedPayload).length;
+      if (payloadSize > 1_000_000) {
+        throw new ValidationError("event.payload_too_large", `Event payload size ${payloadSize} exceeds maximum of 1000000 bytes`, {
+          details: { payloadSize, maxSize: 1_000_000 },
+        });
+      }
+      return validatedPayload;
+    });
+
+    // Insert all events in a single transaction for efficiency
+    const eventRecords = this.db.transaction(() =>
+      inputs.map((input, index) => {
+        const schema = getEventSchema(input.eventType);
+        return this.store.event.insertEvent({
+          id: newId("evt"),
+          taskId: input.taskId ?? null,
+          sessionId: input.sessionId ?? null,
+          executionId: input.executionId ?? null,
+          eventType: input.eventType,
+          eventTier: schema.tier,
+          payloadJson: JSON.stringify(validatedPayloads[index]),
+          traceId: input.traceContext?.traceId ?? input.traceId ?? null,
+          createdAt: nowIso(),
+        });
+      }),
+    );
+
+    // Dispatch volatile events and schedule fan-out once for the batch
+    const nonTier1Records = eventRecords.filter((record) => record.eventTier !== "tier_1");
+    for (const eventRecord of nonTier1Records) {
+      this.dispatchVolatile(eventRecord);
+    }
+    if (nonTier1Records.length > 0) {
+      this.scheduleFanOut();
+    }
+
+    return eventRecords;
+  }
+
+  /**
    * Delivers all pending events to a specific consumer.
    * Continues processing even if individual deliveries fail, but throws if any event
    * ends up dead-lettered after exhausting retries.

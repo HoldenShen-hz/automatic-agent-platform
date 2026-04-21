@@ -56,7 +56,7 @@ export class AsyncTaskRepository {
     return result ?? null;
   }
 
-  public async listTasks(limit?: number, tenantId?: string | null): Promise<TaskRecord[]> {
+  public async listTasks(limit?: number, tenantId?: string | null, cursor?: string | null): Promise<TaskRecord[]> {
     const scopedTenantId = resolveTenantScope(tenantId);
     let sql = `SELECT id, parent_id AS "parentId", root_id AS "rootId", division_id AS "divisionId",
           tenant_id AS "tenantId", title, status, source, priority,
@@ -70,7 +70,15 @@ export class AsyncTaskRepository {
       sql += ` WHERE tenant_id = $${params.length + 1}`;
       params.push(scopedTenantId);
     }
-    sql += ` ORDER BY updated_at DESC`;
+    if (cursor !== undefined && cursor !== null) {
+      if (scopedTenantId !== undefined) {
+        sql += ` AND updated_at < $${params.length + 1}`;
+      } else {
+        sql += ` WHERE updated_at < $${params.length + 1}`;
+      }
+      params.push(cursor);
+    }
+    sql += ` ORDER BY updated_at DESC, id DESC`;
     if (typeof limit === "number") {
       sql += ` LIMIT $${params.length + 1}`;
       params.push(limit);

@@ -61,6 +61,22 @@ export class DurableEventBusAsync {
   }
 
   /**
+   * Publishes multiple events to the bus in a single batch operation.
+   * All events are validated, inserted in a single transaction, and dispatched together.
+   */
+  public publishBatch(inputs: Array<{
+    eventType: string;
+    payload: Record<string, unknown>;
+    taskId?: string | null;
+    sessionId?: string | null;
+    executionId?: string | null;
+    traceContext?: TraceContext | null;
+    traceId?: string | null;
+  }>): Promise<EventRecord[]> {
+    return Promise.resolve(this.sync.publishBatch(inputs));
+  }
+
+  /**
    * Delivers all pending events to a specific consumer.
    */
   public deliverPending(consumerId: string): Promise<number> {

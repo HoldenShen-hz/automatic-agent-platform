@@ -1,5 +1,4 @@
 
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
@@ -116,7 +115,7 @@ export const skillExecutionCoreMethods = {
       cacheTtlSeconds: input.skill.cacheTtlSeconds ?? null,
     });
 
-    const cacheLookup = this.resolveCacheLookup(input.skill, input.cache);
+    const cacheLookup = await this.resolveCacheLookup(input.skill, input.cache);
     const startedAt = nowIso();
     let totalToolCalls = 0;
     let totalRetries = 0;

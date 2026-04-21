@@ -96,12 +96,11 @@ export class AsyncExecutionRepository {
     );
   }
 
-  public async listExecutionsByStatuses(statuses: string[], limit?: number): Promise<ExecutionRecord[]> {
+  public async listExecutionsByStatuses(statuses: string[], limit?: number, cursor?: string | null): Promise<ExecutionRecord[]> {
     if (statuses.length === 0) {
       return [];
     }
     const placeholders = statuses.map((_, i) => `$${1 + i}`).join(",");
-    const limitClause = limit ? ` LIMIT ${limit}` : "";
     const sql = `SELECT
         id, task_id AS "taskId", workflow_id AS "workflowId", parent_execution_id AS "parentExecutionId",
         agent_id AS "agentId", role_id AS "roleId", run_kind AS "runKind", status,
@@ -112,8 +111,18 @@ export class AsyncExecutionRepository {
         retry_backoff AS "retryBackoff", last_error_code AS "lastErrorCode",
         last_error_message AS "lastErrorMessage", started_at AS "startedAt",
         finished_at AS "finishedAt", created_at AS "createdAt", updated_at AS "updatedAt"
-       FROM executions WHERE status IN (${placeholders}) ORDER BY created_at DESC${limitClause}`;
-    return asyncQueryAll<ExecutionRecord>(this.conn, sql, ...statuses);
+       FROM executions WHERE status IN (${placeholders})`;
+    const params: unknown[] = [...statuses];
+    if (cursor !== undefined && cursor !== null) {
+      sql += ` AND created_at < $${params.length + 1}`;
+      params.push(cursor);
+    }
+    sql += ` ORDER BY created_at DESC, id DESC`;
+    if (typeof limit === "number") {
+      sql += ` LIMIT $${params.length + 1}`;
+      params.push(limit);
+    }
+    return asyncQueryAll<ExecutionRecord>(this.conn, sql, ...params);
   }
 
   public async updateExecutionStatus(

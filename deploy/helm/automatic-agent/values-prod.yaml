@@ -27,15 +27,16 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  domain: agent.example.com
   hosts:
-    - host: agent.example.com
+    - host: {{ .Values.ingress.domain | default "agent.example.com" }}
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: automatic-agent-prod-tls
       hosts:
-        - agent.example.com
+        - {{ .Values.ingress.domain | default "agent.example.com" }}
 
 env:
   AA_API_HOST: "0.0.0.0"

@@ -26,7 +26,7 @@
 
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
 import { getActiveTelemetryContext } from "./otel-tracer.js";
@@ -70,6 +70,42 @@ export interface StructuredLoggerFileSinkOptions {
 }
 
 /**
+ * Validates and sanitizes a file path to prevent path traversal attacks.
+ * Ensures the path is within an allowed directory and doesn't escape via ".."
+ *
+ * @param userPath - The path provided by the user or external input
+ * @param baseDir - The base directory that the path must be within
+ * @returns The sanitized absolute path
+ * @throws Error if the path is absolute, contains traversal sequences, or escapes baseDir
+ */
+function safePath(userPath: string, baseDir: string): string {
+  // Block absolute paths - they cannot be within a relative base directory
+  if (isAbsolute(userPath)) {
+    throw new Error("path_traversal.blocked_absolute_path");
+  }
+
+  // Normalize the path to resolve any ".." or "." sequences
+  const normalized = normalize(userPath);
+
+  // Block any path that still contains traversal markers after normalization
+  if (normalized.includes("..")) {
+    throw new Error("path_traversal.blocked_traversal_sequence");
+  }
+
+  // Reject paths that normalize to escape the base directory
+  const fullPath = join(baseDir, normalized);
+  const resolvedFullPath = resolve(fullPath);
+  const resolvedBaseDir = resolve(baseDir);
+
+  // Ensure the resolved path is still within the base directory
+  if (!resolvedFullPath.startsWith(resolvedBaseDir + sep)) {
+    throw new Error("path_traversal.blocked_escape_from_base");
+  }
+
+  return resolvedFullPath;
+}
+
+/**
  * StructuredLogger maintains an in-memory ring buffer of structured log entries
  * with support for filtering by task, trace, or retrieving the most recent entries.
  * Uses a proper ring buffer for O(1) insertion.
@@ -99,13 +135,25 @@ export class StructuredLogger {
       return;
     }
 
+    // Use process.cwd() as the base directory for path validation
+    // This ensures the log file path cannot escape to arbitrary locations
+    const baseDir = process.cwd();
+    let safeFilePath: string;
+    try {
+      safeFilePath = safePath(options.filePath, baseDir);
+    } catch {
+      // Invalid path - silently disable sink to avoid crashing the logging path
+      StructuredLogger.globalFileSink = null;
+      return;
+    }
+
     const maxBytes = options.maxBytes == null
       ? null
       : Math.max(1, Math.trunc(options.maxBytes));
     const maxFiles = Math.max(1, Math.trunc(options.maxFiles ?? 5));
-    mkdirSync(dirname(options.filePath), { recursive: true });
+    mkdirSync(dirname(safeFilePath), { recursive: true });
     StructuredLogger.globalFileSink = {
-      filePath: options.filePath,
+      filePath: safeFilePath,
       maxBytes,
       maxFiles,
     };

@@ -89,7 +89,7 @@ test("SkillExecutionService resolveSkillSteps applies matching model overrides",
   }
 });
 
-test("SkillExecutionService resolves cache lookup lifecycle from disabled to miss to hit to expired", () => {
+test("SkillExecutionService resolves cache lookup lifecycle from disabled to miss to hit to expired", async () => {
   const { workspace, db, service } = createService();
   try {
     const skill: SkillDefinition = {
@@ -107,11 +107,11 @@ test("SkillExecutionService resolves cache lookup lifecycle from disabled to mis
       ],
     };
 
-    const disabled = service.resolveCacheLookup(skill, { enabled: false });
+    const disabled = await service.resolveCacheLookup(skill, { enabled: false });
     assert.equal(disabled.metadata.status, "disabled");
     assert.equal(disabled.entry, null);
 
-    const miss = service.resolveCacheLookup(skill, {
+    const miss = await service.resolveCacheLookup(skill, {
       enabled: true,
       sourceHash: "source-hash",
       parameters: { path: "README.md" },
@@ -154,7 +154,7 @@ test("SkillExecutionService resolves cache lookup lifecycle from disabled to mis
     assert.ok(stored.storedAt);
     assert.ok(stored.expiresAt);
 
-    const hit = service.resolveCacheLookup(skill, {
+    const hit = await service.resolveCacheLookup(skill, {
       enabled: true,
       sourceHash: "source-hash",
       parameters: { path: "README.md" },
@@ -166,7 +166,7 @@ test("SkillExecutionService resolves cache lookup lifecycle from disabled to mis
     assert.ok(cachedEntry);
     cachedEntry!.expiresAt = "2000-01-01T00:00:00.000Z";
 
-    const expired = service.resolveCacheLookup(skill, {
+    const expired = await service.resolveCacheLookup(skill, {
       enabled: true,
       sourceHash: "source-hash",
       parameters: { path: "README.md" },

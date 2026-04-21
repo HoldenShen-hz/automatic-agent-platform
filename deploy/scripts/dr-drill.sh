@@ -9,7 +9,7 @@
 #
 # Usage:
 #   ./dr-drill.sh --mode <full|incremental|verify> [--component <component>] [--output-dir <path>]
-#
+
 set -euo pipefail
 
 # === Configuration ===
@@ -21,6 +21,12 @@ DR_LOG_DIR="${DR_LOG_DIR:-.dr-logs}"
 # DR thresholds from config
 DR_RTO_SECONDS="${DR_RTO_SECONDS:-3600}"  # 1 hour default RTO
 DR_RPO_SECONDS="${DR_RPO_SECONDS:-300}"    # 5 minutes default RPO
+
+# Dry run
+if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${1:-}" == "--dry-run" ]]; then
+  echo "[DRY RUN] Would run DR drill with args: $@"
+  exit 0
+fi
 
 # === Colors for output ===
 RED='\033[0;31m'

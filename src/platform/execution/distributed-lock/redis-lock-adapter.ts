@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 
 import { LockingError } from "../../contracts/errors.js";

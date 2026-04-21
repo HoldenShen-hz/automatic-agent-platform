@@ -200,9 +200,17 @@ test("runMultiStepOrchestration with admission backpressure snapshot", async () 
     title: "Test Backpressure",
     request: "Test backpressure",
     admissionBackpressureSnapshot: () => ({
-      status: "healthy",
-      degradationMode: false,
-      queueGovernance: "normal",
+      status: "ok",
+      degradationMode: "none",
+      queueGovernance: {
+        backlogSize: 0,
+        dispatchableBacklogSize: 0,
+        claimedBacklogSize: 0,
+        oldestWaitSeconds: null,
+        oldestClaimAgeSeconds: null,
+        queueNames: [],
+        starvationDetected: false,
+      },
       findings: [],
     }),
   };

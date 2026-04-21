@@ -38,6 +38,8 @@ import { nowIso, newId } from "../../contracts/types/ids.js";
 import { AppError, StorageError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { HumanTakeoverService, type TakeoverActionResult } from "./human-takeover-service.js";
+import { TakeoverQueueManager, type TakeoverQueueConfig } from "./takeover-queue-manager.js";
+import { TakeoverEscalationManager } from "./takeover-escalation-manager.js";
 
 const require = createRequire(import.meta.url);
 
@@ -301,20 +303,11 @@ export class HumanTakeoverServiceAsync {
   private readonly config: HumanTakeoverServiceAsyncConfig;
   private readonly logger: StructuredLogger;
 
-  /** Pending request queue ordered by priority (lower = higher priority). */
-  private readonly pendingQueue: TakeoverRequestEntry[] = [];
+  /** Queue manager for pending takeover requests. */
+  private readonly queueManager: TakeoverQueueManager;
 
-  /** Active timeout timers keyed by sessionId. */
-  private readonly activeTimeouts: Map<string, NodeJS.Timeout> = new Map();
-
-  /** Active escalation timers keyed by sessionId. */
-  private readonly escalationTimers: Map<string, NodeJS.Timeout> = new Map();
-
-  /** Acknowledgment status tracking keyed by sessionId. */
-  private readonly ackStatuses: Map<string, TakeoverAckStatus> = new Map();
-
-  /** Escalation policies keyed by sessionId. */
-  private readonly escalationPolicies: Map<string, EscalationPolicy> = new Map();
+  /** Escalation manager for timeout, acknowledgment, and escalation handling. */
+  private readonly escalationManager: TakeoverEscalationManager;
 
   /** Event handlers keyed by event type. */
   private readonly eventHandlers: Map<TakeoverLifecycleEvent, Set<TakeoverEventHandler<TakeoverLifecycleEvent>>> = new Map();
@@ -325,12 +318,6 @@ export class HumanTakeoverServiceAsync {
   /** Abort controller for graceful shutdown of the processing loop. */
   private readonly abortController: AbortController = new AbortController();
 
-  // C-11: TTL-based eviction to prevent memory leaks
-  private readonly MAX_SESSION_ENTRIES = 500;
-  private readonly SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
-  private lastEvictionTime = 0;
-  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
-
   public constructor(
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
@@ -340,6 +327,29 @@ export class HumanTakeoverServiceAsync {
     this.sync = new SyncService(db, store);
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.logger = new StructuredLogger({ retentionLimit: 100 });
+
+    // Create event emitter wrapper for the managers
+    const eventEmitter = {
+      emit: <T extends TakeoverLifecycleEvent>(event: T, payload: TakeoverEventPayload[T]) => {
+        this.emit(event, payload);
+      },
+    };
+
+    // Initialize queue manager
+    const queueConfig: TakeoverQueueConfig = {
+      maxQueueDepth: this.config.maxQueueDepth,
+      defaultPriority: this.config.defaultPriority,
+    };
+    this.queueManager = new TakeoverQueueManager(queueConfig, eventEmitter);
+
+    // Initialize escalation manager with auto-close handler
+    this.escalationManager = new TakeoverEscalationManager(
+      this.config.timeoutConfig,
+      eventEmitter,
+      async (sessionId, taskId) => {
+        await this.handleAutoClose(sessionId, taskId);
+      },
+    );
   }
 
   /**

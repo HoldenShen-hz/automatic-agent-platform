@@ -16,7 +16,7 @@ const REPO_ROOT = resolve(__dirname, "../../../..");
 class FailAfterBuildRunner {
   private invocationCount = 0;
 
-  public run(request: { step: "build_image" | "publish_workflow"; command: string; args: string[] }) {
+  public run(request: { step: "build_image" | "publish_workflow"; command: string; args: string[] }): { step: "build_image" | "publish_workflow"; command: string; args: string[]; executed: boolean; exitCode: number; stdout: string; stderr: string; durationMs: number; } {
     this.invocationCount += 1;
     if (this.invocationCount === 1) {
       return {

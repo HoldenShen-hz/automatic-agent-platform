@@ -242,6 +242,8 @@ export interface PagerDutyAlertChannelOptions {
   endpoint?: string;
 }
 
+const PAGERDUTY_DEFAULT_ENDPOINT = "https://events.pagerduty.com/v2/enqueue";
+
 export class PagerDutyAlertChannel implements AlertChannel {
   readonly kind: AlertChannelKind = "pagerduty";
   private readonly fetchImpl: FetchLike;
@@ -251,7 +253,8 @@ export class PagerDutyAlertChannel implements AlertChannel {
   constructor(options: PagerDutyAlertChannelOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 10_000;
-    this.pagerdutyEndpoint = options.endpoint ?? "https://events.pagerduty.com/v2/enqueue";
+    // Constructor option takes priority, then env var, then production default
+    this.pagerdutyEndpoint = options.endpoint ?? process.env.PAGERDUTY_API_URL ?? PAGERDUTY_DEFAULT_ENDPOINT;
   }
 
   deliver(event: AlertEvent, config: Record<string, unknown>): AlertDeliveryResult {

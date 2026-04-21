@@ -91,9 +91,9 @@ export class TaskRepository {
   }
 
   /**
-   * List tasks with optional limit and tenant filtering.
+   * List tasks with optional limit, tenant filtering, and cursor pagination.
    */
-  public listTasks(limit?: number, tenantId?: string | null): TaskRecord[] {
+  public listTasks(limit?: number, tenantId?: string | null, cursor?: string | null): TaskRecord[] {
     const scopedTenantId = resolveTenantScope(tenantId);
     let sql = `SELECT
           id, parent_id AS parentId, root_id AS rootId, division_id AS divisionId,
@@ -109,7 +109,15 @@ export class TaskRepository {
       sql += ` WHERE tenant_id = ?`;
       params.push(scopedTenantId);
     }
-    sql += ` ORDER BY updated_at DESC`;
+    if (cursor !== undefined && cursor !== null) {
+      if (scopedTenantId !== undefined) {
+        sql += ` AND updated_at < ?`;
+      } else {
+        sql += ` WHERE updated_at < ?`;
+      }
+      params.push(cursor);
+    }
+    sql += ` ORDER BY updated_at DESC, id DESC`;
     if (typeof limit === "number") {
       sql += ` LIMIT ?`;
       params.push(limit);

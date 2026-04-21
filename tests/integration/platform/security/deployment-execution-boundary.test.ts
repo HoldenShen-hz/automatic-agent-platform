@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { DeploymentExecutionService } from "../../../../src/platform/control-plane/incident-control/deployment-execution-service.js";
+import { DeploymentExecutionService, type DeploymentCommandResult } from "../../../../src/platform/control-plane/incident-control/deployment-execution-service.js";
 import { EnvSecretProvider } from "../../../../src/platform/control-plane/iam/env-secret-provider.js";
 import { SecretManagementService } from "../../../../src/platform/control-plane/iam/secret-management-service.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";

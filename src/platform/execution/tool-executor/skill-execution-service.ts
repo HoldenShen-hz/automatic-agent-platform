@@ -1,5 +1,4 @@
 
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
@@ -64,7 +63,7 @@ export class SkillExecutionService {
   readonly bus: TypedEventBus;
   readonly cache = new Map<string, CachedSkillExecutionEntry>();
   readonly cacheMaxEntries: number;
-  readonly gitHeadResolver: (workingDirectory: string) => string | null;
+  readonly gitHeadResolver: (workingDirectory: string) => Promise<string | null> | string | null;
   readonly modelMetadataRegistry: ModelMetadataRegistry;
   readonly toolMetadataResolver: (toolName: string) => ToolExecutionMetadata | null;
   readonly resourceCeilingGuard: ResourceCeilingGuard;

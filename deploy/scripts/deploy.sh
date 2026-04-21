@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+HELM_DIR="${PROJECT_ROOT}/deploy/helm/automatic-agent"
+
+# Dry run
+if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${1:-}" == "--dry-run" ]]; then
+  echo "[DRY RUN] Would deploy with args: $@"
+  exit 0
+fi
+
 # Deploy Automatic Agent Platform to Kubernetes using Helm
 #
 # Usage: ./deploy.sh <environment> <image_tag> [rollout_strategy]
@@ -9,10 +19,6 @@ set -euo pipefail
 #   ./deploy.sh dev abc1234 rolling
 #   ./deploy.sh staging v1.2.3 canary
 #   ./deploy.sh prod v1.2.3 blue_green
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-HELM_DIR="${PROJECT_ROOT}/deploy/helm/automatic-agent"
 
 # Default values
 ENVIRONMENT="${1:-}"

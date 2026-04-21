@@ -1,5 +1,51 @@
 import type { TraceContext } from "../../contracts/types/domain.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared Context Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Context passed with approval requests.
+ * Contains session identifiers and classification information.
+ */
+export interface ApprovalContext {
+  sessionId?: string | null;
+  approvalSessionId?: string | null;
+  permissionSessionId?: string | null;
+  classification?: string | null;
+  title?: string | null;
+  stageRef?: string | null;
+  loopIteration?: number | null;
+  refId?: string | null;
+  recommendedOptionId?: string | null;
+  deadlineAt?: string | null;
+  taskId?: string | null;
+  executionId?: string | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Runtime context for prompt injection events.
+ */
+export interface PromptRuntimeContext {
+  tenantId?: string | null;
+  userId?: string | null;
+  taskId?: string | null;
+  executionId?: string | null;
+  [key: string]: unknown;
+}
+
+/**
+ * Metadata for cost actualization events.
+ */
+export interface CostMetadata {
+  provider?: string | null;
+  model?: string | null;
+  region?: string | null;
+  usageType?: string | null;
+  [key: string]: unknown;
+}
+
 export interface TaskStatusChangedPayload {
   fromStatus: string;
   toStatus: string;
@@ -36,7 +82,7 @@ export interface DecisionRequestedPayload {
   reasonCode?: string | null;
   riskLevel?: "low" | "medium" | "high" | "critical" | null;
   options?: readonly string[] | null;
-  context?: Record<string, unknown> | null;
+  context?: ApprovalContext | null;
   timeoutPolicy?: "reject" | "approve" | "remain_pending" | null;
   createdAt?: string | null;
   taskId?: string | null;
@@ -215,7 +261,7 @@ export interface PromptInjectedPayload {
   injectionType: string;
   templateVersion: string;
   occurredAt: string;
-  runtimeContext?: Record<string, unknown> | null;
+  runtimeContext?: PromptRuntimeContext | null;
 }
 
 export interface PromptRenderedPayload {
@@ -255,7 +301,7 @@ export interface CostActualizedPayload {
   amountUsd: number;
   costCategory: string;
   actualizedAt: string;
-  metadata?: Record<string, unknown> | null;
+  metadata?: CostMetadata | null;
 }
 
 // tenant.* namespace - multi-tenant lifecycle events

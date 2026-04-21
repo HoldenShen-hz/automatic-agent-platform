@@ -11,7 +11,7 @@ services:
       NODE_ENV: production
       AA_DB_PATH: /app/data/automatic-agent.db
       AA_STORAGE_DRIVER: ${AA_STORAGE_DRIVER:-sqlite}
-      AA_PG_DSN: ${AA_PG_DSN:-postgres://automatic_agent:automatic_agent@postgres:5432/automatic_agent}
+      AA_PG_DSN: ${AA_PG_DSN:-}
       AA_REDIS_HOST: redis
       AA_REDIS_PORT: "6379"
       # AA_API_JWT_SECRET: ${AA_API_JWT_SECRET}  # Uncomment and set in production

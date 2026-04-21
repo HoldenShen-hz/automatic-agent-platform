@@ -279,7 +279,13 @@ test("Missing refresh token on refresh returns null", async () => {
   // Manually create session without refresh token
   const userInfo = await service.fetchUserInfo(tokens!.accessToken);
   const session = service.createSession(
-    { ...tokens!, refreshToken: undefined } as any,
+    {
+      accessToken: tokens!.accessToken,
+      idToken: tokens!.idToken,
+      expiresIn: tokens!.expiresIn,
+      tokenType: tokens!.tokenType,
+      expiresAt: tokens!.expiresAt,
+    } as any,
     userInfo!,
   );
 

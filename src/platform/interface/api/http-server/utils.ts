@@ -218,3 +218,53 @@ export function buildTextResponse(text: string): ApiResponsePayload {
     body: text,
   };
 }
+
+/**
+ * Normalizes route segments by stripping the leading "v1" prefix if present.
+ * This allows handlers to match both /resource and /v1/resource with the same logic.
+ *
+ * @example
+ * normalizeSegments(["v1", "divisions"]) => ["divisions"]
+ * normalizeSegments(["divisions"]) => ["divisions"]
+ * normalizeSegments(["v1", "tasks", "abc123"]) => ["tasks", "abc123"]
+ */
+export function normalizeSegments(segments: string[]): string[] {
+  if (segments.length > 0 && segments[0] === "v1") {
+    return segments.slice(1);
+  }
+  return segments;
+}
+
+/**
+ * Creates a segment-based route matcher that handles both v1 and non-v1 paths.
+ * Returns the normalized segments (without v1 prefix) on match, or null on no match.
+ *
+ * @param segments - The route segments from RouteMatch
+ * @param expected - The expected segments without v1 prefix (e.g., ["tasks", ":id"])
+ * @param minLength - Minimum number of segments required (default: expected.length)
+ * @param maxLength - Maximum number of segments allowed (default: expected.length)
+ * @returns The normalized segments (without v1) on match, or null if no match
+ */
+export function matchNormalizedSegments(
+  segments: string[],
+  expected: string[],
+  minLength?: number,
+  maxLength?: number,
+): string[] | null {
+  const normalized = normalizeSegments(segments);
+  const min = minLength ?? expected.length;
+  const max = maxLength ?? expected.length;
+  if (normalized.length < min || normalized.length > max) {
+    return null;
+  }
+  for (let i = 0; i < expected.length; i++) {
+    if (expected[i].startsWith(":")) {
+      // This is a parameter placeholder, skip validation
+      continue;
+    }
+    if (normalized[i] !== expected[i]) {
+      return null;
+    }
+  }
+  return normalized;
+}

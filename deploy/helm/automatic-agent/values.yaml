@@ -27,8 +27,9 @@ ingress:
   enabled: false
   className: nginx
   annotations: {}
+  domain: localhost
   hosts:
-    - host: automatic-agent.local
+    - host: {{ .Values.ingress.domain | default "localhost" }}
       paths:
         - path: /
           pathType: Prefix

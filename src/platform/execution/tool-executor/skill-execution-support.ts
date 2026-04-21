@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -229,7 +229,7 @@ export interface SkillExecutionServiceOptions {
   /** Maximum number of cache entries to keep (default: 100) */
   cacheMaxEntries?: number;
   /** Custom function to resolve git HEAD (default: runs git rev-parse HEAD) */
-  gitHeadResolver?: (workingDirectory: string) => string | null;
+  gitHeadResolver?: (workingDirectory: string) => Promise<string | null> | string | null;
   /** Model metadata registry for profile resolution */
   modelMetadataRegistry?: ModelMetadataRegistry;
   /** Custom tool metadata resolver (default: uses built-in metadata) */
@@ -365,16 +365,23 @@ export function normalizeWorkingDirectory(workingDirectory: string | null | unde
  * Default implementation of git HEAD resolver.
  * Runs `git rev-parse HEAD` in the working directory.
  */
-export function defaultGitHeadResolver(workingDirectory: string): string | null {
-  const result = spawnSync("git", ["rev-parse", "HEAD"], {
+export async function defaultGitHeadResolver(workingDirectory: string): Promise<string | null> {
+  const child = spawn("git", ["rev-parse", "HEAD"], {
     cwd: workingDirectory,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
+    stdio: ["ignore", "pipe", "ignore"] as const,
   });
-  if (result.status !== 0) {
+  const stdout = await new Promise<string>((resolve) => {
+    let data = "";
+    child.stdout?.on("data", (chunk) => { data += chunk; });
+    child.stdout?.on("end", () => resolve(data));
+  });
+  const exitCode = await new Promise<number>((resolve) => {
+    child.on("close", (code) => resolve(code ?? 1));
+  });
+  if (exitCode !== 0) {
     return null;
   }
-  const gitHead = result.stdout.trim();
+  const gitHead = stdout.trim();
   return gitHead.length === 0 ? null : gitHead;
 }
 

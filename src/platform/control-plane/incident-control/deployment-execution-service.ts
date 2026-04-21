@@ -14,7 +14,7 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
@@ -153,28 +153,40 @@ export interface DeploymentCommandRequest {
  * Allows mocking or alternative command execution strategies.
  */
 export interface DeploymentCommandRunner {
-  run(request: DeploymentCommandRequest): DeploymentCommandResult;
+  run(request: DeploymentCommandRequest): Promise<DeploymentCommandResult>;
 }
 
 /**
- * Default command runner that executes commands locally via spawnSync.
+ * Default command runner that executes commands locally via spawn.
  */
 class LocalDeploymentCommandRunner implements DeploymentCommandRunner {
-  public run(request: DeploymentCommandRequest): DeploymentCommandResult {
+  public async run(request: DeploymentCommandRequest): Promise<DeploymentCommandResult> {
     const startedAt = Date.now();
-    const result = spawnSync(request.command, request.args, {
+    const child = spawn(request.command, request.args, {
       cwd: request.cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"] as const,
+    });
+    const stdout = await new Promise<string>((resolve) => {
+      let data = "";
+      child.stdout?.on("data", (chunk) => { data += chunk; });
+      child.stdout?.on("end", () => resolve(data));
+    });
+    const stderr = await new Promise<string>((resolve) => {
+      let data = "";
+      child.stderr?.on("data", (chunk) => { data += chunk; });
+      child.stderr?.on("end", () => resolve(data));
+    });
+    const exitCode = await new Promise<number>((resolve) => {
+      child.on("close", (code) => resolve(code ?? 1));
     });
     return {
       step: request.step,
       command: request.command,
       args: [...request.args],
       executed: true,
-      exitCode: result.status ?? 1,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? "",
+      exitCode,
+      stdout,
+      stderr,
       durationMs: Date.now() - startedAt,
     };
   }
@@ -377,7 +389,7 @@ export class DeploymentExecutionService {
         }
 
         // Execute publish workflow
-        const publishResult = this.commandRunner.run({
+        const publishResult = await this.commandRunner.run({
           step: "publish",
           command: "gh",
           args: publishArgs,
@@ -426,7 +438,7 @@ export class DeploymentExecutionService {
         }
 
         // Execute deploy workflow
-        const deployResult = this.commandRunner.run({
+        const deployResult = await this.commandRunner.run({
           step: "deploy",
           command: "gh",
           args: deployArgs,
