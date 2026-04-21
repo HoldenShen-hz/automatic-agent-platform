@@ -66,9 +66,26 @@ export interface ExperimentScheduleInput {
   maxDurationMs: number;
 }
 
+export interface GameDayScheduleInput {
+  name: string;
+  scheduledAt: string;
+  experiments: readonly ExperimentScheduleInput[];
+}
+
+export interface ChaosGameDay {
+  gameDayId: string;
+  name: string;
+  scheduledAt: string;
+  experimentIds: readonly string[];
+  status: "scheduled" | "running" | "completed" | "violated";
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
 export class ChaosExperimentScheduler {
   private readonly experiments = new Map<string, ChaosExperiment>();
   private readonly steadyStateCache = new Map<string, number>();
+  private readonly gameDays = new Map<string, ChaosGameDay>();
 
   public scheduleExperiment(input: ExperimentScheduleInput): ChaosExperiment {
     const experiment: ChaosExperiment = {
@@ -180,5 +197,57 @@ export class ChaosExperimentScheduler {
     experiment.status = "cancelled";
     experiment.completedAt = nowIso();
     return true;
+  }
+
+  public scheduleGameDay(input: GameDayScheduleInput): ChaosGameDay {
+    const experimentIds = input.experiments.map((experiment) => this.scheduleExperiment(experiment).experimentId);
+    const gameDay: ChaosGameDay = {
+      gameDayId: newId("gameday"),
+      name: input.name,
+      scheduledAt: input.scheduledAt,
+      experimentIds,
+      status: "scheduled",
+      startedAt: null,
+      completedAt: null,
+    };
+    this.gameDays.set(gameDay.gameDayId, gameDay);
+    return gameDay;
+  }
+
+  public startGameDay(gameDayId: string): boolean {
+    const gameDay = this.gameDays.get(gameDayId);
+    if (!gameDay || gameDay.status !== "scheduled") {
+      return false;
+    }
+    for (const experimentId of gameDay.experimentIds) {
+      this.startExperiment(experimentId);
+    }
+    gameDay.status = "running";
+    gameDay.startedAt = nowIso();
+    return true;
+  }
+
+  public refreshGameDayStatus(gameDayId: string): ChaosGameDay | null {
+    const gameDay = this.gameDays.get(gameDayId);
+    if (!gameDay) {
+      return null;
+    }
+    const experiments = gameDay.experimentIds
+      .map((experimentId) => this.experiments.get(experimentId))
+      .filter((item): item is ChaosExperiment => item != null);
+    if (experiments.some((item) => item.status === "violated")) {
+      gameDay.status = "violated";
+      gameDay.completedAt = nowIso();
+      return gameDay;
+    }
+    if (experiments.length > 0 && experiments.every((item) => item.status === "completed")) {
+      gameDay.status = "completed";
+      gameDay.completedAt = nowIso();
+    }
+    return gameDay;
+  }
+
+  public getGameDay(gameDayId: string): ChaosGameDay | null {
+    return this.gameDays.get(gameDayId) ?? null;
   }
 }

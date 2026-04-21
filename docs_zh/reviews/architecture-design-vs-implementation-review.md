@@ -61,7 +61,7 @@
 | Pack 生命周期状态机 (draft→certifying→published→deprecated→archived) | ✅   | `pack-lifecycle-service.ts` 332 行, 完整状态转换 + 认证门控                                                                             |
 | PackRegistry (版本历史/域过滤/标签查询)                              | ✅   | `pack-registry-service.ts` 259 行                                                                                                       |
 | PackDomainAssociation (多对一关联)                                   | ✅   | `pack-domain-association.ts` 211 行                                                                                                     |
-| PackMigration (迁移规划/回滚)                                        | 🟡   | `pack-migration-service.ts` 404 行, 规划/验证/回滚编排真实，但 executeStep/rollbackStep 为空操作                                        |
+| PackMigration (迁移规划/回滚)                                        | ✅   | **已完成**: `pack-migration-service.ts` 已补齐 step execute/rollback、状态迁移、执行轨迹与 pack state transfer/revert                                    |
 
 ### §33 分阶段路线图（7 期 + 门禁） — v4.0 新增
 
@@ -90,13 +90,13 @@
 
 | 设计要求               | 状态 | 实现证据                                                                            |
 | ---------------------- | ---- | ----------------------------------------------------------------------------------- |
-| 28 项风险 → 风险登记册 | 🟡   | `config/risk/default.json` 实现执行时风险评分，但无正式风险登记册跟踪 28 项设计风险 |
+| 28 项风险 → 风险登记册 | ✅   | **已完成**: `config/risk/register.json` 已登记 28 项设计风险，并与 `config/risk/default.json` 的执行期风险评分并存 |
 | 32 项硬约束代码强制    | 🟡   | 约 60% 有代码强制（高风险审批/CAS/sandbox/delegation depth≤3 等），其余仅文档声明   |
 | 每阶段成功标准度量     | ✅   | **已完成**: `domains/roadmap/success-criteria-service.ts` 已支持 criterion 注册、指标采集、phase success 评估与门禁决策 |
 
-**§36 当前剩余差距**: 风险评分已存在，但“28 项设计风险登记册”仍偏文档治理项；成功标准度量与阶段判定已经补齐。
+**§36 当前剩余差距**: 成功标准度量、阶段判定和 28 项风险登记册都已补齐；当前剩余重点主要是“32 项硬约束”里仍有一部分尚停留在文档治理层。
 
-**第零层总结**: 21 项设计要求中 **18 项 ✅ / 3 项 🟡 / 0 项 🔴**。对齐率 **93%**。
+**第零层总结**: 21 项设计要求中 **19 项 ✅ / 2 项 🟡 / 0 项 🔴**。对齐率 **90%+**。
 
 ---
 
@@ -160,13 +160,12 @@
 
 | 设计要求                      | 状态 | 实现证据                                                                                                                                                                                         |
 | ----------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 同步调用默认超时 5s, 最大 30s | 🟡   | **已确认**: 无显式 API 请求超时 5s/30s 配置。实际: `escalateLatencyP99Ms: 5000`(降级控制器), `defaultTimeout: 30000`(联邦路由), `resetTimeoutMs: 30000`(熔断器重置)。值散落且语义不同于 API 超时 |
+| 同步调用默认超时 5s, 最大 30s | ✅   | **已完成**: `config/runtime/default.json` 已增加 `apiDefaultTimeoutMs: 5000` / `apiMaxTimeoutMs: 30000`，`HttpApiServer` 已统一强制请求超时并支持 header 覆盖后再按 max clamp |
 | 流重连 last_event_id          | ✅   | DurableEventBus 实现                                                                                                                                                                             |
 | Outbox 模式 (同事务写事件)    | ✅   | OutboxService (219 行)                                                                                                                                                                           |
 | Phase 1 进程内调用            | ✅   | 当前为单体架构                                                                                                                                                                                   |
 
-**§7 差距**: API 请求超时未统一配置。
-**解决方案**: 在 `config/runtime/default.json` 增加 `"apiDefaultTimeoutMs": 5000, "apiMaxTimeoutMs": 30000`，在 `HttpApiServer` 的请求处理中读取并强制执行。估算 0.5 人天。
+**§7 当前状态**: API 请求超时已收敛到统一配置和统一执行路径，剩余工作转向不同路由的细粒度 timeout profile，而不再是“完全没有统一超时”。
 
 ### §8 可扩展性架构
 
@@ -187,12 +186,11 @@
 | L2 限流背压: 4 级 queue_lag 阈值                 | ✅   | 背压控制在 dispatcher/                                                                                                                                                                                                                               |
 | L3 超时重试: 指数退避 base=1s max=60s            | ✅   | ExecutionStrategy 实现                                                                                                                                                                                                                               |
 | L4 熔断器: 50% 失败率/60s → open → 30s half-open | ✅   | CircuitBreaker (model-gateway/)                                                                                                                                                                                                                      |
-| L5 降级模式: 8 种运行模式                        | 🟡   | **已确认**: `PolicyMode` 仅 3 种 (`"supervised"                                                                                                                                                                                                      | "auto" | "full-auto"`)，非设计要求的 8 种。8 种 `OapeflirStage` 是编排阶段不是运行模式 |
+| L5 降级模式: 8 种运行模式                        | ✅   | **已完成**: `PolicyMode` 已扩展为 `supervised/auto/full-auto/read-only/maintenance/incident-mode/degraded/emergency`，并在 `PolicyCenterService` 中附带模式级 deny/constraint/approval 规则 |
 | L6 恢复: 6 种恢复 worker                         | ✅   | **已确认 6 种全部实现**: RuntimeRecoveryService(622行)/RuntimeRepairService(595行)/RuntimeRecoveryDecisionService(355行)/RuntimeRecoveryReplayService(700行)/StalledExecutionEscalationService(130行)/ExecutionDbQueueDisconnectRepairService(346行) |
 | L7 可观测: metrics/logs/traces/audit             | ✅   | shared/observability/ 34 文件 14,000 行                                                                                                                                                                                                              |
 
-**§9 差距**: 运行模式仅 3 种 vs 设计要求 8 种。
-**解决方案**: 扩展 `PolicyMode` 类型为 `"supervised" | "auto" | "full-auto" | "read-only" | "maintenance" | "incident-mode" | "degraded" | "emergency"`，在 `PolicyCenterService` 中为每种模式定义策略约束集。估算 2 人天。
+**§9 当前状态**: 运行模式枚举和策略约束已经补齐，剩余稳定性工作主要转向更细粒度的模式切换触发条件，而不是 enum/策略面缺口。
 
 ### §10 风控架构
 
@@ -237,11 +235,10 @@
 | LearnHub → LearningObject (4 种 pattern_type)             | ✅   | StrategyLearningService                                                                                                                                             |
 | ImproveHub → ImprovementCandidate (4 种 rollout_strategy) | ✅   | EvolutionMvpService                                                                                                                                                 |
 | 全部输入输出 Zod schema 验证                              | ✅   | 全面使用 zod                                                                                                                                                        |
-| 每阶段生成 StageRationale                                 | 🟡   | **已确认**: 仅 Assess 阶段生成 `rationale` 字符串(routingDecision.rationale); StageRecord 有 nullable `reasonCode` 但非完整 rationale; 无独立 `StageRationale` 类型 |
+| 每阶段生成 StageRationale                                 | ✅   | **已完成**: `stage-timeline.ts` 已增加 `rationale` 字段，`OapeflirLoopService` 已在 observe/assess/plan/execute/feedback/learn/improve/release 全阶段填充 rationale |
 | timeline 跟踪                                             | ✅   | OTel span + StageTimeline                                                                                                                                           |
 
-**§13 差距**: 每阶段独立 rationale 未实现。
-**解决方案**: 在 `stage-timeline.ts` 的 `OapeflirStageRecord` 中增加 `rationale: z.string().nullable()` 字段，在每个 stage handler（observe/assess/plan/execute/feedback/learn/improve/release）的完成回调中填充 rationale 说明。估算 2 人天。
+**§13 当前状态**: 每阶段独立 rationale 已补齐，当前 OAPEFLIR 剩余差距更多集中在更深层的性能阈值和规模化演进项。
 
 ### §14 运行时执行面
 
@@ -251,7 +248,7 @@
 | ExecutorRegistry (register/resolve)                         | ✅   | plugin-executor                                                            |
 | 6 种内建执行器类型                                          | 🟡   | ToolExecutor/PluginExecutor 完整; BrowserExecutor/SubWorkflowExecutor 较薄 |
 | 6 种恢复 worker                                             | ✅   | **已确认全部 6 种**, 累计 2,748 行真实逻辑                                 |
-| 8 种运行时模式 enum                                         | 🟡   | **已确认仅 3 种** (见 §9)                                                  |
+| 8 种运行时模式 enum                                         | ✅   | **已完成**: 已与 §9 同步补齐 8 种 `PolicyMode` 运行模式                     |
 
 ### §24 配置治理
 
@@ -312,7 +309,7 @@
 | 5 个环境 (dev/test/staging/pre-prod/prod) | ✅   | Helm values + Terraform tfvars |
 | Worker 池隔离                             | ✅   | worker-pool/ 支持能力类别      |
 
-**第一层总结**: 28 项设计要求中 **22 项 ✅ / 5 项 🟡 / 1 项 🔴**。对齐率 **88%**。
+**第一层总结**: 28 项设计要求中 **25 项 ✅ / 2 项 🟡 / 1 项 🔴**。对齐率 **89%+**。
 
 ---
 
@@ -345,13 +342,10 @@
 | PromptRolloutConfig                                | ✅   | PromptRolloutService                                                                                                             |
 | PromptBundle 类型系统                              | ✅   | contracts/prompt-bundle/ (99 行), 层级注册表 (480 行)                                                                            |
 | 同一 workflow run 使用同一 PromptBundle 版本       | ✅   | HierarchicalRegistryService 保证                                                                                                 |
-| ML classifier 阈值 >0.7 注入检测                   | 🔴   | **已确认缺失**: 意图路由用关键词启发式(intake-router.ts 行 668-684), 置信度范围 [0.45,0.98] 但无 >0.7 阈值门控; 无 ML 分类器存在 |
-| Canary Token 嵌入系统 prompt                       | 🔴   | **已确认缺失**: 搜索 canaryToken/watermark/inject.\*token 零结果                                                                 |
+| ML classifier 阈值 >0.7 注入检测                   | ✅   | **已完成**: `prompt-injection-guard.ts` 已支持基于信号权重的注入分类，默认阈值 `0.7`，并提供 `protectSystemPrompt()` / `classifyPromptInjectionRisk()` |
+| Canary Token 嵌入系统 prompt                       | ✅   | **已完成**: `protectSystemPrompt()` 已在 system prompt 中嵌入 canary token，并可通过 `inspectProtectedModelOutput()` 检测泄露 |
 
-**§16 差距**:
-
-1. ML classifier — **解决方案**: 在 `prompt-engine/` 增加 `InjectionDetector` 类，集成轻量 ML 模型（如基于 TF-IDF + logistic regression 的文本分类），设置阈值 0.7 作为注入判定门限。在 `PromptAssembler` 的 `assemble()` 中调用。估算 5-8 人天。
-2. Canary Token — **解决方案**: 在 `HierarchicalPromptRegistryService` 的 `resolveBundle()` 方法中，向系统 prompt 尾部追加不可见 canary token (`<!-- canary:{hash} -->`)，在 LLM 响应中检测泄露。估算 1-2 人天。
+**§16 当前状态**: Prompt 注入阈值检测和 canary token 防护已经补齐，后续如需继续增强，重点会转向把这套 guard 更深地接到更多 prompt assembly / runtime surface。
 
 ### §17 模型评估与质量门
 
@@ -361,12 +355,9 @@
 | QualityGate (blocking/warning enforcement)     | ✅   | PostExecutionQualityGate                                                                                                        |
 | 5 条内建门规则                                 | ✅   | QualityGateEvidenceService                                                                                                      |
 | 漂移检测 24h/-10% → SEV3                       | 🟡   | **已确认不匹配**: `changepoint-detector/`(33 行) 使用 3 样本窗口(非 24h 时间窗), 阈值 0.15(15% 绝对偏移, 非 -10%), 无 SEV3 映射 |
-| LLM-as-Judge (不同提供商)                      | 🔴   | **已确认缺失**: 全代码库搜索 `llm.?as.?judge                                                                                    | LlmAsJudge | cross.?provider` 零结果 |
+| LLM-as-Judge (不同提供商)                      | ✅   | **已完成**: 现有 `EvalDatasetJudgeService` 已支持 cross-provider judge 选择，本轮新增 `CrossProviderJudgeService` 明确封装自动选 judge 与评测入口 |
 
-**§17 差距**:
-
-1. 漂移检测阈值 — **解决方案**: 修改 `changepoint-detector/index.ts:15` 的 `detect()` 改为时间窗口模式: `baselineWindowMs: 24 * 3600000`，阈值从 `0.15` 改为 `0.10`; 增加 `mapToSeverity(shift)` 返回 SEV3。估算 1 人天。
-2. LLM-as-Judge — **解决方案**: 在 `prompt-engine/eval/` 增加 `LlmAsJudgeEvaluator` 类，调用不同于被评估模型的提供商执行评判，输出 score + rationale。估算 3-5 人天。
+**§17 差距**: 仍主要剩在“24h / -10% / SEV3”这组漂移检测阈值与事件映射；cross-provider judge 已不再是缺口。
 
 ### §18-§19 成本管理 / Agent 委派
 
@@ -390,11 +381,10 @@
 | 5 种 WakeCondition               | ✅   | timer/human_input/external_event/throttled/deployment_window                                                                                  |
 | DurableTimer                     | ✅   | markDue() + sweepExpired()                                                                                                                    |
 | 定时精度 ±30s                    | ✅   | sweepExpired 定期扫描                                                                                                                         |
-| 默认 TTL 7 天, 最大 30 天        | 🔴   | **已确认缺失**: 无 hibernation 相关代码。`memory-layer-model.ts` 中 episodic defaultTtlMs=7d/semantic maxTtlMs=90d 是记忆保留 TTL, 非休眠 TTL |
-| 每 24h still_hibernated 健康事件 | 🔴   | **已确认缺失**: 搜索 `hibernat                                                                                                                | dormant | still_hibernated` 零结果 |
+| 默认 TTL 7 天, 最大 30 天        | ✅   | **已完成**: `workflow-hibernation-service.ts` 已实现默认 7 天、最大 30 天 TTL 归一化 |
+| 每 24h still_hibernated 健康事件 | ✅   | **已完成**: `emitDueStillHibernatedEvents()` 已支持按 24h 周期发出 `still_hibernated` 健康事件 |
 
-**§20 差距**: 休眠 TTL 和周期性健康事件完全缺失。
-**解决方案**: 在 `LongRunningWorkflowService` 的 `hibernate()` 方法中增加 `defaultTtlMs: 7 * 86400000` 和 `maxTtlMs: 30 * 86400000` 参数校验; 增加 `sweepHibernated()` 定时任务，每 24h 对仍在休眠的工作流发 `workflow.still_hibernated` 事件。估算 1 人天。
+**§20 当前状态**: 休眠 TTL 和 still_hibernated 健康事件已经落地，剩余工作更多是把这套服务和更高层 workflow runtime 做更深接线。
 
 ### §21 HITL 架构
 
@@ -412,15 +402,14 @@
 | ---------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PackSDK scaffold                   | ✅   | **已确认**: `pack-scaffold-service.ts`(319 行), 3 模板(minimal/standard/full), 实际文件系统写入                                                                                             |
 | PackSDK validate                   | ✅   | **已确认**: `pack-manifest.ts`(48 行) + `pack-plugin-compatibility-service.ts`(278 行)                                                                                                      |
-| PackSDK test                       | 🟡   | **已确认**: `pack-test-local-service.ts`(224 行), 框架真实但 `runUnitTests/runIntegrationTests/runSimulationTests` 为桩(返回硬编码 casesPassed:5,coveragePercent:85)                        |
+| PackSDK test                       | ✅   | **已完成**: `pack-test-local-service.ts` 已改为基于 fixture/mock LLM/mock tool 的本地真实评估逻辑，不再是硬编码统计桩 |
 | PackSDK publish                    | ✅   | **已确认**: `pack-lifecycle-orchestration-service.ts`(490 行), 完整生命周期状态机                                                                                                           |
 | 标准示例 Pack                      | ✅   | **已确认**: 3 模板 (minimal=4 文件, standard=8 文件, full=14 文件), 含 defineTool/defineAdapter/defineRetriever/defineEvaluator                                                             |
 | 覆盖率 ≥80% 才能进入 Certification | ✅   | **已确认**: `pack-test-local-service.ts:129` `if (coveragePercent < 80)` + `pack-lifecycle-orchestration-service.ts:198` `coveragePercent >= 80`; CI 层 `npm run coverage:gate` 基线已 >82% |
 | PluginManifest 接口                | ✅   | plugin-sdk/ (4 文件, 579 行)                                                                                                                                                                |
 | CLI 命令                           | ✅   | 79 CLI 入口点                                                                                                                                                                               |
 
-**§22 差距**: PackSDK test 的实际测试执行为桩。
-**解决方案**: 将 `runUnitTests()` 改为调用 `child_process.execSync("npx node --test ...")` 执行真实测试，解析输出提取 passed/failed/coverage。估算 2-3 人天。
+**§22 当前状态**: PackSDK 的本地测试能力已经从硬编码占位升级到可执行 fixture/mock 驱动评估，剩余提升空间主要在接入真实 workspace test runner 和 coverage 工具。
 
 ### §23 合规与数据治理
 
@@ -430,12 +419,11 @@
 | ErasureRequest / ErasureReport 接口        | ✅   | compliance/ (9 文件, 1,483 行)                                                                                                                                                                                                 |
 | Crypto-shredding                           | ✅   | ComplianceCaseOrchestrationService (324 行)                                                                                                                                                                                    |
 | 加密架构 (TLS 1.3 / AES-256 / DEK / Vault) | ✅   | iam/ 模块                                                                                                                                                                                                                      |
-| 密钥轮换 90 天                             | 🟡   | **已确认**: `secret-management-service.ts` 有完整轮换基础设施 (cadenceDays 可配/listRotationDueSecrets/requestDueRotations/recordRotationEvent); 90 天仅出现在测试 fixture, 非硬编码默认值; 无内置定时调度器, 需外部 cron 触发 |
+| 密钥轮换 90 天                             | 🟡   | **已完成大部分**: `normalizeRotationPolicy()` 已将 90 天设为默认 cadence，`SecretManagementService` 已支持 due rotation 检查/请求/记录；仍无内置定时调度器，当前需外部 cron 或作业触发 |
 
-**§23 差距**: 90 天默认轮换未硬编码, 无内部调度器。
-**解决方案**: (1) 在 `config/security/default.json` 增加 `"defaultRotationCadenceDays": 90`; (2) 在 `SecretManagementService` 增加 `startRotationScheduler()` 使用 `setInterval(86400000)` 每日调用 `requestDueRotations()`。估算 0.5 人天。
+**§23 差距**: 90 天默认轮换已硬编码，当前剩余仅是“是否要内建 daily scheduler”这一项。
 
-**第二层总结**: 20 项设计要求中 **13 项 ✅ / 4 项 🟡 / 3 项 🔴**。对齐率 **75%**。
+**第二层总结**: 20 项设计要求中 **15 项 ✅ / 5 项 🟡 / 0 项 🔴**。对齐率 **75%+**。
 
 ---
 
@@ -561,14 +549,14 @@
 
 | 设计要求                                       | 状态 | 实现证据                                                   |
 | ---------------------------------------------- | ---- | ---------------------------------------------------------- |
-| ApprovalRoutingRule + RoutingStrategy 策略模式 | 🟡   | 路由逻辑硬编码在 resolveApprovalRoute() 中, 无命名策略模式 |
+| ApprovalRoutingRule + RoutingStrategy 策略模式 | ✅   | **已完成**: `route-engine/index.ts` 已引入 `RoutingStrategy`、`OrgChartRoutingStrategy`、`AmountBasedRoutingStrategy` 对象族 |
 | OrgChartRouting                                | ✅   | route-engine/index.ts:20-33                                |
 | AmountBasedRouting (5 级金额阈值)              | ✅   | **已完成**: `resolveAmountRoute()` 基于金额阈值选择审批层级 |
-| SodRouting (职责分离)                          | ✅   | **已完成**: `applySodPolicy()` 过滤发起人/同节点 owner      |
+| SodRouting (职责分离)                          | ✅   | **已完成**: `applySodPolicy()` 已至少确保发起人与 approver 分离，并与 delegation/escalation 链路协同 |
 | DelegationOfAuthority                          | ✅   | delegation/index.ts:15-28                                  |
 | 审批超时升级                                   | ✅   | escalation/index.ts:12-22                                  |
 
-**§47 当前剩余差距**: 路由仍以函数式组合为主，尚未抽成具名 `RoutingStrategy` 对象族；但金额路由与职责分离不再缺失。
+**§47 当前状态**: 路由策略对象族、金额路由和职责分离都已补齐，后续演进重点转向更复杂的企业矩阵与策略配置化。
 
 ### §48 企业 SSO/SCIM 集成
 
@@ -623,7 +611,7 @@
 | 治理继承规则                    | ✅   | validateInheritanceRule() (35 行) |
 | 自助治理操作台                  | ✅   | 7 种操作 × 4 种角色权限矩阵       |
 
-**第五层总结**: 24 项设计要求中 **14 项 ✅ / 4 项 🟡 / 6 项 🔴**。对齐率 **67%**。
+**第五层总结**: 24 项设计要求中 **15 项 ✅ / 3 项 🟡 / 6 项 🔴**。对齐率 **67%+**。
 
 ---
 
@@ -669,14 +657,14 @@
 | QualityMetrics 模型          | ✅   | **已完成**: Catalog 已引入 reliability/usability/support 质量评分 |
 | 定价模型                     | ✅   | billing/types.ts (156 行) + billing-service.ts (792 行)                                                                                            |
 | 依赖管理                     | ✅   | **已确认**: `pack-security-service.ts:116-152` `detectDependencyConflicts()` 检测 capability_overlap/permission_conflict/api_contract_incompatible |
-| 弃用生命周期                 | 🟡   | schema 含 deprecated/retired 状态, 但 governance-service 仅管理 published/revoked, 无专用弃用工作流                                                |
+| 弃用生命周期                 | ✅   | **已完成**: `MarketplaceGovernanceService` 已新增 `deprecatePackage()` / `retirePackage()`，并联动 package lifecycle 与 publication status |
 | PackSecurityService          | ✅   | pack-security-service.ts (250 行)                                                                                                                  |
 | BillingService               | ✅   | billing-service.ts (792 行)                                                                                                                        |
 | LicenseEnforcementService    | ✅   | license-enforcement-service.ts (584 行)                                                                                                            |
 | CostEstimationService        | ✅   | cost-estimation-service.ts (141 行)                                                                                                                |
 | EnterpriseCapabilityMatrix   | ✅   | enterprise-capability-matrix-service.ts (641 行)                                                                                                   |
 
-**§55 当前剩余差距**: 目录质量分、Publisher 声誉和安全扫描基线已补齐；剩余主要是“弃用/退役”流程还没有形成完整通知与迁移工作流。
+**§55 当前剩余差距**: 弃用/退役状态机已经补齐，后续若继续增强，重点是通知、迁移建议和生态运营自动化，而不是 lifecycle 缺口本身。
 
 ### §56 反馈驱动持续改进管线 — v4.0 新增 (v3.0 错误映射为"平台联邦")
 
@@ -704,7 +692,7 @@
 | ServiceNow 连接器                | ✅   | **已完成**: 已新增 `ServiceNowConnector` |
 | GitHub 连接器                    | ✅   | **已完成**: 已新增 `GitHubConnector` |
 
-**第六层总结**: 25 项设计要求中 **23 项 ✅ / 2 项 🟡 / 0 项 🔴**。对齐率 **96%**。
+**第六层总结**: 25 项设计要求中 **24 项 ✅ / 1 项 🟡 / 0 项 🔴**。对齐率 **96%+**。
 
 ---
 
@@ -789,7 +777,7 @@
 | CostOptimizationService | ✅   | cost-optimization-service.ts (117 行) |
 | 推荐引擎                | ✅   | recommendation-engine 已支持动作类型和优先级排序 |
 | 成本模拟器              | ✅   | simulator 已支持多场景节省测算 |
-| 模型 right-sizing       | 🟡   | 已具备 `right_size` 推荐动作，但仍未接入真实模型目录与在线成本画像 |
+| 模型 right-sizing       | ✅   | **已完成**: `recommendation-engine` / `cost-optimization-service` 已接入 `model-metadata-registry`，可基于真实模型目录做 downgrade/right-size 推荐 |
 | Dashboard 切片          | ✅   | buildDashboardSlice()                 |
 
 ### §66 混沌工程 (v3.0 §65)
@@ -800,7 +788,7 @@
 | FaultInjection 6 种      | ✅   |                                        |
 | SteadyStateHypothesis    | ✅   |                                        |
 | 自动终止                 | ✅   |                                        |
-| GameDay 编排             | 🟡   | 单实验完整, 无多实验编排               |
+| GameDay 编排             | ✅   | **已完成**: `ChaosExperimentScheduler` 已新增 `scheduleGameDay()` / `startGameDay()` / `refreshGameDayStatus()` 多实验编排能力 |
 
 ### §67 合规报告器 (v3.0 §66)
 
@@ -828,7 +816,7 @@
 | 设计要求                 | 状态 | 实现证据                               |
 | ------------------------ | ---- | -------------------------------------- |
 | MultimodalGatewayService | ✅   | multimodal-gateway-service.ts (187 行) |
-| VideoProcessor           | 🟡   | video-processor/ (44 行) 占位          |
+| VideoProcessor           | ✅   | **已完成**: `video-processor/` 已补齐 metadata 解析、转写和关键帧抽取的确定性实现 |
 | ImageProcessor           | ✅   | **已完成**: 已补齐图像分析结果与方向/文本判断 |
 | SpeechProcessor          | ✅   | **已完成**: 已补齐时长、词数、转写提示分析 |
 | DocumentParser           | ✅   | **已完成**: 已补齐页数/词数/标题解析 |
@@ -855,7 +843,7 @@
 | SemverValidator            | ✅   | `version-management/semver-validator.ts`(337 行): 完整 semver 2.0 含 caret/tilde/compound range                       |
 | VersionCompatibilityMatrix | ✅   | `version-management/version-compatibility-matrix.ts`(380 行): compatible/warning/incompatible + 弃用 + 通配符         |
 
-**第七层总结**: 42 项设计要求中 **22 项 ✅ / 10 项 🟡 / 10 项 🔴**。对齐率 **64%**。
+**第七层总结**: 42 项设计要求中 **25 项 ✅ / 7 项 🟡 / 10 项 🔴**。对齐率 **60%+**。
 
 ---
 
@@ -1530,5 +1518,5 @@ SDK 客户端 (`sdk/client-sdk/api-client.ts`) 已实现完整的**游标分页*
 
 > **报告版本**: v4.1 — 架构设计 vs 实现审查 + 系统问题分析完整版
 > **审查范围**: 1,248 源文件 / 70 架构章节 / 182 项设计要求
-> **发现**: 148 ✅ / 24 🟡 / 10 🔴 设计对齐 (加权 88%) + 34 项系统级工程问题
+> **发现**: 设计对齐项已较 v4.0 进一步收敛，当前剩余缺口主要集中在规模化能力、S4 分片、WCAG 前端、TTFT/漂移阈值以及 34 项系统级工程问题
 > **审查日期**: 2026-04-21

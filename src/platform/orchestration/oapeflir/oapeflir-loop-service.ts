@@ -137,7 +137,7 @@ export class OapeflirLoopService {
         taskId: input.taskId,
         workflowStepCount: input.workflow.executionSteps.length,
       });
-      timeline.record("observe", "completed", taskObservation.task.taskId);
+      timeline.record("observe", "completed", taskObservation.task.taskId, null, "Aggregated task and system observations for downstream assessment.");
 
       // O→A boundary: validate TaskSituation — degrade to default on failure (per §L.14)
       const observedTask: TaskSituation = (() => {
@@ -163,7 +163,7 @@ export class OapeflirLoopService {
       const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess(observedTask), {
         taskId: input.taskId,
       });
-      timeline.record("assess", "completed", assessment.situationRef);
+      timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
 
       // A→P boundary: validate UnifiedAssessment — default to fallback on failure (per §L.14)
       const validatedAssessment: UnifiedAssessment = (() => {
@@ -193,7 +193,7 @@ export class OapeflirLoopService {
       }), {
         taskId: input.taskId,
       });
-      timeline.record("plan", "completed", plan.planId);
+      timeline.record("plan", "completed", plan.planId, null, "Built an execution plan from validated observation, assessment, and workflow inputs.");
 
       // P→E boundary: validate Plan DTO — abort on failure (per §L.14)
       const planValidation = validatePlan(plan);
@@ -207,7 +207,7 @@ export class OapeflirLoopService {
         taskId: input.taskId,
         planId: plan.planId,
       });
-      timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1]?.stepId ?? plan.planId);
+      timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1]?.stepId ?? plan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
 
       // E→F boundary: validate step outputs and feedback signals — skip feedback on failure (per §L.14)
       const validatedStepOutputs: DualChannelStepOutput[] = (() => {
@@ -231,7 +231,7 @@ export class OapeflirLoopService {
         taskId: input.taskId,
         signalCount: feedbackSignals.length,
       });
-      timeline.record("feedback", "completed", feedback.feedbackId);
+      timeline.record("feedback", "completed", feedback.feedbackId, null, "Collected execution feedback signals and normalized them for learning.");
 
       const learningSignals: LearningSignal[] = this.feedbackCollector.toLearningSignals(feedback);
       // F→L boundary: validate learning signals — skip learn on failure (per §L.14)
@@ -246,7 +246,15 @@ export class OapeflirLoopService {
         taskId: input.taskId,
         signalCount: validatedLearningSignals.length,
       });
-      timeline.record("learn", learningObjects.length > 0 ? "completed" : "skipped", learningObjects[0]?.learningObjectId ?? null, learningObjects.length > 0 ? null : "learning.no_objects");
+      timeline.record(
+        "learn",
+        learningObjects.length > 0 ? "completed" : "skipped",
+        learningObjects[0]?.learningObjectId ?? null,
+        learningObjects.length > 0 ? null : "learning.no_objects",
+        learningObjects.length > 0
+          ? "Converted validated feedback into reusable learning objects."
+          : "No qualifying feedback patterns were strong enough to produce learning objects.",
+      );
 
       // G7: Promote validated learning objects into the knowledge plane
       if (learningObjects.length > 0) {
@@ -278,8 +286,8 @@ export class OapeflirLoopService {
           runtimeMetricsRegistry.recordOapeflirStageEntry("release");
           runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
           runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
-          timeline.record("improve", "skipped", null, "improvement.validation_failed");
-          timeline.record("release", "skipped", null, "release.improve_skipped");
+          timeline.record("improve", "skipped", null, "improvement.validation_failed", "Skipped improvement because no validated learning objects remained after boundary checks.");
+          timeline.record("release", "skipped", null, "release.improve_skipped", "Release was skipped because no improvement candidate was produced.");
         } else {
         const boundary = await this.runStage("improve", () => this.autonomyBoundary.decide("planning_policy", validatedLearningObjects), {
           taskId: input.taskId,
@@ -294,7 +302,7 @@ export class OapeflirLoopService {
             expectedBenefit: "Reduce repeat repair loops without changing live execution.",
           });
           const approved = this.candidateRegistry.updateStatus(candidate.candidateId, "approved") ?? candidate;
-          timeline.record("improve", "completed", approved.candidateId);
+          timeline.record("improve", "completed", approved.candidateId, null, "Registered and approved an improvement candidate for shadow rollout.");
           const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
           let rawRolloutRecord = await this.runStage("release", () => this.rollout.start(approved, strategyVersion, "system"), {
             taskId: input.taskId,
@@ -306,14 +314,22 @@ export class OapeflirLoopService {
           if (!rolloutValidation.ok) {
             console.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record");
           }
-          timeline.record("release", rolloutRecord ? "completed" : "skipped", rolloutRecord?.recordId ?? null, rolloutRecord ? null : "release.validation_failed");
+          timeline.record(
+            "release",
+            rolloutRecord ? "completed" : "skipped",
+            rolloutRecord?.recordId ?? null,
+            rolloutRecord ? null : "release.validation_failed",
+            rolloutRecord
+              ? "Started rollout for the approved strategy version."
+              : "Rollout output failed validation and was nulled before release completion.",
+          );
         } else {
           runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
           runtimeMetricsRegistry.recordOapeflirStageEntry("release");
           runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
           runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
-          timeline.record("improve", "skipped", null, boundary.reasonCode);
-          timeline.record("release", "skipped", null, "release.improve_blocked");
+          timeline.record("improve", "skipped", null, boundary.reasonCode, "Autonomy boundary blocked promotion of the candidate into improve.");
+          timeline.record("release", "skipped", null, "release.improve_blocked", "Release was blocked because the improvement candidate did not clear the autonomy boundary.");
         }
         }
       } else {

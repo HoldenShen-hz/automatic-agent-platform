@@ -2,6 +2,8 @@
   "maxConcurrentTasks": 1,
   "defaultTaskTimeoutMs": 300000,
   "defaultStepTimeoutMs": 120000,
+  "apiDefaultTimeoutMs": 5000,
+  "apiMaxTimeoutMs": 30000,
   "maxAgentRounds": 6,
   "maxToolCalls": 8
 }

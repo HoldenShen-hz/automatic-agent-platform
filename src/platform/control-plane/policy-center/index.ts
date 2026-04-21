@@ -28,7 +28,15 @@ export type PolicyRiskCategory =
   | "strategy_affecting"
   | "governance_sensitive";
 
-export type PolicyMode = "supervised" | "auto" | "full-auto";
+export type PolicyMode =
+  | "supervised"
+  | "auto"
+  | "full-auto"
+  | "read-only"
+  | "maintenance"
+  | "incident-mode"
+  | "degraded"
+  | "emergency";
 export type OapeflirStage = "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release";
 export type PolicyDecision = "allow" | "deny" | "allow_with_constraints" | "escalate_for_approval";
 
@@ -74,6 +82,20 @@ export interface PolicyCenterOptions {
   enabledGovernanceActions?: PolicyAction[];
   approvalRequiredRiskCategories?: PolicyRiskCategory[];
 }
+
+const MUTATING_ACTIONS: readonly PolicyAction[] = [
+  "invoke_tool",
+  "write_file",
+  "exec_command",
+  "install_extension",
+  "org_change",
+  "dispatch_execution",
+  "set_isolation_level",
+  "promote_improvement",
+  "advance_rollout",
+  "modify_knowledge_trust",
+  "promote_memory_layer",
+];
 
 export class PolicyCenterService {
   private readonly options: Required<Omit<PolicyCenterOptions, "maxEstimatedCostUsd" | "budgetWarningCostUsd">> & {
@@ -157,6 +179,12 @@ export class PolicyCenterService {
   } {
     const constraints: Record<string, unknown> = {};
     const matchedRuleRefs: string[] = [];
+    const modePolicy = this.evaluateModePolicy(input);
+    if (modePolicy.denyReason != null) {
+      return modePolicy;
+    }
+    Object.assign(constraints, modePolicy.constraints);
+    matchedRuleRefs.push(...modePolicy.matchedRuleRefs);
     const estimatedCostUsd = input.estimatedCostUsd ?? 0;
     if (this.options.maxEstimatedCostUsd != null && estimatedCostUsd > this.options.maxEstimatedCostUsd) {
       return {
@@ -204,13 +232,96 @@ export class PolicyCenterService {
     return {
       constraints,
       denyReason: null,
-      requiresApproval,
+      requiresApproval: requiresApproval || modePolicy.requiresApproval,
       matchedRuleRefs: matchedRuleRefs.length === 0 ? ["constraint.none"] : matchedRuleRefs,
       explainSummary: "Constraints evaluated successfully.",
     };
   }
 
+  private evaluateModePolicy(input: PolicyDecisionRequest): {
+    constraints: Record<string, unknown>;
+    denyReason: string | null;
+    requiresApproval: boolean;
+    matchedRuleRefs: string[];
+    explainSummary: string;
+  } {
+    switch (input.mode) {
+      case "read-only":
+        if (MUTATING_ACTIONS.includes(input.action)) {
+          return {
+            constraints: { mode: input.mode, sideEffectsAllowed: false },
+            denyReason: "policy.read_only_mode_denied",
+            requiresApproval: false,
+            matchedRuleRefs: ["mode.read_only"],
+            explainSummary: "Read-only mode blocks mutating actions.",
+          };
+        }
+        return {
+          constraints: { mode: input.mode, sideEffectsAllowed: false },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.read_only"],
+          explainSummary: "Read-only mode allows only non-mutating actions.",
+        };
+      case "maintenance":
+        if (["advance_rollout", "org_change", "install_extension"].includes(input.action)) {
+          return {
+            constraints: { mode: input.mode, maintenanceWindow: true },
+            denyReason: "policy.maintenance_mode_denied",
+            requiresApproval: false,
+            matchedRuleRefs: ["mode.maintenance"],
+            explainSummary: "Maintenance mode freezes rollout and topology changes.",
+          };
+        }
+        return {
+          constraints: { mode: input.mode, maintenanceWindow: true },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.maintenance"],
+          explainSummary: "Maintenance mode constrains execution to repair-safe actions.",
+        };
+      case "incident-mode":
+        return {
+          constraints: { mode: input.mode, changeFreeze: true, evidenceLevel: "full" },
+          denyReason: null,
+          requiresApproval: input.riskCategory !== "cost_sensitive",
+          matchedRuleRefs: ["mode.incident"],
+          explainSummary: "Incident mode freezes change velocity and raises evidence requirements.",
+        };
+      case "degraded":
+        return {
+          constraints: { mode: input.mode, fallbackOnly: true, maxParallelism: 1 },
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: ["mode.degraded"],
+          explainSummary: "Degraded mode restricts execution to fallback capacity.",
+        };
+      case "emergency":
+        return {
+          constraints: { mode: input.mode, breakGlass: true, operatorAckRequired: true },
+          denyReason: null,
+          requiresApproval: input.subjectType !== "system",
+          matchedRuleRefs: ["mode.emergency"],
+          explainSummary: "Emergency mode requires operator acknowledgment for break-glass actions.",
+        };
+      default:
+        return {
+          constraints: {},
+          denyReason: null,
+          requiresApproval: false,
+          matchedRuleRefs: [],
+          explainSummary: "Standard mode policy applied.",
+        };
+    }
+  }
+
   private mustEscalate(input: PolicyDecisionRequest, constraintRequiresApproval: boolean): boolean {
+    if (input.mode === "emergency") {
+      return constraintRequiresApproval || input.subjectType !== "system";
+    }
+    if (input.mode === "incident-mode") {
+      return constraintRequiresApproval;
+    }
     if (input.mode === "full-auto" && !["governance_sensitive", "prod_affecting", "org_changing"].includes(input.riskCategory)) {
       return constraintRequiresApproval;
     }

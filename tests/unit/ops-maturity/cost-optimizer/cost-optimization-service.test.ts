@@ -125,6 +125,16 @@ test("buildCostOptimizationRecommendation uses medium risk when cost > 100", () 
   assert.equal(result.riskLevel, "medium");
 });
 
+test("buildCostOptimizationRecommendation suggests model downgrade when a cheaper peer exists", () => {
+  const result = buildCostOptimizationRecommendation("model_heavy_task", 200, {
+    modelRef: "balanced",
+  });
+  assert.ok(result != null);
+  assert.equal(result.action, "downgrade_model");
+  assert.equal(result.currentModelRef, "balanced");
+  assert.ok(typeof result.recommendedModelRef === "string");
+});
+
 test("CostOptimizationService.buildRecommendations generates recommendations for subjects with cost >= 10", () => {
   const service = new CostOptimizationService();
   service.recordCost({

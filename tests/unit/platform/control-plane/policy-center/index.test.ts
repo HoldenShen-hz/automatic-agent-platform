@@ -71,3 +71,47 @@ test("PolicyCenterService allows constrained network access for approved hosts",
   assert.equal(result.decision, "allow_with_constraints");
   assert.deepEqual(result.enforcedConstraints.allowedNetworkHosts, ["api.internal.example.com"]);
 });
+
+test("PolicyCenterService denies mutating actions in read-only mode", () => {
+  const service = new PolicyCenterService({
+    subjectRoles: { "user-1": ["developer"] },
+    allowedActionsByRole: { developer: ["write_file"] },
+  });
+
+  const result = service.evaluate({
+    decisionId: "decision-4",
+    taskId: "task-4",
+    subjectType: "user",
+    subjectId: "user-1",
+    action: "write_file",
+    resourceRef: "/workspace/src/file.ts",
+    riskCategory: "sensitive_data",
+    mode: "read-only",
+    stage: "execute",
+  });
+
+  assert.equal(result.decision, "deny");
+  assert.equal(result.reasonCode, "policy.read_only_mode_denied");
+});
+
+test("PolicyCenterService escalates emergency mode for non-system actors", () => {
+  const service = new PolicyCenterService({
+    subjectRoles: { "agent-9": ["operator"] },
+    allowedActionsByRole: { operator: ["dispatch_execution"] },
+  });
+
+  const result = service.evaluate({
+    decisionId: "decision-5",
+    taskId: "task-5",
+    subjectType: "agent",
+    subjectId: "agent-9",
+    action: "dispatch_execution",
+    riskCategory: "cost_sensitive",
+    mode: "emergency",
+    stage: "execute",
+  });
+
+  assert.equal(result.decision, "escalate_for_approval");
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.enforcedConstraints.breakGlass, true);
+});

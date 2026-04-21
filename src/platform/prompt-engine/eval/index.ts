@@ -14,3 +14,4 @@ export * from "./eval-dataset-judge-service.js";
 export * from "./types.js";
 export * from "./quality-config-loader.js";
 export * from "./quality-gate-evidence-service.js";
+export * from "./cross-provider-judge-service.js";

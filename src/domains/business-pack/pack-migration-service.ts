@@ -85,6 +85,15 @@ export interface MigrationExecutionResult {
   error: string | null;
 }
 
+export interface MigrationStepExecutionRecord {
+  readonly planId: string;
+  readonly stepId: string;
+  readonly phase: "execute" | "rollback";
+  readonly status: "completed";
+  readonly detail: string;
+  readonly occurredAt: string;
+}
+
 // ============================================================================
 // Migration Service
 // ============================================================================
@@ -102,6 +111,9 @@ export class PackMigrationService {
   private readonly plans = new Map<string, MigrationPlan>();
   private readonly executedSteps = new Map<string, string[]>();
   private readonly rollbackHistory = new Map<string, boolean>();
+  private readonly packStates = new Map<string, Record<string, unknown>>();
+  private readonly exportedSnapshots = new Map<string, Record<string, unknown>>();
+  private readonly executionTrace = new Map<string, MigrationStepExecutionRecord[]>();
 
   /**
    * Creates a migration plan from one pack to another.
@@ -348,6 +360,19 @@ export class PackMigrationService {
     return this.rollbackHistory.get(planId) ?? false;
   }
 
+  public seedPackState(packId: string, state: Record<string, unknown>): void {
+    this.packStates.set(packId, { ...state });
+  }
+
+  public getPackState(packId: string): Record<string, unknown> | null {
+    const record = this.packStates.get(packId);
+    return record == null ? null : { ...record };
+  }
+
+  public listExecutionTrace(planId: string): MigrationStepExecutionRecord[] {
+    return [...(this.executionTrace.get(planId) ?? [])];
+  }
+
   private generateMigrationSteps(fromPackId: string, toPackId: string): readonly MigrationPlanStep[] {
     // Generate default migration steps
     return [
@@ -383,16 +408,95 @@ export class PackMigrationService {
     const steps = this.executedSteps.get(planId) ?? [];
     steps.push(step.stepId);
     this.executedSteps.set(planId, steps);
-
-    // In a real implementation, this would execute the step
-    // For now, we just simulate execution
+    const plan = this.requirePlan(planId);
+    const detail = this.applyStep(plan, step);
+    this.appendTrace(planId, {
+      planId,
+      stepId: step.stepId,
+      phase: "execute",
+      status: "completed",
+      detail,
+      occurredAt: nowIso(),
+    });
     await Promise.resolve();
   }
 
   private async rollbackStep(planId: string, stepId: string): Promise<void> {
-    // In a real implementation, this would rollback the step
-    // For now, we just simulate rollback
+    const plan = this.requirePlan(planId);
+    const detail = this.revertStep(plan, stepId);
+    this.appendTrace(planId, {
+      planId,
+      stepId,
+      phase: "rollback",
+      status: "completed",
+      detail,
+      occurredAt: nowIso(),
+    });
     await Promise.resolve();
+  }
+
+  private requirePlan(planId: string): MigrationPlan {
+    const plan = this.plans.get(planId);
+    if (plan == null) {
+      throw this.validationError("pack_migration.plan_not_found", `Migration plan ${planId} not found.`);
+    }
+    return plan;
+  }
+
+  private applyStep(plan: MigrationPlan, step: MigrationPlanStep): string {
+    if (step.stepId.endsWith("_export_state")) {
+      const snapshot = { ...(this.packStates.get(plan.fromPackId) ?? { packId: plan.fromPackId, exportedAt: nowIso() }) };
+      this.exportedSnapshots.set(plan.planId, snapshot);
+      return `exported_state:${plan.fromPackId}`;
+    }
+    if (step.stepId.endsWith("_validate_target")) {
+      const target = this.packStates.get(plan.toPackId);
+      if (target?.["migrationLocked"] === true) {
+        throw this.validationError("pack_migration.target_locked", `Target pack ${plan.toPackId} is locked for migration.`);
+      }
+      return `validated_target:${plan.toPackId}`;
+    }
+    if (step.stepId.endsWith("_transfer")) {
+      const snapshot = this.exportedSnapshots.get(plan.planId) ?? { sourcePackId: plan.fromPackId };
+      this.packStates.set(plan.toPackId, {
+        ...snapshot,
+        migratedFromPackId: plan.fromPackId,
+        migratedByPlanId: plan.planId,
+      });
+      return `transferred_state:${plan.fromPackId}->${plan.toPackId}`;
+    }
+    if (step.stepId.endsWith("_verify")) {
+      const target = this.packStates.get(plan.toPackId);
+      if (target == null) {
+        throw this.validationError("pack_migration.target_missing", `Target pack ${plan.toPackId} has no migrated state.`);
+      }
+      return `verified_target:${plan.toPackId}`;
+    }
+    return `executed_step:${step.stepId}`;
+  }
+
+  private revertStep(plan: MigrationPlan, stepId: string): string {
+    if (stepId.endsWith("_verify")) {
+      return `reverted_verification:${plan.toPackId}`;
+    }
+    if (stepId.endsWith("_transfer")) {
+      this.packStates.delete(plan.toPackId);
+      return `reverted_transfer:${plan.toPackId}`;
+    }
+    if (stepId.endsWith("_validate_target")) {
+      return `reverted_validation:${plan.toPackId}`;
+    }
+    if (stepId.endsWith("_export_state")) {
+      this.exportedSnapshots.delete(plan.planId);
+      return `reverted_export:${plan.fromPackId}`;
+    }
+    return `reverted_step:${stepId}`;
+  }
+
+  private appendTrace(planId: string, record: MigrationStepExecutionRecord): void {
+    const trace = this.executionTrace.get(planId) ?? [];
+    trace.push(record);
+    this.executionTrace.set(planId, trace);
   }
 
   private validationError(code: string, message: string): ValidationError {

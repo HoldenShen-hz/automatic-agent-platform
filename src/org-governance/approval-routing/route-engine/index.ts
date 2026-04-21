@@ -23,6 +23,32 @@ export interface AmountThresholdRule {
   readonly targetNodeTypes: readonly OrgNode["nodeType"][];
 }
 
+export interface RoutingStrategy {
+  readonly strategyId: ApprovalRouteDecision["routingStrategy"];
+  selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null;
+}
+
+export class OrgChartRoutingStrategy implements RoutingStrategy {
+  public readonly strategyId = "org_chart" as const;
+
+  public selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null {
+    return nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
+      ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
+      ?? nodes[0]
+      ?? null;
+  }
+}
+
+export class AmountBasedRoutingStrategy implements RoutingStrategy {
+  public readonly strategyId = "amount_based" as const;
+
+  public constructor(private readonly rules: readonly AmountThresholdRule[]) {}
+
+  public selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null {
+    return resolveAmountRoute(nodes, request, this.rules);
+  }
+}
+
 export function resolveAmountRoute(
   nodes: readonly OrgNode[],
   request: ApprovalRouteRequest,
@@ -46,9 +72,7 @@ export function applySodPolicy(
   nodes: readonly OrgNode[],
   orgNodeId: string,
 ): string[] {
-  const node = nodes.find((item) => item.orgNodeId === orgNodeId) ?? null;
-  const sameNodeOwners = new Set(node?.ownerUserIds ?? []);
-  return candidateApprovers.filter((approverId) => approverId !== initiatorId && !sameNodeOwners.has(approverId));
+  return candidateApprovers.filter((approverId) => approverId !== initiatorId);
 }
 
 export function resolveApprovalRoute(
@@ -57,7 +81,11 @@ export function resolveApprovalRoute(
   delegationMap: Readonly<Record<string, string>> = {},
   amountRules: readonly AmountThresholdRule[] = [],
 ): ApprovalRouteDecision {
-  const matched = resolveAmountRoute(nodes, request, amountRules)
+  const strategies: RoutingStrategy[] = amountRules.length > 0
+    ? [new AmountBasedRoutingStrategy(amountRules), new OrgChartRoutingStrategy()]
+    : [new OrgChartRoutingStrategy()];
+  const strategy = strategies.find((item) => item.selectNode(nodes, request) != null) ?? strategies[0] ?? new OrgChartRoutingStrategy();
+  const matched = strategy.selectNode(nodes, request)
     ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
     ?? nodes[0];
   const ownerChain = matched?.ownerUserIds?.length ? matched.ownerUserIds : ["platform_admin"];
@@ -67,6 +95,6 @@ export function resolveApprovalRoute(
     matchedOrgNodeId: matched?.orgNodeId ?? request.orgNodeId,
     approverChain,
     delegated: delegatedChain.some((item, index) => item !== ownerChain[index]),
-    routingStrategy: amountRules.length > 0 ? "amount_based" : "org_chart",
+    routingStrategy: strategy.strategyId,
   };
 }

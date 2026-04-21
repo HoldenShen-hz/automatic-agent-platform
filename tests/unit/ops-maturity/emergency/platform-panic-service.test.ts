@@ -189,9 +189,12 @@ test("PlatformPanicService.resume succeeds with valid plan", () => {
   const originalDirectiveId = activation.directive.directiveId;
   const plan = {
     scope: "platform",
-    approvedBy: "operator-1",
+    approvedBy: ["operator-1", "operator-2"],
     checkpointsVerified: true,
-  } as any;
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+  };
 
   const receipt = service.resume("platform", plan);
 
@@ -235,9 +238,12 @@ test("PlatformPanicService.getResumeReceipt returns receipt after resume", () =>
   service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
   const plan = {
     scope: "platform",
-    approvedBy: "operator-1",
+    approvedBy: ["operator-1", "operator-2"],
     checkpointsVerified: true,
-  } as any;
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+  };
   service.resume("platform", plan);
 
   const receipt = service.getResumeReceipt("platform");

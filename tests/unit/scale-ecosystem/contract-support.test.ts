@@ -83,7 +83,11 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
   );
   assert.deepEqual(
     resolveRegionFailover({ primaryHealthy: false, candidateRegionIds: ["us-west-2"] }),
-    { shouldFailover: true, targetRegionId: "us-west-2" },
+    {
+      shouldFailover: true,
+      targetRegionId: "us-west-2",
+      rationale: "multi_region.primary_unhealthy",
+    },
   );
   assert.equal(
     selectPreferredRegion([

@@ -146,6 +146,20 @@ export interface RevokeExtensionInput {
   revokedAt?: string;
 }
 
+export interface DeprecateExtensionInput {
+  packageId: string;
+  tenantId?: string | null;
+  reasonCode: string;
+  deprecatedAt?: string;
+}
+
+export interface RetireExtensionInput {
+  packageId: string;
+  tenantId?: string | null;
+  reasonCode: string;
+  retiredAt?: string;
+}
+
 /** Entry in the marketplace catalog */
 export interface MarketplaceCatalogEntry {
   packageId: string;
@@ -593,6 +607,52 @@ export class MarketplaceGovernanceService {
     return updated;
   }
 
+  public deprecatePackage(input: DeprecateExtensionInput): ExtensionPackageRecord {
+    const packageRecord = this.requirePackage(input.packageId, input.tenantId);
+    const deprecatedAt = input.deprecatedAt == null ? nowIso() : assertTimestamp(input.deprecatedAt, "marketplace.invalid_deprecated_at");
+    const updatedPackage: ExtensionPackageRecord = {
+      ...packageRecord,
+      lifecycleState: "deprecated",
+      updatedAt: deprecatedAt,
+    };
+    this.store.marketplace.upsertExtensionPackage(updatedPackage);
+
+    const publication = this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined);
+    if (publication != null) {
+      this.store.marketplace.upsertMarketplacePublication({
+        ...publication,
+        status: "deprecated",
+        revocationReasonCode: assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_deprecation_reason"),
+        updatedAt: deprecatedAt,
+      });
+    }
+    return updatedPackage;
+  }
+
+  public retirePackage(input: RetireExtensionInput): ExtensionPackageRecord {
+    const packageRecord = this.requirePackage(input.packageId, input.tenantId);
+    const retiredAt = input.retiredAt == null ? nowIso() : assertTimestamp(input.retiredAt, "marketplace.invalid_retired_at");
+    const updatedPackage: ExtensionPackageRecord = {
+      ...packageRecord,
+      lifecycleState: "retired",
+      updatedAt: retiredAt,
+    };
+    this.store.marketplace.upsertExtensionPackage(updatedPackage);
+
+    const publication = this.store.marketplace
+      .listMarketplacePublications(100, packageRecord.tenantId ?? undefined)
+      .find((item) => item.packageId === packageRecord.packageId) ?? null;
+    if (publication != null) {
+      this.store.marketplace.upsertMarketplacePublication({
+        ...publication,
+        status: "retired",
+        revocationReasonCode: assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_retirement_reason"),
+        updatedAt: retiredAt,
+      });
+    }
+    return updatedPackage;
+  }
+
   /**
    * Builds a complete marketplace governance catalog.
    *
@@ -648,8 +708,11 @@ export class MarketplaceGovernanceService {
       // Check publication status
       if (publication == null) {
         reasonCodes.push("not_published");
-      } else if (publication.status === "revoked") {
+      } else if (publication.status === "revoked" || publication.status === "deprecated" || publication.status === "retired") {
         reasonCodes.push(`revoked:${publication.revocationReasonCode ?? "unspecified"}`);
+      }
+      if (record.lifecycleState === "deprecated" || record.lifecycleState === "retired") {
+        reasonCodes.push(`lifecycle_${record.lifecycleState}`);
       }
 
       return {
@@ -677,7 +740,7 @@ export class MarketplaceGovernanceService {
     const summary = entries.reduce<MarketplaceCatalogSummary>(
       (aggregate, entry) => {
         aggregate.total += 1;
-        if (entry.publicationStatus === "revoked") {
+        if (entry.publicationStatus === "revoked" || entry.publicationStatus === "deprecated" || entry.publicationStatus === "retired") {
           aggregate.revoked += 1;
         }
         if (entry.reasonCodes.length === 0) {
@@ -784,5 +847,20 @@ export class MarketplaceGovernanceService {
   /** Returns all governance reports, optionally filtered by tenant */
   public listReports(limit = 20, tenantId?: string | null): MarketplaceGovernanceReportRecord[] {
     return this.store.marketplace.listMarketplaceGovernanceReports(limit, tenantId);
+  }
+
+  private requirePackage(packageId: string, tenantId?: string | null): ExtensionPackageRecord {
+    const packageRecord = this.store.marketplace.getExtensionPackage(
+      assertSimpleIdentifier(packageId, "marketplace.invalid_package_id"),
+      tenantId ?? undefined,
+    );
+    if (packageRecord == null) {
+      throw new StorageError("marketplace.package_not_found", "marketplace.package_not_found", {
+        statusCode: 404,
+        retryable: false,
+        details: { packageId },
+      });
+    }
+    return packageRecord;
   }
 }

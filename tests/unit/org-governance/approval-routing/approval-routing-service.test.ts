@@ -152,7 +152,7 @@ describe("ApprovalRoutingService", () => {
       assert.equal(result.auditRecord.recordId.includes("audit_user-1_dept-1"), true);
       assert.equal(result.auditRecord.action, "approval.route");
       assert.equal(result.auditRecord.actorId, "user-1");
-      assert.deepStrictEqual(result.auditRecord.reasonCodes, ["approval.direct_route"]);
+      assert.deepStrictEqual(result.auditRecord.reasonCodes, ["approval.direct_route", "approval.routing.org_chart"]);
     });
 
     it("should route to first matching org node when request orgNodeId not found", () => {

@@ -317,3 +317,44 @@ test("ChaosExperimentScheduler.cancelExperiment returns false for completed", ()
   const result = scheduler.cancelExperiment(experiment.experimentId);
   assert.equal(result, false);
 });
+
+test("ChaosExperimentScheduler schedules and completes a multi-experiment game day", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const gameDay = scheduler.scheduleGameDay({
+    name: "weekly-stability-gameday",
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    experiments: [
+      {
+        name: "latency",
+        description: "inject latency",
+        target: { targetKind: "service", targetId: "svc-a", labels: {} },
+        fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+        steadyStateHypotheses: [{ name: "latency_ok", metricName: "latency", tolerance: 200, operator: "lt" }],
+        scheduledAt: "2026-04-20T00:00:00.000Z",
+        maxDurationMs: 5000,
+      },
+      {
+        name: "error-rate",
+        description: "inject errors",
+        target: { targetKind: "service", targetId: "svc-b", labels: {} },
+        fault: { faultType: "error", intensity: 1, durationMs: 1000, parameters: {} },
+        steadyStateHypotheses: [{ name: "error_ok", metricName: "error_rate", tolerance: 0.05, operator: "lt" }],
+        scheduledAt: "2026-04-20T00:00:00.000Z",
+        maxDurationMs: 5000,
+      },
+    ],
+  });
+
+  assert.equal(scheduler.startGameDay(gameDay.gameDayId), true);
+  const started = scheduler.getGameDay(gameDay.gameDayId);
+  assert.equal(started?.status, "running");
+
+  for (const experimentId of started?.experimentIds ?? []) {
+    const experiment = scheduler.getExperiment(experimentId)!;
+    const hypothesis = experiment.steadyStateHypotheses[0]!;
+    scheduler.recordSteadyStateResult(experimentId, hypothesis.name, 0, true, "steady state preserved");
+  }
+
+  const refreshed = scheduler.refreshGameDayStatus(gameDay.gameDayId);
+  assert.equal(refreshed?.status, "completed");
+});

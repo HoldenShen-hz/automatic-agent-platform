@@ -101,6 +101,10 @@ export interface HttpApiServerOptions {
   enableWebSocket?: boolean;
   /** CORS configuration for browser/API callers */
   cors?: Partial<CorsConfig> | null;
+  /** Default synchronous API timeout in milliseconds */
+  apiDefaultTimeoutMs?: number;
+  /** Maximum allowed synchronous API timeout in milliseconds */
+  apiMaxTimeoutMs?: number;
 }
 
 export interface StartServerOptions {
@@ -143,6 +147,8 @@ export class HttpApiServer {
   private readonly tenantRegistryService: TenantBoundaryRegistryService;
   private readonly adminConfigService: AdminConfigService;
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
+  private readonly apiDefaultTimeoutMs: number;
+  private readonly apiMaxTimeoutMs: number;
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -154,6 +160,8 @@ export class HttpApiServer {
     this.tenantRegistryService = options.tenantRegistryService ?? new TenantBoundaryRegistryService();
     this.adminConfigService = options.adminConfigService ?? new AdminConfigService();
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
+    this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
+    this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
     const corsConfigInput: Partial<CorsConfig> = {
       allowedOrigins: options.cors?.allowedOrigins ?? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"]),
     };
@@ -392,7 +400,10 @@ export class HttpApiServer {
         }
 
         const ctx: RouteContext = { request, route, requestId, principal };
-        const resolved = await this.resolveRouteResponse(route, request, ctx);
+        const resolved = await this.withRequestTimeout(
+          request,
+          this.resolveRouteResponse(route, request, ctx),
+        );
         if (resolved == null) {
           return this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
@@ -428,6 +439,33 @@ export class HttpApiServer {
       }
     }
     return null;
+  }
+
+  private async withRequestTimeout<T>(
+    request: ApiRequestLike,
+    operation: Promise<T>,
+  ): Promise<T> {
+    const timeoutMs = this.resolveRequestTimeoutMs(request);
+    return await new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new ApiError(504, "api.request_timeout", `Request exceeded ${timeoutMs} ms timeout.`));
+      }, timeoutMs);
+      void operation.then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      }, (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+    });
+  }
+
+  private resolveRequestTimeoutMs(request: ApiRequestLike): number {
+    const requested = Number.parseInt(request.headers["x-aa-timeout-ms"] ?? "", 10);
+    if (!Number.isFinite(requested) || requested <= 0) {
+      return this.apiDefaultTimeoutMs;
+    }
+    return Math.min(Math.trunc(requested), this.apiMaxTimeoutMs);
   }
 
   private handleError(error: unknown, requestId: string, request: ApiRequestLike): ApiResponsePayload {
@@ -610,4 +648,11 @@ export class HttpApiServer {
     const route = parseUrl(url ?? "/", true);
     exporter.recordHttpRequest(method, route.pathname ?? "/", statusCode, durationMs);
   }
+}
+
+function normalizeApiTimeout(value: number | undefined, fallback: number, max: number): number {
+  if (!Number.isFinite(value) || value == null || value <= 0) {
+    return fallback;
+  }
+  return Math.min(Math.trunc(value), max);
 }

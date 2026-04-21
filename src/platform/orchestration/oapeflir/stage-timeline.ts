@@ -10,6 +10,7 @@ export const OapeflirStageRecordSchema = z.object({
   completedAt: z.number().int().nonnegative(),
   refId: z.string().nullable().default(null),
   reasonCode: z.string().nullable().default(null),
+  rationale: z.string().nullable().default(null),
 });
 
 export type OapeflirStage = z.infer<typeof OapeflirStageSchema>;
@@ -20,7 +21,13 @@ export class OapeflirStageTimelineBuilder {
   private readonly entries: OapeflirStageRecord[] = [];
   private tick = Date.now();
 
-  public record(stage: OapeflirStage, status: OapeflirStageStatus, refId?: string | null, reasonCode?: string | null): OapeflirStageRecord {
+  public record(
+    stage: OapeflirStage,
+    status: OapeflirStageStatus,
+    refId?: string | null,
+    reasonCode?: string | null,
+    rationale?: string | null,
+  ): OapeflirStageRecord {
     const startedAt = this.tick;
     this.tick += 1;
     const completedAt = this.tick;
@@ -32,6 +39,7 @@ export class OapeflirStageTimelineBuilder {
       completedAt,
       refId: refId ?? null,
       reasonCode: reasonCode ?? null,
+      rationale: rationale ?? null,
     });
     this.entries.push(record);
     return record;

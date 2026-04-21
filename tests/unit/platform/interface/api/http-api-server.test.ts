@@ -1799,3 +1799,34 @@ test("GET /prometheus returns prometheus metrics when exporter configured", asyn
     await server.stop();
   }
 });
+
+test("HttpApiServer enforces request timeout budget", async () => {
+  const { server } = createTestServer({
+    apiDefaultTimeoutMs: 5,
+    apiMaxTimeoutMs: 30,
+  });
+  (server as unknown as { routeTable: Array<{ method: string; pathname: string; handler: () => Promise<{ statusCode: number; headers: Record<string, string>; body: string }> }> }).routeTable.unshift({
+    method: "GET",
+    pathname: "/timeout-test",
+    handler: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return {
+        statusCode: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ok: true }),
+      };
+    },
+  });
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/timeout-test",
+    });
+
+    assert.equal(response.statusCode, 504);
+    assert.equal(response.json<{ error: { code: string } }>().error.code, "api.request_timeout");
+  } finally {
+    await server.stop();
+  }
+});

@@ -33,8 +33,8 @@ test("OapeflirStageTimelineBuilder records status correctly", () => {
 test("OapeflirStageTimelineBuilder captures refId when provided", () => {
   const builder = new OapeflirStageTimelineBuilder();
 
-  builder.record("plan", "completed", "plan_abc123", null);
-  builder.record("execute", "completed", "exec_def456", "exec.success");
+  builder.record("plan", "completed", "plan_abc123", null, "planned task execution");
+  builder.record("execute", "completed", "exec_def456", "exec.success", "executed all steps");
 
   const timeline = builder.build();
   assert.equal(timeline[0]!.refId, "plan_abc123");
@@ -59,6 +59,15 @@ test("OapeflirStageTimelineBuilder defaults refId and reasonCode to null when om
   const record = builder.build()[0]!;
   assert.equal(record.refId, null);
   assert.equal(record.reasonCode, null);
+  assert.equal(record.rationale, null);
+});
+
+test("OapeflirStageTimelineBuilder captures rationale when provided", () => {
+  const builder = new OapeflirStageTimelineBuilder();
+  builder.record("assess", "completed", "assessment_1", null, "classified task as moderate risk");
+
+  const record = builder.build()[0]!;
+  assert.equal(record.rationale, "classified task as moderate risk");
 });
 
 test("OapeflirStageTimelineBuilder increments timestamps for each stage", () => {

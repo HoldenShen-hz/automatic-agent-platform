@@ -94,7 +94,7 @@ test("PackScaffoldService.scaffold validates pack ID format", () => {
       riskLevel: "low",
     };
 
-    assert.throws(() => service.scaffold(config), /pack_id/i);
+    assert.throws(() => service.scaffold(config), /Pack ID/i);
   } finally {
     process.chdir(originalCwd);
     rmSync(tmpDir, { recursive: true, force: true });
@@ -112,7 +112,7 @@ test("PackScaffoldService.scaffold validates empty pack ID", () => {
       owner: "test@example.com",
       riskLevel: "low",
     }),
-    /pack_id/i,
+    /Pack ID/i,
   );
 });
 
@@ -137,6 +137,24 @@ test("PackTestLocalService.test runs unit tests and returns report", async () =>
 
 test("PackTestLocalService.test runs integration tests with mock LLM", async () => {
   const service = new PackTestLocalService();
+  service.configureMockLlm({
+    responses: [{ content: "integration ok" }],
+  });
+  service.loadFixtures({
+    "integration:test-pack:1": {
+      mode: "integration",
+      packId: "test-pack",
+      caseId: "integration_case",
+      passed: true,
+      requiredToolIds: ["tool-1"],
+    },
+  });
+  service.addMockToolResult({
+    toolId: "tool-1",
+    success: true,
+    output: { ok: true },
+    durationMs: 5,
+  });
   const options: TestOptions = {
     packId: "test-pack",
     version: "1.0.0",
@@ -147,10 +165,20 @@ test("PackTestLocalService.test runs integration tests with mock LLM", async () 
 
   const report = await service.test(options);
   assert.equal(report.mode, "integration");
+  assert.equal(report.casesFailed, 0);
 });
 
 test("PackTestLocalService.test runs simulation tests with eval dataset", async () => {
   const service = new PackTestLocalService();
+  service.loadFixtures({
+    "simulation:test-pack:1": {
+      mode: "simulation",
+      packId: "test-pack",
+      caseId: "simulation_case",
+      passed: true,
+      requiresEvalDataset: true,
+    },
+  });
   const options: TestOptions = {
     packId: "test-pack",
     version: "1.0.0",
@@ -163,6 +191,7 @@ test("PackTestLocalService.test runs simulation tests with eval dataset", async 
   const report = await service.test(options);
   assert.equal(report.mode, "simulation");
   assert.ok(report.artifacts.length > 0);
+  assert.equal(report.casesFailed, 0);
 });
 
 test("PackTestLocalService.validateTestOptions rejects invalid mode", async () => {
@@ -177,7 +206,7 @@ test("PackTestLocalService.validateTestOptions rejects invalid mode", async () =
 
   await assert.rejects(
     () => service.test(options as any),
-    /invalid_mode/i,
+    /Mode must be one of/i,
   );
 });
 
@@ -202,4 +231,28 @@ test("PackTestLocalService.addMockToolResult registers mock tool", () => {
     durationMs: 10,
   });
   // No error means success
+});
+
+test("PackTestLocalService uses fixture failures to drive report output", async () => {
+  const service = new PackTestLocalService();
+  service.loadFixtures({
+    "unit:test-pack:1": {
+      mode: "unit",
+      packId: "test-pack",
+      caseId: "failing_case",
+      passed: false,
+      coverageWeight: 2,
+    },
+  });
+
+  const report = await service.test({
+    packId: "test-pack",
+    version: "1.0.0",
+    mode: "unit",
+    mockLlm: false,
+    recordArtifacts: false,
+  });
+
+  assert.equal(report.casesFailed, 1);
+  assert.equal(report.passed, false);
 });

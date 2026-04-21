@@ -64,14 +64,14 @@ test("toJson returns null for undefined", () => {
   assert.equal(toJson(undefined), null);
 });
 
-test("normalizeRotationPolicy returns defaults when fields are null", () => {
+test("normalizeRotationPolicy returns 90-day cadence default when cadence is null", () => {
   const input: SecretRotationPolicy = {
     cadenceDays: null,
     ttlMinutes: null,
     breakGlass: false,
   };
   const result = normalizeRotationPolicy(input);
-  assert.equal(result.cadenceDays, null);
+  assert.equal(result.cadenceDays, 90);
   assert.equal(result.ttlMinutes, null);
   assert.equal(result.breakGlass, false);
 });
@@ -136,14 +136,18 @@ test("normalizeRotationPolicy sets breakGlass to true when explicitly true", () 
   assert.equal(result.breakGlass, true);
 });
 
-test("computeNextRotationDueAt returns null when no cadence", () => {
+test("computeNextRotationDueAt uses 90-day default cadence when normalized policy omits cadence", () => {
   const policy: SecretRotationPolicy = {
-    cadenceDays: null,
+    cadenceDays: normalizeRotationPolicy({
+      cadenceDays: null,
+      ttlMinutes: null,
+      breakGlass: false,
+    }).cadenceDays,
     ttlMinutes: null,
     breakGlass: false,
   };
-  const result = computeNextRotationDueAt(null, policy);
-  assert.equal(result, null);
+  const result = computeNextRotationDueAt("2026-01-01T00:00:00.000Z", policy);
+  assert.equal(result, "2026-04-01T00:00:00.000Z");
 });
 
 test("computeNextRotationDueAt calculates future date from null anchor", () => {

@@ -121,16 +121,40 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(simulateCostOptimization(100, 20), 80);
 
   assert.equal(buildOfflineExecutionRecord("edge_1", "task_1", "2026-04-20T00:00:00.000Z").syncRequired, true);
-  assert.deepEqual(buildEdgeExecutionPlan(["a", "b"]), ["a", "b"]);
+  assert.deepEqual(buildEdgeExecutionPlan(["a", "b"]), {
+    orderedTaskIds: ["a", "b"],
+    syncRequired: true,
+    priority: "normal",
+  });
   assert.equal(
     selectEdgeLocalModel([{ modelId: "local-vision", modalities: ["image", "text"] }], "image")?.modelId,
     "local-vision",
   );
   assert.equal(orderEdgeSyncQueue([{ envelopeId: "a", priority: 1 }, { envelopeId: "b", priority: 3 }])[0]?.envelopeId, "b");
 
-  assert.equal(buildForensicSnapshot({ snapshotId: "snap_1", scope: "platform", collectedAt: "2026-04-20T00:00:00.000Z", artifactIds: ["art_1"] }).artifactIds.length, 1);
+  assert.equal(
+    buildForensicSnapshot({
+      snapshotId: "snap_1",
+      scope: "platform",
+      collectedAt: "2026-04-20T00:00:00.000Z",
+      artifactIds: ["art_1"],
+      configurationRefs: ["cfg_1"],
+      logRefs: ["log_1"],
+    }).artifactIds.length,
+    1,
+  );
   assert.equal(shouldEnterPanicMode({ scope: "platform", reasonCode: "security.compromise", activeIncidents: 0 }), true);
-  assert.equal(canResumeFromPanic({ scope: "platform", approvedBy: "sre", checkpointsVerified: true }), true);
+  assert.equal(
+    canResumeFromPanic({
+      scope: "platform",
+      approvedBy: ["sre", "security"],
+      checkpointsVerified: true,
+      forensicSnapshotReviewed: true,
+      rollbackPlanReady: true,
+      validationRunPassed: true,
+    }),
+    true,
+  );
 
   assert.deepEqual(
     buildCausalChainSummary([{ source: "observe", target: "execute", rationale: "incident threshold exceeded" }]),

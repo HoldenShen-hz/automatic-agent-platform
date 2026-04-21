@@ -394,7 +394,7 @@ export function toJson(value: Record<string, unknown> | null | undefined): strin
  * Normalizes a rotation policy with validation.
  */
 export function normalizeRotationPolicy(input: SecretRotationPolicy): SecretRotationPolicy {
-  const cadenceDays = input.cadenceDays == null ? null : Math.max(1, Math.trunc(input.cadenceDays));
+  const cadenceDays = input.cadenceDays == null ? 90 : Math.max(1, Math.trunc(input.cadenceDays));
   const ttlMinutes = input.ttlMinutes == null ? null : Math.max(1, Math.trunc(input.ttlMinutes));
   return {
     cadenceDays,

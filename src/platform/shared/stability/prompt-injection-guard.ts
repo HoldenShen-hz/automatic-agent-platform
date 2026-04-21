@@ -7,6 +7,18 @@ export interface PromptInjectionClassification {
   readonly matchedSignals: readonly string[];
 }
 
+export interface PromptProtectionPlan {
+  readonly classification: PromptInjectionClassification;
+  readonly guardedPrompt: string;
+  readonly canaryToken: string;
+  readonly allowExecution: boolean;
+}
+
+export interface PromptProtectionInspection {
+  readonly leaked: boolean;
+  readonly leakedToken: string | null;
+}
+
 const SIGNAL_PATTERNS: readonly { signal: string; pattern: RegExp; weight: number }[] = [
   { signal: "instruction_override", pattern: /ignore (all|previous|prior) instructions/i, weight: 0.35 },
   { signal: "system_prompt_exfiltration", pattern: /system prompt|developer message|hidden prompt/i, weight: 0.25 },
@@ -40,4 +52,28 @@ export function embedCanaryToken(prompt: string, scope: string): CanaryTokenResu
 
 export function detectCanaryTokenLeakage(output: string, token: string): boolean {
   return output.includes(token);
+}
+
+export function protectSystemPrompt(input: {
+  systemPrompt: string;
+  userInput: string;
+  scope: string;
+  threshold?: number;
+}): PromptProtectionPlan {
+  const classification = classifyPromptInjectionRisk(input.userInput, input.threshold ?? 0.7);
+  const embedded = embedCanaryToken(input.systemPrompt, input.scope);
+  return {
+    classification,
+    guardedPrompt: embedded.prompt,
+    canaryToken: embedded.token,
+    allowExecution: !classification.blocked,
+  };
+}
+
+export function inspectProtectedModelOutput(output: string, token: string): PromptProtectionInspection {
+  const leaked = detectCanaryTokenLeakage(output, token);
+  return {
+    leaked,
+    leakedToken: leaked ? token : null,
+  };
 }

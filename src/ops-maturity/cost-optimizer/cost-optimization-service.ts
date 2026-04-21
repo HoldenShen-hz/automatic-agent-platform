@@ -65,7 +65,9 @@ export class CostOptimizationService {
 
   public buildRecommendations(subjectType?: CostSubjectType): CostOptimizationRecommendation[] {
     return Object.entries(this.aggregate(subjectType))
-      .map(([subjectId, cost]) => buildCostOptimizationRecommendation(subjectId, cost))
+      .map(([subjectId, cost]) => buildCostOptimizationRecommendation(subjectId, cost, {
+        modelRef: this.resolveRepresentativeModelRef(subjectId),
+      }))
       .filter((item): item is CostOptimizationRecommendation => item != null)
       .map((item) => ({
         ...item,
@@ -113,5 +115,10 @@ export class CostOptimizationService {
       return baseRisk === "low" ? "medium" : baseRisk;
     }
     return baseRisk;
+  }
+
+  private resolveRepresentativeModelRef(subjectId: string): string | undefined {
+    const modelRecord = this.records.find((item) => item.subjectId === subjectId && typeof item.modelRef === "string" && item.modelRef.length > 0);
+    return modelRecord?.modelRef;
   }
 }

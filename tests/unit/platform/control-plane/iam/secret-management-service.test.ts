@@ -72,6 +72,7 @@ test("secret management service registers secrets, resolves them with usage audi
   }
 });
 
+
 test("secret management service records rotation events and advances registry version metadata", () => {
   const harness = createHarness("aa-secret-rotation-unit-");
   try {
