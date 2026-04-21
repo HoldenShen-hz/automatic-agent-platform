@@ -97,8 +97,8 @@ test("SlaOperationsService.evaluate detects latency breach", () => {
   const decision = service.evaluate(request);
 
   assert.ok(decision.breachRecords.length > 0);
-  assert.ok(decision.breachRecords[0].breachCodes.includes("sla.latency_breach"));
-  assert.equal(decision.breachRecords[0].severity, "warning");
+  assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.latency_breach"));
+  assert.equal(decision.breachRecords[0]!.severity, "warning");
 });
 
 test("SlaOperationsService.evaluate detects success rate breach", () => {
@@ -118,8 +118,8 @@ test("SlaOperationsService.evaluate detects success rate breach", () => {
   const decision = service.evaluate(request);
 
   assert.ok(decision.breachRecords.length > 0);
-  assert.ok(decision.breachRecords[0].breachCodes.includes("sla.success_rate_breach"));
-  assert.equal(decision.breachRecords[0].severity, "critical");
+  assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.success_rate_breach"));
+  assert.equal(decision.breachRecords[0]!.severity, "critical");
 });
 
 test("SlaOperationsService.evaluate detects queue wait breach", () => {
@@ -139,7 +139,7 @@ test("SlaOperationsService.evaluate detects queue wait breach", () => {
   const decision = service.evaluate(request);
 
   assert.ok(decision.breachRecords.length > 0);
-  assert.ok(decision.breachRecords[0].breachCodes.includes("sla.queue_wait_breach"));
+  assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.queue_wait_breach"));
 });
 
 test("SlaOperationsService.evaluate returns no breaches when within commitment", () => {

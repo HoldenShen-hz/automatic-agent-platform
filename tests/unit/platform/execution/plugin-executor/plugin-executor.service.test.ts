@@ -48,19 +48,12 @@ const createTestManifest = (overrides: Partial<PluginManifest> = {}): PluginMani
 });
 
 const createTestHooks = (overrides: Partial<PluginLifecycleHooks> = {}): PluginLifecycleHooks => ({
-  pluginId: "test-plugin",
-  domainId: "test-domain",
-  capabilityIds: ["test-capability"],
-  bindingId: null,
-  config: {},
   initialize: async () => {},
   onLoad: async () => {},
   onActivate: async () => {},
   onDeactivate: async () => {},
   onUnload: async () => {},
   healthCheck: () => true,
-  retriever: async () => [{ knowledgeRef: "test-ref", snippet: "test snippet" }],
-  validator: async () => ({ valid: true, errors: [], suggestions: [] }),
   ...overrides,
 });
 
@@ -171,11 +164,7 @@ test("PluginExecutorService.execute() runs plugin action and returns result", as
     spiTypes: ["retriever"],
   });
 
-  const hooks = createTestHooks({
-    retriever: async ({ taskId }: { taskId: string }) => {
-      return [{ knowledgeRef: `ref-for-${taskId}`, snippet: "test result" }];
-    },
-  });
+  const hooks = createTestHooks({});
 
   service.register(manifest, hooks);
   await service.load("test-plugin");
@@ -266,10 +255,10 @@ test("PluginExecutorService.execute() handles timeout and returns error status",
   });
 
   const hooks = createTestHooks({
-    retriever: async () => {
-      // Simulate slow operation
+    healthCheck: async () => {
+      // Simulate slow health check
       await new Promise((resolve) => setTimeout(resolve, 200));
-      return [{ knowledgeRef: "slow-result", snippet: "slow" }];
+      return true;
     },
   });
 
@@ -306,9 +295,7 @@ test("PluginExecutorService.healthCheck() falls back to error count threshold", 
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
-  const hooks = createTestHooks({
-    healthCheck: undefined,
-  });
+  const hooks = createTestHooks({} as any);
 
   service.register(manifest, hooks);
 

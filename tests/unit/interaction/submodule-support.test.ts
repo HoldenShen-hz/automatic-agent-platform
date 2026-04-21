@@ -90,7 +90,7 @@ test("interaction support modules provide deterministic helper behavior", () => 
     riskSummary: { overallRisk: "low", riskFactors: [], reversible: true, sideEffects: [], approvalNeeded: false },
     decompositionConfidence: 0.9,
     requiresHumanReview: false,
-  }), []);
+  } as any), []);
 
   assert.equal(detectAmbiguity("处理一下", 0.9, 1, 0), true);
   assert.equal(parseIntentTokens("请审批这个变更")[0]?.intentType, "approval_action");

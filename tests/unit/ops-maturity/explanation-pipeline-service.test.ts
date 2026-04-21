@@ -22,9 +22,9 @@ test("ExplanationPipelineService preserves facts across depths and redacts unaut
     generatedAt: "2026-04-20T00:00:00.000Z",
   };
 
-  const brief = service.generate(request, "brief");
-  const standard = service.generate(request, "standard");
-  const audit = service.generate(request, "audit");
+  const brief = service.generate(request, "L1");
+  const standard = service.generate(request, "L2");
+  const audit = service.generate(request, "L3");
 
   assert.equal(brief.rationale.summary, standard.rationale.summary);
   assert.equal(standard.rationale.summary, audit.rationale.summary);

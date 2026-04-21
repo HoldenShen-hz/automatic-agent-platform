@@ -54,6 +54,7 @@ function createRepositoryStub(
       return [APPROVAL_RECORD];
     },
     updateApprovalDecision(): void {},
+    updateApprovalRequest(): void {},
     insertEvent(event): EventRecord {
       return {
         id: event.id,
@@ -68,7 +69,7 @@ function createRepositoryStub(
       };
     },
     ...overrides,
-  };
+  } as RuntimeLifecycleRepository;
 }
 
 test("authoritative runtime lifecycle repository delegates task status updates to the store", () => {

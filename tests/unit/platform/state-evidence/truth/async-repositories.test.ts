@@ -482,6 +482,7 @@ function usageEventRecord(overrides: Partial<UsageEventRecord> = {}): UsageEvent
     tenantId: "tenant-a",
     taskId: "task-1",
     executionId: "execution-1",
+    stepId: null,
     metricType: "tokens",
     quantity: 150,
     source: "runtime",

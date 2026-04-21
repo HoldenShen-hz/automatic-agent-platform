@@ -117,7 +117,7 @@ test("ProgressiveAutonomyService does not freeze when freezeOnIncident is false"
 
 test("ProgressiveAutonomyService calls audit callback on level change", () => {
   const service = new ProgressiveAutonomyService();
-  const capturedEvents: ReturnType<typeof service.evaluateProfile> extends Promise<infer T> ? never : T["changeEvents"] = [];
+  const capturedEvents: Array<{ eventType: string; agentId: string; capabilityId: string; fromLevel: string; toLevel: string; trigger: string; approvedBy: string; evidence: Record<string, unknown> }> = [];
 
   service.onAutonomyChange((event) => {
     capturedEvents.push(event);

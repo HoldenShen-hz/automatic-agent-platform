@@ -68,7 +68,7 @@ test("byExceptionType has all required exception types", () => {
 
   for (const type of requiredTypes) {
     assert.ok(
-      config.recoveryStrategyTable.byExceptionType[type],
+      (config.recoveryStrategyTable.byExceptionType as Record<string, unknown>)[type],
       `Missing strategy for ${type}`,
     );
   }

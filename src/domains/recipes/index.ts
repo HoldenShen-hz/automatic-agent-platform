@@ -3,6 +3,8 @@ import { z } from "zod";
 export const DomainRecipeSchema = z.object({
   recipeId: z.string().min(1),
   domainId: z.string().min(1),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
   triggerPhrases: z.array(z.string()).default([]),
   defaultWorkflowId: z.string().min(1),
   defaultToolBundleIds: z.array(z.string()).default([]),

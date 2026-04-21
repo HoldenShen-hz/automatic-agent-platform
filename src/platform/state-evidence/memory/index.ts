@@ -19,3 +19,7 @@ export * from './project-memory-store.js';
 export * from './user-memory-store.js';
 export * from './memory-promotion-engine.js';
 export * from './memory-write-request.js';
+export * from './layer-transition-service.js';
+export * from './memory-decay-service.js';
+export * from './knowledge-promotion-service.js';
+export * from './trust-level-service.js';

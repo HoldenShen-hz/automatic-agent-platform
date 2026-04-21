@@ -16,14 +16,11 @@ test("integration: sdk workbench composes client, plugin, and pack manifests int
         pluginId: "approve-plugin",
         version: "1.0.0",
         owner: "owner@example.com",
-        runtime: "sandboxed",
-        entrypoint: "dist/approve.js",
-        capabilities: [
-          { name: "approve", description: "Approve actions", scopes: ["decision"] },
-          { name: "triage", description: "Triage incidents", scopes: ["read"] },
-        ],
+        spiTypes: ["retriever"],
+        publicSdkSurface: "test-sdk",
+        capabilityIds: ["approve", "triage"],
       },
-    ],
+    ] as any,
     packs: [
       {
         packId: "ops-pack",

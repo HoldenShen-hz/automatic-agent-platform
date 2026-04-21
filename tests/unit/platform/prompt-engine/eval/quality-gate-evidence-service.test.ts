@@ -53,11 +53,11 @@ function createArtifactStoreMock(calls: ArtifactWriteInput[]): ArtifactStore {
           taskId: input.taskId,
           kind: input.kind,
           storagePath: "/tmp/quality-evaluation.json",
-        },
+        } as any,
         scan: {
           redactionCount: 0,
           controlCharsRemoved: 0,
-          ansiRemoved: 0,
+          ansiRemoved: false,
           injectionRisk: "low",
           matchedInjectionRules: [],
           warnings: [],
@@ -85,6 +85,8 @@ test("QualityGateEvidenceService persists evaluation evidence to artifact store"
       qualityScore: 0.93,
       passed: true,
       reasons: ["quality_gate.passed"],
+      nextAction: "complete",
+      evaluatedAt: Date.now(),
       factorBreakdown: {
         successSignals: 4,
         failureSignals: 0,
@@ -93,11 +95,12 @@ test("QualityGateEvidenceService persists evaluation evidence to artifact store"
         failurePenalty: 0,
         partialPenalty: 0.05,
       },
-    },
+    } as any,
     {
+      accepted: true,
       releaseStage: "released",
       reasonCodes: ["release.approved"],
-    },
+    } as any,
     "exec_1",
   );
 
@@ -129,6 +132,8 @@ test("QualityGateEvidenceService returns empty artifact id when evidence persist
       qualityScore: 0.4,
       passed: false,
       reasons: ["quality_gate.failed"],
+      nextAction: "retry",
+      evaluatedAt: Date.now(),
       factorBreakdown: {
         successSignals: 1,
         failureSignals: 3,
@@ -137,11 +142,12 @@ test("QualityGateEvidenceService returns empty artifact id when evidence persist
         failurePenalty: 0.4,
         partialPenalty: 0,
       },
-    },
+    } as any,
     {
+      accepted: false,
       releaseStage: "blocked",
       reasonCodes: ["release.blocked"],
-    },
+    } as any,
   );
 
   assert.equal(artifactId, "");

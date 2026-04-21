@@ -4,7 +4,7 @@ import { collectExplanationEvidenceIds, type ExplanationEvidence } from "./evide
 import { putExplanationCacheEntry, type ExplanationCacheEntry } from "./explanation-cache/index.js";
 import { renderStageExplanation } from "./explanation-renderer/index.js";
 
-export type ExplanationDepth = "brief" | "standard" | "audit";
+export type ExplanationDepth = "L1" | "L2" | "L3";
 
 export interface ExplanationRequest {
   readonly taskId: string;
@@ -49,7 +49,7 @@ function uniqueStrings(values: readonly string[]): string[] {
 export class ExplanationPipelineService {
   private cache: Record<string, ExplanationCacheEntry> = {};
 
-  public generate(request: ExplanationRequest, depth: ExplanationDepth = "standard"): ExplanationBundle {
+  public generate(request: ExplanationRequest, depth: ExplanationDepth = "L2"): ExplanationBundle {
     const allowedCategories = new Set(request.allowedEvidenceCategories ?? request.evidence.map((item) => item.category));
     const visibleEvidence = request.evidence.filter((item) => allowedCategories.has(item.category));
     const hiddenEvidence = request.evidence.filter((item) => !allowedCategories.has(item.category));
@@ -95,7 +95,7 @@ export class ExplanationPipelineService {
     redactedEvidenceRefs: readonly string[],
   ): string {
     const base = renderStageExplanation(rationale.stage, rationale.summary, rationale.evidenceRefs);
-    if (depth === "brief") {
+    if (depth === "L1") {
       return base;
     }
 
@@ -106,7 +106,7 @@ export class ExplanationPipelineService {
       ? ` risks=${rationale.riskNotes.join("; ")}`
       : "";
 
-    if (depth === "standard") {
+    if (depth === "L2") {
       return `${base}${factors}${risks}`;
     }
 

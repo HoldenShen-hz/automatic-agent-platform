@@ -172,10 +172,11 @@ test("PackTestLocalService.validateTestOptions rejects invalid mode", async () =
     version: "1.0.0",
     mode: "invalid" as any,
     mockLlm: false,
+    recordArtifacts: false,
   };
 
   await assert.rejects(
-    () => service.test(options),
+    () => service.test(options as any),
     /invalid_mode/i,
   );
 });

@@ -22,7 +22,7 @@ test("InMemoryTenantRepository creates tenant", async () => {
     isolationMode: "shared_hard_scoped",
     deploymentMode: "private_cloud",
     billingPlan: "pro",
-    slaLevel: "professional",
+    slaLevel: "silver",
     allowedRegions: ["cn-shanghai", "us-west-1"],
     quotas: [
       { resourceType: "tokens", monthlyLimit: 1000000 },
@@ -43,7 +43,7 @@ test("InMemoryTenantRepository creates tenant", async () => {
   assert.equal(tenant.isolationMode, "shared_hard_scoped");
   assert.equal(tenant.deploymentMode, "private_cloud");
   assert.equal(tenant.billingPlan, "pro");
-  assert.equal(tenant.slaLevel, "professional");
+  assert.equal(tenant.slaLevel, "silver");
   assert.equal(tenant.status, "active");
   assert.deepEqual(tenant.allowedRegions, ["cn-shanghai", "us-west-1"]);
   assert.equal(tenant.quotas?.monthlyTokenLimit, 1000000);
@@ -142,8 +142,8 @@ test("InMemoryQuotaRepository creates and finds quotas", async () => {
   const quotas = await repo.findByTenantId(tenantId);
 
   assert.equal(quotas.length, 1);
-  assert.equal(quotas[0].resourceType, "tokens");
-  assert.equal(quotas[0].monthlyLimit, 1000000);
+  assert.equal(quotas[0]!.resourceType, "tokens");
+  assert.equal(quotas[0]!.monthlyLimit, 1000000);
 });
 
 test("InMemoryQuotaRepository updates usage", async () => {
@@ -160,7 +160,7 @@ test("InMemoryQuotaRepository updates usage", async () => {
   await repo.updateUsage(tenantId, "compute", 250);
 
   const quotas = await repo.findByTenantId(tenantId);
-  assert.equal(quotas[0].currentUsage, 250);
+  assert.equal(quotas[0]!.currentUsage, 250);
 });
 
 test("InMemoryQuotaRepository deletes by tenant id", async () => {

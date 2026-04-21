@@ -148,3 +148,221 @@ export const MAX_LEASE_TTL_MS = 60_000;
 export const EPOCH_FENCING_TOKEN_START = 1;
 
 export type RawRow = Record<string, unknown>;
+
+// ── HA Levels ────────────────────────────────────────────────────────
+
+/**
+ * HA Level classification for the execution platform.
+ *
+ * HA-1: Single-node, no redundancy (development/testing)
+ * HA-2: Active-standby, single-region failover
+ * HA-3: Multi-region active-active with cross-region replication
+ */
+export type HaLevel = "HA_1" | "HA_2" | "HA_3";
+
+/**
+ * Configuration for a specific HA level.
+ */
+export interface HaLevelConfig {
+  haLevel: HaLevel;
+  /** Interval for lease renewal in milliseconds */
+  leaseRenewalIntervalMs: number;
+  /** TTL for leadership leases in milliseconds */
+  leaseTtlMs: number;
+  /** Interval for checking expired leases in milliseconds */
+  leaseReclaimerIntervalMs: number;
+  /** Interval for checking stuck runs in milliseconds */
+  stuckRunSweeperIntervalMs: number;
+  /** Threshold in ms beyond which a run is considered stuck */
+  stuckRunThresholdMs: number;
+  /** Enable cross-region failover (HA-3 only) */
+  crossRegionFailover: boolean;
+  /** Enable WAL for crash recovery */
+  walEnabled: boolean;
+  /** WAL checkpoint interval in milliseconds */
+  walCheckpointIntervalMs: number;
+  /** Maximum age of WAL entries before pruning in milliseconds */
+  walRetentionMs: number;
+  /** Enable event replay for projection rebuild */
+  eventReplayEnabled: boolean;
+}
+
+/**
+ * Predefined HA level configurations.
+ */
+export const HA_LEVEL_CONFIGS: Record<HaLevel, HaLevelConfig> = {
+  HA_1: {
+    haLevel: "HA_1",
+    leaseRenewalIntervalMs: 0, // Not needed for single-node
+    leaseTtlMs: 60_000,
+    leaseReclaimerIntervalMs: 0, // No reclamation needed
+    stuckRunSweeperIntervalMs: 300_000,
+    stuckRunThresholdMs: 3_600_000,
+    crossRegionFailover: false,
+    walEnabled: false,
+    walCheckpointIntervalMs: 0,
+    walRetentionMs: 0,
+    eventReplayEnabled: false,
+  },
+  HA_2: {
+    haLevel: "HA_2",
+    leaseRenewalIntervalMs: 5_000,
+    leaseTtlMs: 15_000,
+    leaseReclaimerIntervalMs: 10_000,
+    stuckRunSweeperIntervalMs: 60_000,
+    stuckRunThresholdMs: 1_800_000,
+    crossRegionFailover: false,
+    walEnabled: true,
+    walCheckpointIntervalMs: 30_000,
+    walRetentionMs: 86_400_000,
+    eventReplayEnabled: true,
+  },
+  HA_3: {
+    haLevel: "HA_3",
+    leaseRenewalIntervalMs: 3_000,
+    leaseTtlMs: 10_000,
+    leaseReclaimerIntervalMs: 5_000,
+    stuckRunSweeperIntervalMs: 30_000,
+    stuckRunThresholdMs: 600_000,
+    crossRegionFailover: true,
+    walEnabled: true,
+    walCheckpointIntervalMs: 15_000,
+    walRetentionMs: 604_800_000,
+    eventReplayEnabled: true,
+  },
+};
+
+// ── WAL Types ───────────────────────────────────────────────────────
+
+/**
+ * WAL (Write-Ahead Log) entry types.
+ */
+export type WalEntryType =
+  | "execution_start"
+  | "execution_update"
+  | "execution_complete"
+  | "execution_failed"
+  | "checkpoint"
+  | "lease_acquired"
+  | "lease_released"
+  | "failover_start"
+  | "failover_complete";
+
+/**
+ * WAL entry for crash recovery.
+ */
+export interface WalEntry {
+  id: string;
+  entryType: WalEntryType;
+  executionId: string | null;
+  taskId: string | null;
+  sessionId: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  checkpointId: string | null;
+  sequenceNumber: number;
+}
+
+/**
+ * Checkpoint for state recovery.
+ */
+export interface Checkpoint {
+  id: string;
+  executionId: string;
+  state: Record<string, unknown>;
+  createdAt: string;
+  lastWalSequence: number;
+  metadata: Record<string, unknown> | null;
+}
+
+/**
+ * Options for WAL checkpoint creation.
+ */
+export interface CheckpointOptions {
+  executionId: string;
+  state: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+// ── Stuck Run Types ─────────────────────────────────────────────────
+
+/**
+ * Status of a stuck run sweep operation.
+ */
+export type StuckRunSweepStatus = "pending" | "warning" | "killed" | "cleaned_up" | "resolved";
+
+/**
+ * A run that has been detected as stuck.
+ */
+export interface StuckRun {
+  executionId: string;
+  taskId: string;
+  sessionId: string | null;
+  status: StuckRunSweepStatus;
+  startedAt: string;
+  lastProgressAt: string | null;
+  sweepCount: number;
+  warningIssuedAt: string | null;
+  killedAt: string | null;
+}
+
+/**
+ * Configuration for stuck run sweeper.
+ */
+export interface StuckRunSweeperConfig {
+  /** How often to check for stuck runs */
+  sweepIntervalMs: number;
+  /** How long a run can be inactive before being considered stuck */
+  stuckThresholdMs: number;
+  /** How long to wait before killing a warned run */
+  killAfterWarningMs: number;
+  /** How long to wait before cleaning up a killed run */
+  cleanupAfterKillMs: number;
+  /** Maximum number of runs to process per sweep */
+  maxRunsPerSweep: number;
+}
+
+// ── Lease Reclaimer Types ────────────────────────────────────────────
+
+/**
+ * Result of a lease reclamation operation.
+ */
+export interface LeaseReclaimResult {
+  reclaimedCount: number;
+  failoverTriggered: boolean;
+  failedNodeIds: string[];
+}
+
+/**
+ * Configuration for lease reclaimer.
+ */
+export interface LeaseReclaimerConfig {
+  /** How often to check for expired leases */
+  reclaimIntervalMs: number;
+  /** Grace period before reclaiming a lease after expiration */
+  gracePeriodMs: number;
+  /** Whether to trigger automatic failover */
+  autoFailover: boolean;
+}
+
+// ── Event Replay Types ──────────────────────────────────────────────
+
+/**
+ * Position in the event stream for replay.
+ */
+export interface EventReplayPosition {
+  lastProcessedEventId: string | null;
+  lastProcessedSequence: number;
+  lastCheckpointId: string | null;
+}
+
+/**
+ * Result of an event replay operation.
+ */
+export interface EventReplayResult {
+  eventsReplayed: number;
+  projectionsRebuilt: number;
+  startPosition: EventReplayPosition;
+  endPosition: EventReplayPosition;
+  durationMs: number;
+}

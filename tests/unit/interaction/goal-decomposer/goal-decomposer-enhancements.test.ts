@@ -267,7 +267,7 @@ describe("validateGoalDecomposition", () => {
       maxDepthReached: false,
     };
 
-    const findings = validateGoalDecomposition(decomposition);
+    const findings = validateGoalDecomposition(decomposition as any);
 
     assert.ok(findings.some((f) => f.includes("invalid_depends_on")));
   });
@@ -298,7 +298,7 @@ describe("validateGoalDecomposition", () => {
       maxDepthReached: false,
     };
 
-    const findings = validateGoalDecomposition(decomposition);
+    const findings = validateGoalDecomposition(decomposition as any);
 
     assert.ok(findings.some((f) => f.includes("self_dependency")));
   });
@@ -328,7 +328,7 @@ describe("validateGoalDecomposition", () => {
       maxDepthReached: true,
     };
 
-    const findings = validateGoalDecomposition(decomposition);
+    const findings = validateGoalDecomposition(decomposition as any);
 
     assert.ok(findings.some((f) => f.includes("max_depth_reached")));
   });
@@ -371,7 +371,7 @@ describe("validateGoalDecomposition", () => {
       maxDepthReached: false,
     };
 
-    const findings = validateGoalDecomposition(decomposition);
+    const findings = validateGoalDecomposition(decomposition as any);
 
     assert.strictEqual(findings.length, 0);
   });

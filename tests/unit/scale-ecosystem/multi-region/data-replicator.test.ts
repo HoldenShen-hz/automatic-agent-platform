@@ -190,7 +190,7 @@ test("DataReplicatorService handles unknown target region", async () => {
   const result = await replicator.flush("ap-south");
 
   assert.equal(result.success, false);
-  assert.ok(result.errors.some((e) => e.includes("Unknown target region")));
+  assert.ok(result.errors.some((e: any) => e.includes("Unknown target region")));
 });
 
 test("DataReplicatorService validates incoming event checksum", () => {
@@ -285,7 +285,7 @@ test("DataReplicatorService handles incoming events via handler", async () => {
 
   let receivedEvent: ReplicationEvent | null = null;
 
-  replicator.onEvent("eu-west", async (event) => {
+  replicator.onEvent("eu-west", async (event: any) => {
     receivedEvent = event;
   });
 

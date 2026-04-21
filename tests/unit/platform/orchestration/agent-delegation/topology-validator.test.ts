@@ -19,7 +19,7 @@ import {
   DelegationCycleDetectedError,
   DEFAULT_MAX_DEPTH,
   DEFAULT_MAX_FANOUT,
-} from "../../../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
+} from "../../../../../src/platform/orchestration/agent-delegation/topology-validator.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration Tests

@@ -91,7 +91,23 @@ test("HierarchicalPromptRegistryService.registerBundle throws for missing system
     version: "v1.0",
     domain: "test-domain",
     taskType: "classification",
+    packId: undefined,
     systemPrompt: { content: "", templateVariables: [], channel: "system" },
+    userPrompt: undefined,
+    fewShotExamples: undefined,
+    constraints: undefined,
+    metadata: {
+      owner: "test-owner",
+      deprecated: false,
+      tags: ["test"],
+      compatibilityTags: [],
+      trafficAllocation: {
+        weight: 100,
+        startTime: undefined,
+        endTime: undefined,
+        targeting: undefined,
+      },
+    },
   };
 
   assert.throws(

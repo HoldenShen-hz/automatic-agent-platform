@@ -55,7 +55,7 @@ class MockCacheService {
   private readonly entries = new Map<string, { value: string; model: string; tenantId?: string | null; routeClass?: string }>();
 
   public put(input: { cacheKey: string; tenantId?: string | null; model: string; routeClass: string; value: string; ttlMs?: number }): void {
-    this.entries.set(input.cacheKey, { value: input.value, model: input.model, tenantId: input.tenantId, routeClass: input.routeClass });
+    this.entries.set(input.cacheKey, { value: input.value, model: input.model, tenantId: input.tenantId, routeClass: input.routeClass } as any);
   }
 
   public get(cacheKey: string): { value: string; model: string } | null {
@@ -738,7 +738,7 @@ describe("DegradationController", () => {
   });
 
   describe("custom templates", () => {
-    it("should use custom templates when provided", () => {
+    it("should use custom templates when provided", async () => {
       const customController = new DegradationController({
         primaryProvider: mockProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
         fallbackService: mockFallbackService as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
@@ -758,7 +758,7 @@ describe("DegradationController", () => {
         taskType: "unknown",
       };
 
-      const response = customController.route(request);
+      const response = await customController.route(request);
 
       assert.strictEqual(response.content, "Custom default message");
     });

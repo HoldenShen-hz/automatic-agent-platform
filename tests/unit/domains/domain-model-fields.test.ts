@@ -72,7 +72,7 @@ test("TenantRecord accepts enhanced fields", () => {
       rateLimitPerMinute: 1000,
     },
     billingPlan: "enterprise",
-    slaLevel: "professional",
+    slaLevel: "gold",
     allowedRegions: ["us-east-1", "eu-west-1"],
     status: "active",
     createdAt: "2024-01-01T00:00:00.000Z",
@@ -81,7 +81,7 @@ test("TenantRecord accepts enhanced fields", () => {
 
   assert.equal(enhanced.displayName, "Acme Corp");
   assert.equal(enhanced.billingPlan, "enterprise");
-  assert.equal(enhanced.slaLevel, "professional");
+  assert.equal(enhanced.slaLevel, "gold");
   assert.equal(enhanced.allowedRegions?.length, 2);
   assert.equal(enhanced.quotas?.monthlyTokenLimit, 1000000);
 });

@@ -79,7 +79,7 @@ export interface TenantQuotas {
 /**
  * SLA tier for the tenant.
  */
-export type SlaTier = "free" | "starter" | "professional" | "enterprise";
+export type SlaTier = "platinum" | "gold" | "silver" | "bronze";
 
 /**
  * Tenant record - represents an isolated tenant in the multi-tenant platform.

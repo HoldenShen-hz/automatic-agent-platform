@@ -20,7 +20,12 @@ test("SdkWorkbenchService builds install plans and missing contract summaries", 
         publicSdkSurface: "1.0.0",
         spiTypes: ["adapter"],
         capabilityIds: ["deploy"],
-      },
+        sandbox: { timeoutMs: 30000, runtimeIsolation: "shared_process", allowFilesystemWrite: false },
+        trustLevel: "trusted",
+        domainIds: ["ops"],
+        extensionKind: "domain_plugin",
+        settingsSchema: {},
+      } as any,
     ],
     packs: [
       {
@@ -59,7 +64,12 @@ test("SdkWorkbenchService builds publish readiness previews", () => {
         publicSdkSurface: "1.0.0",
         spiTypes: ["adapter"],
         capabilityIds: ["triage"],
-      },
+        sandbox: { timeoutMs: 30000, runtimeIsolation: "shared_process", allowFilesystemWrite: false },
+        trustLevel: "trusted",
+        domainIds: ["ops"],
+        extensionKind: "domain_plugin",
+        settingsSchema: {},
+      } as any,
     ],
     packs: [
       {

@@ -140,7 +140,7 @@ test("InMemoryDelegationRepository finds expired delegations", async () => {
   const expired = await repo.findExpired(now);
 
   assert.equal(expired.length, 1);
-  assert.equal(expired[0].parentAgentId, "p1");
+  assert.equal(expired[0]!.parentAgentId, "p1");
 });
 
 test("InMemoryDelegationRepository deletes delegation", async () => {

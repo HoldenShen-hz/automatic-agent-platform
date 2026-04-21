@@ -14,11 +14,17 @@ test("ConversationTemplateRegistry registers and retrieves templates", () => {
     name: "测试模板",
     description: "一个测试模板",
     intent: "task_create",
+    version: "1.0",
+    tags: ["test"],
+    estimatedDurationMinutes: 5,
+    isActive: true,
     steps: [
       {
         stepId: "step1",
         prompt: "第一步：",
         isRequired: true,
+        expectedEntities: [],
+        allowSkip: false,
       },
     ],
   };

@@ -588,7 +588,7 @@ test("triggerErrorBudgetDegradation freezes rollouts and fires alert when SLO br
     rolloutFreezeManager.unfreeze();
     const logChannel = new LogAlertChannel();
     const service = new SloAlertingService(h.db, {
-      channels: { log: logChannel },
+      channels: { log: logChannel } as any,
     });
     const slo = service.defineSlo({
       name: "breached_slo",

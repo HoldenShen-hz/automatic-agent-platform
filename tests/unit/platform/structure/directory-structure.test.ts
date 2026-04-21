@@ -72,7 +72,7 @@ test("§35: benchmarks exports benchmark runner", async () => {
   const mod = await import("../../../../src/benchmarks/index.js");
   assert.ok(mod.runBenchmark != null);
   // BenchmarkResult is a type, not a value - we verify it exists via typeof
-  assert.ok(typeof mod.BenchmarkResult !== "undefined");
+  assert.ok(typeof (mod as any).BenchmarkResult !== "undefined");
 });
 
 test("§35: benchmarks runBenchmark returns valid result", async () => {

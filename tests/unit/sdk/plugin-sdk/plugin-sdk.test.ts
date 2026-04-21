@@ -70,7 +70,7 @@ test("definePlugin throws on missing pluginId", () => {
       name: "Test",
       version: "1.0.0",
       type: "tool",
-      capabilities: [{ name: "test", inputSchema: {}, outputSchema: {} }],
+      capabilities: [{ name: "test", description: "Test capability", inputSchema: {}, outputSchema: {} }],
     }),
     /plugin_id/i,
   );
@@ -83,7 +83,7 @@ test("definePlugin throws on missing type", () => {
       name: "Test",
       version: "1.0.0",
       type: undefined as any,
-      capabilities: [{ name: "test", inputSchema: {}, outputSchema: {} }],
+      capabilities: [{ name: "test", description: "Test capability", inputSchema: {}, outputSchema: {} }],
     }),
     /type/i,
   );
