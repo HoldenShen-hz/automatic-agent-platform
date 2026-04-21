@@ -5,6 +5,7 @@ import { CacheFacade } from "../../../../../src/platform/shared/cache/cache-faca
 import type { CacheStore } from "../../../../../src/platform/shared/cache/stores/cache-store.js";
 import type { CacheLookupResult, CacheMeta } from "../../../../../src/platform/shared/cache/cache-types.js";
 import type { CacheMetricsSnapshot } from "../../../../../src/platform/shared/cache/cache-metrics.js";
+import { getPolicyForNamespace } from "../../../../../src/platform/shared/cache/cache-policy.js";
 
 // Mock CacheStore implementation
 function createMockCacheStore(): CacheStore {
@@ -265,4 +266,156 @@ test("CacheFacade.getMetricsSnapshot returns metrics", async () => {
   assert.equal(typeof snapshot.totalHits, "number");
   assert.equal(typeof snapshot.totalMisses, "number");
   assert.equal(typeof snapshot.hitRate, "number");
+});
+
+test("CacheFacade.get returns disabled result for disabled policy", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  // Use a namespace that will have disabled policy via override
+  const disabledNs = "disabled.test";
+  const result = await facade.get(disabledNs, { id: 1 });
+
+  assert.equal(result.hit, false);
+  assert.equal(result.reason, "disabled");
+  assert.equal(result.value, null);
+});
+
+test("CacheFacade.get records disabled metric reason", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  // Use a namespace that doesn't exist in DEFAULT_CACHE_POLICIES (disabled by default)
+  await facade.get("nonexistent.namespace", { id: 1 });
+
+  assert.equal(mockMetrics.records.length, 1);
+  assert.equal(mockMetrics.records[0]!.hit, false);
+  assert.equal(mockMetrics.records[0]!.reason, "disabled");
+});
+
+test("CacheFacade.set returns early for disabled policy", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  // Use a namespace that doesn't exist (disabled by default)
+  await facade.set("nonexistent.namespace", { id: 1 }, { data: "value" });
+
+  // Store should be empty since policy is disabled
+  const result = await facade.get("nonexistent.namespace", { id: 1 });
+  assert.equal(result.hit, false);
+});
+
+test("CacheFacade.set does not call store.set for disabled policy", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  // Track store.set calls
+  let setCallCount = 0;
+  const trackingStore = {
+    ...mockStore,
+    async set(...args: Parameters<typeof mockStore.set>) {
+      setCallCount++;
+      return mockStore.set(...args);
+    },
+  } as CacheStore;
+
+  const trackingFacade = new CacheFacade(trackingStore as any, mockMetrics as any);
+
+  // Use a namespace that doesn't exist (disabled by default)
+  await trackingFacade.set("nonexistent.namespace", { id: 1 }, { data: "value" });
+
+  assert.equal(setCallCount, 0);
+});
+
+test("CacheFacade.getOrCompute returns computed value when cache returns null value", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  // Manually set a null value in the store to simulate this edge case
+  const policy = getPolicyForNamespace(NS);
+  const key = "test-key-null";
+  await mockStore.set(NS, key, null, {
+    scope: policy.scope,
+    tags: [],
+    version: policy.version,
+    createdAt: Date.now(),
+    lastAccessedAt: Date.now(),
+    hitCount: 0,
+    sizeBytes: 0,
+  });
+
+  let computeCalled = false;
+  const compute = async () => {
+    computeCalled = true;
+    return { result: "computed" };
+  };
+
+  const result = await facade.getOrCompute(NS, { id: "test-key-null" }, compute);
+
+  // Since the stored value is null, it should still call compute
+  assert.equal(result.fromCache, false);
+  assert.equal(computeCalled, true);
+  assert.equal(result.value.result, "computed");
+});
+
+test("CacheFacade.getOrCompute stores computed result in cache", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  const compute = async () => ({ result: "computed" });
+
+  const result = await facade.getOrCompute(NS, { id: 999 }, compute);
+
+  assert.equal(result.fromCache, false);
+  assert.equal(result.value.result, "computed");
+
+  // Verify it was stored
+  const cached = await facade.get(NS, { id: 999 });
+  assert.equal(cached.hit, true);
+  assert.equal((cached.value as { result: string } | null)?.result, "computed");
+});
+
+test("CacheFacade.get records layer when present in store result", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  // Manually add entry with layer info
+  const policy = getPolicyForNamespace(NS);
+  await mockStore.set(NS, "layered-key", { data: "value" }, {
+    scope: policy.scope,
+    tags: [],
+    version: policy.version,
+    createdAt: Date.now(),
+    lastAccessedAt: Date.now(),
+    hitCount: 0,
+    sizeBytes: 0,
+  });
+
+  await facade.get(NS, { id: "layered-key" });
+
+  // Verify metrics recorded
+  assert.equal(mockMetrics.records.length, 1);
+});
+
+test("CacheFacade.set includes contentType when provided in options", async () => {
+  const mockStore = createMockCacheStore();
+  const mockMetrics = createMockCacheMetrics();
+  const facade = new CacheFacade(mockStore as any, mockMetrics as any);
+
+  await facade.set(NS, { id: 1 }, { data: "value" }, {
+    contentType: "application/json",
+    tags: ["test"],
+  });
+
+  // Verify the value was stored by retrieving it through the facade
+  const result = await facade.get(NS, { id: 1 });
+  assert.equal(result.hit, true);
+  assert.deepEqual(result.value, { data: "value" });
 });

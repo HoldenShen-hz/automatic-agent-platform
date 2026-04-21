@@ -17,6 +17,7 @@ import test from "node:test";
 interface PlanStep {
   stepId: string;
   dependencies: string[];
+  inputKeys?: string[];
   outputs?: string[];
   timeout: number;
   retryPolicy: { maxRetries: number };

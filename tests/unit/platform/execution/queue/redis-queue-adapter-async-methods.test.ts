@@ -563,7 +563,7 @@ test("RedisQueueAdapter retryJobAsync resets failed job to waiting", async () =>
 
 test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting", async () => {
   let sremCalled = false;
-  let saddCalled = false;
+  let zaddCalled = false;
 
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({
@@ -586,11 +586,11 @@ test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting", async 
       sremCalled = true;
       return 1;
     },
-    sadd: async () => {
-      saddCalled = true;
+    sadd: async () => 1,
+    zadd: async () => {
+      zaddCalled = true;
       return 1;
     },
-    zadd: async () => 1,
     zrem: async () => 1,
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
@@ -598,7 +598,7 @@ test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting", async 
   const result = await adapter.retryJobAsync("dl-retry-job");
 
   assert.ok(sremCalled, "srem should be called for dead letter set");
-  assert.ok(saddCalled, "sadd should be called to add back to queue");
+  assert.ok(zaddCalled, "zadd should be called to add back to waiting queue");
   assert.ok(result, "should return updated job");
 });
 
@@ -626,7 +626,11 @@ test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff", as
       return [];
     },
     hgetall: async (key: string) => {
-      const jobId = key.split(":")[1];
+      const jobId = key.includes("purge-job-1")
+        ? "purge-job-1"
+        : key.includes("purge-job-2")
+          ? "purge-job-2"
+          : "";
       const isOld = jobId === "purge-job-1";
       return {
         id: jobId,
@@ -645,7 +649,11 @@ test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff", as
       };
     },
     del: async (key: string) => {
-      const jobId = key.split(":")[1];
+      const jobId = key.includes("purge-job-1")
+        ? "purge-job-1"
+        : key.includes("purge-job-2")
+          ? "purge-job-2"
+          : "";
       deletedJobs.push(jobId);
       return 1;
     },
@@ -670,7 +678,7 @@ test("RedisQueueAdapter purgeAsync also purges dead letter jobs", async () => {
       return [];
     },
     hgetall: async (key: string) => {
-      const jobId = key.split(":")[1];
+      const jobId = key.includes("dl-purge-1") ? "dl-purge-1" : "";
       return {
         id: jobId,
         queue_name: "test-queue",
@@ -688,7 +696,9 @@ test("RedisQueueAdapter purgeAsync also purges dead letter jobs", async () => {
       };
     },
     del: async (key: string) => {
-      deletedDeadLetterJobs.push(key.split(":")[1]);
+      if (key.includes("dl-purge-1")) {
+        deletedDeadLetterJobs.push("dl-purge-1");
+      }
       return 1;
     },
     srem: async () => 1,
@@ -868,7 +878,7 @@ test("RedisQueueAdapter enqueueAsync returns existing job for duplicate idempote
     },
     hgetall: async (key: string) => {
       calls++;
-      if (key === "job:existing-job-id") {
+      if (key.includes("job:existing-job-id")) {
         return {
           id: "existing-job-id",
           queue_name: "idem-queue",

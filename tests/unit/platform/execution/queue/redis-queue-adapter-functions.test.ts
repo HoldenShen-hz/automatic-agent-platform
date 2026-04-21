@@ -402,7 +402,7 @@ test("RedisQueueAdapter dequeueAsync nack requeues when under maxAttempts", asyn
       completed_at: "",
     }),
     hincrby: async () => 1,
-    hget: async () => "1",
+    hget: async (_key: string, field: string) => field === "max_attempts" ? "3" : "1",
     hmset: async (_key: string, data: Record<string, string>) => {
       hmsetCalls.push(data);
     },
@@ -597,7 +597,7 @@ test("RedisQueueAdapter listJobsAsync respects limit parameter", async () => {
     zrangebyscore: async () => ["job-1", "job-2", "job-3", "job-4", "job-5"],
     smembers: async () => [],
     hgetall: async (key: string) => {
-      const id = key.split(":")[1];
+      const id = key.split(":")[1] ?? "";
       return {
         id,
         queue_name: "test-queue",
@@ -822,11 +822,12 @@ test("RedisQueueAdapter retryJobAsync resets failed job to waiting", async () =>
 });
 
 test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting", async () => {
-  let jobReturned = false;
+  let hgetallCalls = 0;
 
   const mockRedis = createMockRedisClient({
-    hgetall: async (key: string) => {
-      if (key.includes("retry-dl")) {
+    hgetall: async () => {
+      hgetallCalls += 1;
+      if (hgetallCalls > 1) {
         return {
           id: "retry-dl",
           queue_name: "test-queue",
@@ -897,7 +898,11 @@ test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff", as
       return [];
     },
     hgetall: async (key: string) => {
-      const id = key.split(":")[1];
+      const id = key.includes("old-job")
+        ? "old-job"
+        : key.includes("new-job")
+          ? "new-job"
+          : "";
       const isOld = id === "old-job";
       return {
         id,
@@ -916,7 +921,8 @@ test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff", as
       };
     },
     del: async (key: string) => {
-      deletedJobs.push(key.split(":")[1]);
+      if (key.includes("old-job")) deletedJobs.push("old-job");
+      if (key.includes("new-job")) deletedJobs.push("new-job");
       return 1;
     },
     srem: async () => 1,
@@ -940,7 +946,7 @@ test("RedisQueueAdapter purgeAsync also purges dead letter jobs", async () => {
       return [];
     },
     hgetall: async (key: string) => {
-      const id = key.split(":")[1];
+      const id = key.includes("old-dl-job") ? "old-dl-job" : "";
       return {
         id,
         queue_name: "test-queue",
@@ -958,7 +964,9 @@ test("RedisQueueAdapter purgeAsync also purges dead letter jobs", async () => {
       };
     },
     del: async (key: string) => {
-      deletedDlJobs.push(key.split(":")[1]);
+      if (key.includes("old-dl-job")) {
+        deletedDlJobs.push("old-dl-job");
+      }
       return 1;
     },
     srem: async () => 1,
@@ -995,7 +1003,7 @@ test("RedisQueueAdapter purgeAsync does not delete jobs newer than cutoff", asyn
       completed_at: "2026-04-20T00:00:00.000Z",
     }),
     del: async (key: string) => {
-      deletedJobs.push(key.split(":")[1]);
+      deletedJobs.push(key.split(":")[1] ?? "");
       return 1;
     },
     srem: async () => 1,

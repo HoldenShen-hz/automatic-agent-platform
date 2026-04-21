@@ -8,7 +8,7 @@
  * @see DB-45: Session dual storage
  */
 
-import { appendFileSync, existsSync, mkdirSync, openSync, readFileSync, fdatasyncSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, fdatasyncSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import type { MessageRecord, SessionRecord } from "../../contracts/types/domain.js";
@@ -114,7 +114,7 @@ export class SessionDualStorageService {
       appendFileSync(sessionFd, line, "utf8");
       fdatasyncSync(sessionFd);
     } finally {
-      require("node:fs").closeSync(sessionFd);
+      closeSync(sessionFd);
     }
 
     let taskIndexFd: number;
@@ -144,7 +144,7 @@ export class SessionDualStorageService {
         taskIndexPath,
       });
     } finally {
-      require("node:fs").closeSync(taskIndexFd);
+      closeSync(taskIndexFd);
     }
   }
 

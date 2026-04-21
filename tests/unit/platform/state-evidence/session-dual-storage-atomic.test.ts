@@ -12,9 +12,9 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { createTempWorkspace, cleanupPath } from "../helpers/fs.js";
-import { SessionDualStorageService, type SessionEvent } from "../../../src/platform/state-evidence/truth/session-dual-storage.js";
-import { nowIso } from "../../../src/platform/contracts/types/ids.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
+import { SessionDualStorageService, type SessionEvent } from "../../../../src/platform/state-evidence/truth/session-dual-storage.js";
+import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 describe("SessionDualStorageService", () => {
   let workspace: string;
@@ -88,7 +88,7 @@ describe("SessionDualStorageService", () => {
         id: sessionId,
         taskId,
         channel: "test",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -116,7 +116,7 @@ describe("SessionDualStorageService", () => {
         id: sessionId,
         taskId,
         channel: "test",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -126,7 +126,7 @@ describe("SessionDualStorageService", () => {
         id: sessionId,
         taskId,
         channel: "test",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -230,7 +230,7 @@ describe("SessionDualStorageService", () => {
         id: sessionId,
         taskId,
         channel: "test",
-        status: "active",
+        status: "open",
         externalSessionId: null,
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -269,7 +269,7 @@ describe("SessionDualStorageService", () => {
             id: sessionId,
             taskId,
             channel: "test",
-            status: "active",
+            status: "open",
             externalSessionId: null,
             createdAt: nowIso(),
             updatedAt: nowIso(),

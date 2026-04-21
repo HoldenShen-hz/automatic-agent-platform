@@ -8,6 +8,19 @@ import { CacheInvalidationBroadcast, CacheInvalidationMessage } from "../../../.
 // Mock Redis Client
 // =============================================================================
 
+type MockRedisClient = {
+  status: string;
+  subscribe: (channel: string) => Promise<number>;
+  unsubscribe: (channel: string) => Promise<number>;
+  publish: (channel: string, message: string) => Promise<number>;
+  quit: () => Promise<unknown>;
+  disconnect: () => void;
+  on: (event: string, handler: (...args: unknown[]) => void) => EventEmitter;
+  _getSubscribedChannels: () => string[];
+  _getPublishedMessages: () => Array<{ channel: string; message: string }>;
+  _triggerMessage: (channel: string, message: string) => void;
+};
+
 function createMockRedisClient(overrides: Partial<{
   status: string;
   subscribe: (channel: string) => Promise<number>;
@@ -16,7 +29,7 @@ function createMockRedisClient(overrides: Partial<{
   quit: () => Promise<unknown>;
   disconnect: () => void;
   on: (event: string, handler: (...args: unknown[]) => void) => EventEmitter;
-}> = {}): ReturnType<typeof createMockRedisClient> {
+}> = {}): MockRedisClient {
   const emitter = new EventEmitter();
   let subscribedChannels: string[] = [];
   let publishedMessages: Array<{ channel: string; message: string }> = [];
@@ -51,15 +64,9 @@ function createMockRedisClient(overrides: Partial<{
   };
 }
 
-// =============================================================================
-// Mock buildRedisClientOptions to return mock redis config
-// =============================================================================
-
-let mockBuildRedisClientOptions: jest.Mock | undefined;
-
 function createBroadcastWithMockedRedis(
-  mockPub: ReturnType<typeof createMockRedisClient>,
-  mockSub: ReturnType<typeof createMockRedisClient>,
+  mockPub: MockRedisClient,
+  mockSub: MockRedisClient,
   config: ConstructorParameters<typeof CacheInvalidationBroadcast>[0] = {},
   onInvalidate: (msg: CacheInvalidationMessage) => Promise<void> = async () => {},
 ) {
@@ -210,9 +217,10 @@ test("start() calls onInvalidate for messages from other instances", async () =>
   await new Promise((resolve) => setTimeout(resolve, 10));
 
   assert.ok(receivedMessage !== null);
-  assert.equal(receivedMessage!.type, "tag");
-  assert.equal(receivedMessage!.tag, "test-tag");
-  assert.equal(receivedMessage!.origin, "other_instance_123");
+  const message = receivedMessage as CacheInvalidationMessage;
+  assert.equal(message.type, "tag");
+  assert.equal(message.tag, "test-tag");
+  assert.equal(message.origin, "other_instance_123");
 });
 
 test("start() ignores malformed JSON messages", async () => {
@@ -247,7 +255,7 @@ test("broadcastTagInvalidation publishes to correct channel", async () => {
 
   const publishedMessages = mockPub._getPublishedMessages();
   assert.equal(publishedMessages.length, 1);
-  assert.equal(publishedMessages[0].channel, "aacache:invalidation");
+  assert.equal(publishedMessages[0]?.channel, "aacache:invalidation");
 });
 
 test("broadcastTagInvalidation publishes correct message structure", async () => {
@@ -258,7 +266,7 @@ test("broadcastTagInvalidation publishes correct message structure", async () =>
   await broadcast.broadcastTagInvalidation("session:abc123");
 
   const publishedMessages = mockPub._getPublishedMessages();
-  const parsedMessage = JSON.parse(publishedMessages[0].message) as CacheInvalidationMessage;
+  const parsedMessage = JSON.parse(publishedMessages[0]?.message ?? "{}") as CacheInvalidationMessage;
 
   assert.equal(parsedMessage.type, "tag");
   assert.equal(parsedMessage.tag, "session:abc123");
@@ -273,7 +281,7 @@ test("broadcastTagInvalidation includes unique instanceId as origin", async () =
   await broadcast.broadcastTagInvalidation("test-tag");
 
   const publishedMessages = mockPub._getPublishedMessages();
-  const parsedMessage = JSON.parse(publishedMessages[0].message) as CacheInvalidationMessage;
+  const parsedMessage = JSON.parse(publishedMessages[0]?.message ?? "{}") as CacheInvalidationMessage;
 
   assert.equal(parsedMessage.origin, (broadcast as any).instanceId);
 });
@@ -291,7 +299,7 @@ test("broadcastNamespaceInvalidation publishes to correct channel", async () => 
 
   const publishedMessages = mockPub._getPublishedMessages();
   assert.equal(publishedMessages.length, 1);
-  assert.equal(publishedMessages[0].channel, "aacache:invalidation");
+  assert.equal(publishedMessages[0]?.channel, "aacache:invalidation");
 });
 
 test("broadcastNamespaceInvalidation publishes correct message structure", async () => {
@@ -302,7 +310,7 @@ test("broadcastNamespaceInvalidation publishes correct message structure", async
   await broadcast.broadcastNamespaceInvalidation("execution-engine");
 
   const publishedMessages = mockPub._getPublishedMessages();
-  const parsedMessage = JSON.parse(publishedMessages[0].message) as CacheInvalidationMessage;
+  const parsedMessage = JSON.parse(publishedMessages[0]?.message ?? "{}") as CacheInvalidationMessage;
 
   assert.equal(parsedMessage.type, "namespace");
   assert.equal(parsedMessage.namespace, "execution-engine");
@@ -317,7 +325,7 @@ test("broadcastNamespaceInvalidation includes unique instanceId as origin", asyn
   await broadcast.broadcastNamespaceInvalidation("test-namespace");
 
   const publishedMessages = mockPub._getPublishedMessages();
-  const parsedMessage = JSON.parse(publishedMessages[0].message) as CacheInvalidationMessage;
+  const parsedMessage = JSON.parse(publishedMessages[0]?.message ?? "{}") as CacheInvalidationMessage;
 
   assert.equal(parsedMessage.origin, (broadcast as any).instanceId);
 });
@@ -479,7 +487,7 @@ test("broadcastTagInvalidation works with custom channel", async () => {
   await broadcast.broadcastTagInvalidation("my-tag");
 
   const publishedMessages = mockPub._getPublishedMessages();
-  assert.equal(publishedMessages[0].channel, "my:channel");
+  assert.equal(publishedMessages[0]?.channel, "my:channel");
 });
 
 test("broadcastNamespaceInvalidation works with custom channel", async () => {
@@ -490,7 +498,7 @@ test("broadcastNamespaceInvalidation works with custom channel", async () => {
   await broadcast.broadcastNamespaceInvalidation("my-namespace");
 
   const publishedMessages = mockPub._getPublishedMessages();
-  assert.equal(publishedMessages[0].channel, "my:channel");
+  assert.equal(publishedMessages[0]?.channel, "my:channel");
 });
 
 test("message handler handles JSON parse errors gracefully", async () => {
