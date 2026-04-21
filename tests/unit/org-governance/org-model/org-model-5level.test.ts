@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { describe, it, test } from "node:test";
 
 import {
   OrgNodeTypeSchema,

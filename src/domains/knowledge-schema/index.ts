@@ -43,8 +43,8 @@ export const DomainKnowledgeSchemaSchema = z.object({
   retentionDays: z.number().int().positive().default(30),
   // §37.4 enhanced fields
   knowledgeSources: z.array(KnowledgeSourceSchema).default([]),
-  retrievalStrategy: RetrievalStrategySchema,
-  freshnessPolicy: FreshnessPolicySchema,
+  retrievalStrategy: RetrievalStrategySchema.optional().default({ strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false }),
+  freshnessPolicy: FreshnessPolicySchema.optional().default({ maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true }),
 });
 
 export type KnowledgeSource = z.infer<typeof KnowledgeSourceSchema>;

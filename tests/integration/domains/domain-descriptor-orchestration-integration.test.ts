@@ -73,6 +73,9 @@ test("integration: domain descriptor review and onboarding checklist drive activ
       freshnessWindowHours: 24,
       conflictResolution: "trust_priority",
       retentionDays: 30,
+      knowledgeSources: [],
+      retrievalStrategy: { strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
+      freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
     },
     evalFramework: {
       frameworkId: "eval_coding",
