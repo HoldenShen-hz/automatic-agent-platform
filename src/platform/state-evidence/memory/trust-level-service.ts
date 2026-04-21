@@ -241,10 +241,54 @@ export function canTransitionTrustLevel(
  */
 export class TrustLevelService {
   private readonly learningObjects: Map<string, LearningObject> = new Map();
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_LEARNING_OBJECTS = 500;
+  private readonly OBJECT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   public constructor(
     private readonly trustRules: readonly TrustTransitionRule[] = DEFAULT_TRUST_TRANSITION_RULES,
   ) {}
+
+  /**
+   * C-11: Evict expired learning objects to prevent memory leaks.
+   */
+  private evictExpiredObjects(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.OBJECT_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    for (const [id, obj] of this.learningObjects) {
+      const updatedAt = new Date(obj.updatedAt).getTime();
+      if (updatedAt < expiryThreshold) {
+        entriesToDelete.push(id);
+      }
+    }
+
+    for (const id of entriesToDelete) {
+      this.learningObjects.delete(id);
+    }
+
+    // If still over capacity, remove oldest objects
+    if (this.learningObjects.size > this.MAX_LEARNING_OBJECTS) {
+      const sortedEntries = [...this.learningObjects.entries()].sort((a, b) => {
+        const aTime = new Date(a[1].updatedAt).getTime();
+        const bTime = new Date(b[1].updatedAt).getTime();
+        return aTime - bTime;
+      });
+
+      const toRemove = this.learningObjects.size - this.MAX_LEARNING_OBJECTS;
+      for (let i = 0; i < toRemove; i++) {
+        this.learningObjects.delete(sortedEntries[i]![0]);
+      }
+    }
+  }
 
   /**
    * Creates a new LearningObject from a memory record
@@ -255,6 +299,9 @@ export class TrustLevelService {
     title: string,
     content: string,
   ): LearningObject {
+    // C-11: Evict expired objects before creating new one
+    this.evictExpiredObjects();
+
     const now = nowIso();
     const learningObject: LearningObject = {
       id: newId("lo"),

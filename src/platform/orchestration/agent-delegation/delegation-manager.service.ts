@@ -51,6 +51,11 @@ export class DelegationManagerService {
   private readonly defaultTimeout: number;
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_ENTRIES = 1000;
+  private readonly ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   public constructor(options: DelegationOptions = {}) {
     const config: TopologyValidatorConfig = {
@@ -62,6 +67,47 @@ export class DelegationManagerService {
     this.defaultTimeout = options.defaultTimeout ?? 300000; // 5 minutes
     this.delegationStore = new Map();
     this.chainStore = new Map();
+  }
+
+  /**
+   * C-11: Evict expired delegation entries to prevent memory leaks.
+   */
+  private evictExpired(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.ENTRY_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    // Find expired delegation store entries
+    for (const [key, delegation] of this.delegationStore) {
+      const createdAt = new Date(delegation.createdAt).getTime();
+      if (createdAt < expiryThreshold && (delegation.status === "completed" || delegation.status === "failed" || delegation.status === "expired" || delegation.status === "cancelled")) {
+        entriesToDelete.push(key);
+      }
+    }
+
+    for (const key of entriesToDelete) {
+      this.delegationStore.delete(key);
+    }
+
+    // If still over capacity, remove oldest completed/failed entries
+    if (this.delegationStore.size > this.MAX_ENTRIES) {
+      const sortedEntries = [...this.delegationStore.entries()].sort((a, b) => {
+        const aTime = new Date(a[1].createdAt).getTime();
+        const bTime = new Date(b[1].createdAt).getTime();
+        return aTime - bTime;
+      });
+
+      const toRemove = this.delegationStore.size - this.MAX_ENTRIES;
+      for (let i = 0; i < toRemove; i++) {
+        const key = sortedEntries[i]![0];
+        this.delegationStore.delete(key);
+      }
+    }
   }
 
   // ── Main Delegation API ─────────────────────────────────────────────────────
@@ -315,6 +361,9 @@ export class DelegationManagerService {
     spec: DelegationSpec,
     permissions: PermissionSet,
   ): Promise<DelegationResult> {
+    // C-11: Evict expired entries before creating new one
+    this.evictExpired();
+
     const delegationId = newId("dlg");
     const now = nowIso();
     const timeout = spec.timeout ?? this.defaultTimeout;
@@ -336,6 +385,9 @@ export class DelegationManagerService {
   }
 
   private updateDelegationChain(rootAgentId: string, delegation: DelegationResult): void {
+    // C-11: Evict expired entries before updating chain
+    this.evictExpired();
+
     let chain = this.chainStore.get(rootAgentId);
 
     if (!chain) {

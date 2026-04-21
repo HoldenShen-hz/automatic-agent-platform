@@ -55,6 +55,11 @@ const DEFAULT_CRITICAL_THRESHOLD = 0.95; // 95% of limit triggers critical alert
 export class CostAlertService extends EventEmitter {
   private readonly accumulators: Map<string, CostAccumulator> = new Map();
   private config: CostAlertConfig;
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_ACCUMULATORS = 500;
+  private readonly ACCUMULATOR_TTL_MS = 60 * 60 * 1000; // 1 hour
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -69,6 +74,47 @@ export class CostAlertService extends EventEmitter {
       packBudgetPolicies: config?.packBudgetPolicies ?? {},
       defaultWarningThreshold: config?.defaultWarningThreshold ?? DEFAULT_WARNING_THRESHOLD,
     };
+  }
+
+  /**
+   * C-11: Evict expired cost accumulators to prevent memory leaks.
+   */
+  private evictExpiredAccumulators(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.ACCUMULATOR_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    for (const [key, accumulator] of this.accumulators) {
+      if (accumulator.lastUpdatedAt) {
+        const lastUpdated = new Date(accumulator.lastUpdatedAt).getTime();
+        if (lastUpdated < expiryThreshold) {
+          entriesToDelete.push(key);
+        }
+      }
+    }
+
+    for (const key of entriesToDelete) {
+      this.accumulators.delete(key);
+    }
+
+    // If still over capacity, remove oldest accumulators
+    if (this.accumulators.size > this.MAX_ACCUMULATORS) {
+      const sortedEntries = [...this.accumulators.entries()].sort((a, b) => {
+        const aTime = a[1].lastUpdatedAt ? new Date(a[1].lastUpdatedAt).getTime() : 0;
+        const bTime = b[1].lastUpdatedAt ? new Date(b[1].lastUpdatedAt).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      const toRemove = this.accumulators.size - this.MAX_ACCUMULATORS;
+      for (let i = 0; i < toRemove; i++) {
+        this.accumulators.delete(sortedEntries[i]![0]);
+      }
+    }
   }
 
   /**
@@ -326,6 +372,9 @@ export class CostAlertService extends EventEmitter {
    * Gets or creates a cost accumulator for a policy.
    */
   private getOrCreateAccumulator(policy: BudgetPolicy): CostAccumulator {
+    // C-11: Evict expired accumulators before creating new one
+    this.evictExpiredAccumulators();
+
     const key = this.getAccumulatorKey(policy.scope, policy.scopeId);
     let accumulator = this.accumulators.get(key);
 

@@ -162,8 +162,58 @@ export class EscalationManager {
   private readonly logger = new StructuredLogger({ retentionLimit: 50 });
   private readonly escalationHistory: Map<string, EscalationLevel[]> = new Map();
   private readonly delegations: Map<string, Delegation> = new Map();
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_ENTRIES = 500;
+  private readonly ENTRY_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   public constructor(private readonly defaultTimeoutMs: number = DEFAULT_ESCALATION_TIMEOUT_MS) {}
+
+  /**
+   * C-11: Evict expired escalation entries to prevent memory leaks.
+   */
+  private evictExpiredEntries(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.ENTRY_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    // Find expired escalationHistory entries
+    for (const [approvalId, history] of this.escalationHistory) {
+      if (history.length > 0) {
+        const lastEscalationTime = new Date(history[history.length - 1]!.escalatedAt).getTime();
+        if (lastEscalationTime < expiryThreshold) {
+          entriesToDelete.push(approvalId);
+        }
+      }
+    }
+
+    for (const approvalId of entriesToDelete) {
+      this.escalationHistory.delete(approvalId);
+      this.delegations.delete(approvalId);
+    }
+
+    // If still over capacity, remove oldest entries
+    if (this.escalationHistory.size > this.MAX_ENTRIES) {
+      const sortedEntries = [...this.escalationHistory.entries()].sort((a, b) => {
+        const aTime = a[1].length > 0 ? new Date(a[1][a[1].length - 1]!.escalatedAt).getTime() : 0;
+        const bTime = b[1].length > 0 ? new Date(b[1][b[1].length - 1]!.escalatedAt).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      const toRemove = this.escalationHistory.size - this.MAX_ENTRIES;
+      for (let i = 0; i < toRemove; i++) {
+        const approvalId = sortedEntries[i]![0];
+        this.escalationHistory.delete(approvalId);
+        this.delegations.delete(approvalId);
+      }
+    }
+  }
 
   /**
    * Checks if escalation is possible within the max depth.
@@ -187,6 +237,9 @@ export class EscalationManager {
     context: EscalationContext,
     rule: EscalationRule,
   ): EscalationLevel {
+    // C-11: Evict expired entries before creating new one
+    this.evictExpiredEntries();
+
     const newLevel = context.currentLevel + 1;
 
     if (!this.canEscalate(newLevel, rule.maxEscalationDepth)) {

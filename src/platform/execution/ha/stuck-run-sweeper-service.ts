@@ -73,6 +73,11 @@ export class StuckRunSweeperService {
 
   // In-memory state for tracked runs
   private readonly trackedRuns: Map<string, StuckRun> = new Map();
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_TRACKED_RUNS = 1000;
+  private readonly RUN_TTL_MS = 60 * 60 * 1000; // 1 hour
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   private readonly config: Required<StuckRunSweeperConfig>;
   private readonly onStuckRunDetected: ((run: StuckRun) => void) | undefined;
@@ -127,6 +132,45 @@ export class StuckRunSweeperService {
         config: this.config,
       },
     });
+  }
+
+  /**
+   * C-11: Evict expired tracked runs to prevent memory leaks.
+   */
+  private evictExpiredRuns(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.RUN_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    for (const [executionId, run] of this.trackedRuns) {
+      const lastProgress = run.lastProgressAt ? new Date(run.lastProgressAt).getTime() : 0;
+      if (lastProgress < expiryThreshold) {
+        entriesToDelete.push(executionId);
+      }
+    }
+
+    for (const executionId of entriesToDelete) {
+      this.trackedRuns.delete(executionId);
+    }
+
+    // If still over capacity, remove oldest runs
+    if (this.trackedRuns.size > this.MAX_TRACKED_RUNS) {
+      const sortedEntries = [...this.trackedRuns.entries()].sort((a, b) => {
+        const aTime = a[1].lastProgressAt ? new Date(a[1].lastProgressAt).getTime() : 0;
+        const bTime = b[1].lastProgressAt ? new Date(b[1].lastProgressAt).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      const toRemove = this.trackedRuns.size - this.MAX_TRACKED_RUNS;
+      for (let i = 0; i < toRemove; i++) {
+        this.trackedRuns.delete(sortedEntries[i]![0]);
+      }
+    }
   }
 
   // ── Public API ────────────────────────────────────────────────────
@@ -214,6 +258,9 @@ export class StuckRunSweeperService {
     taskId: string,
     sessionId: string | null,
   ): void {
+    // C-11: Evict expired runs before tracking new one
+    this.evictExpiredRuns();
+
     if (this.trackedRuns.has(executionId)) {
       return; // Already tracked
     }

@@ -8,6 +8,9 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 /**
  * Region health status
@@ -412,7 +415,7 @@ export class RegionFailoverOrchestrator {
       try {
         listener(sourceRegionId, targetRegionId);
       } catch (error) {
-        console.error(`Failover listener error: ${error}`);
+        logger.error(`Failover listener error`, { error: String(error) });
       }
     }
 

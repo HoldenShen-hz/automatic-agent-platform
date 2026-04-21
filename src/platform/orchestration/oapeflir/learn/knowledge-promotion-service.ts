@@ -24,6 +24,9 @@ import type { LearningObject } from "./learning-object-model.js";
 import { KnowledgePlaneService } from "../../../state-evidence/knowledge/knowledge-plane-service.js";
 import type { TypedEventPublisher } from "../../../state-evidence/events/typed-event-publisher.js";
 import { nowIso } from "../../../contracts/types/ids.js";
+import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 export interface KnowledgePromotionResult {
   promotedCount: number;
@@ -86,7 +89,7 @@ export class KnowledgePromotionService {
       } catch (err) {
         failed.push(obj.learningObjectId);
         // Log but don't throw — promotion failure should not block the loop
-        console.error(`[KnowledgePromotion] Failed to promote ${obj.learningObjectId}:`, err);
+        logger.error(`[KnowledgePromotion] Failed to promote ${obj.learningObjectId}`, { error: String(err) });
       }
     }
 

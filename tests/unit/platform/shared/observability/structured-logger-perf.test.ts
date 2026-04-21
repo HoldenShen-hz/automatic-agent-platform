@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
+import { createTempWorkspace, cleanupPath } from "../../../../../tests/helpers/fs.js";
 import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
 
 describe("StructuredLogger Performance", () => {

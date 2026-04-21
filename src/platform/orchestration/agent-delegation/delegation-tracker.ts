@@ -48,6 +48,62 @@ export class DelegationTracker {
   private readonly rootToChain: Map<string, DelegationChain> = new Map();
   private readonly delegationToParent: Map<string, string> = new Map();
   private readonly delegationEvents: Map<string, DelegationEvent[]> = new Map();
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_ENTRIES = 1000;
+  private readonly ENTRY_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
+
+  /**
+   * C-11: Evict expired delegation entries to prevent memory leaks.
+   */
+  private evictExpired(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.ENTRY_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    // Find expired rootToChain entries
+    for (const [key, chain] of this.rootToChain) {
+      if (chain.nodes.length > 0) {
+        const lastNodeTime = new Date(chain.nodes[chain.nodes.length - 1]!.createdAt).getTime();
+        if (lastNodeTime < expiryThreshold) {
+          entriesToDelete.push(key);
+        }
+      }
+    }
+
+    for (const key of entriesToDelete) {
+      this.rootToChain.delete(key);
+      this.delegationToParent.delete(key);
+      this.delegationEvents.delete(key);
+    }
+
+    // If still over capacity, remove oldest entries
+    if (this.rootToChain.size > this.MAX_ENTRIES) {
+      const sortedEntries = [...this.rootToChain.entries()].sort((a, b) => {
+        const aTime = a[1].nodes.length > 0
+          ? new Date(a[1].nodes[a[1].nodes.length - 1]!.createdAt).getTime()
+          : 0;
+        const bTime = b[1].nodes.length > 0
+          ? new Date(b[1].nodes[b[1].nodes.length - 1]!.createdAt).getTime()
+          : 0;
+        return aTime - bTime;
+      });
+
+      const toRemove = this.rootToChain.size - this.MAX_ENTRIES;
+      for (let i = 0; i < toRemove; i++) {
+        const key = sortedEntries[i]![0];
+        this.rootToChain.delete(key);
+        this.delegationToParent.delete(key);
+        this.delegationEvents.delete(key);
+      }
+    }
+  }
 
   /**
    * Records a new delegation in the tracker.
@@ -56,6 +112,9 @@ export class DelegationTracker {
    * @param parentAgentId - Parent agent ID for chain building
    */
   public recordDelegation(delegation: DelegationResult, parentAgentId: string): void {
+    // C-11: Evict expired entries before recording new one
+    this.evictExpired();
+
     // Build chain for root agent
     let chain = this.rootToChain.get(parentAgentId);
     if (!chain) {
@@ -93,6 +152,9 @@ export class DelegationTracker {
    * @param event - Event to record
    */
   public recordEvent(delegationId: string, event: DelegationEvent): void {
+    // C-11: Evict expired entries before recording new event
+    this.evictExpired();
+
     const events = this.delegationEvents.get(delegationId) ?? [];
     this.delegationEvents.set(delegationId, [...events, event]);
   }

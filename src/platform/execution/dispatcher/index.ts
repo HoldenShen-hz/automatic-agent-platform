@@ -84,6 +84,11 @@ class MultiStepToolRegistry {
   private readonly repoRoot: string;
   private readonly spawnedAgents: Map<string, SpawnedAgentState>;
   private spawnDepth: number = 0;
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_SPAWNED_AGENTS = 500;
+  private readonly AGENT_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   constructor() {
     this.todoService = new TodoWriteToolService();
@@ -94,7 +99,50 @@ class MultiStepToolRegistry {
     this.spawnedAgents = new Map();
   }
 
+  /**
+   * C-11: Evict expired spawned agents to prevent memory leaks.
+   */
+  private evictExpiredAgents(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.AGENT_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    for (const [agentId, state] of this.spawnedAgents) {
+      if (state.execution?.updatedAt) {
+        const updatedAt = new Date(state.execution.updatedAt).getTime();
+        if (updatedAt < expiryThreshold) {
+          entriesToDelete.push(agentId);
+        }
+      }
+    }
+
+    for (const agentId of entriesToDelete) {
+      this.spawnedAgents.delete(agentId);
+    }
+
+    // If still over capacity, remove oldest agents
+    if (this.spawnedAgents.size > this.MAX_SPAWNED_AGENTS) {
+      const sortedEntries = [...this.spawnedAgents.entries()].sort((a, b) => {
+        const aTime = a[1].execution?.updatedAt ? new Date(a[1].execution!.updatedAt).getTime() : 0;
+        const bTime = b[1].execution?.updatedAt ? new Date(b[1].execution!.updatedAt).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      const toRemove = this.spawnedAgents.size - this.MAX_SPAWNED_AGENTS;
+      for (let i = 0; i < toRemove; i++) {
+        this.spawnedAgents.delete(sortedEntries[i]![0]);
+      }
+    }
+  }
+
   private getSpawnedAgent(agentId: string): SpawnedAgentState | null {
+    // C-11: Evict expired agents before getting
+    this.evictExpiredAgents();
     return this.spawnedAgents.get(agentId) ?? null;
   }
 

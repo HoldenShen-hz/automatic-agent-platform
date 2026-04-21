@@ -3,11 +3,11 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisQueueClient } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../src/platform/execution/queue/redis-queue-adapter.js";
 
 test("[SYS-REL-2.1] Redis queue adapter error handler should not be empty function", () => {
   const mockRedis = new EventEmitter();
-  const client = new RedisQueueClient({
+  const client = new RedisQueueAdapter({
     host: "invalid-host",
     port: 9999,
   });
@@ -32,7 +32,7 @@ test("[SYS-REL-2.1] Redis queue adapter logs errors when they occur", () => {
 
   try {
     const mockRedis = new EventEmitter();
-    const client = new RedisQueueClient({
+    const client = new RedisQueueAdapter({
       host: "invalid-host",
       port: 9999,
     });

@@ -8,6 +8,9 @@
 import { Redis } from "ioredis";
 import type { RedisConnectionConfig } from "../../shared/utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 export interface RedisRateLimiterConfig extends RedisConnectionConfig {
   keyPrefix?: string;
@@ -31,7 +34,7 @@ export class RedisRateLimiter {
       connectTimeout: config.connectTimeout ?? 500,
     }));
     this.redis.on("error", (err) => {
-      console.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
+      logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
     });
   }
 

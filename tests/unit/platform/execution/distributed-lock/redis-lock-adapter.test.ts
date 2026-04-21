@@ -92,7 +92,8 @@ function createMockRedis(overrides: Partial<{
 function createAdapterWithMockRedis(mockRedis: ReturnType<typeof createMockRedis>): RedisLockAdapter {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
   // Use any to inject mock - this is test-only access
-  (adapter as any).redis = mockRedis;
+  // Cast to any to bypass type check on keys() which exists in mock but not in adapter's internal redis type
+  (adapter as any).redis = mockRedis as any;
   return adapter;
 }
 

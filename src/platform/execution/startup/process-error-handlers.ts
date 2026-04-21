@@ -16,7 +16,7 @@
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { GracefulShutdown } from "./graceful-shutdown.js";
 
-const logger = new StructuredLogger({ retentionLimit: 50 });
+const processLogger = new StructuredLogger({ retentionLimit: 200 });
 
 /**
  * Creates the uncaughtException handler.
@@ -39,7 +39,7 @@ export function createUncaughtExceptionHandler(
       hardExitTimer = null;
     }
 
-    logger.error("UNCAUGHT EXCEPTION — process will exit", {
+    processLogger.error("UNCAUGHT EXCEPTION — process will exit", {
       data: {
         errorName: err.name,
         errorMessage: err.message,
@@ -51,7 +51,7 @@ export function createUncaughtExceptionHandler(
     try {
       shutdown.initiateShutdown("uncaught_exception");
     } catch (shutdownErr) {
-      logger.error("Failed to initiate graceful shutdown", {
+      processLogger.error("Failed to initiate graceful shutdown", {
         data: { error: String(shutdownErr) },
       });
     }
@@ -100,7 +100,7 @@ export function createUnhandledRejectionHandler(
     );
 
     if (isRecoverable) {
-      logger.warn("UNHANDLED REJECTION (recoverable) — degraded mode", {
+      processLogger.warn("UNHANDLED REJECTION (recoverable) — degraded mode", {
         data: {
           reason: reasonStr,
           stack: reasonStack,
@@ -111,7 +111,7 @@ export function createUnhandledRejectionHandler(
       return;
     }
 
-    logger.error("UNHANDLED REJECTION (non-recoverable) — process will exit", {
+    processLogger.error("UNHANDLED REJECTION (non-recoverable) — process will exit", {
       data: {
         reason: reasonStr,
         stack: reasonStack,
@@ -121,7 +121,7 @@ export function createUnhandledRejectionHandler(
     try {
       shutdown.initiateShutdown("unhandled_rejection");
     } catch (shutdownErr) {
-      logger.error("Failed to initiate graceful shutdown", {
+      processLogger.error("Failed to initiate graceful shutdown", {
         data: { error: String(shutdownErr) },
       });
     }
@@ -150,7 +150,7 @@ export function registerProcessErrorHandlers(shutdown: GracefulShutdown): void {
   process.on("uncaughtException", uncaughtExceptionHandler);
   process.on("unhandledRejection", unhandledRejectionHandler);
 
-  logger.info("Process error handlers registered", {
+  processLogger.info("Process error handlers registered", {
     data: { pid: process.pid },
   });
 }

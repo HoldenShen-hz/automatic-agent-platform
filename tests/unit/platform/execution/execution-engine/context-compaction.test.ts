@@ -49,7 +49,7 @@ const createMockStore = (overrides: Partial<AuthoritativeTaskStore> = {}): Autho
       listGatewayTargets: () => [],
     } as any,
   } as any;
-  return { ...baseStore, ...overrides };
+  return { ...baseStore, ...overrides } as any;
 };
 
 const createMessage = (overrides: Partial<{

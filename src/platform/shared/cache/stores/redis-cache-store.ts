@@ -11,6 +11,9 @@ import type { CacheLookupResult, CacheMeta } from "../cache-types.js";
 import { stableStringify } from "../utils/stable-stringify.js";
 import type { RedisConnectionConfig } from "../../utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../../utils/redis-client-options.js";
+import { StructuredLogger } from "../../observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 export interface RedisCacheConfig extends RedisConnectionConfig {
   keyPrefix?: string;
@@ -26,7 +29,7 @@ export class RedisCacheStore implements CacheStore {
       keyPrefix: this.prefix,
     }));
     this.redis.on("error", (err) => {
-      console.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
+      logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
     });
   }
 

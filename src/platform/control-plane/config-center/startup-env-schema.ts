@@ -9,6 +9,9 @@
  */
 
 import { z } from "zod";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 // ---------------------------------------------------------------------------
 // Primitive parsers matching the existing manual parsing in runtime-env.ts
@@ -116,12 +119,12 @@ export const MaxAgentMemoryMbSchema = PositiveInteger.nullable();
 export const MaxAgentElapsedMsSchema = PositiveInteger.nullable();
 
 // ---------------------------------------------------------------------------
-// OpenTelemetry schemas (P1 — system starts without OTEL but observability is degraded)
+// OpenTelemetry schemas (P1 — system starts with OTEL enabled by default)
 // ---------------------------------------------------------------------------
 
 /**
  * Schema for AA_OTEL_ENABLED — whether to bootstrap OpenTelemetry.
- * Optional: defaults to false.
+ * Optional: defaults to true.
  */
 export const OtelEnabledSchema = BooleanString.optional();
 
@@ -337,6 +340,6 @@ export function requireValidStartupEnv(env: NodeJS.ProcessEnv = process.env): vo
     "See: docs_zh/operations/environment-variables.md",
   ];
 
-  console.error(lines.join("\n"));
+  logger.error(lines.join("\n"));
   process.exit(1);
 }

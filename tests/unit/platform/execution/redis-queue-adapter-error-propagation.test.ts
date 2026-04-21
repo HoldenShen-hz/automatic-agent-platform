@@ -84,7 +84,7 @@ test("[SYS-REL-2.4] enqueueAsync properly propagates write failures", async () =
   let writeAttempts = 0;
 
   const mockClient = {
-    hmset: async () => {
+    hmset: async (_key: string, _data: Record<string, string>) => {
       writeAttempts++;
       throw new Error("OOM - Redis out of memory");
     },

@@ -14,7 +14,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NamespacePolicyStore, DEFAULT_NAMESPACE_STRATEGY } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
+import { NamespacePolicyStore, DEFAULT_NAMESPACE_STRATEGY, type NamespaceConflict } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
 import type { KnowledgeNamespace } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,8 +134,8 @@ test("validate returns errors for invalid freshness policy", () => {
   const result = store.validate(namespace);
 
   assert.equal(result.valid, false);
-  assert.ok(result.errors.some((e) => e.includes("maxAgeDays")));
-  assert.ok(result.errors.some((e) => e.includes("staleAction")));
+  assert.ok(result.errors.some((e: string) => e.includes("maxAgeDays")));
+  assert.ok(result.errors.some((e: string) => e.includes("staleAction")));
 });
 
 test("validate returns warning for restricted namespace with unverified trust", () => {
@@ -149,7 +149,7 @@ test("validate returns warning for restricted namespace with unverified trust", 
   const result = store.validate(namespace);
 
   assert.equal(result.valid, true); // Still valid
-  assert.ok(result.warnings.some((w) => w.includes("unverified trust level")));
+  assert.ok(result.warnings.some((w: string) => w.includes("unverified trust level")));
 });
 
 test("validate returns warning for path conflicts", () => {
@@ -160,7 +160,7 @@ test("validate returns warning for path conflicts", () => {
   const result = store.validate(conflicting);
 
   assert.equal(result.valid, true);
-  assert.ok(result.warnings.some((w) => w.includes("Path conflicts detected")));
+  assert.ok(result.warnings.some((w: string) => w.includes("Path conflicts detected")));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,7 +217,7 @@ test("detectPathConflicts handles multiple existing namespaces", () => {
   const conflicts = store.detectPathConflicts("alpha.beta.child");
 
   assert.ok(conflicts.length >= 1);
-  assert.ok(conflicts.some((c) => c.pathB === "alpha.beta" && c.overlapType === "prefix"));
+  assert.ok(conflicts.some((c: NamespaceConflict) => c.pathB === "alpha.beta" && c.overlapType === "prefix"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,7 +354,7 @@ test("getByDomain returns namespaces owned by domain", () => {
   const financeNamespaces = store.getByDomain("dept_finance");
 
   assert.equal(financeNamespaces.length, 2);
-  assert.ok(financeNamespaces.every((ns) => ns.ownerDomainId === "dept_finance"));
+  assert.ok(financeNamespaces.every((ns: KnowledgeNamespace) => ns.ownerDomainId === "dept_finance"));
 });
 
 test("getByDomain returns empty array for domain with no namespaces", () => {
@@ -456,7 +456,7 @@ test("Handles namespace with no freshness policy gracefully", () => {
   // maxAgeDays of 0 should fail validation
   const result = store.validate(namespace);
   assert.equal(result.valid, false);
-  assert.ok(result.errors.some((e) => e.includes("maxAgeDays")));
+  assert.ok(result.errors.some((e: string) => e.includes("maxAgeDays")));
 });
 
 test("Path validation requires lowercase", () => {

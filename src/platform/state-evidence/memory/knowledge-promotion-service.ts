@@ -159,8 +159,52 @@ interface LineageEntry {
  */
 export class KnowledgePromotionService {
   private readonly lineageStore: Map<string, LineageEntry> = new Map();
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_LINEAGE_ENTRIES = 500;
+  private readonly ENTRY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   public constructor(private readonly rules: readonly PromotionRule[] = DEFAULT_PROMOTION_RULES) {}
+
+  /**
+   * C-11: Evict expired lineage entries to prevent memory leaks.
+   */
+  private evictExpiredEntries(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.ENTRY_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    for (const [id, entry] of this.lineageStore) {
+      const promotedAt = new Date(entry.lineage.promotedAt).getTime();
+      if (promotedAt < expiryThreshold) {
+        entriesToDelete.push(id);
+      }
+    }
+
+    for (const id of entriesToDelete) {
+      this.lineageStore.delete(id);
+    }
+
+    // If still over capacity, remove oldest entries
+    if (this.lineageStore.size > this.MAX_LINEAGE_ENTRIES) {
+      const sortedEntries = [...this.lineageStore.entries()].sort((a, b) => {
+        const aTime = new Date(a[1].lineage.promotedAt).getTime();
+        const bTime = new Date(b[1].lineage.promotedAt).getTime();
+        return aTime - bTime;
+      });
+
+      const toRemove = this.lineageStore.size - this.MAX_LINEAGE_ENTRIES;
+      for (let i = 0; i < toRemove; i++) {
+        this.lineageStore.delete(sortedEntries[i]![0]);
+      }
+    }
+  }
 
   /**
    * Evaluates whether a memory can be promoted to the target tier
@@ -220,6 +264,9 @@ export class KnowledgePromotionService {
    * Promotes knowledge to target tier with lineage tracking
    */
   public promote(request: PromotionRequest, memory: MemoryRecord): PromotionResult {
+    // C-11: Evict expired entries before promoting new one
+    this.evictExpiredEntries();
+
     const evaluation = this.evaluatePromotion(memory, request.targetTier);
 
     if (!evaluation.canPromote) {

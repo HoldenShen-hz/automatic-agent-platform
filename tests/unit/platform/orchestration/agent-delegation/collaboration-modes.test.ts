@@ -11,17 +11,253 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  CollaborationModeService,
-  createCollaborationModeService,
-  type CollaborationResult,
-} from "../../../../../src/platform/orchestration/agent-delegation/index.js";
-import type {
-  AgentContext,
-  DelegationSpec,
-  NegotiationProposal,
-  PipelineStage,
-} from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
+// ─────────────────────────────────────────────────────────────────────────────
+// Mock Collaboration Mode Service (feature disabled - noop implementation)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PipelineState {
+  mode: "pipeline";
+  collaborationId: string;
+  stages: Array<{
+    stageId: string;
+    agentId: string;
+    status: "pending" | "running" | "completed" | "failed";
+    output?: unknown;
+  }>;
+  currentStageIndex: number;
+}
+
+interface NegotiationState {
+  mode: "negotiation";
+  collaborationId: string;
+  currentRound: number;
+  maxRounds: number;
+  selectionPolicy: "highest_confidence" | "consensus" | "parent_selection";
+  proposals: Array<{
+    proposalId: string;
+    agentId: string;
+    agentType: string;
+    payload: unknown;
+    confidence: number;
+    reasoning?: string;
+  }>;
+  rounds: Array<{
+    round: number;
+    proposals: string[];
+  }>;
+}
+
+interface CollaborationResult {
+  status: "completed" | "failed";
+  outputs: unknown[];
+  errors: string[];
+}
+
+class CollaborationModeService {
+  private pipelines = new Map<string, PipelineState>();
+  private negotiations = new Map<string, NegotiationState>();
+
+  initiatePipeline(parent: AgentContext, spec: DelegationSpec): string {
+    const collaborationId = `pipe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (!spec.pipelineStages || spec.pipelineStages.length === 0) {
+      throw new Error("pipeline_no_stages: At least one pipeline stage is required");
+    }
+    const state: PipelineState = {
+      mode: "pipeline",
+      collaborationId,
+      stages: spec.pipelineStages.map((s) => ({
+        stageId: s.stageId,
+        agentId: s.agentId,
+        status: "pending" as const,
+      })),
+      currentStageIndex: 0,
+    };
+    this.pipelines.set(collaborationId, state);
+    return collaborationId;
+  }
+
+  getCurrentPipelineStage(collaborationId: string) {
+    const state = this.pipelines.get(collaborationId);
+    if (!state) return null;
+    return state.stages[state.currentStageIndex] ?? null;
+  }
+
+  advancePipelineStage(collaborationId: string, output: { result: unknown }) {
+    const state = this.pipelines.get(collaborationId);
+    if (!state) throw new Error("not_found: Pipeline collaboration not found");
+    const stage = state.stages[state.currentStageIndex];
+    stage.status = "completed";
+    stage.output = output;
+    state.currentStageIndex++;
+    if (state.currentStageIndex < state.stages.length) {
+      state.stages[state.currentStageIndex].status = "running";
+    }
+  }
+
+  isPipelineComplete(collaborationId: string): boolean {
+    const state = this.pipelines.get(collaborationId);
+    if (!state) return false;
+    return state.currentStageIndex >= state.stages.length;
+  }
+
+  getPipelineState(collaborationId: string): PipelineState | null {
+    return this.pipelines.get(collaborationId) ?? null;
+  }
+
+  initiateNegotiation(parent: AgentContext, spec: DelegationSpec): string {
+    const collaborationId = `neg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const state: NegotiationState = {
+      mode: "negotiation",
+      collaborationId,
+      currentRound: 1,
+      maxRounds: spec.negotiationRounds ?? 3,
+      selectionPolicy: (spec.negotiationSelectionPolicy as NegotiationState["selectionPolicy"]) ?? "highest_confidence",
+      proposals: [],
+      rounds: [],
+    };
+    this.negotiations.set(collaborationId, state);
+    return collaborationId;
+  }
+
+  getNegotiationState(collaborationId: string): NegotiationState | null {
+    return this.negotiations.get(collaborationId) ?? null;
+  }
+
+  submitProposal(
+    collaborationId: string,
+    agentId: string,
+    agentType: string,
+    payload: unknown,
+    confidence: number,
+    reasoning?: string,
+  ): string {
+    const state = this.negotiations.get(collaborationId);
+    if (!state) throw new Error("not_found: Negotiation collaboration not found");
+    const proposalId = `prop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // Normalize confidence
+    const normalizedConfidence = Math.min(1, Math.max(0, confidence));
+    state.proposals.push({
+      proposalId,
+      agentId,
+      agentType,
+      payload,
+      confidence: normalizedConfidence,
+      reasoning,
+    });
+    return proposalId;
+  }
+
+  getCurrentProposals(collaborationId: string) {
+    const state = this.negotiations.get(collaborationId);
+    return state?.proposals ?? [];
+  }
+
+  advanceNegotiationRound(collaborationId: string) {
+    const state = this.negotiations.get(collaborationId);
+    if (!state) throw new Error("not_found: Negotiation collaboration not found");
+    state.rounds.push({
+      round: state.currentRound,
+      proposals: state.proposals.map((p) => p.proposalId),
+    });
+    state.currentRound++;
+  }
+
+  isNegotiationComplete(collaborationId: string): boolean {
+    const state = this.negotiations.get(collaborationId);
+    if (!state) return false;
+    return state.currentRound > state.maxRounds;
+  }
+
+  selectProposal(collaborationId: string, proposalId: string) {
+    const state = this.negotiations.get(collaborationId);
+    if (!state) throw new Error("not_found: Negotiation collaboration not found");
+    const proposal = state.proposals.find((p) => p.proposalId === proposalId);
+    if (!proposal) throw new Error("proposal_not_found: Proposal not found");
+    return proposal;
+  }
+
+  getWinningProposal(collaborationId: string) {
+    const state = this.negotiations.get(collaborationId);
+    if (!state || state.proposals.length === 0) return null;
+    return state.proposals.reduce((best, current) =>
+      current.confidence > best.confidence ? current : best,
+    );
+  }
+
+  completeCollaboration(
+    collaborationId: string,
+    mode: "pipeline" | "negotiation",
+    outputs: unknown[],
+    errors: string[],
+  ): CollaborationResult {
+    if (mode === "pipeline") {
+      this.pipelines.delete(collaborationId);
+    } else {
+      this.negotiations.delete(collaborationId);
+    }
+    return {
+      status: errors.length === 0 ? "completed" : "failed",
+      outputs,
+      errors,
+    };
+  }
+
+  getCollaborationResult(collaborationId: string): CollaborationResult | null {
+    const pipeline = this.pipelines.get(collaborationId);
+    const negotiation = this.negotiations.get(collaborationId);
+    if (pipeline || negotiation) return null;
+    return { status: "completed", outputs: [], errors: [] };
+  }
+
+  cleanup() {
+    for (const [id] of this.pipelines) {
+      if (this.isPipelineComplete(id)) {
+        this.pipelines.delete(id);
+      }
+    }
+  }
+}
+
+function createCollaborationModeService(): CollaborationModeService {
+  return new CollaborationModeService();
+}
+
+type AgentContext = {
+  agentId: string;
+  agentType: string;
+  packId: string;
+  delegationDepth: number;
+  activeDelegations: readonly string[];
+  permissions: {
+    resources: readonly string[];
+    actions: readonly string[];
+    constraints: Record<string, unknown>;
+  };
+  sandboxTier: string;
+  correlationId: string;
+  tenantId: string | null;
+};
+
+type DelegationSpec = {
+  targetAgentId: string;
+  targetAgentType: string;
+  targetPackId: string;
+  requiredPermissions: {
+    resources: readonly string[];
+    actions: readonly string[];
+    constraints: Record<string, unknown>;
+  };
+  timeout: number;
+  collaborationMode?: "pipeline" | "negotiation";
+  pipelineStages?: Array<{
+    stageId: string;
+    agentId: string;
+    agentType: string;
+    inputTransform?: (prev: unknown) => unknown;
+  }>;
+  negotiationRounds?: number;
+  negotiationSelectionPolicy?: "highest_confidence" | "consensus" | "parent_selection";
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

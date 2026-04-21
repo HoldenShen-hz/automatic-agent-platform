@@ -2,6 +2,9 @@ import { z } from "zod";
 import type { TaskSituation } from "../../orchestration/oapeflir/types/task-situation.js";
 import type { SystemSituation } from "./system-situation-model.js";
 import { SystemSituationSchema } from "./system-situation-model.js";
+import { StructuredLogger } from "./structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 /**
  * UnifiedObservation — the single output surface of the Observe stage.
@@ -85,7 +88,7 @@ export class ObservationAggregator {
 
     for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (OBSERVE_OUTPUT_BLACKLIST.has(key)) {
-        console.warn(`[Observe:R2:blacklist] stripped blacklisted field "${key}" from Observe output`);
+        logger.warn(`[Observe:R2:blacklist] stripped blacklisted field "${key}" from Observe output`);
         continue; // drop the field
       }
 

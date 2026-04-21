@@ -3,11 +3,11 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisQueueClient } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { RedisQueueAdapter } from "../../../../src/platform/execution/queue/redis-queue-adapter.js";
 
 test("[SYS-REL-2.4] Redis queue enqueue hmset failure should propagate (currently swallows)", () => {
   const mockRedis = new EventEmitter();
-  const client = new RedisQueueClient({
+  const client = new RedisQueueAdapter({
     host: "localhost",
     port: 6379,
   });
@@ -46,7 +46,7 @@ test("[SYS-REL-2.4] Redis queue should use transaction for enqueue atomicity", (
 
 test("[SYS-REL-2.4] Redis queue enqueue zadd failure should propagate", () => {
   const mockRedis = new EventEmitter();
-  const client = new RedisQueueClient({
+  const client = new RedisQueueAdapter({
     host: "localhost",
     port: 6379,
   });

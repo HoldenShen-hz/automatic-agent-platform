@@ -13,6 +13,9 @@ import {
 } from "../../model-gateway/provider-registry/unified-chat-provider.js";
 import { AppError } from "../../contracts/errors.js";
 import { newId } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_MAX_TOKENS = 1024;
@@ -95,10 +98,10 @@ export class ApprovalContextSummaryService {
       return this.parseSummaryFromResponse(result.content, context);
     } catch (error) {
       if (error instanceof AppError && !error.retryable) {
-        console.warn("[ApprovalContextSummaryService] LLM call failed non-retryably, falling back to template", error.message);
+        logger.warn("[ApprovalContextSummaryService] LLM call failed non-retryably, falling back to template", { error: error.message });
         return this.fallbackTemplateSummary(context);
       }
-      console.warn("[ApprovalContextSummaryService] LLM call failed, falling back to template", error);
+      logger.warn("[ApprovalContextSummaryService] LLM call failed, falling back to template", { error: String(error) });
       return this.fallbackTemplateSummary(context);
     }
   }
@@ -183,7 +186,7 @@ Return a JSON object with summary, keyPoints, riskFactors, recommendedAction, an
         confidence: typeof parsed.confidence === "number" ? Math.min(1, Math.max(0, parsed.confidence)) : 0.5,
       };
     } catch (error) {
-      console.warn("[ApprovalContextSummaryService] Failed to parse LLM response as JSON, falling back to template", error);
+      logger.warn("[ApprovalContextSummaryService] Failed to parse LLM response as JSON, falling back to template", { error: String(error) });
       return this.fallbackTemplateSummary(context);
     }
   }

@@ -8,6 +8,9 @@ import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/author
 import { ValidationError, StorageError, PolicyDeniedError, ProviderError } from "../../contracts/errors.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 import type {
   SecretLeaseRecord,
   SecretProviderKind,
@@ -355,14 +358,14 @@ export class SecretManagementService {
         const asOf = nowIso();
         const rotated = this.requestDueRotations(asOf);
         if (rotated.length > 0) {
-          console.log(`secret.rotation.scheduled`, {
+          logger.info(`secret.rotation.scheduled`, {
             count: rotated.length,
             asOf,
             requestedBy: "system.rotation.scheduler",
           });
         }
       } catch (err) {
-        console.error("secret.rotation.scheduler_error", {
+        logger.error("secret.rotation.scheduler_error", {
           err: err instanceof Error ? err.message : String(err),
         });
       }
@@ -373,13 +376,13 @@ export class SecretManagementService {
       const asOf = nowIso();
       const rotated = this.requestDueRotations(asOf);
       if (rotated.length > 0) {
-        console.log(`secret.rotation.scheduled_initial`, {
+        logger.info(`secret.rotation.scheduled_initial`, {
           count: rotated.length,
           asOf,
         });
       }
     } catch (err) {
-      console.error("secret.rotation.initial_check_error", {
+      logger.error("secret.rotation.initial_check_error", {
         err: err instanceof Error ? err.message : String(err),
       });
     }

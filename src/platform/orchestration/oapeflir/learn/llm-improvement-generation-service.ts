@@ -7,6 +7,9 @@ import {
   type ChatMessage,
 } from "../../../model-gateway/provider-registry/unified-chat-provider.js";
 import { AppError } from "../../../contracts/errors.js";
+import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 const DEFAULT_IMPROVEMENT_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_MAX_TOKENS = 1024;
@@ -56,10 +59,10 @@ export class LLMImprovementGenerationService {
       return this.parseImprovementsFromResponse(result.content, signals);
     } catch (error) {
       if (error instanceof AppError && !error.retryable) {
-        console.warn("[LLMImprovementGenerationService] LLM call failed non-retryably, falling back to template-based generation", error.message);
+        logger.warn("[LLMImprovementGenerationService] LLM call failed non-retryably, falling back to template-based generation", { error: error.message });
         return this.fallbackTemplateGeneration(signals);
       }
-      console.warn("[LLMImprovementGenerationService] LLM call failed, falling back to template-based generation", error);
+      logger.warn("[LLMImprovementGenerationService] LLM call failed, falling back to template-based generation", { error: String(error) });
       return this.fallbackTemplateGeneration(signals);
     }
   }
@@ -107,7 +110,7 @@ Return a JSON array of LearningObjects, one per signal.`;
     try {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        console.warn("[LLMImprovementGenerationService] No JSON array found in LLM response, falling back to template");
+        logger.warn("[LLMImprovementGenerationService] No JSON array found in LLM response, falling back to template");
         return this.fallbackTemplateGeneration(signals);
       }
 
@@ -120,7 +123,7 @@ Return a JSON array of LearningObjects, one per signal.`;
         return this.mapParsedToLearningObject(item, signal);
       });
     } catch (error) {
-      console.warn("[LLMImprovementGenerationService] Failed to parse LLM response as JSON, falling back to template", error);
+      logger.warn("[LLMImprovementGenerationService] Failed to parse LLM response as JSON, falling back to template", { error: String(error) });
       return this.fallbackTemplateGeneration(signals);
     }
   }

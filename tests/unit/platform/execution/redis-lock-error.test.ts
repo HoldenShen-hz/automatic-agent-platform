@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisLockAdapter } from "../../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
+import { RedisLockAdapter } from "../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
 
 test("[SYS-REL-2.1] Redis lock adapter logs error on connection failure", () => {
   const logs: Array<{ level: string; message: string; data: Record<string, unknown> }> = [];

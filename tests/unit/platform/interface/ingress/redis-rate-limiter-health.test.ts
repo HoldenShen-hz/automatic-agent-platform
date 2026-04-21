@@ -55,9 +55,7 @@ test("[SYS-REL-2.1] redis rate limiter error handler captures errors", () => {
   assert.ok(capturedHandler !== null, "Error handler should be registered");
 
   // Simulate error - use non-null assertion since handler is confirmed set
-  if (capturedHandler) {
-    capturedHandler(new Error("Connection refused"));
-  }
+  capturedHandler!(new Error("Connection refused"));
 });
 
 test("[SYS-REL-2.1] redis rate limiter increments error counter on Redis errors", async () => {

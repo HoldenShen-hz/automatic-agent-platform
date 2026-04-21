@@ -135,9 +135,12 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "3", riskLevel: "high", status: "pending", createdAt: "2026-04-21T10:02:00.000Z" }),
       ];
       const sorted = sortByPriority(items);
-      assert.strictEqual(sorted[0].queueItemId, "2"); // critical first
-      assert.strictEqual(sorted[1].queueItemId, "3"); // high second
-      assert.strictEqual(sorted[2].queueItemId, "1"); // low last
+      const first = sorted[0];
+      const second = sorted[1];
+      const third = sorted[2];
+      assert.strictEqual(first?.queueItemId, "2"); // critical first
+      assert.strictEqual(second?.queueItemId, "3"); // high second
+      assert.strictEqual(third?.queueItemId, "1"); // low last
     });
 
     it("should use createdAt as secondary sort", () => {
@@ -146,13 +149,15 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "2", riskLevel: "high", status: "pending", createdAt: "2026-04-21T10:00:00.000Z" }),
       ];
       const sorted = sortByPriority(items);
-      assert.strictEqual(sorted[0].queueItemId, "2"); // older first
+      const first = sorted[0];
+      assert.strictEqual(first?.queueItemId, "2"); // older first
     });
 
     it("should not mutate original array", () => {
       const items = [createMockQueueItem({ queueItemId: "1" })];
       sortByPriority(items);
-      assert.strictEqual(items[0].queueItemId, "1");
+      const first = items[0];
+      assert.strictEqual(first?.queueItemId, "1");
     });
   });
 
@@ -174,7 +179,8 @@ describe("HITL Notification Components", () => {
       ];
       const filtered = filterByStatus(items, "pending");
       assert.strictEqual(filtered.length, 1);
-      assert.strictEqual(filtered[0].queueItemId, "1");
+      const first = filtered[0];
+      assert.strictEqual(first?.queueItemId, "1");
     });
 
     it("should filter by acknowledged status", () => {
@@ -184,7 +190,8 @@ describe("HITL Notification Components", () => {
       ];
       const filtered = filterByStatus(items, "acknowledged");
       assert.strictEqual(filtered.length, 1);
-      assert.strictEqual(filtered[0].queueItemId, "2");
+      const first = filtered[0];
+      assert.strictEqual(first?.queueItemId, "2");
     });
   });
 
@@ -196,8 +203,10 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "3", stageRef: "plan" }),
       ];
       const groups = groupByStage(items);
-      assert.strictEqual(groups.get("plan")?.length, 2);
-      assert.strictEqual(groups.get("execute")?.length, 1);
+      const planGroup = groups.get("plan");
+      const executeGroup = groups.get("execute");
+      assert.strictEqual(planGroup?.length, 2);
+      assert.strictEqual(executeGroup?.length, 1);
     });
 
     it("should handle empty items array", () => {

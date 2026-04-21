@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, unlinkSync } from "node:fs";
 
-import { runSingleTaskExecution, type HappyPathInput } from "../../../../../../src/platform/execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution, type HappyPathInput } from "../../../../../src/platform/execution/execution-engine/single-task-execution.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

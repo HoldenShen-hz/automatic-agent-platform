@@ -325,6 +325,12 @@ export class HumanTakeoverServiceAsync {
   /** Abort controller for graceful shutdown of the processing loop. */
   private readonly abortController: AbortController = new AbortController();
 
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_SESSION_ENTRIES = 500;
+  private readonly SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
+
   public constructor(
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
@@ -334,6 +340,53 @@ export class HumanTakeoverServiceAsync {
     this.sync = new SyncService(db, store);
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.logger = new StructuredLogger({ retentionLimit: 100 });
+  }
+
+  /**
+   * C-11: Evict expired session entries to prevent memory leaks.
+   * Note: We don't evict activeTimeouts/escalationTimers as they are cleared on timeout,
+   * but we do evict ackStatuses and escalationPolicies.
+   */
+  private evictExpiredSessionEntries(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.SESSION_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    // Find expired ackStatuses
+    for (const [sessionId, status] of this.ackStatuses) {
+      if (status.acknowledgedAt) {
+        const ackTime = new Date(status.acknowledgedAt).getTime();
+        if (ackTime < expiryThreshold) {
+          entriesToDelete.push(sessionId);
+        }
+      }
+    }
+
+    for (const sessionId of entriesToDelete) {
+      this.ackStatuses.delete(sessionId);
+      this.escalationPolicies.delete(sessionId);
+    }
+
+    // If still over capacity, remove oldest entries
+    if (this.ackStatuses.size > this.MAX_SESSION_ENTRIES) {
+      const sortedEntries = [...this.ackStatuses.entries()].sort((a, b) => {
+        const aTime = a[1].acknowledgedAt ? new Date(a[1].acknowledgedAt!).getTime() : 0;
+        const bTime = b[1].acknowledgedAt ? new Date(b[1].acknowledgedAt!).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      const toRemove = this.ackStatuses.size - this.MAX_SESSION_ENTRIES;
+      for (let i = 0; i < toRemove; i++) {
+        const sessionId = sortedEntries[i]![0];
+        this.ackStatuses.delete(sessionId);
+        this.escalationPolicies.delete(sessionId);
+      }
+    }
   }
 
   // -------------------------------------------------------------------------

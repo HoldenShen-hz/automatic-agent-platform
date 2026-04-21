@@ -211,9 +211,61 @@ export class ApprovalFlowEngine {
   private readonly logger = new StructuredLogger({ retentionLimit: 50 });
   private readonly flows: Map<string, ApprovalFlowState> = new Map();
   private readonly escalationManager: EscalationManager;
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_FLOWS = 500;
+  private readonly FLOW_TTL_MS = 60 * 60 * 1000; // 1 hour
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   public constructor(escalationManager?: EscalationManager) {
     this.escalationManager = escalationManager ?? new EscalationManager();
+  }
+
+  /**
+   * C-11: Evict expired approval flows to prevent memory leaks.
+   */
+  private evictExpiredFlows(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.FLOW_TTL_MS;
+    const entriesToDelete: string[] = [];
+
+    for (const [flowId, flow] of this.flows) {
+      // Evict flows that are in terminal state and older than TTL
+      const isTerminal = flow.status === FlowStatus.APPROVED ||
+                         flow.status === FlowStatus.REJECTED ||
+                         flow.status === FlowStatus.EXPIRED ||
+                         flow.status === FlowStatus.CANCELLED ||
+                         flow.status === FlowStatus.MAX_ITERATIONS_REACHED;
+      if (isTerminal) {
+        const updatedAt = new Date(flow.updatedAt).getTime();
+        if (updatedAt < expiryThreshold) {
+          entriesToDelete.push(flowId);
+        }
+      }
+    }
+
+    for (const flowId of entriesToDelete) {
+      this.flows.delete(flowId);
+    }
+
+    // If still over capacity, remove oldest terminal flows
+    if (this.flows.size > this.MAX_FLOWS) {
+      const sortedEntries = [...this.flows.entries()].sort((a, b) => {
+        const aTime = new Date(a[1].updatedAt).getTime();
+        const bTime = new Date(b[1].updatedAt).getTime();
+        return aTime - bTime;
+      });
+
+      const toRemove = this.flows.size - this.MAX_FLOWS;
+      for (let i = 0; i < toRemove; i++) {
+        this.flows.delete(sortedEntries[i]![0]);
+      }
+    }
   }
 
   /**
@@ -233,6 +285,9 @@ export class ApprovalFlowEngine {
       initialDelegationTtlMs?: number;
     } | undefined = undefined,
   ): ApprovalFlowState {
+    // C-11: Evict expired flows before creating new one
+    this.evictExpiredFlows();
+
     const flowId = newId("flow");
     const now = nowIso();
 

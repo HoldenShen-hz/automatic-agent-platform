@@ -378,6 +378,11 @@ export class SequenceLoopDetector {
   private sequences: Map<string, ActionSequence> = new Map();
   private actionHistory: string[] = [];
   private config: Required<SequenceLoopDetectionConfig>;
+  // C-11: TTL-based eviction to prevent memory leaks
+  private readonly MAX_SEQUENCES = 500;
+  private readonly SEQUENCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private lastEvictionTime = 0;
+  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
   constructor(config: SequenceLoopDetectionConfig = {}) {
     this.config = {
@@ -387,9 +392,47 @@ export class SequenceLoopDetector {
   }
 
   /**
+   * C-11: Evict expired sequence entries to prevent memory leaks.
+   */
+  private evictExpired(): void {
+    const now = Date.now();
+    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+      return;
+    }
+    this.lastEvictionTime = now;
+
+    const expiryThreshold = now - this.SEQUENCE_TTL_MS;
+
+    // Evict expired sequences
+    for (const [key, seq] of this.sequences) {
+      const firstSeen = new Date(seq.firstSeen).getTime();
+      if (firstSeen < expiryThreshold) {
+        this.sequences.delete(key);
+      }
+    }
+
+    // If still over capacity, remove oldest sequences
+    if (this.sequences.size > this.MAX_SEQUENCES) {
+      const sortedEntries = [...this.sequences.entries()].sort((a, b) => {
+        const aTime = new Date(a[1].firstSeen).getTime();
+        const bTime = new Date(b[1].firstSeen).getTime();
+        return aTime - bTime;
+      });
+
+      const toRemove = this.sequences.size - this.MAX_SEQUENCES;
+      for (let i = 0; i < toRemove; i++) {
+        this.sequences.delete(sortedEntries[i]![0]);
+      }
+    }
+  }
+
+  /**
    * Record an action and check for sequence loops.
    */
   recordAction(action: string): { isLoop: boolean; sequence: string[]; count: number } {
+    // C-11: Evict expired entries before recording new action
+    this.evictExpired();
+
     this.actionHistory.push(action);
     if (this.actionHistory.length > this.config.windowSize * 2) {
       this.actionHistory = this.actionHistory.slice(-this.config.windowSize);

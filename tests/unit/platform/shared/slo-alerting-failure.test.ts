@@ -67,17 +67,12 @@ function createMockDb(): AuthoritativeSqlDatabase {
 
 test("[SYS-REL-2.5] PagerDuty channel tracks delivery failures in metrics", async () => {
   const db = createMockDb();
-  const logger = { error: (msg: string, data?: Record<string, unknown>) => {}, warn: () => {}, info: () => {} };
-  const metrics = { increment: (name: string) => {} };
 
-  const service = new SloAlertingService(db, {
-    logger: logger as any,
-    metrics: metrics as any,
-  });
+  const service = new SloAlertingService(db);
 
   // Note: PagerDuty channel doesn't expose internal delivery status
   // The actual defect is that failures are caught and ignored
-  const channel = service["channels"].get("pagerduty");
+  const channel = (service as unknown as { dispatcher: { channels: Map<string, unknown> } }).dispatcher?.channels?.get("pagerduty");
   assert.ok(channel !== undefined, "PagerDuty channel must be registered");
 });
 
@@ -98,19 +93,14 @@ test("[SYS-REL-2.5] Webhook channel returns delivered=false on fetch failure", (
 
 test("[SYS-REL-2.5] SloAlertingService fires alert and records in database", () => {
   const db = createMockDb();
-  const logger = { error: (msg: string) => {}, warn: () => {}, info: () => {} };
-  const metrics = { increment: (name: string) => {} };
 
-  const service = new SloAlertingService(db, {
-    logger: logger as any,
-    metrics: metrics as any,
-  });
+  const service = new SloAlertingService(db);
 
   // Define an SLO first
   service.defineSlo({
     name: "test-slo",
     description: "Test SLO",
-    sliKind: "success_rate",
+    sliKind: "error_rate",
     targetValue: 99,
     operator: "gte",
     windowMinutes: 60,

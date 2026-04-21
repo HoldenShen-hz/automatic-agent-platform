@@ -272,7 +272,7 @@ test("[SYS-REL-2.5] alert service summary includes delivery failure metrics", ()
   const summary = () => ({
     alertsFired: counters["alerts_fired"],
     deliveryFailures: counters["alert_delivery_failures_total"],
-    deliverySuccessRate: (counters["alerts_fired"] - counters["alert_delivery_failures_total"]) / counters["alerts_fired"]!,
+    deliverySuccessRate: (counters["alerts_fired"]! - counters["alert_delivery_failures_total"]!) / (counters["alerts_fired"] ?? 1),
   });
 
   const result = summary();

@@ -214,7 +214,6 @@ test("Frozen P1 incident recovers to full_auto on next evaluation without incide
     capabilityScores: [
       createCapabilityScore({
         incidents: 0, // No incidents now
-        lastIncidentSeverity: undefined,
         currentAutonomy: "frozen",
       }),
     ],
@@ -481,7 +480,6 @@ test("No incidents returns normal evaluation", () => {
     capabilityScores: [
       createCapabilityScore({
         incidents: 0,
-        lastIncidentSeverity: undefined,
         currentAutonomy: "full_auto",
         totalExecutions: 500,
         successfulExecutions: 495,
