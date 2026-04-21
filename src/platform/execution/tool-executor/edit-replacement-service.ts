@@ -703,7 +703,7 @@ export class EditReplacementService {
     return Date.now() - startedAtMs >= timeoutMs;
   }
 
-  private collectDiagnostics(filePath: string): CodeDiagnosticsSummary | null {
+  private async collectDiagnostics(filePath: string): Promise<CodeDiagnosticsSummary | null> {
     return this.diagnosticsService.collectForFiles([filePath]);
   }
 }

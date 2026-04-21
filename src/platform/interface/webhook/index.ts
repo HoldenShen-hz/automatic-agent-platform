@@ -1,9 +1,22 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
 
 import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type WebhookSignatureAlgorithm = "none" | "sha256_hmac";
+
+// Zod schema for webhook payload validation
+const WebhookPayloadSchema = z.object({
+  // eventType can come with different key names
+  eventType: z.string().optional(),
+  event_type: z.string().optional(),
+  type: z.string().optional(),
+  // idempotency keys with different naming conventions
+  eventId: z.string().optional(),
+  event_id: z.string().optional(),
+  id: z.string().optional(),
+}).passthrough();
 
 export interface WebhookEndpointRegistration {
   endpointId: string;
@@ -208,11 +221,18 @@ function parseWebhookPayload(body: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(body) as unknown;
     if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("payload must be an object");
+      throw new ValidationError("webhook.invalid_json", "Webhook body must be a JSON object.", {
+        details: { message: "payload must be an object" },
+      });
     }
-    return parsed as Record<string, unknown>;
+    // Validate payload structure with Zod schema
+    const validated = WebhookPayloadSchema.parse(parsed);
+    return validated as Record<string, unknown>;
   } catch (error) {
-    throw new ValidationError("webhook.invalid_json", "Webhook body must be a JSON object.", {
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ValidationError("webhook.invalid_json", "Webhook body must be a valid JSON object.", {
       details: { message: error instanceof Error ? error.message : String(error) },
     });
   }

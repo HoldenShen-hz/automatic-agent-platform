@@ -36,7 +36,7 @@ import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/san
  * calling real GitHub Actions APIs, allowing testing of deployment logic.
  */
 class SimulatedDeploymentCommandRunner {
-  public run(request: DeploymentCommandRequest): DeploymentCommandResult {
+  public async run(request: DeploymentCommandRequest): Promise<DeploymentCommandResult> {
     // Generate a fake run ID based on the deployment step
     const runId = request.step === "publish" ? "710000001" : "710000002";
     return {

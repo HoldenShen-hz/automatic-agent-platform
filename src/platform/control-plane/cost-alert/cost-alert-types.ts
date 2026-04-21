@@ -30,8 +30,8 @@ export interface BudgetPolicy {
   scope: BudgetScope;
   scopeId: string;
   period: BudgetPeriod;
-  limitTokens?: number;
-  limitCostUsd?: number;
+  limitTokens?: number | undefined;
+  limitCostUsd?: number | undefined;
   warningThreshold: number; // Ratio (0-1) at which to trigger warning
   actionsOnWarning: CostAlertAction[];
   actionsOnBreach: CostAlertAction[];

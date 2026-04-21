@@ -464,7 +464,7 @@ export class ReleasePipelineService {
 
     try {
       // Execute Docker build
-      const buildResult = this.commandRunner.run({
+      const buildResult = await this.commandRunner.run({
         step: "build_image",
         command: "docker",
         args: buildArgs,
@@ -497,7 +497,7 @@ export class ReleasePipelineService {
       registrySecretWithLease = this.applyLeaseToMetadata(registryLease, registrySecretWithLease);
 
       // Execute GitHub Actions workflow for publishing
-      const publishResult = this.commandRunner.run({
+      const publishResult = await this.commandRunner.run({
         step: "publish_workflow",
         command: "gh",
         args: publishArgs,

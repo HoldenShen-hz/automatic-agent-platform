@@ -15,7 +15,7 @@
  * and provide feedback about potential issues in modified files.
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { dirname, extname, resolve, sep } from "node:path";
 
@@ -99,7 +99,7 @@ export interface CodeDiagnosticsServiceOptions {
   /** Custom TypeScript diagnostics function (for testing) */
   runTypeScript?: (request: CodeDiagnosticsRunRequest) => readonly CodeDiagnosticEntry[];
   /** Custom Python diagnostics function (for testing) */
-  runPython?: (request: CodeDiagnosticsRunRequest) => readonly CodeDiagnosticEntry[];
+  runPython?: (request: CodeDiagnosticsRunRequest) => Promise<readonly CodeDiagnosticEntry[]>;
 }
 
 /**
@@ -295,24 +295,32 @@ function collectTypeScriptDiagnosticsForFiles(request: CodeDiagnosticsRunRequest
  * This validates Python syntax without executing the code.
  * Returns a warning if py_compile is unavailable or returns non-zero status.
  */
-function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunRequest): CodeDiagnosticEntry[] {
+async function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunRequest): Promise<CodeDiagnosticEntry[]> {
   const diagnostics: CodeDiagnosticEntry[] = [];
 
   for (const filePath of request.filePaths) {
     // Run python3 -m py_compile to check syntax
-    const result = spawnSync("python3", ["-m", "py_compile", filePath], {
+    const child = spawn("python3", ["-m", "py_compile", filePath], {
       cwd: request.workspaceRoot,
-      encoding: "utf8",
-      timeout: 5_000,
+      stdio: ["ignore", "pipe", "pipe"] as const,
+    });
+
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (chunk) => { stdout += chunk; });
+    child.stderr?.on("data", (chunk) => { stderr += chunk; });
+
+    const exitCode = await new Promise<number>((resolve) => {
+      child.on("close", (code) => resolve(code ?? 1));
     });
 
     // Handle tool unavailability or errors
-    if (result.error != null) {
+    if (exitCode === 127 || stderr.includes("python3: command not found") || stderr.includes("no module named py_compile")) {
       diagnostics.push({
         language: "python",
         severity: "warning",
         filePath,
-        message: `python diagnostics unavailable: ${result.error.message}`,
+        message: `python diagnostics unavailable: python3 not found or py_compile module unavailable`,
         code: "python.runner_unavailable",
         source: "py_compile",
         line: null,
@@ -322,18 +330,18 @@ function collectPythonDiagnosticsForFiles(request: CodeDiagnosticsRunRequest): C
     }
 
     // No errors if exit code is 0
-    if ((result.status ?? 0) === 0) {
+    if (exitCode === 0) {
       continue;
     }
 
     // Parse error output for line number
-    const stderr = result.stderr.trim().length > 0 ? result.stderr.trim() : result.stdout.trim();
-    const lineMatch = stderr.match(/line (\d+)/);
+    const errorOutput = stderr.trim().length > 0 ? stderr.trim() : stdout.trim();
+    const lineMatch = errorOutput.match(/line (\d+)/);
     diagnostics.push({
       language: "python",
       severity: "error",
       filePath,
-      message: stderr.length > 0 ? stderr : "python compile failed",
+      message: errorOutput.length > 0 ? errorOutput : "python compile failed",
       code: "python.compile_failed",
       source: "py_compile",
       line: lineMatch == null ? null : parseInt(lineMatch[1] ?? "0", 10),
@@ -387,7 +395,7 @@ export class CodeDiagnosticsService {
   private readonly workspaceRoot: string;
   private readonly maxDiagnostics: number;
   private readonly runTypeScript: (request: CodeDiagnosticsRunRequest) => readonly CodeDiagnosticEntry[];
-  private readonly runPython: (request: CodeDiagnosticsRunRequest) => readonly CodeDiagnosticEntry[];
+  private readonly runPython: (request: CodeDiagnosticsRunRequest) => Promise<readonly CodeDiagnosticEntry[]>;
 
   /**
    * Creates a new CodeDiagnosticsService.
@@ -407,7 +415,7 @@ export class CodeDiagnosticsService {
    * @param filePaths - Files to analyze
    * @returns Summary of diagnostics, or null if no files could be analyzed
    */
-  public collectForFiles(filePaths: readonly string[]): CodeDiagnosticsSummary | null {
+  public async collectForFiles(filePaths: readonly string[]): Promise<CodeDiagnosticsSummary | null> {
     // Normalize paths, filter to existing files within workspace
     const normalized = Array.from(new Set(filePaths
       .map((filePath) => canonicalizePath(filePath))
@@ -442,11 +450,12 @@ export class CodeDiagnosticsService {
     // Run Python diagnostics
     if (pyFiles.length > 0) {
       try {
-        diagnostics.push(...this.runPython({
+        const pyResults = await this.runPython({
           workspaceRoot: this.workspaceRoot,
           filePaths: pyFiles,
           maxDiagnostics: this.maxDiagnostics,
-        }));
+        });
+        diagnostics.push(...pyResults);
       } catch (error) {
         runnerWarnings.push(`python diagnostics failed: ${error instanceof Error ? error.message : String(error)}`);
       }

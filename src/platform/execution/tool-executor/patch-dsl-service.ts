@@ -82,7 +82,7 @@ export class PatchDslService {
    * @param request - Patch application request with patches and policy
    * @returns Result of patch application with per-file results
    */
-  public applyPatches(request: PatchApplicationRequest): PatchApplicationResult {
+  public async applyPatches(request: PatchApplicationRequest): Promise<PatchApplicationResult> {
     const startedAtMs = Date.now();
     const prepared: PreparedPatch[] = [];
     const results: PatchResult[] = [];
@@ -149,7 +149,7 @@ export class PatchDslService {
       }
       return item.targetPath == null ? [] : [item.targetPath];
     });
-    const diagnostics = this.diagnosticsService.collectForFiles(changedPaths);
+    const diagnostics = await this.diagnosticsService.collectForFiles(changedPaths);
     return this.buildResult(request, "succeeded", true, successResults, diagnostics, startedAtMs);
   }
 

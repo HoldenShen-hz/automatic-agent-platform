@@ -28,6 +28,8 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 export interface DivisionCatalogEntry {
   divisionId: string;
   name: string;
+  description: string;
+  defaultWorkflowId: string | null;
   source: "registry" | "tasks";
 }
 
@@ -341,6 +343,8 @@ export class MissionControlService {
         .map((division) => ({
           divisionId: division.id,
           name: division.name,
+          description: division.description,
+          defaultWorkflowId: division.defaultWorkflowId,
           source: "registry" as const,
         }))
         .sort((left, right) => left.divisionId.localeCompare(right.divisionId));
@@ -358,6 +362,8 @@ export class MissionControlService {
       .map((divisionId) => ({
         divisionId,
         name: divisionId,
+        description: "",
+        defaultWorkflowId: null,
         source: "tasks" as const,
       }));
   }

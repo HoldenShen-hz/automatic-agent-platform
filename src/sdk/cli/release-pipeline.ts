@@ -74,7 +74,7 @@ function requiredEnv(name: string): string {
  * executing them. Used when runner mode is set to "simulate".
  */
 class SimulatedReleasePipelineCommandRunner {
-  public run(request: ReleasePipelineCommandRequest): ReleasePipelineCommandResult {
+  public async run(request: ReleasePipelineCommandRequest): Promise<ReleasePipelineCommandResult> {
     const runId = request.step === "publish_workflow" ? "700000001" : null;
     const stdout = request.step === "publish_workflow"
       ? `Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`
@@ -99,7 +99,7 @@ class SimulatedReleasePipelineCommandRunner {
  * executing them. Used when runner mode is set to "simulate".
  */
 class SimulatedDeploymentCommandRunner {
-  public run(request: DeploymentCommandRequest): DeploymentCommandResult {
+  public async run(request: DeploymentCommandRequest): Promise<DeploymentCommandResult> {
     const runId = request.step === "publish" ? "700000002" : "700000003";
     return {
       step: request.step,

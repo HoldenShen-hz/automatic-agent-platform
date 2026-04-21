@@ -66,10 +66,12 @@ export class ObservationAggregator {
    * Enforces R2 whitelist/blacklist by stripping any blacklisted fields found in the input.
    */
   public aggregate(taskSituation: TaskSituation, systemSituation: SystemSituation): UnifiedObservation {
+    // Validate system situation using schema before aggregation
+    const validatedSystem = SystemSituationSchema.parse(systemSituation);
     const cleanedTask = this.stripBlacklistedFields(taskSituation);
     return {
       task: cleanedTask,
-      system: systemSituation,
+      system: validatedSystem,
       observedAt: Date.now(),
     };
   }

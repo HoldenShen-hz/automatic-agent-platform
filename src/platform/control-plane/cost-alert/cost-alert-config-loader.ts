@@ -68,7 +68,7 @@ export function loadCostAlertConfig(configPath: string = DEFAULT_CONFIG_PATH): C
       defaultWarningThreshold: validated.defaultWarningThreshold,
     };
 
-    return cachedConfig;
+    return cachedConfig!;
   } catch {
     // Return default config if file doesn't exist or validation fails
     return {

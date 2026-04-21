@@ -73,7 +73,12 @@ export class FluentdTransport implements LogTransport {
       return;
     }
     this.reconnectAttempts++;
-    setTimeout(() => this.connect(), this.reconnectIntervalMs);
+    // Exponential backoff: base * 2^(attempts-1), capped at 30 seconds
+    const backoffMs = Math.min(
+      this.reconnectIntervalMs * Math.pow(2, this.reconnectAttempts - 1),
+      30000
+    );
+    setTimeout(() => this.connect(), backoffMs);
   }
 
   write(entry: StructuredLogEntry): void {

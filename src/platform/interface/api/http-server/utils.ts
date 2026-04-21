@@ -258,7 +258,7 @@ export function matchNormalizedSegments(
     return null;
   }
   for (let i = 0; i < expected.length; i++) {
-    if (expected[i].startsWith(":")) {
+    if (expected[i]?.startsWith(":")) {
       // This is a parameter placeholder, skip validation
       continue;
     }

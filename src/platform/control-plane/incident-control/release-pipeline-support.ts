@@ -170,7 +170,7 @@ export interface ReleasePipelineCommandRequest {
  * Allows mocking or alternative command execution strategies.
  */
 export interface ReleasePipelineCommandRunner {
-  run(request: ReleasePipelineCommandRequest): ReleasePipelineCommandResult;
+  run(request: ReleasePipelineCommandRequest): Promise<ReleasePipelineCommandResult>;
 }
 
 /**
@@ -192,25 +192,37 @@ export const DEFAULT_CONFIG_ROOT = join(DEFAULT_REPO_ROOT, "config", "environmen
 export const ROTATION_GUARDED_ENVIRONMENTS = new Set<EnvironmentName>(["staging", "pre-prod", "prod"]);
 
 /**
- * Default command runner that executes commands locally via spawnSync.
+ * Default command runner that executes commands locally via spawn.
  * Captures stdout/stderr and timing information for reporting.
  */
 export class LocalReleasePipelineCommandRunner implements ReleasePipelineCommandRunner {
-  public run(request: ReleasePipelineCommandRequest): ReleasePipelineCommandResult {
+  public async run(request: ReleasePipelineCommandRequest): Promise<ReleasePipelineCommandResult> {
     const startedAt = Date.now();
-    const result = spawnSync(request.command, request.args, {
+    const child = spawn(request.command, request.args, {
       cwd: request.cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"] as const,
+    });
+    const stdout = await new Promise<string>((resolve) => {
+      let data = "";
+      child.stdout?.on("data", (chunk) => { data += chunk; });
+      child.stdout?.on("end", () => resolve(data));
+    });
+    const stderr = await new Promise<string>((resolve) => {
+      let data = "";
+      child.stderr?.on("data", (chunk) => { data += chunk; });
+      child.stderr?.on("end", () => resolve(data));
+    });
+    const exitCode = await new Promise<number>((resolve) => {
+      child.on("close", (code) => resolve(code ?? 1));
     });
     return {
       step: request.step,
       command: request.command,
       args: [...request.args],
       executed: true,
-      exitCode: result.status ?? 1,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? "",
+      exitCode,
+      stdout,
+      stderr,
       durationMs: Date.now() - startedAt,
     };
   }

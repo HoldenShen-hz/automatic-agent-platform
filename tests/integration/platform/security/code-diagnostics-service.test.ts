@@ -25,7 +25,7 @@ test("code diagnostics service keeps diagnostics scans inside the workspace boun
       },
     });
 
-    const summary = service.collectForFiles([insideFile, outsideFile]);
+    const summary = await service.collectForFiles([insideFile, outsideFile]);
 
     assert.ok(summary != null);
     assert.equal(summary.checkedFileCount, 1);
