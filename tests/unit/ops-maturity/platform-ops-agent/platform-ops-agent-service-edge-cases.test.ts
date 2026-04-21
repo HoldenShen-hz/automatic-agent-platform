@@ -7,9 +7,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { PlatformOpsAgentService } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import { PlatformOpsAgentService, type OpsAgentDefinition } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 
-function createService(overrides: Partial<Parameters<typeof PlatformOpsAgentService>[0]> = {}) {
+function createService(overrides: Partial<OpsAgentDefinition> = {}) {
   return new PlatformOpsAgentService({
     agentId: "test_ops_agent",
     specialty: "test_specialty",

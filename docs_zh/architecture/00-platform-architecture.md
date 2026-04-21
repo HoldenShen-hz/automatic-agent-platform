@@ -854,7 +854,7 @@ X1 ──middleware──> ALL PLANES                  │
 | S1 单体 | 单进程 + SQLite | 10 并发 workflow, 5 worker |
 | S2 多进程 | 主进程 + worker 进程 + Redis | 50 并发, 20 worker |
 | S3 分布式 | 微服务 + PostgreSQL + event bus | 500 并发, 100 worker |
-| S4 集群 | Kubernetes + PG 分片 + 多 AZ | 5000+ 并发 |
+| S4 集群 | Kubernetes + PG 分片 + 多 AZ | 5000+ 并发 | [Phase3] TODO: 需要多租户调度器 + 跨 Pod 协调机制，当前为规划阶段 |
 
 ---
 
@@ -2847,11 +2847,41 @@ operations · growth write actions · production release · finance-like actions
 
 ## 32.2 环境划分
 
-dev · test · staging · prod
+| 环境 | 用途 | 部署形态 | 数据隔离 |
+|------|------|---------|---------|
+| dev | 开发调试 | 本地进程 /Docker | 无隔离，共享开发 DB |
+| test | 单元/集成测试 | CI 环境，单节点 | 测试租户数据隔离 |
+| staging | 预发布验证 | K8s 单集群 | 按 tenant 分区 |
+| pre-prod | 正式发布前灰度 | K8s 多集群 | 生产级隔离 |
+| prod | 正式生产环境 | 多 Region K8s 集群 | 强租户隔离 + 跨 AZ 容灾 |
 
-## 32.3 资源池
+**环境Promotion策略**：
+```
+dev → test → staging → pre-prod → prod
+```
 
-read-only worker pool · write-enabled worker pool · high-risk isolated pool · browser worker pool · plugin isolated pool
+* 代码合并到 main 后自动部署到 dev
+* PR 通过后部署到 test
+* Release tag 触发 staging 部署
+* 预发布验证后手动 promote 到 pre-prod，再确认 prod
+
+## 32.3 资源池隔离
+
+Worker Pool 实现多层级隔离，保障不同风险等级和租户的业务互不影响：
+
+| Pool 名称 | 用途 | 隔离级别 | 资源配额 |
+|-----------|------|---------|---------|
+| read-only worker pool | 仅读操作任务（数据查询、报告生成） | 低风险 | 共享但限流 |
+| write-enabled worker pool | 写操作任务（状态变更、数据修改） | 中风险 | 独立资源池 |
+| high-risk isolated pool | 高风险操作（删除、批量修改、外部调用） | 高风险 | 独立集群+限流 |
+| browser worker pool | 浏览器自动化任务（Web 抓取、UI 测试） | 独立 | 独立 worker 进程 |
+| plugin isolated pool | 第三方插件执行 | 最强隔离 | 独立 Pod/Sandbox |
+
+**隔离原则**：
+* 不同 pool 之间**网络隔离**，跨池通信需通过 API Gateway
+* 高风险 tenant 可申请**专属 worker pool**，独占物理资源
+* Pool 间调度通过**优先级队列**管理，防止低优先级饿死
+* 所有 pool 均支持**水平扩展**，基于 queue depth 自动 scale
 
 ---
 
@@ -4883,6 +4913,8 @@ interface PlatformMode {
 
 **审计与测试**：每次前端发布前自动运行 axe-core 扫描；WCAG AA 违规视为 release blocker。
 
+**前端实现要求**：WCAG 2.1 AA 合规需要实际的前端 UI 实现（React/Vue/Angular 等框架）。平台 TypeScript 代码提供数据模型、颜色对比度令牌（`getSeverityColorTokens()`）和可访问性标签构建函数（`buildAccessibleLabel()`），但实际 UI 组件必须在具体前端框架中实现。§21 HITL 通知组件（`src/platform/interface/console/hitl/notification.ts`）提供 TypeScript 逻辑，颜色值符合 WCAG AA 对比度要求（≥4.5:1），但渲染和交互实现由前端负责。
+
 ---
 
 # 46. 组织层次模型
@@ -5667,6 +5699,28 @@ type FeedbackSignalType =
   | "cost_anomaly"             // 成本异常
   | "latency_anomaly";         // 延迟异常
 ```
+
+**设计决策：3D FeedbackSignal 结构 vs 扁平枚举**
+
+上面 architecture 文档中的 `FeedbackSignalType` 使用扁平的 9 类型枚举。实际实现（`src/platform/orchestration/oapeflir/types/feedback-signal.ts`）采用 3D 正交结构：
+
+```typescript
+// 实际实现使用 3D 正交结构
+source: FeedbackSourceSchema;      // "execution" | "user" | "hitl" | "validation" | "system"
+category: FeedbackCategorySchema;  // "success" | "failure" | "correction" | "timeout" | "partial"
+severity: FeedbackSeveritySchema;  // "info" | "warning" | "error" | "critical"
+```
+
+**为什么用 3D 而非扁平 9 类型枚举：**
+
+| 设计考量 | 扁平枚举 | 3D 正交结构 |
+|---------|---------|------------|
+| 可组合性 | 9 种固定组合 | 5×5×4=100 种潜在组合 |
+| 扩展性 | 新类型需修改枚举 | 独立扩展任意维度 |
+| 过滤查询 | 需要 N 个 OR 条件 | 可独立按 source/category/severity 过滤 |
+| 空缺组合 | 可能存在无意义的"合法"组合 | 业务逻辑决定哪些组合有效 |
+
+这种设计使 FeedbackSignal 可以表达更细粒度的反馈，同时保持维度间的正交性，便于分析和路由。架构文档中的扁平枚举用于概念说明，实际实现遵循 3D 结构。
 
 ## 56.3 自动改进类型
 

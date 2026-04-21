@@ -82,3 +82,22 @@ export {
   type ExternalAccessResponse,
   type DomainRateLimit,
 } from "./scoped-external-access-sandbox.js";
+
+// ─── Browser Executor ──────────────────────────────────────────────────────
+
+export {
+  BrowserExecutor,
+  createBrowserExecutor,
+  type BrowserAction,
+  type BrowserExecutionContext,
+  type BrowserExecutionResult,
+  type BrowserNavigationOptions,
+  type BrowserClickOptions,
+  type BrowserInputOptions,
+  type BrowserEvaluateOptions,
+  type BrowserScreenshotOptions,
+  type BrowserWaitForSelectorOptions,
+  type BrowserGetAttributeOptions,
+  type BrowserScrollOptions,
+  type BrowserExecutorOptions,
+} from "./browser-executor.js";

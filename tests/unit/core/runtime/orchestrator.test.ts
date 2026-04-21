@@ -162,7 +162,6 @@ test("MultiStepToolExecutionInput optional fields", () => {
       queueGovernance: { delayedCount: 0, rateLimitedCount: 0, backlogSize: 0, dispatchableBacklogSize: 0, claimedBacklogSize: 0, oldestWaitSeconds: 0, nonPriorityBacklogSize: 0, priorityBacklogSize: 0 } as any,
       findings: [],
     }),
-    crashInjection: undefined,
   };
 
   assert.ok(input.admissionPolicy, "admissionPolicy should be accepted");

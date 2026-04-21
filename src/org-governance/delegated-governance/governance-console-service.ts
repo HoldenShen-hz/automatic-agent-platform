@@ -58,6 +58,7 @@ export const CreateDelegationRequestSchema = z.object({
   revocable: z.boolean().default(true),
 });
 export type CreateDelegationRequest = z.infer<typeof CreateDelegationRequestSchema>;
+export type CreateDelegationRequestInput = z.input<typeof CreateDelegationRequestSchema>;
 
 /**
  * Console audit log entry
@@ -87,7 +88,8 @@ export class SelfServiceGovernanceConsole {
    * Creates a new delegation from a grantor to a grantee.
    * Per §51.1, only platform_team can create delegations at the platform level.
    */
-  public createDelegation(request: CreateDelegationRequest): GovernanceDelegation {
+  public createDelegation(input: CreateDelegationRequestInput): GovernanceDelegation {
+    const request = CreateDelegationRequestSchema.parse(input);
     const delegation: GovernanceDelegation = {
       delegationId: newId("del"),
       grantorId: request.grantorId,
