@@ -17,6 +17,7 @@ export * from "./stable-gray-release-rehearsal.js";
 export * from "./stable-lease-rehearsal.js";
 export * from "./stable-maintenance-rehearsal.js";
 export * from "./stable-migration-compatibility-rehearsal.js";
+export * from "./prompt-injection-guard.js";
 export * from "./stable-prompt-injection-red-team.js";
 export * from "./stable-queue-delivery-rehearsal.js";
 export * from "./stable-release-gate.js";

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const LearningObjectSchema = z.object({
   learningObjectId: z.string().min(1),
-  learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook"]),
+  learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook", "model_retraining", "dataset_gap"]),
   title: z.string().min(1),
   summary: z.string().min(1),
   confidence: z.number().min(0).max(1),

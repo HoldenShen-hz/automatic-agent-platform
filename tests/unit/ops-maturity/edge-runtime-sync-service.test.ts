@@ -51,6 +51,7 @@ test("EdgeRuntimeSyncService rejects restricted uploads when sync policy forbids
     taskId: "task_sync_1",
     createdAt: "2026-04-20T00:00:00.000Z",
     syncRequired: true,
+    status: "queued" as const,
   };
 
   const restrictedEnvelope = service.buildSyncEnvelope(

@@ -7,3 +7,7 @@ export function forecastCapacityUsage(currentUsage: number, growthRatePercent: n
   }
   return result;
 }
+
+export function forecastCapacityPeak(currentUsage: number, growthRatePercent: number, periods: number): number {
+  return Math.max(...forecastCapacityUsage(currentUsage, growthRatePercent, periods), currentUsage);
+}

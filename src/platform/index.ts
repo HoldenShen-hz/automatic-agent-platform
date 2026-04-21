@@ -18,3 +18,4 @@ export * from "./orchestration/replan/index.js";
 export * from "./prompt-engine/eval/index.js";
 export * from "./prompt-engine/rollout/index.js";
 export * from "./shared/observability/anomaly-detection-service.js";
+export * from "./shared/stability/index.js";

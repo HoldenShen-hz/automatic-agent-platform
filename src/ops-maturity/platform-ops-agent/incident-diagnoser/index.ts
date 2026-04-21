@@ -3,3 +3,7 @@ export function classifyOpsIncident(errorRate: number, backlog: number): "warnin
   if (errorRate >= 0.05 || backlog >= 200) return "incident";
   return "warning";
 }
+
+export function summarizeIncidentDiagnosis(errorRate: number, backlog: number): string {
+  return `${classifyOpsIncident(errorRate, backlog)}: errorRate=${errorRate}, backlog=${backlog}`;
+}

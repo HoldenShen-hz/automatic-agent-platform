@@ -165,6 +165,10 @@ Return a JSON array of LearningObjects, one per signal.`;
         return "Adopt the user's correction as the canonical approach and update planning guidance accordingly.";
       case "recovery_playbook":
         return "Automate the recovery steps to reduce mean time to recovery on similar failures.";
+      case "model_retraining":
+        return "Initiate model retraining with corrected dataset to improve future performance.";
+      case "dataset_gap":
+        return "Collect training data for the identified gap to enhance model capabilities.";
     }
   }
 }

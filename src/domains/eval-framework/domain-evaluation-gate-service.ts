@@ -41,6 +41,9 @@ export interface ReleaseGateReport {
   readonly evaluatorResults: readonly EvaluatorGateResult[];
   readonly coveredMetrics: readonly string[];
   readonly missingOnlineMetrics: readonly string[];
+  readonly fewShotGatePassed: boolean;
+  readonly regressionCaseGatePassed: boolean;
+  readonly promptInjectionCoveragePassed: boolean;
   readonly createdAt: string;
 }
 
@@ -61,6 +64,11 @@ export class DomainEvaluationGateService {
     }
 
     const coveredMetrics = [...new Set(run.cases.map((item) => item.metric))];
+    const promptInjectionCoveragePassed = framework.releaseGates.requirePromptInjectionCoverage
+      ? run.cases.every((item) => item.approvalMatched !== false)
+      : true;
+    const fewShotGatePassed = framework.fewShotExamples.length >= framework.releaseGates.minFewShotCount;
+    const regressionCaseGatePassed = run.cases.length >= framework.releaseGates.minRegressionCaseCount;
     const evaluatorResults: EvaluatorGateResult[] = framework.evaluators.map((evaluator) => {
       const observedScore = average(run.cases.filter((item) => item.metric === evaluator.metric).map((item) => item.score));
       return {
@@ -76,12 +84,24 @@ export class DomainEvaluationGateService {
     const blockingFailures = evaluatorResults
       .filter((item) => item.blocking && !item.passed)
       .map((item) => item.evaluatorId);
+    if (!fewShotGatePassed) {
+      blockingFailures.push("domain_eval.min_few_shot_gate");
+    }
+    if (!regressionCaseGatePassed) {
+      blockingFailures.push("domain_eval.min_regression_case_gate");
+    }
+    if (!promptInjectionCoveragePassed) {
+      blockingFailures.push("domain_eval.prompt_injection_gate");
+    }
     const missingOnlineMetrics = framework.onlineMetrics.filter((metric) => !coveredMetrics.includes(metric));
     const nonBlockingFindings = [
       ...evaluatorResults
         .filter((item) => !item.blocking && !item.passed)
         .map((item) => `${item.evaluatorId}:below_threshold`),
       ...missingOnlineMetrics.map((metric) => `online_metric_missing:${metric}`),
+      ...(fewShotGatePassed ? [] : ["few_shot_examples_below_minimum"]),
+      ...(regressionCaseGatePassed ? [] : ["regression_cases_below_minimum"]),
+      ...(promptInjectionCoveragePassed ? [] : ["prompt_injection_coverage_incomplete"]),
     ];
 
     return {
@@ -96,6 +116,9 @@ export class DomainEvaluationGateService {
       evaluatorResults,
       coveredMetrics,
       missingOnlineMetrics,
+      fewShotGatePassed,
+      regressionCaseGatePassed,
+      promptInjectionCoveragePassed,
       createdAt: nowIso(),
     };
   }

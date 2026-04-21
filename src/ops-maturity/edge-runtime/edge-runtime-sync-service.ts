@@ -67,7 +67,7 @@ export class EdgeRuntimeSyncService {
     return {
       record,
       selectedModelId: model?.modelId ?? null,
-      executionPlan: buildEdgeExecutionPlan([request.taskId]),
+      executionPlan: buildEdgeExecutionPlan([request.taskId]).orderedTaskIds,
     };
   }
 

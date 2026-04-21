@@ -18,7 +18,7 @@ export interface CostAttributionRecord {
   readonly capturedAt: string;
 }
 
-export interface CostSimulationScenario {
+export interface CostSimulationScenarioInput {
   readonly scenarioId: string;
   readonly subjectId: string;
   readonly reductionPercent: number;
@@ -73,7 +73,7 @@ export class CostOptimizationService {
       }));
   }
 
-  public simulate(scenarios: readonly CostSimulationScenario[]): CostSimulationResult[] {
+  public simulate(scenarios: readonly CostSimulationScenarioInput[]): CostSimulationResult[] {
     const aggregated = this.aggregate();
     return scenarios.map((scenario) => {
       const currentCostUsd = aggregated[scenario.subjectId] ?? 0;

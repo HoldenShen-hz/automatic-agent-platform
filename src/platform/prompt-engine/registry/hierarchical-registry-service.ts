@@ -211,6 +211,26 @@ export class HierarchicalPromptRegistryService {
     bundle.updatedAt = nowIso();
   }
 
+  public removeBundle(
+    name: string,
+    version: string,
+    level: RegistryLevel,
+    domain?: string,
+    packId?: string,
+  ): boolean {
+    const scopeKey = this.buildScopeKey(name, level, level === "task-type" ? domain : undefined, domain, packId);
+    const removedFromScope = this.versionsByScope.get(scopeKey)?.delete(version) ?? false;
+    const versions = this.versionsByName.get(name);
+    if (versions) {
+      for (const [bundleId, bundle] of versions.entries()) {
+        if (bundle.version === version) {
+          versions.delete(bundleId);
+        }
+      }
+    }
+    return removedFromScope;
+  }
+
   /**
    * Gets the resolved prompt bundle considering traffic allocation.
    * Used for A/B testing scenarios.

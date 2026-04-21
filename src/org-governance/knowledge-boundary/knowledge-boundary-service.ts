@@ -11,11 +11,16 @@ import {
   evaluateKnowledgeShare,
   type KnowledgeShareGrant,
 } from "./sharing-gate/index.js";
+import {
+  evaluateChineseWallPolicy,
+  type ChineseWallPolicy,
+} from "./chinese-wall-policy.js";
 
 export interface KnowledgeAccessDecision {
   readonly allowed: boolean;
   readonly boundaryId: string;
   readonly accessLog: KnowledgeAccessLogRecord;
+  readonly reasonCodes: readonly string[];
 }
 
 export class KnowledgeBoundaryService {
@@ -27,10 +32,16 @@ export class KnowledgeBoundaryService {
     requesterOrgNodeId: string,
     purpose: string,
     grants: readonly KnowledgeShareGrant[],
+    chineseWallPolicy?: ChineseWallPolicy,
     occurredAt = nowIso(),
   ): KnowledgeAccessDecision {
-    const allowed = canAccessKnowledgeBoundary(boundary, requesterOrgNodeId)
-      || evaluateKnowledgeShare(boundary, requesterOrgNodeId, grants, occurredAt);
+    const chineseWallDecision = chineseWallPolicy == null
+      ? { allowed: true, reasonCodes: ["knowledge_boundary.no_chinese_wall"] }
+      : evaluateChineseWallPolicy(chineseWallPolicy, requesterOrgNodeId, boundary.ownerOrgNodeId);
+    const allowed = chineseWallDecision.allowed && (
+      canAccessKnowledgeBoundary(boundary, requesterOrgNodeId)
+      || evaluateKnowledgeShare(boundary, requesterOrgNodeId, grants, occurredAt)
+    );
     const log: KnowledgeAccessLogRecord = {
       recordId: `knowledge_access_${boundary.boundaryId}_${requesterId}_${occurredAt}`,
       requesterId,
@@ -44,6 +55,9 @@ export class KnowledgeBoundaryService {
       allowed,
       boundaryId: boundary.boundaryId,
       accessLog: log,
+      reasonCodes: allowed
+        ? chineseWallDecision.reasonCodes
+        : [...chineseWallDecision.reasonCodes, "knowledge_boundary.access_denied"],
     };
   }
 

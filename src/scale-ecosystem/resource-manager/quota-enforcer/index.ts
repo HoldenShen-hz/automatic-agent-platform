@@ -12,6 +12,27 @@ export const QuotaPolicySchema = z.object({
 
 export type QuotaPolicy = z.input<typeof QuotaPolicySchema>;
 
+export interface QuotaDecision {
+  readonly exceeded: boolean;
+  readonly warning: boolean;
+  readonly usesBurst: boolean;
+  readonly remainingUnits: number;
+}
+
+export function evaluateQuota(policy: QuotaPolicy, requestedUnits: number): QuotaDecision {
+  const projected = policy.currentUsage + requestedUnits;
+  const hardLimit = policy.hardLimit;
+  const softLimit = policy.softLimit ?? hardLimit;
+  const burstLimit = policy.burstLimit ?? hardLimit;
+  const exceeded = projected > burstLimit;
+  return {
+    exceeded,
+    warning: projected > softLimit,
+    usesBurst: projected > hardLimit && projected <= burstLimit,
+    remainingUnits: Math.max(0, burstLimit - projected),
+  };
+}
+
 export function isQuotaExceeded(policy: QuotaPolicy, requestedUnits: number): boolean {
-  return policy.currentUsage + requestedUnits > policy.hardLimit;
+  return evaluateQuota(policy, requestedUnits).exceeded;
 }

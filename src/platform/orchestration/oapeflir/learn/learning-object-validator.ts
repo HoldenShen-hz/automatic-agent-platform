@@ -14,6 +14,10 @@ function minimumConfidenceFor(type: LearningObject["learningType"]): number {
       return 0.9;
     case "recovery_playbook":
       return 0.7;
+    case "model_retraining":
+      return 0.8;
+    case "dataset_gap":
+      return 0.8;
   }
 }
 

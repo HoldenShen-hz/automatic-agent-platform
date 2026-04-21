@@ -1,0 +1,25 @@
+{
+  "version": "constitution.v1",
+  "principles": [
+    {
+      "principleId": "human-approval-for-high-risk",
+      "description": "High-risk and irreversible actions must require explicit approval before execution.",
+      "enforcedBy": ["policy-center", "approval-routing", "platform-panic"]
+    },
+    {
+      "principleId": "authoritative-state-before-side-effects",
+      "description": "State mutations and execution receipts must be persisted before external publication or irreversible side effects.",
+      "enforcedBy": ["truth-store", "dispatcher", "outbox"]
+    },
+    {
+      "principleId": "least-privilege-sandboxing",
+      "description": "File, network, and execution scopes must stay inside policy-authorized boundaries.",
+      "enforcedBy": ["policy-center", "sandbox", "connector-framework"]
+    },
+    {
+      "principleId": "knowledge-boundary-and-chinese-wall",
+      "description": "Cross-boundary knowledge access must respect grants, org isolation, and conflict walls.",
+      "enforcedBy": ["knowledge-boundary", "knowledge-federator", "chinese-wall-policy"]
+    }
+  ]
+}

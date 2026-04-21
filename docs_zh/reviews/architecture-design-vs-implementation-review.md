@@ -496,10 +496,7 @@
 | RiskPreview (overall_risk 4 级)                               | ✅   |                                                                                                                                                                                             |
 | 多轮对话状态机                                                | ✅   |                                                                                                                                                                                             |
 | 高风险 intent 必须显式确认                                    | ✅   |                                                                                                                                                                                             |
-| LocaleConfig (4 种语言, fallback en-US)                       | 🟡   | **已确认**: 默认仅 2 语言 (`zh-CN`, `en-US`); `detectInputLocale()` 可识别 4 种(+`ja-JP`+`de-DE`), 但 `supportedLocales` 数组仅含 2 个, 即使检测到 ja-JP/de-DE 也会被 `includes()` 检查拒绝 |
-
-**§39 差距**: 默认 supportedLocales 仅 2 种 vs 设计 4 种。
-**解决方案**: 修改 `nl-gateway/index.ts:166` 的 `DEFAULT_LOCALE_CONFIG.supportedLocales` 从 `["zh-CN", "en-US"]` 改为 `["zh-CN", "en-US", "ja-JP", "de-DE"]`。估算 0.1 人天。
+| LocaleConfig (4 种语言, fallback en-US)                       | ✅   | **已完成**: `DEFAULT_LOCALE_CONFIG.supportedLocales` 已扩为 `["zh-CN", "en-US", "ja-JP", "de-DE"]`, 与 `detectInputLocale()` 保持一致 |
 
 ### §40 目标分解引擎
 
@@ -578,15 +575,12 @@
 | ---------------------------------------------- | ---- | ---------------------------------------------------------- |
 | ApprovalRoutingRule + RoutingStrategy 策略模式 | 🟡   | 路由逻辑硬编码在 resolveApprovalRoute() 中, 无命名策略模式 |
 | OrgChartRouting                                | ✅   | route-engine/index.ts:20-33                                |
-| AmountBasedRouting (5 级金额阈值)              | 🔴   | amountUsd 字段存在但未在路由逻辑中使用                     |
-| SodRouting (职责分离)                          | 🔴   | 完全缺失                                                   |
+| AmountBasedRouting (5 级金额阈值)              | ✅   | **已完成**: `resolveAmountRoute()` 基于金额阈值选择审批层级 |
+| SodRouting (职责分离)                          | ✅   | **已完成**: `applySodPolicy()` 过滤发起人/同节点 owner      |
 | DelegationOfAuthority                          | ✅   | delegation/index.ts:15-28                                  |
 | 审批超时升级                                   | ✅   | escalation/index.ts:12-22                                  |
 
-**§47 差距**:
-
-1. AmountBasedRouting — **解决方案**: 在 `route-engine/index.ts` 增加 `resolveAmountRoute(amountUsd: number, rules: AmountThresholdRule[]): ApprovalRoute`，匹配金额区间返回对应审批层级。预置 5 级: <1K=team_lead, <10K=dept_manager, <100K=division_head, <1M=cfo, ≥1M=board。估算 2 人天。
-2. SodRouting — **解决方案**: 增加 `applySodPolicy(initiatorId: string, candidateApprovers: string[]): string[]`，过滤掉 (a) 发起人自身, (b) 同团队成员(查 OrgChart), (c) 直接下属。估算 2 人天。
+**§47 当前剩余差距**: 路由仍以函数式组合为主，尚未抽成具名 `RoutingStrategy` 对象族；但金额路由与职责分离不再缺失。
 
 ### §48 企业 SSO/SCIM 集成
 
@@ -659,7 +653,7 @@
 | CrossRegionSync / CDC 复制 | ✅   | CDCReplicationService (341 行) + DataReplicatorService (340 行) |
 | 数据驻留策略               | ✅   | ResidencyPolicy + ReplicationPolicy.residencyMode               |
 | RegionHealthCheck          | ✅   | region-health-check-service.ts (462 行)                         |
-| 故障转移控制器             | 🟡   | failover-controller/ (16 行) 仅简单健康检查                     |
+| 故障转移控制器             | ✅   | **已增强**: failover-controller 现支持健康、延迟、错误率阈值和 preferred region 选择 |
 | 多区域复制协调器           | ✅   | MultiRegionReplicationCoordinator (50 行)                       |
 
 ### §53 资源竞争管理
@@ -678,8 +672,8 @@
 | SlaDefinition (SlaTier + SlaCommitment) | ✅   | tier-resolver/ + breach-detector/          |
 | SlaMonitor                              | ✅   | SlaOperationsService (90 行)               |
 | 违约严重级别                            | ✅   | SlaOperationsDecision.breaches 含 severity |
-| 处罚引擎                                | 🔴   | 完全缺失                                   |
-| 升级机制                                | 🔴   | 完全缺失                                   |
+| 处罚引擎                                | ✅   | `SlaOperationsDecision.penaltyDecisions` 已输出 credit/contract_review 决策 |
+| 升级机制                                | ✅   | `SlaOperationsDecision.escalationActions` 已输出 notify_owner/page_sre/freeze_rollout |
 
 ### §55 Agent 市场与生态 — v4.0 深度审查
 
@@ -709,17 +703,14 @@
 | 设计要求                         | 状态 | 实现证据                                                                                                                   |
 | -------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------- |
 | FeedbackSignal (9 种信号类型)    | 🟡   | **已确认**: 信号为组合维度: source(5种)×category(5种)×severity(4种), 非 9 种扁平类型; 实际 14 个枚举值跨 3 维度            |
-| ImprovementAction (6 种改进类型) | 🟡   | **已确认**: 仅 4 种: prompt_tuning/workflow_patch/policy_adjustment/playbook_update; 缺 model_retraining/data_augmentation |
+| ImprovementAction (6 种改进类型) | ✅   | **已完成**: `ImprovementCandidate.candidateType` 已扩为 6 种，补齐 `model_retraining` / `data_augmentation` |
 | FeedbackCollector                | ✅   | collector/feedback-collector.ts (41 行) + signal-preprocessor.ts (239 行, 去重/关联/归一化)                                |
 | DomainEventFeedbackConsumer      | ✅   | domain-event-feedback-consumer.ts (206 行), 订阅事件总线转化为反馈信号                                                     |
 | FeedbackImprovementService       | ✅   | feedback-improvement-service.ts (157 行), 完整管线: ingest→createCandidate→review(含 rollout/policy 门控)→release          |
 | FeedbackQualityGrader            | ✅   | quality-grader.ts (258 行), 多维评分(信号质量/多样性/信息密度/标签可靠性)                                                  |
 | FineTuningExporter               | ✅   | fine-tuning-exporter.ts (278 行), JSONL/JSON 数据集导出 + 质量过滤                                                         |
 
-**§56 差距**:
-
-1. 改进类型仅 4/6 — **解决方案**: 在 `feedback-improvement-service.ts:11` 的 `candidateType` 枚举增加 `"model_retraining" | "data_augmentation"`, 并在 `createCandidate()` 中增加对应处理分支。估算 1 人天。
-2. 信号类型映射 — 当前组合维度设计更灵活, 建议保留; 文档中补充映射说明即可。
+**§56 当前剩余差距**: 信号类型仍采用 source/category/severity 三维组合，而不是设计文档里的扁平枚举；这更灵活，可通过文档映射说明消解，不再是必须补代码的缺口。
 
 ### §57 集成连接器
 
@@ -788,9 +779,9 @@
 | ----------------- | ---- | ------------------------------------- |
 | 时间旅行调试      | ✅   | time-travel-debug-service.ts (214 行) |
 | BreakpointManager | ✅   | workflow-debugger-service.ts (108 行) |
-| RunComparison     | 🟡   | run-comparator/ 为 11 行桩            |
+| RunComparison     | ✅   | `run-comparator/` 已补齐结构化差异输出 (`RunComparisonDiff`) |
 | 变量状态检查      | ✅   | getVariableState()                    |
-| Timeline 渲染     | 🟡   | timeline-renderer/ 为 8 行桩          |
+| Timeline 渲染     | ✅   | `timeline-renderer/` 已支持状态/时长渲染与 Markdown 输出 |
 
 ### §63 边缘运行时 (v3.0 §62)
 
@@ -798,10 +789,10 @@
 | ------------------ | ---- | ------------------------------------- |
 | EdgeSyncService    | ✅   | edge-runtime-sync-service.ts (143 行) |
 | EdgeRuntimeProfile | ✅   | Zod schema                            |
-| EdgeExecutor       | 🔴   | edge-executor/ 仅 10 行桩             |
-| EdgeOrchestrator   | 🔴   | edge-orchestrator/ 仅 3 行桩          |
-| LocalModel         | 🔴   | local-model/ 仅 8 行桩                |
-| SyncQueue          | 🔴   | sync-queue/ 仅 8 行桩                 |
+| EdgeExecutor       | ✅   | 已补齐离线执行记录状态推进与完成回执 |
+| EdgeOrchestrator   | ✅   | 已补齐 `EdgeExecutionPlan` 结构化执行计划 |
+| LocalModel         | ✅   | 已补齐带优先级的本地模型选择逻辑 |
+| SyncQueue          | ✅   | 已补齐稳定排序与去重队列能力 |
 
 ### §64 Agent 生命周期管理 (v3.0 §63)
 
@@ -819,9 +810,9 @@
 | 设计要求                | 状态 | 实现证据                              |
 | ----------------------- | ---- | ------------------------------------- |
 | CostOptimizationService | ✅   | cost-optimization-service.ts (117 行) |
-| 推荐引擎                | 🟡   | recommendation-engine/ (18 行) 为桩   |
-| 成本模拟器              | 🟡   | simulator/ (3 行) 为桩                |
-| 模型 right-sizing       | 🔴   | 无模型选型优化逻辑                    |
+| 推荐引擎                | ✅   | recommendation-engine 已支持动作类型和优先级排序 |
+| 成本模拟器              | ✅   | simulator 已支持多场景节省测算 |
+| 模型 right-sizing       | 🟡   | 已具备 `right_size` 推荐动作，但仍未接入真实模型目录与在线成本画像 |
 | Dashboard 切片          | ✅   | buildDashboardSlice()                 |
 
 ### §66 混沌工程 (v3.0 §65)
@@ -842,8 +833,8 @@
 | 证据缺口分析                    | ✅   |          |
 | 报告渲染                        | ✅   |          |
 | 访问审计追踪                    | ✅   |          |
-| EvidenceMapper                  | 🟡   | 11 行桩  |
-| ReportRenderer                  | 🟡   | 8 行桩   |
+| EvidenceMapper                  | ✅   | 已支持 evidence type 聚合和缺口分析 |
+| ReportRenderer                  | ✅   | 已支持 Markdown / CSV 双格式渲染 |
 
 ### §68 容量规划器 (v3.0 §67)
 
@@ -852,8 +843,8 @@
 | CapacityPlanningService | ✅   | capacity-planning-service.ts (162 行) |
 | 场景对比                | ✅   | compareScenarios()                    |
 | SLO 风险评估            | ✅   | buildRecommendation()                 |
-| 预测器                  | 🟡   | forecaster/ (9 行) 桩                 |
-| 趋势分析器              | 🟡   | trend-analyzer/ (8 行) 桩             |
+| 预测器                  | ✅   | forecaster 已支持峰值预测 |
+| 趋势分析器              | ✅   | trend-analyzer 已支持波动度估算 |
 
 ### §68B 多模态 (v3.0 §68)
 
@@ -870,14 +861,14 @@
 
 | 设计要求                | 状态 | 实现证据        |
 | ----------------------- | ---- | --------------- |
-| PlatformOpsAgentService | 🔴   | 仅 9 行, 无类体 |
-| HealthMonitor           | 🔴   | 9 行桩          |
-| IncidentDiagnoser       | 🔴   | 4 行桩          |
-| CapacityPredictor       | 🔴   | 6 行桩          |
-| ConfigOptimizer         | 🔴   | 3 行桩          |
-| DevAssistant            | 🔴   | 3 行桩          |
-| Runbook 自动化引擎      | 🔴   | 完全缺失        |
-| 自愈工作流              | 🔴   | 完全缺失        |
+| PlatformOpsAgentService | ✅   | 已补齐 proposal / approval / execute 全链路 |
+| HealthMonitor           | ✅   | 已补齐异常组件识别 |
+| IncidentDiagnoser       | ✅   | 已补齐诊断摘要输出 |
+| CapacityPredictor       | ✅   | 已补齐 capacity headroom 估算 |
+| ConfigOptimizer         | ✅   | 已补齐配置优化节省估算 |
+| DevAssistant            | ✅   | 已补齐 checklist 构建 |
+| Runbook 自动化引擎      | ✅   | `RunbookAutomationService` 已新增 |
+| 自愈工作流              | ✅   | `SelfHealingService` 已新增 |
 
 ### 第七层新增: 异常检测 + 版本管理 (v4.0 新增确认)
 

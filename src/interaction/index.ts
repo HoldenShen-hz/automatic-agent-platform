@@ -9,3 +9,4 @@ export * from "./ux/template-engine/index.js";
 export * from "./ux/user-experience-orchestration-service.js";
 export * from "./ux/workflow-builder-service.js";
 export * from "./ux/wizard/index.js";
+export * from "./workflow-hibernation-service.js";

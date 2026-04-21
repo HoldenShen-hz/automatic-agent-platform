@@ -18,7 +18,7 @@ export const LearningSignalSchema = z.object({
   learningSignalId: z.string().min(1),
   taskId: z.string().min(1),
   sourceFeedbackId: z.string().min(1),
-  learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook"]),
+  learningType: z.enum(["failure_pattern", "user_correction", "recovery_playbook", "model_retraining", "dataset_gap"]),
   confidence: z.number().min(0).max(1),
   valueSummary: z.string().min(1),
   evidenceRefs: z.array(z.string()).default([]),

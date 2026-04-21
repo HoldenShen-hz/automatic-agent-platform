@@ -90,16 +90,16 @@ export class SlaOperationsService {
           tierId: selectedTier.tierId,
           breachCodes,
           observedAt: request.observedAt,
-          severity: breachCodes.includes("sla.success_rate_breach") ? "critical" : "warning",
+          severity: (breachCodes.includes("sla.success_rate_breach") ? "critical" : "warning") as "warning" | "critical",
         }];
     const escalationActions = breachRecords.map((record) => ({
       tierId: record.tierId,
-      action: record.severity === "critical" ? "page_sre" : "notify_owner",
+      action: (record.severity === "critical" ? "page_sre" : "notify_owner") as "notify_owner" | "page_sre",
       reason: record.breachCodes.join(","),
     }));
     const penaltyDecisions = breachRecords.map((record) => ({
       tierId: record.tierId,
-      penaltyType: record.severity === "critical" ? "contract_review" : "credit",
+      penaltyType: (record.severity === "critical" ? "contract_review" : "credit") as "credit" | "capacity_boost" | "contract_review",
       severity: record.severity,
     }));
 

@@ -9,3 +9,11 @@ export function mapEvidenceByType(items: readonly EvidenceReference[]): Record<s
     return acc;
   }, {});
 }
+
+export function findMissingEvidenceTypes(
+  items: readonly EvidenceReference[],
+  requiredTypes: readonly string[],
+): string[] {
+  const mapped = mapEvidenceByType(items);
+  return requiredTypes.filter((type) => (mapped[type] ?? []).length === 0);
+}

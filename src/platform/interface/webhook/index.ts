@@ -48,6 +48,7 @@ export class WebhookIngressService {
   private readonly endpoints = new Map<string, WebhookEndpointRegistration>();
   private readonly envelopesByIdempotencyKey = new Map<string, WebhookDispatchEnvelope>();
   private readonly acceptedEnvelopes: WebhookDispatchEnvelope[] = [];
+  private readonly failureCounts = new Map<string, number>();
 
   public registerEndpoint(input: WebhookEndpointRegistration): WebhookEndpointRegistration {
     assertNonEmpty(input.endpointId, "webhook.invalid_endpoint_id");
@@ -151,6 +152,27 @@ export class WebhookIngressService {
 
   public listEndpoints(): WebhookEndpointRegistration[] {
     return [...this.endpoints.values()];
+  }
+
+  public recordDeliveryFailure(endpointId: string): WebhookEndpointRegistration | null {
+    const endpoint = this.endpoints.get(endpointId) ?? null;
+    if (!endpoint) {
+      return null;
+    }
+    const nextFailures = (this.failureCounts.get(endpointId) ?? 0) + 1;
+    this.failureCounts.set(endpointId, nextFailures);
+    if (nextFailures >= 50) {
+      endpoint.enabled = false;
+    }
+    return endpoint;
+  }
+
+  public resetFailureCount(endpointId: string): void {
+    this.failureCounts.delete(endpointId);
+  }
+
+  public getFailureCount(endpointId: string): number {
+    return this.failureCounts.get(endpointId) ?? 0;
   }
 }
 

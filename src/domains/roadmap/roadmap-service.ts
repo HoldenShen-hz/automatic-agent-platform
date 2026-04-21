@@ -6,12 +6,17 @@
 
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
+import { SuccessCriteriaService } from "./success-criteria-service.js";
 import {
   type AddRoadmapItemRequest,
   type CompletionRecord,
+  type PhaseAdvanceDecision,
+  type PhaseGateDefinition,
   type RoadmapItem,
   type RoadmapPhase,
   type RoadmapStatus,
+  type SuccessCriterionDefinition,
+  type SuccessCriterionMeasurement,
 } from "./types.js";
 
 export interface RoadmapServiceOptions {
@@ -20,6 +25,7 @@ export interface RoadmapServiceOptions {
 
 export class RoadmapService {
   private readonly items = new Map<string, RoadmapItem>();
+  private readonly successCriteria = new SuccessCriteriaService();
 
   public constructor(_options: RoadmapServiceOptions = {}) {
     // No external dependencies required for now
@@ -109,6 +115,29 @@ export class RoadmapService {
     return Array.from(this.items.values())
       .filter((item) => item.status === status)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  public registerSuccessCriterion(definition: SuccessCriterionDefinition): SuccessCriterionDefinition {
+    return this.successCriteria.registerCriterion(definition);
+  }
+
+  public registerPhaseGate(gate: PhaseGateDefinition): PhaseGateDefinition {
+    return this.successCriteria.registerPhaseGate(gate);
+  }
+
+  public recordSuccessMeasurement(
+    measurement: Omit<SuccessCriterionMeasurement, "measuredAt"> & { measuredAt?: string },
+  ): SuccessCriterionMeasurement {
+    return this.successCriteria.recordMeasurement(measurement);
+  }
+
+  public evaluatePhaseAdvance(phase: RoadmapPhase): PhaseAdvanceDecision {
+    const items = this.getRoadmap(phase);
+    return this.successCriteria.evaluatePhaseAdvance(
+      phase,
+      items.filter((item) => item.status === "completed").map((item) => item.itemId),
+      items.filter((item) => item.status === "deferred").map((item) => item.itemId),
+    );
   }
 
   private getOrThrow(itemId: string): RoadmapItem {

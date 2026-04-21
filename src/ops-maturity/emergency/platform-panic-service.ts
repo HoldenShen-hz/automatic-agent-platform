@@ -30,6 +30,8 @@ export interface PanicActivationRequest extends PanicDirectiveInput {
   readonly allowList?: readonly string[];
   readonly targetScopes?: readonly string[];
   readonly forensicArtifactIds?: readonly string[];
+  readonly severity?: string;
+  readonly triggerSignals?: readonly string[];
 }
 
 export interface PanicExecutionCheck {
@@ -99,10 +101,16 @@ export class PlatformPanicService {
       directive,
       propagationRecords,
       forensicSnapshot: buildForensicSnapshot(
-        newId("panic_snapshot"),
-        request.scope,
-        issuedAt,
-        request.forensicArtifactIds ?? [],
+        {
+          snapshotId: newId("panic_snapshot"),
+          scope: request.scope,
+          collectedAt: issuedAt,
+          artifactIds: request.forensicArtifactIds ?? [],
+          runtimeState: {
+            severity: request.severity,
+            triggerSignals: request.triggerSignals,
+          },
+        },
       ),
     };
     this.activations.set(request.scope, activation);

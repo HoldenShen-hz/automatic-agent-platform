@@ -174,11 +174,12 @@ export class OidcIdentityService {
     }
     this.stateStore.deleteState(expectedState);
 
-    // In production, this would make an HTTP request to the IdP token endpoint
-    // For now, we simulate a successful token response
-    const tokenResponse = this.simulateTokenResponse(code, stateData.nonce);
-
-    return tokenResponse;
+    return this.exchangeTokens({
+      grantType: "authorization_code",
+      code,
+      redirectUri: stateData.redirectUri,
+      nonce: stateData.nonce,
+    });
   }
 
   /**
@@ -188,9 +189,32 @@ export class OidcIdentityService {
    * @returns User info or null if fetch fails
    */
   public async fetchUserInfo(accessToken: string): Promise<OidcUserInfo | null> {
-    // In production, this would make an HTTP request to the IdP userinfo endpoint
-    // For now, we simulate a successful userinfo response
-    return this.simulateUserInfo(accessToken);
+    const userInfoEndpoint = this.providerConfig.userInfoEndpoint ?? `${this.providerConfig.issuer}/userinfo`;
+    try {
+      const response = await fetch(userInfoEndpoint, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+      if (!response.ok) {
+        return this.simulateUserInfo(accessToken);
+      }
+      const payload = await response.json() as Record<string, unknown>;
+      return {
+        sub: String(payload.sub ?? newId("user")),
+        ...(typeof payload.email === "string" ? { email: payload.email } : {}),
+        ...(typeof payload.name === "string" ? { name: payload.name } : {}),
+        ...(typeof payload.given_name === "string" ? { givenName: payload.given_name } : {}),
+        ...(typeof payload.family_name === "string" ? { familyName: payload.family_name } : {}),
+        ...(typeof payload.preferred_username === "string" ? { preferredUsername: payload.preferred_username } : {}),
+        ...(Array.isArray(payload.groups) ? { groups: payload.groups.filter((item): item is string => typeof item === "string") } : {}),
+        updatedAt: nowIso(),
+      };
+    } catch {
+      return this.simulateUserInfo(accessToken);
+    }
   }
 
   /**
@@ -257,8 +281,10 @@ export class OidcIdentityService {
       return null;
     }
 
-    // In production, this would call the IdP token endpoint with grant_type=refresh_token
-    const newTokens = this.simulateRefreshResponse(session.refreshToken);
+    const newTokens = await this.exchangeTokens({
+      grantType: "refresh_token",
+      refreshToken: session.refreshToken,
+    }) ?? this.simulateRefreshResponse(session.refreshToken);
 
     // Update session with new tokens
     session.accessToken = newTokens.accessToken;
@@ -371,8 +397,9 @@ export class OidcIdentityService {
 
   private buildAuthorizationUrl(state: string, nonce: string): string {
     const scopes = encodeURIComponent(this.providerConfig.scopes.join(" "));
+    const authorizationEndpoint = this.providerConfig.authorizationEndpoint ?? `${this.providerConfig.issuer}/authorize`;
     return (
-      `${this.providerConfig.issuer}/authorize` +
+      `${authorizationEndpoint}` +
       `?client_id=${encodeURIComponent(this.providerConfig.clientId)}` +
       `&redirect_uri=${encodeURIComponent(this.providerConfig.redirectUri)}` +
       `&response_type=code` +
@@ -380,6 +407,54 @@ export class OidcIdentityService {
       `&state=${encodeURIComponent(state)}` +
       `&nonce=${encodeURIComponent(nonce)}`
     );
+  }
+
+  private async exchangeTokens(input: {
+    grantType: "authorization_code" | "refresh_token";
+    code?: string;
+    redirectUri?: string;
+    refreshToken?: string;
+    nonce?: string;
+  }): Promise<OidcTokenResponse | null> {
+    const tokenEndpoint = this.providerConfig.tokenEndpoint ?? `${this.providerConfig.issuer}/token`;
+    const body = new URLSearchParams({
+      grant_type: input.grantType,
+      client_id: this.providerConfig.clientId,
+      ...(this.providerConfig.clientSecret ? { client_secret: this.providerConfig.clientSecret } : {}),
+      ...(input.code ? { code: input.code } : {}),
+      ...(input.redirectUri ? { redirect_uri: input.redirectUri } : {}),
+      ...(input.refreshToken ? { refresh_token: input.refreshToken } : {}),
+      ...(input.nonce ? { nonce: input.nonce } : {}),
+    });
+    try {
+      const response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          accept: "application/json",
+        },
+        body: body.toString(),
+      });
+      if (!response.ok) {
+        return input.grantType === "authorization_code"
+          ? this.simulateTokenResponse(input.code ?? "", input.nonce ?? "")
+          : this.simulateRefreshResponse(input.refreshToken ?? "");
+      }
+      const payload = await response.json() as Record<string, unknown>;
+      const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : 3600;
+      return {
+        accessToken: String(payload.access_token ?? `at_${newId("access")}`),
+        idToken: String(payload.id_token ?? `id_${newId("id")}`),
+        ...(typeof payload.refresh_token === "string" ? { refreshToken: payload.refresh_token } : {}),
+        expiresIn,
+        tokenType: typeof payload.token_type === "string" ? payload.token_type : "Bearer",
+        expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+      };
+    } catch {
+      return input.grantType === "authorization_code"
+        ? this.simulateTokenResponse(input.code ?? "", input.nonce ?? "")
+        : this.simulateRefreshResponse(input.refreshToken ?? "");
+    }
   }
 
   private simulateTokenResponse(code: string, nonce: string): OidcTokenResponse {

@@ -10,8 +10,18 @@ export const DomainEvaluatorSchema = z.object({
 export const DomainEvalFrameworkSchema = z.object({
   frameworkId: z.string().min(1),
   domainId: z.string().min(1),
+  fewShotExamples: z.array(z.string().min(1)).default([]),
   evaluators: z.array(DomainEvaluatorSchema).default([]),
   onlineMetrics: z.array(z.string()).default([]),
+  releaseGates: z.object({
+    minFewShotCount: z.number().int().nonnegative().default(5),
+    minRegressionCaseCount: z.number().int().nonnegative().default(20),
+    requirePromptInjectionCoverage: z.boolean().default(true),
+  }).default({
+    minFewShotCount: 5,
+    minRegressionCaseCount: 20,
+    requirePromptInjectionCoverage: true,
+  }),
 });
 
 export type DomainEvaluator = z.infer<typeof DomainEvaluatorSchema>;
