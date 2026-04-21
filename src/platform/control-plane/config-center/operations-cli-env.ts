@@ -306,9 +306,9 @@ export function loadOpsProgramCliEnv(
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     environment: requiredEnumValue(env, "AA_ENVIRONMENT", ENVIRONMENT_NAMES),
     action: optionalEnumValue(env, "AA_HA_PROGRAM_ACTION", OPS_PROGRAM_ACTIONS) ?? "summary",
-    artifactRoot: optionalEnv(env, "AA_OPS_PROGRAM_ARTIFACT_ROOT"),
-    taskId: optionalEnv(env, "AA_OPS_TASK_ID"),
-    shiftOwner: optionalEnv(env, "AA_OPS_SHIFT_OWNER"),
+    artifactRoot: optionalEnv(env, "AA_ARTIFACT_ROOT"),
+    taskId: optionalEnv(env, "AA_TASK_ID"),
+    shiftOwner: optionalEnv(env, "AA_SHIFT_OWNER"),
   };
 }
 

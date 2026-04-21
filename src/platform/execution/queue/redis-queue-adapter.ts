@@ -333,7 +333,12 @@ export class RedisQueueAdapter implements QueueAdapter {
       return job;
     } catch (error) {
       runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "async" }, 1);
-      throw error;
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new StorageError(
+        `queue.enqueue_failed: ${err.message}`,
+        "queue.enqueue_failed",
+        { cause: err, retryable: true },
+      );
     }
   }
 
