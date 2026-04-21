@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { setTimeout as setTimeoutFn } from "node:timers/promises";
 import test from "node:test";
 
 import { SecretManagementService } from "../../../../../src/platform/control-plane/iam/secret-management-service.js";
@@ -55,7 +56,7 @@ test("startDailyRotationScheduler triggers initial rotation check on start", () 
     assert.equal(afterRegistry?.status, "rotating");
 
     // Clear the interval timer
-    clearInterval(timer);
+    clearInterval(timer as any);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -98,7 +99,7 @@ test("startDailyRotationScheduler processes multiple due secrets", () => {
       assert.equal(registry?.status, "rotating", `Expected ${secretRef} to be rotating`);
     }
 
-    clearInterval(timer);
+    clearInterval(timer as any);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -130,7 +131,7 @@ test("startDailyRotationScheduler skips secrets not yet due", () => {
     const registry = harness.store.getSecretRegistryRecord("secret://system/not/due/yet");
     assert.equal(registry?.status, "active");
 
-    clearInterval(timer);
+    clearInterval(timer as any);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -168,7 +169,7 @@ test("startDailyRotationScheduler returns timer that can be stopped", () => {
     timer.unref();
 
     // Clear the timer
-    clearInterval(timer);
+    clearInterval(timer as any);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -211,7 +212,7 @@ test("startDailyRotationScheduler uses 90-day default cadence", () => {
     const updatedRegistry = harness.store.getSecretRegistryRecord("secret://system/default/cadence");
     assert.equal(updatedRegistry?.status, "rotating");
 
-    clearInterval(timer);
+    clearInterval(timer as any);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -285,7 +286,7 @@ test("startDailyRotationScheduler handles errors gracefully and continues", () =
     const registry = harness.store.getSecretRegistryRecord("secret://system/provider/failure");
     assert.equal(registry?.status, "rotating");
 
-    clearInterval(timer);
+    clearInterval(timer as any);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

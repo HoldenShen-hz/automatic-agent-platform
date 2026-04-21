@@ -60,6 +60,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract updateExecutionFailure(...args: RepoMethodArgs<ExecutionRepository, "updateExecutionFailure">): RepoMethodResult<ExecutionRepository, "updateExecutionFailure">;
   public abstract updateExecutionAgent(...args: RepoMethodArgs<ExecutionRepository, "updateExecutionAgent">): RepoMethodResult<ExecutionRepository, "updateExecutionAgent">;
   public abstract updateExecutionStatus(...args: RepoMethodArgs<ExecutionRepository, "updateExecutionStatus">): RepoMethodResult<ExecutionRepository, "updateExecutionStatus">;
+  public abstract updateExecutionStatusCas(...args: RepoMethodArgs<ExecutionRepository, "updateExecutionStatusCas">): RepoMethodResult<ExecutionRepository, "updateExecutionStatusCas">;
   public abstract listExecutionsByTask(...args: RepoMethodArgs<ExecutionRepository, "listExecutionsByTask">): RepoMethodResult<ExecutionRepository, "listExecutionsByTask">;
   public abstract countActiveExecutions(...args: RepoMethodArgs<ExecutionRepository, "countActiveExecutions">): RepoMethodResult<ExecutionRepository, "countActiveExecutions">;
   public abstract insertSession(...args: RepoMethodArgs<SessionRepository, "insertSession">): RepoMethodResult<SessionRepository, "insertSession">;
@@ -71,6 +72,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract listSessionEvents(...args: RepoMethodArgs<SessionRepository, "listSessionEvents">): RepoMethodResult<SessionRepository, "listSessionEvents">;
   public abstract listCompactionRecordsBySession(...args: RepoMethodArgs<SessionRepository, "listCompactionRecordsBySession">): RepoMethodResult<SessionRepository, "listCompactionRecordsBySession">;
   public abstract updateSessionStatus(...args: RepoMethodArgs<SessionRepository, "updateSessionStatus">): RepoMethodResult<SessionRepository, "updateSessionStatus">;
+  public abstract updateSessionStatusCas(...args: RepoMethodArgs<SessionRepository, "updateSessionStatusCas">): RepoMethodResult<SessionRepository, "updateSessionStatusCas">;
   public abstract upsertGatewayTarget(...args: RepoMethodArgs<SessionRepository, "upsertGatewayTarget">): RepoMethodResult<SessionRepository, "upsertGatewayTarget">;
   public abstract listGatewaySessionTargetCandidates(...args: RepoMethodArgs<SessionRepository, "listGatewaySessionTargetCandidates">): RepoMethodResult<SessionRepository, "listGatewaySessionTargetCandidates">;
   public abstract insertCostEvent(...args: RepoMethodArgs<BillingRepository, "insertCostEvent">): RepoMethodResult<BillingRepository, "insertCostEvent">;
@@ -161,6 +163,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract getApproval(...args: RepoMethodArgs<ApprovalRepository, "getApproval">): RepoMethodResult<ApprovalRepository, "getApproval">;
   public abstract insertApproval(...args: RepoMethodArgs<ApprovalRepository, "insertApproval">): RepoMethodResult<ApprovalRepository, "insertApproval">;
   public abstract updateApprovalDecision(...args: RepoMethodArgs<ApprovalRepository, "updateApprovalDecision">): RepoMethodResult<ApprovalRepository, "updateApprovalDecision">;
+  public abstract updateApprovalDecisionCas(...args: RepoMethodArgs<ApprovalRepository, "updateApprovalDecisionCas">): RepoMethodResult<ApprovalRepository, "updateApprovalDecisionCas">;
   public abstract updateApprovalRequest(...args: RepoMethodArgs<ApprovalRepository, "updateApprovalRequest">): RepoMethodResult<ApprovalRepository, "updateApprovalRequest">;
   public abstract listTakeoverSessionsByTask(...args: RepoMethodArgs<ApprovalRepository, "listTakeoverSessionsByTask">): RepoMethodResult<ApprovalRepository, "listTakeoverSessionsByTask">;
   public abstract insertTakeoverSession(...args: RepoMethodArgs<ApprovalRepository, "insertTakeoverSession">): RepoMethodResult<ApprovalRepository, "insertTakeoverSession">;

@@ -327,7 +327,20 @@ export class SessionTransitionService {
    */
   public apply(command: SessionStatusTransitionCommand): void {
     sessionStateMachine.assertTransition(command.fromStatus, command.toStatus);
-    this.repository.updateSessionStatus(command.entityId, command.toStatus, command.occurredAt);
+    // RT-01: CAS on status. If another transaction already moved the session
+    // out of fromStatus, the UPDATE matches zero rows and we must refuse to
+    // emit the state-change event.
+    const affected = this.repository.updateSessionStatusCas(
+      command.entityId,
+      command.fromStatus,
+      command.toStatus,
+      command.occurredAt,
+    );
+    if (affected === 0) {
+      throw new Error(
+        `session.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+      );
+    }
   }
 }
 
@@ -362,13 +375,22 @@ export class ExecutionTransitionService {
         ? command.occurredAt
         : null;
 
-    this.repository.updateExecutionStatus(
+    // RT-01: CAS on status. If another transaction already moved the execution
+    // out of fromStatus, the UPDATE matches zero rows and we must refuse to
+    // complete the transition.
+    const affected = this.repository.updateExecutionStatusCas(
       command.entityId,
+      command.fromStatus,
       command.toStatus,
       command.occurredAt,
       startedAt,
       finishedAt,
     );
+    if (affected === 0) {
+      throw new Error(
+        `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+      );
+    }
   }
 }
 
@@ -394,12 +416,21 @@ export class ApprovalTransitionService {
    */
   public apply(command: ApprovalStatusTransitionCommand): void {
     approvalStateMachine.assertTransition(command.fromStatus, command.toStatus);
-    this.repository.updateApprovalDecision({
+    // RT-01: CAS on status. If another transaction already moved the approval
+    // out of fromStatus, the UPDATE matches zero rows and we must refuse to
+    // complete the transition.
+    const affected = this.repository.updateApprovalDecisionCas({
       approvalId: command.entityId,
+      expectedStatus: command.fromStatus,
       status: command.toStatus,
       responseJson: command.responseJson,
       respondedAt: command.occurredAt,
     });
+    if (affected === 0) {
+      throw new Error(
+        `approval.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+      );
+    }
   }
 }
 

@@ -45,6 +45,7 @@ export interface RuntimeLifecycleRepository {
     resumableFromStep?: string | null,
   ): number;
   updateSessionStatus(sessionId: string, status: string, updatedAt: string): void;
+  updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number;
   updateExecutionStatus(
     executionId: string,
     status: string,
@@ -53,6 +54,15 @@ export interface RuntimeLifecycleRepository {
     finishedAt?: string | null,
     lastErrorCode?: string | null,
   ): void;
+  updateExecutionStatusCas(
+    executionId: string,
+    expectedStatus: string,
+    status: string,
+    updatedAt: string,
+    startedAt?: string | null,
+    finishedAt?: string | null,
+    lastErrorCode?: string | null,
+  ): number;
   createTier1StatusEvent(input: {
     taskId: string;
     executionId: string | null;
@@ -69,6 +79,13 @@ export interface RuntimeLifecycleRepository {
     responseJson: string;
     respondedAt: string;
   }): void;
+  updateApprovalDecisionCas(input: {
+    approvalId: string;
+    expectedStatus: ApprovalRecord["status"];
+    status: ApprovalRecord["status"];
+    responseJson: string;
+    respondedAt: string;
+  }): number;
   updateApprovalRequest(input: {
     id: string;
     requestJson: string;
@@ -140,6 +157,10 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     this.store.session.updateSessionStatus(sessionId, status, updatedAt);
   }
 
+  public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
+    return this.store.session.updateSessionStatusCas(sessionId, expectedStatus, status, updatedAt);
+  }
+
   public updateExecutionStatus(
     executionId: string,
     status: string,
@@ -149,6 +170,18 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     lastErrorCode: string | null = null,
   ): void {
     this.store.execution.updateExecutionStatus(executionId, status, updatedAt, startedAt, finishedAt, lastErrorCode);
+  }
+
+  public updateExecutionStatusCas(
+    executionId: string,
+    expectedStatus: string,
+    status: string,
+    updatedAt: string,
+    startedAt: string | null = null,
+    finishedAt: string | null = null,
+    lastErrorCode: string | null = null,
+  ): number {
+    return this.store.execution.updateExecutionStatusCas(executionId, expectedStatus, status, updatedAt, startedAt, finishedAt, lastErrorCode);
   }
 
   public createTier1StatusEvent(input: {
@@ -180,6 +213,16 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     respondedAt: string;
   }): void {
     this.store.approval.updateApprovalDecision(input);
+  }
+
+  public updateApprovalDecisionCas(input: {
+    approvalId: string;
+    expectedStatus: ApprovalRecord["status"];
+    status: ApprovalRecord["status"];
+    responseJson: string;
+    respondedAt: string;
+  }): number {
+    return this.store.approval.updateApprovalDecisionCas(input);
   }
 
   public updateApprovalRequest(input: { id: string; requestJson: string }): void {
@@ -285,6 +328,10 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.run("updateSessionStatus", () => this.inner.updateSessionStatus(sessionId, status, updatedAt));
   }
 
+  public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
+    return this.run("updateSessionStatusCas", () => this.inner.updateSessionStatusCas(sessionId, expectedStatus, status, updatedAt));
+  }
+
   public updateExecutionStatus(executionId: string, status: string, updatedAt: string, startedAt: string | null = null, finishedAt: string | null = null, lastErrorCode: string | null = null): void {
     return this.run("updateExecutionStatus", () => this.inner.updateExecutionStatus(
       executionId,
@@ -293,6 +340,12 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
       startedAt,
       finishedAt,
       lastErrorCode,
+    ));
+  }
+
+  public updateExecutionStatusCas(executionId: string, expectedStatus: string, status: string, updatedAt: string, startedAt: string | null = null, finishedAt: string | null = null, lastErrorCode: string | null = null): number {
+    return this.run("updateExecutionStatusCas", () => this.inner.updateExecutionStatusCas(
+      executionId, expectedStatus, status, updatedAt, startedAt, finishedAt, lastErrorCode,
     ));
   }
 
@@ -325,6 +378,16 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     respondedAt: string;
   }): void {
     return this.run("updateApprovalDecision", () => this.inner.updateApprovalDecision(input));
+  }
+
+  public updateApprovalDecisionCas(input: {
+    approvalId: string;
+    expectedStatus: ApprovalRecord["status"];
+    status: ApprovalRecord["status"];
+    responseJson: string;
+    respondedAt: string;
+  }): number {
+    return this.run("updateApprovalDecisionCas", () => this.inner.updateApprovalDecisionCas(input));
   }
 
   public updateApprovalRequest(input: { id: string; requestJson: string }): void {
@@ -419,6 +482,10 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.observe("updateSessionStatus", () => this.inner.updateSessionStatus(sessionId, status, updatedAt));
   }
 
+  public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
+    return this.observe("updateSessionStatusCas", () => this.inner.updateSessionStatusCas(sessionId, expectedStatus, status, updatedAt));
+  }
+
   public updateExecutionStatus(executionId: string, status: string, updatedAt: string, startedAt: string | null = null, finishedAt: string | null = null, lastErrorCode: string | null = null): void {
     return this.observe("updateExecutionStatus", () => this.inner.updateExecutionStatus(
       executionId,
@@ -427,6 +494,12 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
       startedAt,
       finishedAt,
       lastErrorCode,
+    ));
+  }
+
+  public updateExecutionStatusCas(executionId: string, expectedStatus: string, status: string, updatedAt: string, startedAt: string | null = null, finishedAt: string | null = null, lastErrorCode: string | null = null): number {
+    return this.observe("updateExecutionStatusCas", () => this.inner.updateExecutionStatusCas(
+      executionId, expectedStatus, status, updatedAt, startedAt, finishedAt, lastErrorCode,
     ));
   }
 
@@ -459,6 +532,16 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     respondedAt: string;
   }): void {
     return this.observe("updateApprovalDecision", () => this.inner.updateApprovalDecision(input));
+  }
+
+  public updateApprovalDecisionCas(input: {
+    approvalId: string;
+    expectedStatus: ApprovalRecord["status"];
+    status: ApprovalRecord["status"];
+    responseJson: string;
+    respondedAt: string;
+  }): number {
+    return this.observe("updateApprovalDecisionCas", () => this.inner.updateApprovalDecisionCas(input));
   }
 
   public updateApprovalRequest(input: { id: string; requestJson: string }): void {

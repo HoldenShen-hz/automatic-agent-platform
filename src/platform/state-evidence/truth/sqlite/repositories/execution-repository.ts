@@ -142,6 +142,37 @@ export class ExecutionRepository {
     );
   }
 
+  /**
+   * Updates execution status with CAS (Compare-And-Swap) semantics.
+   * Only updates if the current status matches the expected status.
+   * @returns Number of rows affected (1 if successful, 0 if CAS failed)
+   */
+  public updateExecutionStatusCas(
+    executionId: string,
+    expectedStatus: string,
+    status: string,
+    updatedAt: string,
+    startedAt: string | null = null,
+    finishedAt: string | null = null,
+    lastErrorCode: string | null = null,
+  ): number {
+    const result = execute(
+      this.conn,
+      `UPDATE executions
+       SET status = ?, updated_at = ?, started_at = COALESCE(?, started_at),
+           finished_at = COALESCE(?, finished_at), last_error_code = ?
+       WHERE id = ? AND status = ?`,
+      status,
+      updatedAt,
+      startedAt,
+      finishedAt,
+      lastErrorCode,
+      executionId,
+      expectedStatus,
+    );
+    return result;
+  }
+
   public updateExecutionFailure(input: {
     executionId: string;
     status: ExecutionRecord["status"];

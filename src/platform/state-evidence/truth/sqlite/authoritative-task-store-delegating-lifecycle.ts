@@ -91,6 +91,10 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
     return this.delegateLegacy("updateExecutionStatus", "execution", "updateExecutionStatus", ...args);
   }
 
+  public override updateExecutionStatusCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatusCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateExecutionStatusCas"]> {
+    return this.delegateLegacy("updateExecutionStatusCas", "execution", "updateExecutionStatusCas", ...args);
+  }
+
   public override listExecutionsByTask(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listExecutionsByTask"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listExecutionsByTask"]> {
     return this.delegateLegacy("listExecutionsByTask", "execution", "listExecutionsByTask", ...args);
   }
@@ -133,6 +137,10 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
 
   public override updateSessionStatus(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateSessionStatus"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateSessionStatus"]> {
     return this.delegateLegacy("updateSessionStatus", "session", "updateSessionStatus", ...args);
+  }
+
+  public override updateSessionStatusCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateSessionStatusCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateSessionStatusCas"]> {
+    return this.delegateLegacy("updateSessionStatusCas", "session", "updateSessionStatusCas", ...args);
   }
 
   public override upsertGatewayTarget(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["upsertGatewayTarget"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["upsertGatewayTarget"]> {

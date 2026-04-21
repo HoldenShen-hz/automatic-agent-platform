@@ -16,8 +16,8 @@ import test from "node:test";
 // Since process.env.NODE_ENV can't be easily changed in tests,
 // we test the configuration and the validation logic
 
-import { OidcIdentityService, InMemoryOidcStateStore } from "../../../../../../src/org-governance/sso-scim/oidc/oidc-service.js";
-import type { OidcProviderConfig } from "../../../../../../src/org-governance/sso-scim/oidc/index.js";
+import { OidcIdentityService, InMemoryOidcStateStore } from "../../../../../src/org-governance/sso-scim/oidc/oidc-service.js";
+import type { OidcProviderConfig } from "../../../../../src/org-governance/sso-scim/oidc/index.js";
 
 function createOidcConfig(): OidcProviderConfig {
   return {

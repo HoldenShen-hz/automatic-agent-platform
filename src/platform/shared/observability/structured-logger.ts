@@ -292,7 +292,9 @@ export class StructuredLogger {
     }
     try {
       const serialized = `${JSON.stringify(entry)}\n`;
-      this.rotateFileSinkIfNeeded(sink, Buffer.byteLength(serialized, "utf8"));
+      // Schedule rotation check asynchronously to avoid blocking event loop
+      // The rotation itself will be async if needed
+      this.scheduleRotationIfNeeded(sink, Buffer.byteLength(serialized, "utf8"));
       // Use async appendFile to avoid blocking the event loop
       fsPromises.appendFile(sink.filePath, serialized, "utf8").catch(() => {
         // File sink failures must not take down the caller path.
@@ -317,42 +319,71 @@ export class StructuredLogger {
     }
   }
 
-  private rotateFileSinkIfNeeded(sink: StructuredLoggerFileSink, incomingBytes: number): void {
-    if (sink.maxBytes == null) {
+  private rotationScheduled = false;
+
+  private scheduleRotationIfNeeded(sink: StructuredLoggerFileSink, incomingBytes: number): void {
+    if (this.rotationScheduled || sink.maxBytes == null) {
       return;
     }
 
+    // Quick sync check if rotation is even needed
     let currentBytes = 0;
-    if (existsSync(sink.filePath)) {
-      currentBytes = statSync(sink.filePath).size;
+    try {
+      if (existsSync(sink.filePath)) {
+        currentBytes = statSync(sink.filePath).size;
+      }
+    } catch {
+      return;
     }
+
     if (currentBytes + incomingBytes <= sink.maxBytes) {
       return;
     }
 
-    const archiveCount = Math.max(0, sink.maxFiles - 1);
-    if (archiveCount === 0) {
-      if (existsSync(sink.filePath)) {
-        unlinkSync(sink.filePath);
+    // Schedule async rotation
+    this.rotationScheduled = true;
+    setImmediate(() => this.performRotation(sink));
+  }
+
+  private async performRotation(sink: StructuredLoggerFileSink): Promise<void> {
+    try {
+      const archiveCount = Math.max(0, sink.maxFiles - 1);
+      if (archiveCount === 0) {
+        try {
+          await fsPromises.unlink(sink.filePath);
+        } catch {
+          // File may not exist
+        }
+        this.rotationScheduled = false;
+        return;
       }
-      return;
-    }
 
-    const oldestArchivePath = `${sink.filePath}.${archiveCount}`;
-    if (existsSync(oldestArchivePath)) {
-      unlinkSync(oldestArchivePath);
-    }
-
-    for (let index = archiveCount - 1; index >= 1; index -= 1) {
-      const fromPath = `${sink.filePath}.${index}`;
-      const toPath = `${sink.filePath}.${index + 1}`;
-      if (existsSync(fromPath)) {
-        renameSync(fromPath, toPath);
+      const oldestArchivePath = `${sink.filePath}.${archiveCount}`;
+      try {
+        await fsPromises.unlink(oldestArchivePath);
+      } catch {
+        // File may not exist
       }
-    }
 
-    if (existsSync(sink.filePath)) {
-      renameSync(sink.filePath, `${sink.filePath}.1`);
+      for (let index = archiveCount - 1; index >= 1; index -= 1) {
+        const fromPath = `${sink.filePath}.${index}`;
+        const toPath = `${sink.filePath}.${index + 1}`;
+        try {
+          await fsPromises.rename(fromPath, toPath);
+        } catch {
+          // File may not exist
+        }
+      }
+
+      try {
+        await fsPromises.rename(sink.filePath, `${sink.filePath}.1`);
+      } catch {
+        // File may not exist
+      }
+    } catch {
+      // Rotation errors should not affect logging
+    } finally {
+      this.rotationScheduled = false;
     }
   }
 }

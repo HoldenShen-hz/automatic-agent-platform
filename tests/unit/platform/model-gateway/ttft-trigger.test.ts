@@ -8,7 +8,7 @@ import {
   DegradationController,
   DegradationLevel,
   type ProviderMetrics,
-} from "../../../../../src/platform/model-gateway/degradation/degradation-controller.js";
+} from "../../../../src/platform/model-gateway/degradation/degradation-controller.js";
 
 /**
  * Mock UnifiedChatProvider for testing

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { AnomalyDetectionService } from "../../../../../src/platform/shared/observability/anomaly-detection-service.js";
-import { BoundedCache } from "../../../../../src/platform/shared/utils/bounded-cache.js";
+import { AnomalyDetectionService } from "../../../../src/platform/shared/observability/anomaly-detection-service.js";
+import { BoundedCache } from "../../../../src/platform/shared/utils/bounded-cache.js";
 
 test("[SYS-PERF-3.4] AnomalyDetectionService uses BoundedCache for history (not unbounded Map)", () => {
   const service = new AnomalyDetectionService();

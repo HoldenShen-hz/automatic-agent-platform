@@ -106,6 +106,24 @@ export class SessionRepository {
     });
   }
 
+  /**
+   * Updates session status with CAS (Compare-And-Swap) semantics.
+   * Only updates if the current status matches the expected status.
+   * @returns Number of rows affected (1 if successful, 0 if CAS failed)
+   */
+  public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
+    const result = execute(
+      this.conn,
+      `UPDATE sessions SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
+      status,
+      updatedAt,
+      sessionId,
+      expectedStatus,
+    );
+    maybeCreateTerminalSessionSummary(this.conn, sessionId, status, updatedAt);
+    return result;
+  }
+
   public insertCompactionRecord(record: CompactionRecord): void {
     this.conn
       .prepare(

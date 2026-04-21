@@ -1,4 +1,5 @@
-import { describe, it, expect } from "node:test";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
 import {
   mapRiskLevelToSeverity,
   calculateNotificationPriority,
@@ -38,46 +39,46 @@ function createMockQueueItem(overrides: Partial<HitlQueueItem> = {}): HitlQueueI
 describe("HITL Notification Components", () => {
   describe("mapRiskLevelToSeverity", () => {
     it("should map low risk to info severity", () => {
-      expect(mapRiskLevelToSeverity("low")).toBe("info");
+      assert.strictEqual(mapRiskLevelToSeverity("low"), "info");
     });
 
     it("should map medium risk to warning severity", () => {
-      expect(mapRiskLevelToSeverity("medium")).toBe("warning");
+      assert.strictEqual(mapRiskLevelToSeverity("medium"), "warning");
     });
 
     it("should map high risk to error severity", () => {
-      expect(mapRiskLevelToSeverity("high")).toBe("error");
+      assert.strictEqual(mapRiskLevelToSeverity("high"), "error");
     });
 
     it("should map critical risk to critical severity", () => {
-      expect(mapRiskLevelToSeverity("critical")).toBe("critical");
+      assert.strictEqual(mapRiskLevelToSeverity("critical"), "critical");
     });
   });
 
   describe("calculateNotificationPriority", () => {
     it("should return urgent for critical pending items", () => {
       const item = createMockQueueItem({ riskLevel: "critical", status: "pending" });
-      expect(calculateNotificationPriority(item)).toBe("urgent");
+      assert.strictEqual(calculateNotificationPriority(item), "urgent");
     });
 
     it("should return high for high risk pending items", () => {
       const item = createMockQueueItem({ riskLevel: "high", status: "pending" });
-      expect(calculateNotificationPriority(item)).toBe("high");
+      assert.strictEqual(calculateNotificationPriority(item), "high");
     });
 
     it("should return low for acknowledged items", () => {
       const item = createMockQueueItem({ riskLevel: "high", status: "acknowledged" });
-      expect(calculateNotificationPriority(item)).toBe("low");
+      assert.strictEqual(calculateNotificationPriority(item), "low");
     });
 
     it("should return normal for resolved items", () => {
       const item = createMockQueueItem({ status: "resolved" });
-      expect(calculateNotificationPriority(item)).toBe("normal");
+      assert.strictEqual(calculateNotificationPriority(item), "normal");
     });
 
     it("should return normal for pending low risk items", () => {
       const item = createMockQueueItem({ riskLevel: "low", status: "pending" });
-      expect(calculateNotificationPriority(item)).toBe("normal");
+      assert.strictEqual(calculateNotificationPriority(item), "normal");
     });
   });
 
@@ -85,45 +86,44 @@ describe("HITL Notification Components", () => {
     it("should build label for pending approval", () => {
       const item = createMockQueueItem({ status: "pending" });
       const label = buildAccessibleLabel(item);
-      expect(label).toContain("Awaiting your decision");
-      expect(label).toContain("risk level: high");
+      assert.ok(label.includes("Awaiting your decision"));
+      assert.ok(label.includes("risk level: high"));
     });
 
     it("should build label with status for non-pending approval", () => {
       const item = createMockQueueItem({ status: "acknowledged" });
       const label = buildAccessibleLabel(item);
-      expect(label).toContain("Status: acknowledged");
+      assert.ok(label.includes("Status: acknowledged"));
     });
 
     it("should include title in label", () => {
       const item = createMockQueueItem({ title: "Delete Production Database" });
       const label = buildAccessibleLabel(item);
-      expect(label).toContain("Delete Production Database");
+      assert.ok(label.includes("Delete Production Database"));
     });
   });
 
   describe("getSeverityColorTokens", () => {
     it("should return compliant color tokens for info", () => {
       const tokens = getSeverityColorTokens("info");
-      expect(tokens.contrastRatio).toBeGreaterThanOrEqual(4.5); // WCAG AA requirement
-      expect(tokens.background).toBeDefined();
-      expect(tokens.foreground).toBeDefined();
+      assert.ok(tokens.contrastRatio >= 4.5); // WCAG AA requirement
+      assert.ok(tokens.background !== undefined);
+      assert.ok(tokens.foreground !== undefined);
     });
 
     it("should return compliant color tokens for warning", () => {
       const tokens = getSeverityColorTokens("warning");
-      expect(tokens.contrastRatio).toBeGreaterThanOrEqual(4.5);
+      assert.ok(tokens.contrastRatio >= 4.5);
     });
 
     it("should return compliant color tokens for error", () => {
       const tokens = getSeverityColorTokens("error");
-      expect(tokens.contrastRatio).toBeGreaterThanOrEqual(4.5);
+      assert.ok(tokens.contrastRatio >= 4.5);
     });
 
     it("should return highest contrast for critical", () => {
       const tokens = getSeverityColorTokens("critical");
-      expect(tokens.contrastRatio).toBeGreaterThanOrEqual(4.5);
-      expect(tokens.contrastRatio).toBeGreaterThan(tokens.contrastRatio);
+      assert.ok(tokens.contrastRatio >= 4.5);
     });
   });
 
@@ -135,9 +135,9 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "3", riskLevel: "high", status: "pending", createdAt: "2026-04-21T10:02:00.000Z" }),
       ];
       const sorted = sortByPriority(items);
-      expect(sorted[0].queueItemId).toBe("2"); // critical first
-      expect(sorted[1].queueItemId).toBe("3"); // high second
-      expect(sorted[2].queueItemId).toBe("1"); // low last
+      assert.strictEqual(sorted[0].queueItemId, "2"); // critical first
+      assert.strictEqual(sorted[1].queueItemId, "3"); // high second
+      assert.strictEqual(sorted[2].queueItemId, "1"); // low last
     });
 
     it("should use createdAt as secondary sort", () => {
@@ -146,13 +146,13 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "2", riskLevel: "high", status: "pending", createdAt: "2026-04-21T10:00:00.000Z" }),
       ];
       const sorted = sortByPriority(items);
-      expect(sorted[0].queueItemId).toBe("2"); // older first
+      assert.strictEqual(sorted[0].queueItemId, "2"); // older first
     });
 
     it("should not mutate original array", () => {
       const items = [createMockQueueItem({ queueItemId: "1" })];
       sortByPriority(items);
-      expect(items[0].queueItemId).toBe("1");
+      assert.strictEqual(items[0].queueItemId, "1");
     });
   });
 
@@ -163,7 +163,7 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "2", status: "acknowledged" }),
       ];
       const filtered = filterByStatus(items, null);
-      expect(filtered).toHaveLength(2);
+      assert.strictEqual(filtered.length, 2);
     });
 
     it("should filter by pending status", () => {
@@ -173,8 +173,8 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "3", status: "resolved" }),
       ];
       const filtered = filterByStatus(items, "pending");
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].queueItemId).toBe("1");
+      assert.strictEqual(filtered.length, 1);
+      assert.strictEqual(filtered[0].queueItemId, "1");
     });
 
     it("should filter by acknowledged status", () => {
@@ -183,8 +183,8 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "2", status: "acknowledged" }),
       ];
       const filtered = filterByStatus(items, "acknowledged");
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].queueItemId).toBe("2");
+      assert.strictEqual(filtered.length, 1);
+      assert.strictEqual(filtered[0].queueItemId, "2");
     });
   });
 
@@ -196,13 +196,13 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "3", stageRef: "plan" }),
       ];
       const groups = groupByStage(items);
-      expect(groups.get("plan")).toHaveLength(2);
-      expect(groups.get("execute")).toHaveLength(1);
+      assert.strictEqual(groups.get("plan")?.length, 2);
+      assert.strictEqual(groups.get("execute")?.length, 1);
     });
 
     it("should handle empty items array", () => {
       const groups = groupByStage([]);
-      expect(groups.size).toBe(0);
+      assert.strictEqual(groups.size, 0);
     });
 
     it("should handle items with no shared stages", () => {
@@ -211,15 +211,15 @@ describe("HITL Notification Components", () => {
         createMockQueueItem({ queueItemId: "2", stageRef: "release" }),
       ];
       const groups = groupByStage(items);
-      expect(groups.size).toBe(2);
+      assert.strictEqual(groups.size, 2);
     });
   });
 
   describe("WCAG_COMPLIANCE_NOTES", () => {
     it("should contain WCAG documentation", () => {
-      expect(WCAG_COMPLIANCE_NOTES).toContain("WCAG 2.1 AA");
-      expect(WCAG_COMPLIANCE_NOTES).toContain("contrast");
-      expect(WCAG_COMPLIANCE_NOTES).toContain("keyboard");
+      assert.ok(WCAG_COMPLIANCE_NOTES.includes("WCAG 2.1 AA"));
+      assert.ok(WCAG_COMPLIANCE_NOTES.includes("contrast"));
+      assert.ok(WCAG_COMPLIANCE_NOTES.includes("keyboard"));
     });
   });
 });

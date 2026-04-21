@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisRateLimiter } from "../../../../../src/platform/interface/ingress/redis-rate-limiter.js";
+import { RedisRateLimiter } from "../../../../src/platform/interface/ingress/redis-rate-limiter.js";
 
 test("[SYS-REL-2.1] Redis rate limiter logs error on connection failure", () => {
   const logs: string[] = [];

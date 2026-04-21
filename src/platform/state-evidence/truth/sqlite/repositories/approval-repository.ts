@@ -152,6 +152,31 @@ export class ApprovalRepository {
   }
 
   /**
+   * Updates approval decision with CAS (Compare-And-Swap) semantics.
+   * Only updates if the current status matches the expected status.
+   * @returns Number of rows affected (1 if successful, 0 if CAS failed)
+   */
+  public updateApprovalDecisionCas(input: {
+    approvalId: string;
+    expectedStatus: ApprovalRecord["status"];
+    status: ApprovalRecord["status"];
+    responseJson: string;
+    respondedAt: string;
+  }): number {
+    return execute(
+      this.conn,
+      `UPDATE approvals
+       SET status = ?, response_json = ?, responded_at = ?
+       WHERE id = ? AND status = ?`,
+      input.status,
+      input.responseJson,
+      input.respondedAt,
+      input.approvalId,
+      input.expectedStatus,
+    );
+  }
+
+  /**
    * Update approval request JSON.
    */
   public updateApprovalRequest(input: { id: string; requestJson: string }): void {

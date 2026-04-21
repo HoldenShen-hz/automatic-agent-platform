@@ -11,9 +11,15 @@ route:
     - matchers:
         - severity="critical"
       receiver: pagerduty-critical
+      continue: true
     - matchers:
         - severity="warning"
       receiver: slack-warning
+      continue: true
+    - matchers:
+        - severity="page"
+      receiver: pagerduty-critical
+      continue: true
 
 receivers:
   - name: default-warning
@@ -22,11 +28,17 @@ receivers:
         send_resolved: true
 
   - name: slack-warning
+    webhook_configs:
+      - url: http://api-server:3000/v1/alerts/webhook
+        send_resolved: true
     slack_configs:
       - url: ${SLACK_WEBHOOK_URL}
         send_resolved: true
 
   - name: pagerduty-critical
+    webhook_configs:
+      - url: http://api-server:3000/v1/alerts/webhook
+        send_resolved: true
     pagerduty_configs:
       - service_key: ${PAGERDUTY_SERVICE_KEY}
         send_resolved: true

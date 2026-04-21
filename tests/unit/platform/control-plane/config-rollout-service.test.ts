@@ -8,7 +8,7 @@ import {
   ConfigRolloutService,
   RolloutPhase,
   DEFAULT_ROLLOUT_STAGES,
-} from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
+} from "../../../../src/platform/control-plane/config-center/config-rollout-service.js";
 
 test("DEFAULT_ROLLOUT_STAGES CANARY_5 has minDurationMs of 1800000 (30 minutes)", () => {
   const canary5Stage = DEFAULT_ROLLOUT_STAGES.find((s) => s.phase === RolloutPhase.CANARY_5);

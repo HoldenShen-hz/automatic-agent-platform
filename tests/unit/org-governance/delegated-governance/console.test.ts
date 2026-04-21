@@ -99,8 +99,8 @@ test("createDelegation logs audit entry", () => {
   // So we see only the delegate entry, not the export_audit that gets logged after
   const auditEntries = console.exportAuditLog();
   assert.equal(auditEntries.length, 1);
-  assert.equal(auditEntries[0].action, "delegate");
-  assert.equal(auditEntries[0].actorId, "platform_team");
+  assert.equal(auditEntries[0]?.action, "delegate");
+  assert.equal(auditEntries[0]?.actorId, "platform_team");
 });
 
 test("revokeDelegation revokes active delegation", () => {
@@ -173,7 +173,7 @@ test("listDelegationsForGrantee returns only active delegations", () => {
 
   const delegations = console.listDelegationsForGrantee("admin-1");
   assert.equal(delegations.length, 1);
-  assert.equal(delegations[0].delegationId, d2.delegationId);
+  assert.equal(delegations[0]?.delegationId, d2.delegationId);
 });
 
 test("listDelegationsForOrgNode returns delegations within org scope", () => {
@@ -195,7 +195,7 @@ test("listDelegationsForOrgNode returns delegations within org scope", () => {
 
   const financeDelegations = console.listDelegationsForOrgNode("finance");
   assert.equal(financeDelegations.length, 1);
-  assert.equal(financeDelegations[0].granteeId, "admin-finance");
+  assert.equal(financeDelegations[0]?.granteeId, "admin-finance");
 });
 
 test("listDelegationsForOrgNode returns delegations with empty orgNodeIds (platform scope)", () => {

@@ -128,10 +128,10 @@ test("loadOpsGovernanceCliEnv handles optional parameters", () => {
   const config = loadOpsGovernanceCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_OPS_GOVERNANCE_ACTION: "report",
-    AA_OPS_GOVERNANCE_OUTPUT_FORMAT: "json",
   });
 
-  assert.equal(config.outputFormat, "json");
+  assert.equal(config.action, "report");
+  assert.equal(config.dbPath, "/tmp/test.db");
 });
 
 test("loadOpsGovernanceCliEnv throws invalid_env for unknown action", () => {

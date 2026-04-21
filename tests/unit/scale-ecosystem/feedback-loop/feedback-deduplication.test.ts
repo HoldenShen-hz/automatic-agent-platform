@@ -8,8 +8,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { SignalPreprocessor } from "../../../../../src/scale-ecosystem/feedback-loop/collector/signal-preprocessor.js";
-import type { FeedbackSignal } from "../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+import { SignalPreprocessor } from "../../../../src/scale-ecosystem/feedback-loop/collector/signal-preprocessor.js";
+import type { FeedbackSignal } from "../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
 
 function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
   return {

@@ -47,7 +47,9 @@ test("[SYS-REL-2.1] redis cache store error handler captures errors", () => {
   assert.ok(capturedHandler !== null, "Error handler should be registered on Redis client");
 
   // Simulate error - use non-null assertion since handler is confirmed set
-  capturedHandler!(new Error("ECONNREFUSED"));
+  if (capturedHandler) {
+    capturedHandler(new Error("ECONNREFUSED"));
+  }
 });
 
 test("[SYS-REL-2.1] redis cache store health status becomes false after Redis error", () => {
