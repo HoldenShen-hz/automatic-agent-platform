@@ -9,6 +9,24 @@ import {
 } from "../../../../src/domains/registry/plugin-runtime-host.js";
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
 import { createBuiltinPlugin } from "../../../../src/plugins/builtin-plugin-registry.js";
+import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+
+function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
+  return {
+    timeoutMs: 5000,
+    allowFilesystemWrite: false,
+    allowNetworkEgress: false,
+    allowedKnowledgeNamespaces: [],
+    maxConcurrentInvocations: 1,
+    maxQueuedInvocations: 8,
+    runtimeIsolation: "serialized_in_process",
+    cooldownMs: 0,
+    allowedExternalDomains: [],
+    maxResponseSizeBytes: 5 * 1024 * 1024,
+    rateLimitPerMinute: 60,
+    ...overrides,
+  };
+}
 
 async function waitFor(condition: () => boolean, timeoutMs = 250): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -49,16 +67,10 @@ test("PluginSpiRegistry registers plugins and drives lifecycle hooks", async () 
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const active = await registry.ensureActive("plugin.coding.retriever", {
@@ -107,16 +119,10 @@ test("PluginSpiRegistry isolates plugin failures and disables unhealthy plugins 
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   await assert.rejects(() => registry.invokeRetriever("plugin.coding.broken", {
@@ -160,16 +166,10 @@ test("PluginSpiRegistry enforces namespace sandbox and timeout", async () => {
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 10,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   await assert.rejects(() => registry.invokeRetriever("plugin.coding.slow", {
@@ -223,16 +223,11 @@ test("PluginSpiRegistry serializes plugin invocations under isolation limits", a
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
       maxQueuedInvocations: 2,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const [first, second] = await Promise.all([
@@ -295,16 +290,11 @@ test("PluginSpiRegistry rejects plugin queue overflow and emits isolation event"
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 5000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
       maxQueuedInvocations: 1,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   await registry.ensureActive("plugin.coding.queued", {
@@ -365,16 +355,10 @@ test("PluginSpiRegistry invokes presenter plugins through isolated runtime path"
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const output = await registry.invokePresenter("plugin.coding.presenter", {
@@ -415,16 +399,11 @@ test("PluginSpiRegistry enforces adapter network policy and isolated adapter exe
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
       allowNetworkEgress: true,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   await registry.invokeAdapterAuthenticate("plugin.shared.github_adapter", {
@@ -462,16 +441,10 @@ test("PluginSpiRegistry enforces adapter network policy and isolated adapter exe
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   await assert.rejects(() => registry.invokeAdapterAuthenticate("plugin.shared.github_adapter_blocked", {
@@ -512,16 +485,11 @@ test("PluginSpiRegistry emits invocation audit events and enforces cooldown afte
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
       cooldownMs: 100,
-    },
+    }),
   });
 
   await assert.rejects(() => registry.invokeRetriever("plugin.coding.cooldown", {
@@ -561,16 +529,11 @@ test("PluginSpiRegistry runs builtin presenter plugins in a forked process runti
     trustLevel: "trusted",
     publicSdkSurface: "src/plugins/presenters/coding-presenter",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 2000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
       runtimeIsolation: "forked_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const output = await registry.invokePresenter("plugin.coding.presenter", {

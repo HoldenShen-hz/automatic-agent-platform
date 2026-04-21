@@ -21,8 +21,9 @@ import {
   compareSemver,
   parseSemver,
 } from "../../../src/ops-maturity/agent-lifecycle/version-manager/index.js";
+import type { ManagedAgentDefinition } from "../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
 
-function makeAgent(overrides = {}) {
+function makeAgent(overrides: Partial<ManagedAgentDefinition> = {}): ManagedAgentDefinition {
   return {
     agentId: "agent_ops_1",
     name: "Ops Agent",
@@ -31,12 +32,12 @@ function makeAgent(overrides = {}) {
     components: {
       pack: { packId: "pack_ops", version: "1.0.0" },
       promptBundle: { bundleId: "bundle_ops", version: "1.0.0" },
-      modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
+      modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] as string[] },
       trustProfile: {
         initialLevel: "semi_auto" as const,
         scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 },
       },
-      triggerSet: [],
+      triggerSet: [] as { triggerId: string; type: "scheduled" | "event" | "manual"; enabled: boolean }[],
       autonomyConfig: { maxAutomationLevel: "semi_auto" as const, requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
     },
     currentVersionId: "v1.0.0",
@@ -44,7 +45,7 @@ function makeAgent(overrides = {}) {
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
     ...overrides,
-  };
+  } as ManagedAgentDefinition;
 }
 
 function makeVersion(overrides = {}) {
@@ -340,7 +341,7 @@ test("createRetirementRecord builds correct record", () => {
   const plan = {
     agentId: "agent_ops_1",
     successorAgentId: "agent_ops_2",
-    transferItems: ["triggers", "ownership"],
+    transferItems: ["triggers", "ownership"] as ("triggers" | "subscriptions" | "scheduled_tasks" | "ownership")[],
     gracePeriodDays: 30,
     notificationTargets: ["admin@example.com"],
     revokeAt: "2026-04-20T00:00:00.000Z",
