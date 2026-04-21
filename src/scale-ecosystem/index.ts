@@ -1,6 +1,8 @@
 export * from "./feedback-loop/analyzer/index.js";
 export * from "./feedback-loop/feedback-improvement-service.js";
+export * from "./feedback-loop/fine-tuning-exporter.js";
 export * from "./feedback-loop/improvement-tracker/index.js";
+export * from "./feedback-loop/quality-grader.js";
 export * from "./runtime-governance-service.js";
 export * from "./integration/connector-framework-service.js";
 export * from "./integration/connector-registry/index.js";
@@ -8,6 +10,7 @@ export * from "./integration/connector-runtime/index.js";
 export * from "./integration/health-monitor/index.js";
 export * from "./marketplace/catalog/index.js";
 export * from "./marketplace/certification/index.js";
+export * from "./marketplace/pack-security-service.js";
 export * from "./marketplace/publisher/index.js";
 export * from "./multi-region/cross-region-routing-service.js";
 export * from "./multi-region/data-replicator/index.js";

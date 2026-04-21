@@ -601,3 +601,85 @@ test("ErasureRequestService does not allow invalid status transitions", () => {
     (err: any) => err.code.includes("invalid_status_transition"),
   );
 });
+
+test("ErasureRequestService.failRequest is idempotent when not processing", () => {
+  const mockStore = createMockStore();
+  const mockDb = createMockDb(mockStore);
+  const service = new ErasureRequestService(mockDb as any, mockStore as any);
+
+  const created = service.createRequest({
+    tenantId: "tenant-fail-idem",
+    subjectType: "user",
+    subjectId: "user-456",
+    requestedBy: "admin",
+    reason: "Test erasure",
+  });
+
+  // Submit then complete
+  service.submitRequest(created.erasureId);
+  service.completeRequest(created.erasureId, [
+    { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
+  ]);
+
+  // Try to fail completed request - should be no-op
+  const result = service.failRequest(created.erasureId, "Should not change");
+
+  // Status should remain completed
+  assert.equal(result.status, "completed");
+});
+
+test("ErasureRequestService.failRequest throws on non-existent request", () => {
+  const mockStore = createMockStore();
+  const mockDb = createMockDb(mockStore);
+  const service = new ErasureRequestService(mockDb as any, mockStore as any);
+
+  assert.throws(
+    () => service.failRequest("nonexistent_erasure", "Some reason"),
+    (err: any) => err.code.startsWith("erasure.not_found"),
+  );
+});
+
+test("ErasureRequestService.completeRequest is idempotent when not processing", () => {
+  const mockStore = createMockStore();
+  const mockDb = createMockDb(mockStore);
+  const service = new ErasureRequestService(mockDb as any, mockStore as any);
+
+  const created = service.createRequest({
+    tenantId: "tenant-complete-idem",
+    subjectType: "user",
+    subjectId: "user-456",
+    requestedBy: "admin",
+    reason: "Test erasure",
+  });
+
+  // Submit first
+  service.submitRequest(created.erasureId);
+
+  // Complete first time
+  const first = service.completeRequest(created.erasureId, [
+    { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
+  ]);
+
+  // Complete second time - should be no-op
+  const second = service.completeRequest(created.erasureId, [
+    { evidenceType: "dek_destruction", referenceId: "key-002", timestamp: "2026-04-21T00:01:00.000Z" },
+  ]);
+
+  // Should return same status
+  assert.equal(first.status, second.status);
+  assert.equal(first.completedAt, second.completedAt);
+});
+
+test("ErasureRequestService.completeRequest throws on non-existent request", () => {
+  const mockStore = createMockStore();
+  const mockDb = createMockDb(mockStore);
+  const service = new ErasureRequestService(mockDb as any, mockStore as any);
+
+  assert.throws(
+    () =>
+      service.completeRequest("nonexistent_erasure", [
+        { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
+      ]),
+    (err: any) => err.code.startsWith("erasure.not_found"),
+  );
+});
