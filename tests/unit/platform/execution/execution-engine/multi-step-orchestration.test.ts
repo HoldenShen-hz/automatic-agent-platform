@@ -200,10 +200,10 @@ test("runMultiStepOrchestration with admission backpressure snapshot", async () 
     title: "Test Backpressure",
     request: "Test backpressure",
     admissionBackpressureSnapshot: () => ({
-      memoryUsageMb: 100,
-      eventLoopLagMs: 10,
-      activeWorkers: 2,
-      queueDepth: 5,
+      status: "healthy",
+      degradationMode: false,
+      queueGovernance: "normal",
+      findings: [],
     }),
   };
 
@@ -310,10 +310,10 @@ test("runMultiStepOrchestration with custom admission policy", async () => {
     title: "Test Custom Policy",
     request: "Test custom admission policy",
     admissionPolicy: {
-      maxConcurrentTasks: 100,
-      maxQueueDepth: 1000,
-      memoryHighWatermarkMb: 1024,
-      eventLoopLagThresholdMs: 100,
+      maxQueuedTasks: 100,
+      maxActiveExecutions: 1000,
+      maxTier1AckBacklog: 100,
+      urgentQueueHeadroom: 10,
     },
   };
 

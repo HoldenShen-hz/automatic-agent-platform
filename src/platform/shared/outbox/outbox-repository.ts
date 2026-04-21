@@ -2,6 +2,7 @@
  * OutboxRepository - Data access for the transactional outbox pattern.
  */
 
+import type { SQLInputValue } from "node:sqlite";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { type OutboxInsertPayload, type OutboxRecord, OutboxStatus } from "./outbox-types.js";
 import type { SqliteConnection } from "../../state-evidence/truth/sqlite/query-helper.js";
@@ -56,11 +57,18 @@ export class OutboxRepository {
   }
 
   public insertOutboxEntries(entries: OutboxInsertPayload[]): OutboxRecord[] {
+    if (entries.length === 0) return [];
+
     const now = nowIso();
     const records: OutboxRecord[] = [];
 
+    // Use bulk INSERT for efficiency when publishing multiple events
+    const placeholders = entries.map(() => "(?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)").join(", ");
+    const values: SQLInputValue[] = [];
     for (const entry of entries) {
-      const record = this.insertOutboxEntry(
+      const id = newId("outbox");
+      values.push(
+        id,
         entry.aggregateType,
         entry.aggregateId,
         entry.eventType,
@@ -68,8 +76,87 @@ export class OutboxRepository {
         entry.traceId ?? null,
         now,
       );
-      records.push(record);
+      records.push({
+        id,
+        aggregateType: entry.aggregateType,
+        aggregateId: entry.aggregateId,
+        eventType: entry.eventType,
+        payloadJson: JSON.stringify(entry.payload),
+        traceId: entry.traceId ?? null,
+        createdAt: now,
+        publishedAt: null,
+        retryCount: 0,
+        lastError: null,
+        lastAttemptAt: null,
+      });
     }
+
+    this.conn
+      .prepare(
+        `INSERT INTO outbox (
+          id, aggregate_type, aggregate_id, event_type,
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+        ) VALUES ${placeholders}`,
+      )
+      .run(...values);
+
+    return records;
+  }
+
+  /**
+   * Bulk inserts outbox entries with pre-generated IDs.
+   * Use this when you need to control the IDs yourself.
+   *
+   * @param entries - Array of entries with pre-generated IDs
+   * @param ids - Array of pre-generated IDs (must match entries length)
+   */
+  public insertOutboxEntriesBulk(entries: OutboxInsertPayload[], ids: string[]): OutboxRecord[] {
+    if (entries.length === 0) return [];
+    if (entries.length !== ids.length) {
+      throw new Error("entries and ids must have the same length");
+    }
+
+    const now = nowIso();
+    const records: OutboxRecord[] = [];
+
+    // Use bulk INSERT for efficiency
+    const placeholders = entries.map(() => "(?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)").join(", ");
+    const values: SQLInputValue[] = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]!;
+      const id = ids[i]!;
+      values.push(
+        id,
+        entry.aggregateType,
+        entry.aggregateId,
+        entry.eventType,
+        JSON.stringify(entry.payload),
+        entry.traceId ?? null,
+        now,
+      );
+      records.push({
+        id,
+        aggregateType: entry.aggregateType,
+        aggregateId: entry.aggregateId,
+        eventType: entry.eventType,
+        payloadJson: JSON.stringify(entry.payload),
+        traceId: entry.traceId ?? null,
+        createdAt: now,
+        publishedAt: null,
+        retryCount: 0,
+        lastError: null,
+        lastAttemptAt: null,
+      });
+    }
+
+    this.conn
+      .prepare(
+        `INSERT INTO outbox (
+          id, aggregate_type, aggregate_id, event_type,
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+        ) VALUES ${placeholders}`,
+      )
+      .run(...values);
 
     return records;
   }
