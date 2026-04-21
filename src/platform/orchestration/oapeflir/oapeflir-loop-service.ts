@@ -99,6 +99,7 @@ export class OapeflirLoopService {
   private readonly candidateRegistry = new ImprovementCandidateRegistry();
   private readonly rollout = new PolicyRolloutService();
   private readonly executeBridge: ExecuteBridge;
+  private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
