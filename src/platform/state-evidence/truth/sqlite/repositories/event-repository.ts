@@ -671,7 +671,7 @@ export class EventRepository {
     traceId: string;
     payload: Record<string, unknown>;
   }): EventRecord {
-    return this.insertEvent({
+    const eventRecord = this.insertEvent({
       id: newId("evt"),
       taskId: input.taskId,
       sessionId: null,
@@ -682,5 +682,35 @@ export class EventRepository {
       traceId: input.traceId,
       createdAt: nowIso(),
     });
+
+    // Also write to outbox for reliable async delivery
+    // This ensures tier-1 events are delivered via the outbox pattern
+    const outboxId = newId("outbox");
+    const outboxPayload = {
+      eventId: eventRecord.id,
+      eventType: input.eventType,
+      taskId: input.taskId,
+      executionId: input.executionId,
+      payload: input.payload,
+    };
+
+    this.conn
+      .prepare(
+        `INSERT INTO outbox (
+          id, aggregate_type, aggregate_id, event_type,
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`,
+      )
+      .run(
+        outboxId,
+        "task",
+        input.taskId,
+        input.eventType,
+        JSON.stringify(outboxPayload),
+        input.traceId,
+        eventRecord.createdAt,
+      );
+
+    return eventRecord;
   }
 }

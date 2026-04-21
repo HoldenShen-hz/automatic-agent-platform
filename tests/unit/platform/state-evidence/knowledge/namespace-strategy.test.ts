@@ -14,8 +14,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NamespacePolicyStore, DEFAULT_NAMESPACE_STRATEGY } from "../../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
-import type { KnowledgeNamespace } from "../../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
+import { NamespacePolicyStore, DEFAULT_NAMESPACE_STRATEGY } from "../../../../../src/platform/state-evidence/knowledge/governance/namespace-policy.js";
+import type { KnowledgeNamespace } from "../../../../../src/platform/state-evidence/knowledge/knowledge-model.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -128,7 +128,7 @@ test("validate returns errors for invalid freshness policy", () => {
       staleAction: "invalid_action", // Invalid enum value
       refreshStrategy: "on_access",
       refreshIntervalHours: null,
-    } as KnowledgeNamespace["freshnessPolicy"],
+    } as unknown as KnowledgeNamespace["freshnessPolicy"],
   });
 
   const result = store.validate(namespace);

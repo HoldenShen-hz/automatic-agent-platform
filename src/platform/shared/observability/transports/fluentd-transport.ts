@@ -41,6 +41,7 @@ export class FluentdTransport implements LogTransport {
     this.socket = createConnection(this.config.port, this.config.host);
     this.socket.on("connect", () => {
       this.connecting = false;
+      this.reconnectAttempts = 0;
       for (const buffered of this.buffer) {
         this.socket!.write(buffered);
       }
@@ -49,13 +50,30 @@ export class FluentdTransport implements LogTransport {
     this.socket.on("error", () => {
       this.socket = null;
       this.connecting = false;
-      setTimeout(() => this.connect(), this.reconnectIntervalMs);
+      this.handleReconnect();
     });
     this.socket.on("close", () => {
       this.socket = null;
       this.connecting = false;
-      setTimeout(() => this.connect(), this.reconnectIntervalMs);
+      this.handleReconnect();
     });
+  }
+
+  private reconnectAttempts = 0;
+  private readonly maxReconnectAttempts = 10;
+
+  private handleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      // Stop reconnecting after max attempts, log error for monitoring
+      console.error("fluentd.reconnect_exhausted", {
+        attempts: this.reconnectAttempts,
+        host: this.config.host,
+        port: this.config.port,
+      });
+      return;
+    }
+    this.reconnectAttempts++;
+    setTimeout(() => this.connect(), this.reconnectIntervalMs);
   }
 
   write(entry: StructuredLogEntry): void {

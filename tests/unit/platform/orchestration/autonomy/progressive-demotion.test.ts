@@ -18,7 +18,7 @@ import {
   type AgentTrustProfile,
   type IncidentSeverity,
   type AutonomyLevel,
-} from "../../../../../../src/interaction/autonomy/index.js";
+} from "../../../../../src/interaction/autonomy/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

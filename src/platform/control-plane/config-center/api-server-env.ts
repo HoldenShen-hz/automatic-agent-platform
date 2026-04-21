@@ -192,7 +192,7 @@ export function loadApiServerEnv(env: NodeJS.ProcessEnv = process.env): ApiServe
     parsePositiveInteger(readTrimmedEnv(env, "AA_LOG_DATADOG_FLUSH_INTERVAL_MS"), "api.invalid_log_datadog_flush_interval_ms") ?? undefined;
   const enableWebSocket = parseBoolean(readTrimmedEnv(env, "AA_API_ENABLE_WEBSOCKET"), "api.invalid_enable_websocket") ?? true;
   const metricsPort = parsePositivePort(readTrimmedEnv(env, "AA_METRICS_PORT"));
-  const otelEnabled = parseBoolean(readTrimmedEnv(env, "AA_OTEL_ENABLED"), "api.invalid_otel_enabled") ?? false;
+  const otelEnabled = parseBoolean(readTrimmedEnv(env, "AA_OTEL_ENABLED"), "api.invalid_otel_enabled") ?? true;
   const otelEndpoint = readTrimmedEnv(env, "AA_OTEL_ENDPOINT");
   const otelServiceName = readTrimmedEnv(env, "AA_OTEL_SERVICE_NAME") ?? "automatic-agent";
   const otelServiceVersion = readTrimmedEnv(env, "AA_OTEL_SERVICE_VERSION") ?? (env["AA_BUILD_VERSION"]?.trim() || "0.1.0");

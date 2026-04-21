@@ -69,6 +69,7 @@ function createMockRedis(overrides: Partial<{
   mget: (...keys: string[]) => Promise<(string | null)[]>;
   quit: () => Promise<unknown>;
   disconnect: () => void;
+  keys: (pattern: string) => Promise<string[]>;
 }> = {}): RedisLockAdapter["redis"] {
   return {
     status: "ready",
@@ -82,6 +83,7 @@ function createMockRedis(overrides: Partial<{
     quit: async () => {},
     disconnect: () => {},
     on: () => {},
+    keys: async () => [],
     ...overrides,
   };
 }

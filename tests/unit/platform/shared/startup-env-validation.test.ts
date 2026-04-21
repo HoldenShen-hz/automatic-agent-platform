@@ -4,7 +4,7 @@ import {
   StartupEnvSchema,
   validateStartupEnv,
   type StartupEnvValidationError,
-} from "../../../../../src/platform/control-plane/config-center/startup-env-schema.js";
+} from "../../../../src/platform/control-plane/config-center/startup-env-schema.js";
 
 /**
  * SYS-SEC-4.1: Startup Environment Validation Tests

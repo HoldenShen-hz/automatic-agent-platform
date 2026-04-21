@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { RedisCacheStore } from "../../../../../src/platform/shared/cache/redis-cache-store.js";
+import { RedisCacheStore } from "../../../../src/platform/shared/cache/stores/redis-cache-store.js";
 
 test("[SYS-REL-2.1] Redis cache store logs error on connection failure", () => {
   const logs: string[] = [];

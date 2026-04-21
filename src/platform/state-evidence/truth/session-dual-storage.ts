@@ -13,6 +13,9 @@ import { dirname, join } from "node:path";
 
 import type { MessageRecord, SessionRecord } from "../../contracts/types/domain.js";
 import { nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 /**
  * Types of session lifecycle events that can be recorded.
@@ -118,7 +121,7 @@ export class SessionDualStorageService {
     try {
       taskIndexFd = openSync(taskIndexPath, "a");
     } catch (err) {
-      console.error("session_dual_storage.task_index_open_failed", {
+      logger.error("session_dual_storage.task_index_open_failed", {
         sessionId: event.sessionId,
         taskId: event.taskId,
         eventType: event.eventType,
@@ -132,7 +135,7 @@ export class SessionDualStorageService {
       appendFileSync(taskIndexFd, line, "utf8");
       fdatasyncSync(taskIndexFd);
     } catch (err) {
-      console.error("session_dual_storage.task_index_write_failed", {
+      logger.error("session_dual_storage.task_index_write_failed", {
         sessionId: event.sessionId,
         taskId: event.taskId,
         eventType: event.eventType,

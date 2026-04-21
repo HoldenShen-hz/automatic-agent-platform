@@ -9,7 +9,7 @@ import {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
   type MultiStepToolExecutionInput,
-} from "../../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+} from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

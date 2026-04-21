@@ -3,6 +3,9 @@ import { createRequire } from "node:module";
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 import {
   DEFAULT_RETRY_POLICY,
@@ -67,7 +70,7 @@ class RedisQueueClient {
       connectTimeout: config.connectTimeout ?? 500,
     }));
     this.redis.on("error", (err) => {
-      console.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
+      logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
     });
   }
 
@@ -243,7 +246,7 @@ export class RedisQueueAdapter implements QueueAdapter {
     const jobId = job.id;
     p.exec().catch((err: unknown) => {
       // Log the error for observability - the job was already returned to caller
-      console.error("queue.enqueue_pipeline_failed", {
+      logger.error("queue.enqueue_pipeline_failed", {
         jobId,
         queueName: input.queueName,
         error: err instanceof Error ? err.message : String(err),

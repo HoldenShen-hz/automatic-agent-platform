@@ -1,15 +1,122 @@
 groups:
   - name: automatic-agent
     rules:
+      # High Error Rate - SLO: error rate < 1%
       - alert: AutomaticAgentHighErrorRate
-        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.05
-        for: 10m
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.01
+        for: 5m
         labels:
           severity: critical
         annotations:
-          summary: automatic-agent 5xx error rate is above 5%
-          description: HTTP 5xx ratio has exceeded 5% for 10 minutes.
+          summary: automatic-agent 5xx error rate exceeds 1% SLO
+          description: HTTP 5xx ratio has exceeded 1% for 5 minutes. SLO target is < 1%.
 
+      # High Latency - SLO: p95 latency < 1s
+      - alert: AutomaticAgentHighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent p95 latency exceeds 1s SLO
+          description: HTTP request p95 latency has exceeded 1 second for 5 minutes.
+
+      - alert: AutomaticAgentCriticalLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 3
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: automatic-agent p95 latency exceeds 3s
+          description: HTTP request p95 latency has exceeded 3 seconds. Immediate investigation required.
+
+      # Queue Depth High
+      - alert: AutomaticAgentQueueDepthHigh
+        expr: sum(queue_depth{queue=~".*"}) > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent queue depth exceeds 100
+          description: Task queue depth has exceeded 100 entries for 10 minutes.
+
+      - alert: AutomaticAgentQueueBacklog
+        expr: sum(queue_depth{queue=~".*"}) > 500
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: automatic-agent queue backlog critical
+          description: Task queue depth has exceeded 500 entries. System is overwhelmed.
+
+      # Worker Pool Exhaustion
+      - alert: AutomaticAgentWorkerPoolExhaustion
+        expr: sum(workers_active) / sum(workers_total) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent worker pool above 90% utilization
+          description: Worker pool utilization has exceeded 90% for 5 minutes.
+
+      - alert: AutomaticAgentWorkerPoolCritical
+        expr: sum(workers_active) / sum(workers_total) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: automatic-agent worker pool above 95% utilization
+          description: Worker pool utilization has exceeded 95%. New tasks may be delayed.
+
+      # Task Execution Timeout Rate
+      - alert: AutomaticAgentTaskTimeoutRate
+        expr: sum(rate(task_executions_total{status="timeout"}[10m])) / clamp_min(sum(rate(task_executions_total[10m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent task timeout rate exceeds 5%
+          description: Task timeouts have exceeded 5% over 10 minutes.
+
+      # Outbox Pending Entries Growing
+      - alert: AutomaticAgentOutboxGrowing
+        expr: increase(outbox_pending_total[15m]) > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent outbox entries growing
+          description: Outbox pending entries have increased by more than 100 in the last 15 minutes.
+
+      - alert: AutomaticAgentOutboxBacklog
+        expr: outbox_pending_total > 1000
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: automatic-agent outbox backlog critical
+          description: Outbox has over 1000 pending entries. Event delivery may be delayed.
+
+      # DLQ Entries Accumulating
+      - alert: AutomaticAgentDLQAccumulating
+        expr: increase(dlq_entries_total[30m]) > 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent DLQ entries accumulating
+          description: Dead letter queue has received more than 10 entries in 30 minutes.
+
+      - alert: AutomaticAgentDLQCritical
+        expr: dlq_entries_total > 100
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: automatic-agent DLQ backlog critical
+          description: Dead letter queue has over 100 entries. Immediate investigation required.
+
+      # Existing alerts preserved
       - alert: AutomaticAgentTaskFailureRate
         expr: sum(rate(task_executions_total{status="failed"}[10m])) / clamp_min(sum(rate(task_executions_total[10m])), 1) > 0.10
         for: 15m
@@ -27,3 +134,23 @@ groups:
         annotations:
           summary: automatic-agent RSS exceeds 512MiB
           description: Resident memory has stayed above the configured pressure threshold.
+
+      # Orchestration Queue Latency
+      - alert: AutomaticAgentOrchestrationLatency
+        expr: histogram_quantile(0.95, sum(rate(orchestration_step_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent orchestration step p95 exceeds 2s
+          description: Multi-step orchestration p95 latency has exceeded 2 seconds.
+
+      # Recovery Queue Buildup
+      - alert: AutomaticAgentRecoveryQueueBuildup
+        expr: recovery_queue_depth > 50
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: automatic-agent recovery queue buildup
+          description: Recovery queue has over 50 pending executions for 15 minutes.

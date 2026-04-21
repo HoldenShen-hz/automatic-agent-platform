@@ -9,6 +9,9 @@
 import { Redis } from "ioredis";
 import type { RedisConnectionConfig } from "../utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../utils/redis-client-options.js";
+import { StructuredLogger } from "../observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 200 });
 
 export interface CacheInvalidationMessage {
   type: "tag" | "namespace";
@@ -45,10 +48,10 @@ export class CacheInvalidationBroadcast {
     this.pub = new Redis(redisConfig);
     this.sub = new Redis(redisConfig);
     this.pub.on("error", (err: Error) => {
-      console.error("redis.connection_error", { component: "CacheInvalidationBroadcast:pub", err: err.message });
+      logger.error("redis.connection_error", { component: "CacheInvalidationBroadcast:pub", err: err.message });
     });
     this.sub.on("error", (err: Error) => {
-      console.error("redis.connection_error", { component: "CacheInvalidationBroadcast:sub", err: err.message });
+      logger.error("redis.connection_error", { component: "CacheInvalidationBroadcast:sub", err: err.message });
     });
   }
 
