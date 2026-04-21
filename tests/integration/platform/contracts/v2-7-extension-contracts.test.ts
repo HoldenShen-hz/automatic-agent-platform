@@ -281,7 +281,11 @@ test("contract: blocking regression gate failures must hold prompt promotion", (
   });
 
   assert.equal(report.releaseDecision, "hold");
-  assert.deepEqual(report.blockingFailures, ["tests_pass"]);
+  assert.deepEqual(report.blockingFailures, [
+    "tests_pass",
+    "domain_eval.min_few_shot_gate",
+    "domain_eval.min_regression_case_gate",
+  ]);
 });
 
 test("contract: ApprovalRoutingService preserves delegation and escalation constraints", () => {
@@ -598,8 +602,11 @@ test("contract: PlatformPanicService blocks execution until explicit resume", ()
 
   const receipt = service.resume("platform/runtime", {
     scope: "platform/runtime",
-    approvedBy: "sre_manager",
+    approvedBy: ["sre_manager", "security_lead"],
     checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
   }, "2026-04-20T00:05:00.000Z");
   assert.equal(receipt.resumed, true);
   assert.equal(service.evaluateExecution({
@@ -837,7 +844,7 @@ test("contract: illegal modality types cannot silently downgrade to text executi
       safetyPolicyRef: "policy_mm_safe",
       costBudget: { maxUsd: 1 },
     });
-  }, /multimodal_gateway\.unsupported_modality/);
+  }, /multimodal_gateway\.modality_not_declared:video/);
 });
 
 test("contract: domain descriptors without workflow/tool/prompt/eval anchors remain non-ready", () => {

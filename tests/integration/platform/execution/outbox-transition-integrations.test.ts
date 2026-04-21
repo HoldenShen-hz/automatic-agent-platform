@@ -11,13 +11,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { rmSync } from "node:fs";
-
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
 import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("[SYS-REL-2.6] task state transition writes outbox entry in same transaction", async () => {
   const workspace = createTempWorkspace("aa-outbox-transition-");
@@ -65,7 +63,7 @@ test("[SYS-REL-2.6] task state transition writes outbox entry in same transactio
       entityId: taskId,
       fromStatus: "queued",
       toStatus: "in_progress",
-      executionId: "exec-outbox-001",
+      executionId: null,
       traceId: "trace-outbox-001",
       correlationId: taskId,
       idempotencyKey: "",
@@ -83,8 +81,8 @@ test("[SYS-REL-2.6] task state transition writes outbox entry in same transactio
 
     // Query outbox table for entries
     const outboxEntries = db.connection
-      .prepare("SELECT * FROM outbox WHERE entity_id = ? AND entity_type = ?")
-      .all(taskId, "task") as Array<{ id: string; entity_type: string; entity_id: string; event_type: string }>;
+      .prepare("SELECT * FROM outbox WHERE aggregate_id = ? AND aggregate_type = ?")
+      .all(taskId, "task") as Array<{ id: string; aggregate_type: string; aggregate_id: string; event_type: string }>;
 
     // After fix, there should be an outbox entry
     // Currently (with the bug), outboxEntries will be empty because
@@ -96,6 +94,8 @@ test("[SYS-REL-2.6] task state transition writes outbox entry in same transactio
 
     if (outboxEntries.length > 0) {
       assert.equal(outboxEntries[0]!.event_type, "task:status_changed");
+      assert.equal(outboxEntries[0]!.aggregate_type, "task");
+      assert.equal(outboxEntries[0]!.aggregate_id, taskId);
     }
 
     db.close();
@@ -127,9 +127,10 @@ test("[SYS-REL-2.6] outbox table exists and has correct schema", () => {
 
     const columnNames = columns.map((c) => c.name);
     assert.ok(columnNames.includes("id"), "outbox must have id column");
-    assert.ok(columnNames.includes("entity_type"), "outbox must have entity_type column");
-    assert.ok(columnNames.includes("entity_id"), "outbox must have entity_id column");
+    assert.ok(columnNames.includes("aggregate_type"), "outbox must have aggregate_type column");
+    assert.ok(columnNames.includes("aggregate_id"), "outbox must have aggregate_id column");
     assert.ok(columnNames.includes("event_type"), "outbox must have event_type column");
+    assert.ok(columnNames.includes("payload_json"), "outbox must have payload_json column");
 
     db.close();
   } finally {
@@ -180,7 +181,7 @@ test("[SYS-REL-2.6] multiple transitions write multiple outbox entries", async (
       entityId: taskId,
       fromStatus: "queued",
       toStatus: "in_progress",
-      executionId: "exec-1",
+      executionId: null,
       traceId: "trace-1",
       correlationId: taskId,
       idempotencyKey: "",
@@ -198,7 +199,7 @@ test("[SYS-REL-2.6] multiple transitions write multiple outbox entries", async (
       entityId: taskId,
       fromStatus: "in_progress",
       toStatus: "done",
-      executionId: "exec-1",
+      executionId: null,
       traceId: "trace-2",
       correlationId: taskId,
       idempotencyKey: "",
@@ -212,7 +213,7 @@ test("[SYS-REL-2.6] multiple transitions write multiple outbox entries", async (
 
     // Check outbox entries
     const outboxEntries = db.connection
-      .prepare("SELECT * FROM outbox WHERE entity_id = ? ORDER BY created_at")
+      .prepare("SELECT * FROM outbox WHERE aggregate_id = ? ORDER BY created_at")
       .all(taskId) as Array<{ event_type: string }>;
 
     // After fix: should have 2 outbox entries

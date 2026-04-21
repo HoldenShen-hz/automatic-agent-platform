@@ -40,8 +40,11 @@ test("integration: panic blocks ops execution until resume and approval complete
 
   panicService.resume("platform/runtime", {
     scope: "platform/runtime",
-    approvedBy: "sre_manager",
+    approvedBy: ["sre_manager", "security_lead"],
     checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
   }, "2026-04-20T00:10:00.000Z");
 
   const activePanic = panicService.evaluateExecution({

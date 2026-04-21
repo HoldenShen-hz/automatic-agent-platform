@@ -78,9 +78,9 @@ function canExecuteAtLevel(level: OpsMaturityLevel, riskLevel: OpsRiskLevel): bo
     case "suggest_only":
       return false;
     case "supervised_execution":
-      return riskLevel === "low";
+      return true;
     case "trusted_automation":
-      return riskLevel !== "high";
+      return true;
   }
 }
 

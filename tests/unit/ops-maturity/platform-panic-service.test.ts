@@ -42,8 +42,11 @@ test("PlatformPanicService blocks execution until an explicit resume succeeds", 
 
   const acceptedResume = service.resume("platform", {
     scope: "platform",
-    approvedBy: "sre_lead",
+    approvedBy: ["sre_lead", "security_lead"],
     checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
   }, "2026-04-20T00:20:00.000Z");
   assert.equal(acceptedResume.resumed, true);
   assert.equal(

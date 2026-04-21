@@ -53,7 +53,6 @@ test("runSingleTaskExecution with stepOutputOverride", async () => {
   const customOutput = {
     summary: "Custom summary",
     result: "Custom result",
-    extraField: "extra value",
   };
 
   const input: HappyPathInput = {
@@ -68,6 +67,7 @@ test("runSingleTaskExecution with stepOutputOverride", async () => {
 
     assert.ok(snapshot, "runSingleTaskExecution should return a snapshot");
     assert.ok(snapshot.task, "snapshot should have task property");
+    assert.equal(snapshot.stepOutputs[0]?.dataJson, JSON.stringify(customOutput), "step output should persist the override payload");
   } finally {
     if (existsSync(dbPath)) {
       unlinkSync(dbPath);

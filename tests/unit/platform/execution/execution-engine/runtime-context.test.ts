@@ -138,7 +138,7 @@ test("assertContext throws when keys are missing", () => {
   provideContext(snapshot, () => {
     assert.throws(
       () => assertContext("executionId", "sessionId"),
-      /runtime_context.missing_fields/,
+      /Missing required context fields: executionId, sessionId/,
       "assertContext should throw when required keys are missing"
     );
   });
@@ -153,7 +153,7 @@ test("assertContext throws with empty string", () => {
   provideContext(snapshot, () => {
     assert.throws(
       () => assertContext("taskId"),
-      /runtime_context.missing_fields/,
+      /Missing required context fields: taskId/,
       "assertContext should throw for empty string"
     );
   });

@@ -198,8 +198,17 @@ export class PlatformPanicService {
 
   private resolveActivation(scope: string): PlatformPanicActivation | null {
     const matches = [...this.activations.values()]
-      .filter((activation) => matchesScope(activation.directive.scope, scope))
-      .sort((left, right) => right.directive.scope.length - left.directive.scope.length);
+      .filter((activation) =>
+        activation.propagationRecords.some((record) => matchesScope(record.targetScope, scope)))
+      .sort((left, right) => {
+        const leftSpecificity = Math.max(...left.propagationRecords
+          .filter((record) => matchesScope(record.targetScope, scope))
+          .map((record) => record.targetScope.length));
+        const rightSpecificity = Math.max(...right.propagationRecords
+          .filter((record) => matchesScope(record.targetScope, scope))
+          .map((record) => record.targetScope.length));
+        return rightSpecificity - leftSpecificity;
+      });
     return matches[0] ?? null;
   }
 }

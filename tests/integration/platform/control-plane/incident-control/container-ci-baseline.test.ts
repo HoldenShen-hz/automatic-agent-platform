@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import test from "node:test";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../../../");
+const REPO_ROOT = process.cwd();
 
 test("dockerfile defines a multi-stage non-root runtime image", () => {
   const dockerfile = readFileSync(join(REPO_ROOT, "Dockerfile"), "utf8");

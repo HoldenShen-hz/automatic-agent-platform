@@ -131,8 +131,11 @@ test("ops-maturity support modules coordinate lifecycle, explainability, panic, 
   assert.equal(
     canResumeFromPanic({
       scope: "platform",
-      approvedBy: "sre_lead",
+      approvedBy: ["sre_lead", "platform_ops_lead"],
       checkpointsVerified: true,
+      forensicSnapshotReviewed: true,
+      rollbackPlanReady: true,
+      validationRunPassed: true,
     }),
     true,
   );

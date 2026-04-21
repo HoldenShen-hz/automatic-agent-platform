@@ -260,8 +260,11 @@ export class AgentLifecycleService {
 
   public bindTask(agentId: string, taskId: string, boundAt = nowIso()): AgentRolloutBinding {
     const agent = this.requireAgent(agentId);
-    if (agent.lifecycleState === "archived" || agent.lifecycleState === "deprecated") {
-      throw new Error(`agent_lifecycle.binding_forbidden:${agentId}:${agent.lifecycleState}`);
+    if (agent.lifecycleState === "deprecated") {
+      throw new Error(`agent_lifecycle.binding_forbidden_retired:${agentId}`);
+    }
+    if (agent.lifecycleState === "archived") {
+      throw new Error(`agent_lifecycle.binding_forbidden_archived:${agentId}`);
     }
     const latestVersion = resolveLatestAgentVersion(this.requireVersions(agentId));
     if (latestVersion == null) {

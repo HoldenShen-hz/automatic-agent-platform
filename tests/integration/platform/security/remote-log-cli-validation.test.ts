@@ -12,7 +12,7 @@ test("worker handshake CLI fails closed on malformed remote log payloads", () =>
   try {
     assert.throws(
       () =>
-        execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "worker-handshake.js")], {
+        execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "worker-handshake.js")], {
           cwd: process.cwd(),
           env: {
             ...process.env,

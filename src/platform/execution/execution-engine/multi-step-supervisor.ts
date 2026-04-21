@@ -358,7 +358,7 @@ export async function executeStepLoop(
           }
           deps.store.workflow.updateWorkflowRecoveryState({
             taskId,
-            status: decision.action === "escalate" ? "paused" : "running",
+            status: "running",
             currentStepIndex: index,
             outputsJson: JSON.stringify(outputs),
             updatedAt: failedAt,
@@ -372,9 +372,10 @@ export async function executeStepLoop(
 
         if (decision.action === "escalate") {
           blockedForDecision = true;
-          deps.transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "in_progress", toStatus: "awaiting_decision", executionId, ...deps.createContext(plannedFailure.errorCode) });
-          deps.transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "paused", currentStepIndex: index, outputsJson: JSON.stringify(outputs), ...deps.createContext(plannedFailure.errorCode) });
-          deps.transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "streaming", toStatus: "awaiting_user", ...deps.createContext(plannedFailure.errorCode) });
+          const escalationContext = deps.createContext(plannedFailure.errorCode);
+          deps.transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "in_progress", toStatus: "awaiting_decision", executionId, ...escalationContext });
+          deps.transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "paused", currentStepIndex: index, outputsJson: JSON.stringify(outputs), ...escalationContext });
+          deps.transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "streaming", toStatus: "awaiting_user", ...escalationContext });
           break;
         }
 
