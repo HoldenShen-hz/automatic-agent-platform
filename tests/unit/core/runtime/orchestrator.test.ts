@@ -136,12 +136,32 @@ test("orchestrator module re-exports from multi-step-orchestration", async () =>
   assert.ok("resetMultiStepToolRegistryForTests" in mod, "Should re-export resetMultiStepToolRegistryForTests");
 });
 
-test("orchestrator types re-export correctly", async () => {
-  const typesMod = await import("../../../../src/core/runtime/orchestrator/types.js");
+test("orchestrator types are exported and usable", () => {
+  // Type-only exports can't be checked with 'in' operator at runtime
+  // Instead verify the types are valid TypeScript types by using them
+  const resultType: MultiStepOrchestrationResult = {
+    snapshot: {} as any,
+    streamFrames: [],
+    routing: {} as any,
+    plannedWorkflow: {} as any,
+    compaction: null,
+  };
 
-  assert.ok("MultiStepOrchestrationResult" in typesMod, "Should export MultiStepOrchestrationResult");
-  assert.ok("MultiStepToolExecutionInput" in typesMod, "Should export MultiStepToolExecutionInput");
-  assert.ok("StepFailurePlan" in typesMod, "Should export StepFailurePlan");
+  const inputType: MultiStepToolExecutionInput = {
+    dbPath: "/tmp/test.db",
+    title: "Test",
+    request: "Test request",
+  };
+
+  const failurePlanType: StepFailurePlan = {
+    errorCode: "test.error",
+    summary: "Test",
+  };
+
+  // If TypeScript compiles these assignments without error, the types are properly exported
+  assert.ok(resultType, "MultiStepOrchestrationResult type should be usable");
+  assert.ok(inputType, "MultiStepToolExecutionInput type should be usable");
+  assert.ok(failurePlanType, "StepFailurePlan type should be usable");
 });
 
 test("MultiStepToolExecutionInput optional fields", () => {

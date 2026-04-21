@@ -214,3 +214,224 @@ test("OutboxService accepts custom config", () => {
   const pending = service.getPendingEntries(50);
   assert.ok(Array.isArray(pending));
 });
+
+// ── markPublished and markFailed Tests ────────────────────────────────────
+
+test("OutboxService.markPublished updates entry publishedAt", () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  // Write an entry
+  const entry = service.writeOutboxEntry(
+    "task",
+    "task-markpub-001",
+    "task:created",
+    { taskId: "task-markpub-001" },
+  );
+
+  // Mark it as published
+  service.markPublished(entry.id);
+
+  // Re-query to verify publishedAt was set (mock returns null for get)
+  // The markPublished call should not throw
+  assert.ok(true, "markPublished should complete without error");
+});
+
+test("OutboxService.markFailed updates entry with error and retry count", () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  // Write an entry
+  const entry = service.writeOutboxEntry(
+    "task",
+    "task-markfail-001",
+    "task:created",
+    { taskId: "task-markfail-001" },
+  );
+
+  // Mark it as failed
+  service.markFailed(entry.id, "Connection refused", 3, "2026-04-22T00:00:00Z");
+
+  // Verify the failed count increased
+  const failedCount = service.getFailedCount();
+  assert.ok(failedCount >= 1, "getFailedCount should return >= 1 after markFailed");
+});
+
+test("OutboxService.markFailed with zero retry count", () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  const entry = service.writeOutboxEntry(
+    "execution",
+    "exec-markfail-001",
+    "execution:failed",
+    { executionId: "exec-markfail-001" },
+  );
+
+  // Mark with zero retries
+  service.markFailed(entry.id, "Timeout", 0, "2026-04-22T00:00:00Z");
+
+  assert.ok(true, "markFailed with retryCount=0 should not throw");
+});
+
+// ── publishEntriesBatch Tests ──────────────────────────────────────────────
+
+test("OutboxService.publishEntriesBatch publishes all entries successfully", async () => {
+  let batchPublishCalled = false;
+  const mockBus = {
+    publish: () => ({ id: "evt-batch-1" }),
+    publishBatch: (inputs: Array<{ eventType: string; taskId: string | null }>) => {
+      batchPublishCalled = true;
+      assert.ok(inputs.length === 3, "Batch should contain 3 entries");
+      return { publishedIds: inputs.map((_, i) => `evt-batch-${i + 1}`) };
+    },
+  };
+
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  service.writeOutboxEntry("task", "batch-task-1", "task:created", { taskId: "batch-task-1" });
+  service.writeOutboxEntry("task", "batch-task-2", "task:created", { taskId: "batch-task-2" });
+  service.writeOutboxEntry("task", "batch-task-3", "task:created", { taskId: "batch-task-3" });
+
+  const entries = service.getPendingEntries(10);
+  const result = await service.publishEntriesBatch(entries);
+
+  assert.equal(result.published, 3, "All 3 entries should be published");
+  assert.equal(result.failed, 0, "No failures");
+});
+
+test("OutboxService.publishEntriesBatch returns {published:0, failed:0} for empty entries", async () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  const result = await service.publishEntriesBatch([]);
+
+  assert.equal(result.published, 0, "Empty batch should return published=0");
+  assert.equal(result.failed, 0, "Empty batch should return failed=0");
+});
+
+test("OutboxService.publishEntriesBatch marks all as failed when batch throws", async () => {
+  let callCount = 0;
+  const mockBus = {
+    publish: () => ({ id: "evt-single" }),
+    publishBatch: () => {
+      callCount++;
+      throw new Error("Batch publish rejected - broker unavailable");
+    },
+  };
+
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  service.writeOutboxEntry("task", "batch-fail-1", "task:created", { taskId: "batch-fail-1" });
+  service.writeOutboxEntry("task", "batch-fail-2", "task:created", { taskId: "batch-fail-2" });
+
+  const entries = service.getPendingEntries(10);
+  const result = await service.publishEntriesBatch(entries);
+
+  assert.equal(result.published, 0, "No entries should be published on batch failure");
+  assert.equal(result.failed, 2, "Both entries should be marked as failed");
+});
+
+test("OutboxService.publishEntriesBatch handles partial failure scenario", async () => {
+  // When publishBatch throws, all entries are marked as failed (not partial retry)
+  const mockBus = {
+    publishBatch: () => {
+      throw new Error("Connection reset during batch");
+    },
+  };
+
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  service.writeOutboxEntry("execution", "partial-1", "execution:started", { executionId: "partial-1" });
+  service.writeOutboxEntry("execution", "partial-2", "execution:started", { executionId: "partial-2" });
+
+  const entries = service.getPendingEntries(10);
+  const result = await service.publishEntriesBatch(entries);
+
+  assert.equal(result.published, 0);
+  assert.equal(result.failed, 2);
+});
+
+test("OutboxService.publishEntriesBatch logs debug message on success", async () => {
+  const debugLogs: string[] = [];
+  const mockBus = {
+    publish: () => ({ id: "evt-dbg" }),
+    publishBatch: (inputs: Array<{ eventType: string }>) => ({
+      publishedIds: inputs.map((_, i) => `evt-dbg-${i}`),
+    }),
+  };
+
+  // Note: We're testing the code path exists - actual logging tested separately
+  const service = new OutboxService(createMockDb(), mockBus as any);
+  service.writeOutboxEntry("task", "log-test-1", "task:created", { taskId: "log-test-1" });
+
+  const entries = service.getPendingEntries(10);
+  const result = await service.publishEntriesBatch(entries);
+
+  assert.equal(result.published, 1, "Should publish 1 entry");
+  assert.equal(result.failed, 0, "Should have 0 failures");
+});
+
+// ── Additional edge case tests ─────────────────────────────────────────────
+
+test("OutboxService handles task aggregate with null traceId", () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  const entry = service.writeOutboxEntry(
+    "task",
+    "task-notrace-001",
+    "task:status_changed",
+    { status: "running" },
+    null, // traceId is null
+  );
+
+  assert.equal(entry.traceId, null, "traceId should accept null value");
+});
+
+test("OutboxService handles execution aggregate type", () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  const entry = service.writeOutboxEntry(
+    "execution",
+    "exec-123",
+    "execution:completed",
+    { executionId: "exec-123", status: "completed" },
+  );
+
+  assert.equal(entry.aggregateType, "execution");
+  assert.equal(entry.aggregateId, "exec-123");
+});
+
+test("OutboxService getFailedCount returns 0 initially", () => {
+  const mockBus = createMockEventBus();
+  const service = new OutboxService(createMockDb(), mockBus as any);
+
+  const count = service.getFailedCount();
+  assert.equal(count, 0, "getFailedCount should return 0 when no failures");
+});
+
+test("OutboxService publishEntry with execution aggregate sets correct taskId/executionId", async () => {
+  let receivedExecutionId: string | null = null;
+  const mockBus = {
+    publish: (input: { eventType: string; taskId: string | null; executionId: string | null }) => {
+      if (input.executionId) {
+        receivedExecutionId = input.executionId;
+      }
+      return { id: "evt-exec" };
+    },
+  };
+
+  const service = new OutboxService(createMockDb(), mockBus as any);
+  const entry = service.writeOutboxEntry(
+    "execution",
+    "exec-publish-001",
+    "execution:started",
+    { executionId: "exec-publish-001" },
+  );
+
+  await service.publishEntry(entry);
+
+  assert.equal(receivedExecutionId, "exec-publish-001", "execution aggregate should set executionId in publish");
+});

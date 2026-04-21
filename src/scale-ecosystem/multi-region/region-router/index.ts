@@ -6,7 +6,7 @@ export const RegionDescriptorSchema = z.object({
   jurisdiction: z.string().min(1),
   capabilities: z.array(z.string()).default([]),
   status: z.enum(["active", "degraded", "disabled"]).default("active"),
-  latencyScore: z.number().nonnegative(),
+  latencyScore: z.number().nonnegative().default(0),
   residencyAllowed: z.boolean().default(true),
 });
 
@@ -15,5 +15,5 @@ export type RegionDescriptor = z.input<typeof RegionDescriptorSchema>;
 export function selectPreferredRegion(regions: readonly RegionDescriptor[]): RegionDescriptor | null {
   return regions
     .filter((item) => (item.residencyAllowed ?? true) && (item.status ?? "active") !== "disabled")
-    .sort((left, right) => left.latencyScore - right.latencyScore)[0] ?? null;
+    .sort((left, right) => (left.latencyScore ?? 0) - (right.latencyScore ?? 0))[0] ?? null;
 }

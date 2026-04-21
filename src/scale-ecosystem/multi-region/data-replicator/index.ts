@@ -6,12 +6,13 @@
  */
 
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { nowIso } from "../../../platform/contracts/types/ids.js";
 
 export const ReplicationPolicySchema = z.object({
   sourceRegionId: z.string().min(1),
   targetRegionIds: z.array(z.string()).default([]),
-  residencyMode: z.enum(["same_jurisdiction", "allowed_cross_border", "blocked"]),
+  residencyMode: z.enum(["same_jurisdiction", "allowed_cross_border", "blocked"]).default("same_jurisdiction"),
 });
 
 export type ReplicationPolicy = z.infer<typeof ReplicationPolicySchema>;
@@ -80,7 +81,6 @@ export class ReplicationEventBuffer {
   public add(event: ReplicationEvent): boolean {
     this.buffer.push(event);
     if (this.buffer.length >= this.maxSize) {
-      this.flush();
       return true;
     }
     this.scheduleFlush();
@@ -120,12 +120,7 @@ export class ReplicationEventBuffer {
 
 export function computeChecksum(payload: unknown, algorithm: "sha256" | "md5" = "sha256"): string {
   const data = JSON.stringify(payload);
-  if (algorithm === "sha256") {
-    const { createHash } = require("node:crypto");
-    return createHash("sha256").update(data).digest("hex");
-  }
-  const { createHash } = require("node:crypto");
-  return createHash("md5").update(data).digest("hex");
+  return createHash(algorithm).update(data).digest("hex");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,7 +176,10 @@ export class DataReplicatorService {
 
     const buffer = this.buffers.get(targetRegionId);
     if (buffer) {
-      buffer.add(event);
+      const shouldFlush = buffer.add(event);
+      if (shouldFlush) {
+        void this.flush(targetRegionId);
+      }
     }
 
     return event;
