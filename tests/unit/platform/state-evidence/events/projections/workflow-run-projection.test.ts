@@ -31,7 +31,7 @@ function makeEvent(
 test("workflowRunProjectionHandler initializes state correctly", () => {
   const event = makeEvent("evt_1", "workflow:step_completed", "task_1", '{"stepId":"step_1"}');
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.workflowId, "task_1");
   assert.equal(state.taskId, "task_1");
@@ -50,7 +50,7 @@ test("workflowRunProjectionHandler handles workflow:step_completed", () => {
     '{"stepId":"step_1","status":"completed"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.deepEqual(state.completedSteps, ["step_1"]);
   assert.equal(state.eventCount, 1);
@@ -64,13 +64,13 @@ test("workflowRunProjectionHandler handles division:completed", () => {
     '{"divisionId":"div_1","reasonCode":"success"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.status, "running");
   assert.equal(state.divisions.length, 1);
-  assert.equal(state.divisions[0].divisionId, "div_1");
-  assert.equal(state.divisions[0].status, "completed");
-  assert.equal(state.divisions[0].reasonCode, "success");
+  assert.equal(state.divisions[0]!.divisionId, "div_1");
+  assert.equal(state.divisions[0]!.status, "completed");
+  assert.equal(state.divisions[0]!.reasonCode, "success");
 });
 
 test("workflowRunProjectionHandler handles division:failed", () => {
@@ -81,7 +81,7 @@ test("workflowRunProjectionHandler handles division:failed", () => {
     "task_1",
     '{"divisionId":"div_1"}',
   );
-  const stateAfterCompleted = workflowRunProjectionHandler(null, completedEvent) as WorkflowRunState;
+  const stateAfterCompleted = workflowRunProjectionHandler(null, completedEvent) as unknown as WorkflowRunState;
   assert.equal(stateAfterCompleted.status, "running");
 
   // Now apply division:failed - status should remain running
@@ -91,15 +91,15 @@ test("workflowRunProjectionHandler handles division:failed", () => {
     "task_1",
     '{"divisionId":"div_2","reasonCode":"error"}',
   );
-  const state = workflowRunProjectionHandler(stateAfterCompleted, failedEvent) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(stateAfterCompleted as unknown as Record<string, unknown>, failedEvent) as unknown as WorkflowRunState;
 
   // Division failure doesn't immediately fail workflow - it stays running
   // because the workflow aggregates all divisions before determining final status
   assert.equal(state.status, "running");
   assert.equal(state.divisions.length, 2);
-  assert.equal(state.divisions[1].divisionId, "div_2");
-  assert.equal(state.divisions[1].status, "failed");
-  assert.equal(state.divisions[1].reasonCode, "error");
+  assert.equal(state.divisions[1]!.divisionId, "div_2");
+  assert.equal(state.divisions[1]!.status, "failed");
+  assert.equal(state.divisions[1]!.reasonCode, "error");
 });
 
 test("workflowRunProjectionHandler handles subtask:completed", () => {
@@ -110,7 +110,7 @@ test("workflowRunProjectionHandler handles subtask:completed", () => {
     '{"stepId":"step_sub_1","subtaskId":"subtask_1","status":"completed"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.deepEqual(state.completedSteps, ["step_sub_1"]);
   assert.equal(state.status, "running");
@@ -125,7 +125,7 @@ test("workflowRunProjectionHandler handles subtask:failed", () => {
     '{"stepId":"step_sub_2","subtaskId":"subtask_2","reasonCode":"failed"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.status, "failed");
   assert.ok(state.failedAt !== null);
@@ -142,7 +142,7 @@ test("workflowRunProjectionHandler handles task:status_changed to completed", ()
     '{"fromStatus":"running","toStatus":"completed","reasonCode":"done"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.status, "completed");
   assert.ok(state.completedAt !== null);
@@ -156,7 +156,7 @@ test("workflowRunProjectionHandler handles task:status_changed to failed", () =>
     '{"fromStatus":"running","toStatus":"failed","reasonCode":"error","reasonDetail":"Something went wrong"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.status, "failed");
   assert.ok(state.failedAt !== null);
@@ -173,8 +173,8 @@ test("workflowRunProjectionHandler is idempotent - same event applied twice", ()
     '{"stepId":"step_1"}',
   );
 
-  const state1 = workflowRunProjectionHandler(null, event) as WorkflowRunState;
-  const state2 = workflowRunProjectionHandler(state1, event) as WorkflowRunState;
+  const state1 = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
+  const state2 = workflowRunProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as WorkflowRunState;
 
   // Should only count once
   assert.equal(state2.eventCount, 1);
@@ -195,23 +195,23 @@ test("workflowRunProjectionHandler is replay-safe - events in order", () => {
     state = workflowRunProjectionHandler(state, event);
   }
 
-  const finalState = state as WorkflowRunState;
+  const finalState = state as unknown as WorkflowRunState;
   assert.equal(finalState.eventCount, 4);
   assert.deepEqual(finalState.completedSteps, ["step_1", "step_2"]);
   assert.equal(finalState.divisions.length, 1);
   assert.equal(finalState.status, "completed");
   assert.equal(finalState.timeline.length, 4);
-  assert.equal(finalState.timeline[0].eventId, "evt_1");
-  assert.equal(finalState.timeline[3].eventId, "evt_4");
+  assert.equal(finalState.timeline[0]!.eventId, "evt_1");
+  assert.equal(finalState.timeline[3]!.eventId, "evt_4");
 });
 
 test("workflowRunProjectionHandler deduplicates event_ids", () => {
   const event = makeEvent("evt_dedup", "workflow:step_completed", "task_1", '{"stepId":"step_1"}');
 
   // Apply same event 3 times
-  const state1 = workflowRunProjectionHandler(null, event) as WorkflowRunState;
-  const state2 = workflowRunProjectionHandler(state1, event) as WorkflowRunState;
-  const state3 = workflowRunProjectionHandler(state2, event) as WorkflowRunState;
+  const state1 = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
+  const state2 = workflowRunProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as WorkflowRunState;
+  const state3 = workflowRunProjectionHandler(state2 as unknown as Record<string, unknown>, event) as unknown as WorkflowRunState;
 
   // Should only count once
   assert.equal(state3.eventCount, 1);
@@ -230,10 +230,10 @@ test("workflowRunProjectionHandler accumulates timeline in order", () => {
     state = workflowRunProjectionHandler(state, event);
   }
 
-  const finalState = state as WorkflowRunState;
+  const finalState = state as unknown as WorkflowRunState;
   assert.equal(finalState.timeline.length, 2);
-  assert.equal(finalState.timeline[0].eventId, "evt_a");
-  assert.equal(finalState.timeline[1].eventId, "evt_b");
+  assert.equal(finalState.timeline[0]!.eventId, "evt_a");
+  assert.equal(finalState.timeline[1]!.eventId, "evt_b");
   assert.equal(finalState.firstEventAt, "2026-04-19T10:00:00.000Z");
   assert.equal(finalState.lastEventAt, "2026-04-19T10:01:00.000Z");
 });
@@ -246,7 +246,7 @@ test("workflowRunProjectionHandler tracks failed steps", () => {
     '{"stepId":"step_bad","subtaskId":"subtask_bad","reasonCode":"error"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.deepEqual(state.failedSteps, ["step_bad"]);
   assert.equal(state.status, "failed");
@@ -277,13 +277,13 @@ test("createWorkflowRunProjectionHandler returns handler function", () => {
   assert.equal(typeof handler, "function");
   const event = makeEvent("evt_test", "workflow:step_completed", "task_test", '{"stepId":"step_1"}');
   const state = handler(null, event);
-  assert.equal((state as WorkflowRunState).workflowId, "task_test");
+  assert.equal((state as unknown as WorkflowRunState).workflowId, "task_test");
 });
 
 test("workflowRunProjectionHandler handles unknown event types gracefully", () => {
   const event = makeEvent("evt_unknown", "unknown:event_type", "task_1", '{"some":"data"}');
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   // Should still update basic tracking
   assert.equal(state.eventCount, 1);
@@ -299,7 +299,7 @@ test("workflowRunProjectionHandler extracts workflowId from payload when availab
     '{"workflowId":"wf_123","stepId":"step_1"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.workflowId, "wf_123");
   assert.equal(state.taskId, "task_1");
@@ -313,7 +313,7 @@ test("workflowRunProjectionHandler handles task:status_changed to cancelled", ()
     '{"fromStatus":"running","toStatus":"cancelled"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.status, "cancelled");
   assert.ok(state.failedAt !== null);
@@ -327,7 +327,7 @@ test("workflowRunProjectionHandler handles task:status_changed to paused", () =>
     '{"fromStatus":"running","toStatus":"paused"}',
   );
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.equal(state.status, "paused");
 });
@@ -336,8 +336,8 @@ test("workflowRunProjectionHandler preserves existing state when handling events
   const event1 = makeEvent("evt_1", "workflow:step_completed", "task_1", '{"stepId":"step_1"}');
   const event2 = makeEvent("evt_2", "division:completed", "task_1", '{"divisionId":"div_1"}');
 
-  const state1 = workflowRunProjectionHandler(null, event1) as WorkflowRunState;
-  const state2 = workflowRunProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as WorkflowRunState;
+  const state1 = workflowRunProjectionHandler(null, event1) as unknown as WorkflowRunState;
+  const state2 = workflowRunProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as WorkflowRunState;
 
   // Both should be preserved
   assert.deepEqual(state2.completedSteps, ["step_1"]);
@@ -349,7 +349,7 @@ test("workflowRunProjectionHandler preserves existing state when handling events
 test("workflowRunProjectionHandler handles payload without stepId", () => {
   const event = makeEvent("evt_no_step", "workflow:step_completed", "task_1", '{"some":"data"}');
 
-  const state = workflowRunProjectionHandler(null, event) as WorkflowRunState;
+  const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.deepEqual(state.completedSteps, []);
   assert.equal(state.eventCount, 1);

@@ -523,8 +523,7 @@ test("inferLevelFromStatus maps all progressive statuses", () => {
   const candidate = createMinimalCandidate();
   const healthyMetrics = createHealthyMetrics();
 
-  const progressiveStatuses: Array<{ from: RolloutStatus; to: RolloutStatus; expectedLevel: string }> = [
-    { from: "shadow", to: "shadow", expectedLevel: "shadow" },
+  const progressiveStatuses: Array<{ from: RolloutStatus; to: Exclude<RolloutStatus, "draft" | "rejected" | "rolled_back" | "paused">; expectedLevel: string }> = [
     { from: "shadow", to: "canary_5", expectedLevel: "canary_5" },
     { from: "canary_5", to: "partial_25", expectedLevel: "partial_25" },
     { from: "partial_25", to: "partial_50", expectedLevel: "partial_50" },

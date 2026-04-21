@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { summarizeOpsHealth, OpsHealthProbe } from "../../../../src/ops-maturity/platform-ops-agent/incident-diagnoser/index.js";
+import { summarizeOpsHealth, OpsHealthProbe } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
 
 test("summarizeOpsHealth returns healthy when all probes healthy", () => {
   const probes: OpsHealthProbe[] = [

@@ -128,8 +128,10 @@ test("operations planner plugin binding uses core basic-planner", () => {
 });
 
 test("operationsDomainDefinition has prompt overrides", () => {
-  assert.ok(operationsDomainDefinition.promptOverrides.system.includes("Operations AI"));
-  assert.ok(operationsDomainDefinition.promptOverrides.system.includes("SRE"));
+  const systemPrompt = operationsDomainDefinition.promptOverrides["system"];
+  assert.ok(systemPrompt);
+  assert.ok((systemPrompt as string).includes("Operations AI"));
+  assert.ok((systemPrompt as string).includes("SRE"));
 });
 
 test("operations incident_response step dependencies", () => {

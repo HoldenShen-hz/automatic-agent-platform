@@ -7,12 +7,12 @@ import {
   type LeaseReclaimerServiceOptions,
 } from "../../../../../src/platform/execution/ha/lease-reclaimer-service.js";
 import type {
-  HaCoordinatorService,
   LeaderLease,
   CoordinatorNode,
   FailoverDecision,
   LeadershipQueryResult,
 } from "../../../../../src/platform/execution/ha/types.js";
+import type { HaCoordinatorService } from "../../../../../src/platform/execution/ha/ha-coordinator-service-inner.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -525,7 +525,7 @@ test("LeaseReclaimerService - reclaimOnce() triggers failover for leader lease",
 
   // Override triggerFailover to return leader_changed outcome
   const originalTriggerFailover = coordinator.triggerFailover.bind(coordinator);
-  coordinator.triggerFailover = (cause: string) => {
+  coordinator.triggerFailover = (cause: FailoverDecision["cause"]) => {
     const decision = originalTriggerFailover(cause);
     // Simulate successful failover with new leader
     coordinator.mockState.leaderNodeId = "node-2";
@@ -632,7 +632,8 @@ test("LeaseReclaimerService - reclaimOnce() calls onLeaseReclaimed callback", as
   await service.reclaimOnce();
 
   assert.ok(reclaimedLease !== null);
-  assert.equal(reclaimedLease?.nodeId, "node-1");
+  const lease = reclaimedLease as LeaderLease;
+  assert.equal(lease.nodeId, "node-1");
 
   service.dispose();
 });
@@ -794,7 +795,8 @@ test("LeaseReclaimerService - triggerFailover calls coordinator.triggerFailover"
 
   // Verify triggerFailover was called on coordinator
   assert.ok(coordinator.triggerFailoverCalls.length > 0);
-  assert.equal(coordinator.triggerFailoverCalls[0].cause, "heartbeat_missing");
+  const firstCall = coordinator.triggerFailoverCalls[0]!;
+  assert.equal(firstCall.cause, "heartbeat_missing");
 
   service.dispose();
 });
@@ -833,8 +835,9 @@ test("LeaseReclaimerService - failover decision outcome is tracked", async () =>
   const result = await service.reclaimOnce();
 
   assert.ok(capturedDecision !== null);
-  assert.equal(capturedDecision!.cause, "heartbeat_missing");
-  assert.equal(capturedDecision!.oldLeaderNodeId, "node-1");
+  const decision = capturedDecision as FailoverDecision;
+  assert.equal(decision.cause, "heartbeat_missing");
+  assert.equal(decision.oldLeaderNodeId, "node-1");
 
   service.dispose();
 });

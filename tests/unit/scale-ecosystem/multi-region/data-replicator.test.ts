@@ -285,7 +285,7 @@ test("DataReplicatorService handles incoming events via handler", async () => {
 
   let receivedEvent: ReplicationEvent | null = null;
 
-  replicator.onEvent("eu-west", async (event: any) => {
+  replicator.onEvent("eu-west", async (event: ReplicationEvent) => {
     receivedEvent = event;
   });
 
@@ -302,7 +302,8 @@ test("DataReplicatorService handles incoming events via handler", async () => {
 
   await replicator.handleIncomingEvent(testEvent);
 
-  assert.ok(receivedEvent);
-  assert.equal(receivedEvent?.eventId, "from-eu");
-  assert.equal(receivedEvent?.aggregateId, "task-456");
+  assert.ok(receivedEvent !== null);
+  const capturedEvent = receivedEvent as ReplicationEvent;
+  assert.equal(capturedEvent.eventId, "from-eu");
+  assert.equal(capturedEvent.aggregateId, "task-456");
 });

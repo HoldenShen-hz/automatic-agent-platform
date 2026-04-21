@@ -1459,7 +1459,7 @@ test("§17.4 lease_not_found — execution has no lease record", async () => {
   }
 });
 
-test("§17.4 no_active_lease — lease exists but is expired/released", () => {
+test("§17.4 no_active_lease — lease exists but is expired/released", async () => {
   // ExecutionLeaseService.validateWriteAccess returns no_active_lease when
   // a lease record exists but getActiveExecutionLease returns null
   // (lease was released or expired without being replaced).
@@ -1561,7 +1561,7 @@ test("§17.4 no_active_lease — lease exists but is expired/released", () => {
   }
 });
 
-test("§17.4 stale_fencing_token — worker presents old fencing token after lease renewal", () => {
+test("§17.4 stale_fencing_token — worker presents old fencing token after lease renewal", async () => {
   // ExecutionLeaseService.validateWriteAccess returns stale_fencing_token when
   // the presented fencingToken does not match activeLease.fencingToken.
   // This detects split-brain: a worker with an old lease tries to write after
@@ -1675,7 +1675,7 @@ test("§17.4 stale_fencing_token — worker presents old fencing token after lea
   }
 });
 
-test("§17.4 worker_mismatch — requesting worker is not the lease holder", () => {
+test("§17.4 worker_mismatch — requesting worker is not the lease holder", async () => {
   // ExecutionLeaseService.validateWriteAccess returns worker_mismatch when
   // the workerId in the request does not match activeLease.workerId.
   const { ExecutionLeaseService } = await import(
@@ -1768,7 +1768,7 @@ test("§17.4 worker_mismatch — requesting worker is not the lease holder", () 
   }
 });
 
-test("§17.4 lease_mismatch — lease ID does not match current active lease", () => {
+test("§17.4 lease_mismatch — lease ID does not match current active lease", async () => {
   // ExecutionLeaseService.validateWriteAccess returns lease_mismatch when
   // the presented leaseId does not match activeLease.id (lease was replaced).
   const { ExecutionLeaseService } = await import(

@@ -4,6 +4,8 @@ import test from "node:test";
 import { MultiPartyApprovalService } from "../../../../../src/platform/control-plane/approval-center/multi-party-approval-service.js";
 import type { ApprovalDecision, ApprovalRequest } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
 import type { ApprovalRecord, EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import type { EventTier } from "../../../../../src/platform/contracts/types/domain/primitives.js";
+import type { ApprovalStatus } from "../../../../../src/platform/contracts/types/status.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 
 // ---------------------------------------------------------------------------
@@ -44,7 +46,7 @@ function createMockStore() {
           sessionId: event.sessionId ?? null,
           executionId: event.executionId,
           eventType: event.eventType,
-          eventTier: event.eventTier ?? "tier_1",
+          eventTier: (event.eventTier as EventTier) ?? "tier_1",
           payloadJson: event.payloadJson,
           traceId: event.traceId,
           createdAt: event.createdAt,
@@ -61,7 +63,7 @@ function createMockStore() {
       listApprovalsByTask(taskId: string): ApprovalRecord[] {
         return Array.from(approvals.values()).filter((r) => r.taskId === taskId);
       },
-      updateApprovalDecision(input: { approvalId: string; status: string; responseJson: string; respondedAt: string }): void {
+      updateApprovalDecision(input: { approvalId: string; status: ApprovalStatus; responseJson: string; respondedAt: string }): void {
         const existing = approvals.get(input.approvalId);
         if (existing) {
           approvals.set(input.approvalId, {
@@ -111,7 +113,7 @@ function createValidDecision(approvalId: string, decisionType: ApprovalDecision[
   return {
     approvalId,
     decisionType,
-    ...(decisionType === "confirmed" && { confirmed: true as const }),
+    ...(decisionType === "confirmed" ? { confirmed: true as const } : {}),
     respondedBy: "user_789",
     respondedAt: "2026-04-21T00:00:00.000Z",
   };

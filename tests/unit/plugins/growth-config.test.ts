@@ -132,6 +132,8 @@ test("growth planner plugin binding uses core basic-planner", () => {
 });
 
 test("growthDomainDefinition has prompt overrides", () => {
-  assert.ok(growthDomainDefinition.promptOverrides.system.includes("Growth AI"));
-  assert.ok(growthDomainDefinition.promptOverrides.system.includes("campaign optimization"));
+  const systemPrompt = growthDomainDefinition.promptOverrides["system"];
+  assert.ok(systemPrompt);
+  assert.ok((systemPrompt as string).includes("Growth AI"));
+  assert.ok((systemPrompt as string).includes("campaign optimization"));
 });

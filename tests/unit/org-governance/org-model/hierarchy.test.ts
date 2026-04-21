@@ -23,11 +23,13 @@ import {
 function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
     orgNodeId: overrides.orgNodeId ?? "node-1",
-    name: overrides.name ?? "Node",
+    displayName: overrides.displayName ?? "Node",
     nodeType: overrides.nodeType ?? "company",
     parentOrgNodeId: overrides.parentOrgNodeId ?? null,
     ownerUserIds: overrides.ownerUserIds ?? [],
-    metadataJson: overrides.metadataJson ?? "{}",
+    metadata: overrides.metadata ?? {},
+    active: overrides.active ?? true,
+    costCenter: overrides.costCenter ?? "",
     ...overrides,
   };
 }

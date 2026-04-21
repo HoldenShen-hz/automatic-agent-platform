@@ -65,7 +65,8 @@ test("ProjectionHandler applies event and computes state", () => {
 
   assert.equal(appliedState, null);
   assert.ok(appliedEvent !== null);
-  assert.equal(appliedEvent!.eventId, "evt_1");
+  const capturedEvent = appliedEvent as ProjectionInputEvent;
+  assert.equal(capturedEvent.eventId, "evt_1");
   assert.equal(result.eventType, "task:created");
 });
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { classifyOpsIncident } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
+import { classifyOpsIncident } from "../../../../src/ops-maturity/platform-ops-agent/incident-diagnoser/index.js";
 
 test("classifyOpsIncident returns critical_incident for high error rate", () => {
   assert.equal(classifyOpsIncident(0.2, 0), "critical_incident");

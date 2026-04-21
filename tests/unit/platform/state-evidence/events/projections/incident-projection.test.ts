@@ -83,7 +83,7 @@ test("incidentProjectionHandler handles incident:created with all fields", () =>
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, "inc_001");
   assert.equal(state.severity, "high");
@@ -105,7 +105,7 @@ test("incidentProjectionHandler handles incident:created with critical severity"
     JSON.stringify({ incidentId: "inc_critical", severity: "critical" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.severity, "critical");
   assert.equal(state.status, "detected");
@@ -119,7 +119,7 @@ test("incidentProjectionHandler handles incident:created with medium severity", 
     JSON.stringify({ incidentId: "inc_medium", severity: "medium" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.severity, "medium");
 });
@@ -132,7 +132,7 @@ test("incidentProjectionHandler handles incident:created with low severity", () 
     JSON.stringify({ incidentId: "inc_low", severity: "low" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.severity, "low");
 });
@@ -145,7 +145,7 @@ test("incidentProjectionHandler handles incident:created without severity", () =
     JSON.stringify({ incidentId: "inc_no_severity" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.severity, null);
   assert.equal(state.status, "detected");
@@ -163,7 +163,7 @@ test("incidentProjectionHandler handles incident:acknowledged", () => {
     JSON.stringify({ incidentId: "inc_001" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "acknowledged");
   assert.equal(state.acknowledgedAt, "2026-04-19T10:00:00.000Z");
@@ -186,8 +186,8 @@ test("incidentProjectionHandler preserves acknowledgedAt on second acknowledgeme
     "2026-04-19T11:00:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.acknowledgedAt, "2026-04-19T10:00:00.000Z");
   assert.equal(state2.status, "acknowledged");
@@ -205,7 +205,7 @@ test("incidentProjectionHandler handles incident:investigating", () => {
     JSON.stringify({ rootCause: "Network timeout detected" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "investigating");
   assert.equal(state.rootCause, "Network timeout detected");
@@ -228,8 +228,8 @@ test("incidentProjectionHandler preserves rootCause on subsequent events", () =>
     "2026-04-19T11:00:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.rootCause, "Initial cause");
 });
@@ -242,7 +242,7 @@ test("incidentProjectionHandler handles incident:investigating without rootCause
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "investigating");
   assert.equal(state.rootCause, null);
@@ -260,7 +260,7 @@ test("incidentProjectionHandler handles incident:mitigated", () => {
     JSON.stringify({ rootCause: "Fix applied" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "mitigated");
   assert.equal(state.rootCause, "Fix applied");
@@ -274,7 +274,7 @@ test("incidentProjectionHandler handles incident:mitigated without rootCause", (
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "mitigated");
   assert.equal(state.rootCause, null);
@@ -292,7 +292,7 @@ test("incidentProjectionHandler handles incident:resolved", () => {
     JSON.stringify({ rootCause: "Root cause identified" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "resolved");
   assert.equal(state.resolvedAt, "2026-04-19T10:00:00.000Z");
@@ -307,7 +307,7 @@ test("incidentProjectionHandler handles incident:resolved without rootCause", ()
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "resolved");
   assert.equal(state.resolvedAt, "2026-04-19T10:00:00.000Z");
@@ -326,7 +326,7 @@ test("incidentProjectionHandler handles incident:cancelled", () => {
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "cancelled");
   assert.equal(state.resolvedAt, "2026-04-19T10:00:00.000Z");
@@ -351,7 +351,7 @@ test("incidentProjectionHandler handles compliance:violation_detected", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, "viol_001");
   assert.equal(state.severity, "high");
@@ -369,7 +369,7 @@ test("incidentProjectionHandler handles compliance:violation_detected without fr
     JSON.stringify({ violationId: "viol_002" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.complianceFramework, null);
 });
@@ -382,7 +382,7 @@ test("incidentProjectionHandler handles compliance:violation_detected without re
     JSON.stringify({ violationId: "viol_003", severity: "critical" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, "viol_003");
   assert.equal(state.severity, "critical");
@@ -405,8 +405,8 @@ test("incidentProjectionHandler handles compliance:violation_detected when incid
     "2026-04-19T10:01:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   // incidentId should not be overwritten
   assert.equal(state2.incidentId, "inc_001");
@@ -428,8 +428,8 @@ test("incidentProjectionHandler handles compliance:violation_detected when sever
     "2026-04-19T10:01:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   // severity should not be overwritten
   assert.equal(state2.severity, "low");
@@ -454,7 +454,7 @@ test("incidentProjectionHandler handles slo:breached", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, "slo_001");
   assert.equal(state.severity, "high");
@@ -474,7 +474,7 @@ test("incidentProjectionHandler handles slo:breached with missing fields", () =>
     JSON.stringify({ sloId: "slo_002" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, "slo_002");
   assert.equal(state.severity, "high");
@@ -498,8 +498,8 @@ test("incidentProjectionHandler handles slo:breached when incidentId already set
     "2026-04-19T10:01:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   // incidentId should not be overwritten
   assert.equal(state2.incidentId, "inc_001");
@@ -521,8 +521,8 @@ test("incidentProjectionHandler handles slo:breached when severity already set",
     "2026-04-19T10:01:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   // severity should not be overwritten
   assert.equal(state2.severity, "critical");
@@ -543,7 +543,7 @@ test("incidentProjectionHandler handles slo:breached with partial metric info", 
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.match(state.description!, /SLO breach/);
   assert.match(state.description!, /Availability/);
@@ -562,8 +562,8 @@ test("incidentProjectionHandler is idempotent - same event applied twice", () =>
     JSON.stringify({ incidentId: "inc_001", severity: "high" }),
   );
 
-  const state1 = incidentProjectionHandler(null, event) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as IncidentState;
 
   assert.equal(state2.eventCount, 1);
   assert.deepEqual(state2.processedEventIds, ["evt_idempotent"]);
@@ -579,9 +579,9 @@ test("incidentProjectionHandler deduplicates event_ids", () => {
     JSON.stringify({}),
   );
 
-  const state1 = incidentProjectionHandler(null, event) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event) as IncidentState;
-  const state3 = incidentProjectionHandler(state2, event) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event) as unknown as IncidentState;
+  const state3 = incidentProjectionHandler(state2 as unknown as Record<string, unknown>, event) as unknown as IncidentState;
 
   assert.equal(state3.eventCount, 1);
   assert.deepEqual(state3.processedEventIds, ["evt_dedup"]);
@@ -624,13 +624,13 @@ test("incidentProjectionHandler is replay-safe - events in order", () => {
     state = incidentProjectionHandler(state, event);
   }
 
-  const finalState = state as IncidentState;
+  const finalState = state as unknown as IncidentState;
   assert.equal(finalState.eventCount, 4);
   assert.equal(finalState.status, "resolved");
   assert.equal(finalState.resolvedAt, "2026-04-19T10:03:00.000Z");
   assert.equal(finalState.timeline.length, 4);
-  assert.equal(finalState.timeline[0].eventId, "evt_1");
-  assert.equal(finalState.timeline[3].eventId, "evt_4");
+  assert.equal(finalState.timeline[0]!.eventId, "evt_1");
+  assert.equal(finalState.timeline[3]!.eventId, "evt_4");
   assert.equal(finalState.firstEventAt, "2026-04-19T10:00:00.000Z");
   assert.equal(finalState.lastEventAt, "2026-04-19T10:03:00.000Z");
 });
@@ -652,7 +652,7 @@ test("incidentProjectionHandler links affected workflows", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Only affectedWorkflows is used (workflowIds is fallback when affectedWorkflows is present)
   assert.deepEqual(state.affectedWorkflows, ["wf_a", "wf_b", "wf_c"]);
@@ -670,7 +670,7 @@ test("incidentProjectionHandler uses workflowIds when affectedWorkflows is missi
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.deepEqual(state.affectedWorkflows, ["wf_alt_1", "wf_alt_2"]);
 });
@@ -688,7 +688,7 @@ test("incidentProjectionHandler links affected executions", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Only affectedExecutions is used (executionIds is fallback)
   assert.deepEqual(state.affectedExecutions, ["exec_x", "exec_y"]);
@@ -706,7 +706,7 @@ test("incidentProjectionHandler uses executionIds when affectedExecutions is mis
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.deepEqual(state.affectedExecutions, ["exec_alt_1", "exec_alt_2"]);
 });
@@ -724,7 +724,7 @@ test("incidentProjectionHandler links affected workers", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Only affectedWorkers is used (workerIds is fallback)
   assert.deepEqual(state.affectedWorkers, ["worker_1", "worker_2"]);
@@ -742,7 +742,7 @@ test("incidentProjectionHandler uses workerIds when affectedWorkers is missing",
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.deepEqual(state.affectedWorkers, ["worker_alt_1", "worker_alt_2"]);
 });
@@ -760,7 +760,7 @@ test("incidentProjectionHandler links affected rollouts", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Only affectedRollouts is used (rolloutIds is fallback)
   assert.deepEqual(state.affectedRollouts, ["rollout_1"]);
@@ -778,7 +778,7 @@ test("incidentProjectionHandler uses rolloutIds when affectedRollouts is missing
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.deepEqual(state.affectedRollouts, ["rollout_alt_1", "rollout_alt_2"]);
 });
@@ -796,7 +796,7 @@ test("incidentProjectionHandler links affected repair jobs", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Only affectedRepairJobs is used (repairJobIds is fallback)
   assert.deepEqual(state.affectedRepairJobs, ["repair_1"]);
@@ -814,7 +814,7 @@ test("incidentProjectionHandler uses repairJobIds when affectedRepairJobs is mis
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.deepEqual(state.affectedRepairJobs, ["repair_alt_1", "repair_alt_2"]);
 });
@@ -833,8 +833,8 @@ test("incidentProjectionHandler deduplicates affected entities", () => {
     JSON.stringify({ affectedWorkflows: ["wf_1", "wf_2"] }),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.deepEqual(state2.affectedWorkflows, ["wf_1", "wf_2"]);
 });
@@ -853,8 +853,8 @@ test("incidentProjectionHandler does not add duplicate entity on second event", 
     JSON.stringify({ affectedWorkflows: ["wf_unique"] }),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.deepEqual(state2.affectedWorkflows, ["wf_unique"]);
 });
@@ -877,7 +877,7 @@ test("incidentProjectionHandler handles array with mixed types in payload", () =
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Only valid strings should be kept
   assert.deepEqual(state.affectedWorkflows, ["wf_valid", "wf_another"]);
@@ -899,7 +899,7 @@ test("incidentProjectionHandler handles non-array value for affected entities", 
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Should return empty arrays for non-array values
   assert.deepEqual(state.affectedWorkflows, []);
@@ -934,12 +934,12 @@ test("incidentProjectionHandler accumulates timeline in order", () => {
     state = incidentProjectionHandler(state, event);
   }
 
-  const finalState = state as IncidentState;
+  const finalState = state as unknown as IncidentState;
   assert.equal(finalState.timeline.length, 2);
-  assert.equal(finalState.timeline[0].eventId, "evt_tl_a");
-  assert.equal(finalState.timeline[1].eventId, "evt_tl_b");
-  assert.equal(finalState.timeline[0].eventType, "incident:created");
-  assert.equal(finalState.timeline[1].eventType, "incident:acknowledged");
+  assert.equal(finalState.timeline[0]!.eventId, "evt_tl_a");
+  assert.equal(finalState.timeline[1]!.eventId, "evt_tl_b");
+  assert.equal(finalState.timeline[0]!.eventType, "incident:created");
+  assert.equal(finalState.timeline[1]!.eventType, "incident:acknowledged");
 });
 
 test("incidentProjectionHandler timeline includes actorId and action", () => {
@@ -956,12 +956,12 @@ test("incidentProjectionHandler timeline includes actorId and action", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.timeline.length, 1);
-  assert.equal(state.timeline[0].actorId, "operator_42");
-  assert.equal(state.timeline[0].action, "acknowledged");
-  assert.deepEqual(state.timeline[0].details, { note: "Looking into this" });
+  assert.equal(state.timeline[0]!.actorId, "operator_42");
+  assert.equal(state.timeline[0]!.action, "acknowledged");
+  assert.deepEqual(state.timeline[0]!.details, { note: "Looking into this" });
 });
 
 test("incidentProjectionHandler timeline entry has correct timestamp", () => {
@@ -973,9 +973,9 @@ test("incidentProjectionHandler timeline entry has correct timestamp", () => {
     "2026-04-19T15:30:00.000Z",
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
-  assert.equal(state.timeline[0].timestamp, "2026-04-19T15:30:00.000Z");
+  assert.equal(state.timeline[0]!.timestamp, "2026-04-19T15:30:00.000Z");
 });
 
 test("incidentProjectionHandler timeline preserves details null when actionDetails missing", () => {
@@ -991,9 +991,9 @@ test("incidentProjectionHandler timeline preserves details null when actionDetai
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
-  assert.equal(state.timeline[0].details, null);
+  assert.equal(state.timeline[0]!.details, null);
 });
 
 test("incidentProjectionHandler timeline handles null actorId", () => {
@@ -1004,10 +1004,10 @@ test("incidentProjectionHandler timeline handles null actorId", () => {
     JSON.stringify({ incidentId: "inc_tl_null" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
-  assert.equal(state.timeline[0].actorId, null);
-  assert.equal(state.timeline[0].action, null);
+  assert.equal(state.timeline[0]!.actorId, null);
+  assert.equal(state.timeline[0]!.action, null);
 });
 
 // =============================================================================
@@ -1022,7 +1022,7 @@ test("incidentProjectionHandler handles unknown event types gracefully", () => {
     JSON.stringify({ some: "data" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Should still update basic tracking
   assert.equal(state.eventCount, 1);
@@ -1045,8 +1045,8 @@ test("incidentProjectionHandler preserves state on unknown event", () => {
     JSON.stringify({}),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.incidentId, "inc_unknown");
   assert.equal(state2.severity, "high");
@@ -1101,7 +1101,7 @@ test("incidentProjectionHandler handles full incident lifecycle", () => {
     state = incidentProjectionHandler(state, event);
   }
 
-  const finalState = state as IncidentState;
+  const finalState = state as unknown as IncidentState;
   assert.equal(finalState.status, "resolved");
   assert.equal(finalState.severity, "critical");
   assert.equal(finalState.detectedAt, "2026-04-19T08:00:00.000Z");
@@ -1135,7 +1135,7 @@ test("incidentProjectionHandler handles cancelled incident flow", () => {
     state = incidentProjectionHandler(state, event);
   }
 
-  const finalState = state as IncidentState;
+  const finalState = state as unknown as IncidentState;
   assert.equal(finalState.status, "cancelled");
   assert.equal(finalState.resolvedAt, "2026-04-19T10:15:00.000Z");
 });
@@ -1170,7 +1170,7 @@ test("incidentProjectionHandler handles compliance violation then resolve flow",
     state = incidentProjectionHandler(state, event);
   }
 
-  const finalState = state as IncidentState;
+  const finalState = state as unknown as IncidentState;
   assert.equal(finalState.status, "resolved");
   assert.equal(finalState.incidentId, "viol_flow");
   assert.equal(finalState.complianceFramework, "SOC2");
@@ -1192,7 +1192,7 @@ test("createIncidentProjectionHandler returns handler function", () => {
     JSON.stringify({ incidentId: "inc_factory" }),
   );
   const state = handler(null, event);
-  assert.equal((state as IncidentState).incidentId, "inc_factory");
+  assert.equal((state as unknown as IncidentState).incidentId, "inc_factory");
 });
 
 test("createIncidentProjectionHandler handler produces correct state", () => {
@@ -1204,7 +1204,7 @@ test("createIncidentProjectionHandler handler produces correct state", () => {
     JSON.stringify({ incidentId: "inc_correct", severity: "medium" }),
   );
 
-  const state = handler(null, event) as IncidentState;
+  const state = handler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, "inc_correct");
   assert.equal(state.severity, "medium");
@@ -1224,7 +1224,7 @@ test("incidentProjectionHandler handles invalid JSON payload", () => {
     "not valid json {",
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Should not crash, treat as empty payload
   assert.equal(state.incidentId, null);
@@ -1239,7 +1239,7 @@ test("incidentProjectionHandler handles empty JSON object payload", () => {
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, null);
   assert.equal(state.severity, null);
@@ -1259,7 +1259,7 @@ test("incidentProjectionHandler handles null values in payload", () => {
     }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.incidentId, null);
   assert.equal(state.severity, null);
@@ -1284,8 +1284,8 @@ test("incidentProjectionHandler does not overwrite existing incidentId", () => {
     JSON.stringify({ incidentId: "inc_second" }),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.incidentId, "inc_first");
 });
@@ -1304,8 +1304,8 @@ test("incidentProjectionHandler does not overwrite existing severity", () => {
     JSON.stringify({ severity: "critical" }),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.severity, "high");
 });
@@ -1324,8 +1324,8 @@ test("incidentProjectionHandler does not overwrite existing description", () => 
     JSON.stringify({ description: "New description" }),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.description, "Original description");
 });
@@ -1346,8 +1346,8 @@ test("incidentProjectionHandler does not overwrite existing detectedAt", () => {
     "2026-04-19T09:00:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.detectedAt, "2026-04-19T08:00:00.000Z");
 });
@@ -1368,8 +1368,8 @@ test("incidentProjectionHandler does not overwrite existing firstEventAt", () =>
     "2026-04-19T09:00:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   assert.equal(state2.firstEventAt, "2026-04-19T08:00:00.000Z");
 });
@@ -1394,7 +1394,7 @@ test("incidentProjectionHandler handles multiple entity types in same event", ()
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.deepEqual(state.affectedWorkflows, ["wf_1"]);
   assert.deepEqual(state.affectedExecutions, ["exec_1"]);
@@ -1421,8 +1421,8 @@ test("incidentProjectionHandler preserves existing state when handling events", 
     JSON.stringify({}),
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   // All should be preserved
   assert.equal(state2.incidentId, "inc_preserve");
@@ -1440,7 +1440,7 @@ test("incidentProjectionHandler tracks failedAt implicitly through resolvedAt fo
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.equal(state.status, "cancelled");
   assert.equal(state.resolvedAt, "2026-04-19T10:00:00.000Z");
@@ -1459,7 +1459,7 @@ test("incidentProjectionHandler handles non-object JSON payload (string)", () =>
     '"just a string"',
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // parsePayload returns {} for non-object values
   assert.equal(state.incidentId, null);
@@ -1474,7 +1474,7 @@ test("incidentProjectionHandler handles non-object JSON payload (array)", () => 
     '["array", "not", "object"]',
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // parsePayload returns {} for arrays
   assert.equal(state.incidentId, null);
@@ -1489,7 +1489,7 @@ test("incidentProjectionHandler handles null JSON payload", () => {
     "null",
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // parsePayload returns {} for null
   assert.equal(state.incidentId, null);
@@ -1516,8 +1516,8 @@ test("incidentProjectionHandler does not duplicate resourceId in affectedExecuti
     "2026-04-19T10:01:00.000Z",
   );
 
-  const state1 = incidentProjectionHandler(null, event1) as IncidentState;
-  const state2 = incidentProjectionHandler(state1, event2) as IncidentState;
+  const state1 = incidentProjectionHandler(null, event1) as unknown as IncidentState;
+  const state2 = incidentProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as unknown as IncidentState;
 
   // exec_123 should not be duplicated
   assert.deepEqual(state2.affectedExecutions, ["exec_123"]);
@@ -1542,7 +1542,7 @@ test("incidentProjectionHandler handles slo:breached with null sloName", () => {
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.match(state.description!, /SLO breach/);
   assert.match(state.description!, /unknown/);
@@ -1564,7 +1564,7 @@ test("incidentProjectionHandler handles slo:breached with null metricName", () =
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.match(state.description!, /SLO breach/);
   assert.match(state.description!, /API/);
@@ -1586,7 +1586,7 @@ test("incidentProjectionHandler handles slo:breached with undefined values", () 
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.match(state.description!, /SLO breach/);
   assert.match(state.description!, /unknown/);
@@ -1607,7 +1607,7 @@ test("incidentProjectionHandler handles slo:breached with string values for nume
     JSON.stringify(payload),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   assert.match(state.description!, /SLO breach/);
   assert.match(state.description!, /Throughput/);
@@ -1626,7 +1626,7 @@ test("incidentProjectionHandler creates new array instances", () => {
     JSON.stringify({ incidentId: "inc_array", affectedWorkflows: ["wf_1"] }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Verify the affectedWorkflows is a new array
   const originalEmpty = createEmptyIncidentState();
@@ -1641,7 +1641,7 @@ test("incidentProjectionHandler creates new timeline array", () => {
     JSON.stringify({ incidentId: "inc_timeline" }),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Verify the timeline is a new array
   const originalEmpty = createEmptyIncidentState();
@@ -1656,7 +1656,7 @@ test("incidentProjectionHandler creates new processedEventIds array", () => {
     JSON.stringify({}),
   );
 
-  const state = incidentProjectionHandler(null, event) as IncidentState;
+  const state = incidentProjectionHandler(null, event) as unknown as IncidentState;
 
   // Verify the processedEventIds is a new array
   const originalEmpty = createEmptyIncidentState();

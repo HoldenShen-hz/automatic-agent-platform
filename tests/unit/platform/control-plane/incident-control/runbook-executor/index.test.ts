@@ -263,7 +263,7 @@ test("IncidentDrillService generates drill report", () => {
     [{ criterion: "Detection", passed: true, notes: "OK" }],
   );
 
-  const report = drillService.generateDrillReport(result);
+  const report = drillService.generateDrillReport(result!);
 
   assert.ok(report.includes("Incident Drill Report"));
   assert.ok(report.includes("Worker Mass Disconnect"));

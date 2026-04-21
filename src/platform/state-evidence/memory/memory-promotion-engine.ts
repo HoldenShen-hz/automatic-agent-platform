@@ -25,7 +25,8 @@ export class MemoryPromotionEngine {
   ) {}
 
   public evaluatePromotion(memory: MemoryRecord): MemoryPromotionCandidate {
-    const currentLayer = mapMemoryScopeToLayer(memory.scope);
+    const legacyLayer = mapMemoryScopeToLayer(memory.scope);
+    const currentLayer = legacyLayer as HierarchicalMemoryLayer;
     const matchedRule = this.rules.find((rule) =>
       rule.from === currentLayer
       && (memory.hitCount >= rule.minHitCount)
