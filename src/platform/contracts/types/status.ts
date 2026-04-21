@@ -100,11 +100,28 @@ export type SessionStatus = (typeof SESSION_STATUSES)[number];
 export type ExecutionStatus = (typeof EXECUTION_STATUSES)[number];
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
+import type { SessionRecord } from "./domain.js";
+import { newId } from "./ids.js";
+
 /**
  * Task terminal states - states where no further processing occurs.
  * Used to determine when a task is permanently done (either successfully or not).
  */
 export type TaskTerminalStatus = Extract<TaskStatus, "done" | "failed" | "cancelled">;
+
+/**
+ * Session terminal states - states where no further interaction is expected.
+ * Terminal sessions cannot be reopened and a new session must be created.
+ */
+export type SessionTerminalStatus = Extract<SessionStatus, "completed" | "failed" | "cancelled">;
+
+/**
+ * Type guard to check if a session status is terminal (no further updates possible).
+ * Terminal sessions cannot be reopened and a new session must be created for new work.
+ */
+export function isSessionTerminalStatus(status: SessionStatus): status is SessionTerminalStatus {
+  return status === "completed" || status === "failed" || status === "cancelled";
+}
 
 /**
  * Type guard to check if a string is a valid TaskStatus.
@@ -113,6 +130,9 @@ export type TaskTerminalStatus = Extract<TaskStatus, "done" | "failed" | "cancel
 export function isTaskStatus(value: string): value is TaskStatus {
   return TASK_STATUSES.includes(value as TaskStatus);
 }
+
+import type { SessionRecord } from "./domain.js";
+import { newId } from "./ids.js";
 
 /**
  * Type guard to check if a string is a valid WorkflowStatus.
@@ -128,6 +148,25 @@ export function isWorkflowStatus(value: string): value is WorkflowStatus {
  */
 export function isSessionStatus(value: string): value is SessionStatus {
   return SESSION_STATUSES.includes(value as SessionStatus);
+}
+
+/**
+ * Creates a new recovery session for a task that needs to resume after a failure.
+ *
+ * When an execution fails but the task needs to retry, a new recovery session
+ * is created to track the new attempt. The session inherits the channel and
+ * external session ID from the original but starts fresh with "open" status.
+ */
+export function createRecoverySession(session: SessionRecord, occurredAt: string): SessionRecord {
+  return {
+    id: newId("sess"),
+    taskId: session.taskId,
+    channel: session.channel,
+    status: "open",
+    externalSessionId: session.externalSessionId,
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+  };
 }
 
 /**

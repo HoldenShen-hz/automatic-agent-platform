@@ -63,15 +63,29 @@ export class ChangepointDetectorService {
       };
     }
 
+    // Check if we have enough data for reliable drift detection
+    // Need at least baselineWindow samples for baseline
+    if (samples.length < baselineWindow) {
+      return {
+        detected: false,
+        baselineMean: average(baseline.map((s) => s.score)),
+        recentMean: average(recent.map((s) => s.score)),
+        absoluteShift: 0,
+        relativeShift: 0,
+        reasonCode: "drift.insufficient_data",
+        severity: "none",
+      };
+    }
+
     const baselineMean = average(baseline.map((s) => s.score));
     const recentMean = average(recent.map((s) => s.score));
     const absoluteShift = recentMean - baselineMean;
     const relativeShift = baselineMean !== 0 ? absoluteShift / baselineMean : 0;
 
     // §17: Detect -10% change (negative relative shift indicates performance degradation)
-    // Use < with epsilon to handle floating point precision errors
+    // Use <= with epsilon to handle floating point precision errors
     const EPSILON = 1e-9;
-    const detected = relativeShift < DRIFT_THRESHOLD_RELATIVE + EPSILON;
+    const detected = relativeShift <= DRIFT_THRESHOLD_RELATIVE + EPSILON;
 
     return {
       detected,

@@ -320,18 +320,18 @@ export function loadEnvironmentDeploymentCliEnv(
   env: NodeJS.ProcessEnv = process.env,
   cwd: string = process.cwd(),
 ): EnvironmentDeploymentCliEnvConfig {
-  const action = optionalEnumValue(env, "AA_DEPLOYMENT_ACTION", ENVIRONMENT_DEPLOYMENT_ACTIONS) ?? "summary";
+  const action = optionalEnumValue(env, "AA_ENVIRONMENT_DEPLOYMENT_ACTION", ENVIRONMENT_DEPLOYMENT_ACTIONS) ?? "summary";
   return {
     dbPath: action === "list-bundles" ? null : requiredEnv(env, "AA_DB_PATH"),
     action,
-    repoRootDir: optionalEnv(env, "AA_DEPLOYMENT_REPO_ROOT") ?? cwd,
-    artifactRoot: optionalEnv(env, "AA_DEPLOYMENT_ARTIFACT_ROOT"),
-    targetEnvironment: optionalEnumValue(env, "AA_DEPLOYMENT_TARGET_ENVIRONMENT", ENVIRONMENT_NAMES),
-    version: optionalEnv(env, "AA_DEPLOYMENT_VERSION"),
-    commitSha: optionalEnv(env, "AA_DEPLOYMENT_COMMIT_SHA"),
-    rolloutStrategy: optionalEnumValue(env, "AA_DEPLOYMENT_ROLLOUT_STRATEGY", DEPLOYMENT_ROLLOUT_STRATEGIES),
-    generatedAt: optionalEnv(env, "AA_DEPLOYMENT_GENERATED_AT"),
-    taskId: optionalEnv(env, "AA_DEPLOYMENT_TASK_ID"),
+    repoRootDir: optionalEnv(env, "AA_REPO_ROOT_DIR") ?? cwd,
+    artifactRoot: optionalEnv(env, "AA_ENVIRONMENT_DEPLOYMENT_ARTIFACT_ROOT"),
+    targetEnvironment: optionalEnumValue(env, "AA_TARGET_ENVIRONMENT", ENVIRONMENT_NAMES),
+    version: optionalEnv(env, "AA_VERSION"),
+    commitSha: optionalEnv(env, "AA_COMMIT_SHA"),
+    rolloutStrategy: optionalEnumValue(env, "AA_ROLLOUT_STRATEGY", DEPLOYMENT_ROLLOUT_STRATEGIES),
+    generatedAt: optionalEnv(env, "AA_GENERATED_AT"),
+    taskId: optionalEnv(env, "AA_TASK_ID"),
   };
 }
 

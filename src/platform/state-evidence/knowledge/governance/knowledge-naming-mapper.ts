@@ -79,11 +79,12 @@ export function isTrustLevelAtOrAbove(
   minimum: CodeTrustLevel | DocTrustLevel,
 ): boolean {
   // Normalize to code levels for comparison
-  const normalizedLevel = typeof level === "string" && level in TRUST_LEVEL_TO_DOC
-    ? TRUST_LEVEL_TO_CODE[level as DocTrustLevel]
+  // Check if the value exists as a key in the mapping before using it
+  const normalizedLevel = typeof level === "string" && level in TRUST_LEVEL_TO_CODE && TRUST_LEVEL_TO_CODE[level as DocTrustLevel]
+    ? TRUST_LEVEL_TO_CODE[level as DocTrustLevel]!
     : level;
-  const normalizedMinimum = typeof minimum === "string" && minimum in TRUST_LEVEL_TO_DOC
-    ? TRUST_LEVEL_TO_CODE[minimum as DocTrustLevel]
+  const normalizedMinimum = typeof minimum === "string" && minimum in TRUST_LEVEL_TO_CODE && TRUST_LEVEL_TO_CODE[minimum as DocTrustLevel]
+    ? TRUST_LEVEL_TO_CODE[minimum as DocTrustLevel]!
     : minimum;
 
   const order: CodeTrustLevel[] = ["untrusted", "external", "trusted"];
@@ -149,11 +150,12 @@ export function isMemoryLayerAtOrAbove(
   minimum: CodeMemoryLayer | DocMemoryLayer,
 ): boolean {
   // Normalize to code layers for comparison
-  const normalizedLayer = typeof layer === "string" && layer in MEMORY_LAYER_TO_DOC
-    ? MEMORY_LAYER_TO_CODE[layer as DocMemoryLayer]
+  // Check if the value exists as a key in the mapping before using it
+  const normalizedLayer = typeof layer === "string" && layer in MEMORY_LAYER_TO_CODE && MEMORY_LAYER_TO_CODE[layer as DocMemoryLayer]
+    ? MEMORY_LAYER_TO_CODE[layer as DocMemoryLayer]!
     : layer;
-  const normalizedMinimum = typeof minimum === "string" && minimum in MEMORY_LAYER_TO_DOC
-    ? MEMORY_LAYER_TO_CODE[minimum as DocMemoryLayer]
+  const normalizedMinimum = typeof minimum === "string" && minimum in MEMORY_LAYER_TO_CODE && MEMORY_LAYER_TO_CODE[minimum as DocMemoryLayer]
+    ? MEMORY_LAYER_TO_CODE[minimum as DocMemoryLayer]!
     : minimum;
 
   const order: CodeMemoryLayer[] = ["layer_3", "layer_4", "layer_5"];

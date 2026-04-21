@@ -235,11 +235,6 @@ export class NamespacePolicyStore {
       return false;
     }
 
-    // Same domain always allowed
-    if (sourceNamespace.ownerDomainId === targetNamespace.ownerDomainId) {
-      return true;
-    }
-
     // Cross-domain access requires minimum trust level
     const trustOrder = ["unverified", "community", "reviewed", "verified"];
     const sourceTrustIndex = trustOrder.indexOf(sourceNamespace.trustLevel);
