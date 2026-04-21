@@ -1,3 +1,6 @@
+import type { SessionRecord } from "./domain.js";
+import { newId } from "./ids.js";
+
 /**
  * Task lifecycle states.
  *
@@ -100,9 +103,6 @@ export type SessionStatus = (typeof SESSION_STATUSES)[number];
 export type ExecutionStatus = (typeof EXECUTION_STATUSES)[number];
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
-import type { SessionRecord } from "./domain.js";
-import { newId } from "./ids.js";
-
 /**
  * Task terminal states - states where no further processing occurs.
  * Used to determine when a task is permanently done (either successfully or not).
@@ -130,9 +130,6 @@ export function isSessionTerminalStatus(status: SessionStatus): status is Sessio
 export function isTaskStatus(value: string): value is TaskStatus {
   return TASK_STATUSES.includes(value as TaskStatus);
 }
-
-import type { SessionRecord } from "./domain.js";
-import { newId } from "./ids.js";
 
 /**
  * Type guard to check if a string is a valid WorkflowStatus.

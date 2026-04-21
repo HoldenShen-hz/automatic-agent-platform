@@ -194,7 +194,7 @@ export interface DeploymentExecutionCliEnvConfig {
   dbPath: string;
   artifactRoot: string;
   runnerMode: "local" | "simulate";
-  environment: EnvironmentName;
+  environment: EnvironmentName | null;
   version: string | null;
   commitSha: string | null;
   rolloutStrategy: "rolling" | "canary" | "blue_green" | null;

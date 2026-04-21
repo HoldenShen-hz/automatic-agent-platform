@@ -320,12 +320,12 @@ export function loadEnvironmentDeploymentCliEnv(
   env: NodeJS.ProcessEnv = process.env,
   cwd: string = process.cwd(),
 ): EnvironmentDeploymentCliEnvConfig {
-  const action = optionalEnumValue(env, "AA_ENVIRONMENT_DEPLOYMENT_ACTION", ENVIRONMENT_DEPLOYMENT_ACTIONS) ?? "summary";
+  const action = optionalEnumValue(env, "AA_ENVIRONMENT_DEPLOYMENT_ACTION", ENVIRONMENT_DEPLOYMENT_ACTIONS) ?? "list-bundles";
   return {
     dbPath: action === "list-bundles" ? null : requiredEnv(env, "AA_DB_PATH"),
     action,
     repoRootDir: optionalEnv(env, "AA_REPO_ROOT_DIR") ?? cwd,
-    artifactRoot: optionalEnv(env, "AA_ENVIRONMENT_DEPLOYMENT_ARTIFACT_ROOT"),
+    artifactRoot: optionalEnv(env, "AA_ARTIFACT_ROOT"),
     targetEnvironment: optionalEnumValue(env, "AA_TARGET_ENVIRONMENT", ENVIRONMENT_NAMES),
     version: optionalEnv(env, "AA_VERSION"),
     commitSha: optionalEnv(env, "AA_COMMIT_SHA"),

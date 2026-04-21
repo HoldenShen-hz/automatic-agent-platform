@@ -72,7 +72,7 @@ const result = await withCliStorageAsync(async (storage) => {
   });
 
   const input: DeploymentExecutionInput = {
-    environment: envConfig.environment,
+    environment: envConfig.environment ?? "dev",
     version: envConfig.version ?? "",
     commitSha: envConfig.commitSha ?? "",
     rolloutStrategy: envConfig.rolloutStrategy ?? "rolling",

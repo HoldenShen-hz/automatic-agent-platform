@@ -45,14 +45,18 @@ const logger = new StructuredLogger({ retentionLimit: 100 });
 type CanonicalEnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod";
 
 function toCanonicalEnvironmentName(environment: EnvironmentName): CanonicalEnvironmentName {
-  const raw = environment as string;
-  if (raw === "development") {
-    return "dev";
+  switch (environment) {
+    case "development":
+      return "dev";
+    case "production":
+      return "prod";
+    case "dev":
+    case "test":
+    case "staging":
+    case "pre-prod":
+    case "prod":
+      return environment;
   }
-  if (raw === "production") {
-    return "prod";
-  }
-  return raw as CanonicalEnvironmentName;
 }
 
 // Ordered list of environments in the promotion pipeline
@@ -483,7 +487,7 @@ export class EnvironmentDeploymentService {
     blockers.push(...blockedGateRefs.map((item) => `readiness_gate_blocked:${item}`));
 
     // Deployment boundary environments require bindings
-    if (DEPLOYMENT_BOUNDARY_ENVS.has(input.environment) && bindingCount === 0) {
+    if (DEPLOYMENT_BOUNDARY_ENVS.has(toCanonicalEnvironmentName(input.environment)) && bindingCount === 0) {
       blockers.push("deployment_binding_missing");
     }
 
@@ -667,7 +671,7 @@ export class EnvironmentDeploymentService {
    * Compares two environments by their position in the promotion order.
    */
   private compareEnvironment(left: EnvironmentName, right: EnvironmentName): number {
-    return ENVIRONMENT_ORDER.indexOf(left) - ENVIRONMENT_ORDER.indexOf(right);
+    return ENVIRONMENT_ORDER.indexOf(toCanonicalEnvironmentName(left)) - ENVIRONMENT_ORDER.indexOf(toCanonicalEnvironmentName(right));
   }
 
   /**

@@ -1,6 +1,6 @@
 export * from "./remaining-cli-env-support.js";
 
-import type { MemoryLayer, MemorySourceTrustLevel } from "../../contracts/types/domain.js";
+import type { EnvironmentName, MemoryLayer, MemorySourceTrustLevel } from "../../contracts/types/domain.js";
 import type { MemoryProviderQuery } from "../../state-evidence/memory/memory-provider.js";
 import type { StructuredMemoryContent } from "../../state-evidence/memory/memory-schema.js";
 import type { ModelGovernanceSnapshot } from "../../prompt-engine/eval/prompt-model-policy-governance-service.js";
@@ -188,17 +188,17 @@ export function loadDeploymentExecutionCliEnv(
 ): DeploymentExecutionCliEnvConfig {
   const repoRootDir = optionalEnv(env, "AA_DEPLOYMENT_REPO_ROOT") ?? cwd;
   return {
-    action: optionalEnumValue(env, "AA_DEPLOYMENT_EXECUTION_ACTION", DEPLOYMENT_EXECUTION_ACTIONS) ?? "summary",
+    action: optionalEnumValue(env, "AA_DEPLOYMENT_EXECUTION_ACTION", DEPLOYMENT_EXECUTION_ACTIONS) ?? "build_report",
     repoRootDir,
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     artifactRoot: optionalEnv(env, "AA_DEPLOYMENT_ARTIFACT_ROOT") ?? `${repoRootDir}/data/artifacts`,
-    runnerMode: optionalEnumValue(env, "AA_DEPLOYMENT_RUNNER", ["local", "simulate"]) ?? "local",
-    environment: requiredEnumValue(env, "AA_DEPLOYMENT_ENVIRONMENT", ENVIRONMENT_NAMES),
-    version: requiredEnv(env, "AA_DEPLOYMENT_VERSION"),
-    commitSha: requiredEnv(env, "AA_DEPLOYMENT_COMMIT_SHA"),
-    rolloutStrategy: requiredEnumValue(env, "AA_DEPLOYMENT_ROLLOUT_STRATEGY", ["rolling", "canary", "blue_green"]),
-    generatedAt: optionalEnv(env, "AA_DEPLOYMENT_GENERATED_AT"),
-    taskId: optionalEnv(env, "AA_DEPLOYMENT_TASK_ID"),
+    runnerMode: optionalEnumValue(env, "AA_DEPLOYMENT_RUNNER_MODE", ["local", "simulate"]) ?? "local",
+    environment: optionalEnumValue(env, "AA_DEPLOYMENT_ENVIRONMENT", ENVIRONMENT_NAMES),
+    version: optionalEnv(env, "AA_DEPLOYMENT_VERSION"),
+    commitSha: optionalEnv(env, "AA_DEPLOYMENT_COMMIT_SHA"),
+    rolloutStrategy: optionalEnumValue(env, "AA_DEPLOYMENT_ROLLOUT_STRATEGY", ["rolling", "canary", "blue_green"]),
+    generatedAt: optionalEnv(env, "AA_GENERATED_AT"),
+    taskId: optionalEnv(env, "AA_TASK_ID"),
     execute: optionalEnv(env, "AA_DEPLOYMENT_EXECUTE") === "true",
   };
 }
@@ -237,7 +237,7 @@ export function loadOpsGovernanceCliEnv(env: NodeJS.ProcessEnv = process.env): O
   return {
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     environment: requiredEnumValue(env, "AA_ENVIRONMENT", ENVIRONMENT_NAMES),
-    action: optionalEnumValue(env, "AA_OPS_ACTION", OPS_GOVERNANCE_ACTIONS) ?? "summary",
+    action: optionalEnumValue(env, "AA_OPS_GOVERNANCE_ACTION", OPS_GOVERNANCE_ACTIONS) ?? "check",
     generatedAt: optionalEnv(env, "AA_GENERATED_AT"),
     taskId: optionalEnv(env, "AA_OPS_TASK_ID"),
     artifactRoot: optionalEnv(env, "AA_OPS_ARTIFACT_ROOT"),

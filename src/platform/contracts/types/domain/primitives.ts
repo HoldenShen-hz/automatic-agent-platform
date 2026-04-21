@@ -178,7 +178,7 @@ export type TenantIsolationMode =
   | "dedicated_runtime"
   | "dedicated_environment";
 export type DataNamespacePlane = "transactional" | "artifact" | "analytics" | "memory_archive" | "replay";
-export type EnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod";
+export type EnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod" | "development" | "production";
 export type DeploymentMode = "cloud_shared" | "private_cloud" | "on_prem";
 export type EnvironmentReadinessComponentType =
   | "provider"

@@ -21,7 +21,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { TaskTerminalStatus } from "../../contracts/types/status.js";
-import { createRecoverySession, isSessionTerminalStatus } from "../../execution/execution-engine/session-lifecycle.js";
+import { createRecoverySession, isSessionTerminalStatus } from "../../contracts/types/status.js";
 import {
   executionTerminalForTask,
   normalizeInputJson,
