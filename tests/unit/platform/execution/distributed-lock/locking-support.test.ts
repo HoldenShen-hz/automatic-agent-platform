@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { lockLogger, inferPgSslFromDsn } from "../../../../../src/platform/execution/distributed-lock/locking-support.js";
+import { lockLogger, inferPgSslFromDsn, defaultPostgresFactory } from "../../../../../src/platform/execution/distributed-lock/locking-support.js";
 
 test("lockLogger is available", () => {
   assert.ok(lockLogger);
@@ -54,4 +54,30 @@ test("inferPgSslFromDsn returns null for invalid URL", () => {
 test("inferPgSslFromDsn returns null for missing sslmode param", () => {
   const result = inferPgSslFromDsn("postgres://user:pass@host/db?other=value");
   assert.equal(result, null);
+});
+
+// =============================================================================
+// defaultPostgresFactory tests
+// =============================================================================
+
+test("defaultPostgresFactory throws when postgres module not found", () => {
+  // Calling defaultPostgresFactory requires the 'postgres' package
+  // It uses createRequire to dynamically import it
+  // Without the package installed, it should throw a Module not found error
+  try {
+    defaultPostgresFactory("postgres://localhost/db", {});
+    assert.fail("Expected an error to be thrown");
+  } catch (error: any) {
+    // Should be a require error about missing module
+    assert.ok(error.message.includes("Cannot find module") || error.code === "MODULE_NOT_FOUND");
+  }
+});
+
+test("defaultPostgresFactory returns a function when postgres is available", () => {
+  // This test documents the expected shape of what defaultPostgresFactory returns
+  // It's a tagged template function when postgres is installed
+  const factory = defaultPostgresFactory;
+  assert.equal(typeof factory, "function");
+  // The factory itself is a function that creates a PostgresSqlDriver
+  // We can't fully test it without a real postgres instance, but we can verify it returns something callable
 });

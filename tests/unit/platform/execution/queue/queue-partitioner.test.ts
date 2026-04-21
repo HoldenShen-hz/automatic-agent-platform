@@ -190,3 +190,101 @@ test("QueuePartitioner returns empty overload array when no partition overloaded
   const overloads = partitioner.detectOverload(mockAdapter);
   assert.equal(overloads.length, 0);
 });
+
+test("QueuePartitioner getPartitionStats returns stats for all registered partitions", () => {
+  const partitioner = new QueuePartitioner();
+  const mockAdapter = new MockQueueAdapter();
+
+  // Register multiple partitions
+  const partition1: QueuePartition = {
+    name: "queue:task",
+    aggregateType: "task",
+    priority: 1,
+    consumerGroup: "cg-task",
+    config: { maxDepth: 100, alertThreshold: 80, consumerCount: 2, partitioningStrategy: "byAggregateType" },
+  };
+  const partition2: QueuePartition = {
+    name: "queue:execution",
+    aggregateType: "execution",
+    priority: 2,
+    consumerGroup: "cg-execution",
+    config: { maxDepth: 50, alertThreshold: 40, consumerCount: 1, partitioningStrategy: "byAggregateType" },
+  };
+  partitioner.registerPartition(partition1);
+  partitioner.registerPartition(partition2);
+
+  // Add jobs to both queues
+  mockAdapter._addJobs("queue:task", 3, "waiting");
+  mockAdapter._addJobs("queue:execution", 5, "waiting");
+
+  const stats = partitioner.getPartitionStats(mockAdapter);
+  assert.equal(stats.size, 2);
+  assert.ok(stats.has("task"));
+  assert.ok(stats.has("execution"));
+  assert.equal(stats.get("task")!.waiting, 3);
+  assert.equal(stats.get("execution")!.waiting, 5);
+});
+
+test("QueuePartitioner getPartitionStats returns empty stats for unregistered aggregateType", () => {
+  const partitioner = new QueuePartitioner();
+  const mockAdapter = new MockQueueAdapter();
+
+  // No partitions registered - stats will be empty since there are no partitions to iterate
+  const stats = partitioner.getPartitionStats(mockAdapter);
+  assert.equal(stats.size, 0);
+});
+
+test("QueuePartitioner detectOverload handles delayed jobs in count", () => {
+  const partitioner = new QueuePartitioner();
+  const mockAdapter = new MockQueueAdapter();
+  const partition: QueuePartition = {
+    name: "queue:task",
+    aggregateType: "task",
+    priority: 1,
+    consumerGroup: "cg-task",
+    config: { maxDepth: 10, alertThreshold: 8, consumerCount: 1, partitioningStrategy: "byAggregateType" },
+  };
+  partitioner.registerPartition(partition);
+
+  // Add 5 waiting and 5 delayed (total 10 which equals maxDepth)
+  mockAdapter._addJobs("queue:task", 5, "waiting");
+  mockAdapter._addJobs("queue:task", 5, "delayed");
+
+  const overloads = partitioner.detectOverload(mockAdapter);
+  // waiting + delayed = 5 + 5 = 10, which equals maxDepth, so should trigger overload
+  // The condition is: waiting + delayed > maxDepth
+  assert.equal(overloads.length, 1);
+});
+
+test("QueuePartitioner route uses default partition strategy when no partition registered", () => {
+  const partitioner = new QueuePartitioner();
+  const mockAdapter = new MockQueueAdapter();
+
+  // Route without any registered partition
+  const jobId = partitioner.route(mockAdapter, { aggregateType: "unknown", tenantId: "t1" });
+
+  // Should still work - uses default strategy (byAggregateType)
+  assert.ok(jobId);
+  assert.ok(mockAdapter.listQueues().includes("queue:unknown"));
+});
+
+test("QueuePartitioner computePartitionName handles unknown strategy as byAggregateType", () => {
+  const partitioner = new QueuePartitioner();
+
+  // Unknown strategy should fall through to default case
+  const result = partitioner.computePartitionName("task", "tenant-1", "unknownStrategy" as any);
+  assert.equal(result, "queue:task");
+});
+
+test("QueuePartitioner extractPartitionKey uses domain as fallback for aggregateType", () => {
+  const partitioner = new QueuePartitioner();
+  const key = partitioner.extractPartitionKey({ domain: "execution", tenant_id: "tenant-123" });
+  assert.equal(key.aggregateType, "execution");
+  assert.equal(key.tenantId, "tenant-123");
+});
+
+test("QueuePartitioner getPartition returns undefined for unregistered partition", () => {
+  const partitioner = new QueuePartitioner();
+  const result = partitioner.getPartition("nonexistent");
+  assert.equal(result, undefined);
+});

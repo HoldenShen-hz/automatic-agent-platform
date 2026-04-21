@@ -165,9 +165,9 @@
 | queue/            | 4    | ~1,800  | 队列适配器                              |
 | hot-upgrade/      | 3    | ~1,200  | 热升级验证                              |
 | ha/               | 3    | ~800    | HA 协调（部分桩）                       |
-| distributed-lock/ | 8    | ~635    | 分布式锁适配（SQLite/PG/Redis）         |
+| distributed-lock/ | 3    | ~635    | 分布式锁适配（SQLite/PG/Redis）         |
 | resource/         | 2    | <300    | 进程资源跟踪                            |
-| plugin-executor/  | 3    | <300    | 插件执行（薄层，委托 sandbox）          |
+| plugin-executor/  | 8    | ~943    | 插件执行（薄层，委托 sandbox）          |
 
 **关键服务**:
 
@@ -454,12 +454,12 @@ Layer 7 (合规):  compliance/ → control-plane/iam/ + org-governance/
 | Sync 文件                             | Async 文件                                    | 行数          | 状态      |
 | ------------------------------------- | --------------------------------------------- | ------------- | --------- |
 | worker-repository.ts                  | async-repositories/worker-repository.ts      | 1,057 / 1,052 | 实现     |
-| execution-dispatch-service.ts         | execution-dispatch-service-async.ts          | ~730 / 94     | stub     |
-| execution-worker-handshake-service.ts | execution-worker-handshake-service-async.ts  | ~789 / 82     | stub     |
-| execution-worker-writeback-service.ts | execution-worker-writeback-service-async.ts  | ~734 / 56     | stub     |
-| execution-lease-service.ts            | execution-lease-service-async.ts             | ~796 / 504    | partial  |
-| durable-event-bus.ts                  | durable-event-bus-async.ts                  | ~407 / 105    | stub     |
-| human-takeover-service.ts            | human-takeover-service-async.ts             | ~741 / 48     | stub     |
+| execution-dispatch-service.ts         | execution-dispatch-service-async.ts          | 730 / 94      | stub     |
+| execution-worker-handshake-service.ts | execution-worker-handshake-service-async.ts  | 789 / 82      | stub     |
+| execution-worker-writeback-service.ts | execution-worker-writeback-service-async.ts  | 734 / 56      | stub     |
+| execution-lease-service.ts            | execution-lease-service-async.ts             | 796 / 504     | partial  |
+| durable-event-bus.ts                  | durable-event-bus-async.ts                  | 407 / 105     | stub     |
+| human-takeover-service.ts             | human-takeover-service-async.ts             | 741 / 1,166   | 实现     |
 
 **根因**: better-sqlite3 是同步 API，PostgreSQL 是异步 API，两者无法共享抽象层。
 **估计重复代码**: ~3,700 行。
