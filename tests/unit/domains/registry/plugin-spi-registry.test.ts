@@ -575,16 +575,11 @@ test("PluginSpiRegistry rejects forked process isolation for non-builtin plugins
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["coding/repo"],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
       runtimeIsolation: "forked_process",
-      cooldownMs: 0,
-    },
+    }),
   }), /forked_process/);
 });
 
@@ -605,16 +600,11 @@ test("PluginSpiRegistry runs builtin plugins in a sandboxed process runtime with
     trustLevel: "trusted",
     publicSdkSurface: "src/plugins/presenters/coding-presenter",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 2000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
       runtimeIsolation: "sandboxed_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const output = await registry.invokePresenter("plugin.coding.presenter", {
@@ -656,17 +646,12 @@ test("PluginSpiRegistry runs builtin plugins in a containerized process runtime 
       trustLevel: "trusted",
       publicSdkSurface: "src/plugins/presenters/coding-presenter",
       settingsSchema: {},
-      sandbox: {
+      sandbox: makeSandboxPolicy({
         timeoutMs: 2000,
-        allowFilesystemWrite: false,
-        allowNetworkEgress: false,
         allowedKnowledgeNamespaces: [],
-        maxConcurrentInvocations: 1,
-        maxQueuedInvocations: 8,
         runtimeIsolation: "containerized_process",
         runtimeContainerImage: "ghcr.io/example/plugin-runtime:1.0.0",
-        cooldownMs: 0,
-      },
+      }),
     });
 
     const output = await registry.invokePresenter("plugin.coding.presenter", {
@@ -699,16 +684,13 @@ test("buildPluginRuntimeExecArgv enables node permissions for sandboxed runtimes
   const execArgv = buildPluginRuntimeExecArgv({
     isolation: "sandboxed_process",
     workspaceRoot: process.cwd(),
-    sandboxPolicy: {
+    sandboxPolicy: makeSandboxPolicy({
       timeoutMs: 1000,
       allowFilesystemWrite: true,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
       maxQueuedInvocations: 1,
       runtimeIsolation: "sandboxed_process",
-      cooldownMs: 0,
-    },
+    }),
     sandboxRoot: join(tmpdir(), "aa-plugin-runtime-test"),
     env: { NODE_V8_COVERAGE: join(tmpdir(), "aa-plugin-coverage") },
   });

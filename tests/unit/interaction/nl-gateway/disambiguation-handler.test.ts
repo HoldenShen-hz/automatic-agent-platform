@@ -80,11 +80,11 @@ test("DisambiguationHandler disambiguates between multiple similar-confidence in
     },
   ];
 
-  const result = handler.disambiguate("帮我处理", 0.72, intents[0], intents);
+  const result = handler.disambiguate("帮我处理", 0.72, intents[0]!, intents);
 
   assert.equal(result.requiresClarification, true);
-  assert.ok(result.questions[0].options !== undefined);
-  assert.equal(result.questions[0].options!.length, 2);
+  assert.ok(result.questions[0]!.options !== undefined);
+  assert.equal(result.questions[0]!.options!.length, 2);
 });
 
 test("DisambiguationHandler respects maxClarificationQuestions config", () => {

@@ -315,8 +315,8 @@ describe("validateBusinessPackManifest", () => {
     it("should error for critical risk with no sandbox", () => {
       const manifest = {
         ...baseManifest,
-        riskMatrix: [{ riskId: "r1", level: "critical", triggers: [], mitigation: "", escalationPolicy: "" }],
-        sandboxTier: "none",
+        riskMatrix: [{ riskId: "r1", level: "critical" as const, triggers: [] as string[], mitigation: "", escalationPolicy: "" }],
+        sandboxTier: "none" as const,
       };
       const result = validateBusinessPackManifest(manifest);
 
@@ -326,8 +326,8 @@ describe("validateBusinessPackManifest", () => {
     it("should warn for high risk with process sandbox", () => {
       const manifest = {
         ...baseManifest,
-        riskMatrix: [{ riskId: "r1", level: "high", triggers: [], mitigation: "", escalationPolicy: "" }],
-        sandboxTier: "process",
+        riskMatrix: [{ riskId: "r1", level: "high" as const, triggers: [] as string[], mitigation: "", escalationPolicy: "" }],
+        sandboxTier: "process" as const,
       };
       const result = validateBusinessPackManifest(manifest);
 
@@ -339,7 +339,7 @@ describe("validateBusinessPackManifest", () => {
     it("should warn for admin permission without justification", () => {
       const manifest = {
         ...baseManifest,
-        permissions: [{ permission: "user:admin", level: "admin", justification: "" }],
+        permissions: [{ permission: "user:admin", level: "admin" as const, justification: "" }],
       };
       const result = validateBusinessPackManifest(manifest);
 
@@ -360,7 +360,7 @@ describe("validateBusinessPackManifest", () => {
             requiredApprovals: 3,
             approverRoles: ["role1"],
             timeoutMinutes: 60,
-            autoApproveRoles: [],
+            autoApproveRoles: [] as string[],
           },
         ],
       };
@@ -381,7 +381,7 @@ describe("validateBusinessPackManifest", () => {
             requiredApprovals: 1,
             approverRoles: ["role1"],
             timeoutMinutes: 0,
-            autoApproveRoles: [],
+            autoApproveRoles: [] as string[],
           },
         ],
       };
@@ -393,7 +393,7 @@ describe("validateBusinessPackManifest", () => {
 
   describe("rollback validation", () => {
     it("should warn for fail_fast without rollback capability", () => {
-      const manifest = { ...baseManifest, failureStrategy: "fail_fast", rollbackCapability: false };
+      const manifest = { ...baseManifest, failureStrategy: "fail_fast" as const, rollbackCapability: false };
       const result = validateBusinessPackManifest(manifest);
 
       assert.ok(result.issues.some((i) => i.code === "manifest.rollback_recommended"));
@@ -402,7 +402,7 @@ describe("validateBusinessPackManifest", () => {
 
   describe("lifecycle validation", () => {
     it("should warn for published pack without risk matrix", () => {
-      const manifest = { ...baseManifest, lifecycleStage: "published" };
+      const manifest = { ...baseManifest, lifecycleStage: "published" as const };
       const result = validateBusinessPackManifest(manifest);
 
       assert.ok(result.issues.some((i) => i.code === "manifest.published_without_risk_matrix"));
@@ -411,8 +411,8 @@ describe("validateBusinessPackManifest", () => {
     it("should not warn for published pack with risk matrix", () => {
       const manifest = {
         ...baseManifest,
-        lifecycleStage: "published",
-        riskMatrix: [{ riskId: "r1", level: "low", triggers: [], mitigation: "", escalationPolicy: "" }],
+        lifecycleStage: "published" as const,
+        riskMatrix: [{ riskId: "r1", level: "low" as const, triggers: [] as string[], mitigation: "", escalationPolicy: "" }],
       };
       const result = validateBusinessPackManifest(manifest);
 

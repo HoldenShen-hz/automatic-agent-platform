@@ -180,6 +180,9 @@ test("contract: DomainTaskDesignService preserves review and interaction constra
       freshnessWindowHours: 24,
       conflictResolution: "trust_priority",
       retentionDays: 30,
+      knowledgeSources: [],
+      retrievalStrategy: { strategy: "hybrid", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: true },
+      freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
     },
     interactionRules: [
       {
@@ -286,6 +289,8 @@ test("contract: ApprovalRoutingService preserves delegation and escalation const
       parentOrgNodeId: null,
       ownerUserIds: ["finance_director"],
       active: true,
+      metadata: {},
+      costCenter: "FIN-001",
     },
   ];
   const service = new ApprovalRoutingService({
@@ -328,11 +333,13 @@ test("contract: ComplianceGovernanceService must deny missing required policy ke
     [
       {
         orgNodeId: "root",
-        nodeType: "enterprise",
+        nodeType: "company",
         displayName: "Root",
         parentOrgNodeId: null,
         ownerUserIds: ["ceo"],
         active: true,
+        metadata: {},
+        costCenter: "",
       },
     ],
     {
@@ -358,7 +365,8 @@ test("contract: DelegatedGovernanceService only grants active scoped delegations
       granteeId: "manager",
       orgNodeIds: ["dept_finance"],
       domainIds: ["finance"],
-      capabilities: ["approve_budget"],
+      permissions: [],
+      guardrails: [],
       expiresAt: "2026-04-21T00:00:00.000Z",
       revocable: true,
       status: "active",
@@ -741,26 +749,45 @@ test("contract: retired agents cannot be bound to new tasks", () => {
   const service = new AgentLifecycleService();
   service.registerAgent({
     agentId: "agent_ops_1",
-    displayName: "Ops Agent",
+    name: "Ops Agent",
     domainId: "ops",
-    capabilities: ["triage"],
-    owner: "ops_lead",
-    lifecycleState: "validated",
+    owner: { path: "ops_lead", orgNodeId: "ops" },
+    components: {
+      pack: { packId: "ops-pack", version: "1.0.0" },
+      promptBundle: { bundleId: "ops-prompts", version: "1.0.0" },
+      modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
+      trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+      triggerSet: [],
+      autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+    },
+    lifecycleState: "testing",
     currentVersionId: "v1",
+    createdAt: "2026-04-20T00:00:00.000Z",
+    updatedAt: "2026-04-20T00:00:00.000Z",
   });
   service.addVersion({
     versionId: "v1",
     agentId: "agent_ops_1",
-    promptRefs: ["prompt:v1"],
-    toolBundleRefs: ["tools:v1"],
-    policyRefs: ["policy:v1"],
-    modelProfileRefs: ["model:v1"],
     createdAt: "2026-04-20T00:00:00.000Z",
-    stable: true,
+    semver: "1.0.0",
+    componentSnapshot: {
+      packVersion: "1.0.0",
+      promptBundleVersion: "1.0.0",
+      modelBindingHash: "hash1",
+      trustProfileHash: "hash1",
+      triggerSetHash: "hash1",
+      autonomyConfigHash: "hash1",
+    },
+    createdBy: "ops_lead",
+    releaseNote: "v1 release",
   });
   service.retire({
     agentId: "agent_ops_1",
+    reason: "superseded",
     successorAgentId: null,
+    transferItems: ["triggers", "subscriptions", "scheduled_tasks", "ownership"],
+    gracePeriodDays: 30,
+    notificationTargets: ["ops_lead"],
     revokeAt: "2026-04-20T01:00:00.000Z",
   }, "2026-04-20T01:00:00.000Z");
 
@@ -830,6 +857,9 @@ test("contract: domain descriptors without workflow/tool/prompt/eval anchors rem
       freshnessWindowHours: 24,
       conflictResolution: "human_review",
       retentionDays: 90,
+      knowledgeSources: [],
+      retrievalStrategy: { strategy: "hybrid", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: true },
+      freshnessPolicy: { maxStalenessHours: 48, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
     },
     evalFramework: {
       frameworkId: "eval_finance",

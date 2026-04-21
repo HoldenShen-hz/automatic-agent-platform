@@ -54,7 +54,7 @@ test("TransactionalEventAppender.appendEvent inserts event successfully", () => 
     // Verify event was inserted in DB
     const events = eventRepo.listEventsByType("task:status_changed");
     assert.ok(events.length >= 1, "Event should be in the database");
-    assert.equal(events[0].taskId, "task-1");
+    assert.equal(events[0]!.taskId, "task-1");
 
     db.close();
   } finally {
@@ -153,9 +153,9 @@ test("TransactionalEventAppender.appendEvents processes multiple events in one t
     ]);
 
     assert.equal(results.length, 3, "Should return 3 results");
-    assert.ok(results[0].event.id, "First event should have ID");
-    assert.ok(results[1].event.id, "Second event should have ID");
-    assert.ok(results[2].event.id, "Third event should have ID");
+    assert.ok(results[0]!.event.id, "First event should have ID");
+    assert.ok(results[1]!.event.id, "Second event should have ID");
+    assert.ok(results[2]!.event.id, "Third event should have ID");
 
     // Verify all events in DB
     const events = eventRepo.listEventsByType("task:created");
@@ -190,8 +190,8 @@ test("TransactionalEventAppender.appendEvents with outbox writes all entries", (
     );
 
     assert.equal(results.length, 2);
-    assert.ok(results[0].outboxEntryId, "First should have outbox entry");
-    assert.ok(results[1].outboxEntryId, "Second should have outbox entry");
+    assert.ok(results[0]!.outboxEntryId, "First should have outbox entry");
+    assert.ok(results[1]!.outboxEntryId, "Second should have outbox entry");
 
     // Verify both outbox entries exist
     const pending = outboxRepo.listPendingEntries(10);

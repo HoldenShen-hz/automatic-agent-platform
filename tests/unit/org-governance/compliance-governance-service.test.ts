@@ -8,11 +8,13 @@ test("ComplianceGovernanceService resolves inherited policy and records audit", 
     [
       {
         orgNodeId: "root",
-        nodeType: "enterprise",
+        nodeType: "company",
         displayName: "Root",
         parentOrgNodeId: null,
         ownerUserIds: ["ceo"],
         active: true,
+        metadata: {},
+        costCenter: "",
       },
       {
         orgNodeId: "dept_finance",
@@ -21,6 +23,8 @@ test("ComplianceGovernanceService resolves inherited policy and records audit", 
         parentOrgNodeId: "root",
         ownerUserIds: ["finance_director"],
         active: true,
+        metadata: {},
+        costCenter: "FIN-001",
       },
     ],
     {

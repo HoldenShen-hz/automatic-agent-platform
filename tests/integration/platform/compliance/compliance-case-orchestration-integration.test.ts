@@ -10,11 +10,13 @@ test("integration: compliance orchestration aligns export control and subject er
     [
       {
         orgNodeId: "root",
-        nodeType: "enterprise",
+        nodeType: "company",
         displayName: "Root",
         parentOrgNodeId: null,
         ownerUserIds: ["ceo"],
         active: true,
+        metadata: {},
+        costCenter: "",
       },
       {
         orgNodeId: "dept_privacy",
@@ -23,6 +25,8 @@ test("integration: compliance orchestration aligns export control and subject er
         parentOrgNodeId: "root",
         ownerUserIds: ["privacy_lead"],
         active: true,
+        metadata: {},
+        costCenter: "PRIV-001",
       },
     ],
     {

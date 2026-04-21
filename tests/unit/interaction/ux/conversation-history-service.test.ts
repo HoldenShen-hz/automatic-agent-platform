@@ -29,8 +29,8 @@ test("ConversationHistoryService adds turns to session", async () => {
   });
 
   assert.equal(updated.turns.length, 1);
-  assert.equal(updated.turns[0].message, "创建一个任务");
-  assert.equal(updated.turns[0].role, "user");
+  assert.equal(updated.turns[0]!.message, "创建一个任务");
+  assert.equal(updated.turns[0]!.role, "user");
   assert.equal(updated.lastIntent, "task_create");
 });
 
@@ -82,9 +82,9 @@ test("ConversationHistoryService tracks multiple turns", async () => {
   });
 
   assert.equal(session.turns.length, 3);
-  assert.equal(session.turns[0].role, "user");
-  assert.equal(session.turns[1].role, "assistant");
-  assert.equal(session.turns[2].role, "user");
+  assert.equal(session.turns[0]!.role, "user");
+  assert.equal(session.turns[1]!.role, "assistant");
+  assert.equal(session.turns[2]!.role, "user");
 });
 
 test("ConversationHistoryService assigns unique turn IDs", async () => {
@@ -96,7 +96,7 @@ test("ConversationHistoryService assigns unique turn IDs", async () => {
     message: "消息1",
   });
 
-  assert.ok(updated.turns[0].turnId.startsWith("turn_"));
+  assert.ok(updated.turns[0]!.turnId.startsWith("turn_"));
 });
 
 test("ConversationHistoryService records intent and entities", async () => {
@@ -111,9 +111,9 @@ test("ConversationHistoryService records intent and entities", async () => {
     entities: { environment: "production" },
   });
 
-  assert.equal(updated.turns[0].intent, "task_create");
-  assert.equal(updated.turns[0].confidence, 0.78);
-  assert.deepEqual(updated.turns[0].entities, { environment: "production" });
+  assert.equal(updated.turns[0]!.intent, "task_create");
+  assert.equal(updated.turns[0]!.confidence, 0.78);
+  assert.deepEqual(updated.turns[0]!.entities, { environment: "production" });
 });
 
 test("ConversationHistoryService isAvailable returns false without memory service", () => {
@@ -133,7 +133,7 @@ test("ConversationHistoryService records timestamp on turn", async () => {
   });
   const after = new Date().toISOString();
 
-  const turnTime = updated.turns[0].timestamp;
+  const turnTime = updated.turns[0]!.timestamp;
   assert.ok(turnTime >= before && turnTime <= after);
 });
 

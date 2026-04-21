@@ -20,10 +20,10 @@ import { buildSamlAudience } from "../../../src/org-governance/sso-scim/saml/ind
 import { isTerminalScimAction } from "../../../src/org-governance/sso-scim/scim-sync/index.js";
 
 const orgNodes: OrgNode[] = [
-  { orgNodeId: "ent_1", nodeType: "enterprise", displayName: "Enterprise", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true },
-  { orgNodeId: "dept_1", nodeType: "department", displayName: "Platform", parentOrgNodeId: "ent_1", ownerUserIds: ["director"], active: true },
-  { orgNodeId: "team_1", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept_1", ownerUserIds: ["manager"], active: true },
-  { orgNodeId: "seat_1", nodeType: "seat", displayName: "Engineer", parentOrgNodeId: "team_1", ownerUserIds: ["engineer"], active: true },
+  { orgNodeId: "ent_1", nodeType: "company", displayName: "Enterprise", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, metadata: {}, costCenter: "" },
+  { orgNodeId: "dept_1", nodeType: "department", displayName: "Platform", parentOrgNodeId: "ent_1", ownerUserIds: ["director"], active: true, metadata: {}, costCenter: "" },
+  { orgNodeId: "team_1", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept_1", ownerUserIds: ["manager"], active: true, metadata: {}, costCenter: "" },
+  { orgNodeId: "seat_1", nodeType: "member", displayName: "Engineer", parentOrgNodeId: "team_1", ownerUserIds: ["engineer"], active: true, metadata: {}, costCenter: "" },
 ];
 
 test("org-governance support modules expose contract-aligned helpers", () => {
@@ -107,7 +107,8 @@ test("org-governance support modules expose contract-aligned helpers", () => {
       granteeId: "manager",
       orgNodeIds: ["dept_1"],
       domainIds: ["platform"],
-      capabilities: ["approval.route"],
+      permissions: ["manage_approvals"],
+      guardrails: [],
       expiresAt: "2026-04-21T00:00:00.000Z",
       revocable: true,
       status: "active",

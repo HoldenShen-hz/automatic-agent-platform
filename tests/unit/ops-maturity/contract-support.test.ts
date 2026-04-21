@@ -41,17 +41,51 @@ import { renderWorkflowTimeline } from "../../../src/ops-maturity/workflow-debug
 test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(
     listActiveAgents([
-      { agentId: "agent_1", domainId: "coding", lifecycleState: "active", currentVersionId: "v2" },
-      { agentId: "agent_2", domainId: "ops", lifecycleState: "retired", currentVersionId: "v1" },
+      {
+        name: "Agent One",
+        createdAt: "2026-04-19T00:00:00.000Z",
+        agentId: "agent_1",
+        updatedAt: "2026-04-19T00:00:00.000Z",
+        owner: { path: "lead", orgNodeId: "ops" },
+        domainId: "coding",
+        lifecycleState: "active",
+        components: {
+          pack: { packId: "pack_1", version: "1.0.0" },
+          promptBundle: { bundleId: "prompt_1", version: "1.0.0" },
+          modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
+          trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+          triggerSet: [],
+          autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+        },
+        currentVersionId: "v2",
+      },
+      {
+        name: "Agent Two",
+        createdAt: "2026-04-01T00:00:00.000Z",
+        agentId: "agent_2",
+        updatedAt: "2026-04-15T00:00:00.000Z",
+        owner: { path: "lead", orgNodeId: "ops" },
+        domainId: "ops",
+        lifecycleState: "deprecated",
+        components: {
+          pack: { packId: "pack_1", version: "1.0.0" },
+          promptBundle: { bundleId: "prompt_1", version: "1.0.0" },
+          modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
+          trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+          triggerSet: [],
+          autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+        },
+        currentVersionId: "v1",
+      },
     ]).length,
     1,
   );
-  assert.equal(shouldPromoteCanary({ rolloutPercent: 30, successRate: 0.995 }), true);
-  assert.equal(canRetireAgent({ agentId: "agent_1", successorAgentId: "agent_2", revokeAt: "2026-04-20T00:00:00.000Z" }, "2026-04-20T01:00:00.000Z"), true);
+  assert.equal(shouldPromoteCanary({ rolloutPercent: 30, successRate: 0.995, latencyP50Ms: 100, errorRate: 0.005, currentStage: 20 }), true);
+  assert.equal(canRetireAgent({ agentId: "agent_1", reason: "superseded", successorAgentId: "agent_2", transferItems: ["triggers"], gracePeriodDays: 30, notificationTargets: ["lead"], revokeAt: "2026-04-20T00:00:00.000Z" }, "2026-04-20T01:00:00.000Z"), true);
   assert.equal(
     resolveLatestAgentVersion([
-      { versionId: "v1", agentId: "agent_1", createdAt: "2026-04-19T00:00:00.000Z", stable: false },
-      { versionId: "v2", agentId: "agent_1", createdAt: "2026-04-20T00:00:00.000Z", stable: true },
+      { versionId: "v1", agentId: "agent_1", createdAt: "2026-04-19T00:00:00.000Z", semver: "1.0.0", componentSnapshot: { packVersion: "1.0.0", promptBundleVersion: "1.0.0", modelBindingHash: "h1", trustProfileHash: "h1", triggerSetHash: "h1", autonomyConfigHash: "h1" }, createdBy: "lead", releaseNote: "" },
+      { versionId: "v2", agentId: "agent_1", createdAt: "2026-04-20T00:00:00.000Z", semver: "2.0.0", componentSnapshot: { packVersion: "2.0.0", promptBundleVersion: "2.0.0", modelBindingHash: "h2", trustProfileHash: "h2", triggerSetHash: "h2", autonomyConfigHash: "h2" }, createdBy: "lead", releaseNote: "" },
     ])?.versionId,
     "v2",
   );

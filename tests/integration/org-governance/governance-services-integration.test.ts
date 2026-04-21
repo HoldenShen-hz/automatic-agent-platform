@@ -11,11 +11,13 @@ test("integration: org-governance services compose policy, delegation, knowledge
     [
       {
         orgNodeId: "root",
-        nodeType: "enterprise",
+        nodeType: "company",
         displayName: "Root",
         parentOrgNodeId: null,
         ownerUserIds: ["ceo"],
         active: true,
+        metadata: {},
+        costCenter: "",
       },
       {
         orgNodeId: "dept_finance",
@@ -24,6 +26,8 @@ test("integration: org-governance services compose policy, delegation, knowledge
         parentOrgNodeId: "root",
         ownerUserIds: ["finance_director"],
         active: true,
+        metadata: {},
+        costCenter: "FIN-001",
       },
     ],
     {
@@ -38,7 +42,8 @@ test("integration: org-governance services compose policy, delegation, knowledge
       granteeId: "manager",
       orgNodeIds: ["dept_finance"],
       domainIds: ["finance"],
-      capabilities: ["approve_budget"],
+      permissions: [],
+      guardrails: [],
       expiresAt: "2026-04-21T00:00:00.000Z",
       revocable: true,
       status: "active",

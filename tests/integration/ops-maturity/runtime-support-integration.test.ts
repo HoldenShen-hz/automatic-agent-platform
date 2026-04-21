@@ -26,15 +26,39 @@ import {
 test("ops-maturity support modules coordinate lifecycle, explainability, panic, debugger, and optimization flows", () => {
   const activeAgents = listActiveAgents([
     {
+      name: "Platform Ops Agent",
+      createdAt: "2026-04-19T00:00:00.000Z",
       agentId: "agent_platform_ops",
+      updatedAt: "2026-04-19T00:00:00.000Z",
+      owner: { path: "ops_lead", orgNodeId: "platform_ops" },
       domainId: "platform_ops",
       lifecycleState: "canary",
+      components: {
+        pack: { packId: "pack_ops", version: "1.0.0" },
+        promptBundle: { bundleId: "prompt_ops", version: "1.0.0" },
+        modelBinding: { provider: "anthropic", model: "claude-4", fallbackChain: [] },
+        trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+        triggerSet: [],
+        autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+      },
       currentVersionId: "v2",
     },
     {
+      name: "Legacy Agent",
+      createdAt: "2026-04-01T00:00:00.000Z",
       agentId: "agent_legacy",
+      updatedAt: "2026-04-15T00:00:00.000Z",
+      owner: { path: "ops_lead", orgNodeId: "platform_ops" },
       domainId: "platform_ops",
-      lifecycleState: "retired",
+      lifecycleState: "deprecated",
+      components: {
+        pack: { packId: "pack_ops", version: "1.0.0" },
+        promptBundle: { bundleId: "prompt_ops", version: "1.0.0" },
+        modelBinding: { provider: "anthropic", model: "claude-4", fallbackChain: [] },
+        trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+        triggerSet: [],
+        autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+      },
       currentVersionId: "v1",
     },
   ]);
@@ -42,16 +66,20 @@ test("ops-maturity support modules coordinate lifecycle, explainability, panic, 
 
   assert.equal(
     resolveLatestAgentVersion([
-      { versionId: "v1", agentId: "agent_platform_ops", createdAt: "2026-04-19T00:00:00.000Z", stable: false },
-      { versionId: "v2", agentId: "agent_platform_ops", createdAt: "2026-04-20T00:00:00.000Z", stable: true },
+      { versionId: "v1", agentId: "agent_platform_ops", createdAt: "2026-04-19T00:00:00.000Z", semver: "1.0.0", componentSnapshot: { packVersion: "1.0.0", promptBundleVersion: "1.0.0", modelBindingHash: "h1", trustProfileHash: "h1", triggerSetHash: "h1", autonomyConfigHash: "h1" }, createdBy: "ops_lead", releaseNote: "v1" },
+      { versionId: "v2", agentId: "agent_platform_ops", createdAt: "2026-04-20T00:00:00.000Z", semver: "2.0.0", componentSnapshot: { packVersion: "2.0.0", promptBundleVersion: "2.0.0", modelBindingHash: "h2", trustProfileHash: "h2", triggerSetHash: "h2", autonomyConfigHash: "h2" }, createdBy: "ops_lead", releaseNote: "v2" },
     ])?.versionId,
     "v2",
   );
-  assert.equal(shouldPromoteCanary({ rolloutPercent: 30, successRate: 0.995 }), true);
+  assert.equal(shouldPromoteCanary({ rolloutPercent: 30, successRate: 0.995, latencyP50Ms: 100, errorRate: 0.005, currentStage: 20 }), true);
   assert.equal(
     canRetireAgent({
       agentId: "agent_legacy",
+      reason: "superseded",
       successorAgentId: "agent_platform_ops",
+      transferItems: ["triggers"],
+      gracePeriodDays: 30,
+      notificationTargets: ["ops_lead"],
       revokeAt: "2026-04-20T00:00:00.000Z",
     }, "2026-04-20T01:00:00.000Z"),
     true,

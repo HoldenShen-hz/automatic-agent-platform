@@ -12,6 +12,8 @@ const orgNodes: OrgNode[] = [
     parentOrgNodeId: null,
     ownerUserIds: ["director"],
     active: true,
+    metadata: {},
+    costCenter: "",
   },
 ];
 

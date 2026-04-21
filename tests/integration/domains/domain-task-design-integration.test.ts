@@ -48,6 +48,9 @@ test("integration: domain support modules flow into a single domain task design 
       freshnessWindowHours: 24,
       conflictResolution: "trust_priority",
       retentionDays: 30,
+      knowledgeSources: [],
+      retrievalStrategy: { strategy: "semantic" as const, maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
+      freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled" as const, backgroundRefreshEnabled: true },
     },
   });
 

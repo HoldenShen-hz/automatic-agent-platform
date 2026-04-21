@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { QueuePartitioner, type QueuePartition } from "../../../../../src/platform/execution/queue/queue-partitioner.js";
-import type { QueueAdapter, QueueJobRecord } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import type { QueueAdapter, QueueJobRecord, EnqueueInput, QueueJobStatus, DequeueResult, QueueStats } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
 
 // Mock QueueAdapter for testing
 class MockQueueAdapter implements QueueAdapter {
@@ -10,7 +10,7 @@ class MockQueueAdapter implements QueueAdapter {
   private queues: Map<string, Map<string, QueueJobRecord>> = new Map();
   private jobCounter = 0;
 
-  enqueue(input): QueueJobRecord {
+  enqueue(input: EnqueueInput): QueueJobRecord {
     if (!this.queues.has(input.queueName)) {
       this.queues.set(input.queueName, new Map());
     }
@@ -34,11 +34,12 @@ class MockQueueAdapter implements QueueAdapter {
     return job;
   }
 
-  dequeue(queueName: string) {
+  dequeue(queueName: string): DequeueResult | null {
     const queue = this.queues.get(queueName);
     if (!queue || queue.size === 0) return null;
     const first = queue.values().next().value;
-    const job = { ...first, status: "active" as const };
+    if (!first) return null;
+    const job: QueueJobRecord = { ...first, status: "active" };
     return {
       job,
       ack: () => { queue.delete(job.id); },
@@ -53,7 +54,7 @@ class MockQueueAdapter implements QueueAdapter {
     return null;
   }
 
-  listJobs(queueName: string, status?, limit = 100): QueueJobRecord[] {
+  listJobs(queueName: string, status?: QueueJobStatus, limit = 100): QueueJobRecord[] {
     const queue = this.queues.get(queueName);
     if (!queue) return [];
     return Array.from(queue.values()).slice(0, limit);
@@ -63,7 +64,7 @@ class MockQueueAdapter implements QueueAdapter {
   retryJob(jobId: string): QueueJobRecord | null { return null; }
   purge(queueName: string, olderThan: string): number { return 0; }
 
-  stats(queueName: string) {
+  stats(queueName: string): QueueStats {
     const queue = this.queues.get(queueName);
     const counts = { waiting: 0, delayed: 0, active: 0, completed: 0, failed: 0, deadLetter: 0 };
     if (queue) {
@@ -170,7 +171,7 @@ test("QueuePartitioner detects overload when partition exceeds maxDepth", () => 
 
   const overloads = partitioner.detectOverload(mockAdapter);
   assert.equal(overloads.length, 1);
-  assert.equal(overloads[0].aggregateType, "task");
+  assert.equal(overloads[0]!.aggregateType, "task");
 });
 
 test("QueuePartitioner returns empty overload array when no partition overloaded", () => {

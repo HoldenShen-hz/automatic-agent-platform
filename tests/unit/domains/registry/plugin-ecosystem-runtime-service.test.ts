@@ -5,6 +5,24 @@ import { DomainRegistryService } from "../../../../src/domains/registry/domain-r
 import { PluginEcosystemRuntimeService } from "../../../../src/domains/registry/plugin-ecosystem-runtime-service.js";
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
 import { ConnectorFrameworkService } from "../../../../src/scale-ecosystem/integration/connector-framework-service.js";
+import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+
+function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
+  return {
+    timeoutMs: 5000,
+    allowFilesystemWrite: false,
+    allowNetworkEgress: false,
+    allowedKnowledgeNamespaces: [],
+    maxConcurrentInvocations: 1,
+    maxQueuedInvocations: 8,
+    runtimeIsolation: "serialized_in_process",
+    cooldownMs: 0,
+    allowedExternalDomains: [],
+    maxResponseSizeBytes: 5 * 1024 * 1024,
+    rateLimitPerMinute: 60,
+    ...overrides,
+  };
+}
 
 function createHarness() {
   const pluginRegistry = new PluginSpiRegistry();
@@ -28,16 +46,10 @@ function createHarness() {
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: ["ops/repo"],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const domainRegistry = new DomainRegistryService({ pluginRegistry });

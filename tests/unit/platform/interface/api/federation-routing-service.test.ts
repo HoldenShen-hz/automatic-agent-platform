@@ -14,6 +14,8 @@ test("FederationRoutingService registers and retrieves partner", () => {
     endpoint: "https://api.acme.example.com",
     capabilities: ["task_management", "reporting"],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   };
 
   service.registerPartner(partner);
@@ -31,19 +33,25 @@ test("FederationRoutingService lists active partners", () => {
     partnerId: "partner_1",
     partnerName: "Partner 1",
     endpoint: "https://p1.example.com",
+    capabilities: [],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   service.registerPartner({
     partnerId: "partner_2",
     partnerName: "Partner 2",
     endpoint: "https://p2.example.com",
+    capabilities: [],
     status: "inactive",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   const activePartners = service.listActivePartners();
   assert.equal(activePartners.length, 1);
-  assert.equal(activePartners[0].partnerId, "partner_1");
+  assert.equal(activePartners[0]!.partnerId, "partner_1");
 });
 
 test("FederationRoutingService routes request to active partner", () => {
@@ -53,7 +61,10 @@ test("FederationRoutingService routes request to active partner", () => {
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com",
+    capabilities: [],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   const decision = service.route({
@@ -74,7 +85,10 @@ test("FederationRoutingService blocks request to inactive partner", () => {
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com",
+    capabilities: [],
     status: "inactive",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   const decision = service.route({
@@ -107,7 +121,10 @@ test("FederationRoutingService builds correct target URL", () => {
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com",
+    capabilities: [],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   const decision = service.route({
@@ -126,7 +143,10 @@ test("FederationRoutingService handles path with leading slash", () => {
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com/",
+    capabilities: [],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   const decision = service.route({
@@ -147,6 +167,8 @@ test("FederationRoutingService checks partner capability", () => {
     endpoint: "https://api.acme.example.com",
     capabilities: ["task_management", "reporting"],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   assert.equal(service.partnerSupportsCapability("partner_acme", "task_management"), true);
@@ -161,7 +183,9 @@ test("FederationRoutingService gets routing info", () => {
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com",
+    capabilities: [],
     status: "active",
+    metadata: {},
     retryPolicy: {
       maxRetries: 5,
       timeoutMs: 60000,
@@ -182,7 +206,10 @@ test("FederationRoutingService returns null for inactive partner routing info", 
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com",
+    capabilities: [],
     status: "suspended",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   const info = service.getRoutingInfo("partner_acme");
@@ -204,7 +231,10 @@ test("FederationRoutingService updates partner status", () => {
     partnerId: "partner_acme",
     partnerName: "Acme Corp",
     endpoint: "https://api.acme.example.com",
+    capabilities: [],
     status: "active",
+    metadata: {},
+    retryPolicy: { maxRetries: 3, timeoutMs: 30000 },
   });
 
   assert.equal(service.updatePartnerStatus("partner_acme", "suspended"), true);

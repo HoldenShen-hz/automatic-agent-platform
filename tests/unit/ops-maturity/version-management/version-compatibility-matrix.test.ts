@@ -32,8 +32,8 @@ test("VersionCompatibilityMatrix registers batch entries", () => {
   ]);
 
   assert.equal(entries.length, 2);
-  assert.ok(entries[0].entryId);
-  assert.ok(entries[1].entryId);
+  assert.ok(entries[0]!.entryId);
+  assert.ok(entries[1]!.entryId);
 });
 
 test("VersionCompatibilityMatrix checks explicit compatibility", () => {

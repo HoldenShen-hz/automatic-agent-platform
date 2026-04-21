@@ -10,11 +10,13 @@ function createGovernance(required: boolean): ComplianceGovernanceService {
     [
       {
         orgNodeId: "root",
-        nodeType: "enterprise",
+        nodeType: "company",
         displayName: "Root",
         parentOrgNodeId: null,
         ownerUserIds: ["admin"],
         active: true,
+        metadata: {},
+        costCenter: "",
       },
       {
         orgNodeId: "dept_risk",
@@ -23,6 +25,8 @@ function createGovernance(required: boolean): ComplianceGovernanceService {
         parentOrgNodeId: "root",
         ownerUserIds: ["risk_lead"],
         active: true,
+        metadata: {},
+        costCenter: "RISK-001",
       },
     ],
     required

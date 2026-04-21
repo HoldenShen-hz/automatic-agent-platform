@@ -33,6 +33,9 @@ test("domain support modules expose contract-aligned helpers", () => {
       freshnessWindowHours: 24,
       conflictResolution: "trust_priority",
       retentionDays: 30,
+      knowledgeSources: [],
+      retrievalStrategy: { strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
+      freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
     }, ["tickets", "runbooks"]),
     ["repo", "tickets", "runbooks"],
   );

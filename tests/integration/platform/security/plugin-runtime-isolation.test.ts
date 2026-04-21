@@ -29,6 +29,9 @@ test("sandboxed plugin runtime reports isolated sandbox metadata and handles lif
       maxQueuedInvocations: 2,
       runtimeIsolation: "sandboxed_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
     workspaceRoot: process.cwd(),
     onReady: ({ sandboxRoot }) => {

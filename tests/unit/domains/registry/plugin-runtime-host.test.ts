@@ -18,6 +18,9 @@ function createSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): Plug
     maxQueuedInvocations: 4,
     runtimeIsolation: "sandboxed_process",
     cooldownMs: 0,
+    allowedExternalDomains: [],
+    maxResponseSizeBytes: 5 * 1024 * 1024,
+    rateLimitPerMinute: 60,
     ...overrides,
   };
 }
@@ -36,16 +39,9 @@ test("buildPluginRuntimeExecArgv adds Node permission flags for sandboxed runtim
   const args = buildPluginRuntimeExecArgv({
     isolation: "sandboxed_process",
     workspaceRoot: "/workspace",
-    sandboxPolicy: {
-      timeoutMs: 5_000,
+    sandboxPolicy: createSandboxPolicy({
       allowFilesystemWrite: true,
-      allowNetworkEgress: false,
-      allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 4,
-      runtimeIsolation: "sandboxed_process",
-      cooldownMs: 0,
-    },
+    }),
     sandboxRoot: "/workspace/data/plugin-runtime-sandboxes/plugin_a",
     env: {
       NODE_V8_COVERAGE: "/tmp/coverage",
@@ -67,16 +63,9 @@ test("buildPluginRuntimeExecArgv keeps shared runtimes free of permission fencin
   const args = buildPluginRuntimeExecArgv({
     isolation: "forked_process",
     workspaceRoot: "/workspace",
-    sandboxPolicy: {
-      timeoutMs: 5_000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
-      allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 4,
+    sandboxPolicy: createSandboxPolicy({
       runtimeIsolation: "forked_process",
-      cooldownMs: 0,
-    },
+    }),
     sandboxRoot: null,
     env: {},
   });

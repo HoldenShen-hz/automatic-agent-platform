@@ -40,7 +40,7 @@ test("ConversationContextManager adds turns to conversation", () => {
 
   assert.equal(context1.turnCount, 1);
   assert.equal(context1.turns.length, 1);
-  assert.equal(context1.turns[0].message, "创建一个任务");
+  assert.equal(context1.turns[0]!.message, "创建一个任务");
 });
 
 test("ConversationContextManager prunes to window size", () => {
@@ -85,9 +85,9 @@ test("ConversationContextManager prunes to window size", () => {
 
   // Should be pruned to last 3
   assert.equal(context.turnCount, 3);
-  assert.equal(context.turns[0].message, "消息2");
-  assert.equal(context.turns[1].message, "消息3");
-  assert.equal(context.turns[2].message, "消息4");
+  assert.equal(context.turns[0]!.message, "消息2");
+  assert.equal(context.turns[1]!.message, "消息3");
+  assert.equal(context.turns[2]!.message, "消息4");
 });
 
 test("ConversationContextManager clears context", () => {

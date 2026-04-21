@@ -46,36 +46,36 @@ test("§35: All documented directories have index.ts", () => {
 });
 
 test("§35: cost-management exports from scale-ecosystem", async () => {
-  const mod = await import("../../../src/platform/cost-management/index.js");
+  const mod = await import("../../../../src/platform/cost-management/index.js");
   assert.ok(mod.CostEstimationService != null);
 });
 
 test("§35: agent-delegation exports delegation types", async () => {
-  const mod = await import("../../../src/platform/agent-delegation/index.js");
+  const mod = await import("../../../../src/platform/agent-delegation/index.js");
   assert.ok(mod.DelegationManagerService != null);
   assert.ok(mod.TopologyValidator != null);
 });
 
 test("§35: prompt-registry exports prompt registry types", async () => {
-  const mod = await import("../../../src/platform/prompt-registry/index.js");
+  const mod = await import("../../../../src/platform/prompt-registry/index.js");
   assert.ok(mod.HierarchicalRegistryService != null);
   assert.ok(mod.PromptVersionManager != null);
 });
 
 test("§35: testing exports test utilities", async () => {
-  const mod = await import("../../../src/testing/index.js");
+  const mod = await import("../../../../src/testing/index.js");
   assert.ok(mod.createTempWorkspace != null);
   assert.ok(mod.cleanupPath != null);
 });
 
 test("§35: benchmarks exports benchmark runner", async () => {
-  const mod = await import("../../../src/benchmarks/index.js");
+  const mod = await import("../../../../src/benchmarks/index.js");
   assert.ok(mod.runBenchmark != null);
   assert.ok(mod.BenchmarkResult != null);
 });
 
 test("§35: benchmarks runBenchmark returns valid result", async () => {
-  const { runBenchmark } = await import("../../../src/benchmarks/index.js");
+  const { runBenchmark } = await import("../../../../src/benchmarks/index.js");
 
   let callCount = 0;
   const result = await runBenchmark("test-benchmark", () => {

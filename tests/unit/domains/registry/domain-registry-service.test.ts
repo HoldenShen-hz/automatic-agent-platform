@@ -3,6 +3,24 @@ import assert from "node:assert/strict";
 
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
+import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+
+function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
+  return {
+    timeoutMs: 5000,
+    allowFilesystemWrite: false,
+    allowNetworkEgress: false,
+    allowedKnowledgeNamespaces: [],
+    maxConcurrentInvocations: 1,
+    maxQueuedInvocations: 8,
+    runtimeIsolation: "serialized_in_process",
+    cooldownMs: 0,
+    allowedExternalDomains: [],
+    maxResponseSizeBytes: 5 * 1024 * 1024,
+    rateLimitPerMinute: 60,
+    ...overrides,
+  };
+}
 
 test("DomainRegistryService registers, validates, activates, and filters tools", () => {
   const events: string[] = [];
@@ -24,16 +42,10 @@ test("DomainRegistryService registers, validates, activates, and filters tools",
     settingsSchema: {},
     extensionKind: "domain_plugin",
     trustLevel: "trusted",
-    sandbox: {
+    sandbox: makeSandboxPolicy({
       timeoutMs: 1000,
-      allowFilesystemWrite: false,
-      allowNetworkEgress: false,
       allowedKnowledgeNamespaces: [],
-      maxConcurrentInvocations: 1,
-      maxQueuedInvocations: 8,
-      runtimeIsolation: "serialized_in_process",
-      cooldownMs: 0,
-    },
+    }),
   });
 
   const service = new DomainRegistryService({

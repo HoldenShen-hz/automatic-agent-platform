@@ -7,37 +7,61 @@ test("integration: agent rollout, rollback, retirement, and binding gate follow 
   const service = new AgentLifecycleService();
   service.registerAgent({
     agentId: "agent_release_1",
-    displayName: "Release Agent",
+    name: "Release Agent",
     domainId: "engineering_ops",
-    capabilities: ["release", "rollback"],
-    owner: "eng_lead",
+    owner: { path: "eng_lead", orgNodeId: "engineering_ops" },
+    components: {
+      pack: { packId: "pack_ops", version: "1.0.0" },
+      promptBundle: { bundleId: "prompt_ops", version: "1.0.0" },
+      modelBinding: { provider: "anthropic", model: "claude-4", fallbackChain: [] },
+      trustProfile: { initialLevel: "supervised", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
+      triggerSet: [],
+      autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
+    },
     lifecycleState: "canary",
     currentVersionId: "v2",
+    createdAt: "2026-04-19T00:00:00.000Z",
+    updatedAt: "2026-04-19T00:00:00.000Z",
   });
   service.addVersion({
     versionId: "v1",
     agentId: "agent_release_1",
-    promptRefs: ["prompt:v1"],
-    toolBundleRefs: ["tools:v1"],
-    policyRefs: ["policy:v1"],
-    modelProfileRefs: ["model:v1"],
     createdAt: "2026-04-19T00:00:00.000Z",
-    stable: true,
+    semver: "1.0.0",
+    componentSnapshot: {
+      packVersion: "1.0.0",
+      promptBundleVersion: "1.0.0",
+      modelBindingHash: "hash1",
+      trustProfileHash: "hash1",
+      triggerSetHash: "hash1",
+      autonomyConfigHash: "hash1",
+    },
+    createdBy: "eng_lead",
+    releaseNote: "v1 release",
   });
   service.addVersion({
     versionId: "v2",
     agentId: "agent_release_1",
-    promptRefs: ["prompt:v2"],
-    toolBundleRefs: ["tools:v2"],
-    policyRefs: ["policy:v2"],
-    modelProfileRefs: ["model:v2"],
     createdAt: "2026-04-20T00:00:00.000Z",
-    stable: false,
+    semver: "2.0.0",
+    componentSnapshot: {
+      packVersion: "2.0.0",
+      promptBundleVersion: "2.0.0",
+      modelBindingHash: "hash2",
+      trustProfileHash: "hash2",
+      triggerSetHash: "hash2",
+      autonomyConfigHash: "hash2",
+    },
+    createdBy: "eng_lead",
+    releaseNote: "v2 release",
   });
 
   service.promoteCanary("agent_release_1", {
     rolloutPercent: 35,
     successRate: 0.996,
+    latencyP50Ms: 150,
+    errorRate: 0.01,
+    currentStage: 20,
   }, "2026-04-20T01:00:00.000Z");
   const binding = service.bindTask("agent_release_1", "task_release_1", "2026-04-20T01:05:00.000Z");
   assert.equal(binding.versionId, "v2");
@@ -47,7 +71,11 @@ test("integration: agent rollout, rollback, retirement, and binding gate follow 
 
   service.retire({
     agentId: "agent_release_1",
+    reason: "superseded",
     successorAgentId: null,
+    transferItems: ["triggers", "subscriptions", "scheduled_tasks", "ownership"],
+    gracePeriodDays: 30,
+    notificationTargets: ["eng_lead"],
     revokeAt: "2026-04-20T02:00:00.000Z",
   }, "2026-04-20T02:00:00.000Z");
   assert.throws(() => service.bindTask("agent_release_1", "task_release_2"), /binding_forbidden_retired/);

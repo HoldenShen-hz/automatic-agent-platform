@@ -189,8 +189,8 @@ describe("CheckpointEnvelope", () => {
       const checkpoint = createTestCheckpoint();
       const envelope = await createCheckpointEnvelope(checkpoint, "test.v1");
 
-      // Change version to invalid
-      envelope.version = "checkpoint_envelope.v999";
+      // Change version to invalid (cast to bypass type check for testing)
+      (envelope as { version: string }).version = "checkpoint_envelope.v999";
 
       await assert.rejects(
         async () => unpackCheckpointEnvelope(envelope),
@@ -234,7 +234,8 @@ describe("CheckpointEnvelope", () => {
           assert.strictEqual(error.originalSizeBytes > DEFAULT_MAX_CHECKPOINT_SIZE_BYTES, true);
           assert.strictEqual(error.maxSizeBytes, DEFAULT_MAX_CHECKPOINT_SIZE_BYTES);
           assert.ok(error.details);
-          assert.ok(error.details.originalSizeBytes > error.details.maxSizeBytes);
+          const details = error.details as { originalSizeBytes: number; maxSizeBytes: number };
+          assert.ok(details.originalSizeBytes > details.maxSizeBytes);
         } else {
           throw error;
         }
@@ -301,7 +302,7 @@ describe("CheckpointEnvelope", () => {
   describe("wrapWorkflowStepCheckpoint and unwrapWorkflowStepCheckpoint", () => {
     it("should wrap and unwrap workflow step checkpoint", async () => {
       const checkpoint = {
-        schemaVersion: "workflow_step_checkpoint.v1",
+        schemaVersion: "workflow_step_checkpoint.v1" as const,
         taskId: "task-123",
         executionId: "exec-456",
         workflowId: "wf-789",
@@ -431,7 +432,7 @@ describe("CheckpointEnvelope", () => {
       });
 
       const envelope = await createCheckpointEnvelope(checkpointWithNulls, "test.v1");
-      const unpacked = await unpackCheckpointEnvelope(envelope);
+      const unpacked = await unpackCheckpointEnvelope<TestCheckpointData>(envelope);
 
       assert.strictEqual(unpacked.data.executionId, null);
       assert.strictEqual(unpacked.data.decisionContext.routeReason, null);
@@ -453,7 +454,7 @@ describe("CheckpointEnvelope", () => {
       });
 
       const envelope = await createCheckpointEnvelope(checkpointWithArrays, "test.v1");
-      const unpacked = await unpackCheckpointEnvelope(envelope);
+      const unpacked = await unpackCheckpointEnvelope<TestCheckpointData>(envelope);
 
       assert.deepStrictEqual(unpacked.data.decisionContext.priorStepSummaries, []);
       assert.deepStrictEqual(unpacked.data.decisionContext.dependsOnStepIds, []);
