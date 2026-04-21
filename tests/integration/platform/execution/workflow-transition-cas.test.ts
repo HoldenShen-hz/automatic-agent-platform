@@ -26,7 +26,7 @@ function createWorkflowRepository(initial: WorkflowStateRecord, staleReadsRemain
       taskId: string,
       expectedVersion: number,
       expectedStatus: string,
-      status: string,
+      status: WorkflowStateRecord["status"],
       currentStepIndex: number,
       outputsJson: string,
       updatedAt: string,
@@ -37,7 +37,7 @@ function createWorkflowRepository(initial: WorkflowStateRecord, staleReadsRemain
       }
       current = {
         ...current,
-        status,
+        status: status as WorkflowStateRecord["status"],
         currentStepIndex,
         outputsJson,
         updatedAt,
