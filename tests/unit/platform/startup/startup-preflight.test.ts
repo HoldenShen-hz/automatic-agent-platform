@@ -1,57 +1,45 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// Note: startup-preflight.ts does not exist at the expected path
-// The src/platform/startup directory is empty or does not contain startup-preflight.ts
-// This test file documents the expected behavior based on the task description
+import {
+  buildDefaultStartupConfigValidator,
+  buildEnvironmentProviderReadinessProbe,
+  createDefaultStartupConsistencyCheckerOptions,
+  deriveProviderApiKeyEnvName,
+  deriveProviderApiKeySecretRefEnvNameForStartup,
+  deriveProviderApiKeySecretRefsJsonEnvNameForStartup,
+  deriveProviderApiKeysJsonEnvNameForStartup,
+} from "../../../../src/platform/execution/startup/startup-preflight.js";
 
-// Import from the actual location to verify whether the module exists
-// If it doesn't exist, we create tests for what should exist based on the task description
-
-// Since src/platform/startup/ directory appears to be empty or non-existent,
-// we cannot create tests for startup-preflight.ts at this time.
-// This test file is a placeholder that will fail until the module is created.
-
-test("startup-preflight module exists", async () => {
-  // Dynamically try to import to check if module exists
-  let moduleExists = false;
-  try {
-    const mod = await import("../../../../../src/platform/execution/startup/startup-preflight.js");
-    moduleExists = mod !== null && typeof mod === "object";
-  } catch {
-    moduleExists = false;
-  }
-
-  // This test will fail until the module is created
-  assert.ok(moduleExists, "startup-preflight.ts module should exist at src/platform/startup/startup-preflight.ts");
+test("startup-preflight module exists and exports expected functions", async () => {
+  assert.ok(typeof buildDefaultStartupConfigValidator === "function", "Should export buildDefaultStartupConfigValidator function");
+  assert.ok(typeof buildEnvironmentProviderReadinessProbe === "function", "Should export buildEnvironmentProviderReadinessProbe function");
+  assert.ok(typeof createDefaultStartupConsistencyCheckerOptions === "function", "Should export createDefaultStartupConsistencyCheckerOptions function");
+  assert.ok(typeof deriveProviderApiKeyEnvName === "function", "Should export deriveProviderApiKeyEnvName function");
+  assert.ok(typeof deriveProviderApiKeysJsonEnvNameForStartup === "function", "Should export deriveProviderApiKeysJsonEnvNameForStartup function");
+  assert.ok(typeof deriveProviderApiKeySecretRefEnvNameForStartup === "function", "Should export deriveProviderApiKeySecretRefEnvNameForStartup function");
+  assert.ok(typeof deriveProviderApiKeySecretRefsJsonEnvNameForStartup === "function", "Should export deriveProviderApiKeySecretRefsJsonEnvNameForStartup function");
 });
 
-test("startup-preflight exports startup validation function", async () => {
-  try {
-    const mod = await import("../../../../../src/platform/execution/startup/startup-preflight.js");
-    assert.ok(typeof mod.runStartupPreflightChecks === "function", "Should export runStartupPreflightChecks function");
-  } catch {
-    assert.fail("startup-preflight module should be importable");
-  }
+test("deriveProviderApiKeyEnvName returns expected env var name", () => {
+  const result = deriveProviderApiKeyEnvName("test-provider");
+  assert.ok(typeof result === "string", "Should return a string");
+  assert.ok(result.includes("test-provider"), "Should contain provider ID");
 });
 
-test("startup-preflight exports health check function", async () => {
-  try {
-    const mod = await import("../../../../../src/platform/execution/startup/startup-preflight.js");
-    assert.ok(typeof mod.performHealthCheck === "function" || typeof mod.runHealthChecks === "function",
-      "Should export health check function");
-  } catch {
-    assert.fail("startup-preflight module should be importable");
-  }
+test("buildDefaultStartupConfigValidator returns a function", () => {
+  const validator = buildDefaultStartupConfigValidator();
+  assert.ok(typeof validator === "function", "Should return a validator function");
 });
 
-test("startup-preflight exports validation result type", async () => {
-  try {
-    const mod = await import("../../../../../src/platform/execution/startup/startup-preflight.js");
-    // Check if there's a type or interface for validation results
-    assert.ok(mod.ValidationResult || mod.PreflightResult || mod.StartupCheckResult,
-      "Should export validation result type");
-  } catch {
-    assert.fail("startup-preflight module should be importable");
-  }
+test("buildEnvironmentProviderReadinessProbe returns a function", () => {
+  const probe = buildEnvironmentProviderReadinessProbe();
+  assert.ok(typeof probe === "function", "Should return a probe function");
+});
+
+test("createDefaultStartupConsistencyCheckerOptions returns an options object", () => {
+  const options = createDefaultStartupConsistencyCheckerOptions();
+  assert.ok(options !== null && typeof options === "object", "Should return an options object");
+  assert.ok(typeof options.configValidator === "function", "Should have configValidator function");
+  assert.ok(typeof options.providerReadinessProbe === "function", "Should have providerReadinessProbe function");
 });

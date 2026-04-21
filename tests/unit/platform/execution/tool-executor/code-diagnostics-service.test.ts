@@ -44,7 +44,7 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
         tsCalls += 1;
         assert.equal(filePaths.length, 1);
         assert.equal(basename(filePaths[0] ?? ""), "demo.ts");
-        return [{
+        return Promise.resolve([{
           language: "typescript",
           severity: "warning",
           filePath: tsFile,
@@ -53,13 +53,13 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
           source: "typescript",
           line: 1,
           column: 1,
-        }];
+        }]);
       },
       runPython: ({ filePaths }) => {
         pyCalls += 1;
         assert.equal(filePaths.length, 1);
         assert.equal(basename(filePaths[0] ?? ""), "demo.py");
-        return [{
+        return Promise.resolve([{
           language: "python",
           severity: "error",
           filePath: pyFile,
@@ -68,7 +68,7 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
           source: "py_compile",
           line: 1,
           column: null,
-        }];
+        }]);
       },
     });
 

@@ -181,8 +181,8 @@ test("deployment execution revokes issued managed secret leases when command exe
         },
       }),
       commandRunner: {
-        run(request): DeploymentCommandResult {
-          return {
+        run(request): Promise<DeploymentCommandResult> {
+          return Promise.resolve({
             step: request.step,
             command: request.command,
             args: request.args,
@@ -191,7 +191,7 @@ test("deployment execution revokes issued managed secret leases when command exe
             stdout: "",
             stderr: "failed",
             durationMs: 1,
-          };
+          });
         },
       },
     });

@@ -26,16 +26,9 @@ import type {
   TaskTerminalStatus,
 } from "../../contracts/types/status.js";
 import type {
-  TakeoverSessionRecord,
-} from "../../contracts/types/domain.js";
-import type {
-  ExecutionRecord,
-  OperatorActionType,
   StepOutputRecord,
-  TaskSnapshot,
 } from "../../contracts/types/domain.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
-import { AppError, StorageError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { HumanTakeoverService, type TakeoverActionResult } from "./human-takeover-service.js";
 import { TakeoverQueueManager, type TakeoverQueueConfig } from "./takeover-queue-manager.js";
@@ -352,53 +345,6 @@ export class HumanTakeoverServiceAsync {
     );
   }
 
-  /**
-   * C-11: Evict expired session entries to prevent memory leaks.
-   * Note: We don't evict activeTimeouts/escalationTimers as they are cleared on timeout,
-   * but we do evict ackStatuses and escalationPolicies.
-   */
-  private evictExpiredSessionEntries(): void {
-    const now = Date.now();
-    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
-      return;
-    }
-    this.lastEvictionTime = now;
-
-    const expiryThreshold = now - this.SESSION_TTL_MS;
-    const entriesToDelete: string[] = [];
-
-    // Find expired ackStatuses
-    for (const [sessionId, status] of this.ackStatuses) {
-      if (status.acknowledgedAt) {
-        const ackTime = new Date(status.acknowledgedAt).getTime();
-        if (ackTime < expiryThreshold) {
-          entriesToDelete.push(sessionId);
-        }
-      }
-    }
-
-    for (const sessionId of entriesToDelete) {
-      this.ackStatuses.delete(sessionId);
-      this.escalationPolicies.delete(sessionId);
-    }
-
-    // If still over capacity, remove oldest entries
-    if (this.ackStatuses.size > this.MAX_SESSION_ENTRIES) {
-      const sortedEntries = [...this.ackStatuses.entries()].sort((a, b) => {
-        const aTime = a[1].acknowledgedAt ? new Date(a[1].acknowledgedAt!).getTime() : 0;
-        const bTime = b[1].acknowledgedAt ? new Date(b[1].acknowledgedAt!).getTime() : 0;
-        return aTime - bTime;
-      });
-
-      const toRemove = this.ackStatuses.size - this.MAX_SESSION_ENTRIES;
-      for (let i = 0; i < toRemove; i++) {
-        const sessionId = sortedEntries[i]![0];
-        this.ackStatuses.delete(sessionId);
-        this.escalationPolicies.delete(sessionId);
-      }
-    }
-  }
-
   // -------------------------------------------------------------------------
   // Queue Management
   // -------------------------------------------------------------------------
@@ -406,9 +352,6 @@ export class HumanTakeoverServiceAsync {
   /**
    * Enqueues a takeover request for async processing.
    * Returns the request ID for tracking.
-   *
-   * @param request - The takeover request to enqueue
-   * @returns The enqueued request entry with requestId
    */
   public enqueueTakeoverRequest(request: {
     taskId: string;
@@ -418,64 +361,21 @@ export class HumanTakeoverServiceAsync {
     payload: TakeoverRequestPayload;
     priority?: number;
   }): TakeoverRequestEntry {
-    if (this.pendingQueue.length >= this.config.maxQueueDepth) {
-      throw new StorageError(
-        "takeover.queue_full",
-        "Takeover request queue is full",
-        { statusCode: 503, retryable: true, details: { maxQueueDepth: this.config.maxQueueDepth } },
-      );
-    }
-
-    const requestId = newId("tkrq");
-    const entry: TakeoverRequestEntry = {
-      requestId,
-      taskId: request.taskId,
-      operatorId: request.operatorId,
-      reasonCode: request.reasonCode,
-      actionType: request.actionType,
-      enqueuedAt: nowIso(),
-      priority: request.priority ?? this.config.defaultPriority,
-      payload: request.payload,
-      status: "pending",
-      attempts: 0,
-    };
-
-    // Insert sorted by priority
-    const insertIndex = this.pendingQueue.findIndex((e) => e.priority > entry.priority);
-    if (insertIndex === -1) {
-      this.pendingQueue.push(entry);
-    } else {
-      this.pendingQueue.splice(insertIndex, 0, entry);
-    }
-
-    this.emit("takeover:request_enqueued", {
-      requestId: entry.requestId,
-      taskId: entry.taskId,
-      actionType: entry.actionType,
-      priority: entry.priority,
-    });
-
-    this.logger.log({
-      level: "debug",
-      message: "takeover.request_enqueued",
-      data: { requestId, taskId: request.taskId, actionType: request.actionType },
-    });
-
-    return entry;
+    return this.queueManager.enqueue(request);
   }
 
   /**
    * Gets the current depth of the pending queue.
    */
   public getQueueDepth(): number {
-    return this.pendingQueue.length;
+    return this.queueManager.getQueueDepth();
   }
 
   /**
    * Gets all pending requests without removing them.
    */
   public getPendingRequests(): TakeoverRequestEntry[] {
-    return [...this.pendingQueue];
+    return this.queueManager.getPendingRequests();
   }
 
   /**
@@ -483,32 +383,16 @@ export class HumanTakeoverServiceAsync {
    * Returns true if the request was found and cancelled.
    */
   public cancelRequest(requestId: string): boolean {
-    const entry = this.pendingQueue.find((e) => e.requestId === requestId);
-    if (!entry || entry.status !== "pending") return false;
-
-    entry.status = "cancelled";
-    const idx = this.pendingQueue.indexOf(entry);
-    if (idx !== -1) this.pendingQueue.splice(idx, 1);
-
-    this.logger.log({
-      level: "info",
-      message: "takeover.request_cancelled",
-      data: { requestId, taskId: entry.taskId },
-    });
-
-    return true;
+    return this.queueManager.cancel(requestId);
   }
 
   // -------------------------------------------------------------------------
-  // Async Action Wrappers (sync service calls wrapped in Promises)
+  // Async Action Wrappers
   // -------------------------------------------------------------------------
 
   /**
    * Opens a new takeover session asynchronously.
    * Enqueues the request for async processing and returns immediately.
-   *
-   * @param input - Session open parameters
-   * @returns The enqueued request entry
    */
   public openSessionAsync(input: {
     taskId: string;
@@ -533,10 +417,9 @@ export class HumanTakeoverServiceAsync {
 
   /**
    * Processes a single takeover request synchronously.
-   * Called by the processing loop; can also be called directly for synchronous paths.
    */
   public processRequest(requestId: string): TakeoverRequestResult {
-    const entry = this.pendingQueue.find((e) => e.requestId === requestId);
+    const entry = this.queueManager.findPending(requestId);
     if (!entry) {
       return { requestId, success: false, processedAt: nowIso(), error: "Request not found" };
     }
@@ -556,9 +439,8 @@ export class HumanTakeoverServiceAsync {
         return { requestId, success: false, processedAt: nowIso(), error: "Unknown action type" };
       }
 
-      // Handle post-action tracking for specific action types
       if (entry.actionType === "open_session") {
-        this.startSessionTracking(result.takeoverSessionId, entry.taskId);
+        this.escalationManager.startSessionTracking(result.takeoverSessionId, entry.taskId);
         this.emit("takeover:session_opened", {
           sessionId: result.takeoverSessionId,
           taskId: entry.taskId,
@@ -568,7 +450,7 @@ export class HumanTakeoverServiceAsync {
         });
       } else if (entry.actionType === "complete_task") {
         const p = entry.payload as CompleteTaskPayload;
-        this.stopSessionTracking(p.sessionId);
+        this.escalationManager.stopSessionTracking(p.sessionId);
         this.emit("takeover:completed", {
           sessionId: p.sessionId,
           taskId: entry.taskId,
@@ -578,8 +460,7 @@ export class HumanTakeoverServiceAsync {
       }
 
       entry.status = "completed";
-      const idx = this.pendingQueue.indexOf(entry);
-      if (idx !== -1) this.pendingQueue.splice(idx, 1);
+      this.queueManager.removeEntry(requestId);
 
       this.emit("takeover:request_processed", {
         requestId: entry.requestId,
@@ -601,8 +482,7 @@ export class HumanTakeoverServiceAsync {
       entry.status = entry.attempts >= this.config.timeoutConfig.maxRetries ? "failed" : "pending";
 
       if (entry.attempts >= this.config.timeoutConfig.maxRetries) {
-        const idx = this.pendingQueue.indexOf(entry);
-        if (idx !== -1) this.pendingQueue.splice(idx, 1);
+        this.queueManager.removeEntry(requestId);
       }
 
       this.emit("takeover:request_processed", {
@@ -699,8 +579,7 @@ export class HumanTakeoverServiceAsync {
         });
 
       case "acknowledge_takeover":
-        // Acknowledgment is handled by the async service
-        this.acknowledgeSession(p.sessionId, p.operatorId);
+        this.escalationManager.acknowledgeSession(p.sessionId, p.operatorId, entry.taskId);
         return {
           taskId: entry.taskId,
           executionId: null,
@@ -715,242 +594,36 @@ export class HumanTakeoverServiceAsync {
 
   /**
    * Processes the next pending request from the queue.
-   * Returns null if queue is empty.
    */
   public processNextRequest(): TakeoverRequestResult | null {
-    const next = this.pendingQueue.find((e) => e.status === "pending");
+    const next = this.queueManager.findNextPending();
     if (!next) return null;
     return this.processRequest(next.requestId);
   }
 
   // -------------------------------------------------------------------------
-  // Timeout and Escalation Management
+  // Escalation Management (delegated to TakeoverEscalationManager)
   // -------------------------------------------------------------------------
 
   /**
-   * Starts timeout and escalation tracking for a newly opened session.
+   * Acknowledges a takeover session — operator is now actively working.
    */
-  private startSessionTracking(sessionId: string, taskId: string): void {
-    // Set up session timeout
-    this.startTimeoutTimer(sessionId, taskId, this.config.timeoutConfig.defaultTimeoutMs);
-
-    // Set up escalation tracking
-    this.initializeEscalationPolicy(sessionId, taskId);
+  public acknowledgeSession(sessionId: string, operatorId: string): AckResult {
+    return this.escalationManager.acknowledgeSession(sessionId, operatorId, "");
   }
 
   /**
-   * Stops all tracking (timeout and escalation) for a session.
+   * Gets the acknowledgment status for a session.
    */
-  private stopSessionTracking(sessionId: string): void {
-    const timeout = this.activeTimeouts.get(sessionId);
-    if (timeout) {
-      clearTimeout(timeout);
-      this.activeTimeouts.delete(sessionId);
-    }
-
-    const escalation = this.escalationTimers.get(sessionId);
-    if (escalation) {
-      clearTimeout(escalation);
-      this.escalationTimers.delete(sessionId);
-    }
-
-    this.ackStatuses.delete(sessionId);
-    this.escalationPolicies.delete(sessionId);
+  public getAcknowledgmentStatus(sessionId: string): TakeoverAckStatus | null {
+    return this.escalationManager.getAcknowledgmentStatus(sessionId);
   }
 
   /**
-   * Starts a timeout timer for a takeover session.
-   * If the timeout expires before acknowledgment, the session is escalated.
+   * Extends the acknowledgment deadline for an active session.
    */
-  private startTimeoutTimer(sessionId: string, taskId: string, durationMs: number): void {
-    // Clear any existing timer
-    const existing = this.activeTimeouts.get(sessionId);
-    if (existing) clearTimeout(existing);
-
-    const timeout = setTimeout(() => {
-      this.handleSessionTimeout(sessionId, taskId);
-    }, durationMs);
-
-    this.activeTimeouts.set(sessionId, timeout);
-
-    this.logger.log({
-      level: "debug",
-      message: "takeover.timeout_started",
-      data: { sessionId, taskId, durationMs },
-    });
-  }
-
-  /**
-   * Handles session timeout — escalates or auto-expires.
-   */
-  private handleSessionTimeout(sessionId: string, taskId: string): void {
-    this.activeTimeouts.delete(sessionId);
-
-    const ackStatus = this.ackStatuses.get(sessionId);
-    const isAcknowledged = ackStatus?.status === "acknowledged";
-
-    if (!isAcknowledged) {
-      // Session timed out without acknowledgment — escalate
-      this.emit("takeover:timeout", {
-        sessionId,
-        taskId,
-        reason: "Session expired without operator acknowledgment",
-        timedOutAt: nowIso(),
-      });
-
-      // Auto-escalate
-      this.escalateSession(sessionId, taskId, "timeout").catch((err) => {
-        this.logger.log({
-          level: "error",
-          message: "takeover.escalation_failed",
-          data: { sessionId, error: err instanceof Error ? err.message : String(err) },
-        });
-      });
-    }
-  }
-
-  /**
-   * Initializes escalation policy for a new session.
-   */
-  private initializeEscalationPolicy(sessionId: string, taskId: string): void {
-    const policy: EscalationPolicy = {
-      sessionId,
-      currentLevel: "operator",
-      escalationHistory: [],
-      nextEscalationAt: null,
-    };
-
-    this.escalationPolicies.set(sessionId, policy);
-
-    // Set up the first escalation check
-    this.scheduleEscalationCheck(sessionId, taskId);
-
-    this.logger.log({
-      level: "debug",
-      message: "takeover.escalation_initialized",
-      data: { sessionId, initialLevel: "operator" },
-    });
-  }
-
-  /**
-   * Schedules the next escalation check.
-   */
-  private scheduleEscalationCheck(sessionId: string, taskId: string): void {
-    const existing = this.escalationTimers.get(sessionId);
-    if (existing) clearTimeout(existing);
-
-    const timer = setTimeout(async () => {
-      await this.checkEscalation(sessionId, taskId);
-    }, this.config.timeoutConfig.escalationCheckIntervalMs);
-
-    this.escalationTimers.set(sessionId, timer);
-  }
-
-  /**
-   * Checks if a session needs escalation and performs it if so.
-   */
-  private async checkEscalation(sessionId: string, taskId: string): Promise<void> {
-    const policy = this.escalationPolicies.get(sessionId);
-    if (!policy) return;
-
-    const ackStatus = this.ackStatuses.get(sessionId);
-    const now = new Date();
-
-    // Check if acknowledgment has expired
-    if (ackStatus?.expiresAt && new Date(ackStatus.expiresAt) <= now) {
-      ackStatus.status = "expired";
-      this.emit("takeover:ack_expired", {
-        sessionId,
-        taskId,
-        expiredAt: nowIso(),
-      });
-    }
-
-    // Determine if escalation is needed based on current level and time
-    if (ackStatus?.status === "pending" || ackStatus?.status === "expired") {
-      await this.escalateSession(sessionId, taskId, "no_acknowledgment");
-    } else {
-      // Reschedule if session is still active
-      this.scheduleEscalationCheck(sessionId, taskId);
-    }
-  }
-
-  /**
-   * Escalates a takeover session to the next level.
-   */
-  private async escalateSession(
-    sessionId: string,
-    taskId: string,
-    reason: string,
-  ): Promise<void> {
-    const policy = this.escalationPolicies.get(sessionId);
-    if (!policy) return;
-
-    const previousLevel = policy.currentLevel;
-    const nextLevel = this.getNextEscalationLevel(previousLevel);
-
-    policy.escalationHistory.push({
-      level: nextLevel,
-      reason,
-      timestamp: nowIso(),
-      target: null,
-    });
-    policy.currentLevel = nextLevel;
-
-    // Determine next escalation time based on level
-    const escalationDelayMs = this.getEscalationDelayForLevel(nextLevel);
-    if (escalationDelayMs > 0) {
-      policy.nextEscalationAt = new Date(Date.now() + escalationDelayMs).toISOString();
-    } else {
-      policy.nextEscalationAt = null;
-    }
-
-    this.emit("takeover:escalated", {
-      sessionId,
-      taskId,
-      fromLevel: previousLevel,
-      toLevel: nextLevel,
-      reason,
-      escalatedAt: nowIso(),
-    });
-
-    this.logger.log({
-      level: "warn",
-      message: "takeover.session_escalated",
-      data: { sessionId, taskId, fromLevel: previousLevel, toLevel: nextLevel, reason },
-    });
-
-    // If not terminal level, schedule next check
-    if (nextLevel !== "auto_close") {
-      this.scheduleEscalationCheck(sessionId, taskId);
-    } else {
-      // Auto-close: complete the session
-      await this.handleAutoClose(sessionId, taskId);
-    }
-  }
-
-  /**
-   * Gets the next escalation level given the current level.
-   */
-  private getNextEscalationLevel(current: EscalationLevel): EscalationLevel {
-    switch (current) {
-      case "operator": return "supervisor";
-      case "supervisor": return "admin";
-      case "admin": return "auto_close";
-      case "auto_close": return "auto_close";
-    }
-  }
-
-  /**
-   * Gets the escalation delay in ms for a given level.
-   */
-  private getEscalationDelayForLevel(level: EscalationLevel): number {
-    switch (level) {
-      case "operator": return this.config.timeoutConfig.defaultTimeoutMs;
-      case "supervisor": return this.config.timeoutConfig.defaultTimeoutMs * 2;
-      case "admin": return this.config.timeoutConfig.defaultTimeoutMs * 4;
-      case "auto_close": return 0;
-    }
+  public extendAcknowledgment(sessionId: string, additionalMs?: number): AckResult {
+    return this.escalationManager.extendAcknowledgment(sessionId, additionalMs);
   }
 
   /**
@@ -972,7 +645,7 @@ export class HumanTakeoverServiceAsync {
         cancelledAt: nowIso(),
       });
 
-      this.stopSessionTracking(sessionId);
+      this.escalationManager.stopSessionTracking(sessionId);
     } catch (err) {
       this.logger.log({
         level: "error",
@@ -980,110 +653,6 @@ export class HumanTakeoverServiceAsync {
         data: { sessionId, error: err instanceof Error ? err.message : String(err) },
       });
     }
-  }
-
-  // -------------------------------------------------------------------------
-  // Acknowledgment Management
-  // -------------------------------------------------------------------------
-
-  /**
-   * Acknowledges a takeover session — operator is now actively working.
-   */
-  public acknowledgeSession(sessionId: string, operatorId: string): AckResult {
-    const existing = this.ackStatuses.get(sessionId);
-    const previousStatus = existing?.status ?? "pending";
-    const now = nowIso();
-    const expiresAt = new Date(Date.now() + this.config.timeoutConfig.acknowledgmentTimeoutMs).toISOString();
-
-    const ackStatus: TakeoverAckStatus = {
-      sessionId,
-      acknowledgedAt: now,
-      expiresAt,
-      status: "acknowledged",
-      acknowledgedBy: operatorId,
-    };
-
-    this.ackStatuses.set(sessionId, ackStatus);
-
-    // Extend the session timeout
-    this.startTimeoutTimer(sessionId, "", this.config.timeoutConfig.acknowledgmentTimeoutMs);
-
-    const policy = this.escalationPolicies.get(sessionId);
-    if (policy) {
-      policy.escalationHistory.push({
-        level: policy.currentLevel,
-        reason: "acknowledged",
-        timestamp: now,
-        target: operatorId,
-      });
-    }
-
-    this.emit("takeover:acknowledged", {
-      sessionId,
-      taskId: "", // TaskId resolved from session lookup if needed
-      operatorId,
-      acknowledgedAt: now,
-      expiresAt,
-    });
-
-    this.logger.log({
-      level: "info",
-      message: "takeover.session_acknowledged",
-      data: { sessionId, operatorId, expiresAt },
-    });
-
-    return { sessionId, acknowledged: true, acknowledgedAt: now, expiresAt, previousStatus };
-  }
-
-  /**
-   * Gets the acknowledgment status for a session.
-   */
-  public getAcknowledgmentStatus(sessionId: string): TakeoverAckStatus | null {
-    const status = this.ackStatuses.get(sessionId);
-
-    // Check if the acknowledgment has expired
-    if (status?.status === "acknowledged" && status.expiresAt) {
-      if (new Date(status.expiresAt) <= new Date()) {
-        return { ...status, status: "expired" };
-      }
-    }
-
-    return status ?? null;
-  }
-
-  /**
-   * Extends the acknowledgment deadline for an active session.
-   */
-  public extendAcknowledgment(sessionId: string, additionalMs?: number): AckResult {
-    const status = this.ackStatuses.get(sessionId);
-    if (!status || status.status !== "acknowledged") {
-      throw new WorkflowStateError(
-        "takeover.ack_not_found",
-        "Acknowledgment not found or not active",
-        { details: { sessionId, status: status?.status ?? "not_found" } },
-      );
-    }
-
-    const extensionMs = additionalMs ?? this.config.timeoutConfig.acknowledgmentTimeoutMs;
-    const newExpiresAt = new Date(Date.now() + extensionMs).toISOString();
-    status.expiresAt = newExpiresAt;
-
-    // Restart the timeout timer
-    this.startTimeoutTimer(sessionId, "", extensionMs);
-
-    this.logger.log({
-      level: "info",
-      message: "takeover.ack_extended",
-      data: { sessionId, newExpiresAt },
-    });
-
-    return {
-      sessionId,
-      acknowledged: true,
-      acknowledgedAt: status.acknowledgedAt ?? nowIso(),
-      expiresAt: newExpiresAt,
-      previousStatus: status.status,
-    };
   }
 
   // -------------------------------------------------------------------------
@@ -1143,7 +712,6 @@ export class HumanTakeoverServiceAsync {
 
   /**
    * Starts the background processing loop.
-   * Processes pending requests with the configured concurrency.
    */
   public startProcessingLoop(): void {
     if (this.processingLoopActive) return;
@@ -1153,18 +721,16 @@ export class HumanTakeoverServiceAsync {
     const loop = async (): Promise<void> => {
       while (this.processingLoopActive && !this.abortController.signal.aborted) {
         try {
-          // Process up to concurrency requests per tick
           let processed = 0;
           while (
             processed < this.config.processingConcurrency &&
-            this.pendingQueue.some((e) => e.status === "pending")
+            this.queueManager.getQueueDepth() > 0
           ) {
             const result = this.processNextRequest();
             if (!result) break;
             processed++;
           }
 
-          // Yield to the event loop
           await new Promise((resolve) => setImmediate(resolve));
         } catch (err) {
           this.logger.log({
@@ -1173,13 +739,11 @@ export class HumanTakeoverServiceAsync {
             data: { error: err instanceof Error ? err.message : String(err) },
           });
 
-          // Back off on error
           await new Promise((resolve) => setTimeout(resolve, this.config.backoffDelayMs));
         }
       }
     };
 
-    // Start the loop asynchronously
     loop().catch((err) => {
       this.logger.log({
         level: "error",
@@ -1200,27 +764,19 @@ export class HumanTakeoverServiceAsync {
     this.processingLoopActive = false;
     this.abortController.abort();
 
-    // Wait for current processing to complete (with timeout)
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Clear all timers
-    for (const timeout of this.activeTimeouts.values()) {
-      clearTimeout(timeout);
-    }
-    for (const timer of this.escalationTimers.values()) {
-      clearTimeout(timer);
-    }
+    this.escalationManager.clearAllTimers();
 
     this.logger.log({ level: "info", message: "takeover.processing_loop_stopped" });
   }
 
   // -------------------------------------------------------------------------
-  // Direct Sync Access (delegated to underlying sync service)
+  // Direct Sync Access
   // -------------------------------------------------------------------------
 
   /**
    * Gets the synchronous service instance for internal use.
-   * @internal
    */
   public getSyncService(): HumanTakeoverService {
     return this.sync;

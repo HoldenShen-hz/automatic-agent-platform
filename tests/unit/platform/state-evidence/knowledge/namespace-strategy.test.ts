@@ -174,8 +174,8 @@ test("detectPathConflicts finds exact match", () => {
   const conflicts = store.detectPathConflicts("exact.match");
 
   assert.equal(conflicts.length, 1);
-  assert.equal(conflicts[0].overlapType, "exact");
-  assert.equal(conflicts[0].resolution, "reject");
+  assert.equal(conflicts[0]?.overlapType, "exact");
+  assert.equal(conflicts[0]?.resolution, "reject");
 });
 
 test("detectPathConflicts finds prefix conflict", () => {
@@ -185,7 +185,7 @@ test("detectPathConflicts finds prefix conflict", () => {
   const conflicts = store.detectPathConflicts("parent.path.child");
 
   assert.equal(conflicts.length, 1);
-  assert.equal(conflicts[0].overlapType, "prefix");
+  assert.equal(conflicts[0]?.overlapType, "prefix");
 });
 
 test("detectPathConflicts finds sibling conflict", () => {
@@ -195,8 +195,8 @@ test("detectPathConflicts finds sibling conflict", () => {
   const conflicts = store.detectPathConflicts("sibling.parent.second");
 
   assert.equal(conflicts.length, 1);
-  assert.equal(conflicts[0].overlapType, "sibling");
-  assert.equal(conflicts[0].resolution, "allow");
+  assert.equal(conflicts[0]?.overlapType, "sibling");
+  assert.equal(conflicts[0]?.resolution, "allow");
 });
 
 test("detectPathConflicts returns empty for unrelated paths", () => {
@@ -416,11 +416,11 @@ test("Strict isolation affects prefix conflict resolution", () => {
 
   // Normal mode: allow prefix conflicts
   assert.equal(conflictsNormal.length, 1);
-  assert.equal(conflictsNormal[0].resolution, "allow");
+  assert.equal(conflictsNormal[0]?.resolution, "allow");
 
   // Strict mode: reject prefix conflicts
   assert.equal(conflictsStrict.length, 1);
-  assert.equal(conflictsStrict[0].resolution, "reject");
+  assert.equal(conflictsStrict[0]?.resolution, "reject");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

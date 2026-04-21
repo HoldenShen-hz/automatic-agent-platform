@@ -101,7 +101,7 @@ export class AsyncExecutionRepository {
       return [];
     }
     const placeholders = statuses.map((_, i) => `$${1 + i}`).join(",");
-    const sql = `SELECT
+    let sql = `SELECT
         id, task_id AS "taskId", workflow_id AS "workflowId", parent_execution_id AS "parentExecutionId",
         agent_id AS "agentId", role_id AS "roleId", run_kind AS "runKind", status,
         input_ref AS "inputRef", trace_id AS "traceId", attempt, timeout_ms AS "timeoutMs",

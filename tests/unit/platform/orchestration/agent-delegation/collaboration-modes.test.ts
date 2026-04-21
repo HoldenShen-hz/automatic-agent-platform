@@ -144,7 +144,7 @@ class CollaborationModeService {
       agentType,
       payload,
       confidence: normalizedConfidence,
-      reasoning,
+      ...(reasoning !== undefined && { reasoning }),
     });
     return proposalId;
   }
@@ -446,7 +446,7 @@ test("CollaborationModeService handles pipeline with input transform", () => {
   service.advancePipelineStage(collaborationId, { result: { original: "data" } });
 
   const state = service.getPipelineState(collaborationId);
-  assert.ok(state?.stages[0].output !== undefined);
+  assert.ok(state?.stages[0]?.output !== undefined);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -665,7 +665,7 @@ test("CollaborationModeService marks failed collaboration", () => {
 
   assert.equal(result.status, "failed");
   assert.equal(result.errors.length, 1);
-  assert.ok(result.errors[0].includes("timeout"));
+  assert.ok(result.errors[0]?.includes("timeout"));
 });
 
 test("CollaborationModeService returns null for non-existent collaboration", () => {
