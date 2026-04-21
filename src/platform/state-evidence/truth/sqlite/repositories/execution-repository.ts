@@ -98,12 +98,12 @@ export class ExecutionRepository {
     return queryAll<ExecutionRecord>(this.conn, sql, ...(scopedTenantId !== undefined ? [taskId, scopedTenantId] : [taskId]));
   }
 
-  public listExecutionsByStatuses(statuses: string[], limit?: number): ExecutionRecord[] {
+  public listExecutionsByStatuses(statuses: string[], limit?: number, cursor?: string | null): ExecutionRecord[] {
     if (statuses.length === 0) {
       return [];
     }
     const placeholders = statuses.map(() => "?").join(",");
-    const sql = `SELECT
+    let sql = `SELECT
         id, task_id AS taskId, workflow_id AS workflowId, parent_execution_id AS parentExecutionId,
         agent_id AS agentId, role_id AS roleId, run_kind AS runKind, status,
         input_ref AS inputRef, trace_id AS traceId, attempt, timeout_ms AS timeoutMs,
@@ -113,10 +113,18 @@ export class ExecutionRepository {
         retry_backoff AS retryBackoff, last_error_code AS lastErrorCode,
         last_error_message AS lastErrorMessage, started_at AS startedAt,
         finished_at AS finishedAt, created_at AS createdAt, updated_at AS updatedAt
-       FROM executions WHERE status IN (${placeholders}) ORDER BY created_at DESC${
-         limit ? ` LIMIT ${limit}` : ""
-       }`;
-    return queryAll<ExecutionRecord>(this.conn, sql, ...statuses);
+       FROM executions WHERE status IN (${placeholders})`;
+    const params: (string | number)[] = [...statuses];
+    if (cursor !== undefined && cursor !== null) {
+      sql += ` AND created_at < ?`;
+      params.push(cursor);
+    }
+    sql += ` ORDER BY created_at DESC, id DESC`;
+    if (typeof limit === "number") {
+      sql += ` LIMIT ${limit}`;
+      params.push(limit);
+    }
+    return queryAll<ExecutionRecord>(this.conn, sql, ...params);
   }
 
   public updateExecutionStatus(

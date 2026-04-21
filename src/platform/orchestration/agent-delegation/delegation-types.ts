@@ -35,6 +35,38 @@ export interface PermissionConstraints {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// JSON Schema Types (for tool input/output)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A single property within a JSON Schema definition.
+ * Supports the property types commonly used in tool schema definitions.
+ */
+export interface ToolSchemaProperty {
+  readonly type?: "string" | "number" | "boolean" | "array" | "object";
+  readonly description?: string;
+  readonly minLength?: number;
+  readonly maximum?: number;
+  readonly enum?: readonly string[];
+  readonly items?: ToolSchemaProperty;
+  readonly additionalProperties?: boolean | ToolSchemaProperty;
+}
+
+/**
+ * JSON Schema definition for tool input/output validation.
+ * Used to define the expected structure of delegation tool schemas.
+ * Extends Record<string, unknown> for compatibility with code expecting
+ * loose object schemas while providing typed property access.
+ */
+export interface ToolSchema extends Record<string, unknown> {
+  readonly type?: "object";
+  readonly properties?: Readonly<Record<string, ToolSchemaProperty>>;
+  readonly required?: readonly string[];
+  readonly additionalProperties?: boolean;
+  readonly description?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Delegation Specification Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -44,8 +76,8 @@ export interface DelegationSpec {
   targetPackId: string;
   requiredPermissions: PermissionSet;
   timeout: number; // milliseconds
-  inputSchema?: Record<string, unknown>;
-  outputSchema?: Record<string, unknown>;
+  inputSchema?: ToolSchema;
+  outputSchema?: ToolSchema;
   // Collaboration modes
   collaborationMode?: "pipeline" | "negotiation";
   pipelineStages?: PipelineStageDefinition[];

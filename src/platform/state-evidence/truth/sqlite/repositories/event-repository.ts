@@ -129,10 +129,8 @@ export class EventRepository {
       );
   }
 
-  public listEventDeadLetters(limit: number = 100): EventDeadLetterRecord[] {
-    return queryAll<EventDeadLetterRecord>(
-      this.conn,
-      `SELECT
+  public listEventDeadLetters(limit: number = 100, cursor?: string | null): EventDeadLetterRecord[] {
+    let sql = `SELECT
         id,
         original_event_id AS originalEventId,
         event_type AS eventType,
@@ -143,11 +141,15 @@ export class EventRepository {
         dead_lettered_at AS deadLetteredAt,
         reprocessed_at AS reprocessedAt,
         reprocess_result AS reprocessResult
-       FROM event_dead_letters
-       ORDER BY dead_lettered_at DESC
-       LIMIT ?`,
-      limit,
-    );
+       FROM event_dead_letters`;
+    const params: (string | number)[] = [];
+    if (cursor !== undefined && cursor !== null) {
+      sql += ` WHERE dead_lettered_at < ?`;
+      params.push(cursor);
+    }
+    sql += ` ORDER BY dead_lettered_at DESC LIMIT ?`;
+    params.push(limit);
+    return queryAll<EventDeadLetterRecord>(this.conn, sql, ...params);
   }
 
   public listEventsByType(eventType: string, limit?: number): EventRecord[] {

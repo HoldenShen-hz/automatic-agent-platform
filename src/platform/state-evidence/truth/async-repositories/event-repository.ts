@@ -79,16 +79,20 @@ export class AsyncEventRepository {
     );
   }
 
-  public async listEventDeadLetters(limit: number = 100): Promise<EventDeadLetterRecord[]> {
-    return asyncQueryAll<EventDeadLetterRecord>(
-      this.conn,
-      `SELECT id, original_event_id AS "originalEventId", event_type AS "eventType",
+  public async listEventDeadLetters(limit: number = 100, cursor?: string | null): Promise<EventDeadLetterRecord[]> {
+    let sql = `SELECT id, original_event_id AS "originalEventId", event_type AS "eventType",
         payload_json AS "payloadJson", consumer_id AS "consumerId", failure_count AS "failureCount",
         last_error AS "lastError", dead_lettered_at AS "deadLetteredAt",
         reprocessed_at AS "reprocessedAt", reprocess_result AS "reprocessResult"
-       FROM event_dead_letters ORDER BY dead_lettered_at DESC LIMIT $1`,
-      limit,
-    );
+       FROM event_dead_letters`;
+    const params: unknown[] = [];
+    if (cursor !== undefined && cursor !== null) {
+      sql += ` WHERE dead_lettered_at < $${params.length + 1}`;
+      params.push(cursor);
+    }
+    sql += ` ORDER BY dead_lettered_at DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+    return asyncQueryAll<EventDeadLetterRecord>(this.conn, sql, ...params);
   }
 
   public async listEventsByType(eventType: string, limit?: number): Promise<EventRecord[]> {

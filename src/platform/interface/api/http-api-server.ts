@@ -12,7 +12,6 @@ import { ApiAuthService } from "./api-auth-service.js";
 import type { DivisionRegistry } from "../../../domains/governance/division-loader.js";
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
 import { InspectService } from "../../shared/observability/inspect-service.js";
-import type { ApiDelegationService } from "./facade-interfaces.js";
 import { DistributedRateLimiter, type RateLimitCheckResult } from "../ingress/distributed-rate-limiter.js";
 import { provideContext } from "../../shared/context/runtime-context.js";
 import { MissionControlService } from "./mission-control-service.js";
@@ -20,14 +19,18 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { PrometheusMetricsExporter } from "../../shared/observability/prometheus-metrics-exporter.js";
 import { AppError } from "../../contracts/errors.js";
 import { BillingService } from "../../../scale-ecosystem/marketplace/billing-service.js";
-import type { ArtifactFacadeService } from "./facade-interfaces.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
-import type { KnowledgeFacadeService } from "./facade-interfaces.js";
+import type { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";
+import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifact-plane-service.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
-import type { IncidentFacadeService } from "./facade-interfaces.js";
+import {
+  createNoOpIncidentFacadeService,
+  type ApiDelegationService,
+  type IncidentFacadeService,
+} from "./facade-interfaces.js";
 import { PackCatalogService } from "./pack-catalog-service.js";
 import { CostReportService } from "./cost-report-service.js";
 import { AdminConfigService } from "./admin-config-service.js";
@@ -91,8 +94,8 @@ export interface HttpApiServerOptions {
   tenantRegistryService?: TenantBoundaryRegistryService | null;
   adminConfigService?: AdminConfigService | null;
   promptRegistryService?: HierarchicalPromptRegistryService | null;
-  knowledgePlaneService?: KnowledgeFacadeService | null;
-  artifactPlaneService?: ArtifactFacadeService | null;
+  knowledgePlaneService?: KnowledgePlaneService | null;
+  artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
   pluginRegistry?: PluginSpiRegistry | null;
   /** Distributed rate limiter for API endpoint protection */
@@ -140,7 +143,7 @@ export class HttpApiServer {
   private readonly corsConfig: CorsConfig;
   private webSocketBridge: WebSocketBridge | null = null;
   private readonly rateLimiter: DistributedRateLimiter | null;
-  private readonly incidentService: IncidentFacadeService | null;
+  private readonly incidentService: IncidentFacadeService;
   private readonly packCatalogService: PackCatalogService;
   private readonly costReportService: CostReportService;
   private readonly configRolloutService: ConfigRolloutService;
@@ -153,7 +156,7 @@ export class HttpApiServer {
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
     this.rateLimiter = options.rateLimiter ?? null;
-    this.incidentService = options.incidentService ?? null;
+    this.incidentService = options.incidentService ?? createNoOpIncidentFacadeService();
     this.packCatalogService = options.packCatalogService ?? new PackCatalogService();
     this.costReportService = options.costReportService ?? new CostReportService();
     this.configRolloutService = options.configRolloutService ?? new ConfigRolloutService();

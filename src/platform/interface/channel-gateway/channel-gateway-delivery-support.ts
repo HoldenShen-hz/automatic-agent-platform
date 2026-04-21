@@ -215,12 +215,20 @@ export function toDeliveryMessageRecord(
   };
 }
 
-export function buildDeadLetterQuery(channel?: string, limit = 100): { query: string; params: SQLInputValue[] } {
+export function buildDeadLetterQuery(channel?: string, limit = 100, cursor?: string | null): { query: string; params: SQLInputValue[] } {
   let query = `SELECT * FROM gateway_dead_letters`;
   const params: SQLInputValue[] = [];
+  const conditions: string[] = [];
   if (channel) {
-    query += ` WHERE channel = ?`;
+    conditions.push(`channel = ?`);
     params.push(channel);
+  }
+  if (cursor !== undefined && cursor !== null) {
+    conditions.push(`moved_to_dead_letter_at < ?`);
+    params.push(cursor);
+  }
+  if (conditions.length > 0) {
+    query += ` WHERE ${conditions.join(' AND ')}`;
   }
   query += ` ORDER BY moved_to_dead_letter_at DESC LIMIT ?`;
   params.push(limit);

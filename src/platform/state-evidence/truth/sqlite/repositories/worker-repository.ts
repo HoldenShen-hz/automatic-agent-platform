@@ -1,8 +1,8 @@
 /**
  * WorkerRepository - Data access for workers, tickets, leases, heartbeats, and runtime snapshots.
  *
- * This class is a delegator that composes smaller, focused repositories.
- * It maintains API compatibility while delegating to specialized repositories.
+ * This class keeps the legacy repository surface while delegating to smaller
+ * repositories grouped by concern.
  */
 
 import type {
@@ -17,9 +17,9 @@ import type {
 } from "../../../../contracts/types/domain.js";
 import type { ExecutionLeaseRecord } from "../../../../contracts/types/domain.js";
 import type { SqliteConnection } from "../query-helper.js";
-import { WorkerSnapshotRepository } from "./worker-snapshot-repository.js";
 import { AgentExecutionRepository } from "./agent-execution-repository.js";
 import { ExecutionTicketRepository } from "./execution-ticket-repository.js";
+import { WorkerSnapshotRepository } from "./worker-snapshot-repository.js";
 
 export class WorkerRepository {
   private readonly snapshotRepo: WorkerSnapshotRepository;
@@ -31,8 +31,6 @@ export class WorkerRepository {
     this.executionRepo = new AgentExecutionRepository(conn);
     this.ticketRepo = new ExecutionTicketRepository(conn);
   }
-
-  // ── Snapshot & Heartbeat ──────────────────────────────────────────
 
   public insertHeartbeatSnapshot(snapshot: HeartbeatSnapshotRecord): void {
     this.snapshotRepo.insertHeartbeatSnapshot(snapshot);
@@ -70,8 +68,6 @@ export class WorkerRepository {
     return this.snapshotRepo.listHeartbeatSnapshotsByExecution(executionId, tenantId);
   }
 
-  // ── Agent Execution & Remote Logs ─────────────────────────────────
-
   public insertRemoteLog(record: RemoteLogRecord): void {
     this.executionRepo.insertRemoteLog(record);
   }
@@ -95,8 +91,6 @@ export class WorkerRepository {
   public listRemoteLogsByExecution(executionId: string, tenantId?: string | null): RemoteLogRecord[] {
     return this.executionRepo.listRemoteLogsByExecution(executionId, tenantId);
   }
-
-  // ── Execution Tickets ──────────────────────────────────────────────
 
   public insertWorkerRegistrationChallenge(record: WorkerRegistrationChallengeRecord): void {
     this.ticketRepo.insertWorkerRegistrationChallenge(record);
@@ -133,11 +127,11 @@ export class WorkerRepository {
     assignedWorkerId?: string,
     claimedAt?: string,
   ): void {
-    return this.ticketRepo.claimExecutionTicket(
-      ticketIdOrInput as any,
-      assignedWorkerId,
-      claimedAt,
-    );
+    if (typeof ticketIdOrInput === "string") {
+      this.ticketRepo.claimExecutionTicket(ticketIdOrInput, assignedWorkerId ?? "", claimedAt ?? "");
+      return;
+    }
+    this.ticketRepo.claimExecutionTicket(ticketIdOrInput);
   }
 
   public consumeExecutionTicket(ticketId: string, consumedAt: string): void {
@@ -160,10 +154,11 @@ export class WorkerRepository {
         },
     invalidatedAt?: string,
   ): void {
-    return this.ticketRepo.invalidateExecutionTicket(
-      ticketIdOrInput as any,
-      invalidatedAt,
-    );
+    if (typeof ticketIdOrInput === "string") {
+      this.ticketRepo.invalidateExecutionTicket(ticketIdOrInput, invalidatedAt ?? "");
+      return;
+    }
+    this.ticketRepo.invalidateExecutionTicket(ticketIdOrInput);
   }
 
   public listPendingExecutionTickets(queueName?: string, limit?: number): ExecutionTicketRecord[] {
@@ -189,8 +184,6 @@ export class WorkerRepository {
   public listDispatchableExecutionTickets(now: string, queueName: string | null = null): ExecutionTicketRecord[] {
     return this.ticketRepo.listDispatchableExecutionTickets(now, queueName);
   }
-
-  // ── Execution Leases ───────────────────────────────────────────────
 
   public insertExecutionLease(lease: ExecutionLeaseRecord): void {
     this.ticketRepo.insertExecutionLease(lease);
@@ -220,7 +213,11 @@ export class WorkerRepository {
         },
     releasedAt?: string,
   ): void {
-    return this.ticketRepo.closeExecutionLease(leaseIdOrInput as any, releasedAt);
+    if (typeof leaseIdOrInput === "string") {
+      this.ticketRepo.closeExecutionLease(leaseIdOrInput, releasedAt ?? "");
+      return;
+    }
+    this.ticketRepo.closeExecutionLease(leaseIdOrInput);
   }
 
   public insertLeaseAudit(audit: LeaseAuditRecord): void {
