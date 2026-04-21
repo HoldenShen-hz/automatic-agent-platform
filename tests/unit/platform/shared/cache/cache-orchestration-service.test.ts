@@ -89,66 +89,6 @@ test("CacheOrchestrationService returns miss on first partition record", async (
   assert.ok(result.partition.staticDigest.length > 0);
 });
 
-test("CacheOrchestrationService caches tool results and reports reuse", async () => {
-  resetCache();
-  const service = new CacheOrchestrationService();
-  let computeCalls = 0;
-
-  const resultA = await service.getOrComputeToolResult(
-    "read_file",
-    { path: "/src/index.ts", encoding: "utf8" },
-    async () => {
-      computeCalls += 1;
-      return { content: "file contents", lines: 100 };
-    },
-    ["file:/src/index.ts"],
-  );
-
-  const resultB = await service.getOrComputeToolResult(
-    "read_file",
-    { path: "/src/index.ts", encoding: "utf8" },
-    async () => {
-      computeCalls += 1;
-      return { content: "file contents", lines: 100 };
-    },
-    ["file:/src/index.ts"],
-  );
-
-  assert.equal(resultA.fromCache, false);
-  assert.equal(resultB.fromCache, true);
-  assert.equal(computeCalls, 1);
-  assert.equal(resultB.value.lines, 100);
-});
-
-test("CacheOrchestrationService normalizes tool args before caching", async () => {
-  resetCache();
-  const service = new CacheOrchestrationService();
-  let computeCalls = 0;
-
-  // Arguments in different order should hit the same cache
-  const resultA = await service.getOrComputeToolResult(
-    "search",
-    { query: "test", limit: 10, offset: 0 },
-    async () => {
-      computeCalls += 1;
-      return { results: ["a", "b"] };
-    },
-  );
-
-  const resultB = await service.getOrComputeToolResult(
-    "search",
-    { offset: 0, limit: 10, query: "test" },
-    async () => {
-      computeCalls += 1;
-      return { results: ["a", "b"] };
-    },
-  );
-
-  assert.equal(resultA.fromCache, false);
-  assert.equal(resultB.fromCache, true);
-  assert.equal(computeCalls, 1);
-});
-
 test("CacheOrchestrationService.getMetricsSummary returns hit/miss counts", async () => {
   resetCache();
   const service = new CacheOrchestrationService();

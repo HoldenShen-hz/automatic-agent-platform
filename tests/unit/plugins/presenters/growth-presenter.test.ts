@@ -178,3 +178,54 @@ test("GrowthPresenter.formatOutput uses stepId as fallback for campaignName", as
 
   assert.ok(result.sections[0]?.includes("fallback_step"));
 });
+
+test("GrowthPresenter.formatOutput handles empty string type as generic JSON", async () => {
+  const plugin = createGrowthPresenterPlugin();
+
+  const result = await plugin.formatOutput({
+    machineOutputs: [{
+      stepId: "empty_type_step",
+      outputRef: "ref_empty",
+      payload: { type: "", customField: "value" },
+    }],
+    artifacts: [],
+    audience: "developer",
+  });
+
+  // Empty string type should fall to else branch and format as JSON
+  assert.ok(result.sections.length > 0);
+  assert.ok(result.sections[0]?.includes("empty_type_step"));
+  assert.ok(result.sections[0]?.includes("```json"));
+  assert.ok(result.citations.includes("ref_empty"));
+});
+
+test("GrowthPresenter.formatOutput summary uses singular for single step", async () => {
+  const plugin = createGrowthPresenterPlugin();
+
+  const result = await plugin.formatOutput({
+    machineOutputs: [{
+      stepId: "single_step",
+      outputRef: null,
+      payload: { type: "campaign", campaignName: "Test Campaign" },
+    }],
+    artifacts: [],
+    audience: "end_user",
+  });
+
+  assert.ok(result.summary.includes("1 step processed"));
+});
+
+test("GrowthPresenter.formatOutput summary uses plural for multiple steps", async () => {
+  const plugin = createGrowthPresenterPlugin();
+
+  const result = await plugin.formatOutput({
+    machineOutputs: [
+      { stepId: "step_1", outputRef: null, payload: { type: "campaign", campaignName: "Campaign 1" } },
+      { stepId: "step_2", outputRef: null, payload: { type: "abtest", testName: "Test 1" } },
+    ],
+    artifacts: [],
+    audience: "end_user",
+  });
+
+  assert.ok(result.summary.includes("2 steps processed"));
+});

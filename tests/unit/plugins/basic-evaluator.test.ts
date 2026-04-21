@@ -186,6 +186,24 @@ test("basic evaluator handles object type correctly", async () => {
   assert.equal(result.valid, true);
 });
 
+test("basic evaluator treats null value as object type", async () => {
+  const plugin = createBasicEvaluatorPlugin();
+
+  const result = await plugin.validate({
+    stepId: "step_1",
+    machineOutput: {
+      stepId: "step_1",
+      outputRef: "output_1",
+      payload: { data: null },
+    },
+    contract: {
+      fieldTypes: { data: "object" },
+    },
+  });
+
+  assert.equal(result.valid, true);
+});
+
 test("basic evaluator has initialize method", async () => {
   const plugin = createBasicEvaluatorPlugin();
 

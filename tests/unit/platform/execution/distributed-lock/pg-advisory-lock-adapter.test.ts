@@ -227,3 +227,94 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces different keys for dif
 
   assert.notEqual(key1, key2);
 });
+
+// =============================================================================
+// Constructor config override tests
+// =============================================================================
+
+test("PgAdvisoryLockAdapter constructor uses config.dsn when provided", () => {
+  // Create adapter with explicit dsn
+  const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://custom:custom@custom-host:5433/customdb" });
+
+  // Verify dsn was set (via casting to access private field)
+  assert.equal((adapter as any).dsn, "postgresql://custom:custom@custom-host:5433/customdb");
+});
+
+test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as object", () => {
+  const adapter = new PgAdvisoryLockAdapter({
+    dsn: "postgresql://test:test@localhost/test",
+    ssl: { rejectUnauthorized: true },
+  });
+
+  assert.deepEqual((adapter as any).ssl, { rejectUnauthorized: true });
+});
+
+test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as false", () => {
+  const adapter = new PgAdvisoryLockAdapter({
+    dsn: "postgresql://test:test@localhost/test",
+    ssl: false,
+  });
+
+  assert.equal((adapter as any).ssl, false);
+});
+
+test("PgAdvisoryLockAdapter constructor uses config.env when provided", () => {
+  const customEnv = {
+    AA_LOCK_POSTGRES_DSN: "postgresql://env:env@env-host:5432/envdb",
+    AA_LOCK_POSTGRES_POOL_MIN: "2",
+    AA_LOCK_POSTGRES_POOL_MAX: "20",
+    AA_LOCK_POSTGRES_IDLE_TIMEOUT_SECONDS: "30",
+    AA_LOCK_POSTGRES_CONNECT_TIMEOUT_SECONDS: "15",
+    AA_LOCK_POSTGRES_SSLMODE: "require",
+  };
+  const adapter = new PgAdvisoryLockAdapter({ env: customEnv });
+
+  // Verify env values were loaded (via private fields)
+  assert.equal((adapter as any).dsn, "postgresql://env:env@env-host:5432/envdb");
+  assert.equal((adapter as any).poolMin, 2);
+  assert.equal((adapter as any).poolMax, 20);
+  assert.equal((adapter as any).idleTimeoutSeconds, 30);
+  assert.equal((adapter as any).connectTimeoutSeconds, 15);
+  assert.deepEqual((adapter as any).ssl, { rejectUnauthorized: true });
+});
+
+test("PgAdvisoryLockAdapter constructor uses config.postgresFactory when provided", () => {
+  const customFactory = (_dsn: string, _options: Record<string, unknown>) => createMockDriver();
+
+  const adapter = new PgAdvisoryLockAdapter({
+    dsn: "postgresql://test:test@localhost/test",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    postgresFactory: customFactory as any,
+  });
+
+  assert.equal((adapter as any).postgresFactory, customFactory);
+});
+
+test("PgAdvisoryLockAdapter ensureConnected throws connection error", () => {
+  const adapter = new PgAdvisoryLockAdapter({
+    dsn: "postgresql://test:test@localhost/test",
+    postgresFactory: () => {
+      throw new Error("Connection refused");
+    },
+  });
+
+  // Manually set connected to false and connectionError to trigger throw path
+  (adapter as any).connected = false;
+  (adapter as any).connectionError = null;
+
+  assert.throws(
+    () => (adapter as any).ensureConnected(),
+    (error: unknown) => (error as Error).message === "Connection refused",
+  );
+});
+
+test("PgAdvisoryLockAdapter ensureConnected reuses existing connection", () => {
+  const mockDriver = createMockDriver();
+  const adapter = createAdapterWithMockDriver(mockDriver);
+
+  // ensureConnected should not throw and should not call factory again
+  (adapter as any).ensureConnected();
+
+  // connected should still be true
+  assert.equal((adapter as any).connected, true);
+});

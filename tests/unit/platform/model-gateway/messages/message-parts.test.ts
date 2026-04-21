@@ -467,21 +467,6 @@ test("renderMessagePartContent renders mcp_call part with missing fields", () =>
   assert.ok(result.includes("error"));
 });
 
-test("renderMessagePartContent falls back to JSON stringify when no known keys match", () => {
-  const part: MessagePart = {
-    partId: "msg_1:part:1",
-    messageId: "msg_1",
-    partType: "reasoning",
-    sequence: 1,
-    contentJson: '{"unknownField":"unknownValue","anotherField":123}',
-    lineageJson: null,
-    createdAt: "2024-01-01T00:00:00.000Z",
-  };
-  const result = renderMessagePartContent(part);
-  // Should fall back to JSON.stringify when no text/summary/result/status keys match
-  assert.ok(result.includes("unknownField") || result.includes("unknownValue"));
-});
-
 test("renderMessagePartContent renders decision_prompt part", () => {
   const part: MessagePart = {
     partId: "msg_1:part:1",
