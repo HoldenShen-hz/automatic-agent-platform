@@ -57,7 +57,9 @@ test("buildStepFailureSummary for retry action", () => {
   const decision = {
     action: "retry" as const,
     errorCode: "tool.execution_failed",
-    failureClass: "retryable" as const,
+    failureClass: "transient" as const,
+    retryable: true,
+    backoff: "exponential" as const,
     retryDelayMs: 1000,
   };
   const result = buildStepFailureSummary("step_1", decision);
@@ -70,7 +72,9 @@ test("buildStepFailureSummary for escalate action", () => {
   const decision = {
     action: "escalate" as const,
     errorCode: "validation.schema_mismatch",
-    failureClass: "non_retryable" as const,
+    failureClass: "destructive" as const,
+    retryable: false,
+    backoff: "none" as const,
     retryDelayMs: 0,
   };
   const result = buildStepFailureSummary("step_2", decision);
@@ -84,6 +88,8 @@ test("buildStepFailureSummary for fail action", () => {
     action: "fail" as const,
     errorCode: "internal.unexpected_error",
     failureClass: "non_retryable" as const,
+    retryable: false,
+    backoff: "none" as const,
     retryDelayMs: 0,
   };
   const result = buildStepFailureSummary("step_3", decision);

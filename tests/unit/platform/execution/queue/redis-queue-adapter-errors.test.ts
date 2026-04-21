@@ -25,10 +25,10 @@ function createAdapterWithMockRedis(mockRedis: any): RedisQueueAdapter {
 
 test("RedisQueueAdapter enqueueAsync throws when hmset fails", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any } };
 
   // Make hmset throw
-  mockClient.hmset = async () => {
+  mockClient.client.redis.hmset = async () => {
     throw new Error("HMSET failed - Redis error");
   };
 
@@ -46,10 +46,10 @@ test("RedisQueueAdapter enqueueAsync throws when hmset fails", async () => {
 
 test("RedisQueueAdapter enqueueAsync throws when expire fails", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any } };
 
-  mockClient.hmset = async () => { return; };
-  mockClient.expire = async () => {
+  mockClient.client.redis.hmset = async () => { return; };
+  mockClient.client.redis.expire = async () => {
     throw new Error("EXPIRE failed - key does not exist");
   };
 
@@ -66,11 +66,11 @@ test("RedisQueueAdapter enqueueAsync throws when expire fails", async () => {
 
 test("RedisQueueAdapter enqueueAsync throws when sadd fails", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any } };
 
-  mockClient.hmset = async () => { return; };
-  mockClient.expire = async () => { return 1; };
-  mockClient.sadd = async () => {
+  mockClient.client.redis.hmset = async () => { return; };
+  mockClient.client.redis.expire = async () => { return 1; };
+  mockClient.client.redis.sadd = async () => {
     throw new Error("SADD failed - not a set");
   };
 
@@ -87,12 +87,12 @@ test("RedisQueueAdapter enqueueAsync throws when sadd fails", async () => {
 
 test("RedisQueueAdapter enqueueAsync throws when zadd fails", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any } };
 
-  mockClient.hmset = async () => { return; };
-  mockClient.expire = async () => { return 1; };
-  mockClient.sadd = async () => { return 1; };
-  mockClient.zadd = async () => {
+  mockClient.client.redis.hmset = async () => { return; };
+  mockClient.client.redis.expire = async () => { return 1; };
+  mockClient.client.redis.sadd = async () => { return 1; };
+  mockClient.client.redis.zadd = async () => {
     throw new Error("ZADD failed - not a sorted set");
   };
 
@@ -113,9 +113,9 @@ test("RedisQueueAdapter enqueueAsync throws when zadd fails", async () => {
 
 test("RedisQueueAdapter getJobAsync returns null when job not found", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any } };
 
-  mockClient.hgetall = async () => ({});
+  mockClient.client.redis.hgetall = async () => ({});
 
   const result = await adapter.getJobAsync("nonexistent-job");
   assert.equal(result, null);
@@ -123,9 +123,9 @@ test("RedisQueueAdapter getJobAsync returns null when job not found", async () =
 
 test("RedisQueueAdapter getJobAsync returns null when hash has no id field", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any } };
 
-  mockClient.hgetall = async () => ({
+  mockClient.client.redis.hgetall = async () => ({
     queue_name: "test-queue",
     payload: "{}",
     status: "waiting",
@@ -249,7 +249,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles null/undefined values in dat
     created_at: undefined,
     updated_at: undefined,
     completed_at: undefined,
-  } as Record<string, string>);
+  } as unknown as Record<string, string>);
 
   // Should use fallback values
   assert.equal(result.id, "");
@@ -267,15 +267,15 @@ test("RedisQueueAdapter mapRedisToJobRecord handles null/undefined values in dat
 
 test("RedisQueueAdapter ensureConnected throws when connection fails", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any; ensureConnected: () => Promise<void> } };
 
-  Object.defineProperty(mockClient.redis, "status", { value: "end", writable: true });
-  mockClient.redis.connect = async () => {
+  Object.defineProperty(mockClient.client.redis, "status", { value: "end", writable: true });
+  mockClient.client.redis.connect = async () => {
     throw new Error("Connection refused");
   };
 
   try {
-    await mockClient.ensureConnected();
+    await mockClient.client.ensureConnected();
     assert.fail("Should have thrown");
   } catch (err) {
     assert.ok(err instanceof Error);
@@ -285,9 +285,9 @@ test("RedisQueueAdapter ensureConnected throws when connection fails", async () 
 
 test("RedisQueueAdapter handles ping failure gracefully", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = (adapter as unknown as { client: { redis: any } }).client;
+  const mockClient = adapter as unknown as { client: { redis: any; ping: () => Promise<string> } };
 
-  mockClient.ping = async () => {
+  mockClient.client.ping = async () => {
     throw new Error("PING failed");
   };
 

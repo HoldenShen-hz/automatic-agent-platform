@@ -100,7 +100,7 @@ test("[SYS-REL-2.4] enqueueAsync properly propagates write failures", async () =
       queue_name: input.queueName,
       payload: JSON.stringify(input.payload),
       status: "waiting",
-    });
+    } as Record<string, string>);
     return jobId;
   };
 

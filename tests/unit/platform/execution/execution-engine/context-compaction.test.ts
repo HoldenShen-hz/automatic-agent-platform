@@ -10,8 +10,8 @@ import assert from "node:assert/strict";
 
 import { ContextCompactionService } from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
 import type { ContextCompactionOptions } from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // Mock implementations
 const createMockDb = (overrides: Partial<AuthoritativeSqlDatabase> = {}): AuthoritativeSqlDatabase => ({
@@ -106,7 +106,6 @@ test("ContextCompactionService uses default stage1TriggerRatio of 0.7", () => {
     taskId: "task_1",
     sessionId: "session_1",
     maxContextTokens: 1000, // Very low to trigger compaction
-    stage1TriggerRatio: undefined, // Use default
   };
 
   const result = service.compactContext(options);
@@ -129,7 +128,6 @@ test("ContextCompactionService uses default stage2TriggerRatio of 0.85", () => {
     taskId: "task_1",
     sessionId: "session_1",
     maxContextTokens: 1000, // Very low
-    stage2TriggerRatio: undefined, // Use default
   };
 
   const result = service.compactContext(options);
@@ -179,7 +177,6 @@ test("ContextCompactionService uses default recentToolResultWindow of 3", () => 
     taskId: "task_1",
     sessionId: "session_1",
     maxContextTokens: 1,
-    recentToolResultWindow: undefined, // Use default
   };
 
   const result = service.compactContext(options);
@@ -207,7 +204,6 @@ test("ContextCompactionService uses default compactionMaxFrequencyPerSession of 
     taskId: "task_1",
     sessionId: "session_1",
     maxContextTokens: 1,
-    compactionMaxFrequencyPerSession: undefined, // Use default
   };
 
   const result = service.compactContext(options);
@@ -317,6 +313,7 @@ test("ContextCompactionService calculates token reduction on stage1", () => {
   if (result.stage1Triggered) {
     assert.ok(result.persistedRecords.length > 0);
     const record = result.persistedRecords[0];
+    assert.ok(record != null);
     assert.equal(record.stage, "trim");
   }
 });
