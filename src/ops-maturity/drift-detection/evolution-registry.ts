@@ -48,6 +48,18 @@ export class InMemoryEvolutionRegistry implements EvolutionRegistry {
   private evaluations = new Map<string, EvaluationReport>();
   private rollouts = new Map<string, RolloutRecord>();
   private reflections: ReflectionRecord[] = [];
+  private readonly maxEntries = 500;
+  private cleanupAt = 0;
+
+  private evictExpired(): void {
+    const now = Date.now();
+    if (now - this.cleanupAt < 60000) return;
+    this.cleanupAt = now;
+    if (this.proposals.size <= this.maxEntries) return;
+    const keys = Array.from(this.proposals.keys());
+    const toRemove = keys.slice(0, Math.floor(this.maxEntries * 0.2));
+    for (const k of toRemove) this.proposals.delete(k);
+  }
 
   async saveProposal(proposal: ImprovementProposal): Promise<void> {
     this.proposals.set(proposal.id, proposal);

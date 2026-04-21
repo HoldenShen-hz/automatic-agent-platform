@@ -19,6 +19,9 @@
 import type { EventRecord } from "../../contracts/types/domain.js";
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { ProjectionRecord } from "./index.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const projectionLogger = new StructuredLogger({ retentionLimit: 500 });
 
 // §28 Projection handlers - events/projections/
 import { incidentProjectionHandler } from "../events/projections/incident-projection.js";
@@ -261,7 +264,7 @@ export class ProjectionRebuildService {
       const events = this.eventRepository.listAllEvents(limit, offset);
       return events;
     } catch (error) {
-      console.error(`Error fetching events: ${error}`);
+      projectionLogger.error(`Error fetching events: ${error}`);
       return [];
     }
   }
