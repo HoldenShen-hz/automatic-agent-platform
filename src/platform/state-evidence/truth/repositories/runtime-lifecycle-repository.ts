@@ -124,6 +124,18 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     this.store.workflow.updateWorkflowState(taskId, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep);
   }
 
+  public updateWorkflowStateCas(
+    taskId: string,
+    expectedVersion: number,
+    status: string,
+    currentStepIndex: number,
+    outputsJson: string,
+    updatedAt: string,
+    resumableFromStep: string | null = null,
+  ): number {
+    return this.store.workflow.updateWorkflowStateCas(taskId, expectedVersion, status, currentStepIndex, outputsJson, updatedAt, resumableFromStep);
+  }
+
   public updateSessionStatus(sessionId: string, status: string, updatedAt: string): void {
     this.store.session.updateSessionStatus(sessionId, status, updatedAt);
   }

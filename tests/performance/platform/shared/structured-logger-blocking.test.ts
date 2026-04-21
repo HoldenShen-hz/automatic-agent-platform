@@ -161,8 +161,8 @@ test("[SYS-PERF-3.1] concurrent logger writes do not block each other excessivel
     const writesPerThread = 100;
     const allTimings: number[] = [];
 
-    // Simulate concurrent writes from multiple "threads" (using sequential async)
-    const runWrites = async (threadId: number) => {
+    // Simulate concurrent writes from multiple "threads" (using sequential loop)
+    const runWrites = (threadId: number) => {
       for (let i = 0; i < writesPerThread; i++) {
         const start = performance.now();
         logger.info(`thread-${threadId}-msg-${i}`, { threadId, index: i });
@@ -171,9 +171,11 @@ test("[SYS-PERF-3.1] concurrent logger writes do not block each other excessivel
       }
     };
 
-    // Run all threads concurrently
+    // Run all threads sequentially (blocking loop)
     const startTime = performance.now();
-    await Promise.all(Array.from({ length: concurrentWrites }, (_, i) => runWrites(i)));
+    for (let i = 0; i < concurrentWrites; i++) {
+      runWrites(i);
+    }
     const totalTime = performance.now() - startTime;
 
     const totalMessages = concurrentWrites * writesPerThread;

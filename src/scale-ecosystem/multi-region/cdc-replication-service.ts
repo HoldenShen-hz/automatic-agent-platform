@@ -8,6 +8,9 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
+const cdcLogger = new StructuredLogger({ retentionLimit: 500 });
 
 /**
  * CDC replication event types
@@ -210,7 +213,9 @@ export class CDCReplicationService {
     error: string,
   ): void {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
-    console.error(`CDC replication failed for ${key}: ${error}`);
+    cdcLogger.error(`CDC replication failed for ${key}: ${error}`, {
+      data: { sourceRegionId, targetRegionId, batchId: batch.batchId },
+    });
   }
 
   /**

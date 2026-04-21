@@ -145,7 +145,9 @@ export class OapeflirLoopService {
       const observedTask: TaskSituation = (() => {
         const result = validateTaskSituation(taskObservation.task);
         if (result.ok) return result.value;
-        console.warn("[boundary:O→A] TaskSituation validation failed — degrading to default");
+        this.boundaryLogger.warn("[boundary:O→A] TaskSituation validation failed — degrading to default", {
+          data: { taskId: input.taskId, boundary: "O→A" },
+        });
         return {
           taskId: input.taskId,
           timestamp: Date.now(),
@@ -171,7 +173,9 @@ export class OapeflirLoopService {
       const validatedAssessment: UnifiedAssessment = (() => {
         const result = validateUnifiedAssessment(assessment);
         if (result.ok) return result.value;
-        console.warn("[boundary:A→P] UnifiedAssessment validation failed — using default");
+        this.boundaryLogger.warn("[boundary:A→P] UnifiedAssessment validation failed — using default", {
+          data: { taskId: input.taskId, boundary: "A→P" },
+        });
         return {
           taskId: input.taskId,
           timestamp: Date.now(),
@@ -215,14 +219,18 @@ export class OapeflirLoopService {
       const validatedStepOutputs: DualChannelStepOutput[] = (() => {
         const result = validateStepOutputs(stepOutputs);
         if (result.ok) return result.value;
-        console.warn("[boundary:E→F] stepOutputs validation failed — skipping feedback stage");
+        this.boundaryLogger.warn("[boundary:E→F] stepOutputs validation failed — skipping feedback stage", {
+          data: { taskId: input.taskId, boundary: "E→F" },
+        });
         return [];
       })();
 
       const feedbackSignals: FeedbackSignal[] = (() => {
         const result = validateFeedbackSignals(input.feedbackSignals ?? this.buildFeedbackSignals(input.taskId, validatedStepOutputs));
         if (result.ok) return result.value;
-        console.warn("[boundary:E→F] feedbackSignals validation failed — skipping feedback stage");
+        this.boundaryLogger.warn("[boundary:E→F] feedbackSignals validation failed — skipping feedback stage", {
+          data: { taskId: input.taskId, boundary: "E→F" },
+        });
         return [];
       })();
       const feedback = await this.runStage<FeedbackBatch>("feedback", () => this.feedbackCollector.collect({
@@ -240,7 +248,9 @@ export class OapeflirLoopService {
       const validatedLearningSignals: LearningSignal[] = ((): LearningSignal[] => {
         const result = validateLearningSignalsArray(learningSignals);
         if (result.ok) return result.value as LearningSignal[];
-        console.warn("[boundary:F→L] learningSignals validation failed — skipping learn stage");
+        this.boundaryLogger.warn("[boundary:F→L] learningSignals validation failed — skipping learn stage", {
+          data: { taskId: input.taskId, boundary: "F→L" },
+        });
         return [] as LearningSignal[];
       })();
 
@@ -279,7 +289,9 @@ export class OapeflirLoopService {
         const validatedLearningObjects: LearningObject[] = ((): LearningObject[] => {
           const result = validateLearningObjects(learningObjects);
           if (result.ok) return result.value as LearningObject[];
-          console.warn("[boundary:L→I] learningObjects validation failed — skipping improve stage");
+          this.boundaryLogger.warn("[boundary:L→I] learningObjects validation failed — skipping improve stage", {
+            data: { taskId: input.taskId, boundary: "L→I" },
+          });
           return [] as LearningObject[];
         })();
 
@@ -314,7 +326,9 @@ export class OapeflirLoopService {
           const rolloutValidation = validateRolloutRecord(rawRolloutRecord);
           rolloutRecord = rolloutValidation.ok ? rolloutValidation.value : null;
           if (!rolloutValidation.ok) {
-            console.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record");
+            this.boundaryLogger.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record", {
+              data: { taskId: input.taskId, boundary: "I→R" },
+            });
           }
           timeline.record(
             "release",
