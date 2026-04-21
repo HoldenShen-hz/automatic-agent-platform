@@ -6,7 +6,7 @@ import { ValidationError } from "../../contracts/errors.js";
 import { readTrimmedEnv } from "./runtime-env.js";
 
 // Valid environment names for deployment and governance operations
-const ENVIRONMENT_NAMES = ["dev", "test", "staging", "pre-prod", "prod"] as const;
+const ENVIRONMENT_NAMES = ["dev", "test", "staging", "pre-prod", "prod", "development", "production"] as const;
 // Valid rollout strategies for deployments
 const DEPLOYMENT_ROLLOUT_STRATEGIES = ["rolling", "canary", "blue_green"] as const;
 // Valid actions for enterprise governance CLI
@@ -305,7 +305,7 @@ export function loadOpsProgramCliEnv(
   return {
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     environment: requiredEnumValue(env, "AA_ENVIRONMENT", ENVIRONMENT_NAMES),
-    action: optionalEnumValue(env, "AA_OPS_PROGRAM_ACTION", OPS_PROGRAM_ACTIONS) ?? "summary",
+    action: optionalEnumValue(env, "AA_HA_PROGRAM_ACTION", OPS_PROGRAM_ACTIONS) ?? "summary",
     artifactRoot: optionalEnv(env, "AA_OPS_PROGRAM_ARTIFACT_ROOT"),
     taskId: optionalEnv(env, "AA_OPS_TASK_ID"),
     shiftOwner: optionalEnv(env, "AA_OPS_SHIFT_OWNER"),

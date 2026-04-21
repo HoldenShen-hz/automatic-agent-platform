@@ -24,7 +24,18 @@ export class KnowledgeSnapshotStore {
     if (!scopeCheck.allowed) {
       throw new Error(`knowledge_snapshot_store.path_scope_denied: ${scopeCheck.normalizedPath}`);
     }
-    this.snapshotPath = options.snapshotPath;
+    // Additional validation: reject path traversal patterns even when no roots specified
+    // This ensures security even when checkToolPathScope has no restrictions
+    const normalizedPath = scopeCheck.normalizedPath;
+    if (normalizedPath.includes("..")) {
+      throw new Error(`knowledge_snapshot_store.path_traversal_denied: ${normalizedPath}`);
+    }
+    // When no roots are specified, only allow relative paths or paths within /tmp/aa-sandbox/
+    // This prevents access to system paths like /etc/shadow
+    if (!normalizedPath.startsWith("/tmp/aa-sandbox/") && normalizedPath.startsWith("/")) {
+      throw new Error(`knowledge_snapshot_store.path_scope_denied: ${normalizedPath}`);
+    }
+    this.snapshotPath = normalizedPath;
   }
 
   public load(): KnowledgePlaneSnapshot | null {

@@ -168,11 +168,11 @@ export function isMemoryLayerAtOrAbove(
 export function getMemoryLayerDescription(layer: DocMemoryLayer): string {
   switch (layer) {
     case "working":
-      return "Short-term operational memories for current task execution";
+      return "short-term operational memories for current task execution";
     case "episodic":
-      return "Medium-term consolidated memories from completed episodes";
+      return "medium-term consolidated memories from completed episodes";
     case "semantic":
-      return "Long-term summarized knowledge extracted from experience";
+      return "long-term summarized knowledge extracted from experience";
   }
 }
 
