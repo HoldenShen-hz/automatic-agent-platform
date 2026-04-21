@@ -256,11 +256,11 @@ export class KnowledgePromotionService {
       importanceScore: memory.importanceScore,
       contentHash: memory.contentHash ?? "",
       metadata: {
-        teamId: request.teamId,
-        projectId: request.projectId,
-        tags: request.tags,
-        categories: request.categories,
-        verificationNotes: request.verificationNotes,
+        ...(request.teamId != null ? { teamId: request.teamId } : {}),
+        ...(request.projectId != null ? { projectId: request.projectId } : {}),
+        ...(request.tags != null ? { tags: request.tags } : {}),
+        ...(request.categories != null ? { categories: request.categories } : {}),
+        ...(request.verificationNotes != null ? { verificationNotes: request.verificationNotes } : {}),
       },
     };
 

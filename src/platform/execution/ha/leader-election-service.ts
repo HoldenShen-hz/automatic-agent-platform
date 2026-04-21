@@ -19,7 +19,7 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { RuntimeError } from "../../contracts/errors.js";
-import type { HaLevel, HaLevelConfig, HaLevelConfigurable, LeadershipQueryResult } from "./types.js";
+import type { HaLevel, HaLevelConfig, LeadershipQueryResult } from "./types.js";
 import { HA_LEVEL_CONFIGS, type LeaderLease } from "./types.js";
 import type { HaCoordinatorService } from "./ha-coordinator-service-inner.js";
 
@@ -119,6 +119,7 @@ export class LeaderElectionService {
       ...baseConfig,
       ...options.haConfig,
       leaseTtlMs: options.leaseTtlMs ?? baseConfig.leaseTtlMs,
+      leaseRenewalIntervalMs: options.renewalIntervalMs ?? baseConfig.leaseRenewalIntervalMs,
     };
 
     this.maxElectionAttempts = options.maxElectionAttempts ?? 5;
@@ -612,11 +613,16 @@ export function createLeaderElectionService(
   region: string,
   config?: HaLevelConfigurable & { nodeMetadata?: Record<string, unknown> },
 ): LeaderElectionService {
-  return new LeaderElectionService(coordinator, {
+  const options: LeaderElectionServiceOptions = {
     nodeId,
     region,
     haLevel: config?.haLevel ?? "HA_2",
-    haConfig: config?.customConfig,
-    nodeMetadata: config?.nodeMetadata,
-  });
+  };
+  if (config?.customConfig) {
+    options.haConfig = config.customConfig;
+  }
+  if (config?.nodeMetadata) {
+    options.nodeMetadata = config.nodeMetadata;
+  }
+  return new LeaderElectionService(coordinator, options);
 }

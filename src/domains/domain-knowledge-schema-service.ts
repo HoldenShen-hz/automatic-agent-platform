@@ -108,8 +108,16 @@ export class DomainKnowledgeSchemaService {
     entries: Record<string, unknown>,
   ): ConflictResolutionResult {
     const schema = this.requireSchema(domainId);
-    const conflicts: ConflictResolutionResult["conflicts"] = [];
-    const resolved: ConflictResolutionResult["resolvedEntries"] = [];
+    const conflicts: {
+      key: string;
+      values: readonly { value: unknown; source: string; timestamp: string }[];
+    }[] = [];
+    const resolved: {
+      key: string;
+      value: unknown;
+      source: string;
+      resolvedAt: string;
+    }[] = [];
 
     const grouped = new Map<string, { value: unknown; source: string; timestamp: string }[]>();
 
@@ -319,7 +327,7 @@ export class DomainKnowledgeSchemaService {
       case "trust_priority":
       case "human_review":
       default:
-        return { value: values[0].value, source: values[0].source };
+        return values[0] ? { value: values[0].value, source: values[0].source } : null;
     }
   }
 

@@ -17,7 +17,7 @@ import {
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createTestMemory(overrides: Partial<MemoryRecord> & { scope: string }): MemoryRecord {
-  return {
+  const base: MemoryRecord = {
     id: "mem_test_1",
     taskId: "task_1",
     sessionId: "session_1",
@@ -40,8 +40,8 @@ function createTestMemory(overrides: Partial<MemoryRecord> & { scope: string }):
     importanceScore: 0.8,
     freshnessScore: 0.9,
     contentHash: "hash123",
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 test("mapScopeToSixLayer returns working for task_runtime", () => {
@@ -134,8 +134,8 @@ test("DEFAULT_SIX_LAYER_TRANSITION_RULES has 5 rules for 5 transitions", () => {
 
 test("DEFAULT_SIX_LAYER_TRANSITION_RULES has increasing thresholds", () => {
   for (let i = 1; i < DEFAULT_SIX_LAYER_TRANSITION_RULES.length; i++) {
-    const prev = DEFAULT_SIX_LAYER_TRANSITION_RULES[i - 1];
-    const curr = DEFAULT_SIX_LAYER_TRANSITION_RULES[i];
+    const prev = DEFAULT_SIX_LAYER_TRANSITION_RULES[i - 1]!;
+    const curr = DEFAULT_SIX_LAYER_TRANSITION_RULES[i]!;
     assert.ok(curr.minHitCount > prev.minHitCount);
     assert.ok(curr.minQualityScore > prev.minQualityScore);
     assert.ok(curr.minImportanceScore > prev.minImportanceScore);

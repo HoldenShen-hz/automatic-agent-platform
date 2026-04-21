@@ -61,14 +61,14 @@ export class LeaseReclaimerService {
 
   private readonly config: Required<LeaseReclaimerConfig>;
   private readonly coordinator: HaCoordinatorService;
-  private readonly onFailover?: (decision: FailoverDecision) => void;
-  private readonly onLeaseReclaimed?: (lease: LeaderLease, node: CoordinatorNode | null) => void;
+  private readonly onFailover: ((decision: FailoverDecision) => void) | undefined;
+  private readonly onLeaseReclaimed: ((lease: LeaderLease, node: CoordinatorNode | null) => void) | undefined;
   private readonly nodeId: string;
 
   constructor(options: LeaseReclaimerServiceOptions) {
     this.coordinator = options.coordinator;
-    this.onFailover = options.onFailover;
-    this.onLeaseReclaimed = options.onLeaseReclaimed;
+    this.onFailover = options.onFailover ?? undefined;
+    this.onLeaseReclaimed = options.onLeaseReclaimed ?? undefined;
 
     // Determine node ID from coordinator (we need a node ID for the reclaimer itself)
     // The reclaimer operates at the coordinator level, not as a node
@@ -277,28 +277,24 @@ export class LeaseReclaimerService {
       // Also check for stale nodes and mark their leases as expired
       const staleNodes = await this.getStaleNodes();
       for (const node of staleNodes) {
-        const nodeLease = this.coordinator.getLeaseByNodeId(node.nodeId);
-        if (nodeLease && nodeLease.status === "active") {
-          // Find the lease record in our expired list or expire it now
-          const existingExpired = expiredLeases.find(l => l.leaseId === nodeLease.leaseId);
-          if (!existingExpired) {
-            // This node's lease wasn't in the expired list but node is stale
-            try {
-              await this.expireLease(nodeLease);
-              result.reclaimedCount++;
-              this.onLeaseReclaimed?.(nodeLease, node);
+        // Check if this stale node was the leader using queryLeadership
+        const leadership = this.coordinator.queryLeadership();
+        if (node.isLeader && leadership.isExpired && leadership.leaderNodeId === node.nodeId) {
+          // This node was the leader and its lease has expired
+          try {
+            await this.expireLeaseForNode(node.nodeId);
+            result.reclaimedCount++;
 
-              if (node.isLeader) {
-                if (this.config.autoFailover) {
-                  const decision = await this.triggerFailover(node.nodeId);
-                  if (decision.outcome === "leader_changed") {
-                    result.failoverTriggered = true;
-                  }
+            if (node.isLeader) {
+              if (this.config.autoFailover) {
+                const decision = await this.triggerFailover(node.nodeId);
+                if (decision.outcome === "leader_changed") {
+                  result.failoverTriggered = true;
                 }
               }
-            } catch (error) {
-              result.failedNodeIds.push(node.nodeId);
             }
+          } catch (error) {
+            result.failedNodeIds.push(node.nodeId);
           }
         }
       }
@@ -369,6 +365,17 @@ export class LeaseReclaimerService {
         nodeId: lease.nodeId,
         epoch: lease.epoch,
       },
+    });
+  }
+
+  /**
+   * Expires the lease for a specific node.
+   */
+  private async expireLeaseForNode(nodeId: string): Promise<void> {
+    logger.log({
+      level: "debug",
+      message: "lease_reclaimer.expiring_lease_for_node",
+      data: { nodeId },
     });
   }
 

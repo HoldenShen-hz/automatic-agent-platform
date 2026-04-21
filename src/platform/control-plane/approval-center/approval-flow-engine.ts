@@ -8,9 +8,9 @@
  * @see §21 HITL Architecture - Approval Flow Engine
  */
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { ValidationError } from "../../../contracts/errors.js";
+import { ValidationError } from "../../contracts/errors.js";
 import type { ApprovalRequest, ApprovalDecision } from "./approval-service.js";
 import {
   QuorumConfig,
@@ -129,7 +129,7 @@ export interface ApprovalFlowState {
   currentIteration: number;
   votes: QuorumVote[];
   votingStartedAt: string;
-  escalationHistory: EscalationLevel[];
+  escalationHistory: FlowEscalationLevel[];
   delegation: Delegation | null;
   feedbackLoop: FeedbackLoop | null;
   createdAt: string;
@@ -143,13 +143,16 @@ export interface ApprovalFlowState {
 
 /**
  * A single escalation level in the flow history.
+ * This is a simplified version for flow tracking.
  */
-export interface EscalationLevel {
+export interface FlowEscalationLevel {
   level: number;
   escalateTo: ApproverRule;
   escalatedAt: string;
   escalatedBy: string;
   reason: EscalationReason;
+  /** Source approval that triggered this escalation */
+  sourceApprovalId: string;
 }
 
 /**
@@ -224,13 +227,13 @@ export class ApprovalFlowEngine {
   public createFlow(
     config: Omit<ApprovalFlowConfig, "flowId">,
     request: ApprovalRequest,
-    options?: {
+    options: {
       workflowRunId?: string;
       stepId?: string;
       initialDelegationTtlMs?: number;
-    },
+    } | undefined = undefined,
   ): ApprovalFlowState {
-    const flowId = config.flowId || newId("flow");
+    const flowId = newId("flow");
     const now = nowIso();
 
     // Calculate expiration time
@@ -576,7 +579,7 @@ export class ApprovalFlowEngine {
       return {
         approvalId: flow.request.approvalId,
         taskId: flow.request.taskId,
-        executionId: flow.request.executionId,
+        executionId: flow.request.executionId ?? null,
         currentLevel,
         reason: EscalationReason.TIMEOUT,
       };
@@ -599,7 +602,7 @@ export class ApprovalFlowEngine {
           return {
             approvalId: flow.request.approvalId,
             taskId: flow.request.taskId,
-            executionId: flow.request.executionId,
+            executionId: flow.request.executionId ?? null,
             currentLevel,
             reason: EscalationReason.QUORUM_NOT_MET,
           };
@@ -629,20 +632,23 @@ export class ApprovalFlowEngine {
 
     const result = await this.escalationManager.escalate(context, flow.config.escalation);
 
-    if (result.success && result.newLevel) {
-      flow.escalationHistory.push({
-        level: result.newLevel.level,
-        escalateTo: result.newLevel.escalateTo,
-        escalatedAt: result.newLevel.escalatedAt,
-        escalatedBy: result.newLevel.escalatedBy,
-        reason: result.newLevel.reason,
-      });
-      flow.status = FlowStatus.ESCALATED;
-      flow.escalationTriggered = true;
-      flow.updatedAt = nowIso();
+    if (!result.success || !result.newLevel) {
+      return { success: false, error: result.error ?? "Escalation failed" };
     }
 
-    return { success: result.success, error: result.error };
+    flow.escalationHistory.push({
+      level: result.newLevel.level,
+      escalateTo: result.newLevel.escalateTo,
+      escalatedAt: result.newLevel.escalatedAt,
+      escalatedBy: result.newLevel.escalatedBy,
+      reason: result.newLevel.reason,
+      sourceApprovalId: result.newLevel.sourceApprovalId,
+    });
+    flow.status = FlowStatus.ESCALATED;
+    flow.escalationTriggered = true;
+    flow.updatedAt = nowIso();
+
+    return { success: true };
   }
 
   /**
@@ -730,7 +736,8 @@ export class ApprovalFlowEngine {
 
     // Check if replan is needed
     const shouldReplan =
-      feedback.feedbackType === "reject_with_guidance" && flow.config.feedbackLoop?.requireReplanOnReject;
+      feedback.feedbackType === "reject_with_guidance" &&
+      (flow.config.feedbackLoop?.requireReplanOnReject ?? false);
 
     return {
       success: true,
@@ -902,21 +909,25 @@ export class ApprovalFlowEngine {
       stepId?: string;
     },
   ): ApprovalFlowState {
+    const quorumConfig: QuorumConfig = {
+      minApprovals: requiredApprovals,
+      minRejectionsToDeny: options?.minRejectionsToDeny ?? requiredApprovals,
+    };
+    if (options?.votingWindowMs !== undefined) {
+      quorumConfig.votingWindowMs = options.votingWindowMs;
+    }
+
     return this.createFlow(
       {
         flowType: FlowType.MULTI_PARTY,
         approvers,
-        quorum: {
-          minApprovals: requiredApprovals,
-          minRejectionsToDeny: options?.minRejectionsToDeny ?? requiredApprovals,
-          votingWindowMs: options?.votingWindowMs,
-        },
+        quorum: quorumConfig,
         timeout: DEFAULT_TIMEOUT_CONFIG,
         escalation: DEFAULT_ESCALATION_RULE,
         feedbackLoop: DEFAULT_FEEDBACK_LOOP_CONFIG,
       },
       request,
-      { workflowRunId: options?.workflowRunId, stepId: options?.stepId },
+      options,
     );
   }
 
@@ -945,7 +956,7 @@ export class ApprovalFlowEngine {
         feedbackLoop: DEFAULT_FEEDBACK_LOOP_CONFIG,
       },
       request,
-      { workflowRunId: options?.workflowRunId, stepId: options?.stepId },
+      options,
     );
   }
 }

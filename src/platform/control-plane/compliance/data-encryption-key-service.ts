@@ -27,10 +27,11 @@
  * @packageDocumentation
  */
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
-import { ValidationError, StorageError } from "../../../contracts/errors.js";
-import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError, StorageError } from "../../contracts/errors.js";
+import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { ComplianceStore } from "./types.js";
 
 /**
  * DEK status enum
@@ -121,6 +122,13 @@ export interface TenantDekSummary {
 }
 
 /**
+ * Store type with compliance submodule
+ */
+type StoreWithCompliance = AuthoritativeTaskStore & {
+  compliance: ComplianceStore;
+};
+
+/**
  * Validates a DEK input
  */
 function validateCreateDekInput(input: CreateDekInput): void {
@@ -201,10 +209,14 @@ function validateRotateDekInput(input: RotateDekInput): void {
  * ```
  */
 export class DataEncryptionKeyService {
+  private readonly store: StoreWithCompliance;
+
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
-    private readonly store: AuthoritativeTaskStore,
-  ) {}
+    store: AuthoritativeTaskStore & { compliance: ComplianceStore },
+  ) {
+    this.store = store as StoreWithCompliance;
+  }
 
   /**
    * Creates a new DEK for a tenant.
@@ -237,7 +249,7 @@ export class DataEncryptionKeyService {
 
       // Get the next version number
       const existingKeys = this.store.compliance.listDataEncryptionKeysByTenant(input.tenantId);
-      const maxVersion = existingKeys.reduce((max, k) => Math.max(max, k.version), 0);
+      const maxVersion = existingKeys.reduce((max: number, k: DataEncryptionKey) => Math.max(max, k.version), 0);
 
       const dek: DataEncryptionKey = {
         keyId,
@@ -309,7 +321,7 @@ export class DataEncryptionKeyService {
 
       // Create new DEK with next version
       const existingKeys = this.store.compliance.listDataEncryptionKeysByTenant(input.tenantId);
-      const maxVersion = existingKeys.reduce((max, k) => Math.max(max, k.version), 0);
+      const maxVersion = existingKeys.reduce((max: number, k: DataEncryptionKey) => Math.max(max, k.version), 0);
 
       const newDek: DataEncryptionKey = {
         keyId: newId("dek"),
@@ -435,12 +447,15 @@ export class DataEncryptionKeyService {
 
       for (const key of keys) {
         if (key.status !== "destroyed") {
-          const result = this.destroyDek({
+          const destroyInput: DestroyDekInput = {
             keyId: key.keyId,
             destroyedBy,
             reason,
-            traceId,
-          });
+          };
+          if (traceId !== undefined) {
+            destroyInput.traceId = traceId;
+          }
+          const result = this.destroyDek(destroyInput);
           destroyed.push(result);
         }
       }
@@ -493,7 +508,7 @@ export class DataEncryptionKeyService {
    * @returns Array of DEKs sorted by version (newest first)
    */
   public listDekVersions(tenantId: string): DataEncryptionKey[] {
-    return this.store.compliance.listDataEncryptionKeysByTenant(tenantId).sort((a, b) => b.version - a.version);
+    return this.store.compliance.listDataEncryptionKeysByTenant(tenantId).sort((a: DataEncryptionKey, b: DataEncryptionKey) => b.version - a.version);
   }
 
   /**
@@ -504,8 +519,8 @@ export class DataEncryptionKeyService {
    */
   public getTenantDekSummary(tenantId: string): TenantDekSummary {
     const keys = this.store.compliance.listDataEncryptionKeysByTenant(tenantId);
-    const active = keys.find((k) => k.status === "active") ?? null;
-    const destroyedKeys = keys.filter((k) => k.status === "destroyed");
+    const active = keys.find((k: DataEncryptionKey) => k.status === "active") ?? null;
+    const destroyedKeys = keys.filter((k: DataEncryptionKey) => k.status === "destroyed");
 
     if (keys.length === 0) {
       return {
@@ -518,15 +533,15 @@ export class DataEncryptionKeyService {
       };
     }
 
-    const sortedKeys = [...keys].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    const sortedKeys = [...keys].sort((a: DataEncryptionKey, b: DataEncryptionKey) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 
     return {
       tenantId,
       activeKey: active,
       totalVersions: keys.length,
       destroyedKeys: destroyedKeys.length,
-      oldestKeyAt: sortedKeys[0].createdAt,
-      newestKeyAt: sortedKeys[sortedKeys.length - 1].createdAt,
+      oldestKeyAt: sortedKeys[0]!.createdAt,
+      newestKeyAt: sortedKeys[sortedKeys.length - 1]!.createdAt,
     };
   }
 
@@ -539,7 +554,7 @@ export class DataEncryptionKeyService {
   public listDestroyedDeks(tenantId: string): DataEncryptionKey[] {
     return this.store.compliance
       .listDataEncryptionKeysByTenant(tenantId)
-      .filter((k) => k.status === "destroyed")
-      .sort((a, b) => (b.destroyedAt ? Date.parse(b.destroyedAt) : 0) - (a.destroyedAt ? Date.parse(a.destroyedAt) : 0));
+      .filter((k: DataEncryptionKey) => k.status === "destroyed")
+      .sort((a: DataEncryptionKey, b: DataEncryptionKey) => (b.destroyedAt ? Date.parse(b.destroyedAt) : 0) - (a.destroyedAt ? Date.parse(a.destroyedAt) : 0));
   }
 }

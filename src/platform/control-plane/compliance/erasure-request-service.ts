@@ -27,10 +27,11 @@
  * @packageDocumentation
  */
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
-import { ValidationError, StorageError } from "../../../contracts/errors.js";
-import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError, StorageError } from "../../contracts/errors.js";
+import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { ComplianceStore } from "./types.js";
 
 /**
  * Erasure request status enum
@@ -170,6 +171,13 @@ function validateErasureRequestInput(input: ErasureRequestInput): void {
 }
 
 /**
+ * Store type with compliance submodule
+ */
+type StoreWithCompliance = AuthoritativeTaskStore & {
+  compliance: ComplianceStore;
+};
+
+/**
  * Service for managing data erasure requests (Right-to-Erasure / GDPR Article 17).
  *
  * Handles the complete lifecycle of erasure requests from creation through
@@ -200,10 +208,14 @@ function validateErasureRequestInput(input: ErasureRequestInput): void {
  * ```
  */
 export class ErasureRequestService {
+  private readonly store: StoreWithCompliance;
+
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
-    private readonly store: AuthoritativeTaskStore,
-  ) {}
+    store: AuthoritativeTaskStore & { compliance: ComplianceStore },
+  ) {
+    this.store = store as StoreWithCompliance;
+  }
 
   /**
    * Creates a new erasure request with status `pending`.
@@ -511,7 +523,7 @@ export class ErasureRequestService {
    * @returns Array of matching erasure requests
    */
   public listRequestsByStatus(tenantId: string, status: ErasureStatus): ErasureRequest[] {
-    return this.store.compliance.listErasureRequestsByTenant(tenantId).filter((r) => r.status === status);
+    return this.store.compliance.listErasureRequestsByTenant(tenantId).filter((r: ErasureRequest) => r.status === status);
   }
 
   /**

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveHighestPriorityTier, SlaTier, SlaTierSchema } from "../../../../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
+import { resolveHighestPriorityTier, SlaTier, SlaTierSchema } from "../../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
 
 test("resolveHighestPriorityTier returns highest priority tier", () => {
   const tiers: SlaTier[] = [

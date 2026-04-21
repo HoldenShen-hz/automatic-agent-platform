@@ -7,9 +7,9 @@
  * @see §21 HITL Architecture - Escalation support
  */
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { ValidationError } from "../../../contracts/errors.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 /**
  * Notification channel types.
@@ -193,7 +193,7 @@ export class EscalationManager {
       throw new ValidationError(
         "escalation.max_depth_exceeded",
         `Cannot escalate beyond max depth of ${rule.maxEscalationDepth}`,
-        { currentLevel: context.currentLevel, maxDepth: rule.maxEscalationDepth },
+        { details: { currentLevel: context.currentLevel, maxDepth: rule.maxEscalationDepth } },
       );
     }
 
@@ -279,7 +279,7 @@ export class EscalationManager {
       throw new ValidationError(
         "delegation.self_delegation",
         "Cannot delegate to yourself",
-        { fromApprover, toApprover },
+        { details: { fromApprover, toApprover } },
       );
     }
 
@@ -338,7 +338,7 @@ export class EscalationManager {
       throw new ValidationError(
         "delegation.max_resets_exceeded",
         `Cannot reset TTL more than ${delegation.maxTtlResets} times`,
-        { delegationId: delegation.delegationId, ttlResetCount: delegation.ttlResetCount },
+        { details: { delegationId: delegation.delegationId, ttlResetCount: delegation.ttlResetCount } },
       );
     }
 
@@ -346,7 +346,7 @@ export class EscalationManager {
       throw new ValidationError(
         "delegation.not_active",
         "Cannot reset TTL on inactive delegation",
-        { delegationId: delegation.delegationId, status: delegation.status },
+        { details: { delegationId: delegation.delegationId, status: delegation.status } },
       );
     }
 

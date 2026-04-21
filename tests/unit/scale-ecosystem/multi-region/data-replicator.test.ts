@@ -15,7 +15,7 @@ import {
   createDataReplicator,
   type ReplicationPolicy,
   type ReplicationEvent,
-} from "../../../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
+} from "../../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
 
 test("ReplicationPolicySchema parses valid input", () => {
   const input = {

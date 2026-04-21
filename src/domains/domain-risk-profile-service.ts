@@ -23,6 +23,7 @@ import {
 export interface RiskScore {
   readonly dimension: string;
   readonly score: number;
+  readonly weight: number;
   readonly weightedScore: number;
 }
 
@@ -123,6 +124,7 @@ export class DomainRiskProfileService {
       scored.push({
         dimension: dim.dimension,
         score: rawScore,
+        weight: dim.weight,
         weightedScore,
       });
     }
@@ -177,7 +179,10 @@ export class DomainRiskProfileService {
 
   private parseTriggerThreshold(trigger: string): number {
     const match = trigger.match(/score\s*>=\s*(\d+)/);
-    return match ? Number.parseInt(match[1], 10) : 0;
+    if (!match || !match[1]) {
+      return 0;
+    }
+    return Number.parseInt(match[1], 10);
   }
 
   private requireProfile(domainId: string): DomainRiskProfile {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { summarizeConnectorHealth, ConnectorHealthReport } from "../../../../../../src/scale-ecosystem/integration/health-monitor/index.js";
+import { summarizeConnectorHealth, ConnectorHealthReport } from "../../../../src/scale-ecosystem/integration/health-monitor/index.js";
 
 test("summarizeConnectorHealth returns healthy when all reports healthy", () => {
   const reports: ConnectorHealthReport[] = [

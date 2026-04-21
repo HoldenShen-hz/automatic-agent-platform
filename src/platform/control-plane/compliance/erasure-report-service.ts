@@ -28,10 +28,11 @@
  * @packageDocumentation
  */
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
-import { ValidationError, StorageError } from "../../../contracts/errors.js";
-import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError, StorageError } from "../../contracts/errors.js";
+import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { ComplianceStore } from "./types.js";
 import type { ErasureRequest } from "./erasure-request-service.js";
 
 /**
@@ -136,6 +137,13 @@ export interface CryptoShreddingVerificationSummary {
 }
 
 /**
+ * Store type with compliance submodule
+ */
+type StoreWithCompliance = AuthoritativeTaskStore & {
+  compliance: ComplianceStore;
+};
+
+/**
  * Validates an erasure report input
  */
 function validateReportInput(input: GenerateErasureReportInput): void {
@@ -192,10 +200,14 @@ function validateReportInput(input: GenerateErasureReportInput): void {
  * ```
  */
 export class ErasureReportService {
+  private readonly store: StoreWithCompliance;
+
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
-    private readonly store: AuthoritativeTaskStore,
-  ) {}
+    store: AuthoritativeTaskStore & { compliance: ComplianceStore },
+  ) {
+    this.store = store as StoreWithCompliance;
+  }
 
   /**
    * Generates an erasure compliance report.
@@ -308,7 +320,7 @@ export class ErasureReportService {
         });
       }
 
-      const dekDestructionRefs = report.evidenceRefs.filter((ref) => ref.evidenceType === "dek_destruction");
+      const dekDestructionRefs = report.evidenceRefs.filter((ref: ReportEvidenceRef) => ref.evidenceType === "dek_destruction");
 
       let verifiedCount = 0;
       let failedCount = 0;
@@ -402,7 +414,7 @@ export class ErasureReportService {
     tenantId: string,
     status: "pending" | "verified" | "failed",
   ): ErasureReport[] {
-    return this.store.compliance.listErasureReportsByTenant(tenantId).filter((r) => r.verificationStatus === status);
+    return this.store.compliance.listErasureReportsByTenant(tenantId).filter((r: ErasureReport) => r.verificationStatus === status);
   }
 
   /**

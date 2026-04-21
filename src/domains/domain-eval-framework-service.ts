@@ -151,7 +151,7 @@ export class DomainEvalFrameworkService {
     if (domainRubrics.length === 0) {
       return null;
     }
-    return [...domainRubrics].sort((a, b) => b.version.localeCompare(a.version))[0];
+    return [...domainRubrics].sort((a, b) => b.version.localeCompare(a.version))[0] ?? null;
   }
 
   public registerRegressionDataset(dataset: RegressionDataset): void {

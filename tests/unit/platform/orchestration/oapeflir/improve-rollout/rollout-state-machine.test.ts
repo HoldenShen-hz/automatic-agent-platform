@@ -642,3 +642,16 @@ test("RolloutStateMachine allows paused to rolled_back transition", () => {
   assert.equal(result.status, "rolled_back");
   assert.equal(result.level, "off");
 });
+
+test("RolloutStateMachine transition throws for unknown currentStatus with missing allowed transitions", () => {
+  const stateMachine = new RolloutStateMachine();
+  const candidate = createCandidate("approved");
+
+  // Using an unknown status that has no allowed transitions defined
+  assert.throws(
+    () => stateMachine.transition(candidate, "canary_5", {
+      currentStatus: "unknown_status" as any,
+    }),
+    /Invalid rollout transition/,
+  );
+});

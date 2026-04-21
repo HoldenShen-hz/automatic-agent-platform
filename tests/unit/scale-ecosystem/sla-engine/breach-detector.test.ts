@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { detectSlaBreach, SlaObservation, SlaCommitment } from "../../../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
+import { detectSlaBreach, SlaObservation, SlaCommitment } from "../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 
 test("detectSlaBreach returns empty array when no breach", () => {
   const observation: SlaObservation = {

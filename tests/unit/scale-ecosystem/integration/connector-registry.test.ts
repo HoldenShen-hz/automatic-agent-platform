@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { listEnabledConnectors, ConnectorManifest } from "../../../../../src/scale-ecosystem/integration/connector-registry/index.js";
+import { listEnabledConnectors, ConnectorManifest } from "../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 
 test("listEnabledConnectors returns only enabled connectors", () => {
   const connectors: ConnectorManifest[] = [

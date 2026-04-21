@@ -75,12 +75,12 @@ export class StuckRunSweeperService {
   private readonly trackedRuns: Map<string, StuckRun> = new Map();
 
   private readonly config: Required<StuckRunSweeperConfig>;
-  private readonly onStuckRunDetected?: (run: StuckRun) => void;
-  private readonly onWarningIssued?: (run: StuckRun) => void;
-  private readonly onRunKilled?: (run: StuckRun) => void;
-  private readonly onRunCleanedUp?: (run: StuckRun) => void;
-  private readonly onKillExecution?: (executionId: string, reason: string) => Promise<boolean>;
-  private readonly onCleanupExecution?: (executionId: string, reason: string) => Promise<boolean>;
+  private readonly onStuckRunDetected: ((run: StuckRun) => void) | undefined;
+  private readonly onWarningIssued: ((run: StuckRun) => void) | undefined;
+  private readonly onRunKilled: ((run: StuckRun) => void) | undefined;
+  private readonly onRunCleanedUp: ((run: StuckRun) => void) | undefined;
+  private readonly onKillExecution: ((executionId: string, reason: string) => Promise<boolean>) | undefined;
+  private readonly onCleanupExecution: ((executionId: string, reason: string) => Promise<boolean>) | undefined;
 
   // Metrics
   private metrics = {
@@ -92,12 +92,12 @@ export class StuckRunSweeperService {
   };
 
   constructor(options: StuckRunSweeperServiceOptions) {
-    this.onStuckRunDetected = options.onStuckRunDetected;
-    this.onWarningIssued = options.onWarningIssued;
-    this.onRunKilled = options.onRunKilled;
-    this.onRunCleanedUp = options.onRunCleanedUp;
-    this.onKillExecution = options.onKillExecution;
-    this.onCleanupExecution = options.onCleanupExecution;
+    this.onStuckRunDetected = options.onStuckRunDetected ?? undefined;
+    this.onWarningIssued = options.onWarningIssued ?? undefined;
+    this.onRunKilled = options.onRunKilled ?? undefined;
+    this.onRunCleanedUp = options.onRunCleanedUp ?? undefined;
+    this.onKillExecution = options.onKillExecution ?? undefined;
+    this.onCleanupExecution = options.onCleanupExecution ?? undefined;
 
     // Build config with defaults
     const haLevel = options.haLevel ?? "HA_2";

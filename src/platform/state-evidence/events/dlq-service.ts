@@ -371,21 +371,21 @@ export class DlqService {
    * List all dead letter records for a consumer
    */
   public listByConsumer(consumerId: string): ExtendedDeadLetterRecord[] {
-    return [...this.records.values()].filter((record) => record.consumerId === consumerId);
+    return Array.from(this.records.values()).filter((record) => record.consumerId === consumerId);
   }
 
   /**
    * List all dead letter records
    */
   public listAll(): ExtendedDeadLetterRecord[] {
-    return [...this.records.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return Array.from(this.records.values()).sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   /**
    * List dead letter records by status
    */
   public listByStatus(status: DeadLetterStatus): ExtendedDeadLetterRecord[] {
-    return [...this.records.values()].filter((record) => record.status === status);
+    return Array.from(this.records.values()).filter((record) => record.status === status);
   }
 
   /**
@@ -431,13 +431,13 @@ export class DlqService {
       statusCounts,
       categoryCounts,
       consumerCounts,
-      pendingConsumers: [
-        ...new Set(
+      pendingConsumers: Array.from(
+        new Set(
           records
             .filter((record) => record.status === "pending" || record.status === "retrying")
             .map((record) => record.consumerId),
         ),
-      ].sort(),
+      ).sort(),
       maxRetryCount,
       oldestPendingAt,
     };

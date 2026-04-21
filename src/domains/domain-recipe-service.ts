@@ -155,9 +155,9 @@ export class DomainRecipeService {
       ...existing,
       name: request.name ?? existing.name,
       description: request.description ?? existing.description,
-      triggerPhrases: request.triggerPhrases ?? existing.triggerPhrases,
+      triggerPhrases: request.triggerPhrases ? [...request.triggerPhrases] : (existing.triggerPhrases ?? []),
       defaultWorkflowId: request.defaultWorkflowId ?? existing.defaultWorkflowId,
-      defaultToolBundleIds: request.defaultToolBundleIds ?? existing.defaultToolBundleIds,
+      defaultToolBundleIds: request.defaultToolBundleIds ? [...request.defaultToolBundleIds] : (existing.defaultToolBundleIds ?? []),
     };
 
     this.recipes.set(request.recipeId, updated);
@@ -258,7 +258,8 @@ export class DomainRecipeService {
     if (versions.length === 0) {
       return null;
     }
-    return [...versions].sort((a, b) => b.version.localeCompare(a.version))[0];
+    const sorted = [...versions].sort((a, b) => b.version.localeCompare(a.version));
+    return sorted[0] ?? null;
   }
 
   private bumpVersion(version: string): string {

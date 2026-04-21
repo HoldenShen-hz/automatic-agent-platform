@@ -8,7 +8,7 @@
  * @see §21 HITL Architecture - Quorum-based approval
  */
 
-import { newId, nowIso } from "../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 
 /**
  * Vote types in quorum voting.
@@ -217,13 +217,18 @@ export function createVote(
   delegationSource?: string,
   metadata?: Record<string, unknown>,
 ): QuorumVote {
-  return {
+  const vote: QuorumVote = {
     approverId,
     voteType,
     votedAt: nowIso(),
-    delegationSource,
-    metadata,
   };
+  if (delegationSource !== undefined) {
+    vote.delegationSource = delegationSource;
+  }
+  if (metadata !== undefined) {
+    vote.metadata = metadata;
+  }
+  return vote;
 }
 
 /**

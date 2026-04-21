@@ -281,6 +281,42 @@ test("decide returns candidate_not_approved when status is shadow_running and re
   assert.ok(result.reasonCodes.includes("improvement.candidate_not_approved"));
 });
 
+test("decide blocks when rollouts are frozen due to error budget exhaustion", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate({
+    status: "approved",
+    sourceSignalRefs: ["signal_1"],
+    sourceLearningObjectIds: ["lo_1"],
+  });
+  const strategy = createStrategyVersion({
+    sourceLearningObjectIds: ["lo_1"],
+    releaseLevel: "canary_5",
+  });
+
+  const result = service.decide(candidate, strategy, { frozen: true, reasonCode: "error_budget_exhausted" });
+
+  assert.equal(result.allowed, false);
+  assert.ok(result.reasonCodes.some(code => code.includes("frozen_error_budget")));
+});
+
+test("decide returns rollout.frozen_error_budget reason code when frozen", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate({
+    status: "approved",
+    sourceSignalRefs: ["signal_1"],
+    sourceLearningObjectIds: ["lo_1"],
+  });
+  const strategy = createStrategyVersion({
+    sourceLearningObjectIds: ["lo_1"],
+    releaseLevel: "partial_25",
+  });
+
+  const result = service.decide(candidate, strategy, { frozen: true, reasonCode: "error_budget_exhausted" });
+
+  assert.equal(result.allowed, false);
+  assert.ok(result.reasonCodes.includes("rollout.frozen_error_budget"));
+});
+
 // =============================================================================
 // start tests
 // =============================================================================

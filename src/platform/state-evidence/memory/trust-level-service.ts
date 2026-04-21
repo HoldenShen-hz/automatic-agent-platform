@@ -276,8 +276,6 @@ export class TrustLevelService {
       rolledOutAt: null,
       rolloutTargets: [],
       metadata: {
-        teamId: undefined,
-        projectId: undefined,
         tags: [],
         categories: [memory.classification],
       },

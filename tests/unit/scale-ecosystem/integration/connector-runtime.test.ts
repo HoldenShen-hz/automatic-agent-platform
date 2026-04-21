@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildConnectorExecutionKey, ConnectorExecutionRequest } from "../../../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
+import { buildConnectorExecutionKey, ConnectorExecutionRequest } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
 test("buildConnectorExecutionKey creates correct key", () => {
   const request: ConnectorExecutionRequest = {

@@ -263,3 +263,59 @@ test("ReplanningService.createTrigger creates valid trigger", () => {
   assert.equal(trigger.source, "feedback");
   assert.equal(trigger.summary, "Feedback triggered replan");
 });
+
+test("ReplanningService decides uses fallback reasonCode when trigger is null", () => {
+  const service = new ReplanningService();
+  const decision = service.decide(
+    {
+      planId: "plan_fallback_null",
+      taskId: "task_fallback_null",
+      assessmentRef: "assessment:task_fallback_null:1",
+      version: 1,
+      strategy: "linear",
+      steps: [],
+      createdAt: Date.now(),
+    },
+    {
+      feedbackId: "fb_fallback_null",
+      taskId: "task_fallback_null",
+      executionId: null,
+      planId: "plan_fallback_null",
+      outcome: "repairable",
+      signals: [],
+      emittedAt: Date.now(),
+    },
+    null, // trigger is null
+  );
+
+  assert.equal(decision.shouldReplan, true);
+  assert.equal(decision.reasonCode, "planning.repairable");
+});
+
+test("ReplanningService decides uses fallback reasonCode when trigger is undefined", () => {
+  const service = new ReplanningService();
+  const decision = service.decide(
+    {
+      planId: "plan_fallback_undef",
+      taskId: "task_fallback_undef",
+      assessmentRef: "assessment:task_fallback_undef:1",
+      version: 1,
+      strategy: "linear",
+      steps: [],
+      createdAt: Date.now(),
+    },
+    {
+      feedbackId: "fb_fallback_undef",
+      taskId: "task_fallback_undef",
+      executionId: null,
+      planId: "plan_fallback_undef",
+      outcome: "repairable",
+      signals: [],
+      emittedAt: Date.now(),
+    },
+    undefined, // trigger is undefined
+  );
+
+  assert.equal(decision.shouldReplan, true);
+  assert.equal(decision.reasonCode, "planning.repairable");
+});

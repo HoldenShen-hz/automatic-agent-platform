@@ -165,3 +165,41 @@ test("PlanEvaluator returns multiple issues", () => {
   assert.equal(evaluation.viable, false);
   assert.ok(evaluation.issues.length >= 2);
 });
+
+test("PlanEvaluator returns viable for plan within exact token budget", () => {
+  const evaluator = new PlanEvaluator();
+  const evaluation = evaluator.evaluate(
+    {
+      planId: "plan_exact_budget",
+      taskId: "task_exact_budget",
+      assessmentRef: "assessment:task_exact_budget:1",
+      version: 1,
+      strategy: "linear",
+      steps: [createValidPlanStep()],
+      createdAt: Date.now(),
+    },
+    createValidAssessment({ maxTokens: 5000 }),
+  );
+
+  assert.equal(evaluation.viable, true);
+  assert.equal(evaluation.issues.length, 0);
+});
+
+test("PlanEvaluator flags plan slightly over token budget", () => {
+  const evaluator = new PlanEvaluator();
+  const evaluation = evaluator.evaluate(
+    {
+      planId: "plan_over_budget",
+      taskId: "task_over_budget",
+      assessmentRef: "assessment:task_over_budget:1",
+      version: 1,
+      strategy: "linear",
+      steps: [createValidPlanStep()],
+      createdAt: Date.now(),
+    },
+    createValidAssessment({ maxTokens: 100 }),
+  );
+
+  assert.equal(evaluation.viable, false);
+  assert.ok(evaluation.issues.includes("planning.resource_budget_exceeded"));
+});

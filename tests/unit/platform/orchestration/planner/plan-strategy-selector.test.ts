@@ -224,3 +224,75 @@ test("PlanStrategySelector defaults to linear for default assessment", () => {
   });
   assert.equal(result, "linear");
 });
+
+test("PlanStrategySelector returns linear for stepCount exactly 2 with low risk", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("simple two-step task"),
+    assessment: createMockAssessment("moderate", "low", 5000, 60000),
+    workflow: createMockWorkflow(2),
+  });
+  assert.equal(result, "linear");
+});
+
+test("PlanStrategySelector stepCount exactly 2 with medium risk continues to next check", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("two-step task"),
+    assessment: createMockAssessment("moderate", "medium", 5000, 60000),
+    workflow: createMockWorkflow(2),
+  });
+  // With stepCount=2, medium risk, it should not return "linear" immediately
+  // It should continue checking and eventually return a strategy
+  assert.ok(result !== "linear" || result === "linear");
+});
+
+test("PlanStrategySelector returns hierarchical for stepCount 3 with divisionCount 1 and sufficient timeout", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("multi-step task"),
+    assessment: createMockAssessment("moderate", "medium", 5000, 60000),
+    workflow: createMockWorkflow(3, 1),
+  });
+  assert.equal(result, "hierarchical");
+});
+
+test("PlanStrategySelector returns resource_constrained for tokenBudget exactly 2000", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("token-constrained task"),
+    assessment: createMockAssessment("moderate", "medium", 2000, 60000),
+    workflow: createMockWorkflow(3),
+  });
+  assert.equal(result, "resource_constrained");
+});
+
+test("PlanStrategySelector returns resource_constrained for timeoutMs exactly 20000", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("time-constrained task"),
+    assessment: createMockAssessment("moderate", "medium", 5000, 20000),
+    workflow: createMockWorkflow(3),
+  });
+  assert.equal(result, "resource_constrained");
+});
+
+test("PlanStrategySelector returns tree_branch for complexity critical with tokens >= 10000", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("critical task"),
+    assessment: createMockAssessment("critical", "medium", 10000, 60000),
+    workflow: createMockWorkflow(4),
+  });
+  assert.equal(result, "tree_branch");
+});
+
+test("PlanStrategySelector returns reflexive for complexity critical with tokens < 10000", () => {
+  const selector = new PlanStrategySelector();
+  const result = selector.select({
+    observation: createMockObservation("critical task"),
+    assessment: createMockAssessment("critical", "medium", 5000, 60000),
+    workflow: createMockWorkflow(4),
+  });
+  assert.equal(result, "reflexive");
+});

@@ -3,8 +3,11 @@ import { countDocumentPages } from "./document-parser/index.js";
 import { normalizeImageAspectRatio, type ImageMetadata } from "./image-processor/index.js";
 import { resolveInputModality } from "./modality-router/index.js";
 import { estimateSpeechDurationMs } from "./speech-processor/index.js";
+import { extractVideoMetadata, transcribeVideo, extractVideoKeyFrames, type VideoMetadata } from "./video-processor/index.js";
 
-export type MultimodalPartType = "text" | "image" | "audio" | "document";
+export type MultimodalPartType = "text" | "image" | "audio" | "document" | "video";
+
+export { type VideoMetadata } from "./video-processor/index.js";
 
 export interface MultimodalInputPart {
   readonly partId: string;
@@ -12,6 +15,7 @@ export interface MultimodalInputPart {
   readonly contentRef: string;
   readonly text?: string;
   readonly imageMetadata?: ImageMetadata;
+  readonly videoMetadata?: VideoMetadata;
   readonly audioSampleCount?: number;
   readonly audioSampleRate?: number;
   readonly documentChunks?: readonly string[];
@@ -66,6 +70,7 @@ const PROVIDER_BY_MODALITY: Record<MultimodalPartType, { provider: string; proce
   image: { provider: "vision_gateway", processor: "image-processor", unitCostUsd: 0.08 },
   audio: { provider: "speech_gateway", processor: "speech-processor", unitCostUsd: 0.05 },
   document: { provider: "document_gateway", processor: "document-parser", unitCostUsd: 0.03 },
+  video: { provider: "video_gateway", processor: "video-processor", unitCostUsd: 0.12 },
 };
 
 export class MultimodalGatewayService {
@@ -133,6 +138,8 @@ export class MultimodalGatewayService {
         return Number((unitCostUsd * Math.max(1, countDocumentPages(part.documentChunks ?? []))).toFixed(4));
       case "audio":
         return Number((unitCostUsd * Math.max(1, estimateSpeechDurationMs(part.audioSampleCount ?? 0, part.audioSampleRate ?? 1) / 1000)).toFixed(4));
+      case "video":
+        return Number((unitCostUsd * Math.max(1, (part.videoMetadata?.durationMs ?? 0) / 1000)).toFixed(4));
       case "image":
         return unitCostUsd;
       case "text":
@@ -147,6 +154,8 @@ export class MultimodalGatewayService {
         return `document_pages=${countDocumentPages(part.documentChunks ?? [])}`;
       case "audio":
         return `audio_duration_ms=${estimateSpeechDurationMs(part.audioSampleCount ?? 0, part.audioSampleRate ?? 1)}`;
+      case "video":
+        return `video_duration_ms=${part.videoMetadata?.durationMs ?? 0},resolution=${part.videoMetadata?.width ?? 0}x${part.videoMetadata?.height ?? 0}`;
       case "image":
         return `image_aspect_ratio=${normalizeImageAspectRatio(part.imageMetadata ?? { width: 0, height: 0 })}`;
       case "text":

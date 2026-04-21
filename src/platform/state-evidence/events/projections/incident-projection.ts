@@ -205,12 +205,12 @@ export const incidentProjectionHandler: ProjectionHandler = (
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
   // Initialize state if null
-  const currentState = state as IncidentState | null;
+  const currentState = state as unknown as IncidentState | null;
   const newState = currentState ? { ...currentState } : createEmptyIncidentState();
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState;
+    return newState as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -294,7 +294,7 @@ export const incidentProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as Record<string, unknown>;
+  return newState as unknown as Record<string, unknown>;
 };
 
 /**

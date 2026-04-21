@@ -167,7 +167,7 @@ export class ConfigVersioningService {
     this.snapshots.set(key, versions);
 
     // Cleanup old versions
-    this.pruneVersions(key);
+    this.pruneVersionsInternal(key);
 
     // Emit event
     this.emitVersionEvent("config.version.created", snapshot);
