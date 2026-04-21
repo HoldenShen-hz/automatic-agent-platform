@@ -104,7 +104,7 @@ test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () =
             reasonCode: "WF_FAILED",
             reasonDetail: "Workflow failed",
             actorType: "system",
-            actorId: null,
+            actorId: "",
             occurredAt: new Date().toISOString(),
           });
           resolve();
