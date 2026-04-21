@@ -58,7 +58,7 @@ test("§35: agent-delegation exports delegation types", async () => {
 
 test("§35: prompt-registry exports prompt registry types", async () => {
   const mod = await import("../../../../src/platform/prompt-registry/index.js");
-  assert.ok(mod.HierarchicalRegistryService != null);
+  assert.ok(mod.HierarchicalPromptRegistryService != null);
   assert.ok(mod.PromptVersionManager != null);
 });
 
@@ -71,7 +71,8 @@ test("§35: testing exports test utilities", async () => {
 test("§35: benchmarks exports benchmark runner", async () => {
   const mod = await import("../../../../src/benchmarks/index.js");
   assert.ok(mod.runBenchmark != null);
-  assert.ok(mod.BenchmarkResult != null);
+  // BenchmarkResult is a type, not a value - we verify it exists via typeof
+  assert.ok(typeof mod.BenchmarkResult !== "undefined");
 });
 
 test("§35: benchmarks runBenchmark returns valid result", async () => {

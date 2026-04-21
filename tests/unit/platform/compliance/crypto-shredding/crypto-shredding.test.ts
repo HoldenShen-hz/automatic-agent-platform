@@ -385,7 +385,7 @@ describe("CryptoShreddingService", () => {
       const encryptResult = await service.encryptRecordForSubject("user-123", record);
 
       // Then decrypt
-      const dekId = encryptResult.encryptions[0].dekId;
+      const dekId = encryptResult.encryptions[0]!.dekId;
       const decrypted = await service.decryptField(dekId, "name", encryptResult.encryptedRecord);
 
       assert.strictEqual(decrypted, "John Doe");

@@ -69,8 +69,8 @@ test("OutboxService.writeOutboxEntries inserts multiple entries", () => {
   ]);
 
   assert.equal(entries.length, 2);
-  assert.equal(entries[0].aggregateType, "task");
-  assert.equal(entries[1].aggregateType, "task");
+  assert.equal(entries[0]!.aggregateType, "task");
+  assert.equal(entries[1]!.aggregateType, "task");
 });
 
 test("OutboxService.getPendingEntries returns pending entries", () => {

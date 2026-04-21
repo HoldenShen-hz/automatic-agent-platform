@@ -72,8 +72,8 @@ test("GraphQLAdapterService execute returns error for missing schema", async () 
   const result = await adapter.execute("nonexistent", request);
 
   assert.equal(result.success, false);
-  assert.equal(result.errors?.[0].message, "Schema 'nonexistent' not found");
-  assert.equal(result.errors?.[0].extensions?.code, GRAPHQL_ERROR_CODES.NOT_FOUND);
+  assert.equal(result.errors?.[0]?.message, "Schema 'nonexistent' not found");
+  assert.equal(result.errors?.[0]?.extensions?.code, GRAPHQL_ERROR_CODES.NOT_FOUND);
 });
 
 test("GraphQLAdapterService execute returns error for subscription", async () => {
@@ -86,7 +86,7 @@ test("GraphQLAdapterService execute returns error for subscription", async () =>
   const result = await adapter.execute("test", request);
 
   assert.equal(result.success, false);
-  assert.equal(result.errors?.[0].message, "Use subscribe() for subscription operations");
+  assert.equal(result.errors?.[0]?.message, "Use subscribe() for subscription operations");
 });
 
 test("GraphQLAdapterService execute returns success for query", async () => {

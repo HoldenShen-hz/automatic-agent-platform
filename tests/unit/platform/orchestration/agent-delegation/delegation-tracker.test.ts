@@ -120,7 +120,7 @@ test("DelegationTracker records events", () => {
 
   const events = tracker.getEvents("dlg-event");
   assert.equal(events.length, 1);
-  assert.equal(events[0].eventType, "delegation.created");
+  assert.equal(events[0]!.eventType, "delegation.created");
 });
 
 test("DelegationTracker returns empty events for non-existent delegation", () => {

@@ -215,7 +215,7 @@ test("VersionCompatibilityMatrix gets active entries", () => {
   const active = matrix.getActiveEntries();
 
   assert.equal(active.length, 1);
-  assert.equal(active[0].sourceVersion, "1.0.0");
+  assert.equal(active[0]!.sourceVersion, "1.0.0");
 });
 
 test("VersionCompatibilityMatrix deprecates entry", () => {

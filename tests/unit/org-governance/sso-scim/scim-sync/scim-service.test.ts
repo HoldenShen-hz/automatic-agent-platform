@@ -54,7 +54,7 @@ test("ScimProvisionService creates user and records event", () => {
   const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
 
   assert.equal(events.length, 1);
-  assert.equal(events[0].action, "user_created");
+  assert.equal(events[0]!.action, "user_created");
 });
 
 test("ScimProvisionService gets user by id", () => {
@@ -85,7 +85,7 @@ test("ScimProvisionService gets user by email", () => {
   const retrieved = service.getUserByEmail("test@example.com");
 
   assert.ok(retrieved);
-  assert.equal(retrieved!.emails[0].value, "test@example.com");
+  assert.equal(retrieved!.emails[0]!.value, "test@example.com");
 });
 
 test("ScimProvisionService returns null for non-existent user", () => {
@@ -350,8 +350,8 @@ test("ScimProvisionService gets provision events", () => {
   const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
 
   assert.equal(events.length, 2);
-  assert.equal(events[0].action, "user_created");
-  assert.equal(events[1].action, "user_updated");
+  assert.equal(events[0]!.action, "user_created");
+  assert.equal(events[1]!.action, "user_updated");
 });
 
 test("ScimProvisionService filters provision events by tenant", () => {

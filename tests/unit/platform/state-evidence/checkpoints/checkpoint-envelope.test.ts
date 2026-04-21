@@ -317,8 +317,8 @@ describe("CheckpointEnvelope", () => {
           source: "test",
           request: "test request",
           routeReason: null,
-          priorStepSummaries: [],
-          dependsOnStepIds: [],
+          priorStepSummaries: [] as string[],
+          dependsOnStepIds: [] as string[],
         },
         resumeContext: {
           completedStepIds: ["step-000"],
@@ -327,13 +327,13 @@ describe("CheckpointEnvelope", () => {
         },
         fileDiffSummary: {
           summary: null,
-          createdPaths: [],
-          updatedPaths: [],
-          deletedPaths: [],
+          createdPaths: [] as string[],
+          updatedPaths: [] as string[],
+          deletedPaths: [] as string[],
         },
-        upstreamArtifactRefs: [],
+        upstreamArtifactRefs: [] as any[],
         compensationModel: null,
-      };
+      } as any;
 
       const envelope = await wrapWorkflowStepCheckpoint(checkpoint);
       const unpacked = await unwrapWorkflowStepCheckpoint(envelope);

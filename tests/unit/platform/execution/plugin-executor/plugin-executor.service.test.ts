@@ -86,7 +86,7 @@ test("PluginExecutorService registers plugins and tracks state", () => {
 
   const plugins = service.listPlugins();
   assert.equal(plugins.length, 1);
-  assert.equal(plugins[0].pluginId, "test-plugin");
+  assert.equal(plugins[0]!.pluginId, "test-plugin");
 
   const state = service.getState("test-plugin");
   assert.equal(state, "registered");

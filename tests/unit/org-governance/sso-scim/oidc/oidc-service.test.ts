@@ -122,7 +122,7 @@ test("OidcIdentityService gets user sessions", async () => {
   const sessions = service.getUserSessions(userInfo!.sub);
 
   assert.equal(sessions.length, 1);
-  assert.equal(sessions[0].userId, userInfo!.sub);
+  assert.equal(sessions[0]!.userId, userInfo!.sub);
 });
 
 test("OidcIdentityService returns empty array for user with no sessions", () => {
@@ -148,10 +148,10 @@ test("OidcIdentityService returns null for refresh without refresh token", async
   const service = new OidcIdentityService(createOidcConfig());
   const { state } = service.initiateFlow("https://app.example.com/callback");
   const tokens = await service.exchangeCodeForTokens("auth-code", state);
-  // Remove refresh token to test
-  const tokensWithoutRefresh = { ...tokens!, refreshToken: undefined };
+  // Remove refresh token to test - omit the property entirely
+  const { refreshToken: _rt, ...tokensWithoutRefresh } = tokens!;
   const userInfo = await service.fetchUserInfo(tokens!.accessToken);
-  const session = service.createSession(tokensWithoutRefresh, userInfo!);
+  const session = service.createSession(tokensWithoutRefresh as any, userInfo!);
 
   const newTokens = await service.refreshAccessToken(session.sessionId);
 
@@ -167,7 +167,7 @@ test("OidcIdentityService touches session updates lastActivity", async () => {
 
   service.touchSession(session.sessionId);
 
-  const updated = service.getUserSessions(userInfo!.sub)[0];
+  const updated = service.getUserSessions(userInfo!.sub)[0]!;
   assert.ok(updated.lastActivityAt);
 });
 

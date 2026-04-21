@@ -21,7 +21,7 @@ test("DashboardWebSocketServer registers client successfully", () => {
 
   assert.ok(clientId);
   assert.equal(ack.type, "connection_ack");
-  assert.equal(ack.payload.clientId, clientId);
+  assert.equal((ack.payload as { clientId: string }).clientId, clientId);
 });
 
 test("DashboardWebSocketServer rejects when max clients reached", () => {
@@ -203,7 +203,7 @@ test("DashboardWebSocketServer getClientCount returns correct count", () => {
   server.registerClient(["dashboard:fleet"]);
   assert.equal(server.getClientCount(), 2);
 
-  server.unregisterClient(server.getConnectedClients()[0].clientId);
+  server.unregisterClient(server.getConnectedClients()[0]!.clientId);
   assert.equal(server.getClientCount(), 1);
 });
 
