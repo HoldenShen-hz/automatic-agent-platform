@@ -75,7 +75,7 @@ function createSecurityHarness(prefix: string): {
   return { workspace, db, store, service };
 }
 
-test("edit replacement service blocks writes outside the workspace sandbox", () => {
+test("edit replacement service blocks writes outside the workspace sandbox", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const outside = createTempWorkspace("aa-edit-outside-");
 
@@ -83,7 +83,7 @@ test("edit replacement service blocks writes outside the workspace sandbox", () 
     const blockedPath = join(outside, "blocked.ts");
     createFile(blockedPath, "const blocked = true;\n");
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-1",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -109,7 +109,7 @@ test("edit replacement service blocks writes outside the workspace sandbox", () 
   }
 });
 
-test("edit batch service blocks writes outside the workspace sandbox", () => {
+test("edit batch service blocks writes outside the workspace sandbox", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const outside = createTempWorkspace("aa-edit-batch-outside-");
 
@@ -122,7 +122,7 @@ test("edit batch service blocks writes outside the workspace sandbox", () => {
     const blockedPath = join(outside, "blocked.ts");
     createFile(blockedPath, "const blocked = true;\n");
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "security-batch-call-1",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -148,7 +148,7 @@ test("edit batch service blocks writes outside the workspace sandbox", () => {
   }
 });
 
-test("edit replacement service blocks symlink escapes", () => {
+test("edit replacement service blocks symlink escapes", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const outside = createTempWorkspace("aa-edit-symlink-target-");
 
@@ -158,7 +158,7 @@ test("edit replacement service blocks symlink escapes", () => {
     createFile(actualFile, "const value = 1;\n");
     createSymlink(actualFile, symlinkPath);
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-2",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -180,14 +180,14 @@ test("edit replacement service blocks symlink escapes", () => {
   }
 });
 
-test("edit replacement service rejects binary files and releases locks", () => {
+test("edit replacement service rejects binary files and releases locks", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const filePath = join(harness.workspace, "binary.bin");
 
   try {
     createFile(filePath, "header\u0000payload");
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-3",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -208,7 +208,7 @@ test("edit replacement service rejects binary files and releases locks", () => {
   }
 });
 
-test("edit replacement service fails when another write lock is active", () => {
+test("edit replacement service fails when another write lock is active", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const filePath = join(harness.workspace, "locked.ts");
 
@@ -227,7 +227,7 @@ test("edit replacement service fails when another write lock is active", () => {
       updatedAt: "2026-04-03T00:00:00.000Z",
     });
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-4",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -248,7 +248,7 @@ test("edit replacement service fails when another write lock is active", () => {
   }
 });
 
-test("edit replacement service blocks writes outside execution path scope even inside the sandbox", () => {
+test("edit replacement service blocks writes outside execution path scope even inside the sandbox", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const allowedDir = join(harness.workspace, "allowed");
   const blockedFile = join(harness.workspace, "blocked.ts");
@@ -262,7 +262,7 @@ test("edit replacement service blocks writes outside execution path scope even i
     createFile(join(allowedDir, "ok.ts"), "const ok = true;\n");
     createFile(blockedFile, "const blocked = true;\n");
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-5",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -283,7 +283,7 @@ test("edit replacement service blocks writes outside execution path scope even i
   }
 });
 
-test("edit replacement service blocks execution-level tool permissions before sandbox-safe writes", () => {
+test("edit replacement service blocks execution-level tool permissions before sandbox-safe writes", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const filePath = join(harness.workspace, "tool-denied.ts");
 
@@ -295,7 +295,7 @@ test("edit replacement service blocks execution-level tool permissions before sa
   try {
     createFile(filePath, "const blocked = true;\n");
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-6",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -316,7 +316,7 @@ test("edit replacement service blocks execution-level tool permissions before sa
   }
 });
 
-test("edit batch service blocks execution-level tool permissions before sandbox-safe writes", () => {
+test("edit batch service blocks execution-level tool permissions before sandbox-safe writes", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const filePath = join(harness.workspace, "batch-tool-denied.ts");
 
@@ -328,7 +328,7 @@ test("edit batch service blocks execution-level tool permissions before sandbox-
   try {
     createFile(filePath, "const blocked = true;\n");
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "security-batch-call-2",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",
@@ -353,7 +353,7 @@ test("edit batch service blocks execution-level tool permissions before sandbox-
   }
 });
 
-test("edit replacement service fail-closes malformed execution allowlists before sandbox-safe writes", () => {
+test("edit replacement service fail-closes malformed execution allowlists before sandbox-safe writes", async () => {
   const harness = createSecurityHarness("aa-edit-security-");
   const filePath = join(harness.workspace, "invalid-allowlists.ts");
 
@@ -366,7 +366,7 @@ test("edit replacement service fail-closes malformed execution allowlists before
   try {
     createFile(filePath, "const blocked = true;\n");
 
-    const result = harness.service.execute({
+    const result = await harness.service.execute({
       callId: "security-call-7",
       taskId: "task-edit-security",
       executionId: "exec-edit-security",

@@ -7,6 +7,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
+import { PolicyDeniedError } from "../../../contracts/errors.js";
+import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../../../control-plane/iam/sandbox-policy.js";
 import type { QualityGateConfig } from "./types.js";
 
 // Zod schema for quality gate configuration validation
@@ -36,9 +38,33 @@ const QualityGateConfigSchema = z.object({
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/quality/default.json");
 
-export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): QualityGateConfig {
+/**
+ * Loads the quality gate configuration from the JSON config file.
+ *
+ * @param configPath - Optional path to config file (defaults to config/quality/default.json)
+ * @param sandboxPolicy - Optional sandbox policy for path validation
+ * @returns The parsed quality gate configuration
+ */
+export function loadQualityConfig(
+  configPath: string = DEFAULT_CONFIG_PATH,
+  sandboxPolicy?: SandboxPolicy,
+): QualityGateConfig {
+  let effectivePath = configPath;
+
+  // Validate path before reading to prevent path traversal attacks
+  if (sandboxPolicy != null) {
+    const check = checkSandboxPath(sandboxPolicy, configPath);
+    if (!check.allowed) {
+      throw new PolicyDeniedError(
+        check.reasonCode ?? "config.quality_denied",
+        check.reasonCode ?? "config.quality_denied",
+      );
+    }
+    effectivePath = check.normalizedPath;
+  }
+
   try {
-    const raw = readFileSync(configPath, "utf-8");
+    const raw = readFileSync(effectivePath, "utf-8");
     const parsed = JSON.parse(raw);
 
     // Validate parsed config against Zod schema

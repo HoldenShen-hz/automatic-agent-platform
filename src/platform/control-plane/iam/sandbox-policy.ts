@@ -343,3 +343,28 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
     processRuleMode: "allow",
   };
 }
+
+/**
+ * Creates a sandbox policy for reading configuration files within a specific root.
+ * This policy is appropriate for config loaders that need to read files from a
+ * designated config directory while preventing path traversal attacks.
+ *
+ * Security properties:
+ * - Realpath enforcement enabled (prevents symlink escapes)
+ * - Symlinks denied (could be used to escape config root)
+ * - Mode is read_only (only read operations allowed)
+ *
+ * @param configRoot - The root directory containing configuration files
+ * @returns A configured SandboxPolicy for config file operations
+ */
+export function createConfigReadPolicy(configRoot: string): SandboxPolicy {
+  return {
+    policyId: "config_read",
+    mode: "read_only",
+    allowedRoots: [configRoot],
+    deniedRoots: [],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "deny",
+  };
+}

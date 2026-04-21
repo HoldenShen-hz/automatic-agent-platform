@@ -5,14 +5,14 @@ import test from "node:test";
 import { CodeDiagnosticsService, formatDiagnosticsFeedback } from "../../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("code diagnostics service reports TypeScript diagnostics for changed files", () => {
+test("code diagnostics service reports TypeScript diagnostics for changed files", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-unit-");
   const filePath = join(workspace, "broken.ts");
 
   try {
     createFile(filePath, "const answer: string = 1;\n");
     const service = new CodeDiagnosticsService({ workspaceRoot: workspace });
-    const summary = service.collectForFiles([filePath]);
+    const summary = await service.collectForFiles([filePath]);
 
     assert.ok(summary != null);
     assert.equal(summary.checkedFileCount, 1);
@@ -25,7 +25,7 @@ test("code diagnostics service reports TypeScript diagnostics for changed files"
   }
 });
 
-test("code diagnostics service groups TypeScript and Python diagnostics and ignores unsupported files", () => {
+test("code diagnostics service groups TypeScript and Python diagnostics and ignores unsupported files", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-unit-");
   const tsFile = join(workspace, "src", "demo.ts");
   const pyFile = join(workspace, "scripts", "demo.py");
@@ -55,7 +55,7 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
           column: 1,
         }];
       },
-      runPython: ({ filePaths }) => {
+      runPython: async ({ filePaths }) => {
         pyCalls += 1;
         assert.equal(filePaths.length, 1);
         assert.equal(basename(filePaths[0] ?? ""), "demo.py");
@@ -72,7 +72,7 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
       },
     });
 
-    const summary = service.collectForFiles([tsFile, pyFile, txtFile]);
+    const summary = await service.collectForFiles([tsFile, pyFile, txtFile]);
 
     assert.ok(summary != null);
     assert.equal(summary.checkedFileCount, 2);
@@ -87,7 +87,7 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
   }
 });
 
-test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20", () => {
+test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-default-");
   try {
     // Create a valid file to check
@@ -95,7 +95,7 @@ test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20", () => {
     createFile(filePath, "const x: number = 1;\n");
 
     const service = new CodeDiagnosticsService({ workspaceRoot: workspace });
-    const summary = service.collectForFiles([filePath]);
+    const summary = await service.collectForFiles([filePath]);
 
     // When files exist, should return a summary (possibly with 0 diagnostics)
     assert.ok(summary !== null);
@@ -105,7 +105,7 @@ test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20", () => {
   }
 });
 
-test("code diagnostics service respects custom maxDiagnostics option", () => {
+test("code diagnostics service respects custom maxDiagnostics option", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-max-");
   const filePath = join(workspace, "many.ts");
 
@@ -122,7 +122,7 @@ test("code diagnostics service respects custom maxDiagnostics option", () => {
       workspaceRoot: workspace,
       maxDiagnostics: 5,
     });
-    const summary = service.collectForFiles([filePath]);
+    const summary = await service.collectForFiles([filePath]);
 
     // Should be capped at 5 diagnostics
     assert.ok(summary !== null);
@@ -132,7 +132,7 @@ test("code diagnostics service respects custom maxDiagnostics option", () => {
   }
 });
 
-test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20", () => {
+test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-truncate-");
   const filePath = join(workspace, "lots-of-errors.ts");
 
@@ -149,7 +149,7 @@ test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20", () =
       workspaceRoot: workspace,
       // Don't specify maxDiagnostics - should use DEFAULT_MAX_DIAGNOSTICS (20)
     });
-    const summary = service.collectForFiles([filePath]);
+    const summary = await service.collectForFiles([filePath]);
 
     // Should be truncated to 20 diagnostics
     assert.ok(summary !== null);

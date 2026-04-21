@@ -5,7 +5,7 @@ import test from "node:test";
 import { CodeDiagnosticsService } from "../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("code diagnostics service keeps diagnostics scans inside the workspace boundary", () => {
+test("code diagnostics service keeps diagnostics scans inside the workspace boundary", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-security-");
   const outsideWorkspace = createTempWorkspace("aa-code-diagnostics-outside-");
   const insideFile = join(workspace, "safe.ts");

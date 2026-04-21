@@ -7,6 +7,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import type { CostAlertConfig } from "./cost-alert-types.js";
+import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
+import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../iam/sandbox-policy.js";
 
 // Zod schema for cost alert configuration validation
 const CostAlertActionSchema = z.enum([
@@ -46,11 +48,54 @@ let cachedConfig: CostAlertConfig | null = null;
  * Loads the cost alert configuration from the JSON config file.
  *
  * @param configPath - Optional path to config file (defaults to config/cost-alert/default.json)
+ * @param sandboxPolicy - Optional sandbox policy for path validation
  * @returns The parsed cost alert configuration
  */
-export function loadCostAlertConfig(configPath: string = DEFAULT_CONFIG_PATH): CostAlertConfig {
+export function loadCostAlertConfig(
+  configPath: string = DEFAULT_CONFIG_PATH,
+  sandboxPolicy?: SandboxPolicy,
+): CostAlertConfig {
   if (cachedConfig) {
     return cachedConfig;
+  }
+
+  // Validate path before reading to prevent path traversal attacks
+  if (sandboxPolicy != null) {
+    const check = checkSandboxPath(sandboxPolicy, configPath);
+    if (!check.allowed) {
+      throw new PolicyDeniedError(
+        check.reasonCode ?? "config.cost_alert_denied",
+        check.reasonCode ?? "config.cost_alert_denied",
+      );
+    }
+    // Use normalized path after validation
+    const effectivePath = check.normalizedPath;
+    try {
+      const raw = readFileSync(effectivePath, "utf-8");
+      const parsed = JSON.parse(raw);
+
+      // Validate parsed config against Zod schema
+      const validated = CostAlertConfigSchema.parse(parsed);
+
+      cachedConfig = {
+        enabled: validated.enabled,
+        platformBudgetPolicy: validated.platformBudgetPolicy,
+        tenantBudgetPolicies: validated.tenantBudgetPolicies,
+        packBudgetPolicies: validated.packBudgetPolicies,
+        defaultWarningThreshold: validated.defaultWarningThreshold,
+      };
+
+      return cachedConfig!;
+    } catch (error) {
+      // Return default config if file doesn't exist or validation fails
+      return {
+        enabled: true,
+        platformBudgetPolicy: null,
+        tenantBudgetPolicies: {},
+        packBudgetPolicies: {},
+        defaultWarningThreshold: 0.8,
+      };
+    }
   }
 
   try {

@@ -96,7 +96,7 @@ export class EditReplacementService {
    * @param request - Edit replacement request with file path and string specifications
    * @returns EditReplacementResult with status, attempts, and diagnostics
    */
-  public execute(request: EditReplacementRequest): EditReplacementResult {
+  public async execute(request: EditReplacementRequest): Promise<EditReplacementResult> {
     const startedAtMs = Date.now();
     const coercedRequest = coerceEditReplacementRequest(request);
     const normalizedRequest = coercedRequest.value;
@@ -198,7 +198,7 @@ export class EditReplacementService {
       const alreadyApplied = findAlreadyAppliedRange(originalContent, normalizedRequest);
       if (alreadyApplied != null) {
         const appliedRange = formatRange(originalContent, alreadyApplied.startOffset, alreadyApplied.endOffset);
-        const diagnostics = this.collectDiagnostics(pathCheck.normalizedPath);
+        const diagnostics = await this.collectDiagnostics(pathCheck.normalizedPath);
         return buildEditReplacementResult(
           normalizedRequest,
           "succeeded",
@@ -255,7 +255,7 @@ export class EditReplacementService {
       writeFileSync(pathCheck.normalizedPath, updatedContent, "utf8");
 
       const appliedRange = formatRange(originalContent, evaluation.matchedCandidate.startOffset, evaluation.matchedCandidate.endOffset);
-      const diagnostics = this.collectDiagnostics(pathCheck.normalizedPath);
+      const diagnostics = await this.collectDiagnostics(pathCheck.normalizedPath);
       return buildEditReplacementResult(
         normalizedRequest,
         "succeeded",
@@ -287,7 +287,7 @@ export class EditReplacementService {
     }
   }
 
-  public executeBatch(request: EditBatchRequest): EditBatchResult {
+  public async executeBatch(request: EditBatchRequest): Promise<EditBatchResult> {
     const startedAtMs = Date.now();
     const coercedRequest = coerceEditBatchRequest(request);
     const normalizedRequest = coercedRequest.value;
@@ -427,7 +427,7 @@ export class EditReplacementService {
         appliedEditCount === 0
           ? `Edit batch already applied for ${edits.length} edits.`
           : `Applied ${appliedEditCount} edits atomically${alreadyAppliedCount > 0 ? ` (${alreadyAppliedCount} already applied)` : ""}.`;
-      const diagnostics = this.collectDiagnostics(pathCheck.normalizedPath);
+      const diagnostics = await this.collectDiagnostics(pathCheck.normalizedPath);
 
       return buildEditBatchResult(
         normalizedRequest,

@@ -5,12 +5,37 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { PolicyDeniedError } from "../../contracts/errors.js";
+import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../iam/sandbox-policy.js";
 import type { RiskConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");
 
-export function loadRiskConfig(configPath: string = DEFAULT_CONFIG_PATH): RiskConfig {
-  const raw = readFileSync(configPath, "utf-8");
+/**
+ * Loads the risk configuration from the JSON config file.
+ *
+ * @param configPath - Optional path to config file (defaults to config/risk/default.json)
+ * @param sandboxPolicy - Optional sandbox policy for path validation
+ * @returns The parsed risk configuration
+ */
+export function loadRiskConfig(
+  configPath: string = DEFAULT_CONFIG_PATH,
+  sandboxPolicy?: SandboxPolicy,
+): RiskConfig {
+  // Validate path before reading to prevent path traversal attacks
+  let effectivePath = configPath;
+  if (sandboxPolicy != null) {
+    const check = checkSandboxPath(sandboxPolicy, configPath);
+    if (!check.allowed) {
+      throw new PolicyDeniedError(
+        check.reasonCode ?? "config.risk_denied",
+        check.reasonCode ?? "config.risk_denied",
+      );
+    }
+    effectivePath = check.normalizedPath;
+  }
+
+  const raw = readFileSync(effectivePath, "utf-8");
   const parsed = JSON.parse(raw);
 
   return {

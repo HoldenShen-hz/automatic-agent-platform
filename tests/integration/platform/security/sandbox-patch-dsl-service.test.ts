@@ -8,7 +8,7 @@ import { createWorkspaceWritePolicy } from "../../../../src/platform/control-pla
 import { PatchDslService, type FilePatch } from "../../../../src/platform/execution/tool-executor/patch-dsl-service.js";
 import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("apply_patch service blocks writes outside the workspace sandbox", () => {
+test("apply_patch service blocks writes outside the workspace sandbox", async () => {
   const workspace = createTempWorkspace("aa-patch-security-");
   const outside = createTempWorkspace("aa-patch-outside-");
 
@@ -33,7 +33,7 @@ test("apply_patch service blocks writes outside the workspace sandbox", () => {
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-1",
       taskId: "task-patch-security",
       executionId: null,
@@ -53,7 +53,7 @@ test("apply_patch service blocks writes outside the workspace sandbox", () => {
   }
 });
 
-test("apply_patch service blocks symlink escapes", () => {
+test("apply_patch service blocks symlink escapes", async () => {
   const workspace = createTempWorkspace("aa-patch-symlink-");
   const outside = createTempWorkspace("aa-patch-symlink-target-");
 
@@ -80,7 +80,7 @@ test("apply_patch service blocks symlink escapes", () => {
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-2",
       taskId: "task-patch-security",
       executionId: null,
@@ -99,7 +99,7 @@ test("apply_patch service blocks symlink escapes", () => {
   }
 });
 
-test("apply_patch service respects freshness check", () => {
+test("apply_patch service respects freshness check", async () => {
   const workspace = createTempWorkspace("aa-patch-fresh-");
 
   try {
@@ -123,7 +123,7 @@ test("apply_patch service respects freshness check", () => {
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-fresh-1",
       taskId: "task-patch-security",
       executionId: null,
@@ -144,7 +144,7 @@ test("apply_patch service respects freshness check", () => {
   }
 });
 
-test("apply_patch service fails with stale freshness check", () => {
+test("apply_patch service fails with stale freshness check", async () => {
   const workspace = createTempWorkspace("aa-patch-stale-");
 
   try {
@@ -171,7 +171,7 @@ test("apply_patch service fails with stale freshness check", () => {
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-stale-1",
       taskId: "task-patch-security",
       executionId: null,
@@ -192,7 +192,7 @@ test("apply_patch service fails with stale freshness check", () => {
   }
 });
 
-test("apply_patch service creates new file when allowCreation is true", () => {
+test("apply_patch service creates new file when allowCreation is true", async () => {
   const workspace = createTempWorkspace("aa-patch-create-");
 
   try {
@@ -215,7 +215,7 @@ test("apply_patch service creates new file when allowCreation is true", () => {
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-create-1",
       taskId: "task-patch-security",
       executionId: null,
@@ -234,7 +234,7 @@ test("apply_patch service creates new file when allowCreation is true", () => {
   }
 });
 
-test("apply_patch service fails when target file does not exist and allowCreation is false", () => {
+test("apply_patch service fails when target file does not exist and allowCreation is false", async () => {
   const workspace = createTempWorkspace("aa-patch-nocreate-");
 
   try {
@@ -257,7 +257,7 @@ test("apply_patch service fails when target file does not exist and allowCreatio
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-nocreate-1",
       taskId: "task-patch-security",
       executionId: null,
@@ -275,7 +275,7 @@ test("apply_patch service fails when target file does not exist and allowCreatio
   }
 });
 
-test("apply_patch service handles multiple patches across files atomically", () => {
+test("apply_patch service handles multiple patches across files atomically", async () => {
   const workspace = createTempWorkspace("aa-patch-multi-");
 
   try {
@@ -314,7 +314,7 @@ test("apply_patch service handles multiple patches across files atomically", () 
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-multi-1",
       taskId: "task-patch-security",
       executionId: null,
@@ -334,7 +334,7 @@ test("apply_patch service handles multiple patches across files atomically", () 
   }
 });
 
-test("apply_patch service rolls back all files when a later patch cannot be applied", () => {
+test("apply_patch service rolls back all files when a later patch cannot be applied", async () => {
   const workspace = createTempWorkspace("aa-patch-rollback-");
 
   try {
@@ -373,7 +373,7 @@ test("apply_patch service rolls back all files when a later patch cannot be appl
       },
     ];
 
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "security-call-rollback-1",
       taskId: "task-patch-security",
       executionId: null,
