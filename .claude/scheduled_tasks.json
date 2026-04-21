@@ -1,3 +1,11 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "cd392191",
+      "cron": "*/20 * * * *",
+      "prompt": "多个agent 同时工作",
+      "createdAt": 1776792454554,
+      "recurring": true
+    }
+  ]
 }
