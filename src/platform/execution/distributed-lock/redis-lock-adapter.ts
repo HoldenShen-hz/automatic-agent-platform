@@ -126,12 +126,19 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async extendAsync(lockKey: string, owner: string, additionalMs: number): Promise<LockRecord | null> {
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
+    // Lua script that atomically checks owner and extends TTL
+    // ARGV[1] = owner string to compare
+    // ARGV[2] = new TTL in milliseconds
     const extendLua = `
-if redis.call('get', KEYS[1]) == ARGV[1] then
-  return redis.call('pexpire', KEYS[1], ARGV[2])
-else return 0 end`;
+local current = redis.call('get', KEYS[1])
+if not current then return -1 end
+local data = cjson.decode(current)
+if data.owner ~= ARGV[1] then return 0 end
+local newTtl = math.min(tonumber(ARGV[2]), 600000)
+redis.call('pexpire', KEYS[1], newTtl)
+return 1`;
     const newTtlMs = Math.min(additionalMs, 600_000);
-    const result = await this.redis.eval(extendLua, 1, key, JSON.stringify({ owner }), String(newTtlMs));
+    const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
     if (result !== 1) {
       return null;
     }
@@ -165,7 +172,16 @@ else return 0 end`;
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
     };
-    await this.redis.set(key, JSON.stringify(lockData), "EX", Math.ceil(ttlMs / 1000), "XX");
+    // Use SET with XX to atomically steal only if lock exists
+    // Use NX variant if we want to only set if NOT exists (opposite of XX)
+    // Here we use SET with PX (ms TTL) and XX (only if exists)
+    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)), "XX");
+    if (result !== "OK") {
+      throw new LockingError(
+        "lock.forceSteal_lock_not_found",
+        `lock.forceSteal_lock_not_found: Cannot force-steal non-existent lock ${lockKey}`,
+      );
+    }
     return {
       lockKey,
       owner: newOwner,

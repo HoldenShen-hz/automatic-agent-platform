@@ -16,7 +16,7 @@ test("[SYS-OBS-5.3] alertmanager receivers have distinct endpoints", () => {
     "utf8",
   );
   const config = parseYaml(content);
-  const urls = config.receivers.map((r) =>
+  const urls = config.receivers.map((r: { webhook_configs?: Array<{ url?: string }>; pagerduty_configs?: Array<{ service_key?: string }>; slack_configs?: Array<{ url?: string }> }) =>
     r.webhook_configs?.[0]?.url ??
     r.pagerduty_configs?.[0]?.service_key ??
     r.slack_configs?.[0]?.url ??

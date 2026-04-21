@@ -17,7 +17,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
     "utf8",
   );
   const config = parseYaml(content);
-  const alertNames = config.groups.flatMap((g) => g.rules).map((r) => r.alert);
+  const alertNames = config.groups.flatMap((g: { rules: Array<{ alert?: string }> }) => g.rules).map((r: { alert?: string }) => r.alert);
   const required = [
     "AutomaticAgentHighErrorRate",
     "AutomaticAgentTaskFailureRate",

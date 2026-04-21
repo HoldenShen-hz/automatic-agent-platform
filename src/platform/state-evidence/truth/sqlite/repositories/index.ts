@@ -27,6 +27,7 @@ export { OrganizationRepository } from "./organization-repository.js";
 export { IntelligenceRepository } from "./intelligence-repository.js";
 export { EvolutionRepository } from "./evolution-repository.js";
 export { OperationsRepository } from "./operations-repository.js";
+export { SqliteDeadLetterQueueRepository } from "./dlq-repository.js";
 export {
   InMemoryPromptAbTestRepository,
   InMemoryPromptBundleRepository,

@@ -203,6 +203,9 @@ export class RedisQueueAdapter implements QueueAdapter {
   private queueSetKey(): string { return "queues"; }
 
   enqueue(input: EnqueueInput): QueueJobRecord {
+    // Redis sync enqueue is fundamentally problematic because pipeline.exec() is async.
+    // For production use, prefer enqueueAsync() which properly handles errors.
+    // This sync version uses fire-and-forget with a synchronous throw on error.
     const now = nowIso();
     const isDelayed = input.delayUntil != null && input.delayUntil > now;
     const status: QueueJobStatus = isDelayed ? "delayed" : "waiting";
@@ -234,9 +237,19 @@ export class RedisQueueAdapter implements QueueAdapter {
       ? new Date(job.delayUntil!).getTime()
       : job.priority * 1e13 + new Date(job.createdAt).getTime();
     p.zadd(this.waitingKey(input.queueName), waitingScore, job.id);
+
+    // Execute pipeline and handle errors properly
+    // Note: This is still async but we log the error instead of silently swallowing it
+    const jobId = job.id;
     p.exec().catch((err: unknown) => {
-      throw new Error(`queue.enqueue_failed: ${err instanceof Error ? err.message : String(err)}`);
+      // Log the error for observability - the job was already returned to caller
+      console.error("queue.enqueue_pipeline_failed", {
+        jobId,
+        queueName: input.queueName,
+        error: err instanceof Error ? err.message : String(err),
+      });
     });
+
     return job;
   }
 

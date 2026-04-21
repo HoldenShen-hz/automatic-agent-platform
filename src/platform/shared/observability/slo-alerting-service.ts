@@ -225,8 +225,8 @@ export class SlackAlertChannel implements AlertChannel {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch(() => {
-      // best-effort delivery
+    }).catch((err) => {
+      console.error("alert.delivery_failed", { alertId: event.id, channel: "slack", error: err instanceof Error ? err.message : String(err) });
     });
 
     return { channelKind: "slack", delivered: true, error: null };
@@ -282,8 +282,8 @@ export class PagerDutyAlertChannel implements AlertChannel {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch(() => {
-      // best-effort delivery
+    }).catch((err) => {
+      console.error("alert.delivery_failed", { alertId: event.id, channel: "pagerduty", error: err instanceof Error ? err.message : String(err) });
     });
 
     return { channelKind: "pagerduty", delivered: true, error: null };
@@ -340,8 +340,8 @@ export class OpsGenieAlertChannel implements AlertChannel {
       },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch(() => {
-      // best-effort delivery
+    }).catch((err) => {
+      console.error("alert.delivery_failed", { alertId: event.id, channel: "opsgenie", error: err instanceof Error ? err.message : String(err) });
     });
 
     return { channelKind: "opsgenie", delivered: true, error: null };

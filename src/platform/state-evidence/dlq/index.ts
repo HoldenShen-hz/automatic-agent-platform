@@ -30,8 +30,64 @@ export interface DeadLetterQueueSummary {
   maxRetryCount: number;
 }
 
-export class DeadLetterQueueService {
+/**
+ * Repository interface for DLQ persistence.
+ * Implementations can use SQLite, PostgreSQL, or in-memory storage.
+ */
+export interface DeadLetterQueueRepository {
+  /** Insert a new DLQ record */
+  insert(record: DeadLetterRecord): void;
+  /** Find a DLQ record by ID */
+  findById(deadLetterId: string): DeadLetterRecord | null;
+  /** Update an existing DLQ record */
+  update(record: DeadLetterRecord): void;
+  /** List all DLQ records */
+  listAll(): DeadLetterRecord[];
+  /** List DLQ records by consumer ID */
+  listByConsumer(consumerId: string): DeadLetterRecord[];
+}
+
+/**
+ * In-memory implementation of DLQ repository for backward compatibility
+ * and environments without persistent storage.
+ */
+export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueRepository {
   private readonly records = new Map<string, DeadLetterRecord>();
+
+  public insert(record: DeadLetterRecord): void {
+    this.records.set(record.deadLetterId, record);
+  }
+
+  public findById(deadLetterId: string): DeadLetterRecord | null {
+    return this.records.get(deadLetterId) ?? null;
+  }
+
+  public update(record: DeadLetterRecord): void {
+    if (!this.records.has(record.deadLetterId)) {
+      throw new ValidationError(`dlq.not_found:${record.deadLetterId}`, `Dead-letter record ${record.deadLetterId} was not found.`);
+    }
+    this.records.set(record.deadLetterId, record);
+  }
+
+  public listAll(): DeadLetterRecord[] {
+    return [...this.records.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  public listByConsumer(consumerId: string): DeadLetterRecord[] {
+    return [...this.records.values()].filter((record) => record.consumerId === consumerId);
+  }
+}
+
+export class DeadLetterQueueService {
+  private readonly repo: DeadLetterQueueRepository;
+
+  /**
+   * Create a DLQ service with an optional repository.
+   * @param repo - Optional repository for persistence. Defaults to in-memory storage.
+   */
+  public constructor(repo?: DeadLetterQueueRepository) {
+    this.repo = repo ?? new InMemoryDeadLetterQueueRepository();
+  }
 
   public enqueue(input: {
     sourceEventId: string;
@@ -57,7 +113,7 @@ export class DeadLetterQueueService {
       failureCategory: input.failureCategory ?? null,
       retryExhaustedAt: null,
     };
-    this.records.set(record.deadLetterId, record);
+    this.repo.insert(record);
     return record;
   }
 
@@ -74,21 +130,21 @@ export class DeadLetterQueueService {
       nextRetryAt: new Date(Date.parse(now) + delayMs).toISOString(),
       updatedAt: now,
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
   public markResolved(deadLetterId: string): DeadLetterRecord {
     const record = this.getRequired(deadLetterId);
     const updated = { ...record, status: "resolved" as const, nextRetryAt: null, updatedAt: nowIso() };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
   public discard(deadLetterId: string, reason: string): DeadLetterRecord {
     const record = this.getRequired(deadLetterId);
     const updated = { ...record, status: "discarded" as const, errorCode: reason, nextRetryAt: null, updatedAt: nowIso() };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -102,7 +158,7 @@ export class DeadLetterQueueService {
       nextRetryAt: null,
       updatedAt: nowIso(),
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -114,16 +170,16 @@ export class DeadLetterQueueService {
       failureCategory: category,
       updatedAt: nowIso(),
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
   public listByConsumer(consumerId: string): DeadLetterRecord[] {
-    return [...this.records.values()].filter((record) => record.consumerId === consumerId);
+    return this.repo.listByConsumer(consumerId);
   }
 
   public listAll(): DeadLetterRecord[] {
-    return [...this.records.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return this.repo.listAll();
   }
 
   public summarize(): DeadLetterQueueSummary {
@@ -149,7 +205,7 @@ export class DeadLetterQueueService {
   }
 
   private getRequired(deadLetterId: string): DeadLetterRecord {
-    const record = this.records.get(deadLetterId);
+    const record = this.repo.findById(deadLetterId);
     if (record == null) {
       throw new ValidationError(`dlq.not_found:${deadLetterId}`, `Dead-letter record ${deadLetterId} was not found.`);
     }

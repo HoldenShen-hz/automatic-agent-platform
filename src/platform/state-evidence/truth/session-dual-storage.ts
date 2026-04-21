@@ -114,10 +114,32 @@ export class SessionDualStorageService {
       require("node:fs").closeSync(sessionFd);
     }
 
-    const taskIndexFd = openSync(taskIndexPath, "a");
+    let taskIndexFd: number;
+    try {
+      taskIndexFd = openSync(taskIndexPath, "a");
+    } catch (err) {
+      console.error("session_dual_storage.task_index_open_failed", {
+        sessionId: event.sessionId,
+        taskId: event.taskId,
+        eventType: event.eventType,
+        error: err instanceof Error ? err.message : String(err),
+        sessionPath,
+        taskIndexPath,
+      });
+      return;
+    }
     try {
       appendFileSync(taskIndexFd, line, "utf8");
       fdatasyncSync(taskIndexFd);
+    } catch (err) {
+      console.error("session_dual_storage.task_index_write_failed", {
+        sessionId: event.sessionId,
+        taskId: event.taskId,
+        eventType: event.eventType,
+        error: err instanceof Error ? err.message : String(err),
+        sessionPath,
+        taskIndexPath,
+      });
     } finally {
       require("node:fs").closeSync(taskIndexFd);
     }
