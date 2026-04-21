@@ -118,8 +118,8 @@ test("DelegationAuditService records permission narrowing", () => {
     delegationId: "dlg_123",
     parentAgentId: "agent_1",
     childAgentId: "agent_2",
-    originalPermissions: { resources: ["r1", "r2"], actions: ["read", "write"] },
-    narrowedPermissions: { resources: ["r1"], actions: ["read"] },
+    originalPermissions: { resources: ["r1", "r2"], actions: ["read", "write"], constraints: {} },
+    narrowedPermissions: { resources: ["r1"], actions: ["read"], constraints: {} },
     actorId: "agent_1",
     actorType: "agent",
   });

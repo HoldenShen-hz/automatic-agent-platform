@@ -62,7 +62,7 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 ## 交叉引用
 
 - [ADR-046 组织层次模型](./046-organization-hierarchy-model.md)
-- [ADR-021 HITL 架构](./021-hitl-architecture.md)
+- [Approval / HITL Contract](../contracts/approval_and_hitl_contract.md)
 
 ## 来源章节
 

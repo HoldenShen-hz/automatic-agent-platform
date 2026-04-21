@@ -60,7 +60,7 @@ interface SLARequirement {
 ## 交叉引用
 
 - [ADR-053 规模化资源竞争管理](./053-scaling-resource-competition-management.md)
-- [ADR-027 性能架构与 SLO](./027-performance-architecture-and-slo.md)
+- [平台架构 §27 性能架构与 SLO](../architecture/00-platform-architecture.md)
 
 ## 来源章节
 

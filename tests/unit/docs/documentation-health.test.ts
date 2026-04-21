@@ -8,6 +8,7 @@ const ADR_ROOT = join(DOC_ROOT, "adr");
 const ADR_README = join(ADR_ROOT, "README.md");
 const CONTRACTS_ROOT = join(DOC_ROOT, "contracts");
 const COVERAGE_MATRIX = join(DOC_ROOT, "analysis", "00-architecture-coverage-matrix.md");
+const ARCHITECTURE_REVIEW = join(DOC_ROOT, "reviews", "architecture-design-vs-implementation-review.md");
 
 function listMarkdownFiles(root: string): string[] {
   const results: string[] = [];
@@ -117,4 +118,12 @@ test("v2.7 coverage matrix and new authoritative contracts exist", () => {
   for (const fileName of requiredContracts) {
     assert.ok(existsSync(join(CONTRACTS_ROOT, fileName)), `missing contract file: ${fileName}`);
   }
+});
+
+test("architecture implementation review is aligned to current closure wording", () => {
+  const review = readFileSync(ARCHITECTURE_REVIEW, "utf8");
+  assert.match(review, /v4\.2 — 架构设计 vs 实现审查 \+ 系统问题收口版/);
+  assert.match(review, /queue_enqueue_failures_total/);
+  assert.match(review, /alert_delivery_failures_total/);
+  assert.match(review, /cache \/ otel \/ rollout-freeze 已迁入 ServiceRegistry 管理模式/);
 });

@@ -4,13 +4,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { RedisRateLimiter } from "../../../../src/platform/interface/ingress/redis-rate-limiter.js";
+import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
+import type { StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
 
 test("[SYS-REL-2.1] Redis rate limiter logs error on connection failure", () => {
-  const logs: string[] = [];
-  const originalConsoleError = console.error;
-  console.error = (...args: unknown[]) => {
-    logs.push(args.map(String).join(" "));
+  const logEntries: StructuredLogEntry[] = [];
+  const mockTransport = {
+    name: "test-transport",
+    write(entry: StructuredLogEntry) {
+      logEntries.push(entry);
+    },
   };
+
+  StructuredLogger.addTransport(mockTransport);
 
   try {
     const limiter = new RedisRateLimiter({
@@ -21,19 +27,24 @@ test("[SYS-REL-2.1] Redis rate limiter logs error on connection failure", () => 
     const redis = (limiter as unknown as { redis: EventEmitter }).redis;
     redis.emit("error", new Error("ECONNREFUSED"));
 
-    assert.ok(logs.length > 0, "Error must be logged to console.error");
-    assert.ok(logs[0]?.includes("ECONNREFUSED"), "Error message must be preserved");
+    assert.ok(logEntries.some((e) => e.level === "error" && e.message === "redis.connection_error"), "Error must be logged with correct level and message");
+    const errorEntry = logEntries.find((e) => e.message === "redis.connection_error");
+    assert.ok(errorEntry?.data && String(errorEntry.data.err).includes("ECONNREFUSED"), "Error message must be preserved in data.err");
   } finally {
-    console.error = originalConsoleError;
+    StructuredLogger.removeTransport("test-transport");
   }
 });
 
 test("[SYS-REL-2.1] Redis rate limiter error handler logs with error code", () => {
-  const logs: string[] = [];
-  const originalConsoleError = console.error;
-  console.error = (...args: unknown[]) => {
-    logs.push(args.map(String).join(" "));
+  const logEntries: StructuredLogEntry[] = [];
+  const mockTransport = {
+    name: "test-transport",
+    write(entry: StructuredLogEntry) {
+      logEntries.push(entry);
+    },
   };
+
+  StructuredLogger.addTransport(mockTransport);
 
   try {
     const limiter = new RedisRateLimiter({
@@ -44,9 +55,10 @@ test("[SYS-REL-2.1] Redis rate limiter error handler logs with error code", () =
     const redis = (limiter as unknown as { redis: EventEmitter }).redis;
     redis.emit("error", new Error("ETIMEDOUT"));
 
-    assert.ok(logs.length > 0, "Error must be logged");
-    assert.ok(logs[0]?.includes("redis.connection_error"), "Error code must be in log message");
+    assert.ok(logEntries.some((e) => e.level === "error" && e.message === "redis.connection_error"), "Error must be logged");
+    const errorEntry = logEntries.find((e) => e.message === "redis.connection_error");
+    assert.ok(errorEntry?.data && String(errorEntry.data.err).includes("ETIMEDOUT"), "Error code must be preserved in data.err");
   } finally {
-    console.error = originalConsoleError;
+    StructuredLogger.removeTransport("test-transport");
   }
 });

@@ -2,7 +2,7 @@
 
 > ⚠️ **结构迁移说明** - 本文档引用旧结构 `src/core/`、`src/cli/`、`src/gateway/`。
 > 当前代码库已迁移至 `src/platform/` 五层结构 + 上层业务域 (`domains/`、`interaction/`、`ops-maturity/` 等)。
-> 本文档的计划内容可能需要对照 [architecture/README.md](../../architecture/README.md) 重新核实执行状态。
+> 本文档的计划内容可能需要对照 [architecture/README.md](../architecture/README.md) 重新核实执行状态。
 
 ## 目标
 

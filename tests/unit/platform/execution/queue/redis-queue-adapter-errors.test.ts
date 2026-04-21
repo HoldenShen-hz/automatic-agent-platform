@@ -298,3 +298,99 @@ test("RedisQueueAdapter handles ping failure gracefully", async () => {
     assert.ok(err instanceof Error);
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SYS-REL-2.4: Sync enqueue() Silent Discard Defect
+// When pipeline.exec() fails, the sync enqueue() must propagate error to caller.
+// Current behavior: Returns job immediately before pipeline completes, and
+// .catch() only logs but doesn't propagate error - caller gets false success.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const mockClient = adapter as unknown as { client: { redis: any } };
+
+  // Mock pipeline that fails on exec()
+  const pipelineError = new Error("pipeline exec failed - Redis connection lost");
+  const mockPipeline = {
+    hmset: () => mockPipeline,
+    expire: () => mockPipeline,
+    sadd: () => mockPipeline,
+    zadd: () => mockPipeline,
+    exec: () => Promise.reject(pipelineError),
+  };
+  mockClient.client.redis.pipeline = () => mockPipeline;
+
+  let errorPropagated = false;
+  let thrownError: unknown = null;
+
+  try {
+    const result = adapter.enqueue({
+      queueName: "test-queue",
+      payload: { data: "test" },
+    });
+    // If we reach here with no throw, the caller got a false success
+    // The defect is that job is returned even though pipeline failed
+  } catch (err) {
+    errorPropagated = true;
+    thrownError = err;
+  }
+
+  // After fix: error should be propagated to caller (test passes)
+  // Before fix: error is silently swallowed, caller gets job record (test fails)
+  assert.equal(
+    errorPropagated,
+    true,
+    "SYS-REL-2.4: sync enqueue() must throw when pipeline.exec() fails - error was silently discarded",
+  );
+  assert.ok(
+    thrownError instanceof Error,
+    "Thrown error should be an Error instance",
+  );
+});
+
+test("SYS-REL-2.4 sync enqueue() must propagate pipeline result-level failure to caller", async () => {
+  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const mockClient = adapter as unknown as { client: { redis: any } };
+
+  // Mock pipeline where exec() succeeds but results contain an error
+  const mockPipeline = {
+    hmset: () => mockPipeline,
+    expire: () => mockPipeline,
+    sadd: () => mockPipeline,
+    zadd: () => mockPipeline,
+    exec: () =>
+      Promise.resolve([
+        [null, "OK"], // hmset success
+        [null, 1],    // expire success
+        [null, 1],    // sadd success
+        [new Error("ZADD failed - not a sorted set"), 0], // zadd failure
+      ]),
+  };
+  mockClient.client.redis.pipeline = () => mockPipeline;
+
+  let errorPropagated = false;
+  let thrownError: unknown = null;
+
+  try {
+    adapter.enqueue({
+      queueName: "test-queue",
+      payload: { data: "test" },
+    });
+  } catch (err) {
+    errorPropagated = true;
+    thrownError = err;
+  }
+
+  // After fix: error in pipeline results should be propagated (test passes)
+  // Before fix: error is only logged, caller gets false success (test fails)
+  assert.equal(
+    errorPropagated,
+    true,
+    "SYS-REL-2.4: sync enqueue() must throw when pipeline results contain error - error was silently discarded",
+  );
+  assert.ok(
+    thrownError instanceof Error,
+    "Thrown error should be an Error instance",
+  );
+});

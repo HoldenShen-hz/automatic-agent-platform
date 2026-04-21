@@ -98,4 +98,4 @@
 - **ADR 管理**：[`docs_zh/adr/README.md`](../adr/README.md)
 - **Contract 注册**：[`docs_zh/contracts/README.md`](../contracts/README.md)
 - **架构索引**：[`docs_zh/architecture/README.md`](../architecture/README.md)
-- **现状追踪**：[`docs_zh/reviews/`](.docs_zh/reviews/) 下各 review 文档
+- **现状追踪**：[`docs_zh/reviews/`](../reviews/) 下各 review 文档

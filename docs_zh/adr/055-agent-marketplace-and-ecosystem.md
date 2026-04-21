@@ -72,8 +72,8 @@ type ListingCategory =
 
 ## 交叉引用
 
-- [ADR-022 SDK 与开发者体验](./022-sdk-and-developer-experience.md)
-- [ADR-030 Business Pack 模型](./030-business-pack-model.md)
+- [平台架构 §22 SDK 与开发者体验](../architecture/00-platform-architecture.md)
+- [平台架构 §30 Business Pack 模型](../architecture/00-platform-architecture.md)
 
 ## 来源章节
 

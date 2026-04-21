@@ -76,7 +76,7 @@ Input → Preprocessing → Modality Router → Specialized Processor → Fusion
 ## 交叉引用
 
 - [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
-- [ADR-015 Prompt 管理与版本化架构](./015-prompt-management-and-versioning.md)
+- [平台架构 §16 Prompt 管理与版本化](../architecture/00-platform-architecture.md)
 
 ## 来源章节
 

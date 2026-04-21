@@ -14,7 +14,7 @@ import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
-import { IncidentCaseService, type IncidentCase, type IncidentSeverity } from "../../../state-evidence/incident/index.js";
+import type { IncidentFacadeService, IncidentCase, IncidentSeverity } from "../facade-interfaces.js";
 import { z } from "zod";
 import { AppError } from "../../../contracts/errors.js";
 
@@ -49,7 +49,7 @@ const updateIncidentSchema = z.object({
 
 export interface IncidentRouteDeps {
   authService: ApiAuthService | null;
-  incidentService: IncidentCaseService;
+  incidentService: IncidentFacadeService;
 }
 
 // ─── Route Factory ─────────────────────────────────────────────────────────

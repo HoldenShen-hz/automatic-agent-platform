@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { RedisLockAdapter } from "../../../../src/platform/execution/distributed-lock/redis-lock-adapter.js";
-import { LockingError } from "../../../../src/platform/execution/contracts/errors.js";
+import { LockingError } from "../../../../src/platform/contracts/errors.js";
 
 // =============================================================================
 // Mock redis helper

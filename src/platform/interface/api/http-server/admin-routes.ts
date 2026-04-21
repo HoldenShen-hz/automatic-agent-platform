@@ -21,7 +21,7 @@ import { parseControlPlaneLoadBalancingSelectionPayload } from "./schemas.js";
 import { buildJsonResponse, requirePrincipal, assertGlobalTenantScopeSupported, resolveTenantScope, validateTaskId, readLimit } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
-import type { CoordinatorLoadBalancingService } from "../../../execution/ha/coordinator-load-balancing-service.js";
+import type { ApiDelegationService } from "../facade-interfaces.js";
 import type { ConfigRolloutService } from "../../../control-plane/config-center/config-rollout-service.js";
 import type { TenantBoundaryRegistryService } from "../../../control-plane/tenant/index.js";
 import type { CostReportService } from "../cost-report-service.js";
@@ -62,7 +62,7 @@ export interface AdminConfigUpdatePayload {
 export interface AdminRouteDeps {
   authService: ApiAuthService | null;
   missionControlService: MissionControlService;
-  coordinatorLoadBalancingService: CoordinatorLoadBalancingService | null;
+  coordinatorLoadBalancingService: ApiDelegationService | null;
   configRolloutService?: ConfigRolloutService | null;
   tenantRegistryService?: TenantBoundaryRegistryService | null;
   costReportService?: CostReportService | null;

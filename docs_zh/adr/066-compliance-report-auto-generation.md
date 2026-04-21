@@ -81,7 +81,7 @@ type EvidenceType =
 ## 交叉引用
 
 - [ADR-059 Agent 可解释性](./059-agent-explainability-and-decision-transparency.md)
-- [ADR-023 合规与数据治理](./023-compliance-and-data-governance.md)
+- [平台架构 §23 合规与数据治理](../architecture/00-platform-architecture.md)
 
 ## 来源章节
 

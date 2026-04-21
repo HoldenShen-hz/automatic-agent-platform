@@ -67,7 +67,7 @@ type DriftMethod =
 
 ## 交叉引用
 
-- [ADR-017 模型评估与质量门禁](./017-model-evaluation-and-quality-gate.md)
+- [平台架构 §17 模型评估与质量门禁](../architecture/00-platform-architecture.md)
 - [ADR-080 Learn Hub 与四模式检测器](./080-learn-hub-pattern-detection.md)
 
 ## 来源章节

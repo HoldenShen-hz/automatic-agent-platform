@@ -1,10 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 
 import { DeadLetterQueueService } from "../../../../src/platform/state-evidence/dlq/index.js";
+import { SqliteDeadLetterQueueRepository } from "../../../../src/platform/state-evidence/truth/sqlite/repositories/dlq-repository.js";
+
+function createInMemoryDb(): DatabaseSync {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`
+    CREATE TABLE dlq_records (
+      dead_letter_id TEXT PRIMARY KEY,
+      source_event_id TEXT NOT NULL,
+      consumer_id TEXT NOT NULL,
+      error_code TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      status TEXT NOT NULL,
+      retry_count INTEGER NOT NULL,
+      next_retry_at TEXT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      original_timestamp TEXT NULL,
+      failure_category TEXT NULL,
+      retry_exhausted_at TEXT NULL
+    )
+  `);
+  return db;
+}
 
 test("[SYS-REL-2.3] DLQ enqueue creates record with correct fields", () => {
-  const dlq = new DeadLetterQueueService();
+  const db = createInMemoryDb();
+  const dlq = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
 
   const record = dlq.enqueue({
     sourceEventId: "evt-001",
@@ -21,7 +46,8 @@ test("[SYS-REL-2.3] DLQ enqueue creates record with correct fields", () => {
 });
 
 test("[SYS-REL-2.3] DLQ scheduleRetry updates nextRetryAt correctly", () => {
-  const dlq = new DeadLetterQueueService();
+  const db = createInMemoryDb();
+  const dlq = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
 
   const record = dlq.enqueue({
     sourceEventId: "evt-002",
@@ -39,7 +65,8 @@ test("[SYS-REL-2.3] DLQ scheduleRetry updates nextRetryAt correctly", () => {
 });
 
 test("[SYS-REL-2.3] DLQ markResolved updates status", () => {
-  const dlq = new DeadLetterQueueService();
+  const db = createInMemoryDb();
+  const dlq = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
 
   const record = dlq.enqueue({
     sourceEventId: "evt-003",
@@ -56,7 +83,8 @@ test("[SYS-REL-2.3] DLQ markResolved updates status", () => {
 });
 
 test("[SYS-REL-2.3] DLQ discard updates status and reason", () => {
-  const dlq = new DeadLetterQueueService();
+  const db = createInMemoryDb();
+  const dlq = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
 
   const record = dlq.enqueue({
     sourceEventId: "evt-004",
@@ -74,7 +102,8 @@ test("[SYS-REL-2.3] DLQ discard updates status and reason", () => {
 });
 
 test("[SYS-REL-2.3] DLQ listByConsumer returns only matching records", () => {
-  const dlq = new DeadLetterQueueService();
+  const db = createInMemoryDb();
+  const dlq = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
 
   dlq.enqueue({
     sourceEventId: "evt-005",
@@ -98,7 +127,8 @@ test("[SYS-REL-2.3] DLQ listByConsumer returns only matching records", () => {
 });
 
 test("[SYS-REL-2.3] DLQ summarize returns summary", () => {
-  const dlq = new DeadLetterQueueService();
+  const db = createInMemoryDb();
+  const dlq = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
 
   dlq.enqueue({
     sourceEventId: "evt-007",
@@ -112,4 +142,95 @@ test("[SYS-REL-2.3] DLQ summarize returns summary", () => {
   assert.equal(summary.totalRecords, 1, "Should have 1 total record");
   assert.ok("statusCounts" in summary, "Summary should have statusCounts");
   assert.ok("consumerCounts" in summary, "Summary should have consumerCounts");
+});
+
+test("[SYS-REL-2.3] DLQ records survive service reconstruction (persistence across restart)", () => {
+  // Create first service instance with a real SQLite repository
+  const db = createInMemoryDb();
+  const dlq1 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+
+  dlq1.enqueue({
+    sourceEventId: "evt-001",
+    consumerId: "consumer-1",
+    errorCode: "consumer_timeout",
+    payloadJson: '{"taskId":"t-1"}',
+  });
+
+  // Create second service instance (simulating restart/reconstruction)
+  const dlq2 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+
+  // Verify records persist across instances
+  assert.equal(dlq2.listAll().length, 1, "Records must persist across instances");
+  const records = dlq2.listAll();
+  assert.equal(records[0]?.sourceEventId, "evt-001");
+});
+
+test("[SYS-REL-2.3] DLQ multiple records persist across service reconstruction", () => {
+  // Create first service instance with a real SQLite repository
+  const db = createInMemoryDb();
+  const dlq1 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+
+  dlq1.enqueue({
+    sourceEventId: "evt-persist-001",
+    consumerId: "consumer-persist",
+    errorCode: "error_a",
+    payloadJson: '{"taskId":"t-a"}',
+  });
+
+  dlq1.enqueue({
+    sourceEventId: "evt-persist-002",
+    consumerId: "consumer-persist",
+    errorCode: "error_b",
+    payloadJson: '{"taskId":"t-b"}',
+  });
+
+  dlq1.enqueue({
+    sourceEventId: "evt-persist-003",
+    consumerId: "consumer-other",
+    errorCode: "error_c",
+    payloadJson: '{"taskId":"t-c"}',
+  });
+
+  // Create second service instance (simulating restart/reconstruction)
+  const dlq2 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+
+  // Verify all records persist
+  const allRecords = dlq2.listAll();
+  assert.equal(allRecords.length, 3, "All 3 records must persist across instances");
+
+  // Verify consumer filtering also works on reconstructed instance
+  const consumerRecords = dlq2.listByConsumer("consumer-persist");
+  assert.equal(consumerRecords.length, 2, "Consumer filtering must work on reconstructed instance");
+
+  // Verify specific record data integrity
+  const specificRecord = dlq2.listAll().find(r => r.sourceEventId === "evt-persist-001");
+  assert.ok(specificRecord, "Specific record should be findable");
+  assert.equal(specificRecord?.errorCode, "error_a", "Record data must be intact");
+});
+
+test("[SYS-REL-2.3] DLQ state mutations persist across service reconstruction", () => {
+  // Create first service instance
+  const db = createInMemoryDb();
+  const dlq1 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+
+  const record = dlq1.enqueue({
+    sourceEventId: "evt-mutate-001",
+    consumerId: "consumer-mutate",
+    errorCode: "initial_error",
+    payloadJson: '{"taskId":"t-mutate"}',
+  });
+
+  // Mark as retrying
+  dlq1.scheduleRetry(record.deadLetterId, 5000);
+
+  // Mark as resolved
+  dlq1.markResolved(record.deadLetterId);
+
+  // Create second service instance (simulating restart/reconstruction)
+  const dlq2 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+
+  const resolvedRecords = dlq2.listAll();
+  assert.equal(resolvedRecords.length, 1, "Should have 1 record after mutation");
+  assert.equal(resolvedRecords[0]?.status, "resolved", "Status mutation must persist");
+  assert.equal(resolvedRecords[0]?.errorCode, "initial_error", "Original error code must be preserved");
 });

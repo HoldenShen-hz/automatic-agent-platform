@@ -68,7 +68,7 @@ interface ComplianceRule {
 ## 交叉引用
 
 - [ADR-046 组织层次模型](./046-organization-hierarchy-model.md)
-- [ADR-023 合规与数据治理](./023-compliance-and-data-governance.md)
+- [平台架构 §23 合规与数据治理](../architecture/00-platform-architecture.md)
 
 ## 来源章节
 

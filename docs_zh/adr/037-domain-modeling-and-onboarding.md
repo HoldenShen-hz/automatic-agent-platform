@@ -82,7 +82,7 @@ interface DomainDescriptor {
 
 ## 交叉引用
 
-- [ADR-030 Business Pack 模型](./030-business-pack-model.md)
+- [ADR-030 Runtime 执行面](./030-runtime-execution-plane.md)
 - [ADR-038 业务域接入 Runbook](./038-business-domain-onboarding-runbook.md)
 
 ## 来源章节

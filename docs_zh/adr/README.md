@@ -70,6 +70,7 @@
 | [063](./063-agent-behavior-drift-detection.md) | Agent 行为漂移检测架构 | Accepted | 2026-04-20 |
 | [064](./064-cost-attribution-and-optimization-engine.md) | 成本归因与优化引擎 | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | 工作流可视化调试器架构 | Accepted | 2026-04-20 |
+| [066](./066-compliance-report-auto-generation.md) | 合规报告自动生成架构 | Accepted | 2026-04-20 |
 | [066](./066-plugin-spi-framework.md) | Plugin SPI 框架 | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
