@@ -41,14 +41,27 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+// Canonical environment names for deployment pipeline
+type CanonicalEnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod";
+
+function toCanonicalEnvironmentName(environment: EnvironmentName): CanonicalEnvironmentName {
+  const raw = environment as string;
+  if (raw === "development") {
+    return "dev";
+  }
+  if (raw === "production") {
+    return "prod";
+  }
+  return raw as CanonicalEnvironmentName;
+}
+
 // Ordered list of environments in the promotion pipeline
-const ENVIRONMENT_ORDER: readonly EnvironmentName[] = ["dev", "test", "staging", "pre-prod", "prod"] as const;
+const ENVIRONMENT_ORDER: readonly CanonicalEnvironmentName[] = ["dev", "test", "staging", "pre-prod", "prod"] as const;
 
 // Environments that require deployment bindings to be configured
-const DEPLOYMENT_BOUNDARY_ENVS = new Set<EnvironmentName>(["staging", "pre-prod", "prod"]);
+const DEPLOYMENT_BOUNDARY_ENVS = new Set<CanonicalEnvironmentName>(["staging", "pre-prod", "prod"]);
 
 // Default readiness requirements per environment
-type CanonicalEnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod";
 const DEFAULT_READINESS_REQUIREMENTS: Record<CanonicalEnvironmentName, readonly EnvironmentReadinessComponentType[]> = {
   dev: [],
   test: ["provider", "sandbox"],
@@ -423,7 +436,7 @@ export class EnvironmentDeploymentService {
     readinessRecords: EnvironmentReadinessRecord[];
     deploymentBindings: DeploymentBindingRecord[];
   }): Promise<EnvironmentDeploymentEntry> {
-    const requiredComponentTypes = [...DEFAULT_READINESS_REQUIREMENTS[input.environment]];
+    const requiredComponentTypes = [...DEFAULT_READINESS_REQUIREMENTS[toCanonicalEnvironmentName(input.environment)]];
     const scopedReadiness = input.readinessRecords.filter((item) => item.environment === input.environment);
     const missingComponentTypes: EnvironmentReadinessComponentType[] = [];
     const staleComponentTypes: EnvironmentReadinessComponentType[] = [];
