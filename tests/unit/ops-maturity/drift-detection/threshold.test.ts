@@ -11,7 +11,7 @@ import {
   ChangepointDetectorService,
   type DriftSample,
   type ChangepointDetectionResult,
-} from "../../../../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
+} from "../../../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
 
 test("ChangepointDetectorService uses 24h baseline window", () => {
   const service = new ChangepointDetectorService();

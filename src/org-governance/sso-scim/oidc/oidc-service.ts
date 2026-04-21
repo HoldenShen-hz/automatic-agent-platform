@@ -74,13 +74,48 @@ export interface OidcServiceConfig {
   readonly sessionTtlMs: number;
   readonly refreshThresholdMs: number;
   readonly maxSessionAgeMs: number;
+  /** §48: Disable mock fallback in production */
+  readonly allowMockFallback: boolean;
 }
 
 const DEFAULT_CONFIG: OidcServiceConfig = {
   sessionTtlMs: 3600000, // 1 hour
   refreshThresholdMs: 300000, // 5 minutes
   maxSessionAgeMs: 86400000, // 24 hours
+  allowMockFallback: false, // §48: Disabled in production
 };
+
+/**
+ * §48: Check if the current environment is production.
+ * Uses NODE_ENV environment variable.
+ */
+function isProductionEnvironment(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
+/**
+ * §48: Validates that a token is not a mock token in production.
+ * Mock tokens are identified by prefixes: "at_", "id_", "rt_".
+ *
+ * @param token - Token to validate
+ * @throws Error if token appears to be mock and environment is production
+ */
+function validateProductionToken(token: string): void {
+  if (!isProductionEnvironment()) {
+    return; // Allow mock tokens in non-production
+  }
+
+  const mockPrefixes = ["at_", "id_", "rt_"];
+  for (const prefix of mockPrefixes) {
+    if (token.startsWith(prefix)) {
+      throw new Error(
+        `§48 Production Hardening: Mock token rejected in production environment. ` +
+        `Token prefix "${prefix}" indicates simulated authentication. ` +
+        `Ensure OIDC provider is properly configured with valid credentials.`,
+      );
+    }
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // In-Memory State Store (for development; use Redis in production)
@@ -224,6 +259,11 @@ export class OidcIdentityService {
    * @returns Session if valid, null otherwise
    */
   public validateAccessToken(accessToken: string): OidcSession | null {
+    // §48: Check for mock tokens in production
+    if (isProductionEnvironment()) {
+      validateProductionToken(accessToken);
+    }
+
     for (const session of this.sessions.values()) {
       if (session.accessToken === accessToken) {
         if (Date.now() > new Date(session.expiresAt).getTime()) {
@@ -436,21 +476,40 @@ export class OidcIdentityService {
         body: body.toString(),
       });
       if (!response.ok) {
+        // §48 Production Hardening: Check if mock fallback is allowed
+        if (!this.config.allowMockFallback) {
+          throw new Error(
+            `§48 Production Hardening: Token exchange failed with status ${response.status}. ` +
+            `Mock fallback is disabled. Configure valid OIDC provider credentials.`,
+          );
+        }
         return input.grantType === "authorization_code"
           ? this.simulateTokenResponse(input.code ?? "", input.nonce ?? "")
           : this.simulateRefreshResponse(input.refreshToken ?? "");
       }
       const payload = await response.json() as Record<string, unknown>;
       const expiresIn = typeof payload.expires_in === "number" ? payload.expires_in : 3600;
+
+      // §48: Validate tokens are not mock in production
+      const accessToken = String(payload.access_token ?? "");
+      const idToken = String(payload.id_token ?? "");
+      validateProductionToken(accessToken);
+      validateProductionToken(idToken);
+
       return {
-        accessToken: String(payload.access_token ?? `at_${newId("access")}`),
-        idToken: String(payload.id_token ?? `id_${newId("id")}`),
+        accessToken,
+        idToken,
         ...(typeof payload.refresh_token === "string" ? { refreshToken: payload.refresh_token } : {}),
         expiresIn,
         tokenType: typeof payload.token_type === "string" ? payload.token_type : "Bearer",
         expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
       };
-    } catch {
+    } catch (err) {
+      // §48: If in production and mock fallback disabled, propagate error
+      if (!this.config.allowMockFallback && isProductionEnvironment()) {
+        throw err;
+      }
+      // In non-production, fall back to mock tokens
       return input.grantType === "authorization_code"
         ? this.simulateTokenResponse(input.code ?? "", input.nonce ?? "")
         : this.simulateRefreshResponse(input.refreshToken ?? "");

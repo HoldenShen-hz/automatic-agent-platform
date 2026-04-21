@@ -46,6 +46,18 @@ export interface DelegationSpec {
   timeout: number; // milliseconds
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
+  // Collaboration modes
+  collaborationMode?: "pipeline" | "negotiation";
+  pipelineStages?: PipelineStageDefinition[];
+  negotiationRounds?: number;
+  negotiationSelectionPolicy?: "highest_confidence" | "consensus" | "parent_selection";
+}
+
+export interface PipelineStageDefinition {
+  stageId: string;
+  agentId: string;
+  agentType: string;
+  inputTransform?: (prev: unknown) => unknown;
 }
 
 export interface DelegationResult {
