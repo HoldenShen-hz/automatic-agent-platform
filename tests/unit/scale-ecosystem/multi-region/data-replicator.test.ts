@@ -116,11 +116,11 @@ test("ReplicationEventBuffer flushes when max size reached", () => {
     { eventId: "3", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "c", payload: {}, timestamp: "", checksum: "c" },
   ];
 
-  const lastNeedsFlush = buffer.add(events[0]);
+  const lastNeedsFlush = buffer.add(events[0]!);
   assert.equal(lastNeedsFlush, false);
-  const needsFlush = buffer.add(events[1]);
+  const needsFlush = buffer.add(events[1]!);
   assert.equal(needsFlush, false);
-  const flushNow = buffer.add(events[2]);
+  const flushNow = buffer.add(events[2]!);
   assert.equal(flushNow, true); // 3rd event triggers flush since maxSize=3
 
   const flushed = buffer.flush();

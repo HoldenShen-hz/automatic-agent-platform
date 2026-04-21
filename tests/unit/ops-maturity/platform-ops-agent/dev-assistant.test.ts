@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { summarizeDeveloperAssistSuggestion } from "../../../../../src/ops-maturity/platform-ops-agent/dev-assistant/index.js";
+import { summarizeDeveloperAssistSuggestion } from "../../../../src/ops-maturity/platform-ops-agent/dev-assistant/index.js";
 
 test("summarizeDeveloperAssistSuggestion formats single finding", () => {
   const suggestion = summarizeDeveloperAssistSuggestion("Database", ["Connection pool exhausted"]);

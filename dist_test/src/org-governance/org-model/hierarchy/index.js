@@ -137,4 +137,3 @@ export function detectOrgChangeEvents(before, after) {
     }
     return events;
 }
-//# sourceMappingURL=index.js.map

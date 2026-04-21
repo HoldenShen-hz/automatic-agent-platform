@@ -1,1 +1,0 @@
-{"version":3,"file":"stdout-transport.js","sourceRoot":"","sources":["../../../../../../src/platform/shared/observability/transports/stdout-transport.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAKH,MAAM,OAAO,eAAe;IACjB,IAAI,GAAG,QAAQ,CAAC;IAEzB,KAAK,CAAC,KAAyB;QAC7B,OAAO,CAAC,MAAM,CAAC,KAAK,CAAC,IAAI,CAAC,SAAS,CAAC,KAAK,CAAC,GAAG,IAAI,CAAC,CAAC;IACrD,CAAC;CACF"}

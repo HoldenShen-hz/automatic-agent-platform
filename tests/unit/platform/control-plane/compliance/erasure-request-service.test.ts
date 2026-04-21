@@ -467,7 +467,7 @@ test("ErasureRequestService.listRequestsByTraceId returns requests with trace", 
   const traced = service.listRequestsByTraceId("trace_correlation_123");
 
   assert.equal(traced.length, 1);
-  assert.equal(traced[0].erasureId, req1.erasureId);
+  assert.equal(traced[0]!.erasureId, req1.erasureId);
 });
 
 test("ErasureRequestService emits events during lifecycle", () => {
@@ -493,9 +493,9 @@ test("ErasureRequestService emits events during lifecycle", () => {
   );
 
   assert.equal(mockStore.events.length, 3);
-  assert.equal(mockStore.events[0].eventType, "erasure:requested");
-  assert.equal(mockStore.events[1].eventType, "erasure:processing");
-  assert.equal(mockStore.events[2].eventType, "erasure:completed");
+  assert.equal(mockStore.events[0]!.eventType, "erasure:requested");
+  assert.equal(mockStore.events[1]!.eventType, "erasure:processing");
+  assert.equal(mockStore.events[2]!.eventType, "erasure:completed");
 });
 
 test("ErasureRequestService stores metadata in request", () => {

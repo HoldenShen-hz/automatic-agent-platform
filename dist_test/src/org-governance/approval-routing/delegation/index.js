@@ -16,4 +16,3 @@ export function resolveDelegatedApprover(delegations, approverId, orgNodeId, now
         && (item.scopeNodeIds.length === 0 || item.scopeNodeIds.includes(orgNodeId)));
     return match?.delegateApproverId ?? approverId;
 }
-//# sourceMappingURL=index.js.map

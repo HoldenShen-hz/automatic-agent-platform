@@ -20,6 +20,17 @@ import type { EventRecord } from "../../contracts/types/domain.js";
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { ProjectionRecord } from "./index.js";
 
+// §28 Projection handlers - events/projections/
+import { incidentProjectionHandler } from "../events/projections/incident-projection.js";
+import { workflowRunProjectionHandler } from "../events/projections/workflow-run-projection.js";
+import { approvalQueueProjectionHandler } from "../events/projections/approval-queue-projection.js";
+import { toolUsageProjectionHandler } from "../events/projections/tool-usage-projection.js";
+import { workerStatusProjectionHandler } from "../events/projections/worker-status-projection.js";
+import { artifactCatalogProjectionHandler } from "../events/projections/artifact-catalog-projection.js";
+import { riskActionProjectionHandler } from "../events/projections/risk-action-projection.js";
+import { governanceProjectionHandler } from "../events/projections/governance-projection.js";
+import { workflowTimelineProjectionHandler } from "../events/projections/workflow-timeline-projection.js";
+
 /**
  * Projection handler function type.
  * Takes the current state and an event, returns the updated state.
@@ -131,6 +142,25 @@ export class ProjectionRebuildService {
     this.registry.register("cost_dashboard", this.costDashboardHandler.bind(this));
     // §28: DelegationTree projection
     this.registry.register("delegation_tree", this.delegationTreeHandler.bind(this));
+
+    // §28: Incident projection (from events/projections/)
+    this.registry.register("incident_projection", incidentProjectionHandler);
+    // §28: Workflow run projection (from events/projections/)
+    this.registry.register("workflow_run_projection", workflowRunProjectionHandler);
+    // §28: Workflow timeline projection (from events/projections/)
+    this.registry.register("workflow_timeline_projection", workflowTimelineProjectionHandler);
+    // §28: Approval queue projection (from events/projections/)
+    this.registry.register("approval_queue_projection", approvalQueueProjectionHandler);
+    // §28: Tool usage projection (from events/projections/)
+    this.registry.register("tool_usage_projection", toolUsageProjectionHandler);
+    // §28: Worker status projection (from events/projections/)
+    this.registry.register("worker_status_projection", workerStatusProjectionHandler);
+    // §28: Artifact catalog projection (from events/projections/)
+    this.registry.register("artifact_catalog_projection", artifactCatalogProjectionHandler);
+    // §28: Risk action projection (from events/projections/)
+    this.registry.register("risk_action_projection", riskActionProjectionHandler);
+    // §28: Governance projection (from events/projections/)
+    this.registry.register("governance_projection", governanceProjectionHandler);
   }
 
   /**

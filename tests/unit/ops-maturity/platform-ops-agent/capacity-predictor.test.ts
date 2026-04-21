@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { predictOpsCapacityRisk } from "../../../../../src/ops-maturity/platform-ops-agent/capacity-predictor/index.js";
+import { predictOpsCapacityRisk } from "../../../../src/ops-maturity/platform-ops-agent/capacity-predictor/index.js";
 
 test("predictOpsCapacityRisk returns high when ratio >= 2", () => {
   assert.equal(predictOpsCapacityRisk(50, 100), "high");

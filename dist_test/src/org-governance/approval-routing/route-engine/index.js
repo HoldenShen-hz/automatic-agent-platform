@@ -15,4 +15,3 @@ export function resolveApprovalRoute(nodes, request, delegationMap = {}) {
         delegated: approverChain.some((item, index) => item !== ownerChain[index]),
     };
 }
-//# sourceMappingURL=index.js.map

@@ -11,4 +11,3 @@ export const GovernanceAuditRecordSchema = z.object({
 export function buildGovernanceAuditRecord(input) {
     return GovernanceAuditRecordSchema.parse(input);
 }
-//# sourceMappingURL=index.js.map

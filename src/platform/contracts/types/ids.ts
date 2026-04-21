@@ -43,5 +43,5 @@ export function newId(prefix: string): string {
  * @returns Current timestamp in ISO 8601 format (e.g., `2026-04-12T10:30:00.000Z`)
  */
 export function nowIso(): string {
-  return new Date().toISOString();
+  return new Date(Date.now()).toISOString();
 }

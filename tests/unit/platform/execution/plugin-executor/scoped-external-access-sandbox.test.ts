@@ -124,8 +124,8 @@ test("ScopedExternalAccessSandbox reports correct rate limit status", async () =
 
   const status = sandbox.getRateLimitStatus();
 
-  assert.equal(status["api.example.com"].count, 2);
-  assert.equal(status["other.example.com"].count, 1);
+  assert.equal(status["api.example.com"]!.count, 2);
+  assert.equal(status["other.example.com"]!.count, 1);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

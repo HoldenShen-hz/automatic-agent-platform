@@ -289,7 +289,8 @@ test("ReplanningService decides uses fallback reasonCode when trigger is null", 
   );
 
   assert.equal(decision.shouldReplan, true);
-  assert.equal(decision.reasonCode, "planning.repairable");
+  // When trigger is null and shouldReplan is true, fallback reasonCode is "planning.execution_deviation"
+  assert.equal(decision.reasonCode, "planning.execution_deviation");
 });
 
 test("ReplanningService decides uses fallback reasonCode when trigger is undefined", () => {
@@ -317,5 +318,6 @@ test("ReplanningService decides uses fallback reasonCode when trigger is undefin
   );
 
   assert.equal(decision.shouldReplan, true);
-  assert.equal(decision.reasonCode, "planning.repairable");
+  // When trigger is undefined and shouldReplan is true, fallback reasonCode is "planning.execution_deviation"
+  assert.equal(decision.reasonCode, "planning.execution_deviation");
 });

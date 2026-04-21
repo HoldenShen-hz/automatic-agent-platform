@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { OrgNode, OrgChangeEvent } from "../../../../../src/org-governance/org-model/org-node/index.js";
+import type { OrgNode, OrgChangeEvent } from "../../../../src/org-governance/org-model/org-node/index.js";
 import {
   validateOrgHierarchy,
   listAncestorNodeIds,

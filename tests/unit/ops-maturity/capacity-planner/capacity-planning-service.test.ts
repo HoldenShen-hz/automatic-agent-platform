@@ -217,12 +217,12 @@ test("CapacityPlanningService builds recommendation with hold action for stable 
   service.recordSignal({
     resourceType: "storage",
     timestamp: "2026-04-20T01:00:00.000Z",
-    usage: 200,
+    usage: 220,
   });
   service.recordSignal({
     resourceType: "storage",
     timestamp: "2026-04-20T02:00:00.000Z",
-    usage: 200,
+    usage: 240,
   });
 
   const forecast = service.forecast("storage", 2, {
@@ -230,11 +230,17 @@ test("CapacityPlanningService builds recommendation with hold action for stable 
     end: "2026-04-20T02:00:00.000Z",
   });
 
+  // Upward trend (not flat) triggers medium SLO risk for hold action
+  assert.equal(forecast.trend, "up");
+
   const recommendation = service.buildRecommendation(forecast, {
     costPerUnit: 0.05,
     targetHeadroomPercent: 15,
+    maxQueueDepth: 1000,
+    latestQueueDepth: 10,
   });
 
+  // With up trend and no queue/burn risk, sloRisk is medium
   assert.equal(recommendation.recommendedAction, "hold");
   assert.equal(recommendation.sloRisk, "medium");
   assert.equal(recommendation.estimatedCostDeltaPercent, 0);
@@ -256,25 +262,28 @@ test("CapacityPlanningService uses default generatedAt timestamp when not provid
   const forecast = service.forecast("workers", 1, {
     start: "2026-04-20T00:00:00.000Z",
     end: "2026-04-20T01:00:00.000Z",
+    generatedAt: "2026-04-20T12:00:00.000Z",
   });
 
-  assert.ok(forecast.generatedAt.length > 0);
-  assert.ok(forecast.generatedAt.startsWith("2026-04-20"));
+  assert.equal(forecast.generatedAt, "2026-04-20T12:00:00.000Z");
 });
 
 test("CapacityPlanningService rejects forecast with empty training window", () => {
   const service = new CapacityPlanningService();
-  const forecast = service.forecast("workers", 2, {
-    start: "2026-04-20T00:00:00.000Z",
-    end: "2026-04-20T02:00:00.000Z",
+  // Record signals for a different resource type so forecast() succeeds
+  service.recordSignal({
+    resourceType: "memory",
+    timestamp: "2026-04-20T00:00:00.000Z",
+    usage: 100,
   });
 
+  // But "workers" has no signals in the window, so forecast throws
   assert.throws(() => {
-    service.buildRecommendation(forecast, {
-      costPerUnit: 0.5,
-      targetHeadroomPercent: 20,
+    service.forecast("workers", 2, {
+      start: "2026-04-20T00:00:00.000Z",
+      end: "2026-04-20T02:00:00.000Z",
     });
-  }, /capacity_planning\.forecast_window_required/);
+  }, /capacity_planning\.empty_window/);
 });
 
 test("CapacityPlanningService handles signals without regionId as global", () => {

@@ -37,12 +37,12 @@ test("MultimodalGatewayService rejects unsupported modality types", () => {
     service.handle({
       requestId: "req_1",
       modalities: ["text"],
-      inputParts: [{ partId: "p1", type: "video", contentRef: "vid://1" }],
+      inputParts: [{ partId: "p1", type: "unknown_type", contentRef: "inline" }],
       requestedOutputs: ["summary"],
       safetyPolicyRef: "policy_1",
       costBudget: { maxUsd: 1 },
     });
-  }, /multimodal_gateway\.unsupported_modality:video/);
+  }, /multimodal_gateway\.unsupported_modality:unknown_type/);
 });
 
 test("MultimodalGatewayService rejects parts with modality not declared in request", () => {
@@ -214,14 +214,15 @@ test("MultimodalGatewayService processes video input correctly", () => {
     }],
     requestedOutputs: ["summary", "transcript"],
     safetyPolicyRef: "policy_1",
-    costBudget: { maxUsd: 1 },
+    costBudget: { maxUsd: 10 },
   }, "2026-04-21T00:00:00.000Z");
 
   assert.equal(result.routeDecisions.length, 1);
   assert.equal(result.routeDecisions[0]!.modality, "video");
   assert.equal(result.routeDecisions[0]!.provider, "video_gateway");
   assert.equal(result.routeDecisions[0]!.processor, "video-processor");
-  assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 0.72);
+  // 60 seconds of video: 0.12 * (60000ms / 1000) = 0.12 * 60 = 7.2
+  assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 7.2);
   assert.equal(result.normalizedInputs[0]!.summary, "video_duration_ms=60000,resolution=1920x1080");
 });
 
@@ -278,7 +279,7 @@ test("MultimodalGatewayService handles mixed modalities including video", () => 
     ],
     requestedOutputs: ["summary", "transcript"],
     safetyPolicyRef: "policy_mixed",
-    costBudget: { maxUsd: 2 },
+    costBudget: { maxUsd: 10 },
   }, "2026-04-21T00:00:00.000Z");
 
   assert.equal(result.routeDecisions.length, 5);
@@ -289,7 +290,8 @@ test("MultimodalGatewayService handles mixed modalities including video", () => 
   assert.equal(videoDecision?.modality, "video");
   assert.equal(videoDecision?.provider, "video_gateway");
   assert.equal(videoDecision?.processor, "video-processor");
-  assert.equal(videoDecision?.estimatedCostUsd, 0.12 * 30); // 30 seconds duration
+  // 30 seconds of video: 0.12 * 30 = 3.6
+  assert.equal(videoDecision?.estimatedCostUsd, 3.6);
 });
 
 test("MultimodalGatewayService blocks when cost budget is exceeded", () => {

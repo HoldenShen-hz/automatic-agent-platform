@@ -337,12 +337,12 @@ test("workflowRunProjectionHandler preserves existing state when handling events
   const event2 = makeEvent("evt_2", "division:completed", "task_1", '{"divisionId":"div_1"}');
 
   const state1 = workflowRunProjectionHandler(null, event1) as WorkflowRunState;
-  const state2 = workflowRunProjectionHandler(state1, event2) as WorkflowRunState;
+  const state2 = workflowRunProjectionHandler(state1 as unknown as Record<string, unknown>, event2) as WorkflowRunState;
 
   // Both should be preserved
   assert.deepEqual(state2.completedSteps, ["step_1"]);
   assert.equal(state2.divisions.length, 1);
-  assert.equal(state2.divisions[0].divisionId, "div_1");
+  assert.equal(state2.divisions[0]?.divisionId, "div_1");
   assert.equal(state2.eventCount, 2);
 });
 
@@ -353,5 +353,5 @@ test("workflowRunProjectionHandler handles payload without stepId", () => {
 
   assert.deepEqual(state.completedSteps, []);
   assert.equal(state.eventCount, 1);
-  assert.equal(state.timeline[0].stepId, null);
+  assert.equal(state.timeline[0]?.stepId, null);
 });

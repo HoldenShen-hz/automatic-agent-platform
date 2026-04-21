@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ChaosExperimentScheduler, SteadyStateHypothesis, ExperimentTarget, FaultInjection } from "../../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
+import { ChaosExperimentScheduler, SteadyStateHypothesis, ExperimentTarget, FaultInjection } from "../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
 
 test("ChaosExperimentScheduler.scheduleExperiment creates experiment", () => {
   const scheduler = new ChaosExperimentScheduler();

@@ -35,22 +35,35 @@ class TestClock {
     const self = this;
     const OriginalDate = globalThis.Date;
 
+    // Override Date.now
     Object.defineProperty(globalThis.Date, 'now', {
       value: () => self._now,
       writable: true,
       configurable: true,
     });
 
-    const TestDate = function(this: Date | unknown, ...args: [unknown?] | []): Date {
+    // Override Date constructor to use fake time
+    const TestDate: typeof Date = function(this: Date | unknown, ...args: [unknown?] | []): Date {
       if (args.length === 0) {
         return new OriginalDate(self._now);
       }
-      return new OriginalDate(args[0] as ConstructorParameters<typeof OriginalDate>[0]);
+      // If passed a number, treat it as milliseconds since epoch
+      if (args.length === 1 && typeof args[0] === 'number') {
+        return new OriginalDate(args[0] as number);
+      }
+      // For any other args, fall back to original Date behavior
+      return new OriginalDate(...(args as ConstructorParameters<typeof OriginalDate>));
     } as unknown as typeof Date;
 
-    TestDate.now = () => self._now;
-    TestDate.parse = OriginalDate.parse;
-    TestDate.UTC = OriginalDate.UTC;
+    // Copy static properties
+    Object.defineProperties(TestDate, {
+      now: { value: () => self._now, writable: true, configurable: true },
+      parse: { value: OriginalDate.parse, writable: true, configurable: true },
+      UTC: { value: OriginalDate.UTC, writable: true, configurable: true },
+    });
+
+    // Copy prototype
+    TestDate.prototype = OriginalDate.prototype;
 
     globalThis.Date = TestDate;
   }
@@ -75,7 +88,8 @@ function createService(
   killResults: Map<string, boolean>;
   cleanupResults: Map<string, boolean>;
 } {
-  const clock = options.clock ?? new TestClock(Date.now());
+  // Start clock at 0 for deterministic testing
+  const clock = options.clock ?? new TestClock(0);
   const events: RunEvent[] = [];
   const killResults = new Map<string, boolean>();
   const cleanupResults = new Map<string, boolean>();
@@ -450,7 +464,7 @@ test("StuckRunSweeperService - sweepOnce() marks run as stuck after threshold", 
   const { service, clock, events } = createService({
     config: {
       stuckThresholdMs: 60_000, // 1 minute
-      sweepIntervalMs: 0, // Disable auto-sweep
+      sweepIntervalMs: 3_600_000, // Use large interval to disable auto-sweep
     },
   });
 
@@ -482,7 +496,7 @@ test("StuckRunSweeperService - sweepOnce() kills run after warning threshold", a
     config: {
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000, // 30 seconds
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -522,7 +536,7 @@ test("StuckRunSweeperService - sweepOnce() cleans up run after cleanup threshold
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -558,7 +572,7 @@ test("StuckRunSweeperService - sweepOnce() respects maxRunsPerSweep limit", asyn
     config: {
       stuckThresholdMs: 60_000,
       maxRunsPerSweep: 2,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -586,7 +600,7 @@ test("StuckRunSweeperService - sweepOnce() respects maxRunsPerSweep limit", asyn
 test("StuckRunSweeperService - sweepOnce() skips resolved and cleaned_up runs", async () => {
   const { service } = createService({
     config: {
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -610,7 +624,7 @@ test("StuckRunSweeperService - sweepOnce() calls onKillExecution callback", asyn
     config: {
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -640,7 +654,7 @@ test("StuckRunSweeperService - sweepOnce() calls onCleanupExecution callback", a
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -670,7 +684,7 @@ test("StuckRunSweeperService - sweepOnce() increments sweepCount on each run", a
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -696,7 +710,7 @@ test("StuckRunSweeperService - metrics tracking through full lifecycle", async (
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -750,7 +764,7 @@ test("StuckRunSweeperService - multiple runs with different states", async () =>
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -787,7 +801,7 @@ test("StuckRunSweeperService - kill callback returning false logs warning but co
     config: {
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -820,7 +834,7 @@ test("StuckRunSweeperService - cleanup callback returning false logs warning but
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -932,7 +946,7 @@ test("StuckRunSweeperService - concurrent sweepOnce() calls are handled", async 
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -1001,7 +1015,7 @@ test("StuckRunSweeperService - run transitions from pending to warning to killed
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -1046,7 +1060,7 @@ test("StuckRunSweeperService - stuck threshold checks both timeSinceProgress and
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -1069,7 +1083,7 @@ test("StuckRunSweeperService - run in warning state does not get re-detected", a
     config: {
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -1103,7 +1117,7 @@ test("StuckRunSweeperService - run in killed state does not get re-killed", asyn
       stuckThresholdMs: 60_000,
       killAfterWarningMs: 30_000,
       cleanupAfterKillMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -1143,7 +1157,7 @@ test("StuckRunSweeperService - sweepOnce returns empty when disposed mid-sweep",
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 
@@ -1163,7 +1177,7 @@ test("StuckRunSweeperService - sweepOnce returns empty after stop", async () => 
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
-      sweepIntervalMs: 0,
+      sweepIntervalMs: 3_600_000,
     },
   });
 

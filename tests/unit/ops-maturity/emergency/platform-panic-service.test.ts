@@ -10,7 +10,7 @@ import {
   PlatformPanicService,
   type PanicActivationRequest,
   type PanicExecutionCheck,
-} from "../../../../../src/ops-maturity/emergency/platform-panic-service.js";
+} from "../../../../src/ops-maturity/emergency/platform-panic-service.js";
 
 function createTestService() {
   return new PlatformPanicService();

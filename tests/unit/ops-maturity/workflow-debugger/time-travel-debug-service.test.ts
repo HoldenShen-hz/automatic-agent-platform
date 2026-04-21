@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TimeTravelDebugService } from "../../../../../src/ops-maturity/workflow-debugger/time-travel-debug-service.js";
+import { TimeTravelDebugService } from "../../../../src/ops-maturity/workflow-debugger/time-travel-debug-service.js";
 
 test("TimeTravelDebugService.createSession creates a new session", () => {
   const service = new TimeTravelDebugService();

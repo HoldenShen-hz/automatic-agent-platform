@@ -11,4 +11,3 @@ export function shouldEscalateApproval(rule, createdAtIso, nowIso, riskLevel) {
     }
     return Date.parse(nowIso) - Date.parse(createdAtIso) >= rule.triggerAfterMinutes * 60_000;
 }
-//# sourceMappingURL=index.js.map

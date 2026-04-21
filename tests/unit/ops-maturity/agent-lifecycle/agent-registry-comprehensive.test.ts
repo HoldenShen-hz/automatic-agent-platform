@@ -9,7 +9,7 @@ import {
   VALID_LIFECYCLE_TRANSITIONS,
   type AgentLifecycleState,
   type AgentDefinition,
-} from "../../../../../src/ops-maturity/agent-lifecycle/agent-registry/index.js";
+} from "../../../../src/ops-maturity/agent-lifecycle/agent-registry/index.js";
 
 // ---------------------------------------------------------------------------
 // Helper - create a minimal agent definition for testing
@@ -24,8 +24,8 @@ function makeAgent(id: string, state: AgentLifecycleState): AgentDefinition {
     components: {
       pack: { packId: "pack-1", version: "1.0.0" },
       promptBundle: { bundleId: "bundle-1", version: "1.0.0" },
-      modelBinding: { provider: "openai", model: "gpt-4" },
-      trustProfile: { initialLevel: "suggestion" },
+      modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
+      trustProfile: { initialLevel: "suggestion", scoringConfig: { successWeight: 0.4, latencyWeight: 0.3, errorWeight: 0.3 } },
       triggerSet: [],
       autonomyConfig: { maxAutomationLevel: "supervised", requireHumanApprovalForHighRisk: true, maxRetriesBeforeApproval: 3 },
     },
@@ -275,9 +275,7 @@ test("draft state only allows transition to testing", () => {
 test("isValidLifecycleTransition handles unknown states gracefully", () => {
   // Using a string that is not a valid AgentLifecycleState
   // The function should return false (or not crash)
-  // @ts-expect-error - testing runtime behavior with invalid input
   assert.equal(isValidLifecycleTransition("unknown-state" as AgentLifecycleState, "active"), false);
-  // @ts-expect-error - testing runtime behavior with invalid input
   assert.equal(isValidLifecycleTransition("canary", "unknown-state" as AgentLifecycleState), false);
 });
 
@@ -297,8 +295,8 @@ test("Full lifecycle path: draft -> testing -> staging -> canary -> active -> de
   ];
 
   for (let i = 0; i < path.length - 1; i++) {
-    const from = path[i];
-    const to = path[i + 1];
+    const from = path[i]!;
+    const to = path[i + 1]!;
     assert.equal(
       isValidLifecycleTransition(from, to),
       true,

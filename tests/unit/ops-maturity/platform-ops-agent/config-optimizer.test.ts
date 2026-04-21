@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildConfigOptimizationSuggestion } from "../../../../../src/ops-maturity/platform-ops-agent/config-optimizer/index.js";
+import { buildConfigOptimizationSuggestion } from "../../../../src/ops-maturity/platform-ops-agent/config-optimizer/index.js";
 
 test("buildConfigOptimizationSuggestion formats suggestion correctly", () => {
   const suggestion = buildConfigOptimizationSuggestion("max_connections", 100, 200);

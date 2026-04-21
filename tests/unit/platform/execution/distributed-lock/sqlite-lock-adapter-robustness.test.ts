@@ -283,7 +283,7 @@ test("Multiple sequential lock acquisitions - fencing tokens monotonically incre
 
   // Tokens should be strictly increasing
   for (let i = 1; i < tokens.length; i++) {
-    assert.ok(tokens[i] > tokens[i - 1], `Token ${tokens[i]} should be > ${tokens[i - 1]}`);
+    assert.ok(tokens[i]! > tokens[i - 1]!, `Token ${tokens[i]} should be > ${tokens[i - 1]}`);
   }
 
   db.close();

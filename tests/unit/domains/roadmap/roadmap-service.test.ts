@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RoadmapService } from "../../../src/domains/roadmap/roadmap-service.js";
-import type { RoadmapPhase, RoadmapStatus } from "../../../src/domains/roadmap/types.js";
+import { RoadmapService } from "../../../../src/domains/roadmap/roadmap-service.js";
+import type { RoadmapPhase, RoadmapStatus } from "../../../../src/domains/roadmap/types.js";
 
 test("RoadmapService addRoadmapItem creates item with pending status", () => {
   const service = new RoadmapService();
@@ -42,7 +42,7 @@ test("RoadmapService getRoadmap filters by phase", () => {
 
   const phase2Items = service.getRoadmap("phase2");
   assert.equal(phase2Items.length, 1);
-  assert.equal(phase2Items[0].title, "Growth Item");
+  assert.equal(phase2Items[0]!.title, "Growth Item");
 });
 
 test("RoadmapService updateRoadmapItemStatus updates status", () => {
@@ -54,7 +54,7 @@ test("RoadmapService updateRoadmapItemStatus updates status", () => {
   assert.ok(updated.updatedAt >= item.createdAt);
 
   // Verify persisted
-  const retrieved = service.getRoadmap()[0];
+  const retrieved = service.getRoadmap()[0]!;
   assert.equal(retrieved.status, "in_progress");
 });
 
@@ -98,7 +98,7 @@ test("RoadmapService listRoadmapItemsByStatus filters correctly", () => {
 
   const inProgressItems = service.listRoadmapItemsByStatus("in_progress");
   assert.equal(inProgressItems.length, 1);
-  assert.equal(inProgressItems[0].itemId, item3.itemId);
+  assert.equal(inProgressItems[0]!.itemId, item3.itemId);
 
   const completedItems = service.listRoadmapItemsByStatus("completed");
   assert.equal(completedItems.length, 0);
@@ -111,9 +111,9 @@ test("RoadmapService getRoadmap returns items sorted by createdAt", () => {
   const item3 = service.addRoadmapItem({ title: "Third", description: "D", phase: "phase1" });
 
   const items = service.getRoadmap();
-  assert.equal(items[0].itemId, item1.itemId);
-  assert.equal(items[1].itemId, item2.itemId);
-  assert.equal(items[2].itemId, item3.itemId);
+  assert.equal(items[0]!.itemId, item1.itemId);
+  assert.equal(items[1]!.itemId, item2.itemId);
+  assert.equal(items[2]!.itemId, item3.itemId);
 });
 
 test("RoadmapService throws ValidationError for non-existent item", () => {

@@ -50,7 +50,7 @@ test("DlqService listAll returns all records sorted by createdAt", () => {
 
   const all = service.listAll();
   assert.equal(all.length, 2);
-  assert.ok(all[0].createdAt <= all[1].createdAt);
+  assert.ok(all[0]!.createdAt <= all[1]!.createdAt);
 });
 
 test("DlqService listByConsumer filters correctly", () => {
@@ -95,10 +95,10 @@ test("DlqService markResolved transitions status and clears nextRetryAt", () => 
   assert.equal(resolved.status, "resolved");
   assert.equal(resolved.nextRetryAt, null);
   assert.equal(resolved.operatorActionLog.length, 1);
-  assert.equal(resolved.operatorActionLog[0].action, "manual_resolve");
-  assert.equal(resolved.operatorActionLog[0].operatorId, "operator_1");
-  assert.equal(resolved.operatorActionLog[0].previousStatus, "retrying");
-  assert.equal(resolved.operatorActionLog[0].newStatus, "resolved");
+  assert.equal(resolved.operatorActionLog[0]!.action, "manual_resolve");
+  assert.equal(resolved.operatorActionLog[0]!.operatorId, "operator_1");
+  assert.equal(resolved.operatorActionLog[0]!.previousStatus, "retrying");
+  assert.equal(resolved.operatorActionLog[0]!.newStatus, "resolved");
 });
 
 test("DlqService discard transitions status and records reason", () => {
@@ -109,8 +109,8 @@ test("DlqService discard transitions status and records reason", () => {
 
   assert.equal(discarded.status, "discarded");
   assert.equal(discarded.errorCode, "poison_message");
-  assert.equal(discarded.operatorActionLog[0].action, "manual_discard");
-  assert.deepEqual(discarded.operatorActionLog[0].details, { discardReason: "poison_message" });
+  assert.equal(discarded.operatorActionLog[0]!.action, "manual_discard");
+  assert.deepEqual(discarded.operatorActionLog[0]!.details, { discardReason: "poison_message" });
 });
 
 test("DlqService markRetryExhausted sets retryExhaustedAt and keeps status pending", () => {
@@ -123,7 +123,7 @@ test("DlqService markRetryExhausted sets retryExhaustedAt and keeps status pendi
   assert.equal(exhausted.status, "pending");
   assert.ok(exhausted.retryExhaustedAt !== null);
   assert.equal(exhausted.nextRetryAt, null);
-  assert.equal(exhausted.operatorActionLog[0].action, "retry_exhausted");
+  assert.equal(exhausted.operatorActionLog[0]!.action, "retry_exhausted");
 });
 
 // --- Retry ---
@@ -172,8 +172,8 @@ test("DlqService cancelRetry clears nextRetryAt and returns to pending", () => {
 
   assert.equal(cancelled.status, "pending");
   assert.equal(cancelled.nextRetryAt, null);
-  assert.equal(cancelled.operatorActionLog[0].action, "retry_cancelled");
-  assert.equal(cancelled.operatorActionLog[0].operatorId, "operator_cancel");
+  assert.equal(cancelled.operatorActionLog[0]!.action, "retry_cancelled");
+  assert.equal(cancelled.operatorActionLog[0]!.operatorId, "operator_cancel");
 });
 
 // --- 3 retries then DLQ (retry exhaustion flow) ---
@@ -229,7 +229,7 @@ test("DlqService after exhausting retries can be resolved or discarded", () => {
 
   const resolved = service.markResolved(record.deadLetterId, "final_operator");
   assert.equal(resolved.status, "resolved");
-  assert.equal(resolved.operatorActionLog[resolved.operatorActionLog.length - 1].action, "manual_resolve");
+  assert.equal(resolved.operatorActionLog[resolved.operatorActionLog.length - 1]!.action, "manual_resolve");
 });
 
 // --- Failure category ---
@@ -241,8 +241,8 @@ test("DlqService setFailureCategory updates failureCategory", () => {
   const updated = service.setFailureCategory(record.deadLetterId, "permanent", "cat_operator");
 
   assert.equal(updated.failureCategory, "permanent");
-  assert.equal(updated.operatorActionLog[0].action, "category_changed");
-  assert.equal(updated.operatorActionLog[0].operatorId, "cat_operator");
+  assert.equal(updated.operatorActionLog[0]!.action, "category_changed");
+  assert.equal(updated.operatorActionLog[0]!.operatorId, "cat_operator");
 });
 
 test("DlqService setFailureCategory throws for unknown id", () => {
@@ -272,11 +272,11 @@ test("DlqService logOperatorAction appends to operatorActionLog", () => {
 
   const updated = service.get(record.deadLetterId)!;
   assert.equal(updated.operatorActionLog.length, 2);
-  assert.equal(updated.operatorActionLog[0].action, "investigation_started");
-  assert.equal(updated.operatorActionLog[0].operatorId, "inv_operator");
-  assert.deepEqual(updated.operatorActionLog[0].details, { note: "checking logs" });
-  assert.equal(updated.operatorActionLog[1].action, "mitigation_applied");
-  assert.equal(updated.operatorActionLog[1].newStatus, null);
+  assert.equal(updated.operatorActionLog[0]!.action, "investigation_started");
+  assert.equal(updated.operatorActionLog[0]!.operatorId, "inv_operator");
+  assert.deepEqual(updated.operatorActionLog[0]!.details, { note: "checking logs" });
+  assert.equal(updated.operatorActionLog[1]!.action, "mitigation_applied");
+  assert.equal(updated.operatorActionLog[1]!.newStatus, null);
 });
 
 // --- Summarize ---

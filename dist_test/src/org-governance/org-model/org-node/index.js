@@ -69,4 +69,3 @@ export function createCrossOrgCollaborator(input) {
         active: true,
     };
 }
-//# sourceMappingURL=index.js.map
