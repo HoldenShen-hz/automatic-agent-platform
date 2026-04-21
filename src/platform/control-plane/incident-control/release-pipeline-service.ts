@@ -49,7 +49,7 @@ export class ReleasePipelineService {
 
   public constructor(options: ReleasePipelineServiceOptions = {}) {
     this.repoRootDir = resolve(options.repoRootDir ?? DEFAULT_REPO_ROOT);
-    this.configRootDir = resolve(options.configRootDir ?? DEFAULT_CONFIG_ROOT);
+    this.configRootDir = resolve(options.configRootDir ?? join(this.repoRootDir, "config", "environments"));
     this.artifactStore = new ArtifactStore(options.artifactStoreOptions);
     this.secretManagementService = options.secretManagementService ?? null;
     this.store = options.store ?? null;

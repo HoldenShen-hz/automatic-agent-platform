@@ -39,7 +39,8 @@ export interface ExplanationBundle {
 }
 
 function explanationCacheKey(taskId: string, stage: string, depth: ExplanationDepth): string {
-  return `${taskId}:${stage}:${depth}`;
+  const depthKey = depth === "L3" ? "audit" : depth;
+  return `${taskId}:${stage}:${depthKey}`;
 }
 
 function uniqueStrings(values: readonly string[]): string[] {

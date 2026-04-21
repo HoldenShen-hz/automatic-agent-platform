@@ -10,6 +10,10 @@ function sortUnique(values: readonly string[]): string[] {
   return Array.from(new Set(values.filter((value) => value.trim().length > 0))).sort();
 }
 
+function normalizeStepOutputRefs(refs: readonly string[]): string[] {
+  return sortUnique(refs);
+}
+
 function buildSignalKey(signal: FeedbackSignal): string {
   return JSON.stringify({
     source: signal.source,
@@ -17,7 +21,7 @@ function buildSignalKey(signal: FeedbackSignal): string {
     severity: signal.severity,
     reasonCode: typeof signal.payload.reasonCode === "string" ? signal.payload.reasonCode : null,
     summary: typeof signal.payload.summary === "string" ? signal.payload.summary : null,
-    stepOutputRefs: [...signal.stepOutputRefs].sort(),
+    stepOutputRefs: normalizeStepOutputRefs(signal.stepOutputRefs),
   });
 }
 
@@ -63,7 +67,7 @@ export class SignalPreprocessor {
         continue;
       }
       deduplicated.set(key, {
-        ...existing,
+        ...(signal.timestamp < existing.timestamp ? signal : existing),
         stepOutputRefs: sortUnique([...existing.stepOutputRefs, ...signal.stepOutputRefs]),
         payload: {
           ...existing.payload,

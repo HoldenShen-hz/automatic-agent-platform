@@ -22,9 +22,9 @@ export interface CausalChain {
 }
 
 export function buildCausalChain(nodes: readonly CausalChainNode[], links: readonly CausalLink[]): CausalChain {
-  return {
-    nodes,
-    links,
-    summary: buildCausalChainSummary(links),
-  };
+  return Object.freeze({
+    nodes: Object.freeze([...nodes]),
+    links: Object.freeze([...links]),
+    summary: Object.freeze(buildCausalChainSummary(links)),
+  });
 }
