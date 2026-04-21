@@ -9,8 +9,9 @@ import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function createHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
-  const db = new SqliteDatabase(join(workspace, "queue.db"));
-  db.migrate();
+  // Use empty migration plan to avoid running all production migrations
+  // that have cross-dependencies. We only need the queue_jobs table.
+  const db = new SqliteDatabase(join(workspace, "queue.db"), { migrationPlan: [] });
   db.connection.exec(QUEUE_JOBS_DDL);
   return {
     workspace,

@@ -459,7 +459,7 @@ test("ProviderCredentialPool.fromEnvironment with preserveManagedSecretRefs", ()
   assert.equal(states[0]!.apiKey, null);
 });
 
-test("ProviderCredentialPool.dispose releases all credentials", () => {
+test("ProviderCredentialPool.dispose releases all credentials", async () => {
   const pool = new ProviderCredentialPool({
     provider: "test",
     credentials: [
@@ -469,8 +469,11 @@ test("ProviderCredentialPool.dispose releases all credentials", () => {
 
   pool.dispose();
 
-  const exhaustion = pool.getExhaustion();
-  assert.equal(exhaustion.reasonCode, "provider.credentials_missing");
+  // After dispose, selecting a credential should throw
+  await assert.rejects(
+    async () => pool.selectCredential(),
+    (error: any) => error.code === "provider.credential_pool.disposed",
+  );
 });
 
 test("BaseChatProvider defaultRetryableCodes includes 529", () => {
