@@ -7,7 +7,7 @@ import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../
 
 function runCliExpectFailure(env: NodeJS.ProcessEnv): string {
   try {
-    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "model-routing.js")], {
+    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "model-routing.js")], {
       cwd: process.cwd(),
       env: {
         ...process.env,

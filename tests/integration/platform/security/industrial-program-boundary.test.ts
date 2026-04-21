@@ -1,18 +1,17 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function expectArtifactEscapeFailure(scriptName: string, env: NodeJS.ProcessEnv): void {
   assert.throws(
     () =>
-      execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", scriptName)], {
+      execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", scriptName)], {
         cwd: repoRoot,
         env: {
           ...process.env,

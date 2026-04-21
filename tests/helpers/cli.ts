@@ -6,7 +6,7 @@ export function runBuiltCliExpectFailure(
   env: NodeJS.ProcessEnv,
 ): { stdout: string; stderr: string; status: number } {
   try {
-    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", scriptName)], {
+    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", scriptName)], {
       cwd: process.cwd(),
       env: {
         ...process.env,

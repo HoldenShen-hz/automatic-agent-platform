@@ -33,10 +33,10 @@
 import { join } from "node:path";
 
 import { getDefaultDivisionRegistry } from "../../../../domains/governance/division-loader.js";
+import { DEFAULT_DIVISIONS_ROOT } from "../../../../domains/governance/division-loader-support.js";
 
 const GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH = join(
-  process.cwd(),
-  "divisions",
+  DEFAULT_DIVISIONS_ROOT,
   "general_ops",
   "schemas",
   "minimal-output.json",

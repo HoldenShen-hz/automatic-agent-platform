@@ -3,6 +3,7 @@ import type { LearningObject } from "./learning-object-model.js";
 import { FailurePatternMiner } from "./failure-pattern-miner.js";
 import { LLMImprovementGenerationService } from "./llm-improvement-generation-service.js";
 import { LearningObjectValidator } from "./learning-object-validator.js";
+import { ExperienceDistillationService } from "./experience-distillation-service.js";
 
 export interface StrategyLearningServiceOptions {
   llmImprovementService?: LLMImprovementGenerationService;
@@ -10,6 +11,7 @@ export interface StrategyLearningServiceOptions {
 
 export class StrategyLearningService {
   private readonly miner = new FailurePatternMiner();
+  private readonly distillation = new ExperienceDistillationService();
   private readonly llmImprovement: LLMImprovementGenerationService;
   private readonly validator = new LearningObjectValidator();
 
@@ -26,6 +28,8 @@ export class StrategyLearningService {
 
   public learnSync(signals: readonly LearningSignal[]): LearningObject[] {
     const mined = this.miner.mine(signals);
-    return this.validator.validateMany(mined);
+    const nonFailureSignals = signals.filter((signal) => signal.learningType !== "failure_pattern");
+    const distilled = this.distillation.distill(nonFailureSignals);
+    return this.validator.validateMany([...mined, ...distilled]);
   }
 }

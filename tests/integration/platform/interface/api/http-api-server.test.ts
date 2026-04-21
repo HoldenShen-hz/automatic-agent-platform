@@ -144,10 +144,10 @@ test("http api server serves mission control snapshot, task inspect, approval qu
     });
     assert.equal(knowledgeNamespaces.statusCode, 200);
     const knowledgeNamespacesPayload = readJson<{ namespaces: Array<{ path: string }> }>(knowledgeNamespaces);
-    assert.ok(knowledgeNamespacesPayload.data.namespaces.some((item) => item.path === "coding/repo"));
+    assert.ok(knowledgeNamespacesPayload.data.namespaces.some((item) => item.path === "coding.repo"));
 
     const knowledgeQuery = await server.inject({
-      url: "/v1/knowledge/query?q=retry&domainId=coding&namespace=coding/repo",
+      url: "/v1/knowledge/query?q=retry&domainId=coding&namespace=coding.repo",
       headers: { authorization: `Bearer ${accessToken}` },
     });
     assert.equal(knowledgeQuery.statusCode, 200);
@@ -173,12 +173,12 @@ test("http api server serves mission control snapshot, task inspect, approval qu
     assert.equal(semanticInspectPayload.data.ready, true);
 
     const knowledgeInspect = await server.inject({
-      url: "/v1/knowledge/coding%2Frepo/inspect",
+      url: "/v1/knowledge/coding.repo/inspect",
       headers: { authorization: `Bearer ${accessToken}` },
     });
     assert.equal(knowledgeInspect.statusCode, 200);
     const knowledgeInspectPayload = readJson<{ namespace: string; documentCount: number }>(knowledgeInspect);
-    assert.equal(knowledgeInspectPayload.data.namespace, "coding/repo");
+    assert.equal(knowledgeInspectPayload.data.namespace, "coding.repo");
     assert.ok(knowledgeInspectPayload.data.documentCount >= 1);
 
     const domains = await server.inject({

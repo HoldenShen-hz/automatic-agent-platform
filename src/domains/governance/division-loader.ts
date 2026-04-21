@@ -167,8 +167,8 @@ export class DivisionLoader {
    */
   public constructor(options: DivisionLoaderOptions = {}) {
     this.divisionsRoot = options.divisionsRoot ?? DEFAULT_DIVISIONS_ROOT;
-    // Default policy restricts access to the current working directory
-    this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
+    // Default policy should encompass the resolved divisions root, even when running from dist/.
+    this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(resolve(this.divisionsRoot, ".."));
     this.allowCrossDivisionDag = options.allowCrossDivisionDag ?? false;
   }
 

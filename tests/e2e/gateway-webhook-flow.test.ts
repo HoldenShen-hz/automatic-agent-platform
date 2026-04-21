@@ -175,7 +175,7 @@ test("E2E: gateway task can be completed through execution success", () => {
         agentId: "agent-1",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "succeeded",
+        status: "executing",
         inputRef: null,
         traceId,
         attempt: 1,
@@ -190,7 +190,7 @@ test("E2E: gateway task can be completed through execution success", () => {
         lastErrorCode: null,
         lastErrorMessage: null,
         startedAt: now,
-        finishedAt: now,
+        finishedAt: null,
         createdAt: now,
         updatedAt: now,
       });

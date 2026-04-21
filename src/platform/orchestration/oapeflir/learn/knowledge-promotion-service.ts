@@ -15,7 +15,7 @@
  *       → Emit "learning:knowledge_promoted" event (Tier 2)
  *
  * Promoted objects use:
- *   - namespace: "system/learned-patterns"
+ *   - namespace: "system.learned.patterns"
  *   - trustLevel: "reviewed" (because they passed LearningObjectValidator)
  *   - source: { type: "system_generated", uri: "learning://{kind}/{id}" }
  */
@@ -46,7 +46,7 @@ export interface KnowledgePromotionServiceOptions {
  * - Passed LearningObjectValidator.validateMany() (valid evidence + sufficient confidence)
  * - promotionStatus === "validated" or "promoted"
  *
- * Are eligible for promotion to "system/learned-patterns" namespace.
+ * Are eligible for promotion to "system.learned.patterns" namespace.
  */
 export class KnowledgePromotionService {
   private readonly knowledgePlane: KnowledgePlaneService;
@@ -78,7 +78,7 @@ export class KnowledgePromotionService {
         const result = this.knowledgePlane.ingest({
           title: obj.title,
           body,
-          namespace: "system/learned-patterns",
+          namespace: "system.learned.patterns",
           uri: `learning://${obj.learningType}/${obj.learningObjectId}`,
           sourceType: "text",
           trustLevel: "reviewed",
@@ -102,7 +102,7 @@ export class KnowledgePromotionService {
           learningObjectId: learningObjects[0]?.learningObjectId ?? "",
           learningType: learningObjects[0]?.learningType ?? "unknown",
           documentId: promoted[0] ?? "",
-          namespace: "system/learned-patterns",
+          namespace: "system.learned.patterns",
           trustLevel: "reviewed",
           promotedCount: promoted.length,
           occurredAt: nowIso(),

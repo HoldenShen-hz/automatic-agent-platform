@@ -105,6 +105,28 @@ test("extractContinuationPoint handles incomplete patterns", () => {
   assert.equal(extractContinuationPoint("( incomplete parens"), "( incomplete parens");
 });
 
+test("extractContinuationPoint handles incomplete HTML tag pattern", () => {
+  assert.equal(extractContinuationPoint("<div"), "<div");
+  assert.equal(extractContinuationPoint("<span class"), "<span class");
+  assert.equal(extractContinuationPoint("<input "), "<input ");
+});
+
+test("extractContinuationPoint returns input for output ending with comma", () => {
+  assert.equal(extractContinuationPoint("Hello, world,"), "Hello, world,");
+});
+
+test("extractContinuationPoint returns input for output ending with Chinese comma", () => {
+  assert.equal(extractContinuationPoint("你好，世界，"), "你好，世界，");
+});
+
+test("extractContinuationPoint returns input for output ending with English period", () => {
+  assert.equal(extractContinuationPoint("Complete sentence."), "Complete sentence.");
+});
+
+test("extractContinuationPoint returns input for output ending with Chinese period", () => {
+  assert.equal(extractContinuationPoint("完整的句子。"), "完整的句子。");
+});
+
 test("extractContinuationPoint finds sentence boundary near end", () => {
   const longText = "This is a long text. ".repeat(20) + "Incomplete last sentence";
   const result = extractContinuationPoint(longText);

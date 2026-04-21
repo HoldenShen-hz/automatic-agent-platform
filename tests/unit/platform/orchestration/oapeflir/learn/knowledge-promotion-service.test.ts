@@ -135,7 +135,7 @@ test("KnowledgePromotionService.promote() publishes event when eventPublisher is
 
   assert.equal(result.promotedCount, 1);
   assert.equal(publishCallCount, 1, "Event publisher should be called once");
-  assert.equal(publishedPayload.namespace, "system/learned-patterns");
+  assert.equal(publishedPayload.namespace, "system.learned.patterns");
   assert.equal(publishedPayload.trustLevel, "reviewed");
   assert.equal(publishedPayload.promotedCount, 1);
 });

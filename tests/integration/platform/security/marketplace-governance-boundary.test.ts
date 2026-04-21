@@ -8,7 +8,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 function runCli(env: NodeJS.ProcessEnv): string {
   return execFileSync(
     process.execPath,
-    [join(process.cwd(), "dist", "src", "cli", "marketplace.js")],
+    [join(process.cwd(), "dist", "src", "sdk", "cli", "marketplace.js")],
     {
       cwd: process.cwd(),
       env: {

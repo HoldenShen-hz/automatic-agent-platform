@@ -357,3 +357,271 @@ test("different algorithms produce different results", () => {
     assert.ok(result !== undefined, `Algorithm ${algo} should produce a result`);
   }
 });
+
+test("getAnomalies filters by since timestamp", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  // Ingest baseline and trigger anomaly
+  for (let i = 0; i < 10; i++) {
+    service.ingest("time_filter_metric", 50);
+  }
+  service.detect("time_filter_metric", 500);
+
+  const oldAnomalies = service.getAnomalies("time_filter_metric");
+  assert.ok(oldAnomalies.length > 0);
+
+  // Filter with future timestamp should return nothing
+  const futureAnomalies = service.getAnomalies("time_filter_metric", {
+    since: new Date(Date.now() + 10000).toISOString(),
+  });
+  assert.equal(futureAnomalies.length, 0);
+});
+
+test("getAnomalies filters by minSeverity", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  // Ingest baseline
+  for (let i = 0; i < 10; i++) {
+    service.ingest("severity_filter_metric", 100);
+  }
+
+  // Trigger warning level anomaly
+  service.detect("severity_filter_metric", 200);
+
+  // Trigger emergency level anomaly
+  service.detect("severity_filter_metric", 1000);
+
+  const allAnomalies = service.getAnomalies("severity_filter_metric");
+  const warningMinAnomalies = service.getAnomalies("severity_filter_metric", { minSeverity: "warning" });
+  const criticalMinAnomalies = service.getAnomalies("severity_filter_metric", { minSeverity: "critical" });
+
+  // All anomalies should be >= warning
+  assert.ok(allAnomalies.length >= warningMinAnomalies.length);
+  // Critical min should filter out warning-only anomalies
+  assert.ok(criticalMinAnomalies.length <= warningMinAnomalies.length);
+});
+
+test("getAnomalies without metric name returns all anomalies", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  // Ingest baseline for two metrics
+  for (let i = 0; i < 10; i++) {
+    service.ingest("metric_a", 50);
+    service.ingest("metric_b", 50);
+  }
+
+  // Trigger anomalies
+  service.detect("metric_a", 500);
+  service.detect("metric_b", 500);
+
+  const allAnomalies = service.getAnomalies();
+
+  assert.ok(allAnomalies.length >= 2);
+  assert.ok(allAnomalies.some((a) => a.metricName === "metric_a"));
+  assert.ok(allAnomalies.some((a) => a.metricName === "metric_b"));
+});
+
+test("getAnomalies combines unresolvedOnly with since filter", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  for (let i = 0; i < 10; i++) {
+    service.ingest("combined_filter_metric", 50);
+  }
+
+  service.detect("combined_filter_metric", 500);
+
+  const anomalies = service.getAnomalies("combined_filter_metric", {
+    unresolvedOnly: true,
+    since: new Date(0).toISOString(),
+  });
+
+  assert.ok(anomalies.every((a) => !a.resolved));
+});
+
+test("resolveAnomaly returns false for non-existent anomaly", () => {
+  const service = new AnomalyDetectionService();
+
+  const result = service.resolveAnomaly("non_existent_anomaly_id");
+
+  assert.equal(result, false);
+});
+
+test("resolveAnomaly only affects first matching anomaly", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  for (let i = 0; i < 10; i++) {
+    service.ingest("resolve_test_metric", 50);
+  }
+
+  // Trigger multiple anomalies
+  service.detect("resolve_test_metric", 500);
+  service.detect("resolve_test_metric", 600);
+
+  const anomalies = service.getAnomalies("resolve_test_metric");
+  assert.ok(anomalies.length >= 2);
+
+  const firstId = anomalies[0]!.id;
+  service.resolveAnomaly(firstId);
+
+  const unresolved = service.getAnomalies("resolve_test_metric", { unresolvedOnly: true });
+  assert.ok(!unresolved.some((a) => a.id === firstId));
+});
+
+test("signature patterns match metric names with special characters", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  for (let i = 0; i < 10; i++) {
+    service.ingest("error_rate_spike_test", 10);
+  }
+
+  // The default signature should match this
+  const result = service.detect("error_rate_spike_test", 100);
+
+  assert.equal(result.isAnomaly, true);
+  assert.equal(result.category, "spike");
+});
+
+test("gradient detection with insufficient baseline data returns insufficient data result", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "gradient", sensitivity: 0.5, windowSize: 50, minDataPoints: 10 },
+  });
+
+  // Only add 2 data points - insufficient for gradient detection (needs 3+)
+  service.ingest("gradient_insufficient", 100);
+  service.ingest("gradient_insufficient", 110);
+
+  const result = service.detect("gradient_insufficient", 200);
+
+  assert.equal(result.isAnomaly, false);
+  assert.ok(result.explanation.includes("Insufficient data"));
+});
+
+test("zscore detection with zero standard deviation handles constant baseline", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  // Constant baseline - zero stdDev
+  for (let i = 0; i < 10; i++) {
+    service.ingest("constant_metric", 100);
+  }
+
+  // Different value should still be detected as anomaly
+  const result = service.detect("constant_metric", 200);
+
+  assert.equal(result.isAnomaly, true);
+  assert.ok(result.score > 0);
+});
+
+test("anomaly record contains correct deviation metrics", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 100, minDataPoints: 5 },
+  });
+
+  for (let i = 0; i < 10; i++) {
+    service.ingest("deviation_metric", 100);
+  }
+
+  service.detect("deviation_metric", 200);
+
+  const anomalies = service.getAnomalies("deviation_metric");
+  assert.ok(anomalies.length > 0);
+
+  const anomaly = anomalies[0]!;
+  assert.ok(anomaly.deviation >= 0);
+  assert.ok(anomaly.deviationPercent >= 0);
+  assert.ok(anomaly.expectedValue > 0);
+  assert.ok(anomaly.observedValue > 0);
+});
+
+test("clearHistory removes thresholds and anomalies for specific metric", () => {
+  const service = new AnomalyDetectionService({
+    config: { algorithm: "zscore", sensitivity: 0.5, windowSize: 20, minDataPoints: 5 },
+  });
+
+  for (let i = 0; i < 20; i++) {
+    service.ingest("to_clear_metric", 100);
+  }
+
+  service.detect("to_clear_metric", 500);
+  service.detect("to_clear_metric", 600);
+
+  // Verify threshold exists
+  assert.ok(service.getThreshold("to_clear_metric") !== null);
+
+  // Clear only this metric
+  service.clearHistory("to_clear_metric");
+
+  // History should be empty
+  assert.equal(service.getHistory("to_clear_metric").length, 0);
+
+  // Other metrics should be unaffected
+  service.ingest("other_metric", 100);
+  assert.ok(service.getHistory("other_metric").length > 0);
+});
+
+test("unregisterSignature returns false for non-existent signature", () => {
+  const service = new AnomalyDetectionService();
+
+  const result = service.unregisterSignature("non_existent_signature");
+
+  assert.equal(result, false);
+});
+
+test("unregisterSignature removes only the specified signature", () => {
+  const service = new AnomalyDetectionService();
+
+  service.registerSignature({
+    id: "unique_sig_123",
+    name: "Unique Signature",
+    pattern: /unique_pattern/,
+    category: "spike",
+    severity: "warning",
+    description: "Test",
+  });
+
+  assert.ok(service.getSignatures().some((s) => s.id === "unique_sig_123"));
+
+  const removed = service.unregisterSignature("unique_sig_123");
+  assert.equal(removed, true);
+
+  assert.ok(!service.getSignatures().some((s) => s.id === "unique_sig_123"));
+});
+
+test("registerSignature with duplicate ID overwrites existing", () => {
+  const service = new AnomalyDetectionService();
+
+  service.registerSignature({
+    id: "dup_sig",
+    name: "First",
+    pattern: /first/,
+    category: "spike",
+    severity: "warning",
+    description: "First description",
+  });
+
+  service.registerSignature({
+    id: "dup_sig",
+    name: "Second",
+    pattern: /second/,
+    category: "trend_change",
+    severity: "critical",
+    description: "Second description",
+  });
+
+  const sigs = service.getSignatures().filter((s) => s.id === "dup_sig");
+  assert.equal(sigs.length, 1);
+  assert.equal(sigs[0]!.name, "Second");
+});

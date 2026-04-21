@@ -178,7 +178,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     gatewayTargetDirectoryService: gatewayTargets,
   });
 
-  let pluginKnowledgeRef: RetrieverKnowledgeResult = { knowledgeRef: "knowledge:missing", snippet: "Missing chunk", score: 0.5, namespace: "coding/repo", chunkId: "chunk:missing", documentId: "doc:missing", matchType: "keyword" };
+  let pluginKnowledgeRef: RetrieverKnowledgeResult = { knowledgeRef: "knowledge:missing", snippet: "Missing chunk", score: 0.5, namespace: "coding.repo", chunkId: "chunk:missing", documentId: "doc:missing", matchType: "keyword" };
   pluginRegistry.register({
     pluginId: "plugin.coding.retriever",
     domainId: "coding",
@@ -202,7 +202,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       timeoutMs: 1000,
       allowFilesystemWrite: false,
       allowNetworkEgress: false,
-      allowedKnowledgeNamespaces: ["coding/repo"],
+      allowedKnowledgeNamespaces: ["coding.repo"],
       maxConcurrentInvocations: 1,
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
@@ -302,7 +302,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
   });
   knowledgePlaneService.registerNamespace({
     namespaceId: "ns_coding_repo",
-    path: "coding/repo",
+    path: "coding.repo",
     description: "Coding repo knowledge",
     ownerDomainId: "coding",
     accessPolicy: "domain_only",
@@ -319,18 +319,18 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
   knowledgePlaneService.ingest({
     title: "Build troubleshooting",
     body: "Retry the build after clearing stale caches.",
-    namespace: "coding/repo",
+    namespace: "coding.repo",
     sourceType: "text",
     trustLevel: "verified",
   });
   const pluginRecord = knowledgePlaneService.ingest({
     title: "Plugin knowledge",
     body: "Plugin supplied snippet",
-    namespace: "coding/repo",
+    namespace: "coding.repo",
     sourceType: "text",
     trustLevel: "verified",
   });
-  pluginKnowledgeRef = { knowledgeRef: `knowledge:${pluginRecord.chunks[0]?.chunkId ?? "missing"}`, snippet: "Plugin supplied snippet", score: 0.9, namespace: "coding/repo", chunkId: pluginRecord.chunks[0]?.chunkId ?? "chunk:missing", documentId: "doc:plugin", matchType: "semantic" as const };
+  pluginKnowledgeRef = { knowledgeRef: `knowledge:${pluginRecord.chunks[0]?.chunkId ?? "missing"}`, snippet: "Plugin supplied snippet", score: 0.9, namespace: "coding.repo", chunkId: pluginRecord.chunks[0]?.chunkId ?? "chunk:missing", documentId: "doc:plugin", matchType: "semantic" as const };
 
   return {
     db,

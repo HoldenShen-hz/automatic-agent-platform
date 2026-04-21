@@ -6,6 +6,7 @@ import {
   AuditExportService,
   AUDIT_EXPORT_DDL,
 } from "../../../../src/platform/control-plane/audit-export/audit-export-service.js";
+import { AUDIT_INTEGRITY_DDL } from "../../../../src/platform/control-plane/iam/audit-integrity-repository.js";
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
@@ -14,7 +15,7 @@ function createHarness(prefix: string) {
   const dbPath = join(workspace, "audit-boundary.db");
   const db = new SqliteDatabase(dbPath);
   db.migrate();
-  db.connection.exec(AUDIT_EXPORT_DDL);
+  db.connection.exec(`${AUDIT_EXPORT_DDL}\n${AUDIT_INTEGRITY_DDL}`);
   return { workspace, db };
 }
 

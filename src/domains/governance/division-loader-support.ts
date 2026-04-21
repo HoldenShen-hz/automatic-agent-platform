@@ -1,4 +1,6 @@
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { SandboxError, ValidationError, WorkflowStateError } from "../../platform/contracts/errors.js";
 
@@ -68,7 +70,19 @@ export interface RawWorkflowConfig {
   steps: unknown;
 }
 
-export const DEFAULT_DIVISIONS_ROOT = join(process.cwd(), "divisions");
+function resolveDefaultDivisionsRoot(): string {
+  const startDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(process.cwd(), "divisions"),
+    join(process.cwd(), "..", "divisions"),
+    join(startDir, "../../divisions"),
+    join(startDir, "../../../divisions"),
+    join(startDir, "../../../../divisions"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]!;
+}
+
+export const DEFAULT_DIVISIONS_ROOT = resolveDefaultDivisionsRoot();
 
 export function tokenizeYaml(raw: string): ParsedLine[] {
   return raw

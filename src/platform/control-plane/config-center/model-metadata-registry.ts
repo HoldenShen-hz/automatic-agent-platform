@@ -50,7 +50,9 @@ function resolveBundledRegistryPath(): string {
   const candidates = [
     join(startDir, "../../../config/providers/models.bundled.json"),
     join(startDir, "../../../../config/providers/models.bundled.json"),
+    join(startDir, "../../../../../config/providers/models.bundled.json"),
     join(process.cwd(), "config", "providers", "models.bundled.json"),
+    join(process.cwd(), "..", "config", "providers", "models.bundled.json"),
   ];
   const bundledPath = candidates.find((candidate) => existsSync(candidate));
   if (bundledPath == null) {

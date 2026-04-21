@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import test from "node:test";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../..");
+const REPO_ROOT = process.cwd();
 
 test("dockerignore excludes repo data and formal docs from container build context", () => {
   const dockerignore = readFileSync(join(REPO_ROOT, ".dockerignore"), "utf8");

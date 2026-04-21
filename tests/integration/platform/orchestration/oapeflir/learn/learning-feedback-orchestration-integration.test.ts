@@ -48,7 +48,7 @@ test("integration: learning feedback orchestration promotes validated learnings 
   const knowledgePlane = new KnowledgePlaneService();
   knowledgePlane.registerNamespace({
     namespaceId: "ns_learned_patterns",
-    path: "system/learned-patterns",
+    path: "system.learned.patterns",
     description: "Validated learned patterns",
     ownerDomainId: "platform",
     accessPolicy: "public",
@@ -92,7 +92,7 @@ test("integration: learning feedback orchestration promotes validated learnings 
   });
 
   const hits = knowledgePlane.query("exponential backoff", {
-    namespace: "system/learned-patterns",
+    namespace: "system.learned.patterns",
     limit: 5,
   });
   const evolutionMemories = memoryService.recall({

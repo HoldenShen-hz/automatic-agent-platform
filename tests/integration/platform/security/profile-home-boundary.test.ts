@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 test("profile-home CLI fails closed on invalid profile id", () => {
   assert.throws(
     () =>
-      execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", "profile-home.js")], {
+      execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", "profile-home.js")], {
         cwd: repoRoot,
         env: {
           ...process.env,

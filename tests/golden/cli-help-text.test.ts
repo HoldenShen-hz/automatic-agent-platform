@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const CLI_DIR = join(process.cwd(), "dist", "src", "cli");
+const CLI_DIR = join(process.cwd(), "dist", "src", "sdk", "cli");
 
 // List of known CLI scripts
 const CLI_SCRIPTS = [
@@ -33,7 +33,7 @@ const CLI_SCRIPTS = [
 ];
 
 test("golden: all CLI scripts have JSDoc documentation", () => {
-  const cliSourceDir = join(process.cwd(), "src", "cli");
+  const cliSourceDir = join(process.cwd(), "src", "sdk", "cli");
 
   for (const script of CLI_SCRIPTS) {
     const sourcePath = join(cliSourceDir, script.replace(".js", ".ts"));
@@ -122,7 +122,7 @@ test("golden: ValidationError format is consistent", () => {
 
 test("golden: CLI output is JSON when successful", () => {
   // Verify that successful CLI output should be JSON (verified by checking code structure)
-  const inspectSource = readFileSync(join(process.cwd(), "src", "cli", "inspect.ts"), "utf8");
+  const inspectSource = readFileSync(join(process.cwd(), "src", "sdk", "cli", "inspect.ts"), "utf8");
 
   // The inspect CLI outputs JSON via JSON.stringify
   assert.ok(
@@ -140,9 +140,9 @@ test("golden: CLI scripts use consistent error types", () => {
   ];
 
   const cliFiles = [
-    "src/cli/inspect.ts",
-    "src/cli/doctor.ts",
-    "src/cli/dispatch-execution.ts",
+    "src/sdk/cli/inspect.ts",
+    "src/sdk/cli/doctor.ts",
+    "src/sdk/cli/dispatch-execution.ts",
   ];
 
   for (const file of cliFiles) {

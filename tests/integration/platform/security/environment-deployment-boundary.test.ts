@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import { EnvironmentDeploymentService } from "../../../../src/platform/control-plane/incident-control/environment-deployment-service.js";
 import { SecretManagementService } from "../../../../src/platform/control-plane/iam/secret-management-service.js";
@@ -9,8 +8,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../..");
+const REPO_ROOT = process.cwd();
 
 test("environment deployment export reports prod as blocked when promotion prerequisites are not ready", async () => {
   const workspace = createTempWorkspace("aa-environment-deployment-boundary-");

@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import test from "node:test";
 
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
@@ -10,9 +9,8 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../../");
-const CLI_PATH = `${REPO_ROOT}/dist/src/cli/acceptance-readiness.js`;
+const REPO_ROOT = process.cwd();
+const CLI_PATH = `${REPO_ROOT}/dist/src/sdk/cli/acceptance-readiness.js`;
 
 function seedReadyEnvironment(store: AuthoritativeTaskStore, environment: "test" | "staging" | "pre-prod" | "prod", verifiedAt: string): void {
   const componentTypes = environment === "test"

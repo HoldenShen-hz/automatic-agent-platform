@@ -14,7 +14,9 @@
  */
 
 import { spawn } from "node:child_process";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { type ArtifactStoreOptions } from "../../state-evidence/artifacts/artifact-store.js";
 import { ValidationError } from "../../contracts/errors.js";
@@ -185,7 +187,18 @@ export interface ReleasePipelineServiceOptions {
   commandRunner?: ReleasePipelineCommandRunner;
 }
 
-export const DEFAULT_REPO_ROOT = process.cwd();
+function resolveDefaultRepoRoot(): string {
+  const startDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    process.cwd(),
+    join(process.cwd(), ".."),
+    join(startDir, "../../../../.."),
+    join(startDir, "../../../../../.."),
+  ];
+  return candidates.find((candidate) => existsSync(join(candidate, "config", "environments"))) ?? candidates[0]!;
+}
+
+export const DEFAULT_REPO_ROOT = resolveDefaultRepoRoot();
 export const DEFAULT_CONFIG_ROOT = join(DEFAULT_REPO_ROOT, "config", "environments");
 
 // Environments where secret rotation must be completed before deployment

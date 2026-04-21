@@ -253,3 +253,132 @@ test("StructuredLogger.log bridges active telemetry context when ids are omitted
     assert.equal(entry.spanId, context.spanId);
   });
 });
+
+test("StructuredLogger.configureGlobalFileSink rejects absolute paths", () => {
+  // Reset global sink
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink("/etc/passwd");
+
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger.configureGlobalFileSink rejects path traversal sequences", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink("logs/../../../etc/passwd");
+
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger.configureGlobalFileSink rejects empty paths", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink("   ");
+
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger.configureGlobalFileSink accepts null to disable sink", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger.configureGlobalFileSink accepts valid relative path", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink("logs/test.log");
+
+  const path = StructuredLogger.getGlobalFileSinkPath();
+  assert.ok(path !== null);
+  assert.ok(path.endsWith("logs/test.log"));
+});
+
+test("StructuredLogger.configureGlobalFileSink accepts valid path options", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink({ filePath: "logs/options.log", maxBytes: 1024, maxFiles: 3 });
+
+  const path = StructuredLogger.getGlobalFileSinkPath();
+  assert.ok(path !== null);
+  assert.ok(path.endsWith("logs/options.log"));
+});
+
+test("StructuredLogger.configureGlobalFileSink clamps maxBytes to minimum 1", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink({ filePath: "logs/clamped.log", maxBytes: 0 });
+
+  const path = StructuredLogger.getGlobalFileSinkPath();
+  assert.ok(path !== null);
+});
+
+test("StructuredLogger.configureGlobalFileSink clamps maxFiles to minimum 1", () => {
+  StructuredLogger.configureGlobalFileSink(null);
+
+  StructuredLogger.configureGlobalFileSink({ filePath: "logs/clamped-files.log", maxFiles: 0 });
+
+  const path = StructuredLogger.getGlobalFileSinkPath();
+  assert.ok(path !== null);
+});
+
+test("StructuredLogger.addTransport and removeTransport manage transport list", () => {
+  const mockTransport = {
+    name: "mock-transport",
+    write: () => {},
+  };
+
+  StructuredLogger.addTransport(mockTransport as any);
+
+  const removed = StructuredLogger.removeTransport("mock-transport");
+  assert.equal(removed, true);
+});
+
+test("StructuredLogger.removeTransport returns false for non-existent transport", () => {
+  const removed = StructuredLogger.removeTransport("non-existent-transport");
+  assert.equal(removed, false);
+});
+
+test("StructuredLogger.flushTransports calls flush on flushable transports", async () => {
+  let flushCalled = false;
+  const flushableTransport = {
+    name: "flushable-transport",
+    write: () => {},
+    flush: async () => {
+      flushCalled = true;
+    },
+  };
+
+  const unflushableTransport = {
+    name: "unflushable-transport",
+    write: () => {},
+  };
+
+  StructuredLogger.addTransport(flushableTransport as any);
+  StructuredLogger.addTransport(unflushableTransport as any);
+
+  await StructuredLogger.flushTransports();
+
+  assert.equal(flushCalled, true);
+
+  StructuredLogger.removeTransport("flushable-transport");
+  StructuredLogger.removeTransport("unflushable-transport");
+});
+
+test("StructuredLogger.closeTransports calls close on closeable transports", async () => {
+  let closeCalled = false;
+  const closeableTransport = {
+    name: "closeable-transport",
+    write: () => {},
+    close: async () => {
+      closeCalled = true;
+    },
+  };
+
+  StructuredLogger.addTransport(closeableTransport as any);
+
+  await StructuredLogger.closeTransports();
+
+  assert.equal(closeCalled, true);
+});
