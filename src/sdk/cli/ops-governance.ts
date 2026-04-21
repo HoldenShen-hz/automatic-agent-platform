@@ -8,7 +8,8 @@ import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServicesWithMetrics } from "./governance-bootstrap.js";
 import { loadOpsGovernanceCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { OperationsGovernanceService } from "../../platform/control-plane/incident-control/operations-governance-service.js";
+import { OperationsGovernanceService, type OperationsGovernanceBuildInput } from "../../platform/control-plane/incident-control/operations-governance-service.js";
+import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
 
 /**
  * Main entry point for the ops governance CLI.
@@ -33,19 +34,11 @@ function main(): void {
       })
       : new OperationsGovernanceService(storage.sql, metrics, doctor, diagnostics);
 
-    const buildInput: {
-      environment: typeof envConfig.environment;
-      generatedAt?: string;
-      taskId?: string;
-    } = {
-      environment: envConfig.environment,
+    const buildInput: OperationsGovernanceBuildInput = {
+      environment: (envConfig.environment ?? "dev") as EnvironmentName,
+      ...(envConfig.generatedAt ? { generatedAt: envConfig.generatedAt } : {}),
+      ...(envConfig.taskId ? { taskId: envConfig.taskId } : {}),
     };
-    if (envConfig.generatedAt) {
-      buildInput.generatedAt = envConfig.generatedAt;
-    }
-    if (envConfig.taskId) {
-      buildInput.taskId = envConfig.taskId;
-    }
 
     return envConfig.action === "export"
       ? service.exportReport(buildInput)

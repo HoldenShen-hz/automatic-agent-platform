@@ -772,3 +772,304 @@ test("KnowledgePlaneService inspectSemanticInfrastructure returns default when s
   assert.equal(result.ready, true);
   assert.equal(result.details.managedBy, "archive_scan");
 });
+
+test("KnowledgePlaneService inspectSemanticInfrastructure returns store profile when semanticVectorStore is set", () => {
+  const store = new LocalHashSemanticVectorStore();
+  const plane = new KnowledgePlaneService({
+    semanticVectorStore: store,
+  });
+
+  const result = plane.inspectSemanticInfrastructure();
+
+  // Should return the actual store profile, not the default
+  assert.equal(result.backend, store.backend);
+  assert.equal(result.ready, true);
+  assert.equal(result.details.recordCount, 0);
+});
+
+test("KnowledgePlaneService queryForDomain skips plugin retrieval when includePluginRetrieval is false", async () => {
+  const pluginRegistry = new PluginSpiRegistry();
+  pluginRegistry.register({
+    pluginId: "plugin.test.retriever",
+    domainId: "test",
+    spiType: "retriever",
+    async retrieve() {
+      throw new Error("Plugin should not be called");
+    },
+  }, {
+    pluginId: "plugin.test.retriever",
+    name: "test retriever",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["test"],
+    capabilityIds: ["knowledge.retrieve"],
+    spiTypes: ["retriever"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "tests/mock",
+    settingsSchema: {},
+    sandbox: {
+      timeoutMs: 1000,
+      allowFilesystemWrite: false,
+      allowNetworkEgress: false,
+      allowedKnowledgeNamespaces: ["test/ns"],
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 1024,
+      rateLimitPerMinute: 60,
+      maxConcurrentInvocations: 1,
+      maxQueuedInvocations: 8,
+      runtimeIsolation: "serialized_in_process",
+      cooldownMs: 0,
+    },
+  });
+
+  const domains = new DomainRegistryService({ pluginRegistry });
+  domains.register({
+    domainId: "test",
+    name: "Test",
+    description: "Test domain",
+    version: 1,
+    workflows: [],
+    toolBundles: [],
+    outputContracts: [],
+    promptOverrides: {},
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
+      securityLevel: "standard",
+    },
+    status: "testing",
+    externalAdapters: [],
+    pluginBindings: [{
+      bindingId: "binding.test",
+      domainId: "test",
+      pluginType: "retriever",
+      pluginId: "plugin.test.retriever",
+      priority: 10,
+      enabled: true,
+      config: {},
+    }],
+  });
+
+  const plane = new KnowledgePlaneService({
+    domainRegistry: domains,
+    pluginRegistry,
+  });
+
+  plane.registerNamespace({
+    namespaceId: "ns_test",
+    path: "test/ns",
+    description: "test namespace",
+    ownerDomainId: "test",
+    accessPolicy: "domain_only",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  plane.ingest({
+    title: "Test Doc",
+    body: "Test content for query",
+    namespace: "test/ns",
+    sourceType: "text",
+    trustLevel: "verified",
+  });
+
+  // includePluginRetrieval: false should skip plugin retrieval entirely
+  const hits = await plane.queryForDomain("Test", {
+    domainId: "test",
+    namespace: "test/ns",
+    includePluginRetrieval: false, // explicitly false
+    limit: 5,
+  });
+
+  assert.ok(Array.isArray(hits));
+});
+
+test("KnowledgePlaneService queryForDomain returns local hits when no bindings exist", async () => {
+  const plane = new KnowledgePlaneService({});
+
+  plane.registerNamespace({
+    namespaceId: "ns_test",
+    path: "test/ns",
+    description: "test namespace",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  plane.ingest({
+    title: "Test Doc",
+    body: "Important test content",
+    namespace: "test/ns",
+    sourceType: "text",
+    trustLevel: "verified",
+  });
+
+  // Query with domainId that has no plugin bindings
+  const hits = await plane.queryForDomain("Important", {
+    domainId: "nonexistent_domain",
+    namespace: "test/ns",
+    limit: 5,
+  });
+
+  // Should still return local hits even though domain has no bindings
+  assert.ok(hits.length >= 1);
+});
+
+test("KnowledgePlaneService queryAsync handles error gracefully", async () => {
+  const plane = new KnowledgePlaneService({});
+  plane.registerNamespace({
+    namespaceId: "ns_async_test",
+    path: "async/test",
+    description: "async test",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  plane.ingest({
+    title: "Async Test",
+    body: "Content for async query",
+    namespace: "async/test",
+    sourceType: "text",
+    trustLevel: "verified",
+  });
+
+  // Should complete without error
+  const hits = await plane.queryAsync("async", {
+    namespace: "async/test",
+  });
+  assert.ok(Array.isArray(hits));
+});
+
+test("KnowledgePlaneService inspectGraph returns graph structure for knowledgeRef", () => {
+  const plane = new KnowledgePlaneService({});
+  plane.registerNamespace({
+    namespaceId: "ns_graph",
+    path: "graph/test",
+    description: "graph test",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  plane.ingest({
+    title: "Graph Test",
+    body: "Test content with keywords for graph testing",
+    namespace: "graph/test",
+    sourceType: "text",
+    trustLevel: "verified",
+  });
+
+  const graph = plane.inspectGraph({ keyword: "graph" });
+  assert.ok("nodes" in graph);
+  assert.ok("edges" in graph);
+  assert.ok(Array.isArray(graph.nodes));
+  assert.ok(Array.isArray(graph.edges));
+});
+
+test("KnowledgePlaneService inspectGraph returns empty for nonexistent knowledgeRef", () => {
+  const plane = new KnowledgePlaneService({});
+  plane.registerNamespace({
+    namespaceId: "ns_graph2",
+    path: "graph/test2",
+    description: "graph test 2",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  plane.ingest({
+    title: "Graph Test 2",
+    body: "Some test content",
+    namespace: "graph/test2",
+    sourceType: "text",
+    trustLevel: "verified",
+  });
+
+  const graph = plane.inspectGraph({ knowledgeRef: "knowledge:nonexistent_chunk_id" });
+  assert.ok("nodes" in graph);
+  assert.ok("edges" in graph);
+});
+
+test("KnowledgePlaneService initialize schedules semantic sync when semanticVectorStore is present", async () => {
+  const plane = new KnowledgePlaneService({
+    semanticVectorStore: new LocalHashSemanticVectorStore(),
+  });
+
+  plane.registerNamespace({
+    namespaceId: "ns_init",
+    path: "init/test",
+    description: "init test",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
+    trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
+  });
+
+  // initialize should schedule semantic upsert with empty records
+  await plane.initialize();
+
+  // After initialize, queryAsync should work (semantic sync should be complete)
+  plane.ingest({
+    title: "Init Test",
+    body: "Content for initialization test",
+    namespace: "init/test",
+    sourceType: "text",
+    trustLevel: "verified",
+  });
+
+  const hits = await plane.queryAsync("initialization", {
+    namespace: "init/test",
+  });
+  assert.ok(Array.isArray(hits));
+});

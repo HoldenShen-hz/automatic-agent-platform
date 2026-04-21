@@ -24,7 +24,12 @@ import { dirname } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
 import { loadDeploymentExecutionCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
-import { DeploymentExecutionService, type DeploymentCommandRequest, type DeploymentCommandResult } from "../../platform/control-plane/incident-control/deployment-execution-service.js";
+import {
+  DeploymentExecutionService,
+  type DeploymentCommandRequest,
+  type DeploymentCommandResult,
+  type DeploymentExecutionInput,
+} from "../../platform/control-plane/incident-control/deployment-execution-service.js";
 import { EnvSecretProvider } from "../../platform/control-plane/iam/env-secret-provider.js";
 import { SecretManagementService } from "../../platform/control-plane/iam/secret-management-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
@@ -66,11 +71,11 @@ const result = await withCliStorageAsync(async (storage) => {
     ...(envConfig.runnerMode === "simulate" ? { commandRunner: new SimulatedDeploymentCommandRunner() } : {}),
   });
 
-  const input = {
+  const input: DeploymentExecutionInput = {
     environment: envConfig.environment,
-    version: envConfig.version,
-    commitSha: envConfig.commitSha,
-    rolloutStrategy: envConfig.rolloutStrategy,
+    version: envConfig.version ?? "",
+    commitSha: envConfig.commitSha ?? "",
+    rolloutStrategy: envConfig.rolloutStrategy ?? "rolling",
     ...(envConfig.generatedAt ? { generatedAt: envConfig.generatedAt } : {}),
     ...(envConfig.taskId ? { taskId: envConfig.taskId } : {}),
     ...(envConfig.execute ? { execute: true } : {}),

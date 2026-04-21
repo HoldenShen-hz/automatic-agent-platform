@@ -24,8 +24,9 @@ import { withCliStorage } from "./authoritative-storage.js";
 import { bootstrapGovernanceServicesWithMetrics } from "./governance-bootstrap.js";
 import { loadOpsProgramCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-import { IndustrialOpsProgramService } from "../../platform/control-plane/incident-control/industrial-ops-program-service.js";
+import { IndustrialOpsProgramService, type IndustrialOpsProgramInput } from "../../platform/control-plane/incident-control/industrial-ops-program-service.js";
 import { OperationsGovernanceService } from "../../platform/control-plane/incident-control/operations-governance-service.js";
+import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
 
 /**
  * Main entry point for the operations program CLI.
@@ -54,8 +55,8 @@ function main(): void {
       })
       : new IndustrialOpsProgramService(governance);
 
-    const input = {
-      environment: envConfig.environment,
+    const input: IndustrialOpsProgramInput = {
+      environment: (envConfig.environment ?? "dev") as EnvironmentName,
       ...(envConfig.taskId ? { taskId: envConfig.taskId } : {}),
       ...(envConfig.shiftOwner ? { shiftOwner: envConfig.shiftOwner } : {}),
     };

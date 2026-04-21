@@ -17,7 +17,7 @@ export const PHASE_1A_SCHEMA_SQL_PART_5 = `
 
 CREATE TABLE IF NOT EXISTS tenants (
   tenant_id TEXT PRIMARY KEY,
-  display_name TEXT NOT NULL,
+  display_name TEXT NOT NULL DEFAULT 'default_tenant',
   status TEXT NOT NULL DEFAULT 'active',
   billing_plan TEXT NULL,
   sla_level TEXT NULL,

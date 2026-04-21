@@ -7,6 +7,16 @@ const RELEASE_RUNNERS = ["local", "simulate"] as const;
 const ROLLOUT_STRATEGIES = ["rolling", "canary", "blue_green"] as const;
 const ENVIRONMENTS = ["dev", "test", "staging", "pre-prod", "prod"] as const;
 
+function normalizeEnvironmentName(value: string): EnvironmentName | null {
+  if (value === "development") {
+    return "dev";
+  }
+  if (value === "production") {
+    return "prod";
+  }
+  return ENVIRONMENTS.includes(value as typeof ENVIRONMENTS[number]) ? value as EnvironmentName : null;
+}
+
 export interface ReleasePipelineCliEnvConfig {
   action: typeof RELEASE_ACTIONS[number];
   dbPath: string | null;
@@ -51,13 +61,15 @@ function readRunner(env: NodeJS.ProcessEnv): ReleasePipelineCliEnvConfig["runner
 
 function readEnvironment(env: NodeJS.ProcessEnv, action: ReleasePipelineCliEnvConfig["action"]): EnvironmentName | null {
   if (action === "list") {
-    return optionalEnv(env, "AA_RELEASE_ENVIRONMENT") as EnvironmentName | null;
+    const value = optionalEnv(env, "AA_RELEASE_ENVIRONMENT");
+    return value == null ? null : normalizeEnvironmentName(value);
   }
   const value = requiredEnv(env, "AA_RELEASE_ENVIRONMENT");
-  if (!ENVIRONMENTS.includes(value as EnvironmentName)) {
+  const normalized = normalizeEnvironmentName(value);
+  if (normalized == null) {
     throw new ValidationError("release.invalid_environment", `release.invalid_environment:${value}`);
   }
-  return value as EnvironmentName;
+  return normalized;
 }
 
 function readRolloutStrategy(

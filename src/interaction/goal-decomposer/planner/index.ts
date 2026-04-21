@@ -10,16 +10,24 @@ export function buildExecutionBatches(taskIds: readonly string[], edges: readonl
   for (const edge of edges) {
     dependenciesByTask.get(edge.toTask)?.add(edge.fromTask);
   }
-  const completed = new Set<string>();
   for (const taskId of ordered) {
     const deps = dependenciesByTask.get(taskId) ?? new Set<string>();
-    const batch = batches.find((candidate) => candidate.every((item) => !deps.has(item)) && [...deps].every((dep) => completed.has(dep)));
-    if (batch != null) {
-      batch.push(taskId);
-    } else {
-      batches.push([taskId]);
+    // Find the first batch where all dependencies come BEFORE this batch
+    // (i.e., all deps are in batches at a lower index)
+    let targetBatchIndex = 0;
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i]!;
+      const hasDepInBatch = [...deps].some((dep) => batch.includes(dep));
+      if (hasDepInBatch) {
+        // Some dependency is in this batch, need to go to a later batch
+        targetBatchIndex = i + 1;
+      }
     }
-    completed.add(taskId);
+    // Ensure batch array is large enough
+    while (batches.length <= targetBatchIndex) {
+      batches.push([]);
+    }
+    batches[targetBatchIndex]!.push(taskId);
   }
   return batches;
 }

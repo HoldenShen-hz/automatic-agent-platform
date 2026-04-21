@@ -48,7 +48,8 @@ const ENVIRONMENT_ORDER: readonly EnvironmentName[] = ["dev", "test", "staging",
 const DEPLOYMENT_BOUNDARY_ENVS = new Set<EnvironmentName>(["staging", "pre-prod", "prod"]);
 
 // Default readiness requirements per environment
-const DEFAULT_READINESS_REQUIREMENTS: Record<EnvironmentName, readonly EnvironmentReadinessComponentType[]> = {
+type CanonicalEnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod";
+const DEFAULT_READINESS_REQUIREMENTS: Record<CanonicalEnvironmentName, readonly EnvironmentReadinessComponentType[]> = {
   dev: [],
   test: ["provider", "sandbox"],
   staging: ["provider", "gateway", "sandbox", "worker_fleet", "artifact_store"],

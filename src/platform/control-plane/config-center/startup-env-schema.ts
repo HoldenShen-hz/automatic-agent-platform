@@ -39,7 +39,7 @@ const PositivePort = z.string().refine(
   },
   { message: "must be a port number between 1 and 65535" },
 );
-const EnvironmentName = z.enum(["dev", "test", "staging", "pre-prod", "prod"]);
+const EnvironmentName = z.enum(["dev", "test", "staging", "pre-prod", "prod", "development", "production"]);
 const BooleanString = z.enum(["1", "true", "yes", "on", "0", "false", "no", "off"]);
 const StorageDriver = z.enum(["sqlite", "postgres"]);
 const LogLevel = z.enum(["trace", "debug", "info", "warn", "error", "fatal"]);
