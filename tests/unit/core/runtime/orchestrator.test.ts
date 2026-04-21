@@ -41,11 +41,12 @@ test("orchestrator re-exports MultiStepToolExecutionInput type", () => {
 test("orchestrator re-exports StepFailurePlan type", () => {
   // Verify the type is properly exported through the re-export chain
   const failurePlanType: StepFailurePlan = {
-    stepId: "step_1",
     errorCode: "error.test",
-    retryable: true,
+    summary: "Step failed",
+    message: "Detailed error message",
   };
   assert.ok(failurePlanType, "StepFailurePlan should be a valid type");
+  assert.equal(failurePlanType.errorCode, "error.test");
 });
 
 test("orchestrator exports runMultiStepOrchestration function", () => {
@@ -76,10 +77,14 @@ test("MultiStepOrchestrationResult has expected structure", () => {
   const result: MultiStepOrchestrationResult = {
     snapshot: {
       task: {} as any,
-      workflow: {} as any,
-      session: {} as any,
-      executions: [],
+      workflow: null,
+      execution: null,
+      session: null,
       stepOutputs: [],
+      artifacts: [],
+      events: [],
+      consistency: "authoritative",
+      observedAt: new Date().toISOString(),
     },
     streamFrames: [],
     routing: {
@@ -112,22 +117,19 @@ test("MultiStepOrchestrationResult has expected structure", () => {
 
 test("StepFailurePlan structure", () => {
   const failurePlan: StepFailurePlan = {
-    stepId: "step_failed",
     errorCode: "step.execution_failed",
-    retryable: true,
-    retryCount: 2,
-    errorMessage: "Step execution timed out",
+    summary: "Step failed",
+    message: "Step execution timed out",
   };
 
-  assert.equal(failurePlan.stepId, "step_failed");
   assert.equal(failurePlan.errorCode, "step.execution_failed");
-  assert.equal(failurePlan.retryable, true);
+  assert.equal(failurePlan.summary, "Step failed");
 });
 
 test("orchestrator module re-exports from multi-step-orchestration", async () => {
   // The orchestrator/index.ts should re-export from multi-step-orchestration
   // This test verifies that the re-export chain works
-  const mod = await import("../../../../../src/core/runtime/orchestrator/index.js");
+  const mod = await import("../../../../src/core/runtime/orchestrator/index.js");
 
   assert.ok("runMultiStepOrchestration" in mod, "Should re-export runMultiStepOrchestration");
   assert.ok("executeMultiStepToolCallForTests" in mod, "Should re-export executeMultiStepToolCallForTests");
@@ -135,7 +137,7 @@ test("orchestrator module re-exports from multi-step-orchestration", async () =>
 });
 
 test("orchestrator types re-export correctly", async () => {
-  const typesMod = await import("../../../../../src/core/runtime/orchestrator/types.js");
+  const typesMod = await import("../../../../src/core/runtime/orchestrator/types.js");
 
   assert.ok("MultiStepOrchestrationResult" in typesMod, "Should export MultiStepOrchestrationResult");
   assert.ok("MultiStepToolExecutionInput" in typesMod, "Should export MultiStepToolExecutionInput");
@@ -149,16 +151,16 @@ test("MultiStepToolExecutionInput optional fields", () => {
     title: "Full Test",
     request: "Test request",
     admissionPolicy: {
-      maxConcurrentTasks: 100,
-      maxQueueDepth: 1000,
-      memoryHighWatermarkMb: 2048,
-      eventLoopLagThresholdMs: 50,
+      maxQueuedTasks: 100,
+      maxActiveExecutions: 10,
+      maxTier1AckBacklog: 50,
+      urgentQueueHeadroom: 5,
     },
     admissionBackpressureSnapshot: () => ({
-      memoryUsageMb: 100,
-      eventLoopLagMs: 5,
-      activeWorkers: 4,
-      queueDepth: 10,
+      status: "ok" as const,
+      degradationMode: "none" as const,
+      queueGovernance: { delayedCount: 0, rateLimitedCount: 0, backlogSize: 0, dispatchableBacklogSize: 0, claimedBacklogSize: 0, oldestWaitSeconds: 0, nonPriorityBacklogSize: 0, priorityBacklogSize: 0 } as any,
+      findings: [],
     }),
     crashInjection: undefined,
   };
@@ -174,26 +176,33 @@ test("MultiStepOrchestrationResult compaction can be object", () => {
     routing: {} as any,
     plannedWorkflow: {} as any,
     compaction: {
-      beforeTokens: 1000,
-      afterTokens: 500,
-      messagesRemoved: 5,
+      usageBeforeTokens: 1000,
+      usageAfterStage1Tokens: 700,
+      usageAfterStage2Tokens: 500,
+      stage1Triggered: true,
+      stage2Triggered: false,
+      fallbackToStage1: false,
+      contextMessages: [],
+      persistedRecords: [],
+      errorCode: null,
+      kvCacheFixedPrefixCacheKey: null,
+      kvCacheDomainBlockCacheKey: null,
     },
   };
 
   assert.ok(result.compaction !== null, "compaction can be an object");
-  assert.equal(result.compaction!.beforeTokens, 1000);
-  assert.equal(result.compaction!.afterTokens, 500);
+  assert.equal(result.compaction!.usageBeforeTokens, 1000);
+  assert.equal(result.compaction!.usageAfterStage1Tokens, 700);
 });
 
 test("StepFailurePlan retryable false", () => {
   const failurePlan: StepFailurePlan = {
-    stepId: "critical_step",
     errorCode: "step.critical_failed",
-    retryable: false,
-    errorMessage: "Non-retryable error",
+    summary: "Critical step failed",
+    message: "Non-retryable error",
   };
 
-  assert.equal(failurePlan.retryable, false);
+  assert.equal(failurePlan.errorCode, "step.critical_failed");
 });
 
 test("orchestrator types are compatible with platform types", () => {

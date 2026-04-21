@@ -47,7 +47,7 @@ test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () =
       while ((match = routeBlockRegex.exec(content)) !== null) {
         // Find the matching closing brace (simple heuristic for now)
         const startIdx = match.index;
-        const openBraces = 1;
+        let openBraces = 1;
         let closeIdx = startIdx + match[0].length;
         let idx = closeIdx;
 
@@ -62,7 +62,7 @@ test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () =
         }
 
         blocks.push({
-          method: match[1],
+          method: match[1] ?? "unknown",
           startIndex: startIdx,
           endIndex: closeIdx,
         });

@@ -26,6 +26,44 @@
 | [018](./018-rollout-eleven-state-machine.md) | Rollout Eleven-State Machine and Six-Phase Release | Accepted | 2026-04-17 |
 | [019](./019-agent-handoff-four-layer-protocol.md) | Agent Handoff Four-Layer Serialization Protocol | Accepted | 2026-04-17 |
 | [020](./020-memory-six-plane-model.md) | Memory Six-Layer Plane and Auto-Promotion Rules | Accepted | 2026-04-17 |
+| [021](./021-inter-plane-communication-contract.md) | Inter-Plane Communication Contract | Accepted | 2026-04-03 |
+| [022](./022-api-contract-and-versioning.md) | API Contract and Versioning | Accepted | 2026-04-03 |
+| [023](./023-service-communication-architecture.md) | Service Communication Architecture | Accepted | 2026-04-03 |
+| [024](./024-scalability-architecture.md) | Scalability Architecture | Accepted | 2026-04-03 |
+| [025](./025-stability-architecture-seven-layers.md) | Stability Architecture (Seven Layers) | Accepted | 2026-04-03 |
+| [026](./026-risk-control-architecture.md) | Risk Control Architecture | Accepted | 2026-04-03 |
+| [027](./027-security-architecture.md) | Security Architecture | Accepted | 2026-04-03 |
+| [028](./028-incident-and-event-handling-architecture.md) | Incident and Event Handling Architecture | Accepted | 2026-04-03 |
+| [029](./029-oapeflir-controlled-cognition-kernel.md) | OAPEFLIR Controlled Cognition Kernel | Accepted | 2026-04-17 |
+| [030](./030-runtime-execution-plane.md) | Runtime Execution Plane | Accepted | 2026-04-03 |
+| [031](./031-disaster-recovery-and-high-availability.md) | Disaster Recovery and High Availability | Accepted | 2026-04-03 |
+| [032](./032-deployment-architecture.md) | Deployment Architecture | Accepted | 2026-04-03 |
+| [033](./033-phased-roadmap.md) | Phased Roadmap | Accepted | 2026-04-17 |
+| [034](./034-adr-freeze-recommendation.md) | ADR Freeze Recommendation | Accepted | 2026-04-17 |
+| [035](./035-recommended-code-directory-structure.md) | Recommended Code Directory Structure | Accepted | 2026-04-17 |
+| [036](./036-risk-constraints-and-success-criteria.md) | Risk, Constraints, and Success Criteria | Accepted | 2026-04-17 |
+| [037](./037-domain-modeling-and-onboarding.md) | Domain Modeling and Onboarding Architecture | Accepted | 2026-04-20 |
+| [038](./038-business-domain-onboarding-runbook.md) | Business Domain Onboarding Runbook | Accepted | 2026-04-20 |
+| [039](./039-natural-language-task-entry.md) | Natural Language Task Entry Architecture | Accepted | 2026-04-20 |
+| [040](./040-goal-decomposition-engine.md) | Goal Decomposition Engine Architecture | Accepted | 2026-04-20 |
+| [041](./041-proactive-agent-framework.md) | Proactive Agent Framework | Accepted | 2026-04-20 |
+| [042](./042-progressive-autonomy-model.md) | Progressive Autonomy Model | Accepted | 2026-04-20 |
+| [043](./043-unified-operations-dashboard.md) | Unified Operations Dashboard | Accepted | 2026-04-20 |
+| [044](./044-non-technical-user-experience.md) | Non-Technical User Experience | Accepted | 2026-04-20 |
+| [046](./046-organization-hierarchy-model.md) | Organization Hierarchy Model | Accepted | 2026-04-20 |
+| [047](./047-organization-approval-routing.md) | Organization Approval Routing | Accepted | 2026-04-20 |
+| [048](./048-enterprise-sso-scim-integration.md) | Enterprise SSO/SCIM Integration Architecture | Accepted | 2026-04-20 |
+| [049](./049-department-compliance-policy-engine.md) | Department Compliance Policy Engine | Accepted | 2026-04-20 |
+| [050](./050-knowledge-domain-isolation.md) | Knowledge Domain Isolation and Controlled Sharing | Accepted | 2026-04-20 |
+| [051](./051-tiered-governance-delegation.md) | Tiered Governance Delegation | Accepted | 2026-04-20 |
+| [052](./052-multi-region-deployment-architecture.md) | Multi-Region Deployment Architecture | Accepted | 2026-04-20 |
+| [053](./053-scaling-resource-competition-management.md) | Scaling Resource Competition Management | Accepted | 2026-04-20 |
+| [054](./054-sla-tiered-guarantees.md) | SLA Tiered Guarantees | Accepted | 2026-04-20 |
+| [055](./055-agent-marketplace-and-ecosystem.md) | Agent Marketplace and Ecosystem | Accepted | 2026-04-20 |
+| [056](./056-feedback-driven-continuous-improvement.md) | Feedback-Driven Continuous Improvement | Accepted | 2026-04-20 |
+| [057](./057-external-system-integration-framework.md) | External System Integration Framework | Accepted | 2026-04-20 |
+| [058](./058-emergency-stop-and-global-circuit-breaker.md) | Emergency Stop and Global Circuit Breaker | Accepted | 2026-04-20 |
+| [059](./059-agent-explainability-and-decision-transparency.md) | Agent Explainability and Decision Transparency | Accepted | 2026-04-20 |
 
 ## Status Description
 
