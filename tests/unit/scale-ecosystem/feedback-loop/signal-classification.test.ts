@@ -51,7 +51,7 @@ test("inferConfidence returns 1 for user source", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.confidence, 1);
 });
 
@@ -63,7 +63,7 @@ test("inferConfidence returns 1 for hitl source", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.confidence, 1);
 });
 
@@ -75,7 +75,7 @@ test("inferConfidence returns 0.8 for correction category", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.confidence, 0.8);
 });
 
@@ -87,7 +87,7 @@ test("inferConfidence returns 0.8 for failure category", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.confidence, 0.8);
 });
 
@@ -99,7 +99,7 @@ test("inferConfidence returns 0.8 for timeout category", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.confidence, 0.8);
 });
 
@@ -111,7 +111,7 @@ test("inferConfidence returns 0.5 for partial category", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.confidence, 0.5);
 });
 
@@ -151,7 +151,7 @@ test("learningType is recovery_playbook for execution correction", () => {
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
+  const signal = result.find((s: LearningSignal) => s.sourceSignalIds.some((id: string) => id.includes("sig_1")));
   assert.equal(signal?.learningType, "recovery_playbook");
 });
 
@@ -225,7 +225,7 @@ test("correction from execution routes to recovery_playbook learning type", () =
 
   const result = preprocessor.toLearningSignals(feedback);
 
-  const signal = result.find(s => s.learningType === "recovery_playbook");
+  const signal = result.find((s: LearningSignal) => s.learningType === "recovery_playbook");
   assert.ok(signal);
   assert.equal(signal?.confidence, 0.8);
 });
@@ -265,7 +265,7 @@ test("incomplete recovery pattern does not produce recovery_playbook", () => {
   const result = preprocessor.toLearningSignals(feedback);
 
   // Should not produce recovery_playbook since success is missing
-  const recoveryPlaybook = result.find(s => s.learningType === "recovery_playbook");
+  const recoveryPlaybook = result.find((s: LearningSignal) => s.learningType === "recovery_playbook");
   assert.equal(recoveryPlaybook, undefined);
 });
 

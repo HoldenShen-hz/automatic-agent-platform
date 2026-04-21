@@ -82,7 +82,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from interface to execution skipping
     const lines = content.split("\n");
     for (const line of lines) {
       const match = line.match(/from\s+"([^"]+)";/);
-      if (match) {
+      if (match && match[1] !== undefined) {
         const importPath = match[1];
         // Allowed: relative imports, shared, contracts
         const isAllowed =

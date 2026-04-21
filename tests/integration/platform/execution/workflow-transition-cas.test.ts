@@ -14,12 +14,12 @@ import test from "node:test";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../../../src/platform/execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
-import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
+import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
+import { runConcurrentInvariant } from "../../../helpers/concurrent-runner.js";
 
 test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () => {
   const workspace = createTempWorkspace("aa-workflow-cas-");
@@ -75,12 +75,12 @@ test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () =
             outputsJson: '{"result":"success"}',
             traceId: "trace-cas-1",
             correlationId: workflowId,
-            idempotencyKey: null,
-            metadataJson: null,
-            reasonCode: null,
-            reasonDetail: null,
+            idempotencyKey: "",
+            metadataJson: "",
+            reasonCode: "",
+            reasonDetail: "",
             actorType: "system",
-            actorId: null,
+            actorId: "",
             occurredAt: now,
           });
           resolve();
@@ -249,12 +249,12 @@ test("[SYS-REL-2.7] multiple concurrent transitions on same workflow", async () 
             outputsJson: JSON.stringify({ workerId }),
             traceId: `trace-${workerId}`,
             correlationId: workflowId,
-            idempotencyKey: null,
-            metadataJson: null,
-            reasonCode: null,
-            reasonDetail: null,
+            idempotencyKey: "",
+            metadataJson: "",
+            reasonCode: "",
+            reasonDetail: "",
             actorType: "system",
-            actorId: null,
+            actorId: "",
             occurredAt: now,
           });
           return { success: true, workerId };

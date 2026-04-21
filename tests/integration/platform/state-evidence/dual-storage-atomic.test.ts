@@ -15,8 +15,8 @@ import { join } from "node:path";
 import { readFileSync, existsSync, unlinkSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { rmSync } from "node:fs";
 
-import { SessionDualStorageService } from "../../../../../src/platform/state-evidence/truth/session-dual-storage.js";
-import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
+import { SessionDualStorageService } from "../../../../src/platform/state-evidence/truth/session-dual-storage.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 test("[SYS-REL-2.8] dual storage detects and repairs partial write", () => {
   const workspace = createTempWorkspace("aa-dual-storage-");

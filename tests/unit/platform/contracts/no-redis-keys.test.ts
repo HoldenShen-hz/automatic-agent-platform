@@ -36,7 +36,7 @@ test("[SYS-PERF-3.2] redis lock adapter listHeldAsync uses SCAN", () => {
 
   // Check if listHeldAsync exists and uses SCAN
   const listHeldAsyncMatch = content.match(/listHeldAsync[\s\S]*?\{([\s\S]*?)\}/);
-  if (listHeldAsyncMatch) {
+  if (listHeldAsyncMatch && listHeldAsyncMatch[1] !== undefined) {
     const methodBody = listHeldAsyncMatch[1];
     assert.ok(
       !methodBody.includes(".keys("),

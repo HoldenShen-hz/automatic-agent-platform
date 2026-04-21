@@ -47,12 +47,13 @@ function parseYaml(content: string): Record<string, unknown> {
       const itemContent = trimmed.substring(2);
       if (itemContent.includes(":") && !itemContent.includes("{")) {
         const [name, ...rest] = itemContent.split(":");
-        if (currentSection && Array.isArray((currentSection as Record<string, unknown>)[currentSectionName])) {
-          const arr = (currentSection as Record<string, unknown>)[currentSectionName] as unknown[];
-          const item: Record<string, unknown> = {};
-          item[name.trim()] = rest.join(":").trim();
-          arr.push(item);
+        if (name === undefined || !currentSection || !Array.isArray((currentSection as Record<string, unknown>)[currentSectionName])) {
+          continue;
         }
+        const arr = (currentSection as Record<string, unknown>)[currentSectionName] as unknown[];
+        const item: Record<string, unknown> = {};
+        item[name.trim()] = rest.join(":").trim();
+        arr.push(item);
       }
     } else if (trimmed.includes(":")) {
       // Nested key

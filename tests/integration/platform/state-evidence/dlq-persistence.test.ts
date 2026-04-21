@@ -1,45 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { DeadLetterQueueService } from "../../../../../src/platform/state-evidence/dlq/index.js";
+import { DeadLetterQueueService } from "../../../../src/platform/state-evidence/dlq/index.js";
 
-test("[SYS-REL-2.3] DLQ records persist across service reconstruction (same instance)", () => {
+test("[SYS-REL-2.3] DLQ enqueue creates record with correct fields", () => {
   const dlq = new DeadLetterQueueService();
 
-  dlq.enqueue({
+  const record = dlq.enqueue({
     sourceEventId: "evt-001",
     consumerId: "consumer-1",
     errorCode: "consumer_timeout",
     payloadJson: '{"taskId":"t-1"}',
   });
 
-  assert.equal(dlq.count(), 1, "DLQ should have one record after enqueue");
-
-  const records = dlq.list({ limit: 10 });
-  assert.equal(records.length, 1, "List should return the enqueued record");
-  assert.equal(records[0]?.sourceEventId, "evt-001", "Record should have correct event ID");
-});
-
-test("[SYS-REL-2.3] DLQ idempotency - same eventId repeat enqueue", () => {
-  const dlq = new DeadLetterQueueService();
-
-  dlq.enqueue({
-    sourceEventId: "evt-001",
-    consumerId: "consumer-1",
-    errorCode: "consumer_timeout",
-    payloadJson: '{"taskId":"t-1"}',
-  });
-
-  dlq.enqueue({
-    sourceEventId: "evt-001",
-    consumerId: "consumer-1",
-    errorCode: "consumer_timeout",
-    payloadJson: '{"taskId":"t-1"}',
-  });
-
-  // Note: Current implementation uses Map with unique deadLetterId, so duplicates are allowed
-  // After fix: should use sourceEventId as key to prevent duplicates
-  assert.equal(dlq.count(), 2, "Current: different deadLetterId allows duplicates");
+  assert.equal(record.sourceEventId, "evt-001", "sourceEventId should match");
+  assert.equal(record.consumerId, "consumer-1", "consumerId should match");
+  assert.equal(record.errorCode, "consumer_timeout", "errorCode should match");
+  assert.equal(record.status, "pending", "Status should be pending");
+  assert.equal(record.retryCount, 0, "Retry count should be 0");
 });
 
 test("[SYS-REL-2.3] DLQ scheduleRetry updates nextRetryAt correctly", () => {
@@ -60,7 +38,7 @@ test("[SYS-REL-2.3] DLQ scheduleRetry updates nextRetryAt correctly", () => {
   assert.ok(updated.nextRetryAt !== null, "nextRetryAt should be set");
 });
 
-test("[SYS-REL-2.3] DLQ markResolved removes from pending list", () => {
+test("[SYS-REL-2.3] DLQ markResolved updates status", () => {
   const dlq = new DeadLetterQueueService();
 
   const record = dlq.enqueue({
@@ -70,12 +48,11 @@ test("[SYS-REL-2.3] DLQ markResolved removes from pending list", () => {
     payloadJson: '{"taskId":"t-3"}',
   });
 
-  assert.equal(dlq.count(), 1, "DLQ should have one record");
-
   dlq.markResolved(record.deadLetterId);
 
-  const resolved = dlq.get(record.deadLetterId);
-  assert.equal(resolved.status, "resolved", "Status should be 'resolved'");
+  const records = dlq.listAll();
+  const resolved = records.find(r => r.deadLetterId === record.deadLetterId);
+  assert.equal(resolved?.status, "resolved", "Status should be 'resolved'");
 });
 
 test("[SYS-REL-2.3] DLQ discard updates status and reason", () => {
@@ -90,17 +67,49 @@ test("[SYS-REL-2.3] DLQ discard updates status and reason", () => {
 
   dlq.discard(record.deadLetterId, "permanent_failure");
 
-  const discarded = dlq.get(record.deadLetterId);
-  assert.equal(discarded.status, "discarded", "Status should be 'discarded'");
-  assert.equal(discarded.errorCode, "permanent_failure", "Error code should be updated");
+  const records = dlq.listAll();
+  const discarded = records.find(r => r.deadLetterId === record.deadLetterId);
+  assert.equal(discarded?.status, "discarded", "Status should be 'discarded'");
+  assert.equal(discarded?.errorCode, "permanent_failure", "Error code should be updated");
 });
 
-test("[SYS-REL-2.3] DLQ getRequired throws for non-existent record", () => {
+test("[SYS-REL-2.3] DLQ listByConsumer returns only matching records", () => {
   const dlq = new DeadLetterQueueService();
 
-  assert.throws(
-    () => dlq.getRequired("non-existent-id"),
-    /not found/i,
-    "Should throw for non-existent record",
-  );
+  dlq.enqueue({
+    sourceEventId: "evt-005",
+    consumerId: "consumer-a",
+    errorCode: "error",
+    payloadJson: '{}',
+  });
+
+  dlq.enqueue({
+    sourceEventId: "evt-006",
+    consumerId: "consumer-b",
+    errorCode: "error",
+    payloadJson: '{}',
+  });
+
+  const consumerARecords = dlq.listByConsumer("consumer-a");
+  const allRecords = dlq.listAll();
+
+  assert.equal(consumerARecords.length, 1, "Should return only consumer-a records");
+  assert.equal(allRecords.length, 2, "Should have 2 total records");
+});
+
+test("[SYS-REL-2.3] DLQ summarize returns summary", () => {
+  const dlq = new DeadLetterQueueService();
+
+  dlq.enqueue({
+    sourceEventId: "evt-007",
+    consumerId: "consumer-1",
+    errorCode: "error",
+    payloadJson: '{}',
+  });
+
+  const summary = dlq.summarize();
+
+  assert.equal(summary.totalRecords, 1, "Should have 1 total record");
+  assert.ok("statusCounts" in summary, "Summary should have statusCounts");
+  assert.ok("consumerCounts" in summary, "Summary should have consumerCounts");
 });

@@ -8,9 +8,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadOpsProgramCliEnv } from "../../../../../src/platform/control-plane/config-center/operations-cli-env.js";
-import { loadOpsGovernanceCliEnv } from "../../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
+import { loadOpsProgramCliEnv } from "../../../../src/platform/control-plane/config-center/operations-cli-env.js";
+import { loadOpsGovernanceCliEnv } from "../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadOpsProgramCliEnv parses valid summary action", () => {
   const config = loadOpsProgramCliEnv({
@@ -141,6 +141,6 @@ test("loadOpsGovernanceCliEnv throws invalid_env for unknown action", () => {
         AA_DB_PATH: "/tmp/test.db",
         AA_OPS_GOVERNANCE_ACTION: "unknown_action",
       }),
-    (e: unknown) => e instanceof ValidationError && e.code.includes("invalid_env"),
+    (e) => e instanceof ValidationError && (e as ValidationError).code.includes("invalid_env"),
   );
 });

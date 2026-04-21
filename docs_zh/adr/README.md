@@ -39,6 +39,7 @@
 | [031](./031-disaster-recovery-and-high-availability.md) | 容灾与高可用架构 | Accepted | 2026-04-03 |
 | [032](./032-deployment-architecture.md) | 部署架构 | Accepted | 2026-04-03 |
 | [033](./033-phased-roadmap.md) | 分阶段落地路线 | Accepted | 2026-04-17 |
+| [034](./034-adr-freeze-recommendation.md) | ADR 冻结建议 | Accepted | 2026-04-17 |
 | [035](./035-recommended-code-directory-structure.md) | 推荐代码目录结构 | Accepted | 2026-04-17 |
 | [036](./036-risk-constraints-and-success-criteria.md) | 风险、约束与成功标准 | Accepted | 2026-04-17 |
 | [037](./037-domain-modeling-and-onboarding.md) | 业务域建模与接入架构 | Accepted | 2026-04-20 |

@@ -13,8 +13,8 @@ import test from "node:test";
 import { join } from "node:path";
 import { unlinkSync, existsSync } from "node:fs";
 
-import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("[SYS-PERF-3.1] structured logger write does not block event loop > 1ms", () => {
   const workspace = createTempWorkspace("aa-logger-blocking-");

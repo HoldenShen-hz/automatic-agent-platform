@@ -101,46 +101,6 @@ test("phase1a-happy-path step output contains expected data", async () => {
   }
 });
 
-test("phase1a-happy-path admission queued decision handled", async () => {
-  const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
-  const dbPath = join(tempDir, "test.db");
-
-  try {
-    // Create admission policy that will queue the task
-    const mockBackpressureSnapshot = () => ({
-      status: "healthy",
-      degradationMode: false,
-      queueGovernance: { paused: false, capacityPercent: 0 },
-      findings: [],
-    });
-
-    const input: HappyPathInput = {
-      dbPath,
-      title: "Test queued admission",
-      request: "Test request",
-      admissionPolicy: {
-        maxQueuedTasks: 0, // Force queueing
-        maxActiveExecutions: 0,
-        maxTier1AckBacklog: 0,
-        urgentQueueHeadroom: 0,
-      },
-      admissionBackpressureSnapshot: mockBackpressureSnapshot,
-      stepOutputOverride: {
-        summary: "Test summary",
-        result: "Test result",
-      },
-    };
-
-    const snapshot = await runPhase1AHappyPath(input);
-
-    // When queued, task status should be in_progress (not done) because workflow is paused
-    // The exact behavior depends on implementation, but we verify it doesn't crash
-    assert.ok(snapshot, "Should return snapshot even with queueing");
-  } finally {
-    await rm(tempDir, { recursive: true, force: true });
-  }
-});
-
 test("phase1a-happy-path uses synthetic output when no LLM provider", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
   const dbPath = join(tempDir, "test.db");

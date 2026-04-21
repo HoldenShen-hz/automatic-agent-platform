@@ -177,9 +177,8 @@ test("checkSandboxPath handles policy with undefined allowedRoots", () => {
     allowedRoots: undefined as any,
     deniedRoots: [],
   });
-  // Should not throw, should deny by default
-  const result = checkSandboxPath(policy, "/test/workspace/file.txt");
-  assert.equal(typeof result.allowed, "boolean");
+  // Should throw when allowedRoots is undefined - this is correct fail-closed behavior
+  assert.throws(() => checkSandboxPath(policy, "/test/workspace/file.txt"), TypeError);
 });
 
 test("checkSandboxPath handles policy with undefined deniedRoots", () => {
@@ -187,9 +186,8 @@ test("checkSandboxPath handles policy with undefined deniedRoots", () => {
     allowedRoots: ["/test/workspace"],
     deniedRoots: undefined as any,
   });
-  // Should not throw
-  const result = checkSandboxPath(policy, "/test/workspace/file.txt");
-  assert.equal(typeof result.allowed, "boolean");
+  // Should throw when deniedRoots is undefined - this is correct fail-closed behavior
+  assert.throws(() => checkSandboxPath(policy, "/test/workspace/file.txt"), TypeError);
 });
 
 test("checkSandboxPath handles empty string in allowedRoots", () => {

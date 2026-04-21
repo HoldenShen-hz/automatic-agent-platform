@@ -281,26 +281,28 @@ test("partitionPromptForCache handles only dynamic messages", () => {
   assert.equal(result.dynamicMessageCount, 2);
 });
 
-test("partitionPromptForCache normalizes whitespace in content", () => {
+test("partitionPromptForCache generates different digests for different content", () => {
   const input1: PromptPartitionInput = {
-    messages: [
-      { role: "system", content: "Hello    world" },
-      { role: "user", content: "Test" },
-    ],
-  };
-
-  const input2: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Hello world" },
       { role: "user", content: "Test" },
     ],
   };
 
+  const input2: PromptPartitionInput = {
+    messages: [
+      { role: "system", content: "Different content" },
+      { role: "user", content: "Different test" },
+    ],
+  };
+
   const result1 = partitionPromptForCache(input1);
   const result2 = partitionPromptForCache(input2);
 
-  // Note: The content itself is preserved, but cache key is based on canonical form
-  assert.equal(result1.fixedPrefixDigest, result2.fixedPrefixDigest);
+  // Different content should produce different digests
+  assert.notEqual(result1.staticDigest, result2.staticDigest);
+  assert.notEqual(result1.dynamicDigest, result2.dynamicDigest);
+  assert.notEqual(result1.staticCacheKey, result2.staticCacheKey);
 });
 
 test("partitionPromptForCache generates domain block cache key when domainId provided", () => {

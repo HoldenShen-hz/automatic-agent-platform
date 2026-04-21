@@ -8,13 +8,13 @@ import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
   StepFailurePlan,
-} from "../../../../../src/core/runtime/orchestrator/types.js";
+} from "../../../../src/core/runtime/orchestrator/types.js";
 
 import {
   runMultiStepOrchestration,
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-} from "../../../../../src/core/runtime/orchestrator/index.js";
+} from "../../../../src/core/runtime/orchestrator/index.js";
 
 test("orchestrator re-exports MultiStepOrchestrationResult type", () => {
   // Verify the type is properly exported through the re-export chain

@@ -13,11 +13,11 @@ import test from "node:test";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { TransitionService } from "../../../../../src/platform/execution/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { TransitionService } from "../../../../src/platform/execution/state-transition/transition-service.js";
+import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 test("[SYS-REL-2.6] task state transition writes outbox entry in same transaction", async () => {
   const workspace = createTempWorkspace("aa-outbox-transition-");
@@ -68,12 +68,12 @@ test("[SYS-REL-2.6] task state transition writes outbox entry in same transactio
       executionId: "exec-outbox-001",
       traceId: "trace-outbox-001",
       correlationId: taskId,
-      idempotencyKey: null,
-      metadataJson: null,
-      reasonCode: null,
-      reasonDetail: null,
+      idempotencyKey: "",
+      metadataJson: "",
+      reasonCode: "",
+      reasonDetail: "",
       actorType: "system",
-      actorId: null,
+      actorId: "",
       occurredAt: now,
     });
 
@@ -183,12 +183,12 @@ test("[SYS-REL-2.6] multiple transitions write multiple outbox entries", async (
       executionId: "exec-1",
       traceId: "trace-1",
       correlationId: taskId,
-      idempotencyKey: null,
-      metadataJson: null,
-      reasonCode: null,
-      reasonDetail: null,
+      idempotencyKey: "",
+      metadataJson: "",
+      reasonCode: "",
+      reasonDetail: "",
       actorType: "system",
-      actorId: null,
+      actorId: "",
       occurredAt: now,
     });
 
@@ -201,12 +201,12 @@ test("[SYS-REL-2.6] multiple transitions write multiple outbox entries", async (
       executionId: "exec-1",
       traceId: "trace-2",
       correlationId: taskId,
-      idempotencyKey: null,
-      metadataJson: null,
-      reasonCode: null,
-      reasonDetail: null,
+      idempotencyKey: "",
+      metadataJson: "",
+      reasonCode: "",
+      reasonDetail: "",
       actorType: "system",
-      actorId: null,
+      actorId: "",
       occurredAt: new Date().toISOString(),
     });
 

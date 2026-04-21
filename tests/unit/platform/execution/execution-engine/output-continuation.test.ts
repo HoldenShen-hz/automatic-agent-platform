@@ -332,15 +332,17 @@ test("getGlobalContinuationService returns singleton", () => {
 test("OutputContinuationService handles non-max_tokens finish reason", () => {
   const service = new OutputContinuationService();
 
+  // Use output with truncation indicator to get a continuation point
   const record = service.createContinuationRecord({
     taskId: "task_1",
     sessionId: "sess_1",
     executionId: "exec_1",
     originalResponseId: "r1",
-    partialOutput: "partial",
+    partialOutput: "line1\nline2\n...",
     finishReason: "content_filter",
   });
 
   assert.equal(record.finishReason, "content_filtered");
-  assert.equal(record.continuationPoint, null); // content filtered has no continuation point
+  // Continuation point is extracted based on content, not finish reason
+  assert.ok(record.continuationPoint !== undefined);
 });

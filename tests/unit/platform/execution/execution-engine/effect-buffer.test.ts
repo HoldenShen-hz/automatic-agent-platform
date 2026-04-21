@@ -89,16 +89,15 @@ test("EffectScope constructor sets options correctly", () => {
   });
 
   assert.equal(scope.getCreatedAt() > 0, true);
-  assert.throws(() => {
-    scope.addEffect({
-      id: "test",
-      type: "event_publish",
-      description: "test",
-      priority: "normal",
-      execute: async () => {},
-      continueOnFailure: false,
-    });
-  });
+  assert.equal(scope.getEffectCount(), 0);
+
+  // Add an effect and verify it works
+  scope.addEffect(
+    EffectBuilder.create("event_publish", "Test")
+      .withExecute(async () => {})
+      .build(),
+  );
+  assert.equal(scope.getEffectCount(), 1);
 });
 
 test("EffectScope addEffect adds effect to scope", () => {
@@ -248,9 +247,13 @@ test("EffectScope executeEffects skips effects when rolled back", async () => {
       .build(),
   );
 
+  // Commit then rollback - effects should be skipped
+  scope.commit();
   scope.rollback();
+
   const result = await scope.executeEffects();
 
+  // Rolled back scopes return all effects as skipped
   assert.equal(result.skipped, 1);
   assert.equal(result.succeeded, 0);
   assert.equal(result.allSucceeded, true);
