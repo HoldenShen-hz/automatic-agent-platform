@@ -1,4 +1,9 @@
 {{- if .Values.ingress.enabled -}}
+{{- $domain := required "ingress.domain must be set when ingress is enabled" .Values.ingress.domain -}}
+{{- $hosts := .Values.ingress.hosts | default (list) -}}
+{{- if eq (len $hosts) 0 -}}
+{{- $hosts = list (dict "host" $domain "paths" (list (dict "path" "/" "pathType" "Prefix"))) -}}
+{{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -15,16 +20,16 @@ spec:
   tls:
     {{- range .Values.ingress.tls }}
     - hosts:
-        {{- range .hosts }}
+        {{- $tlsHosts := .hosts | default (list $domain) }}
+        {{- range $tlsHosts }}
         - {{ . | quote }}
         {{- end }}
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - hosts:
-        - {{ .host | quote }}
+    {{- range $hosts }}
+    - host: {{ .host | quote }}
       http:
         paths:
           {{- range .paths }}

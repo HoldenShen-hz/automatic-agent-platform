@@ -41,6 +41,8 @@ const PositivePort = z.string().refine(
 );
 const EnvironmentName = z.enum(["dev", "test", "staging", "pre-prod", "prod"]);
 const BooleanString = z.enum(["1", "true", "yes", "on", "0", "false", "no", "off"]);
+const StorageDriver = z.enum(["sqlite", "postgres"]);
+const LogLevel = z.enum(["trace", "debug", "info", "warn", "error", "fatal"]);
 
 // ---------------------------------------------------------------------------
 // Startup-critical schemas (P0 — process MUST NOT start if these are invalid)
@@ -83,6 +85,7 @@ export const ApiHostSchema = NonEmptyString.optional();
  * Optional: defaults to false.
  */
 export const LogStdoutSchema = BooleanString.optional();
+export const LogLevelSchema = LogLevel.optional();
 
 /**
  * Schema for AA_LOG_FILE_MAX_BYTES — log file max size before rotation.
@@ -140,9 +143,15 @@ export const LogDatadogServiceSchema = NonEmptyString.optional();
 
 /**
  * Schema for AA_API_KEYS_JSON — JSON array of API key records.
- * Optional: each record must have apiKey, actorId, and roles.
+ * Optional: must parse as a JSON array.
  */
-export const ApiKeysJsonSchema = NonEmptyString.optional();
+export const ApiKeysJsonSchema = z.string().refine((value) => {
+  try {
+    return Array.isArray(JSON.parse(value));
+  } catch {
+    return false;
+  }
+}, { message: "must be a JSON array" }).optional();
 
 /**
  * Schema for AA_WEBHOOK_SECRET — secret for webhook signature verification.
@@ -237,6 +246,15 @@ export const PluginRegistryUrlSchema = NonEmptyString.url().optional();
  * Optional: defaults to false in production.
  */
 export const PluginAllowUnverifiedSchema = BooleanString.optional();
+export const PluginSandboxRootSchema = NonEmptyString.optional();
+export const PluginAllowNetworkEgressSchema = BooleanString.optional();
+export const PluginRuntimeIsolationSchema = z.enum([
+  "shared_process",
+  "serialized_in_process",
+  "forked_process",
+  "sandboxed_process",
+  "containerized_process",
+]).optional();
 
 /**
  * Schema for AA_SANDBOX_MAX_MEMORY_MB — maximum memory per sandboxed execution.
@@ -271,6 +289,14 @@ export const SecurityEnforceSandboxSchema = BooleanString.optional();
  * Optional: defaults to all origins in dev, specific hosts in prod.
  */
 export const SecurityAllowedHostsSchema = NonEmptyString.optional();
+export const StorageDriverSchema = StorageDriver.optional();
+export const PostgresDsnSchema = NonEmptyString.optional();
+export const BuildCommitSchema = NonEmptyString.optional();
+export const BuildTimestampSchema = NonEmptyString.optional();
+export const BuildProfileSchema = NonEmptyString.optional();
+export const BuildVersionSchema = NonEmptyString.optional();
+export const FeatureFlagsSchema = NonEmptyString.optional();
+export const EnabledExtensionsSchema = NonEmptyString.optional();
 
 // ---------------------------------------------------------------------------
 // Redis connection schemas (P1 — system may start without Redis but caching is disabled)
@@ -299,6 +325,7 @@ export const StartupEnvSchema = z.object({
   AA_API_PORT: ApiPortSchema,
   AA_API_HOST: ApiHostSchema,
   AA_LOG_STDOUT: LogStdoutSchema,
+  AA_LOG_LEVEL: LogLevelSchema,
   AA_LOG_FILE_PATH: LogFilePathSchema,
   AA_LOG_FILE_MAX_BYTES: LogFileMaxBytesSchema,
   AA_LOG_FILE_MAX_FILES: LogFileMaxFilesSchema,
@@ -312,6 +339,9 @@ export const StartupEnvSchema = z.object({
   AA_WEBHOOK_SECRET: WebhookSecretSchema,
   AA_API_ENABLE_WEBSOCKET: ApiEnableWebSocketSchema,
   AA_METRICS_PORT: MetricsPortSchema,
+  AA_STORAGE_DRIVER: StorageDriverSchema,
+  AA_STORAGE_POSTGRES_DSN: PostgresDsnSchema,
+  AA_PG_DSN: PostgresDsnSchema,
   AA_MAX_AGENT_TOOL_CALLS: MaxAgentToolCallsSchema,
   AA_MAX_AGENT_MEMORY_MB: MaxAgentMemoryMbSchema,
   AA_MAX_AGENT_ELAPSED_MS: MaxAgentElapsedMsSchema,
@@ -322,6 +352,9 @@ export const StartupEnvSchema = z.object({
   AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION: ExpectedGovernanceVersionSchema,
   AA_PLUGIN_REGISTRY_URL: PluginRegistryUrlSchema,
   AA_PLUGIN_ALLOW_UNVERIFIED: PluginAllowUnverifiedSchema,
+  AA_PLUGIN_SANDBOX_ROOT: PluginSandboxRootSchema,
+  AA_PLUGIN_ALLOW_NETWORK_EGRESS: PluginAllowNetworkEgressSchema,
+  AA_PLUGIN_RUNTIME_ISOLATION: PluginRuntimeIsolationSchema,
   AA_SANDBOX_MAX_MEMORY_MB: SandboxMaxMemoryMbSchema,
   AA_SANDBOX_TIMEOUT_MS: SandboxTimeoutMsSchema,
   AA_API_JWT_SECRET: ApiJwtSecretSchema,
@@ -329,6 +362,34 @@ export const StartupEnvSchema = z.object({
   AA_SECURITY_ALLOWED_HOSTS: SecurityAllowedHostsSchema,
   AA_REDIS_HOST: RedisHostSchema,
   AA_REDIS_PORT: RedisPortSchema,
+  AA_BUILD_COMMIT: BuildCommitSchema,
+  AA_BUILD_TIMESTAMP: BuildTimestampSchema,
+  AA_BUILD_PROFILE: BuildProfileSchema,
+  AA_BUILD_VERSION: BuildVersionSchema,
+  AA_FEATURE_FLAGS: FeatureFlagsSchema,
+  AA_ENABLED_EXTENSIONS: EnabledExtensionsSchema,
+}).superRefine((value, ctx) => {
+  if (value.AA_LOG_FILE_MAX_BYTES != null && !value.AA_LOG_FILE_PATH) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["AA_LOG_FILE_PATH"],
+      message: "must be set when AA_LOG_FILE_MAX_BYTES is configured",
+    });
+  }
+  if (value.AA_STORAGE_DRIVER === "postgres" && !value.AA_STORAGE_POSTGRES_DSN && !value.AA_PG_DSN) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["AA_STORAGE_POSTGRES_DSN"],
+      message: "must be set when AA_STORAGE_DRIVER=postgres",
+    });
+  }
+  if (value.AA_PLUGIN_ALLOW_NETWORK_EGRESS != null && !value.AA_PLUGIN_SANDBOX_ROOT) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["AA_PLUGIN_SANDBOX_ROOT"],
+      message: "must be set when plugin sandbox runtime is enabled",
+    });
+  }
 });
 
 export type StartupEnv = z.infer<typeof StartupEnvSchema>;
@@ -363,6 +424,7 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_API_PORT: env["AA_API_PORT"] ?? undefined,
     AA_API_HOST: env["AA_API_HOST"] ?? undefined,
     AA_LOG_STDOUT: env["AA_LOG_STDOUT"] ?? undefined,
+    AA_LOG_LEVEL: env["AA_LOG_LEVEL"] ?? undefined,
     AA_LOG_FILE_PATH: env["AA_LOG_FILE_PATH"] ?? undefined,
     AA_LOG_FILE_MAX_BYTES: env["AA_LOG_FILE_MAX_BYTES"] ?? null,
     AA_LOG_FILE_MAX_FILES: env["AA_LOG_FILE_MAX_FILES"] ?? undefined,
@@ -376,6 +438,9 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_WEBHOOK_SECRET: env["AA_WEBHOOK_SECRET"] ?? undefined,
     AA_API_ENABLE_WEBSOCKET: env["AA_API_ENABLE_WEBSOCKET"] ?? undefined,
     AA_METRICS_PORT: env["AA_METRICS_PORT"] ?? undefined,
+    AA_STORAGE_DRIVER: env["AA_STORAGE_DRIVER"] ?? undefined,
+    AA_STORAGE_POSTGRES_DSN: env["AA_STORAGE_POSTGRES_DSN"] ?? undefined,
+    AA_PG_DSN: env["AA_PG_DSN"] ?? undefined,
     AA_MAX_AGENT_TOOL_CALLS: env["AA_MAX_AGENT_TOOL_CALLS"] ?? null,
     AA_MAX_AGENT_MEMORY_MB: env["AA_MAX_AGENT_MEMORY_MB"] ?? null,
     AA_MAX_AGENT_ELAPSED_MS: env["AA_MAX_AGENT_ELAPSED_MS"] ?? null,
@@ -386,6 +451,9 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION: env["AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION"] ?? null,
     AA_PLUGIN_REGISTRY_URL: env["AA_PLUGIN_REGISTRY_URL"] ?? undefined,
     AA_PLUGIN_ALLOW_UNVERIFIED: env["AA_PLUGIN_ALLOW_UNVERIFIED"] ?? undefined,
+    AA_PLUGIN_SANDBOX_ROOT: env["AA_PLUGIN_SANDBOX_ROOT"] ?? undefined,
+    AA_PLUGIN_ALLOW_NETWORK_EGRESS: env["AA_PLUGIN_ALLOW_NETWORK_EGRESS"] ?? undefined,
+    AA_PLUGIN_RUNTIME_ISOLATION: env["AA_PLUGIN_RUNTIME_ISOLATION"] ?? undefined,
     AA_SANDBOX_MAX_MEMORY_MB: env["AA_SANDBOX_MAX_MEMORY_MB"] ?? null,
     AA_SANDBOX_TIMEOUT_MS: env["AA_SANDBOX_TIMEOUT_MS"] ?? null,
     AA_API_JWT_SECRET: env["AA_API_JWT_SECRET"] ?? null,
@@ -393,6 +461,12 @@ export function validateStartupEnv(env: NodeJS.ProcessEnv = process.env): Startu
     AA_SECURITY_ALLOWED_HOSTS: env["AA_SECURITY_ALLOWED_HOSTS"] ?? undefined,
     AA_REDIS_HOST: env["AA_REDIS_HOST"] ?? undefined,
     AA_REDIS_PORT: env["AA_REDIS_PORT"] ?? undefined,
+    AA_BUILD_COMMIT: env["AA_BUILD_COMMIT"] ?? undefined,
+    AA_BUILD_TIMESTAMP: env["AA_BUILD_TIMESTAMP"] ?? undefined,
+    AA_BUILD_PROFILE: env["AA_BUILD_PROFILE"] ?? undefined,
+    AA_BUILD_VERSION: env["AA_BUILD_VERSION"] ?? undefined,
+    AA_FEATURE_FLAGS: env["AA_FEATURE_FLAGS"] ?? undefined,
+    AA_ENABLED_EXTENSIONS: env["AA_ENABLED_EXTENSIONS"] ?? undefined,
   };
 
   const result = StartupEnvSchema.safeParse(raw);

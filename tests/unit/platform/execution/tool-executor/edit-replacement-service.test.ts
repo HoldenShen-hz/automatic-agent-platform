@@ -555,7 +555,7 @@ test("edit replacement service reports already_applied when file already contain
   }
 });
 
-test("edit replacement service rolls back all edits when a middle edit fails in batch", () => {
+test("edit replacement service rolls back all edits when a middle edit fails in batch", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-full-rollback.ts");
 
@@ -570,7 +570,7 @@ test("edit replacement service rolls back all edits when a middle edit fails in 
       ["const alpha = 1;", "const beta = 2;", "const gamma = 3;", ""].join("\n"),
     );
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "call-batch-full-rollback",
       taskId: "task-edit",
       executionId: "exec-edit",
@@ -611,7 +611,7 @@ test("edit replacement service rolls back all edits when a middle edit fails in 
   }
 });
 
-test("edit replacement service handles empty edits array in batch", () => {
+test("edit replacement service handles empty edits array in batch", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-empty.ts");
 
@@ -623,7 +623,7 @@ test("edit replacement service handles empty edits array in batch", () => {
   try {
     createFile(filePath, "const value = 1;\n");
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "call-batch-empty",
       taskId: "task-edit",
       executionId: "exec-edit",
@@ -679,7 +679,7 @@ test("edit replacement service fail-closes when execution allowed paths contain 
   }
 });
 
-test("edit replacement service fails with lock conflict in batch mode when another execution holds the lock", () => {
+test("edit replacement service fails with lock conflict in batch mode when another execution holds the lock", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-locked.ts");
 
@@ -709,7 +709,7 @@ test("edit replacement service fails with lock conflict in batch mode when anoth
       });
     });
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "call-batch-lock-conflict",
       taskId: "task-edit",
       executionId: "exec-edit",
@@ -754,7 +754,7 @@ test("edit replacement service reports already_applied in batch mode when file a
     // Create file where the second edit's newString is already present
     createFile(filePath, ["const alpha = 1;", "const beta = 20;", ""].join("\n"));
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "call-batch-already",
       taskId: "task-edit",
       executionId: "exec-edit",
@@ -857,7 +857,7 @@ test("edit replacement service handles empty edits array in batch gracefully", (
   try {
     createFile(filePath, "const value = 1;\n");
 
-    const result = harness.service.executeBatch({
+    const result = await harness.service.executeBatch({
       callId: "call-batch-truly-empty",
       taskId: "task-edit",
       executionId: "exec-edit",

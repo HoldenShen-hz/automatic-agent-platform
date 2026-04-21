@@ -28,11 +28,7 @@ ingress:
   className: nginx
   annotations: {}
   domain: localhost
-  hosts:
-    - host: {{ .Values.ingress.domain | default "localhost" }}
-      paths:
-        - path: /
-          pathType: Prefix
+  hosts: []
   tls: []
 
 resources:

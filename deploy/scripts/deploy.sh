@@ -63,8 +63,8 @@ if [[ -z "${ENVIRONMENT}" ]] || [[ -z "${IMAGE_TAG}" ]]; then
   usage
 fi
 
-if [[ ! "${ENVIRONMENT}" =~ ^(dev|staging|prod)$ ]]; then
-  error "Environment must be one of: dev, staging, prod"
+if [[ ! "${ENVIRONMENT}" =~ ^(dev|test|staging|pre-prod|prod)$ ]]; then
+  error "Environment must be one of: dev, test, staging, pre-prod, prod"
   usage
 fi
 
@@ -73,8 +73,16 @@ if [[ ! "${ROLLOUT_STRATEGY}" =~ ^(rolling|canary|blue_green)$ ]]; then
   usage
 fi
 
+# Determine namespace
+NAMESPACE="automatic-agent-${ENVIRONMENT}"
+DEPLOY_DOMAIN="${AA_DEPLOY_DOMAIN:-}"
+
 # Production deployment guard
 if [[ "${ENVIRONMENT}" == "prod" ]]; then
+  if [[ -z "${DEPLOY_DOMAIN}" ]]; then
+    error "AA_DEPLOY_DOMAIN must be set for production deployments"
+    exit 1
+  fi
   echo ""
   echo -e "${RED}WARNING: You are about to deploy to PRODUCTION${NC}"
   echo -e "  Image tag: ${IMAGE_TAG}"
@@ -106,9 +114,6 @@ if [[ "${ENVIRONMENT}" == "prod" ]]; then
     fi
   fi
 fi
-
-# Determine namespace
-NAMESPACE="automatic-agent-${ENVIRONMENT}"
 
 # Determine values file
 VALUES_FILE="${HELM_DIR}/values-${ENVIRONMENT}.yaml"
@@ -163,6 +168,10 @@ HELM_ARGS=(
   "--timeout"
   "10m"
 )
+
+if [[ -n "${DEPLOY_DOMAIN}" ]]; then
+  HELM_ARGS+=("--set" "ingress.domain=${DEPLOY_DOMAIN}")
+fi
 
 # Apply rollout strategy specific settings
 if [[ "${ROLLOUT_STRATEGY}" == "canary" ]]; then

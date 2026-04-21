@@ -28,15 +28,11 @@ ingress:
     cert-manager.io/cluster-issuer: letsencrypt-staging
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
   domain: preprod.automatic-agent.example.com
-  hosts:
-    - host: {{ .Values.ingress.domain | default "preprod.automatic-agent.example.com" }}
-      paths:
-        - path: /
-          pathType: Prefix
+  hosts: []
   tls:
     - secretName: automatic-agent-preprod-tls
       hosts:
-        - {{ .Values.ingress.domain | default "preprod.automatic-agent.example.com" }}
+        - preprod.automatic-agent.example.com
 
 env:
   AA_API_HOST: "0.0.0.0"
