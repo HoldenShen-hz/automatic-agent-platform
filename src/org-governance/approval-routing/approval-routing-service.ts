@@ -1,7 +1,12 @@
 import { buildGovernanceAuditRecord, type GovernanceAuditRecord } from "../compliance-engine/audit-enforcer/index.js";
 import { type ApprovalDelegation, resolveDelegatedApprover } from "./delegation/index.js";
 import { type ApprovalEscalationRule, shouldEscalateApproval } from "./escalation/index.js";
-import { resolveApprovalRoute, type ApprovalRouteDecision, type ApprovalRouteRequest } from "./route-engine/index.js";
+import {
+  resolveApprovalRoute,
+  type AmountThresholdRule,
+  type ApprovalRouteDecision,
+  type ApprovalRouteRequest,
+} from "./route-engine/index.js";
 import type { OrgNode } from "../org-model/org-node/index.js";
 
 export interface ApprovalRoutingResult extends ApprovalRouteDecision {
@@ -13,22 +18,25 @@ export interface ApprovalRoutingServiceOptions {
   readonly orgNodes: readonly OrgNode[];
   readonly delegations?: readonly ApprovalDelegation[];
   readonly escalationRules?: readonly ApprovalEscalationRule[];
+  readonly amountThresholdRules?: readonly AmountThresholdRule[];
 }
 
 export class ApprovalRoutingService {
   private readonly orgNodes: readonly OrgNode[];
   private readonly delegations: readonly ApprovalDelegation[];
   private readonly escalationRules: readonly ApprovalEscalationRule[];
+  private readonly amountThresholdRules: readonly AmountThresholdRule[];
 
   public constructor(options: ApprovalRoutingServiceOptions) {
     this.orgNodes = options.orgNodes;
     this.delegations = options.delegations ?? [];
     this.escalationRules = options.escalationRules ?? [];
+    this.amountThresholdRules = options.amountThresholdRules ?? [];
   }
 
   public route(request: ApprovalRouteRequest, createdAtIso: string, nowIso: string): ApprovalRoutingResult {
     const delegationMap = this.buildDelegationMap(request.orgNodeId, nowIso);
-    const base = resolveApprovalRoute(this.orgNodes, request, delegationMap);
+    const base = resolveApprovalRoute(this.orgNodes, request, delegationMap, this.amountThresholdRules);
     const escalatedTo = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel);
     const approverChain = escalatedTo != null && !base.approverChain.includes(escalatedTo)
       ? [...base.approverChain, escalatedTo]
@@ -38,6 +46,7 @@ export class ApprovalRoutingService {
       matchedOrgNodeId: base.matchedOrgNodeId,
       approverChain,
       delegated: base.delegated,
+      routingStrategy: base.routingStrategy,
       escalatedTo,
       auditRecord: buildGovernanceAuditRecord({
         recordId: `audit_${request.requesterId}_${request.orgNodeId}`,
@@ -47,6 +56,7 @@ export class ApprovalRoutingService {
         allowed: approverChain.length > 0,
         reasonCodes: [
           ...(base.delegated ? ["approval.delegated"] : ["approval.direct_route"]),
+          `approval.routing.${base.routingStrategy}`,
           ...(escalatedTo != null ? ["approval.escalated"] : []),
         ],
         occurredAt: nowIso,

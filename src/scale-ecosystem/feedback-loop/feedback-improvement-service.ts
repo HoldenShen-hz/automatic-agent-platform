@@ -9,7 +9,13 @@ import {
 
 export interface ImprovementCandidate {
   readonly candidateId: string;
-  readonly candidateType: "prompt_tuning" | "workflow_patch" | "policy_adjustment" | "playbook_update";
+  readonly candidateType:
+    | "prompt_tuning"
+    | "workflow_patch"
+    | "policy_adjustment"
+    | "playbook_update"
+    | "model_retraining"
+    | "data_augmentation";
   readonly sourceSignalIds: readonly string[];
   readonly proposedChange: string;
   readonly riskAssessment: "low" | "medium" | "high";
@@ -141,6 +147,10 @@ export class FeedbackImprovementService {
         return "workflow_patch";
       case "user_correction":
         return "prompt_tuning";
+      case "model_retraining":
+        return "model_retraining";
+      case "dataset_gap":
+        return "data_augmentation";
       case "recovery_playbook":
       default:
         return "playbook_update";

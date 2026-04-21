@@ -163,7 +163,7 @@ export interface ConversationTurn {
 }
 
 const DEFAULT_LOCALE_CONFIG: LocaleConfig = {
-  supportedLocales: ["zh-CN", "en-US"],
+  supportedLocales: ["zh-CN", "en-US", "ja-JP", "de-DE"],
   defaultLocale: "zh-CN",
   localeResolutionOrder: ["user_profile", "accept_language", "input_detect", "default"],
 };
