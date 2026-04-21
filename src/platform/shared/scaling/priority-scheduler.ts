@@ -209,6 +209,8 @@ export class PriorityScheduler {
     const decision = findTaskToPreempt(highestPriority, [...this.runningTasks.values()]);
 
     if (decision.shouldPreempt && decision.preemptedTaskId) {
+      const task = this.queue.shift()!;
+
       // Preempt the lower priority task
       const preempted = this.runningTasks.get(decision.preemptedTaskId);
       this.runningTasks.delete(decision.preemptedTaskId);
@@ -216,12 +218,16 @@ export class PriorityScheduler {
       // Re-queue the preempted task with updated wait time
       if (preempted) {
         preempted.waitedMs = Date.now() - preempted.enqueuedAt;
-        // Re-insert into queue (it will be re-sorted)
-        this.queue.unshift(preempted);
+        this.queue.push(preempted);
+        this.queue.sort((a, b) => {
+          if (a.priorityValue !== b.priorityValue) {
+            return b.priorityValue - a.priorityValue;
+          }
+          return a.enqueuedAt - b.enqueuedAt;
+        });
       }
 
       // Start the high priority task
-      const task = this.queue.shift()!;
       this.runningTasks.set(task.taskId, task);
       return task;
     }

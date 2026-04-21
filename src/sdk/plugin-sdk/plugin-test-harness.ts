@@ -5,8 +5,7 @@
  */
 
 import type { PluginDefinition } from "./plugin-definition.js";
-import type { PluginContextConfig } from "./plugin-context.js";
-import { PluginContext } from "./plugin-context.js";
+import type { PluginContext, PluginContextConfig } from "./plugin-context.js";
 
 // Local type definitions to avoid cross-module import issues
 export interface MockLlmConfig {
@@ -180,6 +179,7 @@ export class PluginTestHarness {
    * Create a plugin context for testing.
    */
   createContext(config?: Partial<PluginContextConfig>): PluginContext {
+    const { PluginContext } = require("./plugin-context.js");
     return new PluginContext({
       pluginId: this.plugin.pluginId,
       ...config,

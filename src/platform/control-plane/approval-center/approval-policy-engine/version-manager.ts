@@ -127,6 +127,7 @@ export class PolicyVersionManager {
       updatedAt: nowIso(),
     };
 
+    this.versions.set(`${bundleId}:${newVersion}`, draft);
     return draft;
   }
 
@@ -177,6 +178,7 @@ export class PolicyVersionManager {
       changeSummary,
     };
 
+    this.versions.set(`${bundle.bundleId}:${bundle.version}`, submitted);
     return submitted;
   }
 
@@ -205,6 +207,7 @@ export class PolicyVersionManager {
       updatedAt: nowIso(),
     };
 
+    this.versions.set(`${bundle.bundleId}:${bundle.version}`, approved);
     return approved;
   }
 

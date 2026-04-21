@@ -69,7 +69,9 @@ export class ChangepointDetectorService {
     const relativeShift = baselineMean !== 0 ? absoluteShift / baselineMean : 0;
 
     // §17: Detect -10% change (negative relative shift indicates performance degradation)
-    const detected = relativeShift <= DRIFT_THRESHOLD_RELATIVE;
+    // Use < with epsilon to handle floating point precision errors
+    const EPSILON = 1e-9;
+    const detected = relativeShift < DRIFT_THRESHOLD_RELATIVE + EPSILON;
 
     return {
       detected,

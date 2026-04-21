@@ -82,7 +82,7 @@ const DEFAULT_SECURITY: PluginSecurityConfig = {
  */
 export function definePlugin(options: DefinePluginOptions): PluginDefinition {
   if (!options.pluginId?.trim()) {
-    throw new ValidationError("plugin_sdk.missing_plugin_id", "Plugin ID is required (plugin_sdk.missing_plugin_id).");
+    throw new ValidationError("plugin_sdk.missing_plugin_id", "Plugin ID is required.");
   }
   if (!options.name?.trim()) {
     throw new ValidationError("plugin_sdk.missing_name", "Plugin name is required.");
@@ -94,7 +94,7 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
     throw new ValidationError("plugin_sdk.missing_type", "Plugin type is required.");
   }
   if (!options.capabilities || options.capabilities.length === 0) {
-    throw new ValidationError("plugin_sdk.empty_capabilities", "Plugin must declare at least one capability (plugin_sdk.empty_capabilities).");
+    throw new ValidationError("plugin_sdk.empty_capabilities", "Plugin must declare at least one capability.");
   }
 
   for (const cap of options.capabilities) {

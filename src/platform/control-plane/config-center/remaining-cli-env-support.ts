@@ -36,11 +36,11 @@ export const MARKETPLACE_ACTIONS = [
   "list_reports",
 ] as const;
 // Valid deployment execution actions
-export const DEPLOYMENT_EXECUTION_ACTIONS = ["summary", "export"] as const;
+export const DEPLOYMENT_EXECUTION_ACTIONS = ["summary", "export", "build_report"] as const;
 // Valid control plane actions
 export const CONTROL_PLANE_ACTIONS = ["summary", "heartbeat", "select"] as const;
 // Valid ops governance actions
-export const OPS_GOVERNANCE_ACTIONS = ["summary", "export"] as const;
+export const OPS_GOVERNANCE_ACTIONS = ["summary", "export", "check", "report", "audit"] as const;
 // Valid secret management actions
 export const SECRET_ACTIONS = ["register", "resolve", "rotate", "issue", "revoke", "leases", "due", "request_due", "refresh", "summary"] as const;
 // Valid worker register actions

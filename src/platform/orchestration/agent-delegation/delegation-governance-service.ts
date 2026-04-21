@@ -229,8 +229,9 @@ export class DelegationGovernanceService {
     }
     if (condition.delegationDepth !== undefined) {
       if (request.parentContext.delegationDepth >= condition.delegationDepth) {
-        return false;
+        return true;
       }
+      return false;
     }
     if (condition.permissionActions && condition.permissionActions.length > 0) {
       const hasPermission = condition.permissionActions.some(

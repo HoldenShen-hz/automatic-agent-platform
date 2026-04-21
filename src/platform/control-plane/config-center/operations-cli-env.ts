@@ -14,7 +14,7 @@ const ENTERPRISE_GOVERNANCE_ACTIONS = ["summary", "export"] as const;
 // Valid actions for ops program CLI
 const OPS_PROGRAM_ACTIONS = ["summary", "export"] as const;
 // Valid actions for environment deployment CLI
-const ENVIRONMENT_DEPLOYMENT_ACTIONS = ["summary", "export", "list-bundles"] as const;
+const ENVIRONMENT_DEPLOYMENT_ACTIONS = ["summary", "export", "list-bundles", "build"] as const;
 // Valid actions for acceptance readiness CLI
 const ACCEPTANCE_READINESS_ACTIONS = ["summary", "export"] as const;
 // Valid actions for platform operator CLI
@@ -75,7 +75,7 @@ export interface OpsProgramCliEnvConfig {
  */
 export interface EnvironmentDeploymentCliEnvConfig {
   dbPath: string | null;
-  action: "summary" | "export" | "list-bundles";
+  action: "summary" | "export" | "list-bundles" | "build";
   repoRootDir: string;
   artifactRoot: string | null;
   targetEnvironment: EnvironmentName | null;

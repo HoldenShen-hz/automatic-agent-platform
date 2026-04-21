@@ -22,7 +22,7 @@ export type {
   PluginDefinition,
   DefinePluginOptions,
 } from "./plugin-sdk/plugin-definition.js";
-export type { PluginContext } from "./plugin-sdk/plugin-context.js";
+export { PluginContext } from "./plugin-sdk/plugin-context.js";
 
 // Workbench exports
 export * from "./workbench/index.js";
