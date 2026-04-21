@@ -107,4 +107,20 @@ export class AsyncWorkflowRepository {
       input.resumableFromStep, input.retryCount, input.lastErrorCode, input.taskId,
     );
   }
+
+  public async updateWorkflowStateCas(
+    taskId: string,
+    expectedVersion: number,
+    status: string,
+    currentStepIndex: number,
+    outputsJson: string,
+    updatedAt: string,
+    resumableFromStep: string | null = null,
+  ): Promise<number> {
+    return asyncExecute(
+      this.conn,
+      `UPDATE workflow_state SET status = $1, current_step_index = $2, outputs_json = $3, updated_at = $4, resumable_from_step = $5 WHERE task_id = $6 AND current_step_index = $7`,
+      status, currentStepIndex, outputsJson, updatedAt, resumableFromStep, taskId, expectedVersion,
+    );
+  }
 }

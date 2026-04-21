@@ -169,8 +169,8 @@ export class WebhookAlertChannel implements AlertChannel {
       headers,
       body,
       signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch(() => {
-      // Best-effort: delivery failure is reported via return value, not thrown
+    }).catch((err) => {
+      console.error("alert.delivery_failed", { alertId: event.id, err: err instanceof Error ? err.message : String(err) });
     });
 
     return { channelKind: "webhook", delivered: true, error: null };

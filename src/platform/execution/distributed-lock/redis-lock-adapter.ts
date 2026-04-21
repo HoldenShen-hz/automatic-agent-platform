@@ -24,7 +24,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     get(key: string): Promise<string | null>;
     del(key: string): Promise<number>;
     eval(script: string, numberOfKeys: number, ...args: string[]): Promise<unknown>;
-    scan(cursor: number, ...args: Array<string>): Promise<[string, string[]]>;
+    scan(cursor: number, ...args: Array<string | number>): Promise<[string, string[]]>;
     mget(...keys: string[]): Promise<(string | null)[]>;
     quit(): Promise<unknown>;
     disconnect(): void;
@@ -131,7 +131,7 @@ if redis.call('get', KEYS[1]) == ARGV[1] then
   return redis.call('pexpire', KEYS[1], ARGV[2])
 else return 0 end`;
     const newTtlMs = Math.min(additionalMs, 600_000);
-    const result = await this.redis.eval(extendLua, 1, key, JSON.stringify({ owner }), newTtlMs);
+    const result = await this.redis.eval(extendLua, 1, key, JSON.stringify({ owner }), String(newTtlMs));
     if (result !== 1) {
       return null;
     }

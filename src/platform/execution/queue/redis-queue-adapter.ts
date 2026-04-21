@@ -40,6 +40,13 @@ class RedisQueueClient {
     quit(): Promise<unknown>;
     disconnect(): void;
     on(event: "error", listener: (error: unknown) => void): void;
+    pipeline(): {
+      hmset(key: string, data: Record<string, string>): unknown;
+      expire(key: string, seconds: number): unknown;
+      sadd(key: string, member: string): unknown;
+      zadd(key: string, score: number, member: string): unknown;
+      exec(): Promise<Array<[unknown, unknown]>>;
+    };
   };
   private readonly host: string;
   private readonly port: number;
@@ -59,7 +66,9 @@ class RedisQueueClient {
       maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
       connectTimeout: config.connectTimeout ?? 500,
     }));
-    this.redis.on("error", () => {});
+    this.redis.on("error", (err) => {
+      console.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
+    });
   }
 
   private async ensureConnected(): Promise<void> {
@@ -165,6 +174,16 @@ class RedisQueueClient {
     }
     await this.redis.quit();
   }
+
+  pipeline(): {
+    hmset(key: string, data: Record<string, string>): unknown;
+    expire(key: string, seconds: number): unknown;
+    sadd(key: string, member: string): unknown;
+    zadd(key: string, score: number, member: string): unknown;
+    exec(): Promise<Array<[unknown, unknown]>>;
+  } {
+    return this.redis.pipeline();
+  }
 }
 
 export class RedisQueueAdapter implements QueueAdapter {
@@ -202,19 +221,22 @@ export class RedisQueueAdapter implements QueueAdapter {
       updatedAt: now,
       completedAt: null,
     };
-    this.client.hmset(this.jobKey(job.id), {
+    const p = this.client.pipeline();
+    p.hmset(this.jobKey(job.id), {
       id: job.id, queue_name: job.queueName, payload: job.payload, status: job.status,
       priority: String(job.priority), attempts: String(job.attempts), max_attempts: String(job.maxAttempts),
       last_error: "", delay_until: job.delayUntil ?? "", idempotency_key: job.idempotencyKey ?? "",
       created_at: job.createdAt, updated_at: job.updatedAt, completed_at: "",
-    }).catch(() => {});
-    this.client.expire(this.jobKey(job.id), this.jobTtlSeconds).catch(() => {});
-    this.client.sadd(this.queueSetKey(), input.queueName).catch(() => {});
-    if (isDelayed) {
-      this.client.zadd(this.waitingKey(input.queueName), new Date(input.delayUntil!).getTime(), job.id).catch(() => {});
-    } else {
-      this.client.zadd(this.waitingKey(input.queueName), job.priority * 1e13 + new Date(job.createdAt).getTime(), job.id).catch(() => {});
-    }
+    });
+    p.expire(this.jobKey(job.id), this.jobTtlSeconds);
+    p.sadd(this.queueSetKey(), input.queueName);
+    const waitingScore = isDelayed
+      ? new Date(job.delayUntil!).getTime()
+      : job.priority * 1e13 + new Date(job.createdAt).getTime();
+    p.zadd(this.waitingKey(input.queueName), waitingScore, job.id);
+    p.exec().catch((err: unknown) => {
+      throw new Error(`queue.enqueue_failed: ${err instanceof Error ? err.message : String(err)}`);
+    });
     return job;
   }
 

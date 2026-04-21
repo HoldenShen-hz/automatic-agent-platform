@@ -25,6 +25,7 @@
  */
 
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
+import { promises as fsPromises } from "node:fs";
 import { dirname } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
@@ -292,7 +293,10 @@ export class StructuredLogger {
     try {
       const serialized = `${JSON.stringify(entry)}\n`;
       this.rotateFileSinkIfNeeded(sink, Buffer.byteLength(serialized, "utf8"));
-      appendFileSync(sink.filePath, serialized, "utf8");
+      // Use async appendFile to avoid blocking the event loop
+      fsPromises.appendFile(sink.filePath, serialized, "utf8").catch(() => {
+        // File sink failures must not take down the caller path.
+      });
     } catch {
       // File sink failures must not take down the caller path.
     }

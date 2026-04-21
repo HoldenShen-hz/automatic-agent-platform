@@ -67,6 +67,40 @@ if [[ ! "${ROLLOUT_STRATEGY}" =~ ^(rolling|canary|blue_green)$ ]]; then
   usage
 fi
 
+# Production deployment guard
+if [[ "${ENVIRONMENT}" == "prod" ]]; then
+  echo ""
+  echo -e "${RED}WARNING: You are about to deploy to PRODUCTION${NC}"
+  echo -e "  Image tag: ${IMAGE_TAG}"
+  echo -e "  Namespace: ${NAMESPACE}"
+  echo ""
+  read -p "Are you sure you want to proceed? (type 'yes' to confirm): " CONFIRM
+  if [[ "${CONFIRM}" != "yes" ]]; then
+    info "Deployment cancelled"
+    exit 0
+  fi
+
+  # Canary health check validation
+  if [[ "${ROLLOUT_STRATEGY}" == "canary" ]]; then
+    info "Performing canary health checks..."
+    read -p "Enter the canary health check endpoint (or press Enter to skip): " CANARY_ENDPOINT
+    if [[ -n "${CANARY_ENDPOINT}" ]]; then
+      info "Checking canary health at ${CANARY_ENDPOINT}..."
+      for i in $(seq 1 10); do
+        if curl -sf "${CANARY_ENDPOINT}" > /dev/null 2>&1; then
+          info "Canary health check passed"
+          break
+        fi
+        if [[ $i -eq 10 ]]; then
+          error "Canary health check failed after 10 attempts"
+          exit 1
+        fi
+        sleep 5
+      done
+    fi
+  fi
+fi
+
 # Determine namespace
 NAMESPACE="automatic-agent-${ENVIRONMENT}"
 
