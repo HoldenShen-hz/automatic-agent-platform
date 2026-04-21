@@ -189,3 +189,34 @@ export interface IncidentFacadeService {
   startMitigation(incidentId: string): IncidentCase;
   resolve(incidentId: string): IncidentCase;
 }
+
+// ─── No-op implementations for defaults ─────────────────────────────────────
+
+/**
+ * No-op implementation of IncidentFacadeService for when no service is configured.
+ * Used as a default when incidentService is not provided.
+ */
+class NoOpIncidentFacadeService implements IncidentFacadeService {
+  public listIncidents(limit?: number): IncidentCase[] {
+    return [];
+  }
+  public getIncident(_incidentId: string): IncidentCase | null {
+    return null;
+  }
+  public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[] }): IncidentCase {
+    throw new Error("Incident service not configured");
+  }
+  public acknowledge(_incidentId: string, _owner: string): IncidentCase {
+    throw new Error("Incident service not configured");
+  }
+  public startMitigation(_incidentId: string): IncidentCase {
+    throw new Error("Incident service not configured");
+  }
+  public resolve(_incidentId: string): IncidentCase {
+    throw new Error("Incident service not configured");
+  }
+}
+
+export function createNoOpIncidentFacadeService(): IncidentFacadeService {
+  return new NoOpIncidentFacadeService();
+}
