@@ -47,7 +47,9 @@ const createTestManifest = (overrides: Partial<PluginManifest> = {}): PluginMani
   ...overrides,
 });
 
-const createTestHooks = (overrides: Partial<PluginLifecycleHooks> = {}): PluginLifecycleHooks => ({
+const createTestHooks = (
+  overrides: Partial<PluginLifecycleHooks> & Record<string, unknown> = {},
+): PluginLifecycleHooks & Record<string, unknown> => ({
   initialize: async () => {},
   onLoad: async () => {},
   onActivate: async () => {},
@@ -56,6 +58,16 @@ const createTestHooks = (overrides: Partial<PluginLifecycleHooks> = {}): PluginL
   healthCheck: () => true,
   ...overrides,
 });
+
+const createActionHooks = (
+  action: string,
+  handler: (input: Record<string, unknown>) => unknown | Promise<unknown>,
+  overrides: Partial<PluginLifecycleHooks> = {},
+): PluginLifecycleHooks & Record<string, unknown> =>
+  createTestHooks({
+    [action]: handler,
+    ...overrides,
+  });
 
 const createTestContext = (overrides: Partial<ExecutionContext> = {}): ExecutionContext => ({
   executionId: "exec-123",
@@ -150,7 +162,8 @@ test("PluginExecutorService.unregister() transitions state to disabled and calls
   await service.unregister("test-plugin");
 
   assert.equal(unloadCalled, true);
-  assert.equal(service.getState("test-plugin"), "disabled");
+  assert.equal(service.getState("test-plugin"), null);
+  assert.equal(service.listPlugins().length, 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,7 +177,10 @@ test("PluginExecutorService.execute() runs plugin action and returns result", as
     spiTypes: ["retriever"],
   });
 
-  const hooks = createTestHooks({});
+  const hooks = createActionHooks("retriever", async (input) => ({
+    taskId: input.taskId,
+    ok: true,
+  }));
 
   service.register(manifest, hooks);
   await service.load("test-plugin");
@@ -175,7 +191,7 @@ test("PluginExecutorService.execute() runs plugin action and returns result", as
 
   assert.equal(result.status, "ok");
   assert.equal(result.pluginId, "test-plugin");
-  assert.ok(result.executionId.startsWith("exec-"));
+  assert.ok(result.executionId.startsWith("exec_"));
   assert.ok(result.durationMs >= 0);
   assert.ok(result.timestamp);
 });
@@ -254,13 +270,13 @@ test("PluginExecutorService.execute() handles timeout and returns error status",
     },
   });
 
-  const hooks = createTestHooks({
-    healthCheck: async () => {
-      // Simulate slow health check
+  const hooks = createActionHooks(
+    "retriever",
+    async () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
-      return true;
+      return { ok: true };
     },
-  });
+  );
 
   service.register(manifest, hooks);
   await service.load("test-plugin");
@@ -312,7 +328,7 @@ test("PluginExecutorService handles none sandbox tier", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
-  const hooks = createTestHooks();
+  const hooks = createActionHooks("retriever", async () => ({ ok: true }));
 
   service.register(manifest, hooks);
   await service.load("test-plugin");
@@ -328,7 +344,7 @@ test("PluginExecutorService handles container sandbox tier", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
-  const hooks = createTestHooks();
+  const hooks = createActionHooks("retriever", async () => ({ ok: true }));
 
   service.register(manifest, hooks);
   await service.load("test-plugin");
@@ -348,7 +364,7 @@ test("PluginExecutorService execute with scoped_external_access tier", async () 
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
-  const hooks = createTestHooks();
+  const hooks = createActionHooks("retriever", async () => ({ ok: true }));
 
   service.register(manifest, hooks);
   await service.load("test-plugin");
@@ -440,7 +456,7 @@ test("ScopedExternalAccessSandbox validates response size", async () => {
   const smallBody = { data: "small" };
   assert.equal(sandbox.validateResponseSize(smallBody), true);
 
-  const largeBody = { data: "this is a very large response that exceeds the limit" };
+  const largeBody = { data: "x".repeat(200) };
   assert.equal(sandbox.validateResponseSize(largeBody), false);
 });
 

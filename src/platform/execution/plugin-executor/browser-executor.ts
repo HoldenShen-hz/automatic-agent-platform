@@ -499,7 +499,10 @@ export class BrowserExecutor {
           { details: { url, protocol: parsed.protocol } },
         );
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       throw new ValidationError(
         "browser_executor.invalid_url",
         "Invalid URL format",

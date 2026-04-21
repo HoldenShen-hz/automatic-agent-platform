@@ -7,7 +7,7 @@ import { cleanupPath, createFile, createSymlink, createTempWorkspace } from "../
 
 function runCliExpectFailure(env: NodeJS.ProcessEnv): string {
   try {
-    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "shadow-snapshot.js")], {
+    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "shadow-snapshot.js")], {
       cwd: process.cwd(),
       env: {
         ...process.env,
@@ -65,4 +65,3 @@ test("shadow snapshot CLI fail-closes when the shadow root path traverses a syml
     cleanupPath(target);
   }
 });
-

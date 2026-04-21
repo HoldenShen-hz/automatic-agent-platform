@@ -94,14 +94,16 @@ export class AsyncOrganizationRepository {
   }
 
   public async upsertTenantRecord(record: TenantRecord): Promise<void> {
+    const displayName = record.displayName ?? record.tenantId;
     await asyncExecute(
       this.conn,
       `INSERT INTO tenants (
-        tenant_id, organization_id, storage_scope, identity_scope, policy_scope, artifact_scope,
+        tenant_id, organization_id, display_name, storage_scope, identity_scope, policy_scope, artifact_scope,
         isolation_mode, deployment_mode, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ON CONFLICT(tenant_id) DO UPDATE SET
         organization_id = excluded.organization_id,
+        display_name = excluded.display_name,
         storage_scope = excluded.storage_scope,
         identity_scope = excluded.identity_scope,
         policy_scope = excluded.policy_scope,
@@ -111,6 +113,7 @@ export class AsyncOrganizationRepository {
         updated_at = excluded.updated_at`,
       record.tenantId,
       record.organizationId,
+      displayName,
       record.storageScope,
       record.identityScope,
       record.policyScope,
@@ -308,6 +311,7 @@ export class AsyncOrganizationRepository {
       `SELECT
          tenant_id AS "tenantId",
          organization_id AS "organizationId",
+         display_name AS "displayName",
          storage_scope AS "storageScope",
          identity_scope AS "identityScope",
          policy_scope AS "policyScope",
@@ -334,6 +338,7 @@ export class AsyncOrganizationRepository {
         `SELECT
            tenant_id AS "tenantId",
            organization_id AS "organizationId",
+           display_name AS "displayName",
            storage_scope AS "storageScope",
            identity_scope AS "identityScope",
            policy_scope AS "policyScope",
@@ -355,6 +360,7 @@ export class AsyncOrganizationRepository {
       `SELECT
          tenant_id AS "tenantId",
          organization_id AS "organizationId",
+         display_name AS "displayName",
          storage_scope AS "storageScope",
          identity_scope AS "identityScope",
          policy_scope AS "policyScope",

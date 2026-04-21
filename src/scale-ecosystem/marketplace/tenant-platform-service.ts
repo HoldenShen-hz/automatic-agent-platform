@@ -368,9 +368,11 @@ export class TenantPlatformService {
     return this.db.transaction(() => {
       const organization = this.requireOrganization(input.organizationId);
       const createdAt = input.createdAt ?? nowIso();
+      const tenantId = assertIdentifier(input.tenantId ?? newId("tenant"), "tenant.invalid_tenant_id");
       const tenant: TenantRecord = {
-        tenantId: assertIdentifier(input.tenantId ?? newId("tenant"), "tenant.invalid_tenant_id"),
+        tenantId,
         organizationId: organization.organizationId,
+        displayName: tenantId,
         storageScope: assertIdentifier(input.storageScope, "tenant.invalid_storage_scope"),
         identityScope: assertIdentifier(input.identityScope, "tenant.invalid_identity_scope"),
         policyScope: assertIdentifier(input.policyScope, "tenant.invalid_policy_scope"),

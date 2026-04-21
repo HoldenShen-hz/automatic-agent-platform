@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import test from "node:test";
 
 import { DeploymentExecutionService, type DeploymentCommandResult } from "../../../../src/platform/control-plane/incident-control/deployment-execution-service.js";
@@ -11,8 +10,7 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../..");
+const REPO_ROOT = process.cwd();
 
 function seedReadyEnvironment(store: AuthoritativeTaskStore, environment: "test" | "staging" | "pre-prod" | "prod", verifiedAt: string): void {
   const componentTypes = environment === "test"

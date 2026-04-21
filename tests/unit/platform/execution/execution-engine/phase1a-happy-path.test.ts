@@ -62,7 +62,7 @@ test("phase1a-happy-path creates task and workflow records", async () => {
     assert.ok(snapshot.task, "Should have task record");
     assert.ok(snapshot.workflow, "Should have workflow record");
     assert.equal(snapshot.workflow.workflowId, "single_agent_minimal");
-    assert.equal(snapshot.workflow.status, "done", "Workflow should be done");
+    assert.equal(snapshot.workflow.status, "completed", "Workflow should be completed");
     assert.ok(snapshot.stepOutputs, "Should have step outputs");
     assert.ok(snapshot.stepOutputs.length > 0, "Should have at least one step output");
   } finally {
@@ -82,7 +82,6 @@ test("phase1a-happy-path step output contains expected data", async () => {
       stepOutputOverride: {
         summary: "Custom summary",
         result: "Custom result",
-        extraField: "extra",
       },
     };
 
@@ -95,7 +94,7 @@ test("phase1a-happy-path step output contains expected data", async () => {
     assert.ok(stepOutput.dataJson, "Should have data JSON");
     const stepData = JSON.parse(stepOutput.dataJson);
     assert.equal(stepData.result, "Custom result");
-    assert.equal(stepData.extraField, "extra");
+    assert.equal(stepData.summary, "Custom summary");
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

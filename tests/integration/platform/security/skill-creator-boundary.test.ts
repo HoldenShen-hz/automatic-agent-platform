@@ -7,7 +7,7 @@ import { cleanupPath, createSymlink, createTempWorkspace } from "../../../helper
 
 function runCliExpectFailure(env: NodeJS.ProcessEnv): { stderr: string; status: number } {
   try {
-    execFileSync(process.execPath, [process.env.AA_TEST_SKILL_CREATOR_SCRIPT ?? join(process.cwd(), "dist", "src", "cli", "skill-creator.js")], {
+    execFileSync(process.execPath, [process.env.AA_TEST_SKILL_CREATOR_SCRIPT ?? join(process.cwd(), "dist", "src", "sdk", "cli", "skill-creator.js")], {
       cwd: process.cwd(),
       env: {
         ...process.env,

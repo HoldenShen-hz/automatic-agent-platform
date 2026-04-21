@@ -258,17 +258,18 @@ test("createLoopDetectionMiddlewareFull wrapToolCall throws on escalation", asyn
   state.recordToolCall("bad_tool", { x: 1 });
   state.recordToolCall("bad_tool", { x: 1 });
 
-  await assert.rejects(
-    async () => {
-      await wrapToolCall.run(
-        { runtime: { traceId: "test", taskId: "task_1" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
-        { toolName: "bad_tool", args: { x: 1 } },
-        async () => "should not reach here"
-      );
-    },
-    /loop_detection.escalated/,
-    "Should throw on escalated tool call"
-  );
+  await assert.rejects(async () => {
+    await wrapToolCall.run(
+      { runtime: { traceId: "test", taskId: "task_1" }, chainStartedAt: "", agentRound: 0, stepId: null, executionId: null, taskId: "task_1" },
+      { toolName: "bad_tool", args: { x: 1 } },
+      async () => "should not reach here"
+    );
+  }, (error: unknown) => {
+    assert.equal(error instanceof Error, true);
+    assert.match(String((error as Error & { code?: string }).code ?? ""), /loop_detection\.escalated/);
+    assert.match((error as Error).message, /Tool bad_tool repeated 3 times/);
+    return true;
+  }, "Should throw on escalated tool call");
 });
 
 test("SequenceLoopDetector records actions and detects loops", () => {
@@ -283,11 +284,14 @@ test("SequenceLoopDetector records actions and detects loops", () => {
   const result3 = detector.recordAction("read");
   assert.equal(result3.isLoop, false);
 
-  // Next "read, write, read" sequence
-  const result4 = detector.recordAction("read");
-  assert.equal(result4.isLoop, true, "Should detect sequence loop");
-  assert.deepEqual(result4.sequence, ["read", "write", "read"]);
-  assert.equal(result4.count, 2);
+  // Repeat the original 3-action window once more.
+  const result4 = detector.recordAction("write");
+  assert.equal(result4.isLoop, false);
+
+  const result5 = detector.recordAction("read");
+  assert.equal(result5.isLoop, true, "Should detect sequence loop");
+  assert.deepEqual(result5.sequence, ["read", "write", "read"]);
+  assert.equal(result5.count, 2);
 });
 
 test("SequenceLoopDetector getHistory returns action history", () => {

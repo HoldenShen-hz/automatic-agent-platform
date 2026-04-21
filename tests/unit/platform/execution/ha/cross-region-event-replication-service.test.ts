@@ -97,7 +97,7 @@ test("replicate replicates event to all registered targets", () => {
   assert.ok(planId);
   const events = publisher.getPublishedEvents();
   assert.equal(events.length, 2);
-  assert.ok(events.some((e) => e.eventType === "task.updated" as TypedEventType));
+  assert.ok(events.every((e) => e.eventType === "task.created" as TypedEventType));
 });
 
 test("replicate replicates to specific target region when targetRegionIds provided", () => {

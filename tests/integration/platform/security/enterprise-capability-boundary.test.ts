@@ -9,7 +9,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 function runCli(env: NodeJS.ProcessEnv): string {
   return execFileSync(
     process.execPath,
-    [join(process.cwd(), "dist", "src", "cli", "enterprise-capability.js")],
+    [join(process.cwd(), "dist", "src", "sdk", "cli", "enterprise-capability.js")],
     {
       cwd: process.cwd(),
       env: {

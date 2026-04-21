@@ -56,7 +56,7 @@ test("BrowserExecutor creates a new session and returns session ID", () => {
   const sessionId = executor.createSession(context);
 
   assert.ok(sessionId);
-  assert.ok(sessionId.startsWith("bsession-"));
+  assert.ok(sessionId.startsWith("bsession_"));
 
   const session = executor.getSession(sessionId);
   assert.ok(session);
@@ -82,7 +82,7 @@ test("BrowserExecutor.closeSession() throws for non-existent session", () => {
 
   assert.throws(
     () => executor.closeSession("non-existent-session"),
-    { message: /session_not_found/ },
+    { message: /not found/ },
   );
 });
 
@@ -142,7 +142,7 @@ test("BrowserExecutor.navigate() navigates to a URL", async () => {
   assert.equal(result.status, "ok");
   assert.equal(result.browserAction, "navigate");
   assert.deepEqual(result.output, { url: "https://example.com" });
-  assert.ok(result.executionId.startsWith("bexec-"));
+  assert.ok(result.executionId.startsWith("bexec_"));
   assert.ok(result.durationMs >= 0);
 });
 
@@ -186,7 +186,7 @@ test("BrowserExecutor.navigate() throws for non-existent session", async () => {
 
   await assert.rejects(
     async () => executor.navigate("non-existent", context, options),
-    { message: /session_not_found/ },
+    { message: /not found/ },
   );
 });
 

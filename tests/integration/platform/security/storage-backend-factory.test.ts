@@ -20,7 +20,7 @@ function runModuleWithEnv(
   };
 
   try {
-    const stdout = execFileSync("./node_modules/.bin/tsx", ["--eval", source], options);
+    const stdout = execFileSync(process.execPath, ["--input-type=module", "--eval", source], options);
     return {
       stdout,
       stderr: "",
@@ -143,9 +143,7 @@ test("authoritative storage admin uses the async postgres path and surfaces driv
   try {
     createFile(shadowPath, "");
     const source = `
-      void (async () => {
-        await import(${JSON.stringify(distModuleHref("../../../../src/sdk/cli/authoritative-storage-admin.js"))});
-      })();
+      await import(${JSON.stringify(distModuleHref("../../../../src/sdk/cli/authoritative-storage-admin.js"))});
     `;
     const result = runModuleWithEnv(source, {
       AA_DB_PATH: dbPath,
