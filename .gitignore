@@ -26,3 +26,4 @@ coverage/
 .aa-tool-artifacts/
 .stryker-tmp/
 dist_temp/
+dist_test
