@@ -48,6 +48,7 @@ import {
   MEMORY_ENHANCEMENT_SQL,
   EVENT_DEAD_LETTERS_SQL,
   SESSION_EVENTS_SQL,
+  DLQ_RECORDS_SQL,
 } from "./sqlite-migration-runtime-part3.js";
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../../../execution/ha/control-plane-load-balancing-schema.js";
@@ -335,6 +336,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(38, "0038_memory_enhancement", MEMORY_ENHANCEMENT_SQL),
   defineMigration(39, "0039_event_dead_letters", EVENT_DEAD_LETTERS_SQL),
   defineMigration(40, "0040_session_events", SESSION_EVENTS_SQL),
+  defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
 ] as const;
 
 /**

@@ -44,8 +44,12 @@ export class CacheInvalidationBroadcast {
 
     this.pub = new Redis(redisConfig);
     this.sub = new Redis(redisConfig);
-    this.pub.on("error", () => {});
-    this.sub.on("error", () => {});
+    this.pub.on("error", (err: Error) => {
+      console.error("redis.connection_error", { component: "CacheInvalidationBroadcast:pub", err: err.message });
+    });
+    this.sub.on("error", (err: Error) => {
+      console.error("redis.connection_error", { component: "CacheInvalidationBroadcast:sub", err: err.message });
+    });
   }
 
   async start(): Promise<void> {

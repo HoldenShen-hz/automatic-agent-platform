@@ -559,3 +559,28 @@ CREATE TABLE IF NOT EXISTS session_events (
 );
 CREATE INDEX IF NOT EXISTS idx_session_events_session ON session_events(session_id, created_at ASC);
 `;
+
+/**
+ * Migration 41: Adds persistent Dead Letter Queue records table.
+ * This replaces the in-memory Map storage to survive process restarts.
+ */
+export const DLQ_RECORDS_SQL = `
+CREATE TABLE IF NOT EXISTS dlq_records (
+  dead_letter_id TEXT PRIMARY KEY,
+  source_event_id TEXT NOT NULL,
+  consumer_id TEXT NOT NULL,
+  error_code TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  next_retry_at TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  original_timestamp TEXT NULL,
+  failure_category TEXT NULL,
+  retry_exhausted_at TEXT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dlq_records_status ON dlq_records(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dlq_records_consumer ON dlq_records(consumer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dlq_records_source_event ON dlq_records(source_event_id);
+`;

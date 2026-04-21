@@ -52,14 +52,15 @@ export { DelegationTracker, createDelegationTracker, type DelegationTreeNode, ty
 // Re-export delegation manager types
 export type { DelegationExpirationConfig, ExpirationScanResult } from "./delegation-manager.service.js";
 
-// Re-export collaboration modes service
-export {
-  CollaborationModeService,
-  createCollaborationModeService,
-  type PipelineStage,
-  type PipelineState,
-  type NegotiationProposal,
-  type NegotiationRound,
-  type NegotiationState,
-  type CollaborationResult,
-} from "./collaboration-modes.js";
+// Re-export collaboration modes service (TEMPORARILY DISABLED - collaboration-modes.js missing)
+// TODO: Restore when collaboration-modes.ts is implemented
+// export {
+//   CollaborationModeService,
+//   createCollaborationModeService,
+//   type PipelineStage,
+//   type PipelineState,
+//   type NegotiationProposal,
+//   type NegotiationRound,
+//   type NegotiationState,
+//   type CollaborationResult,
+// } from "./collaboration-modes.js";
