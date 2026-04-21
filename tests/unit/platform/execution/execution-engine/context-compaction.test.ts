@@ -49,7 +49,7 @@ const createMockStore = (overrides: Partial<AuthoritativeTaskStore> = {}): Autho
       listGatewayTargets: () => [],
     } as any,
   } as any;
-  return { ...baseStore, ...overrides } as any;
+  return { ...baseStore, ...(overrides as any) } as any;
 };
 
 const createMessage = (overrides: Partial<{
@@ -77,7 +77,7 @@ test("ContextCompactionService compactContext returns empty result for no messag
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -101,7 +101,7 @@ test("ContextCompactionService does not trigger stage1 when under threshold", ()
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", content: "Short message" }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -124,7 +124,7 @@ test("ContextCompactionService uses default stage1TriggerRatio of 0.7", () => {
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", content: "A".repeat(1000) }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -146,7 +146,7 @@ test("ContextCompactionService uses default stage2TriggerRatio of 0.85", () => {
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", content: "A".repeat(2000) }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -167,7 +167,7 @@ test("ContextCompactionService respects custom stage1TriggerRatio", () => {
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", content: "Test" }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -195,7 +195,7 @@ test("ContextCompactionService uses default recentToolResultWindow of 3", () => 
         createMessage({ id: "msg_4", messageType: "tool_result", content: "Result 4" }),
         createMessage({ id: "msg_5", messageType: "tool_result", content: "Result 5" }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -215,14 +215,14 @@ test("ContextCompactionService uses default compactionMaxFrequencyPerSession of 
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [],
-    },
+    } as any,
     session: {
       listCompactionRecordsBySession: () => [
         { id: "c1", stage: "summarize" } as any,
         { id: "c2", stage: "summarize" } as any,
       ],
       insertCompactionRecord: () => {},
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -245,7 +245,7 @@ test("ContextCompactionService falls back to stage1 when max summaries exceeded"
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", messageType: "assistant_response", content: "Response" }),
       ],
-    },
+    } as any,
     session: {
       listCompactionRecordsBySession: () => [
         { id: "c1", stage: "summarize" } as any,
@@ -253,7 +253,7 @@ test("ContextCompactionService falls back to stage1 when max summaries exceeded"
         { id: "c3", stage: "summarize" } as any,
       ],
       insertCompactionRecord: () => {},
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -274,7 +274,7 @@ test("ContextCompactionService uses custom occurredAt timestamp", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -300,7 +300,7 @@ test("ContextCompactionService preserves protected messages", () => {
         createMessage({ id: "msg_3", messageType: "approval_decision", content: "Approved" }),
         createMessage({ id: "msg_4", messageType: "tool_result", content: "Tool result" }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -324,7 +324,7 @@ test("ContextCompactionService calculates token reduction on stage1", () => {
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", messageType: "tool_result", content: "Long tool result that should be trimmed" }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 
@@ -350,7 +350,7 @@ test("ContextCompactionService handles KV cache config", () => {
       listMessagesBySession: () => [
         createMessage({ id: "msg_1", direction: "system", content: "System message" }),
       ],
-    },
+    } as any,
   });
   const service = new ContextCompactionService(createMockDb(), mockStore);
 

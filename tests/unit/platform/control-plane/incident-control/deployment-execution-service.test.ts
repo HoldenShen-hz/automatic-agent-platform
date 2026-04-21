@@ -176,7 +176,7 @@ test("deployment execution service executes publish and deploy via injected runn
           AA_SECRET_SYSTEM_DEPLOY_KUBECONFIG_PROD: "deploy-token-abcdef",
         },
       }),
-      commandRunner: runner,
+      commandRunner: runner as any,
     });
 
     const exported = await service.exportReport({
@@ -384,7 +384,7 @@ test("deployment execution service issues and revokes managed secret leases duri
       artifactStoreOptions: { rootDir: join(harness.workspace, "artifacts") },
       secretProvider: new EnvSecretProvider({ env: {} }),
       secretManagementService,
-      commandRunner: runner,
+      commandRunner: runner as any,
     });
 
     const exported = await service.exportReport({

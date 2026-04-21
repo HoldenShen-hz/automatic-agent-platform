@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { SignalPreprocessor } from "../../../../src/scale-ecosystem/feedback-loop/collector/signal-preprocessor.js";
 import { parseFeedbackBatch } from "../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 import type { FeedbackSignal } from "../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
-import type { LearningSignal } from "../../../../src/platform/orchestration/oapeflir/learn/learning-object-model.js";
+import type { LearningSignal } from "../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
   return {

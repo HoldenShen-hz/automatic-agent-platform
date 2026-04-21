@@ -202,7 +202,7 @@ test("release pipeline service executes image build and publish workflow with re
           AA_SECRET_SYSTEM_DEPLOY_KUBECONFIG_STAGING: "deploy-token-staging-5678",
         },
       }),
-      commandRunner: runner,
+      commandRunner: runner as any,
     });
 
     const executed = await service.executeAndExport({

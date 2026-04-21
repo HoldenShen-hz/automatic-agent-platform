@@ -181,7 +181,7 @@ test("deployment execution revokes issued managed secret leases when command exe
         },
       }),
       commandRunner: {
-        run(request) {
+        run(request): DeploymentCommandResult {
           return {
             step: request.step,
             command: request.command,
