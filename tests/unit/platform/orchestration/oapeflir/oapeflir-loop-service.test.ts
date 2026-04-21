@@ -358,3 +358,133 @@ test("OapeflirLoopService preserves successful quality gate when only success fe
   assert.equal(result.qualityGate.accepted, true);
   assert.equal(result.replanDecision.shouldReplan, false);
 });
+
+test("OapeflirLoopService.buildSerializedHandoff creates handoff from loop result", async () => {
+  runtimeMetricsRegistry.reset();
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+  });
+
+  const result = await service.run({
+    taskId: "task_handoff",
+    objective: "Build handoff from completed loop",
+    workflow: {
+      workflow: { workflowId: "wf_handoff", divisionId: "coding", steps: [] },
+      executionSteps: [
+        {
+          stepId: "step_handoff",
+          divisionId: "coding",
+          roleId: "writer",
+          inputKeys: [],
+          agentId: "agent_writer",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
+        },
+      ],
+      planReason: "workflow.single_step_execution",
+      dependencyEdges: [],
+    },
+  });
+
+  const handoff = service.buildSerializedHandoff(result, "agent_a", "agent_b", 4096);
+
+  assert.equal(handoff.fromAgentId, "agent_a");
+  assert.equal(handoff.toAgentId, "agent_b");
+  assert.equal(handoff.state.currentPhase, "completed");
+  assert.ok(handoff.taskId.length > 0);
+  assert.ok(handoff.handoffId.length > 0);
+});
+
+test("OapeflirLoopService handles empty feedback signals for buildSerializedHandoff", async () => {
+  runtimeMetricsRegistry.reset();
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+  });
+
+  // Run with empty feedback to have empty learning objects
+  const result = await service.run({
+    taskId: "task_handoff_empty",
+    objective: "Build handoff with no feedback",
+    workflow: {
+      workflow: { workflowId: "wf_handoff_empty", divisionId: "coding", steps: [] },
+      executionSteps: [
+        {
+          stepId: "step_empty",
+          divisionId: "coding",
+          roleId: "writer",
+          inputKeys: [],
+          agentId: "agent_writer",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
+        },
+      ],
+      planReason: "workflow.single_step_execution",
+      dependencyEdges: [],
+    },
+    feedbackSignals: [],
+  });
+
+  // Should not throw even with empty feedback
+  const handoff = service.buildSerializedHandoff(result, "agent_empty", "agent_b", 4096);
+  assert.equal(handoff.fromAgentId, "agent_empty");
+  assert.equal(handoff.toAgentId, "agent_b");
+});
+
+test("OapeflirLoopService records quality gate replan trigger correctly", async () => {
+  runtimeMetricsRegistry.reset();
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+  });
+
+  const result = await service.run({
+    taskId: "task_replan_trigger",
+    objective: "Test replan trigger with failed feedback",
+    workflow: {
+      workflow: { workflowId: "wf_replan", divisionId: "coding", steps: [] },
+      executionSteps: [
+        {
+          stepId: "step_replan",
+          divisionId: "coding",
+          roleId: "writer",
+          inputKeys: [],
+          agentId: "agent_writer",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
+        },
+      ],
+      planReason: "workflow.single_step_execution",
+      dependencyEdges: [],
+    },
+    feedbackSignals: [
+      {
+        signalId: "signal_fail",
+        taskId: "task_replan_trigger",
+        source: "validation",
+        category: "failure",
+        severity: "error",
+        payload: {
+          summary: "Schema validation failed",
+          reasonCode: "schema_loop.detected",
+        },
+        stepOutputRefs: ["step_replan"],
+        timestamp: Date.now(),
+      },
+    ],
+  });
+
+  // Verify replan was triggered due to quality gate rejection
+  assert.equal(result.replanDecision.shouldReplan, true);
+  assert.ok(result.qualityGate.reasonCodes.length > 0);
+});

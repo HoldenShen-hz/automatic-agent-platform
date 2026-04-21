@@ -60,24 +60,13 @@ test("inferPgSslFromDsn returns null for missing sslmode param", () => {
 // defaultPostgresFactory tests
 // =============================================================================
 
-test("defaultPostgresFactory throws when postgres module not found", () => {
-  // Calling defaultPostgresFactory requires the 'postgres' package
-  // It uses createRequire to dynamically import it
-  // Without the package installed, it should throw a Module not found error
-  let threw = false;
-  try {
-    defaultPostgresFactory("postgres://localhost/db", {});
-  } catch {
-    threw = true;
-  }
-  assert.equal(threw, true);
-});
-
-test("defaultPostgresFactory returns a function when postgres is available", () => {
-  // This test documents the expected shape of what defaultPostgresFactory returns
-  // It's a tagged template function when postgres is installed
+test("defaultPostgresFactory returns a callable factory function", () => {
+  // This test verifies that defaultPostgresFactory returns a function
+  // The returned function is a tagged template function when postgres is installed
   const factory = defaultPostgresFactory;
   assert.equal(typeof factory, "function");
-  // The factory itself is a function that creates a PostgresSqlDriver
-  // We can't fully test it without a real postgres instance, but we can verify it returns something callable
+
+  // Calling factory returns a driver (tagged template function)
+  const driver = factory("postgres://localhost/db", { max: 1 });
+  assert.equal(typeof driver, "function");
 });

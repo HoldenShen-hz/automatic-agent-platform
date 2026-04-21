@@ -403,3 +403,95 @@ test("renderMessagePartContent renders retry_record when attempt is not a number
   assert.ok(result.includes("error=ERR_NULL"));
   assert.ok(!result.includes("attempt="));
 });
+
+test("renderMessagePartContent renders command_execution part with cwd", () => {
+  const part: MessagePart = {
+    partId: "msg_1:part:1",
+    messageId: "msg_1",
+    partType: "command_execution",
+    sequence: 1,
+    contentJson: '{"commandRef":"cmd_123","status":"success","cwd":"/workspace/project"}',
+    lineageJson: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const result = renderMessagePartContent(part);
+  assert.ok(result.includes("cmd_123"));
+  assert.ok(result.includes("success"));
+  assert.ok(result.includes("/workspace/project"));
+});
+
+test("renderMessagePartContent renders command_execution part without cwd", () => {
+  const part: MessagePart = {
+    partId: "msg_1:part:1",
+    messageId: "msg_1",
+    partType: "command_execution",
+    sequence: 1,
+    contentJson: '{"commandRef":"cmd_456","status":"failed"}',
+    lineageJson: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const result = renderMessagePartContent(part);
+  assert.ok(result.includes("cmd_456"));
+  assert.ok(result.includes("failed"));
+  assert.ok(!result.includes("cwd="));
+});
+
+test("renderMessagePartContent renders mcp_call part", () => {
+  const part: MessagePart = {
+    partId: "msg_1:part:1",
+    messageId: "msg_1",
+    partType: "mcp_call",
+    sequence: 1,
+    contentJson: '{"serverName":"filesystem","toolName":"read_file","status":"completed"}',
+    lineageJson: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const result = renderMessagePartContent(part);
+  assert.ok(result.includes("filesystem"));
+  assert.ok(result.includes("read_file"));
+  assert.ok(result.includes("completed"));
+});
+
+test("renderMessagePartContent renders mcp_call part with missing fields", () => {
+  const part: MessagePart = {
+    partId: "msg_1:part:1",
+    messageId: "msg_1",
+    partType: "mcp_call",
+    sequence: 1,
+    contentJson: '{"status":"error"}',
+    lineageJson: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const result = renderMessagePartContent(part);
+  assert.ok(result.includes("unknown"));
+  assert.ok(result.includes("error"));
+});
+
+test("renderMessagePartContent falls back to JSON stringify when no known keys match", () => {
+  const part: MessagePart = {
+    partId: "msg_1:part:1",
+    messageId: "msg_1",
+    partType: "reasoning",
+    sequence: 1,
+    contentJson: '{"unknownField":"unknownValue","anotherField":123}',
+    lineageJson: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const result = renderMessagePartContent(part);
+  // Should fall back to JSON.stringify when no text/summary/result/status keys match
+  assert.ok(result.includes("unknownField") || result.includes("unknownValue"));
+});
+
+test("renderMessagePartContent renders decision_prompt part", () => {
+  const part: MessagePart = {
+    partId: "msg_1:part:1",
+    messageId: "msg_1",
+    partType: "decision_prompt",
+    sequence: 1,
+    contentJson: '{"prompt":"Should I proceed?","reason":"User asked to continue"}',
+    lineageJson: null,
+    createdAt: "2024-01-01T00:00:00.000Z",
+  };
+  const result = renderMessagePartContent(part);
+  assert.ok(result.includes("Should I proceed"));
+});

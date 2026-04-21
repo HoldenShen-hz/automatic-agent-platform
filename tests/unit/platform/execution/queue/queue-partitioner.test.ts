@@ -246,13 +246,12 @@ test("QueuePartitioner detectOverload handles delayed jobs in count", () => {
   };
   partitioner.registerPartition(partition);
 
-  // Add 5 waiting and 5 delayed (total 10 which equals maxDepth)
-  mockAdapter._addJobs("queue:task", 5, "waiting");
+  // Add 6 waiting and 5 delayed (total 11 which exceeds maxDepth of 10)
+  mockAdapter._addJobs("queue:task", 6, "waiting");
   mockAdapter._addJobs("queue:task", 5, "delayed");
 
   const overloads = partitioner.detectOverload(mockAdapter);
-  // waiting + delayed = 5 + 5 = 10, which equals maxDepth, so should trigger overload
-  // The condition is: waiting + delayed > maxDepth
+  // waiting + delayed = 6 + 5 = 11 > maxDepth of 10
   assert.equal(overloads.length, 1);
 });
 
