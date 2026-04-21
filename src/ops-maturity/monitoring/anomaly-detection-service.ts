@@ -54,6 +54,8 @@ const DEFAULT_SLO_THRESHOLDS: SloThreshold[] = [
 export class AnomalyDetectionService {
   private readonly thresholds: readonly SloThreshold[];
   private readonly metricBuffer = new Map<string, MetricDatapoint[]>();
+  private readonly maxBufferEntries = 500;
+  private cleanupAt = 0;
 
   public constructor(thresholds?: readonly SloThreshold[]) {
     this.thresholds = thresholds ?? DEFAULT_SLO_THRESHOLDS;
@@ -63,6 +65,17 @@ export class AnomalyDetectionService {
     const key = name;
     const existing = this.metricBuffer.get(key) ?? [];
     this.metricBuffer.set(key, [...existing, { timestamp: timestamp ?? nowIso(), value }]);
+    this.evictExpired();
+  }
+
+  private evictExpired(): void {
+    const now = Date.now();
+    if (now - this.cleanupAt < 30000) return;
+    this.cleanupAt = now;
+    if (this.metricBuffer.size <= this.maxBufferEntries) return;
+    const keys = Array.from(this.metricBuffer.keys());
+    const toRemove = keys.slice(0, Math.floor(this.maxBufferEntries * 0.2));
+    for (const k of toRemove) this.metricBuffer.delete(k);
   }
 
   public detectAnomalies(metricName: string): readonly AnomalyAlert[] {
