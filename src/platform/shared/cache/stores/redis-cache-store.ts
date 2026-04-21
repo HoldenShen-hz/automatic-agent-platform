@@ -12,6 +12,7 @@ import { stableStringify } from "../utils/stable-stringify.js";
 import type { RedisConnectionConfig } from "../../utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../../utils/redis-client-options.js";
 import { StructuredLogger } from "../../observability/structured-logger.js";
+import { runtimeMetricsRegistry } from "../../observability/runtime-metrics-registry.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -29,6 +30,7 @@ export class RedisCacheStore implements CacheStore {
       keyPrefix: this.prefix,
     }));
     this.redis.on("error", (err) => {
+      runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-cache-store" }, 1);
       logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
     });
   }

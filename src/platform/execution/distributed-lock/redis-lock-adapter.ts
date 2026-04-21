@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 
 import { LockingError } from "../../contracts/errors.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { lockLogger } from "./locking-support.js";
 import type {
   AcquireLockInput,
@@ -47,6 +48,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 1,
     }));
     this.redis.on("error", (err) => {
+      runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "distributed-lock" }, 1);
       lockLogger.log({ level: "error", message: "redis.connection_error", data: { err: err instanceof Error ? err.message : String(err) } });
     });
   }

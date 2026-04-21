@@ -87,7 +87,7 @@ import {
 } from "../../../control-plane/iam/audit-event-integrity.js";
 import { getEventTier, getRequiredConsumers } from "../../events/event-types.js";
 import { ensureMessagePartsJson } from "../../../model-gateway/messages/message-parts.js";
-import { getTenantIdOrNull, hasTenantContext } from "../../../execution/execution-engine/runtime-context.js";
+import { getTenantIdOrNull, hasTenantContext } from "../../../shared/context/runtime-context.js";
 import { newId, nowIso } from "../../../contracts/types/ids.js";
 import type { AuthoritativeSqlDatabase } from "./sqlite-database.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";

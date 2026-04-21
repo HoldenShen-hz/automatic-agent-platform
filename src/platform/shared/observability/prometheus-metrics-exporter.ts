@@ -162,6 +162,20 @@ export class PrometheusMetricsExporter {
     }
 
     lines.push("");
+    lines.push("# HELP queue_enqueue_failures_total Total queue enqueue write failures observed by backend and mode.");
+    lines.push("# TYPE queue_enqueue_failures_total counter");
+    for (const line of this.renderCounterSeries("queue_enqueue_failures_total")) {
+      lines.push(line);
+    }
+
+    lines.push("");
+    lines.push("# HELP alert_delivery_failures_total Total alert delivery failures observed by channel.");
+    lines.push("# TYPE alert_delivery_failures_total counter");
+    for (const line of this.renderCounterSeries("alert_delivery_failures_total")) {
+      lines.push(line);
+    }
+
+    lines.push("");
     lines.push("# HELP healthy_workers Healthy workers available.");
     lines.push("# TYPE healthy_workers gauge");
     lines.push(`healthy_workers ${summary.runtimeMetrics.workerHealth.healthyWorkers}`);

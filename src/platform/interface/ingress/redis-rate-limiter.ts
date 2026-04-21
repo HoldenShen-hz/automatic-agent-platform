@@ -9,6 +9,7 @@ import { Redis } from "ioredis";
 import type { RedisConnectionConfig } from "../../shared/utils/redis-client-options.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -34,6 +35,7 @@ export class RedisRateLimiter {
       connectTimeout: config.connectTimeout ?? 500,
     }));
     this.redis.on("error", (err) => {
+      runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-rate-limiter" }, 1);
       logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
     });
   }

@@ -25,10 +25,20 @@
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AlertDispatcher } from "./alert-dispatcher.js";
+import { runtimeMetricsRegistry } from "./runtime-metrics-registry.js";
 import { rolloutFreezeManager } from "./rollout-freeze-manager.js";
 import { StructuredLogger } from "./structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
+
+function recordAlertDeliveryFailure(channel: AlertChannelKind, alertId: string, error: unknown): void {
+  runtimeMetricsRegistry.incrementCounter("alert_delivery_failures_total", { channel }, 1);
+  logger.error("alert.delivery_failed", {
+    alertId,
+    channel,
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
 import {
   type AlertChannelKind,
   type AlertEvent,
@@ -174,7 +184,7 @@ export class WebhookAlertChannel implements AlertChannel {
       body,
       signal: AbortSignal.timeout(this.timeoutMs),
     }).catch((err) => {
-      logger.error("alert.delivery_failed", { alertId: event.id, err: err instanceof Error ? err.message : String(err) });
+      recordAlertDeliveryFailure("webhook", event.id, err);
     });
 
     return { channelKind: "webhook", delivered: true, error: null };
@@ -229,7 +239,7 @@ export class SlackAlertChannel implements AlertChannel {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
     }).catch((err) => {
-      logger.error("alert.delivery_failed", { alertId: event.id, channel: "slack", error: err instanceof Error ? err.message : String(err) });
+      recordAlertDeliveryFailure("slack", event.id, err);
     });
 
     return { channelKind: "slack", delivered: true, error: null };
@@ -289,7 +299,7 @@ export class PagerDutyAlertChannel implements AlertChannel {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
     }).catch((err) => {
-      logger.error("alert.delivery_failed", { alertId: event.id, channel: "pagerduty", error: err instanceof Error ? err.message : String(err) });
+      recordAlertDeliveryFailure("pagerduty", event.id, err);
     });
 
     return { channelKind: "pagerduty", delivered: true, error: null };
@@ -347,7 +357,7 @@ export class OpsGenieAlertChannel implements AlertChannel {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(this.timeoutMs),
     }).catch((err) => {
-      logger.error("alert.delivery_failed", { alertId: event.id, channel: "opsgenie", error: err instanceof Error ? err.message : String(err) });
+      recordAlertDeliveryFailure("opsgenie", event.id, err);
     });
 
     return { channelKind: "opsgenie", delivered: true, error: null };

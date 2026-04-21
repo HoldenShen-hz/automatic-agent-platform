@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
@@ -70,6 +71,7 @@ class RedisQueueClient {
       connectTimeout: config.connectTimeout ?? 500,
     }));
     this.redis.on("error", (err) => {
+      runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-queue-adapter" }, 1);
       logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
     });
   }
@@ -244,14 +246,27 @@ export class RedisQueueAdapter implements QueueAdapter {
     // Execute pipeline and handle errors properly
     // Note: This is still async but we log the error instead of silently swallowing it
     const jobId = job.id;
-    p.exec().catch((err: unknown) => {
-      // Log the error for observability - the job was already returned to caller
-      logger.error("queue.enqueue_pipeline_failed", {
-        jobId,
-        queueName: input.queueName,
-        error: err instanceof Error ? err.message : String(err),
+    p.exec()
+      .then((results) => {
+        const firstFailure = results.find((result) => result[0] != null)?.[0];
+        if (firstFailure == null) {
+          return;
+        }
+        runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "sync" }, 1);
+        logger.error("queue.enqueue_pipeline_failed", {
+          jobId,
+          queueName: input.queueName,
+          error: firstFailure instanceof Error ? firstFailure.message : String(firstFailure),
+        });
+      })
+      .catch((err: unknown) => {
+        runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "sync" }, 1);
+        logger.error("queue.enqueue_pipeline_failed", {
+          jobId,
+          queueName: input.queueName,
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
-    });
 
     return job;
   }
@@ -272,49 +287,54 @@ export class RedisQueueAdapter implements QueueAdapter {
   }
 
   async enqueueAsync(input: EnqueueInput): Promise<QueueJobRecord> {
-    const now = nowIso();
-    const isDelayed = input.delayUntil != null && input.delayUntil > now;
-    const status: QueueJobStatus = isDelayed ? "delayed" : "waiting";
-    if (input.idempotencyKey) {
-      const existingId = await this.client.hget(`idx:${input.queueName}:idempotency`, input.idempotencyKey);
-      if (existingId) {
-        const existing = await this.getJobAsync(existingId);
-        if (existing) return existing;
+    try {
+      const now = nowIso();
+      const isDelayed = input.delayUntil != null && input.delayUntil > now;
+      const status: QueueJobStatus = isDelayed ? "delayed" : "waiting";
+      if (input.idempotencyKey) {
+        const existingId = await this.client.hget(`idx:${input.queueName}:idempotency`, input.idempotencyKey);
+        if (existingId) {
+          const existing = await this.getJobAsync(existingId);
+          if (existing) return existing;
+        }
       }
+      const job: QueueJobRecord = {
+        id: newId("qjob"),
+        queueName: input.queueName,
+        payload: JSON.stringify(input.payload),
+        status,
+        priority: input.priority ?? 0,
+        attempts: 0,
+        maxAttempts: input.maxAttempts ?? DEFAULT_RETRY_POLICY.maxAttempts,
+        lastError: null,
+        delayUntil: input.delayUntil ?? null,
+        idempotencyKey: input.idempotencyKey ?? null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      };
+      await this.client.hmset(this.jobKey(job.id), {
+        id: job.id, queue_name: job.queueName, payload: job.payload, status: job.status,
+        priority: String(job.priority), attempts: String(job.attempts), max_attempts: String(job.maxAttempts),
+        last_error: "", delay_until: job.delayUntil ?? "", idempotency_key: job.idempotencyKey ?? "",
+        created_at: job.createdAt, updated_at: job.updatedAt, completed_at: "",
+      });
+      await this.client.expire(this.jobKey(job.id), this.jobTtlSeconds);
+      await this.client.sadd(this.queueSetKey(), input.queueName);
+      if (input.idempotencyKey) {
+        await this.client.hset(`idx:${input.queueName}:idempotency`, input.idempotencyKey, job.id);
+        await this.client.expire(`idx:${input.queueName}:idempotency`, this.jobTtlSeconds);
+      }
+      if (isDelayed) {
+        await this.client.zadd(this.waitingKey(input.queueName), new Date(input.delayUntil!).getTime(), job.id);
+      } else {
+        await this.client.zadd(this.waitingKey(input.queueName), job.priority * 1e13 + new Date(job.createdAt).getTime(), job.id);
+      }
+      return job;
+    } catch (error) {
+      runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "async" }, 1);
+      throw error;
     }
-    const job: QueueJobRecord = {
-      id: newId("qjob"),
-      queueName: input.queueName,
-      payload: JSON.stringify(input.payload),
-      status,
-      priority: input.priority ?? 0,
-      attempts: 0,
-      maxAttempts: input.maxAttempts ?? DEFAULT_RETRY_POLICY.maxAttempts,
-      lastError: null,
-      delayUntil: input.delayUntil ?? null,
-      idempotencyKey: input.idempotencyKey ?? null,
-      createdAt: now,
-      updatedAt: now,
-      completedAt: null,
-    };
-    await this.client.hmset(this.jobKey(job.id), {
-      id: job.id, queue_name: job.queueName, payload: job.payload, status: job.status,
-      priority: String(job.priority), attempts: String(job.attempts), max_attempts: String(job.maxAttempts),
-      last_error: "", delay_until: job.delayUntil ?? "", idempotency_key: job.idempotencyKey ?? "",
-      created_at: job.createdAt, updated_at: job.updatedAt, completed_at: "",
-    });
-    await this.client.expire(this.jobKey(job.id), this.jobTtlSeconds);
-    await this.client.sadd(this.queueSetKey(), input.queueName);
-    if (input.idempotencyKey) {
-      await this.client.hset(`idx:${input.queueName}:idempotency`, input.idempotencyKey, job.id);
-      await this.client.expire(`idx:${input.queueName}:idempotency`, this.jobTtlSeconds);
-    }
-    if (isDelayed) {
-      await this.client.zadd(this.waitingKey(input.queueName), new Date(input.delayUntil!).getTime(), job.id);
-    } else {
-      await this.client.zadd(this.waitingKey(input.queueName), job.priority * 1e13 + new Date(job.createdAt).getTime(), job.id);
-    }
-    return job;
   }
 
   async dequeueAsync(queueName: string): Promise<DequeueResult | null> {

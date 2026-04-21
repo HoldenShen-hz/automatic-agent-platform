@@ -14,7 +14,7 @@ import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-
 import { InspectService } from "../../shared/observability/inspect-service.js";
 import { CoordinatorLoadBalancingService } from "../../execution/ha/coordinator-load-balancing-service.js";
 import { DistributedRateLimiter, type RateLimitCheckResult } from "../ingress/distributed-rate-limiter.js";
-import { provideContext } from "../../execution/execution-engine/runtime-context.js";
+import { provideContext } from "../../shared/context/runtime-context.js";
 import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { PrometheusMetricsExporter } from "../../shared/observability/prometheus-metrics-exporter.js";

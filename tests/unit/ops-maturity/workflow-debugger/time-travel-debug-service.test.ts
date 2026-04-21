@@ -147,3 +147,45 @@ test("TimeTravelDebugService.endSession marks session ended", () => {
   // Session stored internally, endSession marks endedAt on stored session
   assert.ok(retrieved.endedAt === null);
 });
+
+test("TimeTravelDebugService evicts oldest session when maxSessions is exceeded", () => {
+  const service = new TimeTravelDebugService({ maxSessions: 2 });
+  const first = service.createSession("task-1", "exec-1");
+  service.createSession("task-2", "exec-2");
+  service.createSession("task-3", "exec-3");
+
+  const result = service.replayStep(first.sessionId);
+  assert.equal(result, null);
+});
+
+test("TimeTravelDebugService bounds snapshots and normalizes variable envelopes without any casts", () => {
+  const service = new TimeTravelDebugService({ maxSnapshotsPerSession: 1 });
+  service.loadEventStore("exec-1", [
+    {
+      stepId: "step-1",
+      timestamp: "2026-04-20T00:00:00.000Z",
+      variables: { count: { value: 42 }, plain: "ok" },
+      stackTrace: "line 1",
+      scope: "loop",
+    },
+    {
+      stepId: "step-2",
+      timestamp: "2026-04-20T00:01:00.000Z",
+      variables: { count: { value: 43 } },
+      stackTrace: "line 2",
+      scope: "global",
+    },
+  ]);
+
+  const session = service.createSession("task-1", "exec-1");
+  service.setBreakpoints(session.sessionId, ["step-1", "step-2"]);
+  service.replayStep(session.sessionId);
+  service.replayStep(session.sessionId);
+
+  const vars = service.getVariableState(session.sessionId, 1);
+  assert.ok(vars.some((variable) => variable.name === "count" && variable.value === 42 && variable.scope === "loop"));
+  assert.ok(vars.some((variable) => variable.name === "plain" && variable.value === "ok"));
+
+  assert.equal(service.getSnapshot(session.sessionId, "step-1"), null);
+  assert.ok(service.getSnapshot(session.sessionId, "step-2") !== null);
+});

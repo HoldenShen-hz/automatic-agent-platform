@@ -29,6 +29,15 @@ test("initializeCache is idempotent", () => {
   assert.equal(facade1, facade2);
 });
 
+test("initializeCache rejects reinitialization with a different configuration", () => {
+  resetCache();
+  initializeCache({ maxL1Entries: 500 });
+  assert.throws(
+    () => initializeCache({ maxL1Entries: 750 }),
+    (err: unknown) => err instanceof InternalAppError && err.code === "cache.reinitialize_with_different_options",
+  );
+});
+
 test("initializeCache with custom options creates store with those options", () => {
   resetCache();
   const facade = initializeCache({ maxL1Entries: 500 });

@@ -55,12 +55,55 @@ export interface TimeTravelDebugSession {
   endedAt: string | null;
 }
 
+export interface TimeTravelDebugVariableEnvelope {
+  readonly value?: unknown;
+}
+
+export interface TimeTravelDebugEvent {
+  readonly stepId?: string | null;
+  readonly timestamp?: string | null;
+  readonly variables?: Readonly<Record<string, unknown>> | null;
+  readonly stackTrace?: string | null;
+  readonly scope?: VariableState["scope"] | null;
+}
+
+export interface TimeTravelDebugServiceOptions {
+  maxSessions?: number;
+  maxEventsPerExecution?: number;
+  maxSnapshotsPerSession?: number;
+}
+
+function isVariableScope(value: unknown): value is VariableState["scope"] {
+  return value === "global" || value === "step" || value === "loop";
+}
+
+function readVariables(event: TimeTravelDebugEvent): Readonly<Record<string, unknown>> {
+  return event.variables ?? {};
+}
+
+function readVariableValue(value: unknown): unknown {
+  if (typeof value === "object" && value !== null && "value" in value) {
+    return (value as TimeTravelDebugVariableEnvelope).value ?? value;
+  }
+  return value;
+}
+
 export class TimeTravelDebugService {
+  private readonly maxSessions: number;
+  private readonly maxEventsPerExecution: number;
+  private readonly maxSnapshotsPerSession: number;
   private readonly sessions = new Map<string, TimeTravelDebugSession>();
-  private readonly eventStore = new Map<string, ReadonlyArray<Record<string, unknown>>>();
+  private readonly eventStore = new Map<string, ReadonlyArray<TimeTravelDebugEvent>>();
   private readonly snapshots = new Map<string, DebugSnapshot[]>();
 
+  public constructor(options: TimeTravelDebugServiceOptions = {}) {
+    this.maxSessions = options.maxSessions ?? 100;
+    this.maxEventsPerExecution = options.maxEventsPerExecution ?? 10_000;
+    this.maxSnapshotsPerSession = options.maxSnapshotsPerSession ?? 100;
+  }
+
   public createSession(taskId: string, executionId: string): TimeTravelDebugSession {
+    this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
@@ -81,8 +124,11 @@ export class TimeTravelDebugService {
     session.breakpoints = [...stepIds];
   }
 
-  public loadEventStore(executionId: string, events: readonly Record<string, unknown>[]): void {
-    this.eventStore.set(executionId, [...events]);
+  public loadEventStore(executionId: string, events: readonly TimeTravelDebugEvent[]): void {
+    const boundedEvents = events.length > this.maxEventsPerExecution
+      ? events.slice(events.length - this.maxEventsPerExecution)
+      : [...events];
+    this.eventStore.set(executionId, boundedEvents);
   }
 
   public replayToCursor(sessionId: string, toEventIndex: number): ReplayState | null {
@@ -96,8 +142,9 @@ export class TimeTravelDebugService {
       const event = events[i]!;
       const stepId = String(event.stepId ?? "");
       if (session.breakpoints.includes(stepId)) {
-        session.currentEventIndex = i;
-        return this.buildReplayState(session, i, true);
+        this.captureSnapshot(session, event, i);
+        session.currentEventIndex = i + 1;
+        return this.buildReplayState(session, session.currentEventIndex, true);
       }
     }
 
@@ -135,7 +182,7 @@ export class TimeTravelDebugService {
     if (targetIndex === -1) return null;
 
     session.currentEventIndex = targetIndex + 1;
-    return this.buildReplayState(session, targetIndex, false);
+    return this.buildReplayState(session, session.currentEventIndex, false);
   }
 
   public getSnapshot(sessionId: string, stepId: string): DebugSnapshot | null {
@@ -152,14 +199,14 @@ export class TimeTravelDebugService {
 
     for (let i = 0; i <= atEventIndex && i < events.length; i++) {
       const event = events[i]!;
-      const vars = (event as any).variables;
-      if (vars && typeof vars === "object") {
+      const vars = readVariables(event);
+      if (typeof vars === "object") {
         for (const [name, value] of Object.entries(vars)) {
           variables.push({
             name,
-            value: (value as any)?.value ?? value,
+            value: readVariableValue(value),
             type: String(typeof value),
-            scope: (event as any).scope ?? "step",
+            scope: isVariableScope(event.scope) ? event.scope : "step",
           });
         }
       }
@@ -174,8 +221,8 @@ export class TimeTravelDebugService {
     session.endedAt = nowIso();
   }
 
-  private captureSnapshot(session: TimeTravelDebugSession, event: Record<string, unknown>, eventIndex: number): void {
-    const vars = (event as any).variables ?? {};
+  private captureSnapshot(session: TimeTravelDebugSession, event: TimeTravelDebugEvent, eventIndex: number): void {
+    const vars = readVariables(event);
     const snapshot: DebugSnapshot = {
       snapshotId: newId("snap"),
       taskId: session.taskId,
@@ -183,12 +230,18 @@ export class TimeTravelDebugService {
       stepId: String(event.stepId ?? ""),
       timestamp: String(event.timestamp ?? nowIso()),
       variablesJson: JSON.stringify(vars),
-      stackTrace: (event as any).stackTrace ?? null,
+      stackTrace: event.stackTrace ?? null,
       eventIndex,
     };
 
     const existing = this.snapshots.get(session.sessionId) ?? [];
-    this.snapshots.set(session.sessionId, [...existing, snapshot]);
+    const nextSnapshots = [...existing, snapshot];
+    this.snapshots.set(
+      session.sessionId,
+      nextSnapshots.length > this.maxSnapshotsPerSession
+        ? nextSnapshots.slice(nextSnapshots.length - this.maxSnapshotsPerSession)
+        : nextSnapshots,
+    );
   }
 
   private buildReplayState(
@@ -210,5 +263,18 @@ export class TimeTravelDebugService {
       variables,
       reachedBreakpoint,
     };
+  }
+
+  private evictOldestSessionIfNeeded(): void {
+    if (this.sessions.size < this.maxSessions) {
+      return;
+    }
+    const oldest = [...this.sessions.values()]
+      .sort((left, right) => left.startedAt.localeCompare(right.startedAt))[0];
+    if (!oldest) {
+      return;
+    }
+    this.sessions.delete(oldest.sessionId);
+    this.snapshots.delete(oldest.sessionId);
   }
 }

@@ -7,6 +7,8 @@
  * - PolicyRolloutService: to check freeze before allowing rollouts
  */
 
+import { ServiceRegistry } from "../lifecycle/service-registry.js";
+
 export interface RolloutFreezeState {
   frozen: boolean;
   frozenAt: string | null;
@@ -14,15 +16,15 @@ export interface RolloutFreezeState {
 }
 
 export class RolloutFreezeManager {
-  private static frozen = false;
-  private static frozenAt: string | null = null;
-  private static frozenBySloId: string | null = null;
+  private frozen = false;
+  private frozenAt: string | null = null;
+  private frozenBySloId: string | null = null;
 
   /**
    * Checks if rollouts are currently frozen.
    */
   public isFrozen(): boolean {
-    return RolloutFreezeManager.frozen;
+    return this.frozen;
   }
 
   /**
@@ -30,9 +32,9 @@ export class RolloutFreezeManager {
    */
   public getState(): RolloutFreezeState {
     return {
-      frozen: RolloutFreezeManager.frozen,
-      frozenAt: RolloutFreezeManager.frozenAt,
-      frozenBySloId: RolloutFreezeManager.frozenBySloId,
+      frozen: this.frozen,
+      frozenAt: this.frozenAt,
+      frozenBySloId: this.frozenBySloId,
     };
   }
 
@@ -40,19 +42,34 @@ export class RolloutFreezeManager {
    * Freezes rollouts due to error budget exhaustion.
    */
   public freeze(sloId: string): void {
-    RolloutFreezeManager.frozen = true;
-    RolloutFreezeManager.frozenAt = new Date().toISOString();
-    RolloutFreezeManager.frozenBySloId = sloId;
+    this.frozen = true;
+    this.frozenAt = new Date().toISOString();
+    this.frozenBySloId = sloId;
   }
 
   /**
    * Unfreezes rollouts after error budget has been restored.
    */
   public unfreeze(): void {
-    RolloutFreezeManager.frozen = false;
-    RolloutFreezeManager.frozenAt = null;
-    RolloutFreezeManager.frozenBySloId = null;
+    this.frozen = false;
+    this.frozenAt = null;
+    this.frozenBySloId = null;
   }
 }
 
-export const rolloutFreezeManager = new RolloutFreezeManager();
+const ROLLOUT_FREEZE_MANAGER_SERVICE = "rollout-freeze-manager";
+
+export function getRolloutFreezeManager(): RolloutFreezeManager {
+  const registry = ServiceRegistry.getInstance();
+  registry.register(ROLLOUT_FREEZE_MANAGER_SERVICE, {
+    init: () => new RolloutFreezeManager(),
+  });
+  return registry.get<RolloutFreezeManager>(ROLLOUT_FREEZE_MANAGER_SERVICE);
+}
+
+export const rolloutFreezeManager: RolloutFreezeManager = new Proxy({} as RolloutFreezeManager, {
+  get(_target, property, receiver) {
+    const value = Reflect.get(getRolloutFreezeManager(), property, receiver);
+    return typeof value === "function" ? value.bind(getRolloutFreezeManager()) : value;
+  },
+});

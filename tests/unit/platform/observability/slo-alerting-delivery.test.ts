@@ -10,7 +10,65 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import {
+  PagerDutyAlertChannel,
+  WebhookAlertChannel,
+} from "../../../../src/platform/shared/observability/slo-alerting-service.js";
+import { runtimeMetricsRegistry } from "../../../../src/platform/shared/observability/runtime-metrics-registry.js";
+
 type FetchMock = (url: string, options?: RequestInit) => Promise<Response>;
+
+function createEvent(channelKind: "webhook" | "pagerduty") {
+  return {
+    id: `alert_${channelKind}`,
+    ruleId: "rule_delivery",
+    severity: "critical" as const,
+    status: "firing" as const,
+    title: "delivery failed",
+    detail: "delivery failed",
+    channelKind,
+    deliveredAt: null,
+    acknowledgedBy: null,
+    resolvedAt: null,
+    firedAt: "2026-04-10T00:00:00.000Z",
+  };
+}
+
+test("[SYS-REL-2.5] WebhookAlertChannel increments runtime failure counter on async delivery failure", async () => {
+  runtimeMetricsRegistry.reset();
+  const channel = new WebhookAlertChannel({
+    fetchImpl: async () => {
+      throw new Error("ENOTFOUND");
+    },
+  });
+
+  channel.deliver(createEvent("webhook"), { url: "https://example.test/hook" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const counters = runtimeMetricsRegistry.getCounters("alert_delivery_failures_total");
+  assert.deepEqual(
+    counters.map((series) => ({ labels: series.labels, value: series.value })),
+    [{ labels: { channel: "webhook" }, value: 1 }],
+  );
+});
+
+test("[SYS-REL-2.5] PagerDutyAlertChannel increments runtime failure counter on async delivery failure", async () => {
+  runtimeMetricsRegistry.reset();
+  const channel = new PagerDutyAlertChannel({
+    fetchImpl: async () => {
+      throw new Error("ETIMEDOUT");
+    },
+  });
+
+  channel.deliver(createEvent("pagerduty"), { routingKey: "rk_123" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const counters = runtimeMetricsRegistry.getCounters("alert_delivery_failures_total");
+  assert.deepEqual(
+    counters.map((series) => ({ labels: series.labels, value: series.value })),
+    [{ labels: { channel: "pagerduty" }, value: 1 }],
+  );
+});
 
 test("[SYS-REL-2.5] PagerDuty delivery failure logs error and increments counter", async () => {
   const logs: Array<{ level: string; message: string; data: Record<string, unknown> }> = [];

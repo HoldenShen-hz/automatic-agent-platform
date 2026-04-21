@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 
 import { StructuredLogger } from "./structured-logger.js";
+import { ServiceRegistry } from "../lifecycle/service-registry.js";
 
 export interface OtelBootstrapConfig {
   enabled: boolean;
@@ -25,7 +26,65 @@ interface OTelModuleSet {
 }
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
-let sdk: OTelSdkLike | null = null;
+
+class OtelBootstrapManager {
+  private sdk: OTelSdkLike | null = null;
+
+  public async init(config: OtelBootstrapConfig): Promise<boolean> {
+    if (!config.enabled) {
+      return false;
+    }
+    if (config.endpoint == null || config.endpoint.trim().length === 0) {
+      logger.warn("otel bootstrap skipped: missing endpoint");
+      return false;
+    }
+    const modules = loadOtelModules();
+    if (modules == null) {
+      logger.warn("otel bootstrap skipped: OpenTelemetry packages are not installed");
+      return false;
+    }
+    if (this.sdk != null) {
+      return true;
+    }
+    const resourceAttributes = {
+      [modules.serviceNameKey]: config.serviceName,
+      [modules.serviceVersionKey]: config.serviceVersion,
+    };
+    const resource = modules.Resource != null ? new modules.Resource(resourceAttributes) : resourceAttributes;
+    const instrumentations = config.instrumentHttp && modules.HttpInstrumentation != null
+      ? [new modules.HttpInstrumentation()]
+      : [];
+    this.sdk = new modules.NodeSDK({
+      resource,
+      traceExporter: new modules.OTLPTraceExporter({ url: config.endpoint }),
+      instrumentations,
+    });
+    await Promise.resolve(this.sdk.start());
+    logger.info("otel bootstrap initialized", {
+      endpoint: config.endpoint,
+      serviceName: config.serviceName,
+    });
+    return true;
+  }
+
+  public async shutdown(): Promise<void> {
+    if (this.sdk == null) {
+      return;
+    }
+    const activeSdk = this.sdk;
+    this.sdk = null;
+    await activeSdk.shutdown();
+  }
+}
+
+const OTEL_BOOTSTRAP_SERVICE = "otel-bootstrap-manager";
+function getOtelBootstrapManager(): OtelBootstrapManager {
+  const registry = ServiceRegistry.getInstance();
+  registry.register(OTEL_BOOTSTRAP_SERVICE, {
+    init: () => new OtelBootstrapManager(),
+  });
+  return registry.get<OtelBootstrapManager>(OTEL_BOOTSTRAP_SERVICE);
+}
 
 function loadOtelModules(requireFn = createRequire(import.meta.url)): OTelModuleSet | null {
   try {
@@ -52,47 +111,9 @@ export function isOtelRuntimeAvailable(requireFn = createRequire(import.meta.url
 }
 
 export async function initOtel(config: OtelBootstrapConfig): Promise<boolean> {
-  if (!config.enabled) {
-    return false;
-  }
-  if (config.endpoint == null || config.endpoint.trim().length === 0) {
-    logger.warn("otel bootstrap skipped: missing endpoint");
-    return false;
-  }
-  const modules = loadOtelModules();
-  if (modules == null) {
-    logger.warn("otel bootstrap skipped: OpenTelemetry packages are not installed");
-    return false;
-  }
-  if (sdk != null) {
-    return true;
-  }
-  const resourceAttributes = {
-    [modules.serviceNameKey]: config.serviceName,
-    [modules.serviceVersionKey]: config.serviceVersion,
-  };
-  const resource = modules.Resource != null ? new modules.Resource(resourceAttributes) : resourceAttributes;
-  const instrumentations = config.instrumentHttp && modules.HttpInstrumentation != null
-    ? [new modules.HttpInstrumentation()]
-    : [];
-  sdk = new modules.NodeSDK({
-    resource,
-    traceExporter: new modules.OTLPTraceExporter({ url: config.endpoint }),
-    instrumentations,
-  });
-  await Promise.resolve(sdk.start());
-  logger.info("otel bootstrap initialized", {
-    endpoint: config.endpoint,
-    serviceName: config.serviceName,
-  });
-  return true;
+  return getOtelBootstrapManager().init(config);
 }
 
 export async function shutdownOtel(): Promise<void> {
-  if (sdk == null) {
-    return;
-  }
-  const activeSdk = sdk;
-  sdk = null;
-  await activeSdk.shutdown();
+  await getOtelBootstrapManager().shutdown();
 }

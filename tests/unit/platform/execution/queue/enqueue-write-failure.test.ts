@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
 // Helper type for mock pipeline
 type MockPipeline = {
@@ -87,6 +88,7 @@ test("[SYS-REL-2.4] enqueue pipeline failure - job returned despite pipeline fai
 });
 
 test("[SYS-REL-2.4] enqueue pipeline all commands fail - still returns job", async () => {
+  runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -102,9 +104,17 @@ test("[SYS-REL-2.4] enqueue pipeline all commands fail - still returns job", asy
     queueName: "all-fail-queue",
     payload: { test: "data" },
   });
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   assert.ok(result, "Job record returned despite all pipeline failures");
   assert.equal(result.queueName, "all-fail-queue");
+  assert.deepEqual(
+    runtimeMetricsRegistry.getCounters("queue_enqueue_failures_total").map((series) => ({
+      labels: series.labels,
+      value: series.value,
+    })),
+    [{ labels: { backend: "redis", mode: "sync" }, value: 1 }],
+  );
 });
 
 test("[SYS-REL-2.4] enqueueAsync properly propagates errors - contrast with enqueue", async () => {

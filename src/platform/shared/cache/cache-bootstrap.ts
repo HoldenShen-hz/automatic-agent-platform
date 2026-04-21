@@ -6,6 +6,7 @@
  */
 
 import { InternalAppError } from "../../contracts/errors.js";
+import { ServiceRegistry } from "../lifecycle/service-registry.js";
 
 import { CacheFacade } from "./cache-facade.js";
 import { MemoryCacheStore } from "./stores/memory-cache-store.js";
@@ -15,11 +16,6 @@ import { CacheInvalidationEngine } from "./cache-invalidation.js";
 import { CacheMetrics } from "./cache-metrics.js";
 import type { RedisCacheConfig } from "./stores/redis-cache-store.js";
 import { RedisCacheStore } from "./stores/redis-cache-store.js";
-
-let cacheInstance: CacheFacade | null = null;
-let cacheStoreInstance: CacheStore | null = null;
-let invalidationEngineInstance: CacheInvalidationEngine | null = null;
-let metricsInstance: CacheMetrics | null = null;
 
 export interface CacheBootstrapOptions {
   /** Maximum L1 memory cache entries (default: 2000) */
@@ -46,30 +42,111 @@ function createDefaultStore(maxL1Entries: number, redisConfig?: RedisCacheConfig
   return new MultiLevelCacheStore(l1, l1, l1);
 }
 
+interface CacheBootstrapRuntime {
+  facade: CacheFacade;
+  store: CacheStore;
+  invalidationEngine: CacheInvalidationEngine;
+  metrics: CacheMetrics;
+  configKey: string;
+}
+
+class CacheBootstrapManager {
+  private runtime: CacheBootstrapRuntime | null = null;
+
+  public initialize(options: CacheBootstrapOptions = {}): CacheFacade {
+    const configKey = this.createConfigKey(options);
+    if (this.runtime != null) {
+      if (this.runtime.configKey !== configKey) {
+        throw new InternalAppError(
+          "cache.reinitialize_with_different_options",
+          "Cache has already been initialized with a different configuration.",
+          { source: "runtime", details: { previousConfigKey: this.runtime.configKey, requestedConfigKey: configKey } },
+        );
+      }
+      return this.runtime.facade;
+    }
+
+    const {
+      maxL1Entries = 2000,
+      l2l3Store,
+      redis: redisConfig,
+    } = options;
+
+    const metrics = new CacheMetrics();
+    const store = l2l3Store ?? createDefaultStore(maxL1Entries, redisConfig);
+    const facade = new CacheFacade(store, metrics);
+    const invalidationEngine = new CacheInvalidationEngine(facade);
+
+    this.runtime = {
+      facade,
+      store,
+      invalidationEngine,
+      metrics,
+      configKey,
+    };
+    return facade;
+  }
+
+  public getFacade(): CacheFacade {
+    return this.getRuntime().facade;
+  }
+
+  public getStore(): CacheStore {
+    return this.getRuntime().store;
+  }
+
+  public getInvalidationEngine(): CacheInvalidationEngine {
+    return this.getRuntime().invalidationEngine;
+  }
+
+  public getMetrics(): CacheMetrics {
+    return this.getRuntime().metrics;
+  }
+
+  public reset(): void {
+    this.runtime = null;
+  }
+
+  public isInitialized(): boolean {
+    return this.runtime != null;
+  }
+
+  private getRuntime(): CacheBootstrapRuntime {
+    if (this.runtime == null) {
+      throw new InternalAppError(
+        "cache.not_initialized",
+        "CacheFacade not initialized. Call initializeCache() first.",
+        { source: "runtime" },
+      );
+    }
+    return this.runtime;
+  }
+
+  private createConfigKey(options: CacheBootstrapOptions): string {
+    return JSON.stringify({
+      maxL1Entries: options.maxL1Entries ?? 2000,
+      enableL3Cache: options.enableL3Cache ?? true,
+      hasCustomStore: options.l2l3Store != null,
+      redis: options.redis ?? null,
+    });
+  }
+}
+
+const CACHE_BOOTSTRAP_MANAGER_SERVICE = "cache-bootstrap-manager";
+function getCacheBootstrapManager(): CacheBootstrapManager {
+  const registry = ServiceRegistry.getInstance();
+  registry.register(CACHE_BOOTSTRAP_MANAGER_SERVICE, {
+    init: () => new CacheBootstrapManager(),
+  });
+  return registry.get<CacheBootstrapManager>(CACHE_BOOTSTRAP_MANAGER_SERVICE);
+}
+
 /**
  * Initializes the cache subsystem.
  * Idempotent - subsequent calls return the same instance.
  */
 export function initializeCache(options: CacheBootstrapOptions = {}): CacheFacade {
-  if (cacheInstance) {
-    return cacheInstance;
-  }
-
-  const {
-    maxL1Entries = 2000,
-    l2l3Store,
-    redis: redisConfig,
-  } = options;
-
-  const metrics = new CacheMetrics();
-  const store = l2l3Store ?? createDefaultStore(maxL1Entries, redisConfig);
-
-  cacheStoreInstance = store;
-  metricsInstance = metrics;
-  cacheInstance = new CacheFacade(store, metrics);
-  invalidationEngineInstance = new CacheInvalidationEngine(cacheInstance);
-
-  return cacheInstance;
+  return getCacheBootstrapManager().initialize(options);
 }
 
 /**
@@ -77,71 +154,73 @@ export function initializeCache(options: CacheBootstrapOptions = {}): CacheFacad
  * Throws if cache has not been initialized.
  */
 export function getCacheFacade(): CacheFacade {
-  if (!cacheInstance) {
-    throw new InternalAppError(
-      "cache.not_initialized",
-      "CacheFacade not initialized. Call initializeCache() first.",
-      { source: "runtime" },
-    );
-  }
-  return cacheInstance;
+  return getCacheBootstrapManager().getFacade();
 }
 
 /**
  * Returns the cache store instance.
  */
 export function getCacheStore(): CacheStore {
-  if (!cacheStoreInstance) {
-    throw new InternalAppError(
-      "cache.store_not_initialized",
-      "Cache store not initialized. Call initializeCache() first.",
-      { source: "runtime" },
-    );
+  try {
+    return getCacheBootstrapManager().getStore();
+  } catch (error) {
+    if (error instanceof InternalAppError && error.code === "cache.not_initialized") {
+      throw new InternalAppError(
+        "cache.store_not_initialized",
+        "Cache store not initialized. Call initializeCache() first.",
+        { source: "runtime" },
+      );
+    }
+    throw error;
   }
-  return cacheStoreInstance;
 }
 
 /**
  * Returns the invalidation engine.
  */
 export function getInvalidationEngine(): CacheInvalidationEngine {
-  if (!invalidationEngineInstance) {
-    throw new InternalAppError(
-      "cache.invalidation_not_initialized",
-      "Cache not initialized. Call initializeCache() first.",
-      { source: "runtime" },
-    );
+  try {
+    return getCacheBootstrapManager().getInvalidationEngine();
+  } catch (error) {
+    if (error instanceof InternalAppError && error.code === "cache.not_initialized") {
+      throw new InternalAppError(
+        "cache.invalidation_not_initialized",
+        "Cache not initialized. Call initializeCache() first.",
+        { source: "runtime" },
+      );
+    }
+    throw error;
   }
-  return invalidationEngineInstance;
 }
 
 /**
  * Returns the metrics instance.
  */
 export function getCacheMetrics(): CacheMetrics {
-  if (!metricsInstance) {
-    throw new InternalAppError(
-      "cache.metrics_not_initialized",
-      "Cache not initialized. Call initializeCache() first.",
-      { source: "runtime" },
-    );
+  try {
+    return getCacheBootstrapManager().getMetrics();
+  } catch (error) {
+    if (error instanceof InternalAppError && error.code === "cache.not_initialized") {
+      throw new InternalAppError(
+        "cache.metrics_not_initialized",
+        "Cache not initialized. Call initializeCache() first.",
+        { source: "runtime" },
+      );
+    }
+    throw error;
   }
-  return metricsInstance;
 }
 
 /**
  * Resets the cache subsystem (for testing).
  */
 export function resetCache(): void {
-  cacheInstance = null;
-  cacheStoreInstance = null;
-  invalidationEngineInstance = null;
-  metricsInstance = null;
+  getCacheBootstrapManager().reset();
 }
 
 /**
  * Returns true if cache has been initialized.
  */
 export function isCacheInitialized(): boolean {
-  return cacheInstance !== null;
+  return getCacheBootstrapManager().isInitialized();
 }

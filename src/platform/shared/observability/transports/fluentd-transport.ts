@@ -8,6 +8,7 @@
 import { createConnection, type Socket } from "node:net";
 import type { LogTransport } from "../log-transport.js";
 import type { StructuredLogEntry } from "../structured-logger.js";
+import { StructuredLogger } from "../structured-logger.js";
 
 export interface FluentdTransportConfig {
   host: string;
@@ -19,12 +20,14 @@ export interface FluentdTransportConfig {
 
 export class FluentdTransport implements LogTransport {
   readonly name = "fluentd";
+  private readonly logger = new StructuredLogger({ retentionLimit: 100 });
   private socket: Socket | null = null;
   private readonly tag: string;
   private readonly reconnectIntervalMs: number;
   private readonly bufferLimit: number;
   private buffer: string[] = [];
   private connecting = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly config: FluentdTransportConfig) {
     this.tag = config.tag;
@@ -41,6 +44,10 @@ export class FluentdTransport implements LogTransport {
     this.socket = createConnection(this.config.port, this.config.host);
     this.socket.on("connect", () => {
       this.connecting = false;
+      if (this.reconnectTimer != null) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
       this.reconnectAttempts = 0;
       for (const buffered of this.buffer) {
         this.socket!.write(buffered);
@@ -63,9 +70,11 @@ export class FluentdTransport implements LogTransport {
   private readonly maxReconnectAttempts = 10;
 
   private handleReconnect(): void {
+    if (this.reconnectTimer != null) {
+      return;
+    }
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      // Stop reconnecting after max attempts, log error for monitoring
-      console.error("fluentd.reconnect_exhausted", {
+      this.logger.error("fluentd.reconnect_exhausted", {
         attempts: this.reconnectAttempts,
         host: this.config.host,
         port: this.config.port,
@@ -78,7 +87,10 @@ export class FluentdTransport implements LogTransport {
       this.reconnectIntervalMs * Math.pow(2, this.reconnectAttempts - 1),
       30000
     );
-    setTimeout(() => this.connect(), backoffMs);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, backoffMs);
   }
 
   write(entry: StructuredLogEntry): void {
@@ -104,6 +116,10 @@ export class FluentdTransport implements LogTransport {
   }
 
   async close(): Promise<void> {
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.socket?.end();
     this.socket = null;
   }
