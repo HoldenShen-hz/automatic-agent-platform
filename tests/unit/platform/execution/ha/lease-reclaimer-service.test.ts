@@ -835,7 +835,8 @@ test("LeaseReclaimerService - failover decision outcome is tracked", async () =>
   const result = await service.reclaimOnce();
 
   assert.ok(capturedDecision !== null);
-  const decision = capturedDecision!;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const decision = capturedDecision as FailoverDecision;
   assert.equal(decision.cause, "heartbeat_missing");
   assert.equal(decision.oldLeaderNodeId, "node-1");
 
