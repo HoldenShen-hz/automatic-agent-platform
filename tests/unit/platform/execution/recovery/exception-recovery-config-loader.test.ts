@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
+import { createTempWorkspace, cleanupPath, createFile } from "../../../../helpers/fs.js";
 import {
   loadExceptionRecoveryConfig,
   clearExceptionRecoveryConfigCache,
@@ -361,4 +362,79 @@ test("runtime_error is retryable once with backoff", () => {
   assert.equal(strategy.backoffMultiplier, 1.5);
   assert.equal(strategy.initialDelayMs, 1000);
   assert.equal(strategy.action, "retry_new_ticket");
+});
+
+test("loadExceptionRecoveryConfig throws when file is malformed JSON", () => {
+  clearExceptionRecoveryConfigCache();
+
+  const workspace = createTempWorkspace("exception-recovery-test-");
+  const malformedPath = resolve(workspace, "malformed.json");
+
+  try {
+    createFile(malformedPath, "{ this is not valid json }");
+
+    // The actual behavior is that it throws on malformed JSON
+    let threw = false;
+    try {
+      loadExceptionRecoveryConfig(malformedPath);
+    } catch (error) {
+      threw = true;
+      // Verify it's a JSON parse error
+      assert.ok(error instanceof SyntaxError, "Should throw SyntaxError for malformed JSON");
+    }
+    assert.equal(threw, true, "Should throw on malformed JSON");
+  } finally {
+    cleanupPath(workspace);
+    clearExceptionRecoveryConfigCache();
+  }
+});
+
+test("loadExceptionRecoveryConfig throws when config file has missing fields", () => {
+  clearExceptionRecoveryConfigCache();
+
+  const workspace = createTempWorkspace("exception-recovery-test-");
+  const missingFieldsPath = resolve(workspace, "missing-fields.json");
+
+  try {
+    // Config with only partial fields - missing most exception types
+    const incompleteConfig = {
+      recoveryStrategyTable: {
+        byExceptionType: {
+          validation_error: {
+            retryable: false,
+            action: "cancel",
+            maxRetries: 0,
+          },
+        },
+        byRiskLevel: {
+          low: { autoRecover: true, notifyOnFailure: false },
+        },
+        byAttemptThreshold: {
+          resumeSameWorkerMaxAttempts: 2,
+          retryNewTicketMaxAttempts: 3,
+          escalateTakeoverMinAttempts: 1,
+          moveToDeadLetterMinAttempts: 2,
+        },
+      },
+      defaultAction: "move_dead_letter",
+      staleExecutionThresholdMs: 300000,
+      heartbeatTimeoutMs: 60000,
+    };
+
+    createFile(missingFieldsPath, JSON.stringify(incompleteConfig, null, 2));
+
+    // The actual behavior is that it throws when accessing missing fields
+    let threw = false;
+    try {
+      loadExceptionRecoveryConfig(missingFieldsPath);
+    } catch (error) {
+      threw = true;
+      // Verify it's a TypeError for accessing undefined property
+      assert.ok(error instanceof TypeError, "Should throw TypeError for missing fields");
+    }
+    assert.equal(threw, true, "Should throw on missing required fields");
+  } finally {
+    cleanupPath(workspace);
+    clearExceptionRecoveryConfigCache();
+  }
 });

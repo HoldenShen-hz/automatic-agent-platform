@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { basename, join } from "node:path";
 import test from "node:test";
 
-import { CodeDiagnosticsService, formatDiagnosticsFeedback } from "../../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
+import { CodeDiagnosticEntry, CodeDiagnosticsService, CodeDiagnosticsSummary, formatDiagnosticsFeedback } from "../../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("code diagnostics service reports TypeScript diagnostics for changed files", async () => {
@@ -157,5 +157,113 @@ test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20", asyn
       `Expected <= 20 diagnostics at default, got ${summary.diagnostics.length}`);
   } finally {
     cleanupPath(workspace);
+  }
+});
+
+test("code diagnostics service returns null for empty filePaths array", async () => {
+  const workspace = createTempWorkspace("aa-code-diagnostics-empty-");
+
+  try {
+    const service = new CodeDiagnosticsService({ workspaceRoot: workspace });
+    const summary = await service.collectForFiles([]);
+
+    assert.equal(summary, null);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("code diagnostics service returns null when all files are filtered by extension", async () => {
+  const workspace = createTempWorkspace("aa-code-diagnostics-filtered-");
+  const txtFile = join(workspace, "README.txt");
+  const mdFile = join(workspace, "docs.md");
+  const jsonFile = join(workspace, "config.json");
+
+  try {
+    createFile(txtFile, "some text content\n");
+    createFile(mdFile, "# Documentation\n");
+    createFile(jsonFile, '{"key": "value"}\n');
+
+    const service = new CodeDiagnosticsService({ workspaceRoot: workspace });
+    const summary = await service.collectForFiles([txtFile, mdFile, jsonFile]);
+
+    assert.equal(summary, null);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("formatDiagnosticsFeedback returns null when errorCount and warningCount are both zero", () => {
+  const summaryWithZeroCounts: CodeDiagnosticsSummary = {
+    checkedFileCount: 1,
+    diagnosticFileCount: 0,
+    errorCount: 0,
+    warningCount: 0,
+    languages: [],
+    diagnostics: [],
+    runnerWarnings: [],
+  };
+
+  const result = formatDiagnosticsFeedback(summaryWithZeroCounts);
+  assert.equal(result, null);
+});
+
+test("code diagnostics service deduplicates diagnostics with identical keys", async () => {
+  const workspace = createTempWorkspace("aa-code-diagnostics-dedup-");
+  const filePath = join(workspace, "test.ts");
+
+  try {
+    createFile(filePath, "const x: string = 1;\n");
+
+    const service = new CodeDiagnosticsService({
+      workspaceRoot: workspace,
+      runTypeScript: () => {
+        // Return 3 diagnostics with identical keys - should be deduped to 1
+        const identicalDiagnostic: CodeDiagnosticEntry = {
+          language: "typescript",
+          severity: "error",
+          filePath,
+          message: "Type 'number' is not assignable to type 'string'",
+          code: "2322",
+          source: "typescript",
+          line: 1,
+          column: 13,
+        };
+        return [identicalDiagnostic, identicalDiagnostic, identicalDiagnostic];
+      },
+    });
+
+    const summary = await service.collectForFiles([filePath]);
+
+    assert.ok(summary !== null);
+    assert.equal(summary.diagnostics.length, 1);
+    assert.equal(summary.errorCount, 1);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("code diagnostics service filters out files outside workspace root", async () => {
+  const workspaceA = createTempWorkspace("aa-code-diagnostics-ws-a-");
+  const workspaceB = createTempWorkspace("aa-code-diagnostics-ws-b-");
+  const fileInA = join(workspaceA, "file-a.ts");
+  const fileInB = join(workspaceB, "file-b.ts");
+
+  try {
+    createFile(fileInA, "const a: number = 1;\n");
+    createFile(fileInB, "const b: string = 2;\n");
+
+    // Service initialized with workspaceA, but we pass a file from workspaceB
+    const service = new CodeDiagnosticsService({ workspaceRoot: workspaceA });
+    const summary = await service.collectForFiles([fileInA, fileInB]);
+
+    assert.ok(summary !== null);
+    // Only fileInA should be checked - fileInB is outside workspaceA
+    assert.equal(summary.checkedFileCount, 1);
+    assert.equal(summary.diagnostics.some((d) => d.filePath === fileInA), true);
+    assert.equal(summary.diagnostics.some((d) => d.filePath === fileInB), false);
+  } finally {
+    cleanupPath(workspaceA);
+    cleanupPath(workspaceB);
   }
 });

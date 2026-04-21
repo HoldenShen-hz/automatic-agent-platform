@@ -51,7 +51,7 @@ test("PatchDslService.parsePatchString handles Codex add/update/delete patch for
   assert.equal(patches[2]!.newPath, "");
 });
 
-test("PatchDslService.applyPatches applies simple line replacement", () => {
+test("PatchDslService.applyPatches applies simple line replacement", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "test.ts");
@@ -74,7 +74,7 @@ test("PatchDslService.applyPatches applies simple line replacement", () => {
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -93,7 +93,7 @@ test("PatchDslService.applyPatches applies simple line replacement", () => {
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches appends diagnostics feedback for changed source files", () => {
+test("PatchDslService.applyPatches appends diagnostics feedback for changed source files", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const filePath = join(workspace, "demo.ts");
   const diagnostics = new CodeDiagnosticsService({
@@ -113,7 +113,7 @@ test("PatchDslService.applyPatches appends diagnostics feedback for changed sour
 
   try {
     createFile(filePath, "export const value = 1;\n");
-    const result = service.applyPatches({
+    const result = await service.applyPatches({
       callId: "call-diag",
       taskId: "task-diag",
       executionId: "exec-diag",
@@ -146,7 +146,7 @@ test("PatchDslService.applyPatches appends diagnostics feedback for changed sour
   }
 });
 
-test("PatchDslService.applyPatches respects sandbox policy", () => {
+test("PatchDslService.applyPatches respects sandbox policy", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "demo.ts");
@@ -168,7 +168,7 @@ test("PatchDslService.applyPatches respects sandbox policy", () => {
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -184,7 +184,7 @@ test("PatchDslService.applyPatches respects sandbox policy", () => {
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches handles multiple hunks", () => {
+test("PatchDslService.applyPatches handles multiple hunks", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "test.ts");
@@ -214,7 +214,7 @@ test("PatchDslService.applyPatches handles multiple hunks", () => {
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -231,7 +231,7 @@ test("PatchDslService.applyPatches handles multiple hunks", () => {
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches fails when oldPath and newPath are empty", () => {
+test("PatchDslService.applyPatches fails when oldPath and newPath are empty", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
 
@@ -243,7 +243,7 @@ test("PatchDslService.applyPatches fails when oldPath and newPath are empty", ()
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -259,7 +259,7 @@ test("PatchDslService.applyPatches fails when oldPath and newPath are empty", ()
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches writes to correct file path", () => {
+test("PatchDslService.applyPatches writes to correct file path", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "output.ts");
@@ -282,7 +282,7 @@ test("PatchDslService.applyPatches writes to correct file path", () => {
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -298,7 +298,7 @@ test("PatchDslService.applyPatches writes to correct file path", () => {
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches creates a file when allowCreation is true", () => {
+test("PatchDslService.applyPatches creates a file when allowCreation is true", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "created.ts");
@@ -319,7 +319,7 @@ test("PatchDslService.applyPatches creates a file when allowCreation is true", (
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-create",
     taskId: "task-create",
     executionId: null,
@@ -337,7 +337,7 @@ test("PatchDslService.applyPatches creates a file when allowCreation is true", (
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches handles file with context before and after changes", () => {
+test("PatchDslService.applyPatches handles file with context before and after changes", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "test.ts");
@@ -366,7 +366,7 @@ test("PatchDslService.applyPatches handles file with context before and after ch
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -387,7 +387,7 @@ test("PatchDslService.applyPatches handles file with context before and after ch
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches reports correct hunks total", () => {
+test("PatchDslService.applyPatches reports correct hunks total", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "test.ts");
@@ -417,7 +417,7 @@ test("PatchDslService.applyPatches reports correct hunks total", () => {
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-1",
     taskId: "task-1",
     executionId: "exec-1",
@@ -432,7 +432,7 @@ test("PatchDslService.applyPatches reports correct hunks total", () => {
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches rolls back earlier files when a later patch fails", () => {
+test("PatchDslService.applyPatches rolls back earlier files when a later patch fails", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const file1Path = join(workspace, "file1.ts");
@@ -470,7 +470,7 @@ test("PatchDslService.applyPatches rolls back earlier files when a later patch f
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-rollback",
     taskId: "task-rollback",
     executionId: null,
@@ -487,7 +487,7 @@ test("PatchDslService.applyPatches rolls back earlier files when a later patch f
   cleanupPath(workspace);
 });
 
-test("PatchDslService.applyPatches fails when caller snapshot is stale", () => {
+test("PatchDslService.applyPatches fails when caller snapshot is stale", async () => {
   const workspace = createTempWorkspace("patch-unit-");
   const service = new PatchDslService();
   const filePath = join(workspace, "stale.ts");
@@ -513,7 +513,7 @@ test("PatchDslService.applyPatches fails when caller snapshot is stale", () => {
     },
   ];
 
-  const result = service.applyPatches({
+  const result = await service.applyPatches({
     callId: "call-stale",
     taskId: "task-stale",
     executionId: null,
