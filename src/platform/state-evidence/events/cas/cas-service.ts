@@ -69,6 +69,8 @@ export class CasService {
         });
         return {
           success: true,
+          currentValue: newValue,
+          currentVersion: 1,
         };
       }
       // Key doesn't exist and expected value doesn't match
@@ -122,7 +124,7 @@ export class CasService {
           version: 1,
           updatedAt: new Date(),
         });
-        return { success: true };
+        return { success: true, currentValue: newValue, currentVersion: 1 };
       }
       return { success: false };
     }

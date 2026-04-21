@@ -22,7 +22,7 @@ test("integration: runtime evidence is turned into a redacted audit explanation 
     ],
     allowedEvidenceCategories: ["trace", "artifact"],
     generatedAt: "2026-04-20T00:00:00.000Z",
-  }, "audit");
+  }, "L3");
 
   assert.equal(bundle.rationale.summary, "rollback executed after health degradation");
   assert.deepEqual(bundle.rationale.evidenceRefs, ["trace_public_1", "artifact_public_2"]);

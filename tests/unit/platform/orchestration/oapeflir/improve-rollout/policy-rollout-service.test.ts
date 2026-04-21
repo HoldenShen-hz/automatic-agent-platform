@@ -7,6 +7,17 @@ import type { RolloutRecord, RolloutStatus } from "../../../../../../src/platfor
 import type { RolloutMetrics } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/auto-rollback-service.js";
 import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/improvement-candidate-registry.js";
 import type { StrategyVersion } from "../../../../../../src/platform/orchestration/oapeflir/improve-rollout/strategy-versioning.js";
+import { rolloutFreezeManager } from "../../../../../../src/platform/shared/observability/rollout-freeze-manager.js";
+
+// Helper to run test with frozen rollout state
+function withFrozenRollouts(fn: () => void): void {
+  rolloutFreezeManager.freeze("test_slo");
+  try {
+    fn();
+  } finally {
+    rolloutFreezeManager.unfreeze();
+  }
+}
 
 function createMinimalCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {
@@ -282,39 +293,43 @@ test("decide returns candidate_not_approved when status is shadow_running and re
 });
 
 test("decide blocks when rollouts are frozen due to error budget exhaustion", () => {
-  const service = new PolicyRolloutService();
-  const candidate = createMinimalCandidate({
-    status: "approved",
-    sourceSignalRefs: ["signal_1"],
-    sourceLearningObjectIds: ["lo_1"],
-  });
-  const strategy = createStrategyVersion({
-    sourceLearningObjectIds: ["lo_1"],
-    releaseLevel: "canary_5",
-  });
+  withFrozenRollouts(() => {
+    const service = new PolicyRolloutService();
+    const candidate = createMinimalCandidate({
+      status: "approved",
+      sourceSignalRefs: ["signal_1"],
+      sourceLearningObjectIds: ["lo_1"],
+    });
+    const strategy = createStrategyVersion({
+      sourceLearningObjectIds: ["lo_1"],
+      releaseLevel: "canary_5",
+    });
 
-  const result = service.decide(candidate, strategy, { frozen: true, reasonCode: "error_budget_exhausted" });
+    const result = service.decide(candidate, strategy);
 
-  assert.equal(result.allowed, false);
-  assert.ok(result.reasonCodes.some(code => code.includes("frozen_error_budget")));
+    assert.equal(result.allowed, false);
+    assert.ok(result.reasonCodes.some(code => code.includes("frozen_error_budget")));
+  });
 });
 
 test("decide returns rollout.frozen_error_budget reason code when frozen", () => {
-  const service = new PolicyRolloutService();
-  const candidate = createMinimalCandidate({
-    status: "approved",
-    sourceSignalRefs: ["signal_1"],
-    sourceLearningObjectIds: ["lo_1"],
-  });
-  const strategy = createStrategyVersion({
-    sourceLearningObjectIds: ["lo_1"],
-    releaseLevel: "partial_25",
-  });
+  withFrozenRollouts(() => {
+    const service = new PolicyRolloutService();
+    const candidate = createMinimalCandidate({
+      status: "approved",
+      sourceSignalRefs: ["signal_1"],
+      sourceLearningObjectIds: ["lo_1"],
+    });
+    const strategy = createStrategyVersion({
+      sourceLearningObjectIds: ["lo_1"],
+      releaseLevel: "partial_25",
+    });
 
-  const result = service.decide(candidate, strategy, { frozen: true, reasonCode: "error_budget_exhausted" });
+    const result = service.decide(candidate, strategy);
 
-  assert.equal(result.allowed, false);
-  assert.ok(result.reasonCodes.includes("rollout.frozen_error_budget"));
+    assert.equal(result.allowed, false);
+    assert.ok(result.reasonCodes.some(code => code.includes("frozen_error_budget")));
+  });
 });
 
 // =============================================================================
@@ -430,4 +445,150 @@ test("promote to shadow calls inferLevelFromStatus with shadow level", () => {
 
   // shadow maps to "shadow" level
   assert.equal(result.level, "shadow");
+});
+
+// =============================================================================
+// inferStatusFromLevel coverage - all levels
+// =============================================================================
+
+test("inferStatusFromLevel maps suggest to pending_approval", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate();
+  const record = createRolloutRecord({ status: "draft" });
+
+  const result = service.promote(candidate, record, "pending_approval", undefined);
+  assert.equal(result.level, "suggest");
+  assert.equal(result.status, "pending_approval");
+});
+
+test("inferStatusFromLevel maps canary_5, partial_25, partial_50, partial_75, stable via valid transitions", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate();
+  const healthyMetrics = createHealthyMetrics();
+
+  // shadow -> canary_5 is valid
+  const r1 = createRolloutRecord({ status: "shadow" });
+  const result1 = service.promote(candidate, r1, "canary_5", healthyMetrics);
+  assert.equal(result1.level, "canary_5");
+
+  // canary_5 -> partial_25 is valid
+  const r2 = createRolloutRecord({ status: "canary_5" });
+  const result2 = service.promote(candidate, r2, "partial_25", healthyMetrics);
+  assert.equal(result2.level, "partial_25");
+
+  // partial_25 -> partial_50 is valid
+  const r3 = createRolloutRecord({ status: "partial_25" });
+  const result3 = service.promote(candidate, r3, "partial_50", healthyMetrics);
+  assert.equal(result3.level, "partial_50");
+
+  // partial_50 -> partial_75 is valid
+  const r4 = createRolloutRecord({ status: "partial_50" });
+  const result4 = service.promote(candidate, r4, "partial_75", healthyMetrics);
+  assert.equal(result4.level, "partial_75");
+
+  // partial_75 -> stable is valid
+  const r5 = createRolloutRecord({ status: "partial_75" });
+  const result5 = service.promote(candidate, r5, "stable", healthyMetrics);
+  assert.equal(result5.level, "stable");
+});
+
+// =============================================================================
+// inferLevelFromStatus coverage - all statuses including terminal and progressive
+// =============================================================================
+
+test("inferLevelFromStatus maps rejected/rolled_back/paused to off via self-transition", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate();
+
+  const terminalStatuses: RolloutStatus[] = ["rejected", "rolled_back", "paused"];
+  for (const status of terminalStatuses) {
+    const record = createRolloutRecord({ status });
+    // Use self-transition to test mapping without invalid transition
+    const result = service.evaluateMetricsGate(record, status);
+    assert.equal(result.allowed, true, `Status ${status} should allow self-transition`);
+  }
+});
+
+test("inferLevelFromStatus maps pending_approval to suggest", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate();
+  const record = createRolloutRecord({ status: "draft" });
+
+  const result = service.promote(candidate, record, "pending_approval", undefined);
+  assert.equal(result.level, "suggest");
+});
+
+test("inferLevelFromStatus maps all progressive statuses", () => {
+  const service = new PolicyRolloutService();
+  const candidate = createMinimalCandidate();
+  const healthyMetrics = createHealthyMetrics();
+
+  const progressiveStatuses: Array<{ from: RolloutStatus; to: RolloutStatus; expectedLevel: string }> = [
+    { from: "shadow", to: "shadow", expectedLevel: "shadow" },
+    { from: "shadow", to: "canary_5", expectedLevel: "canary_5" },
+    { from: "canary_5", to: "partial_25", expectedLevel: "partial_25" },
+    { from: "partial_25", to: "partial_50", expectedLevel: "partial_50" },
+    { from: "partial_50", to: "partial_75", expectedLevel: "partial_75" },
+    { from: "partial_75", to: "stable", expectedLevel: "stable" },
+  ];
+
+  for (const { from, to, expectedLevel } of progressiveStatuses) {
+    const record = createRolloutRecord({ status: from });
+    const result = service.promote(candidate, record, to, healthyMetrics);
+    assert.equal(result.level, expectedLevel, `${from} -> ${to} should yield ${expectedLevel}`);
+  }
+});
+
+// =============================================================================
+// evaluateMetricsGate additional branches
+// =============================================================================
+
+test("evaluateMetricsGate returns early when target not in PROGRESSIVE_STATUSES", () => {
+  const service = new PolicyRolloutService();
+  const record = createRolloutRecord({ status: "stable" });
+
+  // stable is in PROGRESSIVE_STATUSES, use rejected which is not
+  const result = service.evaluateMetricsGate(record, "rejected");
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.rollback, false);
+});
+
+test("evaluateMetricsGate returns early when current status is shadow", () => {
+  const service = new PolicyRolloutService();
+  const record = createRolloutRecord({ status: "shadow" });
+
+  // shadow always allows progression
+  const result = service.evaluateMetricsGate(record, "canary_5", createHealthyMetrics());
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.rollback, false);
+});
+
+test("evaluateMetricsGate allows pending_approval as target (non-progressive)", () => {
+  const service = new PolicyRolloutService();
+  const record = createRolloutRecord({ status: "stable" });
+
+  // pending_approval is not in PROGRESSIVE_STATUSES
+  const result = service.evaluateMetricsGate(record, "pending_approval");
+
+  assert.equal(result.allowed, true);
+});
+
+test("evaluateMetricsGate returns rollback=false when autoRollback returns rollback=false", () => {
+  const autoRollback = new AutoRollbackService({
+    maxFailureRate: 0.05,
+    maxLatencyMultiplier: 2,
+    minimumRequestCount: 20,
+    minimumObservationWindowMs: 60_000,
+  });
+  const service = new PolicyRolloutService(autoRollback);
+  const record = createRolloutRecord({ status: "canary_5" });
+  const healthyMetrics = createHealthyMetrics();
+
+  const result = service.evaluateMetricsGate(record, "partial_25", healthyMetrics);
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.rollback, false);
+  assert.ok(result.reasonCodes.includes("rollout.metrics_gate_passed"));
 });

@@ -1,0 +1,493 @@
+import assert from "node:assert/strict";
+import { join } from "node:path";
+import test from "node:test";
+import { openAuthoritativeStorageBackend, openAuthoritativeStorageContext, openAsyncAuthoritativeStorageBackend, openAsyncAuthoritativeStorageContext, openPostgresAuthoritativeStorageBackend, planAuthoritativeStorageBackend, requirePostgresAuthoritativeStorageBackend, requireSqliteAuthoritativeStorageBackend, } from "../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
+function installMockRequire(mockRequire) {
+    const previousRequire = globalThis.require;
+    const taggedRequire = mockRequire;
+    taggedRequire.__aaMockOverride = true;
+    globalThis.require = taggedRequire;
+    return () => {
+        if (previousRequire == null) {
+            Reflect.deleteProperty(globalThis, "require");
+            return;
+        }
+        globalThis.require = previousRequire;
+    };
+}
+test("storage backend factory opens sqlite by default", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-factory-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        const plan = planAuthoritativeStorageBackend({
+            dbPath,
+            environment: "dev",
+            env: {},
+        });
+        assert.equal(plan.environment, "dev");
+        assert.equal(plan.runtimeProfile.driver, "sqlite");
+        assert.equal(plan.executable, true);
+        assert.equal(plan.openErrorCode, null);
+        const storage = openAuthoritativeStorageBackend({
+            dbPath,
+            environment: "dev",
+            env: {},
+        });
+        const sqliteStorage = requireSqliteAuthoritativeStorageBackend(storage);
+        assert.equal(sqliteStorage.filePath, dbPath);
+        storage.migrate();
+        storage.close();
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory exposes a bound authoritative store context", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-context-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        const storage = openAuthoritativeStorageContext({
+            dbPath,
+            environment: "dev",
+            env: {},
+        });
+        storage.migrate();
+        storage.store.insertTask({
+            id: "task-storage-context",
+            parentId: null,
+            rootId: "task-storage-context",
+            divisionId: "general_ops",
+            title: "storage context task",
+            status: "queued",
+            source: "user",
+            priority: "normal",
+            inputJson: "{}",
+            normalizedInputJson: "{}",
+            outputJson: null,
+            estimatedCostUsd: 0,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: "2026-04-09T00:00:00.000Z",
+            updatedAt: "2026-04-09T00:00:00.000Z",
+            completedAt: null,
+        });
+        const tasks = storage.store.listTasks(5);
+        assert.equal(tasks.length, 1);
+        assert.equal(tasks[0]?.id, "task-storage-context");
+        assert.equal(storage.sql.filePath, dbPath);
+        storage.close();
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory routes synchronous postgres dual-run access through shadow sqlite", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-factory-");
+    const dbPath = join(workspace, "runtime.db");
+    const shadowPath = join(workspace, "shadow", "runtime.db");
+    try {
+        createFile(shadowPath, "");
+        const env = {
+            AA_STORAGE_DRIVER: "postgres",
+            AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
+            AA_STORAGE_POSTGRES_POOL_MIN: "2",
+            AA_STORAGE_POSTGRES_POOL_MAX: "10",
+            AA_STORAGE_POSTGRES_DUAL_RUN: "true",
+            AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH: shadowPath,
+        };
+        const plan = planAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env,
+        });
+        assert.equal(plan.runtimeProfile.driver, "postgres");
+        assert.deepEqual(plan.runtimeProfile.issues, []);
+        assert.equal(plan.executable, true);
+        const storage = openAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env,
+        });
+        assert.equal(storage.driver, "sqlite");
+        assert.equal(storage.sql.filePath, shadowPath);
+        storage.migrate();
+        storage.close();
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory sync opener requires shadow sqlite for postgres dual-run compatibility", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-factory-sync-postgres-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        assert.throws(() => openAuthoritativeStorageBackend({
+            dbPath,
+            environment: "dev",
+            env: {
+                AA_STORAGE_DRIVER: "postgres",
+                AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@localhost/agent_company_os",
+            },
+        }), /storage\.(postgres_shadow_sqlite_required_for_sync_backend|backend_config_invalid:)/);
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory fail-closes invalid backend configuration before open", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-factory-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        const plan = planAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env: {
+                AA_STORAGE_DRIVER: "postgres",
+                AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@localhost/agent_company_os?sslmode=disable",
+            },
+        });
+        assert.equal(plan.runtimeProfile.driver, "postgres");
+        assert.equal(plan.executable, false);
+        assert.ok(plan.openErrorCode?.startsWith("storage.backend_config_invalid:"));
+        assert.ok(plan.runtimeProfile.issues.includes("storage.postgres.host_not_production_ready:localhost"));
+        assert.ok(plan.runtimeProfile.issues.includes("storage.postgres.sslmode_required"));
+        assert.ok(plan.runtimeProfile.issues.includes("storage.postgres.dual_run_required"));
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory sync opener fail-closes invalid backend plans", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-factory-sync-invalid-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        assert.throws(() => openAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env: {
+                AA_STORAGE_DRIVER: "postgres",
+                AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@localhost/agent_company_os?sslmode=disable",
+            },
+        }), /storage\.backend_config_invalid:/);
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory async sqlite helpers open usable backends and contexts", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-async-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        const backend = await openAsyncAuthoritativeStorageBackend({
+            dbPath,
+            environment: "dev",
+            env: {},
+        });
+        assert.equal(backend.driver, "sqlite");
+        backend.migrate();
+        await backend.close();
+        const context = await openAsyncAuthoritativeStorageContext({
+            dbPath,
+            environment: "dev",
+            env: {},
+        });
+        context.migrate();
+        context.store.insertTask({
+            id: "task-async-storage-context",
+            parentId: null,
+            rootId: "task-async-storage-context",
+            divisionId: "general_ops",
+            title: "async storage context task",
+            status: "queued",
+            source: "user",
+            priority: "normal",
+            inputJson: "{}",
+            normalizedInputJson: "{}",
+            outputJson: null,
+            estimatedCostUsd: 0,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: "2026-04-16T00:00:00.000Z",
+            updatedAt: "2026-04-16T00:00:00.000Z",
+            completedAt: null,
+        });
+        assert.equal(context.store.listTasks(5).length, 1);
+        await context.close();
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory guard helpers reject the wrong backend driver", () => {
+    const workspace = createTempWorkspace("aa-storage-backend-guards-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        const sqliteBackend = openAuthoritativeStorageBackend({
+            dbPath,
+            environment: "dev",
+            env: {},
+        });
+        const postgresHandle = requirePostgresAuthoritativeStorageBackend({
+            driver: "postgres",
+            runtimeProfile: {
+                environment: "dev",
+                driver: "postgres",
+                issues: [],
+                postgres: {
+                    dsnConfigured: true,
+                    dsnSource: "AA_STORAGE_POSTGRES_DSN",
+                    host: "localhost",
+                    database: "agent_company_os",
+                    sslmode: null,
+                    poolMin: 0,
+                    poolMax: 20,
+                    dualRun: false,
+                    shadowSqlitePath: null,
+                    schema: null,
+                },
+            },
+            sql: {},
+            asyncSql: {},
+            asyncRepos: {},
+            postgres: {},
+            migrate() {
+                return Promise.resolve();
+            },
+            close() {
+                return Promise.resolve();
+            },
+        });
+        assert.equal(postgresHandle.driver, "postgres");
+        assert.throws(() => requirePostgresAuthoritativeStorageBackend(sqliteBackend), /storage\.expected_postgres_got_sqlite:sqlite/);
+        assert.throws(() => requireSqliteAuthoritativeStorageBackend(postgresHandle), /storage\.expected_sqlite_got_postgres:postgres/);
+        sqliteBackend.close();
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory async postgres context requires a shadow sqlite path before opening", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-async-postgres-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        await assert.rejects(() => openAsyncAuthoritativeStorageContext({
+            dbPath,
+            environment: "dev",
+            env: {
+                AA_STORAGE_DRIVER: "postgres",
+                AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@localhost/agent_company_os",
+            },
+        }), /storage\.postgres_shadow_sqlite_required_for_async_context/);
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory async helpers fail-close invalid backend plans before opening", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-async-invalid-");
+    const dbPath = join(workspace, "runtime.db");
+    const env = {
+        AA_STORAGE_DRIVER: "postgres",
+        AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@localhost/agent_company_os?sslmode=disable",
+    };
+    try {
+        await assert.rejects(() => openAsyncAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env,
+        }), /storage\.backend_config_invalid:/);
+        await assert.rejects(() => openAsyncAuthoritativeStorageContext({
+            dbPath,
+            environment: "staging",
+            env,
+        }), /storage\.backend_config_invalid:/);
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory postgres opener rejects sqlite runtime plans", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-postgres-guard-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        await assert.rejects(() => openPostgresAuthoritativeStorageBackend({
+            dbPath,
+            environment: "dev",
+            env: {},
+        }), /storage\.expected_postgres_got:sqlite/);
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory postgres opener fail-closes invalid postgres plans before driver loading", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-postgres-invalid-");
+    const dbPath = join(workspace, "runtime.db");
+    try {
+        await assert.rejects(() => openPostgresAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env: {
+                AA_STORAGE_DRIVER: "postgres",
+                AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@localhost/agent_company_os?sslmode=disable",
+            },
+        }), /storage\.backend_config_invalid:/);
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory postgres opener exposes shadow sqlite compatibility alongside async pg handle", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-postgres-success-");
+    const dbPath = join(workspace, "runtime.db");
+    const shadowPath = join(workspace, "shadow", "runtime.db");
+    const env = {
+        AA_STORAGE_DRIVER: "postgres",
+        AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=verify-full",
+        AA_STORAGE_POSTGRES_POOL_MIN: "2",
+        AA_STORAGE_POSTGRES_POOL_MAX: "10",
+        AA_STORAGE_POSTGRES_SCHEMA: "agent_runtime",
+        AA_STORAGE_POSTGRES_DUAL_RUN: "true",
+        AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH: shadowPath,
+    };
+    const calls = {
+        migrate: 0,
+        close: 0,
+    };
+    let openOptions = null;
+    const fakePgDb = {
+        filePath: "postgres://fake/agent_company_os",
+        connection: { dialect: "postgres" },
+        async migrate() {
+            calls.migrate += 1;
+        },
+        async close() {
+            calls.close += 1;
+        },
+    };
+    const restoreRequire = installMockRequire((specifier) => {
+        if (specifier === "postgres") {
+            return {};
+        }
+        if (specifier === "./postgres/pg-database.js") {
+            return {
+                PgDatabase: {
+                    async open(options) {
+                        openOptions = options;
+                        return fakePgDb;
+                    },
+                },
+            };
+        }
+        throw new Error(`unexpected require: ${specifier}`);
+    });
+    try {
+        createFile(shadowPath, "");
+        const storage = await openPostgresAuthoritativeStorageBackend({
+            dbPath,
+            environment: "staging",
+            env,
+        });
+        assert.equal(storage.driver, "postgres");
+        assert.equal(storage.asyncSql, fakePgDb);
+        assert.equal(storage.postgres, fakePgDb);
+        assert.equal(storage.shadowSqlite?.filePath, shadowPath);
+        assert.deepEqual(openOptions, {
+            dsn: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=verify-full",
+            schema: "agent_runtime",
+            poolMin: 2,
+            poolMax: 10,
+            ssl: true,
+        });
+        assert.equal(storage.sql.filePath, shadowPath);
+        storage.sql.migrate();
+        await storage.migrate();
+        await storage.close();
+        assert.equal(calls.migrate, 1);
+        assert.equal(calls.close, 1);
+    }
+    finally {
+        restoreRequire();
+        cleanupPath(workspace);
+    }
+});
+test("storage backend factory async postgres context wires shadow sqlite lifecycle around async pg handle", async () => {
+    const workspace = createTempWorkspace("aa-storage-backend-async-postgres-success-");
+    const dbPath = join(workspace, "runtime.db");
+    const shadowPath = join(workspace, "shadow", "runtime.db");
+    const env = {
+        AA_STORAGE_DRIVER: "postgres",
+        AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
+        AA_STORAGE_POSTGRES_DUAL_RUN: "true",
+        AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH: shadowPath,
+    };
+    const calls = {
+        migrate: 0,
+        close: 0,
+    };
+    const restoreRequire = installMockRequire((specifier) => {
+        if (specifier === "postgres") {
+            return {};
+        }
+        if (specifier === "./postgres/pg-database.js") {
+            return {
+                PgDatabase: {
+                    async open() {
+                        return {
+                            filePath: "postgres://fake/agent_company_os",
+                            connection: { dialect: "postgres" },
+                            async migrate() {
+                                calls.migrate += 1;
+                            },
+                            async close() {
+                                calls.close += 1;
+                            },
+                        };
+                    },
+                },
+            };
+        }
+        throw new Error(`unexpected require: ${specifier}`);
+    });
+    try {
+        createFile(shadowPath, "");
+        const context = await openAsyncAuthoritativeStorageContext({
+            dbPath,
+            environment: "staging",
+            env,
+        });
+        assert.equal(context.driver, "postgres");
+        assert.equal(context.sql.filePath, shadowPath);
+        assert.equal(context.shadowSqlite?.filePath, shadowPath);
+        await context.migrate();
+        context.store.insertTask({
+            id: "task-async-postgres-shadow-context",
+            parentId: null,
+            rootId: "task-async-postgres-shadow-context",
+            divisionId: "general_ops",
+            title: "async postgres shadow task",
+            status: "queued",
+            source: "user",
+            priority: "normal",
+            inputJson: "{}",
+            normalizedInputJson: "{}",
+            outputJson: null,
+            estimatedCostUsd: 0,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: "2026-04-16T00:00:00.000Z",
+            updatedAt: "2026-04-16T00:00:00.000Z",
+            completedAt: null,
+        });
+        assert.equal(context.store.listTasks(5).length, 1);
+        await context.close();
+        assert.equal(calls.migrate, 1);
+        assert.equal(calls.close, 1);
+    }
+    finally {
+        restoreRequire();
+        cleanupPath(workspace);
+    }
+});
+//# sourceMappingURL=storage-backend-factory.test.js.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"artifact-versioning.js","sourceRoot":"","sources":["../../../../../src/platform/state-evidence/artifacts/artifact-versioning.ts"],"names":[],"mappings":"AAEA,MAAM,OAAO,yBAAyB;IAC7B,iBAAiB,CAAC,QAAgC,EAAE,SAA0C;QACnG,OAAO;YACL,GAAG,QAAQ;YACX,GAAG,SAAS;YACZ,OAAO,EAAE,QAAQ,CAAC,OAAO,GAAG,CAAC;YAC7B,gBAAgB,EAAE,QAAQ,CAAC,UAAU;SACtC,CAAC;IACJ,CAAC;CACF"}

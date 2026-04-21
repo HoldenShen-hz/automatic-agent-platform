@@ -48,7 +48,7 @@ export class RoadmapService {
    * Gets roadmap items, optionally filtered by phase
    */
   public getRoadmap(phase?: RoadmapPhase): RoadmapItem[] {
-    const allItems = [...this.items.values()];
+    const allItems = Array.from(this.items.values());
     if (phase === undefined) {
       return allItems.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     }
@@ -106,7 +106,7 @@ export class RoadmapService {
    * Lists roadmap items filtered by status
    */
   public listRoadmapItemsByStatus(status: RoadmapStatus): RoadmapItem[] {
-    return [...this.items.values()]
+    return Array.from(this.items.values())
       .filter((item) => item.status === status)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }

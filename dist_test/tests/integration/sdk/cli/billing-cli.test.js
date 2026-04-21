@@ -1,0 +1,502 @@
+import assert from "node:assert/strict";
+import { execFile, execFileSync } from "node:child_process";
+import { createServer } from "node:http";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import test from "node:test";
+import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+const execFileAsync = promisify(execFile);
+function runCli(env) {
+    const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "billing.js")], {
+        cwd: process.cwd(),
+        env: {
+            ...process.env,
+            ...env,
+        },
+        encoding: "utf8",
+        timeout: 10_000,
+    });
+    return JSON.parse(stdout);
+}
+async function runCliAsync(env) {
+    const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "billing.js")], {
+        cwd: process.cwd(),
+        env: {
+            ...process.env,
+            ...env,
+        },
+        encoding: "utf8",
+        timeout: 10_000,
+    });
+    return JSON.parse(stdout);
+}
+async function closeMockServer(server) {
+    server.closeIdleConnections();
+    server.closeAllConnections();
+    await new Promise((resolve, reject) => {
+        server.close((error) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+            resolve();
+        });
+    });
+}
+function configureMockServer(server) {
+    server.keepAliveTimeout = 1;
+    server.requestTimeout = 1_000;
+    server.headersTimeout = 2_000;
+    server.unref();
+    return server;
+}
+test("billing CLI can create accounts, evaluate entitlements, record usage, and export summaries", () => {
+    const workspace = createTempWorkspace("aa-billing-cli-");
+    const dbPath = join(workspace, "billing-cli.db");
+    const artifactRoot = join(workspace, "artifacts");
+    try {
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        const store = new AuthoritativeTaskStore(db);
+        db.close();
+        const created = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_account",
+            AA_ACCOUNT_ID: "acct-cli-1",
+            AA_OWNER_ID: "owner-cli-1",
+            AA_WORKSPACE_ID: "workspace-cli-1",
+            AA_PLAN_ID: "pro",
+        });
+        assert.equal(created.accountId, "acct-cli-1");
+        assert.equal(created.planId, "pro");
+        const decision = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "evaluate",
+            AA_ACCOUNT_ID: "acct-cli-1",
+            AA_FEATURE_KEY: "phase3.pmf_validation",
+            AA_METRIC_TYPE: "task_execution",
+            AA_REQUESTED_QUANTITY: "3",
+            AA_EVALUATED_AT: "2026-04-08T11:00:00.000Z",
+        });
+        assert.equal(decision.decision.decisionType, "allow");
+        const usage = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "usage",
+            AA_ACCOUNT_ID: "acct-cli-1",
+            AA_METRIC_TYPE: "task_execution",
+            AA_QUANTITY: "3",
+            AA_SOURCE: "runtime",
+            AA_CAPTURED_AT: "2026-04-08T11:05:00.000Z",
+        });
+        assert.ok(usage.usageEvent.usageId.length > 0);
+        assert.equal(usage.quotaCounter?.usedQuantity, 3);
+        const summary = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "summary",
+            AA_ACCOUNT_ID: "acct-cli-1",
+        });
+        assert.equal(summary.account.accountId, "acct-cli-1");
+        assert.ok(summary.totals.totalBilledUsd > 0);
+        const exported = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "export",
+            AA_ACCOUNT_ID: "acct-cli-1",
+            AA_ARTIFACT_ROOT: artifactRoot,
+        });
+        assert.match(exported.jsonArtifact.uri, /billing-summary-acct-cli-1/);
+        assert.match(exported.markdownArtifact.uri, /billing-summary-acct-cli-1/);
+        const db2 = new SqliteDatabase(dbPath);
+        db2.migrate();
+        const store2 = new AuthoritativeTaskStore(db2);
+        assert.ok(store2.getBillingAccount("acct-cli-1"));
+        assert.equal(store2.listUsageEventsForAccount("acct-cli-1", 10).length, 1);
+        db2.close();
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("billing CLI can create invoices, checkout sessions, and settle payment sessions", () => {
+    const workspace = createTempWorkspace("aa-billing-cli-pay-");
+    const dbPath = join(workspace, "billing-cli-pay.db");
+    try {
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        db.close();
+        runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_account",
+            AA_ACCOUNT_ID: "acct-cli-pay-1",
+            AA_OWNER_ID: "owner-cli-pay-1",
+            AA_PLAN_ID: "pro",
+        });
+        runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "usage",
+            AA_ACCOUNT_ID: "acct-cli-pay-1",
+            AA_METRIC_TYPE: "task_execution",
+            AA_QUANTITY: "4",
+            AA_TENANT_ID: "tenant-cli-pay-1",
+            AA_CAPTURED_AT: "2026-04-08T11:05:00.000Z",
+        });
+        const invoice = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_invoice",
+            AA_ACCOUNT_ID: "acct-cli-pay-1",
+            AA_TENANT_ID: "tenant-cli-pay-1",
+            AA_TAX_USD: "0.25",
+            AA_CREATED_AT: "2026-04-08T12:00:00.000Z",
+        });
+        assert.equal(invoice.status, "open");
+        const checkout = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_checkout",
+            AA_INVOICE_ID: invoice.invoiceId,
+        });
+        assert.equal(checkout.status, "pending");
+        assert.match(checkout.checkoutUrl, /billing\.manual\.local\/checkout/);
+        const settled = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "settle_payment",
+            AA_PAYMENT_SESSION_ID: checkout.sessionId,
+            AA_CREATED_AT: "2026-04-08T12:05:00.000Z",
+        });
+        assert.equal(settled.session.status, "paid");
+        assert.equal(settled.invoice.status, "paid");
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("billing CLI can create a Stripe checkout session through the configured gateway", async (t) => {
+    const workspace = createTempWorkspace("aa-billing-cli-stripe-");
+    const dbPath = join(workspace, "billing-cli-stripe.db");
+    const requests = [];
+    const server = configureMockServer(createServer((req, res) => {
+        let body = "";
+        req.on("data", (chunk) => {
+            body += String(chunk);
+        });
+        req.on("end", () => {
+            requests.push(body);
+            res.writeHead(200, { "Content-Type": "application/json", Connection: "close" });
+            res.end(JSON.stringify({
+                id: "cs_live_test_123",
+                url: "https://checkout.stripe.test/session/cs_live_test_123",
+                expires_at: 1770000000,
+            }));
+        });
+    }));
+    try {
+        await new Promise((resolve, reject) => {
+            server.once("error", reject);
+            server.listen(0, "127.0.0.1", () => resolve());
+        });
+    }
+    catch (error) {
+        if (error.code === "EPERM") {
+            t.skip("sandbox denies local listen sockets");
+            await closeMockServer(server);
+            cleanupPath(workspace);
+            return;
+        }
+        throw error;
+    }
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    try {
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        db.close();
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_account",
+            AA_ACCOUNT_ID: "acct-cli-stripe-1",
+            AA_OWNER_ID: "owner-cli-stripe-1",
+            AA_PLAN_ID: "pro",
+        });
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "usage",
+            AA_ACCOUNT_ID: "acct-cli-stripe-1",
+            AA_METRIC_TYPE: "task_execution",
+            AA_QUANTITY: "2",
+            AA_CAPTURED_AT: "2026-04-08T11:05:00.000Z",
+        });
+        const invoice = await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_invoice",
+            AA_ACCOUNT_ID: "acct-cli-stripe-1",
+            AA_CREATED_AT: "2026-04-08T12:00:00.000Z",
+        });
+        const checkout = await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_checkout",
+            AA_INVOICE_ID: invoice.invoiceId,
+            AA_PAYMENT_GATEWAY_KIND: "stripe",
+            AA_STRIPE_SECRET_KEY: "sk_test_123",
+            AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
+            AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
+            AA_STRIPE_API_BASE_URL: `http://127.0.0.1:${port}/v1`,
+        });
+        assert.equal(checkout.gatewayKind, "stripe");
+        assert.equal(checkout.gatewaySessionRef, "cs_live_test_123");
+        assert.equal(checkout.checkoutUrl, "https://checkout.stripe.test/session/cs_live_test_123");
+        assert.equal(requests.length, 1);
+        assert.match(requests[0] ?? "", /client_reference_id=invoice_/);
+        assert.match(requests[0] ?? "", /metadata%5Baccount_id%5D=acct-cli-stripe-1/);
+    }
+    finally {
+        await closeMockServer(server);
+        cleanupPath(workspace);
+    }
+});
+test("billing CLI can create a Paddle checkout session through the configured gateway", async (t) => {
+    const workspace = createTempWorkspace("aa-billing-cli-paddle-");
+    const dbPath = join(workspace, "billing-cli-paddle.db");
+    const requests = [];
+    const server = configureMockServer(createServer((req, res) => {
+        let body = "";
+        req.on("data", (chunk) => {
+            body += String(chunk);
+        });
+        req.on("end", () => {
+            requests.push(body);
+            res.writeHead(200, { "Content-Type": "application/json", Connection: "close" });
+            res.end(JSON.stringify({
+                data: {
+                    id: "txn_live_test_123",
+                    checkout: {
+                        url: "https://checkout.paddle.test/txn_live_test_123",
+                    },
+                },
+            }));
+        });
+    }));
+    try {
+        await new Promise((resolve, reject) => {
+            server.once("error", reject);
+            server.listen(0, "127.0.0.1", () => resolve());
+        });
+    }
+    catch (error) {
+        if (error.code === "EPERM") {
+            t.skip("sandbox denies local listen sockets");
+            await closeMockServer(server);
+            cleanupPath(workspace);
+            return;
+        }
+        throw error;
+    }
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    try {
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        db.close();
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_account",
+            AA_ACCOUNT_ID: "acct-cli-paddle-1",
+            AA_OWNER_ID: "owner-cli-paddle-1",
+            AA_PLAN_ID: "pro",
+        });
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "usage",
+            AA_ACCOUNT_ID: "acct-cli-paddle-1",
+            AA_METRIC_TYPE: "task_execution",
+            AA_QUANTITY: "2",
+            AA_TENANT_ID: "tenant-cli-paddle-1",
+            AA_CAPTURED_AT: "2026-04-08T11:05:00.000Z",
+        });
+        const invoice = await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_invoice",
+            AA_ACCOUNT_ID: "acct-cli-paddle-1",
+            AA_TENANT_ID: "tenant-cli-paddle-1",
+            AA_CREATED_AT: "2026-04-08T12:00:00.000Z",
+        });
+        const checkout = await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_checkout",
+            AA_INVOICE_ID: invoice.invoiceId,
+            AA_TENANT_ID: "tenant-cli-paddle-1",
+            AA_PAYMENT_GATEWAY_KIND: "paddle",
+            AA_PADDLE_API_KEY: "pdl_test_123",
+            AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
+            AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
+            AA_PADDLE_API_BASE_URL: `http://127.0.0.1:${port}`,
+        });
+        assert.equal(checkout.gatewayKind, "paddle");
+        assert.equal(checkout.gatewaySessionRef, "txn_live_test_123");
+        assert.equal(checkout.checkoutUrl, "https://checkout.paddle.test/txn_live_test_123");
+        assert.equal(requests.length, 1);
+        assert.match(requests[0] ?? "", /invoice_id/);
+    }
+    finally {
+        await closeMockServer(server);
+        cleanupPath(workspace);
+    }
+});
+test("billing CLI fail-closes when postgres storage execution is requested", () => {
+    const failure = runBuiltCliExpectFailure("billing.js", {
+        AA_DB_PATH: "/tmp/billing-postgres.db",
+        AA_BILLING_ACTION: "summary",
+        AA_ACCOUNT_ID: "acct-postgres",
+        AA_STORAGE_DRIVER: "postgres",
+        AA_STORAGE_POSTGRES_DSN: "postgresql://prod-db.example.com/agent_os?sslmode=require",
+    });
+    assert.notEqual(failure.status, 0);
+    assert.match(failure.stderr, /storage\.(cli_sync_shadow_sqlite_required|backend_driver_not_implemented:postgres|backend_config_invalid)/);
+});
+test("billing CLI reconciles a payment session by gateway reference", async () => {
+    const workspace = createTempWorkspace("aa-billing-cli-reconcile-");
+    const dbPath = join(workspace, "billing-cli-reconcile.db");
+    try {
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        db.close();
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_account",
+            AA_ACCOUNT_ID: "acct-cli-reconcile-1",
+            AA_OWNER_ID: "owner-cli-reconcile-1",
+            AA_PLAN_ID: "pro",
+        });
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "usage",
+            AA_ACCOUNT_ID: "acct-cli-reconcile-1",
+            AA_METRIC_TYPE: "task_execution",
+            AA_QUANTITY: "1",
+            AA_CAPTURED_AT: "2026-04-08T11:05:00.000Z",
+        });
+        const invoice = await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_invoice",
+            AA_ACCOUNT_ID: "acct-cli-reconcile-1",
+            AA_CREATED_AT: "2026-04-08T12:00:00.000Z",
+        });
+        const checkout = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_checkout",
+            AA_INVOICE_ID: invoice.invoiceId,
+            AA_PAYMENT_GATEWAY_KIND: "manual",
+        });
+        const reconciled = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "reconcile_payment",
+            AA_PAYMENT_GATEWAY_KIND: "manual",
+            AA_GATEWAY_SESSION_REF: checkout.gatewaySessionRef,
+            AA_PAYMENT_STATUS: "paid",
+            AA_CREATED_AT: "2026-04-08T12:05:00.000Z",
+        });
+        assert.equal(reconciled.session.status, "paid");
+        assert.equal(reconciled.invoice.status, "paid");
+    }
+    finally {
+        cleanupPath(workspace);
+    }
+});
+test("billing CLI auto-reconciles pending Stripe sessions within tenant scope", async (t) => {
+    const workspace = createTempWorkspace("aa-billing-cli-auto-reconcile-");
+    const dbPath = join(workspace, "billing-cli-auto-reconcile.db");
+    const requests = [];
+    const server = configureMockServer(createServer((req, res) => {
+        requests.push(`${req.method ?? "GET"} ${req.url ?? "/"}`);
+        res.writeHead(200, { "Content-Type": "application/json", Connection: "close" });
+        if ((req.url ?? "").includes("/v1/checkout/sessions/cs_auto_cli_123")) {
+            res.end(JSON.stringify({
+                id: "cs_auto_cli_123",
+                status: "complete",
+                payment_status: "paid",
+            }));
+            return;
+        }
+        res.end(JSON.stringify({
+            id: "cs_auto_cli_123",
+            url: "https://checkout.stripe.test/session/cs_auto_cli_123",
+            expires_at: 1770000000,
+        }));
+    }));
+    try {
+        await new Promise((resolve, reject) => {
+            server.once("error", reject);
+            server.listen(0, "127.0.0.1", () => resolve());
+        });
+    }
+    catch (error) {
+        if (error.code === "EPERM") {
+            t.skip("sandbox denies local listen sockets");
+            await closeMockServer(server);
+            cleanupPath(workspace);
+            return;
+        }
+        throw error;
+    }
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    try {
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        db.close();
+        runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_account",
+            AA_ACCOUNT_ID: "acct-cli-auto-1",
+            AA_OWNER_ID: "owner-cli-auto-1",
+            AA_PLAN_ID: "pro",
+        });
+        runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "usage",
+            AA_ACCOUNT_ID: "acct-cli-auto-1",
+            AA_METRIC_TYPE: "task_execution",
+            AA_QUANTITY: "1",
+            AA_TENANT_ID: "tenant-cli-auto-1",
+            AA_CAPTURED_AT: "2026-04-08T11:05:00.000Z",
+        });
+        const invoice = runCli({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_invoice",
+            AA_ACCOUNT_ID: "acct-cli-auto-1",
+            AA_TENANT_ID: "tenant-cli-auto-1",
+            AA_CREATED_AT: "2026-04-08T12:00:00.000Z",
+        });
+        await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "create_checkout",
+            AA_INVOICE_ID: invoice.invoiceId,
+            AA_TENANT_ID: "tenant-cli-auto-1",
+            AA_PAYMENT_GATEWAY_KIND: "stripe",
+            AA_STRIPE_SECRET_KEY: "sk_test_123",
+            AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
+            AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
+            AA_STRIPE_API_BASE_URL: `http://127.0.0.1:${port}/v1`,
+        });
+        const reconciled = await runCliAsync({
+            AA_DB_PATH: dbPath,
+            AA_BILLING_ACTION: "reconcile_pending",
+            AA_TENANT_ID: "tenant-cli-auto-1",
+            AA_PAYMENT_GATEWAY_KIND: "stripe",
+            AA_STRIPE_SECRET_KEY: "sk_test_123",
+            AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
+            AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
+            AA_STRIPE_API_BASE_URL: `http://127.0.0.1:${port}/v1`,
+        });
+        assert.equal(reconciled.scannedCount, 1);
+        assert.equal(reconciled.reconciledCount, 1);
+        assert.equal(reconciled.results[0]?.reason, "reconciled");
+        assert.equal(reconciled.results[0]?.nextStatus, "paid");
+        assert.ok(requests.some((entry) => entry.includes("/v1/checkout/sessions/cs_auto_cli_123")));
+    }
+    finally {
+        await closeMockServer(server);
+        cleanupPath(workspace);
+    }
+});
+//# sourceMappingURL=billing-cli.test.js.map

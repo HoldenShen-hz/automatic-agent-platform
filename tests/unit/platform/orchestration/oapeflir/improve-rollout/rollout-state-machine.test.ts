@@ -655,3 +655,51 @@ test("RolloutStateMachine transition throws for unknown currentStatus with missi
     /Invalid rollout transition/,
   );
 });
+
+// =============================================================================
+// inferCurrentStatus default branch coverage (proposed, evaluating)
+// =============================================================================
+
+test("RolloutStateMachine infers draft status for proposed candidate (default branch)", () => {
+  const stateMachine = new RolloutStateMachine();
+  const candidate = createCandidate("proposed");
+  candidate.sourceSignalRefs = ["sig_proposed"];
+
+  // proposed falls into default branch of inferCurrentStatus, returning "draft"
+  const result = stateMachine.transition(candidate, "suggest", {
+    targetStatus: "pending_approval",
+  });
+
+  assert.equal(result.status, "pending_approval");
+  assert.equal(result.level, "suggest");
+  assert.deepEqual(result.evidence, ["sig_proposed"]);
+});
+
+test("RolloutStateMachine infers draft status for evaluating candidate (default branch)", () => {
+  const stateMachine = new RolloutStateMachine();
+  const candidate = createCandidate("evaluating");
+  candidate.sourceSignalRefs = ["sig_evaluating_1", "sig_evaluating_2"];
+
+  // evaluating falls into default branch of inferCurrentStatus, returning "draft"
+  const result = stateMachine.transition(candidate, "shadow", {
+    targetStatus: "shadow",
+  });
+
+  assert.equal(result.status, "shadow");
+  assert.equal(result.level, "shadow");
+  assert.deepEqual(result.evidence, ["sig_evaluating_1", "sig_evaluating_2"]);
+});
+
+test("RolloutStateMachine allows draft transition to canary_5 (via shadow)", () => {
+  const stateMachine = new RolloutStateMachine();
+  const candidate = createCandidate("proposed");
+
+  // draft -> shadow is allowed, targeting canary_5 level
+  const result = stateMachine.transition(candidate, "canary_5", {
+    currentStatus: "draft",
+    targetStatus: "shadow",
+  });
+
+  assert.equal(result.status, "shadow");
+  assert.equal(result.level, "canary_5");
+});

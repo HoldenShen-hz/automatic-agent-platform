@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../src/apps/workers/index.ts"],"names":[],"mappings":"AAEA,MAAM,CAAC,MAAM,mBAAmB,GAAwB;IACtD,KAAK,EAAE,wBAAwB;IAC/B,IAAI,EAAE,QAAQ;IACd,WAAW,EAAE,0EAA0E;IACvF,WAAW,EAAE,IAAI;IACjB,cAAc,EAAE,IAAI;IACpB,YAAY,EAAE,CAAC,oBAAoB,EAAE,WAAW,EAAE,iBAAiB,CAAC;CACrE,CAAC"}

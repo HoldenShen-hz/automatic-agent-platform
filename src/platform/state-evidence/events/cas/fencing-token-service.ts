@@ -107,8 +107,16 @@ export class FencingTokenService {
 
     // Token format: {executionId}-{nodeId}-{counter}-{timestamp}
     const tokenNodeId = parts[1];
+    const executionIdPart = parts[0];
 
-        if (tokenNodeId !== expectedOwner) {
+    if (!tokenNodeId || !executionIdPart) {
+      return {
+        valid: false,
+        reason: "Token format invalid",
+      };
+    }
+
+    if (tokenNodeId !== expectedOwner) {
       return {
         valid: false,
         owner: tokenNodeId,
@@ -118,7 +126,7 @@ export class FencingTokenService {
 
     return {
       valid: true,
-      executionId: parts[0],
+      executionId: executionIdPart,
       owner: tokenNodeId,
     };
   }
@@ -134,47 +142,22 @@ export class FencingTokenService {
    * @returns The fence info if acquired, null if fence already held in exclusive mode
    */
   public acquireFence(executionId: string, mode: FenceMode): FenceInfo | null {
-    const existing = this.activeFences.get(executionId);
-
-    if (existing !== undefined) {
-      // Fence already exists
-      if (mode === "shared" && existing.mode === "shared") {
-        // Shared mode allows multiple holders - create new fence info
-        const fenceToken = this.generateFencingToken(executionId, this.nodeId);
-        const fenceInfo: FenceInfo = {
-          executionId,
-          mode,
-          fenceToken,
-          ownerNodeId: this.nodeId,
-          acquiredAt: new Date(),
-          expiresAt: null,
-        };
-        this.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
-        return fenceInfo;
-      }
-
-      if (mode === "exclusive") {
-        // Exclusive mode - check if current holder is same node
-        if (existing.ownerNodeId === this.nodeId) {
-          // Same node - allow re-acquisition
-          const fenceToken = this.generateFencingToken(executionId, this.nodeId);
-          const fenceInfo: FenceInfo = {
-            executionId,
-            mode,
-            fenceToken,
-            ownerNodeId: this.nodeId,
-            acquiredAt: new Date(),
-            expiresAt: null,
-          };
-          this.activeFences.set(executionId, fenceInfo);
-          return fenceInfo;
+    // Check if any fence exists for this execution
+    for (const fence of this.activeFences.values()) {
+      if (fence.executionId === executionId) {
+        // A fence exists - check if we can acquire
+        if (fence.ownerNodeId !== this.nodeId && fence.mode === "exclusive") {
+          // Different node holds exclusive fence - cannot acquire
+          return null;
         }
-        // Different node holds exclusive fence - cannot acquire
-        return null;
+        if (fence.ownerNodeId !== this.nodeId && mode === "exclusive") {
+          // Different node holds any fence and we want exclusive - cannot acquire
+          return null;
+        }
       }
     }
 
-    // No existing fence - create new one
+    // No blocking fence exists - create new one
     const fenceToken = this.generateFencingToken(executionId, this.nodeId);
     const fenceInfo: FenceInfo = {
       executionId,
@@ -185,7 +168,7 @@ export class FencingTokenService {
       expiresAt: null,
     };
 
-    this.activeFences.set(executionId, fenceInfo);
+    this.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
     return fenceInfo;
   }
 
@@ -196,8 +179,6 @@ export class FencingTokenService {
    * @returns true if fence was released, false if no fence was held
    */
   public releaseFence(executionId: string): boolean {
-    const keyToDelete: string | null = null;
-
     // Find and remove the fence
     for (const [key, fence] of this.activeFences.entries()) {
       if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {

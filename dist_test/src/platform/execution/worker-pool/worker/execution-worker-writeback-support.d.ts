@@ -1,0 +1,22 @@
+import type { AgentExecutionRecord, WorkerSnapshotRecord } from "../../../contracts/types/domain.js";
+import type { TaskTerminalStatus } from "../../../contracts/types/status.js";
+import type { WorkerRemoteLogInput } from "../execution-worker-writeback-service.js";
+import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
+export declare function parseJsonArray(value: string): string[];
+export declare function removeExecutionId(existing: string[], executionId: string): string[];
+export declare function toWorkerStatus(snapshot: WorkerSnapshotRecord, runningExecutionIds: string[]): WorkerSnapshotRecord["status"];
+export declare function toExecutionTerminalStatus(terminalStatus: TaskTerminalStatus): "succeeded" | "failed" | "cancelled";
+export declare function buildAgentExecutionRecord(store: AuthoritativeTaskStore, execution: NonNullable<ReturnType<AuthoritativeTaskStore["getExecution"]>>, executionId: string, occurredAt: string, updates: {
+    agentId: string;
+    runtimeInstanceId: string | null;
+    restartedFromRuntimeInstanceId: string | null;
+    restartGeneration: number;
+    status: string;
+    currentStepId: string | null;
+    lastToolName: string | null;
+    toolCallCount: number;
+    progressMessage: string | null;
+    lastErrorCode: string | null;
+    completedAt: string | null;
+}): AgentExecutionRecord;
+export declare function persistRemoteLogs(store: AuthoritativeTaskStore, taskId: string, executionId: string, traceId: string, workerId: string, runtimeInstanceId: string | null, remoteLogs: WorkerRemoteLogInput[] | undefined, defaultOccurredAt: string): void;

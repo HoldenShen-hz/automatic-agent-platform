@@ -234,7 +234,7 @@ test("ExplanationPipelineService generates correct cache key format", () => {
     decisionFactors: [],
     evidence: [],
     riskNotes: [],
-  }, "audit");
+  }, "L3");
 
   assert.equal(bundle.cacheKey, "task:abc:deploy:audit");
 });

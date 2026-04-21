@@ -1,0 +1,41 @@
+import { z } from "zod";
+export declare const RolloutLevelSchema: z.ZodEnum<["off", "suggest", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable"]>;
+export declare const RolloutStatusSchema: z.ZodEnum<["draft", "pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "rejected", "rolled_back", "paused"]>;
+export declare const RolloutRecordSchema: z.ZodObject<{
+    recordId: z.ZodString;
+    candidateId: z.ZodString;
+    level: z.ZodEnum<["off", "suggest", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable"]>;
+    previousLevel: z.ZodDefault<z.ZodEnum<["off", "suggest", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable"]>>;
+    strategyVersionId: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+    status: z.ZodDefault<z.ZodEnum<["draft", "pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "rejected", "rolled_back", "paused"]>>;
+    transitionedAt: z.ZodNumber;
+    approvedBy: z.ZodOptional<z.ZodString>;
+    guardrailReasonCodes: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
+    evidence: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
+}, "strip", z.ZodTypeAny, {
+    status: "pending_approval" | "rejected" | "rolled_back" | "draft" | "paused" | "shadow" | "stable" | "canary_5" | "partial_25" | "partial_50" | "partial_75";
+    level: "off" | "suggest" | "shadow" | "stable" | "canary_5" | "partial_25" | "partial_50" | "partial_75";
+    evidence: string[];
+    recordId: string;
+    candidateId: string;
+    previousLevel: "off" | "suggest" | "shadow" | "stable" | "canary_5" | "partial_25" | "partial_50" | "partial_75";
+    strategyVersionId: string | null;
+    transitionedAt: number;
+    guardrailReasonCodes: string[];
+    approvedBy?: string | undefined;
+}, {
+    level: "off" | "suggest" | "shadow" | "stable" | "canary_5" | "partial_25" | "partial_50" | "partial_75";
+    recordId: string;
+    candidateId: string;
+    transitionedAt: number;
+    status?: "pending_approval" | "rejected" | "rolled_back" | "draft" | "paused" | "shadow" | "stable" | "canary_5" | "partial_25" | "partial_50" | "partial_75" | undefined;
+    evidence?: string[] | undefined;
+    previousLevel?: "off" | "suggest" | "shadow" | "stable" | "canary_5" | "partial_25" | "partial_50" | "partial_75" | undefined;
+    strategyVersionId?: string | null | undefined;
+    approvedBy?: string | undefined;
+    guardrailReasonCodes?: string[] | undefined;
+}>;
+export type RolloutLevel = z.infer<typeof RolloutLevelSchema>;
+export type RolloutStatus = z.infer<typeof RolloutStatusSchema>;
+export type RolloutRecord = z.infer<typeof RolloutRecordSchema>;
+export declare function parseRolloutRecord(input: unknown): RolloutRecord;

@@ -773,3 +773,218 @@ test("PlanBuilder uses default maxAttempts when maxAttempts is undefined", () =>
   // maxAttempts defaults to 1, so maxRetries = max(0, 1-1) = 0
   assert.equal(plan.steps[0]!.retryPolicy.maxRetries, 0);
 });
+
+test("PlanBuilder uses execute action when toolNames is empty for non-first step", () => {
+  const builder = new PlanBuilder();
+  const workflowWithEmptyToolNames = {
+    workflow: { workflowId: "wf_test", divisionId: "coding", steps: [] },
+    executionSteps: [
+      {
+        stepId: "step_1",
+        divisionId: "coding",
+        roleId: "builder",
+        inputKeys: [],
+        agentId: "agent_builder",
+        outputKey: "result",
+        outputSchemaPath: null,
+        dependsOnStepIds: [],
+        dependencyTypes: {},
+        timeoutMs: 5000,
+        maxAttempts: 1,
+      },
+    ],
+    planReason: "test",
+    dependencyEdges: [],
+  };
+
+  const plan = builder.build({
+    observation: {
+      taskId: "task_toolnames",
+      timestamp: Date.now(),
+      objective: "test toolnames",
+      currentPhase: "planning",
+      userIntent: { raw: "test", normalized: "test", confidence: 0.9 },
+      blockers: [],
+      codebaseSnapshot: {
+        rootPath: process.cwd(),
+        fileCount: 1,
+        relevantFiles: [],
+      },
+      environmentContext: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        workingDirectory: process.cwd(),
+        availableTools: ["read"],
+      },
+      historicalContext: {
+        previousTaskIds: [],
+        relatedMemoryRefs: [],
+      },
+      relevantMemory: [],
+      fileRefs: [],
+      metrics: {},
+    },
+    assessment: {
+      taskId: "task_toolnames",
+      timestamp: Date.now(),
+      situationRef: "task_situation:task_toolnames:1",
+      phase: "pre-execution",
+      complexity: "simple",
+      risk: "low",
+      riskAssessment: { level: "low", factors: [] },
+      routingDecision: { division: "coding", workflow: "single", rationale: "test" },
+      resourceAllocation: { modelClass: "small", maxTokens: 5000, timeoutMs: 60000 },
+      approvalPolicy: { required: false, level: "none" },
+      executionMode: "auto",
+      suggestedActions: [],
+    },
+    workflow: workflowWithEmptyToolNames as any,
+  });
+
+  // TaskDecompositionService always includes "read" as first tool, so toolNames[0] is "read"
+  assert.equal(plan.steps[0]!.action, "read");
+});
+
+test("PlanBuilder uses replanned strategy when version > 1 (replan scenario)", () => {
+  const builder = new PlanBuilder();
+
+  const v1Plan = builder.build({
+    observation: {
+      taskId: "task_v2_test",
+      timestamp: Date.now(),
+      objective: "v2 test",
+      currentPhase: "planning",
+      userIntent: { raw: "v2 test", normalized: "v2 test", confidence: 0.9 },
+      blockers: [],
+      codebaseSnapshot: {
+        rootPath: process.cwd(),
+        fileCount: 1,
+        relevantFiles: [],
+      },
+      environmentContext: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        workingDirectory: process.cwd(),
+        availableTools: ["read"],
+      },
+      historicalContext: {
+        previousTaskIds: [],
+        relatedMemoryRefs: [],
+      },
+      relevantMemory: [],
+      fileRefs: [],
+      metrics: {},
+    },
+    assessment: {
+      taskId: "task_v2_test",
+      timestamp: Date.now(),
+      situationRef: "task_situation:task_v2_test:1",
+      phase: "pre-execution",
+      complexity: "simple",
+      risk: "low",
+      riskAssessment: { level: "low", factors: [] },
+      routingDecision: { division: "coding", workflow: "single", rationale: "simple" },
+      resourceAllocation: { modelClass: "small", maxTokens: 1000, timeoutMs: 10000 },
+      approvalPolicy: { required: false, level: "none" },
+      executionMode: "auto",
+      suggestedActions: [],
+    },
+    workflow: {
+      workflow: { workflowId: "wf_v2", divisionId: "coding", steps: [] },
+      executionSteps: [
+        {
+          stepId: "step_1",
+          divisionId: "coding",
+          roleId: "builder",
+          inputKeys: [],
+          agentId: "agent_builder",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
+        },
+      ],
+      planReason: "workflow.single_step",
+      dependencyEdges: [],
+    },
+    version: 2,
+    parentVersion: 1,
+  });
+
+  // When version > 1, strategy should be "replanned" not the selected strategy
+  assert.equal(v1Plan.strategy, "replanned");
+});
+
+test("PlanBuilder passes parentVersion to the plan", () => {
+  const builder = new PlanBuilder();
+
+  const plan = builder.build({
+    observation: {
+      taskId: "task_parent",
+      timestamp: Date.now(),
+      objective: "parent version test",
+      currentPhase: "planning",
+      userIntent: { raw: "parent test", normalized: "parent test", confidence: 0.9 },
+      blockers: [],
+      codebaseSnapshot: {
+        rootPath: process.cwd(),
+        fileCount: 1,
+        relevantFiles: [],
+      },
+      environmentContext: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        workingDirectory: process.cwd(),
+        availableTools: ["read"],
+      },
+      historicalContext: {
+        previousTaskIds: [],
+        relatedMemoryRefs: [],
+      },
+      relevantMemory: [],
+      fileRefs: [],
+      metrics: {},
+    },
+    assessment: {
+      taskId: "task_parent",
+      timestamp: Date.now(),
+      situationRef: "task_situation:task_parent:1",
+      phase: "pre-execution",
+      complexity: "simple",
+      risk: "low",
+      riskAssessment: { level: "low", factors: [] },
+      routingDecision: { division: "coding", workflow: "single", rationale: "test" },
+      resourceAllocation: { modelClass: "small", maxTokens: 1000, timeoutMs: 10000 },
+      approvalPolicy: { required: false, level: "none" },
+      executionMode: "auto",
+      suggestedActions: [],
+    },
+    workflow: {
+      workflow: { workflowId: "wf_parent", divisionId: "coding", steps: [] },
+      executionSteps: [
+        {
+          stepId: "step_1",
+          divisionId: "coding",
+          roleId: "builder",
+          inputKeys: [],
+          agentId: "agent_builder",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
+        },
+      ],
+      planReason: "test",
+      dependencyEdges: [],
+    },
+    version: 5,
+    parentVersion: 3,
+  });
+
+  assert.equal(plan.version, 5);
+  assert.equal(plan.parentVersion, 3);
+});

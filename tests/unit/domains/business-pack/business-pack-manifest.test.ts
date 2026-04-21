@@ -138,15 +138,13 @@ describe("BusinessPackManifestSchema", () => {
 
 describe("isValidLifecycleTransition", () => {
   const cases: Array<{ from: BusinessPackLifecycleStage; to: BusinessPackLifecycleStage; expected: boolean }> = [
-    { from: "draft", to: "review", expected: true },
+    { from: "draft", to: "certifying", expected: true },
     { from: "draft", to: "archived", expected: true },
     { from: "draft", to: "published", expected: false },
-    { from: "review", to: "approved", expected: true },
-    { from: "review", to: "draft", expected: true },
-    { from: "review", to: "published", expected: false },
-    { from: "approved", to: "published", expected: true },
-    { from: "approved", to: "draft", expected: true },
-    { from: "approved", to: "deprecated", expected: false },
+    { from: "certifying", to: "published", expected: true },
+    { from: "certifying", to: "draft", expected: true },
+    { from: "certifying", to: "archived", expected: true },
+    { from: "certifying", to: "deprecated", expected: false },
     { from: "published", to: "deprecated", expected: true },
     { from: "published", to: "archived", expected: true },
     { from: "published", to: "draft", expected: false },
@@ -172,8 +170,7 @@ describe("isExecutableStage", () => {
 
   it("should return false for non-executable stages", () => {
     assert.strictEqual(isExecutableStage("draft"), false);
-    assert.strictEqual(isExecutableStage("review"), false);
-    assert.strictEqual(isExecutableStage("approved"), false);
+    assert.strictEqual(isExecutableStage("certifying"), false);
     assert.strictEqual(isExecutableStage("archived"), false);
   });
 });
@@ -188,11 +185,11 @@ describe("isTerminalStage", () => {
 
 describe("transitionLifecycle", () => {
   it("should allow valid transitions", () => {
-    const result = transitionLifecycle("draft", "review");
+    const result = transitionLifecycle("draft", "certifying");
 
     assert.strictEqual(result.allowed, true);
     assert.strictEqual(result.from, "draft");
-    assert.strictEqual(result.to, "review");
+    assert.strictEqual(result.to, "certifying");
     assert.strictEqual(result.reason, undefined);
   });
 

@@ -171,8 +171,8 @@ export class PackLifecycleService {
   }
 
   /**
-   * Deprecates a published or certified pack.
-   * Transitions from "published" or "certifying" to "deprecated".
+   * Deprecates a published pack.
+   * Transitions from "published" to "deprecated".
    */
   public deprecatePack(packId: string, reason: string): LifecycleTransitionResult {
     const state = this.requireState(packId);

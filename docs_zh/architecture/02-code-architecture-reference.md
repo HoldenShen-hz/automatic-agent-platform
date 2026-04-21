@@ -53,6 +53,10 @@
 | `src/interaction/`     | 37     | 5,198   | 2.4%  |
 | `src/org-governance/`  | 33     | 3,009   | 1.4%  |
 | `src/plugins/`         | 20     | 1,672   | 0.8%  |
+| `src/testing/`         | 3      | <100    | <0.1% |
+| `src/platform/cost-management/` | 1 | <100   | <0.1% |
+| `src/platform/agent-delegation/` | 1 | <100   | <0.1% |
+| `src/platform/prompt-registry/` | 1  | <100   | <0.1% |
 | `src/apps/`            | 4      | 50      | <0.1% |
 | `src/core/`            | 8      | 29      | <0.1% |
 
@@ -119,6 +123,9 @@
 | model-gateway/  | 19   | 5,629  | UnifiedChatProvider (491), CircuitBreaker, ModelRoutingService                                                                       | Implemented | Test-covered |
 | contracts/      | 37   | 4,585  | AppError + 14 子类 (526), 域类型, 信封契约                                                                                           | Implemented | Test-covered |
 | prompt-engine/  | 19   | 3,889  | ConversationTemplateService (405), ExecutionOutcomeEvaluator, PromptRolloutService                                                   | Implemented | Test-covered |
+| cost-management/ | 1   | <100   | 占位模块                                                                                                                            | Skeleton     | —            |
+| agent-delegation/ | 1   | <100   | 占位模块                                                                                                                            | Skeleton     | —            |
+| prompt-registry/ | 1   | <100   | 占位模块                                                                                                                            | Skeleton     | —            |
 | compliance/     | 9    | 1,480  | ComplianceCaseOrchestrationService (324)                                                                                             | Partial     | Unverified   |
 
 ### 2.2 业务层模块清单
@@ -153,14 +160,14 @@
 | tool-executor/    | 10   | ~4,500  | 工具执行、补丁 DSL、编辑替换链          |
 | state-transition/ | 8    | ~4,000  | 执行状态机、转换服务                    |
 | lease/            | 5    | ~3,500  | 租约获取/续约/释放、fencing token       |
-| recovery/         | 6    | ~2,500  | 故障恢复、孤儿清理                      |
+| recovery/         | 23   | ~2,500  | 故障恢复、孤儿清理                      |
 | startup/          | 5    | ~2,000  | 启动一致性、预检                        |
 | queue/            | 4    | ~1,800  | 队列适配器                              |
 | hot-upgrade/      | 3    | ~1,200  | 热升级验证                              |
 | ha/               | 3    | ~800    | HA 协调（部分桩）                       |
-| distributed-lock/ | 3    | ~600    | 分布式锁适配（SQLite/PG/Redis）         |
-| resource/         | 2    | ~300    | 进程资源跟踪                            |
-| plugin-executor/  | 2    | ~250    | 插件执行（薄层，委托 sandbox）          |
+| distributed-lock/ | 8    | ~635    | 分布式锁适配（SQLite/PG/Redis）         |
+| resource/         | 2    | <300    | 进程资源跟踪                            |
+| plugin-executor/  | 3    | <300    | 插件执行（薄层，委托 sandbox）          |
 
 **关键服务**:
 
@@ -444,13 +451,15 @@ Layer 7 (合规):  compliance/ → control-plane/iam/ + org-governance/
 
 5 组文件存在 sync (SQLite) / async (PostgreSQL) 镜像，逻辑近乎完全相同：
 
-| Sync 文件                             | Async 文件                              | 行数          |
-| ------------------------------------- | --------------------------------------- | ------------- |
-| worker-repository.ts                  | async-repositories/worker-repository.ts | 1,057 / 1,052 |
-| execution-dispatch-service.ts         | execution-dispatch-service-async.ts     | ~730 / ~730   |
-| execution-worker-handshake-service.ts | -async.ts                               | ~789 / ~789   |
-| execution-worker-writeback-service.ts | -async.ts                               | ~734 / ~734   |
-| durable-event-bus.ts                  | durable-event-bus-async.ts              | ~407 / ~407   |
+| Sync 文件                             | Async 文件                                    | 行数          | 状态      |
+| ------------------------------------- | --------------------------------------------- | ------------- | --------- |
+| worker-repository.ts                  | async-repositories/worker-repository.ts      | 1,057 / 1,052 | 实现     |
+| execution-dispatch-service.ts         | execution-dispatch-service-async.ts          | ~730 / 94     | stub     |
+| execution-worker-handshake-service.ts | execution-worker-handshake-service-async.ts  | ~789 / 82     | stub     |
+| execution-worker-writeback-service.ts | execution-worker-writeback-service-async.ts  | ~734 / 56     | stub     |
+| execution-lease-service.ts            | execution-lease-service-async.ts             | ~796 / 504    | partial  |
+| durable-event-bus.ts                  | durable-event-bus-async.ts                  | ~407 / 105    | stub     |
+| human-takeover-service.ts            | human-takeover-service-async.ts             | ~741 / 48     | stub     |
 
 **根因**: better-sqlite3 是同步 API，PostgreSQL 是异步 API，两者无法共享抽象层。
 **估计重复代码**: ~3,700 行。

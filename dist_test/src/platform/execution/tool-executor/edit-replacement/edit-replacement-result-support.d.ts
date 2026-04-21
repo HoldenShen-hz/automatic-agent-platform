@@ -1,0 +1,7 @@
+import type { CodeDiagnosticsSummary } from "../code-diagnostics-service.js";
+import type { EditBatchItemResult, EditBatchRequest, EditBatchResult, EditInstruction, EditReplacementAttempt, EditReplacementAttemptLevel, EditReplacementRequest, EditReplacementResult, MatchCandidate, MatchOutcome } from "./edit-replacement-types.js";
+export declare function buildAttempt(attemptLevel: EditReplacementAttemptLevel, outcome: MatchOutcome, content: string): EditReplacementAttempt;
+export declare function findAlreadyAppliedRange(content: string, request: EditInstruction): MatchCandidate | null;
+export declare function formatRange(content: string, startOffset: number, endOffset: number): string;
+export declare function buildEditReplacementResult(request: EditReplacementRequest, status: EditReplacementResult["status"], output: string | null, attempts: EditReplacementAttempt[], warnings: string[], matchLevel: EditReplacementAttemptLevel | null, similarityScore: number | null, appliedRange: string | null, diagnostics: CodeDiagnosticsSummary | null, startedAtMs: number, error: EditReplacementResult["error"], executionReceipt: string | null): EditReplacementResult;
+export declare function buildEditBatchResult(request: EditBatchRequest, status: EditBatchResult["status"], output: string | null, edits: EditBatchItemResult[], warnings: string[], appliedEditCount: number, rolledBack: boolean, diagnostics: CodeDiagnosticsSummary | null, startedAtMs: number, error: EditBatchResult["error"], executionReceipt: string | null): EditBatchResult;

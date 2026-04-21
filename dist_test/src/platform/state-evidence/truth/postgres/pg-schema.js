@@ -1,0 +1,32 @@
+/**
+ * @fileoverview PostgreSQL schema public surface.
+ */
+export * from "./pg-schema-support.js";
+export * from "./pg-migrations-runtime.js";
+export * from "./pg-migrations-product.js";
+import { MIGRATION_01_INITIAL_SCHEMA, MIGRATION_02_EXECUTION_CORE, MIGRATION_03_WORKER_QUEUE, MIGRATION_04_SESSIONS_MESSAGING, MIGRATION_05_EVENTS_APPROVALS, MIGRATION_06_RESOURCES, } from "./pg-migrations-runtime.js";
+import { MIGRATION_07_BILLING, MIGRATION_08_INTELLIGENCE, MIGRATION_09_GOVERNANCE, MIGRATION_10_PMF, MIGRATION_11_PRODUCT_GOVERNANCE_TENANT_SCOPE, MIGRATION_12_AUTHORITATIVE_ASYNC_PARITY, MIGRATION_13_KNOWLEDGE_SEMANTIC_VECTORS, } from "./pg-migrations-product.js";
+export const POSTGRES_MIGRATIONS = [
+    MIGRATION_01_INITIAL_SCHEMA,
+    MIGRATION_02_EXECUTION_CORE,
+    MIGRATION_03_WORKER_QUEUE,
+    MIGRATION_04_SESSIONS_MESSAGING,
+    MIGRATION_05_EVENTS_APPROVALS,
+    MIGRATION_06_RESOURCES,
+    MIGRATION_07_BILLING,
+    MIGRATION_08_INTELLIGENCE,
+    MIGRATION_09_GOVERNANCE,
+    MIGRATION_10_PMF,
+    MIGRATION_11_PRODUCT_GOVERNANCE_TENANT_SCOPE,
+    MIGRATION_12_AUTHORITATIVE_ASYNC_PARITY,
+    MIGRATION_13_KNOWLEDGE_SEMANTIC_VECTORS,
+];
+export function getLatestPostgresMigrationVersion() {
+    return POSTGRES_MIGRATIONS[POSTGRES_MIGRATIONS.length - 1]?.version ?? 0;
+}
+export function translateSqliteToPostgresDdl(sqliteSql) {
+    let pgSql = sqliteSql;
+    pgSql = pgSql.replace(/\bREAL\b/g, "DOUBLE PRECISION");
+    return pgSql;
+}
+//# sourceMappingURL=pg-schema.js.map

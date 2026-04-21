@@ -195,3 +195,23 @@ test("AutoRollbackService uses minimumObservationWindowMs from config when obser
   assert.equal(result.rollback, false);
   assert.ok(!result.reasonCodes.includes("rollout.metrics_insufficient_window"));
 });
+
+test("AutoRollbackService uses default minimum when observationWindowMs is undefined", () => {
+  const service = new AutoRollbackService({
+    minimumObservationWindowMs: 60_000,
+  });
+  const metrics: RolloutMetrics = {
+    requestCount: 100,
+    failureRate: 0.01,
+    p99LatencyMs: 100,
+    baselineP99LatencyMs: 100,
+    // observationWindowMs is undefined - not provided
+  };
+
+  const result = service.evaluate({} as any, metrics);
+
+  // undefined ?? 60000 = 60000, which is >= minimumObservationWindowMs (60000)
+  // So no rollback and no insufficient_window error
+  assert.equal(result.rollback, false);
+  assert.ok(!result.reasonCodes.includes("rollout.metrics_insufficient_window"));
+});

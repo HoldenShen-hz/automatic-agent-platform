@@ -2,7 +2,7 @@
  * @fileoverview Business Pack Manifest - Domain model for Business Packs
  *
  * Implements the Business Pack model as defined in architecture doc §30:
- * - Full 6-stage lifecycle: draft → review → approved → published → deprecated → archived
+ * - Full lifecycle: draft → certifying → published → deprecated → archived
  * - Rich manifest structure with risk_matrix, approval_points, dependencies, etc.
  * - Enhanced validation for dependencies, permissions, and sandbox requirements
  *
@@ -98,18 +98,16 @@ export interface PackDependency {
 /**
  * Business Pack lifecycle stages.
  *
- * Full 6-stage lifecycle as defined in architecture doc §30.4:
+ * Full lifecycle as defined in architecture doc §30.4:
  * - draft: Initial development
- * - review: Under security/quality review
- * - approved: Passed review, ready for publishing
+ * - certifying: Under security/quality certification review
  * - published: Available in marketplace
  * - deprecated: No longer supported, still runs for existing users
  * - archived: Fully retired, cannot run
  */
 export type BusinessPackLifecycleStage =
   | "draft"
-  | "review"
-  | "approved"
+  | "certifying"
   | "published"
   | "deprecated"
   | "archived";
@@ -122,9 +120,8 @@ export function isValidLifecycleTransition(
   to: BusinessPackLifecycleStage,
 ): boolean {
   const transitions: Record<BusinessPackLifecycleStage, BusinessPackLifecycleStage[]> = {
-    draft: ["review", "archived"],
-    review: ["approved", "draft", "archived"],
-    approved: ["published", "draft", "archived"],
+    draft: ["certifying", "archived"],
+    certifying: ["published", "draft", "archived"],
     published: ["deprecated", "archived"],
     deprecated: ["published", "archived"],
     archived: [], // Terminal state
@@ -179,7 +176,7 @@ export const BusinessPackManifestSchema = z.object({
   description: z.string().optional().default(""),
 
   // Lifecycle and status
-  lifecycleStage: z.enum(["draft", "review", "approved", "published", "deprecated", "archived"]).default("draft"),
+  lifecycleStage: z.enum(["draft", "certifying", "published", "deprecated", "archived"]).default("draft"),
   deprecatedAt: z.string().nullable().default(null),
   archivedAt: z.string().nullable().default(null),
 

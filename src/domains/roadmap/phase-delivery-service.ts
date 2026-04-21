@@ -122,11 +122,11 @@ export class PhaseDeliveryService {
    * Lists all phases
    */
   public listPhases(): Phase[] {
-    return [...this.phases.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return Array.from(this.phases.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   private listDeliverablesForPhase(phaseId: string): Deliverable[] {
-    return [...this.deliverables.values()].filter((d) => d.phaseId === phaseId);
+    return Array.from(this.deliverables.values()).filter((d) => d.phaseId === phaseId);
   }
 
   private getPhaseOrThrow(phaseId: string): Phase {
@@ -153,6 +153,6 @@ export class PhaseDeliveryService {
   }
 
   private findByPhaseValue(phase: RoadmapPhase): Phase | undefined {
-    return [...this.phases.values()].find((p) => p.phase === phase);
+    return Array.from(this.phases.values()).find((p) => p.phase === phase);
   }
 }

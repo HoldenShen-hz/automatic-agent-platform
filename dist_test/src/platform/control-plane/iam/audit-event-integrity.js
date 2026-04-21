@@ -1,0 +1,166 @@
+/**
+ * Audit Event Integrity Service
+ *
+ * Provides cryptographic integrity verification for Tier 1 audit events.
+ * Tier 1 events are high-value audit records that must be preserved unaltered.
+ *
+ * ## Purpose
+ *
+ * This service detects tampering with audit event records by computing and
+ * verifying checksums for each event and maintaining a hash chain similar to
+ * blockchain technology. Any modification, deletion, or reordering of events
+ * will break the chain and be detected during verification.
+ *
+ * ## How It Works
+ *
+ * 1. Each event has a SHA-256 checksum computed over its core fields
+ * 2. Events are linked via a chain hash computed from: previous chain hash + event checksum + position
+ * 3. Verification recomputes all hashes and compares against stored values
+ * 4. Any mismatch indicates tampering
+ *
+ * ## Usage
+ *
+ * Use this when you need to prove audit records have not been altered:
+ * - Compliance requirements
+ * - Legal evidence preservation
+ * - Security incident investigation
+ * - External audit handed-off records
+ *
+ * @see Tier 1 audit contract: docs_zh/contracts/audit_event_integrity_contract.md
+ */
+import { createHash } from "node:crypto";
+/**
+ * Computes a SHA-256 checksum for a Tier 1 audit event.
+ * The checksum covers all fields that must remain immutable for integrity.
+ * Changes to any of these fields would indicate tampering.
+ *
+ * @param event - The event to compute checksum for
+ * @returns Hex-encoded SHA-256 checksum string
+ */
+export function computeTier1AuditEventChecksum(event) {
+    return sha256(JSON.stringify({
+        id: event.id,
+        taskId: event.taskId,
+        sessionId: event.sessionId,
+        executionId: event.executionId,
+        eventType: event.eventType,
+        eventTier: event.eventTier,
+        payloadJson: event.payloadJson,
+        traceId: event.traceId,
+        createdAt: event.createdAt,
+    }));
+}
+/**
+ * Computes the chain hash that links this event to the previous one.
+ * This creates the tamper-evident chain property - changing any event
+ * breaks all subsequent chain hashes.
+ *
+ * @param input - Components needed for chain hash computation
+ * @param input.chainPosition - Position in the chain (1-indexed)
+ * @param input.previousChainHash - Hash of the previous event (null for first)
+ * @param input.eventChecksum - Checksum of this event
+ * @param input.eventId - ID of this event
+ * @returns Hex-encoded chain hash
+ */
+export function computeTier1AuditChainHash(input) {
+    return sha256(JSON.stringify({
+        chainPosition: input.chainPosition,
+        previousChainHash: input.previousChainHash,
+        eventChecksum: input.eventChecksum,
+        eventId: input.eventId,
+    }));
+}
+/**
+ * Verifies the integrity of a sequence of Tier 1 audit events.
+ * This is the main verification function - call this to validate that
+ * audit records have not been tampered with.
+ *
+ * Checks performed:
+ * 1. Chain hash continuity - each event links to previous correctly
+ * 2. Event existence - no events are missing from the sequence
+ * 3. Event checksum - each event's content matches its stored checksum
+ * 4. Event tier - confirms events are actually Tier 1
+ *
+ * @param entries - Array of integrity records with their corresponding events
+ * @returns Verification report with findings and statistics
+ */
+export function verifyTier1AuditIntegrity(entries) {
+    const compromisedEventIds = new Set();
+    const missingEventIds = new Set();
+    const findings = new Set();
+    let verifiedEvents = 0;
+    let chainBreaks = 0;
+    let previousChainHash = null;
+    // Process entries in chain position order
+    for (const entry of [...entries].sort((left, right) => left.integrityRecord.chainPosition - right.integrityRecord.chainPosition)) {
+        const integrityRecord = entry.integrityRecord;
+        let compromised = false;
+        // Check 1: Chain hash continuity
+        if (integrityRecord.previousChainHash !== previousChainHash) {
+            compromised = true;
+            chainBreaks += 1;
+            findings.add(`audit_chain_prev_hash_mismatch:${integrityRecord.eventId}`);
+        }
+        // Check 2: Event existence
+        if (entry.event == null) {
+            compromised = true;
+            missingEventIds.add(integrityRecord.eventId);
+            findings.add(`audit_event_missing:${integrityRecord.eventId}`);
+        }
+        else {
+            // Check 3: Event tier is correct for Tier 1 integrity
+            if (entry.event.eventTier !== "tier_1") {
+                compromised = true;
+                findings.add(`audit_event_tier_mismatch:${integrityRecord.eventId}`);
+            }
+            // Check 4: Event checksum matches stored value
+            const eventChecksum = computeTier1AuditEventChecksum(entry.event);
+            if (eventChecksum !== integrityRecord.eventChecksum) {
+                compromised = true;
+                findings.add(`audit_event_checksum_mismatch:${integrityRecord.eventId}`);
+            }
+        }
+        // Check 5: Chain hash can be recomputed correctly
+        const expectedChainHash = computeTier1AuditChainHash({
+            chainPosition: integrityRecord.chainPosition,
+            previousChainHash: integrityRecord.previousChainHash,
+            eventChecksum: integrityRecord.eventChecksum,
+            eventId: integrityRecord.eventId,
+        });
+        if (expectedChainHash !== integrityRecord.chainHash) {
+            compromised = true;
+            chainBreaks += 1;
+            findings.add(`audit_chain_hash_mismatch:${integrityRecord.eventId}`);
+        }
+        if (compromised) {
+            compromisedEventIds.add(integrityRecord.eventId);
+        }
+        else {
+            verifiedEvents += 1;
+        }
+        previousChainHash = integrityRecord.chainHash;
+    }
+    return {
+        checked: true,
+        totalTrackedEvents: entries.length,
+        verifiedEvents,
+        compromisedEvents: compromisedEventIds.size,
+        missingEvents: missingEventIds.size,
+        chainBreaks,
+        latestChainHash: entries.at(-1)?.integrityRecord.chainHash ?? null,
+        compromisedEventIds: Array.from(compromisedEventIds).sort(),
+        missingEventIds: Array.from(missingEventIds).sort(),
+        findings: Array.from(findings).sort(),
+    };
+}
+/**
+ * Internal SHA-256 hashing utility.
+ * Uses Node.js crypto module for fast, reliable hashing.
+ *
+ * @param value - String to hash
+ * @returns Hex-encoded hash string
+ */
+function sha256(value) {
+    return createHash("sha256").update(value, "utf8").digest("hex");
+}
+//# sourceMappingURL=audit-event-integrity.js.map

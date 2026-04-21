@@ -1,0 +1,96 @@
+/**
+ * @fileoverview Worker Load Balancing - Metrics for dispatch decisions.
+ *
+ * Provides load scoring and skew detection utilities for the worker dispatch
+ * system. Used by ExecutionDispatchService to balance load across workers
+ * and detect when a single worker is handling too much work (load skew).
+ *
+ * Key concepts:
+ * - Load score: Weighted metric combining lease count, saturation, backlog, and CPU
+ * - Load skew: When one worker has a disproportionate share of active leases
+ * - Sticky dispatch: Assigning work to the same worker for cache efficiency
+ *
+ * @see Execution Dispatch Service: execution-dispatch-service.ts
+ */
+/** Maximum recommended share of active leases a single worker should handle (60%). */
+export const MAX_RECOMMENDED_STICKY_SHARE = 0.6;
+const MIN_LOAD_SKEW_ACTIVE_LEASES = 3;
+const LOAD_SKEW_SCORE_MARGIN = 0.35;
+/**
+ * Computes the effective active lease count for a worker.
+ * Takes the max of activeLeaseCount and runningExecutionCount to account
+ * for possible drift between the two tracking mechanisms.
+ */
+export function computeEffectiveActiveLeaseCount(signal) {
+    return Math.max(signal.activeLeaseCount, signal.runningExecutionCount);
+}
+/**
+ * Computes a composite load score for a worker.
+ *
+ * The score combines multiple signals:
+ * - Active lease ratio (primary metric)
+ * - Saturation penalty (worker-reported utilization)
+ * - Backlog penalty (pending tool calls)
+ * - CPU penalty (if reported)
+ *
+ * Higher scores indicate heavier load.
+ */
+export function computeWorkerLoadScore(signal) {
+    const concurrency = Math.max(signal.maxConcurrency, 1);
+    const effectiveActiveLeaseCount = computeEffectiveActiveLeaseCount(signal);
+    const activeLeaseRatio = effectiveActiveLeaseCount / concurrency;
+    const saturationPenalty = signal.saturation ?? activeLeaseRatio;
+    const backlogPenalty = Math.min(signal.toolBacklogCount / concurrency, 4) * 0.1;
+    const cpuPenalty = signal.cpuPct == null ? 0 : Math.min(Math.max(signal.cpuPct, 0), 100) / 100 * 0.2;
+    return Math.max(activeLeaseRatio, saturationPenalty) + backlogPenalty + cpuPenalty;
+}
+/**
+ * Detects load skew across a set of workers.
+ *
+ * Skew is detected when a single worker holds more than MAX_RECOMMENDED_STICKY_SHARE
+ * (60%) of total active leases AND alternative capacity exists on other workers.
+ * This prevents overloading a single worker while ensuring load balancing is possible.
+ */
+export function summarizeWorkerLoadSkew(signals) {
+    const workersWithLoad = signals
+        .map((signal) => ({
+        signal,
+        effectiveActiveLeaseCount: computeEffectiveActiveLeaseCount(signal),
+        loadScore: computeWorkerLoadScore(signal),
+    }))
+        .filter((item) => item.effectiveActiveLeaseCount > 0);
+    const totalActiveLeaseCount = workersWithLoad.reduce((sum, item) => sum + item.effectiveActiveLeaseCount, 0);
+    if (signals.length < 2 || workersWithLoad.length === 0 || totalActiveLeaseCount < MIN_LOAD_SKEW_ACTIVE_LEASES) {
+        return {
+            detected: false,
+            dominantWorkerId: null,
+            dominantWorkerShare: null,
+            skewedWorkerIds: [],
+            totalActiveLeaseCount,
+            maxRecommendedStickyShare: MAX_RECOMMENDED_STICKY_SHARE,
+        };
+    }
+    const dominant = [...workersWithLoad].sort((left, right) => {
+        if (right.effectiveActiveLeaseCount !== left.effectiveActiveLeaseCount) {
+            return right.effectiveActiveLeaseCount - left.effectiveActiveLeaseCount;
+        }
+        if (right.loadScore !== left.loadScore) {
+            return right.loadScore - left.loadScore;
+        }
+        return left.signal.workerId.localeCompare(right.signal.workerId);
+    })[0];
+    const dominantWorkerShare = dominant.effectiveActiveLeaseCount / totalActiveLeaseCount;
+    const alternativeCapacityExists = signals.some((signal) => signal.workerId !== dominant.signal.workerId &&
+        signal.availableSlots > 0 &&
+        computeWorkerLoadScore(signal) + LOAD_SKEW_SCORE_MARGIN < dominant.loadScore);
+    const detected = dominantWorkerShare > MAX_RECOMMENDED_STICKY_SHARE && alternativeCapacityExists;
+    return {
+        detected,
+        dominantWorkerId: detected ? dominant.signal.workerId : null,
+        dominantWorkerShare: detected ? dominantWorkerShare : null,
+        skewedWorkerIds: detected ? [dominant.signal.workerId] : [],
+        totalActiveLeaseCount,
+        maxRecommendedStickyShare: MAX_RECOMMENDED_STICKY_SHARE,
+    };
+}
+//# sourceMappingURL=worker-load-balancing.js.map

@@ -1,0 +1,320 @@
+/**
+ * Command Security Assessment
+ *
+ * ## Overview
+ *
+ * Provides security assessment for system commands before execution.
+ * Implements multi-layer security model for the tool execution system.
+ *
+ * ## Key Concepts
+ *
+ * - **Sandbox**: Execution isolation boundary
+ *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: sandbox}
+ *
+ * - **Exec Policy**: Ruleset for tool/command execution
+ *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: exec policy}
+ *
+ * - **Permission**: Authorization state for subject to use capability
+ *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: permission}
+ *
+ * ## Security Checks
+ *
+ * 1. Shell metacharacter detection - blocks |, >, <, `, &&, ||, ;, $(...)
+ * 2. Inline code execution - blocks interpreters with -c/-e flags
+ * 3. Remote script download - blocks curl|wget piping to shell
+ * 4. Destructive command flagging - allows but marks as high risk
+ *
+ * @see Security Contract: docs_zh/contracts/security_contract.md
+ * @see Sandbox Contract: docs_zh/contracts/sandbox_contract.md
+ * @see Glossary: docs_zh/governance/glossary_and_terminology.md
+ */
+import { basename } from "node:path";
+// Commands that can execute arbitrary code or scripts and are considered high-risk.
+const HIGH_RISK_COMMANDS = new Set(["python", "python3", "node", "bash", "sh", "zsh"]);
+const SCRIPT_FILE_INTERPRETERS = new Set(["python", "python3", "node", "bash", "sh", "zsh"]);
+const DURATION_ARG_PATTERN = /^(?:\d+(?:\.\d+)?|\.\d+)$/;
+const DEFAULT_COMMAND_POLICY_ENTRIES = [
+    ["pwd", { allowed: true, riskLevel: "low" }],
+    ["echo", { allowed: true, riskLevel: "low" }],
+    // cat/head/tail/wc/stat/realpath/readlink: arg[0] is a file path to read
+    ["cat", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["head", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["tail", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["wc", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["stat", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["realpath", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["readlink", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    // ls: optional path arg at [0]
+    ["ls", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    // find: optional path arg at [0]
+    ["find", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    // grep/rg: pattern first, then optional file path at the end (-1)
+    ["grep", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
+    ["rg", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
+    // sort/uniq/cut: first arg is file path
+    ["sort", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["uniq", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["cut", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
+    ["sed", { allowed: true, riskLevel: "medium" }],
+    ["tr", { allowed: true, riskLevel: "low" }],
+    ["sleep", { allowed: true, riskLevel: "low" }],
+    ["env", { allowed: true, riskLevel: "medium" }],
+    ["printenv", { allowed: true, riskLevel: "medium" }],
+    ["which", { allowed: true, riskLevel: "low" }],
+    ["ps", { allowed: true, riskLevel: "medium" }],
+    ["git", { allowed: true, riskLevel: "high" }],
+    ["npm", { allowed: true, riskLevel: "high" }],
+    ["npx", { allowed: true, riskLevel: "high" }],
+    ["node", { allowed: true, riskLevel: "high" }],
+    ["python", { allowed: true, riskLevel: "high" }],
+    ["python3", { allowed: true, riskLevel: "high" }],
+    ["bash", { allowed: true, riskLevel: "high" }],
+    ["sh", { allowed: true, riskLevel: "high" }],
+    ["zsh", { allowed: true, riskLevel: "high" }],
+    ["mkdir", { allowed: true, riskLevel: "high" }],
+    ["touch", { allowed: true, riskLevel: "high" }],
+    ["cp", { allowed: true, riskLevel: "high" }],
+    ["mv", { allowed: true, riskLevel: "high" }],
+    ["rm", { allowed: true, riskLevel: "high" }],
+    ["chmod", { allowed: true, riskLevel: "high" }],
+    ["chown", { allowed: true, riskLevel: "high" }],
+    ["curl", { allowed: true, riskLevel: "high" }],
+    ["wget", { allowed: true, riskLevel: "high" }],
+    ["tar", { allowed: true, riskLevel: "high" }],
+    ["unzip", { allowed: true, riskLevel: "high" }],
+    ["zip", { allowed: true, riskLevel: "high" }],
+    ["sqlite3", { allowed: true, riskLevel: "high" }],
+    ["psql", { allowed: true, riskLevel: "high" }],
+    // tee: arg[0] is a file path (writes to file)
+    ["tee", { allowed: true, riskLevel: "high", pathArgPositions: [0] }],
+    ["jq", { allowed: true, riskLevel: "medium" }],
+];
+export function createDefaultCommandPolicies() {
+    return new Map(DEFAULT_COMMAND_POLICY_ENTRIES);
+}
+// Regex pattern matching shell metacharacters: | > < ` && || ; $(...) ${...} and newlines
+// S-02/S-03: Extended to cover ${} expansion, backtick `` ` `` as command substitution,
+// and newline continuation attacks
+const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|\$\(|\$\{|\r|\n/;
+// Fork bomb detection patterns
+// Classic bash fork bombs: :(){ :|:& };: or similar recursive function definitions
+const FORK_BOMB_PATTERNS = [
+    /^\s*:\(\)\s*\{[^}]*\|[^}]*&\s*\}\s*;:/i, // :(){ ... | ... & };:
+    /\bexec\s+bash\s+-c\b/i, // exec bash -c with inline code
+    /\bfork\b/i, // explicit fork calls
+    /\$\(\s*\$\(\s*\$\(/i, // nested command substitution (exponential growth)
+    /\|.*sh\s+-c.*\|.*sh\s+-c/i, // piped shell -c with self-reference
+];
+// Maximum allowed background jobs indicator (heuristic for fork bomb)
+const BACKGROUND_JOB_THRESHOLD = 5;
+function normalizeCommandName(command) {
+    return basename(command).toLowerCase();
+}
+function unknownCommandAssessment() {
+    return {
+        allowed: false,
+        reasonCode: "tool.command_unknown_denied",
+        riskLevel: "high",
+        sandboxReadArgPaths: [],
+    };
+}
+/**
+ * Checks if the command/args combination matches fork bomb patterns.
+ * Returns true if fork bomb detected.
+ */
+function isForkBomb(command, args) {
+    const fullCommand = `${command} ${args.join(" ")}`;
+    for (const pattern of FORK_BOMB_PATTERNS) {
+        if (pattern.test(fullCommand)) {
+            return true;
+        }
+    }
+    // Count background job indicators (&) - excessive backgrounding suggests fork bomb
+    const backgroundCount = args.filter((arg) => arg === "&").length;
+    if (backgroundCount >= BACKGROUND_JOB_THRESHOLD) {
+        return true;
+    }
+    return false;
+}
+function computeBaseAssessment(command, policies) {
+    const policy = policies.get(command);
+    if (!policy) {
+        return unknownCommandAssessment();
+    }
+    return {
+        allowed: policy.allowed,
+        reasonCode: policy.reasonCode ?? null,
+        riskLevel: policy.riskLevel,
+        sandboxReadArgPaths: [],
+    };
+}
+function deniedAssessment(reasonCode, riskLevel) {
+    return {
+        allowed: false,
+        reasonCode,
+        riskLevel,
+        sandboxReadArgPaths: [],
+    };
+}
+function allowedAssessment(riskLevel, sandboxReadArgPaths = []) {
+    return {
+        allowed: true,
+        reasonCode: null,
+        riskLevel,
+        sandboxReadArgPaths,
+    };
+}
+function validateCommandSignature(command, args, riskLevel) {
+    if (command === "pwd") {
+        return args.length === 0 ? allowedAssessment(riskLevel) : deniedAssessment("tool.command_arity_denied", "medium");
+    }
+    if (command === "sleep") {
+        return args.length === 1 && DURATION_ARG_PATTERN.test(args[0] ?? "")
+            ? allowedAssessment(riskLevel)
+            : deniedAssessment("tool.command_signature_denied", "medium");
+    }
+    if (SCRIPT_FILE_INTERPRETERS.has(command)) {
+        const scriptPath = args[0] ?? null;
+        if (scriptPath === null) {
+            return deniedAssessment("tool.command_script_missing", "high");
+        }
+        // S-04: Check ALL arguments for flag-like values, not just the first one.
+        // python /path/script.py --malicious-flag would have passed before this fix.
+        if (scriptPath.startsWith("-") || args.slice(1).some((arg) => arg.startsWith("-"))) {
+            return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
+        }
+        return allowedAssessment(riskLevel, [scriptPath]);
+    }
+    return allowedAssessment(riskLevel);
+}
+// TOOL-02: hard upper bound on classifier cache entries. Previously the cache
+// grew unbounded on high-cardinality command streams (e.g. auto-generated
+// script names), producing a slow memory leak and turning the classifier into
+// an amplifier for adversarial input.
+const DEFAULT_CACHE_MAX_ENTRIES = 1024;
+export class CommandSafetyClassifier {
+    options;
+    cache = new Map();
+    maxCacheEntries;
+    constructor(options = {}) {
+        this.options = options;
+        this.maxCacheEntries = options.maxCacheEntries ?? DEFAULT_CACHE_MAX_ENTRIES;
+    }
+    assess(command, args) {
+        if (META_SYNTAX_PATTERN.test(command) || args.some((arg) => META_SYNTAX_PATTERN.test(arg))) {
+            return deniedAssessment("tool.command_meta_syntax_denied", "critical");
+        }
+        // Fork bomb detection - check for recursive process spawning patterns
+        if (isForkBomb(command, args)) {
+            return deniedAssessment("tool.fork_bomb_detected", "critical");
+        }
+        const normalizedCommand = normalizeCommandName(command);
+        const baseAssessment = this.getBaseAssessment(normalizedCommand);
+        if (!baseAssessment.allowed) {
+            return baseAssessment;
+        }
+        if (HIGH_RISK_COMMANDS.has(normalizedCommand) && (args[0] === "-c" || args[0] === "-e")) {
+            return deniedAssessment("tool.inline_code_denied", "critical");
+        }
+        // S-05: Check for curl/wget piping to shell across separate arguments
+        if (this.containsRemoteScriptPipe(normalizedCommand, args)) {
+            return deniedAssessment("tool.remote_script_pipe_denied", "critical");
+        }
+        // Extract path arguments based on policy's pathArgPositions
+        const policies = this.options.policies ?? createDefaultCommandPolicies();
+        const policy = policies.get(normalizedCommand);
+        const policyPathArgs = this.extractPolicyPathArgs(args, policy?.pathArgPositions);
+        const signatureAssessment = validateCommandSignature(normalizedCommand, args, baseAssessment.riskLevel);
+        // Merge path args from policy with those from validateCommandSignature (e.g., script interpreter paths)
+        const allPathArgs = [...signatureAssessment.sandboxReadArgPaths, ...policyPathArgs];
+        return {
+            ...signatureAssessment,
+            sandboxReadArgPaths: allPathArgs,
+        };
+    }
+    /**
+     * Extracts file path arguments based on the policy's pathArgPositions specification.
+     * Supports both positive (from start) and negative (from end) indices.
+     */
+    extractPolicyPathArgs(args, pathArgPositions) {
+        if (!pathArgPositions || pathArgPositions.length === 0) {
+            return [];
+        }
+        const extracted = [];
+        for (const pos of pathArgPositions) {
+            // Negative indices count from the end (-1 = last arg)
+            const index = pos < 0 ? args.length + pos : pos;
+            if (index >= 0 && index < args.length) {
+                const arg = args[index];
+                // Only include non-flag arguments as paths (flags like -l, -n shouldn't be treated as paths)
+                if (arg && !arg.startsWith("-")) {
+                    extracted.push(arg);
+                }
+            }
+        }
+        return extracted;
+    }
+    /**
+     * S-05: Detects curl/wget downloading scripts piped to shell across separate arguments.
+     * Original regex only matched within a single argument string.
+     */
+    containsRemoteScriptPipe(command, args) {
+        const tokens = [command, ...args];
+        // Check inline: curl "http://..." | bash (entire pattern in one arg)
+        if (tokens.some((arg) => /(?:curl|wget).+\|\s*(bash|sh)/i.test(arg))) {
+            return true;
+        }
+        // Check cross-argument: curl http://... | bash (curl in one arg, "| bash" in another)
+        for (let i = 0; i < tokens.length; i++) {
+            const arg = tokens[i] ?? "";
+            if (/^(?:curl|wget)$/i.test(arg)) {
+                for (let j = i + 1; j < tokens.length; j++) {
+                    const nextArg = tokens[j] ?? "";
+                    const followingArg = tokens[j + 1] ?? "";
+                    if ((/\|/.test(nextArg) && /\b(?:bash|sh)\b/i.test(nextArg))
+                        || (nextArg === "|" && /\b(?:bash|sh)\b/i.test(followingArg))) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    getBaseAssessment(command) {
+        const now = this.options.now?.() ?? Date.now();
+        const cached = this.cache.get(command);
+        if (cached && cached.expiresAt > now) {
+            // Refresh insertion order so hot keys are kept under LRU eviction.
+            this.cache.delete(command);
+            this.cache.set(command, cached);
+            return cached.assessment;
+        }
+        if (cached) {
+            this.cache.delete(command);
+        }
+        const assessment = computeBaseAssessment(command, this.options.policies ?? createDefaultCommandPolicies());
+        this.cache.set(command, {
+            assessment,
+            expiresAt: now + (this.options.ttlMs ?? 5 * 60_000),
+        });
+        while (this.cache.size > this.maxCacheEntries) {
+            const oldestKey = this.cache.keys().next().value;
+            if (oldestKey === undefined)
+                break;
+            this.cache.delete(oldestKey);
+        }
+        return assessment;
+    }
+}
+const DEFAULT_COMMAND_SAFETY_CLASSIFIER = new CommandSafetyClassifier();
+/**
+ * Assesses a command for security risks before execution.
+ *
+ * @param command - The base command executable name
+ * @param args - The command-line arguments
+ * @returns CommandAssessment with allow/block decision and risk level
+ */
+export function assessCommand(command, args) {
+    return DEFAULT_COMMAND_SAFETY_CLASSIFIER.assess(command, args);
+}
+//# sourceMappingURL=command-security.js.map

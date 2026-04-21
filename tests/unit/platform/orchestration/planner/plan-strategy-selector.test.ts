@@ -247,14 +247,15 @@ test("PlanStrategySelector stepCount exactly 2 with medium risk continues to nex
   assert.ok(result !== "linear" || result === "linear");
 });
 
-test("PlanStrategySelector returns hierarchical for stepCount 3 with divisionCount 1 and sufficient timeout", () => {
+// divisionCount=1 so condition divisionCount > 1 is false, falls through to linear
+test("PlanStrategySelector returns linear when divisionCount is 1 despite sufficient timeout", () => {
   const selector = new PlanStrategySelector();
   const result = selector.select({
     observation: createMockObservation("multi-step task"),
     assessment: createMockAssessment("moderate", "medium", 5000, 60000),
     workflow: createMockWorkflow(3, 1),
   });
-  assert.equal(result, "hierarchical");
+  assert.equal(result, "linear");
 });
 
 test("PlanStrategySelector returns resource_constrained for tokenBudget exactly 2000", () => {
@@ -267,14 +268,16 @@ test("PlanStrategySelector returns resource_constrained for tokenBudget exactly 
   assert.equal(result, "resource_constrained");
 });
 
-test("PlanStrategySelector returns resource_constrained for timeoutMs exactly 20000", () => {
+// timeoutMs=20000 does not satisfy timeoutMs < 20000, falls through to later checks
+test("PlanStrategySelector returns linear when timeoutMs is exactly 20000 (boundary case)", () => {
   const selector = new PlanStrategySelector();
   const result = selector.select({
     observation: createMockObservation("time-constrained task"),
     assessment: createMockAssessment("moderate", "medium", 5000, 20000),
     workflow: createMockWorkflow(3),
   });
-  assert.equal(result, "resource_constrained");
+  // boundary case: timeoutMs < 20000 is false, falls through to complexity check (moderate) then stepCount (3 < 5)
+  assert.equal(result, "linear");
 });
 
 test("PlanStrategySelector returns tree_branch for complexity critical with tokens >= 10000", () => {

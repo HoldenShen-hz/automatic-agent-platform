@@ -1,0 +1,45 @@
+import { compareAutonomyLevels, nextAutonomyLevel } from "./level-manager/index.js";
+import { assessPromotion } from "./promotion-engine/index.js";
+import { calculateTrustScore, mapTrustLevel } from "./trust-scorer/index.js";
+export class AutonomyGovernanceService {
+    evaluateProfile(profile) {
+        const decisions = profile.capabilityScores.map((score) => this.evaluateCapability(profile.agentId, score));
+        const overallTrustScore = decisions.length === 0
+            ? 0
+            : Math.round(decisions.reduce((sum, item) => sum + item.trustScore, 0) / decisions.length);
+        return {
+            agentId: profile.agentId,
+            overallTrustScore,
+            overallTrustLevel: mapTrustLevel(overallTrustScore),
+            decisions,
+        };
+    }
+    evaluateCapability(agentId, score) {
+        const trustScore = calculateTrustScore(score);
+        const trustLevel = mapTrustLevel(trustScore);
+        const promotion = assessPromotion(score);
+        const recommendedLevel = promotion.shouldPromote
+            ? promotion.targetLevel
+            : trustScore < 30
+                ? "suggestion"
+                : trustScore < 50 && compareAutonomyLevels(score.currentAutonomy, "supervised") > 0
+                    ? "supervised"
+                    : score.currentAutonomy;
+        return {
+            agentId,
+            capabilityId: score.capabilityId,
+            currentLevel: score.currentAutonomy,
+            recommendedLevel,
+            trustScore,
+            trustLevel,
+            promoted: compareAutonomyLevels(recommendedLevel, score.currentAutonomy) > 0
+                || (promotion.shouldPromote && recommendedLevel === nextAutonomyLevel(score.currentAutonomy)),
+            reasonCodes: promotion.shouldPromote
+                ? promotion.reasonCodes
+                : recommendedLevel !== score.currentAutonomy
+                    ? ["autonomy.level_adjusted_by_trust"]
+                    : ["autonomy.level_unchanged"],
+        };
+    }
+}
+//# sourceMappingURL=autonomy-governance-service.js.map

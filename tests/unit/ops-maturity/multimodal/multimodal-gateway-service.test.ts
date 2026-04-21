@@ -201,6 +201,97 @@ test("MultimodalGatewayService blocks image with invalid metadata (zero width)",
   assert.ok(result.safetyFindings.some((f) => f.severity === "medium"));
 });
 
+test("MultimodalGatewayService processes video input correctly", () => {
+  const service = new MultimodalGatewayService();
+  const result = service.handle({
+    requestId: "req_video",
+    modalities: ["video"],
+    inputParts: [{
+      partId: "p_video",
+      type: "video",
+      contentRef: "vid://1",
+      videoMetadata: { durationMs: 60000, width: 1920, height: 1080, codec: "h264" },
+    }],
+    requestedOutputs: ["summary", "transcript"],
+    safetyPolicyRef: "policy_1",
+    costBudget: { maxUsd: 1 },
+  }, "2026-04-21T00:00:00.000Z");
+
+  assert.equal(result.routeDecisions.length, 1);
+  assert.equal(result.routeDecisions[0]!.modality, "video");
+  assert.equal(result.routeDecisions[0]!.provider, "video_gateway");
+  assert.equal(result.routeDecisions[0]!.processor, "video-processor");
+  assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 0.72);
+  assert.equal(result.normalizedInputs[0]!.summary, "video_duration_ms=60000,resolution=1920x1080");
+});
+
+test("MultimodalGatewayService processes video with zero duration", () => {
+  const service = new MultimodalGatewayService();
+  const result = service.handle({
+    requestId: "req_video_zero",
+    modalities: ["video"],
+    inputParts: [{
+      partId: "p_video_zero",
+      type: "video",
+      contentRef: "vid://empty",
+      videoMetadata: { durationMs: 0, width: 0, height: 0, codec: "unknown" },
+    }],
+    requestedOutputs: ["summary"],
+    safetyPolicyRef: "policy_1",
+    costBudget: { maxUsd: 1 },
+  }, "2026-04-21T00:00:00.000Z");
+
+  assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 0.12);
+  assert.equal(result.normalizedInputs[0]!.summary, "video_duration_ms=0,resolution=0x0");
+});
+
+test("MultimodalGatewayService rejects video modality not declared", () => {
+  const service = new MultimodalGatewayService();
+  assert.throws(() => {
+    service.handle({
+      requestId: "req_video_not_declared",
+      modalities: ["text"],
+      inputParts: [{
+        partId: "p_video",
+        type: "video",
+        contentRef: "vid://1",
+        videoMetadata: { durationMs: 10000, width: 1280, height: 720, codec: "h264" },
+      }],
+      requestedOutputs: ["summary"],
+      safetyPolicyRef: "policy_1",
+      costBudget: { maxUsd: 1 },
+    });
+  }, /multimodal_gateway\.modality_not_declared:video/);
+});
+
+test("MultimodalGatewayService handles mixed modalities including video", () => {
+  const service = new MultimodalGatewayService();
+  const result = service.handle({
+    requestId: "req_mixed_video",
+    modalities: ["text", "image", "audio", "document", "video"],
+    inputParts: [
+      { partId: "p_text", type: "text", contentRef: "inline", text: "hello" },
+      { partId: "p_image", type: "image", contentRef: "img://1", imageMetadata: { width: 800, height: 600 } },
+      { partId: "p_audio", type: "audio", contentRef: "audio://1", audioSampleCount: 16000, audioSampleRate: 8000 },
+      { partId: "p_doc", type: "document", contentRef: "doc://1", documentChunks: ["chapter1"] },
+      { partId: "p_video", type: "video", contentRef: "vid://1", videoMetadata: { durationMs: 30000, width: 1920, height: 1080, codec: "h264" } },
+    ],
+    requestedOutputs: ["summary", "transcript"],
+    safetyPolicyRef: "policy_mixed",
+    costBudget: { maxUsd: 2 },
+  }, "2026-04-21T00:00:00.000Z");
+
+  assert.equal(result.routeDecisions.length, 5);
+  assert.equal(result.normalizedInputs.length, 5);
+  assert.equal(result.blocked, false);
+
+  const videoDecision = result.routeDecisions.find((r) => r.partId === "p_video");
+  assert.equal(videoDecision?.modality, "video");
+  assert.equal(videoDecision?.provider, "video_gateway");
+  assert.equal(videoDecision?.processor, "video-processor");
+  assert.equal(videoDecision?.estimatedCostUsd, 0.12 * 30); // 30 seconds duration
+});
+
 test("MultimodalGatewayService blocks when cost budget is exceeded", () => {
   const service = new MultimodalGatewayService();
   const result = service.handle({

@@ -1,0 +1,1 @@
+{"version":3,"file":"authoritative-task-store-legacy-compat.js","sourceRoot":"","sources":["../../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-legacy-compat.ts"],"names":[],"mappings":"AAkCA,MAAM,OAAgB,kCAAkC;IAG/C,cAAc,CAAI,IAA+D;QACtF,OAAO,IAAI,CAAC,IAAI,CAAC,EAAE,CAAC,UAAU,CAAC,CAAC;IAClC,CAAC;CA6QF"}

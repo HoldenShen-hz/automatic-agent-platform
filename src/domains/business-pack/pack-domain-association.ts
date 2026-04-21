@@ -102,7 +102,10 @@ export class PackDomainAssociationService {
       // Assign new primary if any packs remain
       const remaining = this.domainToPacks.get(domainId);
       if (remaining && remaining.size > 0) {
-        this.primaryPacks.set(domainId, [...remaining][0]);
+        const firstPack = [...remaining][0];
+        if (firstPack !== undefined) {
+          this.primaryPacks.set(domainId, firstPack);
+        }
       }
     }
   }

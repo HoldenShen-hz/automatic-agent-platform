@@ -622,8 +622,8 @@ test("contract: ExplanationPipelineService keeps facts stable across depths and 
     generatedAt: "2026-04-20T00:00:00.000Z",
   };
 
-  const brief = service.generate(request, "brief");
-  const audit = service.generate(request, "audit");
+  const brief = service.generate(request, "L1");
+  const audit = service.generate(request, "L3");
 
   assert.equal(brief.rationale.summary, audit.rationale.summary);
   assert.deepEqual(audit.rationale.evidenceRefs, ["evt_public_1"]);
