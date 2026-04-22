@@ -215,7 +215,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (!state.trigger.enabled) {
       reasons.push("proactive_agent.trigger_disabled");
     }
-    if (state.consecutiveFailures >= this.maxConsecutiveFailures - 1) {
+    if (state.consecutiveFailures >= this.maxConsecutiveFailures) {
       reasons.push("proactive_agent.circuit_open");
     }
     const now = new Date(input.now ?? nowIso()).getTime();
