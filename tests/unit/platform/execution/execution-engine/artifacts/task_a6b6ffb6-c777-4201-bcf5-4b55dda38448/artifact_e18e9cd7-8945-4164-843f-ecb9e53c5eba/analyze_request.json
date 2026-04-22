@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "workflow_step_checkpoint.v1",
+  "taskId": "task_a6b6ffb6-c777-4201-bcf5-4b55dda38448",
+  "executionId": "exec_2b12e15e-ec0c-4527-b795-02066a0d37da",
+  "workflowId": "single_agent_minimal",
+  "divisionId": "general_ops",
+  "stepId": "analyze_request",
+  "roleId": "general_executor",
+  "outputKey": "analysis",
+  "status": "succeeded",
+  "producedAt": "2026-04-22T17:29:55.949Z",
+  "output": {
+    "summary": "test",
+    "result": "test"
+  },
+  "decisionContext": {
+    "source": "single_task_execution",
+    "request": "Division test",
+    "routeReason": null,
+    "priorStepSummaries": [],
+    "dependsOnStepIds": []
+  },
+  "resumeContext": {
+    "completedStepIds": [
+      "analyze_request"
+    ],
+    "nextStepId": null,
+    "outputKeys": [
+      "analysis"
+    ]
+  },
+  "fileDiffSummary": {
+    "summary": null,
+    "createdPaths": [],
+    "updatedPaths": [],
+    "deletedPaths": []
+  },
+  "upstreamArtifactRefs": [],
+  "compensationModel": "idempotent_replay"
+}
