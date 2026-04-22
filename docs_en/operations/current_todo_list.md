@@ -1,174 +1,111 @@
 # Current Todo List
 
-> Short-term execution list.
-> This file turns the master phase plan and roadmap into the single active entry for “what we implement next”.
+> This remediation list is now driven exclusively by [architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md).
+> It replaces the earlier `W0-W6` status language and only keeps repository-actionable work that can be implemented, tested, and written back to documentation.
 
-## 1. Locked Scope
+## 1. Execution Boundary
 
-Execution is locked to the current [00-platform-architecture.md](../architecture/00-platform-architecture.md) boundaries:
+- Only include gaps that can be closed inside this repository.
+- External infrastructure and external-system work such as `S4` clustered K8s sharding, real enterprise IdP wiring, and standalone WCAG frontend rework are tracked as follow-up notes, not active todo items.
+- Every wave must close code, tests, documentation, and review status together.
 
-- Deliver full platform capability for `Phase 1` through `Phase 8c`.
-- Deliver baseline implementations for all 24 vertical domains in `Phase 9`.
-- `S1` to `S3` must be runnable and testable inside the repository.
-- `S4` is implemented as formal modules, contracts, orchestration, deployment assets, and test doubles; we do not claim local single-node infrastructure equals real clustered closure.
-- External compatibility first: preserve existing CLI / API / startup paths while moving internals to canonical boundaries.
+## 2. Priority Mapping
 
-## 2. Current Objective
+| Priority | Review gaps | Remediation wave |
+| --- | --- | --- |
+| `P0` | `II-1`, `III-1`, `IV-1`, `VI-1~VI-3` | `R1-R3` |
+| `P1` | `I-2`, `II-2`, `III-2`, `IV-2~IV-4`, `VI-4~VI-9` | `R2-R5` |
+| `P2` | `IV-5~IV-7`, `VI-10~VI-13` | `R4-R5` |
+| `P3` | `II-3`, `VI-14/15`, `IX-1` | `R5-R6` |
 
-Move the repository from “many implemented capabilities with inconsistent entrypoints and phase language” to:
+## 3. Active Remediation Waves
 
-1. Canonical root entry, architecture bootstrap, app startup plan, and platform surface catalog.
-2. Stable formal entrypoints for the 9 top-level modules.
-3. End-to-end closure of the five-plane chain: `Request → Control → Orchestration → Execution → Evidence → Feedback/Learn/Improve`.
-4. All 24 domains registered with runnable baseline governance, eval, rollout, and smoke coverage.
-
-## 3. Active Work Packages
-
-### W0. Architecture kernel and startup convergence
-
-Status: `done`
-
-- Converge `src/index.ts` as the single root platform entry.
-- Freeze `platform-architecture-bootstrap`, `platform-application-kernel`, and `platform-module-catalog`.
-- Freeze the five startup targets: `summary / demo / api / console / worker`.
-- Upgrade `apps/*` manifests with explicit `requiredLayers / startupCommand / startupMode`.
-- Fix canonical `index.ts` coverage and type/value export problems across major `platform/*` surfaces.
-
-Done when:
-
-- `src/index.ts` and `src/platform/index.ts` import cleanly.
-- `AA_PLATFORM_ENTRY_MODE=summary|api|console|worker` produces stable output.
-- Architecture and directory guard tests pass.
-
-### W1. Five-plane convergence
+### R0. Reset todo/review language
 
 Status: `in_progress`
 
-- `P1 Interface Plane`: unify `api / webhook / scheduler / console-backend / ingress`.
-- `P2 Control Plane`: unify `approval / config / iam / incident / policy / rollout / tenant / risk`.
-- `P3 Orchestration Plane`: unify `agent-delegation / escalation / hitl / oapeflir / planner / replan / routing`.
-- `P4 Execution Plane`: unify `dispatcher / distributed-lock / execution-engine / ha / lease / queue / recovery / worker-pool / tool-executor`.
-- `P5 State & Evidence Plane`: unify `truth / events / projections / audit / artifacts / memory / knowledge / checkpoints / dlq / incident`.
+- Rewrite `current_todo_list` into an `R0-R6` review-driven structure.
+- Remove the earlier `W1-W5 done` language.
+- Deduplicate repeated review blocks and keep one authoritative gap ledger.
+- Add a stable `review id -> remediation wave` mapping.
 
-Done when:
-
-- All five planes export main capabilities from canonical entries.
-- Core CLI / API / services stop using deep non-canonical files as primary boundaries.
-- Export-path and structure-related tests are green.
-
-### W2. AI operations and Harness convergence
-
-Status: `in_progress`
-
-- Complete `model-gateway`.
-- Complete `prompt-engine`.
-- Complete `platform/compliance`.
-- Merge `Phase 8a-8c` Harness capabilities into the main platform runtime chain.
-
-### W3. Intelligent interaction and organizational governance convergence
+### R1. Harness P0/P1 runtime closure
 
 Status: `todo`
 
-- Complete `interaction`.
-- Complete `org-governance`.
-- Align all `Phase 5` capabilities to real code, startup wiring, and tests.
+- Extend `ConstraintPack` with `risk_policy` and `output_policy`.
+- Upgrade `HarnessRun` to multi-state lifecycle semantics.
+- Add `PlanBundle`, `WorkProduct`, `EvaluationReport`, `ContextSnapshot`, `WorkflowSleepLease`, and `RecoveryCheckpoint`.
+- Add iteration/re-entry/resume/recovery runtime entrypoints.
+- Close review `VI-1 ~ VI-6`.
 
-### W4. Scale/ecosystem and ops-maturity convergence
+### R2. ACP, OAPEFLIR↔Harness mapping, ModelGateway closure
 
 Status: `todo`
 
-- Complete `scale-ecosystem`.
-- Complete `ops-maturity`.
-- Make `S1-S3` runnable in-repo; make `S4` formalized via contracts, deployment assets, and test doubles.
+- Add formal `collaboration-protocol` support under `agent-delegation`.
+- Wire ACP into delegation validation, completion evidence, and takeover audit paths.
+- Add explicit OAPEFLIR↔Harness semantic mapping recorded in Harness steps/reports.
+- Add `embed()` and `complete()` to `UnifiedChatProvider`.
+- Close review `II-1`, `I-2`, `II-2`.
 
-### W5. Full 24-domain baseline delivery
+### R3. Domain meta-model, recipe expansion, canonical domain IDs
 
-Status: `in_progress`
+Status: `todo`
 
-Each domain must have:
+- Add `src/domains/canonical-meta-model/` with Q1-Q12, validator, completeness scoring, and 24-domain seeders.
+- Connect descriptor review and baseline bootstrap to meta-model validation.
+- Expand recipe prototypes from 4 to 12.
+- Normalize the 12 mismatched `domain_id` values and add legacy alias compatibility.
+- Close review `III-1`, `III-2`, `IV-1`.
 
-- `DomainDescriptor`
-- `DomainRiskProfile`
-- `DomainKnowledgeSchema`
-- `DomainEvalFramework`
-- `DomainPromptLibrary`
-- `DomainRecipe`
-- `DomainInteractionPolicy`
-- `DomainGovernancePolicy`
-- registry / onboarding / smoke / rollout baseline
+### R4. 24-domain specialized config and runtime surface
 
-## 4. Execution Order
+Status: `todo`
 
-Strict order:
+- Add formal per-domain config, workflow, tool, risk, eval, latency, and ownership wiring.
+- Replace the generic `intake -> deliver` workflow as the final baseline.
+- Prioritize `quant-trading`, `financial-services`, `finance-accounting`, `legal`, and `healthcare`.
+- Close review `IV-2 ~ IV-7`.
 
-1. `W0`
-2. `W1`
-3. `W2`
-4. `W3`
-5. `W4`
-6. `W5`
+### R5. Harness P2/P3 subsystems and product closure
 
-## 5. Test and Closure Rules
+Status: `todo`
 
-Every wave must include:
+- Add `ToolbeltAssembler`, five-layer guardrails, formal HITL runtime, `FeedbackEnvelope`, memory namespace support, async harness, and evaluation harness.
+- Attach these capabilities to the main `HarnessRun` chain.
+- Add Harness observability, replay, and audit linkage.
+- Close review `VI-7 ~ VI-15`.
 
-1. Code
-2. Tests
-3. Documentation updates
-4. Fixes for failures triggered by that wave
+### R6. Roadmap, ADRs, ops-maturity stub reduction, final document closure
 
-Minimum test expectations:
+Status: `todo`
 
-- architecture kernel: `unit + docs + startup import`
-- five planes: `unit + integration`
-- API / CLI / console: `unit + integration + golden`
-- risk / approval / recovery / DLQ / replay / audit: `unit + integration + contract`
-- domains: at least `smoke + registry + governance/eval wiring`
+- Fix `RoadmapService` to include Phase 8/9 registration.
+- Add the missing ADR set called out by the review.
+- Align `harness/` directory structure, exports, todo, and review language.
+- Reduce high-stub leaf tools in `ops-maturity`.
+- Write back `review / coverage-matrix / current_todo_list` so all implemented items show `✅`.
 
-## 6. Current Completion Snapshot
+## 4. Test Rules
 
-Already completed in the current revision:
+Each wave must include:
 
-- root platform entry, startup targets, application kernel, and platform surface catalog
-- directory/code-structure guardrails for canonical entries
-- upgraded app manifests and startup-plan output
-- stable import path for `src/index.ts` and `src/platform/index.ts`
-- aligned top-level canonical barrels for `domains / interaction / org-governance / scale-ecosystem / ops-maturity / plugins / sdk`
-- added missing second-level entrypoints for `business-pack`, `chaos`, and `monitoring`, now protected by structure tests
-- converged `prompt-engine` into the formal `eval / registry / renderer / rollout + conversation-template` export surface
-- updated `execution/index.ts` to expose execution capabilities primarily through canonical submodule entries
-- added smoke/barrel coverage for the nine top-level layers and key root barrels
-- added a formal `platform/orchestration/harness` module and wired it into the orchestration root export and platform catalog
-- created a unified catalog for all 24 `Phase 9` vertical domain baselines with one-shot register + activate bootstrap
-- each baseline now includes `DomainDefinition / RiskProfile / KnowledgeSchema / EvalFramework / PromptLibrary / Recipe / InteractionRule / GovernancePolicy`
-- added targeted tests for 24-domain bootstrap, registry activation, descriptor review, and knowledge namespace wiring
-- added capability baseline catalogs for `interaction / org-governance / scale-ecosystem / ops-maturity` as formal `W3/W4` baselines
-- added `platform-mainline-bootstrap` to capture the `W1/W2` critical surfaces: five planes plus `model-gateway`, `prompt-engine`, and `compliance`
-- the five `W1` planes now each have a plane baseline catalog, plus a shared `five-plane-runtime-bootstrap` registered through `ServiceRegistry`
-- the five `W1` planes now also have dedicated plane bootstraps for `interface / control-plane / orchestration / execution / state-evidence`, and the shared runtime bootstrap now composes those per-plane registrations instead of registering everything in one file
-- `W1` now also includes a formal `five-plane-startup-plan`, which fixes the startup order, bootstrap service ids, entry modules, and capability counts for the five planes
-- `W1` now also includes a `five-plane-runtime-orchestrator`, which starts the five planes in order from the startup plan, exposes readiness snapshots, and gives the application kernel a reusable plane-startup view
-- the root `src/index.ts` summary output now includes the five-plane startup order and capability counts, not just the static architecture-layer summary
-- `W2` now also has capability baselines and bootstraps for `model-gateway / prompt-engine / compliance / harness`, plus a formal `ai-operations-startup-plan` and `ai-operations-runtime-orchestrator`
-- both the application kernel and the root summary now expose the `W2` startup order and capability counts alongside the `W1` five-plane view
-- `W2` now also includes an `ai-operations-runtime-catalog` that aggregates `model-gateway / prompt-engine / compliance / harness` into one runtime catalog and feeds both the application kernel and root summary
-- `W2` baseline service names now align with canonical submodule exports, and `model-gateway / prompt-engine / compliance / harness` surface catalogs no longer reference placeholders or incorrect exports
-- `W2` now includes `ai-operations-mainline-integration` full-chain integration tests covering prompt rollout, model governance fallback, compliance evidence, and harness loop main-chain closure
-- `W3` now also has formal bootstraps for `interaction / org-governance`, plus a unified `interaction-governance-runtime-catalog`, `interaction-governance-startup-plan`, and `interaction-governance-runtime-orchestrator`
-- both the application kernel and the root summary now begin exposing the `W3` startup order and capability counts alongside `W1` and `W2`
+1. code
+2. targeted tests
+3. documentation updates
+4. fixes for failures triggered by that wave
 
-Immediate next step:
+Minimum coverage:
 
-- continue `W3` intelligent interaction and organizational governance closure
-- continue advancing `interaction / org-governance` formal services, governance chain, and targeted tests
-- `W4` begin supplementing `scale-ecosystem / ops-maturity` formal catalog, bootstrap, and verification
-- `W5` continue advancing from “24 domains registrable baseline” toward richer tool/plugin/connector baseline
+- Harness: `unit + integration`
+- ACP / delegation: `unit + contract`
+- domains: `unit + smoke + registry + rollout/governance wiring`
+- ModelGateway: `unit + integration`
+- documentation consistency: `docs + links + health`
 
-## 7. Completion Criteria
+## 5. Current Progress Snapshot
 
-This file can be marked `done` when:
-
-- All `Phase 1-8c` platform capabilities have real implementation and tests, no “only exists in documents” functionality
-- All `Phase 9` 24 domains have baseline and pass respective smoke / wiring tests
-- `S1-S3` runnable and verifiable in-repo; `S4` has formal interfaces, scheduling, deployment, and double verification
-- Root entry, catalog, canonical boundary, documentation, and tests are consistent
+- `R0` is underway: the todo language has been reset to review-driven remediation.
+- `R1-R6` remain governed by the review gap ledger rather than the older `W* done` status.
+- Future `done` states require code, tests, and documentation to land together.

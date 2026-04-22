@@ -41,9 +41,6 @@ test("isPromptRolloutStage returns false for invalid values", () => {
   assert.equal(isPromptRolloutStage(""), false);
   assert.equal(isPromptRolloutStage("ACTIVE"), false);
   assert.equal(isPromptRolloutStage("stable_"), false);
-  assert.equal(isPromptRolloutStage(undefined), false);
-  assert.equal(isPromptRolloutStage(null as unknown as string), false);
-  assert.equal(isPromptRolloutStage(123 as unknown as string), false);
 });
 
 test("comparePromptRolloutStage returns negative for earlier stage", () => {

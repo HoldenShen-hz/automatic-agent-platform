@@ -21,7 +21,7 @@ test("vertical domain baseline catalog covers all 24 phase-9 domains", () => {
 });
 
 test("each vertical domain baseline contains required governance and descriptor metadata", () => {
-  const baseline = getVerticalDomainBaseline("quantitative-trading");
+  const baseline = getVerticalDomainBaseline("quant-trading");
   assert.equal(baseline.governancePolicy.rollout.strategy, "shadow");
   assert.equal(baseline.riskProfile.defaultRiskLevel, "critical");
   assert.equal(baseline.definition.workflows.length, 1);
@@ -30,6 +30,15 @@ test("each vertical domain baseline contains required governance and descriptor 
   assert.ok(baseline.evalFramework.evaluators.some((item) => item.blocking));
   assert.ok(baseline.knowledgeSchema.namespaceIds.length > 0);
   assert.ok(baseline.recipes.length > 0);
+  assert.equal(baseline.metaModel.answers.length, 12);
+});
+
+test("vertical domain baseline catalog resolves legacy domain aliases to canonical ids", () => {
+  const legacy = getVerticalDomainBaseline("quantitative-trading");
+  const canonical = getVerticalDomainBaseline("quant-trading");
+
+  assert.equal(legacy.domainId, "quant-trading");
+  assert.equal(legacy.domainId, canonical.domainId);
 });
 
 test("each vertical domain baseline contains executable tool workflow eval governance smoke and rollout baselines", () => {
@@ -67,6 +76,7 @@ test("bootstrapVerticalDomainBaselines registers and activates all domain baseli
   assert.equal(bootstrapped.domainRegistry.listActive().length, 24);
   assert.ok(bootstrapped.reviews.every((review) => review.onboardingReadiness === "ready"));
   assert.ok(bootstrapped.reviews.every((review) => review.findings.length === 0));
+  assert.ok(bootstrapped.reviews.every((review) => review.metaModelCompleteness === 100));
   assert.ok(bootstrapped.governancePolicies.every((policy) => policy.mandatoryEvidence.includes("risk_profile")));
   assert.ok(
     bootstrapped.baselines.every((baseline) =>
