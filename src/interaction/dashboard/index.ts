@@ -1,3 +1,5 @@
+export * from "./dashboard-projection-service.js";
+
 import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../platform/shared/observability/system-situation-model.js";
 

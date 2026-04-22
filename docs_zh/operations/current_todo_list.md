@@ -72,7 +72,7 @@
 
 ### W3. 智能交互与组织治理收口
 
-状态：`todo`
+状态：`done`
 
 - `interaction`：NL 入口、目标分解、主动式 Agent、渐进式自主权、统一看板、非技术用户体验。
 - `org-governance`：组织模型、审批路由、SSO / SCIM、知识边界、分级治理委托、部门合规策略。
@@ -200,12 +200,13 @@
 - `W2` 现已新增 `ai-operations-mainline-integration` 全链路集成测试，覆盖 prompt rollout、model governance fallback、compliance evidence 与 harness loop 的主链闭环。
 - `W3` 现已补齐 `interaction / org-governance` 的 bootstrap，并新增统一的 `interaction-governance-runtime-catalog`、`interaction-governance-startup-plan` 和 `interaction-governance-runtime-orchestrator`。
 - 应用内核与根入口摘要现已开始同时暴露 `W3` 的 startup order 与 capability 统计。
+- `W3` 的 baseline service 名称现已与 canonical entry export 对齐，`interaction / org-governance` 的 baseline catalog 新增了 root/submodule export 守护测试，`dashboard` root entry 也已补齐 `DashboardProjectionService` 导出。
+- `W3` 现已新增 `interaction-governance-mainline-integration` 主链测试，覆盖 `NL intake → goal decomposition → UX onboarding → proactive suggestion → autonomy promotion/demotion → approval/delegation/compliance/knowledge boundary/identity sync → dashboard` 的完整闭环。
 
 下一步直接进入：
 
-- `W3` 智能交互与组织治理收口
-- 继续推进 `interaction / org-governance` 的正式 service、治理链路与定向测试
-- `W4` 开始补齐 `scale-ecosystem / ops-maturity` 的正式 catalog、bootstrap 与验证
+- `W4` 规模化生态与运营成熟度收口
+- 继续推进 `scale-ecosystem / ops-maturity` 的正式 catalog、bootstrap、主链集成与稳定性验证
 - `W5` 继续从“24 域已可注册 baseline”推进到更细的 tool/plugin/connector baseline
 
 ## 7. 完成判定

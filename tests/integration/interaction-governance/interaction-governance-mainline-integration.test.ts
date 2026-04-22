@@ -141,7 +141,7 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
       tenantId: "tenant_finance",
       userId: "manager_finance",
       channel: "slack",
-      message: "请审批 Finance 团队在 2026-04-25 前上线预算 12000 美元的 Slack 通知自动化",
+      message: "请批准 Finance 团队在 2026-04-25 前上线预算 12000 美元的 Slack 通知自动化",
     } as const;
     const detailedIntent = await nlEntry.parseDetailed(intakeRequest);
     const taskBuild = await nlEntry.buildTask(intakeRequest);

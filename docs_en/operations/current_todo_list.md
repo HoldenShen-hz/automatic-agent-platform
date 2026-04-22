@@ -152,11 +152,23 @@ Already completed in the current revision:
 - `W2` now also has capability baselines and bootstraps for `model-gateway / prompt-engine / compliance / harness`, plus a formal `ai-operations-startup-plan` and `ai-operations-runtime-orchestrator`
 - both the application kernel and the root summary now expose the `W2` startup order and capability counts alongside the `W1` five-plane view
 - `W2` now also includes an `ai-operations-runtime-catalog` that aggregates `model-gateway / prompt-engine / compliance / harness` into one runtime catalog and feeds both the application kernel and root summary
+- `W2` baseline service names now align with canonical submodule exports, and `model-gateway / prompt-engine / compliance / harness` surface catalogs no longer reference placeholders or incorrect exports
+- `W2` now includes `ai-operations-mainline-integration` full-chain integration tests covering prompt rollout, model governance fallback, compliance evidence, and harness loop main-chain closure
 - `W3` now also has formal bootstraps for `interaction / org-governance`, plus a unified `interaction-governance-runtime-catalog`, `interaction-governance-startup-plan`, and `interaction-governance-runtime-orchestrator`
 - both the application kernel and the root summary now begin exposing the `W3` startup order and capability counts alongside `W1` and `W2`
 
 Immediate next step:
 
-- continue `W1` across `platform/interface / control-plane / orchestration / execution / state-evidence`
-- and keep advancing `W2` by wiring `model-gateway / prompt-engine / compliance / harness` back into the main chain
-- keep advancing `W5` from “24 domains are registrable baselines” toward richer tool/plugin/connector baselines
+- continue `W3` intelligent interaction and organizational governance closure
+- continue advancing `interaction / org-governance` formal services, governance chain, and targeted tests
+- `W4` begin supplementing `scale-ecosystem / ops-maturity` formal catalog, bootstrap, and verification
+- `W5` continue advancing from “24 domains registrable baseline” toward richer tool/plugin/connector baseline
+
+## 7. Completion Criteria
+
+This file can be marked `done` when:
+
+- All `Phase 1-8c` platform capabilities have real implementation and tests, no “only exists in documents” functionality
+- All `Phase 9` 24 domains have baseline and pass respective smoke / wiring tests
+- `S1-S3` runnable and verifiable in-repo; `S4` has formal interfaces, scheduling, deployment, and double verification
+- Root entry, catalog, canonical boundary, documentation, and tests are consistent
