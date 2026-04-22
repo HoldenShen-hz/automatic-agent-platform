@@ -41,7 +41,12 @@ function registerTestDomain(service: DomainRegistryService, domainId: string): v
         ],
       },
     ],
-    toolBundles: [],
+    toolBundles: [
+      {
+        bundleId: "test-bundle",
+        tools: [],
+      },
+    ],
     outputContracts: [],
     promptOverrides: {},
     capabilities: {

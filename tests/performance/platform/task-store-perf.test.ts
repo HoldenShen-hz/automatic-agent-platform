@@ -15,7 +15,7 @@ import { rmSync } from "node:fs";
 import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStoreFacade } from "../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
-import type { TaskRecord } from "../../../src/platform/contracts/types/domain.js";
+import type { TaskRecord, TaskSource, TaskPriority } from "../../../src/platform/contracts/types/domain.js";
 
 function createTempDb(): SqliteDatabase {
   const dbPath = join(".tmp", `task-store-perf-${process.pid}-${Date.now()}.db`);
@@ -34,8 +34,8 @@ function createTestTaskRecord(overrides?: Partial<TaskRecord>): TaskRecord {
     tenantId: "tenant_test",
     title: `Test task ${taskId}`,
     status: "queued",
-    source: "user",
-    priority: "normal",
+    source: "user" as TaskSource,
+    priority: "normal" as TaskPriority,
     inputJson: JSON.stringify({ prompt: "Test task input", iteration: 0 }),
     normalizedInputJson: JSON.stringify({ prompt: "Test task input" }),
     outputJson: null,

@@ -148,7 +148,7 @@ interface DomainSeed {
   readonly restrictedDataClasses: readonly string[];
 }
 
-const REPO_ROOT = resolve(fileURLToPath(new URL("../..", import.meta.url)));
+const REPO_ROOT = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 
 const LEGACY_DOMAIN_ID_ALIASES = {
   "data-processing": "data-engineering",
