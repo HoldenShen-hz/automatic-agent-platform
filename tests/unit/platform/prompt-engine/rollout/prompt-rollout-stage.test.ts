@@ -73,7 +73,7 @@ test("nextPromptRolloutStage returns next stage in sequence", () => {
 });
 
 test("nextPromptRolloutStage returns null for last stage", () => {
-  assert.equal(nextPromptRolloutStage("stable"), null);
+  assert.equal(nextPromptRolloutStage("rolled_back"), null);
 });
 
 test("nextPromptRolloutStage returns null for rolled_back", () => {

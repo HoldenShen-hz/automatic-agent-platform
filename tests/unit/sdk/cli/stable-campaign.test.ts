@@ -184,7 +184,7 @@ test("stable-campaign sets exit code 1 when evidence does not pass", () => {
     },
   };
 
-  const shouldFail = report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed;
+  const shouldFail = !!(report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed);
   assert.equal(shouldFail, true);
 });
 
@@ -197,14 +197,14 @@ test("stable-campaign does not set exit code when evidence passes", () => {
     },
   };
 
-  const shouldFail = report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed;
+  const shouldFail = !!(report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed);
   assert.equal(shouldFail, false);
 });
 
 test("stable-campaign does not set exit code when no evidence report", () => {
   const report = {};
 
-  const shouldFail = report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed;
+  const shouldFail = !!(report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed);
   assert.equal(shouldFail, false);
 });
 

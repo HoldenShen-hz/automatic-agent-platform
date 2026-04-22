@@ -311,7 +311,9 @@ test("PromptRolloutService createRollout stores rollout in internal map", () => 
     domainBlockCompatible: true,
   });
 
-  const retrieved = rollout.listRollouts(record.rolloutId);
-  assert.equal(retrieved.length, 1);
-  assert.equal(retrieved[0]?.rolloutId, record.rolloutId);
+  const all = rollout.listRollouts();
+  assert.ok(all.length >= 1);
+  const retrieved = all.find((r) => r.rolloutId === record.rolloutId);
+  assert.ok(retrieved);
+  assert.equal(retrieved?.rolloutId, record.rolloutId);
 });

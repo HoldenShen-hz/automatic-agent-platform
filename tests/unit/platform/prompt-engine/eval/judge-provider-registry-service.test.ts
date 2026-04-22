@@ -148,10 +148,23 @@ test("JudgeProviderRegistryService.listDescriptors sorts by trustScore desc then
     status: "ready",
   });
 
+  service.registerDescriptor({
+    providerId: "judge.midcost",
+    provider: "mid",
+    providerFamily: "mid",
+    modelId: "mid-model",
+    supportedCapabilities: ["llm_judge"],
+    maxCostUsd: 0.03,
+    trustScore: 0.75,
+    latencyTier: "low",
+    isolationLevel: "same_provider_allowed",
+    status: "ready",
+  });
+
   const sorted = service.listDescriptors("ready");
   assert.equal(sorted[0]?.providerId, "judge.hightrust");
-  assert.equal(sorted[1]?.providerId, "judge.openai.gpt-5.4-mini");
-  assert.equal(sorted[sorted.length - 1]?.providerId, "judge.lowtrust");
+  assert.equal(sorted[1]?.providerId, "judge.midcost");
+  assert.equal(sorted[2]?.providerId, "judge.lowtrust");
 });
 
 test("JudgeProviderRegistryService.selectDescriptor returns null when no match", () => {

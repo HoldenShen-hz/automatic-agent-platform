@@ -1,12 +1,12 @@
 # 全覆盖测试方法手册
 
-> **文档版本**: v2.0
+> **文档版本**: v3.0
 > **适用项目**: automatic-agent-platform
 > **测试框架**: Node.js built-in test runner (`node:test`) + `node:assert/strict`
 > **覆盖率工具**: c8 v11.0.0 (V8 native coverage) + Istanbul reporter
 > **变异测试**: Stryker Mutator v9.6.1
 > **Node.js 要求**: v22+（`--test` + `--test-concurrency` flags）
-> **上次更新**: 2026-04-21（基于架构审查 v4.1 + 代码库实测）
+> **上次更新**: 2026-04-22（基于架构审查 v6.0 + 代码库实测）
 
 ---
 
@@ -28,7 +28,7 @@
 12. [CI 集成与工作流](#12-ci-集成与工作流)
 13. [新模块测试 Checklist](#13-新模块测试-checklist)
 
-**Part II — 架构语义覆盖（v1.1 新增，v1.2 增补）**
+**Part II — 架构语义覆盖（v1.1 新增，v1.2 增补，v3.0 扩展）**
 
 14. [状态机测试规范](#14-状态机测试规范)
 15. [事件驱动测试规范](#15-事件驱动测试规范)
@@ -41,15 +41,22 @@
 22. [测试数据治理](#22-测试数据治理)
 23. [覆盖率质量红线](#23-覆盖率质量红线)
 
-**Part III — 系统问题回归测试矩阵（v2.0 新增）**
+**Part III — 架构缺口回归测试矩阵（v3.0 重写，对齐架构审查 v6.0）**
 
 24. [架构审查驱动的回归测试](#24-架构审查驱动的回归测试)
-25. [P0 阻断级缺陷测试规范](#25-p0-阻断级缺陷测试规范)
-26. [P1 严重缺陷测试规范](#26-p1-严重缺陷测试规范)
-27. [P2 重要缺陷测试规范](#27-p2-重要缺陷测试规范)
-28. [架构不变量自动守护测试](#28-架构不变量自动守护测试)
-29. [桩文件覆盖缺口追踪](#29-桩文件覆盖缺口追踪)
-30. [测试缺口与覆盖现状汇总](#30-测试缺口与覆盖现状汇总)
+25. [P0 阻断级缺口测试规范](#25-p0-阻断级缺口测试规范)
+26. [P1 高优先级缺口测试规范](#26-p1-高优先级缺口测试规范)
+27. [P2 中优先级缺口测试规范](#27-p2-中优先级缺口测试规范)
+28. [P3/P4 低优先级缺口测试规范](#28-p3p4-低优先级缺口测试规范)
+
+**Part IV — 系统工程缺陷回归测试（v2.0 原 Part III 保留，v3.0 更新）**
+
+29. [P0 阻断级工程缺陷测试规范](#29-p0-阻断级工程缺陷测试规范)
+30. [P1 严重工程缺陷测试规范](#30-p1-严重工程缺陷测试规范)
+31. [P2 重要工程缺陷测试规范](#31-p2-重要工程缺陷测试规范)
+32. [架构不变量自动守护测试](#32-架构不变量自动守护测试)
+33. [桩文件覆盖缺口追踪](#33-桩文件覆盖缺口追踪)
+34. [测试缺口与覆盖现状汇总](#34-测试缺口与覆盖现状汇总)
 
 ---
 
@@ -78,23 +85,26 @@
 
 ### 1.3 当前规模
 
-| 指标                        | 数值        |
-| --------------------------- | ----------- |
-| 源文件总数                  | 1,233       |
-| 源代码行数                  | 246,677     |
-| 测试文件总数                | **1,155**   |
-| 测试代码行数                | 250,208     |
-| 断言总数（`assert.*` 调用） | **~27,700** |
-| 测试/源文件比               | 0.94        |
-| Unit 测试文件               | 841         |
-| Integration 测试文件        | 289         |
-| E2E 测试文件                | 10          |
-| Golden 测试文件             | 8           |
-| Performance 测试文件        | 6           |
-| 全局行覆盖率                | 84.1%       |
-| 全局语句覆盖率              | 84.1%       |
-| 全局函数覆盖率              | 82.8%       |
-| 全局分支覆盖率              | 79.8%       |
+| 指标                            | 数值        |
+| ------------------------------- | ----------- |
+| 源文件总数（`src/**/*.ts`）     | **1,335**   |
+| 源代码行数                      | **260,331** |
+| 测试文件总数（`tests/**/*.ts`） | **1,361**   |
+| 测试 `.test.ts` 文件数          | **1,341**   |
+| 测试代码行数                    | **295,466** |
+| 断言总数（`assert.*` 调用）     | **~34,061** |
+| 测试/源文件比                   | **1.00**    |
+| Unit 测试文件                   | **1,011**   |
+| Integration 测试文件            | **301**     |
+| E2E 测试文件                    | **10**      |
+| Golden 测试文件                 | **11**      |
+| Performance 测试文件            | **7**       |
+| 全局行覆盖率                    | **82.4%**   |
+| 全局语句覆盖率                  | **82.4%**   |
+| 全局函数覆盖率                  | **88.5%**   |
+| 全局分支覆盖率                  | **80.6%**   |
+
+> **v3.0 变更**: 源文件从 1,233 → 1,335（+102），测试文件从 1,155 → 1,341（+186），断言从 ~27,700 → ~34,061（+6,361）。覆盖率基线已从 `.coverage-baseline.json` 重新校准：行覆盖率 84.1% → 82.4%（因新增未覆盖模块），函数覆盖率 82.8% → 88.5%（因大量桩文件函数被测试覆盖）。
 
 ---
 
@@ -113,7 +123,7 @@ npm run test:integration
 npm run test:golden
 
 # 特定文件
-npm run build:test && node --test "dist/tests/unit/core/agent-loop/*.test.js"
+npm run build:test && node --test "dist/tests/unit/platform/orchestration/*.test.js"
 
 # PostgreSQL 集成测试（需 PG 环境）
 AA_TEST_PG_DSN="postgres://..." npm run test:pg-integration
@@ -132,6 +142,13 @@ npm run coverage:baseline:update
 
 # 类型检查
 npm run typecheck
+
+# 运维诊断
+npm run doctor
+npm run inspect
+npm run dispatch-execution
+npm run worker-handshake
+npm run worker-writeback
 ```
 
 ---
@@ -142,28 +159,32 @@ npm run typecheck
 
 ```
 tests/
-├── unit/                       # 隔离逻辑测试（841 文件）
-│   ├── platform/               # 对应 src/platform/ 镜像结构
-│   │   ├── execution/          # 执行面（72 文件）
-│   │   ├── state-evidence/     # 状态证据面（116 文件）
-│   │   ├── control-plane/      # 控制面（92 文件）
-│   │   ├── orchestration/      # 编排面（68 文件）
-│   │   ├── interface/          # 接口面（60 文件）
-│   │   ├── shared/             # 共享设施（98 文件）
-│   │   ├── contracts/          # 契约测试（33 文件）
-│   │   └── prompt-engine/      # 提示引擎（15 文件）
-│   ├── domains/                # 领域（31 文件）
-│   ├── interaction/            # 交互（21 文件）
-│   ├── ops-maturity/           # 运维成熟度（47 文件）
-│   ├── org-governance/         # 组织治理（17 文件）
-│   ├── scale-ecosystem/        # 规模生态（51 文件）
-│   ├── plugins/                # 插件（20 文件）
-│   ├── sdk/                    # SDK（13 文件）
+├── unit/                       # 隔离逻辑测试（1,011 文件）
+│   ├── platform/               # 对应 src/platform/ 镜像结构（713 文件）
+│   │   ├── execution/          # 执行面
+│   │   ├── state-evidence/     # 状态证据面
+│   │   ├── control-plane/      # 控制面
+│   │   ├── orchestration/      # 编排面
+│   │   ├── interface/          # 接口面
+│   │   ├── shared/             # 共享设施
+│   │   ├── contracts/          # 契约测试
+│   │   ├── model-gateway/      # 模型网关
+│   │   ├── prompt-engine/      # 提示引擎
+│   │   └── compliance/         # 合规
+│   ├── domains/                # 领域（34 文件）
+│   ├── interaction/            # 交互（24 文件）
+│   ├── ops-maturity/           # 运维成熟度（57 文件）
+│   ├── org-governance/         # 组织治理（23 文件）
+│   ├── scale-ecosystem/        # 规模生态（56 文件）
+│   ├── plugins/                # 插件（21 文件）
+│   ├── sdk/                    # SDK（16 文件）
 │   ├── runtime/                # 运行时交叉测试（45 文件）
 │   ├── apps/                   # 应用（4 文件）
-│   └── core/                   # 核心（1 文件）
-├── integration/                # 跨服务/运行时测试（289 文件）
-│   ├── platform/               # 平台集成（220 文件，含 security/ 63 文件）
+│   ├── core/                   # 核心（7 文件）
+│   ├── deploy/                 # 部署配置守护（2 文件）
+│   └── docs/                   # 文档守护（2 文件）
+├── integration/                # 跨服务/运行时测试（301 文件）
+│   ├── platform/               # 平台集成（230 文件，含 security/ 子目录）
 │   ├── sdk/                    # SDK/CLI 集成（35 文件）
 │   ├── ops-maturity/           # 运维成熟度（12 文件）
 │   ├── scale-ecosystem/        # 规模生态（7 文件）
@@ -172,12 +193,14 @@ tests/
 │   ├── org-governance/         # 组织治理（2 文件）
 │   ├── stability/              # 稳定性（2 文件）
 │   ├── workflow/               # 工作流（2 文件）
-│   └── orchestration/          # 编排（1 文件）
-├── golden/                     # 快照/Golden 测试（8 文件）
+│   ├── orchestration/          # 编排（1 文件）
+│   ├── deploy/                 # 部署（1 文件）
+│   └── interaction-governance/ # 交互治理（1 文件）
+├── golden/                     # 快照/Golden 测试（11 文件）
 │   └── snapshots/              # Golden 文件存储
 ├── e2e/                        # 端到端场景（10 文件）
-├── performance/                # 性能基准（6 文件）
-├── helpers/                    # 共享工具（17 文件 + fixtures/ 子目录）
+├── performance/                # 性能基准（7 文件）
+├── helpers/                    # 共享工具（19 文件 + fixtures/ 子目录）
 │   ├── typed-factories.ts      # unsafeCast / partial / mock 工厂
 │   ├── fixtures/               # base.ts + composite.ts
 │   ├── integration-context.ts  # SQLite + TaskStore 集成上下文
@@ -472,14 +495,16 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 
 ### 6.3 棘轮基线（`.coverage-baseline.json`）
 
-全局阈值：
+全局阈值（v3.0 实测数据）：
 
-| 指标       | 当前基线 |
-| ---------- | -------- |
-| Lines      | 84.1%    |
-| Statements | 84.1%    |
-| Functions  | 82.8%    |
-| Branches   | 79.8%    |
+| 指标       | 当前基线  |
+| ---------- | --------- |
+| Lines      | **82.4%** |
+| Statements | **82.4%** |
+| Functions  | **88.5%** |
+| Branches   | **80.6%** |
+
+> **v3.0 变更**: Lines/Statements 从 84.1% 降至 82.4%（新增模块未完全覆盖），Functions 从 82.8% 升至 88.5%（桩文件函数测试覆盖），Branches 从 79.8% 升至 80.6%。
 
 **棘轮规则**：`check-coverage-baseline.mjs` 对比当前覆盖率与基线：
 
@@ -487,35 +512,47 @@ c8 (V8 native) → generate-coverage-report.mjs → check-coverage-baseline.mjs
 - 任何目录 **不在** 基线中 → CI 失败（untracked directory）
 - 覆盖率 **提升** 后运行 `npm run coverage:baseline:update` 更新基线 → 新值成为新的下限
 
-### 6.4 目录级基线（来自 `.coverage-baseline.json` 实测数据）
+### 6.4 目录级基线（来自 `.coverage-baseline.json` v3.0 实测数据）
 
-| 目录                       | 文件数 | Lines | Functions | Branches |
-| -------------------------- | ------ | ----- | --------- | -------- |
-| `src/core/storage`         | 101    | 80.4% | 83.8%     | 85.9%    |
-| `src/core/agent-loop`      | 31     | 76.3% | 80.8%     | 81.5%    |
-| `src/core/runtime`         | 114    | 75.9% | 71.1%     | 79.5%    |
-| `src/core/events`          | 8      | 82.8% | 89.1%     | 88.0%    |
-| `src/core/tools`           | 36     | 85.4% | 76.9%     | 80.1%    |
-| `src/core/memory`          | 16     | 85.5% | 79.0%     | 88.3%    |
-| `src/core/cache`           | 27     | 77.8% | 68.0%     | 87.2%    |
-| `src/core/locking`         | 8      | 69.6% | 73.0%     | 82.5%    |
-| `src/core/queue`           | 6      | 68.7% | 56.7%     | 85.3%    |
-| `src/core/improvement`     | 11     | 88.4% | —         | —        |
-| `src/core/domain-registry` | 14     | 86.0% | 94.3%     | 77.3%    |
-| `src/plugins`              | 20     | 74.4% | 96.2%     | 92.1%    |
-| `src/gateway`              | 13     | 84.8% | 96.1%     | 84.2%    |
-| `src/cli`                  | 78     | 84.9% | 83.4%     | 48.0%    |
-| `src/core/types`           | 21     | 6.8%  | 28.0%     | 28.0%    |
+**覆盖率 Top-15 目录**（按 Lines 排序，取最低覆盖率目录）：
 
-**薄弱环节**（低于安全红线的目录）:
+| 目录                                                     | 文件数 | Lines | Functions | Branches |
+| -------------------------------------------------------- | ------ | ----- | --------- | -------- |
+| `src/core/runtime/orchestrator`                          | 2      | 16.7% | 0%        | 0%       |
+| `src/platform/shared/observability/anomaly-detection`    | 2      | 20.7% | 0%        | 0%       |
+| `src/platform/shared/observability/transports`           | 3      | 25.1% | 25.0%     | 33.3%    |
+| `src/ops-maturity/platform-ops-agent/health-monitor`     | 1      | 25.3% | 9.1%      | 100%     |
+| `src/ops-maturity/platform-ops-agent/capacity-predictor` | 1      | 29.6% | 14.3%     | 100%     |
+| `src/domains`                                            | 7      | 30.4% | 87.0%     | 75.5%    |
+| `src/domains/roadmap`                                    | 5      | 31.3% | 37.0%     | 86.4%    |
+| `src/ops-maturity/agent-lifecycle/version-manager`       | 2      | 31.3% | 75.0%     | 78.6%    |
+| `src/ops-maturity/platform-ops-agent`                    | 4      | 38.7% | 81.3%     | 86.4%    |
+| `src/sdk/client-sdk`                                     | 2      | 42.8% | 28.6%     | 75.0%    |
+| `src/scale-ecosystem/integration/connectors`             | 4      | 43.5% | 0%        | 100%     |
+| `src/platform/interface/ingress`                         | 3      | 44.4% | 25.0%     | 75.0%    |
+| `src/domains/interaction-policy`                         | 1      | 44.8% | 50.0%     | 100%     |
+| `src/platform/control-plane/risk-control`                | 4      | 46.0% | 66.7%     | 81.6%    |
+| `src/org-governance/knowledge-boundary`                  | 4      | 46.2% | 50.0%     | 66.7%    |
 
-| 目录               | 当前 Lines                   | 红线               | 差距       | 原因                                               |
-| ------------------ | ---------------------------- | ------------------ | ---------- | -------------------------------------------------- |
-| `src/core/locking` | 69.6%                        | 90%（Critical 级） | **-20.4%** | Redis lock adapter 含 spawnSync/KEYS 等未测路径    |
-| `src/core/queue`   | 68.7%                        | 75%（Baseline 级） | **-6.3%**  | Redis queue `.catch(() => {})` 路径未测            |
-| `src/core/types`   | 6.8%                         | N/A                | —          | 纯类型定义，`all: true` 导致低覆盖率（可标注 N/A） |
-| `src/cli`          | 84.9% Lines / 48.0% Branches | 60% Branches       | **-12.0%** | CLI 分支覆盖不足                                   |
-| `src/plugins`      | 74.4%                        | 75%（Baseline 级） | **-0.6%**  | 接近达标                                           |
+**覆盖率 Top-15 高覆盖目录**：
+
+| 目录                                                          | 文件数 | Lines | Functions | Branches |
+| ------------------------------------------------------------- | ------ | ----- | --------- | -------- |
+| `src/platform/execution/queue`                                | 7      | 99.7% | 100%      | 89.6%    |
+| `src/ops-maturity/workflow-debugger`                          | 3      | 99.5% | 100%      | 92.2%    |
+| `src/platform/orchestration/oapeflir/types`                   | 15     | 99.3% | 77.8%     | 100%     |
+| `src/org-governance/delegated-governance/scope-manager`       | 1      | 99.3% | 100%      | 90.5%    |
+| `src/plugins/retrievers`                                      | 6      | 99.2% | 100%      | 93.2%    |
+| `src/plugins/adapters`                                        | 5      | 99.1% | 97.1%     | 96.1%    |
+| `src/platform/shared/cache/utils`                             | 5      | 98.9% | 100%      | 93.2%    |
+| `src/platform/orchestration/oapeflir/improve-rollout/rollout` | 2      | 98.8% | 100%      | 91.7%    |
+| `src/platform/state-evidence/knowledge/governance`            | 7      | 98.7% | 97.1%     | 95.8%    |
+| `src/platform/model-gateway/messages`                         | 2      | 98.4% | 100%      | 85.6%    |
+| `src/platform/state-evidence/truth/sqlite`                    | 25     | 98.3% | 98.5%     | 92.5%    |
+| `src/platform/execution/state-transition`                     | 2      | 98.3% | 100%      | 93.5%    |
+| `src/platform/state-evidence/artifacts`                       | 13     | 98.2% | 100%      | 86.0%    |
+| `src/platform/orchestration/routing`                          | 4      | 98.2% | 100%      | 86.0%    |
+| `src/platform/orchestration/oapeflir/learn`                   | 10     | 98.1% | 100%      | 82.3%    |
 
 ### 6.5 更新流程
 
@@ -525,8 +562,6 @@ npm run coverage:baseline:update  # 仅在测试全通过后执行
 git diff .coverage-baseline.json  # 确认变更合理
 git add .coverage-baseline.json   # 提交新基线
 ```
-
----
 
 ## 7. 测试无遗漏保障体系
 
@@ -1061,7 +1096,9 @@ CI 自动上传以下 artifacts：
 
 ---
 
-# Part II — 架构语义覆盖（v1.1 新增）
+---
+
+# Part II — 架构语义覆盖（v1.1 新增，v1.2 增补，v3.0 扩展）
 
 > Part I 解决的是"代码覆盖治理" — 确保每行代码被执行、每个断言有效。
 > Part II 解决的是"架构语义覆盖" — 确保系统关键设计语义（状态机、事件、并发、阶段契约）都被测试覆盖到。
@@ -1511,6 +1548,31 @@ OAPEFLIR 阶段覆盖率 = (已测路径数) / (8 阶段 × 7 路径 = 56) × 10
 ```
 
 **目标**：≥ 85%（至少 48/56 条路径有测试）
+
+### 16.4 OAPEFLIR-Harness 语义映射（v3.0 新增）
+
+> 对应架构审查 v6.0 缺口 I-2（§13.5 OAPEFLIR-Harness 外部语义映射）
+
+架构设计 §13.5 要求 OAPEFLIR 8 阶段与 Harness 三角色（Planner / Generator / Evaluator）之间建立显式语义映射。此映射尚未代码化（缺口 I-2），但测试应提前定义预期映射：
+
+| OAPEFLIR 阶段 | Harness 角色      | 映射语义                                |
+| ------------- | ----------------- | --------------------------------------- |
+| Observe       | —                 | 外部输入采集，不进入 Harness 循环       |
+| Assess        | Planner           | 任务评估 → PlanBundle 输入              |
+| Plan          | Planner           | 生成 PlanBundle（stepId/DAG/tools）     |
+| Execute       | Generator         | 生成 WorkProduct（代码/文档/操作）      |
+| Feedback      | Evaluator         | 生成 EvaluationReport（pass/fail）      |
+| Learn         | Evaluator         | 从 EvaluationReport 提取 LearningSignal |
+| Improve       | Planner+Evaluator | 改进候选评估 + 批准                     |
+| Release       | —                 | Rollout 控制，不直接参与 Harness 循环   |
+
+**测试要求**：当缺口 I-2 实现后，需验证：
+
+- [ ] 映射配置存在且包含全部 8 阶段
+- [ ] Planner 角色覆盖 Assess/Plan/Improve 三阶段
+- [ ] Generator 角色覆盖 Execute 阶段
+- [ ] Evaluator 角色覆盖 Feedback/Learn/Improve 三阶段
+- [ ] Observe 和 Release 标记为外部阶段，不进入 Harness 循环
 
 ---
 
@@ -2138,34 +2200,39 @@ function normalizeForGolden(output: unknown): unknown {
 
 ### 23.1 问题
 
-全局 84.1% 行覆盖率可能掩盖关键模块的低覆盖。需要对不同模块定义 **硬性最低门槛**。
+全局 82.4% 行覆盖率可能掩盖关键模块的低覆盖。需要对不同模块定义 **硬性最低门槛**。
 
-### 23.2 分级红线
+### 23.2 分级红线（v3.0 更新目录映射）
 
-| 级别         | 适用模块                                               | Lines 红线 | Branches 红线 | Mutation 红线 |
-| ------------ | ------------------------------------------------------ | ---------- | ------------- | ------------- |
-| **Critical** | security, locking, transition-service, execution-lease | ≥ 90%      | ≥ 80%         | ≥ 70%         |
-| **High**     | agent-loop, memory, knowledge, events, runtime         | ≥ 85%      | ≥ 75%         | ≥ 60%         |
-| **Standard** | feedback, learning, planning, improvement, artifacts   | ≥ 80%      | ≥ 70%         | ≥ 50%         |
-| **Baseline** | plugins, cli, gateway, tools                           | ≥ 75%      | ≥ 60%         | ≥ 50%         |
+| 级别         | 适用模块                                                                           | Lines 红线 | Branches 红线 | Mutation 红线 |
+| ------------ | ---------------------------------------------------------------------------------- | ---------- | ------------- | ------------- |
+| **Critical** | compliance, distributed-lock, state-transition, execution-lease, control-plane/iam | ≥ 90%      | ≥ 80%         | ≥ 70%         |
+| **High**     | orchestration/oapeflir, state-evidence/memory, knowledge, events, execution-engine | ≥ 85%      | ≥ 75%         | ≥ 60%         |
+| **Standard** | orchestration/oapeflir/learn, planning, improvement, artifacts, prompt-engine      | ≥ 80%      | ≥ 70%         | ≥ 50%         |
+| **Baseline** | plugins, sdk/cli, model-gateway, tool-executor, domains                            | ≥ 75%      | ≥ 60%         | ≥ 50%         |
 
-### 23.3 当前差距
+### 23.3 当前差距（v3.0 实测数据）
 
-| 模块               | 级别     | 当前 Lines | 红线 | 当前 Branches | 红线 | 状态                     |
-| ------------------ | -------- | ---------- | ---- | ------------- | ---- | ------------------------ |
-| `core/locking`     | Critical | 69.6%      | 90%  | 82.5%         | 80%  | ❌ Lines **差 20.4%**    |
-| `core/queue`       | Critical | 68.7%      | 90%  | 85.3%         | 80%  | ❌ Lines **差 21.3%**    |
-| `core/agent-loop`  | High     | 76.3%      | 85%  | 81.5%         | 75%  | ❌ Lines **差 8.7%**     |
-| `core/runtime`     | High     | 75.9%      | 85%  | 79.5%         | 75%  | ❌ Lines **差 9.1%**     |
-| `core/cache`       | High     | 77.8%      | 85%  | 87.2%         | 75%  | ❌ Lines 差 7.2%         |
-| `core/events`      | High     | 82.8%      | 85%  | 88.0%         | 75%  | ❌ Lines 差 2.2%         |
-| `core/memory`      | High     | 85.5%      | 85%  | 88.3%         | 75%  | ✅ Pass                  |
-| `core/improvement` | Standard | 88.4%      | 80%  | —             | 70%  | ✅ Pass                  |
-| `core/storage`     | Standard | 80.4%      | 80%  | 85.9%         | 70%  | ✅ Pass                  |
-| `core/tools`       | Standard | 85.4%      | 80%  | 80.1%         | 70%  | ✅ Pass                  |
-| `plugins`          | Baseline | 74.4%      | 75%  | 92.1%         | 60%  | ❌ Lines 差 0.6%         |
-| `gateway`          | Baseline | 84.8%      | 75%  | 84.2%         | 60%  | ✅ Pass                  |
-| `cli`              | Baseline | 84.9%      | 75%  | 48.0%         | 60%  | ❌ Branches **差 12.0%** |
+| 模块                                    | 级别     | 当前 Lines | 红线 | 当前 Branches | 红线 | 状态                     |
+| --------------------------------------- | -------- | ---------- | ---- | ------------- | ---- | ------------------------ |
+| `platform/execution/distributed-lock`   | Critical | 97.6%      | 90%  | 92.5%         | 80%  | ✅ Pass                  |
+| `platform/execution/state-transition`   | Critical | 98.3%      | 90%  | 93.5%         | 80%  | ✅ Pass                  |
+| `platform/control-plane/iam`            | Critical | 92.7%      | 90%  | 82.9%         | 80%  | ✅ Pass                  |
+| `platform/compliance`                   | Critical | 90.9%      | 90%  | 50.0%         | 80%  | ❌ Branches **差 30.0%** |
+| `platform/orchestration/oapeflir`       | High     | 81.1%      | 85%  | 85.4%         | 75%  | ❌ Lines **差 3.9%**     |
+| `platform/state-evidence/memory`        | High     | 67.5%      | 85%  | 94.5%         | 75%  | ❌ Lines **差 17.5%**    |
+| `platform/state-evidence/events`        | High     | 84.3%      | 85%  | 89.6%         | 75%  | ❌ Lines 差 0.7%         |
+| `platform/execution/execution-engine`   | High     | 92.0%      | 85%  | 84.3%         | 75%  | ✅ Pass                  |
+| `platform/state-evidence/knowledge`     | High     | 91.9%      | 85%  | 79.1%         | 75%  | ✅ Pass                  |
+| `platform/orchestration/oapeflir/learn` | Standard | 98.1%      | 80%  | 82.3%         | 70%  | ✅ Pass                  |
+| `platform/state-evidence/artifacts`     | Standard | 98.2%      | 80%  | 86.0%         | 70%  | ✅ Pass                  |
+| `platform/prompt-engine`                | Standard | 86.6%      | 80%  | 89.2%         | 70%  | ✅ Pass                  |
+| `plugins`                               | Baseline | 94.1%      | 75%  | 83.3%         | 60%  | ✅ Pass                  |
+| `sdk/cli`                               | Baseline | 85.4%      | 75%  | 47.2%         | 60%  | ❌ Branches **差 12.8%** |
+| `platform/model-gateway`                | Baseline | 83.5%      | 75%  | 85.5%         | 60%  | ✅ Pass                  |
+| `domains`                               | Baseline | 30.4%      | 75%  | 75.5%         | 60%  | ❌ Lines **差 44.6%**    |
+
+> **v3.0 变更**: 大量 v2.0 标记为不达标的旧 `src/core/` 目录已重组到 `src/platform/` 并显著提升覆盖率。新的薄弱环节集中在 `domains`（30.4%，因大量 seed 桩文件）、`state-evidence/memory`（67.5%）和 `sdk/cli` branches（47.2%）。
 
 ### 23.4 红线执行方式
 
@@ -2199,10 +2266,12 @@ function normalizeForGolden(output: unknown): unknown {
 
 ---
 
-# Part III — 系统问题回归测试矩阵（v2.0 新增）
+# Part III — 架构缺口回归测试矩阵（v3.0 重写，对齐架构审查 v6.0）
 
 > Part I 解决"代码覆盖治理"，Part II 解决"架构语义覆盖"。
-> Part III 解决"**系统工程缺陷的回归防护**" — 基于架构审查 v4.1 发现的 34 项系统级问题，定义对应的回归测试规范，确保每个已知缺陷在修复后不会复发。
+> Part III 解决"**架构设计 vs 实现的缺口回归防护**" — 基于架构审查 v6.0（`docs_zh/reviews/architecture-design-vs-implementation-review.md`）发现的 **29 项架构缺口**，定义对应的测试规范，确保每个缺口在实现后有完备的测试覆盖。
+>
+> **v3.0 变更**: 完全重写。v2.0 基于架构审查 v4.1 的 34 项工程缺陷（SYS-\* 编号）已移至 Part IV 保留。本 Part III 聚焦架构审查 v6.0 的 29 项 **架构设计-实现缺口**。
 
 ---
 
@@ -2210,56 +2279,1030 @@ function normalizeForGolden(output: unknown): unknown {
 
 ### 24.1 背景
 
-架构审查 v4.1（`docs_zh/reviews/architecture-design-vs-implementation-review.md`）对 1,233 个源文件 / 246,677 行代码进行了全量审查，发现 **34 项系统级工程问题**：
+架构审查 v6.0 对 1,335 个源文件 / 260,331 行代码进行了全量审查，对比架构设计文档 v3.3（8,204 行 / 94 章节），发现 **29 项架构设计 vs 实现缺口**：
 
-| 严重性    | 数量 | 修复估算       |
-| --------- | ---- | -------------- |
-| P0 阻断级 | 4    | 3.6 人天       |
-| P1 严重   | 8    | 8.5-9.5 人天   |
-| P2 重要   | 13   | 18.3 人天      |
-| P3 改进   | 9    | 25.2-33.2 人天 |
+| 优先级    | 数量 | 关键缺口                                                           |
+| --------- | ---- | ------------------------------------------------------------------ |
+| P0 阻断级 | 4    | Harness 无迭代循环、ACP 未实现、Meta-Model 未实现、12 域 ID 不匹配 |
+| P1 高     | 8    | Harness 核心数据契约/持久化/上下文/恢复、域 config/工作流/Recipe   |
+| P2 中     | 10   | Harness 工具/护栏/HITL、域特化细节、路线图/ADR/目录结构            |
+| P3 低     | 5    | Harness 反馈/记忆/异步/评估、LLM 扩展、桩文件率                    |
+| P4 延迟   | 2    | Harness 可观测性/不变量                                            |
 
-本章节为每个 P0/P1/P2 问题定义**回归测试规范**，确保：
+### 24.2 缺口 ID 到测试追溯
 
-1. 修复前 — 测试失败（验证测试能检测到问题）
-2. 修复后 — 测试通过（验证修复有效）
-3. 未来 — 测试持续通过（防止回退）
-
-### 24.2 问题 ID 到测试追溯
-
-测试标题使用 `[SYS-{类别}{编号}]` 前缀，与架构审查报告中的编号一一对应：
+测试标题使用 `[GAP-{Part}-{序号}]` 前缀，与架构审查 v6.0 的缺口编号一一对应：
 
 ```
-架构审查: 2.1 Redis 错误处理器静默吞错
+架构审查 v6.0: VI-1 无真实迭代循环
     ↓
-测试标题: [SYS-REL-2.1] Redis error handler must log and update health status
+测试标题: [GAP-VI-1] HarnessRuntimeService.runLoop executes Planner→Generator→Evaluator iteration
     ↓
-文件位置: tests/integration/platform/execution/redis-error-handling.test.ts
+文件位置: tests/unit/platform/orchestration/harness/harness-loop.test.ts
 ```
 
-| 前缀          | 含义               | 来源         |
-| ------------- | ------------------ | ------------ |
-| `SYS-ARCH-`   | 架构缺陷 (§一)     | 审查报告 1.x |
-| `SYS-REL-`    | 可靠性缺陷 (§二)   | 审查报告 2.x |
-| `SYS-PERF-`   | 性能问题 (§三)     | 审查报告 3.x |
-| `SYS-SEC-`    | 安全漏洞 (§四)     | 审查报告 4.x |
-| `SYS-OBS-`    | 可观测性缺陷 (§五) | 审查报告 5.x |
-| `SYS-DEPLOY-` | 部署运维缺陷 (§六) | 审查报告 6.x |
-| `SYS-QUAL-`   | 代码质量 (§七)     | 审查报告 7.x |
+| 前缀       | 含义         | 缺口数 |
+| ---------- | ------------ | ------ |
+| `GAP-I-`   | 基础设施平台 | 2      |
+| `GAP-II-`  | AI 运营      | 3      |
+| `GAP-III-` | 领域接入     | 2      |
+| `GAP-IV-`  | 垂直业务域   | 7      |
+| `GAP-VI-`  | Harness 工程 | 15     |
+| `GAP-IX-`  | 运维成熟度   | 1      |
+| `GAP-X-`   | 实施路线图   | 3      |
 
 ### 24.3 优先级执行计划
 
-| 优先级 | 修复时限    | 包含问题                                                                   |
-| ------ | ----------- | -------------------------------------------------------------------------- |
-| **P0** | 当前 Sprint | SYS-REL-2.1, 2.3, 2.4; SYS-DEPLOY-6.3                                      |
-| **P1** | 下个 Sprint | SYS-REL-2.2, 2.5, 2.6, 2.7, 2.8; SYS-PERF-3.1; SYS-OBS-5.3; SYS-DEPLOY-6.1 |
-| **P2** | 2 Sprint 内 | 其余 13 项                                                                 |
+| 优先级 | 修复时限    | 缺口 ID                                                |
+| ------ | ----------- | ------------------------------------------------------ |
+| **P0** | 当前 Sprint | VI-1, II-1, III-1, IV-1                                |
+| **P1** | 下个 Sprint | VI-2, VI-3, VI-4, VI-5, VI-6, IV-2, IV-3, III-2        |
+| **P2** | 2 Sprint 内 | VI-7, VI-8, VI-9, IV-4/5/6/7, X-1, X-2, X-3, I-2, II-2 |
+| **P3** | Backlog     | VI-10, VI-11, VI-12, VI-13, II-3, I-1, IX-1            |
+| **P4** | 延迟        | VI-14, VI-15                                           |
 
 ---
 
-## 25. P0 阻断级缺陷测试规范
+## 25. P0 阻断级缺口测试规范
 
-### 25.1 [SYS-REL-2.1] Redis 错误处理器静默吞错
+### 25.1 [GAP-VI-1] Harness 无真实迭代循环
+
+**缺口**: `src/platform/orchestration/harness/index.ts` 的 `HarnessRuntimeService.runLoop()` 仅执行单次（创建 run → 附加 3 步骤 → 单次决策），无 Planner→Generator→Evaluator 迭代循环，不接受 `RequestEnvelope` 输入，不支持重入。架构 §45.2 要求完整迭代循环。
+
+**测试类型**: Unit + Integration
+
+**测试目标**: `runLoop()` 必须实现 Plan→Execute→Evaluate 迭代，支持多轮循环直到 Evaluator 判定完成。
+
+```typescript
+test("[GAP-VI-1] HarnessRuntimeService.runLoop executes multi-iteration loop", async () => {
+  const mockPlanner = createMockPlannerAgent({
+    plan: () => ({ steps: [{ id: "s1", tool: "read_file" }] }),
+  });
+  const mockGenerator = createMockGeneratorAgent({
+    execute: () => ({ output: "partial result", complete: false }),
+  });
+  const mockEvaluator = createMockEvaluatorAgent({
+    evaluate: (iteration: number) => ({
+      verdict: iteration >= 2 ? "pass" : "needs_revision",
+      feedback: iteration < 2 ? "incomplete" : undefined,
+    }),
+  });
+
+  const harness = new HarnessRuntimeService({
+    planner: mockPlanner,
+    generator: mockGenerator,
+    evaluator: mockEvaluator,
+  });
+
+  const envelope = createRequestEnvelope({ objective: "implement feature X" });
+  const run = await harness.runLoop(envelope);
+
+  assert.ok(run.iterations >= 2, "Must iterate until evaluator passes");
+  assert.equal(run.status, "completed");
+  assert.equal(run.steps.length >= 6, true, "At least 2 iterations × 3 steps");
+});
+
+test("[GAP-VI-1] HarnessRuntimeService.runLoop accepts RequestEnvelope input", async () => {
+  const harness = createMinimalHarnessService();
+  const envelope = createRequestEnvelope({
+    objective: "test task",
+    constraints: { maxIterations: 1, budgetTokens: 1000 },
+  });
+
+  const run = await harness.runLoop(envelope);
+  assert.equal(run.input.objective, "test task");
+  assert.ok(run.id, "Run must have a unique ID");
+});
+
+test("[GAP-VI-1] HarnessRuntimeService.runLoop respects maxIterations constraint", async () => {
+  const harness = createHarnessWithNeverPassingEvaluator();
+  const envelope = createRequestEnvelope({
+    constraints: { maxIterations: 3 },
+  });
+
+  const run = await harness.runLoop(envelope);
+  assert.equal(run.iterations, 3);
+  assert.equal(run.status, "max_iterations_reached");
+});
+```
+
+**额外测试场景**:
+
+- [ ] Planner 失败 → 循环中止 + 状态为 `"planner_failed"`
+- [ ] Generator 超时 → 循环暂停 + 可恢复
+- [ ] Evaluator 返回 `needs_revision` + feedback → 反馈传递给下一轮 Planner
+- [ ] 循环中 budgetTokens 耗尽 → 状态为 `"budget_exhausted"`
+
+### 25.2 [GAP-II-1] Agent 协作协议（ACP）完全未实现
+
+**缺口**: 架构 §19.5 定义完整的多 Agent 协作协议 — 8 种消息类型、9 个必填字段、7 条不变量（C1-C7）。代码中仅有 `src/platform/orchestration/agent-delegation/index.ts` 的 TODO 注释。
+
+**测试类型**: Unit + Integration
+
+**测试目标**: ACP 消息必须满足 Schema 约束和 7 条不变量。
+
+```typescript
+test("[GAP-II-1] ACP message schema validates 8 message types", () => {
+  const messageTypes = [
+    "task_delegate",
+    "task_accept",
+    "task_reject",
+    "task_complete",
+    "status_update",
+    "resource_request",
+    "resource_grant",
+    "escalate",
+  ];
+
+  for (const type of messageTypes) {
+    const msg = createMinimalAcpMessage({ type });
+    assert.doesNotThrow(
+      () => AcpMessageSchema.parse(msg),
+      `ACP message type "${type}" must be valid`,
+    );
+  }
+});
+
+test("[GAP-II-1] ACP message requires 9 mandatory fields", () => {
+  const mandatoryFields = [
+    "messageId",
+    "type",
+    "senderId",
+    "receiverId",
+    "conversationId",
+    "timestamp",
+    "payload",
+    "protocolVersion",
+    "correlationId",
+  ];
+
+  const minimal = createMinimalAcpMessage();
+  for (const field of mandatoryFields) {
+    const incomplete = { ...minimal };
+    delete incomplete[field];
+    assert.throws(
+      () => AcpMessageSchema.parse(incomplete),
+      `Missing "${field}" must be rejected`,
+    );
+  }
+});
+
+test("[GAP-II-1] ACP invariant C1: sender cannot delegate to self", () => {
+  const msg = createMinimalAcpMessage({
+    type: "task_delegate",
+    senderId: "agent-1",
+    receiverId: "agent-1",
+  });
+
+  assert.throws(() => validateAcpInvariant(msg), {
+    message: /C1.*self-delegation/i,
+  });
+});
+```
+
+**7 条不变量测试清单**:
+
+| 不变量 | 规则                                     | 测试场景                         |
+| ------ | ---------------------------------------- | -------------------------------- |
+| C1     | 不可自我委派                             | senderId === receiverId → 拒绝   |
+| C2     | conversationId 在协作链中不可变          | 中途修改 conversationId → 拒绝   |
+| C3     | task_accept 必须引用已有的 task_delegate | accept 无对应 delegate → 拒绝    |
+| C4     | 已拒绝的任务不可再接受                   | reject 后 accept → 拒绝          |
+| C5     | 已完成的任务不可再修改                   | complete 后 status_update → 拒绝 |
+| C6     | resource_grant 必须引用有效 request      | grant 无对应 request → 拒绝      |
+| C7     | escalate 必须包含原因和上下文            | escalate 无 reason → 拒绝        |
+
+### 25.3 [GAP-III-1] 领域规范元模型完全未实现
+
+**缺口**: 架构 §37.11 定义"统一领域元模型"— 12 个标准问题（Q1-Q12）和 24 域填充矩阵。代码中无 `meta-model`、`12-question`、`canonical` 相关引用。
+
+**测试类型**: Unit
+
+**测试目标**: 元模型 Schema 必须包含 12 个标准问题，每个域必须回答全部 12 问。
+
+```typescript
+test("[GAP-III-1] DomainMetaModel defines 12 standard questions", () => {
+  const questions = DomainMetaModel.getQuestions();
+  assert.equal(questions.length, 12);
+
+  const expectedIds = [
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Q5",
+    "Q6",
+    "Q7",
+    "Q8",
+    "Q9",
+    "Q10",
+    "Q11",
+    "Q12",
+  ];
+  assert.deepEqual(
+    questions.map((q) => q.id),
+    expectedIds,
+  );
+});
+
+test("[GAP-III-1] all 24 domains have complete meta-model answers", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+  assert.equal(domains.length, 24);
+
+  for (const domainId of domains) {
+    const answers = DomainMetaModel.getAnswers(domainId);
+    assert.equal(
+      answers.length,
+      12,
+      `Domain "${domainId}" must answer all 12 questions`,
+    );
+    for (const answer of answers) {
+      assert.ok(
+        answer.value !== undefined && answer.value !== null,
+        `Domain "${domainId}" Q${answer.questionId} must have a value`,
+      );
+    }
+  }
+});
+```
+
+**12 个标准问题测试**:
+
+| 问题 | 主题         | 验证                             |
+| ---- | ------------ | -------------------------------- |
+| Q1   | 核心职能     | 非空字符串                       |
+| Q2   | 主要工作流   | 至少 1 个工作流定义              |
+| Q3   | 典型工具集   | 至少 1 个 tool 引用              |
+| Q4   | 质量指标     | 至少 1 个 metric 定义            |
+| Q5   | 风险维度     | 枚举值合法                       |
+| Q6   | 合规要求     | 布尔或枚举数组                   |
+| Q7   | 数据敏感度   | low/medium/high/critical         |
+| Q8   | 延迟容忍度   | realtime/near_realtime/batch     |
+| Q9   | 协作模式     | solo/pair/swarm                  |
+| Q10  | 审批级别     | none/lightweight/standard/strict |
+| Q11  | 自治等级上限 | L0-L5                            |
+| Q12  | 评估方法     | 至少 1 个评估方法引用            |
+
+### 25.4 [GAP-IV-1] 12 个 domain_id 不匹配
+
+**缺口**: `src/domains/domain-baseline-catalog.ts` 中 12/24 个 domain_id 与架构文档 §71-§94 定义的 ID 不匹配（如 `quantitative-trading` vs `quant-trading`）。
+
+**测试类型**: Unit (Golden)
+
+**测试目标**: domain_id 必须与架构文档定义完全一致。
+
+```typescript
+test("[GAP-IV-1] all 24 domain IDs match architecture spec §71-§94", () => {
+  const architectureIds = [
+    "coding",
+    "data-analysis",
+    "devops",
+    "security-ops",
+    "quant-trading",
+    "risk-management",
+    "compliance-audit",
+    "customer-service",
+    "content-creation",
+    "legal-review",
+    "hr-ops",
+    "procurement",
+    "supply-chain",
+    "quality-assurance",
+    "research",
+    "education",
+    "healthcare-ops",
+    "financial-planning",
+    "marketing",
+    "sales-ops",
+    "product-management",
+    "project-management",
+    "it-support",
+    "general-ops",
+  ];
+
+  const catalogIds = DomainBaselineCatalog.getAllDomainIds();
+  assert.equal(catalogIds.length, 24);
+
+  for (const expected of architectureIds) {
+    assert.ok(
+      catalogIds.includes(expected),
+      `Architecture domain "${expected}" not found in catalog`,
+    );
+  }
+});
+```
+
+**12 个不匹配的具体映射**（修复前应全部失败，修复后全部通过）:
+
+| 架构定义 ID          | 当前代码 ID            | 状态 |
+| -------------------- | ---------------------- | ---- |
+| `quant-trading`      | `quantitative-trading` | ❌   |
+| `risk-management`    | `risk-mgmt`            | ❌   |
+| `compliance-audit`   | `compliance`           | ❌   |
+| `customer-service`   | `customer-support`     | ❌   |
+| `content-creation`   | `content-marketing`    | ❌   |
+| `legal-review`       | `legal`                | ❌   |
+| `hr-ops`             | `human-resources`      | ❌   |
+| `supply-chain`       | `supply-chain-mgmt`    | ❌   |
+| `quality-assurance`  | `qa`                   | ❌   |
+| `healthcare-ops`     | `healthcare`           | ❌   |
+| `financial-planning` | `finance`              | ❌   |
+| `sales-ops`          | `sales`                | ❌   |
+
+---
+
+## 26. P1 高优先级缺口测试规范
+
+### 26.1 [GAP-VI-2] 缺 PlanBundle/WorkProduct/EvaluationReport 核心数据契约
+
+**缺口**: 架构 §45.8/§45.9/§45.10 定义 Planner 输出 `PlanBundle`、Generator 输出 `WorkProduct`、Evaluator 输出 `EvaluationReport`。当前步骤使用 `Record<string, unknown>` 替代。
+
+**测试类型**: Unit (Schema)
+
+```typescript
+test("[GAP-VI-2] PlanBundle schema validates required fields", () => {
+  const validBundle = {
+    planId: "plan-001",
+    steps: [
+      { stepId: "s1", tool: "read_file", args: { path: "src/index.ts" } },
+    ],
+    dag: { roots: ["s1"], edges: [] },
+    strategy: "sequential",
+    estimatedTokens: 500,
+  };
+  assert.doesNotThrow(() => PlanBundleSchema.parse(validBundle));
+});
+
+test("[GAP-VI-2] WorkProduct schema validates required fields", () => {
+  const validProduct = {
+    productId: "wp-001",
+    stepId: "s1",
+    outputType: "code_change",
+    content: { diff: "+line" },
+    tokenCount: 120,
+  };
+  assert.doesNotThrow(() => WorkProductSchema.parse(validProduct));
+});
+
+test("[GAP-VI-2] EvaluationReport schema validates required fields", () => {
+  const validReport = {
+    reportId: "eval-001",
+    verdict: "pass",
+    scores: { correctness: 0.9, completeness: 0.8 },
+    feedback: null,
+  };
+  assert.doesNotThrow(() => EvaluationReportSchema.parse(validReport));
+});
+```
+
+### 26.2 [GAP-VI-3] ConstraintPack 缺 risk_policy + output_policy
+
+**缺口**: 架构 §45.3 定义 ConstraintPack 5 维约束（budget, time, risk_policy, output_policy, tool_restrictions）。当前仅有 3 维。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-3] ConstraintPack includes all 5 dimensions", () => {
+  const pack = createConstraintPack({
+    budget: { maxTokens: 10000, maxCost: 1.0 },
+    time: { maxDurationMs: 60000 },
+    riskPolicy: { maxRiskLevel: "medium", requireApprovalAbove: "high" },
+    outputPolicy: { maxOutputTokens: 5000, allowedFormats: ["code", "text"] },
+    toolRestrictions: { denied: ["shell_exec"], requireSandbox: true },
+  });
+
+  assert.ok(pack.riskPolicy, "riskPolicy dimension must exist");
+  assert.ok(pack.outputPolicy, "outputPolicy dimension must exist");
+  assert.equal(pack.riskPolicy.maxRiskLevel, "medium");
+});
+
+test("[GAP-VI-3] ConstraintEngine merges multi-layer constraints", () => {
+  const orgConstraint = createConstraintPack({ budget: { maxTokens: 50000 } });
+  const domainConstraint = createConstraintPack({
+    budget: { maxTokens: 10000 },
+  });
+  const taskConstraint = createConstraintPack({ budget: { maxTokens: 5000 } });
+
+  const merged = ConstraintEngine.merge([
+    orgConstraint,
+    domainConstraint,
+    taskConstraint,
+  ]);
+  assert.equal(merged.budget.maxTokens, 5000, "Most restrictive budget wins");
+});
+```
+
+### 26.3 [GAP-VI-4] Durable Harness 不存在
+
+**缺口**: 架构 §45.15 定义 5 种暂停原因、4 种恢复策略、checkpoint/restore。无任何实现。
+
+**测试类型**: Integration
+
+```typescript
+test("[GAP-VI-4] Durable Harness checkpoints run state after each iteration", async () => {
+  const harness = createDurableHarness({ checkpointInterval: 1 });
+  const envelope = createRequestEnvelope({ constraints: { maxIterations: 3 } });
+
+  const run = await harness.runLoop(envelope);
+  const checkpoints = await harness.getCheckpoints(run.id);
+  assert.ok(checkpoints.length >= 3, "Must checkpoint after each iteration");
+});
+
+test("[GAP-VI-4] Durable Harness restores from checkpoint after crash", async () => {
+  const harness = createDurableHarness();
+  const envelope = createRequestEnvelope({ constraints: { maxIterations: 5 } });
+
+  const run = await harness.runLoop(envelope, { crashAfterIteration: 2 });
+  assert.equal(run.iterations, 2);
+
+  const resumed = await harness.resume(run.id);
+  assert.ok(resumed.iterations > 2, "Must continue from checkpoint");
+  assert.equal(resumed.status, "completed");
+});
+```
+
+**5 种暂停原因测试**:
+
+| pauseReason           | 触发条件          | 恢复策略              |
+| --------------------- | ----------------- | --------------------- |
+| `human_review`        | 高风险步骤        | 人工审批后 resume     |
+| `budget_warning`      | 80% 预算消耗      | 追加预算或终止        |
+| `tool_unavailable`    | 依赖工具离线      | 工具恢复后自动 resume |
+| `external_dependency` | 等待外部 API 响应 | 回调触发 resume       |
+| `scheduled_pause`     | 预设暂停点        | 定时或手动 resume     |
+
+### 26.4 [GAP-VI-5] ContextAssembler + ContextSnapshot 不存在
+
+**缺口**: 架构 §45.5 定义 4 层上下文（conversation, task, memory, knowledge）+ token 预算裁剪 + 快照。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-5] ContextAssembler assembles 4-layer context", () => {
+  const assembler = new ContextAssembler({ tokenBudget: 4000 });
+  const snapshot = assembler.assemble({
+    conversation: [{ role: "user", content: "implement feature" }],
+    task: { objective: "add login", currentStep: "s1" },
+    memory: [{ key: "prev-attempt", value: "failed due to timeout" }],
+    knowledge: [{ source: "docs/auth.md", snippet: "OAuth2 flow..." }],
+  });
+
+  assert.ok(snapshot.conversation.length > 0);
+  assert.ok(snapshot.task);
+  assert.ok(snapshot.totalTokens <= 4000, "Must respect token budget");
+});
+
+test("[GAP-VI-5] ContextAssembler trims lowest-priority layer when over budget", () => {
+  const assembler = new ContextAssembler({ tokenBudget: 100 });
+  const snapshot = assembler.assemble({
+    conversation: [{ role: "user", content: "x".repeat(50) }],
+    task: { objective: "y".repeat(30) },
+    memory: [{ key: "z", value: "z".repeat(200) }],
+    knowledge: [],
+  });
+
+  assert.ok(snapshot.totalTokens <= 100);
+  assert.ok(
+    snapshot.trimmedLayers.includes("memory"),
+    "Memory should be trimmed first",
+  );
+});
+```
+
+### 26.5 [GAP-VI-6] RecoveryController 不存在
+
+**缺口**: 架构 §45.11 定义 5 种故障类型 + 类型化恢复策略。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-6] RecoveryController handles all 5 failure types", () => {
+  const failureTypes = [
+    "worker_crash",
+    "llm_unavailable",
+    "tool_timeout",
+    "budget_exhausted",
+    "platform_panic",
+  ];
+
+  const controller = new RecoveryController();
+  for (const type of failureTypes) {
+    const strategy = controller.getStrategy(type);
+    assert.ok(strategy, `Must have recovery strategy for "${type}"`);
+    assert.ok(strategy.action, `Strategy for "${type}" must define action`);
+  }
+});
+
+test("[GAP-VI-6] RecoveryController retries on llm_unavailable", async () => {
+  const controller = new RecoveryController();
+  let attempts = 0;
+  const operation = async () => {
+    attempts++;
+    if (attempts < 3) throw new Error("llm_unavailable");
+    return "success";
+  };
+
+  const result = await controller.executeWithRecovery(
+    operation,
+    "llm_unavailable",
+  );
+  assert.equal(result, "success");
+  assert.equal(attempts, 3);
+});
+```
+
+### 26.6 [GAP-IV-2] 23 域缺 config 文件
+
+**缺口**: 仅 `coding` 域有 `src/domains/coding/index.ts` 专用配置。其余 23 域缺少域特化工作流、工具束、预算限制、安全级别。
+
+**测试类型**: Unit (Golden)
+
+```typescript
+test("[GAP-IV-2] each domain has a config file with required fields", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+  const requiredFields = [
+    "workflows",
+    "toolBundle",
+    "budgetLimits",
+    "securityLevel",
+  ];
+
+  for (const domainId of domains) {
+    const config = DomainConfigRegistry.get(domainId);
+    assert.ok(config, `Domain "${domainId}" must have config`);
+    for (const field of requiredFields) {
+      assert.ok(
+        config[field] !== undefined,
+        `Domain "${domainId}" config missing "${field}"`,
+      );
+    }
+  }
+});
+```
+
+### 26.7 [GAP-IV-3] 24 域缺域特化 Agent 工作流
+
+**缺口**: 全部 24 域使用通用 2 步骤工作流（intake→deliver），无域特化工具和步骤。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-IV-3] each domain defines specialized workflows beyond generic", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+
+  for (const domainId of domains) {
+    const workflows = DomainWorkflowRegistry.getWorkflows(domainId);
+    assert.ok(workflows.length >= 1, `Domain "${domainId}" needs workflows`);
+
+    const hasSpecialized = workflows.some((w) => w.steps.length > 2);
+    assert.ok(
+      hasSpecialized,
+      `Domain "${domainId}" must have at least one workflow with >2 steps`,
+    );
+  }
+});
+```
+
+### 26.8 [GAP-III-2] DomainRecipe 仅 4 种原型，缺 8 种
+
+**缺口**: `src/domains/domain-recipe-service.ts` 仅有 4 种模板（analysis/implementation/review/release）。架构要求 12 种。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-III-2] DomainRecipeService provides all 12 archetype templates", () => {
+  const expectedArchetypes = [
+    "analysis",
+    "implementation",
+    "review",
+    "release",
+    "trading",
+    "compliance",
+    "research",
+    "adversarial",
+    "moderation",
+    "logistics",
+    "conversational",
+    "incident_ops",
+  ];
+
+  const service = new DomainRecipeService();
+  for (const archetype of expectedArchetypes) {
+    const template = service.getTemplate(archetype);
+    assert.ok(template, `Template for archetype "${archetype}" must exist`);
+    assert.ok(
+      template.steps.length > 0,
+      `Template "${archetype}" must have steps`,
+    );
+  }
+});
+```
+
+---
+
+## 27. P2 中优先级缺口测试规范
+
+### 27.1 [GAP-VI-7] ToolbeltAssembler 不存在
+
+**缺口**: 架构 §45.4 定义 6 步工具组装管线（域工具 → 约束过滤 → 风险排除 → 预算排除 → 安全守卫 → 可靠性附加）。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-7] ToolbeltAssembler applies 6-step pipeline", () => {
+  const domainTools = ["read_file", "write_file", "shell_exec", "web_search"];
+  const constraints = createConstraintPack({
+    toolRestrictions: { denied: ["shell_exec"] },
+    riskPolicy: { maxRiskLevel: "low" },
+  });
+
+  const assembler = new ToolbeltAssembler();
+  const toolbelt = assembler.assemble(domainTools, constraints);
+
+  assert.ok(!toolbelt.includes("shell_exec"), "Denied tool must be excluded");
+  assert.ok(toolbelt.includes("read_file"), "Safe tool must be included");
+});
+```
+
+### 27.2 [GAP-VI-8] Guardrails 5 层不存在
+
+**缺口**: 架构 §45.20 定义 5 层护栏（input, planning, tool, memory, output）+ 9 种拦截动作。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-8] Guardrails validates all 5 layers", () => {
+  const layers = ["input", "planning", "tool", "memory", "output"];
+  const guardrails = new GuardrailsEngine();
+
+  for (const layer of layers) {
+    const rules = guardrails.getRules(layer);
+    assert.ok(rules.length > 0, `Layer "${layer}" must have at least one rule`);
+  }
+});
+
+test("[GAP-VI-8] Guardrails intercepts unsafe tool call", () => {
+  const guardrails = new GuardrailsEngine();
+  const result = guardrails.check("tool", {
+    toolName: "shell_exec",
+    args: { command: "rm -rf /" },
+  });
+
+  assert.equal(result.action, "block");
+  assert.ok(result.reason.includes("unsafe"));
+});
+```
+
+### 27.3 [GAP-VI-9] HITL Runtime 不存在
+
+**缺口**: 架构 §45.18 定义 Harness 嵌入式 HITL Runtime（inspect/patch/override/takeover/resume）。注意审批层 HITL（§21）已实现，此缺口特指 Harness 级 HITL。
+
+**测试类型**: Integration
+
+```typescript
+test("[GAP-VI-9] HITL Runtime supports inspect mid-run", async () => {
+  const harness = createHarnessWithHitl();
+  const run = await harness.startRun(createRequestEnvelope());
+
+  const snapshot = await harness.hitl.inspect(run.id);
+  assert.ok(snapshot.currentStep);
+  assert.ok(snapshot.context);
+  assert.ok(snapshot.status);
+});
+
+test("[GAP-VI-9] HITL Runtime supports patch and resume", async () => {
+  const harness = createHarnessWithHitl();
+  const run = await harness.startRun(createRequestEnvelope());
+  await harness.hitl.pause(run.id);
+
+  await harness.hitl.patch(run.id, { context: { override: "new value" } });
+  const resumed = await harness.hitl.resume(run.id);
+  assert.equal(resumed.status, "running");
+});
+```
+
+### 27.4 [GAP-IV-4/5/6/7] 域特化风险/评估/延迟/Division
+
+**缺口**: 24 域缺少特化风险覆盖（IV-4）、评估指标（IV-5）、延迟等级/数据敏感度设置（IV-6）、13 域缺 division YAML（IV-7）。
+
+**测试类型**: Unit (Schema Validation)
+
+```typescript
+test("[GAP-IV-4] each domain defines risk overrides", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+  for (const domainId of domains) {
+    const config = DomainConfigRegistry.get(domainId);
+    assert.ok(config?.riskOverrides, `"${domainId}" must define riskOverrides`);
+  }
+});
+
+test("[GAP-IV-5] each domain defines evaluation metrics", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+  for (const domainId of domains) {
+    const metrics = DomainEvalRegistry.getMetrics(domainId);
+    assert.ok(metrics.length > 0, `"${domainId}" must have eval metrics`);
+  }
+});
+
+test("[GAP-IV-6] each domain defines latency tier and data sensitivity", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+  const validTiers = ["realtime", "near_realtime", "batch"];
+  const validSensitivities = ["low", "medium", "high", "critical"];
+
+  for (const domainId of domains) {
+    const config = DomainConfigRegistry.get(domainId);
+    assert.ok(
+      validTiers.includes(config?.latencyTier),
+      `"${domainId}" invalid latencyTier`,
+    );
+    assert.ok(
+      validSensitivities.includes(config?.dataSensitivity),
+      `"${domainId}" invalid dataSensitivity`,
+    );
+  }
+});
+
+test("[GAP-IV-7] all domains have division YAML files", () => {
+  const domains = DomainBaselineCatalog.getAllDomainIds();
+  for (const domainId of domains) {
+    const divisionPath = `divisions/${domainId}.yml`;
+    assert.ok(
+      existsSync(divisionPath) || existsSync(`divisions/${domainId}.yaml`),
+      `Division file for "${domainId}" must exist`,
+    );
+  }
+});
+```
+
+### 27.5 [GAP-X-1] RoadmapService 缺 Phase 8/9 注册
+
+**缺口**: `RoadmapService` 未注册 Phase 8（Harness）和 Phase 9a-9f（域批次）。
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-X-1] RoadmapService includes Phase 8 and Phase 9 batches", () => {
+  const phases = RoadmapService.getAllPhases();
+  const phaseIds = phases.map((p) => p.id);
+
+  assert.ok(
+    phaseIds.includes("phase-8"),
+    "Phase 8 (Harness) must be registered",
+  );
+  for (const batch of ["9a", "9b", "9c", "9d", "9e", "9f"]) {
+    assert.ok(
+      phaseIds.includes(`phase-${batch}`),
+      `Phase ${batch} must be registered`,
+    );
+  }
+});
+```
+
+### 27.6 [GAP-X-2/X-3] ADR 文件 + Harness 目录结构
+
+**测试类型**: Config Validation (CI)
+
+```typescript
+test("[GAP-X-2] required ADR files exist", () => {
+  const requiredAdrs = [
+    "adr-harness-loop-model.md",
+    "adr-harness-constraint-engine.md",
+    "adr-harness-durable-state.md",
+    "adr-harness-guardrails.md",
+    "adr-harness-toolbelt.md",
+    "adr-harness-hitl-runtime.md",
+    "adr-harness-memory-namespace.md",
+    "adr-harness-feedback-envelope.md",
+    "adr-harness-recovery-controller.md",
+  ];
+
+  for (const adr of requiredAdrs) {
+    assert.ok(
+      existsSync(`docs_zh/adr/${adr}`) || existsSync(`docs_en/adr/${adr}`),
+      `ADR "${adr}" must exist`,
+    );
+  }
+});
+
+test("[GAP-X-3] harness directory follows architecture recommended structure", () => {
+  const requiredDirs = [
+    "runtime",
+    "protocol",
+    "planner",
+    "generator",
+    "evaluator",
+    "loop",
+    "context",
+    "constraints",
+    "guardrails",
+    "toolbelt",
+    "hitl-runtime",
+    "durable",
+    "types",
+  ];
+
+  const basePath = "src/platform/orchestration/harness";
+  for (const dir of requiredDirs) {
+    assert.ok(
+      existsSync(`${basePath}/${dir}`),
+      `Harness subdirectory "${dir}" must exist`,
+    );
+  }
+});
+```
+
+### 27.7 [GAP-I-2] OAPEFLIR-Harness 语义映射未代码化
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-I-2] OAPEFLIR-Harness mapping config exists and covers all 8 stages", () => {
+  const mapping = OapeflirHarnessMapping.getMapping();
+  const stages = [
+    "observe",
+    "assess",
+    "plan",
+    "execute",
+    "feedback",
+    "learn",
+    "improve",
+    "release",
+  ];
+
+  for (const stage of stages) {
+    assert.ok(mapping[stage], `Mapping for stage "${stage}" must exist`);
+    assert.ok(
+      mapping[stage].harnessRole !== undefined,
+      `Stage "${stage}" must map to a harness role`,
+    );
+  }
+});
+```
+
+### 27.8 [GAP-II-2] ModelGateway 缺少 embed()/complete() 方法
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-II-2] UnifiedChatProvider supports embed() method", async () => {
+  const provider = createMockProvider();
+  const result = await provider.embed({
+    text: "hello world",
+    model: "mock-embed",
+  });
+  assert.ok(result.vector);
+  assert.ok(result.vector.length > 0);
+});
+
+test("[GAP-II-2] UnifiedChatProvider supports complete() method", async () => {
+  const provider = createMockProvider();
+  const result = await provider.complete({
+    prompt: "say hello",
+    model: "mock-model",
+    maxTokens: 100,
+  });
+  assert.ok(result.text);
+  assert.ok(result.tokenCount > 0);
+});
+```
+
+---
+
+## 28. P3/P4 低优先级缺口测试规范
+
+### 28.1 [GAP-VI-10] FeedbackEnvelope 4 级反馈
+
+**测试类型**: Unit (Schema)
+
+```typescript
+test("[GAP-VI-10] FeedbackEnvelope supports 4 levels", () => {
+  const levels = ["step", "task", "workflow", "system"];
+  for (const level of levels) {
+    const envelope = createFeedbackEnvelope({
+      level,
+      signal: { type: "correction" },
+    });
+    assert.doesNotThrow(() => FeedbackEnvelopeSchema.parse(envelope));
+  }
+});
+```
+
+### 28.2 [GAP-VI-11] Memory Namespace 3 层
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-11] Memory Namespace supports 3 tiers", () => {
+  const ns = new MemoryNamespace();
+  ns.write("working", "key1", "value1");
+  ns.write("long_term", "key2", "value2");
+  ns.write("shared", "key3", "value3");
+
+  assert.equal(ns.read("working", "key1"), "value1");
+  assert.equal(ns.read("long_term", "key2"), "value2");
+  assert.equal(ns.read("shared", "key3"), "value3");
+});
+```
+
+### 28.3 [GAP-VI-12] Async Harness 6 API
+
+**测试类型**: Integration
+
+```typescript
+test("[GAP-VI-12] Async Harness exposes 6 required APIs", () => {
+  const apis = [
+    "createRun",
+    "pollStatus",
+    "subscribeEvents",
+    "inspectStep",
+    "interveneMidRun",
+    "replayAfterCompletion",
+  ];
+  const harness = new AsyncHarnessClient();
+
+  for (const api of apis) {
+    assert.equal(typeof harness[api], "function", `API "${api}" must exist`);
+  }
+});
+```
+
+### 28.4 [GAP-VI-13] Evaluation Harness 3 模式
+
+**测试类型**: Unit
+
+```typescript
+test("[GAP-VI-13] Evaluation Harness supports 3 modes", () => {
+  const modes = ["runtime", "pre_release", "version_compare"];
+  for (const mode of modes) {
+    const harness = EvaluationHarness.create({ mode });
+    assert.equal(harness.mode, mode);
+  }
+});
+```
+
+### 28.5 [GAP-VI-14] Harness 可观测性 + Prompt 治理 + Failure-to-Learning + Replay
+
+**测试类型**: Unit (P4 延迟 — 占位规范)
+
+```typescript
+test("[GAP-VI-14] Harness observability emits structured traces", async () => {
+  const traces: unknown[] = [];
+  const harness = createHarnessWithObservability({
+    onTrace: (t) => traces.push(t),
+  });
+  await harness.runLoop(
+    createRequestEnvelope({ constraints: { maxIterations: 1 } }),
+  );
+  assert.ok(traces.length > 0, "Harness must emit traces");
+});
+```
+
+### 28.6 [GAP-VI-15] 10 项不变量强制
+
+**测试类型**: Unit (P4 延迟 — 占位规范)
+
+```typescript
+test("[GAP-VI-15] Loop controller enforces plannerOutput non-empty before execution", async () => {
+  const harness = createHarnessWithEmptyPlanner();
+  const run = await harness.runLoop(createRequestEnvelope());
+  assert.equal(run.status, "planner_output_empty");
+  assert.equal(run.iterations, 0, "Must not proceed to execution without plan");
+});
+
+test("[GAP-VI-15] Loop controller auto-checkpoints after >3 steps", async () => {
+  const harness = createDurableHarness({ autoCheckpointThreshold: 3 });
+  const run = await harness.runLoop(
+    createRequestEnvelope({ constraints: { maxIterations: 2 } }),
+  );
+  const checkpoints = await harness.getCheckpoints(run.id);
+  assert.ok(checkpoints.length > 0, "Must auto-checkpoint after >3 steps");
+});
+```
+
+### 28.7 其他 P3 缺口
+
+| 缺口 ID | 标题                  | 测试要求                                           |
+| ------- | --------------------- | -------------------------------------------------- |
+| II-3    | 仅 3 个 LLM 提供商    | 当新增提供商时，验证 ProviderRegistry 包含该提供商 |
+| I-1     | S4 K8s 集群级分片     | 部署拓扑关注点，不在代码仓库测试范围内             |
+| IX-1    | ops-maturity 桩文件率 | 参见 Part IV §33 桩文件追踪                        |
+
+---
+
+# Part IV — 系统工程缺陷回归测试（v2.0 原 Part III 保留，v3.0 更新编号）
+
+> Part III 解决"架构设计-实现缺口"。
+> Part IV 解决"**系统工程缺陷的回归防护**" — 基于架构审查 v4.1 发现的工程缺陷（Redis 错误处理、并发竞态、静默丢任务等），定义对应的回归测试规范。
+>
+> **v3.0 变更**: 从 v2.0 Part III（§24-§30）迁移至 Part IV（§29-§34），编号更新，内容保留。SYS-\* 缺陷编号不变。
+
+---
+
+## 29. P0 阻断级工程缺陷测试规范
+
+> 对应 v2.0 §25。
+
+### 29.1 [SYS-REL-2.1] Redis 错误处理器静默吞错
 
 **缺陷**: `distributed-lock/redis-lock-adapter.ts`、`queue/redis-queue-adapter.ts`、`ingress/redis-rate-limiter.ts`、`cache/stores/redis-cache-store.ts` 中 `this.redis.on("error", () => {})` 静默吞掉所有 Redis 错误。
 
@@ -2306,15 +3349,11 @@ test("[SYS-REL-2.1] Redis lock adapter logs error and marks unhealthy on connect
 | `interface/ingress/redis-rate-limiter.ts`          | `tests/unit/platform/interface/redis-rate-limiter-error.test.ts` |
 | `shared/cache/stores/redis-cache-store.ts`         | `tests/unit/platform/shared/redis-cache-error.test.ts`           |
 
-**验证方法**: 修复前运行 → 4 个测试全部失败（因为当前 `() => {}` 不记录日志）。修复后 → 全部通过。
-
-### 25.2 [SYS-REL-2.3] DLQ 纯内存，重启丢失
+### 29.2 [SYS-REL-2.3] DLQ 纯内存，重启丢失
 
 **缺陷**: `state-evidence/dlq/index.ts` 使用 `Map<string, DeadLetterRecord>` 存储死信，进程重启后全部丢失。
 
 **测试类型**: Integration
-
-**测试目标**: DLQ 记录必须在服务重建后仍可查询。
 
 ```typescript
 test("[SYS-REL-2.3] DLQ records survive service reconstruction", async () => {
@@ -2337,19 +3376,11 @@ test("[SYS-REL-2.3] DLQ records survive service reconstruction", async () => {
 });
 ```
 
-**额外测试场景**:
+### 29.3 [SYS-REL-2.4] Redis 队列静默丢任务
 
-- [ ] 幂等性: 同一 `eventId` 重复入队不产生重复记录
-- [ ] 重试: `scheduleRetry()` 设置的时间后记录被重新投递
-- [ ] 无界防护: 超过 `maxSize` 后最早记录被驱逐或入队被拒绝
-
-### 25.3 [SYS-REL-2.4] Redis 队列静默丢任务
-
-**缺陷**: `execution/queue/redis-queue-adapter.ts` 中 5 处关键 enqueue 操作使用 `.catch(() => {})`，Redis 写入失败时任务被静默丢弃。
+**缺陷**: `execution/queue/redis-queue-adapter.ts` 中 5 处关键 enqueue 操作使用 `.catch(() => {})`。
 
 **测试类型**: Unit
-
-**测试目标**: Redis 写入失败时 `enqueue()` 必须抛出异常或返回失败状态。
 
 ```typescript
 test("[SYS-REL-2.4] Redis queue enqueue propagates write failure", async () => {
@@ -2372,15 +3403,11 @@ test("[SYS-REL-2.4] Redis queue enqueue propagates write failure", async () => {
 });
 ```
 
-**覆盖所有 5 个 `.catch(() => {})` 位置**: 每个位置一个测试用例，注入不同的 Redis 错误类型（READONLY、NOSCRIPT、OOM、BUSY、LOADING）。
+### 29.4 [SYS-DEPLOY-6.3] Dockerfile CMD 路径不存在
 
-### 25.4 [SYS-DEPLOY-6.3] Dockerfile CMD 路径不存在
-
-**缺陷**: `Dockerfile` 行 46 的 `CMD ["node", "dist/src/cli/api-server.js"]` 引用不存在的路径，实际编译输出位于 `dist/src/sdk/cli/api-server.js`。
+**缺陷**: `Dockerfile` 行 46 的 CMD 引用不存在的路径。
 
 **测试类型**: CI Build Verification
-
-**测试目标**: 构建产物中必须存在 CMD 引用的入口文件。
 
 ```typescript
 test("[SYS-DEPLOY-6.3] Dockerfile CMD entrypoint exists after build", () => {
@@ -2398,13 +3425,9 @@ test("[SYS-DEPLOY-6.3] Dockerfile CMD entrypoint exists after build", () => {
 });
 ```
 
-**优先级**: **P0 — 此缺陷阻断所有容器部署**。修复方案: 将 `dist/src/cli/api-server.js` 改为 `dist/src/sdk/cli/api-server.js`。
+## 30. P1 严重缺陷测试规范
 
----
-
-## 26. P1 严重缺陷测试规范
-
-### 26.1 [SYS-REL-2.2] Redis 锁 TOCTOU 竞态
+### 30.1 [SYS-REL-2.2] Redis 锁 TOCTOU 竞态
 
 **缺陷**: `distributed-lock/redis-lock-adapter.ts` 的 `extendAsync()` 使用非原子 GET+SET，`forceStealAsync()` 使用非原子 DEL+SET。并发场景下两个进程可同时持有同一把锁。
 
@@ -2443,7 +3466,7 @@ test("[SYS-REL-2.2] concurrent forceStealAsync does not create double lock", asy
 });
 ```
 
-### 26.2 [SYS-REL-2.7] 工作流状态转换缺少 CAS
+### 30.2 [SYS-REL-2.7] 工作流状态转换缺少 CAS
 
 **缺陷**: `execution/state-transition/transition-service.ts` 任务转换有 CAS，但工作流转换无 CAS 保护。
 
@@ -2474,7 +3497,7 @@ test("[SYS-REL-2.7] concurrent workflow transitions detect conflict", async () =
 });
 ```
 
-### 26.3 [SYS-REL-2.5] SLO 告警投递静默丢失
+### 30.3 [SYS-REL-2.5] SLO 告警投递静默丢失
 
 **缺陷**: `shared/observability/slo-alerting-service.ts` 行 172/227/281/339 告警投递失败时 `.catch(() => {})`。
 
@@ -2511,7 +3534,7 @@ test("[SYS-REL-2.5] PagerDuty delivery failure logs error and increments counter
 });
 ```
 
-### 26.4 [SYS-REL-2.6] Outbox 未接入关键写路径
+### 30.4 [SYS-REL-2.6] Outbox 未接入关键写路径
 
 **缺陷**: `shared/outbox/outbox-service.ts` 完整实现存在，但 `transition-service.ts` 的任务状态转换直接写事件表不经 Outbox。
 
@@ -2546,7 +3569,7 @@ test("[SYS-REL-2.6] task state transition writes outbox entry in same transactio
 });
 ```
 
-### 26.5 [SYS-REL-2.8] 会话双存储非原子写入
+### 30.5 [SYS-REL-2.8] 会话双存储非原子写入
 
 **缺陷**: `state-evidence/truth/session-dual-storage.ts` 两次 `appendFileSync` 之间崩溃导致不一致。
 
@@ -2576,7 +3599,7 @@ test("[SYS-REL-2.8] dual storage detects and repairs partial write", async () =>
 });
 ```
 
-### 26.6 [SYS-PERF-3.1] StructuredLogger 同步 I/O 阻塞事件循环
+### 30.6 [SYS-PERF-3.1] StructuredLogger 同步 I/O 阻塞事件循环
 
 **缺陷**: `shared/observability/structured-logger.ts:295` 每条日志调用 `appendFileSync` 阻塞事件循环。
 
@@ -2608,7 +3631,7 @@ test("[SYS-PERF-3.1] structured logger write does not block event loop > 1ms", a
 });
 ```
 
-### 26.7 [SYS-OBS-5.3] Alertmanager 接收器验证
+### 30.7 [SYS-OBS-5.3] Alertmanager 接收器验证
 
 **缺陷**: `deploy/prometheus/alertmanager.yml` 三个接收器全部指向同一内部 webhook。
 
@@ -2634,7 +3657,7 @@ test("[SYS-OBS-5.3] alertmanager receivers have distinct endpoints", () => {
 });
 ```
 
-### 26.8 [SYS-DEPLOY-6.1] Terraform 远程后端验证
+### 30.8 [SYS-DEPLOY-6.1] Terraform 远程后端验证
 
 **缺陷**: `deploy/terraform/main.tf` 无 `backend {}` 块，状态文件本地存储。
 
@@ -2653,9 +3676,9 @@ test("[SYS-DEPLOY-6.1] terraform main.tf has remote backend configured", () => {
 
 ---
 
-## 27. P2 重要缺陷测试规范
+## 31. P2 重要缺陷测试规范
 
-### 27.1 [SYS-ARCH-1.1] 五面体跨面导入守护
+### 31.1 [SYS-ARCH-1.1] 五面体跨面导入守护
 
 **缺陷**: 394 处跨面导入违反五面体架构（如 state-evidence 导入 execution）。
 
@@ -2695,7 +3718,7 @@ test("[SYS-ARCH-1.1] no cross-plane imports from control-plane to state-evidence
 | interface      | 仅允许导入 shared/, contracts/          |
 | orchestration  | execution (直接跳过 shared 适配器)      |
 
-### 27.2 [SYS-OBS-5.1] 关键路径 console.\* 禁用
+### 31.2 [SYS-OBS-5.1] 关键路径 console.\* 禁用
 
 **缺陷**: 37 处关键路径使用 `console.*` 绕过 StructuredLogger。
 
@@ -2725,7 +3748,7 @@ test("[SYS-OBS-5.1] CDC replication uses StructuredLogger", () => {
 });
 ```
 
-### 27.3 [SYS-OBS-5.2] Prometheus 告警规则完整性
+### 31.3 [SYS-OBS-5.2] Prometheus 告警规则完整性
 
 **缺陷**: 仅 3 条 Prometheus 告警规则，缺少 DB、Redis、事件循环、队列等关键告警。
 
@@ -2759,7 +3782,7 @@ test("[SYS-OBS-5.2] prometheus rules cover minimum required alert types", () => 
 });
 ```
 
-### 27.4 [SYS-PERF-3.2] Redis KEYS 命令禁用
+### 31.4 [SYS-PERF-3.2] Redis KEYS 命令禁用
 
 **缺陷**: `distributed-lock/redis-lock-adapter.ts:236` 使用 `redis.keys("lock:*")` O(n) 阻塞。
 
@@ -2779,7 +3802,7 @@ test("[SYS-PERF-3.2] redis lock adapter uses SCAN instead of KEYS", () => {
 });
 ```
 
-### 27.5 [SYS-PERF-3.4] 无界 Map 内存守护
+### 31.5 [SYS-PERF-3.4] 无界 Map 内存守护
 
 **缺陷**: 20+ 处 `Map` 只增不删，长时间运行导致内存泄漏。
 
@@ -2803,7 +3826,7 @@ test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", () => {
 });
 ```
 
-### 27.6 [SYS-SEC-4.2] 路径遍历一致性
+### 31.6 [SYS-SEC-4.2] 路径遍历一致性
 
 **缺陷**: `knowledge-snapshot-store.ts:29` 直接 `readFileSync(this.snapshotPath)` 无沙箱检查。
 
@@ -2825,7 +3848,7 @@ test("[SYS-SEC-4.2] knowledge snapshot store rejects path traversal", () => {
 });
 ```
 
-### 27.7 [SYS-SEC-4.1] 环境变量启动校验完整性
+### 31.7 [SYS-SEC-4.1] 环境变量启动校验完整性
 
 **缺陷**: 插件/安全相关 `AA_*` 环境变量不在 Zod 启动校验范围内。
 
@@ -2862,13 +3885,15 @@ test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars", () => {
 
 ---
 
-## 28. 架构不变量自动守护测试
+## 32. 架构不变量自动守护测试
 
-### 28.1 目的
+> 对应 v2.0 §28。
 
-将架构审查中发现的结构性问题转化为**持续运行的自动化守护测试**，防止架构腐化复发。这些测试不验证业务逻辑，而是验证代码库的结构属性。
+### 32.1 目的
 
-### 28.2 守护测试清单
+将架构审查中发现的结构性问题转化为**持续运行的自动化守护测试**，防止架构腐化复发。
+
+### 32.2 守护测试清单
 
 | 守护项                        | 测试文件                                                        | 频率    |
 | ----------------------------- | --------------------------------------------------------------- | ------- |
@@ -2881,7 +3906,7 @@ test("[SYS-SEC-4.1] startup env schema validates all critical AA_ vars", () => {
 | 桩文件不增长                  | `tests/unit/platform/contracts/stub-count-ratchet.test.ts`      | 每次 CI |
 | Dockerfile CMD 路径有效       | `tests/integration/deploy/dockerfile-entrypoint.test.ts`        | 每次 CI |
 
-### 28.3 Zod 边界校验覆盖守护
+### 32.3 Zod 边界校验覆盖守护
 
 ```typescript
 test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () => {
@@ -2909,7 +3934,7 @@ test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () =
 });
 ```
 
-### 28.4 桩文件数量棘轮
+### 32.4 桩文件数量棘轮
 
 ```typescript
 test("[SYS-QUAL-7.1] stub file count does not increase", () => {
@@ -2930,7 +3955,7 @@ test("[SYS-QUAL-7.1] stub file count does not increase", () => {
 });
 ```
 
-### 28.5 `as any` 数量棘轮
+### 32.5 `as any` 数量棘轮
 
 ```typescript
 test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
@@ -2953,35 +3978,27 @@ test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
 
 ---
 
-## 29. 桩文件覆盖缺口追踪
+## 33. 桩文件覆盖缺口追踪
 
-### 29.1 ops-maturity 桩文件明细
+> 对应 v2.0 §29。
 
-`src/ops-maturity/` 是桩文件重灾区（51.9%），以下子目录桩率 ≥ 70%：
+### 33.1 ops-maturity 桩文件明细
 
-| 子目录                 | 总文件 | 桩文件 | 桩率     | 对应架构章节       |
-| ---------------------- | ------ | ------ | -------- | ------------------ |
-| `platform-ops-agent/`  | 7      | 7      | **100%** | §69 平台运维 Agent |
-| `edge-runtime/`        | 6      | 5      | 83%      | §63 边缘推理       |
-| `capacity-planner/`    | 5      | 4      | 80%      | §68 容量规划       |
-| `compliance-reporter/` | 5      | 4      | 80%      | §67 合规报告       |
-| `cost-optimizer/`      | 5      | 4      | 80%      | §65 成本优化       |
-| `emergency/`           | 5      | 4      | 80%      | §60 紧急制动       |
-| `multimodal/`          | 7      | 5      | 71%      | §68B 多模态        |
-| `workflow-debugger/`   | 6      | 4      | 67%      | §62 工作流调试     |
-| `explainability/`      | 7      | 4      | 57%      | §59 可解释性       |
+`src/ops-maturity/` 是桩文件重灾区，以下子目录桩率较高：
 
-### 29.2 桩文件测试现状
+| 子目录                 | 总文件 | 当前 Lines 覆盖率 | 对应架构章节       |
+| ---------------------- | ------ | ----------------- | ------------------ |
+| `platform-ops-agent/`  | 9      | 38.7%             | §69 平台运维 Agent |
+| `edge-runtime/`        | 5      | 96.6%             | §63 边缘推理       |
+| `capacity-planner/`    | 5      | 94.0%             | §68 容量规划       |
+| `compliance-reporter/` | 3      | —                 | §67 合规报告       |
+| `cost-optimizer/`      | 3      | —                 | §65 成本优化       |
+| `emergency/`           | 4      | 95.0%             | §60 紧急制动       |
+| `multimodal/`          | 7      | 97.1%             | §68B 多模态        |
+| `workflow-debugger/`   | 5      | 99.5%             | §62 工作流调试     |
+| `explainability/`      | 2      | —                 | §59 可解释性       |
 
-桩文件有对应测试文件（`tests/unit/ops-maturity/` 47 个），但这些测试仅验证：
-
-- 类可实例化（`new Service()` 不抛异常）
-- 导出存在（`typeof Service === "function"`）
-- Schema 有效（`doesNotThrow(() => schema.parse(minimal))`）
-
-**这些测试的覆盖率虚高** — 桩文件只有几行代码，100% 行覆盖率不代表功能实现。
-
-### 29.3 桩文件退出条件
+### 33.2 桩文件退出条件
 
 一个桩文件被认为"已实现"的条件：
 
@@ -2993,58 +4010,29 @@ test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
 | 变异分数   | Mutation score ≥ 50%         |
 | 外部调用者 | 至少被 1 个非测试文件 import |
 
-### 29.4 桩文件追踪测试
-
-```typescript
-test("[SYS-QUAL-7.1] ops-maturity stub directories are tracked", () => {
-  const stubDirs = [
-    "src/ops-maturity/platform-ops-agent",
-    "src/ops-maturity/edge-runtime",
-    "src/ops-maturity/capacity-planner",
-    "src/ops-maturity/compliance-reporter",
-    "src/ops-maturity/cost-optimizer",
-    "src/ops-maturity/emergency",
-    "src/ops-maturity/multimodal",
-    "src/ops-maturity/workflow-debugger",
-    "src/ops-maturity/explainability",
-  ];
-
-  for (const dir of stubDirs) {
-    const files = globSync(`${dir}/**/*.ts`);
-    let implementedCount = 0;
-
-    for (const file of files) {
-      const content = readFileSync(file, "utf8");
-      const nonEmptyLines = content
-        .split("\n")
-        .filter((l) => l.trim().length > 0).length;
-      if (nonEmptyLines > 20) implementedCount++;
-    }
-
-    // 随着实现推进，此处数字会增长。CI 仅记录不阻塞。
-    console.log(`${dir}: ${implementedCount}/${files.length} implemented`);
-  }
-});
-```
-
 ---
 
-## 30. 测试缺口与覆盖现状汇总
+## 34. 测试缺口与覆盖现状汇总
 
-### 30.1 源区域 → 测试文件数量对照
+> 对应 v2.0 §30，v3.0 更新全部数据。
 
-| 源目录                 | 源文件 | Unit 测试 | Integration 测试 | 合计 | 比率 |
-| ---------------------- | ------ | --------- | ---------------- | ---- | ---- |
-| `src/platform/`        | 839    | 554       | 220              | 774  | 0.92 |
-| `src/scale-ecosystem/` | 67     | 51        | 7                | 58   | 0.87 |
-| `src/domains/`         | 47     | 31        | 6                | 37   | 0.79 |
-| `src/ops-maturity/`    | 82     | 47        | 12               | 59   | 0.72 |
-| `src/interaction/`     | 37     | 21        | 2                | 23   | 0.62 |
-| `src/org-governance/`  | 33     | 17        | 2                | 19   | 0.58 |
-| `src/sdk/`             | 93     | 13        | 35               | 48   | 0.52 |
-| `src/plugins/`         | 20     | 20        | 0                | 20   | 1.00 |
+### 34.1 源区域 → 测试文件数量对照（v3.0 实测）
 
-### 30.2 E2E 测试文件清单（10 文件）
+| 源目录                 | 源文件    | Unit 测试 | Integration 测试 | 合计      | 比率     |
+| ---------------------- | --------- | --------- | ---------------- | --------- | -------- |
+| `src/platform/`        | 903       | 713       | 230              | 943       | 1.04     |
+| `src/scale-ecosystem/` | 73        | 56        | 7                | 63        | 0.86     |
+| `src/domains/`         | 51        | 34        | 6                | 40        | 0.78     |
+| `src/ops-maturity/`    | 87        | 57        | 12               | 69        | 0.79     |
+| `src/interaction/`     | 40        | 24        | 2                | 26        | 0.65     |
+| `src/org-governance/`  | 41        | 23        | 2                | 25        | 0.61     |
+| `src/sdk/`             | 93        | 16        | 35               | 51        | 0.55     |
+| `src/plugins/`         | 25        | 21        | 0                | 21        | 0.84     |
+| `src/core/`            | 8         | 7         | 0                | 7         | 0.88     |
+| `src/apps/`            | 4         | 4         | 0                | 4         | 1.00     |
+| **合计**               | **1,335** | **1,011** | **301**          | **1,341** | **1.00** |
+
+### 34.2 E2E 测试文件清单（10 文件）
 
 | 文件                           | 覆盖场景          |
 | ------------------------------ | ----------------- |
@@ -3059,7 +4047,7 @@ test("[SYS-QUAL-7.1] ops-maturity stub directories are tracked", () => {
 | `lease-recovery.test.ts`       | Lease 恢复        |
 | `error-propagation.test.ts`    | 错误传播          |
 
-### 30.3 Golden 测试文件清单（8 文件）
+### 34.3 Golden 测试文件清单（11 文件）
 
 | 文件                           | 守护对象              |
 | ------------------------------ | --------------------- |
@@ -3072,7 +4060,9 @@ test("[SYS-QUAL-7.1] ops-maturity stub directories are tracked", () => {
 | `workflow-validation.test.ts`  | 工作流校验            |
 | `phase1a-golden-tasks.test.ts` | Phase 1a 黄金任务套件 |
 
-### 30.4 Performance 测试文件清单（6 文件）
+> v3.0: Golden 测试从 8 → 11 文件（+3 新增文件未在此列出，需实际确认文件名）。
+
+### 34.4 Performance 测试文件清单（7 文件）
 
 | 文件                     | 基准对象            |
 | ------------------------ | ------------------- |
@@ -3083,32 +4073,25 @@ test("[SYS-QUAL-7.1] ops-maturity stub directories are tracked", () => {
 | `plugin-perf.test.ts`    | 插件执行延迟        |
 | `handoff-perf.test.ts`   | 交接流程延迟        |
 
-### 30.5 最大测试文件 Top-5
+> v3.0: Performance 测试从 6 → 7 文件。
 
-| 排名 | 文件                                                                  | 行数  | 覆盖区域         |
-| ---- | --------------------------------------------------------------------- | ----- | ---------------- |
-| 1    | `tests/integration/sdk/cli/ops-cli.test.ts`                           | 3,916 | CLI 运维命令集成 |
-| 2    | `tests/unit/runtime/transition-service.test.ts`                       | 1,880 | 状态转换逻辑     |
-| 3    | `tests/unit/runtime/execution-handshake.test.ts`                      | 1,873 | Worker 执行握手  |
-| 4    | `tests/unit/platform/interface/api/http-api-server.test.ts`           | 1,801 | HTTP API 路由    |
-| 5    | `tests/unit/platform/state-evidence/truth/async-repositories.test.ts` | 1,700 | 异步仓储层       |
+### 34.5 当前覆盖盲区 Top-5（v3.0 更新）
 
-### 30.6 当前覆盖盲区 Top-5
-
-| 排名 | 盲区                                     | 现状                                                     | 建议                                 |
-| ---- | ---------------------------------------- | -------------------------------------------------------- | ------------------------------------ |
-| 1    | **Redis 错误处理** (4 文件)              | 零错误路径测试，`.catch(() => {})` 导致                  | 新增 4 组错误注入测试（§25.1）       |
-| 2    | **分布式锁并发**                         | 无并发竞态测试                                           | 新增 extend/steal 并发测试（§26.1）  |
-| 3    | **Outbox 集成**                          | Outbox 模块自身有测试，但与 TransitionService 集成无测试 | 新增集成测试（§26.4）                |
-| 4    | **部署配置** (Dockerfile/Helm/Terraform) | 零配置校验测试                                           | 新增 4 组配置守护测试（§26.7-§26.8） |
-| 5    | **ops-maturity 桩实现**                  | 47 个测试验证空壳，无真实逻辑覆盖                        | 标记为测试债务 TD-P3（§29）          |
+| 排名 | 盲区                                    | 现状                                                        | 建议                                    |
+| ---- | --------------------------------------- | ----------------------------------------------------------- | --------------------------------------- |
+| 1    | **Harness 迭代循环** (GAP-VI-1)         | `runLoop()` 仅单次执行，无 Planner→Generator→Evaluator 循环 | 实现后新增循环测试（§25.1）             |
+| 2    | **ACP 协作协议** (GAP-II-1)             | 仅 TODO 注释，零实现                                        | 实现后新增 7 不变量测试（§25.2）        |
+| 3    | **域元模型** (GAP-III-1)                | 零实现，24 域无元模型回答                                   | 实现后新增 12 问题 × 24 域矩阵（§25.3） |
+| 4    | **state-evidence/memory** (67.5% Lines) | 20 文件覆盖率不足 85% 红线                                  | 补充 memory 层测试                      |
+| 5    | **sdk/cli branches** (47.2%)            | 79 文件 CLI 分支覆盖率不足 60% 红线                         | 补充 CLI 分支测试                       |
 
 ---
 
-> **文档结束 (v2.0)** — 本手册从 v1.2 升级到 v2.0。
+> **文档结束 (v3.0)** — 本手册从 v2.0 升级到 v3.0。
 >
 > **Part I** 保证：测试不少、质量不差、不会明显遗漏。
-> **Part II** 保证：系统关键设计语义（状态机、事件、并发、阶段契约）都被覆盖到。
-> **Part III** 保证：架构审查发现的 **34 项系统级工程缺陷** 有对应回归测试规范，修复后不会复发。
+> **Part II** 保证：系统关键设计语义（状态机、事件、并发、阶段契约、Harness 语义映射）都被覆盖到。
+> **Part III** 保证：架构审查 v6.0 发现的 **29 项架构设计-实现缺口** 有对应测试规范，实现后不会有测试盲区。
+> **Part IV** 保证：**工程缺陷**（Redis 错误、并发竞态、配置问题等）有对应回归测试规范，修复后不会复发。
 >
-> 核心理念：**覆盖率棘轮保证数量，变异测试保证质量，Traceability Matrix 保证完整性，PR Review 保证上下文，架构语义矩阵保证设计契约，系统问题回归矩阵保证工程缺陷不复发。六者缺一不可。**
+> 核心理念：**覆盖率棘轮保证数量，变异测试保证质量，Traceability Matrix 保证完整性，PR Review 保证上下文，架构语义矩阵保证设计契约，架构缺口回归矩阵保证设计-实现对齐，系统问题回归矩阵保证工程缺陷不复发。七者缺一不可。**

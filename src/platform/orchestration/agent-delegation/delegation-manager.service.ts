@@ -19,6 +19,7 @@ import {
   DEFAULT_MAX_DEPTH,
   type TopologyValidatorConfig,
 } from "./topology-validator.js";
+import { CollaborationProtocolService, type ACPMessage, type InvariantContext } from "./collaboration-protocol/index.js";
 import type {
   AgentContext,
   DelegationSpec,
@@ -48,6 +49,7 @@ export interface ExpirationScanResult {
 
 export class DelegationManagerService {
   private readonly topologyValidator: TopologyValidator;
+  private readonly collaborationProtocol: CollaborationProtocolService;
   private readonly defaultTimeout: number;
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
@@ -64,6 +66,7 @@ export class DelegationManagerService {
       ...(options.allowedPackIds ? { allowedPackIds: options.allowedPackIds } : {}),
     };
     this.topologyValidator = createTopologyValidator(config);
+    this.collaborationProtocol = new CollaborationProtocolService();
     this.defaultTimeout = options.defaultTimeout ?? 300000; // 5 minutes
     this.delegationStore = new Map();
     this.chainStore = new Map();
@@ -179,16 +182,43 @@ export class DelegationManagerService {
    * @param outputRef - Optional reference to output artifact
    */
   public async complete(delegationId: string, _outputRef?: string): Promise<void> {
-    const delegation = this.delegationStore.get(delegationId);
-    if (!delegation) {
-      throw new ValidationError(
-        "delegation.not_found",
-        `Delegation ${delegationId} not found`,
-        { details: { delegationId } },
-      );
-    }
-
+    const delegation = this.requireDelegation(delegationId);
     delegation.status = "completed";
+  }
+
+  public async completeWithEvidence(delegationId: string, evidence: readonly string[], outputRef?: string): Promise<void> {
+    const delegation = this.requireDelegation(delegationId);
+    const validation = this.collaborationProtocol.validateAndSend(
+      this.collaborationProtocol.createMessage("completion_report", {
+        correlation_id: delegationId,
+        parent_run_id: delegationId,
+        depth: delegation.depth,
+        sender_agent_id: delegation.childAgentId,
+        receiver_agent_id: delegation.parentAgentId,
+        domain_id: "delegation",
+        risk_level: 0,
+        budget_remaining: 0,
+        trace_id: delegationId,
+        payload: {
+          evidence: [...evidence],
+          result_summary: outputRef ?? "delegation completed",
+          artifacts: outputRef ? [outputRef] : [],
+        },
+      }),
+      {
+        parentPermissions: delegation.permissions,
+        parentRiskMode: 100,
+        parentConstraints: delegation.permissions.constraints,
+        parentBudgetRemaining: Number.MAX_SAFE_INTEGER,
+        globalCallDepth: delegation.depth,
+      },
+    );
+    if (!validation.accepted) {
+      throw new ValidationError("delegation.invalid_completion_report", "Completion report failed ACP validation", {
+        details: { delegationId, violations: validation.violations },
+      });
+    }
+    await this.complete(delegationId, outputRef);
   }
 
   /**
@@ -198,15 +228,7 @@ export class DelegationManagerService {
    * @param error - Error message
    */
   public async fail(delegationId: string, _error: string): Promise<void> {
-    const delegation = this.delegationStore.get(delegationId);
-    if (!delegation) {
-      throw new ValidationError(
-        "delegation.not_found",
-        `Delegation ${delegationId} not found`,
-        { details: { delegationId } },
-      );
-    }
-
+    const delegation = this.requireDelegation(delegationId);
     delegation.status = "failed";
   }
 
@@ -289,6 +311,14 @@ export class DelegationManagerService {
    */
   public getPendingExpirationCount(): number {
     return this.getExpiredDelegations().length;
+  }
+
+  public validateCollaborationMessage(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] } {
+    return this.collaborationProtocol.validateAndSend(message, context);
+  }
+
+  public recordTakeoverNotice(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] } {
+    return this.collaborationProtocol.handleIncoming(message, context);
   }
 
   // ── Private Methods ───────────────────────────────────────────────────────
@@ -384,6 +414,18 @@ export class DelegationManagerService {
     };
 
     this.delegationStore.set(delegationId, delegation);
+    return delegation;
+  }
+
+  private requireDelegation(delegationId: string): DelegationResult {
+    const delegation = this.delegationStore.get(delegationId);
+    if (!delegation) {
+      throw new ValidationError(
+        "delegation.not_found",
+        `Delegation ${delegationId} not found`,
+        { details: { delegationId } },
+      );
+    }
     return delegation;
   }
 

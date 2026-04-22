@@ -17,6 +17,7 @@ import { MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult,
 import { AppError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
+import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../state-evidence/knowledge/indexing/embedding-provider.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -63,6 +64,14 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   tools?: ChatTool[];
   toolChoice?: "auto" | "none";
+}
+
+export interface CompletionOptions {
+  model?: string;
+  system?: string;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
 }
 
 export type ChatProviderType = "anthropic" | "openai" | "minimax";
@@ -320,6 +329,26 @@ export class UnifiedChatProvider {
     }
   }
 
+  public async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {
+    const result = await this.createChatCompletion({
+      model: options.model ?? "gpt-5.2",
+      messages: [{ role: "user", content: prompt }],
+      ...(options.system !== undefined ? { system: options.system } : {}),
+      ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+      ...(options.topP !== undefined ? { topP: options.topP } : {}),
+      maxTokens: options.maxTokens ?? 512,
+    });
+    return result.content;
+  }
+
+  public async embed(input: string | readonly string[], model = "text-embedding-3-small"): Promise<number[][]> {
+    this.assertNotDisposed();
+    const texts = Array.isArray(input) ? [...input] : [input];
+    const provider = this.createEmbeddingProvider(model);
+    const results = await provider.embedBatch(texts);
+    return results.map((result) => [...result.vector]);
+  }
+
   private toAnthropicRequest(request: ChatCompletionRequest): AnthropicChatCompletionRequest {
     const result: AnthropicChatCompletionRequest = {
       model: request.model,
@@ -473,6 +502,22 @@ export class UnifiedChatProvider {
       model: result.model ?? "minimax",
       provider,
     };
+  }
+
+  private createEmbeddingProvider(model: string): EmbeddingProvider {
+    const normalizedModel = model.toLowerCase();
+    if ((normalizedModel.includes("minimax") || normalizedModel.includes("embo")) && this.minimax) {
+      return new MiniMaxEmbeddingProvider({
+        apiKey: "configured-via-unified-provider",
+      });
+    }
+    if ((normalizedModel.includes("text-embedding") || normalizedModel.includes("openai") || normalizedModel.includes("embedding")) && this.openai) {
+      return new OpenAIEmbeddingProvider({
+        apiKey: "configured-via-unified-provider",
+        model,
+      });
+    }
+    return new HashEmbeddingProvider();
   }
 
   private assertNotDisposed(): void {
