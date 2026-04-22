@@ -1,73 +1,94 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { summarizeOpsHealth, OpsHealthProbe } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
+import {
+  classifyOpsIncident,
+  summarizeIncidentDiagnosis,
+} from "../../../../src/ops-maturity/platform-ops-agent/incident-diagnoser/index.js";
 
-test("summarizeOpsHealth returns healthy when all probes healthy", () => {
-  const probes: OpsHealthProbe[] = [
-    { component: "db", status: "healthy" },
-    { component: "cache", status: "healthy" },
-  ];
-
-  const result = summarizeOpsHealth(probes);
-
-  assert.equal(result, "healthy");
+test("classifyOpsIncident returns critical_incident for high error rate >= 0.2", () => {
+  assert.equal(classifyOpsIncident(0.2, 0), "critical_incident");
+  assert.equal(classifyOpsIncident(0.5, 0), "critical_incident");
+  assert.equal(classifyOpsIncident(1.0, 0), "critical_incident");
 });
 
-test("summarizeOpsHealth returns degraded when any probe degraded", () => {
-  const probes: OpsHealthProbe[] = [
-    { component: "db", status: "healthy" },
-    { component: "cache", status: "degraded" },
-  ];
-
-  const result = summarizeOpsHealth(probes);
-
-  assert.equal(result, "degraded");
+test("classifyOpsIncident returns critical_incident for high backlog >= 1000", () => {
+  assert.equal(classifyOpsIncident(0, 1000), "critical_incident");
+  assert.equal(classifyOpsIncident(0, 5000), "critical_incident");
+  assert.equal(classifyOpsIncident(0, 10000), "critical_incident");
 });
 
-test("summarizeOpsHealth returns failed when any probe failed", () => {
-  const probes: OpsHealthProbe[] = [
-    { component: "db", status: "failed" },
-    { component: "cache", status: "healthy" },
-  ];
-
-  const result = summarizeOpsHealth(probes);
-
-  assert.equal(result, "failed");
+test("classifyOpsIncident returns incident for moderate error rate >= 0.05", () => {
+  assert.equal(classifyOpsIncident(0.05, 0), "incident");
+  assert.equal(classifyOpsIncident(0.1, 0), "incident");
+  assert.equal(classifyOpsIncident(0.19, 0), "incident");
 });
 
-test("summarizeOpsHealth failed takes precedence over degraded", () => {
-  const probes: OpsHealthProbe[] = [
-    { component: "db", status: "failed" },
-    { component: "cache", status: "degraded" },
-  ];
-
-  const result = summarizeOpsHealth(probes);
-
-  assert.equal(result, "failed");
+test("classifyOpsIncident returns incident for moderate backlog >= 200", () => {
+  assert.equal(classifyOpsIncident(0, 200), "incident");
+  assert.equal(classifyOpsIncident(0, 500), "incident");
+  assert.equal(classifyOpsIncident(0, 999), "incident");
 });
 
-test("summarizeOpsHealth returns healthy for empty array", () => {
-  const result = summarizeOpsHealth([]);
-  assert.equal(result, "healthy");
+test("classifyOpsIncident returns warning for low values", () => {
+  assert.equal(classifyOpsIncident(0.01, 10), "warning");
+  assert.equal(classifyOpsIncident(0, 100), "warning");
+  assert.equal(classifyOpsIncident(0.04, 150), "warning");
 });
 
-test("summarizeOpsHealth single probe healthy", () => {
-  const probes: OpsHealthProbe[] = [{ component: "api", status: "healthy" }];
-  assert.equal(summarizeOpsHealth(probes), "healthy");
+test("classifyOpsIncident prioritizes critical_incident over incident", () => {
+  // High error rate takes precedence
+  assert.equal(classifyOpsIncident(0.2, 500), "critical_incident");
+  // High backlog takes precedence
+  assert.equal(classifyOpsIncident(0.05, 1000), "critical_incident");
 });
 
-test("summarizeOpsHealth single probe failed", () => {
-  const probes: OpsHealthProbe[] = [{ component: "api", status: "failed" }];
-  assert.equal(summarizeOpsHealth(probes), "failed");
+test("classifyOpsIncident prioritizes incident over warning", () => {
+  // Moderate error rate takes precedence over low backlog
+  assert.equal(classifyOpsIncident(0.05, 10), "incident");
+  // Moderate backlog takes precedence over low error rate
+  assert.equal(classifyOpsIncident(0.01, 200), "incident");
 });
 
-test("OpsHealthProbe interface accepts all status values", () => {
-  const healthy: OpsHealthProbe = { component: "test", status: "healthy" };
-  const degraded: OpsHealthProbe = { component: "test", status: "degraded" };
-  const failed: OpsHealthProbe = { component: "test", status: "failed" };
+test("classifyOpsIncident error rate boundary at 0.05", () => {
+  assert.equal(classifyOpsIncident(0.049, 0), "warning");
+  assert.equal(classifyOpsIncident(0.05, 0), "incident");
+});
 
-  assert.ok(healthy);
-  assert.ok(degraded);
-  assert.ok(failed);
+test("classifyOpsIncident error rate boundary at 0.2", () => {
+  assert.equal(classifyOpsIncident(0.199, 0), "incident");
+  assert.equal(classifyOpsIncident(0.2, 0), "critical_incident");
+});
+
+test("classifyOpsIncident backlog boundary at 200", () => {
+  assert.equal(classifyOpsIncident(0, 199), "warning");
+  assert.equal(classifyOpsIncident(0, 200), "incident");
+});
+
+test("classifyOpsIncident backlog boundary at 1000", () => {
+  assert.equal(classifyOpsIncident(0, 999), "incident");
+  assert.equal(classifyOpsIncident(0, 1000), "critical_incident");
+});
+
+test("classifyOpsIncident handles zero values", () => {
+  assert.equal(classifyOpsIncident(0, 0), "warning");
+});
+
+test("summarizeIncidentDiagnosis returns formatted string", () => {
+  const summary = summarizeIncidentDiagnosis(0.05, 300);
+  assert.ok(typeof summary === "string");
+  assert.ok(summary.includes("incident"));
+  assert.ok(summary.includes("errorRate=0.05"));
+  assert.ok(summary.includes("backlog=300"));
+});
+
+test("summarizeIncidentDiagnosis includes correct classification", () => {
+  const warning = summarizeIncidentDiagnosis(0.01, 50);
+  assert.ok(warning.includes("warning"));
+
+  const incident = summarizeIncidentDiagnosis(0.05, 300);
+  assert.ok(incident.includes("incident"));
+
+  const critical = summarizeIncidentDiagnosis(0.2, 1000);
+  assert.ok(critical.includes("critical_incident"));
 });

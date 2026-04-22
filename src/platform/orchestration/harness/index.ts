@@ -1,21 +1,27 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
+import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
+import { DurableHarnessService } from "./durable/durable-harness-service.js";
 import { GuardrailEngine, type GuardrailAssessment } from "./guardrails/guardrail-engine.js";
 import { HitlRuntime, type HitlRequest } from "./hitl-runtime.js";
 import { EvalRunService } from "./evaluation/eval-run-service.js";
 import { HarnessMemoryManager } from "./memory-manager.js";
 import { mapHarnessStepToOapeflirPhase, type OapeflirSemanticPhase } from "./oapeflir-harness-mapping.js";
+import { RecoveryController, type HarnessFailureType } from "./recovery-controller.js";
 import { ToolbeltAssembler, type HarnessToolbelt } from "./toolbelt-assembler.js";
 
 export * from "./harness-baseline.js";
 export * from "./harness-bootstrap.js";
 export * from "./async-harness-service.js";
+export * from "./context-assembler.js";
+export * from "./durable/durable-harness-service.js";
 export * from "./evaluation/eval-run-service.js";
 export * from "./evaluation/task-outcome-grader.js";
 export * from "./guardrails/guardrail-engine.js";
 export * from "./hitl-runtime.js";
 export * from "./memory-manager.js";
 export * from "./oapeflir-harness-mapping.js";
+export * from "./recovery-controller.js";
 export * from "./toolbelt-assembler.js";
 
 export type HarnessRole = "planner" | "generator" | "evaluator" | "hitl_operator" | "loop_controller";
@@ -182,6 +188,9 @@ export class HarnessRuntimeService {
   private readonly hitlRuntime: HitlRuntime;
   private readonly memoryManager: HarnessMemoryManager;
   private readonly evalRunService: EvalRunService;
+  private readonly durableService: DurableHarnessService;
+  private readonly contextAssembler: ContextAssembler;
+  private readonly recoveryController: RecoveryController;
 
   public constructor(
     options: {
@@ -190,6 +199,8 @@ export class HarnessRuntimeService {
       hitlRuntime?: HitlRuntime;
       memoryManager?: HarnessMemoryManager;
       evalRunService?: EvalRunService;
+      durableService?: DurableHarnessService;
+      contextAssembler?: ContextAssembler;
     } = {},
   ) {
     this.toolbeltAssembler = options.toolbeltAssembler ?? new ToolbeltAssembler();
@@ -197,6 +208,9 @@ export class HarnessRuntimeService {
     this.hitlRuntime = options.hitlRuntime ?? new HitlRuntime();
     this.memoryManager = options.memoryManager ?? new HarnessMemoryManager();
     this.evalRunService = options.evalRunService ?? new EvalRunService();
+    this.durableService = options.durableService ?? new DurableHarnessService();
+    this.contextAssembler = options.contextAssembler ?? new ContextAssembler();
+    this.recoveryController = new RecoveryController(this.durableService, this);
   }
 
   public createRun(input: {
@@ -281,6 +295,14 @@ export class HarnessRuntimeService {
       lastDecisionId: run.decision?.decisionId ?? null,
       capturedAt: nowIso(),
     };
+  }
+
+  public assembleContext(sources: HarnessContextSourceSet, tokenBudget: number): HarnessContext {
+    return this.contextAssembler.assemble(sources, tokenBudget);
+  }
+
+  public snapshotContext(run: HarnessRun, context: HarnessContext): ContextSnapshot {
+    return this.contextAssembler.snapshot(run, context);
   }
 
   public sleep(run: HarnessRun, reason: string, resumeAt: string): HarnessRun {
@@ -422,6 +444,26 @@ export class HarnessRuntimeService {
 
   public createAsyncService(): AsyncHarnessService {
     return new AsyncHarnessService(this);
+  }
+
+  public persistRun(run: HarnessRun) {
+    return this.durableService.persist(run);
+  }
+
+  public checkpointRun(run: HarnessRun): string {
+    return this.durableService.checkpoint(run);
+  }
+
+  public restoreRun(runId: string): HarnessRun | null {
+    return this.durableService.restore(runId);
+  }
+
+  public restoreFromCheckpoint(checkpointRef: string): HarnessRun | null {
+    return this.durableService.restoreFromCheckpoint(checkpointRef);
+  }
+
+  public handleFailure(run: HarnessRun, failure: HarnessFailureType): HarnessRun {
+    return this.recoveryController.handleFailure(run, failure);
   }
 
   private appendTimelineEvent(
@@ -582,13 +624,16 @@ export class HarnessRuntimeService {
     });
 
     if (baseRun.status !== "waiting_hitl") {
+      this.durableService.persist(baseRun);
       return baseRun;
     }
 
-    return this.openHitlReview(
+    const withHitl = this.openHitlReview(
       baseRun,
       "guardrail_or_operator_escalation",
       [...(input.producedEvidenceRefs ?? []), ...guardrailAssessment.findings.map((finding) => finding.code)],
     );
+    this.durableService.persist(withHitl);
+    return withHitl;
   }
 }

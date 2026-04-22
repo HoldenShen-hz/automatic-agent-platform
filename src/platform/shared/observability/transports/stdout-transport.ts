@@ -15,4 +15,12 @@ export class StdoutTransport implements LogTransport {
   write(entry: StructuredLogEntry): void {
     process.stdout.write(JSON.stringify(entry) + "\n");
   }
+
+  async flush(): Promise<void> {
+    // No-op for stdout - always flushed
+  }
+
+  async close(): Promise<void> {
+    // No-op for stdout - cannot close stdout
+  }
 }

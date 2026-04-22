@@ -103,7 +103,7 @@ export function calculateHealthMetrics(probes: readonly OpsHealthProbe[]): OpsHe
   };
 }
 
-export function groupProbesByStatus(probes: readonly OpsHealthProbe[]): Record<string, readonly OpsHealthProbe[]> {
+export function groupProbesByStatus(probes: readonly OpsHealthProbe[]): { healthy: readonly OpsHealthProbe[]; degraded: readonly OpsHealthProbe[]; failed: readonly OpsHealthProbe[] } {
   const healthy: OpsHealthProbe[] = [];
   const degraded: OpsHealthProbe[] = [];
   const failed: OpsHealthProbe[] = [];

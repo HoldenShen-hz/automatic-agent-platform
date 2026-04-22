@@ -148,7 +148,10 @@ interface DomainSeed {
   readonly restrictedDataClasses: readonly string[];
 }
 
-const REPO_ROOT = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+const REPO_ROOT_CANDIDATES = [
+  resolve(process.cwd()),
+  resolve(fileURLToPath(new URL("../..", import.meta.url))),
+];
 
 const LEGACY_DOMAIN_ID_ALIASES = {
   "data-processing": "data-engineering",
@@ -166,7 +169,13 @@ const LEGACY_DOMAIN_ID_ALIASES = {
 } as const satisfies Record<LegacyVerticalDomainId, VerticalDomainId>;
 
 function configPathFor(domainId: VerticalDomainId): string {
-  return resolve(REPO_ROOT, "config", "domains", `${domainId}.json`);
+  for (const root of REPO_ROOT_CANDIDATES) {
+    const candidate = resolve(root, "config", "domains", `${domainId}.json`);
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return resolve(REPO_ROOT_CANDIDATES[0]!, "config", "domains", `${domainId}.json`);
 }
 
 function divisionIdFor(domainId: VerticalDomainId): string {

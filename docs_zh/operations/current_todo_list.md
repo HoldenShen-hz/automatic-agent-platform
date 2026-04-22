@@ -146,6 +146,7 @@
 - `R1` 已完成主干落地：ConstraintPack 扩展、Harness 多生命周期、PlanBundle/WorkProduct/EvaluationReport/ContextSnapshot/WorkflowSleepLease/RecoveryCheckpoint、resume/recovery/sleep 主链和定向测试已落地。
 - `R3` 已完成主体实现：Q1-Q12 meta-model、12 种 recipe、12 个 canonical `domain_id`、legacy alias 兼容、descriptor/ bootstrap 接线和定向测试已落地。
 - `R4` 已完成第一轮主干实现：24 域已具备专属 config 入口、domain-specific workflow/tool/eval/latency/ownership metadata，并已纳入 unit + integration 回归。
-- `R5` 已完成第二轮子系统落地：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、timeline/invariant 检查已接回 Harness 主链，并有 unit/integration 回归保护。
+- `R5` 已完成第三轮子系统落地：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、`DurableHarnessService`、`ContextAssembler`、`RecoveryController`、timeline/invariant 检查已接回 Harness 主链，并有 unit/integration 回归保护。
+- `R6` 已完成第一轮实现：`RoadmapService` 已补齐 Phase `8a/8b/8c/9a-9f` 的架构模板注册，相关 roadmap/success-criteria 定向测试已更新到新阶段模型。
 - `R1-R6` 仍以 review 缺口为准推进，不再复用旧 `W* done` 结论。
 - 所有后续“已完成”状态，必须以代码、测试、文档三者同时落地为准。

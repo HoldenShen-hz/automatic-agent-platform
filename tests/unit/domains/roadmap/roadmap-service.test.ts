@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RoadmapService } from "../../../../src/domains/roadmap/roadmap-service.js";
+import { ARCHITECTURE_ROADMAP_TEMPLATE, RoadmapService } from "../../../../src/domains/roadmap/roadmap-service.js";
 import type { RoadmapPhase, RoadmapStatus } from "../../../../src/domains/roadmap/types.js";
 
 test("RoadmapService addRoadmapItem creates item with pending status", () => {
@@ -148,6 +148,26 @@ test("RoadmapService throws ValidationError for non-existent item", () => {
       return false;
     },
   );
+});
+
+test("RoadmapService seeds architecture roadmap phases 8 and 9 from the canonical template", () => {
+  const service = new RoadmapService();
+  const seeded = service.seedArchitectureRoadmap();
+
+  assert.equal(seeded.length, ARCHITECTURE_ROADMAP_TEMPLATE.length);
+  assert.equal(service.getRoadmap("phase8a").some((item) => item.title === "Harness core loop"), true);
+  assert.equal(service.getRoadmap("phase9f").some((item) => item.title === "Vertical domains 9f"), true);
+  assert.deepEqual(service.listArchitecturePhases(), [
+    "phase8a",
+    "phase8b",
+    "phase8c",
+    "phase9a",
+    "phase9b",
+    "phase9c",
+    "phase9d",
+    "phase9e",
+    "phase9f",
+  ]);
 });
 
 function nowUtc(): string {

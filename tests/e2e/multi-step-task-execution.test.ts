@@ -155,7 +155,7 @@ test("E2E: multi-step task completes all steps and reaches terminal state", () =
     const executionId = newId("exec");
     const traceId = "e2e-mstep-complete-trace";
 
-    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "linear_wf");
+    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "linear_wf", "in_progress");
 
     // Advance through all steps
     const now = nowIso();
@@ -217,7 +217,7 @@ test("E2E: multi-step task completes all steps and reaches terminal state", () =
       taskId,
       sessionId: newId("sess"),
       executionId,
-      currentTaskStatus: "pending",
+      currentTaskStatus: "in_progress",
       currentWorkflowStatus: "completed",
       currentSessionStatus: "open",
       currentExecutionStatus: "succeeded",
@@ -248,7 +248,7 @@ test("E2E: multi-step task fails mid-execution and task fails", () => {
     const traceId = "e2e-mstep-fail-trace";
     const now = nowIso();
 
-    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "fragile_wf");
+    insertTaskWithExecution(h.db, h.store, taskId, executionId, traceId, "fragile_wf", "in_progress");
 
     // Step 1 fails
     h.db.transaction(() => {
@@ -281,7 +281,7 @@ test("E2E: multi-step task fails mid-execution and task fails", () => {
       taskId,
       sessionId: newId("sess"),
       executionId,
-      currentTaskStatus: "pending",
+      currentTaskStatus: "in_progress",
       currentWorkflowStatus: "failed",
       currentSessionStatus: "open",
       currentExecutionStatus: "failed",
@@ -372,7 +372,7 @@ test("E2E: multi-step task resumes from checkpoint after failure", () => {
 
     let workflow = h.store.getWorkflowState(taskId);
     assert.equal(workflow!.retryCount, 1, "Should have retry count 1");
-    assert.equal(workflow!.resumableFromStep, 1, "Should be resumable from step 1");
+    assert.equal(workflow!.resumableFromStep, "1", "Should be resumable from step 1");
 
     // Resume and complete
     h.db.transaction(() => {

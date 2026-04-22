@@ -19,6 +19,24 @@ import {
   type SuccessCriterionMeasurement,
 } from "./types.js";
 
+export interface ArchitectureRoadmapTemplateItem {
+  readonly phase: RoadmapPhase;
+  readonly title: string;
+  readonly description: string;
+}
+
+export const ARCHITECTURE_ROADMAP_TEMPLATE: readonly ArchitectureRoadmapTemplateItem[] = [
+  { phase: "phase8a", title: "Harness core loop", description: "Close VI-1/2/3 and ship the unified Harness protocol." },
+  { phase: "phase8b", title: "Harness durable recovery", description: "Close VI-4/5/6 with durability, context assembly, and recovery." },
+  { phase: "phase8c", title: "Harness governance and evaluation", description: "Close VI-7~VI-15 with guardrails, HITL, async, eval, and invariants." },
+  { phase: "phase9a", title: "Vertical domains 9a", description: "Coding, data-engineering, knowledge-base, and user-operations." },
+  { phase: "phase9b", title: "Vertical domains 9b", description: "Quant-trading, financial-services, ecommerce, and advertising." },
+  { phase: "phase9c", title: "Vertical domains 9c", description: "Industry-research, academic-research, finance-accounting, and legal." },
+  { phase: "phase9d", title: "Vertical domains 9d", description: "Customer-service, IT-operations, content-moderation, and live-streaming." },
+  { phase: "phase9e", title: "Vertical domains 9e", description: "Healthcare, human-resources, supply-chain, and education." },
+  { phase: "phase9f", title: "Vertical domains 9f", description: "Creative-production, game-dev, game-publishing, and marketing." },
+] as const;
+
 export interface RoadmapServiceOptions {
   readonly eventPublisher?: null;
 }
@@ -138,6 +156,22 @@ export class RoadmapService {
       items.filter((item) => item.status === "completed").map((item) => item.itemId),
       items.filter((item) => item.status === "deferred").map((item) => item.itemId),
     );
+  }
+
+  public seedArchitectureRoadmap(): readonly RoadmapItem[] {
+    const seeded: RoadmapItem[] = [];
+    for (const template of ARCHITECTURE_ROADMAP_TEMPLATE) {
+      const exists = this.getRoadmap(template.phase).some((item) => item.title === template.title);
+      if (exists) {
+        continue;
+      }
+      seeded.push(this.addRoadmapItem(template));
+    }
+    return seeded;
+  }
+
+  public listArchitecturePhases(): readonly RoadmapPhase[] {
+    return [...new Set(ARCHITECTURE_ROADMAP_TEMPLATE.map((item) => item.phase))];
   }
 
   private getOrThrow(itemId: string): RoadmapItem {

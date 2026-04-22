@@ -8,7 +8,24 @@ import type {
   SuccessCriterionMeasurement,
 } from "./types.js";
 
-const PHASE_ORDER: readonly RoadmapPhase[] = ["phase1", "phase2", "phase3", "phase4"];
+const PHASE_ORDER: readonly RoadmapPhase[] = [
+  "phase1",
+  "phase2",
+  "phase3",
+  "phase4",
+  "phase5",
+  "phase6",
+  "phase7",
+  "phase8a",
+  "phase8b",
+  "phase8c",
+  "phase9a",
+  "phase9b",
+  "phase9c",
+  "phase9d",
+  "phase9e",
+  "phase9f",
+];
 
 export class SuccessCriteriaService {
   private readonly definitions = new Map<string, SuccessCriterionDefinition>();

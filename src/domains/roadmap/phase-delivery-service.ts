@@ -37,6 +37,18 @@ export class PhaseDeliveryService {
       phase2: "Growth",
       phase3: "Maturity",
       phase4: "Enterprise",
+      phase5: "Interaction and Governance",
+      phase6: "Marketplace and Ecosystem",
+      phase7: "Ops Maturity",
+      phase8a: "Harness Core Protocol",
+      phase8b: "Harness Long-Running and HITL",
+      phase8c: "Harness Governance and Evaluation",
+      phase9a: "Vertical Domains Batch 9a",
+      phase9b: "Vertical Domains Batch 9b",
+      phase9c: "Vertical Domains Batch 9c",
+      phase9d: "Vertical Domains Batch 9d",
+      phase9e: "Vertical Domains Batch 9e",
+      phase9f: "Vertical Domains Batch 9f",
     };
 
     const phaseDescriptions: Record<RoadmapPhase, string> = {
@@ -44,6 +56,18 @@ export class PhaseDeliveryService {
       phase2: "Multi-region, scaling",
       phase3: "Full features, HA/DR",
       phase4: "Advanced governance, compliance",
+      phase5: "Natural language entry, dashboard, org governance",
+      phase6: "Marketplace, connectors, and ecosystem expansion",
+      phase7: "Explainability, drift, optimization, and self-ops",
+      phase8a: "Harness loop protocol, core runtime, and constraint model",
+      phase8b: "Harness durability, context, recovery, and HITL runtime",
+      phase8c: "Harness guardrails, evaluation, async execution, and invariants",
+      phase9a: "Coding, data engineering, knowledge base, and user operations",
+      phase9b: "Quant trading, financial services, ecommerce, and advertising",
+      phase9c: "Industry research, academic research, finance accounting, and legal",
+      phase9d: "Customer service, IT operations, moderation, and live streaming",
+      phase9e: "Healthcare, human resources, supply chain, and education",
+      phase9f: "Creative production, game dev, publishing, and marketing",
     };
 
     const phaseId = `phase_${phase}`;

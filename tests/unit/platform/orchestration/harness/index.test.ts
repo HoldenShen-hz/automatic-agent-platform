@@ -199,3 +199,75 @@ test("HarnessRuntimeService evaluates runs and AsyncHarnessService executes queu
   assert.equal(report.overallPassed, true);
   assert.equal(report.timelineEventCount >= 3, true);
 });
+
+test("HarnessRuntimeService assembles context and snapshots it for the run", () => {
+  const service = new HarnessRuntimeService();
+  const run = service.createRun({
+    taskId: "task-7",
+    domainId: "coding",
+    constraintPack: createConstraintPack(),
+  });
+  const context = service.assembleContext(
+    {
+      conversation: { threadId: "thread-1" },
+      task: { objective: "prepare governed patch" },
+      memory: { recentFailure: "none" },
+      knowledge: { namespace: "coding/default" },
+    },
+    2048,
+  );
+  const snapshot = service.snapshotContext(run, context);
+
+  assert.equal(context.tokenBudget, 2048);
+  assert.equal(context.task.objective, "prepare governed patch");
+  assert.equal(snapshot.runId, run.runId);
+  assert.equal(snapshot.domainId, "coding");
+});
+
+test("HarnessRuntimeService persists runs, creates checkpoints, and restores from durable state", () => {
+  const service = new HarnessRuntimeService();
+  const run = service.runLoop({
+    taskId: "task-8",
+    domainId: "coding",
+    constraintPack: createConstraintPack(),
+    plannerOutput: { planId: "plan-8" },
+    generatorOutput: { artifact: "patch.diff" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.89,
+    producedEvidenceRefs: ["risk_profile"],
+  });
+
+  const persisted = service.persistRun(run);
+  const checkpointRef = service.checkpointRun(run);
+  const restored = service.restoreRun(run.runId);
+  const restoredFromCheckpoint = service.restoreFromCheckpoint(checkpointRef);
+
+  assert.equal(persisted.run.runId, run.runId);
+  assert.equal(typeof checkpointRef, "string");
+  assert.equal(restored?.runId, run.runId);
+  assert.equal(restoredFromCheckpoint?.runId, run.runId);
+});
+
+test("HarnessRuntimeService uses RecoveryController to recover from persisted failures", () => {
+  const service = new HarnessRuntimeService();
+  const run = service.runLoop({
+    taskId: "task-9",
+    domainId: "coding",
+    constraintPack: createConstraintPack(),
+    plannerOutput: { planId: "plan-9" },
+    generatorOutput: { artifact: "patch.diff" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.9,
+    producedEvidenceRefs: ["risk_profile"],
+  });
+
+  const checkpointRef = service.checkpointRun(run);
+  assert.equal(typeof checkpointRef, "string");
+
+  const recovered = service.handleFailure(run, "worker_crash");
+  const resumed = service.handleFailure(run, "tool_timeout");
+
+  assert.equal(recovered.status, "recovering");
+  assert.equal(recovered.recoveryCheckpoint?.lastCompletedStepId, run.steps.at(-1)?.stepId ?? null);
+  assert.equal(resumed.status, "running");
+});

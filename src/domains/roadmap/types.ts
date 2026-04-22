@@ -3,7 +3,23 @@
  * Implements §33 Roadmap for phase delivery items
  */
 
-export type RoadmapPhase = "phase1" | "phase2" | "phase3" | "phase4";
+export type RoadmapPhase =
+  | "phase1"
+  | "phase2"
+  | "phase3"
+  | "phase4"
+  | "phase5"
+  | "phase6"
+  | "phase7"
+  | "phase8a"
+  | "phase8b"
+  | "phase8c"
+  | "phase9a"
+  | "phase9b"
+  | "phase9c"
+  | "phase9d"
+  | "phase9e"
+  | "phase9f";
 
 export type RoadmapStatus =
   | "pending"

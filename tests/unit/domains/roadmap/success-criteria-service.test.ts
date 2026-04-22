@@ -396,7 +396,7 @@ test("SuccessCriteriaService advances to next phase when all criteria met", () =
 test("SuccessCriteriaService returns null nextPhase at final phase", () => {
   const service = new SuccessCriteriaService();
   const gate = {
-    phase: "phase4" as RoadmapPhase,
+    phase: "phase9f" as RoadmapPhase,
     requiredItemIds: [],
     requiredCriteriaIds: [],
     blockOnDeferredItems: false,
@@ -404,7 +404,7 @@ test("SuccessCriteriaService returns null nextPhase at final phase", () => {
 
   service.registerPhaseGate(gate);
 
-  const decision = service.evaluatePhaseAdvance("phase4", [], []);
+  const decision = service.evaluatePhaseAdvance("phase9f", [], []);
 
   assert.equal(decision.allowed, true);
   assert.equal(decision.nextPhase, null);
