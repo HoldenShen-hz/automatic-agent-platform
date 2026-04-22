@@ -1,0 +1,8 @@
+{
+  "mode": "dry_run",
+  "evaluatedAtIsValid": true,
+  "hasPolicy": true,
+  "hasEvents": true,
+  "hasMessages": true,
+  "hasCompactions": true
+}

@@ -1,0 +1,9 @@
+{
+  "status": "ok",
+  "uptimeSeconds": 0,
+  "findingCount": 0,
+  "dbWritable": true,
+  "providerHealth": "healthy",
+  "activeExecutions": 1,
+  "queuedTasks": 0
+}

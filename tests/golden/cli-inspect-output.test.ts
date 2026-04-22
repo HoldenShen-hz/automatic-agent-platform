@@ -25,8 +25,9 @@ test("golden: inspect task output has expected structure", () => {
   const store = new AuthoritativeTaskStore(db);
   const inspect = new InspectService(store);
 
-  const taskId = newId("task");
-  const executionId = newId("exec");
+  // Use deterministic IDs for golden tests
+  const taskId = "test_task_001";
+  const executionId = "test_exec_001";
   const traceId = "inspect-trace-task";
 
   seedTaskAndExecution(db, store, { taskId, executionId, traceId });
@@ -62,8 +63,8 @@ test("golden: inspect execution output has expected structure", () => {
   const store = new AuthoritativeTaskStore(db);
   const inspect = new InspectService(store);
 
-  const taskId = newId("task");
-  const executionId = newId("exec");
+  const taskId = "test_task_exec_001";
+  const executionId = "test_exec_exec_001";
   const traceId = "inspect-trace-exec";
 
   seedTaskAndExecution(db, store, { taskId, executionId, traceId });
@@ -94,10 +95,10 @@ test("golden: inspect query tasks returns array structure", () => {
   const store = new AuthoritativeTaskStore(db);
   const inspect = new InspectService(store);
 
-  // Create multiple tasks
-  for (let i = 0; i < 3; i++) {
-    const taskId = newId("task");
-    const executionId = newId("exec");
+  // Create multiple tasks with deterministic IDs
+  for (let i = 1; i <= 3; i++) {
+    const taskId = `test_task_query_${String(i).padStart(3, "0")}`;
+    const executionId = `test_exec_query_${String(i).padStart(3, "0")}`;
     seedTaskAndExecution(db, store, { taskId, executionId, traceId: `tasks-trace-${i}` });
   }
 
@@ -132,8 +133,8 @@ test("golden: inspect query workflows returns array structure", () => {
   const inspect = new InspectService(store);
 
   // Create task with workflow
-  const taskId = newId("task");
-  const executionId = newId("exec");
+  const taskId = "test_task_wf_001";
+  const executionId = "test_exec_wf_001";
   const now = nowIso();
 
   seedTaskAndExecution(db, store, { taskId, executionId, traceId: "wf-trace" });

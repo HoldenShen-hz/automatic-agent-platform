@@ -1,0 +1,25 @@
+{
+  "totalRoutes": 38,
+  "routes": [
+    "GET:/health",
+    "GET:/healthz",
+    "GET:/metrics",
+    "GET:/prometheus",
+    "GET:/v1/admin/compliance/program-templates",
+    "GET:/v1/admin/control-plane/load-balancing",
+    "GET:/v1/admin/inventories/benchmarks",
+    "GET:/v1/admin/inventories/deployments",
+    "GET:/v1/admin/inventories/projections",
+    "GET:/v1/admin/judges",
+    "GET:/v1/approvals",
+    "GET:/v1/artifacts/publishes",
+    "GET:/v1/dashboard/snapshot",
+    "GET:/v1/divisions",
+    "GET:/v1/domains",
+    "GET:/v1/domains/{domainId}",
+    "GET:/v1/domains/{domainId}/plugins",
+    "GET:/v1/gateway/targets",
+    "GET:/v1/gateway/targets/resolve",
+    "GET:/v1/knowledge/graph"
+  ]
+}

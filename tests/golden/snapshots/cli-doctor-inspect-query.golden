@@ -1,0 +1,13 @@
+{
+  "count": 2,
+  "tasks": [
+    {
+      "taskId": "doctor_query_task_002",
+      "status": "in_progress"
+    },
+    {
+      "taskId": "doctor_query_task_001",
+      "status": "in_progress"
+    }
+  ]
+}

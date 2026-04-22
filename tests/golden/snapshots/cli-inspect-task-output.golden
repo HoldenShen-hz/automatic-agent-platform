@@ -1,0 +1,12 @@
+{
+  "taskId": "test_task_001",
+  "taskStatus": "in_progress",
+  "hasWorkflow": false,
+  "hasExecution": true,
+  "hasSession": false,
+  "recoverySummary": {
+    "activeExecutionId": "test_exec_001",
+    "hasTerminalTask": false,
+    "lastTakeoverActionType": null
+  }
+}
