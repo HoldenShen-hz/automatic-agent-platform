@@ -1,13 +1,20 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import { AsyncHarnessService } from "./async-harness-service.js";
 import { GuardrailEngine, type GuardrailAssessment } from "./guardrails/guardrail-engine.js";
 import { HitlRuntime, type HitlRequest } from "./hitl-runtime.js";
+import { EvalRunService } from "./evaluation/eval-run-service.js";
+import { HarnessMemoryManager } from "./memory-manager.js";
 import { mapHarnessStepToOapeflirPhase, type OapeflirSemanticPhase } from "./oapeflir-harness-mapping.js";
 import { ToolbeltAssembler, type HarnessToolbelt } from "./toolbelt-assembler.js";
 
 export * from "./harness-baseline.js";
 export * from "./harness-bootstrap.js";
+export * from "./async-harness-service.js";
+export * from "./evaluation/eval-run-service.js";
+export * from "./evaluation/task-outcome-grader.js";
 export * from "./guardrails/guardrail-engine.js";
 export * from "./hitl-runtime.js";
+export * from "./memory-manager.js";
 export * from "./oapeflir-harness-mapping.js";
 export * from "./toolbelt-assembler.js";
 
@@ -96,6 +103,22 @@ export interface RecoveryCheckpoint {
   readonly createdAt: string;
 }
 
+export interface HarnessTimelineEvent {
+  readonly eventId: string;
+  readonly runId: string;
+  readonly type:
+    | "run_created"
+    | "step_completed"
+    | "guardrails_evaluated"
+    | "decision_recorded"
+    | "sleep_started"
+    | "recovery_started"
+    | "hitl_requested"
+    | "hitl_resolved";
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly recordedAt: string;
+}
+
 export interface HarnessStep {
   readonly stepId: string;
   readonly role: HarnessRole;
@@ -135,6 +158,7 @@ export interface HarnessRun {
   readonly toolbelt: HarnessToolbelt | null;
   readonly guardrailAssessment: GuardrailAssessment | null;
   readonly hitlRequest: HitlRequest | null;
+  readonly timeline: readonly HarnessTimelineEvent[];
 }
 
 export interface HarnessLoopInput {
@@ -156,17 +180,23 @@ export class HarnessRuntimeService {
   private readonly toolbeltAssembler: ToolbeltAssembler;
   private readonly guardrailEngine: GuardrailEngine;
   private readonly hitlRuntime: HitlRuntime;
+  private readonly memoryManager: HarnessMemoryManager;
+  private readonly evalRunService: EvalRunService;
 
   public constructor(
     options: {
       toolbeltAssembler?: ToolbeltAssembler;
       guardrailEngine?: GuardrailEngine;
       hitlRuntime?: HitlRuntime;
+      memoryManager?: HarnessMemoryManager;
+      evalRunService?: EvalRunService;
     } = {},
   ) {
     this.toolbeltAssembler = options.toolbeltAssembler ?? new ToolbeltAssembler();
     this.guardrailEngine = options.guardrailEngine ?? new GuardrailEngine();
     this.hitlRuntime = options.hitlRuntime ?? new HitlRuntime();
+    this.memoryManager = options.memoryManager ?? new HarnessMemoryManager();
+    this.evalRunService = options.evalRunService ?? new EvalRunService();
   }
 
   public createRun(input: {
@@ -174,7 +204,7 @@ export class HarnessRuntimeService {
     domainId: string;
     constraintPack: ConstraintPack;
   }): HarnessRun {
-    return {
+    const run: HarnessRun = {
       runId: newId("harness_run"),
       taskId: input.taskId,
       domainId: input.domainId,
@@ -193,7 +223,12 @@ export class HarnessRuntimeService {
       toolbelt: null,
       guardrailAssessment: null,
       hitlRequest: null,
+      timeline: [],
     };
+    return this.appendTimelineEvent(run, "run_created", {
+      taskId: input.taskId,
+      domainId: input.domainId,
+    });
   }
 
   public appendStep(
@@ -223,6 +258,16 @@ export class HarnessRuntimeService {
       ...run,
       steps: [...run.steps, step],
       currentIteration: Math.max(run.currentIteration, iteration),
+      timeline: [
+        ...run.timeline,
+        {
+          eventId: newId("timeline"),
+          runId: run.runId,
+          type: "step_completed",
+          payload: { stepId: step.stepId, role: step.role, stage: step.stage, iteration },
+          recordedAt: nowIso(),
+        },
+      ],
     };
   }
 
@@ -249,6 +294,16 @@ export class HarnessRuntimeService {
         resumeAt,
         createdAt: nowIso(),
       },
+      timeline: [
+        ...run.timeline,
+        {
+          eventId: newId("timeline"),
+          runId: run.runId,
+          type: "sleep_started",
+          payload: { reason, resumeAt },
+          recordedAt: nowIso(),
+        },
+      ],
     };
   }
 
@@ -263,6 +318,16 @@ export class HarnessRuntimeService {
         statusBeforeRecovery: run.status,
         createdAt: nowIso(),
       },
+      timeline: [
+        ...run.timeline,
+        {
+          eventId: newId("timeline"),
+          runId: run.runId,
+          type: "recovery_started",
+          payload: { statusBeforeRecovery: run.status },
+          recordedAt: nowIso(),
+        },
+      ],
     };
   }
 
@@ -284,6 +349,16 @@ export class HarnessRuntimeService {
         reason,
         evidenceRefs,
       }),
+      timeline: [
+        ...run.timeline,
+        {
+          eventId: newId("timeline"),
+          runId: run.runId,
+          type: "hitl_requested",
+          payload: { reason, evidenceCount: evidenceRefs.length },
+          recordedAt: nowIso(),
+        },
+      ],
     };
   }
 
@@ -297,6 +372,75 @@ export class HarnessRuntimeService {
       status: resolution === "approved" ? "running" : "aborted",
       completedAt: resolution === "approved" ? null : nowIso(),
       hitlRequest: resolved,
+      timeline: [
+        ...run.timeline,
+        {
+          eventId: newId("timeline"),
+          runId: run.runId,
+          type: "hitl_resolved",
+          payload: { resolution, actorId },
+          recordedAt: nowIso(),
+        },
+      ],
+    };
+  }
+
+  public listTimeline(run: HarnessRun): readonly HarnessTimelineEvent[] {
+    return run.timeline;
+  }
+
+  public writeMemory(run: HarnessRun, namespace: Parameters<HarnessMemoryManager["write"]>[0], key: string, value: unknown): void {
+    const scopeId = namespace === "run" ? run.runId : namespace === "domain" ? run.domainId : "global";
+    this.memoryManager.write(namespace, scopeId, key, value);
+  }
+
+  public readMemory(run: HarnessRun, namespace: Parameters<HarnessMemoryManager["read"]>[0], key: string): unknown {
+    const scopeId = namespace === "run" ? run.runId : namespace === "domain" ? run.domainId : "global";
+    return this.memoryManager.read(namespace, scopeId, key);
+  }
+
+  public assertInvariants(run: HarnessRun): { violations: string[] } {
+    const violations: string[] = [];
+    if (run.currentIteration > run.maxIterations) {
+      violations.push("harness.invariant.iteration_exceeds_budget");
+    }
+    if ((run.status === "completed" || run.status === "aborted") && run.completedAt == null) {
+      violations.push("harness.invariant.final_state_requires_completed_at");
+    }
+    if (run.status === "waiting_hitl" && run.hitlRequest == null) {
+      violations.push("harness.invariant.waiting_hitl_requires_request");
+    }
+    if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
+      violations.push("harness.invariant.non_accept_decision_requires_feedback");
+    }
+    return { violations };
+  }
+
+  public evaluateRun(run: HarnessRun) {
+    return this.evalRunService.evaluate(run);
+  }
+
+  public createAsyncService(): AsyncHarnessService {
+    return new AsyncHarnessService(this);
+  }
+
+  private appendTimelineEvent(
+    run: HarnessRun,
+    type: HarnessTimelineEvent["type"],
+    payload: Readonly<Record<string, unknown>>,
+  ): HarnessRun {
+    return {
+      ...run,
+      timeline: [
+        ...run.timeline,
+        {
+          eventId: newId("timeline"),
+          runId: run.runId,
+          type,
+          payload,
+          recordedAt: nowIso(),
+        },
+      ],
     };
   }
 
@@ -380,6 +524,8 @@ export class HarnessRuntimeService {
       currentStepCount: run.steps.length,
       maxSteps: input.constraintPack.budget.maxSteps,
     });
+    this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
+    this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
 
     const decision = this.decide({
       evaluatorScore: input.evaluatorScore,
@@ -391,7 +537,7 @@ export class HarnessRuntimeService {
       decision,
     });
 
-    const baseRun: HarnessRun = {
+    let baseRun: HarnessRun = {
       ...run,
       toolbelt,
       guardrailAssessment,
@@ -412,7 +558,11 @@ export class HarnessRuntimeService {
       contextSnapshots: [...run.contextSnapshots, contextSnapshot],
       feedbackEnvelope: {
         feedbackId: newId("feedback"),
-        signals: [...decision.reasonCodes, ...guardrailAssessment.findings.map((finding) => finding.code)],
+        signals: [
+          ...(input.producedEvidenceRefs ?? []),
+          ...decision.reasonCodes,
+          ...guardrailAssessment.findings.map((finding) => finding.code),
+        ],
         learnedActions: decision.action === "replan"
           ? ["update_plan_bundle"]
           : decision.action === "retry_same_plan"
@@ -421,6 +571,15 @@ export class HarnessRuntimeService {
         createdAt: nowIso(),
       },
     };
+    baseRun = this.appendTimelineEvent(baseRun, "guardrails_evaluated", {
+      passed: guardrailAssessment.passed,
+      requiresHuman: guardrailAssessment.requiresHuman,
+      suggestedAction: guardrailAssessment.suggestedAction,
+    });
+    baseRun = this.appendTimelineEvent(baseRun, "decision_recorded", {
+      action: decision.action,
+      confidence: decision.confidence,
+    });
 
     if (baseRun.status !== "waiting_hitl") {
       return baseRun;

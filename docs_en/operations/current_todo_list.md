@@ -110,6 +110,6 @@ Minimum coverage:
 - `R1` now has its mainline closure in place: the extended ConstraintPack, Harness multi-lifecycle state machine, PlanBundle/WorkProduct/EvaluationReport/ContextSnapshot/WorkflowSleepLease/RecoveryCheckpoint, and resume/recovery/sleep runtime paths are landed with targeted tests.
 - `R3` now has its mainline implementation in place: Q1-Q12 meta-model support, 12 recipe prototypes, 12 canonical domain IDs, legacy alias compatibility, descriptor/bootstrap wiring, and targeted tests are landed.
 - `R4` now has its first mainline implementation in place: all 24 domains expose formal config entrypoints plus domain-specific workflow/tool/eval/latency/ownership metadata, with unit and integration coverage.
-- `R5` now has its first subsystem implementation in place: `ToolbeltAssembler`, `GuardrailEngine`, and `HitlRuntime` are wired into the Harness mainline and protected by unit/integration coverage.
+- `R5` now has its second subsystem implementation in place: `ToolbeltAssembler`, `GuardrailEngine`, `HitlRuntime`, `HarnessMemoryManager`, `AsyncHarnessService`, `EvalRunService`, plus timeline/invariant enforcement are wired into the Harness mainline and protected by unit/integration coverage.
 - `R1-R6` remain governed by the review gap ledger rather than the older `W* done` status.
 - Future `done` states require code, tests, and documentation to land together.

@@ -52,6 +52,8 @@ test("HarnessRuntimeService completes a planner-generator-evaluator loop", () =>
   assert.equal(run.decision?.action, "accept");
   assert.equal(run.contextSnapshots.length, 1);
   assert.equal(run.steps[0]?.semanticPhase, "plan");
+  assert.equal(run.timeline.some((event) => event.type === "run_created"), true);
+  assert.equal(run.timeline.some((event) => event.type === "decision_recorded"), true);
 });
 
 test("HarnessRuntimeService escalates to human when runtime requires HITL", () => {
@@ -151,4 +153,49 @@ test("HitlRuntime resolves manual review requests and HarnessRuntimeService can 
   assert.equal(approved.status, "running");
   assert.equal(approved.hitlRequest?.status, "approved");
   assert.equal(approved.hitlRequest?.resolvedBy, "legal_manager");
+});
+
+test("HarnessRuntimeService stores run/domain memory and enforces invariants", () => {
+  const service = new HarnessRuntimeService();
+  const run = service.runLoop({
+    taskId: "task-5",
+    domainId: "coding",
+    constraintPack: createConstraintPack(),
+    plannerOutput: { planId: "plan-5" },
+    generatorOutput: { artifact: "patch.diff" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.92,
+    producedEvidenceRefs: ["risk_profile"],
+  });
+
+  service.writeMemory(run, "run", "release_ticket", "CHG-5");
+  service.writeMemory(run, "domain", "last_release_owner", "eng_manager");
+
+  assert.equal(service.readMemory(run, "run", "release_ticket"), "CHG-5");
+  assert.equal(service.readMemory(run, "domain", "last_release_owner"), "eng_manager");
+  assert.deepEqual(service.assertInvariants(run).violations, []);
+});
+
+test("HarnessRuntimeService evaluates runs and AsyncHarnessService executes queued work", async () => {
+  const service = new HarnessRuntimeService();
+  const asyncHarness = service.createAsyncService();
+  const runId = await asyncHarness.createRun({
+    taskId: "task-6",
+    domainId: "coding",
+    constraintPack: createConstraintPack(),
+    plannerOutput: { planId: "plan-6" },
+    generatorOutput: { artifact: "patch.diff" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.9,
+    producedEvidenceRefs: ["risk_profile"],
+  });
+
+  assert.equal(asyncHarness.getRunStatus(runId), "queued");
+
+  const run = await asyncHarness.execute(runId);
+  const report = service.evaluateRun(run);
+
+  assert.equal(asyncHarness.getRunStatus(runId), "completed");
+  assert.equal(report.overallPassed, true);
+  assert.equal(report.timelineEventCount >= 3, true);
 });

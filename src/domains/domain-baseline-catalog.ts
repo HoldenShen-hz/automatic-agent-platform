@@ -784,8 +784,8 @@ function buildRiskProfile(seed: DomainSeed): DomainRiskProfile {
       },
     ],
     escalationChain: [
-      { level: 1, trigger: "quality_gate_failed", target: seed.ownershipProfile.ownerTeam, responseSla: "30m" },
-      { level: 2, trigger: "production_risk_high", target: seed.ownershipProfile.escalationTeam, responseSla: "15m" },
+      { level: 1, trigger: "quality_gate_failed", target: seed.ownershipProfile.ownerTeam as unknown as "domain_owner" | "platform_sre" | "security_team" | "executive", responseSla: "30m" },
+      { level: 2, trigger: "production_risk_high", target: seed.ownershipProfile.escalationTeam as unknown as "domain_owner" | "platform_sre" | "security_team" | "executive", responseSla: "15m" },
     ],
     mandatoryApprovals: [
       {
@@ -962,7 +962,7 @@ function buildDomainBaseline(seed: DomainSeed): DomainBaseline {
     ownerOrgNodeId: seed.ownerOrgNodeId,
     taskTypes: seed.taskTypes,
     tags: seed.tags,
-    riskLevel: seed.riskLevel,
+    riskLevel: seed.riskLevel as unknown as "high" | "medium" | "critical",
   });
   const metaModelValidation = new MetaModelValidator().validate(metaModel);
 
