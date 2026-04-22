@@ -20,6 +20,14 @@ export interface WorkbenchInstallPlan {
   ready: boolean;
 }
 
+export interface SdkWorkbenchShortcut {
+  shortcutId: string;
+  label: string;
+  kind: "api" | "cli" | "docs";
+  command: string;
+  previewUrl: string | null;
+}
+
 export interface SdkWorkbenchSnapshot {
   apiBaseUrl: string;
   apiVersion: string;
@@ -30,6 +38,7 @@ export interface SdkWorkbenchSnapshot {
   requiredContracts: string[];
   missingContracts: string[];
   installPlans: WorkbenchInstallPlan[];
+  workbenchShortcuts: SdkWorkbenchShortcut[];
 }
 
 export interface PublishReadinessReport {
@@ -64,6 +73,7 @@ export class SdkWorkbenchService {
       requiredContracts,
       missingContracts,
       installPlans,
+      workbenchShortcuts: this.listWorkbenchShortcuts(input.client),
     };
   }
 
@@ -133,5 +143,38 @@ export class SdkWorkbenchService {
       coveredContracts: snapshot.requiredContracts.filter((contract) => !snapshot.missingContracts.includes(contract)),
       missingContracts: snapshot.missingContracts,
     };
+  }
+
+  public listWorkbenchShortcuts(client: ApiClientConfig): SdkWorkbenchShortcut[] {
+    return [
+      {
+        shortcutId: "sdk.tasks.list",
+        label: "List Tasks",
+        kind: "api",
+        command: "GET /v1/tasks",
+        previewUrl: buildApiUrl(client, { path: "/tasks" }),
+      },
+      {
+        shortcutId: "sdk.approvals.queue",
+        label: "Approval Queue",
+        kind: "api",
+        command: "GET /v1/approvals",
+        previewUrl: buildApiUrl(client, { path: "/approvals", query: { limit: 10 } }),
+      },
+      {
+        shortcutId: "sdk.pack.test",
+        label: "Run Pack Fixture Test",
+        kind: "cli",
+        command: "npm run test:integration -- dist/tests/integration/sdk/workbench-sdk-integration.test.js",
+        previewUrl: null,
+      },
+      {
+        shortcutId: "sdk.readme.contracts",
+        label: "SDK Surface Contract",
+        kind: "docs",
+        command: "open docs_zh/contracts/sdk_surface_contract.md",
+        previewUrl: null,
+      },
+    ];
   }
 }

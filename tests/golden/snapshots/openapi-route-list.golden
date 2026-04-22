@@ -68,6 +68,14 @@
   },
   {
     "method": "GET",
+    "path": "/v1/workbench/snapshot",
+    "summary": "Platform workbench aggregated snapshot",
+    "tags": [
+      "dashboard"
+    ]
+  },
+  {
+    "method": "GET",
     "path": "/v1/divisions",
     "summary": "List configured divisions",
     "tags": [
@@ -255,6 +263,46 @@
     "method": "POST",
     "path": "/v1/admin/control-plane/load-balancing/select",
     "summary": "Select coordinator for control-plane request",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/inventories/benchmarks",
+    "summary": "List benchmark inventory records",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/inventories/projections",
+    "summary": "List projection inventory records",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/inventories/deployments",
+    "summary": "List deployment inventory records",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/judges",
+    "summary": "List judge provider descriptors",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/compliance/program-templates",
+    "summary": "List compliance program templates",
     "tags": [
       "admin"
     ]

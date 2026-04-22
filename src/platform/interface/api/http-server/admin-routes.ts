@@ -26,6 +26,11 @@ import type { ConfigRolloutService } from "../../../control-plane/config-center/
 import type { TenantBoundaryRegistryService } from "../../../control-plane/tenant/index.js";
 import type { CostReportService } from "../cost-report-service.js";
 import type { AdminConfigService } from "../admin-config-service.js";
+import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
+import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
+import { ProjectionInventoryService } from "../../../state-evidence/events/projection-inventory-service.js";
+import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-provider-registry-service.js";
+import { ComplianceProgramTemplateService } from "../../../compliance/compliance-program-template-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import { z } from "zod";
 
@@ -222,6 +227,53 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           budgets,
           total: budgets.length,
         });
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/inventories/benchmarks",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "benchmark inventories");
+        return buildJsonResponse(ctx.requestId, 200, new BenchmarkInventoryService().listBenchmarks());
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/inventories/projections",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "projection inventories");
+        return buildJsonResponse(ctx.requestId, 200, new ProjectionInventoryService().listProjectionInventory());
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/inventories/deployments",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "deployment inventories");
+        return buildJsonResponse(ctx.requestId, 200, new DeploymentInventoryService().listDeployments());
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/judges",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "judge inventories");
+        const registry = new JudgeProviderRegistryService();
+        registry.registerDefaults();
+        return buildJsonResponse(ctx.requestId, 200, registry.listDescriptors());
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/compliance/program-templates",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "compliance program templates");
+        return buildJsonResponse(ctx.requestId, 200, new ComplianceProgramTemplateService().listTemplates());
       },
     },
   ];

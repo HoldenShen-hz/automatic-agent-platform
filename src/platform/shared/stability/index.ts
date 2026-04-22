@@ -1,3 +1,5 @@
+export * from "./benchmark-inventory-service.js";
+export * from "./deployment-inventory-service.js";
 export * from "./environment-readiness-orchestration-service.js";
 export * from "./golden-task-runner.js";
 export * from "./stable-acceptance-line.js";

@@ -113,14 +113,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createAdminRoutes returns 9 routes", () => {
+test("createAdminRoutes returns 14 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 9);
+  assert.equal(routes.length, 14);
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -351,4 +351,49 @@ test("GET /v1/admin/budgets returns aggregated budget summaries", async () => {
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("\"totalCostUsd\": 25"));
+});
+
+test("GET /v1/admin/inventories/benchmarks returns benchmark inventory", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/inventories/benchmarks", ["v1", "admin", "inventories", "benchmarks"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.length > 0, true);
+  assert.equal(body.data[0]?.architectureSection != null, true);
+});
+
+test("GET /v1/admin/judges returns default judge registry descriptors", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/judges", ["v1", "admin", "judges"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.length, 3);
+  assert.equal(body.data[0]?.providerId != null, true);
+});
+
+test("GET /v1/admin/compliance/program-templates returns compliance templates", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/compliance/program-templates", ["v1", "admin", "compliance", "program-templates"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.length, 3);
+  assert.equal(body.data[0]?.templateId != null, true);
 });

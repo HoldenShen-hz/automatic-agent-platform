@@ -45,6 +45,8 @@ test("SdkWorkbenchService builds install plans and missing contract summaries", 
   assert.deepEqual(snapshot.pluginIds, ["deploy-plugin"]);
   assert.deepEqual(snapshot.missingContracts, ["platform_panic_and_resume_contract"]);
   assert.equal(snapshot.installPlans[0]?.ready, false);
+  assert.equal(snapshot.workbenchShortcuts.length, 4);
+  assert.equal(snapshot.workbenchShortcuts[0]?.shortcutId, "sdk.tasks.list");
 });
 
 test("SdkWorkbenchService builds publish readiness previews", () => {

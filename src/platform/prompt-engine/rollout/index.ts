@@ -1,3 +1,4 @@
+export * from "./prompt-rollout-stage.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PromptTemplateRecord } from "../registry/index.js";

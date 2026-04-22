@@ -14,6 +14,7 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "GET", path: "/v1/openapi.json", summary: "OpenAPI document", tags: ["meta"] },
   { method: "POST", path: "/v1/auth/token", summary: "Exchange API key for bearer token", tags: ["auth"] },
   { method: "GET", path: "/v1/dashboard/snapshot", summary: "Mission control shared snapshot", tags: ["dashboard"] },
+  { method: "GET", path: "/v1/workbench/snapshot", summary: "Platform workbench aggregated snapshot", tags: ["dashboard"] },
   { method: "GET", path: "/v1/divisions", summary: "List configured divisions", tags: ["divisions"] },
   { method: "GET", path: "/v1/gateway/targets", summary: "List gateway targets", tags: ["gateway"] },
   { method: "GET", path: "/v1/gateway/targets/resolve", summary: "Resolve human-readable gateway target", tags: ["gateway"] },
@@ -38,6 +39,11 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "POST", path: "/v1/approvals/{approvalId}/decision", summary: "Submit approval decision", tags: ["approvals"] },
   { method: "GET", path: "/v1/admin/control-plane/load-balancing", summary: "Get control-plane load balancing summary", tags: ["admin"] },
   { method: "POST", path: "/v1/admin/control-plane/load-balancing/select", summary: "Select coordinator for control-plane request", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/inventories/benchmarks", summary: "List benchmark inventory records", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/inventories/projections", summary: "List projection inventory records", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/inventories/deployments", summary: "List deployment inventory records", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/judges", summary: "List judge provider descriptors", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/compliance/program-templates", summary: "List compliance program templates", tags: ["admin"] },
 ];
 
 export function buildOpenApiDocument() {

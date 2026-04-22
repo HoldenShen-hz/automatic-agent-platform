@@ -236,7 +236,15 @@ export class HitlApprovalOrchestrationService {
     return this.packets.get(approvalId) ?? null;
   }
 
+  public listPackets(): ApprovalPacket[] {
+    return [...this.packets.values()];
+  }
+
   public getFeedbackLink(approvalId: string): ApprovalFeedbackLink | null {
     return this.feedbackLinks.get(approvalId) ?? null;
+  }
+
+  public listFeedbackLinks(): ApprovalFeedbackLink[] {
+    return [...this.feedbackLinks.values()];
   }
 }

@@ -10,10 +10,29 @@ function createMockMissionControlService(): MissionControlService {
   return {
     getSnapshot: () => ({
       generatedAt: "2026-04-16T00:00:00.000Z",
-      health: { status: "ok", queuedTasks: 0, activeExecutions: 0, tier1AckBacklog: 0 },
+      health: { status: "ok", queuedTasks: 0, activeExecutions: 0, tier1AckBacklog: 0, findings: [] },
       metrics: { tasksTotal: 0, tasksActive: 0, tasksDone: 0, tasksFailed: 0 },
       taskBoard: [],
-      pendingApprovals: [],
+      pendingApprovals: [
+        {
+          id: "approval-1",
+          taskId: "task-1",
+          executionId: "exec-1",
+          sourceAgentId: "agent-1",
+          reason: "Promote rollout",
+          requestJson: JSON.stringify({ title: "Promote rollout", reason: "Approve canary stage", riskLevel: "medium" }),
+          optionsJson: JSON.stringify(["approve"]),
+          requestedAt: "2026-04-16T00:00:00.000Z",
+          expiresAt: null,
+          status: "requested",
+          respondedBy: null,
+          respondedAt: null,
+          responseJson: null,
+          timeoutPolicy: "expire",
+          createdAt: "2026-04-16T00:00:00.000Z",
+          updatedAt: "2026-04-16T00:00:00.000Z",
+        },
+      ],
       productSignals: { billingAccounts: [], latestPmfReport: null, perceptionBriefs: [] },
       divisions: [],
       gatewayTargets: [],
@@ -42,13 +61,13 @@ function createMockContext(headers: Record<string, string | undefined> = {}): Ro
   };
 }
 
-test("createDashboardRoutes returns 2 routes", () => {
+test("createDashboardRoutes returns 3 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createDashboardRoutes(deps);
-  assert.equal(routes.length, 2);
+  assert.equal(routes.length, 3);
 });
 
 test("GET /dashboard/snapshot returns snapshot", async () => {
@@ -128,4 +147,21 @@ test("GET /v1/dashboard/snapshot throws when auth not configured", async () => {
     assert.ok(err instanceof Error);
     assert.match(err.message, /authentication/);
   }
+});
+
+test("GET /v1/workbench/snapshot returns aggregated workbench payload", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    missionControlService: createMockMissionControlService(),
+  };
+  const routes = createDashboardRoutes(deps);
+  const route = routes.find((r) => r.pathname === "/v1/workbench/snapshot")!;
+  const ctx = createMockContext();
+  const response = await route.handler(ctx);
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body) as { data: Record<string, unknown> };
+  assert.equal(body.data.inventorySummary != null, true);
+  assert.equal(Array.isArray(body.data.approvalQueue), true);
+  assert.equal(Array.isArray(body.data.operatorActions), true);
 });

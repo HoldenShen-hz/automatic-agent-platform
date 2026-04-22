@@ -102,3 +102,53 @@ test("LongRunningWorkflowService expires suspensions and can fail workflow on ti
     cleanupPath(h.workspace);
   }
 });
+
+test("LongRunningWorkflowService builds sleep leases and resume windows for suspended workflows", () => {
+  const h = createHarness("aa-scheduler-lease-");
+  try {
+    seedTaskAndExecution(h.db, h.store, { taskId: "task_sleep_3", executionId: "exec_sleep_3" });
+    const now = nowIso();
+    h.store.insertWorkflowState({
+      taskId: "task_sleep_3",
+      divisionId: "general_ops",
+      workflowId: "wf_sleep_3",
+      currentStepIndex: 3,
+      status: "running",
+      outputsJson: JSON.stringify({ checkpoint: "ready" }),
+      lastErrorCode: null,
+      retryCount: 0,
+      resumableFromStep: null,
+      startedAt: now,
+      updatedAt: now,
+    });
+
+    const service = new LongRunningWorkflowService(h.store);
+    const suspension = service.suspend({
+      taskId: "task_sleep_3",
+      executionId: "exec_sleep_3",
+      reasonCode: "deployment_window",
+      waitKind: "deployment_window",
+      resumableFromStep: "rollout_gate",
+      resumeAfter: "2026-04-22T10:30:00.000Z",
+      expiresAt: "2026-04-22T11:30:00.000Z",
+      checkpointArtifactId: "artifact-1",
+      timeoutPolicy: "remain_pending",
+      metadata: { window: "canary_25" },
+    });
+
+    const lease = service.buildSleepLease(suspension.suspensionId);
+    const pendingWindow = service.buildResumeWindow(suspension.suspensionId, "2026-04-22T10:00:00.000Z");
+    const dueWindow = service.buildResumeWindow(suspension.suspensionId, "2026-04-22T10:35:00.000Z");
+    const windows = service.listResumeWindows("2026-04-22T10:35:00.000Z");
+
+    assert.equal(lease.workflowId, "wf_sleep_3");
+    assert.equal(lease.waitKind, "deployment_window");
+    assert.equal(lease.metadata.window, "canary_25");
+    assert.equal(pendingWindow.nextAction, "wait");
+    assert.equal(dueWindow.nextAction, "resume");
+    assert.equal(windows[0]?.suspensionId, suspension.suspensionId);
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});

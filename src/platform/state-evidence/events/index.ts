@@ -5,6 +5,7 @@ export * from "./durable-event-bus.js";
 export * from "./event-ops-service.js";
 export * from "./event-registry.js";
 export * from "./event-reliability-inventory-service.js";
+export * from "./projection-inventory-service.js";
 export * from "./event-topology-service.js";
 export * from "./event-types.js";
 export * from "./transactional-event-appender.js";

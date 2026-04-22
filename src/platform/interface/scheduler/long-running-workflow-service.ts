@@ -2,6 +2,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { WorkflowStateRecord } from "../../contracts/types/domain.js";
 import type { WorkflowStatus } from "../../contracts/types/status.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { toWorkflowResumeWindow, toWorkflowSleepLease, type WorkflowResumeWindow, type WorkflowSleepLease } from "./workflow-sleep-contracts.js";
 
 export type WorkflowWaitKind = "timer" | "human_input" | "external_event" | "throttled" | "deployment_window";
 export type WorkflowSuspensionStatus = "active" | "resumable" | "expired" | "cancelled";
@@ -166,6 +167,22 @@ export class LongRunningWorkflowService {
 
   public getSuspension(suspensionId: string): WorkflowSuspensionRecord | null {
     return this.suspensions.get(suspensionId) ?? null;
+  }
+
+  public listSuspensions(): WorkflowSuspensionRecord[] {
+    return [...this.suspensions.values()];
+  }
+
+  public buildSleepLease(suspensionId: string): WorkflowSleepLease {
+    return toWorkflowSleepLease(this.requireSuspension(suspensionId));
+  }
+
+  public buildResumeWindow(suspensionId: string, now: string = nowIso()): WorkflowResumeWindow {
+    return toWorkflowResumeWindow(this.requireSuspension(suspensionId), now);
+  }
+
+  public listResumeWindows(now: string = nowIso()): WorkflowResumeWindow[] {
+    return this.listSuspensions().map((record) => toWorkflowResumeWindow(record, now));
   }
 
   private expire(record: WorkflowSuspensionRecord, now: string): WorkflowResumeDecision {

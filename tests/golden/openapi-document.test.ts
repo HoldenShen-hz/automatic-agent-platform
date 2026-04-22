@@ -104,6 +104,8 @@ test("golden: OpenAPI document has dashboard endpoint", () => {
 
   assert.ok(document.paths["/v1/dashboard/snapshot"], "/v1/dashboard/snapshot should exist");
   assert.ok(document.paths["/v1/dashboard/snapshot"].get, "/v1/dashboard/snapshot should be GET");
+  assert.ok(document.paths["/v1/workbench/snapshot"], "/v1/workbench/snapshot should exist");
+  assert.ok(document.paths["/v1/workbench/snapshot"].get, "/v1/workbench/snapshot should be GET");
 });
 
 test("golden: OpenAPI document has artifact ledger endpoint", () => {
@@ -130,13 +132,18 @@ test("golden: OpenAPI document has admin control plane endpoints", () => {
 
   assert.ok(document.paths["/v1/admin/control-plane/load-balancing/select"], "Admin select endpoint should exist");
   assert.ok(document.paths["/v1/admin/control-plane/load-balancing/select"].post, "Should be POST");
+  assert.ok(document.paths["/v1/admin/inventories/benchmarks"], "Benchmark inventory endpoint should exist");
+  assert.ok(document.paths["/v1/admin/inventories/projections"], "Projection inventory endpoint should exist");
+  assert.ok(document.paths["/v1/admin/inventories/deployments"], "Deployment inventory endpoint should exist");
+  assert.ok(document.paths["/v1/admin/judges"], "Judge registry endpoint should exist");
+  assert.ok(document.paths["/v1/admin/compliance/program-templates"], "Compliance template endpoint should exist");
 });
 
 test("golden: listApiRoutes returns all routes", () => {
   const routes = listApiRoutes();
 
   // Should have all the routes we expect
-  assert.ok(routes.length >= 27, "Should have at least 27 routes defined");
+  assert.ok(routes.length >= 38, "Should have at least 38 routes defined");
   assertGolden("openapi-route-list", routes);
 
   const pathMethods = routes.map((r) => `${r.method}:${r.path}`);
@@ -148,6 +155,8 @@ test("golden: listApiRoutes returns all routes", () => {
   assert.ok(pathMethods.includes("GET:/v1/tasks"), "Should have GET /v1/tasks");
   assert.ok(pathMethods.includes("GET:/v1/tasks/{taskId}"), "Should have GET /v1/tasks/{taskId}");
   assert.ok(pathMethods.includes("POST:/v1/approvals/{approvalId}/decision"), "Should have POST approval decision");
+  assert.ok(pathMethods.includes("GET:/v1/workbench/snapshot"), "Should have GET /v1/workbench/snapshot");
+  assert.ok(pathMethods.includes("GET:/v1/admin/judges"), "Should have GET /v1/admin/judges");
 });
 
 test("golden: all routes have required fields", () => {
