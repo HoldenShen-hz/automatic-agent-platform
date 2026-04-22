@@ -58,7 +58,7 @@
 
 ### W2. AI 运营层与 Harness 收口
 
-状态：`in_progress`
+状态：`done`
 
 - `model-gateway`：provider registry、routing、fallback、degradation、cost tracker、message model 完整化。
 - `prompt-engine`：registry、renderer、rollout、eval、traffic split、governance 完整化。
@@ -196,14 +196,16 @@
 - `W2` 现已补齐 `model-gateway / prompt-engine / compliance / harness` 的 capability baseline 与 bootstrap，并新增 `ai-operations-startup-plan` 和 `ai-operations-runtime-orchestrator`。
 - 应用内核与根入口摘要现已同时暴露 `W2` 的 startup order 与 capability 统计，不再只可见 `W1` 五平面信息。
 - `W2` 现已进一步补齐 `ai-operations-runtime-catalog`，把 `model-gateway / prompt-engine / compliance / harness` 汇总成统一 runtime catalog，并接回应用内核与根入口摘要。
+- `W2` 的 baseline service 名称现已与 canonical submodule export 对齐，`model-gateway / prompt-engine / compliance / harness` 的 surface catalog 不再引用占位或错误导出。
+- `W2` 现已新增 `ai-operations-mainline-integration` 全链路集成测试，覆盖 prompt rollout、model governance fallback、compliance evidence 与 harness loop 的主链闭环。
 - `W3` 现已补齐 `interaction / org-governance` 的 bootstrap，并新增统一的 `interaction-governance-runtime-catalog`、`interaction-governance-startup-plan` 和 `interaction-governance-runtime-orchestrator`。
 - 应用内核与根入口摘要现已开始同时暴露 `W3` 的 startup order 与 capability 统计。
 
 下一步直接进入：
 
-- `W2` AI 运营层与 Harness 收口
-- 继续推进 `model-gateway / prompt-engine / compliance / harness` 挂回主链并补齐全链路治理测试
-- `W3` 继续推进 `interaction / org-governance` 的正式 service 与定向测试
+- `W3` 智能交互与组织治理收口
+- 继续推进 `interaction / org-governance` 的正式 service、治理链路与定向测试
+- `W4` 开始补齐 `scale-ecosystem / ops-maturity` 的正式 catalog、bootstrap 与验证
 - `W5` 继续从“24 域已可注册 baseline”推进到更细的 tool/plugin/connector baseline
 
 ## 7. 完成判定

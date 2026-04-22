@@ -18,7 +18,7 @@ export const MODEL_GATEWAY_CAPABILITY_BASELINES: readonly ModelGatewayCapability
     capabilityId: "provider-registry",
     entryModule: "src/platform/model-gateway/provider-registry/index.ts",
     description: "Provider registration, capability metadata, and vendor lifecycle baselines.",
-    baselineServices: ["ProviderRegistryService"],
+    baselineServices: ["ProviderCredentialPool", "UnifiedChatProvider"],
   },
   {
     capabilityId: "router",
@@ -30,7 +30,7 @@ export const MODEL_GATEWAY_CAPABILITY_BASELINES: readonly ModelGatewayCapability
     capabilityId: "fallback",
     entryModule: "src/platform/model-gateway/fallback/index.ts",
     description: "Fallback chains, downgrade routing, and recovery model baselines.",
-    baselineServices: ["FallbackModelService"],
+    baselineServices: ["ModelGatewayFallbackService"],
   },
   {
     capabilityId: "degradation",
@@ -42,13 +42,13 @@ export const MODEL_GATEWAY_CAPABILITY_BASELINES: readonly ModelGatewayCapability
     capabilityId: "cost-tracker",
     entryModule: "src/platform/model-gateway/cost-tracker/index.ts",
     description: "Token attribution, cost reporting, and chargeback baselines.",
-    baselineServices: ["CostTrackerService"],
+    baselineServices: ["BudgetGuard"],
   },
   {
     capabilityId: "messages",
     entryModule: "src/platform/model-gateway/messages/index.ts",
     description: "Typed request/response message shaping and transport payload baselines.",
-    baselineServices: ["MessageEnvelopeFactory"],
+    baselineServices: ["buildMessageParts", "estimateMessageTokens"],
   },
 ]);
 

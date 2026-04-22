@@ -23,25 +23,25 @@ export const COMPLIANCE_CAPABILITY_BASELINES: readonly ComplianceCapabilityBasel
     capabilityId: "data-residency",
     entryModule: "src/platform/compliance/data-residency/index.ts",
     description: "Residency policy routing, location constraints, and data placement baselines.",
-    baselineServices: ["DataResidencyService"],
+    baselineServices: ["DataResidencyPolicyService"],
   },
   {
     capabilityId: "encryption",
     entryModule: "src/platform/compliance/encryption/index.ts",
     description: "Envelope encryption, rotation orchestration, and protected storage baselines.",
-    baselineServices: ["EncryptionPolicyService"],
+    baselineServices: ["FieldEncryptionService"],
   },
   {
     capabilityId: "erasure",
     entryModule: "src/platform/compliance/erasure/index.ts",
     description: "Erasure requests, redaction execution, and legal deletion workflow baselines.",
-    baselineServices: ["ErasureService"],
+    baselineServices: ["ErasurePlanningService"],
   },
   {
     capabilityId: "lineage",
     entryModule: "src/platform/compliance/lineage/index.ts",
     description: "Evidence lineage, provenance tracking, and compliance trace baselines.",
-    baselineServices: ["LineageService"],
+    baselineServices: ["DataLineageService"],
   },
 ]);
 

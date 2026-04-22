@@ -2,11 +2,11 @@
 
 ## Objective
 
-A division is the basic unit for the platform to extend business capabilities. This guide defines how to add or maintain a division configuration, while ensuring new business does not break the platform's main chain constraints.
+A division is the basic unit for the platform to extend business capabilities. This guide defines how to add or maintain a division configuration, while ensuring new business does not break the platform's main path constraints.
 
 ## Minimum Structure
 
-Each division should contain at minimum:
+Each division must contain at least:
 
 - `division.yaml`
 - `roles/*.prompt.md`
@@ -17,7 +17,7 @@ Recommended template:
 ```yaml
 id: engineering
 name: Engineering Division
-description: Full software development process
+description: Full software development lifecycle
 triggers:
   - "write code|program|develop|implement|fix|bug|feature|refactor"
 
@@ -53,50 +53,50 @@ retry:
 
 ## Required Design Items
 
-Each division should clearly define:
+Each division should explicitly define:
 
 - What types of tasks it handles.
-- How it is hit by VP Operations.
-- What roles it has and their respective boundaries.
-- How workflow passes input and output.
-- Which steps allow retries.
+- How it is matched by VP operations.
+- What roles it has and their boundaries.
+- How workflow passes inputs and outputs.
+- Which steps allow retry.
 - Which outputs become artifacts.
 
 ## Role Design Rules
 
-- `id` should be stable, concise, and machine-friendly.
-- `triggers` should cover high-frequency expressions but avoid being overly broad.
-- `roles` should only declare what is actually needed; do not pile on roles just to "look complete."
+- `id` should be stable, short, and machine-friendly.
+- `triggers` should cover high-frequency expressions but avoid being too broad.
+- `roles` should only declare what is actually needed, do not pile on roles to "look complete".
 - `tools` must follow the principle of least privilege.
 - `model` selection should match responsibility intensity.
-- Each role should have clear responsibilities and boundaries; avoid two roles being able to do the same core thing.
+- Each role should have clear responsibilities and boundaries, avoiding two roles doing the same core thing.
 
 ## Workflow Rules
 
 - When `input` references upstream output, field names must be traceable.
-- `output` should align with downstream consuming fields.
-- Large outputs should be designed as artifact references rather than unlimited inline text.
-- Workflows that need rollback or rework should prioritize modeling through explicit steps and limited attempts.
+- `output` should align with downstream consumption fields.
+- Large outputs should preferentially be designed as artifact references rather than unlimited inline text.
+- Processes requiring rollback or rework should be prioritized through explicit steps and limited retry counts.
 - If a step can naturally partially succeed, consider how to express it through schema and precondition.
 
 ## Contracts and Validation
 
 When adding new roles or steps, check:
 
-- Whether input schema is satisfied by upstream output.
-- Whether output schema is clear enough.
+- Whether the input schema is satisfied by upstream output.
+- Whether the output schema is clear enough.
 - Whether precondition is needed.
 - Whether it conflicts with existing role boundaries.
-- Whether it introduces high-risk tools never seen within the division.
+- Whether it introduces high-risk tools never seen in the division.
 
 ## Boundary with HR Agent
 
 - HR Agent can only add roles within existing divisions.
-- Workflow changes suggested by HR Agent are recommendations only; they do not take effect automatically.
+- Workflow changes suggested by HR Agent are only recommendations by default and do not take effect automatically.
 - New divisions must be added manually.
-- If new tool sets are needed, prioritize having humans extend division definitions first, then consider letting HR use them.
+- If new tool sets are needed, prioritize manual extension of division definition before letting HR use them.
 
-## Acceptance Recommendations
+## Acceptance Suggestions
 
 After adding a division, prepare at minimum:
 
@@ -105,20 +105,20 @@ After adding a division, prepare at minimum:
 - One failure retry scenario.
 - One scenario requiring artifact output.
 
-## Templates and Trust Hints
+## Template and Trust Hints
 
-If later exposing division / workflow as distributable templates or recipes:
+If later exposing division/workflow as distributable templates or recipes:
 
-- Templates should explicitly display `title / description / instructions / parameters / required_extensions`.
-- On first execution or source change, display a trust warning instead of directly running silently.
-- If template content detects hidden characters, suspicious control characters, or other risk signals, default to blocking or at least strongly warn.
-- UX layer trust warnings cannot replace runtime policy, sandbox, or capability validation.
+- Templates should explicitly show `title / description / instructions / parameters / required_extensions`.
+- On first execution or source change, show trust warning instead of silently running.
+- If template content detects hidden characters, suspicious control characters, or other risk signals, default to block or at least strong warning.
+- Experience-layer trust warnings cannot replace runtime policy, sandbox, or capability validation.
 
 ## Recommended Practices
 
-- Start small with divisions, then gradually add roles.
+- Start small with the division, then gradually add roles.
 - First ensure `fast` or `standard` path works, then expand to `full`.
-- First validate hit rate and success rate with 1-2 high-frequency tasks, then continue adding capabilities.
+- First verify hit rate and success rate with 1-2 high-frequency tasks before continuing to add capabilities.
 
 ## Related Documents
 

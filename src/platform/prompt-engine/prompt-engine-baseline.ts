@@ -17,7 +17,7 @@ export const PROMPT_ENGINE_CAPABILITY_BASELINES: readonly PromptEngineCapability
     capabilityId: "registry",
     entryModule: "src/platform/prompt-engine/registry/index.ts",
     description: "Prompt bundle registry, version graph, and scope-aware resolution baselines.",
-    baselineServices: ["PromptTemplateRegistryService", "HierarchicalRegistryService"],
+    baselineServices: ["PromptTemplateRegistryService", "HierarchicalPromptRegistryService"],
   },
   {
     capabilityId: "renderer",

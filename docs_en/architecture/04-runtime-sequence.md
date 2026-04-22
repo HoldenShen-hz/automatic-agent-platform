@@ -1,8 +1,8 @@
 # Runtime Sequence Diagrams
 
-> Last updated: 2026-04-12
+> Last updated: 2026-04-20
 >
-> This document describes the four core runtime execution paths in the Automatic Agent System.
+> This document describes the seven core runtime execution paths in the Automatic Agent System.
 
 ---
 
@@ -17,7 +17,7 @@
        │ POST /tasks      │                        │                       │
        │─────────────────>│                        │                       │
        │                  │                        │                       │
-       │                  │ routeTask()           │                       │
+       │                  │ routeTask()            │                       │
        │                  │───────────────────────>│                       │
        │                  │                        │                       │
        │                  │                        │ Division routing       │
@@ -70,7 +70,7 @@
            │                         │         fencing_token = latest + 1        │
            │                         │                      │                     │
            │ lease.acquired          │                      │                     │
-           │<──────────────────────────────────────────────│                     │
+           │<───────────────────────────────────────────────│                     │
            │                         │                      │                     │
            │ dispatch:ticket_claimed (Tier-2)               │                     │
            │                         │                      │                     │
@@ -283,7 +283,7 @@ Worker A crashes ─────────────────────
 | Flow | Key Files |
 |------|-----------|
 | Task Intake | `intake-router.ts`, `phase1b-orchestration.ts`, `transition-service.ts` |
-| Dispatch → Lease → Writeback | `execution-dispatch-service.ts`, `execution-lease-service.ts`, `execution-worker-handshake/writeback-service.ts` |
+| Dispatch → Lease → Writeback | `execution-dispatch-service.ts`, `execution-lease-service.ts`, `execution-worker-writeback-service.ts` (`worker-pool/`) |
 | Approval | `approval-service.ts`, `transition-service.ts` |
 | Recovery/Replay | `runtime-recovery-service.ts`, `runtime-recovery-replay-service.ts`, `durable-event-bus.ts` |
 | Task State Machine | `transition-service.ts` (lines ~100-200 for Task transitions) |
