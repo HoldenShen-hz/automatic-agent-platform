@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildDomainsBootstrap,
+  buildDomainsRuntimeCatalog,
+  buildDomainsStartupPlan,
   PackLifecycleService,
   PackRegistryService,
   PackDomainAssociationService,
@@ -27,4 +30,7 @@ test("domains root barrel exposes roadmap services", () => {
 test("domains root barrel exposes vertical domain baseline bootstrap", () => {
   assert.equal(typeof listVerticalDomainBaselines, "function");
   assert.equal(typeof bootstrapVerticalDomainBaselines, "function");
+  assert.equal(typeof buildDomainsBootstrap, "function");
+  assert.equal(typeof buildDomainsRuntimeCatalog, "function");
+  assert.equal(typeof buildDomainsStartupPlan, "function");
 });

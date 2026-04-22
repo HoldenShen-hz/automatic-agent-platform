@@ -2,6 +2,8 @@ import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
+import { buildDomainsStartupPlan } from "./domains-startup-plan.js";
 import { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
 import { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 import { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
@@ -13,9 +15,14 @@ import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js
 import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
+import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
+import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
 export * as apps from "./apps/index.js";
 export * as domains from "./domains/index.js";
+export * from "./domains-runtime-catalog.js";
+export * from "./domains-runtime-orchestrator.js";
+export * from "./domains-startup-plan.js";
 export * as interaction from "./interaction/index.js";
 export * from "./interaction-governance-runtime-catalog.js";
 export * from "./interaction-governance-runtime-orchestrator.js";
@@ -28,12 +35,27 @@ export * from "./platform-architecture-types.js";
 export * as platform from "./platform/index.js";
 export * as plugins from "./plugins/index.js";
 export * as scaleEcosystem from "./scale-ecosystem/index.js";
+export * from "./scale-ops-runtime-catalog.js";
+export * from "./scale-ops-runtime-orchestrator.js";
+export * from "./scale-ops-startup-plan.js";
 export * as sdk from "./sdk/index.js";
 
 export type PlatformRootEntryMode = "summary" | "demo" | PlatformAppKind;
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary>;
+  readonly domains: {
+    readonly startupOrder: readonly string[];
+    readonly totalCapabilityCount: number;
+    readonly capabilityCounts: {
+      readonly phase9a: number;
+      readonly phase9b: number;
+      readonly phase9c: number;
+      readonly phase9d: number;
+      readonly phase9e: number;
+      readonly phase9f: number;
+    };
+  };
   readonly planes: {
     readonly startupOrder: readonly string[];
     readonly totalCapabilityCount: number;
@@ -61,6 +83,14 @@ export interface PlatformRootSummary {
     readonly capabilityCounts: {
       readonly interaction: number;
       readonly governance: number;
+    };
+  };
+  readonly scaleOps: {
+    readonly startupOrder: readonly string[];
+    readonly totalCapabilityCount: number;
+    readonly capabilityCounts: {
+      readonly scaleEcosystem: number;
+      readonly opsMaturity: number;
     };
   };
 }
@@ -149,15 +179,31 @@ export async function runPlatformRootSummary(): Promise<void> {
 
 export function buildPlatformRootSummary(): PlatformRootSummary {
   const architecture = buildPlatformArchitectureBootstrapSummary();
+  const domainsStartupPlan = buildDomainsStartupPlan();
+  const domainsRuntimeCatalog = buildDomainsRuntimeCatalog();
   const startupPlan = buildFivePlaneStartupPlan();
   const aiOperationsStartupPlan = buildAiOperationsStartupPlan();
   const interactionGovernanceStartupPlan = buildInteractionGovernanceStartupPlan();
   const runtimeCatalog = buildFivePlaneRuntimeCatalog();
   const aiOperationsRuntimeCatalog = buildAiOperationsRuntimeCatalog();
   const interactionGovernanceRuntimeCatalog = buildInteractionGovernanceRuntimeCatalog();
+  const scaleOpsStartupPlan = buildScaleOpsStartupPlan();
+  const scaleOpsRuntimeCatalog = buildScaleOpsRuntimeCatalog();
 
   return {
     architecture,
+    domains: {
+      startupOrder: domainsStartupPlan.startupOrder,
+      totalCapabilityCount: domainsStartupPlan.totalCapabilityCount,
+      capabilityCounts: {
+        phase9a: domainsRuntimeCatalog.phase9a.length,
+        phase9b: domainsRuntimeCatalog.phase9b.length,
+        phase9c: domainsRuntimeCatalog.phase9c.length,
+        phase9d: domainsRuntimeCatalog.phase9d.length,
+        phase9e: domainsRuntimeCatalog.phase9e.length,
+        phase9f: domainsRuntimeCatalog.phase9f.length,
+      },
+    },
     planes: {
       startupOrder: startupPlan.startupOrder,
       totalCapabilityCount: startupPlan.totalCapabilityCount,
@@ -185,6 +231,14 @@ export function buildPlatformRootSummary(): PlatformRootSummary {
       capabilityCounts: {
         interaction: interactionGovernanceRuntimeCatalog.interaction.length,
         governance: interactionGovernanceRuntimeCatalog.governance.length,
+      },
+    },
+    scaleOps: {
+      startupOrder: scaleOpsStartupPlan.startupOrder,
+      totalCapabilityCount: scaleOpsStartupPlan.totalCapabilityCount,
+      capabilityCounts: {
+        scaleEcosystem: scaleOpsRuntimeCatalog.scaleEcosystem.length,
+        opsMaturity: scaleOpsRuntimeCatalog.opsMaturity.length,
       },
     },
   };

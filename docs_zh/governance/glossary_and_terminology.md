@@ -79,35 +79,47 @@
 
 ### 5.1 生命周期通用词
 
-| 术语 | 定义 |
-| --- | --- |
-| `queued` | 已创建但尚未开始执行 |
-| `running` / `executing` | 正在推进主逻辑 |
-| `blocked` | 因依赖未满足、审批、策略或资源原因暂时无法继续 |
-| `paused` | 被显式暂停，可恢复 |
-| `waiting_input` | 等待人类或外部系统输入 |
-| `throttled` | 因背压、限流或预算原因被延迟 |
-| `cancelled` | 被显式终止，不再继续 |
-| `failed` | 执行失败且当前尝试终止 |
-| `completed` | 本次对象生命周期已成功结束 |
+| 术语 | 定义 | 适用对象 |
+| --- | --- | --- |
+| `pending` | Task pre-execution state，已创建但尚未进入调度 | Task |
+| `awaiting_decision` | Task waiting for approval，等待审批决策 | Task |
+| `prechecking` | Execution pre-validation phase，执行前校验阶段 | Execution |
+| `created` | Execution created state，Execution 已创建 | Execution |
+| `queued` | 已创建但尚未开始执行 | Task, Execution |
+| `in_progress` | 正在推进主逻辑（Task 状态） | Task |
+| `executing` | 正在推进主逻辑（Execution 状态） | Execution |
+| `blocked` | 因依赖未满足、审批、策略或资源原因暂时无法继续 | Execution |
+| `paused` | 被显式暂停，可恢复 | Workflow |
+| `resuming` | Workflow transition state for resuming from pause，从暂停恢复的过渡状态 | Workflow |
+| `cancelling` | Workflow transient state before cancelled，终止前的过渡状态 | Workflow |
+| `streaming` | Session streaming state，会话流式输出中 | Session |
+| `open` | Session open state，会话处于开放状态 | Session |
+| `awaiting_user` | 等待人类或外部系统输入（Session 状态） | Session |
+| `superseded` | Execution replaced by newer execution，被新 Execution 替代 | Execution |
+| `failed` | 执行失败且当前尝试终止 | Task, Execution |
+| `done` | Task terminal state，Task 成功结束 | Task |
+| `cancelled` | 被显式终止，不再继续 | Task, Workflow |
 
 ### 5.2 必须区分的状态词
 
 - `queued` 不是 `blocked`
-- `blocked` 不是 `paused`
-- `paused` 不是 `waiting_input`
+- `blocked` 仅适用于 Execution；Task 使用 `awaiting_decision` 表示等待审批；Workflow 使用 `paused` 表示暂停
+- `paused` 不是 `awaiting_user`
+- `paused` 不是 `blocked`
 - `stalled` 不是 `offline`
 - `failed` 不是 `cancelled`
-- `completed` 不等于“所有下游都已处理完”，应以 authoritative 状态机定义为准
+- `done` 是 Task 唯一终端成功状态，不等于”所有下游都已处理完”，应以 authoritative 状态机定义为准
 
 ### 5.3 终止原因术语
 
-| 术语 | 定义 |
-| --- | --- |
-| `termination_reason_code` | 标准化终止原因码 |
-| `termination_initiator` | 触发终止的主体，如 user / system / policy / admin |
-| `termination_scope` | 终止影响范围，如 step / workflow / task / session |
-| `recoverable` | 终止后是否允许走恢复路径 |
+> **实现说明：** `reasonCode` 在 `ExecutionRecord.lastErrorCode` 和 `DeadLetterRecord.finalReasonCode` 字段中是**自由格式字符串**，而非枚举。系统不强制标准化码表，调用方可写入任意有业务意义的字符串。
+
+| 术语 | 定义 | 类型 |
+| --- | --- | --- |
+| `reasonCode` | 终止原因码，以字符串形式记录在 `ExecutionRecord.lastErrorCode` / `DeadLetterRecord.finalReasonCode` 中 | freeform string（非 enum） |
+| `termination_initiator` | 触发终止的主体，如 user / system / policy / admin | 语义标签，无正式枚举 |
+| `termination_scope` | 终止影响范围，如 step / workflow / task / session | 语义标签，无正式枚举 |
+| `recoverable` | 终止后是否允许走恢复路径 | boolean 语义 |
 
 ## 6. 事件与流式术语
 
@@ -116,10 +128,10 @@
 | `event` | 系统内部的结构化事实通知 | `message` |
 | `event type` | 事件类别，推荐 `<domain>.<action>` | DB 表名 |
 | `tier 1 event` | 必须可靠落库、必须可恢复、不可默默丢失的事件 | 普通 UI event |
-| `ack` | 某消费者已确认处理某事件的记录 | 全局 consumed 标志 |
-| `replay` | 从历史缓冲或持久存储中补发事件 | live stream |
+| `ack` | 某消费者已确认处理某事件的记录，每消费者独立确认，不同消费者可分别ack同一事件 | 全局 consumed 标志 |
+| `replay` | 从内存缓冲中补发事件，持久化事件通过deliverPending()拉取 | live stream |
 | `stream` | 面向渠道/UI 的增量输出流 | authoritative event log |
-| `stream_id` | 某条展示流的唯一标识 | `task_id` |
+| `stream_id` | 某条展示流的唯一标识，格式为`${channel}_${taskId}_${randomId}`，包含taskId作为组件 | stream_id包含taskId组件，不应简单等同于task_id |
 | `sequence` | 同一 stream 或同一 event channel 的单调序号 | fencing token |
 | `Last-Event-ID` | SSE 客户端声明的断点续流位置 | 全局 offset |
 | `replay buffer` | 为短时断连恢复保留的有限事件窗口 | 持久事件存储 |
@@ -129,14 +141,16 @@
 
 ### 7.1 控制层 canonical 映射
 
-控制层角色在文档中统一采用“canonical id + 业务别名”的写法。
+控制层角色在文档中统一采用”canonical id + 业务别名”的写法。
+
+**实现状态说明**：仅 `intake_router` 和 `workflow_planner` 有实际代码实现，`strategic_governor` 和 `division_lead` 为文档定义但未实现为独立服务。
 
 | Canonical ID | 业务别名 | 工程职责 |
 | --- | --- | --- |
-| `strategic_governor` | CEO | 战略判断、升级治理、组织级审批 |
+| `strategic_governor` | CEO | 战略判断、升级治理、组织级审批（注：文档定义，代码中未实现为独立服务） |
 | `intake_router` | VP 运营 | 输入分诊、分类、路由、预算入口 |
 | `workflow_planner` | VP 编排 | 跨事业部拆分、依赖图、聚合、失败升级 |
-| `division_lead` | Lead Agent | 事业部内 workflow 自治编排 |
+| `division_lead` | Lead Agent | 事业部内 workflow 自治编排（注：文档定义，代码中未实现为独立服务） |
 
 推荐写法：
 
@@ -165,10 +179,10 @@
 | --- | --- | --- |
 | `policy engine` | 对权限、风险、审批、预算和运行约束进行最终裁决的代码级入口 | prompt 指令 |
 | `approval` / `HITL` | 需要人类显式参与的决策步骤 | 一般用户回复 |
-| `break-glass` | 高风险紧急放行流程，必须强审计 | 普通审批 |
+| `break-glass` | 高风险紧急放行配置标记，critical风险触发break-glass审批类型，但无独立于标准审批的强审计工作流 | 普通审批 |
 | `sandbox` | 执行隔离边界 | 普通 permission prompt |
 | `exec policy` | 工具/命令执行的规则集合 | 高层产品说明 |
-| `permission` | 某主体可见或可用某能力的授权状态 | runtime 所有权 |
+| `permission` | 某主体可见或可用某能力的授权状态；注意：代码中permission概念通过PolicyEngine隐式实现，无独立的Permission类型定义 | runtime 所有权 |
 | `secret` | 密钥、token、凭证等敏感机密 | 普通 config value |
 | `secret masking` | 脱敏展示 secret 的方法 | 真正的 secret 存储 |
 | `data classification` | 数据分级规则，如 public/internal/confidential/restricted | 单纯 label 文本 |
@@ -179,10 +193,10 @@
 | 术语 | 定义 | 不应混用为 |
 | --- | --- | --- |
 | `authoritative store` | 对某类事实拥有最终解释权的存储 | 任意缓存 |
-| `transaction store` | 负责任务、状态、审批、事件等事务性数据的存储 | artifact store |
+| `transaction store` | 负责任务、状态、审批、事件等事务性数据的存储。注意：代码中无独立命名的transaction store，事务性数据存储于AuthoritativeSqlDatabase | artifact store |
 | `artifact store` | 存储文件型、大体积或导出型产物 | transaction store |
-| `analytics store` | 面向统计、报表和趋势分析的存储 | authoritative state store |
-| `data plane` | 事务层、artifact、analytics、archive、replay 的统一数据平面 | 单个 DB |
+| `analytics store` | 面向投影和物化视图的存储，非独立的分析报表存储 | authoritative state store |
+| `data plane` | （规划中）事务层、artifact、analytics、archive、replay的统一数据平面，当前代码中无此抽象层 | 单个 DB |
 | `namespace` | 数据、artifact 或 tenant 边界下的逻辑命名空间 | OS path |
 | `eventual consistency` | 允许短暂延迟后达到一致 | 强一致 |
 | `reconciliation` | 对状态、事件、worker、locks 等做对账修复 | 普通 retry |
@@ -194,7 +208,7 @@
 | --- | --- |
 | `promotion_status` | LearningObject 的推广状态，当前最小集合为 `draft / validated / promoted / retired` |
 | `candidate_status` | ImprovementCandidate 的状态，当前最小集合为 `proposed / evaluating / approved / shadow_running / rejected / rolled_back` |
-| `rollout_status` | RolloutRecord 的状态，当前最小集合为 `pending / active / completed / blocked / rolled_back` |
+| `rollout_status` | RolloutRecord 的状态，当前最小集合为 `draft / pending_approval / shadow / canary_5 / partial_25 / partial_50 / partial_75 / stable / rejected / rolled_back / paused` |
 | `guardrail_reason_code` | deterministic guardrail 给出的放行/阻断原因码 |
 
 ## 10. 配置、版本与兼容术语
@@ -251,20 +265,20 @@
 | `SLO` | 服务目标，如成功率、延迟、恢复时间 |
 | `SLA` | 对外承诺的服务等级协议 |
 | `error budget` | SLO 可接受的失败预算 |
-| `soak test` | 长时间连续稳定性测试 |
-| `RCA` | Root Cause Analysis，事故根因分析 |
-| `RTO` | Recovery Time Objective，恢复时间目标 |
-| `RPO` | Recovery Point Objective，可接受数据回退点目标 |
+| `soak test` | 长时间连续稳定性测试（注：当前仅作为集成测试实现，非生产环境监控服务） |
+| `RCA` | 事故根因分析（注：当前为人工流程，代码中无自动RCA服务） |
+| `RTO` | Recovery Time Objective，恢复时间目标（注：仅在DR验证工作流中引用，无独立跟踪服务） |
+| `RPO` | 可接受数据回退点目标（注：仅在DR验证工作流中引用，无独立跟踪服务） |
 
 ## 13. 渠道、扩展与外部集成术语
 
 | 术语 | 定义 |
 | --- | --- |
-| `channel` | 用户或系统接入界面，如 CLI、Web、Telegram、API |
-| `channel capability` | 某渠道支持的能力，如 text、button、stream、attachment |
+| `channel` | 用户或系统接入界面，如 CLI、Web、Telegram、API（注：代码中仅实现telegram/slack/webhook，CLI/Web/API非ChannelGateway渠道） |
+| `channel capability` | 某渠道支持的能力，如 text、button、stream、attachment（注意：代码中无对应的能力枚举类型定义） |
 | `plugin` | 通过公共 SDK 或受控边界扩展平台能力的安装单元 |
 | `skill` | 对工具或步骤的可复用编排能力 |
-| `MCP` | 外部能力接入协议/扩展类型之一 |
+| `MCP` | 外部能力接入协议/扩展类型之一（MCP工具通过mcp-tool-guard验证，但未作为PluginSpiType定义） |
 | `recipe` / `template` | 结构化工作流或模板定义，可作为 workflow 作者输入层 |
 | `provider` | LLM 或模型能力提供方 |
 | `model profile` | 某模型的能力、限制、价格、默认参数等元数据 |

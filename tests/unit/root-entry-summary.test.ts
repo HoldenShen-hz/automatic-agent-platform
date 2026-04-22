@@ -6,6 +6,16 @@ import { buildPlatformRootSummary } from "../../src/index.js";
 test("platform root summary includes architecture and five-plane startup views", () => {
   const summary = buildPlatformRootSummary();
   assert.equal(summary.architecture.startupEntryModule, "src/index.ts");
+  assert.deepEqual(summary.domains.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
+  assert.equal(summary.domains.totalCapabilityCount, 24);
+  assert.deepEqual(summary.domains.capabilityCounts, {
+    phase9a: 4,
+    phase9b: 4,
+    phase9c: 4,
+    phase9d: 4,
+    phase9e: 4,
+    phase9f: 4,
+  });
   assert.deepEqual(summary.planes.startupOrder, [
     "interface",
     "control-plane",
@@ -39,5 +49,11 @@ test("platform root summary includes architecture and five-plane startup views",
   assert.deepEqual(summary.interactionGovernance.capabilityCounts, {
     interaction: 6,
     governance: 6,
+  });
+  assert.deepEqual(summary.scaleOps.startupOrder, ["scale-ecosystem", "ops-maturity"]);
+  assert.equal(summary.scaleOps.totalCapabilityCount, 18);
+  assert.deepEqual(summary.scaleOps.capabilityCounts, {
+    scaleEcosystem: 6,
+    opsMaturity: 12,
   });
 });

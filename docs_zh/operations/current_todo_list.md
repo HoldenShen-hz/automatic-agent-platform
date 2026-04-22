@@ -85,7 +85,7 @@
 
 ### W4. 规模化生态与运营成熟度收口
 
-状态：`todo`
+状态：`done`
 
 - `scale-ecosystem`：multi-region、resource-manager、sla-engine、marketplace、feedback-loop、integration 全部进入正式 catalog。
 - `ops-maturity`：可解释性、紧急制动、生命周期、边缘运行、漂移检测、成本优化、工作流调试器、合规报告、容量规划、多模态、平台自运维 Agent。
@@ -202,12 +202,16 @@
 - 应用内核与根入口摘要现已开始同时暴露 `W3` 的 startup order 与 capability 统计。
 - `W3` 的 baseline service 名称现已与 canonical entry export 对齐，`interaction / org-governance` 的 baseline catalog 新增了 root/submodule export 守护测试，`dashboard` root entry 也已补齐 `DashboardProjectionService` 导出。
 - `W3` 现已新增 `interaction-governance-mainline-integration` 主链测试，覆盖 `NL intake → goal decomposition → UX onboarding → proactive suggestion → autonomy promotion/demotion → approval/delegation/compliance/knowledge boundary/identity sync → dashboard` 的完整闭环。
+- `W4` 现已补齐 `scale-ecosystem / ops-maturity` 的 bootstrap，并新增统一的 `scale-ops-runtime-catalog`、`scale-ops-startup-plan` 和 `scale-ops-runtime-orchestrator`。
+- 应用内核与根入口摘要现已同时暴露 `W4` 的 startup order 与 capability 统计，`api / console / worker` 的 startup plan 也已纳入 `scale-ecosystem / ops-maturity` 运行时视图。
+- `W4` 的 baseline service 名称现已与 canonical entry export 对齐，`scale-ecosystem / ops-maturity` 的 baseline catalog 新增了 root/submodule export 守护测试，`workflow-debugger` root entry 也已补齐 `TimeTravelDebugService` 导出。
+- `W4` 现已新增 `scale-ops-mainline-integration` 主链测试，覆盖 `runtime governance → connector execution → feedback improvement → capacity planning → cost optimization → platform ops agent → multimodal triage → explainability → workflow debugger → compliance report → platform panic/resume` 的完整闭环。
 
 下一步直接进入：
 
-- `W4` 规模化生态与运营成熟度收口
-- 继续推进 `scale-ecosystem / ops-maturity` 的正式 catalog、bootstrap、主链集成与稳定性验证
-- `W5` 继续从“24 域已可注册 baseline”推进到更细的 tool/plugin/connector baseline
+- `W5` 24 域 baseline 全量落地
+- 继续把 24 域从“已可注册 baseline”推进到更细的 tool / plugin / connector / workflow / eval / governance baseline
+- 继续补齐域级 smoke、registry、governance/eval wiring 与 rollout 验证
 
 ## 7. 完成判定
 

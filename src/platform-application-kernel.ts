@@ -1,3 +1,5 @@
+import { buildDomainsRuntimeCatalog, type DomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
+import { buildDomainsStartupPlan, type DomainsStartupPlan } from "./domains-startup-plan.js";
 import { type PlatformLayerManifest, listPlatformLayerManifests } from "./platform-architecture-bootstrap.js";
 import {
   buildPlatformStartupTargets,
@@ -15,6 +17,8 @@ import {
 import { buildAiOperationsRuntimeCatalog, type AiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
 import { buildAiOperationsStartupPlan, type AiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
 import { buildFivePlaneStartupPlan, type FivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
+import { buildScaleOpsRuntimeCatalog, type ScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
+import { buildScaleOpsStartupPlan, type ScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 import type {
   PlatformAppKind,
   PlatformAppManifest,
@@ -29,11 +33,15 @@ export interface PlatformStartupPlan {
   startupEntryModule: string;
   selectedApp: PlatformAppManifest | null;
   requiredLayerManifests: PlatformLayerManifest[];
+  domainsStartupPlan: DomainsStartupPlan | null;
+  domainsRuntimeCatalog: DomainsRuntimeCatalog | null;
   planeStartupPlan: FivePlaneStartupPlan | null;
   aiOperationsStartupPlan: AiOperationsStartupPlan | null;
   aiOperationsRuntimeCatalog: AiOperationsRuntimeCatalog | null;
   interactionGovernanceStartupPlan: InteractionGovernanceStartupPlan | null;
   interactionGovernanceRuntimeCatalog: InteractionGovernanceRuntimeCatalog | null;
+  scaleOpsStartupPlan: ScaleOpsStartupPlan | null;
+  scaleOpsRuntimeCatalog: ScaleOpsRuntimeCatalog | null;
 }
 
 export interface PlatformApplicationKernelSnapshot {
@@ -81,6 +89,8 @@ export class PlatformApplicationKernel {
       startupEntryModule: target.rootEntryModule,
       selectedApp: target.appManifest,
       requiredLayerManifests,
+      domainsStartupPlan: requiredLayers.has("domains") ? buildDomainsStartupPlan() : null,
+      domainsRuntimeCatalog: requiredLayers.has("domains") ? buildDomainsRuntimeCatalog() : null,
       planeStartupPlan: requiredLayers.has("platform") ? buildFivePlaneStartupPlan() : null,
       aiOperationsStartupPlan: requiredLayers.has("platform") ? buildAiOperationsStartupPlan() : null,
       aiOperationsRuntimeCatalog: requiredLayers.has("platform") ? buildAiOperationsRuntimeCatalog() : null,
@@ -91,6 +101,14 @@ export class PlatformApplicationKernel {
       interactionGovernanceRuntimeCatalog:
         requiredLayers.has("interaction") || requiredLayers.has("org-governance")
           ? buildInteractionGovernanceRuntimeCatalog()
+          : null,
+      scaleOpsStartupPlan:
+        requiredLayers.has("scale-ecosystem") || requiredLayers.has("ops-maturity")
+          ? buildScaleOpsStartupPlan()
+          : null,
+      scaleOpsRuntimeCatalog:
+        requiredLayers.has("scale-ecosystem") || requiredLayers.has("ops-maturity")
+          ? buildScaleOpsRuntimeCatalog()
           : null,
     };
   }

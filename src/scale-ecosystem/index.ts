@@ -5,4 +5,5 @@ export * from "./marketplace/index.js";
 export * from "./multi-region/index.js";
 export * from "./resource-manager/index.js";
 export * from "./scale-baseline-catalog.js";
+export * from "./scale-bootstrap.js";
 export * from "./sla-engine/index.js";
