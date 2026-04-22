@@ -68,7 +68,7 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
     }).design({
       domainId: codingBaseline.domainId,
       taskType: "implement",
-      userInput: "implement a safe release workflow change for coding baseline",
+      userInput: "implement a safe code release workflow change for coding baseline",
       promptId: `${codingBaseline.domainId}.plan`,
       riskScore: 78,
     });
