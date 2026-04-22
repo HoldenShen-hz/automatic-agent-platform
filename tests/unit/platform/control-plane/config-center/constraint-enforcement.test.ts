@@ -597,7 +597,10 @@ test("ConfigOverrideGovernanceService rejects high-risk object not in allowed li
   const result = service.validateOverride(attempt);
   assert.equal(result.allowed, false);
   assert.equal(result.highRiskObject, "provider_profile");
-  assert.ok(result.reason!.includes("high_risk_not_allowed"));
+  assert.ok(
+    result.reason?.includes("config_override.path_not_allowed")
+      || result.reason?.includes("config_override.high_risk_not_allowed"),
+  );
 });
 
 test("ConfigOverrideGovernanceService allows high-risk object when explicitly in allowed list", () => {

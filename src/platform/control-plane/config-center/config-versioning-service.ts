@@ -404,28 +404,28 @@ export class ConfigVersioningService {
     }
 
     const cutoffTime = Date.now() - this.maxVersionAgeMs;
-    const toRemove: number[] = [];
-
-    // Find versions to remove (too old or exceeds max count)
-    for (let i = 0; i < versions.length; i++) {
-      const version = versions[i]!;
+    const freshVersions = versions.filter((version) => {
       const versionTime = new Date(version.createdAt).getTime();
+      return versionTime >= cutoffTime;
+    });
+    const countPrunedByAge = versions.length - freshVersions.length;
+    const retainedVersions =
+      freshVersions.length <= this.maxVersionsPerPath
+        ? freshVersions
+        : freshVersions.slice(-this.maxVersionsPerPath);
+    const totalPruned = versions.length - retainedVersions.length;
 
-      if (versionTime < cutoffTime || i >= this.maxVersionsPerPath) {
-        toRemove.push(i);
-      }
-    }
-
-    if (toRemove.length === 0) {
+    if (totalPruned === 0) {
       return 0;
     }
 
-    // Remove in reverse order to maintain indices
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-      versions.splice(toRemove[i]!, 1);
+    if (countPrunedByAge === versions.length) {
+      this.snapshots.delete(key);
+      return totalPruned;
     }
 
-    return toRemove.length;
+    this.snapshots.set(key, retainedVersions);
+    return totalPruned;
   }
 
   /**

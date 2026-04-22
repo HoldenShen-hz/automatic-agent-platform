@@ -357,10 +357,10 @@ test("DelegationManagerService getExpiredDelegations returns expired pending/act
   const parent = createParentContext();
 
   // Create an already-expired delegation
-  await service.delegate(parent, createDelegationSpec({ timeout: 1 }));
+  await service.delegate(parent, createDelegationSpec({ timeout: 1, targetPackId: "pack-child-1" }));
 
   // Create a non-expired delegation
-  await service.delegate(parent, createDelegationSpec({ targetAgentId: "child-2", timeout: 60000 }));
+  await service.delegate(parent, createDelegationSpec({ targetAgentId: "child-2", targetPackId: "pack-child-2", timeout: 60000 }));
 
   // Wait for first to expire
   await new Promise((resolve) => setTimeout(resolve, 10));
@@ -376,11 +376,11 @@ test("DelegationManagerService getPendingExpirationCount returns correct count",
 
   // Create 3 expired delegations
   for (let i = 0; i < 3; i++) {
-    await service.delegate(parent, createDelegationSpec({ timeout: 1, targetAgentId: `child-${i}` }));
+    await service.delegate(parent, createDelegationSpec({ timeout: 1, targetAgentId: `child-${i}`, targetPackId: `pack-child-${i}` }));
   }
 
   // Create 1 non-expired delegation
-  await service.delegate(parent, createDelegationSpec({ timeout: 60000, targetAgentId: "child-forever" }));
+  await service.delegate(parent, createDelegationSpec({ timeout: 60000, targetAgentId: "child-forever", targetPackId: "pack-child-forever" }));
 
   // Wait for first 3 to expire
   await new Promise((resolve) => setTimeout(resolve, 10));
@@ -407,7 +407,7 @@ test("DelegationManagerService uses DEFAULT_MAX_DEPTH when no maxDepth provided"
   assert.rejects(async () => service.delegate(parent, spec), DelegationDepthExceededError);
 });
 
-test("DelegationManagerService depth validation enforces 3 by default", async () => {
+test("DelegationManagerService depth validation allows depth 3 and rejects depth 4 by default", async () => {
   const service = createDelegationManager();
   const parentDepth0 = createParentContext({ delegationDepth: 0 });
   const spec = createDelegationSpec();
@@ -420,21 +420,31 @@ test("DelegationManagerService depth validation enforces 3 by default", async ()
   const parentDepth1 = createParentContext({
     delegationDepth: 1,
     agentId: handle1.childAgentId,
+    packId: "pack-child-1",
   });
 
   // Second delegation - depth 2 (allowed)
-  const handle2 = await service.delegate(parentDepth1, spec);
+  const handle2 = await service.delegate(parentDepth1, createDelegationSpec({ targetPackId: "pack-child-2" }));
   assert.equal(handle2.depth, 2);
 
   // Create parent at depth 2
   const parentDepth2 = createParentContext({
     delegationDepth: 2,
     agentId: handle2.childAgentId,
+    packId: "pack-child-2",
   });
 
-  // Third delegation - depth 3 (NOT allowed - equals max)
+  // Third delegation - depth 3 (allowed)
+  const handle3 = await service.delegate(parentDepth2, createDelegationSpec({ targetPackId: "pack-child-3" }));
+  assert.equal(handle3.depth, 3);
+
+  // Fourth delegation - depth 4 (rejected)
+  const parentDepth3 = createParentContext({
+    delegationDepth: 3,
+    agentId: handle3.childAgentId,
+  });
   await assert.rejects(
-    async () => service.delegate(parentDepth2, spec),
+    async () => service.delegate(parentDepth3, spec),
     DelegationDepthExceededError,
   );
 });

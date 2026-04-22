@@ -201,7 +201,7 @@ test("ExecutionOutcomeEvaluator routes to approve when approval signal is presen
 test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass threshold", () => {
   const config: QualityGateConfig = {
     qualityGate: {
-      defaultPassThreshold: 0.8,
+      defaultPassThreshold: 0.81,
       criticalPassThreshold: 0.9,
       enforcement: "blocking",
     },
@@ -247,7 +247,7 @@ test("ExecutionOutcomeEvaluator uses configurable thresholds - higher pass thres
 
   assert.equal(evaluation.nextAction, "complete");
   assert.equal(evaluation.passed, false);
-  assert.ok(evaluation.qualityScore < 0.8);
+  assert.equal(evaluation.qualityScore, 0.8);
 });
 
 test("ExecutionOutcomeEvaluator uses configurable weights", () => {

@@ -1,7 +1,15 @@
 import type { HierarchicalPromptRegistryService } from "../../../prompt-engine/registry/hierarchical-registry-service.js";
 import type { ApiAuthService } from "../api-auth-service.js";
+import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import type { RouteDefinition } from "./types.js";
 import { buildJsonResponse, readJsonBody, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
+import { z } from "zod";
+
+const promptBundleRequestSchema = z.object({
+  level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
+  domain: z.string().optional(),
+  packId: z.string().optional(),
+}).passthrough();
 
 export interface PromptRouteDeps {
   authService: ApiAuthService | null;
@@ -31,7 +39,7 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
       pathname: "/v1/prompts",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = readJsonBody(ctx.request.body) as Record<string, unknown>;
+        const payload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse) as Record<string, unknown>;
         const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
         const bundle = deps.promptRegistryService.registerBundle(payload as any, level, payload.domain as string | undefined, payload.packId as string | undefined);
         return buildJsonResponse(ctx.requestId, 201, { bundle });

@@ -915,32 +915,20 @@ export class SloAlertingService {
     const values = samples.map((r) => Number(r.value));
     const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
 
-    // Calculate expected value based on target and window
-    const windowMinutes = windowMs / 60_000;
-    const windowFraction = windowMinutes / (slo.windowMinutes || 1);
-
-    // Error budget consumption
-    // For operators like "gte" (higher is better), we measure how far below target we are
-    // For operators like "lte" (lower is better), we measure how far above target we are
-    let errorBudgetConsumed: number;
     if (slo.operator === "gte") {
-      // Higher is better (e.g., success rate)
-      // Error budget consumed = how much we fell short of target
-      errorBudgetConsumed = Math.max(0, slo.targetValue - avgValue);
-    } else {
-      // Lower is better (e.g., latency, error rate)
-      // Error budget consumed = how much we exceeded target
-      errorBudgetConsumed = Math.max(0, avgValue - slo.targetValue);
+      const errorBudget = 100 - slo.targetValue;
+      if (errorBudget <= 0) {
+        return 0;
+      }
+      const consumed = Math.max(0, 100 - avgValue);
+      return consumed / errorBudget;
     }
 
-    // Expected error budget consumption based on time elapsed
-    // If target is 99% over 60 minutes, then in 30 minutes we'd expect 0.5% error budget consumed
-    // Burn rate = actual_consumed / expected_consumed
-    const expectedConsumption = slo.targetValue * windowFraction;
+    if (slo.targetValue <= 0) {
+      return 0;
+    }
 
-    if (expectedConsumption === 0) return 0;
-
-    return errorBudgetConsumed / expectedConsumption;
+    return Math.max(0, avgValue) / slo.targetValue;
   }
 
   /**

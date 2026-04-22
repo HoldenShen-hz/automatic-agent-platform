@@ -157,17 +157,20 @@ export class CryptoShreddingService {
     const allDekRecords = await this.dekManager.getStore().getAllForSubject(subjectId);
     const previousDekIds = allDekRecords.map((d) => d.dekId);
 
-    // Get the active DEK ID before destroying
-    const activeDekBefore = await this.dekManager.getActiveDek(subjectId);
-
-    // Perform the crypto-shredding operation
-    const destroyResult = await this.dekManager.destroyForSubject(subjectId);
+    // Perform the crypto-shredding operation across all DEKs for the subject.
+    let destroyedDekId: string | null = null;
+    for (const dek of allDekRecords) {
+      if (destroyedDekId === null && dek.status === "active") {
+        destroyedDekId = dek.dekId;
+      }
+      await this.dekManager.getStore().destroy(dek.dekId);
+    }
 
     // Create audit record
     const auditRecord: ShredAuditRecord = {
       shredId,
       subjectId,
-      destroyedDekId: destroyResult.destroyedDekId,
+      destroyedDekId,
       affectedDekCount: previousDekIds.length,
       shreddedAt,
       previousDekIds,
@@ -182,7 +185,7 @@ export class CryptoShreddingService {
       data: {
         shredId,
         subjectId,
-        destroyedDekId: destroyResult.destroyedDekId,
+        destroyedDekId,
         affectedDekCount: previousDekIds.length,
       },
     });
@@ -190,9 +193,9 @@ export class CryptoShreddingService {
     return {
       shredId,
       subjectId,
-      destroyedDekId: destroyResult.destroyedDekId,
+      destroyedDekId,
       shreddedAt,
-      status: destroyResult.destroyedDekId ? "completed" : "no_dek_found",
+      status: destroyedDekId ? "completed" : "no_dek_found",
       affectedDekCount: previousDekIds.length,
     };
   }

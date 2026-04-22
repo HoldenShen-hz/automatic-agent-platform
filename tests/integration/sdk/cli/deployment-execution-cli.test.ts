@@ -152,7 +152,7 @@ test("deployment-execution CLI exports masked deployment plan and can simulate e
           AA_DB_PATH: dbPath,
           AA_DEPLOYMENT_EXECUTION_ACTION: "export",
           AA_DEPLOYMENT_EXECUTE: "true",
-          AA_DEPLOYMENT_RUNNER: "simulate",
+          AA_DEPLOYMENT_RUNNER_MODE: "simulate",
           AA_DEPLOYMENT_ENVIRONMENT: "prod",
           AA_DEPLOYMENT_VERSION: "7.8.9",
           AA_DEPLOYMENT_COMMIT_SHA: "abcdef0123456789",

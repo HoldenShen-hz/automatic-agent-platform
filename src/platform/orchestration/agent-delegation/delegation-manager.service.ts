@@ -140,7 +140,7 @@ export class DelegationManagerService {
     const delegationResult = await this.createDelegationRecord(parent, spec, narrowedPermissions);
 
     // Step 5: Update delegation chain
-    this.updateDelegationChain(parent.agentId, delegationResult);
+    this.updateDelegationChain(parent.agentId, spec, delegationResult);
 
     // Step 6: Return handle (actual dispatch would be handled by caller/dispatch engine)
     return this.createHandle(delegationResult, parent.correlationId);
@@ -238,7 +238,7 @@ export class DelegationManagerService {
     return [...this.delegationStore.values()].filter(
       (d) =>
         (d.parentAgentId === agentId || d.childAgentId === agentId) &&
-        d.status === "active",
+        (d.status === "pending" || d.status === "active"),
     );
   }
 
@@ -296,7 +296,10 @@ export class DelegationManagerService {
   private validateTopology(parent: AgentContext, spec: DelegationSpec): void {
     // Get the delegation chain for cycle detection
     const chain = this.getDelegationChain(parent.agentId);
-    const chainPackIds = chain?.nodes.map((n) => n.agentId) ?? [];
+    const chainPackIds = [
+      parent.packId,
+      ...(chain?.nodes.map((n) => n.packId) ?? []),
+    ].filter((packId): packId is string => typeof packId === "string");
 
     this.topologyValidator.validate({
       currentDepth: parent.delegationDepth,
@@ -366,7 +369,7 @@ export class DelegationManagerService {
 
     const delegationId = newId("dlg");
     const now = nowIso();
-    const timeout = spec.timeout ?? this.defaultTimeout;
+    const timeout = spec.timeout > 0 ? spec.timeout : this.defaultTimeout;
     const expiresAt = new Date(Date.now() + timeout).toISOString();
 
     const delegation: DelegationResult = {
@@ -384,7 +387,7 @@ export class DelegationManagerService {
     return delegation;
   }
 
-  private updateDelegationChain(rootAgentId: string, delegation: DelegationResult): void {
+  private updateDelegationChain(rootAgentId: string, spec: DelegationSpec, delegation: DelegationResult): void {
     // C-11: Evict expired entries before updating chain
     this.evictExpired();
 
@@ -402,6 +405,7 @@ export class DelegationManagerService {
     const node: DelegationChainNode = {
       delegationId: delegation.delegationId,
       agentId: delegation.childAgentId,
+      packId: spec.targetPackId,
       agentType: "", // Would be filled from spec
       depth: delegation.depth,
       createdAt: delegation.createdAt,

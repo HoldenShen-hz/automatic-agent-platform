@@ -35,7 +35,7 @@ test("MultimodalGatewayService blocks unsupported modalities and restricted inpu
       safetyPolicyRef: "policy_mm_safe",
       costBudget: { maxUsd: 1 },
     });
-  }, /multimodal_gateway\.unsupported_modality/);
+  }, /multimodal_gateway\.(unsupported_modality|modality_not_declared):video/);
 
   const blocked = service.handle({
     requestId: "mm_req_blocked",

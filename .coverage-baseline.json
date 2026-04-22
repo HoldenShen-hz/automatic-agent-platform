@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-22T00:31:04.913Z",
+  "generatedAt": "2026-04-22T01:42:23.457Z",
   "minimums": {
-    "lines": 81.1,
-    "statements": 81.1,
-    "functions": 87.7,
-    "branches": 80.9
+    "lines": 82.4,
+    "statements": 82.4,
+    "functions": 88.5,
+    "branches": 80.6
   },
   "global": {
-    "lines": 81.1,
-    "statements": 81.1,
-    "functions": 87.7,
-    "branches": 80.9
+    "lines": 82.4,
+    "statements": 82.4,
+    "functions": 88.5,
+    "branches": 80.6
   },
   "directories": {
     "src": {
@@ -92,7 +92,7 @@
         "lines": 25.1,
         "statements": 25.1,
         "functions": 25,
-        "branches": 100
+        "branches": 33.3
       }
     },
     "src/ops-maturity/platform-ops-agent/health-monitor": {
@@ -140,22 +140,13 @@
         "branches": 78.6
       }
     },
-    "src/sdk/cli": {
-      "fileCount": 79,
-      "metrics": {
-        "lines": 38.9,
-        "statements": 38.9,
-        "functions": 40.2,
-        "branches": 33.1
-      }
-    },
     "src/ops-maturity/platform-ops-agent": {
       "fileCount": 4,
       "metrics": {
-        "lines": 40.8,
-        "statements": 40.8,
+        "lines": 38.7,
+        "statements": 38.7,
         "functions": 81.3,
-        "branches": 94.1
+        "branches": 86.4
       }
     },
     "src/sdk/client-sdk": {
@@ -284,15 +275,6 @@
         "branches": 64.4
       }
     },
-    "src/scale-ecosystem/marketplace": {
-      "fileCount": 24,
-      "metrics": {
-        "lines": 56.9,
-        "statements": 56.9,
-        "functions": 86.9,
-        "branches": 70.3
-      }
-    },
     "src/ops-maturity/multimodal/speech-processor": {
       "fileCount": 1,
       "metrics": {
@@ -314,10 +296,19 @@
     "src/platform/execution/recovery": {
       "fileCount": 23,
       "metrics": {
-        "lines": 58.5,
-        "statements": 58.5,
+        "lines": 58.6,
+        "statements": 58.6,
         "functions": 92.6,
-        "branches": 76.5
+        "branches": 77
+      }
+    },
+    "src/scale-ecosystem/marketplace": {
+      "fileCount": 24,
+      "metrics": {
+        "lines": 58.7,
+        "statements": 58.7,
+        "functions": 90.7,
+        "branches": 71.5
       }
     },
     "src/platform/control-plane/cost-alert": {
@@ -548,10 +539,10 @@
     "src/platform/control-plane/incident-control": {
       "fileCount": 21,
       "metrics": {
-        "lines": 75.2,
-        "statements": 75.2,
-        "functions": 78.9,
-        "branches": 72.8
+        "lines": 76.1,
+        "statements": 76.1,
+        "functions": 80.7,
+        "branches": 72.9
       }
     },
     "src/interaction/autonomy": {
@@ -722,7 +713,7 @@
         "lines": 83.5,
         "statements": 83.5,
         "functions": 90.4,
-        "branches": 85.2
+        "branches": 85.5
       }
     },
     "src/platform/state-evidence/knowledge/indexing": {
@@ -776,7 +767,7 @@
         "lines": 84.3,
         "statements": 84.3,
         "functions": 93.5,
-        "branches": 89.5
+        "branches": 89.6
       }
     },
     "src/platform/control-plane/audit-export": {
@@ -803,7 +794,7 @@
         "lines": 84.6,
         "statements": 84.6,
         "functions": 96,
-        "branches": 84.4
+        "branches": 84.5
       }
     },
     "src/org-governance/org-model": {
@@ -822,6 +813,15 @@
         "statements": 85,
         "functions": 100,
         "branches": 72.7
+      }
+    },
+    "src/sdk/cli": {
+      "fileCount": 79,
+      "metrics": {
+        "lines": 85.4,
+        "statements": 85.4,
+        "functions": 90.3,
+        "branches": 47.2
       }
     },
     "src/platform/state-evidence/truth/postgres": {
@@ -860,15 +860,6 @@
         "branches": 50
       }
     },
-    "src/platform/control-plane/config-center": {
-      "fileCount": 31,
-      "metrics": {
-        "lines": 86.1,
-        "statements": 86.1,
-        "functions": 93.1,
-        "branches": 85.6
-      }
-    },
     "src/platform/orchestration/oapeflir/improve-rollout": {
       "fileCount": 9,
       "metrics": {
@@ -876,6 +867,15 @@
         "statements": 86.1,
         "functions": 92,
         "branches": 90.6
+      }
+    },
+    "src/platform/state-evidence/knowledge/archive": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 86.3,
+        "statements": 86.3,
+        "functions": 81.8,
+        "branches": 91.3
       }
     },
     "src/platform/prompt-engine": {
@@ -905,6 +905,15 @@
         "branches": 73.3
       }
     },
+    "src/platform/control-plane/config-center": {
+      "fileCount": 31,
+      "metrics": {
+        "lines": 87.1,
+        "statements": 87.1,
+        "functions": 96.4,
+        "branches": 87.5
+      }
+    },
     "src/domains/governance": {
       "fileCount": 5,
       "metrics": {
@@ -920,7 +929,7 @@
         "lines": 87.4,
         "statements": 87.4,
         "functions": 97.8,
-        "branches": 78.3
+        "branches": 78.4
       }
     },
     "src/platform/contracts/execution-receipt": {
@@ -995,15 +1004,6 @@
         "branches": 75.4
       }
     },
-    "src/platform/execution/tool-executor": {
-      "fileCount": 30,
-      "metrics": {
-        "lines": 88.3,
-        "statements": 88.3,
-        "functions": 92.5,
-        "branches": 80.4
-      }
-    },
     "src/platform/compliance/encryption": {
       "fileCount": 1,
       "metrics": {
@@ -1013,15 +1013,6 @@
         "branches": 64.3
       }
     },
-    "src/ops-maturity/drift-detection/changepoint-detector": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 88.9,
-        "statements": 88.9,
-        "functions": 100,
-        "branches": 75
-      }
-    },
     "src/ops-maturity/workflow-debugger/timeline-renderer": {
       "fileCount": 1,
       "metrics": {
@@ -1029,6 +1020,15 @@
         "statements": 88.9,
         "functions": 50,
         "branches": 50
+      }
+    },
+    "src/platform/execution/tool-executor": {
+      "fileCount": 30,
+      "metrics": {
+        "lines": 89,
+        "statements": 89,
+        "functions": 92.8,
+        "branches": 80.5
       }
     },
     "src/scale-ecosystem/feedback-loop": {
@@ -1065,15 +1065,6 @@
         "statements": 89.3,
         "functions": 80,
         "branches": 95
-      }
-    },
-    "src/platform/contracts/types": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 89.4,
-        "statements": 89.4,
-        "functions": 81.3,
-        "branches": 64
       }
     },
     "src/platform/interface/api/http-server": {
@@ -1121,6 +1112,15 @@
         "branches": 55.6
       }
     },
+    "src/platform/contracts/types": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 90.1,
+        "statements": 90.1,
+        "functions": 83.3,
+        "branches": 64.3
+      }
+    },
     "src/platform/control-plane/incident-control/runbook-executor": {
       "fileCount": 5,
       "metrics": {
@@ -1137,6 +1137,15 @@
         "statements": 90.5,
         "functions": 100,
         "branches": 71.4
+      }
+    },
+    "src/ops-maturity/drift-detection/changepoint-detector": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 90.6,
+        "statements": 90.6,
+        "functions": 100,
+        "branches": 81.3
       }
     },
     "src/org-governance/sso-scim/scim-sync": {
@@ -1208,7 +1217,7 @@
         "lines": 91.3,
         "statements": 91.3,
         "functions": 79.2,
-        "branches": 74.2
+        "branches": 81.5
       }
     },
     "src/platform/shared/scaling": {
@@ -1226,7 +1235,7 @@
         "lines": 91.5,
         "statements": 91.5,
         "functions": 92.2,
-        "branches": 78.9
+        "branches": 79.2
       }
     },
     "src/interaction/nl-gateway": {
@@ -1256,6 +1265,15 @@
         "branches": 61.2
       }
     },
+    "src/platform/state-evidence/knowledge": {
+      "fileCount": 10,
+      "metrics": {
+        "lines": 91.9,
+        "statements": 91.9,
+        "functions": 99,
+        "branches": 79.1
+      }
+    },
     "src/ops-maturity/version-management": {
       "fileCount": 3,
       "metrics": {
@@ -1281,15 +1299,6 @@
         "statements": 92,
         "functions": 91.4,
         "branches": 84.3
-      }
-    },
-    "src/platform/state-evidence/knowledge": {
-      "fileCount": 10,
-      "metrics": {
-        "lines": 92.5,
-        "statements": 92.5,
-        "functions": 99,
-        "branches": 80.3
       }
     },
     "src/platform/compliance/data-residency": {
@@ -1478,7 +1487,7 @@
         "lines": 94.6,
         "statements": 94.6,
         "functions": 96.9,
-        "branches": 86.6
+        "branches": 85.6
       }
     },
     "src/platform/orchestration/planner": {
@@ -1613,7 +1622,7 @@
         "lines": 95.6,
         "statements": 95.6,
         "functions": 94.5,
-        "branches": 92.1
+        "branches": 92.2
       }
     },
     "src/sdk/workbench": {
@@ -1661,15 +1670,6 @@
         "branches": 91.2
       }
     },
-    "src/platform/state-evidence/truth/sqlite/repositories": {
-      "fileCount": 29,
-      "metrics": {
-        "lines": 96.7,
-        "statements": 96.7,
-        "functions": 98.7,
-        "branches": 85.3
-      }
-    },
     "src/org-governance/org-model/sync": {
       "fileCount": 1,
       "metrics": {
@@ -1677,6 +1677,15 @@
         "statements": 96.8,
         "functions": 100,
         "branches": 66.7
+      }
+    },
+    "src/platform/state-evidence/truth/sqlite/repositories": {
+      "fileCount": 29,
+      "metrics": {
+        "lines": 96.8,
+        "statements": 96.8,
+        "functions": 98.7,
+        "branches": 85.4
       }
     },
     "src/ops-maturity/multimodal": {
@@ -1693,8 +1702,8 @@
       "metrics": {
         "lines": 97.2,
         "statements": 97.2,
-        "functions": 92,
-        "branches": 89.9
+        "functions": 92.3,
+        "branches": 90.1
       }
     },
     "src/interaction/ux/onboarding": {
@@ -1757,7 +1766,7 @@
         "lines": 97.9,
         "statements": 97.9,
         "functions": 99.3,
-        "branches": 83.5
+        "branches": 83.6
       }
     },
     "src/org-governance/approval-routing/route-engine": {
@@ -1802,7 +1811,7 @@
         "lines": 98.2,
         "statements": 98.2,
         "functions": 100,
-        "branches": 86.1
+        "branches": 86
       }
     },
     "src/platform/execution/state-transition": {
@@ -1814,22 +1823,13 @@
         "branches": 93.5
       }
     },
-    "src/platform/state-evidence/knowledge/archive": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 98.3,
-        "statements": 98.3,
-        "functions": 100,
-        "branches": 95.5
-      }
-    },
     "src/platform/state-evidence/truth/sqlite": {
       "fileCount": 25,
       "metrics": {
         "lines": 98.3,
         "statements": 98.3,
         "functions": 98.5,
-        "branches": 92.2
+        "branches": 92.5
       }
     },
     "src/platform/model-gateway/messages": {
@@ -1844,10 +1844,10 @@
     "src/platform/state-evidence/knowledge/governance": {
       "fileCount": 7,
       "metrics": {
-        "lines": 98.4,
-        "statements": 98.4,
+        "lines": 98.7,
+        "statements": 98.7,
         "functions": 97.1,
-        "branches": 94.2
+        "branches": 95.8
       }
     },
     "src/platform/orchestration/oapeflir/improve-rollout/rollout": {
@@ -1919,7 +1919,7 @@
         "lines": 99.7,
         "statements": 99.7,
         "functions": 100,
-        "branches": 89.9
+        "branches": 89.6
       }
     },
     "src/apps": {

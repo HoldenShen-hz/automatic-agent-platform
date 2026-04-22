@@ -73,8 +73,10 @@ test("[SYS-QUAL-7.3] API route handlers call schema.parse on request body", () =
 
         // Check if this handler has any .parse() or .safeParse() call
         const hasParse = /(\.parse\(|\.safeParse\()/.test(blockContent);
+        const hasValidatedBodyReader = /readValidatedJsonBody\(/.test(blockContent);
+        const hasValidationHelper = /\bparse[A-Z][A-Za-z0-9_]*\(/.test(blockContent);
 
-        if (!hasParse) {
+        if (!hasParse && !hasValidatedBodyReader && !hasValidationHelper) {
           // Extract pathname for error message
           const pathnameMatch = blockContent.match(/pathname:\s*["']([^"']+)["']/);
           const pathname = pathnameMatch ? pathnameMatch[1] : "unknown";

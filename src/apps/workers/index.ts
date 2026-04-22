@@ -1,4 +1,4 @@
-import type { PlatformAppManifest } from "../api/index.js";
+import type { PlatformAppManifest } from "../../platform-architecture-types.js";
 
 export const WORKER_APP_MANIFEST: PlatformAppManifest = {
   appId: "automatic-agent-worker",
@@ -7,4 +7,7 @@ export const WORKER_APP_MANIFEST: PlatformAppManifest = {
   defaultPort: null,
   healthEndpoint: null,
   capabilities: ["dispatch_execution", "writeback", "lease_heartbeat"],
+  requiredLayers: ["platform", "domains", "scale-ecosystem", "ops-maturity", "apps"],
+  startupCommand: "npm run worker-writeback",
+  startupMode: "job",
 };

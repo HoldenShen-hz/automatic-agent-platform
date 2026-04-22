@@ -214,7 +214,14 @@ test("ContextCompactionService uses default recentToolResultWindow of 3", () => 
 test("ContextCompactionService uses default compactionMaxFrequencyPerSession of 2", () => {
   const mockStore = createMockStore({
     dispatch: {
-      listMessagesBySession: () => [],
+      listMessagesBySession: () => [
+        createMessage({
+          id: "msg_1",
+          direction: "outbound",
+          messageType: "assistant_response",
+          content: "A".repeat(2000),
+        }),
+      ],
     } as any,
     session: {
       listCompactionRecordsBySession: () => [

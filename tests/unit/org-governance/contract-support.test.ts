@@ -68,6 +68,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
       matchedOrgNodeId: "team_1",
       approverChain: ["backup_manager"],
       delegated: true,
+      routingStrategy: "org_chart",
     },
   );
 
@@ -89,7 +90,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
       { policyId: "root", rules: { residency: "cn", retention: 30 } },
       { policyId: "dept", rules: { retention: 7 } },
     ]),
-    { residency: "cn", retention: 7 },
+    { residency: "cn", retention: 30 },
   );
 
   assert.deepEqual(
@@ -115,7 +116,12 @@ test("org-governance support modules expose contract-aligned helpers", () => {
     },
   ], "2026-04-20T00:00:00.000Z");
   assert.equal(activeDelegations.length, 1);
-  assert.equal(matchesGovernanceScope(activeDelegations[0]!, { orgNodeId: "dept_1", domainId: "platform", capability: "approval.route" }), true);
+  assert.equal(matchesGovernanceScope(activeDelegations[0]!, {
+    orgNodeId: "dept_1",
+    domainId: "platform",
+    capability: "approval.route",
+    permission: "manage_approvals",
+  }), true);
 
   assert.equal(
     redactKnowledgeAccessLog({

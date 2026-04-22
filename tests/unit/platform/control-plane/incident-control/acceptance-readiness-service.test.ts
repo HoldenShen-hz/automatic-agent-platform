@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import test from "node:test";
 
 import { AcceptanceReadinessService } from "../../../../../src/platform/control-plane/incident-control/acceptance-readiness-service.js";
@@ -11,8 +10,7 @@ import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(__dirname, "../../../../");
+const REPO_ROOT = process.cwd();
 
 function createHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);

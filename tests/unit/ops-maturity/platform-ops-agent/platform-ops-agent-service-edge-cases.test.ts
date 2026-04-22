@@ -289,16 +289,16 @@ describe("PlatformOpsAgentService - Edge Cases", () => {
 
     test("executed is true when proposal is executable", () => {
       const service = createService({
-        allowedActionTypes: ["investigate_incident"],
+        allowedActionTypes: ["scale_capacity"],
         requiredApprovals: [],
         maxAutonomyLevel: "trusted_automation",
       });
       const proposal = service.createProposal({
-        probes: [{ component: "db", status: "failed" }],
-        errorRate: 0.3,
-        backlog: 1200,
+        probes: [{ component: "workers", status: "healthy" }],
+        errorRate: 0.01,
+        backlog: 50,
         currentLoad: 100,
-        projectedLoad: 200,
+        projectedLoad: 130,
       });
 
       const receipt = service.execute(proposal.proposalId);

@@ -97,107 +97,107 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createTaskRoutes returns 12 routes", () => {
+test("createTaskRoutes returns 9 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  assert.equal(routes.length, 12);
+  assert.equal(routes.length, 9);
 });
 
-test("GET /tasks returns task list", async () => {
+test("GET /v1/tasks returns task list", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks", ["tasks"]);
+  const ctx = createMockContext("/v1/tasks", ["v1", "tasks"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("task-1"));
 });
 
-test("GET /tasks rejects non-numeric limit values", async () => {
+test("GET /v1/tasks rejects non-numeric limit values", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks?limit=oops", ["tasks"]);
+  const ctx = createMockContext("/v1/tasks?limit=oops", ["v1", "tasks"]);
   await assert.rejects(async () => {
     await callRoute(routes, ctx);
   }, /positive integer|invalid_limit/i);
 });
 
-test("GET /workflows returns workflow list", async () => {
+test("GET /v1/workflows returns workflow list", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/workflows", ["workflows"]);
+  const ctx = createMockContext("/v1/workflows", ["v1", "workflows"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("wf-1"));
 });
 
-test("GET /tasks/:id returns task cockpit", async () => {
+test("GET /v1/tasks/:id returns task cockpit", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks/task-1", ["tasks", "task-1"]);
+  const ctx = createMockContext("/v1/tasks/task-1", ["v1", "tasks", "task-1"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("task-1"));
 });
 
-test("GET /tasks/:id/events returns task events", async () => {
+test("GET /v1/tasks/:id/events returns task events", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks/task-1/events", ["tasks", "task-1", "events"]);
+  const ctx = createMockContext("/v1/tasks/task-1/events", ["v1", "tasks", "task-1", "events"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("events"));
 });
 
-test("GET /tasks/:id/inspect returns task inspect view", async () => {
+test("GET /v1/tasks/:id/inspect returns task inspect view", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks/task-1/inspect", ["tasks", "task-1", "inspect"]);
+  const ctx = createMockContext("/v1/tasks/task-1/inspect", ["v1", "tasks", "task-1", "inspect"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("task"));
 });
 
-test("GET /workflows/:id returns workflow cockpit", async () => {
+test("GET /v1/workflows/:id returns workflow cockpit", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/workflows/task-1", ["workflows", "task-1"]);
+  const ctx = createMockContext("/v1/workflows/task-1", ["v1", "workflows", "task-1"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
@@ -256,14 +256,14 @@ test("GET /v1/workflows/:id returns workflow cockpit", async () => {
   assert.equal(response.statusCode, 200);
 });
 
-test("GET /tasks/:id throws when auth not configured", async () => {
+test("GET /v1/tasks/:id throws when auth not configured", async () => {
   const deps = {
     authService: null,
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks/task-1", ["tasks", "task-1"]);
+  const ctx = createMockContext("/v1/tasks/task-1", ["v1", "tasks", "task-1"]);
   try {
     await callRoute(routes, ctx);
     assert.fail("Expected handler to throw");
@@ -273,14 +273,14 @@ test("GET /tasks/:id throws when auth not configured", async () => {
   }
 });
 
-test("GET /tasks/:id/events throws with invalid task id", async () => {
+test("GET /v1/tasks/:id/events throws with invalid task id", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks/invalid!@#id/events", ["tasks", "invalid!@#id", "events"]);
+  const ctx = createMockContext("/v1/tasks/invalid!@#id/events", ["v1", "tasks", "invalid!@#id", "events"]);
   try {
     await callRoute(routes, ctx);
     assert.fail("Expected handler to throw");
@@ -290,7 +290,7 @@ test("GET /tasks/:id/events throws with invalid task id", async () => {
   }
 });
 
-test("GET /tasks/:id/events throws when task id exceeds MAX_TASK_ID_LENGTH (128 chars)", async () => {
+test("GET /v1/tasks/:id/events throws when task id exceeds MAX_TASK_ID_LENGTH (128 chars)", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
@@ -299,7 +299,7 @@ test("GET /tasks/:id/events throws when task id exceeds MAX_TASK_ID_LENGTH (128 
   const routes = createTaskRoutes(deps);
   // Task ID with 129 characters (exceeds 128 limit)
   const longTaskId = "a".repeat(129);
-  const ctx = createMockContext(`/tasks/${longTaskId}/events`, ["tasks", longTaskId, "events"]);
+  const ctx = createMockContext(`/v1/tasks/${longTaskId}/events`, ["v1", "tasks", longTaskId, "events"]);
   try {
     await callRoute(routes, ctx);
     assert.fail("Expected handler to throw");
@@ -309,7 +309,7 @@ test("GET /tasks/:id/events throws when task id exceeds MAX_TASK_ID_LENGTH (128 
   }
 });
 
-test("GET /tasks/:id/events accepts task id at exactly MAX_TASK_ID_LENGTH (128 chars)", async () => {
+test("GET /v1/tasks/:id/events accepts task id at exactly MAX_TASK_ID_LENGTH (128 chars)", async () => {
   const deps = {
     authService: createMockAuthService(),
     inspectService: createMockInspectService(),
@@ -318,20 +318,20 @@ test("GET /tasks/:id/events accepts task id at exactly MAX_TASK_ID_LENGTH (128 c
   const routes = createTaskRoutes(deps);
   // Task ID with exactly 128 characters - should be valid
   const maxLengthTaskId = "a".repeat(128);
-  const ctx = createMockContext(`/tasks/${maxLengthTaskId}/events`, ["tasks", maxLengthTaskId, "events"]);
+  const ctx = createMockContext(`/v1/tasks/${maxLengthTaskId}/events`, ["v1", "tasks", maxLengthTaskId, "events"]);
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
 });
 
-test("GET /tasks/:id/events throws when auth not configured", async () => {
+test("GET /v1/tasks/:id/events throws when auth not configured", async () => {
   const deps = {
     authService: null,
     inspectService: createMockInspectService(),
     missionControlService: createMockMissionControlService(),
   };
   const routes = createTaskRoutes(deps);
-  const ctx = createMockContext("/tasks/task-1/events", ["tasks", "task-1", "events"]);
+  const ctx = createMockContext("/v1/tasks/task-1/events", ["v1", "tasks", "task-1", "events"]);
   try {
     await callRoute(routes, ctx);
     assert.fail("Expected handler to throw");

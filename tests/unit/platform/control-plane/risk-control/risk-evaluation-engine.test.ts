@@ -63,7 +63,7 @@ test("RiskEvaluationEngine calculates MEDIUM risk for moderate factors", () => {
     factors: {
       stepTypeRisk: "write",
       targetSystemRisk: "staging",
-      dataClassRisk: "internal",
+      dataClassRisk: "confidential",
       blastRadius: "workflow",
       priorFailureRatePercent: 20,
       confidence: "medium",
@@ -75,8 +75,8 @@ test("RiskEvaluationEngine calculates MEDIUM risk for moderate factors", () => {
   assert.equal(result.riskLevel, "medium");
   assert.equal(result.autoExecute, true);
   assert.equal(result.requiresApproval, false);
-  assert.ok(result.riskScore >= 0.25);
-  assert.ok(result.riskScore < 0.5);
+  assert.ok(result.riskScore >= 0.5);
+  assert.ok(result.riskScore < 0.75);
 });
 
 test("RiskEvaluationEngine calculates HIGH risk for elevated factors", () => {

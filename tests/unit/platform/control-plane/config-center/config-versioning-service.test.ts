@@ -45,14 +45,14 @@ test("ConfigVersioningService.getCurrentVersion returns latest version", () => {
   const service = new ConfigVersioningService();
 
   service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
-  const v2 = service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
-  service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
+  service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
+  const v3 = service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
 
   const current = service.getCurrentVersion("runtime.timeout", "platform", null);
 
   assert.ok(current);
-  assert.equal(current!.versionId, v2.versionId);
-  assert.deepEqual(current!.content, { value: 2000 });
+  assert.equal(current!.versionId, v3.versionId);
+  assert.deepEqual(current!.content, { value: 3000 });
 });
 
 test("ConfigVersioningService.getCurrentVersion returns null for non-existent path", () => {
@@ -203,17 +203,17 @@ test("ConfigVersioningService.getVersionContent returns null for non-existent ve
 test("ConfigVersioningService.pruneVersions removes old versions", () => {
   const service = new ConfigVersioningService({ maxVersionsPerPath: 3 });
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 1 }, "user", "v1");
   service.createVersion("runtime.timeout", "platform", null, { value: 2 }, "user", "v2");
   service.createVersion("runtime.timeout", "platform", null, { value: 3 }, "user", "v3");
   service.createVersion("runtime.timeout", "platform", null, { value: 4 }, "user", "v4");
+  service.createVersion("runtime.timeout", "platform", null, { value: 5 }, "user", "v5");
 
   const history = service.getVersionHistory("runtime.timeout", "platform", null);
 
   assert.equal(history.length, 3);
-  assert.deepEqual(history[0]!.content, { value: 2 });
-  assert.deepEqual(history[1]!.content, { value: 3 });
-  assert.deepEqual(history[2]!.content, { value: 4 });
+  assert.deepEqual(history[0]!.content, { value: 3 });
+  assert.deepEqual(history[1]!.content, { value: 4 });
+  assert.deepEqual(history[2]!.content, { value: 5 });
 });
 
 test("ConfigVersioningService handles different layers and sourceIds separately", () => {

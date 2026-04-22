@@ -127,3 +127,6 @@ function dedupeVariableSpecs(specs: readonly PromptTemplateVariableSpec[]): Prom
 function dedupeStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
 }
+
+export * from "./hierarchical-registry-service.js";
+export * from "./prompt-version-manager.js";

@@ -18,7 +18,7 @@ import type {
 } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
 import { LocalHashSemanticVectorStore } from "../../../../../src/platform/state-evidence/knowledge/semantic-vector-store.js";
 import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
+import { cleanupPath } from "../../../../helpers/fs.js";
 
 test("KnowledgePlaneService merges local and domain retriever results", async () => {
   const pluginRegistry = new PluginSpiRegistry();
@@ -144,7 +144,7 @@ test("KnowledgePlaneService merges local and domain retriever results", async ()
 });
 
 test("KnowledgePlaneService restores namespaces and documents from snapshot store", () => {
-  const workspace = createTempWorkspace("aa-knowledge-snapshot-");
+  const workspace = `.tmp/aa-knowledge-snapshot-${Date.now()}`;
 
   try {
     const snapshotStore = new KnowledgeSnapshotStore({
@@ -184,7 +184,7 @@ test("KnowledgePlaneService restores namespaces and documents from snapshot stor
 });
 
 test("KnowledgePlaneService restores semantic vector records from snapshot store", async () => {
-  const workspace = createTempWorkspace("aa-knowledge-semantic-snapshot-");
+  const workspace = `.tmp/aa-knowledge-semantic-snapshot-${Date.now()}`;
 
   try {
     const snapshotStore = new KnowledgeSnapshotStore({

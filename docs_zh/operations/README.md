@@ -9,6 +9,7 @@
 | [`implementation_plan.md`](./implementation_plan.md) | 阶段与范围主计划 | 阶段边界变化时 |
 | [`operations-roadmap.md`](./operations-roadmap.md) | 开发顺序、架构升级、生产就绪与改进路线 | 批次切换时 |
 | [`project_progress_tracker.md`](./project_progress_tracker.md) | 当前项目进度快照 | 里程碑后 |
+| [`current_todo_list.md`](./current_todo_list.md) | 当前活跃执行清单 | 当前优先级变化时 |
 | [`operations-checklist.md`](./operations-checklist.md) | 编码前检查、发布前检查、文档完成门控 | 发布前 |
 | [`operations-tracker.md`](./operations-tracker.md) | 轻量索引页 | 较少更新 |
 | [`runbook.md`](./runbook.md) | 运维总 runbook 入口 | 预案变更时 |
@@ -28,6 +29,7 @@
 | 任务 | 推荐入口 |
 | --- | --- |
 | 看现在推进到哪里 | `project_progress_tracker.md` |
+| 看接下来具体做什么 | `current_todo_list.md` |
 | 看当前允许做什么阶段 | `implementation_plan.md` |
 | 看开发顺序与依赖 | `operations-roadmap.md` |
 | 开始编码前的检查 | `operations-checklist.md` |

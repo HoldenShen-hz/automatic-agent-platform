@@ -141,8 +141,8 @@ test("SamlService buildLoginRequest generates unique requestId when not provided
   const request1 = service.buildLoginRequest("corp-idp");
   const request2 = service.buildLoginRequest("corp-idp");
 
-  assert.ok(request1.requestId.startsWith("saml_req:"));
-  assert.ok(request2.requestId.startsWith("saml_req:"));
+  assert.ok(request1.requestId.startsWith("saml_req_"));
+  assert.ok(request2.requestId.startsWith("saml_req_"));
   assert.notEqual(request1.requestId, request2.requestId);
 });
 
@@ -345,7 +345,7 @@ test("SamlService consumeAssertion accepts valid assertion and creates session",
 
   const session = service.consumeAssertion("corp-idp", assertion, now);
 
-  assert.ok(session.sessionId.startsWith("saml_session:"));
+  assert.ok(session.sessionId.startsWith("saml_session_"));
   assert.equal(session.providerId, "corp-idp");
   assert.equal(session.subjectId, "john.doe@example.com");
   assert.equal(session.issuer, provider.issuer);
@@ -456,7 +456,7 @@ test("SamlService buildLogoutRequest creates correct logout request structure", 
   );
 
   assert.equal(logoutRequest.providerId, "corp-idp");
-  assert.ok(logoutRequest.requestId.startsWith("saml_logout:"));
+  assert.ok(logoutRequest.requestId.startsWith("saml_logout_"));
   assert.equal(logoutRequest.relayState, "return=/login");
   assert.ok(logoutRequest.redirectUrl.startsWith("https://idp.example.com/saml/login?"));
   assert.ok(logoutRequest.redirectUrl.includes("SAMLRequest="));

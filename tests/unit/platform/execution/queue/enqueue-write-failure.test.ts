@@ -17,6 +17,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { StorageError } from "../../../../../src/platform/contracts/errors.js";
 import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
@@ -41,6 +42,16 @@ function createMockPipeline(execResult: Array<[Error | null, unknown]>): MockPip
     zadd: () => createMockPipeline(execResult),
     exec: () => Promise.resolve(execResult),
   };
+}
+
+function isWrappedEnqueueFailure(err: unknown, expectedCauseFragment: string): boolean {
+  if (!(err instanceof StorageError)) {
+    return false;
+  }
+  const causeMessage = err.cause instanceof Error ? err.cause.message : "";
+  return err.message === "queue.enqueue_failed"
+    && err.code.includes("queue.enqueue_failed")
+    && causeMessage.includes(expectedCauseFragment);
 }
 
 test("[SYS-REL-2.4] enqueue pipeline failure - job returned despite pipeline failure", async () => {
@@ -136,7 +147,7 @@ test("[SYS-REL-2.4] enqueueAsync properly propagates errors - contrast with enqu
         payload: { data: "test" },
       });
     },
-    (err: unknown) => err instanceof Error && err.message.includes("HMSET"),
+    (err: unknown) => isWrappedEnqueueFailure(err, "HMSET"),
   );
 });
 
@@ -156,7 +167,7 @@ test("[SYS-REL-2.4] enqueueAsync expire error propagates", async () => {
         payload: { data: "test" },
       });
     },
-    (err: unknown) => err instanceof Error && err.message.includes("EXPIRE"),
+    (err: unknown) => isWrappedEnqueueFailure(err, "EXPIRE"),
   );
 });
 
@@ -177,7 +188,7 @@ test("[SYS-REL-2.4] enqueueAsync sadd error propagates", async () => {
         payload: { data: "test" },
       });
     },
-    (err: unknown) => err instanceof Error && err.message.includes("SADD"),
+    (err: unknown) => isWrappedEnqueueFailure(err, "SADD"),
   );
 });
 
@@ -199,7 +210,7 @@ test("[SYS-REL-2.4] enqueueAsync zadd error propagates", async () => {
         payload: { data: "test" },
       });
     },
-    (err: unknown) => err instanceof Error && err.message.includes("ZADD"),
+    (err: unknown) => isWrappedEnqueueFailure(err, "ZADD"),
   );
 });
 
@@ -352,6 +363,6 @@ test("[SYS-REL-2.4] contrast - enqueueAsync shows proper error handling", async 
         payload: { data: "test" },
       });
     },
-    (err: unknown) => err instanceof Error && err.message.includes("ZADD"),
+    (err: unknown) => isWrappedEnqueueFailure(err, "ZADD"),
   );
 });

@@ -59,12 +59,12 @@ function seedPromptRegistry(): HierarchicalPromptRegistryService {
   return registry;
 }
 
-test("createPromptRoutes returns 1 route", () => {
+test("createPromptRoutes returns 5 routes", () => {
   const routes = createPromptRoutes({
     authService: createMockAuthService(),
     promptRegistryService: seedPromptRegistry(),
   });
-  assert.equal(routes.length, 1);
+  assert.equal(routes.length, 5);
 });
 
 test("GET /v1/prompts lists registered prompt bundles", async () => {

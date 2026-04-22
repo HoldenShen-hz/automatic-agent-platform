@@ -66,8 +66,8 @@ describe("CausalChainBuilder", () => {
 
       const chain = buildCausalChain(nodes, links);
 
-      assert.equal(chain.nodes, nodes);
-      assert.equal(chain.links, links);
+      assert.deepEqual(chain.nodes, nodes);
+      assert.deepEqual(chain.links, links);
       assert.equal(chain.summary.length, 3);
     });
 

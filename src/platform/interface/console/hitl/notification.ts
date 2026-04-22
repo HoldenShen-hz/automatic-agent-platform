@@ -165,6 +165,7 @@ WCAG 2.1 AA Implementation Requirements:
    - Captions/transcripts for audio content
    - Content adaptable to different presentations
    - Distinguishable (color not sole means of conveying information)
+   - Minimum contrast ratios must satisfy WCAG AA
 
 2. Operable:
    - All functionality keyboard accessible

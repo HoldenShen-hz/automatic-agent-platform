@@ -47,6 +47,7 @@ export const DEFAULT_ROLLOUT_STAGES: RolloutStage[] = [
   { phase: RolloutPhase.CANARY_25, percentage: 25, minDurationMs: 300000, autoProgress: true },
   { phase: RolloutPhase.HALF, percentage: 50, minDurationMs: 600000, autoProgress: true },
   { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },
+  { phase: RolloutPhase.CANCELLED, percentage: 0, minDurationMs: 0, autoProgress: false },
 ];
 
 /**
@@ -279,7 +280,12 @@ export class ConfigRolloutService {
       return null;
     }
 
-    rollout.stage = this.stages.find((s) => s.phase === RolloutPhase.CANCELLED)!;
+    rollout.stage = this.stages.find((s) => s.phase === RolloutPhase.CANCELLED) ?? {
+      phase: RolloutPhase.CANCELLED,
+      percentage: 0,
+      minDurationMs: 0,
+      autoProgress: false,
+    };
     rollout.updatedAt = nowIso();
 
     this.emitRolloutEvent("config.rollout.cancelled", rollout);

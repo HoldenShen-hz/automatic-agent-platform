@@ -87,7 +87,7 @@ describe("HITL Notification Components", () => {
       const item = createMockQueueItem({ status: "pending" });
       const label = buildAccessibleLabel(item);
       assert.ok(label.includes("Awaiting your decision"));
-      assert.ok(label.includes("risk level: high"));
+      assert.ok(label.toLowerCase().includes("risk level: high"));
     });
 
     it("should build label with status for non-pending approval", () => {
@@ -227,8 +227,8 @@ describe("HITL Notification Components", () => {
   describe("WCAG_COMPLIANCE_NOTES", () => {
     it("should contain WCAG documentation", () => {
       assert.ok(WCAG_COMPLIANCE_NOTES.includes("WCAG 2.1 AA"));
-      assert.ok(WCAG_COMPLIANCE_NOTES.includes("contrast"));
-      assert.ok(WCAG_COMPLIANCE_NOTES.includes("keyboard"));
+      assert.ok(WCAG_COMPLIANCE_NOTES.toLowerCase().includes("contrast"));
+      assert.ok(WCAG_COMPLIANCE_NOTES.toLowerCase().includes("keyboard"));
     });
   });
 });

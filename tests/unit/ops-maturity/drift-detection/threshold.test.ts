@@ -61,7 +61,10 @@ test("ChangepointDetectorService detects -10% relative change", () => {
   const result = service.detect(samples);
 
   assert.strictEqual(result.detected, true);
-  assert.ok(result.relativeShift <= -0.10, `Expected relative shift <= -0.10, got ${result.relativeShift}`);
+  assert.ok(
+    Math.abs(result.relativeShift - (-0.10)) < 1e-9 || result.relativeShift < -0.10,
+    `Expected relative shift ~= -0.10, got ${result.relativeShift}`,
+  );
   assert.strictEqual(result.severity, "SEV3");
   assert.strictEqual(result.reasonCode, "drift.changepoint_detected");
 });
@@ -200,9 +203,9 @@ test("ChangepointDetectorService reports absolute and relative shift", () => {
   const result = service.detect(samples);
 
   assert.ok(result.detected, "Should detect changepoint");
-  assert.strictEqual(result.baselineMean, 0.8);
-  assert.strictEqual(result.recentMean, 0.64);
-  assert.strictEqual(result.absoluteShift, -0.16);
+  assert.ok(Math.abs(result.baselineMean - 0.8) < 1e-9, `Expected baselineMean ~= 0.8, got ${result.baselineMean}`);
+  assert.ok(Math.abs(result.recentMean - 0.64) < 1e-9, `Expected recentMean ~= 0.64, got ${result.recentMean}`);
+  assert.ok(Math.abs(result.absoluteShift - (-0.16)) < 1e-9, `Expected absoluteShift ~= -0.16, got ${result.absoluteShift}`);
   assert.ok(Math.abs(result.relativeShift - (-0.20)) < 0.001, `Expected relative shift ~-0.20, got ${result.relativeShift}`);
 });
 

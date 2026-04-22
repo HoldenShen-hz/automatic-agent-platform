@@ -31,6 +31,7 @@ test("validateStartupEnv returns success for full valid config", () => {
     AA_API_PORT: "3000",
     AA_API_HOST: "0.0.0.0",
     AA_LOG_STDOUT: "true",
+    AA_LOG_FILE_PATH: "logs/app.log",
     AA_LOG_FILE_MAX_BYTES: "10485760",
     AA_LOG_FILE_MAX_FILES: "5",
     AA_MAX_AGENT_TOOL_CALLS: "1000",
@@ -41,6 +42,9 @@ test("validateStartupEnv returns success for full valid config", () => {
     AA_OTEL_SERVICE_NAME: "my-service",
     AA_OTEL_SERVICE_VERSION: "1.0.0",
     AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION: "1.0",
+    AA_SANDBOX_MAX_MEMORY_MB: "1024",
+    AA_SANDBOX_TIMEOUT_MS: "60000",
+    AA_API_JWT_SECRET: "test-secret",
   });
   assert.equal(result.success, true);
   assert.equal(result.errors.length, 0);
@@ -199,6 +203,7 @@ test("StartupEnvSchema.parse returns inferred types", () => {
     AA_API_PORT: "8080",
     AA_API_HOST: "0.0.0.0",
     AA_LOG_STDOUT: "true",
+    AA_LOG_FILE_PATH: "logs/app.log",
     AA_LOG_FILE_MAX_BYTES: "10485760",
     AA_LOG_FILE_MAX_FILES: "5",
     AA_MAX_AGENT_TOOL_CALLS: "1000",
@@ -209,6 +214,9 @@ test("StartupEnvSchema.parse returns inferred types", () => {
     AA_OTEL_SERVICE_NAME: "my-service",
     AA_OTEL_SERVICE_VERSION: "1.0.0",
     AA_EXPECTED_PROTECTED_GOVERNANCE_VERSION: "1.0",
+    AA_SANDBOX_MAX_MEMORY_MB: null,
+    AA_SANDBOX_TIMEOUT_MS: null,
+    AA_API_JWT_SECRET: null,
   });
   assert.equal(parsed.AA_DB_PATH, "/tmp/test.db");
   assert.equal(parsed.AA_CONFIG_ENV, "staging");

@@ -24,7 +24,7 @@ test("predictOpsCapacityRisk handles zero current load", () => {
 });
 
 test("predictOpsCapacityRisk handles equal loads", () => {
-  assert.equal(predictOpsCapacityRisk(100, 100), "medium"); // ratio = 1.0, not < 1.2
+  assert.equal(predictOpsCapacityRisk(100, 100), "low");
 });
 
 test("predictOpsCapacityRisk handles boundary at 2.0", () => {

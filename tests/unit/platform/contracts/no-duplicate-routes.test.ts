@@ -35,27 +35,26 @@ test("[SYS-QUAL-7.4] no duplicate route registration in any route file", () => {
 
   for (const routeFile of ROUTE_FILES) {
     try {
-      const content = readFileSync(routeFile, "utf8");
+      const content = readFileSync(routeFile, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
 
-      // Extract all pathname values from route definitions
-      // Pattern: pathname: "/path" or pathname: null (for segment-based routes)
-      const pathnameMatches = content.match(/pathname:\s*["']([^"']+)["']/g) ?? [];
-      const pathnames = pathnameMatches.map((m) => {
-        const match = m.match(/pathname:\s*["']([^"']+)["']/);
-        return match ? match[1] : null;
-      }).filter(Boolean) as string[];
+      const routeKeys = Array.from(
+        content.matchAll(/method:\s*["']([A-Z]+)["'],\s*\n\s*pathname:\s*["']([^"']+)["']/g),
+        (match) => `${match[1]} ${match[2]}`,
+      );
 
       // Find duplicates
       const seen = new Set<string>();
       const duplicates: string[] = [];
 
-      for (const path of pathnames) {
-        if (seen.has(path)) {
-          if (!duplicates.includes(path)) {
-            duplicates.push(path);
+      for (const routeKey of routeKeys) {
+        if (seen.has(routeKey)) {
+          if (!duplicates.includes(routeKey)) {
+            duplicates.push(routeKey);
           }
         }
-        seen.add(path);
+        seen.add(routeKey);
       }
 
       if (duplicates.length > 0) {

@@ -1,1 +1,2 @@
-export { ProjectionUpdate, createProjectionUpdate } from "../types/platform-contracts.js";
+export { createProjectionUpdate } from "../types/platform-contracts.js";
+export type { ProjectionUpdate } from "../types/platform-contracts.js";

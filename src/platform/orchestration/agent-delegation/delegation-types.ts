@@ -133,6 +133,7 @@ export interface DelegationHandle {
 export interface DelegationChainNode {
   delegationId: string;
   agentId: string;
+  packId?: string;
   agentType: string;
   depth: number;
   createdAt: string;

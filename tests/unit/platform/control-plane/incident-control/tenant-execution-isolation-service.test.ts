@@ -14,6 +14,12 @@ function createHarness(prefix: string) {
   const dbPath = join(workspace, "tenant-isolation.db");
   const db = new SqliteDatabase(dbPath);
   db.migrate();
+  db.connection.exec(`
+    DROP TABLE IF EXISTS tenant_quotas;
+    DROP TABLE IF EXISTS quota_usage_samples;
+    DROP TABLE IF EXISTS execution_resource_usage;
+    DROP TABLE IF EXISTS noisy_neighbor_signals;
+  `);
   db.connection.exec(TENANT_ISOLATION_DDL);
   return { workspace, db };
 }

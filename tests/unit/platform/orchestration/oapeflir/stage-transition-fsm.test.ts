@@ -17,12 +17,21 @@ test("StageTransitionFSM allows forward transitions through all stages", () => {
   const fsm = new StageTransitionFSM();
 
   assert.ok(fsm.canTransitionTo("observe").allowed);
+  assert.equal(fsm.canTransitionTo("assess").allowed, false);
+
+  fsm.recordStageCompletion("observe");
   assert.ok(fsm.canTransitionTo("assess").allowed);
+  fsm.recordStageCompletion("assess");
   assert.ok(fsm.canTransitionTo("plan").allowed);
+  fsm.recordStageCompletion("plan");
   assert.ok(fsm.canTransitionTo("execute").allowed);
+  fsm.recordStageCompletion("execute");
   assert.ok(fsm.canTransitionTo("feedback").allowed);
+  fsm.recordStageCompletion("feedback");
   assert.ok(fsm.canTransitionTo("learn").allowed);
+  fsm.recordStageCompletion("learn");
   assert.ok(fsm.canTransitionTo("improve").allowed);
+  fsm.recordStageCompletion("improve");
   assert.ok(fsm.canTransitionTo("release").allowed);
 });
 
@@ -144,12 +153,11 @@ test("StageTransitionFSM invalid stage is rejected", () => {
 test("StageTransitionFSM respects entry condition validation", () => {
   const fsm = new StageTransitionFSM();
 
-  // Should not be able to enter assess without observe being completed
   fsm.recordStageEntry("assess", "pending");
   const result = fsm.canTransitionTo("assess");
 
-  // The FSM starts at observe, so assess should be reachable from observe
-  assert.ok(result.allowed);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "fsm.prerequisite_not_met");
 });
 
 test("StageTransitionFSM all stages have valid predecessors defined", () => {
@@ -158,7 +166,11 @@ test("StageTransitionFSM all stages have valid predecessors defined", () => {
   for (const stage of OAPEFLIR_STAGES) {
     const result = fsm.canTransitionTo(stage);
     assert.ok(
-      result.allowed || result.reasonCode === "fsm.backward_not_allowed" || result.reasonCode === "fsm.skip_not_allowed",
+      result.allowed
+        || result.reasonCode === "fsm.same_stage"
+        || result.reasonCode === "fsm.prerequisite_not_met"
+        || result.reasonCode === "fsm.backward_not_allowed"
+        || result.reasonCode === "fsm.skip_not_allowed",
       `Stage ${stage} should have a defined transition result`,
     );
   }
@@ -167,11 +179,12 @@ test("StageTransitionFSM all stages have valid predecessors defined", () => {
 test("StageTransitionFSM produces correct transition reasons", () => {
   const fsm = new StageTransitionFSM();
 
+  fsm.recordStageCompletion("observe");
+  fsm.recordStageCompletion("assess");
   const backwardResult = fsm.canTransitionTo("observe");
   assert.ok(backwardResult.reasonCodes.length > 0);
   assert.ok(backwardResult.reasonCodes[0]?.includes("backward"));
 
-  fsm.recordStageCompletion("observe");
-  const skipResult = fsm.canTransitionTo("execute");
+  const skipResult = fsm.canTransitionTo("feedback");
   assert.ok(skipResult.reasonCodes[0]?.includes("skip"));
 });

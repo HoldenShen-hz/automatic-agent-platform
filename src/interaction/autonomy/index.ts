@@ -1,5 +1,6 @@
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-service.js";
+export { AutonomyGovernanceService } from "./autonomy-governance-service.js";
 
 export { autonomyAuditService, AutonomyAuditService };
 

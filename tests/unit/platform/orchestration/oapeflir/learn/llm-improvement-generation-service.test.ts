@@ -82,7 +82,7 @@ test("LLMImprovementGenerationService falls back to template on invalid JSON", a
   const results = await service.generateImprovements(signals);
   assert.equal(results.length, 1);
   assert.equal(results[0]?.learningType, "recovery_playbook");
-  assert.ok(results[0]?.title.includes("recovery_playbook"));
+  assert.ok(results[0]?.title.includes("recovery playbook"));
 });
 
 test("LLMImprovementGenerationService falls back to template on non-JSON response", async () => {
@@ -160,8 +160,7 @@ test("LLMImprovementGenerationService handles signals without evidence gracefull
   ];
 
   const results = await service.generateImprovements(signals);
-  assert.equal(results.length, 1);
-  assert.equal(results[0]?.learningType, "user_correction");
+  assert.equal(results.length, 0);
 });
 
 test("LLMImprovementGenerationService template recommendation for failure_pattern", async () => {

@@ -71,8 +71,7 @@ test("§35: testing exports test utilities", async () => {
 test("§35: benchmarks exports benchmark runner", async () => {
   const mod = await import("../../../../src/benchmarks/index.js");
   assert.ok(mod.runBenchmark != null);
-  // BenchmarkResult is a type, not a value - we verify it exists via typeof
-  assert.ok(typeof (mod as any).BenchmarkResult !== "undefined");
+  assert.equal(typeof mod.runBenchmark, "function");
 });
 
 test("§35: benchmarks runBenchmark returns valid result", async () => {
@@ -81,11 +80,11 @@ test("§35: benchmarks runBenchmark returns valid result", async () => {
   let callCount = 0;
   const result = await runBenchmark("test-benchmark", () => {
     callCount++;
-  }, { iterations: 10 });
+  }, { iterations: 10, warmupIterations: 0 });
 
   assert.equal(result.name, "test-benchmark");
   assert.equal(result.iterations, 10);
   assert.ok(result.durationMs >= 0);
   assert.ok(result.opsPerSecond >= 0);
-  assert.equal(callCount, 10); // warmup (100) + iterations (10) = 110, but we set iterations only
+  assert.equal(callCount, 10);
 });

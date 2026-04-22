@@ -203,7 +203,7 @@ export class LongRunningWorkflowService {
     outputPatch: Record<string, unknown>,
     updatedAt: string,
   ): void {
-    this.store.updateWorkflowState(
+    this.store.workflow.updateWorkflowState(
       workflow.taskId,
       status,
       workflow.currentStepIndex,
@@ -217,7 +217,7 @@ export class LongRunningWorkflowService {
   }
 
   private requireWorkflow(taskId: string): WorkflowStateRecord {
-    const workflow = this.store.getWorkflowState(taskId);
+    const workflow = this.store.workflow.getWorkflowState(taskId);
     if (workflow == null) {
       throw new Error(`workflow_sleep.workflow_not_found:${taskId}`);
     }
@@ -238,7 +238,7 @@ export class LongRunningWorkflowService {
     executionId: string | null,
     payload: WorkflowSuspensionRecord,
   ): void {
-    this.store.insertEvent({
+    this.store.event.insertEvent({
       id: newId("evt"),
       taskId,
       executionId,

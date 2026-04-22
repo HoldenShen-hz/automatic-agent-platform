@@ -80,7 +80,7 @@ test("RunbookExecutor initializes execution correctly", () => {
 
   const execution = executor.initializeExecution(runbook, "test-operator");
 
-  assert.ok(execution.executionId.startsWith("runbook_exec:"));
+  assert.ok(execution.executionId.startsWith("runbook_exec_"));
   assert.equal(execution.runbook.title, "High Error Rate Runbook");
   assert.equal(execution.status, "initialized");
   assert.equal(execution.executedBy, "test-operator");
@@ -102,24 +102,36 @@ test("RunbookExecutor executes steps in sequence", async () => {
 
 test("RunbookExecutor pauses for confirmation when autoExecute is false", async () => {
   const executor = new RunbookExecutor({ autoExecute: false });
-  const runbook = parseRunbookMarkdown(SAMPLE_RUNBOOK_MARKDOWN);
+  const runbook = parseRunbookMarkdown(`# Manual Command Runbook
+
+## Mitigation
+
+1. Check status
+\`kubectl rollout pause deployment/api\`
+`);
 
   const execution = executor.initializeExecution(runbook, "test-operator");
-  const step = await executor.executeStep(execution.executionId, "Mitigation", 0);
+  const step = await executor.executeStep(execution.executionId, "Mitigation", 1);
 
-  // Since autoExecute is false and commands require confirmation, should pause
   assert.ok(step);
-  assert.ok(step.status === "requires_confirmation" || step.status === "running");
+  assert.equal(step.status, "requires_confirmation");
 });
 
 test("RunbookExecutor confirms step and continues execution", async () => {
   const executor = new RunbookExecutor({ autoExecute: false });
-  const runbook = parseRunbookMarkdown(SAMPLE_RUNBOOK_MARKDOWN);
+  const runbook = parseRunbookMarkdown(`# Manual Command Runbook
+
+## Mitigation
+
+1. Check status
+\`kubectl rollout pause deployment/api\`
+`);
 
   const execution = executor.initializeExecution(runbook, "test-operator");
+  await executor.executeStep(execution.executionId, "Mitigation", 1);
 
   // Confirm the step
-  const confirmed = executor.confirmStep(execution.executionId, 0);
+  const confirmed = executor.confirmStep(execution.executionId, 1);
   assert.ok(confirmed);
   assert.equal(confirmed.status, "running");
 });
@@ -176,7 +188,7 @@ test("IncidentDrillService initializes drill correctly", () => {
   const scenario = drillService.getScenario("worker_mass_disconnect_drill")!;
   const drill = drillService.initializeDrill(scenario, ["operator-1", "operator-2"], "drill-initiator");
 
-  assert.ok(drill.drillId.startsWith("incident_drill:"));
+  assert.ok(drill.drillId.startsWith("incident_drill_"));
   assert.equal(drill.scenario.name, "Worker Mass Disconnect");
   assert.equal(drill.status, "initialized");
   assert.deepEqual(drill.participants, ["operator-1", "operator-2"]);

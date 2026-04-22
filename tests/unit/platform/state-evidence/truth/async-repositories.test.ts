@@ -892,7 +892,7 @@ test("AsyncTaskRepository builds scoped and unscoped read queries", async () => 
 
   assert.match(calls[0]!.sql, /FROM tasks t WHERE t\.id = \$1 AND t\.tenant_id = \$2/);
   assert.deepEqual(calls[0]!.params, ["task-1", "tenant-a"]);
-  assert.match(calls[2]!.sql, /WHERE tenant_id = \$1\s+ORDER BY updated_at DESC\s+LIMIT \$2/);
+  assert.match(calls[2]!.sql, /WHERE tenant_id = \$1\s+ORDER BY updated_at DESC,\s+id DESC\s+LIMIT \$2/);
   assert.deepEqual(calls[2]!.params, ["tenant-a", 5]);
   assert.doesNotMatch(calls[3]!.sql, /WHERE tenant_id/);
   assert.match(calls[4]!.sql, /status IN \('queued', 'pending'\) AND tenant_id = \$1/);
@@ -1599,8 +1599,8 @@ test("AsyncExecutionRepository handles scoped lists, status filters, and empty c
   assert.match(calls[1]!.sql, /INNER JOIN tasks t ON t\.id = e\.task_id/);
   assert.deepEqual(calls[1]!.params, ["task-1", "tenant-a"]);
   assert.doesNotMatch(calls[2]!.sql, /INNER JOIN tasks/);
-  assert.match(calls[3]!.sql, /status IN \(\$1,\$2\).*LIMIT 10/);
-  assert.deepEqual(calls[3]!.params, ["executing", "prechecking"]);
+  assert.match(calls[3]!.sql, /status IN \(\$1,\$2\).*LIMIT \$3/);
+  assert.deepEqual(calls[3]!.params, ["executing", "prechecking", 10]);
 });
 
 test("AsyncApprovalRepository writes approvals, takeover sessions, and operator actions", async () => {

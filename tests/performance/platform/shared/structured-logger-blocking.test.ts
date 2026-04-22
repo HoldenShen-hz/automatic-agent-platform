@@ -11,13 +11,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { unlinkSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
-import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { cleanupPath } from "../../../helpers/fs.js";
+
+function createRelativeWorkspace(prefix: string): string {
+  const workspace = join(
+    ".tmp",
+    `${prefix}${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  );
+  mkdirSync(workspace, { recursive: true });
+  return workspace;
+}
 
 test("[SYS-PERF-3.1] structured logger write does not block event loop > 1ms", () => {
-  const workspace = createTempWorkspace("aa-logger-blocking-");
+  const workspace = createRelativeWorkspace("aa-logger-blocking-");
 
   try {
     const logFilePath = join(workspace, "test.log");
@@ -71,7 +80,7 @@ test("[SYS-PERF-3.1] structured logger write does not block event loop > 1ms", (
 });
 
 test("[SYS-PERF-3.1] logger does not block during high-frequency writes", () => {
-  const workspace = createTempWorkspace("aa-logger-highfreq-");
+  const workspace = createRelativeWorkspace("aa-logger-highfreq-");
 
   try {
     const logFilePath = join(workspace, "highfreq.log");
@@ -122,7 +131,7 @@ test("[SYS-PERF-3.1] logger does not block during high-frequency writes", () => 
 });
 
 test("[SYS-PERF-3.1] structured logger in-memory buffer is not affected by file sink", () => {
-  const workspace = createTempWorkspace("aa-logger-memory-");
+  const workspace = createRelativeWorkspace("aa-logger-memory-");
 
   try {
     const logFilePath = join(workspace, "memory.log");
@@ -149,7 +158,7 @@ test("[SYS-PERF-3.1] structured logger in-memory buffer is not affected by file 
 });
 
 test("[SYS-PERF-3.1] concurrent logger writes do not block each other excessively", () => {
-  const workspace = createTempWorkspace("aa-logger-concurrent-");
+  const workspace = createRelativeWorkspace("aa-logger-concurrent-");
 
   try {
     const logFilePath = join(workspace, "concurrent.log");

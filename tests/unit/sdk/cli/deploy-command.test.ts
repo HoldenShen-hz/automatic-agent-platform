@@ -14,10 +14,8 @@ import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadEnvironmentDeploymentCliEnv parses valid list-bundles action", () => {
   const config = loadEnvironmentDeploymentCliEnv({
-    AA_DB_PATH: "/tmp/test.db",
-    AA_REPO_ROOT_DIR: "/workspace",
-    AA_ENVIRONMENT_DEPLOYMENT_ACTION: "list-bundles",
-  });
+    AA_DEPLOYMENT_ACTION: "list-bundles",
+  }, "/workspace");
 
   assert.equal(config.action, "list-bundles");
   assert.equal(config.repoRootDir, "/workspace");
@@ -26,10 +24,9 @@ test("loadEnvironmentDeploymentCliEnv parses valid list-bundles action", () => {
 test("loadEnvironmentDeploymentCliEnv parses valid build action", () => {
   const config = loadEnvironmentDeploymentCliEnv({
     AA_DB_PATH: "/tmp/test.db",
-    AA_REPO_ROOT_DIR: "/workspace",
-    AA_ENVIRONMENT_DEPLOYMENT_ACTION: "build",
-    AA_TARGET_ENVIRONMENT: "staging",
-  });
+    AA_DEPLOYMENT_ACTION: "build",
+    AA_DEPLOYMENT_TARGET_ENVIRONMENT: "staging",
+  }, "/workspace");
 
   assert.equal(config.action, "build");
   assert.equal(config.targetEnvironment, "staging");
@@ -38,12 +35,11 @@ test("loadEnvironmentDeploymentCliEnv parses valid build action", () => {
 test("loadEnvironmentDeploymentCliEnv parses valid export action", () => {
   const config = loadEnvironmentDeploymentCliEnv({
     AA_DB_PATH: "/tmp/test.db",
-    AA_REPO_ROOT_DIR: "/workspace",
-    AA_ENVIRONMENT_DEPLOYMENT_ACTION: "export",
-    AA_TARGET_ENVIRONMENT: "prod",
-    AA_VERSION: "1.0.0",
-    AA_COMMIT_SHA: "abc123",
-  });
+    AA_DEPLOYMENT_ACTION: "export",
+    AA_DEPLOYMENT_TARGET_ENVIRONMENT: "prod",
+    AA_DEPLOYMENT_VERSION: "1.0.0",
+    AA_DEPLOYMENT_COMMIT_SHA: "abc123",
+  }, "/workspace");
 
   assert.equal(config.action, "export");
   assert.equal(config.targetEnvironment, "prod");
@@ -54,35 +50,35 @@ test("loadEnvironmentDeploymentCliEnv parses valid export action", () => {
 test("loadEnvironmentDeploymentCliEnv uses default action when not specified", () => {
   const config = loadEnvironmentDeploymentCliEnv({
     AA_DB_PATH: "/tmp/test.db",
-    AA_REPO_ROOT_DIR: "/workspace",
-  });
+  }, "/workspace");
 
   assert.equal(config.action, "list-bundles");
+  assert.equal(config.repoRootDir, "/workspace");
 });
 
 test("loadEnvironmentDeploymentCliEnv handles optional fields", () => {
   const config = loadEnvironmentDeploymentCliEnv({
     AA_DB_PATH: "/tmp/test.db",
-    AA_REPO_ROOT_DIR: "/workspace",
-    AA_ENVIRONMENT_DEPLOYMENT_ACTION: "build",
-    AA_ROLLOUT_STRATEGY: "canary",
-    AA_GENERATED_AT: "2024-01-01T00:00:00Z",
-    AA_TASK_ID: "task_123",
-  });
+    AA_DEPLOYMENT_ACTION: "build",
+    AA_DEPLOYMENT_ROLLOUT_STRATEGY: "canary",
+    AA_DEPLOYMENT_GENERATED_AT: "2024-01-01T00:00:00Z",
+    AA_DEPLOYMENT_TASK_ID: "task_123",
+    AA_DEPLOYMENT_ARTIFACT_ROOT: "/artifacts",
+  }, "/workspace");
 
   assert.equal(config.rolloutStrategy, "canary");
   assert.equal(config.generatedAt, "2024-01-01T00:00:00Z");
   assert.equal(config.taskId, "task_123");
+  assert.equal(config.artifactRoot, "/artifacts");
 });
 
 test("loadEnvironmentDeploymentCliEnv throws when dbPath is missing for build action", () => {
   assert.throws(
     () =>
       loadEnvironmentDeploymentCliEnv({
-        AA_REPO_ROOT_DIR: "/workspace",
-        AA_ENVIRONMENT_DEPLOYMENT_ACTION: "build",
+        AA_DEPLOYMENT_ACTION: "build",
         // AA_DB_PATH missing - required for build/export
-      }),
+      }, "/workspace"),
     (e: unknown) => e instanceof ValidationError,
   );
 });

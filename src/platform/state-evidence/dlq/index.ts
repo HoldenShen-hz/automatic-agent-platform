@@ -105,6 +105,12 @@ export class DeadLetterQueueService {
     originalTimestamp?: string | null;
     failureCategory?: string | null;
   }): DeadLetterRecord {
+    const existing = this.repo
+      .listByConsumer(input.consumerId)
+      .find((record) => record.sourceEventId === input.sourceEventId);
+    if (existing != null) {
+      return existing;
+    }
     const now = nowIso();
     const record: DeadLetterRecord = {
       deadLetterId: newId("dlq"),

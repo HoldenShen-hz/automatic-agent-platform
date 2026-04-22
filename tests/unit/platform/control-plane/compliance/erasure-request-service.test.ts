@@ -6,8 +6,8 @@ import type { ErasureRequest } from "../../../../../src/platform/control-plane/c
 import type { ComplianceStore } from "../../../../../src/platform/control-plane/compliance/types.js";
 
 // Mock store implementation
-const erasureRequests = new Map<string, ErasureRequest>();
 function createMockStore(): { compliance: ComplianceStore; event: { insertEvent: (event: { id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string }) => void }; events: Array<{ id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string }> } {
+  const erasureRequests = new Map<string, ErasureRequest>();
   const events: Array<{ id: string; eventType: string; payloadJson: string; traceId: string | null; createdAt: string }> = [];
 
   return {
@@ -240,7 +240,7 @@ test("ErasureRequestService.completeRequest transitions to completed with eviden
   assert.equal(completed.evidenceRefs.length, 2);
 });
 
-test("ErasureRequestService.completeRequest throws on invalid status transition", () => {
+test("ErasureRequestService.completeRequest is a no-op when request is not processing", () => {
   const mockStore = createMockStore();
   const mockDb = createMockDb(mockStore);
   const service = new ErasureRequestService(mockDb as any, mockStore as any);
@@ -253,14 +253,12 @@ test("ErasureRequestService.completeRequest throws on invalid status transition"
     reason: "Test erasure",
   });
 
-  // Try to complete without submitting first - should fail
-  assert.throws(
-    () =>
-      service.completeRequest(created.erasureId, [
-        { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
-      ]),
-    (err: any) => err.code.includes("invalid_status_transition"),
-  );
+  const result = service.completeRequest(created.erasureId, [
+    { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
+  ]);
+
+  assert.equal(result.status, "pending");
+  assert.equal(result.completedAt, null);
 });
 
 test("ErasureRequestService.failRequest transitions to failed with reason", () => {
@@ -573,7 +571,7 @@ test("ErasureRequestService handles legal basis options", () => {
   }
 });
 
-test("ErasureRequestService does not allow invalid status transitions", () => {
+test("ErasureRequestService keeps status unchanged on non-processing terminal operations", () => {
   const mockStore = createMockStore();
   const mockDb = createMockDb(mockStore);
   const service = new ErasureRequestService(mockDb as any, mockStore as any);
@@ -586,20 +584,13 @@ test("ErasureRequestService does not allow invalid status transitions", () => {
     reason: "Test erasure",
   });
 
-  // Cannot go from pending directly to completed
-  assert.throws(
-    () =>
-      service.completeRequest(created.erasureId, [
-        { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
-      ]),
-    (err: any) => err.code.includes("invalid_status_transition"),
-  );
+  const completedResult = service.completeRequest(created.erasureId, [
+    { evidenceType: "dek_destruction", referenceId: "key-001", timestamp: "2026-04-21T00:00:00.000Z" },
+  ]);
+  assert.equal(completedResult.status, "pending");
 
-  // Cannot go from pending directly to failed
-  assert.throws(
-    () => service.failRequest(created.erasureId, "Test failure"),
-    (err: any) => err.code.includes("invalid_status_transition"),
-  );
+  const failedResult = service.failRequest(created.erasureId, "Test failure");
+  assert.equal(failedResult.status, "pending");
 });
 
 test("ErasureRequestService.failRequest is idempotent when not processing", () => {

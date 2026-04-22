@@ -181,11 +181,11 @@ describe("DegradationController", () => {
         messages: [{ role: "user", content: "Hello" }],
       };
 
-      // D0 fails -> escalates to D1 -> D1 has no fallback -> escalates to D2 -> D2 has no cache -> D3 returns template
+      // D0 fails -> escalates to D1 -> D1 has no fallback -> escalates to D2 -> D2 has no cache -> D3 returns template.
+      // The controller remains at D2; D3 is the response path, not a persisted level.
       const response = await controller.route(request);
 
-      // Should end up at D3 (template) because D1 has no fallback
-      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D3);
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
       assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
     });
   });
@@ -202,8 +202,8 @@ describe("DegradationController", () => {
 
       const response = await controller.route(request);
 
-      // No fallback -> escalate to D2 -> no cache -> D3
-      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D3);
+      // No fallback -> escalate to D2 -> no cache -> D3 response path
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
       assert.strictEqual(response.degradationLevel, DegradationLevel.D3);
     });
   });
@@ -801,9 +801,9 @@ describe("DegradationController", () => {
 
       await controller.route(request);
 
-      // D1 escalates to D2, D2 to D3 due to no fallback/cache
-      // The last error should be recorded
-      assert.ok(controller.getLastEscalationReason() !== null || controller.getCurrentLevel() === DegradationLevel.D3);
+      // D1 escalates to D2 because no fallback is available. This path does not introduce
+      // a new provider error, so the last escalation reason may remain null.
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
     });
   });
 
@@ -820,9 +820,9 @@ describe("DegradationController", () => {
         semanticKey: "cascade-test",
       };
 
-      // First call: D0 fails -> D1 (no fallback) -> D2 (no cache yet because D0 didn't cache) -> D3
+      // First call: D0 fails -> D1 (no fallback) -> D2 (no cache yet because D0 didn't cache) -> D3 response path
       await controller.route(request);
-      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D3);
+      assert.strictEqual(controller.getCurrentLevel(), DegradationLevel.D2);
 
       // Reset for next test
       controller.reset();

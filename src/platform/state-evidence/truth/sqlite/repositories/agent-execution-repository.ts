@@ -3,41 +3,41 @@ import { resolveTenantScope } from "../authoritative-task-store-types.js";
 import { execute, queryAll, queryOne, type SqliteConnection } from "../query-helper.js";
 
 const AGENT_EXECUTION_SELECT = `SELECT
-  execution_id AS "executionId",
-  task_id AS "taskId",
-  agent_id AS "agentId",
-  workflow_id AS "workflowId",
-  role_id AS "roleId",
-  run_kind AS "runKind",
-  runtime_instance_id AS "runtimeInstanceId",
-  restarted_from_runtime_instance_id AS "restartedFromRuntimeInstanceId",
-  restart_generation AS "restartGeneration",
-  status,
-  plan_json AS "planJson",
-  current_step_id AS "currentStepId",
-  last_tool_name AS "lastToolName",
-  tool_call_count AS "toolCallCount",
-  last_decision_json AS "lastDecisionJson",
-  last_error_code AS "lastErrorCode",
-  retry_count AS "retryCount",
-  progress_message AS "progressMessage",
-  started_at AS "startedAt",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt",
-  completed_at AS "completedAt"
- FROM agent_execution_records`;
+  a.execution_id AS "executionId",
+  a.task_id AS "taskId",
+  a.agent_id AS "agentId",
+  a.workflow_id AS "workflowId",
+  a.role_id AS "roleId",
+  a.run_kind AS "runKind",
+  a.runtime_instance_id AS "runtimeInstanceId",
+  a.restarted_from_runtime_instance_id AS "restartedFromRuntimeInstanceId",
+  a.restart_generation AS "restartGeneration",
+  a.status,
+  a.plan_json AS "planJson",
+  a.current_step_id AS "currentStepId",
+  a.last_tool_name AS "lastToolName",
+  a.tool_call_count AS "toolCallCount",
+  a.last_decision_json AS "lastDecisionJson",
+  a.last_error_code AS "lastErrorCode",
+  a.retry_count AS "retryCount",
+  a.progress_message AS "progressMessage",
+  a.started_at AS "startedAt",
+  a.created_at AS "createdAt",
+  a.updated_at AS "updatedAt",
+  a.completed_at AS "completedAt"
+ FROM agent_execution_records a`;
 
 const REMOTE_LOG_SELECT = `SELECT
-  id,
-  task_id AS "taskId",
-  execution_id AS "executionId",
-  worker_id AS "workerId",
-  runtime_instance_id AS "runtimeInstanceId",
-  level,
-  message,
-  context_json AS "contextJson",
-  created_at AS "createdAt"
- FROM remote_log_entries`;
+  r.id,
+  r.task_id AS "taskId",
+  r.execution_id AS "executionId",
+  r.worker_id AS "workerId",
+  r.runtime_instance_id AS "runtimeInstanceId",
+  r.level,
+  r.message,
+  r.context_json AS "contextJson",
+  r.created_at AS "createdAt"
+ FROM remote_log_entries r`;
 
 export class AgentExecutionRepository {
   public constructor(private readonly conn: SqliteConnection) {}
@@ -124,7 +124,7 @@ export class AgentExecutionRepository {
     if (scopedTenantId !== undefined) {
       return queryOne<AgentExecutionRecord>(
         this.conn,
-        `${AGENT_EXECUTION_SELECT} a
+        `${AGENT_EXECUTION_SELECT}
          INNER JOIN tasks t ON t.id = a.task_id
          WHERE a.execution_id = ?
            AND t.tenant_id = ?`,
@@ -135,7 +135,7 @@ export class AgentExecutionRepository {
     return queryOne<AgentExecutionRecord>(
       this.conn,
       `${AGENT_EXECUTION_SELECT}
-       WHERE execution_id = ?`,
+       WHERE a.execution_id = ?`,
       executionId,
     );
   }
@@ -148,7 +148,7 @@ export class AgentExecutionRepository {
     if (scopedTenantId !== undefined) {
       return queryAll<AgentExecutionRecord>(
         this.conn,
-        `${AGENT_EXECUTION_SELECT} a
+        `${AGENT_EXECUTION_SELECT}
          INNER JOIN tasks t ON t.id = a.task_id
          WHERE a.task_id = ?
            AND t.tenant_id = ?
@@ -160,8 +160,8 @@ export class AgentExecutionRepository {
     return queryAll<AgentExecutionRecord>(
       this.conn,
       `${AGENT_EXECUTION_SELECT}
-       WHERE task_id = ?
-       ORDER BY updated_at ASC, execution_id ASC`,
+       WHERE a.task_id = ?
+       ORDER BY a.updated_at ASC, a.execution_id ASC`,
       taskId,
     );
   }
@@ -171,7 +171,7 @@ export class AgentExecutionRepository {
     if (scopedTenantId !== undefined) {
       return queryAll<RemoteLogRecord>(
         this.conn,
-        `${REMOTE_LOG_SELECT} r
+        `${REMOTE_LOG_SELECT}
          INNER JOIN tasks t ON t.id = r.task_id
          WHERE r.task_id = ?
            AND t.tenant_id = ?
@@ -183,8 +183,8 @@ export class AgentExecutionRepository {
     return queryAll<RemoteLogRecord>(
       this.conn,
       `${REMOTE_LOG_SELECT}
-       WHERE task_id = ?
-       ORDER BY created_at ASC, id ASC`,
+       WHERE r.task_id = ?
+       ORDER BY r.created_at ASC, r.id ASC`,
       taskId,
     );
   }
@@ -194,7 +194,7 @@ export class AgentExecutionRepository {
     if (scopedTenantId !== undefined) {
       return queryAll<RemoteLogRecord>(
         this.conn,
-        `${REMOTE_LOG_SELECT} r
+        `${REMOTE_LOG_SELECT}
          INNER JOIN tasks t ON t.id = r.task_id
          WHERE r.execution_id = ?
            AND t.tenant_id = ?
@@ -206,8 +206,8 @@ export class AgentExecutionRepository {
     return queryAll<RemoteLogRecord>(
       this.conn,
       `${REMOTE_LOG_SELECT}
-       WHERE execution_id = ?
-       ORDER BY created_at ASC, id ASC`,
+       WHERE r.execution_id = ?
+       ORDER BY r.created_at ASC, r.id ASC`,
       executionId,
     );
   }

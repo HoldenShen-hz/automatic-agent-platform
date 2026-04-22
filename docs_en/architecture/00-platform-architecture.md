@@ -1,303 +1,99 @@
-# "Enterprise-level Agent Platform Overall Technical Architecture Design Document" 
+# "Enterprise-level Agent Platform Overall Technical Architecture Design Document"
 
-> **Documentation version**: v2.7 
-> **Document Status**: Release 
-> **Preamble version**: v2.6 Release Candidate 
-> **Document positioning**: Enterprise-level/platform-level Agent System overall technical architecture design document (stability first · Complete AI operation · Complete business domain access · Complete intelligent interaction · Complete organizational governance · Complete large-scale ecology · Complete operational maturity · Implementation-oriented version) 
-> **Applicable objects**: Architecture committee, platform R&D team, Runtime team, SRE, security team, governance team, business domain access team, AI/ML engineering team, business line leaders, non-technical business operators, organizational management, compliance/audit team, ecological partners, edge/field operation and maintenance team 
-> **Design Goal**: Build an enterprise-level Agent platform with stability, risk control, safety and reliability, and exception handling as the first principles, so that the Agent can be controlled, recoverable, and auditable for long-term operation in the enterprise environment as a high-risk automation unit; at the same time, it has complete AI operation capabilities (LLM abstraction, Prompt governance, model quality, and cost control) to ensure that the platform is in AI The layers are also controllable and evolvable; provide a structured business domain modeling and access framework; build an intelligent interaction layer for non-technical users; establish a complete organizational governance system and large-scale operation ecological layer; ** and complete the operational maturity layer - Agent explainability, emergency braking, unified life cycle management, offline/edge deployment, behavior drift detection, cost attribution optimization, visual debugging, automatic generation of compliance reports, capacity planning, multi-modal capabilities, platform self-operation and maintenance Agent - enables the platform to move from architectural design to a truly production-ready enterprise-level operating system** 
+> **Document Version**: v3.3
+> **Document Status**: Release
+> **Document Positioning**: Enterprise-level / platform-level Agent System overall technical architecture design document (stability first, complete AI operations, complete business domain access, complete vertical business domain deepening (24 domains), unified domain meta-model, multi-Agent collaboration protocol, complete intelligent interaction, complete organizational governance, complete scaled ecosystem, complete operational maturity, complete Harness engineering, complete Harness eight-pillar deepening, three-ring implementation priority, implementation-oriented version)
+> **Applicable Audience**: Architecture committee, platform R&D team, Runtime team, SRE, security team, governance team, business domain access team, AI/ML engineering team, business line leaders, non-technical business operators, organizational management, compliance/audit team, ecosystem partners, edge/field operations team, **vertical business domain architects (Quant Trading, E-commerce, Advertising, Financial Services, Data Engineering, Coding, User Operations, Industry Research, Academic Research, Knowledge Base, Finance/Accounting, Legal, Live Streaming, Creative Production, Game Dev, Game Publishing, HR, Supply Chain, Healthcare, Education, Customer Service, Content Moderation, IT Operations, Marketing)**
+> **Design Goal**: Build an enterprise-level Agent platform with stability, risk control, safety and reliability, and exception handling as first principles, enabling Agents to run in enterprise environments in a controlled, recoverable, and auditable manner as high-risk automation units; with complete AI operations capabilities (LLM abstraction, Prompt governance, model quality, cost control); providing structured business domain modeling and access framework; building an intelligent interaction layer for non-technical users; establishing complete organizational governance and scaled ecosystem layers; completing the operational maturity layer; **and introducing the Harness Runtime unified abstraction -- converging distributed constraints, tools, context, and feedback capabilities into a standardized Planner->Generator->Evaluator->Loop closed-loop runtime, upgrading Agents from one-shot model calls to constrained, executable, memorable, feedback-capable, recoverable engineered closed-loop systems**
 
-## v2.1 upgrade instructions 
+---
 
-### v2.0 Review 
 
-v2.0 solves 14 design flaws based on v1.2: new inter-plane communication contract (§5), API contract (§6), service communication (§7), scalability (§8), configuration governance (§24), performance SLO (§27), disaster recovery (§31); improved risk score (§10), OAPEFLIR Interface (§13), storage abstraction (§26), deployment (§32), roadmap (§33). 
+# Table of Contents
 
-### v2.1 Improvement Focus 
+> This document is organized into 11 Parts following a **ten-layer architecture**. Section numbers remain stable for historical reference compatibility.
 
-v2.0 has far exceeded the industry average at the infrastructure layer (stability, risk, status, recovery). However, as an **enterprise-level AI Agent platform**, there are key gaps in the AI ​​operation layer and developer experience:
-| Bugs | Impact | v2.1 Improvements |
-|------|------|----------|
-| No LLM Provider abstraction | Single provider failure = full platform unavailable, no failover | New §15 LLM Provider abstraction and failover |
-| No Prompt management and versioning | Agent core "source code" cannot be controlled, rolled back, or A/B | New §16 Prompt management and versioning |
-| No model evaluation and quality access control | Bad prompt/model is pushed online without protection | Added §17 Model evaluation and quality access control |
-| No cost management and Token measurement | LLM cost-led OPEX but no per-tenant measurement and budget enforcement | New §18 Cost management and Token measurement |
-| No inter-Agent delegation agreement | Complex tasks require multi-Agent collaboration but no delegation semantics | New §19 Inter-Agent delegation and collaboration |
-| No long-term task architecture | Hour/day level workflow without sleep/wake/persistent timer | Added §20 long-term task and Workflow sleep |
-| HITL only has basic approval gate | Lacks multi-party approval, delegation, iterative feedback, and timeout strategy | New §21 human-machine collaboration mode |
-| No SDK / Developer Experience | The business team has no Pack development tool chain and cannot access | Added §22 SDK and Developer Experience |
-| No compliance architecture | GDPR right-to-erasure conflicts with append-only, no data residency | New §23 Compliance and Data Governance |
-| §6 API design is incomplete | Missing OAuth process, paging, Pack management endpoint, Webhook delivery guarantee | Improvement §6 Complete addition |
-| §11 Security Missing Threat Model | No STRIDE Analysis, Encryption at Rest, Sandbox Technical Specifications | Improvements §11 Supplementary Threat Model |
-| §12 Lack of alarm routing | Incident generated but no routing to human architecture | Improvement §12 Supplementary alarm routing and distributed Tracing |
-| §27 SLO lacks Error Budget | No burn-rate warning, no LLM delayed teardown | Improvement §27 Supplementary Error Budget |
-| §30 Pack lacks life cycle | Only Manifest, lacks development → certification → release → abandonment of the entire link | Improvement §30 Supplementary life cycle and Plugin governance |
-## v2.2 upgrade instructions 
+**Preamble (S1-S3)**
 
-### v2.1 Review 
+1. [Document Overview](#1-document-overview)
+2. [Platform Root Assumptions and Design Goals](#2-platform-root-assumptions)
+3. [Platform Definition and Non-Goals](#3-platform-definition)
 
-v2.1 has formed a complete closed loop at the infrastructure layer and AI operation layer: LLM Provider abstraction (§15), Prompt management (§16), model evaluation (§17), cost management (§18), Agent delegation (§19), long-term tasks (§20), human-machine collaboration (§21), SDK/DX (§22), and compliance (§23). 
+**Part I -- Infrastructure Layer (S4-S14, S24-S32)** 4. Overall Architecture: Five Planes + One Cross-Cutting Control Mesh 5. Inter-Plane Communication Contract 6. API Contract and Versioned Architecture 7. Service Communication Architecture 8. Scalability Architecture 9. Stability Architecture 10. Risk Control Architecture 11. Security and Reliability Architecture 12. Exception Event Processing Architecture 13. OAPEFLIR Controlled Cognitive Kernel 14. Runtime Execution Plane 24. Configuration Governance Architecture 25. Data and State Consistency Architecture 26. Storage Architecture 27. Performance Architecture and SLO 28. Event / Projection / Incident / DLQ Model 29. Knowledge / Memory / Artifact / Learning Boundary 30. Business Access Constraints and Business Pack Model 31. Disaster Recovery and High Availability Architecture 32. Deployment Architecture
 
-### v2.2 Improvement Focus 
+**Part II -- AI Operations Layer (S15-S23)** 15. LLM Provider Abstraction and Failover Architecture 16. Prompt Management and Versioning Architecture 17. Model Evaluation and Quality Gate Architecture 18. Cost Management and Token Metering Architecture 19. Inter-Agent Delegation and Collaboration Architecture 20. Long-term Tasks and Workflow Hibernation Architecture 21. Human-Machine Collaboration Model Architecture 22. SDK and Developer Experience Architecture 23. Compliance and Data Governance Architecture
 
-v2.1 solved "how to build the platform" and "how to operate AI", but it did not answer the core question: how to undertake the diverse business within the enterprise after the platform is set up? ** 
+**Part III -- Business Domain Access Layer (S37-S38)** 37. Business Domain Modeling and Access Architecture 38. Business Domain Access Runbook
 
-The 12+ vertical business lines within the company (code development, material production, advertising, user operations, game development, live streaming, corporate knowledge base, finance, HR, customer service, security operation and maintenance, data analysis) have huge differences in risk levels, knowledge structures, tool ecology, evaluation standards, and prompt strategies. The current Business Pack (§30) only defines a flat manifest and treats business domains as opaque "packages" - **The lack of a structured domain modeling framework prevents the platform from truly understanding, constraining, and optimizing Agent behavior in different business domains**.
-| Bugs | Impact | v2.2 Improvements |
-|------|------|----------|
-| No business domain abstract model | The platform cannot distinguish the domain characteristics of "financial approval" and "material generation" | New §37 DomainDescriptor structured domain modeling |
-| No domain risk profile | All businesses share the same risk_matrix and cannot differentiate risk control | §37.3 DomainRiskProfile domain-level risk override |
-| No domain knowledge Schema | Knowledge retrieval strategies, timeliness, and conflict resolution of different businesses cannot be expressed | §37.4 DomainKnowledgeSchema |
-| Domain-free evaluation framework | Code correctness vs. advertising ROI vs. content compliance - cannot be unified yet differentiated | §37.5 DomainEvalFramework |
-| No domain Prompt library | Business prompts are scattered everywhere, no reuse and no management | §37.6 DomainPromptLibrary |
-| Domainless template/Recipe | Similar business (HR/customer service) reinventing the wheel | §37.7 DomainRecipe four prototype templates |
-| No cross-domain interaction policy | Multi-business domain Agent collaboration without boundaries and no compensation | §37.8 DomainInteractionPolicy |
-| Domain-free governance model | Business domain ownership, SLO, and budget are not vested | §37.9 DomainGovernancePolicy |
-| No standardized access process | New business access relies on oral communication, no checklist | Added §38 four-stage access runbook |
-| §30 Manifest only, no domain semantics | Pack does not understand what business domain it belongs to | Improvement §30 Association DomainDescriptor |
-## v2.3 upgrade instructions 
+**Part IV -- Vertical Business Domain Deepening Layer (S71-S94)** 71. Quantitative Trading Domain 72. E-commerce Domain 73. Advertising Domain 74. Financial Services Domain 75. Data Engineering Domain 76. Coding Domain 77. User Operations Domain 78. Industry Research Domain 79. Academic Research Domain 80. Enterprise Knowledge Base Domain 81. Finance/Accounting Domain 82. Legal Domain 83. Live Streaming Domain 84. Creative Production Domain 85. Game Development Domain 86. Game Publishing Domain 87. Human Resources Domain 88. Supply Chain and Logistics Domain 89. Healthcare Domain 90. Education and Training Domain 91. Customer Service Domain 92. Content Moderation and Safety Domain 93. IT Operations SRE/DevOps Domain 94. Marketing and Branding Domain
 
-### v2.2 Review 
+**Part V -- Intelligent Interaction Layer (S39-S44)** 39. Natural Language Task Entry Architecture 40. Goal Decomposition Engine Architecture 41. Proactive Agent Framework 42. Progressive Autonomy Model 43. Unified Operations Dashboard Architecture 44. Non-Technical User Experience Architecture
 
-v2.2 completes the business domain access layer: DomainDescriptor structured domain modeling (§37), four-stage access runbook (§38), domain risk portrait/knowledge structure/assessment framework/Prompt library/template prototype/cross-domain strategy/governance model. 
+**Part VI -- Harness Engineering and Eight-Pillar Deepening Layer (S45, S58)** 45. Harness Runtime Architecture 58. Harness Cross-Cutting Concerns
 
-### v2.3 Improvement Focus 
+**Part VII -- Organizational Governance Layer (S46-S51)** 46. Organizational Hierarchy Model 47. Organizational Structure Approval Routing 48. Enterprise SSO/SCIM Integration Architecture 49. Sub-Department Compliance Policy Engine 50. Knowledge Domain Isolation and Controlled Sharing 51. Hierarchical Governance Delegation
 
-v2.0-v2.2 solves the three-layer problems of "how to build the platform" (infrastructure) → "how to operate AI" (AI operation) → "how to connect business" (business domain modeling). But these three layers are all designed for platform engineers and technical teams - real business users (non-technical operators, business line leaders, and even independent operators of one-person companies) cannot directly use the platform. 
+**Part VIII -- Scaled Operations and Ecosystem Layer (S52-S57)** 52. Multi-Region Deployment Architecture 53. Large-Scale Resource Competition Management 54. SLA Tiered Guarantee 55. Agent Marketplace and Ecosystem 56. Feedback-Driven Continuous Improvement Pipeline 57. External System Integration Framework
 
-The v2.2 gap analysis identified 42 gaps, of which the most critical 6 were concentrated in the **Intelligent Interaction Layer**:
-| Bugs | Impact | v2.3 Improvements |
-|------|------|----------|
-| No natural language task entry | Users must handwrite JSON/API to create tasks | Added §39 natural language task entry structure |
-| No goal decomposition engine | Users must manually decompose business goals into single-domain tasks | New §40 goal decomposition engine architecture |
-| No active Agent | Agent can only passively wait for API calls and cannot run autonomously | New §41 Active Agent Framework |
-| No progressive autonomy | automation_level static configuration, Agent can never "earn trust" | New §42 Progressive Autonomy Model |
-| No unified operation dashboard | Only infrastructure-level metrics, no "everything is normal" business view | Added §43 unified operation dashboard architecture |
-| No non-technical user UX | Only SDK+CLI, non-developers cannot use it | New §44 Non-technical user experience architecture |
+**Part IX -- Operational Maturity Layer (S59-S69)** 59. Agent Explainability and Decision Transparency Architecture 60. Emergency Braking and Global Circuit Breaker Architecture 61. Agent Unified Lifecycle Management Architecture 62. Offline and Edge Deployment Architecture 63. Agent Behavior Drift Detection Architecture 64. Cost Attribution and Optimization Engine 65. Workflow Visual Debugger Architecture 66. Compliance Report Automatic Generation Engine 67. Capacity Planning and Cost Forecasting Engine 68. Multimodal Capability Architecture 69. Platform Self-Operation Agent Architecture
 
-**v2.3 Core Positioning**: Building on the three-layer foundation constructed in v2.0-v2.2, adding the **intelligent interaction layer for end users**, elevating the platform from "Agent infrastructure" to "Agent operating system".
+**Part X -- Implementation Roadmap and Summary (S33-S36)** 33. Phased Implementation Roadmap 34. ADR Freeze Recommendation 35. Recommended Code Directory 36. Risks, Constraints and Success Criteria
+
+**Part XI -- Conclusion and Appendices** 70. Conclusion
+Appendix G: Glossary and Abbreviation Index
+Appendix A: Version Change History
+
+---
+
+# Book Architecture Overview
+
+This section provides four diagrams summarizing the core structure of this architecture document. Readers can build a global picture before diving into details.
+
+### Diagram 1 -- Static Architecture (Five Planes + Cross-Cutting Fabric)
 
 ```text
-v2.3  ┌─────────────────────────────────────────────┐
-      │  Intelligent Interaction Layer (User-side OS) │  ← v2.3 New
-      │  NL Entry · Goal Decomposition · Proactive Agent · Autonomy · Dashboard  │
-      ├─────────────────────────────────────────────┤
-v2.2  │  Business Domain Access Layer                │
-      │  DomainDescriptor · Recipe · Runbook           │
-      ├─────────────────────────────────────────────┤
-v2.1  │  AI Operations Layer                          │
-      │  LLM Abstraction · Prompt · Eval · Cost · HITL · SDK  │
-      ├─────────────────────────────────────────────┤
-v2.0  │  Infrastructure Layer                         │
-      │  Five Planes · Stability · Risk · Security · Recovery · Audit  │
-      └─────────────────────────────────────────────┘
++-----------------------------------------------------------+
+|                   P1  Interface Plane                      |  S5-S10
++-----------------------------------------------------------+
+|                   P2  Control Plane                        |  S11-S13
++-----------------------------------------------------------+
+|         P3  Orchestration Plane (Harness Runtime)         |  S14-S22, S45
++-----------------------------------------------------------+
+|                   P4  Execution Plane                      |  S23-S24
++-----------------------------------------------------------+
+|                   P5  Evidence Plane                       |  S25-S29
++-----------------------------------------------------------+
+| X1 Reliability Fabric (across 5 planes)                   |  S56-S60
++-----------------------------------------------------------+
 ```
-## v2.4 upgrade instructions 
 
-### v2.3 Review 
-
-v2.3 completes the intelligent interaction layer: natural language task entry (§39), goal decomposition engine (§40), proactive Agent framework (§41), progressive autonomy model (§42), unified operation dashboard (§43), and non-technical user experience (§44). 
-
-### v2.4 Improvement Focus 
-
-v2.0-v2.3 has been built layer by layer from infrastructure to intelligent interaction layer, but **all assume that "the organization is flat and governance is unified"** - this is applicable to a one-person company, but completely untrue in a company with 10,000 people. Enterprises with 10,000 people have deep organizational levels of business groups → departments → teams. Different levels have different approval links, compliance requirements, knowledge visibility and governance autonomy.
-| Bugs | Impact | v2.4 Improvements |
-|------|------|----------|
-| No organizational hierarchy model | The platform only has the concept of tenant and cannot express the department/team hierarchy | Newly added §46 Organizational hierarchy model |
-| No organizational structure approval routing | The approval link is hard-coded and cannot be dynamically routed based on the organizational structure | New §47 Organizational Structure Approval Routing |
-| No SSO/SCIM integration | Manual creation per user, no synchronization with enterprise directory | New §48 Enterprise SSO/SCIM integration |
-| No sub-department compliance policy | All departments share the same compliance rules, there is no difference between the financial department and the creative department | Newly added §49 sub-department compliance policy engine |
-| No knowledge domain isolation | The knowledge of different departments has no boundaries and there is a risk of data leakage | New §50 Knowledge domain isolation and controlled sharing |
-| No hierarchical governance delegation | Platform administrators have centralized control and cannot delegate governance rights to departments | New §51 hierarchical governance delegation |
-
-**v2.4 Core Positioning**: Building on the intelligent interaction layer of v2.3, adding the **organizational governance layer**, enabling the platform to adapt to organizational complexity from one-person companies to companies with 10,000 employees.
+### Diagram 2 -- Runtime Main Chain (Typical Path for One Task)
 
 ```text
-v2.4  ┌─────────────────────────────────────────────┐
-      │  Organizational Governance Layer             │  ← v2.4 New
-      │  Org Hierarchy · Approval Routing · SSO · Compliance · Knowledge Isolation · Delegation │
-      ├─────────────────────────────────────────────┤
-v2.3  │  Intelligent Interaction Layer (User-side OS) │
-      │  NL Entry · Goal Decomposition · Proactive Agent · Autonomy · Dashboard  │
-      ├─────────────────────────────────────────────┤
-v2.2  │  Business Domain Access Layer                │
-      │  DomainDescriptor · Recipe · Runbook           │
-      ├─────────────────────────────────────────────┤
-v2.1  │  AI Operations Layer                          │
-      │  LLM Abstraction · Prompt · Eval · Cost · HITL · SDK  │
-      ├─────────────────────────────────────────────┤
-v2.0  │  Infrastructure Layer                         │
-      │  Five Planes · Stability · Risk · Security · Recovery · Audit  │
-      └─────────────────────────────────────────────┘
+Request --> ConstraintPack --> Planner --> Generator --> Evaluator
+                                  ^          |             |
+                                  +----------+  loop on fail |
+                                                           v
+                              Decision --> Durable/HITL --> Result + Evidence
 ```
-## v2.5 upgrade instructions 
 
-### v2.4 Review 
-
-v2.4 completes the organizational governance layer: organizational hierarchy model (§46), organizational structure approval routing (§47), enterprise SSO/SCIM integration (§48), departmental compliance policy engine (§49), knowledge domain isolation and controlled sharing (§50), hierarchical governance delegation (§51). 
-
-### v2.5 Improvement Focus 
-
-v2.0-v2.4 has built a five-layer complete architecture of **Infrastructure→AI Operation→Business Domain Access→Intelligent Interaction→Organizational Governance**, but these five layers assume "running in a single data center with limited concurrency." When enterprises deploy across Regions, have thousands of concurrent workflows, and have multiple business lines competing for resources, they need to ensure large-scale operation. At the same time, the platform is moving from a closed system to an open ecosystem, which requires an Agent market, feedback-driven improvements, and an external system integration framework.
-| Bugs | Impact | v2.5 Improvements |
-|------|------|----------|
-| No multi-region deployment | Single data center failure = the entire platform is unavailable | New §52 multi-region deployment architecture |
-| No resource competition management | High-priority tasks are blocked by low-priority tasks | New §53 Large-scale resource competition management |
-| No SLA hierarchical guarantee | All tasks are treated equally, and service commitments cannot be differentiated | New §54 SLA hierarchical guarantee |
-| No Agent Market | All Agents/Packs are developed internally and cannot be reused | Added §55 Agent Market and Ecosystem |
-| No feedback-driven improvement | No closed loop of user feedback, the platform cannot optimize itself | New §56 Feedback-driven continuous improvement pipeline |
-| No external system integration framework | Each external system integration is independent and there is no unified model | New §57 External system integration framework |
-
-**v2.5 Core Positioning**: Completing the **scaled operation and ecosystem layer**, enabling the platform to have cross-region high availability, fair resource scheduling, differentiated SLA guarantees, open ecosystem, and continuous self-improvement capabilities.
+### Diagram 3 -- Governance Closed Loop (Continuous Improvement Cycle)
 
 ```text
-v2.5  ┌─────────────────────────────────────────────┐
-      │  Scaled Operations + Ecosystem Layer          │  ← v2.5 New
-      │  Multi-Region · Resource Competition · SLA · Market · Feedback · Integration  │
-      ├─────────────────────────────────────────────┤
-v2.4  │  Organizational Governance Layer             │
-      │  Org Hierarchy · Approval Routing · SSO · Compliance · Knowledge Isolation · Delegation │
-      ├─────────────────────────────────────────────┤
-v2.3  │  Intelligent Interaction Layer (User-side OS) │
-      │  NL Entry · Goal Decomposition · Proactive Agent · Autonomy · Dashboard  │
-      ├─────────────────────────────────────────────┤
-v2.2  │  Business Domain Access Layer                │
-      │  DomainDescriptor · Recipe · Runbook           │
-      ├─────────────────────────────────────────────┤
-v2.1  │  AI Operations Layer                          │
-      │  LLM Abstraction · Prompt · Eval · Cost · HITL · SDK  │
-      ├─────────────────────────────────────────────┤
-v2.0  │  Infrastructure Layer                         │
-      │  Five Planes · Stability · Risk · Security · Recovery · Audit  │
-      └─────────────────────────────────────────────┘
+Run --> Evidence --> Feedback --> Learn/Drift-Detect
+ ^                                        |
+ +-- Release <- Improve <- Evaluation <---+
 ```
-## v2.6 upgrade instructions 
 
-### v2.5 Review 
-
-v2.5 completes the scaled operation and ecological layer: multi-region deployment (§52), resource competition management (§53), SLA hierarchical guarantee (§54), Agent market (§55), feedback-driven improvement (§56), and external system integration (§57). 
-
-### v2.6 Improvement Focus 
-
-v2.0-v2.5 built a **six-layer complete architecture** from infrastructure to ecology, but all focused on the "construction layer" - solving the problem of "how to build it". Compared with enterprise-level platforms that are truly ready for production, there is a lack of an "operational maturity layer" that solves the problems of "how to use it well" and "how to operate it safely". 
-
-The v2.5 gap analysis identified 20 gaps, with the 11 most critical ones concentrated in the **Operations Maturity Layer**:
-| Bugs | Impact | v2.6 Improvements |
-|------|------|----------|
-| No decision explainability | Users cannot understand the reasons for Agent’s decisions, EU AI Act compliance gap | New §59 Agent explainability and decision transparency |
-| No emergency braking | Unable to stop the entire platform Agent instantly in the event of a security incident | Added §60 emergency braking and global fuse |
-| Agent-less unified entity | Agent is a loose combination of components, without composite version and life cycle management | New §61 Agent unified life cycle management |
-| No offline/edge deployment | Factory/store/mobile scenarios cannot be used, excluding the entire industry vertical | Added §62 Offline and edge deployment architecture |
-| No behavior drift detection | Agent gradient behavior escapes the quality threshold but its essence has changed | New §63 Agent behavior drift detection |
-| No cost attribution and optimization | Cost data can be seen but not actionable, and cannot guide optimization | New §64 cost attribution and optimization engine |
-| No visual debugging | If Workflow fails, you can only check the original log, no debugging experience | Added §65 Workflow visual debugger |
-| No compliance report automatically generated | Evidence exists but cannot be automatically assembled into an audit report | New §66 compliance report automatic generation engine |
-| No capacity planning and forecast | No predictive expansion suggestions, expansion timing depends on guesswork | New §67 Capacity planning and cost forecast |
-| No multi-modal capability | ModelGateway is plain text and cannot process images/voices/documents | New §68 multi-modal capability architecture |
-| No platform self-operation and maintenance | All operations and maintenance rely on manual SRE, and a one-person company does not have an SRE team | Added §69 Platform self-operation and maintenance Agent |
-
-**v2.6 Core Positioning**: Completing the **operational maturity layer**, elevating the platform from "complete architectural design" to "production-ready operation".
+### Diagram 4 -- Evolution Roadmap (Phase Overview, see S33)
 
 ```text
-v2.6  ┌─────────────────────────────────────────────┐
-      │  Operational Maturity Layer                  │  ← v2.6 New
-      │  Explainability · Emergency Brake · Lifecycle · Edge · Drift Detection  │
-      │  Cost Optimization · Debugger · Compliance Report · Capacity · Multimodal    │
-      ├─────────────────────────────────────────────┤
-v2.5  │  Scaled Operations + Ecosystem Layer         │
-      │  Multi-Region · Resource Competition · SLA · Market · Feedback · Integration  │
-      ├─────────────────────────────────────────────┤
-v2.4  │  Organizational Governance Layer             │
-      │  Org Hierarchy · Approval Routing · SSO · Compliance · Knowledge Isolation · Delegation │
-      ├─────────────────────────────────────────────┤
-v2.3  │  Intelligent Interaction Layer (User-side OS) │
-      │  NL Entry · Goal Decomposition · Proactive Agent · Autonomy · Dashboard  │
-      ├─────────────────────────────────────────────┤
-v2.2  │  Business Domain Access Layer                │
-      │  DomainDescriptor · Recipe · Runbook           │
-      ├─────────────────────────────────────────────┤
-v2.1  │  AI Operations Layer                          │
-      │  LLM Abstraction · Prompt · Eval · Cost · HITL · SDK  │
-      ├─────────────────────────────────────────────┤
-v2.0  │  Infrastructure Layer                         │
-      │  Five Planes · Stability · Risk · Security · Recovery · Audit  │
-      └─────────────────────────────────────────────┘
+Phase 1 --> Phase 2 --+-> Phase 3 --> Phase 4 --> Phase 5 --> Phase 6 --> Phase 7
+                       +-> Phase 8a -> Phase 8b -> Phase 8c --+(8c before Phase 5)
+Phase 5+8c --> Phase 9a -> 9b -> 9c -> 9d -> 9e -> 9f  (24 domains, 48 weeks)
 ```
---- 
 
-# Directory 
-
-1. [Document Overview](#1-Document Overview) 
-2. [Platform root assumptions and design goals](#2-Platform root assumptions and design goals) 
-3. [Platform Definition and Non-Goals](#3-Platform Definition and Non-Goals) 
-4. [Overall structure: five planes + one cross-cutting control mesh] (#4-overall structure five planes--one cross-cutting control mesh) 
-5. [Inter-plane communication contract](#5-Inter-plane communication contract) 
-6. [API contract and versioned architecture](#6-api-Contract and versioned architecture) 
-7. [Service Communication Architecture](#7-Service Communication Architecture) 
-8. [Scalability Architecture](#8-Scalability Architecture) 
-9. [Stable Architecture](#9-Stable Architecture) 
-10. [Risk Control Structure](#10-Risk Control Structure) 
-11. [Safe and reliable architecture](#11-Safe and reliable architecture) 
-12. [Exception event processing architecture](#12-Exception event processing architecture) 
-13. [OAPEFLIR controlled cognitive kernel](#13-oapeflir-controlled cognitive kernel) 
-14. [Runtime Execution Plane](#14-runtime-execution-plane) 
-15. [LLM Provider abstraction and failover architecture](#15-llm-provider-Abstraction and failover architecture) 
-16. [Prompt Management and Versioning Architecture](#16-prompt-Management and Versioning Architecture) 
-17. [Model Evaluation and Quality Access Control Architecture](#17-Model Evaluation and Quality Access Control Architecture) 
-18. [Cost Management and Token Measuring Structure](#18-Cost Management and -token-Measuring Structure) 
-19. [Inter-Agent Delegation and Collaboration Architecture](#19-Inter-agent-Inter-Agent Delegation and Collaboration Architecture) 
-20. [Long-term tasks and Workflow dormant architecture](#20-Long-term tasks and-workflow-dormant architecture)
- 21. [Human-machine collaboration model architecture](#21-Human-machine collaboration model architecture) 
-22. [SDK and developer experience architecture](#22-sdk-and developer experience architecture) 
-23. [Compliance and Data Governance Structure](#23-Compliance and Data Governance Structure) 
-24. [Configure governance structure](#24-Configure governance structure) 
-25. [Data and state consistency architecture](#25-Data and state consistency architecture) 
-26. [Storage Architecture](#26-Storage Architecture) 
-27. [Performance Architecture and SLO](#27-Performance Architecture and-slo) 
-28. [Event / Projection / Incident / DLQ Model](#28-event--projection--incident--dlq-model) 
-29. [Knowledge / Memory / Artifact / Learning Boundary](#29-knowledge--memory--artifact--learning-boundary) 
-30. [Business access constraints and Business Pack model](#30-Business access constraints and-business-pack-model) 
-31. [Disaster Tolerance and High Availability Architecture](#31-Disaster Tolerance and High Availability Architecture) 
-32. [Deployment Architecture](#32-Deployment Architecture) 
-33. [Phase-by-stage landing route](#33-Phase-by-stage landing route) 
-34. [ADR Freeze Recommendation](#34-adr-Freeze Recommendation) 
-35. [Recommended code directory](#35-Recommended code directory) 
-36. [Risk, Constraints and Success Criteria](#36-Risk Constraints and Success Criteria) 
-37. [Business Domain Modeling and Access Architecture](#37-Business Domain Modeling and Access Architecture) 
-38. [Business Domain Access Runbook](#38-Business Domain Access-runbook) 
-39. [Natural language task entry structure](#39-Natural language task entry structure) 
-40. [Goal decomposition engine architecture](#40-Goal decomposition engine architecture) 
-41. [Active Agent Framework](#41-Active-agent-Framework) 
-42. [Progressive Autonomy Model](#42-Progressive Autonomy Model) 
-43. [Unified Operation Kanban Architecture](#43-Unified Operation Kanban Architecture) 
-44. [Non-technical user experience architecture](#44-Non-technical user experience architecture) 
-46. [Organizational Hierarchy Model](#46-Organizational Hierarchy Model)
-47. [Organizational Structure Approval Routing](#47-Organizational Structure Approval Routing) 
-48. [Enterprise SSO/SCIM Integrated Architecture](#48-enterprise-ssoscim-integrated architecture) 
-49. [Sub-department compliance policy engine](#49-Sub-department compliance policy engine) 
-50. [Knowledge Domain Isolation and Controlled Sharing](#50-Knowledge Domain Isolation and Controlled Sharing) 
-51. [Grade Governance Entrustment](#51-Grade Governance Entrustment) 
-52. [Multi-region deployment architecture](#52-multi-region-deployment architecture) 
-53. [Management of large-scale resource competition](#53-Management of large-scale resource competition) 
-54. [SLA Hierarchical Guarantee](#54-sla-Grade Guarantee) 
-55. [Agent Market and Ecology](#55-agent-Market and Ecology) 
-56. [Feedback-driven continuous improvement pipeline](#56-Feedback-driven continuous improvement pipeline) 
-57. [External system integration framework](#57-External system integration framework) 
-59. [Agent Interpretability and Decision Transparency Architecture](#59-agent-Explainability and Decision Transparency Architecture) 
-60. [Emergency braking and global fuse architecture](#60-Emergency braking and global fuse architecture) 
-61. [Agent unified life cycle management architecture] (#61-agent-unified life cycle management architecture) 
-62. [Offline and edge deployment architecture](#62-Offline and edge deployment architecture) 
-63. [Agent Behavior Drift Detection Architecture](#63-agent-Behavior Drift Detection Architecture) 
-64. [Cost Attribution and Optimization Engine](#64-Cost Attribution and Optimization Engine) 
-65. [Workflow visual debugger architecture](#65-Workflow visual debugger architecture) 
-66. [Compliance report automatic generation engine](#66-Compliance report automatic generation engine) 
-67. [Capacity Planning and Cost Forecasting Engine](#67-Capacity Planning and Cost Forecasting Engine) 
-68. [Multimodal Capability Architecture](#68-Multimodal Capability Architecture) 
-69. [Platform self-operation and maintenance Agent architecture] (#69-Platform self-operation and maintenance-agent-architecture) 
-70. [Conclusion](#70-Conclusion) 
-[Appendix A: Version Change History](#Appendix-aVersion Change History) 
-
---- 
+---
 
 # 1. Document overview 
 
@@ -347,7 +143,7 @@ Therefore, this version of the architecture puts the following issues as the mai
 * Complete domain model of a certain business domain 
 * Infrastructure physical topology and procurement options 
 
---- 
+---
 
 # 2. Platform root assumptions and design goals 
 
@@ -412,7 +208,7 @@ The platform must not only be "made", but also record: who triggered it, why it 
 7. **Multi-tenant security**: Data, permissions, and execution environments are not allowed to be exchanged between different tenants, teams, projects, and business domains. 
 8. **Business can be expanded but does not invade the core**: New business access cannot destroy the stability and security model of the platform 
 
---- 
+---
 
 # 3. Platform definition and non-target 
 
@@ -427,6 +223,11 @@ The platform must not only be "made", but also record: who triggered it, why it 
 * **Not a pure Tool Calling shell** — Tools are only the execution means
 * **Not a thin application of "Prompt + Model + a few tools"** — Lacks isolation, governance, recovery
 * **Not a system of "the more automation the better"** — The platform pursues **controlled automation**
+
+---
+
+
+# Part I -- Infrastructure Layer (S4-S14, S24-S32)
 
 ---
 
@@ -514,7 +315,7 @@ Life support systems across all planes.
 
 **Positioning**: This is not an auxiliary ability, but the basic life support system of the platform. Each capability of X1 is injected into each plane in the form of middleware / interceptor / decorator and is not deployed as an independent service.
 
- --- 
+ ---
 
 # 5. Inter-plane communication contract 
 
@@ -624,7 +425,7 @@ interface StateCommand {
 4. **Must be idempotent**: All StateCommands must do CAS based on expected_version 
 5. **Must be replayable**: All contract objects must be serializable to JSON 
 
---- 
+---
 
 # 6. API contract and versioned architecture 
 
@@ -789,7 +590,7 @@ All events that require guaranteed delivery use the outbox pattern:
 | Phase 3 (microservices) | gRPC + event bus | Independent deployment between planes |
 This ensures a smooth evolution from monolith to microservices, rather than requiring 18 services from the start. 
 
---- 
+---
 
 # 8. Scalability architecture 
 
@@ -962,7 +763,7 @@ RiskAssessmentRequest
 
 sandbox mode · read_only mode · write_limited mode · approval gate · dry_run · shadow mode · canary · rollback plan mandatory · evidence bundle mandatory 
 
---- 
+---
 
 # 11. Security and Reliability Architecture
 
@@ -1048,126 +849,100 @@ Transport encryption, storage encryption, and key management are detailed in §2
 
 ---
 
-# 12. Exception Event Processing Architecture
+# 12. Exception Event Handling Architecture
 
-> Retain v1.2's E1-E6 classification and SEV1-4 grading. v2.0 adds **observability data model** and **automatic detection rules**.
+> E1-E6 classification and SEV1-4 severity grading, with **observability data model** and **automated detection rules**.
 
 ## 12.1 Exception Event Classification
 
-* **E1 Business Exception**: validation fail · wrong output · no result · low confidence
-* **E2 Execution Exception**: timeout · worker crash · lease expired · retry exhausted
-* **E3 External Dependency Exception**: adapter failure · provider timeout · rate limit · circuit open
-* **E4 Security Exception**: unauthorized access · secret leak risk · egress deny · policy violation
-* **E5 Data Exception**: stale projection · event append failure · invariant break · replay inconsistency
-* **E6 Governance Exception**: rollout guardrail violated · approval overdue · exception expired · knowledge conflict
+- **E1 Business Exception**: validation fail · wrong output · no result · low confidence
+- **E2 Execution Exception**: timeout · worker crash · lease expired · retry exhausted
+- **E3 External Dependency Exception**: adapter failure · provider timeout · rate limit · circuit open
+- **E4 Security Exception**: unauthorized access · secret leak risk · egress deny · policy violation
+- **E5 Data Exception**: stale projection · event append failure · invariant break · replay inconsistency
+- **E6 Governance Exception**: rollout guardrail violated · approval overdue · exception expired · knowledge conflict
 
-## 12.2 Exception Levels
+## 12.2 Severity Levels
 
-* SEV4: Local minor, can be automatically recovered
-* SEV3: Single workflow / single worker impact
-* SEV2: Single business domain / single tenant significantly affected
-* SEV1: Platform-level impact / security incident / production serious risk
+- SEV4: localized and minor, auto-recoverable
+- SEV3: single workflow / single worker impact
+- SEV2: single domain / single tenant noticeably affected
+- SEV1: platform-wide impact / security incident / severe production risk
 
-## 12.3 Exception Detection Rules Engine
+## 12.3 Exception Detection Rule Engine
 
-> New in v2.0: Upgrade exception detection from "hardcoded" to "rules engine".
+> Upgrade exception detection from hard-coded to a rule engine.
 
-```typescript
-interface DetectionRule {
-  rule_id: string;
-  name: string;
-  condition: {
-    metric: string;           // "execution.failure_rate" | "projection.lag_seconds" | ...
-    operator: ">" | "<" | "==" | "rate_of_change>";
-    threshold: number;
-    window_seconds: number;
-  };
-  severity: "SEV4" | "SEV3" | "SEV2" | "SEV1";
-  actions: ("create_incident" | "notify" | "mode_switch" | "circuit_open")[];
-  cooldown_seconds: number;
-}
-```
-**Example of built-in rules**:
-| Rule | Condition | Severity | Action |
-|------|------|------|------|
-| worker_heartbeat_missing | heartbeat_gap > 30s | SEV3 | create_incident + lease_reclaim |
-| execution_timeout_spike | timeout_rate > 20% in 5min | SEV3 | notify + mode_switch(supervised) |
-| projection_lag_high | lag > 30s | SEV3 | notify + rebuild_trigger |
-| security_policy_violation | any violation | SEV2 | create_incident + quarantine |
-| platform_wide_failure | error_rate > 50% in 1min | SEV1 | create_incident + mode_switch(incident-mode) |
-## 12.4 Observability data model 
+**Built-in rule examples**:
 
-> v1.2 only says "must have metrics". v2.0 defines specific indicators. 
+| Rule                      | Condition                  | Level | Action                                       |
+| ------------------------- | -------------------------- | ----- | -------------------------------------------- |
+| worker_heartbeat_missing  | heartbeat_gap > 30s        | SEV3  | create_incident + lease_reclaim              |
+| execution_timeout_spike   | timeout_rate > 20% in 5min | SEV3  | notify + mode_switch(supervised)             |
+| projection_lag_high       | lag > 30s                  | SEV3  | notify + rebuild_trigger                     |
+| security_policy_violation | any violation              | SEV2  | create_incident + quarantine                 |
+| platform_wide_failure     | error_rate > 50% in 1min   | SEV1  | create_incident + mode_switch(incident-mode) |
+
+## 12.4 Observability Data Model
+
+> Define concrete observability metrics.
 
 ### Core Metrics
-| Indicator name | Type | Label | Description |
-|--------|------|------|------|
-| `agent.task.total` | counter | tenant, status | Total task count |
-| `agent.execution.duration_ms` | histogram | tenant, step_type | Execution duration |
-| `agent.execution.failure_rate` | gauge | tenant, error_type | Failure rate |
-| `agent.dispatch.queue_depth` | gauge | queue_class | Queue depth |
-| `agent.dispatch.latency_ms` | histogram | queue_class | Dispatch latency |
-| `agent.worker.active` | gauge | pool, capability | Active worker count |
-| `agent.projection.lag_seconds` | gauge | projection_name | Projection lag |
-| `agent.approval.pending_count` | gauge | severity | Pending approval count |
-| `agent.circuit_breaker.state` | gauge | target | Circuit breaker state |
-| `agent.dlq.depth` | gauge | category | DLQ depth |
+
+| Metric                         | Type      | Labels             | Description              |
+| ------------------------------ | --------- | ------------------ | ------------------------ |
+| `agent.task.total`             | counter   | tenant, status     | Total task count         |
+| `agent.execution.duration_ms`  | histogram | tenant, step_type  | Execution duration       |
+| `agent.execution.failure_rate` | gauge     | tenant, error_type | Failure rate             |
+| `agent.dispatch.queue_depth`   | gauge     | queue_class        | Queue depth              |
+| `agent.dispatch.latency_ms`    | histogram | queue_class        | Dispatch latency         |
+| `agent.worker.active`          | gauge     | pool, capability   | Active worker count      |
+| `agent.projection.lag_seconds` | gauge     | projection_name    | Projection lag           |
+| `agent.approval.pending_count` | gauge     | severity           | Pending approval count   |
+| `agent.circuit_breaker.state`  | gauge     | target             | Circuit breaker state    |
+| `agent.dlq.depth`              | gauge     | category           | DLQ depth                |
 
 ### Structured Log Specification
 
-```typescript
-interface StructuredLog {
-  timestamp: string;
-  level: "debug" | "info" | "warn" | "error" | "critical";
-  trace_id: string;
-  span_id: string;
-  principal: string;
-  tenant_id: string;
-  component: string;      // "dispatcher" | "executor" | "projector" | ...
-  event_type: string;     // "execution.started" | "tool_call.failed" | ...
-  message: string;
-  data?: Record<string, unknown>;
-}
-```
-## 12.5 DLQ and Incident 
+Every log entry must be in JSON format with the following required fields:
 
-**DLQ must have**: category · reason · retry_count · first_failed_at · last_failed_at · operator_action_log · reopen_status. DLQs are not trash cans and must be operational. 
+| Field               | Type    | Description                                                       |
+| ------------------- | ------- | ----------------------------------------------------------------- |
+| `timestamp`         | ISO8601 | Millisecond precision, UTC timezone                               |
+| `traceId`           | string  | Correlates to distributed Trace (§12.7)                           |
+| `spanId`            | string  | Current Span identifier                                           |
+| `level`             | enum    | DEBUG / INFO / WARN / ERROR / FATAL                               |
+| `service`           | string  | Name of the service emitting the log                              |
+| `plane`             | enum    | P1-P5 / X1-X2, identifies the owning plane                       |
+| `message`           | string  | Short human-readable description                                  |
+| `structuredPayload` | object  | Business context key-value pairs (tenantId, domainId, taskId etc) |
 
-**Incident must be related**: affected workflows · affected aggregates · related rollout · related workers · repair/replay jobs · evidence bundle · final resolution.
+**Log level guidelines**: DEBUG for local development only; INFO for normal business flow; WARN for auto-recoverable exceptions; ERROR for faults requiring human intervention; FATAL for severe errors causing process exit. Default production level is INFO.
 
- ## 12.6 Alarm routing architecture 
+## 12.5 DLQ and Incident
 
-> New in v2.1. Incidents must be routed to the correct person after they are generated.
-| SEV Level | Notification Channels | Response SLA | Escalation Rules |
-|---------|---------|---------|---------|
-| SEV4 | Platform Console + Log | Next Business Day | None |
-| SEV3 | IM notification (Slack/Feishu) | 4h | 4h No response → SEV2 |
-| SEV2 | IM + Email + on-call | 1h | 1h no response → SEV1 |
-| SEV1 | IM + phone + all-person broadcast | 15min | 15min no response → Management |
+**DLQ must have**: category · reason · retry_count · first_failed_at · last_failed_at · operator_action_log · reopen_status. DLQ is not a trash bin — it must be operationally manageable.
 
-```typescript
-interface AlertRoute {
-  severity: "SEV4" | "SEV3" | "SEV2" | "SEV1";
-  channels: AlertChannel[];
-  on_call_schedule_ref?: string;
-  escalation_timeout_ms: number;
-  escalation_target: AlertRoute;
-}
+**Incident must associate**: affected workflows · affected aggregates · related rollout · related workers · repair/replay jobs · evidence bundle · final resolution.
 
-interface AlertChannel {
-  type: "console" | "webhook" | "email" | "im" | "phone";
-  target: string;
-  template_ref: string;
-}
-```
+## 12.6 Alert Routing Architecture
 
-**External Integration**: Connect to PagerDuty / OpsGenie / Enterprise IM via Webhook. The platform does not implement built-in alarm channels, only defining routing rules and delivery interfaces.
+> Incidents must be routed to the right person after creation.
+
+| SEV Level | Notification Channel          | Response SLA    | Escalation Rule                    |
+| --------- | ----------------------------- | --------------- | ---------------------------------- |
+| SEV4      | Platform console + logs       | Next business day | None                              |
+| SEV3      | IM notification (Slack/Lark)  | 4h              | No response in 4h → SEV2          |
+| SEV2      | IM + Email + on-call          | 1h              | No response in 1h → SEV1          |
+| SEV1      | IM + phone + all-hands broadcast | 15min        | No response in 15min → management |
+
+**External integration**: Connect to PagerDuty / OpsGenie / enterprise IM via Webhook. The platform does not implement alert channels internally — it only defines routing rules and delivery interfaces.
 
 ## 12.7 Distributed Tracing Architecture
 
-> v2.1 new. Defines trace → span → log → metric correlation model.
+> Define the correlation model of trace → span → log → metric.
 
-**Span Hierarchy**:
+**Span hierarchy**:
 
 ```text
 Trace (task_id)
@@ -1184,22 +959,22 @@ Trace (task_id)
        └─ Span: state_write
 ```
 
-**Correlation Rules**:
+**Correlation rules**:
 
-* All StructuredLog must contain trace_id + span_id (already exists)
-* Metrics correlate to trace_id via exemplar (high-cardinality metric sampling)
-* Incident correlates to trigger trace_id, supporting tracing from incident to complete call chain
-* Sampling strategy: error trace 100% collection, normal trace by tenant config (default 10%)
+- All StructuredLog entries must include trace_id + span_id (already present)
+- Metrics correlate to trace_id via exemplars (sampled for high-cardinality metrics)
+- Incidents correlate to trigger trace_id, enabling full call-chain tracing from an incident
+- Sampling strategy: error traces 100% collected, normal traces per tenant config (default 10%)
 
 ---
 
 # 13. OAPEFLIR Controlled Cognitive Kernel
 
-> Retain v1.2's dual-chain model. v2.0 adds **TypeScript interface contracts for each stage** and **inter-stage data flow definitions**.
+> Dual-chain model, with **per-stage interface contracts** and **inter-stage data flow definitions**.
 
 ## 13.1 Dual-Chain Topology
 
-**Main chain (synchronous)**: Observe → Assess → Plan → Execute → Feedback
+**Primary chain (synchronous)**: Observe → Assess → Plan → Execute → Feedback
 
 **Secondary chain (asynchronous)**: Feedback → Learn → Improve → Release
 
@@ -1207,116 +982,41 @@ Trace (task_id)
 
 ### Observe
 
-```typescript
-interface ObserveHub {
-  collect(context: ObserveContext): Promise<UnifiedObservation>;
-}
-
-interface UnifiedObservation {
-  task_situation: TaskSituation;
-  system_situation: SystemSituation;
-  knowledge_refs: KnowledgeRef[];
-  memory_refs: MemoryRef[];
-  risk_signals: RiskSignal[];
-  collected_at: string;
-}
-```
+Input: raw request or event (RequestEnvelope / WebhookEvent). Output: StructuredObservation.
+Responsibility: extract intent, context, and urgency from unstructured input to produce a standardized observation object for downstream stages.
 
 ### Assess
 
-```typescript
-interface AssessHub {
-  evaluate(observation: UnifiedObservation): Promise<UnifiedAssessment>;
-}
-
-interface UnifiedAssessment {
-  complexity: "trivial" | "simple" | "moderate" | "complex" | "expert";
-  confidence: number;              // 0.0 - 1.0
-  risk_level: RiskLevel;
-  budget_pressure: "normal" | "warning" | "critical";
-  requires_approval: boolean;
-  route_decision: "execute" | "escalate" | "reject" | "defer";
-  sub_assessments: SubAssessment[];
-}
-```
+Input: StructuredObservation. Output: RiskAssessment + FeasibilityReport.
+Responsibility: evaluate risk level, check policy compliance, determine execution mode (autonomous / human-in-the-loop / reject), and provide constraint boundaries for the Plan stage.
 
 ### Plan
 
-```typescript
-interface PlanHub {
-  plan(assessment: UnifiedAssessment, observation: UnifiedObservation): Promise<ExecutionPlan>;
-  replan(feedback: StepFeedback, original_plan: ExecutionPlan): Promise<ExecutionPlan>;
-}
-
-interface PlannedStep {
-  step_id: string;
-  type: "tool_call" | "llm_call" | "human_wait" | "sub_workflow" | "checkpoint";
-  tool_name?: string;
-  inputs: Record<string, unknown>;
-  timeout_ms: number;
-  retry_policy: RetryPolicy;
-  requires_approval: boolean;
-  expected_side_effects: SideEffectExpectation[];
-}
-```
+Input: RiskAssessment + FeasibilityReport. Output: ExecutionPlan + PlanBundle.
+Responsibility: decompose goals into ordered steps, allocate budgets and tools, generate rollback strategies, and output a standard plan directly executable by P4.
 
 ### Execute
 
-Execute phase is not implemented within OAPEFLIR, but delegated to P4 Execution Plane (see §14). OAPEFLIR only submits `ExecutionPlan` and receives `ExecutionReceipt`.
+The Execute stage is not implemented within OAPEFLIR — it delegates to P4 Execution Plane (see §14). OAPEFLIR only submits `ExecutionPlan` and receives `ExecutionReceipt`.
 
 ### Feedback
 
-```typescript
-interface FeedbackHub {
-  process(receipt: ExecutionReceipt): Promise<StepFeedback>;
-}
+Input: ExecutionReceipt. Output: FeedbackEnvelope.
+Responsibility: evaluate execution result quality, detect goal drift, compare expected vs actual output, and generate feedback signals for the Learn stage.
 
-interface StepFeedback {
-  feedback_id: string;
-  type: "success" | "failure" | "correction" | "timeout" | "policy_block" | "approval_block";
-  step_id: string;
-  signals: FeedbackSignal[];
-  should_replan: boolean;
-  should_escalate: boolean;
-}
-```
+### Learn (async)
 
-### Learn (Asynchronous)
+Input: FeedbackEnvelope batches. Output: LearningInsight.
+Responsibility: asynchronously extract failure and success patterns, classify fault root causes, aggregate cross-task statistics, and produce actionable learning insights.
 
-```typescript
-interface LearnHub {
-  extract(feedbacks: StepFeedback[]): Promise<LearningObject[]>;
-}
+### Improve (async)
 
-interface LearningObject {
-  pattern_type: "failure_pattern" | "correction_pattern" | "recovery_playbook" | "routing_pattern";
-  source_feedback_ids: string[];
-  confidence: number;
-  suggested_action: string;
-  evidence: string;
-}
-```
+Input: LearningInsight. Output: ImprovementCandidate.
+Responsibility: generate prompt optimization patches, policy rule adjustments, or tool configuration changes based on learning insights, and submit to the Release stage for governance approval.
 
-### Improve (Asynchronous)
+### Release (controlled)
 
-```typescript
-interface ImproveHub {
-  propose(learnings: LearningObject[]): Promise<ImprovementCandidate[]>;
-}
-
-interface ImprovementCandidate {
-  candidate_id: string;
-  type: "prompt_update" | "tool_config" | "routing_rule" | "risk_threshold";
-  current_value: unknown;
-  proposed_value: unknown;
-  expected_impact: string;
-  rollout_strategy: "shadow" | "canary" | "staged" | "direct";
-}
-```
-
-### Release (Controlled)
-
-Release is not an automatic step but a release process governed by P2 Control Plane. ImprovementCandidate must go through validation → approval → canary → staged → stable's complete rollout process.
+Release is not an automatic step — it is a publication process governed by P2 Control Plane. ImprovementCandidate must go through the full rollout flow of validation → approval → canary → staged → stable.
 
 ## 13.3 Inter-Stage Data Flow
 
@@ -1349,89 +1049,107 @@ ObserveContext ──→ [Observe] ──→ UnifiedObservation
                                                                             ▼
                                                                   [P2 Release Control]
 ```
-## 13.4 Constraints 
 
-* OAPEFLIR is not equal to Runtime - it only makes decisions, not execution 
-*Learn/Improve is not allowed to go online directly - it must go through P2's rollout management 
-* Risk / policy / approval checks must be inserted before high-risk actions 
-* The input and output of each stage must pass Zod schema runtime verification 
+## 13.4 Constraints
 
---- 
+- OAPEFLIR is not the Runtime — it only makes decisions, not executions
+- Learn / Improve must not go live directly — they must pass P2 rollout governance
+- Risk / policy / approval checks must be inserted before high-risk actions
+- Input and output of every stage must pass Zod schema runtime validation
 
-# 14. Runtime Execution Plane 
+## 13.5 Harness External Semantic Mapping
 
-> Retain core responsibility definitions from v1.2. v2.0 adds **execution strategy mode** and **Executor registration mechanism**. 
+The OAPEFLIR eight stages are the platform's internal cognitive kernel. For product teams, business stakeholders, and multi-Agent collaboration scenarios, a simplified **Harness role mapping** layer is provided:
 
-## 14.1 Core Responsibilities 
+| Harness Role        | OAPEFLIR Stage Mapping                  | Responsibility Boundary                                                                          |
+| ------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Planner**         | Observe + Assess + Plan                 | Understand goals, decompose tasks, identify risks, generate execution plans, select tools & budgets, produce acceptance criteria |
+| **Generator**       | Execute (delegated to P4)               | Invoke tools, execute steps, write-back evidence, produce interim results, request help rather than forcing through when blocked |
+| **Evaluator**       | Feedback + local evaluation + quality gate | Judge result quality, check goal deviation, check risk escalation, decide pass/redo/degrade/escalate to HITL |
+| **Loop Controller** | Learn + Improve + Replan + Release gate | Control loop count, decide when to replan, when to approve, when to terminate, when to release improvements |
 
-session / task / workflow_run / execution life cycle · dispatch / queue / worker scheduling · lease / fencing · executor call · side effect controlled submission · retry / timeout / recovery · mode-aware execution · event emission 
-
-## 14.2 Dispatcher Intelligent Scheduling 
-
-Dispatcher is also a risk isolation point and dispatch decision matrix:
-| Factor | Impact |
-|------|------|
-| worker capability | capability required to match step |
-| worker health | exclude unhealthy workers |
-| queue class | priority / standard / background |
-| risk class | High-risk steps are assigned to the isolation pool |
-| tenant quota | A single tenant does not exceed the quota |
-| sandbox requirement | Match sandbox tier |
-
-## 14.3 Execution Strategy Mode
-
-> New in v2.0. Upgrade execution strategy from hardcoded to configurable mode.
-
-```typescript
-interface ExecutionStrategy {
-  retry_policy: {
-    max_retries: number;
-    backoff: "fixed" | "exponential" | "exponential_with_jitter";
-    base_delay_ms: number;
-    max_delay_ms: number;
-  };
-  timeout_policy: {
-    step_timeout_ms: number;
-    attempt_timeout_ms: number;
-    tool_timeout_ms: number;
-  };
-  failure_policy: "retry" | "skip" | "abort" | "escalate" | "replan";
-  checkpoint_policy: "every_step" | "on_side_effect" | "on_approval_gate" | "never";
-}
+```text
+            ┌─────────────────────────────────┐
+            │       Harness Runtime (§45)      │
+            │                                  │
+            │  ┌─────────┐    ┌───────────┐   │
+ Request ──>│  │ Planner │───>│ Generator │   │
+            │  │(O+A+P)  │    │(Execute)  │   │
+            │  └────┬────┘    └─────┬─────┘   │
+            │       │               │          │
+            │       │    ┌──────────▼────────┐ │
+            │       │    │    Evaluator      │ │
+            │       │    │(Feedback+Quality) │ │
+            │       │    └──────────┬────────┘ │
+            │       │               │          │
+            │  ┌────▼───────────────▼────────┐ │
+            │  │     Loop Controller         │ │
+            │  │  (Learn+Improve+Replan+     │ │
+            │  │   Release gate)             │ │──> Result
+            │  └─────────────────────────────┘ │
+            └─────────────────────────────────┘
 ```
 
-Each Business Pack can declare its own ExecutionStrategy to override the default.
+Significance of the two-layer mapping:
+
+- **Internal**: OAPEFLIR maintains fine-grained stage control, each stage with independent interface contracts and Zod validation
+- **External**: Harness four-role semantics are easier to understand, facilitating multi-Agent collaboration protocol standardization
+- **Debugging**: observe the full chain at Harness granularity, or drill down to individual OAPEFLIR stages
+
+**Dual-model hard rule**: external protocols must use Harness role semantics (Planner/Generator/Evaluator/Decision); internal implementation may continue to subdivide by OAPEFLIR eight stages.
+
+| Audience Perspective | Model Used             | Typical Scenarios                                   |
+| -------------------- | ---------------------- | --------------------------------------------------- |
+| Product/Business     | Harness four roles     | Requirement communication, capability intro, API docs |
+| Runtime/Dispatch     | OAPEFLIR eight stages  | Execution engine, LoopController, state machine advancement |
+| Audit/Compliance     | HarnessRun/HarnessStep | Execution evidence chain, compliance reports, approval records |
+| ML/Algorithm         | OAPEFLIR eight stages  | Model evaluation, prompt tuning, per-stage performance analysis |
+
+---
+
+# 14. Runtime Execution Plane
+
+> Core responsibility definition, with **execution strategy patterns** and **Executor registration mechanism**.
+
+## 14.1 Core Responsibilities
+
+session / task / workflow_run / execution lifecycle · dispatch / queue / worker scheduling · lease / fencing · executor invocation · side effect controlled commit · retry / timeout / recovery · mode-aware execution · event emission
+
+## 14.2 Dispatcher Intelligent Scheduling
+
+Dispatcher also serves as a risk isolation point. Scheduling decision matrix:
+
+| Factor              | Impact                                    |
+| ------------------- | ----------------------------------------- |
+| worker capability   | Match capabilities required by the step   |
+| worker health       | Exclude unhealthy workers                 |
+| queue class         | priority / standard / background          |
+| risk class          | High-risk steps assigned to isolated pool |
+| tenant quota        | Single tenant must not exceed quota       |
+| sandbox requirement | Match sandbox tier                        |
+
+## 14.3 Execution Strategy Patterns
+
+> Upgrade execution strategies from hard-coded to configurable patterns.
+
+Each Business Pack can declare its own ExecutionStrategy to override defaults.
 
 ## 14.4 Executor Registration Mechanism
 
-> New in v2.0. Upgrade executor from hardcoded to pluggable registration.
-
-```typescript
-interface ExecutorRegistry {
-  register(type: string, executor: Executor): void;
-  resolve(step: PlannedStep): Executor;
-}
-
-interface Executor {
-  readonly type: string;
-  readonly capabilities: string[];
-  execute(step: PlannedStep, context: ExecutionContext): Promise<ExecutionReceipt>;
-  canHandle(step: PlannedStep): boolean;
-}
-```
+> Upgrade executors from hard-coded to pluggable registration.
 
 **Built-in Executor types**: ToolExecutor · PluginExecutor · AdapterExecutor · BrowserExecutor · HumanWaitExecutor · SubWorkflowExecutor
 
 ## 14.5 Side Effect Two-Phase
 
 1. Executor returns proposed side effect
-2. Policy / approval decides whether to allow submission
+2. Policy / approval decides whether to allow commit
 3. Side effect repository records
-4. Compensation when necessary
+4. Compensation performed when necessary
 
-> Tool execution success does not equal side effects being formally effective.
+> Tool execution success does not mean the side effect is officially committed.
 
-## 14.6 HumanWait Is a Formal Executor
+## 14.6 HumanWait Is a First-Class Executor
 
 Approval waiting is not a bypass. HumanWait is responsible for: creates decision → blocks execution → waits resolution → resumes flow.
 
@@ -1439,878 +1157,17 @@ Approval waiting is not a bypass. HumanWait is responsible for: creates decision
 
 LeaseReclaimer · ExecutionRecoveryWorker · WorkflowRepairWorker · ProjectionRebuildWorker · ReplayWorker · StuckRunSweeper
 
-**v2.0 Improvement**: Each Recovery Worker must declare its own `RecoveryCadence` (check interval, max concurrent recovery count, timeout), and report results through `RecoveryReport`.
+Each Recovery Worker must declare its own `RecoveryCadence` (check interval, max concurrent recoveries, timeout) and report results via `RecoveryReport`.
 
 ## 14.8 Runtime Mode Switching
 
-**Standard mode set** (consistent with §9.5): full_auto · supervised_auto · read_only · no-write · no-external-call · no-rollout · manual_only · incident-mode
+**Canonical mode set** (consistent with §9.5): full_auto · supervised_auto · read_only · no-write · no-external-call · no-rollout · manual_only · incident-mode
 
-Where `full_auto` corresponds to the old name `normal`, and `supervised_auto` corresponds to the old names `degraded`/`supervised`. All runtime modes must use this standard enumeration.
+Where `full_auto` corresponds to the former `normal`, and `supervised_auto` corresponds to the former `degraded`/`supervised`. All runtime modes must use this canonical enum.
 
-Mode switching authority belongs to P2 Control Plane, issued through `ControlDirective(type: "mode_switch")`.
-
-# 15. LLM Provider Abstraction and Failover Architecture
-
-> v2.0 does not involve LLM layer architecture. v2.1 regards LLM as the most critical external dependency of the platform, defining provider abstraction, routing strategy, and degradation mode when unavailable.
-
-## 15.1 Design Principles
-
-* Platform does not bind to any single LLM provider
-* All LLM calls are issued through unified ModelGateway, upper layer does not directly call provider SDK
-* ModelGateway is part of X1 Fabric, crossing P3 Orchestration and P4 Execution
-* LLM calls are treated as **high-risk external dependency**, must have timeout, circuit breaker, fallback, cost tracking
-
-## 15.2 ModelGateway Interface
-
-```typescript
-interface ModelGateway {
-  complete(request: ModelRequest): Promise<ModelResponse>;
-  stream(request: ModelRequest): AsyncIterable<ModelChunk>;
-  embeddings(request: EmbeddingRequest): Promise<EmbeddingResponse>;
-}
-
-interface ModelRequest {
-  request_id: string;
-  trace_id: string;
-  tenant_id: string;
-  model_ref: string;
-  prompt_ref: string;
-  messages: Message[];
-  parameters: ModelParameters;
-  constraints: ModelConstraints;
-}
-
-interface ModelConstraints {
-  max_tokens: number;
-  max_cost: number;
-  max_latency_ms: number;
-  required_capabilities: string[];
-  data_classification: "public" | "internal" | "confidential" | "restricted";
-}
-
-interface ModelResponse {
-  response_id: string;
-  provider: string;
-  model: string;
-  content: string;
-  usage: TokenUsage;
-  latency_ms: number;
-  cached: boolean;
-  quality_signals: QualitySignal[];
-}
-
-interface TokenUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  estimated_cost: number;
-}
-```
-
-## 15.3 Provider Registration and Routing
-
-```typescript
-interface ProviderRegistry {
-  register(provider: ProviderConfig): void;
-  resolve(request: ModelRequest): ProviderConfig[];
-}
-
-interface ProviderConfig {
-  provider_id: string;
-  display_name: string;
-  endpoint: string;
-  models: ModelCapability[];
-  auth: ProviderAuth;
-  rate_limits: { rpm: number; tpm: number };
-  cost_per_1k_tokens: { input: number; output: number };
-  data_residency: string[];
-  health: ProviderHealth;
-  priority: number;
-}
-```
-**Routing Policy**:
-| Strategy | Applicable Scenarios | Description |
-|------|---------|------|
-| priority | Default | Sort by priority, highest priority preferred |
-| cost_optimized | Batch/low priority tasks | Select the available provider with the lowest unit price |
-| latency_optimized | Real-time interaction | Select the provider with the lowest P99 latency |
-| data_residency | Compliance requirements | Select only providers that meet data residency |
-| capability_match | special capabilities | match required_capabilities |
-
-## 15.4 Failover Chain
-
-```text
-Primary Provider
-  │ timeout / error / circuit_open
-  ▼
-Secondary Provider (fallback)
-  │ timeout / error / circuit_open
-  ▼
-Tertiary Provider (emergency)
-  │ timeout / error / circuit_open
-  ▼
-Degradation Mode (see §15.5)
-```
-**Switching Rules**: 
-
-* Single request timeout (default 30s) → automatically switch to the next provider and try again 
-* Continuous failures > 5 times (60s window) → trigger circuit breaker, provider marked as unhealthy 
-* All providers unhealthy → Enter LLM Degradation Mode 
-* After the provider recovers, it automatically recovers through half-open detection. 
-
-## 15.5 LLM not available in downgrade mode 
-
-When all LLM providers are unavailable, the platform must have a clear downgrade strategy instead of simply reporting an error:
-| Downgrade level | Trigger conditions | Platform behavior |
-|---------|---------|---------|
-| D0 normal | at least one provider healthy | normal routing |
-| D1 restricted | primary down, secondary available | automatic switch + alarm + limit new workflow startup rate |
-| D2 cache | All provider unhealthy, cache available | Return cached results for similar requests (read-only scenario only) |
-| D3 static | Cache not available | Use pre-built static fallback plan (low risk tasks only) |
-| D4 pause | All downgrades are unavailable | Pause all new workflows, protect workflow checkpoints in transit, and transfer to manual |
-**Cache Design**: 
-
-* Semantic caching based on prompt_ref + parameter hash 
-* TTL is classified according to data_classification: public=1h, internal=15min, confidential=no cache 
-* Cache hits must be marked with `cached: true` and are not counted in model quality evaluation 
-
-## 15.6 Streaming response and error handling 
-
-Additional constraints for `ModelGateway.stream()`:
-| Points of concern | Treatment strategies |
-|--------|---------|
-| Stream interruption | The received token is cached as partial response; if partial is available (≥ 80% expected length), mark `partial: true` for use; otherwise switch provider and try again |
-| Token over-limit pre-check | Estimate the number of input tokens based on `ModelRequest.messages` before sending. If > provider's `context_window - max_tokens`, reject and return `TOKEN_LIMIT_EXCEEDED` |
-| Response format verification | Zod schema verification is performed on the complete output after the stream is completed; a verification failure triggers a retry (with a format reminder); the second failure is recorded as `llm.response.validation_failed` |
-| Timeout | The first streaming token timeout (TTFT > 10s) triggers provider switching; the total duration timeout is executed according to `ModelConstraints.max_latency_ms` |
-| Backpressure | When consumer processing speed < production speed, stream reading (backpressure) is paused and token is not discarded |
-## 15.7 Observability
-| Indicator | Type | Description |
-|------|------|------|
-| `llm.request.total` | counter | by provider/model/tenant |
-| `llm.request.latency_ms` | histogram | by provider/model |
-| `llm.request.error_rate` | gauge | by provider/error_type |
-| `llm.token.usage` | counter | by provider/model/tenant |
-| `llm.cost.total` | counter | by provider/tenant |
-| `llm.cache.hit_rate` | gauge | cache hit rate |
-| `llm.fallback.triggered` | counter | Number of fallback triggers |
+Mode switching authority belongs to P2 Control Plane, issued via `ControlDirective(type: "mode_switch")`.
 
 ---
-
-# 16. Prompt Management and Versioning Architecture
-
-> Prompt is the "source code" of Agent. v2.1 regards Prompt as a first-level architectural concern, defining storage, versioning, grayscale release, and rollback mechanisms.
-
-## 16.1 Design Principles
-
-* Prompt is not inlined in code but managed independently as a **versioned resource**
-* Each Prompt has a complete life cycle: draft → review → staging → canary → stable → deprecated
-* Prompt changes are equivalent to code changes and must pass quality gates (see §17)
-* The combination of Prompt and model constitutes the core of Agent behavior, and both changes need to be managed collaboratively
-
-## 16.2 Prompt Data Model
-
-```typescript
-interface PromptDefinition {
-  prompt_id: string;
-  name: string;
-  version: string;
-  stage: "observe" | "assess" | "plan" | "feedback" | "learn" | "improve";
-  template: string;
-  variables: PromptVariable[];
-  model_constraints: {
-    compatible_models: string[];
-    min_context_window: number;
-    required_capabilities: string[];
-  };
-  metadata: {
-    author: string;
-    created_at: string;
-    description: string;
-    tags: string[];
-  };
-}
-
-interface PromptVariable {
-  name: string;
-  type: "string" | "number" | "json" | "context_ref";
-  required: boolean;
-  default?: unknown;
-  max_tokens?: number;
-}
-
-interface PromptVersion {
-  version_id: string;
-  prompt_id: string;
-  version: string;
-  status: "draft" | "review" | "staging" | "canary" | "stable" | "deprecated" | "rolled_back";
-  content_hash: string;
-  parent_version?: string;
-  eval_results?: EvalResult[];
-  rollout_config?: PromptRolloutConfig;
-}
-```
-
-## 16.3 Release and Grayscale
-
-```typescript
-interface PromptRolloutConfig {
-  strategy: "direct" | "canary" | "staged" | "shadow";
-  canary_percentage: number;
-  promotion_criteria: {
-    min_requests: number;
-    max_error_rate: number;
-    min_quality_score: number;
-    observation_window_minutes: number;
-  };
-  auto_rollback_on: string[];
-}
-```
-
-**Release process**:
-
-```text
-draft → [review] → staging → [eval gate §17] → canary(5%) → canary(20%) → stable
-                                                    │
-                                                    ▼ (Quality not met)
-                                               rolled_back
-```
-
-* staging phase must pass eval gate (see §17)
-* canary phase runs in parallel with stable version, split by percentage
-* During canary, continuously compare quality metrics of old and new versions
-* At any time, you can manually or automatically rollback to the previous stable version
-
-## 16.4 Prompt Bundle Management
-
-An OAPEFLIR cycle involves Prompts of multiple stages, and they must be managed as an **atomic bundle**:
-
-```typescript
-interface PromptBundle {
-  bundle_id: string;
-  version: string;
-  prompts: Record<string, string>;
-  compatibility_matrix: {
-    model_refs: string[];
-    pack_ids: string[];
-  };
-}
-```
-
-**Constraint**: All stages within the same workflow run use the same PromptBundle version, no switching mid-way.
-
-## 16.5 Prompt Security and Injection Defense
-
-### 16.5.1 Prompt Injection Defense Architecture
-
-```text
-User input / External data
-    │
-    ▼
-┌──────────────────┐
-│ Input Sanitizer  │  Regex + blacklist + Unicode normalization
-├──────────────────┤
-│ Injection        │  Classifier-based injection pattern detection
-│ Detector (ML)    │  (system/user boundary confusion, instruction override, role playing)
-├──────────────────┤
-│ Prompt Assembler │  Strict separation of system/user/assistant segments
-│                  │  User content only injected into user segment, never into system segment
-├──────────────────┤
-│ Output Validator │  Detect exfiltration attempts in LLM output
-│                  │  (URL injection, Markdown link leakage, covert instruction return)
-└──────────────────┘
-```
-### 16.5.2 Defense Strategy
-| Hierarchy | Strategy | Description |
-|------|------|------|
-| Input layer | Variable Escaping | All user input variables are escaped in XML/Markdown before injection and control characters are eliminated |
-| Input layer | Boundary Markers | The system and user segments are separated by the LLM provider's native role and do not rely on text markers |
-| Detection Layer | Injection Classifier | Lightweight classification model scores injection probability for each user input, > 0.7 rejection |
-| Detection layer | Canary Token | Embed the canary token in the system prompt. If the LLM output contains the token, it is determined to be injection |
-| Output layer | Output Sanitizer | LLM output undergoes URL/link filtering, PII detection, command pattern detection |
-| Audit layer | Full Prompt Logging | The complete prompt of each rendering is saved as artifact (optional to turn off above confidential level) |
-### 16.5.3 Basic principles 
-
-* Prompt content is not exposed to end users (to prevent information leakage) 
-* Prompt variables must be sanitized before injection 
-* Variables containing secret/PII are redactioned in the artifact 
-* Historical assistant messages in multi-round conversations cannot be tampered with by the user 
-* Return values from external tools are considered untrusted input and are also sanitized before injection. 
-
---- 
-
-# 17. Model evaluation and quality access control architecture 
-
-> An Agent platform without evaluation capabilities is equivalent to "streaking online". v2.1 Defines a quality gating framework for model/prompt changes. 
-
-## 17.1 Evaluation levels
-| Level | Trigger timing | Assessment content | Blocking ability |
-|------|---------|---------|---------|
-| Offline evaluation | Prompt/Model change submission | Standard eval dataset regression testing | Block release |
-| Grayscale evaluation | canary period | real-time quality comparison of old and new versions | automatic rollback |
-| Online monitoring | Continuous operation | Quality index drift detection | Trigger alarm/downgrade |
-
-## 17.2 Eval Dataset Management
-
-```typescript
-interface EvalDataset {
-  dataset_id: string;
-  name: string;
-  version: string;
-  stage: "observe" | "assess" | "plan" | "feedback";
-  cases: EvalCase[];
-  created_by: string;
-  pack_id?: string;
-}
-
-interface EvalCase {
-  case_id: string;
-  input: Record<string, unknown>;
-  expected_output?: unknown;
-  quality_criteria: QualityCriterion[];
-  tags: string[];
-  priority: "critical" | "standard";
-}
-
-interface QualityCriterion {
-  type: "exact_match" | "contains" | "json_schema" | "semantic_similarity" | "llm_judge" | "custom_function";
-  config: Record<string, unknown>;
-  weight: number;
-  threshold: number;
-}
-```
-
-## 17.3 Quality Gate Rules
-
-```typescript
-interface QualityGate {
-  gate_id: string;
-  name: string;
-  applies_to: "prompt_change" | "model_change" | "pack_change";
-  rules: QualityGateRule[];
-  enforcement: "blocking" | "warning";
-}
-
-interface QualityGateRule {
-  metric: string;
-  operator: ">=" | "<=" | "within";
-  threshold: number;
-  comparison: "absolute" | "relative_to_baseline";
-}
-```
-**Built-in access control rules**:
-| Rules | Conditions | Description |
-|------|------|------|
-| regression_pass_rate | >= 95% | eval dataset pass rate is not lower than baseline |
-| critical_case_pass | == 100% | All cases marked critical must pass |
-| latency_regression | <= 120% of baseline | Latency does not exceed 120% of baseline |
-| cost_regression | <= 150% of baseline | Cost does not exceed 150% of baseline |
-| quality_score_delta | >= -0.05 | Quality score is no less than 5 percentage points below baseline |
-
-## 17.4 Online Quality Monitoring
-
-```typescript
-interface QualitySignal {
-  signal_type: "output_parseable" | "output_relevant" | "output_safe" | "user_feedback" | "downstream_success";
-  value: number;
-  timestamp: string;
-}
-```
-
-**Drift Detection**:
-
-* Sliding window (1h/24h) statistics quality distribution
-* When 24h window quality average drops > 10%, trigger SEV3 alarm
-* When 1h window quality average drops > 20%, trigger automatic downgrade to supervised mode
-* All quality signals are written to P5 Evidence Plane to support pattern extraction in the Learn stage
-
-## 17.5 LLM-as-Judge
-
-For quality scenarios that cannot be judged by rules (such as "whether the answer is reasonable"), use LLM-as-Judge:
-
-* Judge LLM and the evaluated LLM must come from different providers (to avoid bias)
-* Judge results are cached (same input+output not re-evaluated)
-* Judge calls themselves have cost budget limits (see §18)
-* Judge evaluation results are included in quality gates but have lower weight than deterministic rules
-
----
-
-# 18. Cost Management and Token Metering Architecture
-
-> LLM call costs dominate platform OPEX. v2.1 defines per-tenant metering, budget enforcement, and chargeback mechanisms.
-
-## 18.1 Metering Model
-
-```typescript
-interface UsageRecord {
-  record_id: string;
-  timestamp: string;
-  tenant_id: string;
-  workflow_run_id: string;
-  step_id: string;
-  provider: string;
-  model: string;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  cost: number;
-  currency: string;
-  cached: boolean;
-}
-```
-**Metering point**: ModelGateway writes UsageRecord synchronously after each LLM call is completed as the only data source for billing. 
-
-## 18.2 Budget Hierarchy
-| Hierarchy | Budget subject | Control granularity | Over-budget behavior |
-|------|---------|---------|-----------|
-| Platform level | Entire platform | Monthly total | SEV1 alerts + new workflow pauses |
-| Tenant level | Single tenant | Monthly quota | Alarms + queuing slowdown of this tenant workflow |
-| Pack level | Single Business Pack | Single workflow limit | This workflow is downgraded to supervised |
-| Step level | Single step | Single step token/cost upper limit | step abort + replan |
-
-```typescript
-interface BudgetPolicy {
-  scope: "platform" | "tenant" | "pack" | "step";
-  scope_id: string;
-  period: "monthly" | "weekly" | "per_run";
-  limit_tokens?: number;
-  limit_cost?: number;
-  warning_threshold: number;
-  actions_on_warning: string[];
-  actions_on_breach: string[];
-}
-```
-
-## 18.3 Budget Enforcement
-
-```text
-ModelRequest
-  → ModelGateway budget check
-    → Query current period usage
-    → Estimate this call cost (based on prompt_tokens + estimated completion)
-    → If used + estimated > limit × warning_threshold → Send alarm
-    → If used + estimated > limit → Reject request / degradation strategy
-  → Execute LLM call
-  → Update usage
-```
-## 18.4 Chargeback Report 
-
-* Aggregated by tenant / pack / model / provider dimensions 
-* Daily + monthly reports automatically generated 
-* Support export to CSV/JSON 
-* Integrated with Admin API: `/api/v1/admin/cost-reports` 
-
-## 18.5 Cost Optimization Strategy
-| Strategy | Description | Applicable Scenarios |
-|------|------|---------|
-| Prompt cache | Semantically similar request reuse (see §15.5) | read-only / low change scenarios |
-| Token budget clipping | Automatic compression of memory/knowledge input when context is too long | Large context tasks |
-| Model downgrade | Automatically select low-cost model for low-risk tasks | background queue |
-| Batch merge | Merge multiple similar steps into one LLM call | Batch analysis scenario |
-
----
-
-# 19. Inter-Agent Delegation and Collaboration Architecture
-
-> Complex enterprise tasks require multiple Agent collaboration. v2.1 defines inter-Agent delegation protocol, context transfer, and authorization model.
-
-## 19.1 Delegation Model
-
-```typescript
-interface DelegationRequest {
-  delegation_id: string;
-  parent_workflow_run_id: string;
-  parent_step_id: string;
-  target_pack_id: string;
-  task_description: string;
-  context: DelegationContext;
-  constraints: DelegationConstraints;
-  callback: DelegationCallback;
-}
-
-interface DelegationContext {
-  shared_knowledge_refs: string[];
-  shared_artifact_refs: string[];
-  parent_observation_summary: string;
-  data_classification: string;
-  max_context_tokens: number;
-}
-
-interface DelegationConstraints {
-  max_steps: number;
-  max_duration_ms: number;
-  max_cost: number;
-  allowed_tools: string[];
-  risk_ceiling: "low" | "medium" | "high";
-  requires_parent_approval_for_high_risk: boolean;
-}
-
-interface DelegationCallback {
-  on_complete: "resume_parent" | "notify_parent";
-  on_failure: "escalate_to_parent" | "abort_parent" | "retry";
-  timeout_action: "abort" | "escalate";
-}
-```
-
-## 19.2 Delegation Topology Constraints
-
-* **Depth limit**: Maximum delegation chain depth = 3 (prevent infinite recursion)
-* **Loop detection**: The same pack_id cannot appear twice in the same delegation chain
-* **Isolation**: Child workflow has independent lease, independent checkpoint, does not share state with parent workflow
-* **Budget inheritance**: Child workflow budget is deducted from parent workflow's remaining budget
-* **Permission contraction**: Child workflow permissions ≤ parent workflow permissions (principle of least privilege)
-
-## 19.3 Context Transfer Security
-
-* Parent → Child: Only pass references declared in DelegationContext, not raw data
-* Child → Parent: Only return through DelegationResult, containing summary + artifact_refs
-* Cross-tenant delegation: prohibited by default, requires P2 explicit authorization
-* Data classification upward compatibility: child workflow output data classification ≥ input data classification
-
-```typescript
-interface DelegationResult {
-  delegation_id: string;
-  status: "completed" | "failed" | "timeout" | "cancelled";
-  summary: string;
-  artifact_refs: string[];
-  usage: TokenUsage;
-  duration_ms: number;
-}
-```
-## 19.4 Collaboration mode
-| Mode | Description | Applicable Scenarios |
-|------|------|---------|
-| Serial delegation | A delegates to B and continues after B completes | Simple subtask |
-| Parallel fan-out | A simultaneously delegates B1/B2/B3, aggregated results | Parallel analysis |
-| Pipeline | A → B → C, chain transfer | Multi-stage processing |
-| Negotiation | Alternate execution of A and B, shared context | Code review + fix |
---- 
-
-# 20. Long-term tasks and Workflow dormant architecture 
-
-> In enterprise scenarios, workflow may last for hours or even days (waiting for approval and callbacks from external systems). v2.1 defines sleep/wake mechanism. 
-
-## 20.1 Classification of long-term tasks
-| Type | Duration | Reason | Example |
-|------|---------|------|------|
-| Approval waiting | Minutes → Days | HumanWait executor blocking | High-risk operation approval |
-| External callback | Minute → hour | Wait for the third-party system to complete | CI/CD build completion callback |
-| Schedule scheduling | Determine time | Wait for a specific time window | Execute during non-working hours |
-| Multi-stage | Day → Week | Multi-stage approval of business process | Release approval chain |
-
-## 20.2 Workflow Hibernation Mechanism
-
-```typescript
-interface WorkflowHibernation {
-  workflow_run_id: string;
-  hibernated_at: string;
-  reason: "awaiting_approval" | "awaiting_callback" | "scheduled_wake" | "budget_exhausted" | "manual_pause";
-  wake_conditions: WakeCondition[];
-  checkpoint_ref: string;
-  ttl: string;
-  timeout_action: "abort" | "escalate" | "retry";
-}
-
-interface WakeCondition {
-  type: "approval_received" | "callback_received" | "timer_expired" | "event_matched" | "manual_resume";
-  config: Record<string, unknown>;
-}
-```
-
-**Hibernation Flow**:
-
-1. step enters waiting state → create complete checkpoint
-2. release worker lease (worker no longer occupied)
-3. create HibernationRecord, register wake_conditions
-4. set workflow_run status to `hibernated`
-5. persist all memory context to P5
-
-**Wake-up Flow**:
-
-1. wake_condition satisfied → WakeEngine triggers
-2. restore workflow context from checkpoint
-3. reapply for worker lease
-4. continue execution from breakpoint
-
-## 20.3 Durable Timer
-
-```typescript
-interface DurableTimer {
-  timer_id: string;
-  workflow_run_id: string;
-  step_id: string;
-  fire_at: string;
-  fired: boolean;
-  created_at: string;
-}
-```
-* The timer is persisted to the database and does not rely on process memory 
-* TimerPoller (similar to outbox poller) periodically scans expiration timers 
-* The timer is not lost after the process is restarted 
-* timer accuracy: ± 30s (non-real-time system, does not pursue millisecond level) 
-
-## 20.4 TTL and timeout protection 
-
-* Each hibernation must have a TTL (default 7 days, maximum 30 days) 
-* Execute timeout_action after TTL expires 
-* Super long workflow sends `workflow.still_hibernated` health event every 24h 
-* hibernation exceeding 50% of TTL triggers reminder notification 
-
-## 20.5 Cross-deployment security 
-
-* checkpoint format is backward compatible (versioned schema) 
-* When the platform is upgraded and deployed, hibernated workflow will not be affected 
-* If the checkpoint schema is incompatible, the workflow enters the `recovery_needed` state and is processed by Recovery Worker 
-
---- 
-
-# 21. Human-machine collaboration model architecture 
-
-> v2.0 only has HumanWait executor and basic approval gate. v2.1 defines the complete HITL mode directory. 
-
-## 21.1 HITL mode directory
-| Mode | Description | Trigger Conditions | Timeout Behavior |
-|------|------|---------|---------|
-| Single person approval | One approver decision | risk_level ≥ high | Timeout → Upgrade |
-| Multi-party approval | Multiple people independent approval, voting decisions | critical operations / cross-domain impact | timeout → automatic rejection |
-| Delegate approval | The approver can be transferred to others | The original approver is not online | TTL reset after delegation |
-| Iteration feedback | People give modification opinions, Agent redo | The output is not satisfactory | Terminate after the maximum number of iterations |
-| Collaborative editing | People and Agents alternately modify the same artifact | Code/document collaboration | No timeout, manual end |
-| Informed confirmation | Notification only, no approval required | Low risk side effect | Automatically passed |
-| Circuit break manual | Switch to manual decision-making when LLM is unavailable | D4 degraded mode (see §15.5) | Manual timeout → abort |
-
-## 21.2 Approval Flow Engine
-
-```typescript
-interface ApprovalFlow {
-  flow_id: string;
-  type: "single" | "multi_party" | "delegated" | "sequential_chain";
-  approvers: ApproverRule[];
-  quorum?: { min_approvals: number; min_rejections_to_deny: number };
-  timeout: ApprovalTimeout;
-  escalation: EscalationRule;
-}
-
-interface ApproverRule {
-  type: "user" | "role" | "team" | "on_call";
-  identifier: string;
-  can_delegate: boolean;
-}
-
-interface ApprovalTimeout {
-  warn_after_ms: number;
-  escalate_after_ms: number;
-  auto_action_after_ms: number;
-  auto_action: "approve" | "deny" | "escalate";
-}
-
-interface EscalationRule {
-  escalate_to: ApproverRule;
-  max_escalation_depth: number;
-  notification_channels: string[];
-}
-```
-
-## 21.3 Iterative Feedback Loop
-
-```typescript
-interface FeedbackLoop {
-  loop_id: string;
-  workflow_run_id: string;
-  step_id: string;
-  max_iterations: number;
-  current_iteration: number;
-  human_feedback: HumanFeedback[];
-}
-
-interface HumanFeedback {
-  iteration: number;
-  feedback_type: "approve" | "reject_with_guidance" | "modify_directly";
-  guidance?: string;
-  modified_artifact_ref?: string;
-  timestamp: string;
-  principal: string;
-}
-```
-**Process**: Agent output → Human review → Give guidance → Agent replan + redo → Loop until approve or max_iterations is reached. 
-
-## 21.4 Notifications and Channels
-| Channel | Purpose | Integration method |
-|------|------|---------|
-| Platform console | Default approval interface | Built-in |
-| Webhooks | External system integration | Outbound HTTP |
-| Email | Asynchronous notification | SMTP adapter |
-| IM (Slack/Feishu/Qiwei) | Instant notification + quick approval | Webhook + callback API |
---- 
-
-# 22. SDK and developer experience architecture 
-
-> A platform without SDK cannot be adopted by business teams. v2.1 defines the Pack development toolchain and local development experience. 
-
-## 22.1 SDK layering
-| SDK Layer | Role Oriented | Features |
-|--------|---------|------|
-| Pack SDK | Business Developer | Create/Test/Publish Business Pack |
-| Plugin SDK | Plug-in developer | Development tool / adapter / retriever / evaluator |
-| Client SDK | External integrator | Calling platform Public API |
-| Admin SDK | Operation and maintenance team | Call Admin API, scripted operation and maintenance |
-
-## 22.2 Pack SDK Core Capabilities
-
-```typescript
-interface PackSDK {
-  scaffold(config: ScaffoldConfig): Promise<void>;
-  validate(manifest: BusinessPackManifest): ValidationResult;
-  test(options: TestOptions): Promise<TestReport>;
-  publish(options: PublishOptions): Promise<PublishResult>;
-}
-
-interface ScaffoldConfig {
-  pack_id: string;
-  name: string;
-  template: "minimal" | "standard" | "full";
-  tools: string[];
-  risk_level: "low" | "medium" | "high";
-}
-
-interface TestOptions {
-  mode: "unit" | "integration" | "simulation";
-  mock_llm: boolean;
-  eval_dataset?: string;
-  record_artifacts: boolean;
-}
-```
-## 22.3 Local development environment 
-
-* `agent-platform dev` — launch the local platform (SQLite + in-process workers) 
-* `agent-platform pack create` — Create Pack scaffolding 
-* `agent-platform pack test` — run Pack test (mock LLM + mock tools) 
-* `agent-platform pack validate` — Verify Manifest compliance 
-* `agent-platform pack publish --target staging` — publish to staging environment 
-
-**Local emulator**: 
-
-* Built-in MockModelGateway: returns preconfigured LLM responses for deterministic testing 
-* Built-in MockToolExecutor: simulate tool execution results 
-* Test recording/playback: record real LLM calls as fixtures and playback subsequent tests (no token consumption) 
-
-## 22.4 Plugin life cycle
-| Phase | Description | Requirements |
-|------|------|------|
-| Development | Local development + Plugin SDK | Must declare PluginManifest |
-| Test | Unit test + sandbox integration test | Coverage ≥ 80% |
-| Certification | Security Scan + Competency Review | Pass Plugin Security Checklist |
-| Publish | Register to Plugin Registry | Version semantics (semver) |
-| Run | Execute subject to sandbox constraints | Resource limits + capability whitelist |
-| Deprecated | Mark deprecated + Migration Guidelines | Maintenance for at least 3 months |
-
-```typescript
-interface PluginManifest {
-  plugin_id: string;
-  name: string;
-  version: string;
-  type: "tool" | "adapter" | "retriever" | "evaluator" | "presenter";
-  capabilities_required: string[];
-  resource_limits: { max_memory_mb: number; max_cpu_ms: number; max_duration_ms: number };
-  dependencies: string[];
-  security: { sandbox_tier: string; egress_domains: string[] };
-}
-```
-## 22.5 Documentation and Examples 
-
-* Each SDK must have an API reference (automatically generated from TypeScript types) 
-* Provide 3 standard example Packs: simple-qa / coding-fix / operations-resolve 
-* Provide Playground environment: online trial Pack development (optional, Phase 4) 
-
---- 
-
-# 23. Compliance and Data Governance Structure 
-
-> Enterprise-grade platforms must meet compliance requirements. v2.1 defines GDPR/SOC2 related data governance architecture. 
-
-## 23.1 Data life cycle management
-| Data type | Retention policy | Deletion method | Description |
-|---------|---------|---------|------|
-| Truth table | According to business needs | Logical deletion + regular physical cleanup | Control the truth |
-| Event log | Default 365 days | Delete after archiving | append-only, archive to cold storage |
-| Audit record | Default 3 years | Cannot be deleted (compliance requirements) | Legal retention period |
-| Artifact | Default 90 days | Physical deletion | Large objects |
-| Memory | Automatic cleaning according to TTL | Physical deletion | Running short-term data |
-| Knowledge | Differentiation by trust level | Tombstone | Long-term sharing of data |
-| LLM call record | Default 90 days | Physical deletion | Contains prompt/completion |
-| Cost record | Default 3 years | Archive | Financial audit |
-
-## 23.2 Right-to-Erasure（GDPR Art.17）
-
-append-only event log has an architectural conflict with right-to-erasure. Solution:
-
-**Crypto-shredding**:
-
-1. Each tenant's PII data is stored encrypted with an independent Data Encryption Key (DEK)
-2. DEK is managed by the key management service, associated with tenant_id
-3. When a deletion request arrives, destroy the tenant's DEK
-4. Encrypted data in the event log becomes indecipherable (logically equivalent to deletion)
-5. Audit records retain the deletion operation itself
-
-```typescript
-interface ErasureRequest {
-  request_id: string;
-  tenant_id: string;
-  subject_id: string;
-  reason: "gdpr_request" | "account_deletion" | "legal_requirement";
-  scope: "all_data" | "pii_only";
-  requested_by: Principal;
-  deadline: string;
-}
-
-interface ErasureReport {
-  request_id: string;
-  status: "completed" | "partial" | "failed";
-  affected_records: number;
-  dek_destroyed: boolean;
-  retained_audit_records: number;
-  completed_at: string;
-}
-```
-## 23.3 Data residency 
-
-* Each tenant can configure data_residency constraints (such as "CN" / "EU" / "US") 
-* LLM calls must be routed to a provider that satisfies data residency (see §15.3 data_residency routing) 
-* Storage engine is sharded by region (supported by Phase S3+) 
-* Cross-region data transmission is prohibited by default and requires explicit authorization. 
-
-## 23.4 SOC2 control mapping
-| SOC2 control domain | Platform corresponding capabilities | Source of evidence |
-|------------|-------------|---------|
-| CC6.1 Logical Access | §11 Unified Identity and Authorization | PolicyOutcome + audit record |
-| CC6.3 Encryption | §23.5 Encryption Architecture | key rotation log |
-| CC7.2 Monitoring | §12 Abnormal event detection | incident + metrics |
-| CC8.1 Change Management | §24 Configuration Governance + §16 Prompt Versioning | config_version + prompt_version |
-| CC9.1 Risk Mitigation | §10 Risk Scoring Engine | RiskDecision + evidence bundle |
-| A1.2 Disaster Tolerance | §31 Disaster Tolerance Architecture | DR Drill Report |
-## 23.5 Encryption Architecture
-| Level | Strategy | Implementation |
-|------|------|------|
-| Transport encryption | TLS 1.3 mandatory | All HTTP/gRPC/WebSocket connections |
-| Storage encryption | AES-256 | Database-level TDE or application-level field encryption |
-| PII field encryption | Per-tenant DEK | Support crypto-shredding |
-| Secret storage | Vault integration | Reference access, TTL ≤ 300s |
-| Key rotation | Automatic 90 days | DEK rotation does not affect historical data decryption (envelope encryption) |
-
-## 23.6 Data Lineage
-
-Every decision and output can be traced to its data source:
-
-```text
-Knowledge chunk → Observe (UnifiedObservation)
-  → Assess (UnifiedAssessment) → Plan (ExecutionPlan)
-    → Execute (ExecutionReceipt) → Side Effect
-```
-* Build a bloodline chain through trace_id + evidence_refs 
-* Supports forward query (which decisions a certain knowledge affects) and reverse query (which inputs a certain side effect relies on) 
-* Bloodline data is written into P5 Evidence Plane, no separate storage is created 
-
---- 
 
 # 24. Configure governance structure 
 
@@ -2346,40 +1203,92 @@ High-risk configuration changes (such as timeout, current limiting threshold) su
 * Configuration change audit, record who / when / what / why 
 * Changes to key configurations (sandbox tier, egress allowlist) must be approved by P2 
 
---- 
-
-# 25. Data and state consistency architecture 
-
-## 25.1 Consistency Principle 
-
-We do not pursue global strong consistency, but pursue: truth state transaction consistency · event append same transaction · projection final consistency · replay rebuildable · side effect auditable. 
-
-## 25.2 Truth Table + Event Log dual model 
-
-* The truth table saves the current state (read optimization) 
-* Event log saves historical changes (audit/playback optimization) 
-* Both are updated in the same transaction, ensuring consistency 
-
-## 25.3 CAS + Lease + Fencing 
-
-All critical updates must be based on: expected status CAS · active lease · fencing token. This is a hard constraint on execution layer consistency. 
-
-## 25.4 Projection must be rebuildable 
-
-All projections must be: idempotent · replay-safe · event_id deduplication · support rebuild · not reflect the truth. 
-
-## 25.5 State & Evidence Layering
-| Layers | Content | Purpose |
-|----|------|------|
-| Truth | Current control truth | Status judgment, concurrency control, scheduling promotion |
-| Event | Historical change track | Timeline reconstruction, playback, fault explanation |
-| Projection | Query model | Console, report, approval queue |
-| Audit | Audit records | Who did what to what |
-| Artifact | Large object content | observation/plan/log/evidence/screenshot |
-| Checkpoint | Execute recovery point | Breakpoint recovery, repair, replay starting point |
-
 ---
 
+# 25. Data and State Consistency Architecture
+
+The platform's state is divided into five layers, serving control, execution, context, knowledge, and evidence from top to bottom. Each layer differs in isolation, lifecycle, and consistency requirements:
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  L1  Control State    (Policy/Approval/Budget)       │  §11-§13, §45.20
+│      Lifecycle: cross-run · strong consistency ·     │
+│      changes require approval                        │
+├─────────────────────────────────────────────────────┤
+│  L2  Execution State  (TaskRun/Step/Checkpoint)      │  §14-§16, §45.15
+│      Lifecycle: single run · transactional           │
+│      consistency · checkpoint-recoverable            │
+├─────────────────────────────────────────────────────┤
+│  L3  Context State    (Session/Turn/Variables)       │  §45.5 ContextManager
+│      Lifecycle: single session · eventually          │
+│      consistent · snapshotable                       │
+├─────────────────────────────────────────────────────┤
+│  L4  Knowledge State  (Working/Long-term/Shared)     │  §45.16 Memory Namespace
+│      Lifecycle: cross-run/cross-agent · async        │
+│      sync · promotable                               │
+├─────────────────────────────────────────────────────┤
+│  L5  Evidence State   (Event/Trace/Metric/Audit)     │  §25-§29, §58-§59
+│      Lifecycle: permanently append-only · immutable  │
+│      · replayable and rebuildable                    │
+└─────────────────────────────────────────────────────┘
+```
+
+Key invariants across the five layers: every L2 state change must synchronously append an L5 event; L3→L4 promotion is adjudicated by the Evaluator (§45.16); L1 changes must be approved through P2 before they can affect L2/L3.
+
+## 25.1 Consistency Principles
+
+No pursuit of global strong consistency. Instead, the goals are: truth state transactional consistency · event append in the same transaction · projection eventual consistency · replay rebuildability · side effect auditability.
+
+## 25.2 Truth Table + Event Log Dual Model
+
+- The truth table stores current state (read-optimized)
+- The event log stores historical changes (audit/replay-optimized)
+- Both are updated in the same transaction to guarantee consistency
+
+## 25.3 CAS + Lease + Fencing
+
+All critical updates must be based on: expected status CAS · active lease · fencing token. This is the hard constraint for execution-layer consistency.
+
+## 25.4 Projections Must Be Rebuildable
+
+All projections must be: idempotent · replay-safe · event_id deduplicated · support rebuild · never write back to truth.
+
+## 25.5 State & Evidence Layering
+
+| Layer      | Content                   | Purpose                                                     |
+| ---------- | ------------------------- | ----------------------------------------------------------- |
+| Truth      | Current control truth     | State judgment, concurrency control, scheduling advancement |
+| Event      | Historical change trail   | Timeline reconstruction, replay, fault explanation          |
+| Projection | Query model               | Console, reports, approval queues                           |
+| Audit      | Audit records             | Who did what to what                                        |
+| Artifact   | Large object content      | observation/plan/log/evidence/screenshot                    |
+| Checkpoint | Execution recovery points | Breakpoint recovery, repair, replay starting point          |
+
+## 25.6 Consistency Model and Guarantee Levels
+
+| Operation                | Consistency Guarantee                  | Implementation Mechanism                            |
+| ------------------------ | -------------------------------------- | --------------------------------------------------- |
+| Truth table write        | Strong (single-partition linearizable) | CAS + fencing token + same-transaction event append |
+| Event append             | Strong (same transaction as truth)     | outbox pattern (§7.3)                               |
+| Projection read          | Eventual (lag ≤ 5s SLO, §27)           | Async projector + event_id dedup                    |
+| Cross-tenant query       | Eventual                               | Projection aggregation, no cross-truth transactions |
+| Cross-region replication | Eventual (lag ≤ 30s, §52)              | Async replication + conflict resolution             |
+
+**Read-your-own-writes guarantee**: After writing to the truth table, subsequent read requests from the same principal read directly from the truth table via a read-after-write token, without depending on projections. The projection path does not guarantee read-your-own-writes.
+
+**Projection eventual consistency window**: Normal operation lag ≤ 5s; under event bus backpressure, lag can reach 60s (triggers Level 2 alert, §9.2); during projection rebuild, specific projections are temporarily unavailable, and the Console displays a stale marker.
+
+## 25.7 Schema Migration Strategy
+
+71 logical tables (§26.3) require versioned schema evolution:
+
+- **Backward-compatible changes** (new columns, new indexes): online migration, zero downtime
+- **Breaking changes** (column renames, type changes, table splits): dual-write window (old schema + new schema written simultaneously → switch read path → stop writing old schema → cleanup)
+- **Migration version tracking**: each migration script has a monotonic version, tracked via the `schema_migrations` table for executed versions
+- **Rollback capability**: each migration must have a corresponding rollback script
+- **Storage evolution alignment**: schema migration strategy aligns with the storage evolution path (§26.2 E1→E4) — E1/E2 use SQLite migrations, E3/E4 use PostgreSQL migrations
+
+---
 # 26. Storage Architecture
 
 > v1.2 directly gave 44 PostgreSQL tables. v2.0 first defines the **storage abstraction layer**, then gives the **gradual evolution path**.
@@ -2454,7 +1363,7 @@ agent_version · behavior_fingerprint · cost_attribution · stage_rationale · 
 
 **Total**: 71 tables (v1.2 baseline 44 tables + v2.1-v2.6 added 27 tables), when implemented **tables are built in stages according to Group**, and it is not required to have them all in place at once. 
 
---- 
+---
 
 # 27. Performance architecture and SLO 
 
@@ -2531,7 +1440,7 @@ LLM calls typically dominate end-to-end latency. Must be modeled separately:
 | Total LLM calls | < 35s | timeout if exceeded |
 **LLM latency is not included in the platform's own SLO**, but requires independent monitoring and alerting. The ModelGateway degradation policy is triggered when LLM P99 latency > 200% of baseline (see §15.4). 
 
---- 
+---
 
 # 28. Event / Projection / Incident / DLQ model 
 
@@ -2559,7 +1468,7 @@ Incidents must be linked to: affected workflows / executions / workers / rollout
 
 DLQ must have: category · reason · retry_count · first_failed_at · last_failed_at · operator_action_log · reopen_status 
 
---- 
+---
 
 # 29. Knowledge / Memory / Artifact / Learning Boundary 
 
@@ -2647,7 +1556,7 @@ operations · growth write actions · production release · finance-like actions
 | Security certification | Automatic security scan + manual review (high authority plugin) |
 | Deprecation policy | deprecated tag → 3 month migration period → archived |
 | Compatibility | Each plugin declares min_platform_version |
---- 
+---
 
 # 31. Disaster recovery and high availability architecture 
 
@@ -2686,7 +1595,7 @@ operations · growth write actions · production release · finance-like actions
 
 # 32. Deployment Architecture
 
-> v1.2 directly gave 18 microservices. v2.0 adopts **monolith-first, gradual splitting** strategy.
+> Adopts a **monolith-first, progressive decomposition** strategy.
 
 ## 32.1 Deployment Evolution
 
@@ -2694,7 +1603,7 @@ operations · growth write actions · production release · finance-like actions
 
 ```text
 ┌─────────────────────────────────────────┐
-│            Agent Platform (single process)        │
+│          Agent Platform (single process)  │
 │                                          │
 │  P1 Interface  ──→  P2 Control           │
 │       │               │                  │
@@ -2710,7 +1619,7 @@ operations · growth write actions · production release · finance-like actions
 └─────────────────────────────────────────┘
 ```
 
-Applicable: Development, testing, small-scale production (≤10 concurrency).
+Suitable for: development, testing, small-scale production (≤10 concurrency).
 
 ### Phase D2: Worker Separation
 
@@ -2724,7 +1633,7 @@ Applicable: Development, testing, small-scale production (≤10 concurrency).
    [SQLite / PG]  [Redis]
 ```
 
-Applicable: Medium-scale production (≤50 concurrency), worker can scale horizontally.
+Suitable for: medium-scale production (≤50 concurrency), workers can scale horizontally.
 
 ### Phase D3: Plane Separation
 
@@ -2740,1067 +1649,987 @@ Applicable: Medium-scale production (≤50 concurrency), worker can scale horizo
               │ [PostgreSQL] │
               └─────────────┘
 ```
-Applicable to: large-scale production (≤500 concurrency), each plane can be expanded independently. 
 
-## 32.2 Environment Division 
+Suitable for: large-scale production (≤500 concurrency), each plane scales independently.
 
-dev · test · staging · prod 
+## 32.2 Environment Partitioning
 
-## 32.3 Resource Pool 
+| Environment | Purpose                | Deployment Form             | Data Isolation                        |
+| ----------- | ---------------------- | --------------------------- | ------------------------------------- |
+| dev         | Development & debug    | Local process / Docker      | No isolation, shared dev DB           |
+| test        | Unit/integration test  | CI environment, single node | Test tenant data isolation            |
+| staging     | Pre-release validation | K8s single cluster          | Partitioned by tenant                 |
+| pre-prod    | Pre-release canary     | K8s multi-cluster           | Production-grade isolation            |
+| prod        | Production             | Multi-Region K8s clusters   | Strong tenant isolation + cross-AZ DR |
 
-read-only worker pool · write-enabled worker pool · high-risk isolated pool · browser worker pool · plugin isolated pool 
+**Environment Promotion Strategy**:
 
---- 
-
-# 33. Phased implementation route 
-
-> v1.2 only has "do first/do later". v2.0 adds **acceptance gate**, **dependencies** and **specific deliverables**. 
-
-## Phase 1: Steady State Skeleton (8 weeks) 
-
-### Deliverables 
-
-* truth tables + event log + UoW (Group 1 table) 
-*lease/fencing/CAS 
-* idempotency 
-* artifact ref 
-* policy outcome + decision model (Group 2 table) 
-* Minimal operation and maintenance CLI (doctor/inspect) 
-* Unit test ≥ 80% coverage 
-
-### Acceptance door 
-
-* [ ] workflow_run can be created and promoted stably (no downgrade) 
-* [ ] Automatically reclaim after lease timeout 
-* [ ] CAS conflicts are correctly rejected 
-* [ ] Event append and truth table in the same transaction 
-
-### Dependencies 
-
-No external dependencies. SQLite + Node.js to start. 
-
-## Phase 2: Controlled Automation (8 weeks) 
-
-### Deliverables 
-
-* OAPEFLIR main chain O→A→P→E→F 
-* risk assessment engine 
-* approval gates (basic) 
-* side effect tracking 
-* recovery workers (LeaseReclaimer + StuckRunSweeper) 
-* 2 Business Packs: coding.fix_bug + operations.resolve_incident
-### Acceptance door 
-
-* [ ] Main chain end-to-end running (task creation → execution → completion) 
-* [ ] High-risk step triggers approval blocking 
-* [ ] Resume execution within 30s after worker crashes 
-* [ ] side effect can be queried and audited 
-
-### Dependencies 
-
-Phase 1 was all accepted. 
-
-## Phase 3: Enterprise Reliability (12 weeks) 
-
-### Deliverables 
-
-* OAPEFLIR secondary chain F→L→I→R 
-* circuit breaker + degradation mode switching 
-* backpressure (4 modes) 
-* incident management + DLQ operations 
-* projection rebuild 
-*replay/repair 
-* Configuration management (versioning + grayscale) 
-* Enhanced multi-tenant isolation 
-* PostgreSQL migration (optional) 
-
-### Acceptance door 
-
-* [ ] Automatically downgrade after external dependency circuit breaker, and automatically rebound after recovery. 
-* [ ] DLQ can be queried, retried and closed 
-* [ ] Incident closed-loop disposal chain opened up 
-* [ ] Data is consistent after Projection rebuild 
-* [ ] Configuration changes can be rolled back 
-
-### Dependencies 
-
-All Phase 2 acceptances passed. 
-
-## Phase 4: Scaling (ongoing) 
-
-### Deliverables 
-
-* Worker separated deployment (Phase D2) 
-* More Business Pack 
-* Browser execution deepening 
-* Plug-in ecology 
-* SLO automated monitoring 
-* Compliance export 
-* Disaster recovery drill
-### Acceptance door 
-
-* [ ] 50 concurrent workflow for stable operation 
-* [ ] Multi-tenant isolation verification passed 
-* [ ] Load test complies with §27 SLO 
-* [ ] Disaster recovery drill RTO < 10min 
-
-## Phase 5: Intelligent Interaction and Organizational Governance (12 weeks) 
-
-> Corresponds to v2.3-v2.4 architecture layer. 
-
-### Deliverables 
-
-* Natural language task entrance (§39) + Goal decomposition engine (§40) 
-* Active Agent Framework (§41) + Progressive Autonomy Model (§42) 
-* Unified operation dashboard (§43) + non-technical user experience (§44) 
-* Organizational Hierarchy Model (§46) + Approval Routing (§47) + SSO/SCIM (§48) 
-* Compliance policy engine (§49) + Knowledge domain isolation (§50) + Governance delegation (§51) 
-
-### Acceptance door 
-
-* [ ] Non-technical users can create and manage tasks through natural language 
-* [ ] The goal decomposition engine automatically decomposes business goals into executable task graphs 
-* [ ] Progressive autonomy L0→L3 upgrade path end-to-end verification 
-* [ ] The three-level organizational structure correctly drives approval routing 
-* [ ] SSO/SCIM automatically synchronizes users and deactivates accounts < 5min to take effect 
-* [ ] Zero leakage of knowledge domain isolation, complete controlled sharing audit 
-
-### Dependencies 
-
-All Phase 4 acceptances passed. 
-
-## Phase 6: Scaling and Ecology (12 weeks) 
-
-> Corresponds to v2.5 architecture layer. 
-
-### Deliverables 
-
-* Multi-Region deployment (§52) + Resource competition management (§53) + SLA classification (§54) 
-* Agent Market (§55) + Feedback Improvement Pipeline (§56) + External Integration Framework (§57) 
-
-### Acceptance door 
-
-* [ ] Dual Region Active-Active deployment, single Region failure RTO < 5min 
-* [ ] High-priority tasks are not starved under 1000 concurrent workflows 
-* [ ] SLA Tier P0 tasks 99.9% completed within promised time
- * [ ] At least 20 certified Packs listed on Marketplace 
-* [ ] User feedback → Improvement closed loop < 7 days 
-
-### Dependencies
-
-Phase 5 all acceptance passed.
-
-## Phase 7: Operational Maturity (Continuous)
-
-> Corresponds to v2.6 architecture layer.
-
-### Deliverables
-
-* Explainability (§59) + Emergency braking (§60) + Lifecycle management (§61)
-* Offline/edge deployment (§62) + Behavior drift detection (§63) + Cost optimization (§64)
-* Visual debugger (§65) + Compliance report (§66) + Capacity planning (§67)
-* Multi-modal capabilities (§68) + Platform self-operation and maintenance Agent (§69)
-
-### Acceptance Gate
-
-* [ ] Users can query explanation for any step, L1 delay < 2s
-* [ ] Emergency braking drill: full platform stop < 5s, recovery < 30min
-* [ ] EdgeRuntime data sync zero loss after 24h network disconnection recovery
-* [ ] 100% trigger alarm when behavior drift > 2σ
-* [ ] Compliance report SOC2 Type II control point coverage ≥ 95%
-* [ ] PlatformOps Agent L1 maturity verification passed
-
-### Dependencies
-
-Phase 6 all acceptance passed.
-
-## 33.1 Phase Dependency Diagram
-
-```text
-Phase 1 (Steady State Skeleton)
-    │
-    ▼
-Phase 2 (Controlled Automation)
-    │
-    ▼
-Phase 3 (Enterprise Reliability)
-    │
-    ▼
-Phase 4 (Scaling)
-    │
-    ▼
-Phase 5 (Intelligent Interaction and Organizational Governance)
-    │
-    ▼
-Phase 6 (Scaling and Ecology)
-    │
-    ▼
-Phase 7 (Operational Maturity)
 ```
-Each Phase cannot be skipped and must be accepted in order. 
+dev → test → staging → pre-prod → prod
+```
 
---- 
+- Code merged to main is auto-deployed to dev
+- After PR approval, deployed to test
+- Release tag triggers staging deployment
+- After pre-release validation, manually promote to pre-prod, then confirm prod
 
-# 34. ADR Freeze Recommendation 
+## 32.3 Resource Pool Isolation
 
-The 19 ADRs from v1.2 are recommended to be retained. v2.0 adds 4 new ones, v2.1 adds 9 new ones, v2.2 adds 4 new ones, v2.3 adds 6 new ones, v2.4 adds 6 new ones, v2.5 adds 6 new ones, and v2.6 adds 11 new ones: 
+Worker Pools implement multi-level isolation to ensure that workloads of different risk levels and tenants do not affect each other:
 
-**v1.2 original (19)**: 
-ADR-Platform-Layering · ADR-Control-Runtime-Intelligence-Separation · ADR-Domain-Onboarding-Model · ADR-Memory-vs-Knowledge-Boundary · ADR-Contracts-as-Single-Source · ADR-State-Machine-Canonical-Map · ADR-Governance-as-First-Class-Plane · ADR-Integration-Through-Adapters-Only · ADR-Reliability-Fabric-as-Crosscutting-System · ADR-Risk-Assessment-Mandatory-Before-High-Risk-Actions · ADR-SideEffect-Two-Phase-Commit-Style · ADR-HumanWait-as-Formal-Executor · ADR-Incident-as-First-Class-Object · ADR-Projection-Rebuild-Mandatory · ADR-Platform-Mode-Switching · ADR-DLQ-Handling-Model · ADR-Egress-Control-Mandatory · ADR-Security-Classification-Policy · ADR-Runtime-Checkpoint-Boundaries 
+| Pool Name                 | Purpose                                                     | Isolation Level | Resource Quota                    |
+| ------------------------- | ----------------------------------------------------------- | --------------- | --------------------------------- |
+| read-only worker pool     | Read-only tasks (data queries, report generation)           | Low risk        | Shared with rate limiting         |
+| write-enabled worker pool | Write tasks (state changes, data modifications)             | Medium risk     | Dedicated resource pool           |
+| high-risk isolated pool   | High-risk ops (deletion, bulk modification, external calls) | High risk       | Dedicated cluster + rate limiting |
+| browser worker pool       | Browser automation tasks (web scraping, UI testing)         | Independent     | Dedicated worker process          |
+| plugin isolated pool      | Third-party plugin execution                                | Strongest       | Dedicated Pod/Sandbox             |
 
-**v2.0 new (4)**: 
-* **ADR-Plane-Communication-Contracts** — Communication between the five planes must be through formal contract objects 
-* **ADR-Repository-Abstraction-Layer** — All storage access is through the Repository interface 
-* **ADR-Single-Process-First** — Deployment starts from a single entity, then splits after verification 
-* **ADR-API-Versioning-Strategy** — API versioning and backward compatibility strategy 
+**Isolation Principles**:
 
-**v2.1 new (9 items)**: 
-* **ADR-ModelGateway-As-Single-LLM-Entry** — All LLM calls must go through the ModelGateway, direct calls to the provider SDK are prohibited 
-* **ADR-Prompt-As-Versioned-Resource** — Prompt is not inlined in the code and is managed independently as a versioned resource 
-* **ADR-Quality-Gate-Before-Prompt-Release** — Prompt/Model changes must pass the quality gate 
-* **ADR-Per-Tenant-Cost-Metering** — All LLM costs must be metered per tenant 
-* **ADR-Delegation-Depth-Limit** — Maximum inter-Agent delegation depth = 3 
-* **ADR-Workflow-Hibernation-Model** — Long-waiting workflows must release workers and persist state 
-* **ADR-Crypto-Shredding-For-Erasure** — GDPR erasure via crypto-shredding 
-* **ADR-Pack-Semver-Compatibility** — Pack Manifest API adheres to the semver compatibility contract 
-* **ADR-LLM-Latency-Excluded-From-Platform-SLO** — LLM latency is monitored independently and does not count towards the platform's own SLO 
+- Different pools are **network-isolated**; cross-pool communication requires going through the API Gateway
+- High-risk tenants can request a **dedicated worker pool** with exclusive physical resources
+- Inter-pool scheduling is managed via **priority queues** to prevent low-priority starvation
+- All pools support **horizontal scaling**, auto-scaling based on queue depth
 
-**v2.2 new (4)**: 
-* **ADR-Domain-Descriptor-As-Semantic-Layer** — Each Business Pack must be associated with a DomainDescriptor, domain semantics are not embedded in the Pack code 
-* **ADR-Domain-Risk-Override-Over-Platform-Default** — Domain risk profile override takes precedence over the platform default risk matrix, and the override requires audit reasons 
-* **ADR-Domain-Recipe-As-Onboarding-Accelerator** — New business domains must start from one of four prototype templates, blank access is prohibited 
-* **ADR-Four-Phase-Domain-Onboarding** — Business domain access must pass four-stage access control (Modeling→Development→Authentication→Grayscale), and skipping is not allowed 
-
-**v2.3 new (6)**: 
-* **ADR-NL-Intent-Must-Resolve-To-RequestEnvelope** — Natural language input must be parsed by Intent to generate a structured RequestEnvelope (§5.3). It is prohibited to pass the original text directly to the Agent. 
-* **ADR-Goal-Decomposition-Max-Depth** — The upper limit of the recursion depth of the target decomposition engine = 5. If it exceeds the limit, manual confirmation of the decomposition plan is required. 
-* **ADR-Proactive-Agent-Must-Have-Trigger-Policy** — Proactive Agent must be bound to TriggerPolicy and unconditional polling is prohibited 
-* **ADR-Autonomy-Level-Guarded-Progression** — The progressive autonomy level increases monotonically by default (promotion requires meeting the points threshold + approval); downgrade only occurs under the safety trigger conditions defined in §42.2 (P0 Incident/continuous failure/cost overrun). After the downgrade is executed, manual approval must be confirmed and the reason is recorded. The recovery path follows the promotion rules 
-* **ADR-Dashboard-Metric-Source-Of-Truth** — Unified operation dashboard data must come from State & Evidence Plane, and direct reading of Runtime internal state is prohibited 
-* **ADR-No-Code-UX-Maps-To-Standard-API** — Non-technical UI operations must be mapped to the Standard Public API, bypassing is prohibited 
-
-**v2.4 new (6 items)**: 
-* **ADR-Org-Hierarchy-As-First-Class-Model** — Organizational hierarchy (Enterprise→Business Group→Department→Team) as a first-class model, all resource ownership must be associated with OrgNode 
-* **ADR-Approval-Route-From-Org-Chart** — Approval routes must be dynamically derived from the organizational structure, and hard-coded approver lists are prohibited. 
-* **ADR-SSO-As-Single-Identity-Source** — Enterprise SSO is the only source of identity and the platform does not maintain independent user passwords 
-* **ADR-Compliance-Policy-Inherits-Down** — Compliance policies are inherited downward along the organization tree, and child nodes can only tighten but not relax 
-* **ADR-Knowledge-Boundary-Default-Deny** — The knowledge domain is isolated by default. Cross-department sharing requires explicit authorization and audit log recording. 
-* **ADR-Governance-Delegation-Requires-Scope** — Governance delegation must be limited to scope (resource type + OrgNode scope), global delegation is prohibited
-
-**v2.5 new (6 items)**:
-* **ADR-Multi-Region-Active-Active-With-Home-Region** — Multi-Region uses Active-Active architecture, each tenant has a Home Region, cross-Region data is asynchronously replicated
-* **ADR-Resource-Contention-Fair-Queue** — Large-scale deployment must use weighted fair queue, simple FIFO causing high-priority task starvation is prohibited
-* **ADR-SLA-Tier-Determines-Resource-Allocation** — SLA tier determines resource quota, queue priority, and fault recovery order
-* **ADR-Marketplace-Pack-Must-Pass-Certification** — Pack listed on Agent Marketplace must pass platform certification (security scan + sandbox test + performance baseline)
-* **ADR-Feedback-Loop-Closed-Within-SLA** — User feedback must be closed within SLA-defined time window (collection → analysis → improvement → verification)
-* **ADR-Integration-Through-Unified-Connector** — External system integration must use unified Connector framework, business code is prohibited from directly calling external API
-
-**v2.6 new (11 items)**:
-* **ADR-Every-Decision-Must-Have-Rationale** — OAPEFLIR each stage must generate StageRationale, decision explanation rendered on-demand
-* **ADR-Platform-Panic-Atomic-Halt** — PlatformPanicDirective must atomically stop the entire platform within 5 seconds, recovery requires dual-person approval
-* **ADR-Agent-As-Composite-Entity** — Agent as a composite entity of Pack+Prompt+Model+Trust+Trigger, with AgentVersion as the release and rollback unit
-* **ADR-Edge-Runtime-Risk-Ceiling** — Offline EdgeRuntime only allows executing risk_level ≤ medium actions, high-risk actions wait for connection recovery
-* **ADR-Behavior-Fingerprint-Mandatory** — Each Agent must maintain BehaviorFingerprint, drift detection covers 1h/7d/30d/90d four windows
-* **ADR-Cost-Attribution-Per-Decision** — Cost attribution must be accurate to decision level (single LLM call), optimization suggestions must include quality_risk evaluation
-* **ADR-Workflow-Debug-Session-Isolated** — Debug session runs in isolated sandbox, breakpoint pause does not affect other workflows
-* **ADR-Compliance-Report-Template-Versioned** — Compliance report templates must be versioned, template version is locked when report is generated
-* **ADR-Capacity-Forecast-Drives-Scaling** — Capacity forecast results must be linked to scaling recommendations, scaling recommendations must include cost impact estimation
-* **ADR-Multimodal-Safety-Check-Before-Output** — Multi-modal output (image/audio) must pass content security check before being delivered to user
-* **ADR-PlatformOps-Agent-Read-Only-Default** — Platform self-operation Agent defaults to read-only, production write operations require human approval
+---
+# Part II -- AI Operations Layer (S15-S23)
 
 ---
 
-# 35. Recommended Code Directory
+# 15. LLM Provider Abstraction and Failover Architecture
+
+> Treat LLM as the platform's most critical external dependency. Define provider abstraction, routing strategies, and degradation modes when unavailable.
+
+## 15.1 Design Principles
+
+- The platform does not bind to any single LLM provider
+- All LLM calls go through a unified ModelGateway; upper layers must not call provider SDKs directly
+- ModelGateway is part of X1 Fabric, cross-cutting P3 Orchestration and P4 Execution
+- LLM calls are treated as **high-risk external dependencies** and must have timeout, circuit breaker, fallback, and cost tracking
+
+## 15.2 ModelGateway Interface
+
+ModelGateway is the sole egress for all LLM calls; upper-layer services are prohibited from calling provider SDKs directly.
+
+| Method       | Parameters                                           | Return Value                        | Description                        |
+| ------------ | ---------------------------------------------------- | ----------------------------------- | ---------------------------------- |
+| `chat()`     | modelId, messages[], temperature, maxTokens, timeout | ModelResponse (choices + usage)     | Multi-turn conversation, most common entry |
+| `complete()` | modelId, prompt, temperature, maxTokens, timeout     | ModelResponse (text + usage)        | Single completion, suited for generation |
+| `embed()`    | modelId, input (string \| string[]), timeout         | EmbeddingResponse (vectors + usage) | Vectorization for retrieval/similarity |
+
+ModelResponse uniformly contains: `requestId`, `model`, `choices`, `usage { promptTokens, completionTokens, totalTokens, estimatedCost }`, and `latencyMs`. All calls automatically attach traceId, tenantId, costTag and are included in §18 cost metering.
+
+## 15.3 Provider Registration and Routing
+
+**Routing strategies**:
+
+| Strategy          | Applicable Scenario   | Description                                      |
+| ----------------- | --------------------- | ------------------------------------------------ |
+| priority          | Default               | Sort by priority, prefer highest priority        |
+| cost_optimized    | Batch/low-priority tasks | Select lowest unit-cost available provider     |
+| latency_optimized | Real-time interaction | Select provider with lowest P99 latency          |
+| data_residency    | Compliance requirement | Select only providers meeting data residency    |
+| capability_match  | Special capabilities  | Match required_capabilities                      |
+
+## 15.4 Failover Chain
 
 ```text
-src/
-  platform/
-    interface/          # P1
-      api/
-      webhook/
-      scheduler/
-      console-backend/
-      ingress/
-
-    control-plane/      # P2
-      tenant/
-      iam/
-      policy-center/
-      approval-center/
-      rollout-controller/
-      incident-control/
-      replay-repair-control/
-      config-center/
-      audit-export/
-
-    orchestration/      # P3
-      oapeflir/
-      planner/
-      replan/
-      routing/
-      escalation/
-      hitl/
-
-    execution/          # P4
-      scheduler/
-      dispatcher/
-      execution-engine/
-      worker-pool/
-      tool-executor/
-      plugin-executor/
-      adapter-executor/
-      browser-executor/
-      human-wait-executor/
-      recovery/
-
-    state-evidence/     # P5
-      truth/
-      events/
-      projections/
-      artifacts/
-      memory/
-      knowledge/
-      audit/
-      incident/
-      checkpoints/
-      dlq/
-
-    model-gateway/      # LLM abstraction layer (v2.1)
-      provider-registry/
-      router/
-      cache/
-      cost-tracker/
-      fallback/
-
-    prompt-engine/      # Prompt management (v2.1)
-      registry/
-      renderer/
-      rollout/
-      eval/
-
-    compliance/         # Compliance and data governance (v2.1)
-      erasure/
-      encryption/
-      data-residency/
-      lineage/
-
-    contracts/          # Inter-plane contracts
-      request-envelope/
-      control-directive/
-      execution-plan/
-      execution-receipt/
-      state-command/
-      delegation-request/
-      model-request/
-
-  domains/                # Business domain modeling (v2.2)
-    registry/             # DomainDescriptor registration and lifecycle
-    risk-profile/         # DomainRiskProfile domain risk profile
-    knowledge-schema/     # DomainKnowledgeSchema domain knowledge structure
-    eval-framework/       # DomainEvalFramework domain evaluation
-    prompt-library/       # DomainPromptLibrary domain Prompt library
-    recipes/              # DomainRecipe archetype template
-    interaction-policy/   # DomainInteractionPolicy cross-domain policy
-    governance/           # DomainGovernancePolicy domain governance
-    coding/               # Coding domain instance
-    operations/           # Operations domain instance
-
-  interaction/            # Intelligent interaction layer (v2.3)
-    nl-gateway/           # Natural language task entry
-      intent-parser/
-      slot-resolver/
-      ambiguity-handler/
-    goal-decomposer/      # Goal decomposition engine
-      planner/
-      dependency-graph/
-      validator/
-    proactive-agent/      # Proactive Agent framework
-      trigger-engine/
-      schedule-manager/
-      event-watcher/
-    autonomy/             # Gradual autonomy
-      trust-scorer/
-      level-manager/
-      promotion-engine/
-    dashboard/            # Unified operations dashboard
-      metric-aggregator/
-      health-scorer/
-      alert-router/
-    ux/                   # Non-technical user experience
-      wizard/
-      template-engine/
-      onboarding/
-
-  org-governance/         # Organization governance layer (v2.4)
-    org-model/            # Organization hierarchy model
-      hierarchy/
-      org-node/
-      sync/
-    approval-routing/     # Organization structure approval routing
-      route-engine/
-      escalation/
-      delegation/
-    sso-scim/             # SSO/SCIM integration
-      saml/
-      oidc/
-      scim-sync/
-    compliance-engine/    # Per-department compliance policy engine
-      policy-resolver/
-      inheritance/
-      audit-enforcer/
-    knowledge-boundary/   # Knowledge domain isolation and controlled sharing
-      boundary-manager/
-      sharing-gate/
-      access-log/
-    delegated-governance/ # Tiered governance delegation
-      scope-manager/
-      delegation-registry/
-
-  scale-ecosystem/        # Scale operation layer + ecosystem layer (v2.5)
-    multi-region/         # Multi-Region deployment
-      region-router/
-      data-replicator/
-      failover-controller/
-    resource-manager/     # Resource competition management
-      fair-queue/
-      quota-enforcer/
-      preemption/
-    sla-engine/           # SLA tier guarantee
-      tier-resolver/
-      resource-allocator/
-      breach-detector/
-    marketplace/          # Agent marketplace and ecosystem
-      catalog/
-      certification/
-      publisher/
-    feedback-loop/        # Feedback-driven continuous improvement
-      collector/
-      analyzer/
-      improvement-tracker/
-    integration/          # External system integration framework
-      connector-registry/
-      connector-runtime/
-      health-monitor/
-
-  ops-maturity/           # Operations maturity layer (v2.6)
-    explainability/       # Agent explainability
-      evidence-collector/
-      causal-chain-builder/
-      explanation-renderer/
-      explanation-cache/
-    emergency/            # Emergency braking
-      panic-controller/
-      forensic-snapshot/
-      resume-protocol/
-    agent-lifecycle/      # Agent unified lifecycle
-      agent-registry/
-      version-manager/
-      canary-controller/
-      retirement/
-    edge-runtime/         # Offline and edge deployment
-      edge-orchestrator/
-      edge-executor/
-      local-model/
-      sync-queue/
-    drift-detection/      # Behavior drift detection
-      fingerprint-builder/
-      changepoint-detector/
-      cross-agent-analyzer/
-    cost-optimizer/       # Cost attribution and optimization
-      attribution-engine/
-      recommendation-engine/
-      simulator/
-    workflow-debugger/    # Visual debugger
-      timeline-renderer/
-      breakpoint-manager/
-      run-comparator/
-    compliance-reporter/  # Compliance reporting engine
-      template-registry/
-      evidence-mapper/
-      report-renderer/
-    capacity-planner/     # Capacity planning
-      trend-analyzer/
-      forecaster/
-      simulator/
-    multimodal/           # Multi-modal capabilities
-      image-processor/
-      speech-processor/
-      document-parser/
-      modality-router/
-    platform-ops-agent/   # Platform self-operation Agent
-      incident-diagnoser/
-      config-optimizer/
-      capacity-predictor/
-      dev-assistant/
-      health-monitor/
-
-  plugins/
-    adapters/
-    retrievers/
-    planners/
-    evaluators/
-    presenters/
-
-  sdk/                  # SDK（v2.1）
-    pack-sdk/
-    plugin-sdk/
-    client-sdk/
-    cli/
-
-  apps/
-    api/
-    console/
-    workers/
+Primary Provider
+  │ timeout / error / circuit_open
+  ▼
+Secondary Provider (fallback)
+  │ timeout / error / circuit_open
+  ▼
+Tertiary Provider (emergency)
+  │ timeout / error / circuit_open
+  ▼
+Degradation Mode (see §15.5)
 ```
---- 
 
-# 36. Risks, Constraints and Success Criteria 
+**Switching rules**:
 
-## 36.1 Main risks 
+- Single request timeout (default 30s) → auto switch to next provider and retry
+- Consecutive failures > 5 (60s window) → trigger circuit breaker, provider marked unhealthy
+- All providers unhealthy → enter LLM Degradation Mode
+- Provider recovery through half-open probe, auto-promoted
 
-* Model output is unstable 
-* Side effects of tools are uncontrollable 
-* Insufficient recovery links lead to unsustainable automation 
-* projection deviation is mistaken for truth 
-* Mislearning leads to behavioral drift 
-* Multi-tenant isolation is not complete 
-* The Pack model does not converge, causing the platform to be invaded by business anti-intrusion 
-* Budget out of control 
-* replay/rebuild error operation amplification problem 
-* **(v2.1) LLM provider is completely unavailable, causing platform paralysis** 
-* **(v2.1) Prompt changes introduce behavioral regression** 
-* **(v2.1) LLM cost out of control (token overspending)** 
-* **(v2.1) Agent delegation chain recursion is out of control** 
-* **(v2.3) NL Intent parsing ambiguity leads to incorrect task creation** 
-* **(v2.3) Target decomposition recursion is too deep, causing task explosion** 
-* **(v2.3) Active Agent triggers infinitely to form a storm** 
-* **(v2.3) Progressive autonomy error upgrade leads to high-risk actions out of control** 
-* **(v2.4) Delay in synchronization of organizational structure changes leads to approval routing errors** 
-* **(v2.4) Knowledge isolation configuration error leads to cross-department data leakage** 
-* **(v2.4) Excessive scope of governance rights delegation leads to security degradation** 
-* **(v2.5) Cross-Region data replication delay causes consistency issues** 
-* **(v2.5) Resource competition management failure leads to starvation of high-priority tasks** 
-* **(v2.5) Marketplace malicious Pack causes security incidents after passing certification** 
-* **(v2.6) Interpretation pipeline LLM call cost out of control (frequent forensic-level interpretation)** 
-* **(v2.6) Emergency brake accidentally triggered, causing the entire platform to shut down for no reason** 
-* **(v2.6) Insufficient grayscale test coverage of the Agent composite version leads to the escape of combined defects** 
-* **(v2.6) EdgeRuntime accumulates a large number of side effects in the offline state, and conflicts explode when the connection is restored** 
-* ** (v2.6) False positives in behavioral drift detection lead to frequent Agent degradation, affecting business** 
-* **(v2.6) Missing judgments in multi-modal content security checks lead to the output of illegal content** 
+## 15.5 LLM Unavailability Degradation Mode
 
-## 36.2 Hard constraints 
+When all LLM providers are unavailable, the platform must have explicit degradation strategies instead of simply returning errors:
 
-* Runtime only consumes published state definitions 
-* Projection does not reflect the truth 
-* Learn does not directly drive online changes 
-* Secret does not enter Memory / Knowledge / External Artifact 
-* All outbound calls go through egress control 
-* All side effects must be recorded as objects 
-* High-risk actions must be approved or explicitly denied 
-* CAS + Lease + Fencing to write back hard constraints 
-* Inter-plane communication must pass formal contract objects 
-* **(v2.1) All LLM calls must go through ModelGateway** 
-* **(v2.1) Prompt changes must pass quality gate**
-* **(v2.1) LLM costs must be metered per tenant** 
-* **(v2.1) Agent delegation depth ≤ 3** 
-* **(v2.1) PII data deletion via crypto-shredding** 
-* **(v2.3) NL input must be parsed by Intent to generate RequestEnvelope(§5.3), direct transmission of original text is prohibited** 
-* **(v2.3) Target decomposition recursion depth ≤ 5** 
-* **(v2.3) Active Agent must be bound to TriggerPolicy** 
-* **(v2.3) The autonomy level increases monotonically by default; downgrade is limited to §42.2 security trigger conditions and requires manual approval and confirmation after execution** 
-* **(v2.4) All resource ownership must be associated with OrgNode** 
-* **(v2.4) Compliance policies are inherited downward along the organization tree, and child nodes can only be tightened** 
-* **(v2.4) Knowledge domain is isolated by default, cross-department sharing requires explicit authorization** 
-* **(v2.4) SSO as the only source of identity** 
-* **(v2.5) Each tenant must specify Home Region** 
-* **(v2.5) Marketplace Pack must pass certification before it can be put on the shelves** 
-* **(v2.5) External system integration must be through the Unified Connector Framework** 
-* **(v2.6) OAPEFLIR Each stage must generate StageRationale** 
-* **(v2.6) PlatformPanicDirective same as Region < 5s, cross-Region < 15s, stops all platforms** 
-* **(v2.6) Agent releases and rollbacks are in AgentVersion (composite snapshot)** 
-* **(v2.6) EdgeRuntime offline mode risk_level ≤ medium** 
-* **(v2.6) Each Agent must maintain BehaviorFingerprint** 
-* **(v2.6) Multimodal output must pass content security checks** 
-* **(v2.6) PlatformOps Agent is read-only by default, and production write operations require manual approval** 
+| Degradation Level | Trigger Condition                         | Platform Behavior                                                         |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------------------------- |
+| D0 Normal         | At least one provider healthy             | Normal routing                                                            |
+| D1 Restricted     | Primary down, secondary available         | Auto switch + alert + throttle new workflow launch rate                    |
+| D2 Cached         | All providers unhealthy, cache available  | Return cached results for similar requests (read-only scenarios only)     |
+| D3 Static         | Cache unavailable                         | Use pre-built static fallback plans (low-risk tasks only)                |
+| D4 Suspended      | All degradation unavailable               | Suspend all new workflows, protect in-flight workflow checkpoints, hand off to human |
 
-## 36.3 Success Criteria 
+**Cache design**:
 
-### Phase 1 Success Criteria 
+- Semantic cache based on prompt_ref + parameter hash
+- TTL by data_classification: public=1h, internal=15min, confidential=no caching
+- Cache hits must be marked `cached: true` and excluded from model quality evaluation
 
-* workflow_run can be stably created and promoted 
-* Automatic reclaim when lease times out 
-* CAS conflicts are correctly rejected 
+## 15.6 Streaming Response and Error Handling
 
-### Phase 2 Success Criteria 
+Additional constraints for `ModelGateway.stream()`:
 
-* OAPEFLIR main chain runs end-to-end 
-*Recover within 30s after worker crash 
-* High-risk actions can be blocked by approval 
+| Concern              | Handling Strategy                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Stream interruption  | Buffer received tokens as partial response; if partial is usable (≥ 80% expected length) mark `partial: true` and use; otherwise switch provider and retry |
+| Token limit pre-check | Estimate input token count from `ModelRequest.messages` before sending; if > provider's `context_window - max_tokens`, reject with `TOKEN_LIMIT_EXCEEDED` |
+| Response format validation | After stream completes, run Zod schema validation on full output; on failure trigger one retry (with format reminder); second failure logged as `llm.response.validation_failed` |
+| Timeout              | Streaming first-token timeout (TTFT > 10s) triggers provider switch; total duration timeout per `ModelConstraints.max_latency_ms`                      |
+| Backpressure         | When consumer processing speed < producer speed, pause stream reading (backpressure), do not discard tokens                                            |
 
-### Phase 3 Success Criteria 
+## 15.7 Observability
 
-* incident / replay / repair / DLQ operational 
-* External dependency circuit breaker→downgrade→restore automation 
-* projection can be reconstructed and data is consistent 
+| Metric                   | Type      | Description                |
+| ------------------------ | --------- | -------------------------- |
+| `llm.request.total`      | counter   | By provider/model/tenant   |
+| `llm.request.latency_ms` | histogram | By provider/model          |
+| `llm.request.error_rate` | gauge     | By provider/error_type     |
+| `llm.token.usage`        | counter   | By provider/model/tenant   |
+| `llm.cost.total`         | counter   | By provider/tenant         |
+| `llm.cache.hit_rate`     | gauge     | Cache hit rate             |
+| `llm.fallback.triggered` | counter   | Fallback trigger count     |
 
-### Phase 4 Success Criteria 
+---
 
-* 50 concurrent workflows run stably 
-* Load test meets SLO 
-* Disaster recovery drill RTO < 10min 
+# 16. Prompt Management and Versioning Architecture
 
-### Phase 5 Success Criteria (v2.3-v2.4)
-* Non-technical users can create and manage tasks through natural language 
-* Goal decomposition engine automatically breaks down business goals into executable task graphs 
-* Active Agent is automatically triggered according to TriggerPolicy and there is no storm 
-* Progressive autonomy Level 0→3 upgrade path end-to-end verification 
-* The three-level organizational structure (company→department→team) correctly drives approval routing 
-* SSO/SCIM automatically synchronizes users and deactivates accounts < 5min to take effect 
-* Zero leakage of knowledge domain isolation, complete controlled sharing audit 
+> Prompts are the Agent's "source code" — treated as a first-class architectural concern. Define storage, versioning, canary release, and rollback mechanisms.
 
-### Phase 6 Success Criteria (v2.5) 
+## 16.1 Design Principles
 
-*Dual Region Active-Active deployment, single Region failure RTO < 5min 
-* High-priority tasks will not be starved under 1000 concurrent workflows 
-* SLA Tier P0 tasks 99.9% completed within committed time 
-* At least 20 certified packs listed on Marketplace 
-* User feedback → Improvement closed loop < 7 days 
-* Pre-built Connector covers all systems in the P0 category 
+- Prompts are not inlined in code; they are independently managed as **versioned resources**
+- Each Prompt has a full lifecycle: draft → review → staging → canary → stable → deprecated
+- Prompt changes are equivalent to code changes and must pass quality gates (see §17)
+- The combination of Prompt and model constitutes the core of Agent behavior; changes to both must be co-managed
 
-### Phase 7 Success Criteria (v2.6) 
+## 16.2 Prompt Data Model
 
-* Users can query the explanation for any workflow step, L1 delay < 2s, L3 delay < 10s 
-* Emergency braking drill: same Region, all platforms stop < 5s, recovery < 30min 
-* AgentVersion composite grayscale release end-to-end verification (canary→active automatic promotion) 
-* EdgeRuntime restores the connection after being disconnected for 24 hours, with zero loss of data synchronization 
-* Behavior drift detection 100% triggers an alarm when the Agent behavior distribution shifts > 2σ 
-* Cost optimization recommended savings rate ≥ 20% (compared to unoptimized baseline) 
-* Compliance report SOC2 Type II is fully automatically generated, with control point coverage ≥ 95% 
-* Capacity forecast 30-day accuracy ≥ 85% 
-* Multi-modal: image analysis + speech-to-text available end-to-end 
-* PlatformOps Agent L1 maturity verification: automatic diagnostic report generation < 5min 
+Each Prompt uses PromptTemplate as the storage unit, supporting multi-version management:
 
---- 
+| Field       | Type                                                          | Description                               |
+| ----------- | ------------------------------------------------------------- | ----------------------------------------- |
+| `promptId`  | string (ULID)                                                 | Globally unique identifier                |
+| `version`   | number                                                        | Incrementing version number, +1 per change |
+| `role`      | enum: planner / generator / evaluator / system                | Identifies usage within Harness           |
+| `content`   | string                                                        | Template body, using `{{variable}}` placeholders |
+| `variables` | VariableDef[]                                                 | Variable name, type, required flag, default value |
+| `metadata`  | object                                                        | Author, description, tags, expected token range |
+| `domainId`  | string                                                        | Owning domain, controls visibility and permissions |
+| `status`    | enum: draft / review / staging / canary / stable / deprecated | Lifecycle state                           |
 
-# 37. Business domain modeling and access architecture 
+A single `promptId` can have multiple versions, but only one version may be `stable` at any given time.
 
-> New in v2.2. Solve the core problem of "how to undertake the diversified business within the enterprise once the platform is set up". 
-> Related: §30 Business Pack Model · §22 SDK/DX · §10 Risk Control · §16 Prompt Management · §17 Model Evaluation · §29 Knowledge/Memory 
+## 16.3 Release and Canary
 
-## 37.1 Problem Statement 
+**Release flow**:
 
-There are fundamental differences among the 12+ vertical business lines within the enterprise in the following dimensions:
-| Dimensions | Code development | Material production | Finance | Live streaming | Customer service |
-|------|---------|---------|------|---------|------|
-| Risk level | High (production changes) | Medium (brand compliance) | Critical (funding) | High (real-time decision-making) | Low (information query) |
-| Time sensitivity | Minute level | Hour level | Day level (approval chain) | Second level | Second level |
-| Knowledge timeliness | Code base real-time | Brand guide monthly level | Regulations quarterly level | Inventory level in seconds | FAQ weekly level |
-| Evaluation Dimensions | Compile Pass + Test Coverage | Aesthetics + Brand Consistency | Accuracy + Compliance | GMV Conversion Rate | Resolution Rate + Satisfaction |
-| Approval requirements | Code Review | Design review | Four-eye principle + hierarchical approval | Automatic (within rules) | None |
-| Reversibility | Git revert | Version rollback | Reversal/reconciliation | Irreversible (broadcast) | Can be reissued |
+```text
+draft → [review] → staging → [eval gate §17] → canary(5%) → canary(20%) → stable
+                                                    │
+                                                    ▼ (quality not met)
+                                               rolled_back
+```
 
-**Currently §30 Business Pack compresses the above differences into a flat `BusinessPackManifest`**, which cannot express domain semantics, cannot drive differentiated risk control, and cannot guide domain Prompt strategy.
+- staging must pass eval gate (see §17)
+- canary runs in parallel with the stable version, traffic split by ratio
+- Quality metrics of new vs old versions are continuously compared during canary
+- Manual or automatic rollback to the previous stable version is possible at any time
+
+## 16.4 Prompt Composition Management
+
+A single OAPEFLIR cycle involves Prompts from multiple stages; they must be managed as an **atomic composition**:
+
+**Constraint**: all stages within the same workflow run use the same PromptBundle version — no mid-run switching.
+
+## 16.5 Prompt Security and Injection Defense
+
+### 16.5.1 Prompt Injection Defense Architecture
+
+```text
+User Input / External Data
+    │
+    ▼
+┌──────────────────┐
+│ Input Sanitizer  │  Regex + blocklist + Unicode normalization
+├──────────────────┤
+│ Injection        │  Classifier-based injection pattern detection
+│ Detector (ML)    │  (system/user boundary confusion, instruction override, role impersonation)
+├──────────────────┤
+│ Prompt Assembler │  Strict system/user/assistant segment separation
+│                  │  User content injected only into user segment, never into system segment
+├──────────────────┤
+│ Output Validator │  Detect exfiltration attempts in LLM output
+│                  │  (URL injection, Markdown link leakage, covert instruction relay)
+└──────────────────┘
+```
+
+### 16.5.2 Defense Strategies
+
+| Layer     | Strategy             | Description                                                                                |
+| --------- | -------------------- | ------------------------------------------------------------------------------------------ |
+| Input     | Variable Escaping    | All user input variables are XML/Markdown escaped before injection, eliminating control chars |
+| Input     | Boundary Markers     | system and user segments use LLM provider native role separation, not text markers          |
+| Detection | Injection Classifier | Lightweight classifier scores each user input for injection probability; > 0.7 is rejected |
+| Detection | Canary Token         | Embed canary token in system prompt; if LLM output contains it, injection is confirmed      |
+| Output    | Output Sanitizer     | LLM output passes through URL/link filtering, PII detection, instruction pattern detection  |
+| Audit     | Full Prompt Logging  | Full rendered prompt saved as artifact (optionally disabled for confidential level and above) |
+
+### 16.5.3 Fundamental Principles
+
+- Prompt content is not exposed to end users (prevent information leakage)
+- Prompt variables must be sanitized before injection
+- Variables containing secrets / PII are redacted in artifacts
+- In multi-turn conversations, historical assistant messages must not be tampered by users
+- External tool return values are treated as untrusted input and sanitized before injection
+
+---
+
+# 17. Model Evaluation and Quality Gate Architecture
+
+> An Agent platform without evaluation capability is "going live naked". Define the quality gate framework for model/Prompt changes.
+
+## 17.1 Evaluation Tiers
+
+| Tier              | Trigger                        | Evaluation Content                    | Blocking Capability    |
+| ----------------- | ------------------------------ | ------------------------------------- | ---------------------- |
+| Offline evaluation | Prompt/Model change submission | Standard eval dataset regression test | Block release          |
+| Canary evaluation  | During canary                  | Real-time quality comparison new vs old | Auto rollback        |
+| Online monitoring  | Continuous                     | Quality metric drift detection        | Trigger alert/degrade  |
+
+## 17.2 Eval Dataset Management
+
+EvalDataset is the core input for quality gates (§17.3), maintained independently per domain:
+
+| Field       | Type                         | Description                                          |
+| ----------- | ---------------------------- | ---------------------------------------------------- |
+| `datasetId` | string (ULID)                | Globally unique identifier                           |
+| `taskType`  | string                       | Associated task type (e.g. summarization, routing)   |
+| `samples`   | Sample[]                     | Each contains input, expectedOutput, evalCriteria    |
+| `version`   | number                       | Dataset version, incremented on change               |
+| `domainId`  | string                       | Owning domain                                        |
+| `split`     | enum: train / eval / holdout | Dataset split; holdout used only for final release gate |
+
+**Management requirements**: eval set must have ≥ 50 samples; holdout set is called only by quality gates automatically — prohibited during development/debugging; dataset changes require domain_owner approval.
+
+## 17.3 Quality Gate Rules
+
+**Built-in gate rules**:
+
+| Rule                 | Condition           | Description                                    |
+| -------------------- | ------------------- | ---------------------------------------------- |
+| regression_pass_rate | >= 95%              | Eval dataset pass rate must not fall below baseline |
+| critical_case_pass   | == 100%             | Cases marked critical must all pass            |
+| latency_regression   | <= 120% of baseline | Latency must not exceed 120% of baseline       |
+| cost_regression      | <= 150% of baseline | Cost must not exceed 150% of baseline          |
+| quality_score_delta  | >= -0.05            | Quality score must not drop more than 5 percentage points below baseline |
+
+## 17.4 Online Quality Monitoring
+
+**Drift detection**:
+
+- Sliding window (1h/24h) quality distribution statistics
+- When 24h window quality mean drops > 10%, trigger SEV3 alert
+- When 1h window quality mean drops > 20%, trigger auto degradation to supervised mode
+- All quality signals written to P5 Evidence Plane, supporting pattern extraction in the Learn stage
+
+## 17.5 LLM-as-Judge
+
+For quality scenarios that cannot be judged by rules (e.g. "is the answer reasonable"), use LLM-as-Judge:
+
+- Judge LLM and evaluated LLM must come from different providers (avoid bias)
+- Judge results are cached (same input+output not re-evaluated)
+- Judge calls themselves have cost budget limits (see §18)
+- Judge evaluation results feed into quality gates, but weighted lower than deterministic rules
+
+---
+
+# 18. Cost Management and Token Metering Architecture
+
+> LLM call costs dominate platform OPEX. Define per-tenant metering, budget enforcement, and chargeback mechanisms.
+
+## 18.1 Metering Model
+
+**Metering point**: ModelGateway synchronously writes a UsageRecord after every LLM call completes, serving as the sole billing data source.
+
+## 18.2 Budget Hierarchy
+
+| Level     | Budget Subject     | Control Granularity       | Over-Budget Behavior                          |
+| --------- | ------------------ | ------------------------- | --------------------------------------------- |
+| Platform  | Entire platform    | Monthly total             | SEV1 alert + new workflow suspension           |
+| Tenant    | Single tenant      | Monthly quota             | Alert + throttle that tenant's workflow queue   |
+| Pack      | Single Business Pack | Per-workflow upper limit | That workflow degrades to supervised            |
+| Step      | Single step        | Per-step token/cost limit | Step aborted + replan                          |
+
+## 18.3 Budget Enforcement
+
+```text
+ModelRequest
+  → ModelGateway.budget_check
+    → Query current-period usage
+    → Estimate this call's cost (based on prompt_tokens + estimated completion)
+    → If used + estimated > limit × warning_threshold → send alert
+    → If used + estimated > limit → reject request / degradation strategy
+  → Execute LLM call
+  → Update usage
+```
+
+## 18.4 Chargeback Reports
+
+- Aggregated by tenant / pack / model / provider dimensions
+- Daily + monthly reports auto-generated
+- Exportable as CSV / JSON
+- Integrated with Admin API: `/api/v1/admin/cost-reports`
+
+## 18.5 Cost Optimization Strategies
+
+| Strategy            | Description                                          | Applicable Scenario       |
+| ------------------- | ---------------------------------------------------- | ------------------------- |
+| Prompt caching      | Reuse semantically similar requests (see §15.5)      | read-only / low-change scenarios |
+| Token budget trimming | Auto-compress memory/knowledge input when context too long | Large context tasks  |
+| Model downgrade     | Auto-select lower-cost model for low-risk tasks      | background queue          |
+| Batch merge         | Merge multiple similar steps into one LLM call       | Batch analysis scenarios  |
+
+---
+
+# 19. Inter-Agent Delegation and Collaboration Architecture
+
+> Complex enterprise tasks require multiple Agents to collaborate. Define inter-Agent delegation protocol, context passing, and authorization model.
+
+## 19.1 Delegation Model
+
+Agents delegate tasks via a standard delegation protocol, supporting three modes:
+
+| Mode                | Description                                                              |
+| ------------------- | ------------------------------------------------------------------------ |
+| Synchronous delegation | Delegator blocks waiting for delegatee result; suited for short sub-tasks |
+| Asynchronous delegation | Delegator submits and continues; obtains result via callback or polling |
+| Broadcast delegation   | Delegator sends requests to multiple Agents simultaneously, aggregates best result |
+
+DelegationRequest contains: delegator (delegator ID), delegate (delegatee ID), taskScope (task scope), constraints (constraint conditions), timeout (timeout limit). DelegationReceipt contains: result (execution result), telemetry (telemetry data), artifacts (output artifact list). All delegation chains must obey the topology constraints in §19.2.
+
+## 19.2 Delegation Topology Constraints
+
+- **Depth limit**: max delegation chain depth = 3 (prevent infinite recursion)
+- **Interaction with goal decomposition**: the goal decomposition engine (§40) has a recursion depth limit of 5; each decomposition level may trigger delegation. Worst case total call depth = decomposition depth × delegation depth = 5 × 3 = 15 levels. To prevent cascading explosion, the platform enforces a **global call depth limit = 10** (`global_call_depth` field propagated with trace); exceeding the limit rejects new delegation and triggers escalation
+- **Cycle detection**: the same pack_id must not appear twice in the same delegation chain
+- **Isolation**: child workflow has independent lease, independent checkpoint — does not share state with parent workflow
+- **Budget inheritance**: child workflow budget deducted from parent workflow remaining budget
+- **Permission narrowing**: child workflow permissions ≤ parent workflow permissions (principle of least privilege)
+
+## 19.3 Context Passing Security
+
+- Parent → child: only pass references declared in DelegationContext, not raw data
+- Child → parent: return only via DelegationResult, containing summary + artifact_refs
+- Cross-tenant delegation: prohibited by default, requires explicit P2 authorization
+- Data classification upward compatibility: child workflow output data classification ≥ input data classification
+
+## 19.4 Collaboration Patterns
+
+| Pattern             | Description                                     | Applicable Scenario   |
+| ------------------- | ----------------------------------------------- | --------------------- |
+| Sequential delegation | A delegates to B, waits for B to finish       | Simple sub-tasks      |
+| Parallel fan-out      | A delegates to B1/B2/B3 simultaneously, aggregates results | Parallel analysis |
+| Pipeline              | A → B → C, chained passing                    | Multi-stage processing |
+| Negotiation           | A and B alternate execution, sharing context   | Code review + fix     |
+
+## 19.5 Multi-Agent Collaboration Protocol (Agent Collaboration Protocol)
+
+When the platform evolves from single-Agent Runtime to multi-Agent Runtime, a standardized collaboration protocol is required to prevent permission leakage, budget overrun, and audit chain breakage. This protocol defines message types, mandatory fields, and inviolable rules, enforced in coordination with §45 Harness Runtime and §19.2 delegation topology constraints.
+
+### Message Types
+
+| Message Type         | Direction      | Semantics           | Trigger Condition                                  |
+| -------------------- | -------------- | ------------------- | -------------------------------------------------- |
+| `task_request`       | parent → child | Initiate task delegation | Planner decomposes into sub-task                |
+| `task_offer`         | child → parent | Declare availability | Child evaluates capability and responds            |
+| `task_accept`        | parent → child | Confirm delegation  | Parent selects child                               |
+| `task_reject`        | child → parent | Reject delegation   | Child lacks capability/budget/permission           |
+| `partial_result`     | child → parent | Interim result report | Child completes interim output                   |
+| `escalation_request` | child → parent | Request escalation  | Child encounters decision beyond autonomous authority |
+| `completion_report`  | child → parent | Task completion report | Child completes all work                        |
+| `takeover_notice`    | parent → child | Takeover notification | Parent takes over due to timeout/exception/human intervention |
+
+### Mandatory Fields
+
+Every collaboration message must carry the following fields; missing any field causes the message to be rejected:
+
+| Field               | Type         | Source                               | Purpose                                       |
+| ------------------- | ------------ | ------------------------------------ | --------------------------------------------- |
+| `correlation_id`    | UUID         | Generated by first task_request      | Correlate all messages in the same collaboration session |
+| `parent_run_id`     | HarnessRunId | §45.13 HarnessRun                    | Correlate parent execution context            |
+| `depth`             | uint8        | Inherited from §19.2 global call depth | Prevent recursive explosion (≤ global_call_depth) |
+| `sender_agent_id`   | AgentId      | Sender                               | Identity and audit                            |
+| `receiver_agent_id` | AgentId      | Receiver                             | Routing and permission verification           |
+| `domain_id`         | DomainId     | §37 DomainDescriptor                 | Domain-level policy matching                  |
+| `risk_level`        | RiskScore    | Highest risk operation in payload    | Trigger approval/HITL                         |
+| `budget_remaining`  | TokenBudget  | Inherited from parent budget         | Prevent child Agent overspend                 |
+| `trace_id`          | TraceId      | §12 Distributed Tracing              | Full-chain observability                      |
+
+### Collaboration Invariants
+
+The following rules are enforced by Harness Runtime during message send/receive; violating any rule causes the message to be rejected and triggers an Incident:
+
+| #   | Rule                                                                                  | Verification Timing      | Violation Consequence          |
+| --- | ------------------------------------------------------------------------------------- | ------------------------ | ------------------------------ |
+| C1  | Child Agent must not expand permissions — child.permissions ⊆ parent.permissions      | At task_accept           | Reject delegation + alert      |
+| C2  | Child Agent must not escalate risk mode — child.risk_mode ≤ parent.risk_mode          | At task_accept           | Reject delegation + alert      |
+| C3  | Child Agent must not bypass parent ConstraintPack — child.constraints ⊇ parent.constraints | At task_request construction | Message rejected          |
+| C4  | Child Agent output must be reviewable by parent Evaluator — completion_report must include evidence field | At completion_report | Result not accepted       |
+| C5  | Any takeover must be audited — takeover_notice triggers tamper-proof audit record      | At takeover_notice       | Platform force-writes (unskippable) |
+| C6  | budget_remaining must not exceed parent remaining budget                               | At task_request          | Message rejected               |
+| C7  | depth must not exceed global_call_depth (defined in §19.2, default 10)                | At task_request          | Message rejected + escalation  |
+
+### Relationship with Existing Architecture
+
+- **§19.1-19.4**: This protocol upgrades the existing delegation model from "convention" to "enforced protocol"; all delegation messages must follow this section's format
+- **§45 Harness Runtime**: HarnessLoopController automatically constructs task_request conforming to this protocol when initiating sub-tasks
+- **§58.6 HarnessDecision**: Child Agent's Evaluator verdict is returned via completion_report; parent Evaluator may perform secondary adjudication
+- **§12 Exception Event Handling**: Collaboration message timeout/rejection/violation all map to Incidents, routed via unified alert routing
+
+---
+
+# 20. Long-Running Task and Workflow Hibernation Architecture
+
+> In enterprise scenarios, workflows may last hours or even days (waiting for approval, waiting for external system callback). Define hibernation/wake mechanisms.
+
+## 20.1 Long-Running Task Classification
+
+| Type              | Duration       | Reason                          | Example                    |
+| ----------------- | -------------- | ------------------------------- | -------------------------- |
+| Approval waiting  | Minutes → days | HumanWait executor blocking     | High-risk operation approval |
+| External callback | Minutes → hours | Waiting for third-party system | CI/CD build completion callback |
+| Scheduled         | Fixed time     | Waiting for specific time window | Off-hours execution       |
+| Multi-stage       | Days → weeks   | Multi-stage business approval   | Release approval chain     |
+
+## 20.2 Workflow Hibernation Mechanism
+
+**Hibernation flow**:
+
+1. Step enters wait state → create full checkpoint
+2. Release worker lease (worker no longer occupied)
+3. Create HibernationRecord, register wake_conditions
+4. Set workflow_run status to `hibernated`
+5. Persist all in-memory context to P5
+
+**Wake flow**:
+
+1. wake_condition satisfied → WakeEngine triggers
+2. Restore workflow context from checkpoint
+3. Re-acquire worker lease
+4. Resume execution from the breakpoint
+
+## 20.3 Persistent Timers
+
+- Timers are persisted to database, not reliant on process memory
+- TimerPoller (similar to outbox poller) periodically scans for expired timers
+- Timers survive process restarts
+- Timer precision: ± 30s (not a real-time system, millisecond precision not pursued)
+
+## 20.4 TTL and Timeout Protection
+
+- Every hibernation must have a TTL (default 7 days, max 30 days)
+- TTL expiry triggers timeout_action
+- Long-running workflows emit a `workflow.still_hibernated` health event every 24h
+- Hibernations exceeding 50% of TTL trigger reminder notifications
+- **Extended approval scenarios**: regulatory approval chains may take months; extended via `renewal` mechanism — 24h before TTL expiry, auto-request domain_owner confirmation for renewal (max 30 days per renewal); total renewal count capped by DomainGovernancePolicy(§37.9) `max_hibernation_renewals` (default 6, i.e. max ~210 days); exceeding the cap forces termination and notifies the initiator
+
+## 20.5 Cross-Deployment Safety
+
+- Checkpoint format is backward-compatible (versioned schema)
+- Hibernated workflows are not affected by platform upgrade deployments
+- If checkpoint schema is incompatible, workflow enters `recovery_needed` state, handled by Recovery Worker
+
+---
+
+# 21. Human-Agent Collaboration Mode Architecture
+
+> Define the complete HITL mode catalog.
+
+## 21.1 HITL Mode Catalog
+
+| Mode                 | Description                                   | Trigger Condition               | Timeout Behavior              |
+| -------------------- | --------------------------------------------- | ------------------------------- | ----------------------------- |
+| Single approval      | One approver decides                          | risk_level ≥ high               | Timeout → escalate            |
+| Multi-party approval | Multiple independent approvers, voting        | Critical operation / cross-domain impact | Timeout → auto reject  |
+| Delegated approval   | Approver can delegate to another              | Original approver not online    | TTL resets after delegation   |
+| Iterative feedback   | Human gives revision guidance, Agent re-does  | Unsatisfactory output           | Terminate after max iterations |
+| Collaborative editing | Human and Agent alternate on same artifact   | Code/document collaboration     | No timeout, manual end        |
+| Informed confirmation | Notification only, no approval needed        | Low-risk side effect            | Auto pass                     |
+| Circuit-break manual | Transfer to human decision when LLM unavailable | D4 degradation mode (see §15.5) | Human timeout → abort       |
+
+## 21.2 Approval Flow Engine
+
+ApprovalFlow defines the complete execution structure for one approval:
+
+| Field               | Type                                 | Description                                                      |
+| ------------------- | ------------------------------------ | ---------------------------------------------------------------- |
+| `flowId`            | string (ULID)                        | Approval flow unique identifier                                  |
+| `steps`             | ApprovalStep[]                       | Ordered step list, supports sequential and parallel modes        |
+| `approvers`         | Dynamically resolved                 | Computed in real-time by §47 approval routing engine based on org structure |
+| `timeout_per_step`  | Duration                             | Per-step timeout (default 24h), timeout triggers escalation      |
+| `escalation_policy` | enum: upgrade_sev / delegate / abort | Escalation strategy after timeout                                |
+| `delegation_rules`  | DelegationRule[]                     | Delegation rules when unavailable (see §47.3)                    |
+
+The approval flow engine supports inter-step conditional branching (e.g. risk amount determines whether to add executive approval), parallel co-sign (all must approve to proceed), and any-one-pass (one approval suffices) decision modes.
+
+## 21.3 Iterative Feedback Loop
+
+**Flow**: Agent produces output → human reviews → provides guidance → Agent replans + re-does → loop until approve or max_iterations reached.
+
+## 21.4 Notification and Channels
+
+| Channel                    | Purpose                  | Integration Method      |
+| -------------------------- | ------------------------ | ----------------------- |
+| Platform console           | Default approval UI      | Built-in                |
+| Webhook                    | External system integration | Outbound HTTP        |
+| Email                      | Async notification       | SMTP adapter            |
+| IM (Slack/Lark/WeCom)     | Instant notification + quick approval | Webhook + callback API |
+
+---
+
+# 22. SDK and Developer Experience Architecture
+
+> A platform without an SDK cannot be adopted by business teams. Define the Pack development toolchain and local development experience.
+
+## 22.1 SDK Layers
+
+| SDK Layer  | Target Role     | Functionality                                       |
+| ---------- | --------------- | --------------------------------------------------- |
+| Pack SDK   | Business developers | Create/test/publish Business Pack                |
+| Plugin SDK | Plugin developers   | Develop tool / adapter / retriever / evaluator   |
+| Client SDK | External integrators | Call platform Public API                        |
+| Admin SDK  | Operations team     | Call Admin API, scripted operations              |
+
+## 22.2 Pack SDK Core Capabilities
+
+Pack SDK provides business developers with a complete toolchain from creation to publishing:
+
+| Capability       | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| Scaffold CLI     | `pack create` generates standard directory structure, Manifest template, and sample code |
+| Local Dev Server | Built-in lightweight runtime with hot reload, simulating P3/P4 execution flow |
+| Type-safe API    | Provides type-safe definition interfaces for Tool, Prompt, Eval with compile-time contract validation |
+| Test Harness     | Integrates MockModelGateway and MockToolExecutor, supports record/replay testing |
+| Publish CLI      | `pack publish` one-click packaging, Manifest compliance validation, and push to target environment |
+| Versioning       | Automatic version management based on semver, changelog enforced on publish |
+
+## 22.3 Local Development Environment
+
+- `agent-platform dev` — start local platform (SQLite + in-process workers)
+- `agent-platform pack create` — create Pack scaffold
+- `agent-platform pack test` — run Pack tests (mock LLM + mock tools)
+- `agent-platform pack validate` — validate Manifest compliance
+- `agent-platform pack publish --target staging` — publish to staging environment
+
+**Local simulator**:
+
+- Built-in MockModelGateway: returns preconfigured LLM responses for deterministic testing
+- Built-in MockToolExecutor: simulates tool execution results
+- Test record/replay: record real LLM calls as fixtures, replay in subsequent tests (no token consumption)
+
+## 22.4 Plugin Lifecycle
+
+| Phase         | Description                        | Requirements                    |
+| ------------- | ---------------------------------- | ------------------------------- |
+| Development   | Local development + Plugin SDK     | Must declare PluginManifest     |
+| Testing       | Unit tests + sandbox integration tests | Coverage ≥ 80%             |
+| Certification | Security scan + capability review  | Pass Plugin security checklist  |
+| Publishing    | Register to Plugin Registry        | Semantic versioning (semver)    |
+| Runtime       | Execute under sandbox constraints  | Resource limits + capability allowlist |
+| Deprecation   | Mark deprecated + migration guide  | Maintain for at least 3 months  |
+
+## 22.5 Documentation and Examples
+
+- Every SDK must have API reference (auto-generated from TypeScript types)
+- Provide 3 standard example Packs: simple-qa / coding-fix / operations-resolve
+- Provide Playground environment: online Pack development trial (optional, Phase 4)
+
+---
+
+# 23. Compliance and Data Governance Structure 
+
+> Enterprise-grade platforms must meet compliance requirements. v2.1 defines GDPR/SOC2 related data governance architecture. 
+
+## 23.1 Data life cycle management
+| Data type | Retention policy | Deletion method | Description |
+|---------|---------|---------|------|
+| Truth table | According to business needs | Logical deletion + regular physical cleanup | Control the truth |
+| Event log | Default 365 days | Delete after archiving | append-only, archive to cold storage |
+| Audit record | Default 3 years | Cannot be deleted (compliance requirements) | Legal retention period |
+| Artifact | Default 90 days | Physical deletion | Large objects |
+| Memory | Automatic cleaning according to TTL | Physical deletion | Running short-term data |
+| Knowledge | Differentiation by trust level | Tombstone | Long-term sharing of data |
+| LLM call record | Default 90 days | Physical deletion | Contains prompt/completion |
+| Cost record | Default 3 years | Archive | Financial audit |
+
+## 23.2 Right-to-Erasure（GDPR Art.17）
+
+append-only event log has an architectural conflict with right-to-erasure. Solution:
+
+**Crypto-shredding**:
+
+1. Each tenant's PII data is stored encrypted with an independent Data Encryption Key (DEK)
+2. DEK is managed by the key management service, associated with tenant_id
+3. When a deletion request arrives, destroy the tenant's DEK
+4. Encrypted data in the event log becomes indecipherable (logically equivalent to deletion)
+5. Audit records retain the deletion operation itself
+
+```typescript
+interface ErasureRequest {
+  request_id: string;
+  tenant_id: string;
+  subject_id: string;
+  reason: "gdpr_request" | "account_deletion" | "legal_requirement";
+  scope: "all_data" | "pii_only";
+  requested_by: Principal;
+  deadline: string;
+}
+
+interface ErasureReport {
+  request_id: string;
+  status: "completed" | "partial" | "failed";
+  affected_records: number;
+  dek_destroyed: boolean;
+  retained_audit_records: number;
+  completed_at: string;
+}
+```
+## 23.3 Data residency 
+
+* Each tenant can configure data_residency constraints (such as "CN" / "EU" / "US") 
+* LLM calls must be routed to a provider that satisfies data residency (see §15.3 data_residency routing) 
+* Storage engine is sharded by region (supported by Phase S3+) 
+* Cross-region data transmission is prohibited by default and requires explicit authorization. 
+
+## 23.4 SOC2 control mapping
+| SOC2 control domain | Platform corresponding capabilities | Source of evidence |
+|------------|-------------|---------|
+| CC6.1 Logical Access | §11 Unified Identity and Authorization | PolicyOutcome + audit record |
+| CC6.3 Encryption | §23.5 Encryption Architecture | key rotation log |
+| CC7.2 Monitoring | §12 Abnormal event detection | incident + metrics |
+| CC8.1 Change Management | §24 Configuration Governance + §16 Prompt Versioning | config_version + prompt_version |
+| CC9.1 Risk Mitigation | §10 Risk Scoring Engine | RiskDecision + evidence bundle |
+| A1.2 Disaster Tolerance | §31 Disaster Tolerance Architecture | DR Drill Report |
+## 23.5 Encryption Architecture
+| Level | Strategy | Implementation |
+|------|------|------|
+| Transport encryption | TLS 1.3 mandatory | All HTTP/gRPC/WebSocket connections |
+| Storage encryption | AES-256 | Database-level TDE or application-level field encryption |
+| PII field encryption | Per-tenant DEK | Support crypto-shredding |
+| Secret storage | Vault integration | Reference access, TTL ≤ 300s |
+| Key rotation | Automatic 90 days | DEK rotation does not affect historical data decryption (envelope encryption) |
+
+## 23.6 Data Lineage
+
+Every decision and output can be traced to its data source:
+
+```text
+Knowledge chunk → Observe (UnifiedObservation)
+  → Assess (UnifiedAssessment) → Plan (ExecutionPlan)
+    → Execute (ExecutionReceipt) → Side Effect
+```
+* Build a bloodline chain through trace_id + evidence_refs 
+* Supports forward query (which decisions a certain knowledge affects) and reverse query (which inputs a certain side effect relies on) 
+* Bloodline data is written into P5 Evidence Plane, no separate storage is created 
+
+---
+
+
+# Part III -- Business Domain Access Layer (S37-S38)
+
+---
+
+# 37. Business Domain Modeling and Access Architecture
+
+> Solves the core question of "how to onboard diverse internal business lines after the platform is built."
+> Related: §30 Business Pack Model · §22 SDK/DX · §10 Risk Control · §16 Prompt Management · §17 Model Evaluation · §29 Knowledge/Memory
+
+## 37.1 Problem Statement
+
+The 24 internal vertical business lines exhibit fundamental differences across the following dimensions:
+
+| Dimension | Quant Trading | E-commerce | Advertising | Financial Services | Data Engineering | Coding |
+| --- | --- | --- | --- | --- | --- | --- |
+| Risk Level | Critical (capital) | High (oversell/pricing) | Medium (budget) | Critical (compliance) | Medium (data) | High (prod changes) |
+| Time Sensitivity | Microsecond–millisecond | Second-level (search/risk) | Hour-level (bidding) | Second–day level | SLA-driven | Minute-level |
+| Knowledge Freshness | Market tick real-time | Inventory/price minute-level | Ad data hour-level | Credit/regulation quarterly | Schema on-demand | Codebase real-time |
+| Evaluation Dimensions | Sharpe/drawdown/slippage | GMV/conversion/CSAT | ROAS/CPA/CTR | Gini/KS/loss ratio | SLA achievement/quality | Compile+test+security |
+| Approval Requirements | Strategy launch mandatory | Large price change approval | Launch+creative approval | Over-threshold loan/SAR mandatory | Schema migration approval | Code Review |
+| Reversibility | Close position (costly) | Refund/compensation | Pause campaign | Reversal (limited) | Rollback to good data | Git revert |
+| HITL Intensity | High | Medium | Medium | Very High | Medium | High |
+| Latency Tier | Ultra-low (<10ms) | Real-time (<1s) | Near-real-time (<5min) | Real-time–batch | SLA-driven | Real-time (<1s) |
+
+| Dimension | User Ops | Industry Research | Academic Research | Enterprise KB | Finance/Accounting | Legal |
+| --- | --- | --- | --- | --- | --- | --- |
+| Risk Level | Medium (privacy) | Low (info) | Low (academic reputation) | Medium (leakage) | Critical (capital) | Critical (legal) |
+| Time Sensitivity | Minute-level (trigger) | Hour–day level | Day–week level | Second-level (search) | Day-level (month-end) | Hour–day level |
+| Knowledge Freshness | User behavior real-time | Reports quarterly | Papers monthly | Documents weekly | Regulations quarterly | Regulations/cases monthly |
+| Evaluation Dimensions | Retention/LTV/NPS | Fact accuracy/coverage | Citation accuracy/reproducibility | MRR/faithfulness/coverage | Accuracy/compliance/timeliness | Recall/accuracy/timeliness |
+| Approval Requirements | Campaign content approval | Pre-publish human review | Full human review | Access control/correction | Four-eyes+segregation of duties | **Full attorney review** |
+| Reversibility | Stop campaign | Correction statement | Erratum/retraction | Version rollback | Reversal/reconciliation | Irreversible (once effective) |
+| HITL Intensity | Medium | High | High | Medium | Very High | **Highest** |
+| Latency Tier | Near-real-time (<5min) | Batch | Batch | Real-time (<1s) | Batch | Batch |
+
+| Dimension | Live Streaming | Creative Production | Game Dev | Game Publishing | Human Resources | Supply Chain & Logistics |
+| --- | --- | --- | --- | --- | --- | --- |
+| Risk Level | High (regulatory/PR) | Medium (brand/copyright) | Medium (quality) | High (compliance/rating) | High (privacy/discrimination) | High (capital/operations) |
+| Time Sensitivity | Millisecond–second (live stream) | Hour–day level | Minute–hour level | Day-level (review cycle) | Day-level (hiring process) | Hour-level (dispatch) |
+| Knowledge Freshness | Real-time (danmaku/video) | Asset library weekly | Codebase/engine real-time | Platform policy monthly | Regulations/policy quarterly | Inventory/logistics real-time |
+| Evaluation Dimensions | Violation detection rate/latency | Creative quality/compliance rate | Compile/test/perf | First-pass rate/time-to-market | Hiring cycle/AIR | Forecast accuracy/cost |
+| Approval Requirements | Violation disposition approval | Creative publish approval | Version release approval | Per-platform compliance approval | Hire/promotion approval | Large procurement approval |
+| Reversibility | Stream cutoff (broadcast irreversible) | Version rollback | Git revert | Delist (time window) | Rescind offer (limited) | Return/transfer |
+| HITL Intensity | High | Medium | Medium | High | High | Medium |
+| Latency Tier | Real-time (<2s) | Batch | Real-time (<1s) | Batch | Batch | Near-real-time (<5min) |
+
+| Dimension | Healthcare | Education & Training | Customer Service | Content Moderation | IT Ops SRE | Marketing |
+| --- | --- | --- | --- | --- | --- | --- |
+| Risk Level | **Critical (life)** | Medium (privacy/education) | Medium (reputation) | High (legal/safety) | High (availability) | Medium (brand/legal) |
+| Time Sensitivity | Minute-level (ER)–day level | Day–week level (curriculum) | Second-level (conversation) | Millisecond–second (real-time review) | Second-level (alert response) | Hour-level (PR crisis) |
+| Knowledge Freshness | Guidelines/drugs monthly | Textbooks semester-level | FAQ/KB weekly | Policy/regulations monthly | Config/topology real-time | Market data daily |
+| Evaluation Dimensions | Diagnostic accuracy/safety | Learning outcomes/completion | CSAT/FCR/AHT | Recall/precision/latency | MTTR/MTTD/availability | ROAS/SOV/engagement |
+| Approval Requirements | **Full physician review** | Course content review | Over-authority commitment approval | Disposition appeal approval | Change window approval | Brand content approval |
+| Reversibility | Irreversible (executed orders) | Course adjustment | Compensation/refund | Unblock/restore | Rollback change | Retract/correct |
+| HITL Intensity | **Highest** | Medium | Medium | High | High | Medium |
+| Latency Tier | Real-time–batch | Batch | Real-time (<1s) | Real-time (<2s) | Real-time (<1s) | Near-real-time (<15min) |
+
+**Currently §30 Business Pack compresses the above differences into a flat `BusinessPackManifest`**, unable to express domain semantics, drive differentiated risk control, or guide domain Prompt strategies. v3.0 deepened the original 12 vertical domains via §71-§82, and v3.1 extended to full 24-domain coverage via §83-§94.
 
 ## 37.2 DomainDescriptor — Domain Descriptor
 
-Each business domain must provide a structured domain descriptor when connecting to the platform, serving as the foundation for the platform to understand, constrain, and optimize that domain's Agent behavior:
+Each business domain must provide a structured domain descriptor when onboarding, serving as the foundation for the platform to understand, constrain, and optimize Agent behavior in that domain:
 
-```typescript
-interface DomainDescriptor {
-  domain_id: string;                          // e.g. "finance", "content-production"
-  domain_name: string;                        // human-readable name
-  domain_class: DomainClass;                  // domain classification
-  version: string;                            // descriptor version
+**Design Decision**: DomainDescriptor does not replace BusinessPackManifest(§30), but serves as the **domain semantic layer** for Packs. One Pack associates with one DomainDescriptor; multiple Packs can share the same DomainDescriptor (e.g., "HR Onboarding Pack" and "HR Payroll Pack" share `domain_id: "hr"`).
 
-  entities: DomainEntity[];                   // domain core entities
-  capabilities: DomainCapability[];           // domain capability declarations
-  workflows: DomainWorkflowTemplate[];        // typical workflow templates
-  vocabulary: DomainVocabulary;               // domain glossary
-  constraints: DomainConstraint[];            // domain hard constraints
+## 37.3 DomainRiskProfile — Domain Risk Profile
 
-  risk_profile: DomainRiskProfile;            // → §37.3
-  knowledge_schema: DomainKnowledgeSchema;    // → §37.4
-  eval_framework: DomainEvalFramework;        // → §37.5
-  prompt_library: DomainPromptLibrary;        // → §37.6
-  governance: DomainGovernancePolicy;         // → §37.9
-}
+The generic risk matrix(§10) provides platform-level defaults; DomainRiskProfile provides **domain-level overrides**, so the same action triggers different risk control strategies in different business domains:
 
-type DomainClass =
-  | "crud_heavy"       // HR, customer service, enterprise knowledge base
-  | "analytics"        // data analysis, advertising reports
-  | "creative"         // material production, game assets
-  | "realtime"         // live streaming sales, security operations
-  | "transactional"    // finance, orders
-  | "engineering"      // code development, CI/CD
-  | "hybrid";          // multi-archetype mix
+**Domain Risk Profile Application Examples**:
 
-interface DomainEntity {
-  entity_name: string;                        // e.g. "Invoice", "Creative Asset"
-  operations: ("create" | "read" | "update" | "delete" | "approve" | "archive")[];
-  sensitivity: "public" | "internal" | "confidential" | "restricted";
-  audit_level: "none" | "basic" | "full" | "forensic";
-}
+| Scenario | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.http.post` | 60 | Finance → 90 | Mandatory four-eyes approval |
+| `tool.http.post` | 60 | Customer Service → 40 | Auto-execute |
+| `tool.file.write` | 50 | Coding → 70 (prod branch) | Code Review gate |
+| `tool.file.write` | 50 | Creative Production → 30 | Auto-save draft |
 
-interface DomainCapability {
-  capability_id: string;                      // e.g. "generate-ad-copy"
-  risk_level: "low" | "medium" | "high" | "critical";
-  requires_approval: boolean;
-  max_automation_level: "suggestion" | "supervised" | "semi_auto" | "full_auto";
-  tool_bindings: string[];                    // associated tool bundle IDs
-}
+## 37.4 DomainKnowledgeSchema — Domain Knowledge Schema
 
-interface DomainConstraint {
-  constraint_id: string;
-  type: "regulatory" | "business_rule" | "sla" | "data_boundary";
-  description: string;
-  enforcement: "hard_block" | "soft_warn" | "audit_only";
-}
-```
+Defines each domain's knowledge retrieval strategy, freshness requirements, and conflict resolution rules, interfacing with §29 Knowledge/Memory layer:
 
-**Design Decision**: DomainDescriptor does not replace BusinessPackManifest (§30), but serves as the **domain semantic layer** for Pack. One Pack associates with one DomainDescriptor, and multiple Packs can share the same DomainDescriptor (for example, "HR Onboarding Pack" and "HR Compensation Pack" share `domain_id: "hr"`).
+**Domain Knowledge Difference Examples**:
 
-## 37.3 DomainRiskProfile — Domain Risk Portrait
-
-The general risk matrix (§10) provides platform-level defaults, and DomainRiskProfile provides **domain-level overrides**, so the same action triggers different risk control strategies in different business domains:
-
-```typescript
-interface DomainRiskProfile {
-  domain_id: string;
-  regulatory_class: "unregulated" | "lightly_regulated" | "regulated" | "heavily_regulated";
-  time_sensitivity: "batch" | "near_realtime" | "realtime" | "ultra_realtime";
-  reversibility: "fully_reversible" | "partially_reversible" | "irreversible";
-  blast_radius: "single_user" | "team" | "department" | "company" | "external";
-
-  risk_overrides: RiskOverride[];
-  escalation_chain: EscalationLevel[];
-  mandatory_approvals: ApprovalRule[];
-}
-
-interface RiskOverride {
-  action_pattern: string;           // glob pattern, e.g. "finance.payment.*"
-  base_risk: number;                // platform default risk score
-  domain_risk: number;              // domain override risk score
-  reason: string;                   // override reason (for audit)
-  requires_justification: boolean;  // whether Agent is required to provide execution reason
-}
-
-interface EscalationLevel {
-  level: number;
-  trigger: string;                  // e.g. "risk_score > 80"
-  target: "domain_owner" | "platform_sre" | "security_team" | "executive";
-  response_sla: string;             // e.g. "5m", "1h", "24h"
-}
-```
-**Example of application of domain risk profiling**:
-| Scenario | Platform default risk | Domain override risk | Result |
-|------|-------------|-------------|------|
-| `tool.http.post` | 60 | Financial domain → 90 | Forced four-eyes approval |
-| `tool.http.post` | 60 | Customer service domain → 40 | Automatic execution |
-| `tool.file.write` | 50 | Code R&D domain → 70 (production branch) | Code Review access control |
-| `tool.file.write` | 50 | Material production domain → 30 | Automatically save draft |
-
-## 37.4 DomainKnowledgeSchema — Domain Knowledge Structure
-
-Defines knowledge retrieval strategy, timeliness requirements, and conflict resolution rules for each business domain, connecting to §29 Knowledge/Memory layer:
-
-```typescript
-interface DomainKnowledgeSchema {
-  domain_id: string;
-  knowledge_sources: KnowledgeSource[];
-  retrieval_strategy: RetrievalStrategy;
-  freshness_policy: FreshnessPolicy;
-  conflict_resolution: ConflictResolution;
-}
-
-interface KnowledgeSource {
-  source_id: string;
-  type: "document_store" | "api_realtime" | "database" | "embedding_index" | "structured_kb";
-  priority: number;                         // retrieval priority
-  refresh_interval: string;                 // e.g. "5m", "1d", "on_demand"
-  auth_scope: string;                       // access permission scope
-}
-
-interface RetrievalStrategy {
-  mode: "semantic_search" | "keyword" | "hybrid" | "structured_query" | "graph_traverse";
-  top_k: number;
-  rerank: boolean;
-  domain_specific_filters: Record<string, string>;  // domain-level filter conditions
-}
-
-interface FreshnessPolicy {
-  max_staleness: string;                    // maximum acceptable staleness
-  on_stale: "warn_and_use" | "block_and_refresh" | "fallback_to_cached";
-  critical_sources: string[];               // must-be-realtime data source IDs
-}
-
-interface ConflictResolution {
-  strategy: "source_priority" | "timestamp_latest" | "human_review" | "domain_rule";
-  domain_rules?: Record<string, string>;    // domain-level conflict resolution rules
-}
-```
-**Example of Domain Knowledge Difference**:
-| Business domain | Search mode | Timeliness requirements | Conflict strategy |
-|--------|---------|---------|---------|
-| Code development | structured_query (AST/Git) | Real-time (HEAD commit) | timestamp_latest |
-| Finance | structured_query (ERP API) | Day level (T+1 reconciliation) | human_review |
-| Live delivery | api_realtime (inventory/price) | Second level | source_priority (inventory system priority) |
-| Enterprise knowledge base | hybrid (semantics + keywords) | Weekly level | domain_rule (highest version number first) |
+| Domain | Retrieval Mode | Freshness Requirement | Conflict Strategy |
+| --- | --- | --- | --- |
+| Quant Trading | api_realtime (market tick) | Microsecond–millisecond | source_priority (exchange first) |
+| E-commerce | api_realtime (inventory/price) | Minute-level | source_priority (inventory system first) |
+| Financial Services | structured_query (credit API) | Day–quarterly | human_review |
+| Coding | structured_query (AST/Git) | Real-time (HEAD commit) | timestamp_latest |
+| Academic Research | semantic_search (paper DB) | Monthly | citation_count_priority |
+| Enterprise KB | hybrid (semantic+keyword) | Weekly | domain_rule (highest version number first) |
+| Finance/Accounting | structured_query (ERP API) | Day-level (T+1 reconciliation) | human_review |
+| Legal | structured_query (legal DB) | Monthly | jurisdiction_priority |
 
 ## 37.5 DomainEvalFramework — Domain Evaluation Framework
 
-The general model evaluation (§17) provides platform-level quality gates, and DomainEvalFramework defines **domain-specific quality axes and evaluation criteria**:
+The generic model evaluation(§17) provides platform-level quality gates; DomainEvalFramework defines **domain-specific quality axes and evaluation criteria**:
 
-```typescript
-interface DomainEvalFramework {
-  domain_id: string;
-  quality_axes: QualityAxis[];
-  automated_checks: AutomatedCheck[];
-  human_eval_rubric: EvalRubric[];
-  regression_dataset: RegressionDataset;
-  acceptance_threshold: Record<string, number>;  // axis_id → minimum score
-}
+**Domain Evaluation Dimension Differences**:
 
-interface QualityAxis {
-  axis_id: string;                          // e.g. "code_correctness", "brand_consistency"
-  weight: number;                           // normalized weight
-  evaluator: "llm_judge" | "rule_engine" | "human" | "automated_test" | "metric_api";
-  description: string;
-}
-
-interface AutomatedCheck {
-  check_id: string;
-  type: "regex" | "ast_lint" | "policy_rule" | "external_api" | "llm_classifier";
-  config: Record<string, unknown>;
-  blocking: boolean;                        // whether it is a release blocking item
-}
-
-interface RegressionDataset {
-  dataset_id: string;
-  size: number;
-  refresh_cadence: string;
-  golden_answer_source: "human_labeled" | "production_approved" | "expert_curated";
-}
-```
-**Differences in domain assessment dimensions**:
-| Business domain | Core quality axis | Automatic inspection | Regression data source |
-|--------|-----------|---------|------------|
-| Code development | Compilation passed, test coverage, security scan | AST lint + single test run | PR review passed code |
-| Material production | Brand consistency, aesthetic scoring, size compliance | Size/format verification + LLM aesthetic scoring | Design team annotation |
-| Finance | Numerical accuracy, compliance, audit traceability | Amount verification + regulatory rule engine | Expert audit samples |
-| Advertising | CTR estimation accuracy, budget compliance, creative compliance | Budget cap check + advertising regulation check | A/B testing historical data |
+| Domain | Core Quality Axes | Automated Checks | Regression Data Source |
+| --- | --- | --- | --- |
+| Quant Trading | Sharpe/drawdown/slippage, execution quality | Pre-trade sanity check + risk limit verification | Backtest performance baseline |
+| E-commerce | GMV/conversion/CSAT, inventory accuracy | Price sanity + inventory sync verification | A/B test historical data |
+| Advertising | ROAS/CPA/CTR, budget compliance, creative compliance | Budget cap check + ad regulation check | A/B test historical data |
+| Financial Services | Gini/KS/loss ratio, AML detection rate | Fairness test + PSI monitoring | Expert annotation+regulatory feedback |
+| Coding | Compile pass, test coverage, security scan | AST lint + unit test execution | PR review approved code |
+| Academic Research | Citation accuracy, statistical correctness, reproducibility | DOI verification + plagiarism check | Published papers |
+| Enterprise KB | MRR/faithfulness/coverage, access control compliance | Citation verification + permission check | Human-annotated QA pairs |
+| Finance/Accounting | Numerical accuracy, compliance, audit traceability | Amount verification + regulatory rule engine | Expert audit samples |
+| Legal | Risk clause recall, case law accuracy | Legal database cross-validation | Attorney review annotations |
 
 ## 37.6 DomainPromptLibrary — Domain Prompt Library
 
-Connecting to §16 Prompt management system, providing **domain-level Prompt assets** for each business domain, avoiding scattered Prompt fragments:
+Interfaces with §16 Prompt management system, providing **domain-level Prompt assets** for each domain, avoiding scattered Prompt fragments:
 
-```typescript
-interface DomainPromptLibrary {
-  domain_id: string;
-  system_prompts: DomainSystemPrompt[];
-  few_shot_examples: FewShotExample[];
-  domain_instructions: DomainInstruction[];
-  forbidden_patterns: ForbiddenPattern[];
-}
+**Relationship between Prompt Library and Prompt Management System(§16)**: DomainPromptLibrary contains domain-level Prompt assets registered in §16's PromptRegistry. Prompt versioning, canary release, and rollback capabilities are provided by §16; the domain Prompt library is only responsible for **content definition and domain adaptation**.
 
-interface DomainSystemPrompt {
-  prompt_id: string;
-  scenario: string;                         // e.g. "code_review", "invoice_processing"
-  template: string;                         // prompt template with variable placeholders
-  variables: PromptVariable[];
-  version: string;
-  eval_dataset_id: string;                  // associated evaluation dataset
-}
+## 37.7 DomainRecipe — Domain Template and Archetype
 
-interface FewShotExample {
-  example_id: string;
-  scenario: string;
-  input: string;
-  expected_output: string;
-  quality_score: number;                    // annotation quality score
-  source: "production_approved" | "expert_crafted" | "synthetic";
-}
+Categorizes common business domains into twelve **archetype templates**; new domains select the closest archetype and rapidly generate a DomainDescriptor skeleton based on the template:
 
-interface DomainInstruction {
-  instruction_id: string;
-  type: "always" | "conditional" | "fallback";
-  condition?: string;                       // trigger condition expression
-  content: string;                          // instruction injected into system prompt
-}
+| Archetype | Core Pattern | Applicable Domains | Typical Workflow |
+| --- | --- | --- | --- |
+| **CRUD-heavy** | Read→Query→Modify→Confirm | Enterprise KB, User Ops, HR | Issue received→Query→Process→Feedback |
+| **Analytics** | Collect→Analyze→Visualize→Decide | Industry Research, User Ops, Ad Reporting, Marketing | Data query→Analysis→Generate report→Recommend action |
+| **Creative** | Generate→Review→Iterate→Publish | Advertising, E-commerce (product descriptions), Creative Production, Game Dev | Requirement understanding→Generate→Human review→Iterate→Publish |
+| **Realtime** | Monitor→Detect→Respond→Record | Quant Trading, E-commerce (risk), Live Streaming | Event stream listen→Anomaly detect→Auto respond→Post-mortem |
+| **Trading** | Signal→Risk→Execute→Settle | Quant Trading, Financial Services | Signal generation→Pre-trade risk→Order execution→Position settlement |
+| **Compliance** | Monitor→Detect→Assess→Report | Financial Services, Finance/Accounting, Legal, Game Publishing | Rule monitoring→Anomaly detection→Compliance assessment→Regulatory report |
+| **Research** | Collect→Analyze→Synthesize→Publish | Industry Research, Academic Research | Multi-source collection→Structured analysis→Synthesis→Review publish |
+| **Adversarial** | Attack surface→Defend→Audit→Fix | Coding (security), Legal (litigation) | Threat/risk identification→Defense measures→Audit verification→Fix |
+| **Moderation** (v3.1 new) | Ingest→Multimodal detect→Dispose→Appeal | Content Moderation, Live Streaming (review pipeline) | Content ingest→AI detection→Tiered disposition→Human appeal review |
+| **Logistics** (v3.1 new) | Forecast→Optimize→Dispatch→Track→Exception | Supply Chain & Logistics, Game Publishing (distribution scheduling) | Demand forecast→Route optimization→Dispatch execution→Real-time tracking |
+| **Conversational** (v3.1 new) | Intent→Knowledge retrieval→Answer→Feedback | Customer Service, Education (tutoring), Healthcare (triage) | User intent→KB retrieval→Generate answer→Satisfaction feedback |
+| **IncidentOps** (v3.1 new) | Alert→Diagnose→Fix→Review→Prevent | IT Ops SRE/DevOps | Alert received→Root cause diagnosis→Auto fix→Post-mortem |
 
-interface ForbiddenPattern {
-  pattern_id: string;
-  regex: string;
-  description: string;                      // why it is forbidden
-  action: "block_response" | "redact" | "escalate";
-}
-```
-**Relationship between Prompt library and Prompt management system (§16)**: DomainPromptLibrary is a domain-level Prompt asset, registered in PromptRegistry in §16. Prompt's versioning, grayscale, and rollback capabilities are provided by §16. The domain Prompt library is only responsible for **content definition and domain adaptation**. 
+**Usage Flow**:
 
-## 37.7 DomainRecipe — Domain templates and prototypes 
-
-Summarize common business domains into four types of **Prototype Templates**. When new services are connected, select the closest prototype and quickly generate the DomainDescriptor skeleton based on the template:
-| Prototype | Core pattern | Applicable business domain | Typical Workflow |
-|------|---------|-----------|-------------|
-| **CRUD-heavy** | Read → Check → Modify → Confirm | HR, customer service, corporate knowledge base | Problem acceptance → Inquiry → Processing → Feedback |
-| **Analytics** | Collection → Analysis → Visualization → Decision | Data analysis, advertising reports | Data query → Analysis → Report generation → Recommended actions |
-| **Creative** | Generate → Review → Iterate → Release | Material production, game assets | Requirements understanding → Generate → Manual review → Iterate → Release |
-| **Realtime** | Monitoring → Detection → Response → Recording | Live delivery, safe operation and maintenance | Event stream monitoring → Anomaly detection → Automatic response → Post-event review |
-
-```typescript
-interface DomainRecipe {
-  recipe_id: string;
-  archetype: "crud_heavy" | "analytics" | "creative" | "realtime";
-  name: string;
-  description: string;
-
-  scaffold: {
-    entities: DomainEntity[];               // preset entity templates
-    capabilities: DomainCapability[];       // preset capability declarations
-    workflows: DomainWorkflowTemplate[];    // preset workflows
-    risk_profile_template: Partial<DomainRiskProfile>;
-    knowledge_schema_template: Partial<DomainKnowledgeSchema>;
-    eval_axes_template: QualityAxis[];
-    prompt_templates: DomainSystemPrompt[];
-  };
-
-  customization_points: CustomizationPoint[];  // customization points that must be filled by the business party
-  validation_rules: ValidationRule[];          // validation rules after customization
-}
-
-interface CustomizationPoint {
-  path: string;                             // JSON path, e.g. "entities[0].operations"
-  required: boolean;
-  description: string;
-  default_value?: unknown;
-}
-```
-
-**Usage Process**:
-
-1. Business party selects archetype via CLI: `agent-platform domain init --archetype=crud_heavy --name=hr`
-2. System generates DomainDescriptor skeleton, marks all `customization_points`
-3. Business party fills in required items (entities, tool bindings, approval rules, etc.)
+1. Business owner selects archetype via CLI (12 options): `agent-platform domain init --archetype=crud_heavy --name=hr`
+2. System generates DomainDescriptor skeleton, marking all `customization_points`
+3. Business owner fills required fields (entities, tool bindings, approval rules, etc.)
 4. CLI runs `agent-platform domain validate` to verify completeness
-5. After passing, proceed to §38 Runbook onboarding process
-
+5. After passing, enters §38 onboarding Runbook flow
 ## 37.8 DomainInteractionPolicy — Cross-Domain Interaction Policy
 
-When Agents from multiple business domains need to collaborate (for example, advertising domain Agent calls data analysis domain Agent to generate reports), explicit **boundary policies and compensation mechanisms** are required:
+When Agents from multiple domains need to collaborate (e.g., an Advertising domain Agent calls a Data Analysis domain Agent to generate reports), explicit **boundary policies and compensation mechanisms** are required:
 
-```typescript
-interface DomainInteractionPolicy {
-  source_domain: string;
-  target_domain: string;
+**Cross-Domain Interaction Matrix Example**:
 
-  data_flow: DataFlowRule[];
-  delegation_rules: CrossDomainDelegation;
-  compensation: CompensationStrategy;
-}
-
-interface DataFlowRule {
-  data_class: string;                       // e.g. "user_pii", "financial_data"
-  direction: "source_to_target" | "target_to_source" | "bidirectional";
-  allowed: boolean;
-  transform?: "anonymize" | "aggregate" | "redact_fields";
-  requires_consent: boolean;
-}
-
-interface CrossDomainDelegation {
-  allowed: boolean;
-  max_depth: number;                        // maximum cross-domain delegation depth
-  permission_model: "inherit" | "intersect" | "explicit_grant";
-  timeout: string;
-  audit_level: "basic" | "full";
-}
-
-interface CompensationStrategy {
-  on_target_failure: "retry" | "rollback_source" | "human_review" | "log_and_continue";
-  on_timeout: "cancel_both" | "cancel_target_only" | "escalate";
-  max_retries: number;
-}
-```
-**Cross-domain interaction matrix example**:
-| Source domain → Target domain | Data flow direction | Delegation | Failure strategy |
-|-------------|---------|------|---------|
-| Advertising → Data Analysis | Aggregate data, prohibit PII | Allow (depth=1) | retry(3) → human_review |
-| HR → Finance | Payroll data, encrypted transmission | Allow (depth=1, intersect) | rollback_source |
-| Live → Inventory | Real-time inventory query | Prohibited (read-only API) | fallback cache |
-| Code development → Security operation and maintenance | Code scan results | Allow (depth=1) | log_and_continue |
+| Source → Target Domain | Data Flow | Delegation | Failure Strategy |
+| --- | --- | --- | --- |
+| Advertising → Data Analysis | Aggregated data, PII prohibited | Allowed (depth=1) | retry(3) → human_review |
+| HR → Finance | Payroll data, encrypted transmission | Allowed (depth=1, intersect) | rollback_source |
+| Live Streaming → Inventory | Real-time inventory query | Prohibited (read-only API) | fallback cache |
+| Coding → Security Ops | Code scan results | Allowed (depth=1) | log_and_continue |
 
 ## 37.9 DomainGovernancePolicy — Domain Governance Model
 
-Each business domain must have clear **governance ownership**, including ownership, SLO, budget, and change management:
+Each business domain must have explicit **governance ownership**, including ownership, SLO, budget, and change management:
 
-```typescript
-interface DomainGovernancePolicy {
-  domain_id: string;
+**Governance Model to Platform Capability Mapping**:
 
-  ownership: {
-    domain_owner: string;                   // business domain owner (person/team)
-    platform_liaison: string;               // platform-side liaison
-    escalation_contact: string;             // emergency contact
-  };
-
-  slo: {
-    availability: string;                   // e.g. "99.9%"
-    p95_latency: string;                    // e.g. "5s" (including LLM)
-    error_rate: string;                     // e.g. "< 1%"
-    eval_quality_floor: number;             // domain evaluation minimum score
-  };
-
-  budget: {
-    monthly_token_quota: number;            // monthly token budget
-    monthly_cost_cap: string;               // monthly cost cap
-    burst_allowance: number;                // burst traffic allowance multiplier
-    chargeback_cost_center: string;         // cost attribution center
-  };
-
-  change_management: {
-    prompt_change_approval: "domain_owner" | "platform_team" | "both";
-    tool_addition_approval: "domain_owner" | "security_team" | "both";
-    risk_profile_change_approval: "platform_team";
-    rollout_strategy: "canary_10_50_100" | "blue_green" | "immediate";
-  };
-}
-```
-**Mapping of governance model and platform capabilities**:
-| Governance dimension | Platform capability docking | Degree of automation |
-|---------|------------|----------|
-| Ownership | §6 API Permissions + §11 IAM | Fully Automated (RBAC) |
-| SLO | §27 SLO Monitoring + Error Budget | Fully Automatic (Alarm + Downgrade) |
-| Budget | §18 Token metering + budget enforcement | Fully automatic (quota + circuit breaker) |
-| Change Mgmt | §16 Prompt Grayscale + §30 Pack Release | Semi-automatic (Approval + Grayscale) |
+| Governance Dimension | Platform Capability | Automation Level |
+| --- | --- | --- |
+| Ownership | §6 API permissions + §11 IAM | Fully automated (RBAC) |
+| SLO | §27 SLO monitoring + Error Budget | Fully automated (alert+degrade) |
+| Budget | §18 Token metering + budget enforcement | Fully automated (quota+circuit breaker) |
+| Change Mgmt | §16 Prompt canary + §30 Pack release | Semi-automated (approval+canary) |
 
 ## 37.10 DomainDescriptor Registration and Lifecycle
 
 ```text
 ┌─────────────┐     ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Draft      │────▶│  Validated   │────▶│  Registered  │────▶│   Active     │
-│ (written by   │     │ (CLI check)  │     │ (platform    │     │ (production  │
-│  business)    │     │              │     │  registered) │     │  running)    │
+│ (biz writes) │     │ (CLI verify) │     │ (platform reg)│     │ (production) │
 └─────────────┘     └─────────────┘     └──────────────┘     └──────┬───────┘
                                                                      │
                          ┌──────────────┐     ┌──────────────┐      │
                          │  Deprecated   │◀────│  Updating    │◀─────┘
-                         │ (migrating)   │     │ (version      │
+                         │ (deprecating)  │     │ (version up)  │
                          └──────┬───────┘     └──────────────┘
                                 │
                          ┌──────▼───────┐
                          │   Archived   │
-                         │ (archived     │
-│  read-only)  │
+                         │ (read-only)   │
                          └──────────────┘
 ```
-**Status transfer rules**:
-| Current status | Transferable to | Conditions |
-|---------|---------|------|
+
+**State Transition Rules**:
+
+| Current State | Can Transition To | Condition |
+| --- | --- | --- |
 | Draft | Validated | `agent-platform domain validate` all passed |
 | Validated | Registered | Security review + platform compatibility check passed |
-| Registered | Active | At least one associated Pack was released successfully |
-| Active | Updating | The business party submits a new version of descriptor |
-| Updating | Active | New version verification + registration passed |
-| Active | Deprecated | domain_owner initiated deprecation and approved |
-| Deprecated | Archived | All associated Packs migrated or offline completed |
+| Registered | Active | At least one associated Pack published successfully |
+| Active | Updating | Business owner submits new version descriptor |
+| Updating | Active | New version validation+registration passed |
+| Active | Deprecated | domain_owner initiates deprecation, approval passed |
+| Deprecated | Archived | All associated Packs migrated or decommissioned |
+
+## 37.11 Canonical Domain Meta-Model
+
+Each vertical business domain must use a unified meta-model to answer the following **12 standard questions** when onboarding. This meta-model is the foundation for the platform's "per-domain configuration-driven" approach, and serves as the data source for unified dashboard, approval, risk, and evaluation generation. When adding a 25th domain, simply filling in the same template completes the onboarding definition.
+
+### Meta-Model 12 Questions
+
+| # | Meta-Model Question | Corresponding Platform Concept | Filling Specification |
+| --- | --- | --- | --- |
+| Q1 | What are the domain's primary entities | DomainDescriptor.primary_entities | List 3-5 core business entities |
+| Q2 | What are the high-risk actions | DomainRiskProfile (operations with risk ≥ 70) | Extract from DomainRiskProfile table |
+| Q3 | What is the default autonomy level | DomainDescriptor.default_autonomy | L0-L4 (reference §42) |
+| Q4 | What are the default HITL checkpoints | DomainInteractionPolicy.hitl_points | List mandatory human decision points |
+| Q5 | What are the key external systems | DomainDescriptor.external_dependencies | List core upstream/downstream systems |
+| Q6 | What are the key read-only tools | DomainRiskProfile (risk < 40 and no side effects) | Extract from DomainRiskProfile table |
+| Q7 | What are the key write tools | DomainRiskProfile (risk ≥ 40 or has side effects) | Extract from DomainRiskProfile table |
+| Q8 | What are the irreversible actions | DomainDescriptor.irreversible_actions | List all non-rollbackable operations |
+| Q9 | What are the core quality metrics | DomainEvalFramework.primary_metrics | List 3-5 core KPIs |
+| Q10 | What are the core compliance constraints | DomainGovernancePolicy.compliance_rules | List applicable regulations and mandatory rules |
+| Q11 | What is the minimum go-live capability set | DomainDescriptor.mvp_capabilities | List minimum capabilities for canary launch |
+| Q12 | What certifications must be completed before canary | §38 Gate3 SecurityCert + domain-specific checks | List required certifications/reviews |
+
+### 24-Domain Meta-Model Matrix (Q1-Q6)
+
+| Domain | Q1 Primary Entities | Q2 High-Risk Actions | Q3 Default Autonomy | Q4 Default HITL Checkpoints | Q5 Key External Systems | Q6 Read-Only Tools |
+| --- | --- | --- | --- | --- | --- | --- |
+| Quant Trading | Strategy·Order·Position·Market data·Risk limits | order.submit · strategy.deploy · risk_limit.modify | L1 | Strategy launch·Risk limit change·Capital allocation | Exchange·Market feed·Risk system | market_data.read |
+| E-commerce | Product·Order·Inventory·Price·Refund | price.update · refund.issue · listing.publish | L2 | Over-threshold price change·Excess refund·Restricted category listing | ERP·WMS·Payment gateway·Search engine | inventory.sync |
+| Advertising | Campaign·Creative·Audience·Bid·Budget | campaign.launch · creative.publish · audience.create | L2 | Campaign launch·Creative go-live·Sensitive category audience targeting | Ad platform API·DMP·Creative tools | — |
+| Financial Services | Credit application·KYC record·Insurance policy·Claim·SAR | credit.approve · sar.submit · claim.adjudicate · model.deploy | L0 | Over-threshold loan·SAR report·Model deployment·Adverse credit decision | Credit bureau·Core banking·Regulatory reporting | — |
+| Data Engineering | Pipeline·Schema·Dataset·Lineage·Quality rules | schema.migrate · pipeline.deploy_prod · data.delete | L2 | Schema migration·Prod deployment·Data deletion·Sensitive data access | Data warehouse·Compute engine·Scheduler | pipeline.retry |
+| Coding | Codebase·PR·CI pipeline·Vulnerability·Dependency | code.merge · deploy.production · security.fix | L1 | Code merge·Prod deployment·Security vulnerability fix·Architecture decisions | Git·CI/CD·SAST/DAST·Artifact registry | — |
+| User Ops | User segment·Campaign·Notification·A/B test·LTV | campaign.send · segment.create | L2 | Campaign content·Sensitive attribute segments·Notification frequency·Incentive budget | CDP·Push platform·Analytics system | — |
+| Industry Research | Report·Data source·Trend·Competitor·Regulatory policy | report.publish · data.scrape | L1 | Research publication·Forward-looking statements·Copyright compliance | Industry DB·News API·Regulatory websites | alert.send |
+| Academic Research | Literature·Hypothesis·Experiment·Manuscript·Citation | manuscript.submit · citation.insert · analysis.run | L1 | Publication review·Hypothesis selection·Experiment design·Statistical methods | Academic DB·DOI registry·Plagiarism checker | literature.search |
+| Enterprise KB | Document·Knowledge graph·FAQ·Permission·Search index | document.ingest · answer.synthesize · content.retire | L2 | New document source onboarding·Low-confidence answers·Content retirement | Document system·SSO·Search engine | search.query |
+| Finance/Accounting | Invoice·Voucher·GL·Tax·Budget | journal.post · financial.signoff · tax.file | L0 | Over-threshold voucher·Financial signoff·Tax filing·Bad debt write-off | ERP·Tax system·Bank interface·Audit system | — |
+| Legal | Contract·Case law·Litigation·IP·Compliance record | legal_opinion.draft · contract.review · ediscovery.classify | L0 | **All outputs** (attorney review) | Legal DB·eDiscovery·Contract management | ip.search |
+| Live Streaming | Live stream·Danmaku·Product·Host·Moderation record | moderation.realtime · commerce.shelf · stream.publish | L1 | Political/terrorism stream cutoff·Commerce violation disposition·Major event launch | Streaming CDN·E-commerce system·Moderation platform | danmaku.filter |
+| Creative Production | Creative·Brand asset·Template·Performance data | brand.compliance · creative.generate | L2 | Brand-class creative·Heavily regulated industry creative·Celebrity likeness | DAM·Ad platform·Brand management | asset.adapt |
+| Game Dev | Design doc·Art asset·Code·Numeric config·Bug | game.asset_generate · game.balance_sim | L2 | Core gameplay·Art style·Version release·P0/P1 Bug fix | Game engine·Art tools·CI/CD | game.qa_run |
+| Game Publishing | Build package·Submission materials·Localization·Event config | store.submit · compliance.check · liveops.config | L1 | License submission·Major version·Large event·Sensitive localization | Store API·Payment channel·Rating agency | localization.translate |
+| Human Resources | Resume·Offer·Compensation·Performance·Contract | offer_generate · payroll_calc · resume_screen | L0 | Offer issuance·Termination·Performance rating·Compensation adjustment·Org change | HCM·Recruiting platform·Payroll system·Background check | — |
+| Supply Chain | Purchase order·Inventory·Transport route·Customs·Supplier | customs_declare · route_plan · inventory_optimize | L1 | Large procurement·New supplier qualification·Customs exception·Hazmat transport | ERP·WMS·TMS·Customs system | scm.forecast |
+| Healthcare | Medical record·Prescription·Imaging·Triage·Drug interaction | clinical.diagnose · drug.interaction_check · imaging.analyze | L0 | **All clinical decisions** (physician confirmation) | HIS·PACS·Drug DB·Insurance system | — |
+| Education | Course·Question bank·Learning path·Learning analytics·Assessment | content_generate · assess · tutor | L2 | Content go-live·Subjective grading·Sensitive topics·Minor data | LMS·Question bank·Learning analytics·Parent platform | learning_path |
+| Customer Service | Ticket·Conversation·KB·Routing·QA record | cs.respond · cs.quality_score | L2 | Over-authority refund·Complaint escalation·Legal questions·VIP exceptions | CRM·KB·Ticket system·CTI | cs.route · cs.knowledge_search |
+| Content Moderation | Content item·Moderation record·Policy rule·Appeal·Report | moderation.classify · moderation.appeal · compliance.report | L1 | CSAM immediate disposition·Appeal adjudication·Policy change·Edge cases | Moderation platform·Legal compliance·Reporting system | — |
+| IT Ops | Alert·Incident·Deployment·Change·Vulnerability | ops.deploy · ops.incident_respond · security_scan | L1 | High-risk change CAB·Security incident·New fix strategy·Budget procurement | Monitoring·CMDB·CI/CD·SIEM | ops.capacity_plan |
+| Marketing | Campaign·Brand asset·SEO·Social content·PR crisis | social.publish · marketing.campaign | L2 | External content review·Brand crisis takeover·Marketing budget·Brand partnership | Ad platform·Social API·PR monitoring system | brand.monitor · seo.optimize |
+### 24-Domain Meta-Model Matrix (Q7-Q12)
+
+| Domain | Q7 Write Tools | Q8 Irreversible Actions | Q9 Core Quality Metrics | Q10 Core Compliance Constraints | Q11 Minimum Go-Live Capabilities | Q12 Pre-Canary Certification |
+| --- | --- | --- | --- | --- | --- | --- |
+| Quant Trading | order.submit · strategy.deploy · risk_limit.modify | Order submission (costly to close) · Strategy deployment | Sharpe · Max drawdown · Risk compliance rate | SEC/CSRC/MiFID II | Signal generation+Risk control+Execution pipeline | Risk system integration · Exchange sandbox verification |
+| E-commerce | price.update · refund.issue · listing.publish | Price publication (floor price constraint) · Refund payment | GMV · Conversion rate · CSAT | E-commerce law/Consumer protection/PCI-DSS | Product listing+Pricing+Basic customer service | Payment security scan · Load test |
+| Advertising | campaign.launch · bid.adjust · creative.publish · audience.create | Campaign budget spend (spent is unrecoverable) | ROAS · CPA · CTR | Ad law/Platform policy/GDPR | Campaign creation+Bidding+Basic reporting | Ad law compliance check · Budget control verification |
+| Financial Services | credit.approve · sar.submit · claim.adjudicate · model.deploy | Loan disbursement · SAR submission · Claim payment | Gini/KS · Loss ratio · PSI | Basel III/AML law/EU AI Act | Credit assessment+KYC+Risk control | Fairness test · Regulatory report integration |
+| Data Engineering | schema.migrate · pipeline.deploy_prod · data.delete | Data deletion (unrecoverable) · Destructive schema change | SLA achievement rate · Data quality pass rate | GDPR right to deletion/Data residency | Pipeline orchestration+Quality check+Lineage | Data security classification · Access control verification |
+| Coding | code.merge · deploy.production · code.generate · security.fix | Prod deployment (needs rollback) · Dependency version lock | Test pass rate · Bug detection rate · Adoption rate | License/SOC2 | Code generation+Review+CI integration | Security scan · License compliance |
+| User Ops | campaign.send · segment.create · notification.push · ab_test.launch | Batch notification push (sent is irrecoverable) | Retention · LTV/CAC · NPS | PIPL/GDPR/CAN-SPAM | Segmentation+Campaign push+Basic analytics | Privacy compliance · Opt-out mechanism verification |
+| Industry Research | report.publish · data.scrape · forecast.generate | Report publication (influences decisions) | Fact accuracy rate · Source citation rate | Securities law/Data licensing/Copyright | Data collection+Report generation+Review flow | Data source licensing · Copyright compliance |
+| Academic Research | manuscript.submit · citation.insert · analysis.run | Paper submission (reputation impact) | Citation accuracy 100% · Reproducibility | Research ethics/Publication ethics | Literature review+Writing assistance+Citation verification | DOI verification · Plagiarism system integration |
+| Enterprise KB | document.ingest · answer.synthesize · content.retire | Content retirement (knowledge loss risk) | MRR/NDCG · Answer faithfulness | Data retention/Access control | Document processing+Semantic search+Permissions | Access control verification · Search quality baseline |
+| Finance/Accounting | journal.post · financial.signoff · tax.file | Tax filing submission · GL posting (needs reversal) | Straight-through processing rate · GL accuracy · Audit finding count | CAS/SOX/Golden Tax Phase IV | Invoice processing+Voucher+Reconciliation | Audit compliance · Segregation of duties verification |
+| Legal | legal_opinion.draft · contract.review · ediscovery.classify | Legal opinion issuance (legal consequences) | Risk clause recall · Case law accuracy | Civil code/Professional ethics/GDPR | Contract review+Case law search+Compliance | Legal DB integration · Privilege detection verification |
+| Live Streaming | moderation.realtime · commerce.shelf · stream.publish | Stream cutoff (affects user experience) · Violation disposition | Violation detection rate · Disposition latency <3s · GPM | Live streaming regulations/Minor protection law | Streaming+Real-time moderation+Danmaku filtering | Multimodal moderation model · Stream cutoff recovery drill |
+| Creative Production | creative.generate · brand.compliance | Creative publication (brand impact) | Brand compliance pass rate · Platform review first-pass rate | Ad law/Copyright law/Likeness rights | Copywriting+Image generation+Compliance check | Ad law lexicon · Brand asset library integration |
+| Game Dev | game.asset_generate · game.balance_sim · game.design_assist | Version release (player experience impact) | Style consistency (FID) · Bug discovery rate | License/Anti-addiction/Content review | QA automation+Art generation+Numeric simulation | Content review pre-screening · Anti-addiction verification |
+| Game Publishing | store.submit · compliance.check · liveops.config | License submission (zero tolerance) · Version launch | Submission first-pass rate >90% · DAU/Retention | License/Rating/Anti-addiction/PIPL | Submission automation+Compliance check+Canary | Rating compliance matrix · Anti-addiction pipeline |
+| Human Resources | resume_screen · offer_generate · payroll_calc · compliance_check | Offer issuance · Termination execution · Payroll disbursement | Hiring cycle · Pay equity · Bias audit | Labor law/PIPL/EU AI Act | Resume screening+Offer generation+Compliance check | Bias detection · Fairness test · Explainability |
+| Supply Chain | inventory_optimize · route_plan · customs_declare | Purchase order submission · Customs declaration · Hazmat transport | MAPE · OTIF · HS classification accuracy | Customs law/Export control/Hazmat/ESG | Demand forecast+Inventory optimization+Route planning | Export control list integration · Hazmat compliance |
+| Healthcare | clinical.diagnose · drug.interaction_check · imaging.analyze · triage.assess | Diagnosis recommendation issuance (patient safety) · Prescription | Diagnostic sensitivity · Lesion recall · Drug interaction recall | Medical device regulations/HIPAA/FDA SaMD | Triage+Drug interaction check+Assisted diagnosis | SaMD certification · Clinical validation · Data encryption |
+| Education | content_generate · assess · tutor | Grade publication (affects academics) · Inappropriate content exposure | Knowledge mastery rate · Grading consistency (κ≥0.8) | Minor protection law/FERPA/COPPA | Content generation+Intelligent assessment+Tutoring | Content safety filtering · Minor protection verification |
+| Customer Service | cs.respond · cs.quality_score | Refund payment · False commitment (hallucination) | CSAT · FCR · AI independent resolution rate · Hallucination rate | Consumer protection/TCPA/GDPR | Multi-channel conversation+Routing+KB retrieval | Hallucination rate baseline · Emotion detection verification |
+| Content Moderation | moderation.classify · moderation.appeal · adversarial.detect · compliance.report | CSAM report submission · Content deletion | Precision/Recall · Violation online duration | Cybersecurity law/DSA/CSAM mandatory reporting | Text moderation+Image moderation+Policy engine | Multi-model cross-validation · Red team testing |
+| IT Ops | ops.incident_respond · ops.deploy · security_scan | Prod change (needs rollback) · Security fix | MTTR · MTTD · SLO achievement rate | MLPS 2.0/ISO 27001/SOC 2 | Incident response+Deployment automation+Monitoring | Change management process · Blast radius verification |
+| Marketing | social.publish · marketing.campaign | External content publication (brand impact) · Budget spend | ROAS · SOV · Engagement rate · Crisis alert accuracy | Ad law/FTC/GDPR/CAN-SPAM | Campaign orchestration+Brand monitoring+SEO | Ad law compliance · Brand tone baseline |
+
+### Platform Value of the Meta-Model
+
+- **Templatized domain onboarding**: When adding a 25th domain, filling the 12-question meta-model completes 80% of the onboarding definition
+- **Configuration-driven core**: The platform core reads meta-model fields to auto-configure ConstraintPack · Toolbelt · EvalFramework · ApprovalRoute
+- **Unified dashboard generation**: §43 operations dashboard auto-aggregates domain-level views based on meta-model fields (risk heatmap, quality trends, compliance status)
+- **Approval routing automation**: §47 approval routing auto-generates domain-level approval chains based on Q2/Q4
+- **Evaluation automation**: §17 model evaluation auto-generates domain-level evaluation suites based on Q9
+- **Documentation consistency**: All 24 domains have unified description structure, preventing divergence as domain count grows
 
 ---
 
@@ -3951,173 +2780,1810 @@ After the business domain goes online, it enters **continuous operation mode** a
 
 ---
 
+
+# Part IV -- Vertical Business Domain Deepening Layer (S71-S94)
+
+---
+
+# 71. Quantitative Trading Domain Architecture
+
+> Related: §37 Business Domain Modeling · §30 Business Pack · §10 Risk Control · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §1
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `quant-trading` · `recipe_archetype`: Trading + Realtime
+- `risk_level`: Critical · `latency_tier`: ultra_low (execution path <10ms)
+- `hitl_intensity`: High · `regulatory_density`: Critical (CSRC/SEC/MiFID II)
+
+**Core Agent Roles**: Signal Generation · Backtesting · Execution · Risk Management · Portfolio Optimization
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| ------------------------- | ------------- | ----------- | ------------------------ |
+| `tool.order.submit` | 60 | 95 | Mandatory pre-market risk control + position limit check |
+| `tool.strategy.deploy` | 50 | 90 | Manual approval + backtest verification |
+| `tool.risk_limit.modify` | 50 | 95 | domain_owner + risk manager dual approval |
+| `tool.market_data.read` | 20 | 20 | Auto-execute |
+
+**DomainEvalFramework**: Sharpe Ratio ≥ threshold · Max Drawdown ≤ limit · Implementation Shortfall · Risk limit compliance rate · System availability 99.99%
+
+**DomainKnowledgeSchema**: Market data real-time API · Risk parameter structured query · Strategy configuration versioned · Conflict strategy source_priority (exchange > fallback source)
+
+**HITL Strategy**: Strategy deployment / risk limit changes / capital allocation changes require mandatory manual approval; real-time P&L dashboard + one-click kill-switch; post-market compliance review with daily sign-off
+
+**Key Guardrails**: Pre-market sanity checks (max order size / max notional / rate limits) · Hard position limits cannot be overridden by Agent · Data source stale >N seconds triggers automatic liquidation · Circuit breaker
+
+**Agent Workflows (Detailed)**:
+
+- Signal Generation Agent: Data ingestion → Feature engineering → Model inference → Signal ranking → Risk filtering → Order generation
+- Backtesting Agent: Strategy definition → Historical replay → Simulated fills (including slippage/commissions) → Performance report
+- Execution Agent: Target portfolio → Execution plan (TWAP/VWAP/IS) → Cross-exchange routing → Fill monitoring → Real-time algorithm parameter adjustment
+- Risk Management Agent: Continuous exposure monitoring (sector/factor/Greeks) → Position limits → Circuit breaker → VaR/CVaR → Margin call notification
+- Portfolio Optimization Agent: Mean-variance / Black-Litterman / Risk Parity → Constraints (turnover / sector caps / ESG)
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| -------- | ---- |
+| Market Data | Bloomberg B-PIPE, Refinitiv Elektron, Wind, CTP/FEMAS, IEX Cloud, Polygon.io |
+| Trade Execution | FIX 4.2/4.4 Gateway, Broker OMS/EMS API (IB/CITIC/Huatai PB), DMA Direct Connect |
+| Backtesting Engine | Zipline, Backtrader, QuantConnect, In-house event-driven engine |
+| Risk | RiskMetrics, Axioma, Barra Factor Model, Internal VaR engine |
+| Infrastructure | KDB+/q Time-series DB, Redis, Kafka, FPGA/Kernel Bypass |
+
+**Data Sensitivity Classification**:
+
+- Top Secret: Trading strategies, alpha signals, positions, P&L (core IP)
+- Confidential: Backtest results, risk parameters, client portfolio configuration
+- Internal: Market data (license-restricted redistribution), execution analytics
+
+**Performance/Latency Budget**:
+
+- Market data processing: HFT <1ms tick-to-signal; medium-frequency <100ms
+- Order submission: Single-digit microseconds (FPGA) to low milliseconds
+- Risk checks: Pre-trade checks <50μs additional latency
+- Backtesting: Multi-year tick data replayed in minutes (parallelized)
+- Availability: 99.99% during trading sessions
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Data source corruption/delay | Switch to fallback source, stale data detection, gap >N seconds triggers automatic liquidation |
+| Strategy produces extreme signals | Pre-market sanity checks, circuit breaker |
+| Execution venue disconnection | Auto-route to backup venue, order queuing, notify human |
+| Risk limit breach | Immediate liquidation, disable strategy, notify risk manager |
+| Model overfitting | Online monitoring of signal decay, automatic weight reduction, regime detection |
+
+---
+
+# 72. E-commerce Domain Architecture
+
+> Related: §37 Business Domain Modeling · §30 Business Pack · §21 HITL · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §2
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `ecommerce` · `recipe_archetype`: CRUD-heavy + Realtime
+- `risk_level`: High · `latency_tier`: realtime (search/recommendation <200ms, risk control <500ms)
+- `hitl_intensity`: Medium · `regulatory_density`: Medium (E-commerce Law / Consumer Protection Law / PCI-DSS)
+
+**Core Agent Roles**: Product Listing · Pricing · Inventory Fulfillment · Customer Service · Recommendation · Transaction Risk Control
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| ----------------------- | ------------- | ----------- | --------------------- |
+| `tool.price.update` | 40 | 80 | Manual approval for changes exceeding threshold |
+| `tool.refund.issue` | 50 | 70 | Manual approval for amounts exceeding threshold |
+| `tool.listing.publish` | 30 | 60 | Manual review for regulated categories |
+| `tool.inventory.sync` | 30 | 30 | Auto-execute |
+
+**DomainEvalFramework**: GMV · Conversion Rate · CSAT/NPS · Inventory Turnover · Risk Control Precision/Recall · Recommendation CTR
+
+**HITL Strategy**: Price changes >X% require manual approval · Refunds exceeding threshold require manual approval · Regulated category listing review · Customer service first N replies reviewed during training period
+
+**Key Guardrails**: Floor price constraint (prevent pricing at ¥0.01) · Inventory safety buffer · Customer service replies grounded in policy retrieval (prevent hallucinated commitments) · Multi-PSP payment failover
+
+**Agent Workflows (Detailed)**:
+
+- Product Listing Agent: Generate description → Title SEO → Categorization → Image attribute extraction → Multi-platform listing (Tmall/JD.com/Amazon)
+- Pricing Agent: Competitor monitoring → Dynamic pricing model (elasticity/inventory/margin) → Markdown/promotion execution
+- Inventory Fulfillment Agent: Demand forecasting → Replenishment trigger → Warehouse allocation → 3PL coordination → Split shipment
+- Customer Service Agent: Pre-sale inquiry → After-sale handling → Complex case escalation → Reply template generation
+- Recommendation Agent: User profiling → Collaborative filtering/hybrid model → Personalization → A/B testing
+- Risk Control Agent: Real-time scoring (velocity/device/address) → Suspicious order flagging → Chargeback dispute
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Platform | Shopify API, Tmall/Taobao Open Platform, JD.com Kepler, Amazon SP-API, Pinduoduo |
+| Payment | Alipay, WeChat Pay, Stripe, PayPal, Adyen |
+| Logistics | SF Express API, Cainiao, FedEx/UPS/DHL, WMS (Manhattan, Blue Yonder) |
+| Search/Recommendation | Elasticsearch, Algolia, Pinecone, TensorFlow Recommenders |
+| CRM | Salesforce, HubSpot, Youzan, Weimob |
+
+**Data Sensitivity Classification**:
+
+- PII (High): Customer name, address, phone number, payment information (PCI-DSS scope)
+- Confidential: Pricing strategy, supplier costs, margin data, inventory levels
+- Internal: Product catalog, aggregated sales data, A/B test results
+
+**Performance/Latency Budget**:
+
+- Search/Recommendation: p99 <200ms
+- Price updates: Competitive response <5 minutes, planned promotions batch
+- Risk scoring: <500ms per transaction (synchronous checkout)
+- Customer service: Chat first response <3s, ticket <2h
+- Inventory sync: Multi-channel <1 minute
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Price bot war | Floor price constraint, margin guardrails, threshold-based manual alert |
+| Inventory sync delay causing oversell | Reserved inventory management, safety stock buffer, automatic compensation |
+| Customer service Agent hallucinating policy | Policy-retrieval grounded generation, mandatory policy document citation |
+| Recommendation cold start | Popular items fallback, demographic defaults, preference collection |
+| Payment gateway failure | Multi-PSP failover, queued retry, customer notification |
+
+---
+
+# 73. Advertising Domain Architecture
+
+> Related: §37 Business Domain Modeling · §18 Cost Management · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §3
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `advertising` · `recipe_archetype`: Creative + Analytics
+- `risk_level`: Medium · `latency_tier`: near_realtime (bidding <100ms, reporting 15min delay acceptable)
+- `hitl_intensity`: Medium · `regulatory_density`: Medium (Advertising Law / Platform Policies / GDPR Tracking Consent)
+
+**Core Agent Roles**: Campaign Planning · Creative Generation · Bid Optimization · Audience Management · Attribution Reporting
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| ------------------------- | ------------- | ----------- | -------------------------- |
+| `tool.campaign.launch` | 40 | 75 | Budget commitment + creative approval |
+| `tool.bid.adjust` | 30 | 50 | Manual approval when exceeding budget threshold |
+| `tool.creative.publish` | 30 | 70 | Brand/legal review required before go-live |
+| `tool.audience.create` | 20 | 50 | Sensitive attribute targeting requires privacy review |
+
+**DomainEvalFramework**: ROAS · CPA · CTR · Brand Lift · Budget Pacing Accuracy · Creative Quality Score · Attribution Accuracy
+
+**HITL Strategy**: Campaign launch approval (budget commitment) · Brand/legal review before creative go-live · Sensitive category audience targeting review · Budget increase >X% requires approval
+
+**Key Guardrails**: Hard daily/hourly budget caps · Pre-submission compliance check (advertising law absolute-claim detection) · Automatic audience expansion fallback · Frequency cap enforcement
+
+**Agent Workflows (Detailed)**:
+
+- Campaign Planning Agent: Business objective analysis → Media plan (channel/budget/schedule/targeting)
+- Creative Generation Agent: Platform spec adaptation (Douyin vertical / WeChat Moments card / Google responsive) → A/B variants
+- Bid Optimization Agent: Cross-DSP real-time bidding → Conversion probability / budget pacing / competitive adjustment → Target CPA/ROAS
+- Audience Management Agent: 1P/2P/3P data segment building → Lookalike → Frequency cap → Cross-device identity resolution
+- Attribution & Reporting Agent: Cross-touchpoint conversion collection → Multi-touch attribution (Shapley/Markov) → Performance dashboard
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Ad Platform | Google Ads, Meta Marketing, Ocean Engine, Tencent Ads, Baidu Marketing, Kuaishou Magnetic Engine |
+| DSP | The Trade Desk, DV360, MediaMath |
+| Creative | Canva API, Figma API, Midjourney/DALL-E, RunwayML |
+| Analytics | Google Analytics, Adobe Analytics, AppsFlyer/Adjust |
+| Brand Safety | IAS, DoubleVerify, MOAT |
+
+**Data Sensitivity Classification**:
+
+- PII (High): Customer email lists, CRM data, device IDs
+- Confidential: Campaign performance, bidding strategy, customer acquisition cost, creative test results
+- Internal: Aggregated reach/frequency data, market benchmarks
+
+**Performance/Latency Budget**:
+
+- Bid decision: RTB <100ms
+- Campaign adjustment: Hourly budget pacing, daily bid optimization
+- Creative generation: Copywriting in minutes, image/video in hours (async)
+- Reporting: Near-real-time dashboard with 15-minute delay
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Bid error causing budget overspend | Hard daily/hourly budget caps, real-time spend monitoring with auto-pause |
+| Creative rejected by platform | Pre-submission compliance check Agent, pre-approved template library |
+| Audience too narrow to deliver | Automatic audience expansion trigger, Lookalike fallback |
+| Attribution data loss | Modeled conversions, MMM backup |
+| Ad fatigue | Automatic creative rotation, frequency cap enforcement, refresh trigger |
+
+---
+
+# 74. Financial Services Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §49 Compliance Policy Engine · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §4
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `financial-services` · `recipe_archetype`: Compliance + Trading
+- `risk_level`: Critical · `latency_tier`: realtime~batch (fraud <200ms, KYC <30s, regulatory reporting batch)
+- `hitl_intensity`: Critical · `regulatory_density`: Critical (Basel III / AML laws / C-ROSS / EU AI Act)
+
+**Core Agent Roles**: Credit Assessment · KYC/AML · Insurance Underwriting · Claims Processing · Regulatory Reporting
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| ------------------------- | --------------------- | -------------------- | ------------------------------------------- |
+| `tool.credit.approve` | 50 | 95 | Exceeds threshold: mandatory manual review + explainability |
+| `tool.sar.submit` | 50 | 95 | Legally required manual review |
+| `tool.claim.adjudicate` | 50 | 80 | Manual review when exceeding auto-adjudication limit |
+| `tool.model.deploy` | 50 | 90 | Fairness testing + manual approval |
+
+**DomainEvalFramework**: Gini coefficient / KS statistic · SAR quality (regulatory feedback) · Loss ratio / Combined ratio · Model stability (PSI) · Regulatory inspection finding count
+
+**HITL Strategy**: Mandatory for above-threshold loan approvals · Legally required manual review for SAR/STR reports · Mandatory approval for model deployment/retraining · Adverse credit decisions must be reviewable · Many jurisdictions require "meaningful human involvement"
+
+**Key Guardrails**: Fairness testing (disparate impact analysis) · PSI monitoring with automatic rollback · Reconciliation checks + data lineage tracking · Multi-factor KYC verification
+
+**Agent Workflows (Detailed)**:
+
+- Credit Assessment Agent: Applicant data collection → Scorecard/ML scoring → Approval recommendation + explanation → Loan term structuring
+- KYC/AML Agent: Document OCR + liveness detection → Sanctions list screening (OFAC/UN/EU) → Suspicious transaction monitoring → SAR/STR reporting
+- Insurance Underwriting Agent: Risk factor analysis → Policy pricing → Exclusions → Policy document generation
+- Claims Processing Agent: Claim intake → Coverage verification → Fraud detection → Payout estimation → Route to review or auto-approve
+- Regulatory Reporting Agent: Cross-system aggregation → Report generation (Basel III/CCAR) → Completeness validation → Submission
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Credit Bureau | PBOC Credit, Experian, Equifax, TransUnion, Baihang Credit |
+| Sanctions/AML | World-Check, Dow Jones, OFAC SDN, Chainalysis |
+| Document Processing | ABBYY, Tesseract OCR, AWS Textract |
+| Core Banking | Temenos, FIS, Changliang Tech, DCITS |
+| Insurance Platform | Guidewire, Duck Creek, Sinosoft |
+
+**Data Sensitivity Classification**:
+
+- Extremely Sensitive (PII + Financial): ID number/SSN, bank account numbers, credit reports, medical records (insurance), tax filings
+- Confidential: Risk models, pricing algorithms, position information, customer lists
+- Regulated: All transaction data retained for 5–7 years
+
+**Performance/Latency Budget**:
+
+- Fraud scoring: <200ms · Credit pre-approval: <5s
+- KYC verification: Automated <30s, Enhanced due diligence <24h
+- Claims processing: Simple auto-adjudication <1min, Complex with human review <48h
+- Regulatory reporting: Batch processing, strict deadlines (T+1 or monthly)
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Model drift causing bad credit decisions | PSI monitoring, champion-challenger testing, automatic rollback |
+| AML false positive overload | Risk-based prioritization, feedback loop optimization, tiered review |
+| Regulatory report data inconsistency | Reconciliation checks, data lineage tracking, pre-submission validation |
+| Deploying biased model | Pre-deployment fairness testing, continuous monitoring by protected group |
+| KYC document forgery | Multi-factor verification, liveness detection, government database cross-check |
+
+---
+
+# 75. Data Engineering Domain Architecture
+
+> Related: §37 Business Domain Modeling · §29 Knowledge/Memory · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §5
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `data-engineering` · `recipe_archetype`: Analytics + CRUD-heavy
+- `risk_level`: Medium · `latency_tier`: sla_driven (batch SLA-driven, streaming sub-second)
+- `hitl_intensity`: Medium · `regulatory_density`: Medium (data governance / GDPR right to erasure / data residency)
+
+**Core Agent Roles**: Pipeline Orchestration · Data Quality · Schema Management · Data Lineage · Anomaly Detection
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --------------------------- | --------------------- | -------------------- | ----------------------------------------- |
+| `tool.schema.migrate` | 50 | 85 | Breaking changes require mandatory manual approval |
+| `tool.pipeline.deploy_prod` | 50 | 75 | Code review required before first production run |
+| `tool.data.delete` | 60 | 90 | Data deletion requests require mandatory approval |
+| `tool.pipeline.retry` | 20 | 20 | Auto-execute (idempotency guaranteed) |
+
+**DomainEvalFramework**: SLA achievement rate · Data quality check pass rate · Pipeline generation accuracy · Compute cost trend · Lineage coverage rate
+
+**HITL Strategy**: Schema migration approval (breaking changes) · Production pipeline deployment · Data deletion requests · Sensitive dataset access authorization
+
+**Key Guardrails**: Schema drift detection · Idempotent write patterns · Budget alerts + pre-execution query cost estimation · Least-privilege access to sensitive data
+
+**Agent Workflows (Detailed)**:
+
+- Pipeline Orchestration Agent: Natural language requirements → DAG generation (Airflow/Dagster) → Scheduling/retry/dependency management
+- Data Quality Agent: Inbound profiling → Validation rules (schema/range/uniqueness/referential integrity) → Bad record quarantine → Quality report
+- Schema Management Agent: Source system change detection → Migration script → Downstream impact assessment → Schema registry
+- Data Lineage Agent: Source-to-consumption tracking → Lineage graph → Impact analysis → Audit trail
+- Anomaly Detection Agent: Data volume/freshness/distribution drift/pipeline latency monitoring → Root cause alerting
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Orchestration | Apache Airflow, Dagster, Prefect, dbt, Luigi |
+| Stream Processing | Kafka, Flink, Spark Structured Streaming, Pulsar |
+| Storage | Snowflake, Databricks, BigQuery, Delta Lake, Iceberg |
+| Quality | Great Expectations, dbt tests, Monte Carlo, Soda |
+| Catalog/Lineage | Apache Atlas, DataHub, Amundsen, OpenLineage |
+
+**Data Sensitivity Classification**:
+
+- High: PII columns (must be masked/tokenized), financial data, health data
+- Medium: Business metrics, operational data
+- Low: Public datasets, reference data
+- Agents need metadata access; actual sensitive data access should be minimized
+
+**Performance/Latency Budget**:
+
+- Batch pipelines: SLA-driven (e.g., daily aggregation ready by 6 AM)
+- Stream processing: Real-time sub-second, near-real-time seconds
+- Data quality checks: Must not add >10% to pipeline runtime
+- Lineage queries: Impact analysis <5s
+- Agent response: Pipeline generation in seconds, complex optimization in minutes
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Pipeline failure mid-run | Checkpointing, idempotent operations, automatic backoff retry |
+| Source schema change breakage | Drift detection, auto-adapt for additive changes, manual review for breaking changes |
+| Data quality regression | Auto-quarantine bad batches, rollback to last known good data, SLA violation alert |
+| Cost runaway | Budget alerts, scaling limits, query cost estimation |
+| Retries causing duplicates | Idempotent writes (upsert/dedup keys), exactly-once semantics |
+
+---
+
+# 76. Coding Domain Architecture
+
+> Related: §37 Business Domain Modeling · §30 Business Pack · §11 Security · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §6
+> Existing implementation: `src/domains/coding/`
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `coding` · `recipe_archetype`: Creative + Adversarial
+- `risk_level`: High · `latency_tier`: realtime (completion <500ms, review <5min)
+- `hitl_intensity`: High · `regulatory_density`: Low-Medium (licensing / SOC2 / industry-specific)
+
+**Core Agent Roles**: Code Generation · Code Review · Testing · CI/CD · Security Scanning · Debugging
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| ------------------------- | --------------------- | -------------------- | --------------------------------- |
+| `tool.code.merge` | 50 | 80 | Mandatory human developer review |
+| `tool.deploy.production` | 60 | 90 | Manual approval + security scan pass |
+| `tool.code.generate` | 30 | 40 | Must have human review before merge |
+| `tool.security.fix` | 40 | 60 | Security team approval |
+
+**DomainEvalFramework**: Generated code test pass rate · Bug detection true positive rate · Suggestion acceptance rate · Vulnerability detection rate · License compliance rate
+
+**HITL Strategy**: All generated code must have human review before merge · Production deployment requires manual approval · Security vulnerability fix decisions · Architecture decisions
+
+**Key Guardrails**: Pre-commit security scan hooks · License compliance checks · Pinned dependency version verification · Scope-limited context window
+
+**Agent Workflows (Detailed)**:
+
+- Code Generation Agent: Natural language requirements → Codebase context understanding → Generate implementation + tests
+- Code Review Agent: PR analysis → Bug/security vulnerability/style/performance/architecture issues → Line-level comments + fix suggestions
+- Testing Agent: Unit/integration/E2E test generation → Untested path identification → Fixtures and mocks → Coverage targets
+- CI/CD Agent: Build pipeline management → Failure interpretation → Deployment orchestration → Feature flags → Canary analysis
+- Security Scanning Agent: SAST/DAST/SCA → Triage → False positive reduction → Fix suggestions → Vulnerability lifecycle
+- Debugging Agent: Error log/stack trace analysis → Root cause hypotheses → Fix suggestions → Test environment reproduction
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Version Control | GitHub, GitLab, Bitbucket API |
+| CI/CD | GitHub Actions, Jenkins, GitLab CI, CircleCI, ArgoCD |
+| Security | Snyk, SonarQube, Semgrep, Trivy, Dependabot, CodeQL |
+| Testing | Jest, Pytest, JUnit, Playwright, Cypress, k6 |
+| Code Analysis | Tree-sitter, Language Servers (LSP), ESLint, Ruff |
+| Monitoring | Sentry, Datadog, PagerDuty, Grafana |
+
+**Data Sensitivity Classification**:
+
+- Extremely Sensitive: Source code (core IP), secrets/credentials, deployment configurations
+- Confidential: Build logs, security scan results, architecture diagrams
+- Internal: Public dependency information, general coding standards
+
+**Performance/Latency Budget**:
+
+- Code completion: Inline suggestions <500ms (IDE experience)
+- Code review: Typical PR <5 minutes (async acceptable)
+- Test generation: Single function in seconds, module in minutes
+- Security scanning: Incremental in minutes, full codebase in hours
+- CI/CD: Build/test should not be bottlenecked by the agent
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Generated code fails to compile | Iterative fix loop: compile → parse errors → fix → retry (up to N times) |
+| Agent suggests deprecated API | Pinned dependency versions, validate against actually installed package APIs |
+| Introducing security vulnerabilities | Pre-commit security scan hooks, mandatory security review for sensitive files |
+| Flaky tests | Deterministic test patterns, explicit mocks, retry detection tagging |
+| Incorrect modification scope | Scope-limited context window, multi-file change confirmation prompts |
+
+---
+
+# 77. User Operations Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance (PIPL/GDPR) · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §7
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `user-operations` · `recipe_archetype`: Analytics + CRUD-heavy
+- `risk_level`: Medium · `latency_tier`: near_realtime (triggered campaigns <5min, batch segmentation daily)
+- `hitl_intensity`: Medium · `regulatory_density`: Medium (PIPL/GDPR/CAN-SPAM/TCPA)
+
+**Core Agent Roles**: Segmentation · Lifecycle Management · Churn Prediction · Marketing Automation · Cohort Analysis
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| -------------------------- | ------------- | ----------- | -------------------------- |
+| `tool.campaign.send` | 30 | 60 | Campaign content approval |
+| `tool.segment.create` | 20 | 50 | Segments using sensitive attributes require privacy review |
+| `tool.notification.push` | 20 | 40 | Frequency cap enforcement |
+| `tool.ab_test.launch` | 30 | 40 | A/B test launch review |
+
+**DomainEvalFramework**: Retention rate (D1/D7/D30) · Churn rate · LTV/CAC ratio · Campaign open rate/CTR · NPS/CSAT
+
+**HITL Strategy**: Campaign content approval · New segment review for sensitive attributes · Notification frequency policy changes · Incentive campaign budget allocation
+
+**Key Guardrails**: Frequency cap enforcement · Engagement score gating · Pre-send segment size validation · Real-time preference center sync · Opt-out list hard enforcement
+
+**Agent Workflows (Detailed)**:
+
+- Segmentation Agent: Behavioral data analysis (events/transactions/interactions) → RFM/behavioral clustering/predictive attributes → Dynamic segmentation
+- Lifecycle Management Agent: Acquire → Activate → Retain → Monetize → Refer → Stage interventions → Personalized touchpoints
+- Churn Prediction Agent: Behavioral signals (engagement decline/tickets/feature abandonment) → Churn model → High-risk list + intervention recommendations
+- Marketing Automation Agent: Multi-touch campaigns (Push/Email/In-app/SMS) → Send-time optimization → Frequency capping
+- Cohort Analysis Agent: Acquisition channel/time/behavior → Retention curves → High-value cohort identification → Insight reports
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| CDP/Analytics | Segment, Amplitude, Mixpanel, Sensors Data, GrowingIO, Umeng |
+| Marketing Automation | Braze, CleverTap, JPush, Getui, Iterable |
+| Communication | Twilio (SMS), SendGrid (Email), APNs/FCM, WeChat/WeCom API |
+| A/B Testing | Optimizely, LaunchDarkly, Firebase Remote Config |
+| Data Warehouse | Snowflake, BigQuery, ClickHouse |
+
+**Data Sensitivity Classification**:
+
+- PII (High): User profiles, contact information, behavioral data linked to identifiable users
+- Sensitive Behavior: Location, health/fitness, financial behavior, browsing history
+- Aggregated (Low): Cohort-level metrics, anonymized funnel data
+
+**Performance/Latency Budget**:
+
+- Segment updates: Triggered <5 min latency, batch daily
+- Campaign triggers: Real-time event to message delivery <1 min
+- Churn prediction: Daily scoring, real-time for high-value users
+- A/B test results: Statistical significance monitoring, daily reporting
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Notification fatigue (unsubscribe spike) | Frequency capping, engagement score gating, automatic cool-down period |
+| Incorrect personalization | Content safety review, fallback to generic message, sensitive topic detection |
+| Churn model false positives | Tiered intervention (low-cost first), A/B test interventions, feed back to model |
+| Sent to wrong segment | Pre-send segment size validation, sandbox testing, progressive rollout |
+| Opt-out preferences not respected | Real-time preference center sync, hard opt-out enforcement at send layer |
+
+---
+
+# 78. Industry Research Domain Architecture
+
+> Related: §37 Business Domain Modeling · §29 Knowledge/Memory · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §8
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `industry-research` · `recipe_archetype`: Research + Analytics
+- `risk_level`: Low · `latency_tier`: batch (reports hours to days, breaking alerts <15min)
+- `hitl_intensity`: High · `regulatory_density`: Low (securities law/data licensing/copyright)
+
+**Core Agent Roles**: Market Analysis · Competitive Intelligence · Trend Forecasting · Report Generation · Regulatory Tracking
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| -------------------------- | ------------- | ----------- | -------------------------- |
+| `tool.report.publish` | 30 | 80 | Human analyst review required before publishing |
+| `tool.data.scrape` | 40 | 60 | Copyright/licensing compliance check |
+| `tool.forecast.generate` | 30 | 50 | Forward-looking statements must include disclaimer |
+| `tool.alert.send` | 20 | 30 | Auto-execute (low-risk information push) |
+
+**DomainEvalFramework**: Factual accuracy · Source citation rate · Time to insight · Relevant source coverage · Analyst satisfaction
+
+**HITL Strategy**: All published research requires human analyst review · Quantitative claims must cite sources · Forward-looking statements must include disclaimers
+
+**Key Guardrails**: Mandatory source citation for all quantitative claims · Data timestamps + freshness checks · Paraphrase ratio monitoring (prevent copyright infringement) · Counter-evidence section requirement
+
+**Agent Workflows (Detailed)**:
+
+- Market Analysis Agent: Multi-source data collection (financial databases/news/statistics/reports) → Market size/growth/competitive landscape → Structured report
+- Competitive Intelligence Agent: Competitor activity monitoring (product/pricing/hiring/patents/regulatory) → Competitor profiles → Change alerts
+- Trend Forecasting Agent: Patent/paper/funding/social/policy signals → Emerging trend identification → Confidence-rated forecasts
+- Report Generation Agent: Findings → Structured report (executive summary/methodology/recommendations) → Multi-format → Rigorous citations
+- Regulatory Tracking Agent: Cross-jurisdiction regulatory changes → Business impact assessment → Compliance gap analysis → Change calendar
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Data Sources | Wind, Bloomberg, Statista, IBISWorld, National Bureau of Statistics, Euromonitor |
+| News/Media | NewsAPI, GDELT, Caixin/36kr API, Social Listening |
+| Patents | WIPO, USPTO, CNIPA, Google Patents |
+| Financial Filings | SEC EDGAR, CNINFO, ExFact |
+| NLP | Sentiment analysis, NER, Summarization |
+
+**Data Sensitivity Classification**:
+
+- Confidential: Proprietary research findings, client-specific analysis, competitive strategy recommendations
+- Licensed: Third-party data (Bloomberg/Wind) license restrictions on redistribution
+- Public: Government statistics, published reports, public news
+
+**Performance/Latency Budget**:
+
+- Alert generation: Breaking news/regulatory changes <15 min
+- Report generation: Hours to days (async), comprehensive reports may take several hours
+- Data refresh: Market daily, competitive weekly, deep-dive quarterly
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Hallucinated statistics | Mandatory source citation for all quantitative claims, validation Agent cross-check |
+| Stale data presented as current | Timestamp all data points, freshness checks, flag when exceeding threshold |
+| Copyright infringement | Attribution summaries, fair use guidelines, paraphrase ratio monitoring |
+| Missing key competitors | Multi-source cross-referencing, gap detection checklist, human scope review |
+| Trend identification bias | Counter-evidence requirement, multi-perspective prompting, uncertainty quantification |
+
+---
+
+# 79. Academic Research Domain Architecture
+
+> Related: §37 Business Domain Modeling · §29 Knowledge/Memory · §23 Compliance · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §9
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `academic-research` · `recipe_archetype`: Research
+- `risk_level`: Low · `latency_tier`: batch (literature review hours to days, writing assistance real-time)
+- `hitl_intensity`: High · `regulatory_density`: Medium (research ethics/publication ethics/data regulations)
+
+**Core Agent Roles**: Literature Review · Hypothesis Generation · Experiment Design · Data Analysis · Writing and Publication
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| -------------------------- | ------------- | ----------- | -------------------------- |
+| `tool.manuscript.submit` | 30 | 90 | Full human researcher review |
+| `tool.citation.insert` | 10 | 70 | Every citation must be DOI-verified |
+| `tool.analysis.run` | 20 | 50 | Assumption check + human statistician review |
+| `tool.literature.search` | 10 | 10 | Auto-execute |
+
+**DomainEvalFramework**: Citation accuracy 100% (zero fabrication) · Statistical correctness · Reproducibility · Literature coverage · Writing quality
+
+**HITL Strategy**: All published content requires human researcher review · Hypothesis selection/experiment design approval · Statistical method selection · Researcher must assume intellectual property ownership
+
+**Key Guardrails**: Automatic DOI/database verification for every citation · Plagiarism detection tool integration · Assumption-checking Agent layer · Isolated processing environment (prevent data leakage)
+
+**Agent Workflows (Detailed)**:
+
+- Literature Review Agent: Academic database search (Semantic Scholar/PubMed/CNKI/arXiv) → Ranking → Key finding extraction → Research gaps → Standardized citation management
+- Hypothesis Generation Agent: Cross-paper finding analysis → Contradictions/unexplored intersections → Testable hypotheses + experimental method suggestions
+- Experiment Design Agent: Sample size calculation → Control groups → Statistical tests → Confounding variables → Pre-registration documents
+- Data Analysis Agent: Statistical analysis (regression/ANOVA/survival analysis) → Visualization → Common error checks (p-hacking/multiple comparisons)
+- Writing and Publication Agent: Journal formatting → Abstract generation → References (BibTeX/EndNote) → Submission package
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Academic Databases | Semantic Scholar, PubMed/MEDLINE, arXiv, CNKI, Web of Science, Scopus |
+| Citation Management | Zotero, Mendeley, EndNote |
+| Data Analysis | R, Python (scipy/statsmodels/pandas), SPSS, Stata |
+| LaTeX | Overleaf API, LaTeX compilation toolchain |
+| Reproducibility | Jupyter, R Markdown, Docker, DVC, MLflow |
+| Pre-registration | OSF, AsPredicted |
+
+**Data Sensitivity Classification**:
+
+- High: Human subject data (IRB), patient data (HIPAA), unpublished results, grant proposals
+- Medium: Pre-publication manuscripts, preliminary results, peer review comments
+- Low: Published papers, public datasets
+
+**Performance/Latency Budget**:
+
+- Literature search: Initial <30s, comprehensive retrieval minutes
+- Statistical analysis: Seconds to minutes
+- Writing assistance: Real-time or near real-time
+- Full literature review: Hours to days (async)
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Citation fabrication | Automatic DOI/database verification for every citation |
+| Statistical method misuse | Assumption-checking layer, diagnostic tests, human statistician review |
+| Generated text plagiarism | Integrated plagiarism detection (Turnitin/iThenticate), originality scoring |
+| Missing relevant literature | Multi-database search, citation chain tracing, expert coverage review |
+| Unpublished results leakage | Strict access controls, isolated processing environment |
+
+---
+
+# 80. Enterprise Knowledge Base Domain Architecture
+
+> Related: §37 Business Domain Modeling · §50 Knowledge Domain Isolation · §11 Security · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §10
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `knowledge-base` · `recipe_archetype`: CRUD-heavy
+- `risk_level`: Medium · `latency_tier`: realtime (search <2s, synthesized answers <5s)
+- `hitl_intensity`: Medium · `regulatory_density`: Medium (data retention/access control/privacy)
+
+**Core Agent Roles**: Document Processing · Knowledge Graph · Semantic Search · FAQ Generation · Knowledge Gap Analysis
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| ---------------------------- | ------------- | ----------- | -------------------------- |
+| `tool.search.query` | 10 | 40 | Real-time access permission check at query time |
+| `tool.document.ingest` | 20 | 50 | New document source onboarding requires approval |
+| `tool.answer.synthesize` | 20 | 60 | Low-confidence answers respond with "I don't know" |
+| `tool.content.retire` | 30 | 70 | Content retirement requires domain_owner decision |
+
+**DomainEvalFramework**: MRR/NDCG/precision@k · Answer faithfulness · Citation accuracy · Coverage · Zero unauthorized access incidents
+
+**HITL Strategy**: Access control policy definition · Sensitive document classification · Error correction when Agent answers incorrectly · Content retirement decisions
+
+**Key Guardrails**: Source system permission mirroring + query-time access checks · Mandatory verifiable citation links · Document freshness tracking + staleness alerts · Hierarchical chunking
+
+**Agent Workflows (Detailed)**:
+
+- Document Processing Agent: Multi-format ingestion (PDF/Word/PPT/Confluence/Email/Meeting notes) → Structured extraction → Chunking → Metadata maintenance
+- Knowledge Graph Agent: NLP entity/relationship extraction → Graph construction (people/projects/technologies/processes) → Disambiguation → Cross-domain linking
+- Semantic Search Agent: Natural language query → Hybrid search (keyword + vector) → Re-ranking → Synthesized answer with citations
+- FAQ Generation Agent: High-frequency question identification (tickets/chats/searches) → FAQ generation and maintenance → Staleness detection
+- Knowledge Gap Analysis Agent: Undocumented processes → Stale content → Contradictions → Persistently unmatched queries
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Document Sources | Confluence, SharePoint, Google Drive, Notion, Feishu, DingTalk |
+| Vector Databases | Pinecone, Weaviate, Milvus, Qdrant, pgvector |
+| Knowledge Graph | Neo4j, Amazon Neptune, TigerGraph |
+| Embedding Models | OpenAI Embeddings, BGE, Cohere Embed, Jina |
+| Document Parsing | Unstructured.io, LlamaParse, Adobe PDF Services |
+| Search Engines | Elasticsearch, OpenSearch, Typesense |
+
+**Data Sensitivity Classification**:
+
+- Top Secret: Executive strategy documents, M&A materials, personnel files, legal opinions
+- Confidential: Internal policies, technical architecture, project documentation, financial data
+- Internal: General processes, training materials, product documentation
+- Document-level access control consistent with source system permissions must be implemented
+
+**Performance/Latency Budget**:
+
+- Search/Query: Results <2s, LLM synthesized answer <5s
+- Document ingestion: Minutes to hours (batch processing acceptable)
+- Knowledge graph updates: Near real-time for critical documents, daily batch for general
+- Availability: 99.9% during business hours
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Search leaking confidential data | Source system permission mirroring, query-time access checks, audit logs |
+| Hallucinated answers | Mandatory citation links, faithfulness scoring, low-confidence answers respond with "I don't know" |
+| Returning stale content | Freshness tracking, automatic staleness alerts, deprecation workflow |
+| Poor chunking quality | Hierarchical chunking with overlap, parent-child retrieval, metadata enrichment |
+| Knowledge graph inconsistencies | Conflict detection, provenance tracking, human arbitration workflow |
+
+---
+
+# 81. Finance/Accounting Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §49 Compliance Policy Engine · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §11
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `finance-accounting` · `recipe_archetype`: Compliance + CRUD-heavy
+- `risk_level`: Critical · `latency_tier`: batch (month-end close window driven, ad-hoc queries <30s)
+- `hitl_intensity`: Critical · `regulatory_density`: Critical (CAS/US GAAP/SOX/Golden Tax Phase IV/IFRS)
+
+**Core Agent Roles**: Invoice Processing · Expense Control · Financial Reporting · Tax Compliance · Reconciliation · Budget Forecasting
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| -------------------------- | ------------- | ----------- | ---------------------------- |
+| `tool.journal.post` | 50 | 85 | Mandatory approval for journal entries exceeding threshold |
+| `tool.financial.signoff` | 50 | 95 | CFO/Controller sign-off |
+| `tool.tax.file` | 50 | 95 | Tax filing submission requires mandatory human approval |
+| `tool.invoice.process` | 30 | 50 | Auto-post after three-way match passes |
+
+**DomainEvalFramework**: Straight-through processing rate · GL posting accuracy · Reconciliation match rate · Days to close · Audit findings count · Segregation of duties violations count
+
+**HITL Strategy**: Above-threshold journal entry approval · Financial statement sign-off (CFO/Controller) · Tax filing submission · Bad debt write-off · SOX-required documented review · Segregation of duties enforcement
+
+**Key Guardrails**: OCR confidence score + human review below threshold · Three-way match validation · Duplicate payment detection · Exchange rate source verification (central bank/ECB) · Period-end cutoff rules
+
+**Agent Workflows (Detailed)**:
+
+- Invoice Processing Agent: Receipt (email/scan/e-invoice) → OCR → Three-way match → Approval routing → ERP posting
+- Expense Control Agent: Expense report policy compliance review → Anomaly flagging → Auto-approve within policy → Route anomalies to human
+- Financial Reporting Agent: Sub-ledger summarization → Consolidation (multi-entity/multi-currency) → Three-statement generation → Variance analysis
+- Tax Compliance Agent: Tax liability calculation (VAT/income tax/withholding) → Tax filing → Transfer pricing documentation
+- Reconciliation Agent: Cross-system matching (bank vs. GL/intercompany/sub-ledger) → Discrepancy identification → Resolution suggestions
+- Budget and Forecasting Agent: Historical + driver factors → Forecasting → Scenario analysis → Budget vs. actual → Rolling forecast
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| ERP | SAP S/4HANA, Oracle ERP Cloud, Yonyou U8/NC, Kingdee K/3/Cloud |
+| Expense Management | SAP Concur, Expensify, Ramp |
+| Tax | Thomson Reuters ONESOURCE, Avalara, Aisino (Golden Tax System) |
+| Banking | Bank APIs (PSD2/Open Banking), SWIFT, Direct Bank Connection |
+| OCR | ABBYY, Kofax, Baidu AI/Tencent AI OCR |
+| BI | Tableau, Power BI, FineReport |
+
+**Data Sensitivity Classification**:
+
+- Top Secret: Unreleased financial results, executive compensation, M&A valuations, tax positions
+- Confidential: General ledger data, vendor contracts, employee expenses, bank accounts
+- Regulated: All financial records SOX/audit retention (7-10 years)
+
+**Performance/Latency Budget**:
+
+- Invoice processing: OCR + matching <1 min, same-day posting
+- Month-end close: Target 3-5 days (reduced from 10+ days), batch processing within close window
+- Tax filing: Strict regulatory deadlines (China VAT by the 15th of each month)
+- Reconciliation: Bank daily, others monthly
+- Reporting: Ad-hoc <30s, scheduled reports within batch processing window
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| OCR misreading invoice amounts | Confidence scoring + human review below threshold, three-way match validation |
+| Incorrect accounting period attribution | Period-end cutoff rules, validation against purchase/delivery dates, reversing entries |
+| Consolidation exchange rate errors | Exchange rate source verification (central bank/ECB), translation vs. remeasurement reconciliation |
+| Tax calculation errors | Multi-method verification, prior period comparison, tax rate table validation |
+| Duplicate payments | Duplicate detection (vendor + amount + date + invoice number), approval workflow |
+
+---
+
+# 82. Legal Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §12
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `legal` · `recipe_archetype`: Compliance + Adversarial
+- `risk_level`: Critical · `latency_tier`: batch (contract review <1h, e-discovery throughput-priority)
+- `hitl_intensity`: **Highest** (all outputs must be reviewed by a licensed attorney) · `regulatory_density`: Critical (Civil Code/Antitrust Law/GDPR/Professional Ethics)
+
+**Core Agent Roles**: Contract Review · Regulatory Compliance · Litigation Support · Intellectual Property Management · Due Diligence · Policy Drafting
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| -------------------------- | ------------- | ----------- | ------------------------------ |
+| `tool.contract.review` | 30 | 80 | All results require attorney review |
+| `tool.legal_opinion.draft` | 50 | 99 | Never auto-send externally, mandatory attorney review |
+| `tool.ediscovery.classify` | 40 | 85 | Privilege determination requires mandatory human review |
+| `tool.ip.search` | 20 | 30 | Auto-execute (auxiliary information gathering) |
+
+**DomainEvalFramework**: Risk clause detection recall (must catch all) · Case citation accuracy · E-discovery recall · Review time reduction · Deadline compliance
+
+**HITL Strategy**: **All legal outputs must be reviewed by a licensed attorney before action is taken** — this domain has the highest HITL requirement among all 24 domains (tied with Healthcare). Contract negotiation · Litigation strategy · Regulatory filings · Legal opinions · Privilege determination all require mandatory human review. Agents provide only "legal information," never "legal advice."
+
+**Key Guardrails**: Conservative strategy (flag all anomalous content) · Case citations must be verified against legal databases · Multi-factor privilege detection · Explicit jurisdiction labeling · Regulatory calendar + multi-source redundant alerts
+
+**Agent Workflows (Detailed)**:
+
+- Contract Review Agent: Clause-by-clause vs. standard playbook → Deviation identification → Risk flagging (unlimited liability/unfavorable indemnification/auto-renewal) → Negotiation suggestions → Redline markup
+- Regulatory Compliance Agent: Cross-jurisdiction regulatory change monitoring → Regulation-to-business-process mapping → Gap analysis → Remediation tracking
+- Litigation Support Agent: E-discovery document review → Relevance/privilege classification → Case timeline → Legal research
+- IP Management Agent: Trademark/patent monitoring → Renewal tracking → FTO search → Infringement identification → Portfolio management
+- Due Diligence Agent: Target company document review → Key term extraction → Liabilities/contingencies → Red flags
+- Policy Drafting Agent: Jurisdiction requirements → Privacy policy/ToS/compliance policies → Version management
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Contract Management | DocuSign CLM, Ironclad, Fadada, BestSign, Icertis |
+| Legal Research | Westlaw, LexisNexis, PKULaw, WoltersKluwer China |
+| E-Discovery | Relativity, Nuix, Logikcull, DISCO |
+| Intellectual Property | Thomson Reuters IP, MaxVal, CNIPA |
+| Compliance | OneTrust, LogicGate, SAI360 |
+
+**Data Sensitivity Classification**:
+
+- Attorney-Client Privilege: Legal opinions, litigation strategy, settlement discussions — highest protection
+- Top Secret: M&A documents, regulatory investigations, IP trade secrets, labor disputes
+- Confidential: Standard contracts, policies, compliance records
+- Regulated: Court filings (partially public), regulatory submissions
+
+**Performance/Latency Budget**:
+
+- Contract review: Standard <1h, complex multi-party <24h
+- Regulatory monitoring: Daily scans, real-time alerts for critical changes
+- E-discovery: Thousands of documents per hour (throughput > latency)
+- Legal research: Initial case law <30s, full memo minutes
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Missing critical contract clauses | Flag all anomalies, comprehensive playbook, human review of all contracts |
+| Fabricated case citations | Mandatory legal database verification, never present unverified citations |
+| Privilege classification errors | Multi-factor detection, human review of all privilege determinations |
+| Jurisdiction mismatch | Explicit jurisdiction labeling, jurisdiction-specific playbooks, conflict flagging |
+| Missed regulatory changes | Multi-source monitoring, redundant alerts, regulatory calendar with human accountability |
+
+---
+
+# 83. Live Streaming Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §13
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `live-streaming` · `recipe_archetype`: Realtime + Moderation
+- `risk_level`: High · `latency_tier`: realtime (streaming <1s, danmaku moderation <200ms)
+- `hitl_intensity`: **High** (political/terrorism-related review, live commerce violation handling) · `regulatory_density`: High (Internet Live Streaming Service Management Regulations / Minors Protection Law / Advertising Law)
+
+**Core Agent Roles**: Stream Orchestration · Interactive Operations · Real-time Content Moderation · E-commerce Conversion · Data Analytics
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.stream.publish` | 25 | 60 | Streamer qualification and content labels must be verified before going live |
+| `tool.moderation.realtime` | 40 | 95 | Political/terrorism/minor-related content triggers immediate stream cutoff with mandatory human review |
+| `tool.commerce.shelf` | 30 | 70 | Product listing requires compliance verification; prohibited items are automatically blocked |
+| `tool.danmaku.filter` | 20 | 50 | Sensitive words filtered in real time; edge cases subject to manual spot checks |
+
+**DomainEvalFramework**: Violation detection rate (zero missed detections for political/pornographic/minor-related content) · False positive rate (<2% to avoid impacting legitimate content) · Handling latency (stream cutoff <3s) · GPM (gross merchandise value per thousand views) · Stream publish success rate
+
+**HITL Strategy**: Political/terrorism/minor-related content requires mandatory human review before the live stream can be restored. Live commerce violation handling requires operations team confirmation. Pre-broadcast review for major events requires mandatory human sign-off. Agents handle real-time initial screening and orchestration; final handling decisions belong to the moderation operations team.
+
+**Key Guardrails**: Multi-modal real-time moderation pipeline (audio + video + text in parallel) · Hard time-slot restrictions for minor protection · Automatic escalation of moderation levels during sensitive periods · Stream cutoff circuit breaker (quick recovery from false positives) · E-commerce dual compliance verification (platform rules + Advertising Law)
+
+**Agent Workflows (Detailed)**:
+
+- Stream Orchestration Agent: Stream initialization → Multi-platform distribution (Douyin/Kuaishou/Bilibili/Channels/etc.) → Transcoding configuration → CDN scheduling → Quality monitoring → Replay generation
+- Interactive Operations Agent: Danmaku sentiment analysis → Interactive features (red packets/quizzes/polls/co-streaming) → Popularity curve adjustment → Fan tier system
+- Real-time Moderation Agent: Multi-modal stream sampling (video/audio/danmaku) → AI classification → Risk scoring → Action (warning/mute/stream cutoff)
+- Live Commerce Agent: Product listing/delisting cadence → Coupon timing → Inventory locking → Real-time sales dashboard → Dynamic promotion adjustment
+- Data Analytics Agent: Real-time metric tracking (viewers/interactions/conversions/gifts/GPM) → Post-stream report → Historical comparison → Optimization recommendations
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Live Platforms | Douyin/Kuaishou/Bilibili/Channels/Taobao Live/YouTube Live/Twitch API |
+| Streaming/Transcoding | OBS SDK, FFmpeg, SRS, Alibaba Cloud Live, Tencent Cloud Live, Agora |
+| Content Moderation | Alibaba Cloud Green, Tencent Tianyu, Baidu Content Security, Amazon Rekognition |
+| E-commerce | Douyin Store, Kuaishou Store, Taobao Alliance, Youzan |
+| Data | Chanmama, Feigua Data, ClickHouse, Apache Flink |
+
+**Data Sensitivity Classification**:
+
+- High (PII + Financial): User real-name information, payment accounts, tipping/transaction records, streamer income
+- Confidential: Operations strategy, product selection data, MCN contracts, revenue share ratios, recommendation parameters
+- Internal: Aggregated viewership data, interaction statistics, public replays
+- Real-time stream data contains streamer likeness/environment information and must be classified by scenario
+
+**Performance/Latency Budget**:
+
+- Streaming: Low latency <1s, ultra-low latency (co-streaming) <400ms, standard <3s
+- Moderation: Video frame <500ms, danmaku <200ms (synchronous filtering)
+- Interaction: Red packets/polls/co-streaming <1s
+- E-commerce: Product listing/delisting <2s, inventory locking <500ms
+- Availability: 99.99% during live broadcast
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Stream interruption / CDN failure | Auto-switch to backup addresses and CDN, reconnect stream, seamless viewer-side failover |
+| Moderation miss of violating content | Multi-model cascade, manual patrol as fallback, post-hoc tracing, real-time reporting channel |
+| Live commerce inventory oversell | Inventory pre-locking, safety stock buffer, automatic oversell compensation |
+| Tipping system anomaly | Idempotent design, real-time reconciliation, anomaly freeze + manual review |
+| Large-scale concurrency overload | Elastic auto-scaling, rate limiting and degradation, core path protection (streaming priority) |
+
+---
+
+# 84. Creative Production Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §14
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `creative-production` · `recipe_archetype`: Creative
+- `risk_level`: Medium · `latency_tier`: near-realtime (copywriting <10s, image <30s, compliance check <5s)
+- `hitl_intensity`: **Medium** (brand creatives require pre-publish approval; medical/financial creatives require legal review) · `regulatory_density`: Medium (Advertising Law / Copyright Law / Portrait Rights)
+
+**Core Agent Roles**: Creative Generation · Brand Compliance Check · Asset Adaptation · Performance Prediction · Workflow Management
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.creative.generate` | 25 | 55 | Generated assets automatically watermarked as AI-generated; brand creatives require human approval |
+| `tool.brand.compliance` | 30 | 75 | Medical/financial/education industry creatives require mandatory legal review |
+| `tool.asset.adapt` | 15 | 25 | Size/format adaptation executes automatically |
+| `tool.creative.predict` | 20 | 35 | Performance prediction results are advisory only and do not automatically trigger ad placement decisions |
+
+**DomainEvalFramework**: Brand compliance pass rate (brand tone consistency) · Platform review first-pass approval rate (>95%) · CTR/CVR prediction accuracy · Creative output speed (efficiency multiplier vs. manual production)
+
+**HITL Strategy**: Performance-oriented creatives in batch generation can flow automatically to the ad placement system. Brand creatives and creatives for heavily regulated industries (medical/financial/education) require mandatory human approval before publishing. Creatives involving celebrity likenesses or third-party copyrighted materials require legal confirmation of a complete authorization chain.
+
+**Key Guardrails**: Copyright asset traceability chain (all referenced assets traceable to authorization) · Absolute-claim wording auto-detection (Advertising Law prohibited term database updated in real time) · Portrait rights usage authorization verification · Industry-sensitive term filtering (tiered dictionaries for medical/financial/education) · Mandatory AI watermark injection for generated content
+
+**Agent Workflows (Detailed)**:
+
+- Creative Generation Agent: Brief parsing → Creative strategy → Multi-format assets (copy/image/video script/landing page) → Brand verification → A/B variants
+- Brand Compliance Check Agent: Asset ingestion → Brand guideline matching (logo/color/font/tone) → Advertising Law verification → Risk annotation → Revision suggestions
+- Asset Adaptation Agent: Source asset parsing → Platform spec matching (9:16/1:1/16:9/3:4) → Smart cropping/re-layout → Batch output
+- Performance Prediction Agent: Historical + asset features (color tone/sentiment/CTA/person ratio) → CTR/CVR prediction → Ranking → Optimization direction
+- Workflow Management Agent: Request pool → Task assignment → Approval routing → Version management → Asset library → End-to-end status
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Image Generation | Midjourney, DALL-E 3, Stable Diffusion, Adobe Firefly, Jimeng AI |
+| Video Production | RunwayML, Pika, Sora, Jianying API, Adobe Premiere SDK |
+| Design | Figma API, Canva API, Adobe CC SDK, Lanhu |
+| Copywriting | GPT-4, Claude, ERNIE Bot, Tongyi Qianwen |
+| DAM | Bynder, Brandfolder, Adobe AEM Assets |
+| Performance Analytics | Ocean Engine Creative, Tencent Ads Creative Center, Google Ads Creative Studio |
+
+**Data Sensitivity Classification**:
+
+- Confidential: Unpublished creative strategy, brand guideline manuals, competitive analysis, prediction model parameters
+- Internal: Published creatives, ad performance data, A/B test results, asset library
+- Low: Public ad creatives, industry creative references
+
+**Performance/Latency Budget**:
+
+- Copywriting: Single piece <10s, batch (100 variants) <5min
+- Image generation: Single image <30s, batch adaptation (10 sizes) <3min
+- Video generation: 15-second short video <10min, long video hour-level (async)
+- Brand compliance check: Single asset <5s
+- Performance prediction: Batch scoring <1min
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Generated asset infringes copyright | Similarity detection (against copyright image libraries), provenance watermark, automatic takedown on infringement |
+| Brand guideline deviation | Guidelines embedded in prompt, style reference image constraints, multi-round verification |
+| Advertising Law violating copy | Prohibited term database real-time filtering, compliance Agent pre-review, automatic violation replacement |
+| Batch quality loss of control | Quality score threshold filtering, sampled manual review, automatic rejection of low-scoring assets |
+| Performance prediction inaccuracy | Continuous A/B calibration, periodic model retraining, deviation monitoring |
+
+---
+
+# 85. Game Development Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §15
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `game-dev` · `recipe_archetype`: Creative + Research
+- `risk_level`: Medium · `latency_tier`: batch (QA <2h, numerical simulation <10min)
+- `hitl_intensity`: **High** (core gameplay design / art style direction / release approval) · `regulatory_density`: High (ISBN license / anti-addiction / content review / ESRB / PEGI)
+
+**Core Agent Roles**: Design Assist · Art Asset Generation · QA Automation · Numerical Balancing · Code Generation
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.game.design_assist` | 20 | 40 | Design suggestions are advisory only; core gameplay decisions require mandatory human input |
+| `tool.game.asset_generate` | 25 | 65 | Art assets require Art Director confirmation of style consistency before being committed to the repository |
+| `tool.game.qa_run` | 15 | 20 | Automated tests run autonomously; bug reports are automatically archived |
+| `tool.game.balance_sim` | 30 | 55 | Numerical adjustment suggestions require designer review and are not automatically written to config tables |
+
+**DomainEvalFramework**: Art style consistency (FID/CLIP-Score) · Bug detection rate (automated vs. manual comparison) · Code generation adoption rate · Gini coefficient (economy/numerical balance)
+
+**HITL Strategy**: Core gameplay design, art style direction, and release approval are mandatory human decision points. Numerical balancing simulation results must be confirmed by the design team before being applied. QA automation can run independently, but P0/P1 bug fix plans require sign-off from the development lead.
+
+**Key Guardrails**: Generated asset copyright compliance check (similarity detection against known IPs) · Content review pre-screening (ISBN filing compliance pre-validation) · Anti-addiction mechanism pre-integration verification · Code generation security scan (injection/vulnerability auto-detection) · Numerical simulation outlier circuit breaker
+
+**Agent Workflows (Detailed)**:
+
+- Design Assist Agent: Design intent → Reference analysis → System design (gameplay loop/levels/economy/narrative) → Numerical framework → GDD
+- Art Generation Agent: Style reference → Asset requirements parsing → Generation (concept art/2D/3D/UI/scene) → Style consistency verification → Format export
+- QA Agent: Functional testing (quests/UI/saves) → Performance testing (frame rate/memory/loading) → Compatibility testing → Crash analysis → Bug report
+- Numerical Balancing Agent: Economy system/attributes/difficulty curve → Monte Carlo simulation → Balance assessment → Exploit strategy detection
+- Code Generation Agent: Gameplay/Shader/AI behavior tree/network sync → Engine adaptation (Unity/Unreal) → Code standards
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Engines | Unity (C#), Unreal (C++/Blueprint), Godot, Cocos Creator |
+| Art | Midjourney, Stable Diffusion (ControlNet/LoRA), Substance 3D, Meshy |
+| Version Control | Perforce Helix Core, Git LFS, PlasticSCM |
+| Testing | Unity Test Framework, Unreal Automation, Appium, GameBench |
+| Numerical | Python (NumPy/SciPy), MATLAB, In-house simulator |
+
+**Data Sensitivity Classification**:
+
+- Top Secret: Unpublished GDD, core gameplay patents, source code, unreleased art assets
+- Confidential: Internal test data, performance benchmarks, numerical models, project schedules
+- Internal: Published trailer assets, developer blogs, shipped assets
+
+**Performance/Latency Budget**:
+
+- Art generation: Concept art <30s, 2D batch <5min, 3D prompt <1min
+- QA testing: Single regression pass <2h (parallel), crash analysis <5min
+- Numerical simulation: Single run <10min (10,000 Monte Carlo iterations), parameter sweep hour-level
+- Code generation: Single function <10s, module <2min
+- Build: Incremental <5min, full <1h
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Art style deviation | ControlNet/LoRA constraints, Art Director review gate |
+| Numerical simulation divergence | Live A/B validation, player data feedback loop, hotfix adjustment |
+| Automated test miss | Multi-strategy combination (random + directed + exploratory), manual supplementation, player feedback |
+| Generated code performance issues | Profiling auto-integration, performance budget gate |
+| Procedural content repetition | Mutation seed diversification, manual + generated mix ratio, freshness monitoring |
+
+---
+
+# 86. Game Publishing Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §16
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `game-publishing` · `recipe_archetype`: Compliance + Logistics
+- `risk_level`: High · `latency_tier`: near-realtime (Live Ops <5min, submission review <1h)
+- `hitl_intensity`: **High** (license number submission materials / major version releases / large-scale event configuration / sensitive localization) · `regulatory_density`: Critical (license number / age rating / anti-addiction / PIPL / GDPR / payment compliance)
+
+**Core Agent Roles**: Store Submission Automation · Compliance Review · Localization · Live Ops · Data Analytics
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.store.submit` | 35 | 85 | Submission materials require mandatory manual final review; zero tolerance for license-number-related content |
+| `tool.compliance.check` | 40 | 90 | Anti-addiction / payment compliance / privacy policy auto-validation + manual re-review |
+| `tool.localization.translate` | 20 | 45 | Routine text auto-executed; culturally sensitive / legal text requires mandatory manual review |
+| `tool.liveops.config` | 25 | 65 | Large-scale event configuration requires dual approval from product + operations |
+
+**DomainEvalFramework**: Submission first-pass approval rate (>90% target) · DAU/retention rate (version health) · Event participation rate · ASO ranking (store optimization effectiveness) · LQA bug density (localization quality)
+
+**HITL Strategy**: License number submission materials, major version releases, and large-scale event configuration are mandatory manual approval checkpoints. Sensitive-region localization content requires dual sign-off from local legal + cultural consultants. Payment-related configuration changes require financial compliance confirmation. Routine Live Ops events can go live automatically; anomalous metrics trigger manual intervention.
+
+**Key Guardrails**: Multi-region age-rating compliance matrix (auto-matches target market regulations) · Anti-addiction real-name authentication chain validation · Payment compliance multi-currency audit · Localization culturally sensitive word library (religion / politics / history) · Version rollback hot-standby mechanism (auto-triggered by anomalous metrics)
+
+**Agent Workflows (Detailed)**:
+
+- Submission Automation Agent: Material preparation → Platform spec adaptation (App Store / Google Play / Steam / TapTap) → Auto-submit → Status tracking → Rejection analysis & resubmission
+- Compliance Review Agent: License number material preparation → Age rating assessment (ESRB / PEGI / CERO) → Content sensitivity check → Compliance gap report
+- Localization Agent: UI translation → Voice-over coordination → Cultural adaptation (festivals / naming / visuals) → Terminology consistency → LQA testing
+- Live Ops Agent: Version update planning → Event configuration (time-limited / seasonal / festival) → Announcements → Server management → Hotfix updates
+- Data Analytics Agent: Downloads / DAU / MAU / retention / monetization / LTV → Review trends → Competitive benchmarking → Operational recommendations
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| App Stores | App Store Connect, Google Play Console, Steamworks, TapTap, Huawei AppGallery |
+| Data | data.ai, Sensor Tower, GameAnalytics, Firebase, ThinkingData |
+| Localization | Crowdin, Lokalise, Transifex, memoQ |
+| Operations | Firebase Remote Config, LaunchDarkly, Apollo Config Center |
+| CI/CD | Jenkins, Fastlane, Unity Cloud Build |
+
+**Data Sensitivity Classification**:
+
+- Top Secret: License number application materials, unannounced publishing plans, contracts / revenue-sharing, user payment data
+- Confidential: Operational data, event configuration, A/B test results, competitive analysis
+- Internal: Published store pages, public reviews, industry benchmarks
+
+**Performance/Latency Budget**:
+
+- Submission processing: Material preparation <1h, auto-submit <5min, status polling hourly
+- Localization: UI text <24h (auto-translation + manual proofreading)
+- Live Ops: Event go-live / take-down <5min (hotfix update), emergency take-down <1min
+- Data analytics: Real-time dashboard <5min latency, daily report auto-generated
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Platform review rejection | Auto-classify rejection reason + solution recommendation, historical case library, rapid resubmission |
+| Live Ops configuration error | Dual-person review, canary release (1% validation), emergency rollback, compensation plan |
+| Localization error causing negative reviews | Feedback categorization, hotfix repair, strengthened LQA, rapid community response |
+| License number approval delay | Front-load compliance risk, fallback plan (overseas-first launch), pre-review service |
+| Major version causing player churn | A/B pre-validation, canary monitoring of retention, rapid rollback, communication plan |
+
+---
+
+# 87. Human Resources Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §17
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `human-resources` · `recipe_archetype`: CRUD-heavy + Compliance
+- `risk_level`: High · `latency_tier`: near-realtime (resume screening <5s) + batch (payroll calculation <2h)
+- `hitl_intensity`: **Very High** (Offer / termination / performance rating / compensation adjustment / org structure changes) · `regulatory_density`: Critical (Labor Law / Labor Contract Law / PIPL / GDPR / EU AI Act)
+
+**Core Agent Roles**: Recruitment · Onboarding · Performance Analytics · Compensation Modeling · Compliance Monitoring
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.hr.resume_screen` | 35 | 80 | Screening results serve as recommendation ranking only; auto-rejection prohibited; HR review required |
+| `tool.hr.offer_generate` | 40 | 95 | Offer content requires mandatory HRBP + legal dual approval before issuance |
+| `tool.hr.payroll_calc` | 45 | 90 | Payroll calculation results require Finance + HR dual sign-off; anomalous deviations auto-blocked |
+| `tool.hr.compliance_check` | 30 | 70 | Contract clause compliance auto-validated; risk clauses require manual review |
+
+**DomainEvalFramework**: Time-to-Hire · Offer acceptance rate · Compensation fairness index (gender / age / ethnicity dimensions) · Labor arbitration case count (trend monitoring) · Bias audit pass rate (EU AI Act compliance)
+
+**HITL Strategy**: Offer issuance, termination decisions, performance ratings, compensation adjustments, and org structure changes all require mandatory manual decision-making. The resume screening Agent provides ranking suggestions only; final interview invitations are confirmed by HR. EU AI Act requires high-risk AI system transparency; all algorithmic decisions must be explainable.
+
+**Key Guardrails**: Bias detection pipeline (protected attribute anonymization for gender / age / education + fairness metric monitoring) · Compensation data encrypted isolation (least-privilege access) · Employee data PIPL/GDPR-compliant storage and deletion · Termination decision audit logs tamper-proof · Algorithmic decision explainability reports auto-generated
+
+**Agent Workflows (Detailed)**:
+
+- Recruitment Agent: Requirements gathering → JD generation → Resume screening & scoring → Interview coordination → Question generation → Evaluation summary → Offer approval
+- Onboarding Agent: Document collection → IT account provisioning → Training plan → Mentor matching → Probation goals → Experience tracking
+- Performance Analytics Agent: OKR/KPI assistance → Data collection → 360-degree summary → Performance calibration recommendations → Improvement plan
+- Compensation Modeling Agent: Market benchmarking → Salary band model → Raise / bonus simulation (budget + fairness) → Report
+- Compliance Monitoring Agent: Labor contract expiration tracking → Social insurance & housing fund → Working hours management → Leave balance → Risk alerts
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| HCM/HRIS | Workday, SAP SuccessFactors, Oracle HCM, Beisen, Yonyou HR Cloud, DingTalk |
+| Recruitment | LinkedIn Recruiter, Boss Zhipin, Liepin, Greenhouse, Lever |
+| Compensation Data | Mercer, Aon/Radford, CIIC Compensation, LinkedIn Salary |
+| Learning | Cornerstone, Yunxuetang, Kuxueyuan, LinkedIn Learning |
+| E-Signature | DocuSign, Fadada, e-Sign |
+
+**Data Sensitivity Classification**:
+
+- Extremely Sensitive (PII+): National ID number, bank account, compensation, medical examination, background check, disciplinary action
+- Confidential: Performance evaluation, promotion candidates, org restructuring, labor arbitration
+- Internal: Org chart, job descriptions, training catalog, attendance summary
+
+**Performance/Latency Budget**:
+
+- Resume screening: Single resume <5s, batch (1,000 resumes) <30min
+- Payroll calculation: Monthly calculation <2h (batch), individual query <3s
+- Compliance check: Contract expiration alert 30 days in advance, overtime limit real-time alert
+- Onboarding: IT account <1h, training plan <5min
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Resume screening bias | Periodic bias audit, multi-dimensional evaluation, manual review of low-score samples |
+| Payroll calculation error | Dual-track verification, outlier flagging, pre-disbursement spot check |
+| Labor contract expired without renewal | 90/60/30-day three-tier alert, auto-renewal trigger, legal escalation |
+| Employee data breach | Field-level encryption, access audit, anomaly alert, incident response plan |
+| Performance evaluation dispute | Appeal process trigger, full data retrospective, independent review committee |
+
+---
+
+# 88. Supply Chain and Logistics Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data in `v3.0-domain-research.md` §18
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `supply-chain` · `recipe_archetype`: Logistics + Analytics
+- `risk_level`: High · `latency_tier`: near-realtime (route rerouting <30s) + batch (demand forecast daily)
+- `hitl_intensity`: **High** (large-value procurement / new supplier onboarding / customs anomalies / hazardous goods transport / supply chain disruption response) · `regulatory_density`: High (Customs Law / Export Control / Hazardous Goods Transport / ESG)
+
+**Core Agent Roles**: Demand Forecasting · Inventory Optimization · Route Planning · Supplier Evaluation · Customs Compliance
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.scm.forecast` | 20 | 35 | Forecast results auto-feed into inventory system; anomalous fluctuations trigger alert for manual review |
+| `tool.scm.inventory_optimize` | 30 | 60 | Routine replenishment auto-executed; large-value purchase orders require mandatory approval |
+| `tool.scm.route_plan` | 25 | 70 | Hazardous goods transport routes require mandatory manual review; routine routes auto-executed |
+| `tool.scm.customs_declare` | 40 | 90 | HS code classification requires customs specialist confirmation; export-controlled goods require mandatory compliance review |
+
+**DomainEvalFramework**: MAPE/WMAPE (demand forecast accuracy) · Inventory turnover rate · On-Time In-Full delivery rate (OTIF) · HS classification accuracy · Tariff optimization savings (tax optimization under compliance)
+
+**HITL Strategy**: Large-value procurement decisions, new supplier onboarding evaluations, customs anomaly handling, hazardous goods transport approvals, and supply chain disruption emergency response are mandatory manual decision checkpoints. Routine replenishment and route planning auto-execute within thresholds; exceeding thresholds auto-escalates to supply chain manager. Export control list matching results have zero tolerance; mandatory compliance officer sign-off.
+
+**Key Guardrails**: Export control entity list real-time sync (BIS / OFAC / EU) · Hazardous goods transport compliance matrix (UN number + transport mode cross-validation) · Supplier ESG score continuous monitoring · Demand forecast anomalous fluctuation circuit breaker (prevents bullwhip effect amplification) · Customs declaration data tamper-proof audit chain
+
+**Agent Workflows (Detailed)**:
+
+- Demand Forecasting Agent: Historical + trend + promotions + weather/holidays → Forecast models (ARIMA / Prophet / DeepAR) → Multi-level forecast → Safety stock recommendations
+- Inventory Optimization Agent: Forecast + supply constraints → Reorder point / EOQ / safety stock → Multi-warehouse transfers → Turnover vs. service level balancing
+- Route Planning Agent: Order pool → Constraint modeling (vehicles / time windows / traffic / cost) → VRP solver → Dispatch → Real-time rerouting
+- Supplier Evaluation Agent: Multi-dimensional evaluation (quality / delivery / price / responsiveness / ESG) → Risk analysis (financial / geopolitical / single-source) → Procurement support
+- Customs Compliance Agent: HS code classification → Tariff calculation → Origin verification → Sanctions screening → Customs declaration → Trade agreement optimization
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| ERP/SCM | SAP SCM/IBP, Oracle SCM Cloud, Blue Yonder, Kingdee/Yonyou Supply Chain |
+| WMS | Manhattan, Blue Yonder WMS, SAP EWM, FLUX WMS |
+| TMS | Oracle TMS, SAP TM, G7, YMM/Huochebang |
+| Forecasting | Amazon Forecast, Vertex AI, Prophet, In-house ML |
+| Customs | Descartes, Thomson Reuters, Single Window (China Customs) |
+| IoT | GPS / Temperature-Humidity Sensors, RFID, Alibaba Cloud / AWS IoT |
+
+**Data Sensitivity Classification**:
+
+- Confidential: Supplier contracts / pricing, procurement costs, inventory strategy, forecast models
+- Business Sensitive: Inventory levels, logistics routes, warehouse layouts, supplier evaluations
+- Regulated: Customs declarations, certificates of origin, hazardous goods transport records (5–10 year retention)
+- IoT: GPS trajectories, temperature-humidity — may involve location privacy
+
+**Performance/Latency Budget**:
+
+- Demand forecasting: Daily batch; sudden-event-triggered instant recalculation <30min
+- Inventory optimization: Daily replenishment recommendations; emergency replenishment <1h
+- Route planning: Initial plan <5min (hundreds of orders); real-time rerouting <30s
+- Customs declaration: Single entry <10min; batch at hourly scale
+- IoT monitoring: Anomaly alert <1min
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Severe demand forecast deviation | Forecast vs. actual monitoring, deviation alert, manual correction, safety stock buffer |
+| Supply chain disruption | Multi-source supply, pre-positioned safety stock, alternate supplier activation, emergency logistics |
+| Route anomaly causing delay | Real-time GPS, dynamic rerouting, preset contingency routes, customer notification |
+| HS code classification error | Multi-model cross-validation, historical comparison, customs advance ruling, customs broker review |
+| Warehouse physical inventory mismatch | Cycle / perpetual counting, RFID auto-counting, discrepancy alert, freeze & investigate |
+
+---
+
+# 89. Healthcare Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §19
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `healthcare` · `recipe_archetype`: Compliance + Conversational
+- `risk_level`: Critical · `latency_tier`: realtime (triage <5s, drug check <2s) + batch (imaging analysis <5min)
+- `hitl_intensity`: **Highest** (all diagnostic recommendations/prescriptions/imaging reports must be confirmed by a licensed physician) · `regulatory_density`: Critical (Medical Device Supervision Regulations/HIPAA/FDA SaMD/EU MDR/NMPA)
+
+**Core Agent Roles**: Clinical Decision Support · Intelligent Triage · Medical Record Analysis · Drug Interaction Check · Medical Imaging Analysis
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.clinical.diagnose` | 50 | 99 | Never automatically output diagnostic conclusions; mandatory licensed physician review |
+| `tool.triage.assess` | 40 | 85 | High-risk triage levels require mandatory manual review; low-risk may use assisted automation |
+| `tool.drug.interaction_check` | 35 | 90 | All contraindications/severe interactions require mandatory pharmacist confirmation |
+| `tool.imaging.analyze` | 45 | 95 | Imaging reports serve only as auxiliary reference; must be issued by a radiologist |
+
+**DomainEvalFramework**: Diagnostic sensitivity/specificity · Lesion detection recall (zero tolerance for missed detections) · Drug interaction recall · Triage concordance rate (compared with senior physicians) · Imaging analysis false-negative rate
+
+**HITL Strategy**: **All clinical decision outputs must be confirmed by a licensed physician before being used for patient diagnosis and treatment** — this domain shares the highest HITL requirements alongside the Legal domain. Diagnostic recommendations · Prescription issuance · Imaging reports · Triage classification · Drug regimens all require mandatory human review. The Agent provides only "clinical decision support information," not "medical diagnoses."
+
+**Key Guardrails**: High-sensitivity-first strategy (prefer false positives over missed detections) · Drug interaction multi-source database cross-validation · End-to-end encryption and minimal access for patient data · Imaging analysis confidence threshold below 95% forces manual review · Emergency scenario circuit breaker fallback to human channel
+
+**Agent Workflows (Detailed)**:
+
+- Clinical Decision Support Agent: Medical record ingestion → Structured extraction → Clinical reasoning → Guideline matching (UpToDate/clinical pathways) → Differential diagnosis ranking → Physician review
+- Intelligent Triage Agent: Symptom self-report → Standardized inquiry → ESI/Manchester assessment → Triage level → Department routing
+- Medical Record Analysis Agent: Unstructured medical record NLP extraction (diagnosis/medications/surgery/allergies) → Timeline → Missing/contradictory information → Structured summary
+- Drug Interaction Agent: Medication list + new prescription → DrugBank/MCDEX → Interaction severity → Hepatic/renal contraindications → Dosage reasonableness
+- Imaging Analysis Agent: DICOM reception → Pre-trained model (lung nodules/fractures/fundus) → Suspicious region annotation → Draft report
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| EMR | Epic, Cerner, Winning Health, DHC Software, B-Soft, OpenMRS |
+| Clinical Knowledge Base | UpToDate, DXplain, China Clinical Pathways, NICE, Cochrane |
+| Drug Database | DrugBank, MCDEX, Lexicomp, PASS |
+| Imaging | DICOM, PACS (GE/Philips/Siemens), MONAI, 3D Slicer |
+| Interoperability | HL7 FHIR R4, ICD-10/11, SNOMED CT, LOINC, DRG/DIP |
+
+**Data Sensitivity Classification**:
+
+- Extremely Sensitive (PHI): Patient identity, diagnoses, genomics, psychiatry/HIV/reproductive (special protection)
+- Confidential: Clinical model parameters, hospital operations, interim research data, physician performance
+- Internal: De-identified aggregate statistics, public guidelines, drug package inserts
+
+**Performance/Latency Budget**:
+
+- Emergency triage: Danger signals <5s (zero latency tolerance), full assessment <30s
+- Drug interaction: Prescription verification <2s (embedded in order synchronization workflow)
+- Imaging analysis: X-ray <30s, CT series <5min (GPU-accelerated)
+- Clinical decision: Recommendation <10s (limited outpatient waiting time)
+- Availability: 99.99% (emergency 7×24)
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Systematic missed detections in imaging | Multi-model ensemble voting, new annotated data regression, missed-detection feedback loop |
+| Drug database update delay | Multi-source cross-validation, market announcement-triggered refresh |
+| EMR integration interruption | Local cache of critical data, degraded manual input, automatic reconnect with catch-up sync |
+| Triage inadequacy for rare emergencies | Hard-coded danger signal fallback, low-confidence mandatory manual review |
+| PHI data exposure | Real-time PHI detection and de-identification, access audit, 72h regulatory notification |
+
+---
+
+# 90. Education and Training Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §20
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `education` · `recipe_archetype`: Conversational + Creative
+- `risk_level`: Medium · `latency_tier`: realtime (tutoring <3s, testing <1s) + batch (content generation)
+- `hitl_intensity`: **High** (teacher review before course content goes live / subjective grading spot-checks / parental consent required for minor data usage) · `regulatory_density`: High (Minor Protection Law/FERPA/COPPA/EU AI Act)
+
+**Core Agent Roles**: Learning Path Optimization · Content Generation · Intelligent Assessment · Intelligent Tutoring · Learning Analytics
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.edu.learning_path` | 20 | 45 | Path recommendations can auto-execute with periodic teacher review |
+| `tool.edu.content_generate` | 30 | 70 | All generated content must be reviewed by a teacher before going live |
+| `tool.edu.assess` | 35 | 75 | Subjective grading requires mandatory spot-checks; objective grading may be automatic |
+| `tool.edu.tutor` | 25 | 60 | Real-time tutoring allowed automatically; sensitive topics trigger human intervention |
+
+**DomainEvalFramework**: Knowledge mastery rate improvement · Grading consistency (Cohen's Kappa ≥ 0.8) · Course completion rate · Socratic guidance ratio (guiding rather than giving direct answers) · Content accuracy rate
+
+**HITL Strategy**: Course content must be reviewed by a subject teacher before publication; strictest data protection applies to minor scenarios. Content generation · Subjective grading · Major learning path adjustments · Sensitive topic tutoring all require mandatory human intervention. Collection of personal data from minors requires explicit parental consent. The Agent is positioned as a "learning support tool," not a "teacher replacement."
+
+**Key Guardrails**: Minor content safety filtering (zero tolerance for violence/pornography/inappropriate values) · Answer leakage prevention (guidance prioritized over direct answers) · Age-graded content strategy · Minimal data collection with parental informed consent · Academic integrity detection integration
+
+**Agent Workflows (Detailed)**:
+
+- Learning Path Agent: Pre-test/historical assessment → Knowledge graph → Personalized path (knowledge point sequence/difficulty/resources) → Dynamic adjustment
+- Content Generation Agent: Syllabus + knowledge points → Lecture notes/exercises/cases/courseware → Multiple difficulty levels/languages → Bloom's taxonomy levels
+- Assessment Agent: Question generation (multiple-choice/fill-in/subjective/programming) → Auto-grading → Personalized feedback → Weak areas → CAT
+- Tutoring Agent: One-on-one dialogue → Socratic questioning → Confusion point identification → Step-by-step explanation and analogies
+- Learning Analytics Agent: Learning behavior aggregation (duration/completion/errors/engagement) → Learner profile → Risk prediction → Intervention recommendations
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| LMS | Moodle, Canvas, Blackboard, XuetangX, icourse163, Coursera |
+| Knowledge Graph | Neo4j, Custom subject knowledge graph, ConceptNet |
+| Assessment | Gradescope, Turnitin, CodeGrader, OJ systems |
+| Video/Live Streaming | Zoom SDK, Tencent Meeting, DingTalk Classroom, OBS |
+| Data Analytics | xAPI/LRS, Amplitude, Custom learning analytics dashboard |
+
+**Data Sensitivity Classification**:
+
+- High (Minor Data): Student identity, learning behavior, grades, psychological assessments
+- Confidential: Question banks (unpublished), grading criteria, teaching algorithm parameters
+- Internal: Course syllabi, published materials, aggregate statistics
+
+**Performance/Latency Budget**:
+
+- Tutoring dialogue: Response <3s (timeout causes attention loss)
+- Adaptive testing: Question recommendation <1s
+- Content generation: Single knowledge point <1min, full course hour-level (async)
+- Assessment grading: Objective questions instant, subjective questions <30s/essay
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Content contains factual errors | Subject knowledge base validation, teacher review workflow, learner error-reporting feedback |
+| Subjective grading bias | Calibration (benchmark sample papers), low-confidence transfer to human, multi-dimensional rubrics |
+| Learning path infinite loop | Mastery threshold tuning, path diversity constraints, manual skip |
+| Tutoring gives direct answers | Pedagogical strategy guardrails (enforce guidance), homework scenario detection, answer filtering |
+| High-concurrency exam overload | Elastic scaling, local question caching, degraded offline exam mode |
+
+---
+
+# 91. Customer Service Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §21
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `customer-service` · `recipe_archetype`: Conversational
+- `risk_level`: Medium · `latency_tier`: realtime (chat <3s, routing <1s)
+- `hitl_intensity`: **Medium** (over-authority refund approval / complaint escalation / legal issues / VIP exception tickets / low-confidence transfer to human) · `regulatory_density`: Medium (Consumer Rights Protection Law/TCPA/GDPR)
+
+**Core Agent Roles**: Multi-channel Dialogue · Intelligent Routing · Knowledge Retrieval · Quality Scoring · Escalation Management
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.cs.respond` | 20 | 40 | Routine inquiries auto-reply; low-confidence transfers to human |
+| `tool.cs.route` | 15 | 25 | Auto-execute intelligent routing; VIP tickets in priority queue |
+| `tool.cs.knowledge_search` | 10 | 15 | Auto-execute (auxiliary information retrieval) |
+| `tool.cs.quality_score` | 25 | 55 | Quality scores for reference; appeals/disputes require human review |
+
+**DomainEvalFramework**: CSAT (Customer Satisfaction) · FCR (First Contact Resolution) · AI independent resolution rate · Hallucination rate (strictly trending to zero) · AHT (Average Handle Time) · Escalation rate
+
+**HITL Strategy**: Over-authority operations and high-risk scenarios require mandatory human intervention; routine inquiries allow fully automated closed-loop handling. Refunds above threshold · Legal/regulatory issues · Complaint escalation · VIP exception tickets · Confidence below threshold automatically transfer to human agents. The Agent must disclose its AI identity at the start of the conversation; users may request human service at any time.
+
+**Key Guardrails**: Emotion detection and escalation circuit breaker (immediately transfer to human upon detecting anger/threats) · Commitment consistency verification (never promise beyond policy scope) · Multi-channel context synchronization · Sensitive information de-identification display · Refund/compensation amount tiered approval
+
+**Agent Workflows (Detailed)**:
+
+- Multi-channel Dialogue Agent: Channel intake (chat/phone ASR/email/social) → Intent recognition → Knowledge retrieval → Answer generation → Satisfaction confirmation → Ticket archival
+- Intelligent Routing Agent: Ticket content (intent/sentiment/urgency) + Customer attributes (VIP/history/LTV) + Agent status → Optimal routing → Queuing/overflow
+- Knowledge Retrieval Agent: Semantic search + exact match hybrid → Product/service knowledge base → Cited answers → Knowledge gap identification
+- Quality Scoring Agent: Full-volume automated QA (compliance language/attitude/resolution/process) → Scorecard → Low-score flagging for human re-inspection
+- Escalation Management Agent: Scenario detection (emotional agitation/over-authority/technical issues/complaints) → Auto-escalate to supervisor/specialist/cross-department → SLA assurance
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Omnichannel | Zendesk, Salesforce Service Cloud, Freshdesk, NetEase Qiyu, Zhichi, Udesk |
+| Voice/CTI | Genesys Cloud, Avaya, Amazon Connect, Twilio Voice, Hollycrm |
+| Knowledge Base | Confluence, Guru, Custom RAG (Pinecone/Milvus + LLM) |
+| NLP | Intent classification, Sentiment analysis (BERT fine-tuned), ASR (iFlytek/Google) |
+| CRM | Salesforce, HubSpot, Fxiaoke |
+
+**Data Sensitivity Classification**:
+
+- PII (High): Customer name/phone/address/account, payment/order data in conversations
+- Confidential: Pricing strategy, compensation authority matrix, unreleased product plans, complaint details
+- Internal: Aggregate service metrics, FAQ content, training materials
+
+**Performance/Latency Budget**:
+
+- Live chat: First response <3s, subsequent turns <5s
+- Phone IVR: Intent recognition <2s, routing <1s
+- Email: Auto-reply <30min, with human <4h
+- Quality scoring: Real-time lag <5min, daily report next morning
+- Knowledge retrieval: Including LLM answer <3s
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Promising a non-existent refund policy | RAG-grounded generation, policy compliance validation, commitment-type mandatory human confirmation |
+| Peak system overload | Elastic scaling, queue callback, overflow to outsourced agents |
+| Sentiment misjudgment causing complaint escalation | Multi-dimensional detection (text + tone), lowered negative threshold trigger |
+| Knowledge base outdated | Freshness tracking, product/policy change-triggered updates, version tagging |
+| Cross-channel context loss | Unified session management, omnichannel history sync, identity unification |
+
+---
+
+# 92. Content Moderation and Safety Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §22
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `content-moderation` · `recipe_archetype`: Moderation + Adversarial
+- `risk_level`: High · `latency_tier`: realtime (text <500ms, image <1s, video <30s)
+- `hitl_intensity`: **High** (appeal adjudication / CSAM cases / borderline cases / policy changes), reviewer mental health protection · `regulatory_density`: Critical (Cybersecurity Law / Section 230 / DSA / CSAM mandatory reporting)
+
+**Core Agent Roles**: Multimodal Moderation · Policy Engine · Appeal Handling · Adversarial Detection · Compliance Reporting
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.moderation.classify` | 30 | 65 | Clear violations auto-actioned; borderline cases require mandatory human review |
+| `tool.moderation.appeal` | 40 | 85 | All appeal adjudications require final review by a human reviewer |
+| `tool.adversarial.detect` | 35 | 75 | Adversarial sample detection results require security team confirmation before storage |
+| `tool.compliance.report` | 25 | 90 | Mandatory reporting scenarios (e.g. CSAM) escalated immediately with evidence chain locked |
+
+**DomainEvalFramework**: Precision / Recall / F1 · Average time violating content remains online (trending to zero) · Adversarial sample detection rate · Appeal processing SLA · False positive rate (over-moderation monitoring)
+
+**HITL Strategy**: CSAM and extreme violent content require immediate mandatory human action and legally required reporting; borderline cases enter the human review queue. Appeal adjudication · policy rule changes · new violation pattern definitions · cross-cultural sensitive content all require mandatory human review. Reviewer exposure protection mechanisms: content blurring preview · rotation policy · regular mental health assessments · exposure time limits for extreme content.
+
+**Key Guardrails**: Multi-model cross-validation to reduce single-model bias · Continuous red-team testing against adversarial attacks · Evidence chain integrity (tamper-proof audit logs) · Jurisdiction-aware differentiated policy engine · Mandatory enforcement of reviewer mental health protections · Automatic appeal channel for false positives
+
+**Agent Workflows (Detailed)**:
+
+- Multimodal Moderation Agent: Content ingestion → format parsing → multi-model parallel processing (text/image/video/audio) → rule engine overlay → confidence grading → action
+- Policy Engine Agent: Moderation policy management (platform/regulatory/advertiser) → version control → canary/A/B → regulation-to-rule auto-conversion
+- Appeal Handling Agent: Appeal received → original content re-review → supplementary information → review recommendation (uphold/revoke/amend)
+- Adversarial Detection Agent: Evasion technique identification (homophones/pinyin/text-in-image/semantic disguise) → continuous learning → automatic rule updates
+- Compliance Reporting Agent: Generate reports per regulatory requirements (moderation volume/violation distribution/SLA/appeals) → regulatory liaison → evidence retention
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Text | In-house NLP (BERT fine-tuned), Alibaba Green Net, Tencent Tianyu, Perspective API |
+| Image/Video | In-house CV, PhotoDNA (CSAM), AWS Rekognition, CLIP |
+| Audio | ASR (iFlytek/Google/Whisper), Audio Classification |
+| Policy Engine | In-house rule engine (Drools/DSL), Feature Platform, Real-time Decision |
+| Regulatory Liaison | CAC Reporting Center, NCMEC CyberTipline, DSA Transparency Report |
+
+**Data Sensitivity Classification**:
+
+- Extremely Sensitive: CSAM — legally mandated reporting, dedicated process, strict access control
+- High: Raw user content (including PII), moderation decisions, reporter information
+- Confidential: Moderation policy rules (exploitable for evasion if leaked), adversarial model parameters
+- Internal: Aggregated statistics, model performance, public community guidelines
+
+**Performance/Latency Budget**:
+
+- Pre-publish moderation: text <500ms, image <1s, short video <30s
+- Throughput: hundreds of millions of items daily, elastic scaling at peak
+- Adversarial response: new pattern discovery to rule deployment <4h (emergency) / <24h (routine)
+- Appeals: automated re-review <1h, with human involvement <24h
+- CSAM: zero latency — block on detection + immediate reporting
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| New adversarial technique causes mass bypass | Real-time sample collection, emergency hot rule update, temporarily increase strictness |
+| Model update causes spike in false positives | Canary release (1%→100%), automatic rollback, A/B validation |
+| Moderation system outage | Graceful degradation (queue high-risk / pass-through low-risk), multi-AZ disaster recovery |
+| Human review queue backlog | Dynamic prioritization, temporary staffing expansion, AI pre-sorting acceleration |
+| CSAM miss | PhotoDNA + multi-model redundancy, hash database updates, regular red-team testing |
+
+---
+
+# 93. IT Operations SRE/DevOps Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §23
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `it-operations` · `recipe_archetype`: IncidentOps
+- `risk_level`: High · `latency_tier`: realtime (alert analysis <30s, auto-remediation <2min)
+- `hitl_intensity`: **High** (high-risk change CAB approval / security incident forensics / auto-remediation policy rollout / budget procurement) · `regulatory_density`: High (MLPS 2.0 / ISO 27001 / SOC 2 / PCI-DSS / NIST)
+
+**Core Agent Roles**: Incident Response · Monitoring Analysis · Deployment Automation · Capacity Planning · Security Operations
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.ops.incident_respond` | 35 | 70 | Known Runbook auto-executed; unknown patterns require mandatory human intervention |
+| `tool.ops.deploy` | 40 | 80 | Production deployments require CAB approval + canary verification |
+| `tool.ops.capacity_plan` | 20 | 35 | Auto-generate planning recommendations; procurement decisions require management approval |
+| `tool.ops.security_scan` | 25 | 60 | Scans auto-executed; high-severity vulnerability remediation plans require security team confirmation |
+
+**DomainEvalFramework**: MTTR (Mean Time to Repair) · MTTD (Mean Time to Detect) · SLO achievement rate · Auto-remediation success rate · Deployment failure rate · Alert noise ratio (signal-to-noise optimization)
+
+**HITL Strategy**: High-risk production changes require mandatory CAB approval; security incidents require mandatory security team involvement. Known faults covered by Runbooks may be auto-remediated but require post-hoc audit. Deployment rollback · security incident forensics · capacity procurement · new auto-remediation policy rollout all require mandatory human approval. Agent operational scope is strictly limited to pre-authorized resources.
+
+**Key Guardrails**: Blast radius control (auto-remediation limited to single node/service; cross-domain operations require human approval) · Change window enforcement · Full-chain tamper-proof operation audit · Security scan results tiered response · Auto-remediation circuit breaker (consecutive failures auto-stop and alert)
+
+**Agent Workflows (Detailed)**:
+
+- Incident Response Agent: Alert received (Prometheus/PagerDuty) → aggregation → topology correlation → root cause hypothesis → auto-remediation (Runbook) → escalation/closure
+- Monitoring Analysis Agent: Continuous metrics/logs/trace analysis → dynamic baselines → anomaly detection → alert noise reduction
+- Deployment Automation Agent: CI/CD pipeline → canary release (progressive traffic + metrics monitoring) → rollback → feature flags → dependency orchestration
+- Capacity Planning Agent: Historical load + growth forecasting → resource modeling → scaling recommendations → budget forecasting → waste identification
+- Security Operations Agent: IDS/IPS/WAF/vulnerability scanning → threat intelligence matching → automated response (IP blocking/account lockout) → vulnerability remediation prioritization
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Monitoring | Prometheus, Grafana, Datadog, New Relic, Splunk, Zabbix |
+| Logging | ELK, Loki, Splunk, Fluentd/Fluent Bit |
+| Tracing | Jaeger, Zipkin, SkyWalking, Datadog APM |
+| Incident Management | PagerDuty, OpsGenie, VictorOps |
+| Deployment/IaC | Kubernetes, ArgoCD, Terraform, Ansible, Helm |
+| Security | CrowdStrike, Snort/Suricata, Cloudflare WAF, Nessus/Qualys |
+
+**Data Sensitivity Classification**:
+
+- Extremely Sensitive: Production credentials (SSH/API Key/database passwords), vulnerability details, penetration test results
+- Confidential: System architecture topology, IP ranges, capacity data, incident post-mortems, security policies
+- Internal: Aggregated performance metrics, deployment history, public monitoring dashboards
+- Logs: May contain PII (requires anonymization), subject to retention/audit constraints
+
+**Performance/Latency Budget**:
+
+- Alert response: trigger to Agent analysis <30s, auto-remediation <2min
+- Monitoring collection: metrics at 15–60s intervals, logs <10s latency
+- Deployment: CI build + test <15min, canary observation window configurable
+- Security detection: real-time intrusion <1s, vulnerability scans daily/weekly
+- Monitoring system availability: 99.99%
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Auto-remediation triggers cascading failure | Blast radius limiting, reversible operations, only N% of instances per action, circuit breaker |
+| Alert storm overwhelms response | Aggregation and deduplication, topology-aware suppression, dynamic suppression rules |
+| Canary fails to detect slow-burn defect | Multi-dimensional metrics monitoring, extended observation window, Sticky Canary |
+| Monitoring system itself fails | Independent meta-monitoring, multi-path alerting (SMS/phone/IM) |
+| Security incident credential leak | Automatic credential rotation, Vault/KMS, immediate revocation and re-issue on leak |
+
+---
+
+# 94. Marketing and Branding Domain Architecture
+
+> Related: §37 Business Domain Modeling · §23 Compliance · §11 Security · §45 Harness Runtime
+> Detailed research data available in `v3.0-domain-research.md` §24
+
+**DomainDescriptor Mapping**:
+
+- `domain_id`: `marketing` · `recipe_archetype`: Analytics + Creative
+- `risk_level`: Medium · `latency_tier`: near-realtime (sentiment <15min) + batch (Campaign reports)
+- `hitl_intensity`: **Medium** (brand communication content approval / marketing budget approval / brand crisis PR takeover / legal risk content legal review) · `regulatory_density`: Medium (Advertising Law / Internet Advertising Administrative Measures / FTC / GDPR / CAN-SPAM)
+
+**Core Agent Roles**: Campaign Orchestration · Brand Monitoring · SEO/SEM Optimization · Social Media Management · Customer Segmentation Analysis
+
+**DomainRiskProfile Override**:
+| Operation | Platform Default Risk | Domain Override Risk | Result |
+| --- | --- | --- | --- |
+| `tool.marketing.campaign` | 25 | 55 | Ad placement strategy auto-optimized; budget exceeding threshold requires approval |
+| `tool.brand.monitor` | 15 | 30 | Sentiment monitoring auto-executed; crisis signals trigger immediate alert |
+| `tool.seo.optimize` | 20 | 35 | Keyword and content optimization suggestions auto-executed |
+| `tool.social.publish` | 30 | 70 | All outbound content must be reviewed by brand team before publishing |
+
+**DomainEvalFramework**: ROAS (Return on Ad Spend) · CPA/CPL · Brand SOV (Share of Voice) · Engagement rate · Crisis early-warning accuracy · Content compliance pass rate
+
+**HITL Strategy**: All externally published content requires mandatory brand team review; brand crisis events trigger immediate PR team takeover. Marketing budget changes · brand partnership approvals · legal risk content legal review · crisis PR statements all require mandatory human approval. Data analysis · sentiment monitoring · SEO recommendations may auto-execute. Agent-generated content serves only as drafts for human refinement.
+
+**Key Guardrails**: Advertising law compliance auto-detection (superlative claims / false advertising / comparative advertising) · Brand tone consistency checks · Competitive data collection compliance boundaries · User profile data anonymization · Tiered crisis sentiment response playbooks · Marketing email unsubscribe compliance (CAN-SPAM/GDPR)
+
+**Agent Workflows (Detailed)**:
+
+- Campaign Orchestration Agent: Marketing objectives → cross-channel plan (timeline/channels/budget/audience) → content coordination → performance monitoring → dynamic adjustment
+- Brand Monitoring Agent: Full-web brand mention monitoring (social/news/forums/short video) → sentiment analysis / topic clustering → crisis detection → brand health report
+- SEO/SEM Agent: Ranking + traffic analysis → keyword research → content optimization + technical SEO → SEM bidding → ranking monitoring
+- Social Media Agent: Multi-platform publishing (WeChat Official Account / Weibo / Douyin / Xiaohongshu / LinkedIn) → content adaptation → publish timing → engagement management
+- Customer Segmentation Agent: Multi-source data (CRM/behavioral/transactional/social) → clustering + RFM → high-value audiences → targeted recommendations
+
+**Key Tools/Integrations**:
+| Category | Specific Tools |
+| ---- | ---- |
+| Marketing Automation | HubSpot, Marketo, Pardot, JINGdigital, JINGsocial |
+| Social Media | WeChat Official Account Platform, Weibo, Douyin/Ocean Engine, Xiaohongshu, Hootsuite |
+| SEO/SEM | Google Search Console, SEMrush, Ahrefs, Baidu Search, 5118 |
+| Sentiment Monitoring | Qingbo Big Data, Newrank, Brandwatch, Meltwater |
+| Data/Analytics | GA4, Adobe Analytics, Sensors Data, GrowingIO |
+
+**Data Sensitivity Classification**:
+
+- PII (High): Customer contact information, behavioral profiles, CRM transaction records and preferences
+- Confidential: Brand strategy, unreleased launch plans, marketing budgets, competitive analysis
+- Internal: Content calendar, A/B test plans, aggregated marketing metrics
+
+**Performance/Latency Budget**:
+
+- Sentiment monitoring: negative detection <15min (golden response window), routine hourly
+- Social publishing: content generation <5min per post, image/video on the order of hours
+- SEO: ranking tracking daily, technical audit weekly
+- Campaign reporting: near-realtime <15min latency
+- Customer segmentation: batch daily, trigger-based <5min
+
+**Common Failures and Recovery**:
+| Failure Mode | Recovery Strategy |
+| ---- | ---- |
+| Auto-publish during sentiment crisis | Crisis detection pauses all channels, notify PR team, activate response playbook |
+| Content violates advertising law | Pre-publish compliance scan (superlatives/false claims), legal review flow |
+| SEO strategy triggers search penalty | White-hat SEO guardrails, ranking anomaly monitoring, penalty recovery process |
+| Attribution model distortion | Multi-attribution model comparison, incremental testing calibration |
+| Cross-platform publish failure | Queue retry, format auto-adaptation, multi-platform status monitoring |
+
+---
+
+
+# Part V -- Intelligent Interaction Layer (S39-S44)
+
+---
+
 # 39. Natural Language Task Entry Architecture
 
-> New in v2.3. Enable non-technical users to interact with the platform directly through natural language, replacing hand-written JSON/API calls.
+> Enables non-technical users to interact with the platform directly through natural language, replacing handwritten JSON/API calls.
 > Related: §6 API Contract · §13 OAPEFLIR · §37 Business Domain Modeling · §40 Goal Decomposition · §44 Non-Technical User Experience
 
 ## 39.1 Design Principles
 
-- Natural language is a **first-class interaction method**, equal to REST API, not a syntax sugar on top of API
-- All NL interactions are ultimately converted to standard `RequestEnvelope` (§5.3), reusing existing control plane and execution plane
-- Ambiguity must be explicitly resolved, not guessing user intent — rather ask one more question than mistakenly executing high-risk actions
-- Conversation context is persisted to Memory (§29.2), recoverable across sessions
+- Natural language is a **first-class interaction method**, on par with REST API, not syntactic sugar on top of API
+- All NL interactions ultimately convert to standard `RequestEnvelope`(§5.3), reusing existing control plane and execution plane
+- Ambiguity must be explicitly resolved; do not guess user intent — better to ask one more question than to mistakenly execute a high-risk action
+- Conversation context persisted to Memory(§29.2), recoverable across sessions
 
 ## 39.2 NL Interaction Pipeline
 
 ```text
-User input (Natural Language)
+User input (natural language)
     │
     ▼
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │ Intent Parser │────▶│ Domain Router│────▶│ Task Builder │
-│ (Intent recognition)    │ (Domain routing)     │ (Task building)    │
+│ (intent recog)│     │ (domain route)│     │ (task build)  │
 └──────────────┘     └──────────────┘     └──────┬───────┘
                                                   │
     ┌──────────────┐     ┌──────────────┐        │
     │ Clarification│◀────│ Ambiguity    │◀───────┘
-    │ Dialog       │     │ Detector     │   Loop when ambiguous
+    │ Dialog       │     │ Detector     │   loop on ambiguity
     └──────┬───────┘     └──────────────┘
-           │ User confirmation
+           │ user confirms
            ▼
     ┌──────────────┐     ┌──────────────┐
     │ Risk Preview │────▶│ RequestEnvelope│──▶ P1 Interface Plane
-    │ (Risk preview)   │     │ (Standard contract)     │
+    │ (risk preview)│     │ (standard contract)│
     └──────────────┘     └──────────────┘
 ```
 
 ## 39.3 Core Components
 
-```typescript
-interface IntentParseResult {
-  raw_input: string;
-  detected_intents: DetectedIntent[];
-  confidence: number;
-  requires_clarification: boolean;
-  clarification_questions?: string[];
-}
+| Component | Responsibility |
+| --- | --- |
+| IntentParser | Parses user natural language input, extracts intent labels and confidence |
+| TaskSpecBuilder | Maps structured intent to TaskSpec(§6), filling domain, parameters, and constraints |
+| AmbiguityResolver | Generates clarification questions when confidence is below threshold, strategy in §39.4 |
+| ContextEnricher | Injects user role, conversation history, domain context, and other environmental info |
+| ResponseFormatter | Converts execution results into user-friendly natural language replies or structured cards |
 
-interface DetectedIntent {
-  intent_type: "task_create" | "task_query" | "task_modify" | "system_config" | "status_inquiry" | "approval_action";
-  domain_hint: string | null;
-  entities: ExtractedEntity[];
-  urgency: "low" | "normal" | "high" | "critical";
-  confidence: number;
-}
+## 39.4 Ambiguity Resolution Strategy
 
-interface ExtractedEntity {
-  entity_type: string;        // e.g. "date_range", "department", "metric_name"
-  value: string;
-  normalized: unknown;        // normalized value
-  source_span: [number, number];  // original text position
-}
+| Ambiguity Type | Example | Resolution Method |
+| --- | --- | --- |
+| Domain ambiguity | "Generate a report" | Ask "Financial report or advertising report?" |
+| Scope ambiguity | "Clean up expired data" | Ask "Which domain's data? Time range?" |
+| Risk ambiguity | "Update product prices" | Show risk preview + confirm "This will affect X products online" |
+| Time ambiguity | "ASAP" | Map to urgency=high, inform estimated completion time |
+| Permission ambiguity | "Approve these requests for me" | Check permissions, if unauthorized prompt "You don't have approval permission, need to forward to X" |
 
-interface TaskBuildResult {
-  request_envelope: RequestEnvelope;   // §5.3 standard contract
-  risk_preview: RiskPreview;           // pre-execution risk preview
-  cost_estimate: CostEstimate;         // estimated cost
-  confirmation_required: boolean;      // whether user confirmation is needed
-  human_summary: string;               // "I will do X for you, estimated cost ¥Y, risk level Z"
-}
-
-interface RiskPreview {
-  overall_risk: "low" | "medium" | "high" | "critical";
-  risk_factors: string[];              // human-readable risk factors
-  reversible: boolean;
-  side_effects: string[];              // expected side effects description
-  approval_needed: boolean;
-}
-```
-## 39.4 Ambiguity resolution strategy
-| Ambiguity type | Example | Resolution method |
-|---------|------|---------|
-| Domain ambiguity | "Make a report" | Ask "Is it a financial report or an advertising report?" |
-| Scope ambiguity | "Cleaning expired data" | Asking "Which domain data should be cleaned? Time range?" |
-| Risk ambiguity | "Update product price" | Show risk preview + confirmation "This will affect X items online" |
-| Time ambiguity | "Complete as soon as possible" | Maps to urgency=high, informing the estimated completion time |
-| Permission ambiguity | "Help me approve these requests" | Check the permissions. If you don't have permission, it will prompt "You don't have approval permission and need to forward it to X" |
-
-## 39.5 Multi-turn Conversation State Machine
+## 39.5 Multi-Turn Dialogue State Machine
 
 ```text
          ┌─────┐
          │ Idle │◀──────────────────────────┐
          └──┬──┘                            │
-            │ User input                    │ Task completed/cancelled
+            │ user input                    │ task complete/cancel
             ▼                               │
     ┌───────────────┐                       │
     │ Intent Parsing │                      │
     └───────┬───────┘                       │
             │                               │
      ┌──────┴──────┐                        │
-     │Ambiguous?    │                        │
+     │ambiguous?    │                        │
      ▼ Yes         ▼ No                     │
 ┌──────────┐  ┌──────────┐                  │
 │Clarifying│  │ Building │                  │
-│(asking)   │  │(building  │                  │
-│           │  │ task)    │                  │
+│(asking)   │  │(build task)│                  │
 └────┬─────┘  └────┬─────┘                  │
-     │ User answer   │                       │
+     │ user answers   │                       │
      └──────┬──────┘                        │
             ▼                               │
     ┌───────────────┐                       │
     │ Confirming    │                       │
-    │ (risk preview│                       │
-    │  + confirm) │                       │
+    │(risk preview+confirm)│                       │
     └───────┬───────┘                       │
-            │ User confirmed                │
+            │ user confirms                  │
             ▼                               │
     ┌───────────────┐     ┌────────────┐    │
     │ Executing     │────▶│ Reporting  │────┘
-    │ (executing)  │     │ (results)  │
+    │ (executing)   │     │ (results)   │
     └───────────────┘     └────────────┘
 ```
-## 39.6 Security Constraints 
 
-- All outputs from the NL entrance must pass the Prompt Injection guard (§16.5) 
-- High-risk intentions (risk ≥ high) **must** be explicitly confirmed and NL is not allowed to be triggered directly 
-- Conversation history is subject to data classification (§11.6), confidential/restricted content will not be echoed 
-- The permissions of the NL entry are equal to the API permissions of the caller, and there is no additional privilege escalation. 
+## 39.6 Security Constraints
 
-## 39.7 Multilingualism and Internationalization (i18n)
-| Level | Internationalization Strategy |
-|------|-----------|
-| Intent Parser | Multi-language intent recognition: Call the LLM that supports multiple languages ​​through ModelGateway (§15); after language detection, route to the Prompt template of the corresponding locale |
-| Clarification Dialog | The response language follows the user input language (auto-detect), or follows the `preferred_locale` setting in the user profile |
-| Risk Preview | Risk descriptions and cost estimates use the currency/date format of the user's locale |
-| NL status summary (§43) | Kanban summary generated per user locale; amounts/dates/numbers follow ICU format |
-| Error messages | Platform standard error codes map to multilingual message catalog; fallback language is en-US |
+- All NL entry outputs must pass Prompt Injection protection(§16.5)
+- High-risk intents (risk ≥ high) **must** be explicitly confirmed; NL cannot directly trigger them
+- Conversation history is subject to data classification(§11.6) constraints; confidential/restricted content is not echoed back
+- NL entry permissions are equivalent to the caller's API permissions; no privilege escalation
 
-```typescript
-interface LocaleConfig {
-  supported_locales: string[];         // e.g. ["zh-CN", "en-US", "ja-JP", "de-DE"]
-  default_locale: string;              // fallback
-  locale_resolution_order: ("user_profile" | "accept_language" | "input_detect" | "default")[];
-}
-```
+## 39.7 Multilingual and Internationalization (i18n)
+
+| Layer | i18n Strategy |
+| --- | --- |
+| Intent Parser | Multilingual intent recognition: invoke multilingual LLM via ModelGateway(§15); route to corresponding locale Prompt template after language detection |
+| Clarification Dialog | Response language follows user input language (auto-detect), or follows `preferred_locale` setting in user profile |
+| Risk Preview | Risk descriptions, cost estimates use user locale currency/date format |
+| NL Status Summary(§43) | Dashboard summaries generated per user locale; amounts/dates/numbers follow ICU format |
+| Error Messages | Platform standard error codes mapped to multilingual message catalog; fallback language is en-US |
 
 ---
 
 # 40. Goal Decomposition Engine Architecture
 
-> v2.3 New. Adds a Goal → Task decomposition layer above OAPEFLIR(§13), enabling users to describe business goals rather than individual tasks.
+> Adds a Goal → Task decomposition layer on top of OAPEFLIR(§13), enabling users to describe business goals rather than individual tasks.
 > Related: §13 OAPEFLIR · §19 Agent Delegation · §37 Business Domain Modeling · §39 NL Entry · §41 Proactive Agent
 
 ## 40.1 Three-Layer Decomposition Model
 
 ```text
-Goal (Business Goal)
-  "Launch X product Spring marketing campaign"
+Goal (business objective)
+  "Launch spring marketing campaign for product X"
     │
     ▼  GoalDecomposer
-Task (Domain Task)                          ← New Layer
-  ├── [content-production] Create 3 sets of advertising materials
-  ├── [advertising] Configure and deploy advertising plan
+Task (domain task)                              ← new layer
+  ├── [content-production] Create 3 sets of ad creatives
+  ├── [advertising] Configure and launch ad campaign
   ├── [data-analysis] Set up ROI tracking dashboard
-  └── [legal] Review advertising compliance
+  └── [legal] Review ad compliance
     │
     ▼  OAPEFLIR Planner (§13)
-Step (Execution Step)                        ← Existing Layer
+Step (execution step)                           ← existing layer
   ├── tool.design.generate_creative
   ├── tool.ad_platform.create_campaign
   └── ...
@@ -4125,162 +4591,96 @@ Step (Execution Step)                        ← Existing Layer
 
 ## 40.2 GoalDecomposer Interface
 
-```typescript
-interface Goal {
-  goal_id: string;
-  description: string;                     // NL description or structured description
-  owner: string;                           // Goal initiator
-  deadline?: string;                       // Expected completion time
-  success_criteria: SuccessCriterion[];    // Success criteria
-  constraints: string[];                   // Constraints
-  priority: "low" | "normal" | "high" | "critical";
-}
+Core method `decompose(goal, constraints) → TaskGraph`, decomposes high-level goals into an executable task dependency graph.
 
-interface SuccessCriterion {
-  metric: string;                          // e.g. "ad_roi", "completion_rate"
-  target: string;                          // e.g. "> 2.0", "100%"
-  evaluation_method: "metric_api" | "human_review" | "automated_test";
-}
+| Parameter/Feature | Description |
+| --- | --- |
+| goal | Structured goal description, containing goal text, owning domain, and priority |
+| constraints | Decomposition constraints: max depth (default 5), budget cap (§18), deadline |
+| Return value | TaskGraph — nodes are TaskSpec(§6), edges are dependency relationships |
+| Cycle detection | Automatic topological sort during TaskGraph construction; reject and report error if cycle detected |
+| Budget allocation | Allocate total budget to nodes proportionally by estimated sub-task cost |
 
-interface GoalDecomposition {
-  goal_id: string;
-  tasks: PlannedTask[];
-  dependency_graph: TaskDependency[];
-  estimated_duration: string;
-  estimated_cost: CostEstimate;
-  risk_summary: RiskPreview;
-  decomposition_confidence: number;        // Decomposition confidence
-  requires_human_review: boolean;          // Request human review when confidence is low
-}
+## 40.3 Decomposition Strategies
 
-interface PlannedTask {
-  task_id: string;
-  domain_id: string;                       // Target domain
-  description: string;
-  inputs: Record<string, unknown>;
-  expected_outputs: string[];
-  delegation_mode: "auto" | "supervised" | "manual";
-  estimated_duration: string;
-  estimated_cost: CostEstimate;
-}
-
-interface TaskDependency {
-  from_task: string;
-  to_task: string;
-  type: "blocks" | "provides_input" | "soft_dependency";
-  data_contract?: string;                  // Cross-task data contract
-}
-```
-## 40.3 Decomposition strategy
-| Strategy | Applicable Scenarios | Mechanism |
-|------|---------|------|
-| **Template matching** | The target matches an existing DomainRecipe(§37.7) or cross-domain template | Directly instantiate the template and fill in the parameters |
-| **LLM Planning** | New scenario with no matching template | Call ModelGateway(§15) for decomposition, subject to DomainDescriptor constraints |
-| **Hybrid** | Partial matching | Template skeleton + LLM to fill in missing links |
-| **Manual assistance** | Confidence < 0.7 or involving critical risk | Generate preliminary decomposition plan, request manual review and adjustment |
+| Strategy | Applicable Scenario | Mechanism |
+| --- | --- | --- |
+| **Template matching** | Goal matches existing DomainRecipe(§37.7) or cross-domain template | Directly instantiate template, fill parameters |
+| **LLM planning** | No matching template for new scenario | Invoke ModelGateway(§15) for decomposition, constrained by DomainDescriptor |
+| **Hybrid** | Partial match | Template skeleton + LLM fills missing parts |
+| **Human-assisted** | Confidence < 0.7 or involves critical risk | Generate preliminary decomposition, request human review and adjustment |
 
 ## 40.4 Cross-Domain Dependency Graph Management
 
 ```text
 [content-production]──▶[legal]──▶[advertising]──▶[data-analysis]
-     Material             Compliance        Launch             Effect
-     Production           Review            Rollout            Tracking
+     creative production    compliance review   campaign launch       performance tracking
          │                                  │
          └──────────parallel────────────────┘
-                 (Material production and ad configuration can run in parallel)
+                 (creative production and campaign config can run in parallel)
 ```
-- Automatic topological sorting of dependency graphs to identify tasks that can be parallelized 
-- **Cyclic dependency detection**: After the decomposition is completed, DAG verification is performed on the dependency_graph. If a loop is detected, execution will be refused and the loop path will be returned to the user/GoalDecomposer to try again. 
-- Critical path calculation, estimated total construction period 
-- When a single Task fails, it is determined based on the dependency type: `blocks` → blocks the downstream, `soft_dependency` → warns but continues 
-- Cross-domain data transfer follows DomainInteractionPolicy(§37.8) 
 
-## 40.5 Goal life cycle
-| Status | Description | Transferable to |
-|------|------|---------|
-| draft | Target created, not yet decomposed | decomposing, canceled |
-| decomposing | Decomposing into Task | decomposed, failed |
-| decomposed | Decomposition completed, waiting for confirmation | executing, canceled |
-| executing | Task is being executed | completed, partially_completed, failed |
-| completed | All Task + success criteria met | archived |
-| partially_completed | Partial Task completed, partially failed | executing(retry), completed, canceled |
-| failed | Decomposition or execution failed | decomposing(retry), canceled |
-| canceled | canceled by user | archived |
+- Dependency graph auto-topologically sorted, identifying parallelizable tasks
+- **Cycle dependency detection**: After decomposition, perform DAG validation on dependency_graph; if cycle detected, reject execution and return cycle path to user/GoalDecomposer for retry
+- Critical path calculation, estimate total duration
+- When a single Task fails, decide based on dependency type: `blocks` → block downstream, `soft_dependency` → alert but continue
+- Cross-domain data transfer follows DomainInteractionPolicy(§37.8)
+
+## 40.5 Goal Lifecycle
+
+| State | Description | Can Transition To |
+| --- | --- | --- |
+| draft | Goal created, not yet decomposed | decomposing, cancelled |
+| decomposing | Being decomposed into Tasks | decomposed, failed |
+| decomposed | Decomposition complete, awaiting confirmation | executing, cancelled |
+| executing | Tasks being executed | completed, partially_completed, failed |
+| completed | All Tasks + success criteria met | archived |
+| partially_completed | Some Tasks completed, some failed | executing(retry), completed, cancelled |
+| failed | Decomposition or execution failed | decomposing(retry), cancelled |
+| cancelled | User cancelled | archived |
 
 ---
 
 # 41. Proactive Agent Framework
 
-> v2.3 New. Enables Agents to proactively initiate tasks based on event triggers and scheduled timing, rather than only responding to API calls.
-> Related: §4.2 P1 Interface Plane · §20 Long-running Tasks · §37 Business Domain Modeling · §40 Goal Decomposition
+> Enables Agents to proactively initiate tasks based on event triggers and scheduled jobs, rather than only responding to API calls.
+> Related: §4.2 P1 Interface Plane · §20 Long-term Tasks · §37 Business Domain Modeling · §40 Goal Decomposition
 
 ## 41.1 Design Principles
 
 - Proactive Agents are **controlled automation**, not unconstrained autonomous behavior
-- All triggers must be declared in DomainDescriptor(§37), undeclared triggers are not allowed to register
-- Tasks created by triggers go through the **exact same risk control pipeline** (§10) as API-created tasks
-- Costs generated by proactive behavior are charged to the corresponding domain's budget (§18)
+- All triggers must be declared in DomainDescriptor(§37); undeclared triggers cannot be registered
+- Tasks generated by triggers go through the **exact same risk control pipeline**(§10) as API-created tasks
+- Costs from proactive behavior are charged to the corresponding domain's budget(§18)
 
 ## 41.2 Trigger Model
 
-```typescript
-interface TriggerDefinition {
-  trigger_id: string;
-  domain_id: string;
-  name: string;
-  type: TriggerType;
-  config: ScheduleTriggerConfig | EventTriggerConfig | ThresholdTriggerConfig;
-  action: TriggerAction;
-  enabled: boolean;
-  risk_level: "low" | "medium" | "high" | "critical";
-  max_fire_rate: string;           // e.g. "10/hour" — Prevent trigger storms
-  cooldown: string;                // Minimum interval between two triggers
-}
+Each trigger is described by `TriggerDefinition`, which must be declared in DomainDescriptor(§37) when registered:
 
-type TriggerType = "schedule" | "event" | "threshold" | "webhook_inbound";
+| Field | Type | Description |
+| --- | --- | --- |
+| triggerId | string | Globally unique identifier |
+| type | schedule / event / condition / webhook | Trigger method: scheduled, event-driven, condition expression, external callback |
+| filter | object | Event filter condition or cron expression |
+| cooldown | duration | Minimum trigger interval, prevents high-frequency repeated triggers |
+| maxFireCount | number \| null | Maximum trigger count, null means unlimited |
+| boundAgentId | string | Bound execution Agent, processes task after trigger fires |
 
-interface ScheduleTriggerConfig {
-  cron: string;                    // cron expression
-  timezone: string;
-  skip_if_previous_running: boolean;
-}
+## 41.3 Trigger Modes
 
-interface EventTriggerConfig {
-  event_source: string;            // Event source identifier
-  event_pattern: string;           // Event matching pattern
-  filter: Record<string, string>;  // Event field filtering
-  batch_window?: string;           // Batch window, merge multiple events in a short time into one trigger
-}
-
-interface ThresholdTriggerConfig {
-  metric_source: string;           // Metric source
-  metric_name: string;
-  condition: "gt" | "lt" | "eq" | "change_rate_gt";
-  threshold: number;
-  evaluation_window: string;       // Evaluation window
-  consecutive_breaches: number;    // Number of consecutive violations before triggering
-}
-
-interface TriggerAction {
-  action_type: "create_task" | "create_goal" | "suggest_to_user" | "update_dashboard";
-  template: Partial<RequestEnvelope> | Partial<Goal>;
-  require_confirmation: boolean;   // true = suggestion mode, false = auto execute
-}
-```
-## 41.3 Trigger mode
-| Pattern | Behavior | Applicable scenarios | Risk control |
-|------|------|---------|---------|
-| **Automatic execution** | Create tasks directly after triggering | Low-risk scheduled tasks (daily report generation, data synchronization) | require_confirmation=false + risk_level=low |
-| **Recommendation mode** | Push suggestions to users after triggering, and execute after user confirmation | Medium and high risk event response (CTR decrease → recommended bid adjustment) | require_confirmation=true |
-| **Silent recording** | Only records events and analysis results after triggering, without proactive notification | Data accumulation (user behavior pattern recognition) | action_type=update_dashboard |
+| Mode | Behavior | Applicable Scenario | Risk Control |
+| --- | --- | --- | --- |
+| **Auto-execute** | Directly create task after trigger | Low-risk scheduled tasks (daily report, data sync) | require_confirmation=false + risk_level=low |
+| **Suggestion mode** | Push suggestion to user after trigger, execute after user confirms | Medium-high risk event response (CTR drop → suggest bid adjustment) | require_confirmation=true |
+| **Silent recording** | Only record event and analysis results after trigger, no proactive notification | Data accumulation (user behavior pattern identification) | action_type=update_dashboard |
 
 ## 41.4 Trigger Storm Protection
 
-- **max_fire_rate**: Each trigger has a maximum fire rate, exceeding which automatically degrades to silent logging
-- **cooldown**: Mandatory cooldown between two triggers to prevent duplicate execution
-- **batch_window**: Event triggers can configure a batch window to merge multiple events in a short time into one trigger
-- **circuit_breaker**: After N consecutive trigger task failures, automatically disable the trigger and alert
-- **Global trigger budget**: Each domain has a maximum number of daily auto-triggers to prevent runaway execution
+- **max_fire_rate**: Each trigger has maximum fire frequency; exceeding auto-degrades to silent recording
+- **cooldown**: Forced cooldown between two fires, prevents repeated execution
+- **batch_window**: Event triggers can configure batch window, merging multiple events within short timeframe into one trigger
+- **circuit_breaker**: After N consecutive trigger task failures, auto-disable trigger and alert
+- **Global trigger budget**: Each domain has daily maximum auto-trigger count, prevents runaway
 
 ## 41.5 Proactive Suggestion Pipeline
 
@@ -4290,514 +4690,979 @@ Trigger fires
     ▼
 ┌────────────────┐     ┌──────────────┐
 │ Context Builder │────▶│ Suggestion   │
-│ (Context        │     │ Generator    │
-│  Building)      │     │              │
+│ (context build) │     │ Generator    │
 └────────────────┘     └──────┬───────┘
                               │
                        ┌──────▼───────┐
                        │ Suggestion   │
-                       │ Queue        │──▶ User Dashboard(§43) / Push Notification
+                       │ Queue        │──▶ User dashboard(§43) / Push notification
                        └──────┬───────┘
-                              │ User confirms
+                              │ user confirms
                        ┌──────▼───────┐
-                       │ Task/Goal    │──▶ Standard Execution Pipeline
+                       │ Task/Goal    │──▶ Standard execution pipeline
                        │ Creator      │
                        └──────────────┘
 ```
 
 ---
-
 # 42. Progressive Autonomy Model
 
-> v2.3 New. Dynamic promotion/demotion of Agent autonomy driven by historical performance data, reducing manual supervision burden.
-> Related: §10 Risk Control · §17 Model Evaluation · §21 Human-in-the-Loop · §37.2 DomainCapability · §41 Proactive Agent
+> Drives dynamic promotion/demotion of Agent autonomy based on historical performance data, reducing human supervision burden.
+> Related: §10 Risk Control · §17 Model Evaluation · §21 Human-Machine Collaboration · §37.2 DomainCapability · §41 Proactive Agent
 
 ## 42.1 Trust Score Model
 
-```typescript
-interface AgentTrustProfile {
-  agent_id: string;
-  domain_id: string;
-  capability_scores: CapabilityTrustScore[];
-  overall_trust_level: TrustLevel;
-  history: TrustEvent[];
-  last_evaluation: string;        // ISO timestamp
-}
+Each Agent maintains a `TrustScore` record that drives autonomy level(§42.2) promotion and demotion:
 
-type TrustLevel = "untrusted" | "probation" | "supervised" | "semi_trusted" | "trusted" | "fully_trusted";
-
-interface CapabilityTrustScore {
-  capability_id: string;
-  current_autonomy: AutonomyLevel;
-  trust_score: number;            // 0-100
-  total_executions: number;
-  successful_executions: number;
-  failed_executions: number;
-  human_overrides: number;        // Number of human overrides
-  incidents: number;              // Number of incidents caused
-  last_incident_age: string;      // Time since last incident
-  promotion_eligible: boolean;
-  demotion_risk: boolean;
-}
-
-type AutonomyLevel = "suggestion" | "supervised" | "semi_auto" | "full_auto";
-```
+| Field | Type | Description |
+| --- | --- | --- |
+| agentId | string | Associated Agent's unique identifier |
+| currentScore | number (0-1000) | Current trust score, accumulated from execution success/failure/override events |
+| level | suggestion / supervised / semi_auto / full_auto | Current autonomy level, mapped from score range |
+| historyWindow | duration (default 90d) | Sliding window length for score calculation |
+| decayRate | number (default 0.05) | Per-period decay coefficient during inactivity, see §42.3 |
 
 ## 42.2 Autonomy Promotion/Demotion Rules
 
-```typescript
-interface AutonomyRule {
-  from_level: AutonomyLevel;
-  to_level: AutonomyLevel;
-  direction: "promotion" | "demotion";
-  conditions: AutonomyCondition[];
-  approval_required: "none" | "domain_owner" | "platform_team";
-  cooldown_after_change: string;   // Cooldown period after change to prevent frequent fluctuations
-}
+**Default Promotion Ladder**:
 
-interface AutonomyCondition {
-  metric: "success_rate" | "incident_count" | "human_override_rate" | "consecutive_successes" | "time_since_last_incident";
-  operator: "gte" | "lte" | "eq";
-  value: number;
-  window: string;                  // Evaluation window, e.g. "30d"
-}
-```
-**Default promotion ladder**:
-| Current level | Promotion to | Conditions | Approval |
-|---------|-------|------|------|
-| suggestion | supervised | ≥ 50 executions + success rate ≥ 95% + 0 incident(30d) | domain_owner |
-| supervised | semi_auto | ≥ 200 executions + success rate ≥ 98% + manual override rate < 5% + 0 incident(60d) | domain_owner |
-| semi_auto | full_auto | ≥ 500 executions + success rate ≥ 99% + manual override rate < 1% + 0 incident(90d) | platform_team |
-**Instant Downgrade Trigger**:
-| Events | Downgrade Actions | Recovery Conditions |
-|------|---------|---------|
-| Cause P0 Incident | Drop directly to suggestion | Manual investigation + platform_team approval |
-| Cause P1 Incident | Downgrade one level | 30d No incident |
-| 3 consecutive failures | Downgraded level | 10 consecutive successes |
-| Cost over budget by 200% | Downgraded to supervised | Budget adjustment + domain_owner confirmation |
+| Current Level | Promote To | Conditions | Approval |
+| --- | --- | --- | --- |
+| suggestion | supervised | ≥ 50 executions + success rate ≥ 95% + 0 incidents (30d) | domain_owner |
+| supervised | semi_auto | ≥ 200 executions + success rate ≥ 98% + human override rate < 5% + 0 incidents (60d) | domain_owner |
+| semi_auto | full_auto | ≥ 500 executions + success rate ≥ 99% + human override rate < 1% + 0 incidents (90d) | platform_team |
 
-## 42.3 Autonomy Change Audit
+**Instant Demotion Triggers**:
 
-All autonomy changes are recorded to event_log(§28)：
+| Event | Demotion Action | Recovery Condition |
+| --- | --- | --- |
+| Caused P0 Incident | Directly demote to suggestion | Human investigation + platform_team approval |
+| Caused P1 Incident | Demote one level | 30d with no incidents |
+| 3 consecutive failures | Demote one level | 10 consecutive successes |
+| Cost exceeds budget 200% | Demote to supervised | Budget adjustment + domain_owner confirmation |
 
-```typescript
-interface AutonomyChangeEvent {
-  event_type: "agent.autonomy.promoted" | "agent.autonomy.demoted" | "agent.autonomy.frozen";
-  agent_id: string;
-  capability_id: string;
-  from_level: AutonomyLevel;
-  to_level: AutonomyLevel;
-  trigger: "rule_engine" | "manual" | "incident_response";
-  evidence: {
-    success_rate: number;
-    total_executions: number;
-    incident_count: number;
-    evaluation_window: string;
-  };
-  approved_by: string | "auto";
-}
-```
-## 42.4 Integration with existing architecture
-| Existing components | Integration methods |
-|---------|---------|
-| §10 Risk Control | trust_score as an adjustment factor of risk_score - the same action of a high-trust Agent has a lower risk |
-| §17 Model Evaluation | eval quality degradation automatically triggers trust degradation |
-| §21 HITL | Autonomy determines HITL mode - suggestion level must be manually confirmed, full_auto level is executed silently |
-| §37.2 DomainCapability | `max_automation_level` as a ceiling - no matter how high the trust is, it cannot exceed the upper limit set by the domain |
-| §41 Active Agent | Only semi_auto and above are allowed to automatically execute triggers, otherwise the suggestion mode will be used |
+## 42.3 Trust Score Decay Mechanism
+
+Long-idle Agents' trust scores should gradually decay, preventing historically high-trust Agents from retaining excessive autonomy after behavioral environment changes:
+
+| Inactivity Duration | Decay Behavior | Description |
+| --- | --- | --- |
+| 30d no execution | trust_score × 0.95 | Light decay, trigger reminder |
+| 60d no execution | trust_score × 0.80 | Moderate decay, autonomy frozen at current level (cannot promote) |
+| 90d no execution | Demote one level + trust_score reset to target level floor | Must re-accumulate execution records to recover |
+| 180d no execution | Demote to suggestion | Agent treated as "dormant", requires domain_owner re-activation |
+
+Decay evaluation runs daily by `TrustDecayWorker`, changes recorded as `agent.autonomy.decayed` event to event_log(§28). domain_owner can adjust decay parameters or exempt specific Agents via DomainGovernancePolicy(§37.9).
+
+## 42.4 Autonomy Change Audit
+
+All autonomy changes are recorded to event_log(§28):
+
+## 42.5 Integration with Existing Architecture
+
+| Existing Component | Integration Method |
+| --- | --- |
+| §10 Risk Control | trust_score serves as a modulating factor for risk_score — same action has lower risk for high-trust Agents |
+| §17 Model Evaluation | eval quality degradation auto-triggers trust demotion |
+| §21 HITL | Autonomy determines HITL mode — suggestion level must have human confirmation, full_auto level executes silently |
+| §37.2 DomainCapability | `max_automation_level` serves as ceiling — trust cannot exceed domain-set upper limit |
+| §41 Proactive Agent | Only semi_auto and above allows auto-executing triggers; otherwise uses suggestion mode |
 
 ---
 
 # 43. Unified Operations Dashboard Architecture
 
-> v2.3 New. Provides layered operational views for one-person companies to enterprises with tens of thousands of people, replacing SRE-oriented infrastructure-level metrics.
-> Related: §12 Exceptional Events · §18 Cost Management · §27 SLO · §37.9 Governance · §42 Autonomy
+> Provides layered operations views from solo operators to enterprise-scale organizations, replacing infrastructure-level metrics aimed at SREs.
+> Related: §12 Exception Events · §18 Cost Management · §27 SLO · §37.9 Governance · §42 Autonomy
 
 ## 43.1 Dashboard Layering
 
 ```text
 ┌─────────────────────────────────────────┐
-│  L1 Operator View (One-person company / │  "Is everything normal? What needs my attention?"
-│  Business Owner)                         │
+│  L1 Operator View (solo operator / biz lead)    │  "Is everything OK? What needs my attention?"
 ├─────────────────────────────────────────┤
-│  L2 Domain Admin View (Dept Agent Admin) │  "What Agents do I have in my domain? How are they performing?"
+│  L2 Domain Admin View (dept Agent admin)        │  "What Agents does my domain have? How are they performing?"
 ├─────────────────────────────────────────┤
-│  L3 Platform Ops View (Platform SRE)    │  "Is infrastructure healthy? Resource utilization?"
+│  L3 Platform Ops View (platform SRE team)       │  "Infrastructure healthy? Resource utilization?"
 ├─────────────────────────────────────────┤
-│  L4 Fleet Management View (Enterprise    │  "Which department has problems? Global capacity?"
-│  Platform Team)                          │
+│  L4 Fleet Management View (enterprise platform team)│  "Which department has issues? Global capacity?"
 └─────────────────────────────────────────┘
 ```
 
 ## 43.2 L1 Operator View
 
-Business-oriented view for non-technical users：
+Business-oriented view for non-technical users:
 
-```typescript
-interface OperatorDashboard {
-  attention_queue: AttentionItem[];        // "Items needing your attention" queue
-  daily_summary: DailySummary;             // Today's summary
-  agent_health_cards: AgentHealthCard[];   // Agent health cards
-  cost_burn: CostBurnRate;                 // Cost burn rate
-  active_goals: GoalProgress[];            // Active goal progress
-  recent_completions: CompletionRecord[];  // Recently completed tasks
-  proactive_suggestions: Suggestion[];     // Proactive suggestions (§41)
-}
+| Panel | Content | Refresh Rate |
+| --- | --- | --- |
+| My Task Status | In-progress / completed / failed task list with progress percentage | Real-time |
+| Recent Results | Summary and output links for tasks completed in last 24h | 5min |
+| Pending Approvals | Approval requests requiring current user confirmation, sorted by urgency | Real-time |
+| Agent Health | Availability and current autonomy level(§42) of domain Agents | 1min |
+| Budget Overview | Current month usage / remaining quota(§18) | 1h |
 
-interface AttentionItem {
-  item_type: "approval_needed" | "incident" | "budget_warning" | "quality_alert" | "suggestion";
-  priority: "low" | "normal" | "high" | "critical";
-  title: string;                           // Human-readable title
-  description: string;                     // One-sentence description
-  action_options: ActionOption[];          // Executable actions (one-click operations)
-  created_at: string;
-  domain_id: string;
-}
+## 43.3 L2 Domain Admin View
 
-interface DailySummary {
-  tasks_completed: number;
-  tasks_in_progress: number;
-  tasks_failed: number;
-  total_cost_today: string;
-  agent_uptime_percent: number;
-  highlights: string[];                    // NL-generated today's highlights
-  concerns: string[];                      // NL-generated concerns
-}
+Domain operations view for department Agent administrators:
 
-interface AgentHealthCard {
-  agent_id: string;
-  domain_id: string;
-  name: string;
-  status: "healthy" | "degraded" | "failing" | "paused";
-  trust_level: TrustLevel;                // §42
-  tasks_today: number;
-  success_rate_7d: number;
-  cost_7d: string;
-  trend: "improving" | "stable" | "declining";
-}
-```
+| Panel | Content | Refresh Rate |
+| --- | --- | --- |
+| Domain Task Throughput | Hourly/daily task submission and completion count trend chart | 5min |
+| Agent Utilization | Execution share, queue depth, idle rate per Agent in domain | 1min |
+| Domain SLO Achievement | P50/P95 latency, success rate vs DomainDescriptor(§37) SLO | 5min |
+| Top Failed Tasks | Task types sorted by failure count, with root cause classification and linked Incidents | 5min |
+| Cost Distribution | Domain budget consumption breakdown: model calls / tool calls / storage(§18) | 1h |
 
-## 43.3 L2 Domain Administration View
+## 43.4 L3 Platform Ops View
 
-Domain operational view for department Agent administrators：
+Infrastructure operations view for the SRE team:
 
-```typescript
-interface DomainAdminDashboard {
-  domain_id: string;
-  agent_inventory: AgentInventoryItem[];
-  performance_matrix: {
-    agent_id: string;
-    success_rate_7d: number;
-    avg_latency_ms: number;
-    cost_7d: string;
-    autonomy_level: AutonomyLevel;
-    trend: "improving" | "stable" | "declining";
-  }[];
-  active_workflows: WorkflowSummary[];
-  pending_approvals: ApprovalItem[];
-  domain_budget: { allocated: string; consumed: string; forecast: string };
-  knowledge_health: { total_docs: number; stale_docs: number; last_refresh: string };
-  eval_quality_trend: { date: string; pass_rate: number }[];
-}
-
-interface AgentInventoryItem {
-  agent_id: string;
-  name: string;
-  version: string;
-  status: "active" | "paused" | "deprecated" | "draft";
-  autonomy_level: AutonomyLevel;
-  capabilities: string[];
-  last_execution: string;
-}
-```
-
-## 43.4 L3 Platform Operations View
-
-Infrastructure operations view for SRE teams：
-
-```typescript
-interface PlatformOpsDashboard {
-  infrastructure_health: {
-    component: string;
-    status: "healthy" | "degraded" | "down";
-    uptime_30d: number;
-    error_budget_remaining: number;
-  }[];
-  worker_pool_status: {
-    total: number; idle: number; busy: number; unhealthy: number;
-  };
-  queue_metrics: {
-    queue_name: string; depth: number; avg_wait_ms: number; dlq_count: number;
-  }[];
-  circuit_breaker_states: {
-    target: string; state: "closed" | "open" | "half_open"; since: string;
-  }[];
-  storage_metrics: {
-    event_log_size: string; growth_rate: string; retention_compliance: boolean;
-  };
-  active_incidents: IncidentSummary[];
-  recovery_jobs: { type: string; status: string; last_run: string }[];
-  model_gateway_health: {
-    provider: string; status: string; p99_latency_ms: number; error_rate: number;
-  }[];
-}
-```
+| Panel | Content | Refresh Rate |
+| --- | --- | --- |
+| Five-Plane Health | P1-P5 Plane(§4) liveness status and component Ready ratio | 10s |
+| Resource Utilization | Cluster-level heatmap of CPU / memory / GPU / queue depth | 30s |
+| Error Rate Trends | 4xx/5xx error rates by service dimension with week-over-week change | 1min |
+| Latency Distribution | P50/P95/P99 latency, split by Interface→Execution→Model | 1min |
+| Incident Timeline | Active Incident list with auto-remediation progress(§26) | Real-time |
 
 ## 43.5 L4 Fleet Management View
 
-Global operations view for enterprise platform teams：
+Global operations view for enterprise platform teams:
 
-```typescript
-interface FleetDashboard {
-  platform_health: PlatformHealthScore;
-  department_overview: DepartmentStatus[];
-  resource_utilization: ResourceUtilization;
-  global_incident_map: IncidentHeatmap;
-  version_drift: VersionDriftReport;
-  capacity_forecast: CapacityForecast;
-  top_cost_consumers: CostRanking[];
-  cross_department_workflows: CrossDeptWorkflowStatus[];
-}
+| Panel | Content | Refresh Rate |
+| --- | --- | --- |
+| Cross-Region Status | Availability, sync latency, and failover readiness per Region cluster | 1min |
+| Fleet Cost Overview | Org-wide cost distribution by domain/region/tenant with YoY trends(§18) | 1h |
+| Tenant Comparison | Tenant-level QPS, success rate, resource consumption horizontal ranking | 5min |
+| Capacity Forecast | 7d/30d resource demand forecast and scale-up recommendations based on historical trends | 6h |
+| Compliance Posture | Audit policy coverage, sensitive operation approval rate, compliance deviation count(§10) | 1h |
 
-interface DepartmentStatus {
-  department_id: string;
-  agent_count: number;
-  active_workflows: number;
-  health_score: number;                    // 0-100 composite score
-  sla_compliance: number;                  // SLA compliance rate
-  cost_budget_usage: number;               // Budget usage ratio
-  incidents_open: number;
-  attention_items: number;
-}
+## 43.6 NL Status Summary Generation
 
-interface PlatformHealthScore {
-  overall: number;                         // 0-100
-  components: {
-    api_gateway: number;
-    dispatcher: number;
-    worker_pool: number;
-    model_gateway: number;
-    event_bus: number;
-    storage: number;
-  };
-  degraded_components: string[];
-}
-```
-## 43.6 NL status summary generation 
+Dashboard supports natural language summaries, generated by ModelGateway(§15):
 
-Kanban supports natural language summaries, generated by ModelGateway(§15): 
+- **Daily briefing**: "Today 5 Agents completed 23 tasks (96% success rate), spending ¥45. Advertising domain Agent performed well (ROI 2.8x). 2 approvals awaiting your action, 1 budget alert needs attention."
+- **Anomaly briefing**: "In the past hour, Customer Service domain Agent success rate dropped from 95% to 78%, primarily due to slow KB API response. Auto-degraded to cache mode. Recommend checking KB service status."
+- **Away-and-back briefing**: "During the 8 hours you were away: completed 12 tasks, spent ¥80. Finance domain had 1 P1 Incident (auto-recovered). 3 approvals were auto-processed due to timeout. No immediate action needed."
 
-- **Daily Briefing**: "Today, 5 Agents completed 23 tasks (success rate 96%), costing ¥45. The advertising domain Agent performed well (ROI 2.8x). There are 2 approvals waiting for you to process, and 1 budget alarm needs attention." 
-- **Exception Brief**: "In the past 1 hour, the customer service domain Agent success rate dropped from 95% to 78%, mainly due to the slow response of the knowledge base API. It has been automatically downgraded to cache mode. It is recommended that you check the knowledge base service status." 
-- **Leave Back Briefing**: "During the 8 hours you were away: 12 tasks completed, costing ¥80. 1 P1 Incident in Finance domain (auto-recovered). 3 approvals have timed out for automatic processing. No immediate action required." 
+---
 
---- 
+# 44. Non-Technical User Experience Architecture
 
-# 44. Non-technical user experience architecture 
+> Enables non-developers (business leads, solo operators) to use all platform capabilities through visual interfaces.
+> Related: §22 SDK/DX · §38 Onboarding Runbook · §39 NL Entry · §43 Dashboard
 
-> New in v2.3. Enable non-developers (business leaders, independent operators) to use all capabilities of the platform through a visual interface. 
-> Related: §22 SDK/DX · §38 Access Runbook · §39 NL Entry · §43 Kanban 
+## 44.1 User Role Layering
 
-## 44.1 User role layering
-| Role | Technical level | Main interaction method | Kanban board level |
-|------|---------|------------|---------|
-| Independent operator | Non-technical | NL Dialogue (§39) + L1 Kanban (§43) | L1 |
-| Business Line Leader | Non-Technical | L1 Kanban + Visual Configuration | L1 |
-| Domain Admin | Low Code | Visual Configuration + Occasionally CLI | L2 |
-| Pack Developer | Technology | SDK + CLI(§22) | L2/L3 |
-| Platform SRE | Technology | CLI + Admin API + L3/L4 Kanban | L3/L4 |
+| Role | Technical Level | Primary Interaction Method | Dashboard Level |
+| --- | --- | --- | --- |
+| Solo Operator | Non-technical | NL conversation(§39) + L1 dashboard(§43) | L1 |
+| Business Line Lead | Non-technical | L1 dashboard + visual configuration | L1 |
+| Domain Admin | Low-code | Visual configuration + occasional CLI | L2 |
+| Pack Developer | Technical | SDK + CLI(§22) | L2/L3 |
+| Platform SRE | Technical | CLI + Admin API + L3/L4 dashboard | L3/L4 |
 
-## 44.2 Visual Domain Access Wizard
+## 44.2 Visual Domain Onboarding Wizard
 
-Replaces §38's CLI + YAML process for technical users:
+Replaces the CLI + YAML flow in §38 designed for technical personnel:
 
 ```text
 Step 1               Step 2               Step 3               Step 4
-Select Business       Configure Core       Set Risk Control     Activate & Launch
-Type                  Capabilities         Rules
+Select business type  Configure core       Set risk control     Activate go-live
+                      capabilities         rules
 ┌──────────┐        ┌──────────┐        ┌──────────┐        ┌──────────┐
-│ "What    │        │ Drag &   │        │ Risk     │        │ One-click│
-│  type of │───────▶│ Drop     │───────▶│ Slider   │───────▶│ Activate │
-│  business│        │ Select   │        │ Approvals│        │ Gray-scale│
-│  is it?" │        │ Needed   │        │ Templates│        │ Start    │
-│ [Card    │        │ Capabilities│    │ [Preset  │        │ [Progress │
-│ Select]  │        │ [Tool     │        │ Template]│        │ Bar]     │
+│ "What type│        │ Drag to   │        │ Risk slider│        │ One-click │
+│ is your   │───────▶│ select    │───────▶│ Approval   │───────▶│ activate  │
+│ business?"│        │ capabilities│        │ rules      │        │ Canary    │
+│ [card pick]│        │ [tool panel]│        │ [presets]  │        │ [progress]│
 └──────────┘        └──────────┘        └──────────┘        └──────────┘
 ```
 
-| Traditional method (§38) | Visual method (§44) |
-|--------------|---------------|
-| `agent-platform domain init --archetype=crud_heavy` | Select the card "Customer Service Class" |
-| Manually edit DomainDescriptor YAML | Form filling + smart recommendations |
-| `agent-platform domain validate` | Real-time verification + traffic light prompts |
-| Multi-team collaboration 5-9 weeks | Wizard-led 1-3 days (low risk domain) |
+| Traditional Method(§38) | Visual Method(§44) |
+| --- | --- |
+| `agent-platform domain init --archetype=crud_heavy` | Card selection "Customer Service type" |
+| Manually edit DomainDescriptor YAML | Form filling + intelligent recommendations |
+| `agent-platform domain validate` | Real-time validation + traffic light indicators |
+| Multi-team collaboration 5-9 weeks | Wizard-guided 1-3 days (low-risk domains) |
 
 ## 44.3 Visual Workflow Builder
 
-Workflow orchestration interface for non-technical users：
-
-```typescript
-interface VisualWorkflowBuilder {
-  canvas: WorkflowCanvas;
-  component_palette: ComponentCategory[];
-  live_preview: WorkflowPreview;
-  validation: RealTimeValidation;
-}
-
-interface ComponentCategory {
-  category: "trigger" | "action" | "condition" | "approval" | "output";
-  components: DraggableComponent[];
-}
-
-interface DraggableComponent {
-  component_id: string;
-  name: string;                            // e.g. "Send Email", "Query Data", "Generate Report"
-  icon: string;
-  domain_id: string;
-  risk_level: "low" | "medium" | "high";
-  config_schema: Record<string, unknown>;  // Visual configuration schema
-  preview_description: string;             // "This component will..."
-}
-
-interface WorkflowPreview {
-  estimated_duration: string;
-  estimated_cost: string;
-  risk_assessment: string;
-  step_by_step_description: string[];      // NL description of what each step does
-}
-```
+Workflow orchestration interface for non-technical users:
 
 ## 44.4 Intelligent Guided Onboarding
 
 ```text
-First Login
+First login
     │
     ▼
 ┌──────────────────┐
 │ "Hello! I'm your │
-│  AI Business     │
-│  Assistant.       │
+│  AI business      │
+│  assistant.       │
 │  What would you   │
-│  like me to do?" │
+│  like me to do?"  │
 └───────┬──────────┘
-        │ User describes business
+        │ user describes business
         ▼
 ┌──────────────────┐
-│ Auto Recommend   │
-│ • Suitable       │
-│   domain templates│
-│ • Required       │
+│ Auto-recommend   │
+│ • Suitable domain│
+│   template       │
+│ • Needed         │
 │   integrations   │
 │ • Estimated cost │
 └───────┬──────────┘
-        │ User confirms
+        │ user confirms
         ▼
 ┌──────────────────┐
-│ One-click        │
-│ Configuration    │
+│ One-click setup  │
 │ • Create Domain  │
-│ • Install Base   │
-│   Pack          │
-│ • Set default   │
-│   risk control  │
-│ • Activate first│
-│   Agent         │
+│ • Install base   │
+│   Pack           │
+│ • Set default    │
+│   risk control   │
+│ • Activate first │
+│   Agent          │
 └───────┬──────────┘
-        │ After 3 minutes
+        │ 3 minutes later
         ▼
 ┌──────────────────┐
-│ "Your first      │
-│  Agent is ready! │
-│  Try saying:     │
-│  'Help me...'   │
+│ "Your first Agent│
+│  is ready! Try   │
+│  saying:          │
+│ 'Help me...'     │
 └──────────────────┘
 ```
-## 44.5 Single player mode vs Enterprise mode 
 
-The platform automatically adjusts UX complexity based on the number of users:
-| Dimensions | Single player mode | Enterprise mode |
-|------|---------|---------|
-| Tenant | Automatically create a single tenant and hide the concept of tenant | Complete multi-tenant management |
-| Approval | Self-approval (low/medium risk automatically passes, high risk pop-up window confirmation) | Complete approval flow engine (§21) |
-| Security Review | Built-in security checks run automatically, eliminating the need for a human security team | Review by an independent security team |
-| Access process | Wizard-guided 3 minutes | Four-stage runbook(§38) |
-| Kanban | L1 operator view only | L1-L4 all levels |
-| Costs | Personal budget view + money-saving suggestions | Department-level chargeback |
-| Governance | Simplified (you are domain_owner) | Complete organizational governance |
+## 44.5 Solo Mode vs Enterprise Mode
 
-```typescript
-interface PlatformMode {
-  mode: "solo" | "team" | "department" | "enterprise";
-  auto_detected: boolean;
-  features: {
-    multi_tenancy: boolean;
-    approval_engine: "self_approve" | "simple" | "full";
-    security_review: "auto_only" | "auto_plus_manual" | "full_team";
-    onboarding: "wizard_3min" | "guided_1week" | "runbook_full";
-    dashboard_levels: ("L1" | "L2" | "L3" | "L4")[];
-    governance: "self" | "delegated" | "hierarchical";
-  };
-  upgrade_path: string;           // Guide to upgrading to the next mode
-}
-```
+Platform auto-adjusts UX complexity based on user count:
+
+| Dimension | Solo Mode | Enterprise Mode |
+| --- | --- | --- |
+| Tenant | Auto-create single tenant, hide tenant concept | Full multi-tenant management |
+| Approval | Self-approval (low/medium risk auto-pass, high risk popup confirm) | Full approval flow engine(§21) |
+| Security Review | Built-in security checks run automatically, no manual security team needed | Dedicated security team review |
+| Onboarding Flow | Wizard-guided 3 minutes | Four-phase Runbook(§38) |
+| Dashboard | L1 Operator View only | L1-L4 all levels |
+| Cost | Personal budget view + cost-saving tips | Department-level chargeback |
+| Governance | Simplified (user is domain_owner) | Full organizational governance |
+
 ## 44.6 Accessibility (WCAG 2.1 AA)
-| WCAG Principles | Platform Implementation |
-|-----------|---------|
-| Perceptible | All charts provide alt text / data table alternative view; color is not used as the only information carrier (with shapes / labels) |
-| Operable | All functions can be operated through the keyboard (Tab sequence, Enter to confirm, Esc to cancel); NL entrance supports voice input (§68) |
-| Understandable | Error messages clearly identify the problem and suggested fixes; form labels are explicitly associated with inputs |
-| Robustness | Semantic HTML; ARIA annotation of key interactive controls (kanban cards, approval buttons, workflow canvas nodes) |
 
-**Audit & Testing**: axe-core scan runs automatically before each frontend release; WCAG AA violations are treated as release blockers.
+| WCAG Principle | Platform Implementation |
+| --- | --- |
+| Perceivable | All charts provide alt text / data table alternative views; color is not the sole information carrier (paired with shapes/labels) |
+| Operable | All functions keyboard accessible (Tab order, Enter confirm, Esc cancel); NL entry supports voice input(§68) |
+| Understandable | Error messages clearly state the problem and fix suggestions; form labels explicitly associated with inputs |
+| Robust | Semantic HTML; ARIA annotations on key interactive controls (dashboard cards, approval buttons, workflow canvas nodes) |
 
-> **Note**: WCAG 2.1 AA compliance requires a frontend implementation. The current codebase is backend-focused and does not include a frontend UI. Accessibility compliance will need to be verified when a frontend is developed, following these guidelines:
-> - Use semantic HTML elements
-> - Ensure keyboard navigability (Tab, Enter, Esc)
-> - Provide alt text for all images and data table alternatives for charts
-> - Use ARIA annotations for interactive controls
-> - Ensure color is not the only information carrier
-> - Run automated axe-core scans before each frontend release
-> Frontend implementation is tracked separately and not yet in scope for the current backend-focused implementation phase.
+**Audit and Testing**: Auto-run axe-core scan before every frontend release; WCAG AA violations are treated as release blockers.
+
+**Frontend Implementation Requirement**: WCAG 2.1 AA compliance requires actual frontend UI implementation (React/Vue/Angular etc.). The platform TypeScript code provides data models, color contrast tokens (`getSeverityColorTokens()`), and accessibility label builder functions (`buildAccessibleLabel()`), but actual UI components must be implemented in the specific frontend framework. §21 HITL notification component (`src/platform/interface/console/hitl/notification.ts`) provides TypeScript logic with color values meeting WCAG AA contrast requirements (≥4.5:1), but rendering and interaction implementation is handled by the frontend.
 
 ---
 
-# 46. Organizational Hierarchy Model
+# Part VI -- Harness Engineering and Eight-Pillar Deepening Layer (S45, S58)
 
-> v2.4 New. Adds company/division/department/team organizational hierarchy layer above tenant/domain/pack, driving layered governance of approvals, budgets, isolation, and compliance.
+---
+
+# 45. Harness Runtime Architecture
+
+> Converge the platform's scattered constraint, tool, context, and feedback capabilities into a unified Harness Runtime — a standardized Agent execution foundation. This fuses the eight-pillar model drawn from three major industry schools: Anthropic's role-based closed-loop, LangGraph's durable runtime, and OpenAI's governance and Guardrails primitives. Harness does not replace existing modules; instead, it orchestrates them into a closed-loop runtime.
+> Related: §13 OAPEFLIR · §5 Inter-Plane Communication Contracts · §10 Risk Control · §14 Execution Plane · §19.5 Multi-Agent Collaboration Protocol · §21 HITL · §29 Memory/Knowledge · §37 Business Domain Modeling · §42 Progressive Autonomy
+
+## 45.1 Harness Core Axioms
+
+> **Eight Pillars**: Constraints · Tools · State/Memory · Feedback · Durability · Evaluation Harness · HITL Runtime · Observability/Replay
+
+Harness upgrades one-shot model invocations into a closed-loop system that is "constrained, executable, memorizable, feedback-driven, recoverable, evaluable, human-intervenable, and observable." The eight pillars extend a unified abstraction from three major industry schools: Anthropic's harness/eval harness (role-based closed-loop + evaluation runtime), LangGraph's durable runtime (durable execution + memory layering + HITL interrupt/resume), and OpenAI's agents primitives/guardrails (tool governance + layered guardrails + orchestration).
+
+| Pillar               | Responsibility                                                                | Core Modules                                        |
+| -------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- |
+| Constraints          | Unified constraints (Policy/Approval/Risk/Sandbox/Budget/Org)                 | §45.3 ConstraintPack · §45.20 Guardrails            |
+| Tools                | Unified tools (Executor/Plugin/Connector/MCP)                                 | §45.4 ToolbeltAssembler · §45.17 Tool Harness       |
+| State/Memory         | Unified state (Truth/Event/Checkpoint/Memory/Knowledge)                       | §45.5 HarnessContext · §45.16 Memory Namespace      |
+| Feedback             | Unified feedback (Step/Task/Workflow/System level)                            | §45.6 FeedbackEnvelope                              |
+| Durability           | Unified durable execution (checkpoint/pause/resume/replay)                    | §45.11 Recovery Controller · §45.15 Durable Harness |
+| Evaluation Harness   | Unified evaluation (runtime adjudication + offline eval + version comparison) | §45.10 Evaluator Agent · §45.14 Evaluation Harness  |
+| HITL Runtime         | Unified human-machine collaboration (inspect/patch/override/takeover/resume)  | §21 HITL Approval · §45.18 HITL Runtime             |
+| Observability/Replay | Unified observability and replay (run trace + replay + audit)                 | §58.1/§58.4 · §45.19 Async Harness                  |
+
+Every task run enters through the unified HarnessRuntime entry point, which assembles constraints, tools, and context, drives the Planner→Generator→Evaluator multi-turn closed loop, and produces the final result along with an evidence chain.
+
+**Harness's Position within the Five Planes**: Harness is the unified runtime kernel of P3 Orchestration Plane. It sinks into P4 via protocols, consolidates state upward into P5, and is governed by P2.
+
+| Plane            | Harness Interaction                        | Key Protocols/Data                                             |
+| ---------------- | ------------------------------------------ | -------------------------------------------------------------- |
+| P1 Interface     | Receives request envelopes                 | RequestEnvelope, SessionContext                                |
+| P2 Control       | Consumes governance directives             | ControlDirective, Policy, Approval, Budget, Guardrails(§45.20) |
+| P3 Orchestration | **Harness is the unified P3 orchestrator** | HarnessRuntime, Planner/Generator/Evaluator closed loop        |
+| P4 Execution     | Dispatches execution plans                 | ExecutionPlan, ToolCall, HITLWait, AsyncDispatch               |
+| P5 Evidence      | Writes run evidence                        | HarnessRun, HarnessStep, ContextSnapshot, Evidence             |
+
+## 45.2 HarnessRuntime Overall Architecture
+
+```text
+User / API / Webhook / Scheduler
+        ↓
+  P1 Interface Plane
+        ↓
+┌───────────────────────────────────────────────────────────┐
+│                    Harness Runtime                         │
+│                                                           │
+│  ┌──────────────┐ ┌──────────────┐ ┌───────────────────┐ │
+│  │  Constraint   │ │  Tool        │ │  Context          │ │
+│  │  Engine +     │ │  Harness +   │ │  Assembler +      │ │
+│  │  Guardrails   │ │  Toolbelt    │ │  Memory Namespace │ │
+│  └──────┬───────┘ └──────┬───────┘ └─────────┬─────────┘ │
+│         │                │                    │           │
+│         ▼                ▼                    ▼           │
+│  ┌───────────────────────────────────────────────────┐   │
+│  │            HarnessLoopController                  │   │
+│  │                                                    │   │
+│  │  ┌──────────┐  ┌───────────┐  ┌────────────────┐ │   │
+│  │  │ Planner  │─>│ Generator │─>│   Evaluator    │ │   │
+│  │  │ Agent    │  │ Agent     │  │ Agent + Eval   │ │   │
+│  │  └────┬─────┘  └───────────┘  │ Harness        │ │   │
+│  │       │                        └───────┬────────┘ │   │
+│  │       │         ┌──────────┐           │          │   │
+│  │       │         │ HITL     │◄──escalate┘          │   │
+│  │       │         │ Runtime  │                      │   │
+│  │       │         └────┬─────┘                      │   │
+│  │       └── replan ◄───┴── resume ──────────────────┘   │
+│  └───────────────────────────────────────────────────┘   │
+│         │                    │                            │
+│  ┌──────▼──────┐     ┌──────▼──────┐                     │
+│  │  Durable     │     │  Recovery    │                     │
+│  │  Harness     │     │  Controller  │                     │
+│  └─────────────┘     └─────────────┘                     │
+└───────────────────────────────────────────────────────────┘
+        ↓                    ↓                 ↓
+  P4 Execution        P5 State &         P2 Control
+  Plane               Evidence           Plane
+```
+
+## 45.3 ConstraintPack — Task-Level Constraint Envelope
+
+Each task run carries an explicit constraint pack, turning constraints from implicit logic into a first-class input:
+
+| Constraint Dimension | Description                                                  | Source                                                    |
+| -------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| autonomy_mode        | suggestion / supervised / semi_auto / full_auto              | §42 Progressive Autonomy + §37.2 DomainCapability ceiling |
+| budget               | max_cost / max_steps / max_duration_ms                       | §18 Cost Management + §37.9 DomainGovernancePolicy        |
+| tool_policy          | allowed/denied tools + network/filesystem policy             | §11 Security + §30 Pack Manifest + DomainDescriptor       |
+| risk_policy          | max_risk_level + approval_required_at                        | §10 Risk Control + §37.3 DomainRiskProfile                |
+| output_policy        | require_evidence / require_evaluation / require_human_review | §21 HITL + §59 Explainability                             |
+
+ConstraintPack is assembled by ConstraintEngine at the HarnessRuntime entry point, merging platform defaults, tenant overrides, domain overrides, and task-level overrides (in increasing priority order).
+
+**Existing Module Mapping**: PolicyCenterService · ApprovalService · RiskEvaluationEngine · CostAlertService
+
+## 45.4 ToolbeltAssembler — Task-Level Tool Assembly
+
+Assembles the minimum viable toolset based on task type, business domain, risk level, tenant policy, and current context:
+
+**Assembly Flow**:
+
+1. Retrieve the domain-allowed tool list from DomainDescriptor(§37)
+2. Filter by ConstraintPack.tool_policy
+3. Exclude high-risk tools based on risk level (exclude all write tools in read_only mode)
+4. Exclude over-budget tools based on tenant budget
+5. Attach safety guards (input schema validation, output secret scanning, sandbox tier binding)
+6. Attach tool reliability profiles (success rate, average latency, circuit-breaker state) for Planner reference
+
+**Tool Evidence Standard**: Each tool execution automatically produces input summary, output summary, telemetry, artifact_ref, error_class, and retryability, feeding into Evidence Plane(§P5).
+
+**Existing Module Mapping**: ToolExecutor · PluginExecutor · BrowserExecutor · AdapterExecutor
+
+## 45.5 HarnessContext — Unified Runtime Context
+
+Unifies scattered state/memory/knowledge/artifacts into a runtime context object, assembled by ContextAssembler at the start of each loop iteration:
+
+**Four Context Categories**:
+
+| Context              | Content                                                                        | Lifecycle           |
+| -------------------- | ------------------------------------------------------------------------------ | ------------------- |
+| Conversation Context | User dialogue, instructions, preferences, raw NL input(§39)                    | Session-level       |
+| Task Context         | Current task goal, step states, ExecutionPlan, completed step Receipts         | Task-level          |
+| Memory Context       | Historical experience, long-term memory, Agent behavior patterns(§29)          | Persistent          |
+| Knowledge Context    | External knowledge, documents, retrieval results, DomainKnowledgeSchema(§37.4) | On-demand retrieval |
+
+**Context Budget**: Not all content can be fed to the model. ContextAssembler applies the following to each loop iteration's context:
+
+- Token budget trimming (total token budget = converted from ConstraintPack.budget.max_cost)
+- Relevance score ranking (relevance to current step goal)
+- Freshness score ranking (most recent context prioritized)
+- Trust score filtering (mark confidence for knowledge from untrusted sources)
+
+**Context Snapshot**: Each loop iteration saves a `ContextSnapshot` to P5 Checkpoint, used for crash recovery, replay, diff analysis, and debugger time-travel(§65).
+
+**Existing Module Mapping**: MemoryPlaneService · KnowledgePlaneService · AuthoritativeTaskStore · ArtifactStore
+
+## 45.6 FeedbackEnvelope — Unified Feedback Protocol
+
+Consolidates scattered feedback signals into a standardized envelope, establishing a four-stage feedback closed loop:
+
+**Four-Stage Closed Loop**:
+
+| Feedback Level | Trigger                                                | Evaluation Content                                     | Output                                        |
+| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------- |
+| Step-level     | After a single tool/model call completes               | Output quality, latency, cost, deviation from expected | Immediate judgment: continue / retry / replan |
+| Task-level     | After all steps of a Task complete                     | Whether Task goal is met, acceptance criteria          | Aggregated score + improvement suggestions    |
+| Workflow-level | After all steps of multi-step flow complete            | Whether business goal is met, end-to-end quality       | Final evaluation report                       |
+| System-level   | After accumulating sufficient feedback signals (async) | Whether prompt/policy/tool_config needs updating       | ImprovementCandidate → P2 Release             |
+
+Step-level feedback is produced in real time by the Evaluator Agent; Task/Workflow-level is aggregated by the Evaluator; System-level is processed asynchronously by Learn/Improve(§13.2).
+
+**Existing Module Mapping**: FeedbackCollector · PostExecutionQualityGate · StrategyLearningService · ApprovalContextSummaryService
+
+## 45.7 HarnessLoopController — Unified Closed-Loop Control
+
+Consolidates loop control logic from multiple scattered services into a single controller:
+
+**Control Decision Matrix**:
+
+| Evaluator Output | Loop Behavior                      | Condition                              |
+| ---------------- | ---------------------------------- | -------------------------------------- |
+| accept           | Advance to next step (or complete) | score ≥ quality_threshold              |
+| retry            | Retry current step (same plan)     | retry_count < max_retries              |
+| replan           | Trigger Planner to re-plan         | replan_count < max_replans             |
+| escalate         | Escalate to human(§21 HITL)        | risk increased / confidence too low    |
+| abort            | Safe termination + record evidence | Budget exhausted / unrecoverable error |
+
+**Loop Guards**:
+
+- Maximum loop iterations (default 10, constrained by ConstraintPack.budget.max_steps)
+- Maximum replan count (default 3)
+- Total time limit (constrained by ConstraintPack.budget.max_duration_ms)
+- Total cost limit (constrained by ConstraintPack.budget.max_cost)
+- Any guard triggered → forced termination + escalate
+
+**Existing Module Mapping**: OapeflirLoopService · RolloutStateMachine · TransitionService
+
+## 45.8 Planner Agent — Planning Responsibility
+
+Planner Agent is responsible for understanding goals, decomposing tasks, identifying risks, and generating execution plans.
+
+**Standardized Output PlanBundle**:
+
+| Field            | Description                                                    |
+| ---------------- | -------------------------------------------------------------- |
+| goal             | Original goal + structured GoalSpec                            |
+| task_graph       | Task dependency DAG (reuses §40 GoalDecomposer)                |
+| execution_budget | Step/time/cost budget allocation                               |
+| risk_profile     | Risk assessment snapshot (reuses §10 RiskAssessment)           |
+| success_criteria | List of quantifiable acceptance criteria                       |
+| evaluator_hints  | Evaluation hints for the Evaluator (which metrics to focus on) |
+
+**Prompt Separation**: Planner uses a dedicated Planner Prompt (obtained from DomainPromptLibrary §37.6) and does not share templates with Generator/Evaluator.
+
+**Existing Reusable Modules**: IntakeRouter · AssessmentService · PlanBuilder · GoalDecomposer · PolicyCenterService
+
+## 45.9 Generator Agent — Execution Responsibility
+
+Generator Agent is responsible for invoking tools, executing steps, writing back evidence, and producing intermediate results.
+
+**Standardized Output WorkProduct**:
+
+| Field          | Description                                                        |
+| -------------- | ------------------------------------------------------------------ |
+| step_id        | Current execution step ID                                          |
+| artifacts      | List of produced artifact references                               |
+| observations   | Observation records during execution                               |
+| result_summary | Result summary (for Evaluator assessment)                          |
+| telemetry      | Step-level telemetry (latency, token consumption, tool call count) |
+
+**Key Behavioral Constraints**:
+
+- When encountering a blockage (tool unavailable, insufficient permissions, external timeout), request help (trigger escalate) instead of forcing through
+- All tool calls go through the Toolbelt filter; unconfigured tools cannot be called directly
+- Each step automatically produces evidence (input/output/side_effect), written to P5
+
+**Existing Reusable Modules**: ExecutionDispatchService · MultiStepSupervisor · ToolExecutor · PluginExecutor · UnifiedChatProvider
+
+## 45.10 Evaluator Agent — Evaluation Responsibility
+
+Evaluator Agent is responsible for judging result quality, checking goal deviation, and deciding the next action.
+
+**Standardized Output EvaluationReport**:
+
+| Field          | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| passed         | Whether it passed                                      |
+| score          | Quality score 0-100                                    |
+| issues         | List of discovered issues (type + severity + location) |
+| recommendation | accept / retry / replan / escalate / abort             |
+| confidence     | Evaluation confidence 0.0-1.0                          |
+
+**Evaluation Dimensions**:
+
+- **Goal Deviation**: Distance between current result and PlanBundle.success_criteria
+- **Quality Gate**: Reuses §17 Model Evaluation + DomainEvalFramework(§37.5)
+- **Risk Change**: Whether risk increased after execution (compared to PlanBundle.risk_profile)
+- **Cost Reasonableness**: Whether actual token/time consumption is within budget
+
+**Prompt Separation**: Evaluator uses a dedicated Evaluator Prompt and does not share with Planner/Generator.
+
+**Existing Reusable Modules**: FeedbackCollector · StrategyLearningService · PostExecutionQualityGate · ApprovalContextSummaryService · SloAlertingService
+
+## 45.11 Recovery Controller
+
+When a fault occurs during Harness execution (worker crash, external timeout, model unavailable), Recovery Controller performs recovery based on ContextSnapshot(§45.5):
+
+| Fault Type               | Recovery Strategy                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| Worker crash             | Recover from latest ContextSnapshot, re-acquire lease, continue from breakpoint   |
+| LLM Provider unavailable | Trigger ModelGateway(§15) fallback chain, switch provider and continue            |
+| Tool timeout             | LoopController decides retry (same tool) or replan (substitute tool)              |
+| Budget exhausted         | Safe termination + save current state + notify user                               |
+| PlatformPanic(§60)       | Immediately serialize full state to checkpoint, await platform recovery to resume |
+
+Reuses existing Recovery Workers (LeaseReclaimer · StuckRunSweeper) and Checkpoint mechanism(§14).
+
+## 45.12 Integration with Existing Architecture
+
+| Existing Component           | Harness Integration                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| §5 Inter-Plane Contracts     | HarnessRuntime serves as the unified P3 Orchestration entry, receiving RequestEnvelope and outputting ExecutionPlan |
+| §10 Risk Control             | ConstraintPack.risk_policy is assembled by RiskAssessmentEngine                                                     |
+| §13 OAPEFLIR                 | Planner/Generator/Evaluator/Loop is the simplified external mapping of the OAPEFLIR eight stages(§13.5)             |
+| §14 Execution Plane          | Generator Agent executes via the standard ExecutionPlan → P4 dispatch → ExecutionReceipt path                       |
+| §21 HITL                     | LoopController's escalate path directly invokes the HITL approval flow                                              |
+| §37 Business Domain Modeling | DomainDescriptor drives domain-level configuration of ConstraintPack/Toolbelt/Context                               |
+| §42 Progressive Autonomy     | ConstraintPack.autonomy_mode is determined by AgentTrustProfile                                                     |
+| §59 Explainability           | Each loop iteration's PlanBundle/WorkProduct/EvaluationReport is automatically fed into the explainability pipeline |
+| §65 Debugger                 | ContextSnapshot sequence supports time-travel debugging                                                             |
+
+## 45.13 HarnessRun / HarnessStep — Unified Run Contract
+
+> Defines run entities and step entities as first-class contracts.
+
+**HarnessRun** represents a complete Harness task run:
+
+| Field            | Description                                               |
+| ---------------- | --------------------------------------------------------- |
+| runId            | Globally unique run identifier                            |
+| tenantId         | Tenant                                                    |
+| goal             | Original goal + structured GoalSpec                       |
+| mode             | sync / async (§45.19)                                     |
+| riskLevel        | Runtime risk level (determined by ConstraintPack)         |
+| budget           | max_cost / max_steps / max_duration_ms                    |
+| constraintPack   | Constraint snapshot for this run (§45.3)                  |
+| plannerOutput    | PlanBundle (§45.8)                                        |
+| steps            | HarnessStep sequence                                      |
+| currentIteration | Current loop iteration                                    |
+| maxIterations    | Constrained by ConstraintPack                             |
+| finalDecision    | accept / abort / escalate / timeout                       |
+| status           | pending / running / paused / completed / failed / aborted |
+| traceId          | Distributed trace correlation                             |
+| ownership        | Belonging agent / tenant / domain                         |
+| auditRefs        | List of audit evidence references                         |
+
+**HarnessStep** represents a single execution step:
+
+| Field        | Description                                                                  |
+| ------------ | ---------------------------------------------------------------------------- |
+| stepId       | Step identifier                                                              |
+| phase        | plan / execute / evaluate / hitl / decision                                  |
+| role         | planner / generator / evaluator / hitl_operator / loop_controller            |
+| inputs       | Step inputs (context snapshot references)                                    |
+| outputs      | Step outputs (PlanBundle / WorkProduct / EvaluationReport / HarnessDecision) |
+| rationale    | Decision rationale (fed into §59 Explainability)                             |
+| evidenceRefs | P5 evidence references                                                       |
+| toolCalls    | List of tool call records                                                    |
+| latency      | Step latency                                                                 |
+| cost         | Token/API cost                                                               |
+| error        | Error information (if any)                                                   |
+| nextAction   | Next action (determined by HarnessDecision)                                  |
+
+**HarnessDecision** has six fixed adjudications (see §58.6 for details): accept · retry_same_plan · replan · escalate_to_human · downgrade_mode · abort.
+
+**Existing Module Mapping**: AuthoritativeTaskStore · ExecutionReceipt · OapeflirLoopService · AuditService
+
+## 45.14 Evaluation Harness — Unified Evaluation Runtime
+
+> §45.10 Evaluator Agent handles runtime adjudication. This section completes the **offline evaluation, pre-release evaluation, and version comparison** capabilities to form a complete Evaluation Harness.
+> Industry reference: Anthropic's "the final outcome matters more than the transcript"; an evaluation harness should run tasks in a controlled environment, observe environment state, and aggregate results.
+
+**Three Evaluation Modes**:
+
+| Evaluation Mode        | Trigger                                                  | Evaluation Content                              | Output                                                   |
+| ---------------------- | -------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------- |
+| Runtime Evaluation     | After each step / each task completes                    | Evaluator Agent real-time adjudication (§45.10) | EvaluationReport                                         |
+| Pre-release Evaluation | Before new Prompt/Planner/Evaluator/ToolBundle goes live | Run standard task set in isolated sandbox       | Pass rate / regression comparison / quality distribution |
+
+## 45.15 Durable Harness — Durable Execution Pillar
+
+> §45.11 Recovery Controller handles fault recovery. This section elevates durable execution from a recovery strategy to a first-class pillar — checkpoint/pause/resume is a foundational capability of the Harness, not an add-on.
+> Industry reference: LangGraph "durable execution = a process saves progress at key points and can later pause and resume from the exact position."
+
+**Pause Reason Registry**:
+
+| pauseReason                  | Description                              | Typical Scenario                           |
+| ---------------------------- | ---------------------------------------- | ------------------------------------------ |
+| waiting_for_human            | Waiting for human approval/intervention  | HITL Runtime (§45.18) escalate             |
+| waiting_for_external_event   | Waiting for external system callback     | Webhook / third-party approval / CI result |
+| waiting_for_budget_reset     | Budget exhausted, waiting for next cycle | Token/cost budget ceiling reached          |
+| waiting_for_policy_clearance | Waiting for policy review approval       | High-risk action requires P2 approval      |
+| waiting_for_dependency       | Waiting for upstream task/data readiness | DAG dependency not satisfied               |
+
+**Resume Strategies**:
+
+| resumeStrategy     | Description                                                        | Applicable Scenario                               |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------- |
+| resume_same_state  | Resume from exact breakpoint, state unchanged                      | Human approval granted, external callback arrived |
+| resume_with_replan | Trigger Planner re-planning upon resume                            | Context has changed, policy has been updated      |
+| resume_supervised  | Enter supervised mode after resume                                 | High-risk recovery, trust downgrade               |
+| abort_on_resume    | Determine continuation is infeasible upon resume, safely terminate | Timeout exceeded, environment is irreversible     |
+
+**Key Mechanisms**:
+
+- The ContextSnapshot (§45.5) of each loop iteration is the persistence foundation of Durable Harness
+- §20 long-running task hibernation mechanism serves as the underlying implementation of Durable Harness
+- On pause, the complete HarnessRun state is serialized to P5 Checkpoint
+- On resume, ResumeStrategyService selects a strategy based on pauseReason + current environment
+
+**Existing Module Mapping**: HibernationService · RecoveryWorker · LeaseReclaimer · StuckRunSweeper · CheckpointService
+
+## 45.16 Memory Namespace and Strategy
+
+> §45.5 HarnessContext treats memory as a context type. This section completes the three-layer memory namespace and promotion strategy.
+> Industry reference: LangGraph explicitly distinguishes thread-scoped short-term memory from cross-thread long-term memory; OpenAI treats state/memory as core primitives.
+
+**Three-Layer Memory Namespace**:
+
+| Layer                   | Scope                                              | Content                                                                                                                                         | Lifecycle                               |
+| ----------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Working Memory          | Current run / current iteration                    | Current goal summary, plan summary, issue checklist, budget remainder, risks and patterns, selected tools, recent failure reasons, key evidence | Archived after run ends                 |
+| Long-term Memory        | Cross-run / cross-project                          | Historical experience, agent behavior patterns, task success/failure patterns, common tool combinations                                         | Persisted, expires per retention policy |
+| Shared Knowledge Memory | Knowledge layer promotable to universal experience | Cross-agent / cross-domain best practices, common failure recovery solutions, evaluation rule suggestions                                       | Requires human review before promotion  |
+
+**Memory Promotion Strategy**:
+
+- Working → Long-term: After run completion, observations marked as "valuable" by Evaluator are automatically nominated for promotion, reviewed by MemoryPromotionPolicy
+- Long-term → Shared Knowledge: After accumulating N cross-agent validations, nominated for promotion; requires human review
+- Reverse demotion: Long-term entries with M consecutive non-references are automatically marked as stale, cleaned up after expiration
+
+**Namespace Isolation**:
+
+- Tenant isolation: Long-term Memory of different tenants is physically isolated
+- Domain isolation: Working Memory of different domains within the same tenant is logically isolated
+- Cross-domain sharing: Must go through §50 Knowledge Domain Isolation and Controlled Sharing access controls
+
+**Existing Module Mapping**: MemoryPlaneService · KnowledgePlaneService · §29 Memory/Knowledge Boundary · §50 Knowledge Domain Isolation
+
+## 45.17 Tool Harness — Tool Governance
+
+> §45.4 ToolbeltAssembler is responsible for assembling tool subsets per task. This section elevates tools from "callable is good enough" to "a governed first-class resource."
+> Industry reference: OpenAI/Anthropic both point out that tool schema, applicability boundaries, trustworthiness, invocation cost, and failure semantics should all be governed.
+
+**Tool Capability Profile**:
+Every registered tool must include:
+
+| Profile Field       | Description                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| toolId              | Globally unique identifier                                   |
+| capabilityType      | read / write / compute / network / filesystem / browser / db |
+| riskLevel           | low / medium / high / critical                               |
+| expectedLatency     | P50/P99 expected duration                                    |
+| expectedCost        | Estimated token/API cost per invocation                      |
+| reliabilityScore    | Historical success rate (dynamically updated)                |
+| requiredPermissions | Required permissions list                                    |
+| allowedDataClasses  | Permitted data classifications (PII/confidential/public)     |
+| allowedTenants      | Tenant whitelist (empty = all)                               |
+| allowedDomains      | Domain whitelist (empty = all)                               |
+| outputTrustLevel    | Output trust level (verified / unverified / untrusted)       |
+
+**Tool Invocation Governance Record**:
+Every tool invocation is automatically recorded:
+
+- Selection rationale (which reasoning step of the Planner/Generator selected it)
+- Invocation result (success / partial success / failure)
+- Whether the output is trustworthy
+- Whether it entered Long-term Memory
+- Whether it triggered a fallback
+- Whether it triggered Guardrails (§45.20)
+
+**Tool Lifecycle**: registered → active → deprecated → retired, aligned with §30 Pack lifecycle.
+
+**Existing Module Mapping**: ToolExecutor · PluginExecutor · BrowserExecutor · AdapterExecutor · §30 Pack Manifest
+
+**Tool Selection Governance**:
+
+Tool invocation is not a free choice but a governed three-stage process:
+
+| Stage               | Object                 | Description                                                                  |
+| ------------------- | ---------------------- | ---------------------------------------------------------------------------- |
+| Candidate Filtering | ToolSelectionCandidate | Available tool set filtered by ConstraintPack + domain + risk-tier           |
+| Selection Decision  | ToolSelectionDecision  | Records the Planner/Generator reasoning basis and alternatives for selection |
+| Fallback Policy     | ToolFallbackPolicy     | Fallback chain on tool invocation failure (downgrade tool → human → abort)   |
+
+Four hard rules:
+
+1. Planner may only select tools from the ToolSelectionCandidate set; bypassing constraint boundaries is prohibited
+2. Generator must not bypass the Planner's selection result to directly invoke unselected tools
+3. Evaluator assesses tool selection reasonableness post-hoc; may require Planner to re-select if unreasonable
+4. Tools with risk-tier ≥ high must have a configured ToolFallbackPolicy; otherwise ConstraintPack validation fails
+
+## 45.18 HITL Runtime — Human-Machine Collaboration Runtime
+
+> §21 defines the HITL approval mode; §45.7 LoopController provides the escalate path. This section elevates HITL from an approval flow to a Harness-native runtime — humans are not merely approving at the process boundary, but can view state, modify state, and continue execution during a run.
+> Industry reference: LangGraph "the checkpointer lets humans inspect, interrupt, approve, modify state, and then resume during a run"; OpenAI "guardrails and human review jointly determine when a run continues, pauses, or stops."
+
+**Five HITL Capabilities**:
+
+| Capability | Description                                                                         | Trigger Method                                   |
+| ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Inspect    | View current run state, plan, context, evaluator findings                           | Active viewing / Dashboard (§43) entry           |
+| Patch      | Modify planner output / working context / constraints / success criteria            | Human modifies in HITL interface and writes back |
+| Override   | Override evaluator recommendation / mode / budget / selected tools                  | Human override ruling                            |
+| Takeover   | Human directly takes over execution; Generator pauses                               | High-risk / insufficient trust / emergency       |
+| Resume     | Resume automatic execution after human processing (linked to §45.15 resumeStrategy) | Triggered after Patch/Override/Takeover          |
+
+**Relationship between HITL and Durable Harness**:
+
+- HITL trigger → Durable Harness pause (pauseReason = waiting_for_human)
+- Human completion → Durable Harness resume (resumeStrategy chosen by human or auto-recommended)
+- All HITL operations are written to audit log (§12 Audit + §59 Explainability)
+
+**HITL Timeout Policy**:
+
+- Default wait duration configured by §21 HITL mode
+- On timeout, escalate to a higher approval tier or abort per ConstraintPack's escalation_policy
+
+**Existing Module Mapping**: ApprovalService · TakeoverController · §21 HITL Mode · §47 Approval Routing
+
+**HITL State Machine**:
+
+```text
+                      ┌──────────────────────────────────────────┐
+                      │                                          │
+  ┌─────────┐  HITL trigger ┌──────────────────┐                │
+  │ Running │──────────→│ Paused_for_Human │                     │
+  └─────────┘           └────────┬─────────┘                     │
+                                 │                               │
+              ┌──────────┬───────┼────────┬──────────┐          │
+              ↓          ↓       ↓        ↓          ↓          │
+         Inspecting  Patched  Overridden  Manual   Timeout      │
+              │          │       │      Takeover     │          │
+              │          │       │        │          │          │
+              └──────────┴───────┴────────┘          │          │
+                         │                           ↓          │
+                    resume/approve              Escalate/Abort  │
+                         │                           │          │
+                         ↓                           ↓          │
+                    ┌─────────┐              ┌───────────┐      │
+                    │ Resumed │              │  Aborted  │      │
+                    └────┬────┘              └───────────┘      │
+                         │                                      │
+                         └──────────────────────────────────────┘
+                                  Back to Running
+```
+
+**State Transition Rules**:
+
+| Operation | Pre-state                          | Post-state                        | Impact Scope                                             |
+| --------- | ---------------------------------- | --------------------------------- | -------------------------------------------------------- |
+| Inspect   | Paused_for_Human                   | Inspecting → Paused_for_Human     | Read-only, does not change run state                     |
+| Patch     | Paused_for_Human                   | Patched → awaiting resume         | Modifies context/variables, does not change plan         |
+| Override  | Paused_for_Human                   | Overridden → awaiting resume      | Replaces current plan or step result                     |
+| Takeover  | Paused_for_Human                   | Manual_Takeover → awaiting resume | Human takes full control, agent pauses reasoning         |
+| Resume    | Patched/Overridden/Manual_Takeover | Resumed → Running                 | Resumes automatic execution, carries human modifications |
+| Abort     | Any Paused sub-state               | Aborted                           | Terminates run, records termination reason               |
+
+## 45.19 Async Harness — Async Execution Mode
+
+> Completes the async execution mode, adapting to enterprise multi-hour / multi-round / multi-approval async work scenarios.
+> Industry reference: Anthropic "pre-built, configurable agent harness running on managed infrastructure, suitable for long-running tasks and async work."
+
+**Two Execution Modes**:
+
+| Mode          | Applicable Scenario                                                                                                     | Interaction Pattern                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Sync Harness  | Second-level tasks, in-session responses, simple tool chains                                                            | Request-response, blocking wait for result                     |
+| Async Harness | Multi-hour tasks, multi-round collaboration, multiple approvals, long analyses, automation pipelines, batch task groups | Create run → poll/subscribe → intervene mid-run → final result |
+
+**Async Harness Capabilities**:
+
+- create_run: Create an async HarnessRun, return runId
+- poll_status: Query current state and progress by runId
+- subscribe_events: Subscribe to run event stream via Webhook/SSE
+- inspect_step: View detailed information of any step
+- intervene_mid_run: Trigger any HITL Runtime (§45.18) operation mid-run
+- replay_after_completion: Post-completion replay analysis (§58.4)
+
+**Relationship between Async and Durable**: Async Harness relies on the checkpoint/pause/resume mechanism of Durable Harness (§45.15). Every async run natively supports interruption and resumption.
+
+**Existing Module Mapping**: §20 Long-running Tasks · WebhookDeliveryService · §43 Dashboard · EventBus
+
+## 45.20 Guardrails Layered Architecture
+
+> §45.3 ConstraintPack consolidates constraints into a task-level envelope. This section establishes five Guardrails layers on top of ConstraintPack, ensuring guardrails permeate the entire Harness workflow.
+> Industry reference: OpenAI "guardrails should not only perform unified risk assessment at the entry point but should be layered throughout the entire workflow."
+
+**Five Guardrails Layers**:
+
+| Layer               | Check Timing                     | Check Content                                                                                                  | Interception Action                                      |
+| ------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Input Guardrails    | Before request enters Harness    | Prompt injection · sensitive request classification · unsupported goal detection · input format validation     | Reject / rewrite / downgrade                             |
+| Planning Guardrails | After Planner output             | Prohibited plan patterns · unauthorized delegation · overly broad tool scope · unsafe goal decomposition       | Require replan / escalate                                |
+| Tool Guardrails     | Before and after tool invocation | Untrusted tool output · unsafe API targets · overly broad file/DB access · high-risk action escalation         | Intercept / downgrade permissions / require confirmation |
+| Memory Guardrails   | During memory read/write         | Prohibited retention content · unsafe Long-term promotion · cross-tenant leakage · boundary violations         | Reject write / desensitize                               |
+| Output Guardrails   | Before result return             | Policy violations · unsafe execution suggestions · regulated content · high-confidence claims without evidence | Filter / rewrite / annotate                              |
+
+**Relationship between Guardrails and ConstraintPack**: ConstraintPack defines "what the constraints are"; Guardrails define "where constraints are enforced and how interception works." They are complementary: ConstraintPack is the static constraint envelope; Guardrails are the dynamic execution checkpoints.
+
+**Existing Module Mapping**: §10 Risk Control · §11 Security · §16.5 Prompt Injection Defense · §23 Compliance · §68 Multimodal Safety
+
+## 45.21 Harness Ten Invariants
+
+> Baseline rules for enterprise-grade Harness operation. No implementation or configuration may bypass these.
+
+1. Any complex task must have a PlannerOutput first; executing without a plan is prohibited
+2. Any GeneratorOutput must have a corresponding EvaluatorReport; skipping evaluation is prohibited
+3. Any retry / replan / escalate / abort must record a HarnessDecision with rationale
+4. Any long task (duration > 60s or steps > 3) must have an iteration checkpoint
+5. Any tool output must pass trust/promotion rules (§45.16/§45.17) before entering Long-term Memory
+6. Any human override must be written to the audit log, linked with traceId and operator identity
+7. Any multi-agent run must clearly designate planner/generator/evaluator/controller responsible parties
+8. Any async run must support state query (poll_status) and mid-run intervention (intervene_mid_run)
+9. Any high-risk run (risk_level ≥ high) must support downgrade_mode or HITL escalate
+10. Any harness run must be traceable (§58.1), replayable (§58.4), and auditable (§12)
+
+# 58. Harness Cross-Cutting Concerns
+
+> Cross-cutting engineering requirements arising from the introduction of Harness Runtime (§45) — Harness-level observability, Prompt layered governance, Failure-to-Learning pipeline, Replay/Simulation, architecture legacy issue resolution, and unified adjudication protocol.
+> Related: §45 Harness Runtime · §12 Exception Events · §16 Prompt Management · §27 SLO · §65 Debugger
+
+## 58.1 Harness-Level Observability
+
+Existing observability (§9.7, §12, §27) targets infrastructure and plane granularity. Harness requires **per-run granularity** end-to-end observation:
+
+| Metric                            | Description                                         | SLO                                                                             |
+| --------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------- |
+| harness.run.duration              | End-to-end duration of a single HarnessRun          | P99 < business domain SLO definition                                            |
+| harness.loop.count                | Number of loops per run                             | mean < 3, max ≤ ConstraintPack.max_steps                                        |
+| harness.replan.count              | Number of re-plans                                  | mean < 1                                                                        |
+| harness.evaluator.score           | Evaluator score distribution                        | P50 ≥ 80                                                                        |
+| harness.constraint.rejection_rate | ConstraintPack rejection rate                       | < 5% (too high indicates overly strict constraints or unclear task description) |
+| harness.context.token_utilization | Context token budget utilization                    | 60%-90% (too low = waste, too high = risk truncating critical context)          |
+| harness.tool.reliability          | Real-time reliability profile of each Toolbelt tool | Success rate ≥ 95%                                                              |
+
+All metrics are automatically collected via Harness Telemetry Middleware, written to the P5 Evidence Plane, and consumed by the §43 dashboard and §65 debugger.
+
+## 58.2 Prompt Layered Governance
+
+The three types of Harness Agents each require independent Prompt strategies and must not be mixed:
+
+| Prompt Type      | Responsibility                                                               | Governance Requirement                                                                     |
+| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Planner Prompt   | Goal understanding, task decomposition, risk identification, plan generation | Can only be released after passing §17 quality gate; linked to DomainPromptLibrary (§37.6) |
+| Generator Prompt | Tool selection, step execution, result generation                            | Independently versioned; full rollout only after A/B test passes                           |
+| Evaluator Prompt | Quality judgment, goal deviation detection, improvement suggestions          | Independent of the evaluated object; must not share version with Generator Prompt          |
+
+Prompt layering is incorporated into the §16 Prompt management system; each Prompt type has an independent rollout channel.
+
+## 58.3 Failure-to-Learning Pipeline
+
+Automatically distills failure cases into platform knowledge assets:
+
+```text
+Step 失败
+  → FeedbackEnvelope(outcome=failed)
+    → 失败模式分类（error_class + root_cause_category）
+      → 自动生成 candidate:
+         ├── Recovery Playbook（恢复操作手册）
+         ├── Prompt Patch Candidate（Prompt 修补建议）
+         ├── Risk Rule Candidate（风险规则建议）
+         └── Evaluator Rule Candidate（评估规则建议）
+      → 人工审核 → P2 Release 治理 → 灰度上线
+```
+
+Key constraint: All candidates are suggestions only and must go through §34 ADR-Quality-Gate-Before-Prompt-Release and P2 approval before taking effect.
+
+## 58.4 Harness Replay and Simulation
+
+Based on ContextSnapshot sequences (§45.5), the following capabilities are supported:
+
+| Capability           | Description                                                          | Use Case                           |
+| -------------------- | -------------------------------------------------------------------- | ---------------------------------- |
+| Offline Replay       | Full replay of a completed HarnessRun                                | Fault localization, audit evidence |
+| Strategy Comparison  | Run the same task with different ConstraintPacks                     | Constraint tuning                  |
+| Prompt A/B           | Run the same task with different Planner/Generator/Evaluator Prompts | Prompt optimization                |
+| Tool Swap Simulation | Replay after replacing a tool in the Toolbelt                        | Tool migration assessment          |
+| What-if Analysis     | Modify a value in ContextSnapshot and continue execution             | Root cause analysis                |
+
+Replay runs in an isolated sandbox (§34 ADR-Workflow-Debug-Session-Isolated) and does not affect the production environment.
+
+## 58.5 Architecture Legacy Issue Resolution
+
+Resolves the following cross-section legacy issues:
+
+| Issue                                                                                                | Source Sections | Resolution                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §21 HITL approval vs §47 org approval routing responsibility overlap                                 | §21, §47        | §21 defines HITL modes and approval semantics; §47 defines approval routing resolution — §21 decides "whether approval is needed and in what mode", §47 decides "who the approver is and where to route"                                                                           |
+| §23 compliance architecture vs §49 departmental compliance engine responsibility overlap             | §23, §49        | §23 defines the platform-level compliance framework (GDPR/SOC2/encryption/lineage); §49 defines org-level compliance policy distribution — §23 is "compliance capabilities", §49 is "compliance policy inheritance and differentiation on the org tree"                            |
+| §31 HA architecture vs §52 multi-Region architecture scope overlap                                   | §31, §52        | §31 defines HA-1/HA-2/HA-3 tiers within a single Region; §52 defines cross-Region deployment. Mapping: HA-1 = single node single Region, HA-2 = dual node single Region, HA-3 = multi-AZ single Region, §52 = multi-Region Active-Active (prerequisite: each Region at least HA-3) |
+| §32 deployment stages D1-D3 vs §8.4 scaling stages S1-S4 vs §33 landing Phase 1-7 no cross-reference | §8, §32, §33    | Mapping: D1+S1 = Phase 1-2, D2+S2 = Phase 3-4, D3+S3 = Phase 5-6, S4 = Phase 6-7. The three classification systems have different perspectives — D looks at deployment form, S looks at scaling capability, Phase looks at delivery cadence                                        |
+| No unified error classification system                                                               | §6.2            | Error codes organized by hierarchy: `PLATFORM.{plane}.{category}.{specific}`, e.g. `PLATFORM.P4.TOOL.TIMEOUT`, `PLATFORM.P2.POLICY.DENIED`. Each error code is associated with a retryable/severity/user_message triple                                                            |
+| §61 AgentDefinition.autonomy_config vs §42 progressive autonomy no explicit linkage                  | §42, §61        | autonomy_config is generated driven by §42 AgentTrustProfile; the autonomy_config in AgentDefinition is a snapshot — initial value obtained from TrustProfile at creation time, dynamically updated by §42 TrustScorer at runtime                                                  |
+
+## 58.6 HarnessDecision — Unified Adjudication Protocol
+
+> LoopController (§45.7) adjudication is elevated to a first-class protocol (six decisions: accept/retry/replan/escalate/downgrade_mode/abort), each with standardized fields.
+
+**Six Decisions**:
+
+| Decision          | Semantics                         | Trigger Condition                                           | Subsequent Action                                              |
+| ----------------- | --------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- |
+| accept            | Current step/task passes          | score ≥ threshold, no critical issues                       | Advance to next step or complete run                           |
+| retry_same_plan   | Retry current step with same plan | Transient failure, tool timeout, retry_count < max          | Generator re-executes the same step                            |
+| replan            | Trigger Planner re-planning       | Goal deviation, rising risk, replan_count < max             | Planner generates new PlanBundle                               |
+| escalate_to_human | Hand off to HITL Runtime (§45.18) | Rising risk / low confidence / policy requirement           | Durable Harness pause + HITL intervention                      |
+| downgrade_mode    | Downgrade operating mode          | Insufficient trust / tight budget / risk near threshold     | autonomy_mode downgrades one level (e.g. semi_auto→supervised) |
+| abort             | Safe termination                  | Budget exhausted / unrecoverable error / policy prohibition | Save state + record evidence + notify user                     |
+
+**HarnessDecision Standardized Fields**:
+
+- decision: one of the six decisions
+- reason: structured reason (error_class + root_cause_category)
+- evaluatorReport: reference to the EvaluationReport that triggered the decision
+- confidence: decision confidence 0.0-1.0
+- suggestedNextAction: suggestion for next step (for LoopController reference)
+- auditRef: audit evidence reference
+
+---
+
+
+# Part VII -- Organizational Governance Layer (S46-S51)
+
+---
+
+# 46. Organization Hierarchy Model
+
+> Layers a company/division/department/team org-chart on top of tenant/domain/pack, driving layered governance for approval, budget, isolation, and compliance.
 > Related: §11 Security · §18 Cost · §21 HITL · §37 Business Domain · §47 Approval Routing · §48 SSO/SCIM
 
 ## 46.1 Organization Model
 
-```typescript
-interface OrganizationNode {
-  node_id: string;
-  node_type: "company" | "division" | "department" | "team";
-  name: string;
-  parent_id: string | null;
-  manager: string;                         // principal ID
-  cost_center: string;
-  metadata: Record<string, string>;
-}
+OrgNode is the basic unit of the organization hierarchy, forming a tree structure (OrgTree):
 
-interface OrgChart {
-  root: OrganizationNode;                  // company
-  nodes: OrganizationNode[];
-  reporting_chains: ReportingChain[];      // Reporting chain
-  sync_source: "scim" | "manual" | "hr_api";
-  last_synced: string;
-}
+| Field      | Type                                         | Description                            |
+| ---------- | -------------------------------------------- | -------------------------------------- |
+| `nodeId`   | string (ULID)                                | Globally unique identifier             |
+| `type`     | enum: company / division / department / team | Organization level type                |
+| `parentId` | string \| null                               | Parent node ID; null for company nodes |
+| `name`     | string                                       | Organization unit name                 |
+| `metadata` | object                                       | Extended attributes (cost center, region, owner, etc.) |
 
-interface ReportingChain {
-  employee_id: string;
-  chain: string[];                         // [direct_manager, skip_level, ..., CEO]
-}
-```
+OrgTree supports dynamic reorganization — node additions, deletions, and modifications automatically trigger downstream permission refresh, approval route recalculation (§47), and budget redistribution. All changes are recorded in the audit log.
 
-## 46.2 Mapping Between Organizational Hierarchy and Platform Hierarchy
+## 46.2 Mapping Between Organization and Platform Hierarchies
 
 ```text
-Organizational                Platform
-Hierarchy                     Architecture
+Organization Hierarchy              Platform Hierarchy
 company ──────────────────── platform (single instance)
   ├── division ────────────── tenant_group (budget aggregation)
   │   ├── department ──────── tenant (isolation unit)
@@ -4807,263 +5672,175 @@ company ──────────────────── platform (s
   └── division ────────────── tenant_group
 ```
 
-| Organizational Hierarchy | Platform Mapping | Governance Permissions |
-|---------|---------|---------|
-| company | platform config | global strategy, platform-level SLO, compliance overview |
-| division | tenant_group | Division budget, cross-department workflow strategy |
-| department | tenant | Department budget, department SLO, domain management, approval chain |
-| team | domain/pack | Domain configuration, Pack development, daily operations |
-## 46.3 Automatic adaptation to organizational changes
-| Organizational change events | Platform automatic response |
-|------------|------------|
-| Employee onboarding | SCIM synchronization → Create principal → Assign to team → Inherit team permissions |
-| Employee transfer | Update reporting_chain → Adjust tenant/domain permissions → Migrate approval delegation |
-| Employee resignation | SCIM deprovisioning → Revoke all permissions → Transfer domain_owner → Audit records |
-| Department Merger | Merge Tenants → Consolidate Budget → Recalculate SLO → Migrate Pack Attribution |
-| Organizational reorganization | Rebuild reporting_chain → Refresh approval routes → Notify affected domain_owners |
+| Org Level  | Platform Mapping | Governance Authority                         |
+| ---------- | ---------------- | -------------------------------------------- |
+| company    | platform config  | Global policies, platform-level SLO, compliance master plan |
+| division   | tenant_group     | Division budget, cross-department workflow policies |
+| department | tenant           | Department budget, department SLO, domain management, approval chain |
+| team       | domain/pack      | Domain config, Pack development, daily operations |
+
+## 46.3 Automatic Adaptation to Org Changes
+
+| Org Change Event    | Automatic Platform Response                                                |
+| ------------------- | -------------------------------------------------------------------------- |
+| Employee onboarding | SCIM sync → create principal → assign to team → inherit team permissions   |
+| Employee transfer   | Update reporting_chain → adjust tenant/domain permissions → migrate approval delegation |
+| Employee offboarding| SCIM deprovisioning → revoke all permissions → transfer domain_owner → audit record |
+| Department merger   | Merge tenants → merge budgets → recalculate SLO → migrate Pack ownership  |
+| Org restructuring   | Rebuild reporting_chain → refresh approval routes → notify affected domain_owners |
 
 ---
 
-# 47. Organizational Structure Approval Routing
+# 47. Organization-Based Approval Routing
 
-> v2.4 New. Dynamic approval routing based on org-chart, replacing static approver lists.
-> Related: §21 HITL · §46 Organizational Hierarchy · §10 Risk Control
+> Dynamic approval routing based on the org-chart, replacing static approver lists.
+> Related: §21 HITL · §46 Organization Hierarchy · §10 Risk Control
 
 ## 47.1 Dynamic Approval Routing Engine
 
-```typescript
-interface ApprovalRoutingRule {
-  rule_id: string;
-  domain_id: string;
-  trigger_condition: string;               // Trigger condition expression
-  routing_strategy: RoutingStrategy;
-}
+The approval routing engine dynamically computes the approval chain based on request context, replacing static approver lists:
 
-type RoutingStrategy =
-  | OrgChartRouting
-  | AmountBasedRouting
-  | SodRouting;                            // Segregation of Duties
+| Routing Factor  | Description                                         |
+| --------------- | --------------------------------------------------- |
+| Risk level      | Higher risk_level (§10) requires higher approval level |
+| Cost threshold  | Match against approval amount matrix (§47.2) per §18 cost estimate |
+| Org level       | Walk up OrgTree (§46) to find approver at the corresponding level |
+| Delegation rule | Auto-route to delegate when approver is absent (§47.3) |
 
-interface OrgChartRouting {
-  type: "org_chart";
-  start_from: "initiator_manager" | "domain_owner" | "cost_center_owner";
-  escalation_levels: number;               // How many levels to escalate upward
-  skip_conditions?: string[];              // Skip conditions (e.g., skip to skip-level when "manager = initiator")
-}
+The engine supports parallel co-signing and sequential step-by-step approval. Each step has an independent timeout; on timeout, the request auto-escalates to a higher org level per escalation_policy. Separation of Duties (SoD) checks ensure the requester and approver are not the same person.
 
-interface AmountBasedRouting {
-  type: "amount_based";
-  thresholds: AmountThreshold[];
-}
+## 47.2 Approval Amount Matrix
 
-interface AmountThreshold {
-  max_amount: number;
-  currency: string;
-  approver_level: "auto" | "manager" | "director" | "vp" | "cxo";
-  requires_sod: boolean;                   // Whether segregation of duties is required
-}
+| Risk Amount | Auto | Manager | Director | VP  | CFO/CTO |
+| ----------- | ---- | ------- | -------- | --- | ------- |
+| < ¥1,000    | ✓    |         |          |     |         |
+| ¥1K-10K     |      | ✓       |          |     |         |
+| ¥10K-100K   |      |         | ✓        |     |         |
+| ¥100K-1M    |      |         |          | ✓   |         |
+| > ¥1M       |      |         |          |     | ✓       |
 
-interface SodRouting {
-  type: "segregation_of_duties";
-  initiator_cannot_approve: boolean;
-  same_team_cannot_approve: boolean;
-  minimum_approvers: number;
-  from_different_departments: boolean;
-}
-```
-## 47.2 Approval Quota Matrix
-| Risk Amount | Automatic | Manager | Director | VP | CFO/CTO |
-|---------|------|---------|----------|----|---------| 
-| < ¥1,000 | ✓ | | | | |
-| ¥1K-10K | | ✓ | | | |
-| ¥10K-100K | | | ✓ | | |
-| ¥100K-1M | | | | ✓ | |
-| > ¥1M | | | | | ✓ |
+## 47.3 Absence Auto-Delegation
 
-## 47.3 Automatic Delegation When Approver Unavailable
+When the approver is absent, the system finds a delegate in this priority order:
 
-```typescript
-interface DelegationOfAuthority {
-  delegator: string;                       // Delegator
-  delegate: string;                        // Delegate
-  scope: "all" | "domain_specific" | "amount_limited";
-  max_amount?: number;
-  valid_from: string;
-  valid_until: string;
-  auto_activated_by: "calendar_ooo" | "manual" | "scim_status";
-  audit_trail: boolean;
-}
-```
-When the approver is not available, the system looks for an agent according to the following priorities: 
-1. Explicit delegation of authority (DelegationOfAuthority) 
-2. org-chart goes up one level (skip-level manager) 
-3. Peer at the same level and in the same department (if the configuration allows) 
-4. Execute ApprovalTimeoutPolicy(§21) after timeout 
+1. Explicit DelegationOfAuthority
+2. Skip-level manager (one level up on the org-chart)
+3. Same-level peer in the same department (if configured)
+4. On timeout, execute ApprovalTimeoutPolicy (§21)
 
---- 
+---
 
-# 48. Enterprise SSO/SCIM Integrated Architecture 
+# 48. Enterprise SSO/SCIM Integration Architecture
 
-> New in v2.4. Integrate with enterprise identity providers for automated user lifecycle management. 
-> Relevance: §6.5 Authentication · §11 Security · §46 Organizational Hierarchy 
+> Integrate with enterprise identity providers for automatic user lifecycle management.
+> Related: §6.5 Authentication · §11 Security · §46 Organization Hierarchy
 
-## 48.1 Identity Integration Protocol
-| Protocol | Purpose | Priority |
-|------|------|--------|
-| **OIDC** | SSO login (already §6.5) | Supported |
-| **SAML 2.0** | SSO Login (Legacy Enterprise IdP) | New in v2.4 |
-| **SCIM 2.0** | User/group automatic synchronization | New in v2.4 |
-| **HR API** | Organization structure synchronization (optional) | New in v2.4 |
+## 48.1 Identity Integration Protocols
+
+| Protocol     | Purpose                      | Priority  |
+| ------------ | ---------------------------- | --------- |
+| **OIDC**     | SSO login (existing §6.5)    | Supported |
+| **SAML 2.0** | SSO login (legacy enterprise IdP) | Required |
+| **SCIM 2.0** | Automatic user/group sync    | Required  |
+| **HR API**   | Org-chart sync (optional)    | Optional  |
 
 ## 48.2 SCIM Integration Model
 
-```typescript
-interface ScimIntegration {
-  idp_type: "azure_ad" | "okta" | "ping" | "onelogin" | "custom";
-  scim_endpoint: string;
-  sync_mode: "push" | "pull" | "bidirectional";
-  sync_interval: string;
+The platform implements a SCIM 2.0 Server endpoint to receive user and group changes pushed by the enterprise IdP:
 
-  mapping: {
-    user_to_principal: FieldMapping[];     // IdP user → platform principal
-    group_to_role: GroupRoleMapping[];     // IdP group → platform role
-    group_to_org_node: GroupOrgMapping[];  // IdP group → organizational hierarchy node (§46)
-  };
+| Endpoint  | Supported Operations                  | Description                                       |
+| --------- | ------------------------------------- | ------------------------------------------------- |
+| `/Users`  | GET / POST / PUT / PATCH / DELETE     | User CRUD, mapped to platform principal            |
+| `/Groups` | GET / POST / PUT / PATCH / DELETE     | Group CRUD, mapped to OrgNode (§46) team           |
 
-  lifecycle: {
-    on_create: "auto_provision" | "pending_approval";
-    on_update: "auto_sync" | "manual_review";
-    on_deactivate: "immediate_revoke" | "grace_period_7d";
-    on_delete: "soft_delete" | "hard_delete_after_90d";
-  };
-}
-
-interface GroupRoleMapping {
-  idp_group_pattern: string;               // glob pattern
-  platform_roles: string[];
-  tenant_scope: string;                    // Maps to which tenant
-  auto_create_tenant: boolean;
-}
-```
+SCIM sync automatically maintains the principal ↔ OrgNode association. On user deprovisioning, active sessions are revoked immediately and owned Agents are suspended, ensuring zero residual access. All sync operations are audit-logged; conflicts defer to the IdP as the authoritative source.
 
 ## 48.3 User Lifecycle Automation
 
 ```text
-IdP Event                  Platform Response
-─────────                   ────────
-User Created ──────────▶ Create principal + assign role + add to org_node + welcome guide
+IdP Event                   Platform Response
+─────────                   ─────────────────
+User Created ──────────▶ Create principal + assign role + join org_node + welcome onboarding
 User Updated ──────────▶ Sync attributes + update reporting_chain + adjust permissions
-User Deactivated ──────▶ Immediately revoke all active sessions + pause all owned Agents
+User Deactivated ──────▶ Immediately revoke all active sessions + suspend all owned Agents
 User Deleted ──────────▶ Transfer domain_owner + archive audit records + trigger data_retention
 Group Changed ─────────▶ Batch update role mapping + refresh approval routes (§47)
 ```
 
 ---
 
-# 49. Sub-Department Compliance Policy Engine
+# 49. Per-Department Compliance Policy Engine
 
-> v2.4 New. Enables different departments to execute different compliance frameworks (SOX + HIPAA + PCI-DSS + GDPR coexistence).
-> Related: §23 Compliance · §37.3 DomainRiskProfile · §46 Organizational Hierarchy
+> Enable different departments to enforce different compliance frameworks (SOX + HIPAA + PCI-DSS + GDPR coexisting).
+> Related: §23 Compliance · §37.3 DomainRiskProfile · §46 Organization Hierarchy
 
 ## 49.1 Compliance Framework Registry
 
-```typescript
-interface ComplianceFramework {
-  framework_id: string;                    // e.g. "sox", "hipaa", "pci_dss", "gdpr"
-  name: string;
-  version: string;
-  controls: ComplianceControl[];
-  evidence_requirements: EvidenceRequirement[];
-  audit_cadence: string;                   // e.g. "quarterly", "annual"
-}
+ComplianceFramework defines activatable compliance frameworks, supporting multi-framework coexistence:
 
-interface ComplianceControl {
-  control_id: string;                      // e.g. "SOX-404", "HIPAA-164.312"
-  description: string;
-  category: "access_control" | "data_protection" | "audit" | "change_management" | "segregation";
-  enforcement: "automated" | "manual_review" | "hybrid";
-  platform_mapping: string[];              // Maps to platform capabilities, e.g. ["§11.2 RBAC", "§21 Approval"]
-}
+| Field               | Type                                             | Description                        |
+| ------------------- | ------------------------------------------------ | ---------------------------------- |
+| `frameworkId`       | string (ULID)                                    | Globally unique identifier         |
+| `type`              | enum: GDPR / SOC2 / PIPL / HIPAA / SOX / PCI_DSS | Compliance framework type          |
+| `rules`             | ComplianceRule[]                                 | List of specific control items     |
+| `auditRequirements` | AuditSpec[]                                      | Audit frequency, evidence types, retention period |
+| `reportTemplate`    | string                                           | Compliance report template ID      |
 
-interface DepartmentComplianceBinding {
-  department_id: string;                   // §46 org_node
-  frameworks: string[];                    // Bound compliance framework IDs
-  additional_controls: ComplianceControl[];// Department-level additional controls
-  compliance_officer: string;              // Compliance officer
-  evidence_retention: string;              // Evidence retention period
-}
-```
+Frameworks are activated at tenant granularity — different departments within the same platform can enforce different compliance combinations (§49.2 inheritance). Framework changes require platform_admin approval; once activated, corresponding ConstraintPack constraints are automatically injected.
 
 ## 49.2 Compliance Policy Inheritance
 
 ```text
-company:  [Basic Security Policy] + [Data Classification Policy]
+company:  [Base Security Policy] + [Data Classification Policy]
     │
-    ├── finance_division:  Inherits + [SOX]
-    │   ├── accounting_dept: Inherits + [SOX-404 Enhanced]
-    │   └── payment_dept:   Inherits + [PCI-DSS]
+    ├── finance_division:  inherit + [SOX]
+    │   ├── accounting_dept: inherit + [SOX-404 Enhanced]
+    │   └── payment_dept:   inherit + [PCI-DSS]
     │
-    ├── healthcare_division: Inherits + [HIPAA]
+    ├── healthcare_division: inherit + [HIPAA]
     │
-    └── eu_operations:      Inherits + [GDPR]
+    └── eu_operations:      inherit + [GDPR]
 ```
-Rules: Child nodes **inherit** all compliance constraints from the parent node and can be **added** but not **relaxed**. 
 
-## 49.3 Automated compliance evidence collection
-| Compliance Controls | Sources of Evidence | Collection Methods |
-|---------|---------|---------|
-| SOX access audit | §11.2 RBAC + §28 audit log | Quarterly automatic export of access rights snapshots |
-| SOX Separation of Duties | §47 SodRouting | Automatically verify that the approval chain is free of violations |
-| HIPAA Data Encryption | §23.5 Encryption Architecture | Continuous Monitoring of Encryption Status |
-| PCI-DSS Scope Restrictions | §46 tenant isolation | Automatic verification of CDE boundaries |
-| GDPR Right to Erasure | §23.2 crypto-shredding | Automatic recording of evidence of deletion execution |
+Rule: child nodes **inherit** all parent compliance constraints, may **add** but cannot **relax** them.
+
+## 49.3 Automatic Compliance Evidence Collection
+
+| Compliance Control    | Evidence Source                 | Collection Method                         |
+| --------------------- | ------------------------------ | ----------------------------------------- |
+| SOX access review     | §11.2 RBAC + §28 audit log    | Quarterly auto-export of access permission snapshots |
+| SOX separation of duties | §47 SodRouting              | Auto-verify no approval chain violations  |
+| HIPAA data encryption | §23.5 encryption architecture  | Continuous monitoring of encryption status |
+| PCI-DSS scope restriction | §46 tenant isolation        | Auto-verify CDE boundary                 |
+| GDPR right to erasure | §23.2 crypto-shredding        | Auto-record deletion execution evidence   |
 
 ---
 
 # 50. Knowledge Domain Isolation and Controlled Sharing
 
-> v2.4 New. Mandatory isolation of knowledge assets between departments, providing approval-based cross-domain sharing.
-> Related: §29 Knowledge/Memory · §37.4 DomainKnowledgeSchema · §46 Organizational Hierarchy · §11 Security
+> Enforce isolation of knowledge assets across departments with approval-based cross-domain sharing.
+> Related: §29 Knowledge/Memory · §37.4 DomainKnowledgeSchema · §46 Organization Hierarchy · §11 Security
 
 ## 50.1 Knowledge Isolation Model
 
-```typescript
-interface KnowledgeBoundary {
-  boundary_id: string;
-  org_scope: string;                       // Corresponds to §46 org_node_id
-  isolation_level: "strict" | "controlled" | "open";
-  knowledge_namespaces: string[];          // Knowledge namespaces within this boundary
-  access_policy: KnowledgeAccessPolicy;
-}
+KnowledgeBoundary defines isolation boundaries for knowledge assets, denying cross-domain access by default:
 
-type IsolationLevel =
-  | "strict"       // Information barrier — prohibit any cross-boundary access (M&A, insider information)
-  | "controlled"   // Controlled sharing requiring approval (default)
-  | "open";        // Free access within boundary (same team)
+| Field              | Type                      | Description                                            |
+| ------------------ | ------------------------- | ------------------------------------------------------ |
+| `boundaryId`       | string (ULID)             | Unique boundary identifier                             |
+| `ownerOrgNode`     | string                    | Owning org node (§46), determines ownership            |
+| `accessPolicy`     | enum: strict / controlled | strict = full isolation; controlled = shareable after approval |
+| `allowedConsumers` | OrgNodeRef[]              | Authorized consumer list (effective only in controlled mode) |
+| `auditOnAccess`    | boolean (default true)    | Whether each access is written to audit log            |
 
-interface KnowledgeAccessPolicy {
-  default_action: "deny" | "allow";
-  cross_boundary_rules: CrossBoundaryRule[];
-}
+All knowledge queries are enforced against boundaries by KnowledgeFederator (§50.2) at execution time. Unauthorized cross-boundary requests are rejected and do not reveal the existence of the target knowledge.
 
-interface CrossBoundaryRule {
-  source_boundary: string;
-  target_boundary: string;
-  allowed_operations: ("read" | "search" | "reference")[];
-  requires_approval: boolean;
-  approver: "source_owner" | "target_owner" | "both" | "compliance_officer";
-  data_transform?: "anonymize" | "aggregate" | "redact_pii";
-  audit_level: "basic" | "full" | "forensic";
-  ttl?: string;                            // Shared authorization validity period
-}
-```
+## 50.2 Knowledge Federated Search
 
-## 50.2 Knowledge Federation Search
-
-When Agents search for knowledge, KnowledgeFederator filters results by permissions:
+When an Agent searches knowledge, KnowledgeFederator filters results by permission:
 
 ```text
-Agent Search Request
+Agent search request
     │
     ▼
 ┌────────────────┐
@@ -5071,141 +5848,103 @@ Agent Search Request
 │ Federator      │
 └───┬────────────┘
     │
-    ├──▶ [Knowledge within this boundary] → Return directly
-    ├──▶ [Controlled boundary knowledge] → Check CrossBoundaryRule → Return if authorized (may be transformed)
-    └──▶ [Strict boundary knowledge] → Completely invisible (not even "existence" is exposed)
+    ├──▶ [Knowledge within own boundary] → return directly
+    ├──▶ [Controlled boundary knowledge] → check CrossBoundaryRule → return if authorized (possibly transformed)
+    └──▶ [Strict boundary knowledge] → completely invisible (existence not revealed)
 ```
 
-## 50.3 Information Isolation Wall (Chinese Wall)
+## 50.3 Chinese Wall (Information Barrier)
 
-Financial services scenario requirements:
+Financial services scenarios require:
 
-- M&A team's knowledge is **completely invisible** to other departments
-- The same person cannot simultaneously access knowledge of conflicting parties
-- Once accessing Party A's knowledge, automatically prohibited from accessing Party B's knowledge (dynamic isolation wall)
-
-```typescript
-interface ChineseWallPolicy {
-  conflict_groups: ConflictGroup[];
-}
-
-interface ConflictGroup {
-  group_id: string;
-  boundaries: string[];                    // Mutually exclusive knowledge boundaries
-  rule: "access_one_blocks_others";        // Automatically block others after accessing one
-}
-```
+- M&A team knowledge is **completely invisible** to other departments
+- The same person cannot access knowledge of conflicting parties simultaneously
+- Once party A's knowledge is accessed, access to party B's knowledge is automatically blocked (dynamic information barrier)
 
 ---
 
-# 51. Hierarchical Governance Delegation
+# 51. Tiered Governance Delegation
 
-> v2.4 New. Enables department administrators to self-serve governance within guardrails set by the platform team, so the platform team is no longer the bottleneck for all governance changes.
-> Related: §24 Configuration Governance · §37.9 DomainGovernancePolicy · §46 Organizational Hierarchy
+> Enable department admins to self-govern within guardrails set by the platform team, so the platform team is no longer the bottleneck for all governance changes.
+> Related: §24 Configuration Governance · §37.9 DomainGovernancePolicy · §46 Organization Hierarchy
 
-## 51.1 Governance Permission Layering
+## 51.1 Governance Permission Tiers
 
-```typescript
-interface GovernanceDelegation {
-  org_node_id: string;                     // §46
-  delegated_to: string;                    // principal or role
-  permissions: GovernancePermission[];
-  guardrails: Guardrail[];                 // Guardrails set by platform team
-}
+GovernancePermission defines governance operation permissions for each org level:
 
-type GovernancePermission =
-  | "manage_domains"           // Create/modify this department's DomainDescriptor
-  | "manage_packs"             // Publish/rollback this department's Pack
-  | "manage_prompts"           // Modify this department's PromptLibrary
-  | "manage_triggers"          // Configure this department's triggers (§41)
-  | "manage_approvals"         // Configure this department's approval rules (within quota limits)
-  | "manage_budgets"           // Allocate this department's budget (within upper-level allocation)
-  | "manage_knowledge"         // Manage this department's knowledge boundaries
-  | "view_audit"               // View this department's audit records
-  | "manage_agents"            // Enable/disable this department's Agents
-  | "manage_eval";             // Manage this department's evaluation datasets
+| Field          | Type                                       | Description                             |
+| -------------- | ------------------------------------------ | --------------------------------------- |
+| `permissionId` | string (ULID)                              | Unique permission identifier            |
+| `scope`        | { orgNode: string, resourceType: string }  | Scope: org node + resource type         |
+| `level`        | enum: view / operate / admin / super_admin | Permission level, increasing            |
+| `delegatable`  | boolean                                    | Whether downward delegation is allowed  |
+| `expiresAt`    | ISO8601 \| null                            | Expiration time; null means permanent   |
 
-interface Guardrail {
-  guardrail_id: string;
-  type: "max_risk_level" | "max_budget" | "forbidden_tools" | "mandatory_approval" | "min_eval_threshold";
-  value: unknown;
-  set_by: "platform_team";
-  overridable: false;
-}
-```
+Permissions follow the principle of least privilege: view = read-only; operate = daily operations; admin = modify domain-level policies; super_admin = modify global guardrails. Delegated permissions cannot exceed the delegator's own level.
 
 ## 51.2 Governance Inheritance and Override Rules
 
 ```text
 platform_team sets global guardrails
     │
-    ▼ Inherit (cannot relax)
-division_admin sets division strategy
+    ▼ inherit (cannot relax)
+division_admin sets division policies
     │
-    ▼ Inherit (cannot relax) + can add
-department_admin sets department strategy
+    ▼ inherit (cannot relax) + may add
+department_admin sets department policies
     │
-    ▼ Inherit (cannot relax) + can add
+    ▼ inherit (cannot relax) + may add
 team_lead daily operational config
 ```
 
-| Operation | Superiors can | Subordinates can |
-|------|-------|-------|
-| Tighten strategy (reduce max_risk) | ✓ | ✓ |
-| Relaxation strategy (increase max_risk) | ✓ | ✗ |
-| Add constraints | ✓ | ✓ |
-| Delete superior constraints | ✓ (set by yourself) | ✗ |
-| Allocate budget | ✓ (within your own quota) | ✓ (within your own quota) |
-## 51.3 Self-service management console
-| Functions | Available to department administrators | Available to platform teams |
-|------|-------------|------------|
-| Domain Access Wizard (§44.2) | ✓ (Low/Medium Risk Domains) | ✓ (All Domains) |
-| Modify approval rules | ✓ (within the quota limit) | ✓ (no limit) |
-| Publish Pack | ✓ (After automatic security scan) | ✓ |
-| Adjust Agent Autonomy (§42) | ✓ (Do not exceed domain upper limit) | ✓ |
-| Creating Triggers (§41) | ✓ (Low/Medium Risk) | ✓ |
-| Modify global guardrails | ✗ | ✓ |
-| Cross-department strategy | ✗ | ✓ |
+| Operation                        | Parent Can        | Child Can         |
+| -------------------------------- | ----------------- | ----------------- |
+| Tighten policy (lower max_risk)  | ✓                 | ✓                 |
+| Relax policy (raise max_risk)    | ✓                 | ✗                 |
+| Add constraints                  | ✓                 | ✓                 |
+| Remove parent's constraints      | ✓ (own only)      | ✗                 |
+| Allocate budget                  | ✓ (within quota)  | ✓ (within quota)  |
+
+## 51.3 Self-Service Governance Console
+
+| Feature                       | Dept Admin Available     | Platform Team Available |
+| ----------------------------- | ------------------------ | ----------------------- |
+| Domain onboarding wizard (§44.2) | ✓ (low/medium risk domains) | ✓ (all domains)      |
+| Modify approval rules        | ✓ (within amount cap)    | ✓ (unrestricted)       |
+| Publish Pack                  | ✓ (with auto security scan) | ✓                    |
+| Adjust Agent autonomy (§42)  | ✓ (not exceeding domain cap) | ✓                   |
+| Create triggers (§41)        | ✓ (low/medium risk)      | ✓                      |
+| Modify global guardrails     | ✗                         | ✓                      |
+| Cross-department policies    | ✗                         | ✓                      |
 
 ---
 
+# Part VIII — Scale & Ecosystem Layer (§52-§57)
+
+---
 # 52. Multi-Region Deployment Architecture
 
-> v2.5 New. Supports cross-Region compliant operations for globalized enterprises, with data sovereignty, traffic routing, and fault isolation.
-> Related: §31 Disaster Recovery · §32 Deployment · §23 Compliance · §46 Organizational Hierarchy
+> Support global enterprises running across Regions with compliance, data sovereignty, traffic routing, and fault isolation.
+> Related: §31 Disaster Recovery · §32 Deployment · §23 Compliance · §46 Organization Hierarchy
 
 ## 52.1 Region Model
 
-```typescript
-interface RegionDefinition {
-  region_id: string;                       // e.g. "cn-east", "eu-west", "us-east"
-  jurisdiction: string;                    // Jurisdiction, e.g. "CN", "EU", "US"
-  data_residency_class: string;            // Data residency classification
-  available_providers: string[];           // LLM providers available in this Region
-  compliance_frameworks: string[];         // Mandatory compliance frameworks for this Region
-}
+| Field               | Type                        | Description                                                |
+| ------------------- | --------------------------- | ---------------------------------------------------------- |
+| regionId            | string                      | Globally unique, e.g. `cn-east-1`, `eu-west-1`            |
+| provider            | AWS / GCP / Azure / private | Underlying infrastructure provider                         |
+| status              | active / standby / draining | active = primary; standby = warm spare; draining = migrating out |
+| endpoints           | `{ api, ws, internal }[]`   | Entry addresses for each plane                             |
+| dataResidencyPolicy | string                      | Permitted data jurisdiction, e.g. `EU-only`, `CN-only`     |
 
-interface RegionTopology {
-  regions: RegionDefinition[];
-  primary_region: string;                  // Control plane primary Region
-  federation_mode: "hub_spoke" | "mesh";
-  cross_region_policy: CrossRegionPolicy;
-}
-
-interface CrossRegionPolicy {
-  data_replication: "none" | "metadata_only" | "anonymized" | "full_encrypted";
-  workflow_routing: "region_affinity" | "nearest" | "cost_optimized";
-  failover: "manual" | "semi_auto" | "auto";
-  max_cross_region_latency: string;
-}
-```
+Multi-Region deployment requires each Region to reach at least §31 HA-3 level (multi-AZ deployment), ensuring a single Region failure does not affect global availability.
 
 ## 52.2 Region-Aware Architecture
 
 ```text
                     ┌──────────────────────┐
-                    │  Global Control Plane │ (Metadata Federation)
-                    │  Region Routing · Policy Sync │
+                    │  Global Control Plane │ (metadata federation)
+                    │  Region routing · policy sync │
                     └──────────┬───────────┘
                                │
             ┌──────────────────┼──────────────────┐
@@ -5214,71 +5953,73 @@ interface CrossRegionPolicy {
     │ CN Region     │ │ EU Region     │ │ US Region     │
     │ ┌───────────┐ │ │ ┌───────────┐ │ │ ┌───────────┐ │
     │ │ P1-P5     │ │ │ │ P1-P5     │ │ │ │ P1-P5     │ │
-    │ │ Full Five │ │ │ │ Full Five │ │ │ │ Full Five │ │
-    │ │ Planes    │ │ │ │ Planes    │ │ │ │ Planes    │ │
+    │ │ Full 5-Plane│ │ │ │ Full 5-Plane│ │ │ │ Full 5-Plane│ │
     │ └───────────┘ │ │ └───────────┘ │ │ └───────────┘ │
     │ Data: CN      │ │ Data: EU      │ │ Data: US      │
-    │ Compliance:   │ │ Compliance:   │ │ Compliance:   │
-    │ PIPL          │ │ GDPR          │ │ SOX           │
+    │ Compliance: PIPL│ │ Compliance: GDPR│ │ Compliance: SOX │
     └───────────────┘ └───────────────┘ └───────────────┘
 ```
-## 52.3 Cross-Region Workflow routing
-| Scenario | Routing strategy | Data processing |
-|------|---------|---------|
-| The user is in EU, the task only involves EU data | Region affinity, stay in EU | Local processing |
-| The user is in CN and needs to call the LLM of US | CN execution, LLM request is routed to US | Cross-border is allowed when input/output does not contain PII |
-| Cross-Region collaboration (EU market + US project) | Execution in respective Regions, metadata synchronization | Only exchange anonymized/aggregated data |
-| Region failure failover | Manual/semi-automatic switch to standby Region | Metadata pre-replication, business data does not cross borders |
-## 52.4 Cross-border data transfer compliance
-| Jurisdiction | Compliance Framework | Platform Mechanism |
-|------|---------|---------|
-| EU → Non-EU | GDPR Chapter V — SCCs (Standard Contractual Clauses) | Cross-Region LLM calls automatically attach SCC data processing agreement references; automatic DPIA (Data Protection Impact Assessment) assessment before transfer |
-| EU → US | EU-US Data Privacy Framework | Verify whether the provider is in the DPF list; if not included, fall back to SCC |
-| CN → Overseas | PIPL Article 38 - Security Assessment/Standard Contract | Automatically trigger data volume assessment before cross-border; security assessment records are required if the threshold is exceeded |
-| Cross-border within the group | BCRs (Binding Corporate Rules) | Enterprise-level BCR template, the platform automatically quotes and records the BCR number in cross-border transmission |
 
-**Cross-border Transfer Control Chain**：
+## 52.3 Cross-Region Workflow Routing
+
+| Scenario                                 | Routing Strategy                        | Data Handling                       |
+| ---------------------------------------- | --------------------------------------- | ----------------------------------- |
+| User in EU, task involves EU data only   | Region affinity, stay in EU             | Local processing                    |
+| User in CN, needs US-based LLM           | Execute in CN, route LLM request to US  | Allowed cross-border if no PII in I/O |
+| Cross-Region collaboration (EU mkt + US eng) | Execute in respective Regions, sync metadata | Exchange only anonymized/aggregated data |
+| Region failure failover                  | Manual/semi-auto switch to standby Region | Metadata pre-replicated; business data stays local |
+
+## 52.4 Cross-Border Data Transfer Compliance
+
+| Jurisdiction | Compliance Framework                                         | Platform Mechanism                                                                                          |
+| ------------ | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| EU → non-EU  | GDPR Chapter V — SCCs (Standard Contractual Clauses)         | Cross-Region LLM calls auto-attach SCC DPA reference; auto DPIA (Data Protection Impact Assessment) before transfer |
+| EU → US      | EU-US Data Privacy Framework                                 | Verify provider is on DPF list; fall back to SCC if not listed                                              |
+| CN → overseas| PIPL Article 38 — security assessment / standard contract    | Auto data volume assessment before cross-border; security assessment record required if threshold exceeded   |
+| Intra-group  | BCRs (Binding Corporate Rules)                               | Enterprise BCR template; platform auto-references BCR ID in cross-border transfers and logs                 |
+
+**Cross-Border Transfer Control Chain**:
 
 ```text
-Cross-Region Data Request
+Cross-Region data request
     │
     ▼
 ┌──────────────────┐
 │ Jurisdiction      │  Identify source/target jurisdiction
 │ Classifier        │
 ├──────────────────┤
-│ Transfer Impact   │  Automatic DPIA scoring; high impact → manual approval
+│ Transfer Impact   │  Auto DPIA scoring; high impact → manual approval
 │ Assessor          │
 ├──────────────────┤
-│ Mechanism         │  Select compliance mechanism: SCC / BCR / DPF / Security Assessment
+│ Mechanism         │  Select compliance mechanism: SCC / BCR / DPF / security assessment
 │ Selector          │
 ├──────────────────┤
-│ Data Minimizer    │  Only transfer necessary fields; PII anonymization/pseudonymization
+│ Data Minimizer    │  Transfer only necessary fields; PII de-identification/pseudonymization
 ├──────────────────┤
-│ Transfer Logger   │  Complete transfer log (source, target, legal basis, data volume, time)
+│ Transfer Logger   │  Full transfer log (source, target, legal basis, data volume, timestamp)
 └──────────────────┘
 ```
 
 ---
 
-# 53. Large-Scale Resource Competition Management
+# 53. Resource Contention Management at Scale
 
-> v2.5 New. Fair scheduling, priority preemption, and capacity guarantees for 5000+ concurrent workflow scenarios.
-> Related: §8 Scalability · §9 Stability · §14 Runtime · §46 Organizational Hierarchy · §54 SLA
+> Fair scheduling, priority preemption, and capacity guarantees for 5000+ concurrent workflow scenarios.
+> Related: §8 Scalability · §9 Stability · §14 Runtime · §46 Organization Hierarchy · §54 SLA
 
-## 53.1 Scheduling Hierarchy
+## 53.1 Scheduling Layers
 
 ```text
 ┌─────────────────────────────────┐
 │  Admission Controller           │  Global admission control
-│  (Reject requests exceeding      │
+│  (reject requests exceeding     │
 │   platform capacity)            │
 ├─────────────────────────────────┤
 │  Quota Manager                  │  Department-level quota management
-│  (Guarantee/limit each          │
-│   department's resource share)  │
+│  (guarantee/limit each dept's   │
+│   resource share)               │
 ├─────────────────────────────────┤
-│  Priority Scheduler             │  Priority scheduling
+│  Priority Scheduler             │  Priority-aware scheduling
 │  (SLA-aware + preemption)       │
 ├─────────────────────────────────┤
 │  Worker Pool                    │  Execution layer
@@ -5287,386 +6028,283 @@ Cross-Region Data Request
 
 ## 53.2 Resource Quota Model
 
-```typescript
-interface ResourceQuota {
-  org_node_id: string;                     // §46 Department
-  guaranteed: ResourceAllocation;          // Guaranteed resources (always available)
-  burstable: ResourceAllocation;           // Burstable resources (available when idle)
-  max_limit: ResourceAllocation;           // Hard limit
-}
-
-interface ResourceAllocation {
-  max_concurrent_workflows: number;
-  max_concurrent_workers: number;
-  llm_tokens_per_minute: number;
-  llm_requests_per_minute: number;
-}
-```
+| Field          | Type                                    | Description                                    |
+| -------------- | --------------------------------------- | ---------------------------------------------- |
+| quotaId        | string                                  | Unique quota identifier                        |
+| tenantId       | string                                  | Owning department/tenant                       |
+| resource       | cpu / memory / tokens / concurrent_runs | Controlled resource type                       |
+| limit          | number                                  | Quota upper limit                              |
+| used           | number                                  | Current usage (updated in real time)           |
+| period         | hourly / daily / monthly                | Quota period; used resets automatically at end |
+| overflowPolicy | queue / reject / burst                  | Overflow strategy: queue, reject, or allow short burst |
 
 ## 53.3 Priority Preemption
 
-```typescript
-interface PriorityClass {
-  class_name: "critical" | "high" | "standard" | "background" | "best_effort";
-  priority_value: number;                  // 0-1000
-  preemption_policy: "never" | "lower_priority" | "any_non_critical";
-  queue_timeout: string;                   // Queue timeout
-  guaranteed_start_sla?: string;           // Guaranteed start SLA
-}
-```
-
-| Priority | Scenario | Preemption Policy | Start SLA |
-|--------|------|---------|---------|
-| critical(1000) | Online accident repair | Can preempt all non-critical | < 10s |
-| high(800) | E-commerce order processing | Can be preempted below standard | < 30s |
-| standard(500) | Daily business workflow | No preemption | < 5min |
-| background(200) | Batch analysis/report | No preemption, run when idle | Best effort |
-| best_effort(0) | Experimental tasks | No preemption, can be preempted at any time | No guarantee |
+| Priority        | Scenario               | Preemption Strategy         | Start SLA |
+| --------------- | ---------------------- | --------------------------- | --------- |
+| critical(1000)  | Production incident fix| Can preempt all non-critical| < 10s     |
+| high(800)       | E-commerce order processing | Can preempt standard and below | < 30s |
+| standard(500)   | Daily business workflow| No preemption               | < 5min    |
+| background(200) | Batch analysis / reports | No preemption, runs on idle | Best effort |
+| best_effort(0)  | Experimental tasks     | No preemption, preemptable anytime | None  |
 
 ## 53.4 Fair Scheduling
 
-- **Weighted Fair Queuing**: Each department receives weight based on its guaranteed quota
-- **Borrowing**: When a department hasn't used its full guaranteed quota, idle resources can be burst-used by other departments
-- **Reclaim**: When the original department needs it, borrowed resources are returned after the current step completes (graceful reclaim)
-- **Starvation Prevention**: Any department's standard priority task that queues for more than 30min is automatically upgraded to high
+- **Weighted Fair Queuing**: each department gets a weight based on its guaranteed quota
+- **Borrowing**: when a department has not used its guaranteed quota, idle resources can be burst-used by other departments
+- **Reclaim**: when the original department needs resources, borrowed resources are returned after the current step completes (graceful reclaim)
+- **Starvation Prevention**: any department's standard-priority task queued for over 30min is auto-promoted to high
 
 ---
 
-# 54. SLA Tiered Guarantee
+# 54. SLA Tiered Guarantees
 
-> v2.5 New. Provides differentiated SLA guarantees for different business importance levels, including resource reservation and violation responses.
-> Related: §27 SLO · §37.9 DomainGovernancePolicy · §53 Resource Competition
+> Provide differentiated SLA guarantees for different business criticality levels, including resource reservation and violation response.
+> Related: §27 SLO · §37.9 DomainGovernancePolicy · §53 Resource Contention
 
 ## 54.1 SLA Tier Model
 
-```typescript
-interface SlaTier {
-  tier_id: string;
-  tier_name: "platinum" | "gold" | "silver" | "bronze";
-  guarantees: SlaGuarantees;
-  resource_reservation: ResourceAllocation;
-  violation_response: ViolationResponse;
-  cost_multiplier: number;                 // Cost multiplier relative to bronze
-}
-
-interface SlaGuarantees {
-  availability: string;                    // e.g. "99.99%"
-  p50_latency: string;
-  p95_latency: string;
-  p99_latency: string;
-  max_queue_time: string;
-  recovery_priority: number;               // Recovery priority
-  data_durability: string;                 // e.g. "99.999999%"
-}
-
-interface ViolationResponse {
-  on_latency_breach: "alert" | "auto_scale" | "preempt_lower_tier";
-  on_availability_breach: "alert" | "failover" | "escalate_to_platform_team";
-  error_budget_policy: "standard" | "strict";  // strict = SLO violation immediately freezes changes
-  internal_penalty?: string;               // Internal penalty mechanism description
-}
-```
+| Field          | Type                                    | Description                                     |
+| -------------- | --------------------------------------- | ----------------------------------------------- |
+| tierId         | string                                  | Unique Tier identifier                          |
+| name           | platinum / gold / silver / bronze       | Tier name, corresponding to §54.2 matrix        |
+| availability   | number (%)                              | Committed availability, e.g. 99.99%             |
+| maxLatencyP99  | number (ms)                             | P99 latency ceiling                             |
+| priorityWeight | number (1-100)                          | Scheduling priority weight, Platinum=100, Bronze=10 |
+| costMultiplier | number                                  | Resource cost multiplier relative to Bronze      |
+| supportLevel   | 24x7_dedicated / 24x7 / 8x5 / community | Corresponding support level                     |
 
 ## 54.2 SLA Tier Matrix
 
-| Tier | Availability | P95 delay | Queuing limit | Recovery priority | Applicable scenarios |
-|------|--------|---------|---------|---------|---------|
-| **Platinum** | 99.99% | < 2s | < 5s | Highest | Online trading, real-time risk control |
-| **Gold** | 99.95% | < 5s | < 30s | High | Core business workflow |
-| **Silver** | 99.9% | < 15s | < 5min | Medium | Daily Operations |
-| **Bronze** | 99.5% | < 60s | < 30min | Low | Internal tools, experiments |
+| Tier         | Availability | P95 Latency | Queue Limit | Recovery Priority | Use Case                    |
+| ------------ | ------------ | ----------- | ----------- | ----------------- | --------------------------- |
+| **Platinum** | 99.99%       | < 2s        | < 5s        | Highest           | Online transactions, real-time risk control |
+| **Gold**     | 99.95%       | < 5s        | < 30s       | High              | Core business workflow      |
+| **Silver**   | 99.9%        | < 15s       | < 5min      | Medium            | Daily operations            |
+| **Bronze**   | 99.5%        | < 60s       | < 30min     | Low               | Internal tools, experiments |
 
 ## 54.3 SLA-Aware Scheduling
 
-Dispatcher(§14.2) considers SLA Tier when scheduling:
+Dispatcher (§14.2) considers SLA Tier during scheduling:
 
-1. **Queue Check**: Automatically upgrade priority when workflow queue time approaches `max_queue_time`
-2. **Latency Prediction**: Predict whether workflow will violate SLA based on historical data, proactively scale or preempt
-3. **Resource Reservation**: Platinum/Gold tier's `resource_reservation` is always reserved for them and cannot be occupied by burst
-4. **Violation Response**: When SLA is violated, automatically execute according to `ViolationResponse` (alert/scale/preempt/upgrade)
+1. **Queue check**: auto-promote priority when workflow queue time approaches `max_queue_time`
+2. **Latency prediction**: predict whether workflow will violate SLA based on historical data, scale out or preempt proactively
+3. **Resource reservation**: `resource_reservation` for Platinum/Gold tiers is always reserved and cannot be consumed by burst
+4. **Violation response**: on SLA violation, auto-execute per `ViolationResponse` (alert / scale-out / preempt / escalate)
 
 ---
 
-# 55. Agent Market and Ecology
+# 55. Agent Marketplace and Ecosystem
 
-> v2.5 New. Builds an internal/external ecosystem marketplace for Packs, Plugins, templates, and connectors.
+> Build an internal/external ecosystem marketplace for Packs, Plugins, templates, and connectors.
 > Related: §30 Business Pack · §37.7 DomainRecipe · §22 SDK/DX
 
-## 55.1 Market Architecture
+## 55.1 Marketplace Architecture
 
 ```text
 ┌───────────────────────────────────────────┐
 │  Marketplace Registry                     │
-│  ├── Pack Store      (Business Domain Pack)│
-│  ├── Plugin Store    (Functional Plugins)  │
-│  ├── Connector Store (External System      │
-│  │                     Connectors)         │
-│  ├── Template Store  (Workflow Templates)  │
-│  ├── Prompt Store    (Domain Prompt       │
-│  │                     Library)           │
-│  └── Eval Store      (Evaluation Datasets)│
+│  ├── Pack Store      (Business domain Packs) │
+│  ├── Plugin Store    (Feature plugins)    │
+│  ├── Connector Store (External connectors) │
+│  ├── Template Store  (Workflow templates) │
+│  ├── Prompt Store    (Domain prompt library) │
+│  └── Eval Store      (Evaluation datasets) │
 ├───────────────────────────────────────────┤
 │  Quality & Security Gate                  │
-│  Auto Scan · Compatibility Test ·         │
-│  Sandbox Verification                     │
+│  Auto scan · compatibility test · sandbox verification │
 ├───────────────────────────────────────────┤
 │  Discovery & Recommendation               │
-│  Search · Classification · Rating ·       │
-│  Smart Recommendation                     │
+│  Search · categorization · rating · smart recommendation │
 └───────────────────────────────────────────┘
 ```
 
-## 55.2 Market Entry Model
+## 55.2 Marketplace Entry Model
 
-```typescript
-interface MarketplaceItem {
-  item_id: string;
-  item_type: "pack" | "plugin" | "connector" | "template" | "prompt_library" | "eval_dataset";
-  name: string;
-  description: string;
-  publisher: Publisher;
-  version: string;
-  compatibility: CompatibilitySpec;
-  pricing: "free" | "enterprise_included" | PricingPlan;
-  quality: QualityMetrics;
-  security: SecurityScanResult;
-  install_count: number;
-  rating: number;
-  domain_tags: string[];
-}
+| Field               | Type                               | Description                          |
+| ------------------- | ---------------------------------- | ------------------------------------ |
+| entryId             | string                             | Unique entry identifier              |
+| packId              | string                             | Associated Pack/Plugin/Connector ID  |
+| publisher           | string                             | Publisher (org or individual)        |
+| version             | semver                             | Current published version            |
+| pricing             | free / enterprise_included / paid  | Pricing model, see §55.4            |
+| rating              | number (0-5)                       | User aggregate rating                |
+| installCount        | number                             | Cumulative install count             |
+| certificationStatus | uncertified / verified / certified | Platform certification status        |
+| dependencies        | `{ item_id, version_range }[]`     | Dependency list, see §55.6          |
 
-interface Publisher {
-  publisher_id: string;
-  type: "platform_official" | "enterprise_internal" | "third_party" | "community";
-  verified: boolean;
-  trust_level: "official" | "verified" | "community";
-}
+## 55.3 Installation and Governance
 
-interface QualityMetrics {
-  test_coverage: number;
-  eval_pass_rate: number;
-  incident_rate_30d: number;
-  avg_rating: number;
-  active_installs: number;
-}
-```
-## 55.3 Installation and Management
-| Publisher Type | Installation Approval | Security Requirements | Update Policy |
-|-----------|---------|---------|---------|
-| platform_official | Automatic installation | Reviewed by the platform team | Automatic updates |
-| enterprise_internal | Department administrator approval | Automatic security scan | Automatically after notification |
-| verified_third_party | Department Administrator + Security Team | Auto Scan + Manual Review | Manual Confirmation |
-| community | platform team approval | complete security review + sandbox testing | manual confirmation |
+| Publisher Type       | Install Approval           | Security Requirements            | Update Policy     |
+| -------------------- | -------------------------- | -------------------------------- | ----------------- |
+| platform_official    | Auto-install               | Reviewed by platform team        | Auto-update       |
+| enterprise_internal  | Dept admin approval        | Automated security scan          | Auto after notice |
+| verified_third_party | Dept admin + security team | Auto scan + manual review        | Manual confirm    |
+| community            | Platform team approval     | Full security review + sandbox test | Manual confirm |
+
 ## 55.4 Revenue Sharing Model
-| Pricing type | Sharing rules | Billing cycle |
-|---------|---------|---------|
-| free | No share | — |
-| enterprise_included | Included in the platform license, the publisher will receive credit points based on the number of installations | Quarterly |
-| paid (third_party) | publisher 70% / platform 30% | Monthly |
-| paid (community) | publisher 80% / platform 20% (community contributions are encouraged) | monthly |
-## 55.5 Entry obsolescence life cycle
-| Stage | Trigger condition | Platform action |
-|------|---------|---------|
-| active | normal operation | — |
-| deprecated | publisher marked deprecated or no maintenance updates for 90 days + known security vulnerabilities | The installation page displays a deprecation warning; new installations require confirmation; recommended alternatives |
-| sunset | 180 days after deprecated | Block new installations; already installed ones send migration notification (30-day countdown) |
-| removed | sunset countdown ends | Removed from Registry; installed instance frozen (no new tasks performed), data retained for 90 days |
+
+| Pricing Type        | Sharing Rule                                            | Settlement Cycle |
+| ------------------- | ------------------------------------------------------- | ---------------- |
+| free                | No sharing                                              | —                |
+| enterprise_included | Included in platform license; publisher earns credits by install count | Quarterly |
+| paid (third_party)  | Publisher 70% / platform 30%                            | Monthly          |
+| paid (community)    | Publisher 80% / platform 20% (encourage community contributions) | Monthly   |
+
+## 55.5 Entry Deprecation Lifecycle
+
+| Phase      | Trigger Condition                                                | Platform Action                                                               |
+| ---------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| active     | Normal operation                                                 | —                                                                             |
+| deprecated | Publisher marks deprecated, or 90 days no update + known vulnerability | Show deprecation warning on install page; new installs require confirmation; recommend alternatives |
+| sunset     | 180 days after deprecated                                        | Block new installs; send migration notice to existing installs (30-day countdown) |
+| removed    | Sunset countdown ends                                            | Remove from Registry; installed instances frozen (no new tasks); data retained 90 days |
 
 ## 55.6 Dependency Management
 
 - Each MarketplaceItem declares `dependencies: { item_id: string; version_range: string }[]`
-- Automatically resolve dependency tree during installation, detect version conflicts (similar to npm/cargo resolution)
-- Check reverse dependencies during uninstallation; if other items depend on it, block uninstallation and prompt
-- When a dependency is deprecated, automatically notify all dependent publishers and install users
+- On install, dependency tree is auto-resolved with version conflict detection (similar to npm/cargo resolution)
+- On uninstall, reverse dependencies are checked; blocked if other items depend on it
+- When a dependency is deprecated, all dependent publishers and install users are auto-notified
 
 ---
 
 # 56. Feedback-Driven Continuous Improvement Pipeline
 
-> v2.5 New. Materializes §13 Learn/Improve black-box interface into a runnable automatic improvement pipeline.
+> Materialize the §13 Learn/Improve black-box interface into a runnable automatic improvement pipeline.
 > Related: §13 OAPEFLIR L-I-R · §17 Model Evaluation · §37.5 DomainEvalFramework · §42 Progressive Autonomy
 
 ## 56.1 Improvement Pipeline Overview
 
 ```text
-Production Execution Data
+Production execution data
     │
     ▼
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │ Signal       │────▶│ Analysis     │────▶│ Improvement  │
 │ Collector    │     │ Engine       │     │ Generator    │
-│ (Signal      │     │ (Pattern     │     │ (Improvement │
-│  Collection) │     │  Analysis)   │     │  Generation) │
+│ (signal collection)│ │ (pattern analysis)│ │ (improvement gen) │
 └──────────────┘     └──────────────┘     └──────┬───────┘
                                                   │
                                            ┌──────▼───────┐
-                                           │ Quality Gate │──▶ §17 Eval
+                                           │ Quality Gate │
+                                           │              │──▶ §17 Eval
                                            └──────┬───────┘
-                                                  │ Pass
+                                                  │ pass
                                            ┌──────▼───────┐
                                            │ Gradual      │
-                                           │ Rollout      │──▶ §16 Prompt Gray-scale
+                                           │ Rollout      │──▶ §16 Prompt canary
                                            └──────────────┘
 ```
 
 ## 56.2 Signal Collection
 
-```typescript
-interface FeedbackSignal {
-  signal_type: FeedbackSignalType;
-  source: "user_explicit" | "user_implicit" | "system_metric" | "eval_regression";
-  domain_id: string;
-  capability_id: string;
-  data: Record<string, unknown>;
-  timestamp: string;
-}
+**Design Decision: 3D FeedbackSignal Structure vs Flat Enum**
 
-type FeedbackSignalType =
-  | "user_correction"          // User modified Agent output
-  | "user_approval"            // User accepted Agent output (positive sample)
-  | "user_rejection"           // User rejected Agent output
-  | "human_override"           // Human overrode Agent decision
-  | "task_success"             // Task completed successfully
-  | "task_failure"             // Task failed
-  | "quality_drift"            // eval quality degraded
-  | "cost_anomaly"             // Cost anomaly
-  | "latency_anomaly";         // Latency anomaly
-```
+The `FeedbackSignalType` in the architecture doc uses a flat 9-type enum. The actual implementation (`src/platform/orchestration/oapeflir/types/feedback-signal.ts`) adopts a 3D orthogonal structure:
 
-> **Design Decision: 3D FeedbackSignal vs Flat 9-Type Enum**
->
-> The actual implementation uses a 3-dimensional FeedbackSignal model (source × category × severity)
-> rather than a flat 9-type enum. This design is more flexible because:
-> - **Extensibility**: New signal types can be composed from existing dimensions without adding enum values
-> - **Precision**: A signal can be classified along multiple axes simultaneously (e.g., source=execution + category=failure + severity=critical)
-> - **Query Flexibility**: Each dimension can be queried independently for analytics
->
-> Implementation uses three orthogonal enums:
-> - `FeedbackSource`: execution | user | hitl | validation | system
-> - `FeedbackCategory`: success | failure | correction | timeout | partial
-> - `FeedbackSeverity`: info | warning | error | critical
->
-> This replaces a flat 9-type enum with a combinatorial space of 5×5×4=100 possible signal types.
-## 56.3 Automatic improvement types
-| Type of improvement | Trigger conditions | Degree of automation | Output |
-|---------|---------|----------|------|
-| **Few-shot harvest** | User approval accumulation > 10 | Fully automatic | Add few-shot example to PromptLibrary |
-| **Prompt fine-tuning** | Similar user_correction > 5 items | Semi-automatic (generate candidates → manual review) | Prompt modification suggestions |
-| **Model routing optimization** | cost_anomaly or latency_anomaly | Fully automatic | ModelGateway routing rule update |
-| **Risk control rule adjustment** | Continuous false positive approval > 10 times | Semi-automatic (recommended → domain_owner confirmation) | Risk threshold adjustment suggestions |
-| **Knowledge base update** | quality_drift + knowledge source expiration | Fully automatic | Trigger knowledge source refresh |
-| **Autonomy Adjustment** | Cumulative performance data meets promotion conditions | As per §42 rules | Autonomy promotion/demotion |
+**Why 3D instead of flat 9-type enum:**
 
-## 56.4 Security Guardrails
+| Design Concern | Flat Enum                      | 3D Orthogonal Structure                        |
+| -------------- | ------------------------------ | ---------------------------------------------- |
+| Composability  | 9 fixed combinations           | 5×5×4=100 potential combinations               |
+| Extensibility  | New types require enum changes | Extend any dimension independently             |
+| Filter/Query   | Requires N OR conditions       | Filter independently by source/category/severity |
+| Void combos    | May have meaningless "valid" combos | Business logic determines valid combinations |
 
-- Automatic improvement **must never** relax security policies or compliance controls
-- Fully automatic improvement is limited to **non-risk changes** (few-shot additions, routing optimization, knowledge refresh)
-- Changes involving Prompt core logic or risk control rules must undergo manual review
-- All automatic improvements are recorded to event_log, auditable androllable
+This design allows FeedbackSignal to express finer-grained feedback while maintaining orthogonality between dimensions for easier analysis and routing. The flat enum in the architecture doc is for conceptual illustration; the actual implementation follows the 3D structure.
+
+## 56.3 Automatic Improvement Types
+
+| Improvement Type       | Trigger Condition                       | Automation Level                           | Output                                       |
+| ---------------------- | --------------------------------------- | ------------------------------------------ | -------------------------------------------- |
+| **Few-shot harvesting** | User approvals accumulated > 10        | Fully automatic                            | New few-shot examples added to PromptLibrary |
+| **Prompt tuning**      | Same-type user_correction > 5           | Semi-auto (generate candidates → human review) | Prompt modification suggestions           |
+| **Model routing optimization** | cost_anomaly or latency_anomaly  | Fully automatic                            | ModelGateway routing rule update             |
+| **Risk rule adjustment** | Consecutive false positive approvals > 10 | Semi-auto (suggest → domain_owner confirms) | Risk threshold adjustment suggestions     |
+| **Knowledge base update** | quality_drift + knowledge source expired | Fully automatic                          | Trigger knowledge source refresh             |
+| **Autonomy adjustment** | Cumulative performance data meets promotion criteria | Per §42 rules                  | Autonomy promotion/demotion                  |
+
+## 56.4 Safety Guardrails
+
+- Automatic improvements **must never** relax security policies or compliance controls
+- Fully automatic improvements are limited to **non-risk changes** (few-shot additions, routing optimization, knowledge refresh)
+- Changes to core Prompt logic or risk rules must undergo human review
+- All automatic improvements are logged to event_log, auditable and rollbackable
 
 ---
 
 # 57. External System Integration Framework
 
-> v2.5 New. Provides a standardized connector framework and pre-built connector directory, enabling Agents to integrate with real business systems.
-> Related: §14.4 Executor · §11.5 Egress Control · §37.4 KnowledgeSource · §55 Marketplace
+> Provide a standardized connector framework and pre-built connector catalog, enabling Agents to interface with real business systems.
+> Related: §14.4 Executor · §11.5 Outbound Control · §37.4 KnowledgeSource · §55 Marketplace
 
 ## 57.1 Connector Abstraction
 
-```typescript
-interface Connector {
-  connector_id: string;
-  name: string;
-  category: ConnectorCategory;
-  auth_method: "oauth2" | "api_key" | "basic" | "certificate" | "custom";
-  capabilities: ConnectorCapability[];
-  rate_limits: RateLimitSpec;
-  data_classification: string;             // Data classification involved in this connector
-  health_check: HealthCheckConfig;
-}
+| Interface Method            | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `connect(config)`           | Establish connection with credentials and endpoint config    |
+| `execute(action, params)`   | Execute specified operation (CRUD/query/call), return standardized result |
+| `healthCheck()`             | Liveness probe, return connection status and latency         |
+| `disconnect()`              | Graceful shutdown, release resources                         |
 
-type ConnectorCategory =
-  | "payment"          // Payment: Stripe, Alipay, WeChat Pay
-  | "ecommerce"        // E-commerce: Shopify, Youzan, Pinduoduo
-  | "crm"              // CRM: Salesforce, Feishu CRM
-  | "communication"    // Communication: Email, SMS, Qiwei, Feishu, DingTalk
-  | "social_media"     // Social: WeChat, Douyin, Weibo, Xiaohongshu
-  | "finance"          // Finance: Yonyou, Kingdee, SAP
-  | "storage"          // Storage: OSS, S3, Google Drive
-  | "devtools"         // Development: GitHub, GitLab, Jira
-  | "analytics"        // Analytics: Google Analytics, Shence
-  | "ai_service"       // AI: OpenAI, Anthropic, Baidu Wenxin
-  | "database"         // Database: MySQL, PostgreSQL, MongoDB
-  | "custom";          // Custom API
-
-interface ConnectorCapability {
-  capability_id: string;
-  operations: ("read" | "write" | "subscribe" | "webhook")[];
-  schema: Record<string, unknown>;         // Input/output schema
-}
-```
+Supported protocols: REST / gRPC / MCP / Database (JDBC/ODBC) / File (S3/NFS) / Browser (Headless). Each connector includes a `ConnectorManifest` declaring supported actions, auth methods, rate limits, and required permissions for dynamic discovery by Toolbelt (§14.4).
 
 ## 57.2 Connector Lifecycle
 
 ```text
 ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
 │ Install  │────▶│ Configure│────▶│ Authorize│────▶│ Active   │
-│ (Install)│     │ (Config) │     │ (Authorize│    │ (Running) │
+│          │     │          │     │          │     │          │
 └──────────┘     └──────────┘     └──────────┘     └────┬─────┘
                                                         │
                                                  ┌──────▼─────┐
                                                  │ Monitor    │
-                                                 │ (Health    │
-                                                 │  Monitor)  │
+                                                 │            │
                                                  └──────┬─────┘
-                                                        │ Exception
+                                                        │ anomaly
                                                  ┌──────▼─────┐
                                                  │ Degrade/   │
                                                  │ Reconnect  │
                                                  └────────────┘
 ```
-## 57.3 Pre-built connector directory (Phase 1)
-| Category | Connector | Priority | Capabilities |
-|------|-------|--------|------|
-| Communication | Feishu/Qiwei/DingTalk | P0 | Message sending, approval push, calendar reading |
-| Communication | Email (SMTP/IMAP) | P0 | Send, receive, search |
-| Storage | Alibaba Cloud OSS / S3 | P0 | Upload, download, list |
-| Development | GitHub/GitLab | P0 | PR, Issue, Code Search |
-| Database | MySQL/PostgreSQL | P0 | Query, write |
-| Social | WeChat public account | P1 | Message push, menu management |
-| E-commerce | Youzan | P1 | Order inquiry, product management |
-| Finance | UFIDA | P1 | Voucher query, report export |
-| Analysis | Shence | P1 | Event query, user portrait |
-| Payment | Alipay/WeChat Pay | P2 | Order, refund, inquiry |
+
+## 57.3 Pre-Built Connector Catalog (Phase 1)
+
+| Category | Connector               | Priority | Capabilities                        |
+| -------- | ----------------------- | -------- | ----------------------------------- |
+| Messaging| Feishu/WeCom/DingTalk   | P0       | Send messages, push approvals, read calendar |
+| Messaging| Email (SMTP/IMAP)       | P0       | Send, receive, search               |
+| Storage  | Alibaba Cloud OSS / S3  | P0       | Upload, download, list              |
+| Dev      | GitHub/GitLab           | P0       | PR, Issue, code search              |
+| Database | MySQL/PostgreSQL        | P0       | Query, write                        |
+| Social   | WeChat Official Account | P1       | Message push, menu management       |
+| E-commerce| Youzan                 | P1       | Order query, product management     |
+| Finance  | Yonyou                  | P1       | Voucher query, report export        |
+| Analytics| Sensors Data            | P1       | Event query, user profiling         |
+| Payment  | Alipay/WeChat Pay       | P2       | Place order, refund, query          |
 
 ## 57.4 Connector SDK
 
-```typescript
-interface ConnectorSDK {
-  create(config: ConnectorConfig): Connector;
-  registerCapability(cap: ConnectorCapability): void;
-  handleAuth(flow: AuthFlow): Promise<AuthResult>;
-  healthCheck(): Promise<HealthStatus>;
-  execute(operation: string, params: Record<string, unknown>): Promise<ConnectorResponse>;
-}
-```
+Community and enterprise internal teams can develop custom connectors via the Connector SDK and publish them to Marketplace (§55).
 
-Community and enterprise internal teams can develop custom connectors through the Connector SDK and publish them to Marketplace(§55).
+---
+# Part IX -- Operational Maturity Layer (S59-S69)
 
 ---
 
 # 59. Agent Explainability and Decision Transparency Architecture
 
-> v2.6 New. Builds user-facing causal explanation capabilities for every Agent decision, meeting EU AI Act / GDPR Article 22 compliance requirements and providing trust foundation for progressive autonomy (§42).
-> Related: §12.7 Tracing · §13 OAPEFLIR · §17 Quality Gate · §23.6 Data Lineage · §39 NL Entry · §42 Progressive Autonomy
+> Build user-facing causal explanation capabilities for every Agent decision, meeting EU AI Act / GDPR Article 22 compliance requirements and providing a trust foundation for progressive autonomy (§42).
+> Related: §12.7 Tracing · §13 OAPEFLIR · §17 Quality Gates · §23.6 Data Lineage · §39 NL Entry · §42 Progressive Autonomy
 
 ## 59.1 Design Principles
 
-* Each stage of each OAPEFLIR loop **must** generate a `StageRationale` record
-* Explanations are generated on-demand (lazy), not adding overhead to normal execution paths
-* Explanation depth is configured by domain: finance requires forensic-level, customer service requires summary-level
-* Explanation caching avoids repeated LLM calls
-* Explanations are tamper-proof and incorporated into Evidence Plane
+- Every stage of each OAPEFLIR cycle **must** generate a `StageRationale` record
+- Explanations are generated lazily (on-demand), adding no overhead to the normal execution path
+- Explanation depth is configured per domain: finance requires forensic-level, customer service requires summary-level
+- Explanation caching avoids repeated LLM calls
+- Explanations are tamper-proof and ingested into the Evidence Plane
 
 ## 59.2 Explanation Pipeline
 
@@ -5678,15 +6316,15 @@ ExplanationRequest { workflow_id, step_id?, depth }
     │
     ▼
 ┌─────────────────┐
-│ EvidenceCollector│  ← Collect StageRationale + ToolCallLog + KnowledgeCitation from P5
+│ EvidenceCollector│  ← Collects StageRationale + ToolCallLog + KnowledgeCitation from P5
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ CausalChainBuilder│  ← Build Observe→Assess→Plan→Execute causal chain
+│ CausalChainBuilder│  ← Builds causal chain of Observe→Assess→Plan→Execute
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ ExplanationRenderer│  ← Render to NL text by depth and locale
+│ ExplanationRenderer│  ← Renders to NL text based on depth and locale
 └────────┬────────┘
          ▼
 ExplanationResponse { summary, causal_chain[], evidence_refs[], confidence }
@@ -5694,74 +6332,58 @@ ExplanationResponse { summary, causal_chain[], evidence_refs[], confidence }
 
 ## 59.3 StageRationale Data Model
 
-```typescript
-interface StageRationale {
-  stage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "review";
-  inputs_summary: string;
-  reasoning: string;
-  alternatives_considered: { option: string; rejected_reason: string }[];
-  knowledge_citations: KnowledgeRef[];
-  confidence: number;
-  timestamp: string;
-}
-```
-## 59.4 Depth Grading Explained
-| Depth | Applicable scenarios | Content |
-|------|---------|------|
-| L1 Summary | Daily review by non-technical users | One-sentence summary: "Because abnormal traffic was detected, 2 instances were automatically expanded" |
-| L2 Reasoning | Business Owner Review | Cause and Effect Chain + Key Data Points + Alternatives |
-| L3 Forensic | Compliance audit / Incident investigation | Complete evidence chain + all input and output + knowledge reference + model call details |
+| Field               | Type            | Description                                                          |
+| ------------------- | --------------- | -------------------------------------------------------------------- |
+| rationaleId         | string          | Unique identifier                                                    |
+| stageId             | string          | Associated OAPEFLIR stage ID                                         |
+| decision            | string          | Decision made at this stage (e.g. selected tool, generated plan)     |
+| reason              | string          | Structured description of decision rationale                         |
+| alternatives        | `Alternative[]` | Rejected alternatives with reasons for rejection                     |
+| confidence          | number (0-1)    | Decision confidence score                                            |
+| evidenceRefs        | `string[]`      | Evidence references supporting the decision (ToolCallLog, KnowledgeCitation, etc.) |
+| renderedExplanation | string (lazy)   | User-facing NL explanation, rendered on demand and cached            |
+
+## 59.4 Explanation Depth Levels
+
+| Depth        | Use Case                     | Content                                                           |
+| ------------ | ---------------------------- | ----------------------------------------------------------------- |
+| L1 Summary   | Non-technical users, daily   | One-sentence overview: "Auto-scaled 2 instances due to anomalous traffic" |
+| L2 Reasoning | Business owner review        | Causal chain + key data points + alternatives                     |
+| L3 Forensic  | Compliance audit / Incident  | Full evidence chain + all I/O + knowledge citations + model call details |
 
 ## 59.5 Integration with NL Entry
 
-§39 NL interaction pipeline adds `why` Intent type：
+§39 NL interaction pipeline adds a `why` Intent type:
 
-```typescript
-interface WhyQuery {
-  target: { workflow_id: string; step_id?: string };
-  depth: "summary" | "reasoning" | "forensic";
-  locale: string;
-}
-```
+Users can ask "Why was the last release rolled back?" in natural language; the system parses it as a WhyQuery and invokes the explanation pipeline.
 
-Users can ask "Why was the last release rolled back?" in natural language, and the system parses it as WhyQuery and calls the explanation pipeline.
+## 59.6 Explanation Caching and Security
 
-## 59.6 Explanation Cache and Security
-
-* L1/L2 explanation cache TTL = 24h, L3 is not cached (ensuring latest evidence)
-* Explanation content is subject to §50 knowledge domain isolation — can only see evidence you have permission to view
-* Explanation logs themselves are incorporated into audit (§23), recording who viewed what explanation at what time
+- L1/L2 explanation cache TTL = 24h; L3 is not cached (ensures latest evidence)
+- Explanation content is subject to §50 knowledge domain isolation — only evidence within the user's permissions is visible
+- Explanation logs themselves are included in the audit trail (§23), recording who viewed what explanation and when
 
 ---
 
-# 60. Emergency Braking and Global Circuit Breaker Architecture
+# 60. Emergency Brake and Global Circuit Breaker Architecture
 
-> v2.6 New. Provides a single atomic operation to stop all platform-wide Agent execution in < 5 seconds, for emergency scenarios such as security incidents, Prompt injection attacks, and Agent escape.
-> Related: §9 Stability · §10 Risk Control · §11 Security · §12 Exceptional Events · §52 Multi-Region
+> Provides a single atomic operation to halt all Agent execution across the platform within < 5 seconds, for emergencies such as security incidents, Prompt injection attacks, and Agent escapes.
+> Related: §9 Stability · §10 Risk Control · §11 Security · §12 Incident Events · §52 Multi-Region
 
 ## 60.1 PlatformPanicDirective
 
-```typescript
-interface PlatformPanicDirective {
-  directive_id: string;
-  triggered_by: { user_id: string; role: "platform_admin" | "security_team" };
-  reason: string;
-  scope: "global" | "region" | "tenant";
-  target?: { region_id?: string; tenant_id?: string };
-  actions: PanicAction[];
-  timestamp: string;
-}
+| Field             | Type                     | Description                                                    |
+| ----------------- | ------------------------ | -------------------------------------------------------------- |
+| directiveId       | string                   | Unique directive identifier                                    |
+| severity          | full / partial           | full = platform-wide halt; partial = scoped halt               |
+| scope             | global / tenant / domain | Circuit breaker scope                                          |
+| reason            | string                   | Trigger reason (security incident description)                 |
+| issuedBy          | string                   | Issuer identity                                                |
+| requiredApprovers | string[] (min 2)         | Dual-approval requirement to prevent single-point misoperation |
+| ttlSeconds        | number                   | Auto-expiry time; explicit renewal or release required after   |
+| rollbackStrategy  | freeze / graceful_drain  | freeze = immediate freeze; graceful_drain = wait for in-flight steps |
 
-type PanicAction =
-  | "halt_all_workflows"
-  | "block_new_creation"
-  | "revoke_agent_permissions"
-  | "block_all_egress"
-  | "notify_all_stakeholders"
-  | "generate_forensic_snapshot";
-```
-
-## 60.2 Circuit Breaker Propagation Mechanism
+## 60.2 Circuit Breaker Propagation
 
 ```text
 PlatformPanicDirective
@@ -5770,91 +6392,72 @@ PlatformPanicDirective
     │
     ├──▶ P2 Control Plane: Revoke all active Agent tokens
     │
-    ├──▶ P3 Orchestration Plane: Suspend all in-flight OAPEFLIR loops
+    ├──▶ P3 Orchestration Plane: Suspend all in-flight OAPEFLIR cycles
     │
-    ├──▶ P4 Execution Plane: Abort all workers, rollback uncommitted side effects
+    ├──▶ P4 Execution Plane: Abort all workers, roll back uncommitted side effects
     │
     ├──▶ P5 State Plane: Generate ForensicSnapshot, set read-only mode
     │
     └──▶ X1 Fabric: Block all egress, trigger alerts to all channels
 ```
-**SLA**: From the time the Directive is issued to the confirmation stop on all planes < 5 seconds (same region), < 15 seconds (cross-region). 
+
+**SLA**: From Directive issuance to all-plane confirmed halt < 5 seconds (same Region), < 15 seconds (cross-Region).
 
 ## 60.3 Safe Recovery Protocol
-| Steps | Actions | Requirements |
-|------|------|------|
-| 1 | ForensicSnapshot Review | Security Team Confirms Threat Neutralized |
-| 2 | PlatformResumeDirective release | Requires ≥ 2 platform_admin double approval |
-| 3 | Gradual recovery | Recover read-only queries first → low-risk workflow → full recovery |
-| 4 | Post-Incident Report | Post-Incident Report issued within 72h |
+
+| Step | Action                          | Requirement                                                 |
+| ---- | ------------------------------- | ----------------------------------------------------------- |
+| 1    | ForensicSnapshot review         | Security team confirms threat is eliminated                 |
+| 2    | PlatformResumeDirective issued  | Requires ≥ 2 platform_admin dual approval                   |
+| 3    | Progressive recovery            | Restore read-only queries → low-risk workflows → full recovery |
+| 4    | Post-incident report            | Publish Post-Incident Report within 72h                     |
+
+**Admin unavailability fallback**: If fewer than 2 platform_admins are online for over 4 hours, the following degraded recovery path activates:
+
+1. System sends multi-channel emergency notifications to all platform_admins (SMS + phone + WeCom/Feishu/DingTalk)
+2. After 4h with no response, `break_glass` mechanism is authorized — 1 platform_admin + 1 security_team member can substitute for dual admin approval
+3. After 8h with still no response, auto-restore to read-only mode (queries and monitoring allowed, writes and new workflows prohibited); full recovery still requires dual approval
+4. All `break_glass` recovery operations are logged as P0 audit events; platform_admin review must be completed within 72h
 
 ## 60.4 Regular Drills
 
-* At least one emergency brake drill per quarter (selected tenant scope)
-* Drill results are incorporated into §36 success criteria
-* ForensicSnapshots generated during drills are used to verify forensics completeness
+- At least one emergency brake drill per quarter (scoped to a selected tenant)
+- Drill results are included in §36 success criteria
+- ForensicSnapshots generated during drills are used to verify forensic completeness
 
 ---
 
 # 61. Agent Unified Lifecycle Management Architecture
 
-> v2.6 New. Models Agent as a first-class entity — a composite of Pack + Prompt Bundle + Model Binding + Trust Profile + Trigger Set + Autonomy Config — managing the complete lifecycle from creation to retirement.
+> Models the Agent as a first-class entity — a composite of Pack + Prompt Bundle + Model Binding + Trust Profile + Trigger Set + Autonomy Config — managing the complete lifecycle from creation to retirement.
 > Related: §16 Prompt · §30 Pack · §42 Progressive Autonomy · §41 Proactive Agent · §55 Marketplace
 
 ## 61.1 AgentDefinition Composite Entity
 
-```typescript
-interface AgentDefinition {
-  agent_id: string;
-  name: string;
-  domain_id: string;
-  owner: OrgNodeRef;
+AgentDefinition is the complete definition of an Agent, composed of the following components:
 
-  components: {
-    pack: { pack_id: string; version: string };
-    prompt_bundle: { bundle_id: string; version: string };
-    model_binding: { provider: string; model: string; fallback_chain: string[] };
-    trust_profile: { initial_level: AutonomyLevel; scoring_config: TrustScoringConfig };
-    trigger_set: TriggerPolicy[];
-    autonomy_config: AutonomyConfig;
-  };
+| Component         | Source             | Description                               |
+| ----------------- | ------------------ | ----------------------------------------- |
+| Pack              | §30 Business Pack  | Business domain capability pack           |
+| PromptSet         | §16 Prompt Library | Planner/Generator/Evaluator Prompt set    |
+| ModelBinding      | §15 ModelGateway   | Model routing config (primary + fallback) |
+| TrustProfile      | §42 Progressive Autonomy | Trust level and autonomy config     |
+| TriggerPolicy     | §41 Proactive Agent | Trigger conditions and scheduling policy |
+| ConnectorBindings | §57 Connector Framework | Bound external system connectors    |
 
-  lifecycle_state: AgentLifecycleState;
-  created_at: string;
-  updated_at: string;
-}
-
-type AgentLifecycleState =
-  | "draft"
-  | "testing"
-  | "staging"
-  | "canary"
-  | "active"
-  | "paused"
-  | "deprecated"
-  | "archived";
-```
+AgentDefinition is immutable per version — any component change produces a new AgentVersion.
 
 ## 61.2 AgentVersion Snapshot
 
-```typescript
-interface AgentVersion {
-  version_id: string;
-  agent_id: string;
-  semver: string;
-  component_snapshot: {
-    pack_version: string;
-    prompt_bundle_version: string;
-    model_binding_hash: string;
-    trust_profile_hash: string;
-    trigger_set_hash: string;
-    autonomy_config_hash: string;
-  };
-  created_at: string;
-  created_by: string;
-  release_note: string;
-}
-```
+| Field          | Type                                           | Description                                        |
+| -------------- | ---------------------------------------------- | -------------------------------------------------- |
+| versionId      | string                                         | Unique version identifier                          |
+| agentId        | string                                         | Parent Agent ID                                    |
+| definition     | AgentDefinition (snapshot)                     | Complete definition snapshot for this version, immutable |
+| status         | draft / canary / active / deprecated / retired | Version status, see §61.3 state machine            |
+| publishedAt    | timestamp                                      | Publish time                                       |
+| publishedBy    | string                                         | Publisher identity                                 |
+| rollbackTarget | versionId?                                     | Rollback target version for one-click composite rollback (§61.4) |
 
 ## 61.3 Lifecycle State Machine
 
@@ -5866,48 +6469,49 @@ draft ──▶ testing ──▶ staging ──▶ canary ──▶ active
                         deprecated ──▶ archived
 ```
 
-| Conversion | Trigger Condition | Access Control |
-|------|---------|------|
-| draft→testing | Developer submission | All component versions locked |
-| testing→staging | Test passed | §17 Quality access control + security scan |
-| staging→canary | pre-release approval | domain administrator approval |
-| canary→active | Grayscale indicator meets standard | Automatic promotion (error rate < threshold + performance standard) |
-| active→paused | Manual/automatic pause | Behavior drift detection (§63) trigger or manual operation |
-| active→deprecated | Version replacement/business change | Responsibility transfer to new version completed |
-| deprecated→archived | TTL expired | All historical references marked as archived |
+| Transition          | Trigger               | Gate                                          |
+| ------------------- | --------------------- | --------------------------------------------- |
+| draft→testing       | Developer submission  | All component versions locked                 |
+| testing→staging     | Tests passed          | §17 Quality Gates + security scan             |
+| staging→canary      | Pre-release approval  | Domain admin approval                         |
+| canary→active       | Canary metrics pass   | Auto-promotion (error rate < threshold + perf met) |
+| active→paused       | Manual/auto pause     | Behavior drift detection (§63) or manual      |
+| active→deprecated   | Version replaced      | Responsibility transfer to new version done   |
+| deprecated→archived | TTL expired           | All historical references marked as archived  |
 
-## 61.4 Composite Grayscale Release
+## 61.4 Composite Canary Release
 
-Agent grayscale release is based on AgentVersion (not individual components):
+Agent canary releases operate at the AgentVersion level (not per-component):
 
-* **Traffic Split**: Canary version receives 5%→20%→50%→100% traffic
-* **Composite Rollback**: One-click rollback to previous AgentVersion (all components atomic rollback)
-* **Comparison Test**: Run two AgentVersions simultaneously on the same input, compare output differences
+- **Traffic splitting**: Canary version receives 5%→20%→50%→100% traffic
+- **Composite rollback**: One-click rollback to previous AgentVersion (all components atomically reverted)
+- **Comparison testing**: Run two AgentVersions on the same input simultaneously, compare output differences
 
 ## 61.5 Agent Retirement and Responsibility Transfer
 
-```typescript
-interface AgentRetirement {
-  retiring_agent_id: string;
-  successor_agent_id?: string;
-  transfer_items: ("triggers" | "subscriptions" | "scheduled_tasks" | "ownership")[];
-  grace_period_days: number;
-  notification_targets: string[];
-}
-```
+| Phase     | Action                                              | Timeline      |
+| --------- | --------------------------------------------------- | ------------- |
+| deprecate | Mark version as deprecated, publish deprecation notice | T+0        |
+| notify    | Notify all downstream consumers and dependents      | T+0 ~ T+7d   |
+| migrate   | Migrate in-flight tasks to replacement Agent/version | T+7d ~ T+25d |
+| transfer  | Transfer knowledge assets, historical context to successor | T+25d ~ T+28d |
+| archive   | Freeze execution capability, retain read-only history | T+30d       |
+| delete    | Clear runtime resources, retain history per retention policy | T+30d+  |
+
+A mandatory **30-day deprecation window** is enforced, during which the old version can still process existing tasks to ensure business continuity.
 
 ---
 
 # 62. Offline and Edge Deployment Architecture
 
-> v2.6 New. Supports Agent execution in intermittent connectivity scenarios such as factory workshops, retail stores, and mobile devices, running in local-first + eventual sync mode.
+> Supports Agent execution in intermittently connected scenarios such as factory floors, retail stores, and mobile devices, operating in a local-first + eventual-sync mode.
 > Related: §15 ModelGateway · §32 Deployment · §52 Multi-Region · §10 Risk Control
 
 ## 62.1 EdgeRuntime Minimal Runtime
 
 ```text
 ┌─────────────────────────────────────────┐
-│  EdgeRuntime (Local Device/Store Server)     │
+│  EdgeRuntime (local device / store server)  │
 │                                         │
 │  ┌──────────┐  ┌──────────┐  ┌────────┐│
 │  │P3-Lite   │  │P4-Lite   │  │P5-Local││
@@ -5918,191 +6522,152 @@ interface AgentRetirement {
 │  │(sLLM)   │  │(offline) │            │
 │  └──────────┘  └──────────┘            │
 └─────────────────────────────────────────┘
-         ▲ Upon Connection Recovery ▼
+         ▲ On reconnect ▼
 ┌─────────────────────────────────────────┐
 │  Central Platform (Cloud)               │
 │  P1 + P2 + P3 + P4 + P5 + X1           │
 └─────────────────────────────────────────┘
 ```
-## 62.2 Offline execution constraints
-| Constraints | Description |
-|------|------|
-| Risk upper limit | Offline mode only allows actions with risk_level ≤ medium |
-| Model downgrade | Use local sLLM (such as Qwen-7B/Llama-3-8B), do not call the cloud ModelGateway |
-| Side effects queuing | All side effects are written to the local SyncQueue and submitted in batches after the connection is restored |
-| Approval pending | Steps that require approval enter the pending state, waiting for the connection to be restored |
-| Cache plan | EdgeRuntime periodically pre-pulls the ExecutionPlan template from Central |
+
+## 62.2 Offline Execution Constraints
+
+| Constraint      | Description                                                               |
+| --------------- | ------------------------------------------------------------------------- |
+| Risk ceiling    | Offline mode only allows actions with risk_level ≤ medium                 |
+| Model downgrade | Uses local sLLM (e.g. Qwen-7B/Llama-3-8B), no cloud ModelGateway calls  |
+| Side effect queue | All side effects written to local SyncQueue, batch-submitted on reconnect |
+| Approval pending | Steps requiring approval enter pending state, awaiting reconnect         |
+| Plan caching    | EdgeRuntime periodically pre-fetches ExecutionPlan templates from Central |
 
 ## 62.3 Sync Protocol
 
-```typescript
-interface SyncProtocol {
-  pullFromCentral(): Promise<SyncPacket>;
-  pushToCentral(localChanges: LocalChangeSet): Promise<ConflictReport>;
-  resolveConflicts(report: ConflictReport): Promise<Resolution[]>;
-}
+**Conflict resolution principle**: Central state is the authoritative source; side effects generated offline that conflict with Central default to Central-wins + generate an Incident for manual review.
 
-interface ConflictReport {
-  conflicts: {
-    entity_type: string;
-    entity_id: string;
-    local_version: number;
-    central_version: number;
-    resolution_strategy: "local_wins" | "central_wins" | "manual";
-  }[];
-}
-```
-**Conflict Resolution Principle**: Central status is the authoritative source; if a side effect during offline conflicts with Central, by default Central wins + generate Incident for manual review. 
+## 62.4 Deployment Modes
 
-## 62.4 Deployment Mode
-| Mode | Hardware Requirements | Applicable Scenarios |
-|------|---------|---------|
-| Edge-Micro | ARM/x86 single board computer, 4GB RAM | Retail store POS, IoT gateway |
-| Edge-Standard | 8C/32GB server | Factory workshop, warehouse |
-| Edge-Mobile | iOS/Android App | Mobile field service, on-site service |
-| Hybrid | Local GPU Server | High-throughput scenarios requiring local inference |
+| Mode          | Hardware Requirements         | Use Case                          |
+| ------------- | ----------------------------- | --------------------------------- |
+| Edge-Micro    | ARM/x86 SBC, 4GB RAM         | Retail POS, IoT gateway           |
+| Edge-Standard | 8C/32GB server                | Factory floor, warehouse          |
+| Edge-Mobile   | iOS/Android App               | Mobile field service              |
+| Hybrid        | Local GPU server              | High-throughput local inference    |
 
 ---
 
 # 63. Agent Behavior Drift Detection Architecture
 
-> v2.6 New. Goes beyond single-dimensional quality metrics, establishes multi-dimensional behavior profiling and long-cycle change point detection, issuing warnings before Agent behavior drift causes business risks.
-> Related: §17 Quality Gate · §42 Progressive Autonomy · §43 Kanban · §56 Feedback Improvement
+> Goes beyond single-dimension quality metrics to establish multi-dimensional behavioral profiles and long-cycle changepoint detection, issuing early warnings before gradual Agent behavior changes lead to business risk.
+> Related: §17 Quality Gates · §42 Progressive Autonomy · §43 Dashboard · §56 Feedback Improvement
 
-## 63.1 Behavior Fingerprint Model
+## 63.1 Behavioral Fingerprint Model
 
-```typescript
-interface BehaviorFingerprint {
-  agent_id: string;
-  window: { start: string; end: string };
-  dimensions: {
-    tool_call_distribution: Record<string, number>;
-    action_sequence_patterns: { pattern: string; frequency: number }[];
-    risk_score_distribution: { mean: number; stddev: number; p95: number };
-    response_time_distribution: { mean: number; stddev: number; p95: number };
-    approval_rate: number;
-    error_rate: number;
-    token_usage_per_task: { mean: number; stddev: number };
-    knowledge_source_distribution: Record<string, number>;
-  };
-}
-```
-## 63.2 Change point detection engine
-| Window | Detection Algorithm | Sensitivity | Usage |
-|------|---------|--------|------|
-| 1h sliding window | Z-Score anomaly detection | High | Mutation (after model update, Prompt change) |
-| 7d sliding window | CUSUM | Medium | Short-term trend (impact of knowledge base changes) |
-| 30d Sliding Window | Bayesian Online Changepoint | Medium | Monthly Drift (Changes in Business Environment) |
-| 90d sliding window | Drift Distance (KL/JS divergence) | Low | Long term baseline drift |
+| Field                   | Type                 | Description                                           |
+| ----------------------- | -------------------- | ----------------------------------------------------- |
+| agentId                 | string               | Target Agent                                          |
+| window                  | 1h / 7d / 30d / 90d  | Fingerprint statistics window                        |
+| tool_usage_distribution | `Map<toolId, ratio>` | Tool invocation distribution, detects tool preference drift |
+| avg_step_count          | number               | Average step count, detects complexity changes        |
+| avg_cost                | number               | Average cost, detects cost anomalies                  |
+| success_rate            | number (0-1)         | Success rate                                          |
+| risk_distribution       | `Map<level, ratio>`  | Risk level distribution                               |
+| driftScore              | number (0-1)         | Composite drift score vs baseline, >0.7 triggers alert |
+
+## 63.2 Changepoint Detection Engine
+
+| Window    | Detection Algorithm             | Sensitivity | Purpose                                  |
+| --------- | ------------------------------- | ----------- | ---------------------------------------- |
+| 1h slide  | Z-Score anomaly detection       | High        | Sudden changes (after model/Prompt updates) |
+| 7d slide  | CUSUM                           | Medium      | Short-term trends (knowledge base changes) |
+| 30d slide | Bayesian Online Changepoint     | Medium      | Monthly drift (business environment shifts) |
+| 90d slide | Drift Distance (KL/JS divergence) | Low       | Long-term baseline deviation             |
 
 ## 63.3 Drift Response Strategy
 
 ```text
 BehaviorDriftAlert { agent_id, dimension, severity, drift_score }
     │
-    ├── severity=low  → Record to §43 Kanban, mark "drift_warning"
+    ├── severity=low  → Log to §43 dashboard, tag "drift_warning"
     │
-    ├── severity=medium → Notify domain admin + automatically reduce autonomy_level by one level (§42)
+    ├── severity=medium → Notify domain admin + auto-lower autonomy_level by one tier (§42)
     │
-    └── severity=high → Pause Agent (§61 paused) + trigger Incident (§12) + require human review
+    └── severity=high → Pause Agent (§61 paused) + trigger Incident (§12) + require manual review
 ```
 
 ## 63.4 Cross-Agent Anomaly Detection
 
-Multiple Agents under the same DomainDescriptor form a control group. When one Agent's behavior fingerprint significantly deviates from the control group, even if that Agent itself has not triggered the single Agent threshold, a `CrossAgentDriftAlert` should be issued.
+Multiple Agents under the same DomainDescriptor form a control group. When one Agent's behavioral fingerprint significantly deviates from the control group, a `CrossAgentDriftAlert` should be issued even if that Agent has not triggered single-Agent thresholds.
 
 ---
 
 # 64. Cost Attribution and Optimization Engine
 
-> v2.6 New. Adds decision-level cost attribution, automatic optimization suggestions, and What-if simulation on top of §18 cost measurement, turning cost data from "viewable" to "actionable".
-> Related: §18 Cost Management · §15 ModelGateway · §43 Kanban · §54 SLA
+> Building on §18 cost metering, adds decision-level cost attribution, automated optimization recommendations, and What-if simulation, transforming cost data from "viewable" to "actionable".
+> Related: §18 Cost Management · §15 ModelGateway · §43 Dashboard · §54 SLA
 
 ## 64.1 Decision-Level Cost Attribution
 
-```typescript
-interface CostAttribution {
-  workflow_id: string;
-  total_cost: Money;
-  breakdown: {
-    step_id: string;
-    step_name: string;
-    model_used: string;
-    tokens: { input: number; output: number };
-    cost: Money;
-    was_optimal: boolean;
-    optimal_alternative?: { model: string; estimated_cost: Money; quality_impact: string };
-  }[];
-  optimization_potential: Money;
-}
-```
-## 64.2 Automatic optimization suggestions
-| Recommendation type | Test conditions | Recommendation content | Expected savings |
-|---------|---------|---------|---------|
-| ModelDowngrade | Low-risk step using high-end models | Switch to cost_optimized routing | 30-60% |
-| CacheHit | Repeated calls to the same query | Enable semantic cache | 40-80% |
-| TokenTrim | Average input_tokens > 4x output_tokens | Optimize Prompt or enable context compression | 20-40% |
-| BatchMerge | Multiple independent steps can be merged | Merged into a single LLM call | 50-70% |
-| ScheduleShift | Non-urgent tasks are executed during peak hours | Scheduled to low-cost times | 10-30% |
+| Field        | Type                           | Description                                             |
+| ------------ | ------------------------------ | ------------------------------------------------------- |
+| decisionId   | string                         | Associated HarnessDecision ID                           |
+| llmCost      | number                         | LLM call cost for this decision                         |
+| toolCost     | number                         | External tool/API call cost                             |
+| computeCost  | number                         | Compute resource (Worker time) cost                     |
+| totalCost    | number                         | Sum of the three                                        |
+| attributedTo | agent / tenant / domain / task | Cost attribution dimension, supports multi-level drill-down |
+| qualityRisk  | low / medium / high            | Quality risk tag for cost-quality tradeoff analysis     |
 
-```typescript
-interface CostRecommendation {
-  recommendation_id: string;
-  type: "model_downgrade" | "cache_hit" | "token_trim" | "batch_merge" | "schedule_shift";
-  target: { agent_id?: string; domain_id?: string; pack_id?: string };
-  current_monthly_cost: Money;
-  projected_monthly_cost: Money;
-  savings: Money;
-  quality_risk: "none" | "low" | "medium";
-  auto_applicable: boolean;
-}
-```
+## 64.2 Automated Optimization Recommendations
+
+| Recommendation | Detection Condition                        | Suggestion                              | Expected Savings |
+| -------------- | ------------------------------------------ | --------------------------------------- | ---------------- |
+| ModelDowngrade | Low-risk step uses premium model           | Switch to cost_optimized route          | 30-60%           |
+| CacheHit       | Same query called repeatedly               | Enable semantic cache                   | 40-80%           |
+| TokenTrim      | Avg input_tokens > 4x output_tokens        | Optimize Prompt or enable context compression | 20-40%     |
+| BatchMerge     | Multiple independent steps can be merged   | Merge into single LLM call              | 50-70%           |
+| ScheduleShift  | Non-urgent tasks executed during peak hours | Schedule to off-peak time slots         | 10-30%           |
 
 ## 64.3 What-if Cost Simulation
 
-```typescript
-interface CostSimulation {
-  simulate(scenario: CostScenario): Promise<CostProjection>;
-}
+Supports cost impact simulation for the following change scenarios:
 
-interface CostScenario {
-  changes: (
-    | { type: "model_change"; from: string; to: string }
-    | { type: "volume_change"; multiplier: number }
-    | { type: "autonomy_change"; new_level: AutonomyLevel }
-    | { type: "new_domain_onboard"; estimated_daily_tasks: number }
-  )[];
-  projection_period_days: number;
-}
-```
-## 64.4 Cost Kanban Integration 
+| Scenario       | Input Parameters                    | Output                                    |
+| -------------- | ----------------------------------- | ----------------------------------------- |
+| Model switch   | Target model, applicable step range | projectedCost, quality impact estimate    |
+| Prompt change  | Token length delta of new Prompt    | Token cost delta, call count impact       |
+| Tool replace   | Replacement tool and its unit price | Tool cost difference, latency impact      |
+| Concurrency adj| Target concurrency                  | Compute cost, queue time changes          |
 
-§43 The "Cost Intelligence" panel is added to the unified operation dashboard: 
+Each simulation outputs `projectedCost`, `qualityImpact`, `recommendation` (recommended / not recommended / needs further validation).
 
-* Top 10 high-cost Agent/Domain/Workflow this month 
-* Actionable savings opportunities (sorted by expected savings) 
-* Cost trends versus budget 
-* What-if simulation entrance 
+## 64.4 Cost Dashboard Integration
 
---- 
+§43 Unified Operations Dashboard adds a "Cost Intelligence" panel:
 
-# 65. Workflow visual debugger architecture 
+- Top 10 highest-cost Agents / Domains / Workflows this month
+- Actionable savings opportunities (sorted by expected savings)
+- Cost trends vs budget comparison
+- What-if simulation entry point
 
-> New in v2.6. Provides visual debugging and inspection capabilities for running/completed workflows, and supports real-time execution tracking, OAPEFLIR step-in debugging, and time travel playback. 
-> Related: §12.7 Tracing · §13 OAPEFLIR · §44.3 Workflow Builder · §59 Interpretability 
+---
 
-## 65.1 Debugger capability matrix
-| Capabilities | Running Workflow | Completed Workflow | Description |
-|------|---------------|----------------|------|
-| Execution timeline | ✓ (real-time) | ✓ | Start/end/status visualization of each step |
-| OAPEFLIR Step into | ✓ | ✓ | Expand a single step to view details of each stage of O/A/P/E/F/L/I/R |
-| Data flow view | ✓ | ✓ | Input/output data flow between steps |
-| Side Effects Diff | ✗ | ✓ | Expected Side Effects vs Actual Side Effects |
-| Breakpoint debugging | ✓ | ✗ | Pause execution at the specified step and continue after manual inspection |
-| Time travel | ✗ | ✓ | Replay execution from any checkpoint |
-| Run comparison | ✗ | ✓ | Side-by-side comparison of two runs |
+# 65. Workflow Visual Debugger Architecture
 
-## 65.2 Real-Time Execution Flow
+> Provides visual debugging and inspection capabilities for running/completed workflows, supporting real-time execution tracing, OAPEFLIR step-into debugging, and time-travel replay.
+> Related: §12.7 Tracing · §13 OAPEFLIR · §44.3 Workflow Builder · §59 Explainability
+
+## 65.1 Debugger Capability Matrix
+
+| Capability        | Running Workflow | Completed Workflow | Description                                          |
+| ----------------- | --------------- | ------------------ | ---------------------------------------------------- |
+| Execution timeline| ✓ (real-time)   | ✓                  | Start/end/status visualization per step              |
+| OAPEFLIR step-in  | ✓               | ✓                  | Expand a step to view O/A/P/E/F/L/I/R stage details  |
+| Data flow view    | ✓               | ✓                  | Input/output data flow between steps                 |
+| Side effect diff  | ✗               | ✓                  | Expected vs actual side effect comparison            |
+| Breakpoint debug  | ✓               | ✗                  | Pause execution at a specified step for manual inspection |
+| Time travel       | ✗               | ✓                  | Replay execution from any checkpoint                 |
+| Run comparison    | ✗               | ✓                  | Side-by-side comparison of two runs                  |
+
+## 65.2 Real-time Execution Stream
 
 ```text
 WebSocket /ws/v1/debug/{workflow_id}
@@ -6111,84 +6676,62 @@ WebSocket /ws/v1/debug/{workflow_id}
 ┌──────────────────────────────────────────────────────────┐
 │  Timeline View                                           │
 │  ┌────┐  ┌────┐  ┌────┐  ┌─────┐  ┌────┐               │
-│  │ S1 │─▶│ S2 │─▶│ S3 │─▶│ S4  │─▶│ S5 │  ← Current execution position│
+│  │ S1 │─▶│ S2 │─▶│ S3 │─▶│ S4  │─▶│ S5 │  ← current pos│
 │  │ ✓  │  │ ✓  │  │ ▶  │  │ ... │  │ ...│               │
 │  └────┘  └────┘  └────┘  └─────┘  └────┘               │
 │                     │                                    │
 │              ┌──────┴──────┐                             │
-│              │ OAPEFLIR     │                             │
-│              │ Expansion    │                             │
-│              │ O: Collected 3 signals                    │
-│              │ A: Risk score 0.4 (medium)                │
-│              │ P: Choose Option B (reason:...)            │
-│              │ E: ▶ Executing...                         │
+│              │ OAPEFLIR expand│                           │
+│              │ O: Collected 3 signals                     │
+│              │ A: Risk score 0.4 (medium)                 │
+│              │ P: Selected plan B (reason:...)            │
+│              │ E: ▶ Executing...                          │
 │              └─────────────┘                             │
 └──────────────────────────────────────────────────────────┘
 ```
 
 ## 65.3 Breakpoint API
 
-```typescript
-interface DebugBreakpoint {
-  workflow_id: string;
-  breakpoint_type: "before_step" | "after_step" | "before_stage" | "on_risk_threshold";
-  target: { step_id?: string; stage?: string; risk_threshold?: number };
-  action: "pause" | "log_snapshot";
-}
+| Breakpoint Type | Description                                                    | Operations              |
+| --------------- | -------------------------------------------------------------- | ----------------------- |
+| step-level      | Pause at specified step number                                 | set / remove / list     |
+| condition-based | Pause when condition is met (on error / risk ≥ threshold / cost ≥ threshold) | set(condition) / remove |
+| watchpoint      | Pause when a monitored variable changes                        | set(variable) / remove  |
 
-interface DebugSession {
-  setBreakpoint(bp: DebugBreakpoint): Promise<void>;
-  resume(workflow_id: string): Promise<void>;
-  inspect(workflow_id: string, step_id: string): Promise<StepSnapshot>;
-}
-```
+When a breakpoint is hit the Workflow enters paused state, and a `breakpoint_hit` event is pushed via WebSocket. The debugger can inspect the ContextSnapshot then execute `resume` / `step_over` / `abort`.
 
 ## 65.4 Run Comparison
 
-```typescript
-interface RunComparison {
-  compare(run_a: string, run_b: string): Promise<ComparisonResult>;
-}
+Supports side-by-side comparison of two HarnessRuns:
 
-interface ComparisonResult {
-  steps_added: string[];
-  steps_removed: string[];
-  steps_changed: {
-    step_id: string;
-    diff: { field: string; value_a: unknown; value_b: unknown }[];
-  }[];
-  cost_diff: Money;
-  duration_diff_ms: number;
-}
-```
+| Comparison Dimension | Description                               |
+| -------------------- | ----------------------------------------- |
+| step diff            | Step count, order, added/missing steps    |
+| decision diff        | HarnessDecision differences per step      |
+| cost diff            | Per-stage and total cost comparison        |
+| duration diff        | End-to-end and per-step duration comparison|
+| outcome diff         | Final result and quality score differences |
+
+Supports regression detection: automatically tags `regression_detected` when a new version's key metrics are worse than the previous version.
 
 ---
 
-# 66. Compliance Report Automatic Generation Engine
+# 66. Compliance Report Auto-Generation Engine
 
-> v2.6 New. Automatically assembles evidence collected by the platform into audit-ready compliance reports, supporting SOC2 Type II / SOX / HIPAA / GDPR / PCI-DSS and other frameworks.
-> Related: §23 Compliance · §49 Sub-department Compliance · §12 Exceptional Events · §50 Knowledge Isolation
+> Automatically assembles evidence collected by the platform into audit-ready compliance reports, supporting SOC2 Type II / SOX / HIPAA / GDPR / PCI-DSS and other frameworks.
+> Related: §23 Compliance · §49 Divisional Compliance · §12 Incident Events · §50 Knowledge Isolation
 
-## 66.1 Report Template Registry
+## 66.1 Report Template Registration
 
-```typescript
-interface ComplianceReportTemplate {
-  framework: "SOC2_TYPE_II" | "SOX_302" | "SOX_404" | "HIPAA" | "GDPR" | "PCI_DSS" | "ISO27001";
-  version: string;
-  controls: {
-    control_id: string;
-    control_name: string;
-    evidence_sources: EvidenceSource[];
-    pass_criteria: string;
-  }[];
-}
-
-type EvidenceSource =
-  | { type: "audit_log"; query: string }
-  | { type: "config_snapshot"; path: string }
-  | { type: "metric"; metric_name: string; threshold: number }
-  | { type: "policy_check"; policy_id: string };
-```
+| Field               | Type                             | Description                                           |
+| ------------------- | -------------------------------- | ----------------------------------------------------- |
+| templateId          | string                           | Unique template identifier                            |
+| framework           | GDPR / SOC2 / SOX / HIPAA / PIPL | Corresponding compliance framework                   |
+| version             | semver                           | Template version, iterated when framework updates     |
+| sections            | `Section[]`                      | Report section definitions (control point mapping + evidence requirements) |
+| requiredDataSources | `string[]`                       | Required data sources (audit_log / metrics / config, etc.) |
+| outputFormat        | PDF / HTML / JSON                | Supported output formats                              |
+| lockedOnGeneration  | boolean                          | Template snapshot locked on generation for audit traceability |
 
 ## 66.2 Report Generation Pipeline
 
@@ -6197,344 +6740,1464 @@ ScheduledTrigger / OnDemandRequest
     │
     ▼
 ┌─────────────────┐
-│ EvidenceCollector│  ← Collect evidence from P5, audit logs, config snapshots, metrics
+│ EvidenceCollector│  ← Collects evidence from P5, audit logs, config snapshots, metrics
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ ControlMapper   │  ← Map evidence to control points, mark pass/fail/partial
+│ ControlMapper   │  ← Maps evidence to control points, marks pass/fail/partial
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ GapAnalyzer     │  ← Identify control points with insufficient evidence, generate remediation suggestions
+│ GapAnalyzer     │  ← Identifies control points with insufficient evidence, generates remediation suggestions
 └────────┬────────┘
          ▼
 ┌─────────────────┐
-│ ReportRenderer  │  ← Generate PDF + CSV + JSON according to framework template
+│ ReportRenderer  │  ← Generates PDF + CSV + JSON per framework template
 └────────┬────────┘
          ▼
 ComplianceReport { framework, period, controls_passed, controls_failed, gaps[], export_urls }
 ```
-## 66.3 Report Type and Frequency
-| Framework | Frequency | Scope | Typical Consumer |
-|------|------|------|-----------|
-| SOC2 Type II | Quarterly | All Platforms | Auditor/Client |
-| SOX 302/404 | Quarterly | Financial Domain | CFO/External Audit |
-| HIPAA | Monthly | Healthcare Domain | HIPAA Officer |
-| GDPR | Monthly | All Platforms | DPO |
-| PCI-DSS | Quarterly | Payment Domain | QSA |
-| ISO 27001 | Half a Year | Full Platform | CISO |
+
+## 66.3 Report Types and Frequency
+
+| Framework    | Frequency  | Scope      | Typical Consumer     |
+| ------------ | ---------- | ---------- | -------------------- |
+| SOC2 Type II | Quarterly  | Platform   | Auditor / Customer   |
+| SOX 302/404  | Quarterly  | Finance    | CFO / External Audit |
+| HIPAA        | Monthly    | Healthcare | HIPAA Officer        |
+| GDPR         | Monthly    | Platform   | DPO                  |
+| PCI-DSS      | Quarterly  | Payments   | QSA                  |
+| ISO 27001    | Semi-annual| Platform   | CISO                 |
 
 ## 66.4 Auditor Read-Only Access
 
-```typescript
-interface AuditorRole {
-  permissions: [
-    "read:compliance_reports",
-    "read:audit_logs",
-    "read:config_snapshots",
-    "read:evidence_bundles"
-  ];
-  restrictions: [
-    "deny:write:*",
-    "deny:read:knowledge_content",
-    "deny:read:pii_data"
-  ];
-  session_ttl: "7d";
-  mfa_required: true;
-}
-```
---- 
+Auditors obtain a restricted read-only view via `AuditorAccess`:
 
-# 67. Capacity Planning and Cost Forecasting Engine 
+- **Visible scope**: runs / decisions / evidence / compliance reports, filtered by tenant + timeRange + framework
+- **Permission control**: Read-only operations; cannot modify, delete, or export raw data
+- **PII protection**: Returned data undergoes §23 data classification checks; fields that fail classification review are automatically masked
+- **Audit trail**: Every auditor query operation is itself included in the audit log (§23), recording the querier, time, and scope
 
-> New in v2.6. Predictive capacity modeling based on historical trends supports expansion timing recommendations, cost trend forecasts, and what-if capacity simulations. 
-> Relevance: §18 Cost · §27 SLO · §43 Kanban · §54 SLA · §64 Cost Optimization 
+---
 
-## 67.1 Resource dimension tracking
-| Dimension | Collection source | Warning threshold |
-|------|---------|---------|
-| Number of concurrent workers | P4 Execution Plane | Current capacity 80% |
-| Storage usage | P5 State Plane | Current capacity 85% |
-| LLM Token consumption/day | §18 CostTracker | Monthly budget 70% |
-| API QPS | P1 Interface Plane | Current capacity 75% |
-| Event Log Growth Rate | P5 Event Store | Storage Capacity 80% |
-| Queue Depth | P4 Fair Queue | Average Waiting Time > SLA 50% |
+# 67. Capacity Planning and Cost Forecasting Engine
 
-## 67.2 Prediction Model
+> Predictive capacity modeling based on historical trends, supporting scale-up timing recommendations, cost trend forecasting, and What-if capacity simulation.
+> Related: §18 Cost · §27 SLO · §43 Dashboard · §54 SLA · §64 Cost Optimization
 
-```typescript
-interface CapacityForecast {
-  dimension: string;
-  current_usage: number;
-  current_capacity: number;
-  utilization_pct: number;
-  trend: "growing" | "stable" | "declining";
-  forecast: {
-    days_30: { predicted_usage: number; confidence_interval: [number, number] };
-    days_90: { predicted_usage: number; confidence_interval: [number, number] };
-    days_180: { predicted_usage: number; confidence_interval: [number, number] };
-  };
-  breach_date?: string;
-  scaling_recommendation?: {
-    action: "scale_up" | "optimize" | "no_action";
-    from_tier: string;
-    to_tier: string;
-    estimated_cost_delta: Money;
-    recommended_date: string;
-  };
-}
-```
+## 67.1 Resource Dimension Tracking
+
+| Dimension           | Collection Source    | Alert Threshold            |
+| ------------------- | -------------------- | -------------------------- |
+| Worker concurrency  | P4 Execution Plane   | 80% of current capacity    |
+| Storage usage       | P5 State Plane       | 85% of current capacity    |
+| LLM Token consumption/day | §18 CostTracker | 70% of monthly budget     |
+| API QPS             | P1 Interface Plane   | 75% of current capacity    |
+| Event Log growth rate | P5 Event Store     | 80% of storage capacity    |
+| Queue depth         | P4 Fair Queue        | Avg wait time > 50% of SLA |
+
+## 67.2 Forecasting Models
+
+| Forecast Target    | Algorithm                              | Forecast Horizon   |
+| ------------------ | -------------------------------------- | ------------------ |
+| Token consumption  | Linear regression + seasonal decomposition | 7d / 30d / 90d |
+| Compute usage      | Linear regression + seasonal decomposition | 7d / 30d / 90d |
+| Storage growth     | Exponential smoothing + capacity extrapolation | 30d / 90d    |
+| Concurrent run demand | Peak regression + weekday/holiday adjustment | 7d / 30d    |
+
+Forecast results are automatically fed into §67.1 alert threshold evaluation; a `CapacityAlert` is generated when the predicted value will breach a capacity threshold within the forecast horizon.
 
 ## 67.3 What-if Capacity Simulation
 
-```typescript
-interface CapacitySimulation {
-  simulate(scenario: CapacityScenario): Promise<CapacityImpact>;
-}
+Supports capacity impact simulation for the following scenarios:
 
-interface CapacityScenario {
-  changes: (
-    | { type: "new_domain"; estimated_agents: number; estimated_daily_tasks: number }
-    | { type: "traffic_spike"; multiplier: number; duration_hours: number }
-    | { type: "new_region"; initial_capacity_pct: number }
-    | { type: "model_migration"; from: string; to: string }
-  )[];
-}
+| Scenario            | Input Parameters                       | Output                                          |
+| ------------------- | -------------------------------------- | ----------------------------------------------- |
+| New tenant onboard  | Estimated usage, SLA Tier              | Additional capacity needed, cost increment      |
+| Traffic spike       | Peak multiplier, duration              | Bottleneck resources, scale-up recommendations  |
+| Region failover     | Failed Region, traffic migration ratio | Target Region remaining capacity, pre-scale needed |
+| Model migration     | New model token efficiency, latency delta | Token consumption delta, Worker concurrency impact |
 
-interface CapacityImpact {
-  dimensions_impacted: {
-    dimension: string;
-    current_headroom_pct: number;
-    post_change_headroom_pct: number;
-    action_required: boolean;
-  }[];
-  estimated_cost_delta: Money;
-  risk_assessment: "safe" | "needs_scaling" | "critical";
-}
-```
+Each simulation outputs `requiredCapacity`, `estimatedCost`, `bottleneckWarnings`.
 
 ## 67.4 Financial Budget Support
 
-* Monthly cost trend report (actual vs budget vs forecast)
-* Quarterly capacity planning suggestions (for finance team budget approval)
-* Annual TCO prediction (including hardware + LLM API + labor costs)
+- Monthly cost trend report (actual vs budget vs forecast)
+- Quarterly capacity planning recommendations (for finance team budget approval)
+- Annual TCO forecast (including hardware + LLM API + headcount costs)
 
 ---
 
 # 68. Multimodal Capability Architecture
 
-> v2.6 New. Expands ModelGateway to support multimodal input/output such as images, voice, and documents, enabling the platform to handle material production, customer service image processing, voice interaction and other scenarios.
+> Extends ModelGateway to support image, speech, document and other multimodal inputs/outputs, enabling the platform to handle content creation, customer service image processing, voice interaction and similar scenarios.
 > Related: §15 ModelGateway · §26 Storage · §37 Business Domain · §39 NL Entry
 
 ## 68.1 Multimodal ModelGateway Extension
 
-```typescript
-interface MultimodalModelGateway extends ModelGateway {
-  analyzeImage(req: ImageAnalysisRequest): Promise<ImageAnalysisResponse>;
-  generateImage(req: ImageGenerationRequest): Promise<ImageArtifact>;
-  speechToText(req: SpeechToTextRequest): Promise<TranscriptionResponse>;
-  textToSpeech(req: TextToSpeechRequest): Promise<AudioArtifact>;
-  parseDocument(req: DocumentParseRequest): Promise<StructuredDocument>;
-}
-```
+Extends multimodal capabilities on top of §15 ModelGateway:
+
+- **Modality detection**: Automatically identifies input modalities in the request (text / image / audio / video / document)
+- **Capability routing**: Automatically selects a Provider supporting the required modality (see §68.3 ModalityRouter)
+- **Format conversion**: Auto-converts when input/output formats differ between Providers (e.g. base64 ↔ URL ↔ binary)
+- **Fallback chain**: Falls back per §68.3 configuration when a multimodal Provider is unavailable
 
 ## 68.2 Multimodal ModelRequest Extension
 
-```typescript
-interface MultimodalModelRequest extends ModelRequest {
-  content: MultimodalContent[];
-}
+Adds multimodal fields on top of the standard ModelRequest:
 
-type MultimodalContent =
-  | { type: "text"; text: string }
-  | { type: "image"; image_url: string; detail: "low" | "high" }
-  | { type: "audio"; audio_url: string; format: "wav" | "mp3" | "opus" }
-  | { type: "document"; document_url: string; format: "pdf" | "xlsx" | "docx" }
-  | { type: "video"; video_url: string; sample_rate_fps: number };
-```
+| Field            | Type            | Description                                                 |
+| ---------------- | --------------- | ----------------------------------------------------------- |
+| inputModalities  | `string[]`      | List of input modalities in the request                     |
+| outputModalities | `string[]`      | List of expected output modalities                          |
+| contentParts     | `ContentPart[]` | Mixed content blocks (text + image + audio can interleave)  |
+
+Each modality undergoes independent security checks (§68.4); the entire request is rejected if any modality fails.
 
 ## 68.3 ModalityRouter
 
-| Modal | Default Provider | Fallback | Cost Model |
-|------|-------------|----------|---------|
-| Text LLM | GPT-4o / Claude | Qwen / DeepSeek | per-token |
-| Image Analysis | GPT-4o Vision / Claude Vision | Qwen-VL | per-image |
-| Image Generation | DALL-E 3 / Midjourney API | Stable Diffusion (self-hosted) | per-image |
-| Speech-to-Text | Whisper API | Paraformer (self-hosted) | per-minute |
-| Text-to-Speech | Azure TTS / ElevenLabs | CosyVoice (self-hosted) | per-character |
-| Document Parse | Document Intelligence | Marker / Docling (self-hosted) | per-page |
+| Modality         | Default Provider                | Fallback                       | Cost Model    |
+| ---------------- | ------------------------------- | ------------------------------ | ------------- |
+| Text LLM         | GPT-4o / Claude                 | Qwen / DeepSeek                | per-token     |
+| Image Analysis   | GPT-4o Vision / Claude Vision   | Qwen-VL                        | per-image     |
+| Image Generation | DALL-E 3 / Midjourney API       | Stable Diffusion (self-hosted) | per-image     |
+| Speech-to-Text   | Whisper API                     | Paraformer (self-hosted)       | per-minute    |
+| Text-to-Speech   | Azure TTS / ElevenLabs          | CosyVoice (self-hosted)        | per-character |
+| Document Parse   | Document Intelligence           | Marker / Docling (self-hosted) | per-page      |
 
 ## 68.4 Multimodal Security
 
-* Image input undergoes content moderation (pornography/violence/sensitive information detection)
-* Generated images are attached with C2PA metadata watermark
-* Voice input PII detection (phone numbers, ID numbers automatically anonymized)
-* Document parsing results are subject to §50 knowledge domain isolation
+- Image inputs undergo content moderation (pornography / violence / sensitive information detection)
+- Generated images carry C2PA metadata watermarks
+- Speech input PII detection (phone numbers, ID numbers auto-masked)
+- Document parsing results are subject to §50 knowledge domain isolation
 
 ## 68.5 Multimodal Cost Tracking
 
-§18 CostTracker extends `modality` dimension：
-
-```typescript
-interface MultimodalCostRecord extends CostRecord {
-  modality: "text" | "image_analysis" | "image_generation" | "stt" | "tts" | "document_parse";
-  modality_units: number;
-  modality_unit_type: "token" | "image" | "minute" | "character" | "page";
-}
-```
+§18 CostTracker is extended with a `modality` dimension:
 
 ---
 
-# 69. Platform Self-Operation Agent Architecture
+# 69. Platform Self-Operations Agent Architecture
 
-> v2.6 New. Platform uses its own Agent capabilities for self-operation and maintenance (dog-fooding), covering automatic incident diagnosis, common fault self-repair, configuration optimization suggestions, and developer Q&A.
-> Related: §12 Exceptional Events · §14 Execution · §37 Business Domain · §41 Proactive Agent · §43 Kanban
+> The platform uses its own Agent capabilities for self-operations (dog-fooding), covering automated Incident diagnosis, common fault self-repair, configuration optimization recommendations, and developer Q&A.
+> Related: §12 Incident Events · §14 Execution · §37 Business Domain · §41 Proactive Agent · §43 Dashboard
 
 ## 69.1 PlatformOps DomainDescriptor
 
-```typescript
-const platformOpsDomain: DomainDescriptor = {
-  domain_id: "platform-ops",
-  domain_class: "operations",
-  risk_profile: {
-    base_risk: "medium",
-    override: { "write:production_config": "critical", "restart:service": "high" },
-  },
-  capabilities: [
-    "diagnose_incident",
-    "analyze_root_cause",
-    "recommend_config_optimization",
-    "predict_capacity_issue",
-    "answer_developer_question",
-    "generate_runbook_suggestion",
-  ],
-  constraints: {
-    default_autonomy: "supervised",
-    max_autonomy: "semi_auto",
-    production_write: "requires_approval",
-    read_only_by_default: true,
-  },
-};
+Platform self-operations is registered as a special business domain in the §37 domain framework:
+
+| Field         | Value                                                                   |
+| ------------- | ----------------------------------------------------------------------- |
+| domain        | `platform_ops`                                                          |
+| riskProfile   | high (involves production write operations)                             |
+| tools         | `metrics_query`, `config_patch`, `restart_service`, `scale_replica`     |
+| evalFramework | SLO-based (uses §27 SLO attainment rate as Agent performance metric)   |
+| autonomy_cap  | Read-only operations up to auto; write operations up to supervised (§42)|
+
+## 69.2 Self-Operations Agent Directory
+
+| Agent             | Trigger                  | Capabilities                                   | Max Autonomy |
+| ----------------- | ------------------------ | ---------------------------------------------- | ------------ |
+| IncidentDiagnoser | Incident creation event  | Collect logs, analyze root cause, generate report | semi_auto |
+| ConfigOptimizer   | Weekly + perf deviation  | Analyze config, suggest optimizations, estimate impact | supervised |
+| CapacityPredictor | Daily scheduled          | Analyze trends, predict bottlenecks, recommend scaling | supervised |
+| DevAssistant      | Developer question       | Query docs, search code, generate examples     | semi_auto    |
+| HealthMonitor     | Continuous               | Patrol platform health, generate daily report  | auto (read-only) |
+
+## 69.3 Safety Guardrails
+
+- All production write operations **must** go through manual approval
+- PlatformOps Agent ModelGateway calls have independent cost budget and rate limit
+- PlatformOps Agent cannot access business domain data, only platform operations data
+- All PlatformOps Agent operations are included in an independent audit stream (§23), isolated from business audit
+
+## 69.4 Self-Operations Maturity Levels
+
+| Level | Description                                               | Manual Involvement |
+| ----- | --------------------------------------------------------- | ------------------ |
+| L0    | Fully manual operations, Agent only assists doc queries   | 100%               |
+| L1    | Agent generates diagnostic reports, humans decide and act | 80%                |
+| L2    | Agent generates fix plans with pre-validation, human one-click confirm | 40%  |
+| L3    | Agent auto-handles P3/P4 issues, P1/P2 still require humans | 15%             |
+
+Initial deployment starts at L0 and progressively advances per §42 progressive autonomy.
+
+---
+
+# Part X — Rollout Roadmap & Summary (§33-§36)
+
+---
+
+## Three-Ring Implementation Priority
+
+v3.1 covers an extremely broad scope (94 sections · 24 domains · 11 Parts). To avoid spreading implementation too thin, this section defines the Three-Ring approach, clarifying "what to do first → what to do next → what to do last." The three rings correspond to the phased roadmap in §33, but prioritize from a **capability dimension** rather than a **time dimension**.
+
+### First Ring: Platform Survival Ring
+
+> **Without the First Ring, large-scale onboarding is off the table.** Corresponds to §33 Phase 1-2 + Phase 8a (Harness core can be parallelized; see §33 dependency graph).
+
+The minimal closed-loop capability set that must be delivered first; the platform cannot go into production if any item is missing:
+
+| Capability                                 | Section(s)       | Delivery Criteria                                           |
+| ------------------------------------------ | ---------------- | ----------------------------------------------------------- |
+| P1-P5 Core Path                            | §4-§7, §14       | End-to-end communication across all five planes is reachable |
+| ConstraintPack                             | §45.3            | Task-level constraint envelope can be loaded and validated   |
+| HarnessRun / HarnessStep / HarnessDecision | §45.13, §58.6    | Planner→Generator→Evaluator closed loop is runnable          |
+| Risk / Approval / Audit                    | §10, §47, §23    | Risk scoring→approval routing→audit writing full chain       |
+| Lease / CAS / Checkpoint / Recovery        | §14, §25, §45.15 | State persistence and failure recovery are demonstrable      |
+| Panic / Incident / Replay                  | §9, §12, §60     | Emergency brake can trigger; events can be replayed          |
+| ModelGateway / Prompt / Eval Gate          | §15, §16, §17    | LLM calls go through gateway; Prompts are versioned; quality gating is enforced |
+
+**First Ring acceptance gate**: An Agent task can be run end-to-end in a controlled environment (from NL input to result output), and the task can be interrupted, recovered, and audited.
+
+### Second Ring: Platform Usability Ring
+
+> **Reaching the Second Ring enables the platform to support real business pilots.** Corresponds to §33 Phase 3-5 + Phase 8b-8c.
+
+Building on the First Ring, complete the closed loops facing users and enterprises:
+
+| Capability                                            | Section(s)         | Delivery Criteria                                                                         |
+| ----------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
+| NL Entry                                              | §39                | Natural-language task submission is available                                               |
+| Goal Decomposition                                    | §40                | Goal decomposition engine can break down composite tasks                                   |
+| HITL Runtime                                          | §45.18             | Five human intervention modes available: inspect / patch / override / takeover / resume     |
+| Async Harness                                         | §45.19             | Long-running tasks can be suspended/awakened                                               |
+| Dashboard                                             | §43                | L0/L1 dashboard views are available                                                        |
+| Org / SSO / Approval Routing                          | §46-§48            | Org hierarchy→approval routing→SSO integration                                             |
+| DomainDescriptor / DomainRecipe / DomainEvalFramework | §37, §37.7, §37.5  | Domain modeling framework is available; at least 2 domains have completed onboarding        |
+| Canonical Domain Meta-Model                           | §37.11             | Meta-model 12-question template can be filled in and validated                              |
+| Agent Collaboration Protocol                          | §19.5              | Multi-Agent collaboration messages can be sent/received; invariant rules can be validated   |
+
+**Second Ring acceptance gate**: At least 2 vertical domains (recommended: 1 Critical + 1 Medium risk domain) have completed pilot launch; non-technical users can submit tasks via the NL entry; approval and HITL workflows are functional.
+
+### Third Ring: Platform Expansion Ring
+
+> **Reaching the Third Ring is the prerequisite for talking about 24-domain scale-out.** Corresponds to §33 Phase 6-9.
+
+Building on the first two rings, complete the capabilities for scale-out and continuous optimization:
+
+| Capability               | Section(s) | Delivery Criteria                                                                  |
+| ------------------------ | ---------- | ---------------------------------------------------------------------------------- |
+| Marketplace              | §55        | Agent marketplace supports publish/subscribe/deprecate                             |
+| Multi-Region             | §52        | Deployable in at least 2 Regions                                                   |
+| Edge Runtime             | §62        | Offline/edge scenarios are runnable                                                |
+| Cost Optimizer           | §64        | Cost attribution down to domain/Agent/task level                                   |
+| Behavior Drift Detection | §63        | Drift detection baseline established; alerts can trigger                           |
+| Compliance Reporter      | §66        | Compliance reports can be auto-generated                                           |
+| 24 Domain Packs          | §71-§94    | All 24 domains complete meta-model filling and pass §38 four-stage quality gates   |
+
+**Third Ring acceptance gate**: ≥ 12 domains running in production; cross-Region failover drill passed; platform self-ops Agent (§69) can handle P3/P4 level issues.
+
+### Three-Ring to §33 Phase Mapping
+
+```text
+First Ring (Survival)  Second Ring (Usability)    Third Ring (Expansion)
+ Phase 1-2+8a           Phase 3-5+8b/8c            Phase 6-9
+ ┌─────────┐           ┌───────────────┐           ┌────────────────────────┐
+ │ Skeleton+│──────────▶│ NL Entry+HITL+│──────────▶│ Marketplace+Multi-     │
+ │ Harness  │           │ Org+Domain    │           │ Region+Edge+Cost+      │
+ │ Core+Risk│           │ Pilot+Collab  │           │ Drift+24 Domain Full   │
+ └─────────┘           └───────────────┘           └────────────────────────┘
+ ~16 weeks              ~24 weeks                   ~40+ weeks
 ```
-## 69.2 Self-operation and maintenance Agent directory
-| Agent | Trigger conditions | Ability | Upper limit of autonomy |
-|-------|---------|------|-----------|
-| IncidentDiagnoser | Incident creates events | Collect logs, analyze root causes, and generate diagnostic reports | semi_auto |
-| ConfigOptimizer | Weekly timing + performance deviation | Analyze configuration, recommend optimization, estimate impact | supervised |
-| CapacityPredictor | Daily timing | Analyze trends, predict bottlenecks, and recommend capacity expansion | supervised |
-| DevAssistant | Developer questions | Query documentation, search code, generate examples | semi_auto |
-| HealthMonitor | Continuous operation | Inspect platform health and generate daily reports | auto (read-only) |
-## 69.3 Safety guardrail 
 
-* All production environment write operations **must** be manually approved 
-* The ModelGateway call of PlatformOps Agent has independent cost budget and rate limit 
-* PlatformOps Agent cannot access business domain data, but can only access platform operation and maintenance data. 
-* All operations of PlatformOps Agent are included in the independent audit flow (§23) and are isolated from business audit 
+### Implementation Decision Recommendations
 
-## 69.4 Self-operation and maintenance maturity level
-| Level | Description | Human Engagement |
-|------|------|-----------|
-| L0 | Pure manual operation and maintenance, Agent only assists document query | 100% |
-| L1 | Agent generates diagnostic reports, manual decision-making and execution | 80% |
-| L2 | Agent generates a repair plan and pre-executes verification, and manually confirms it with one click | 40% |
-| L3 | Agent automatically handles P3/P4 level problems, P1/P2 still requires manual labor | 15% |
-Initial deployment starts at L0, with progression through §42 progressive autonomy. 
+- **When resources are limited**: Deliver only the First Ring + DomainDescriptor/HITL from the Second Ring — sufficient to support a POC
+- **When time pressure is high**: The Second Ring's NL entry can be replaced with a simplified version (structured form); Dashboard can be deferred
+- **Domain count is elastic**: The Third Ring's 24 domains can be rolled out in 6 batches per §33 Phase 9 cadence — no need to deliver all at once
 
---- 
+---
 
-# 70. Conclusion 
+# 33. Phased Rollout Roadmap
 
-This is not "an Agent platform that does things automatically", but: 
+> Includes **acceptance gates**, **dependencies**, and **concrete deliverables**.
 
-> **An enterprise operating system that treats Agents as high-risk automation units for strict control, isolation, recovery, auditing and governance - from a one-person company to an enterprise with 10,000 people, a seven-layer architecture covering infrastructure, AI operations, business domain access, intelligent interaction, organizational governance, large-scale ecology, and operational maturity with full-stack capabilities. ** 
+## Phase 1: Steady-State Skeleton (8 weeks)
 
-Its core is not "multi-intelligence", but: 
+### Deliverables
 
-* Conservative by default 
-* High risks must be controlled 
-*Exceptions must be classified and handled 
-* Execution must be resumable 
-* The state must be replayable 
-* Behavior must be auditable 
-* Platform must be downgradeable 
-* The service must be pluggable but cannot bypass the base 
-* **The business domain must be understood in a structured manner rather than as an opaque black box** 
-* **Non-technical users must be able to use it directly without understanding the underlying architecture** 
-* **Organizational governance must adapt to the corporate hierarchy rather than assuming a flat structure** 
-* **Large-scale operation must have fair resource scheduling and SLA differentiation guarantee** 
-* **Agent decisions must be explainable and behavioral drift must be detectable** 
-* **The platform must be able to brake in an emergency, and the Agent must have a unified life cycle** 
-* **Offline/edge scenarios must be operable, disconnection does not mean shutdown** 
-* **Multi-modal input and output must be included in unified security control, and content review cannot be bypassed** 
+- truth tables + event log + UoW (Group 1 tables)
+- lease / fencing / CAS
+- idempotency
+- artifact ref
+- policy outcome + decision model (Group 2 tables)
+- Minimal ops CLI (doctor / inspect)
+- Unit test ≥ 80% coverage
 
-### Overview of seven-layer architecture evolution
-| Layers | Versions | Problem Solving | Core Chapters |
-|------|------|---------|---------|
-| Infrastructure layer | v2.0 | How to build the platform | §4-§14, §24-§32 |
-| AI operation layer | v2.1 | How AI operates | §15-§23 |
-| Business domain access layer | v2.2 | How to connect the business | §37-§38 |
-| Intelligent interaction layer | v2.3 | How users use it | §39-§44 |
-| Organizational governance layer | v2.4 | How the organization is managed | §46-§51 |
-| Scaled operation layer + ecological layer | v2.5 | How to achieve scale + how to build an ecosystem | §52-§57 |
-| Operational Maturity Layer | v2.6 | How to use it well + How to run it safely | §59-§69 |
-### v2.6 Operational Maturity Layer Capability Summary
-| Issues | v2.5 | v2.6 |
-|------|------|------|
-| How do users understand Agent decisions? | Audit logs only | §59 Explainability and Decision Transparency |
-| How to stop a security incident urgently? | Kill one by one | §60 Emergency braking and global fuse |
-| How to manage Agent as a whole? | Components are managed individually | §61 Unified life cycle management |
-| How to run offline/edge scenarios? | Not supported | §62 Offline and edge deployment |
-| How to detect agent behavior gradient? | Quality threshold only | §63 Behavioral drift detection |
-| How to optimize costs? | Measurement only | §64 Cost Attribution and Optimization Engine |
-| How to debug Workflow failure? | See original log | §65 Visual debugger |
-| How to issue a compliance report? | Manual sorting | §66 Compliance report automatically generated |
-| When should we expand? | Just guessing | §67 Capacity planning and cost forecasting |
-| How to process pictures/voices/documents? | Not supported | §68 Multi-modal capabilities |
-| How to operate and maintain without an SRE team? | Purely manual | §69 Platform self-operation and maintenance Agent |
-Only by having the stability of the infrastructure layer, the controllability of the AI ​​operation layer, the structuring of the business domain access layer, the ease of use of the intelligent interaction layer, the adaptability of the organizational governance layer, the scalability of the large-scale operation layer, and the launchability of the operational maturity layer can enterprises upgrade the Agent platform from architectural design to an enterprise-level productivity operating system that truly covers companies with one person to companies with ten thousand people, and 12+ vertical business lines. 
+### Acceptance Gates
 
---- 
+- [ ] workflow_run can be stably created and advanced (no degradation)
+- [ ] lease automatically reclaimed after timeout
+- [ ] CAS conflicts correctly rejected
+- [ ] Event append and truth table in the same transaction
 
-#Appendix G: Glossary and abbreviation index
-| Abbreviation/term | Full name | Description |
-|-----------|------|------|
-| OAPEFLIR | Observe-Assess-Plan-Execute-Feedback-Learn-Improve-Recover | Eight stages of the Agent core loop (§13) |
-| HITL | Human-In-The-Loop | Human-machine collaboration mode, human participation in the Agent decision-making chain (§21) |
-| DLQ | Dead Letter Queue | Dead letter queue, temporary storage area for messages/events that cannot be processed (§28.6) |
-| CAS | Compare-And-Swap | Optimistic concurrency control primitive for StateCommand idempotent writes (§5.4) |
-| SLO / SLA | Service Level Objective / Agreement | Service Level Objective / Agreement (§27, §54) |
-| SEV1-4 | Severity 1-4 | Event Severity Rating (1 is the highest) (§12) |
-| TTFT | Time To First Token | LLM streaming response first token arrival delay (§27.7) |
-| SCC | Standard Contractual Clauses | GDPR Standard Contractual Clauses, legal mechanism for cross-border data transfers (§52.4) |
-| BCR | Binding Corporate Rules | Binding Corporate Rules, intra-group cross-border data transfer mechanism (§52.4) |
-| DPIA | Data Protection Impact Assessment | Data Protection Impact Assessment (§52.4) |
-| PIPL | Personal Information Protection Law | China Personal Information Protection Law (§52) |
-| WCAG | Web Content Accessibility Guidelines | Accessibility Guidelines (§44.6) |
-| SCIM | System for Cross-domain Identity Management | Cross-domain Identity Management Protocol (§48) |
-| SSO | Single Sign-On | Single Sign-On (§48) |
-| RBAC | Role-Based Access Control | Role-Based Access Control (§11) |
-| DAG | Directed Acyclic Graph | Directed acyclic graph for goal decomposition and task dependency (§40) |
-| Pack | Business Pack | Business domain function package, the deployable unit of Agent (§30) |
-| UoW | Unit of Work | Unit of work, atomic boundary of transactional operations |
-| WAL | Write-Ahead Log | Write-ahead log, a persistence mechanism to ensure crash recovery (§31) |
-| P1-P5 | Plane 1-5 | Five-plane architecture (Interface·Control·Orchestration·Execution·State & Evidence) (§4) |
-| X1 | Cross-cutting Fabric | Cross-cutting concerns (Reliability·Governance·Intelligence) (§4) |
-| NL | Natural Language | Natural Language (§39) |
-| sLLM | Small LLM | Small localized language model for edge/offline scenarios (§62) |
-| RTO / RPO | Recovery Time / Point Objective | Recovery Time / Point Objective (§31) |
---- 
+### Dependencies
 
-#Appendix A: Version change history
-| Version | Date | Changes |
-|------|------|---------|
-| v1.0 | 2026-04 | Initial five-plane architecture + seven-layer stability + OAPEFLIR concept design |
-| v1.1 | 2026-04 | Added risk matrix, DLQ model, deployment recommendations |
-| v1.2 | 2026-04 | Added data model 44 tables, event namespace, ADR suggestions, recommended directory |
-| v2.0 | 2026-04-18 | **Infrastructure Improved Version**: Added inter-plane communication contract (§5), API contract (§6), service communication (§7), scalability (§8), configuration governance (§24), performance SLO (§27), disaster recovery and high availability (§31); improved risk score (§10), OAPEFLIR Interface (§13), Storage Abstraction (§26), Deployment (§32), Roadmap (§33); Addressing 14 design flaws in v1.2 |
-| v2.1 | 2026-04-19 | **AI Operation Complete Version**: Added LLM Provider abstraction and failover (§15), Prompt management and versioning (§16), model evaluation and quality access control (§17), cost management and Token measurement (§18), inter-Agent delegation and collaboration (§19), long-term tasks and Workflow Hibernation (§20), human-machine collaboration mode (§21), SDK and developer experience (§22), compliance and data governance (§23); improve API authentication and Webhook (§6), security threat model (§11), alert routing and distributed Tracing (§12), Error Budget and LLM delay (§27), Pack life cycle and Plugin governance (§30); add 9 ADRs; resolve 14 AI operations layer flaws in v2.0 |
-| v2.2 | 2026-04-19 | **Business domain access complete version**: New business domain modeling and access architecture (§37) - DomainDescriptor structured domain modeling, DomainRiskProfile domain risk portrait, DomainKnowledgeSchema domain knowledge structure, DomainEvalFramework domain assessment framework, DomainPromptLibrary domain Prompt library, DomainRecipe Domain template prototype, DomainInteractionPolicy cross-domain interaction strategy, DomainGovernancePolicy domain governance model; new business domain access runbook (§38) - four-stage access control process (modeling → development → certification → grayscale); improve the Business Pack model (§30) associated DomainDescriptor; add 4 ADRs; solve 10 business domain access layer defects in v2.1 |
-| v2.3 | 2026-04-19 | **Intelligent Interaction Complete Version**: Added natural language task entry architecture (§39), goal decomposition engine architecture (§40), active Agent framework (§41), progressive autonomy model (§42), unified operation dashboard architecture (§43), non-technical user experience architecture (§44); added 6 ADRs; making the platform from "Agent" Infrastructure" upgrade to "Agent Operating System" for non-technical users |
-| v2.4 | 2026-04-19 | **Complete version of organizational governance**: New organizational hierarchy model (§46), organizational structure approval routing (§47), enterprise SSO/SCIM integration (§48), sub-department compliance policy engine (§49), knowledge domain isolation and controlled sharing (§50), hierarchical governance delegation (§51); 6 new ADRs; enable the platform to adapt to the organizational complexity from a one-person company to an enterprise with ten thousand people |
-| v2.5 | 2026-04-19 | **Scale Ecosystem Complete Version**: Added multi-region deployment architecture (§52), large-scale resource competition management (§53), SLA hierarchical guarantee (§54), Agent market and ecology (§55), feedback-driven continuous improvement pipeline (§56), external system integration framework (§57); added 6 ADRs; completed cross-Region high availability, fair resource scheduling, SLA Differentiated guarantees, open ecology and continuous self-improvement capabilities |
-| v2.6 | 2026-04-19 | **Operation Maturity Complete Version**: Added Agent explainability and decision transparency (§59), emergency braking and global circuit breaker (§60), Agent unified life cycle management (§61), offline and edge deployment (§62), Agent Behavioral drift detection (§63), cost attribution and optimization engine (§64), workflow visual debugger (§65), automatic compliance report generation engine (§66), capacity planning and cost prediction (§67), multi-modal capabilities (§68), platform self-operation and maintenance Agent (§69); 11 new ADRs; complete the operational maturity layer from "complete architectural design" to "ready for production operation" |
-| v2.7 | 2026-04-19 | **Quality revision**: Fix ADR autonomy level contradiction (monotonic→guarded progression); unify §9.5/§14.8 mode enumeration to 8 mode specification set; complete the missing principal/trace_id field of ExecutionPlan/StateCommand; extend Prompt injection defense architecture (§16.5); fix ADR-NL TaskSpec→RequestEnvelope reference; completes §26 Data Model (44→71 tables) and §28 Event Namespace (17→25); completes §33 Roadmap Phase 5-7; completes §43 L2/L3 Kanban view definition; new §39.7 i18n, §44.6 WCAG, §52.4 GDPR Cross-border transmission, §55.4-55.6 Market revenue/obsolescence/dependency management, §15.6 Streaming error handling; add §40 circular dependency detection, §5.2 P2→P4 communication path; fix §62 typo and §70 conclusion omission; add Appendix G Glossary |
+No external dependencies. Can start with SQLite + Node.js alone.
+
+## Phase 2: Controlled Automation (8 weeks)
+
+### Deliverables
+
+- OAPEFLIR main chain O→A→P→E→F
+- risk assessment engine
+- approval gates (basic)
+- side effect tracking
+- recovery workers (LeaseReclaimer + StuckRunSweeper)
+- 2 Business Packs: coding.fix_bug + operations.resolve_incident
+
+### Acceptance Gates
+
+- [ ] Main chain runs end-to-end (task creation → execution → completion)
+- [ ] High-risk step triggers approval blocking
+- [ ] Execution resumes within 30s after worker crash
+- [ ] Side effects are queryable and auditable
+
+### Dependencies
+
+All Phase 1 acceptance gates passed.
+
+## Phase 3: Enterprise Reliability (12 weeks)
+
+### Deliverables
+
+- OAPEFLIR secondary chain F→L→I→R
+- circuit breaker + degradation mode switching
+- backpressure (4 modes)
+- incident management + DLQ operations
+- projection rebuild
+- replay / repair
+- Configuration governance (versioned + canary)
+- Multi-tenant isolation hardening
+- PostgreSQL migration (optional)
+
+### Acceptance Gates
+
+- [ ] Auto-degrades on external dependency circuit break, auto-recovers when restored
+- [ ] DLQ is queryable, retryable, and closable
+- [ ] Incident closed-loop handling chain connected
+- [ ] Data consistent after projection rebuild
+- [ ] Configuration changes are rollbackable
+
+### Dependencies
+
+All Phase 2 acceptance gates passed.
+
+## Phase 4: Scale-Out (Continuous)
+
+### Deliverables
+
+- Worker separated deployment (Phase D2)
+- More Business Packs
+- Browser execution deepening
+- Plugin ecosystem
+- SLO automated monitoring
+- Compliance export
+- Disaster recovery drills
+
+### Acceptance Gates
+
+- [ ] 50 concurrent workflows running stably
+- [ ] Multi-tenant isolation verification passed
+- [ ] Load test meets §27 SLO
+- [ ] Disaster recovery drill RTO < 10min
+
+## Phase 5: Intelligent Interaction + Org Governance + Domain Onboarding Framework (12 weeks)
+
+> Intelligent interaction layer + org governance layer + unified domain meta-model + multi-Agent collaboration protocol.
+
+### Deliverables
+
+- Natural language task entry (§39) + goal decomposition engine (§40)
+- Proactive Agent framework (§41) + progressive autonomy model (§42)
+- Unified operations dashboard (§43) + non-technical user experience (§44)
+- Org hierarchy model (§46) + approval routing (§47) + SSO/SCIM (§48)
+- Compliance policy engine (§49) + knowledge domain isolation (§50) + governance delegation (§51)
+- Unified domain meta-model 12-question template and validation tooling (§37.11)
+- Multi-Agent collaboration protocol message format and inviolable rule validation (§19.5)
+
+### Acceptance Gates
+
+- [ ] Non-technical users can create and manage tasks via natural language
+- [ ] Goal decomposition engine auto-decomposes business goals into executable task graphs
+- [ ] Progressive autonomy L0→L3 upgrade path verified end-to-end
+- [ ] Three-level org hierarchy correctly drives approval routing
+- [ ] SSO/SCIM auto-syncs users and deactivated accounts take effect < 5min
+- [ ] Knowledge domain isolation zero-leakage, controlled sharing audit complete
+- [ ] 12-question meta-model template fillable and validatable, at least 2 domains populated
+- [ ] Multi-Agent collaboration messages deliverable end-to-end, 7 inviolable rules auto-validated
+
+### Dependencies
+
+All Phase 4 acceptance gates passed.
+
+## Phase 6: Scale and Ecosystem (12 weeks)
+
+> Scale-out layer + ecosystem layer.
+
+### Deliverables
+
+- Multi-Region deployment (§52) + resource contention management (§53) + SLA tiering (§54)
+- Agent marketplace (§55) + feedback improvement pipeline (§56) + external integration framework (§57)
+
+### Acceptance Gates
+
+- [ ] Dual-Region Active-Active deployment, single Region failure RTO < 5min
+- [ ] High-priority tasks not starved under 1000 concurrent workflows
+- [ ] SLA Tier P0 tasks 99.9% completed within committed time
+- [ ] Marketplace has at least 20 certified Packs listed
+- [ ] User feedback → improvement closed loop < 7 days
+
+### Dependencies
+
+All Phase 5 acceptance gates passed.
+
+## Phase 7: Ops Maturity (Continuous)
+
+> Ops maturity layer.
+
+### Deliverables
+
+- Explainability (§59) + emergency brake (§60) + lifecycle management (§61)
+- Offline/edge deployment (§62) + behavior drift detection (§63) + cost optimization (§64)
+- Visual debugger (§65) + compliance reports (§66) + capacity planning (§67)
+- Multi-modal capabilities (§68) + platform self-ops Agent (§69)
+
+### Acceptance Gates
+
+- [ ] Users can query explanations for any step, L1 latency < 2s
+- [ ] Emergency brake drill: full platform stop < 5s, recovery < 30min
+- [ ] EdgeRuntime recovers with zero data loss after 24h offline
+- [ ] 100% alert triggered when behavior drift > 2σ
+- [ ] Compliance report SOC2 Type II control point coverage ≥ 95%
+- [ ] PlatformOps Agent L1 maturity verification passed
+
+### Dependencies
+
+All Phase 6 acceptance gates passed.
+
+## Phase 8a: Harness Unified Execution Protocol (8 weeks)
+
+> Harness engineering layer. Can start in parallel with Phase 3.
+
+### Deliverables
+
+- HarnessRun/HarnessStep unified contract (§45.13) + HarnessDecision (§58.6)
+- Harness Runtime main entry + HarnessLoopController (§45.7)
+- ConstraintPack assembly engine (§45.3) + ToolbeltAssembler (§45.4)
+- ContextAssembler + ContextSnapshot (§45.5) + minimal Working Memory (§45.16)
+- Planner/Generator/Evaluator Agent role separation (§45.8-45.10)
+- FeedbackEnvelope four-stage closed loop (§45.6)
+- Basic Evaluator (runtime adjudication)
+
+### Acceptance Gates
+
+- [ ] All task execution goes through HarnessRuntime.run() entry, no bypass
+- [ ] ConstraintPack correctly merges platform→tenant→domain→task four-level constraints
+- [ ] Planner/Generator/Evaluator use independent Prompts, no sharing
+- [ ] Evaluator pass rate ≥ 95% after each step execution
+- [ ] HarnessRun/HarnessStep contract fully covers all runs and steps
+- [ ] All six HarnessDecision verdicts have test coverage
+
+## Phase 8b: Harness Long-Running and Human-in-the-Loop (6 weeks)
+
+> Eight-pillar deepening. Depends on Phase 8a completion.
+
+### Deliverables
+
+- Durable Harness persistent execution (§45.15): pauseReason registry + resumeStrategy
+- HITL Runtime (§45.18): inspect/patch/override/takeover/resume five capabilities
+- Async Harness (§45.19): create_run/poll_status/subscribe_events/intervene_mid_run
+- Memory Namespace (§45.16): Working/Long-term/Shared Knowledge three layers + promotion strategy
+- Harness Prompt layered governance (§58.2)
+- Failure-to-Learning pipeline (§58.3)
+- Online feedback closed loop
+
+### Acceptance Gates
+
+- [ ] ContextSnapshot supports crash recovery, state consistent after recovery
+- [ ] Durable Harness supports 5 pauseReasons and 4 resumeStrategies
+- [ ] HITL Runtime inspect/patch/override operable from §43 dashboard
+- [ ] Async run supports poll_status and intervene_mid_run
+- [ ] Memory three-layer namespace isolation passes tenant/domain isolation tests
+
+## Phase 8c: Harness Governance and Evaluation (6 weeks)
+
+> Eight-pillar deepening. Depends on Phase 8b completion.
+
+### Deliverables
+
+- Evaluation Harness (§45.14): pre-release evaluation + version comparison evaluation
+- Tool Harness (§45.17): tool capability profile + tool invocation governance records
+- Guardrails layering (§45.20): input/planning/tool/memory/output five layers
+- Harness Replay/Simulation (§58.4)
+- Harness ten invariants (§45.21) enforced checks
+- Harness-level metrics visible on §43 dashboard (§58.1)
+
+### Acceptance Gates
+
+- [ ] Evaluation Harness can run standard task sets in sandbox and output comparison reports
+- [ ] Tool Harness Capability Profile covers all registered tools
+- [ ] All five Guardrails layers have interception test coverage
+- [ ] Harness Replay can fully replay completed runs
+- [ ] Ten invariants have corresponding automated checks (violation fails CI)
+
+### Dependencies
+
+Phase 8a → Phase 8b → Phase 8c. Phase 8a can proceed in parallel with Phases 3-7. Phase 8c must be completed before Phase 5.
+
+## Phase 9: Vertical Business Domain Deep Landing (48 weeks, 6 batches)
+
+> Instantiation of DomainDescriptors for 24 vertical business domains, domain tool integration, domain evaluation baseline establishment, and canary go-live. Depends on Phase 5 + Phase 8c completion. First 3 batches cover original 12 domains (v3.0), last 3 batches cover 12 new domains (v3.1).
+
+### Phase 9a: High-Priority Domains (8 weeks) — Code Development · Data Processing · Enterprise Knowledge Base · User Operations
+
+Selection criteria: Platform already has coding/operations instances, controllable risk, can quickly validate domain framework.
+
+#### Deliverables
+
+- 4 domain DomainDescriptor instances (including RiskProfile/KnowledgeSchema/EvalFramework/PromptLibrary/GovernancePolicy)
+- 4 domain Business Packs (at least 2 core Workflows each)
+- 4 domains pass §38 four-stage gates (modeling→development→certification→canary)
+- Domain-level evaluation baselines and regression datasets
+
+#### Acceptance Gates
+
+- [ ] All 4 domains reach GA status
+- [ ] Each domain eval meets acceptance_threshold on all quality axes
+- [ ] Domain-level SLO compliance rate ≥ 95%
+- [ ] Cross-domain interaction policy verified (Code Development↔Data Processing)
+
+### Phase 9b: Medium-Priority Domains (8 weeks) — Quantitative Trading · Financial Services · E-commerce · Advertising
+
+Selection criteria: High business value, Critical-risk domains require stricter certification.
+
+#### Deliverables
+
+- 4 domain DomainDescriptor instances (including domain-specific risk control rules and compliance mappings)
+- Trading/Compliance prototype template verification
+- Quantitative Trading domain ultra-low-latency path verification
+- Financial Services domain regulatory report Agent end-to-end verification
+
+#### Acceptance Gates
+
+- [ ] All 4 domains reach GA status
+- [ ] Critical-risk domains (Quantitative Trading/Financial Services) HITL coverage 100%
+- [ ] Quantitative Trading domain execution path latency < 10ms (excluding LLM)
+- [ ] Financial Services domain AML/KYC compliance check passed
+
+### Phase 9c: Completion Domains (8 weeks) — Industry Research · Academic Research · Finance · Legal
+
+Selection criteria: High HITL requirements, regulation-intensive, requires lawyer/auditor participation in verification.
+
+#### Deliverables
+
+- 4 domain DomainDescriptor instances
+- Research/Adversarial prototype template verification
+- Legal domain lawyer review workflow end-to-end verification
+- Finance domain SOX compliance audit trail verification
+
+#### Acceptance Gates
+
+- [ ] All 4 domains reach GA status
+- [ ] Legal domain all outputs 100% reviewed by lawyers
+- [ ] Finance domain audit trail integrity check passed
+- [ ] Academic Research domain citation accuracy 100% (zero fabrication)
+- [ ] All first 12 domains running online, cross-domain interaction matrix verified
+
+### Phase 9d: High-Priority New Domains (8 weeks) — Customer Service · IT Ops SRE/DevOps · Content Moderation & Safety · Live Streaming
+
+Selection criteria: Operational necessity, high real-time requirements, mature tool ecosystem available for integration.
+
+#### Deliverables
+
+- 4 domain DomainDescriptor instances (including RiskProfile/KnowledgeSchema/EvalFramework/PromptLibrary/GovernancePolicy)
+- Customer Service domain multi-turn dialogue closed-loop end-to-end verification
+- IT Ops domain alert→diagnosis→remediation automation chain verification
+- Content Moderation domain CSAM instant reporting compliance workflow verification
+- Live Streaming domain real-time stream moderation latency < 2s verification
+
+#### Acceptance Gates
+
+- [ ] All 4 domains reach GA status
+- [ ] Customer Service domain first-contact resolution rate ≥ 70%, CSAT ≥ 4.0
+- [ ] IT Ops domain MTTR reduced ≥ 30% (vs. manual baseline)
+- [ ] Content Moderation domain violation recall rate ≥ 99.5%, CSAM 100% instant reporting
+- [ ] Live Streaming domain real-time stream moderation end-to-end latency < 2s
+
+### Phase 9e: Medium-Priority New Domains (8 weeks) — Healthcare · Human Resources · Supply Chain & Logistics · Education & Training
+
+Selection criteria: High compliance requirements, strong HITL domains, requires deep domain expert participation in certification.
+
+#### Deliverables
+
+- 4 domain DomainDescriptor instances (including domain-specific compliance mappings and approval workflows)
+- Healthcare domain licensed physician review workflow end-to-end verification
+- Human Resources domain recruitment bias audit passed
+- Supply Chain domain demand forecasting→scheduling→exception handling chain verification
+- Education & Training domain personalized learning path recommendation verification
+
+#### Acceptance Gates
+
+- [ ] All 4 domains reach GA status
+- [ ] Healthcare domain all treatment recommendations 100% reviewed by licensed physicians
+- [ ] Human Resources domain recruitment process bias audit passed (Adverse Impact Ratio ≥ 0.8)
+- [ ] Supply Chain domain demand forecasting accuracy ≥ 85% (MAPE ≤ 15%)
+- [ ] Education & Training domain learning outcome improvement ≥ 15% (vs. baseline)
+
+### Phase 9f: Completion New Domains (8 weeks) — Ad Creative Production · Game Development · Game Publishing · Marketing & Branding
+
+Selection criteria: Creativity-intensive, complex publishing workflows, requires multi-party collaboration verification.
+
+#### Deliverables
+
+- 4 domain DomainDescriptor instances
+- Ad Creative domain multi-modal generation→compliance review→iteration chain verification
+- Game Development domain code generation→testing→performance verification chain verification
+- Game Publishing domain multi-platform compliance check→submission→monitoring chain verification
+- Marketing domain campaign orchestration→delivery→performance analysis closed-loop verification
+
+#### Acceptance Gates
+
+- [ ] All 4 domains reach GA status
+- [ ] Ad Creative domain creative compliance pass rate ≥ 95% (first submission)
+- [ ] Game Development domain code generation compilation pass rate ≥ 90%
+- [ ] Game Publishing domain multi-platform compliance first-pass rate ≥ 85%
+- [ ] All 24 domains running online, cross-domain interaction matrix 24×24 verified
+
+### Dependencies
+
+Phase 9a depends on Phase 5 + Phase 8c completion. Phase 9a→9b→9c→9d→9e→9f proceeds linearly, 48 weeks total. Phase 9d can start immediately after Phase 9c completion.
+
+## 33.1 Phase Dependency Graph
+
+```text
+Phase 1 (Steady-State Skeleton)
+    │
+    ▼
+Phase 2 (Controlled Automation)
+    ├──────────────────────────────┐
+    │                              │
+    ▼                              ▼
+Phase 3 (Enterprise Reliability)  Phase 8a (Unified Execution Protocol)
+    │                              │
+    ▼                              ▼
+Phase 4 (Scale-Out)              Phase 8b (Long-Running & Human-in-the-Loop)
+    │                              │
+    ▼                              ▼
+Phase 5 (Intelligent Interaction  Phase 8c (Governance & Evaluation)
+         & Org Governance)    ◄────┘
+    │
+    ├──────────────────────────────┘
+    │
+    ▼
+Phase 6 (Scale & Ecosystem)
+    │
+    ▼
+Phase 7 (Ops Maturity)
+    │
+    ▼
+Phase 9a (High-Priority: Code·Data·Knowledge Base·Ops)
+    │
+    ▼
+Phase 9b (Medium-Priority: Quant·Finance·E-commerce·Ads)
+    │
+    ▼
+Phase 9c (Completion: Research·Academic·Finance·Legal)
+    │
+    ▼
+Phase 9d (High-Priority New: CS·IT Ops·Content Moderation·Streaming)
+    │
+    ▼
+Phase 9e (Medium-Priority New: Healthcare·HR·Supply Chain·Education)
+    │
+    ▼
+Phase 9f (Completion New: Creatives·Game Dev·Game Publishing·Marketing)
+```
+
+Phase 9a can start after Phase 5 + Phase 8c completion (early preparation can proceed in parallel with Phases 6-7). Phase 9a→9b→9c→9d→9e→9f proceeds linearly, 48 weeks total.
+
+## 33.2 Production Minimum Closure
+
+To ensure the platform can be delivered incrementally and enter production validation as early as possible, features are divided into three delivery batches:
+
+**Batch A — Controlled Execution Closure** (Phase 1-2 delivery):
+P1-P5 plane skeleton · OAPEFLIR/Harness main chain · ConstraintPack · Toolbelt · Evaluator basic adjudication · Checkpoint/Recovery · Approval/Policy/Audit basic flows. After delivery, end-to-end tasks can run in a controlled environment.
+
+**Batch B — Enterprise Execution Closure** (Phase 3-4 delivery):
+Async Harness · HITL Runtime · Memory Namespace · Tool Harness governance · Guardrails five layers · Multi-tenant/Org/Compliance · Drift Detection basics. After delivery, supports enterprise multi-team, multi-approval, long-running task scenarios.
+
+**Batch C — Platform Optimization Closure** (Phase 5-8c delivery):
+Evaluation Harness (offline evaluation + version comparison) · Replay/Simulation · Cost optimization · Drift auto-repair · PlatformOps Agent · Marketplace. After delivery, the platform has self-ops and continuous improvement capabilities.
+
+Delivery criteria for each batch: full-chain smoke test passed · critical path E2E test coverage · security scan no P0/P1 · operations manual ready.
+
+---
+# 34. ADR Freeze Recommendations
+
+105 ADRs in total:
+
+**Platform Fundamentals (19)**:
+ADR-Platform-Layering · ADR-Control-Runtime-Intelligence-Separation · ADR-Domain-Onboarding-Model · ADR-Memory-vs-Knowledge-Boundary · ADR-Contracts-as-Single-Source · ADR-State-Machine-Canonical-Map · ADR-Governance-as-First-Class-Plane · ADR-Integration-Through-Adapters-Only · ADR-Reliability-Fabric-as-Crosscutting-System · ADR-Risk-Assessment-Mandatory-Before-High-Risk-Actions · ADR-SideEffect-Two-Phase-Commit-Style · ADR-HumanWait-as-Formal-Executor · ADR-Incident-as-First-Class-Object · ADR-Projection-Rebuild-Mandatory · ADR-Platform-Mode-Switching · ADR-DLQ-Handling-Model · ADR-Egress-Control-Mandatory · ADR-Security-Classification-Policy · ADR-Runtime-Checkpoint-Boundaries
+
+**Plane Communication & Deployment (4)**:
+
+- **ADR-Plane-Communication-Contracts** — The five planes must communicate through formal contract objects
+- **ADR-Repository-Abstraction-Layer** — All storage access goes through the Repository interface
+- **ADR-Single-Process-First** — Deployment starts as a monolith; split only after validation
+- **ADR-API-Versioning-Strategy** — API versioning and backward compatibility strategy
+
+**AI Operations (9)**:
+
+- **ADR-ModelGateway-As-Single-LLM-Entry** — All LLM calls must go through ModelGateway; direct provider SDK calls are prohibited
+- **ADR-Prompt-As-Versioned-Resource** — Prompts are not inlined in code; they are managed independently as versioned resources
+- **ADR-Quality-Gate-Before-Prompt-Release** — Prompt/Model changes must pass a quality gate
+- **ADR-Per-Tenant-Cost-Metering** — All LLM costs must be metered per tenant
+- **ADR-Delegation-Depth-Limit** — Maximum delegation depth between Agents = 3
+- **ADR-Workflow-Hibernation-Model** — Long-waiting workflows must release workers and persist state
+- **ADR-Crypto-Shredding-For-Erasure** — GDPR erasure is implemented via crypto-shredding
+- **ADR-Pack-Semver-Compatibility** — Pack Manifest API follows the semver compatibility contract
+- **ADR-LLM-Latency-Excluded-From-Platform-SLO** — LLM latency is monitored independently and excluded from the platform's own SLO
+
+**Business Domain Onboarding (4)**:
+
+- **ADR-Domain-Descriptor-As-Semantic-Layer** — Every Business Pack must be associated with a DomainDescriptor; domain semantics must not be embedded in Pack code
+- **ADR-Domain-Risk-Override-Over-Platform-Default** — Domain risk profile overrides take precedence over the platform default risk matrix; overrides require an audited justification
+- **ADR-Domain-Recipe-As-Onboarding-Accelerator** — New business domains must start from one of twelve archetype templates; blank onboarding is prohibited
+- **ADR-Four-Phase-Domain-Onboarding** — Business domain onboarding must pass four phase gates (Modeling → Development → Certification → Canary); skipping is not allowed
+
+**Intelligent Interaction (6)**:
+
+- **ADR-NL-Intent-Must-Resolve-To-RequestEnvelope** — Natural language input must go through Intent resolution to produce a structured RequestEnvelope (§5.3); passing raw text directly to an Agent is prohibited
+- **ADR-Goal-Decomposition-Max-Depth** — Goal decomposition engine recursion depth limit = 5; exceeding it requires human confirmation of the decomposition plan
+- **ADR-Proactive-Agent-Must-Have-Trigger-Policy** — Proactive Agents must be bound to a TriggerPolicy; unconditional polling is prohibited
+- **ADR-Autonomy-Level-Guarded-Progression** — Progressive autonomy levels default to monotonically increasing (promotion requires meeting a score threshold + approval); demotion occurs only under the safety trigger conditions defined in §42.2 (P0 Incident / consecutive failures / cost overrun); after demotion, human approval confirmation with a recorded reason is required, and the recovery path follows the promotion rules
+- **ADR-Dashboard-Metric-Source-Of-Truth** — Unified operations dashboard data must come from the State & Evidence Plane; directly reading Runtime internal state is prohibited
+- **ADR-No-Code-UX-Maps-To-Standard-API** — Non-technical user interface operations must map to standard Public APIs; bypass is prohibited
+
+**Organizational Governance (6)**:
+
+- **ADR-Org-Hierarchy-As-First-Class-Model** — Organizational hierarchy (Enterprise → Business Group → Department → Team) is a first-class model; all resource ownership must be associated with an OrgNode
+- **ADR-Approval-Route-From-Org-Chart** — Approval routes must be dynamically derived from the org chart; hardcoded approver lists are prohibited
+- **ADR-SSO-As-Single-Identity-Source** — Enterprise SSO is the sole identity source; the platform does not maintain independent user passwords
+- **ADR-Compliance-Policy-Inherits-Down** — Compliance policies inherit downward along the org tree; child nodes can only tighten, never relax
+- **ADR-Knowledge-Boundary-Default-Deny** — Knowledge domains are isolated by default; cross-department sharing requires explicit authorization with an audit log
+- **ADR-Governance-Delegation-Requires-Scope** — Governance delegation must be scoped (resource type + OrgNode range); global delegation is prohibited
+
+**Scale & Ecosystem (6)**:
+
+- **ADR-Multi-Region-Active-Active-With-Home-Region** — Multi-Region uses an Active-Active architecture; each tenant has a Home Region; cross-region data is replicated asynchronously
+- **ADR-Resource-Contention-Fair-Queue** — Scaled deployments must use weighted fair queues; simple FIFO that causes high-priority task starvation is prohibited
+- **ADR-SLA-Tier-Determines-Resource-Allocation** — SLA tier determines resource quota, queue priority, and failure recovery order
+- **ADR-Marketplace-Pack-Must-Pass-Certification** — Packs listed on the Agent Marketplace must pass platform certification (security scan + sandbox test + performance baseline)
+- **ADR-Feedback-Loop-Closed-Within-SLA** — User feedback must form a closed loop within the SLA-defined time window (collection → analysis → improvement → verification)
+- **ADR-Integration-Through-Unified-Connector** — External system integration must go through the unified Connector framework; business code directly calling external APIs is prohibited
+
+**Operations Maturity (11)**:
+
+- **ADR-Every-Decision-Must-Have-Rationale** — Every stage of OAPEFLIR must generate a StageRationale; decision explanations are rendered on demand
+- **ADR-Platform-Panic-Atomic-Halt** — PlatformPanicDirective must atomically halt the entire platform within 5 seconds; recovery requires dual-person approval
+- **ADR-Agent-As-Composite-Entity** — An Agent is a composite entity of Pack + Prompt + Model + Trust + Trigger, with AgentVersion as the unit of release and rollback
+- **ADR-Edge-Runtime-Risk-Ceiling** — Offline EdgeRuntime may only execute actions with risk_level ≤ medium; high-risk actions wait for connectivity to be restored
+- **ADR-Behavior-Fingerprint-Mandatory** — Every Agent must maintain a BehaviorFingerprint; drift detection covers four windows: 1h / 7d / 30d / 90d
+- **ADR-Cost-Attribution-Per-Decision** — Cost attribution must be precise to the decision level (individual LLM call); optimization recommendations must include a quality_risk assessment
+- **ADR-Workflow-Debug-Session-Isolated** — Debug sessions run in an isolated sandbox; breakpoint pauses do not affect other workflows
+- **ADR-Compliance-Report-Template-Versioned** — Compliance report templates must be versioned; the template version is locked at report generation time
+- **ADR-Capacity-Forecast-Drives-Scaling** — Capacity forecast results must be linked to scaling recommendations; scaling recommendations must include a cost impact estimate
+- **ADR-Multimodal-Safety-Check-Before-Output** — Multimodal output (images / speech) must pass a content safety check before being delivered to the user
+- **ADR-PlatformOps-Agent-Read-Only-Default** — The platform self-ops Agent is read-only by default; production write operations require human approval
+
+**Harness Engineering (7)**:
+
+- **ADR-Harness-As-First-Class-Runtime** — Harness Runtime is a first-class architectural object; all task execution must go through the HarnessRuntime.run() entry point; bypassing Harness to call P4 directly is prohibited
+- **ADR-ConstraintPack-Per-Run** — Every HarnessRun must carry an explicit ConstraintPack; constraint sources are merged by priority: platform → tenant → domain → task
+- **ADR-Planner-Generator-Evaluator-Prompt-Isolation** — Prompts for the three Agent types (Planner / Generator / Evaluator) must be independently versioned and independently rolled out; sharing Prompt templates is prohibited
+- **ADR-Step-Level-Evaluation-Mandatory** — After each step completes, an Evaluator assessment is mandatory; skipping evaluation to proceed to the next step is prohibited
+- **ADR-Toolbelt-Minimum-Privilege** — Toolbelt is assembled with minimum privilege, including only the tool subset allowed by the current task + domain + risk level
+- **ADR-ContextSnapshot-Per-Loop** — Every Harness loop iteration must save a ContextSnapshot to a P5 Checkpoint, supporting crash recovery and Replay
+- **ADR-Global-Call-Depth-Limit** — The global call depth limit for goal decomposition (depth ≤ 5) × delegation chain (depth ≤ 3) = 10, enforced via the global_call_depth field propagated through traces
+
+**Harness Eight Pillars (9)**:
+
+- **ADR-Harness-Eight-Pillar-Model** — Harness upgrades from a five-tuple to eight pillars (Constraints · Tools · State/Memory · Feedback · Durability · Evaluation Harness · HITL Runtime · Observability/Replay); all pillars must have an independent acceptance gate
+- **ADR-HarnessRun-As-First-Class-Entity** — HarnessRun is a first-class entity with a complete lifecycle (pending → running → paused → completed/failed/aborted); all state transitions must be written to the audit log
+- **ADR-HarnessDecision-Six-Way** — HarnessDecision has a fixed set of six verdicts (accept / retry_same_plan / replan / escalate_to_human / downgrade_mode / abort); custom verdict types are prohibited
+- **ADR-Evaluation-Harness-Outcome-Over-Transcript** — Evaluation uses the final outcome (whether the environment state reached the goal state) as the primary metric; transcript is supplementary only
+- **ADR-Durable-Harness-Pause-Resume** — All async runs must support explicit pause/resume; on pause, full serialization to a P5 Checkpoint is required
+- **ADR-Memory-Three-Namespace-Isolation** — The three memory layers (Working / Long-term / Shared Knowledge) must have namespace isolation; cross-layer promotion requires policy review
+- **ADR-Tool-Capability-Profile-Mandatory** — Every registered tool must have a Capability Profile; tools without a profile are prohibited from being assembled by the ToolbeltAssembler
+- **ADR-HITL-As-Runtime-Primitive** — HITL is a native Harness runtime step type (phase=hitl), not merely an escalation path
+- **ADR-Guardrails-Five-Layer** — Guardrails are divided into five layers (input / planning / tool / memory / output); each layer is independently configured, independently intercepted, and independently audited
+
+**Vertical Business Domain Deep Dives (24)**:
+
+- **ADR-Domain-Recipe-Twelve-Archetypes** — DomainRecipe expands from eight to twelve archetypes (CRUD-heavy / Analytics / Creative / Realtime / Trading / Compliance / Research / Adversarial / Moderation / Logistics / Conversational / IncidentOps), covering 24 vertical domain workflow patterns
+- **ADR-Quant-Trading-Pre-Trade-Risk-Mandatory** — All orders in the quantitative trading domain must pass pre-trade risk checks; risk check latency must not exceed 50μs; hard position/loss limits cannot be overridden by Agents
+- **ADR-Financial-Services-Explainable-Decisions** — All adverse credit decisions in the financial services domain must include explainable rejection reasons, in compliance with fair lending regulations
+- **ADR-Legal-Output-Attorney-Review-Mandatory** — All Agent outputs in the legal domain must be reviewed by a licensed attorney before being sent out or acted upon; Agents provide "legal information" only, not "legal advice"
+- **ADR-Finance-Accounting-Segregation-Of-Duties** — The finance domain must enforce segregation of duties (creator ≠ approver), in compliance with SOX internal control requirements
+- **ADR-Ecommerce-Price-Change-Guardrail** — Price changes in the e-commerce domain exceeding X% of the current price must trigger human approval to prevent pricing errors
+- **ADR-Academic-Research-Zero-Citation-Fabrication** — Every citation in the academic research domain must resolve to a real paper (DOI / database verification); zero fabrication tolerance
+- **ADR-Knowledge-Base-Source-Permission-Mirroring** — The enterprise knowledge base domain must mirror source system document-level permissions; real-time access checks are enforced at query time
+- **ADR-Advertising-Budget-Hard-Cap** — The advertising domain must have platform-level hard daily/hourly budget caps; bidding errors must not breach the cap
+- **ADR-Data-Engineering-Schema-Migration-Approval** — Destructive schema changes in the data engineering domain must be approved by a human; downstream impact is assessed automatically
+- **ADR-User-Operations-Frequency-Cap-Mandatory** — All message delivery in the user operations domain must enforce frequency caps to prevent notification fatigue
+- **ADR-Domain-Latency-Tier-Classification** — Every domain must declare a latency tier (ultra-low-latency / realtime / near-realtime / batch); the platform allocates resources and scheduling strategy accordingly
+- **ADR-Healthcare-Physician-Review-Mandatory** — All medical recommendations in the healthcare domain must be reviewed by a licensed physician before being presented to the patient; Agents provide "medical information" only, not "medical advice"
+- **ADR-Content-Moderation-CSAM-Immediate-Report** — Detection of CSAM content in the content moderation domain must be reported to the designated authority within 1 minute; zero tolerance, zero delay
+- **ADR-HR-Bias-Audit-Mandatory** — Recruitment/promotion decisions in the human resources domain must pass a bias audit (Adverse Impact Ratio ≥ 0.8); automated decisions without an audit are prohibited
+- **ADR-Supply-Chain-Forecast-Approval-Before-Procurement** — Large procurement orders in the supply chain domain must be based on an approved demand forecast; Agents are prohibited from independently triggering procurement above the threshold
+- **ADR-Live-Streaming-Realtime-Moderation-SLA** — Real-time stream moderation latency in the live streaming domain must be < 2s; violating content must be taken down / stream cut within 5s of detection
+- **ADR-Game-Publishing-Multi-Platform-Compliance** — Every target platform in the game publishing domain must independently pass compliance checks (age rating / content review / payment compliance); reusing review results across platforms is prohibited
+- **ADR-Customer-Service-Escalation-Timeout** — If the Agent in the customer service domain cannot resolve an issue within 3 conversation turns, it must automatically escalate to a human agent; infinite loops are prohibited
+- **ADR-IT-Operations-Blast-Radius-Limit** — Automated remediation blast radius in the IT operations domain is limited to a single node / single service; cross-domain operations require human approval
+- **ADR-Education-Minor-Data-Protection** — Data involving minors in the education domain must comply with COPPA / minor protection laws; data collection is minimized and requires guardian consent
+- **ADR-Creative-Production-IP-Verification** — All AI-generated content in the creative production domain must pass copyright / trademark infringement checks; use of unauthorized materials is prohibited
+- **ADR-Game-Dev-IP-Similarity-Check** — AI-generated art assets in the game development domain must pass known IP similarity detection to prevent copyright infringement
+- **ADR-Marketing-Brand-Consistency-Check** — All externally published content in the marketing domain must pass brand tone consistency checks and advertising law compliance checks
+
+---
+# 35. Recommended Code Directory
+
+```text
+src/
+  platform/
+    interface/          # P1
+      api/
+      webhook/
+      scheduler/
+      console-backend/
+      ingress/
+
+    control-plane/      # P2
+      tenant/
+      iam/
+      policy-center/
+      approval-center/
+      rollout-controller/
+      incident-control/
+      replay-repair-control/
+      config-center/
+      audit-export/
+
+    orchestration/      # P3
+      oapeflir/
+      planner/
+      replan/
+      routing/
+      escalation/
+      hitl/
+
+    execution/          # P4
+      dispatcher/
+      execution-engine/
+      worker-pool/
+      tool-executor/
+      plugin-executor/
+      adapter-executor/
+      browser-executor/
+      human-wait-executor/
+      recovery/
+      # Note: scheduler is under interface/scheduler/
+
+    state-evidence/     # P5
+      truth/
+      events/
+      projections/
+      artifacts/
+      memory/
+      knowledge/
+      audit/
+      incident/        # (planned)
+      checkpoints/     # (planned)
+      dlq/             # (planned)
+
+    model-gateway/      # LLM abstraction layer
+      provider-registry/
+      router/
+      cache/
+      cost-tracker/
+      fallback/
+
+    prompt-engine/      # Prompt management
+      registry/
+      renderer/
+      rollout/
+      eval/
+
+    compliance/         # Compliance & data governance
+      crypto-shredding/
+      data-residency/  # (planned)
+      erasure/          # (planned)
+      encryption/       # (planned)
+      lineage/          # (planned)
+
+    harness/            # Harness Runtime
+      runtime/            # HarnessRuntime main entry point
+      protocol/           # Harness contracts (HarnessRun/HarnessStep/HarnessDecision/PlanBundle/WorkProduct/EvaluationReport/FeedbackEnvelope)
+      planner/            # Planner Agent implementation
+      generator/          # Generator Agent implementation
+      evaluator/          # Evaluator Agent implementation
+      eval-harness/       # Evaluation Harness (pre-release evaluation / version comparison / TaskOutcomeGrader)
+      loop/               # HarnessLoopController
+      context/            # ContextAssembler + ContextSnapshot
+      memory-namespace/   # Working/Long-term/Shared Knowledge three-layer memory + MemoryPromotionPolicy
+      constraints/        # ConstraintEngine + ConstraintPack assembly
+      guardrails/         # Five-layer Guardrails (input/planning/tool/memory/output)
+      toolbelt/           # ToolbeltAssembler + tool reliability profile
+      tool-harness/       # Tool Capability Profile + tool lifecycle governance
+      hitl-runtime/       # HITL Runtime (inspect/patch/override/takeover/resume)
+      durable/            # Durable Harness (pause/resume/checkpoint strategy)
+      async/              # Async Harness (create_run/poll/subscribe/intervene)
+      recovery/           # Harness Recovery Controller
+
+    contracts/          # Inter-plane contracts
+      request-envelope/
+      control-directive/
+      execution-plan/
+      execution-receipt/
+      state-command/
+      delegation-request/
+      model-request/
+
+  domains/                # Business domain modeling
+    registry/             # DomainDescriptor registry & lifecycle
+    risk-profile/         # DomainRiskProfile domain risk profile
+    knowledge-schema/     # DomainKnowledgeSchema domain knowledge structure
+    eval-framework/       # DomainEvalFramework domain evaluation
+    prompt-library/       # DomainPromptLibrary domain Prompt library
+    recipes/              # DomainRecipe archetype templates
+    interaction-policy/   # DomainInteractionPolicy cross-domain policy
+    governance/           # DomainGovernancePolicy domain governance
+    coding/               # Code development domain instance
+    operations/           # Operations domain instance
+    quant-trading/        # Quantitative trading domain instance (§71)
+    ecommerce/            # E-commerce domain instance (§72)
+    advertising/          # Advertising domain instance (§73)
+    financial-services/   # Financial services domain instance (§74)
+    data-engineering/     # Data engineering domain instance (§75)
+    user-operations/      # User operations domain instance (§77)
+    industry-research/    # Industry research domain instance (§78)
+    academic-research/    # Academic research domain instance (§79)
+    knowledge-base/       # Enterprise knowledge base domain instance (§80)
+    finance-accounting/   # Finance & accounting domain instance (§81)
+    legal/                # Legal domain instance (§82)
+    live-streaming/       # Live streaming domain instance (§83)
+    creative-production/  # Creative production domain instance (§84)
+    game-dev/             # Game development domain instance (§85)
+    game-publishing/      # Game publishing domain instance (§86)
+    human-resources/      # Human resources domain instance (§87)
+    supply-chain/         # Supply chain & logistics domain instance (§88)
+    healthcare/           # Healthcare domain instance (§89)
+    education/            # Education & training domain instance (§90)
+    customer-service/     # Customer service domain instance (§91)
+    content-moderation/   # Content moderation & safety domain instance (§92)
+    it-operations/        # IT operations SRE/DevOps domain instance (§93)
+    marketing/            # Marketing & brand domain instance (§94)
+
+  interaction/            # Intelligent interaction layer
+    nl-gateway/           # Natural language task entry
+      intent-parser/
+      slot-resolver/
+      ambiguity-handler/
+    goal-decomposer/      # Goal decomposition engine
+      planner/
+      dependency-graph/
+      validator/
+    proactive-agent/      # Proactive Agent framework
+      trigger-engine/
+      schedule-manager/
+      event-watcher/
+    autonomy/             # Progressive autonomy
+      trust-scorer/
+      level-manager/
+      promotion-engine/
+    dashboard/            # Unified operations dashboard
+      metric-aggregator/
+      health-scorer/
+      alert-router/
+    ux/                   # Non-technical user experience
+      wizard/
+      template-engine/
+      onboarding/
+
+  org-governance/         # Organizational governance layer
+    org-model/            # Organizational hierarchy model
+      hierarchy/
+      org-node/
+      sync/
+    approval-routing/     # Org-chart-based approval routing
+      route-engine/
+      escalation/
+      delegation/
+    sso-scim/             # SSO/SCIM integration
+      saml/
+      oidc/
+      scim-sync/
+    compliance-engine/    # Departmental compliance policy engine
+      policy-resolver/
+      inheritance/
+      audit-enforcer/
+    knowledge-boundary/   # Knowledge domain isolation & controlled sharing
+      boundary-manager/
+      sharing-gate/
+      access-log/
+    delegated-governance/ # Tiered governance delegation
+      scope-manager/
+      delegation-registry/
+
+  scale-ecosystem/        # Scale runtime layer + ecosystem layer
+    multi-region/         # Multi-region deployment
+      region-router/
+      data-replicator/
+      failover-controller/
+    resource-manager/     # Resource contention management
+      fair-queue/
+      quota-enforcer/
+      preemption/
+    sla-engine/           # SLA tiered assurance
+      tier-resolver/
+      resource-allocator/
+      breach-detector/
+    marketplace/          # Agent marketplace & ecosystem
+      catalog/
+      certification/
+      publisher/
+    feedback-loop/        # Feedback-driven continuous improvement
+      collector/
+      analyzer/
+      improvement-tracker/
+    integration/          # External system integration framework
+      connector-registry/
+      connector-runtime/
+      health-monitor/
+
+  ops-maturity/           # Operations maturity layer
+    explainability/       # Agent explainability
+      evidence-collector/
+      causal-chain-builder/
+      explanation-renderer/
+      explanation-cache/
+    emergency/            # Emergency brake
+      panic-controller/
+      forensic-snapshot/
+      resume-protocol/
+    agent-lifecycle/      # Agent unified lifecycle
+      agent-registry/
+      version-manager/
+      canary-controller/
+      retirement/
+    edge-runtime/         # Offline & edge deployment
+      edge-orchestrator/
+      edge-executor/
+      local-model/
+      sync-queue/
+    drift-detection/      # Behavior drift detection
+      fingerprint-builder/
+      changepoint-detector/
+      cross-agent-analyzer/
+    cost-optimizer/       # Cost attribution & optimization
+      attribution-engine/
+      recommendation-engine/
+      simulator/
+    workflow-debugger/    # Visual debugger
+      timeline-renderer/
+      breakpoint-manager/
+      run-comparator/
+    compliance-reporter/  # Compliance reporting engine
+      template-registry/
+      evidence-mapper/
+      report-renderer/
+    capacity-planner/     # Capacity planning
+      trend-analyzer/
+      forecaster/
+      simulator/
+    multimodal/           # Multimodal capabilities
+      image-processor/
+      speech-processor/
+      document-parser/
+      modality-router/
+    platform-ops-agent/   # Platform self-ops Agent
+      incident-diagnoser/
+      config-optimizer/
+      capacity-predictor/
+      dev-assistant/
+      health-monitor/
+
+  plugins/
+    adapters/
+    retrievers/
+    planners/
+    evaluators/
+    presenters/
+
+  sdk/                  # SDK
+    pack-sdk/
+    plugin-sdk/
+    client-sdk/
+    cli/
+
+  apps/
+    api/
+    console/
+    workers/
+```
+
+---
+# 36. Risks, Constraints, and Success Criteria
+
+## 36.1 Major Risks
+
+- Unstable model outputs
+- Uncontrollable tool side effects
+- Insufficient recovery chains making automation unrecoverable
+- Projection bias mistaken for ground truth
+- Mis-learning causing behavior drift
+- Incomplete multi-tenant isolation
+- Pack model non-convergence causing business to reverse-invade the platform
+- Budget overrun
+- replay / rebuild misoperation amplifying issues
+- **LLM provider total unavailability causing platform paralysis**
+- **Prompt changes introducing behavioral regression**
+- **LLM cost overrun (token overspend)**
+- **Agent delegation chain recursive runaway**
+- **NL Intent parsing ambiguity causing incorrect task creation**
+- **Goal decomposition recursion too deep causing task explosion**
+- **Proactive Agent infinite triggering forming storms**
+- **Progressive autonomy mis-escalation causing high-risk action runaway**
+- **Org structure change sync delay causing approval routing errors**
+- **Knowledge isolation misconfiguration causing cross-department data leakage**
+- **Governance delegation scope too broad causing security downgrade**
+- **Cross-Region data replication delay causing consistency issues**
+- **Resource contention management failure causing high-priority task starvation**
+- **Marketplace malicious Pack passing certification and causing security incidents**
+- **Explainability pipeline LLM call cost overrun (frequent forensic-level explanations)**
+- **Emergency brake false trigger causing platform-wide unwarranted downtime**
+- **Agent composite version canary test insufficient coverage causing combinatorial defect escape**
+- **EdgeRuntime offline state accumulating large amounts of side effects, conflict explosion on reconnection**
+- **Behavior drift detection false positives causing frequent Agent downgrades affecting business**
+- **Multimodal content safety check miss causing prohibited content output**
+- **Quantitative trading domain Agent placing wrong orders causing catastrophic financial loss (fat-finger error)**
+- **Financial services domain AML miss causing massive regulatory fines**
+- **Legal domain Agent output used as legal advice (unauthorized practice risk)**
+- **E-commerce domain pricing Agent setting extreme low prices constituting legally binding offers**
+- **Academic research domain citation fabrication constituting academic fraud**
+- **Finance domain incorrect bookkeeping causing financial misstatement and audit failure**
+- **Enterprise knowledge base domain permission leakage causing confidential documents retrieved by unauthorized users**
+- **Advertising domain bid errors causing budget exhausted on low-quality traffic**
+- **Healthcare domain Agent output used as medical advice causing misdiagnosis/delayed treatment (life safety risk)**
+- **Content moderation domain CSAM miss causing criminal liability and platform shutdown**
+- **HR domain recruitment Agent algorithmic bias causing systemic discrimination and lawsuits**
+- **Live streaming domain prohibited content not taken down promptly causing regulatory penalties and public opinion incidents**
+- **Supply chain domain severe demand forecast deviation causing massive inventory surplus or stockout**
+- **IT operations domain auto-remediation propagation causing cascading failures (blast radius runaway)**
+- **Customer service domain Agent providing incorrect information or commitments causing legal and financial risk**
+- **Education domain minor data leakage causing COPPA/minor protection law violations**
+- **Game development domain AI-generated assets infringing existing IP copyrights causing legal disputes**
+- **Game publishing domain age rating errors causing minors' exposure to inappropriate content**
+- **Marketing domain brand crisis mishandling causing irreversible reputational damage**
+
+## 36.2 Hard Constraints
+
+- Runtime only consumes published-state definitions
+- Projection does not write back to truth
+- Learn does not directly drive production changes
+- Secrets must not enter Memory / Knowledge / external Artifacts
+- All outbound calls go through egress control
+- All side effects must be recorded as first-class objects
+- High-risk actions must be approved or explicitly denied
+- CAS + Lease + Fencing are hard constraints for write-back
+- Inter-plane communication must go through formal contract objects
+- **All LLM calls must go through ModelGateway**
+- **Prompt changes must pass quality gates**
+- **LLM costs must be metered per tenant**
+- **Agent delegation depth ≤ 3**
+- **PII data deletion via crypto-shredding**
+- **NL input must go through Intent parsing to generate RequestEnvelope (§5.3); raw text pass-through is prohibited**
+- **Goal decomposition recursion depth ≤ 5**
+- **Proactive Agents must be bound to a TriggerPolicy**
+- **Autonomy level defaults to monotonically increasing; downgrade is limited to §42.2 safety trigger conditions, and requires manual approval confirmation after execution**
+- **All resources must be associated with an OrgNode**
+- **Compliance policies inherit downward along the org tree; child nodes can only tighten**
+- **Knowledge domains are isolated by default; cross-department sharing requires explicit authorization**
+- **SSO is the sole identity source**
+- **Each tenant must designate a Home Region**
+- **Marketplace Packs must pass certification before listing**
+- **External system integration must go through the unified Connector framework**
+- **OAPEFLIR must generate a StageRationale at each stage**
+- **PlatformPanicDirective: same Region < 5s, cross Region < 15s to halt the entire platform**
+- **Agent publishing and rollback are performed in units of AgentVersion (composite snapshot)**
+- **EdgeRuntime offline mode risk_level ≤ medium**
+- **Each Agent must maintain a BehaviorFingerprint**
+- **Multimodal output must pass content safety checks**
+- **PlatformOps Agent is read-only by default; production write operations require manual approval**
+- **Quantitative trading domain must have pre-market risk checks and hard position/loss limits**
+- **Financial services domain: all adverse credit decisions must be explainable and subject to manual review**
+- **Legal domain: all Agent output must be reviewed by a licensed attorney before external release**
+- **Finance domain must enforce separation of duties (creator ≠ approver)**
+- **E-commerce domain: price changes exceeding threshold must be manually approved**
+- **Academic research domain: citations must resolve to real papers (zero fabrication tolerance)**
+- **Enterprise knowledge base domain must mirror source system document-level permissions**
+- **Healthcare domain: all diagnostic/treatment suggestions must be reviewed by a licensed physician; Agent must not replace medical orders**
+- **Content moderation domain: CSAM must be reported within 1 minute of detection, zero tolerance zero delay**
+- **HR domain: recruitment/promotion decisions must pass bias audit (AIR ≥ 0.8)**
+- **Live streaming domain: prohibited content must be taken down/stream cut within 5s of detection**
+- **Supply chain domain: purchase orders exceeding threshold must be based on approved demand forecasts**
+- **IT operations domain: auto-remediation blast radius limited to single node/single service**
+- **Customer service domain: must escalate to human agent after 3 rounds unresolved**
+- **Education domain: minor data requires guardian consent and minimal collection**
+- **Game publishing domain: each target platform must independently pass compliance checks**
+- **Advertising creative domain: AI-generated content must pass copyright/trademark infringement checks**
+- **Marketing domain: all external content must pass brand tone consistency checks and advertising law compliance detection**
+
+## 36.3 Success Criteria
+
+### Phase 1 Success Criteria
+
+- workflow_run can be stably created and advanced
+- Lease timeout triggers automatic reclaim
+- CAS conflicts are correctly rejected
+
+### Phase 2 Success Criteria
+
+- OAPEFLIR main chain runs end-to-end
+- Worker recovers within 30s after crash
+- High-risk actions can be blocked by approval
+
+### Phase 3 Success Criteria
+
+- incident / replay / repair / DLQ are operationally usable
+- External dependency circuit break → degradation → recovery is automated
+- Projection is rebuildable and data-consistent
+
+### Phase 4 Success Criteria
+
+- 50 concurrent workflows run stably
+- Load test meets SLO
+- Disaster recovery drill RTO < 10min
+
+### Phase 5 Success Criteria
+
+- Non-technical users can create and manage tasks via natural language
+- Goal decomposition engine automatically breaks down business goals into executable task graphs
+- Proactive Agents trigger automatically per TriggerPolicy without storms
+- Progressive autonomy Level 0→3 upgrade path validated end-to-end
+- Three-level org hierarchy (Company→Department→Team) correctly drives approval routing
+- SSO/SCIM auto-syncs users and deactivated accounts take effect < 5min
+- Knowledge domain isolation has zero leakage, controlled sharing audit is complete
+
+### Phase 6 Success Criteria
+
+- Dual-Region Active-Active deployment, single Region failure RTO < 5min
+- Under 1000 concurrent workflows, high-priority tasks are not starved
+- SLA Tier P0 tasks complete within committed time at 99.9%
+- Marketplace has at least 20 certified Packs listed
+- User feedback → improvement closed loop < 7 days
+- Pre-built Connectors cover all systems in P0 categories
+
+### Phase 7 Success Criteria
+
+- Users can query explanations for any workflow step; L1 latency < 2s, L3 latency < 10s
+- Emergency brake drill: same Region full platform halt < 5s, recovery < 30min
+- AgentVersion composite canary release validated end-to-end (canary→active auto-promotion)
+- EdgeRuntime recovers connection after 24h offline with zero data loss during sync
+- Behavior drift detection triggers alert 100% of the time when Agent behavior distribution shift > 2σ
+- Cost optimization recommendations achieve savings rate ≥ 20% (compared to unoptimized baseline)
+- Compliance report SOC2 Type II fully auto-generated, control point coverage ≥ 95%
+- Capacity forecast 30-day accuracy ≥ 85%
+- Multimodal: image analysis + speech-to-text available end-to-end
+- PlatformOps Agent L1 maturity validated: auto-diagnostic report generation < 5min
+
+### Phase 8 Success Criteria
+
+- Harness Runtime runs end-to-end: ConstraintPack loading + Planner→Generator→Evaluator closed loop + HarnessDecision adjudication
+- HarnessRun / HarnessStep all fields persisted and queryable
+- Durable Harness 5 pauseReason types all have test coverage
+- HITL Runtime 5 intervention modes (inspect/patch/override/takeover/resume) are usable
+- Async Harness sleep/wake validated end-to-end
+- Evaluation Harness sandbox evaluation + version comparison report can be generated
+- Guardrails all five layers have interception test coverage
+- Harness Replay can fully replay completed runs
+- Ten invariants pass automated checks (violation fails CI)
+- Tool Harness Capability Profile covers all registered tools
+
+### Phase 9 Success Criteria
+
+- All 24 vertical business domains reach GA status (passing §38 four-stage gates)
+- All 12 DomainRecipe archetype templates have at least one domain instance validated
+- Critical risk domains (Quantitative Trading/Financial Services/Finance/Legal/Healthcare) have 100% HITL coverage
+- Cross-domain interaction matrix 24×24 validated with no unauthorized data flows
+- Each domain's eval meets acceptance_threshold on all quality axes
+- Quantitative trading domain ultra-low-latency path < 10ms (excluding LLM calls)
+- Legal domain: 100% of all output reviewed by a licensed attorney before external release
+- Academic research domain: citation accuracy 100% (zero fabrication)
+- Healthcare domain: 100% of all diagnostic/treatment suggestions reviewed by a licensed physician
+- Content moderation domain: CSAM reporting 100% completed within 1 minute
+- HR domain: recruitment process bias audit all passed (AIR ≥ 0.8)
+- IT operations domain: auto-remediation MTTR reduced ≥ 30%
+- Customer service domain: first contact resolution rate ≥ 70%
+
+---
+# Part XI -- Conclusion and Appendices
+
+---
+
+# 70. Conclusion
+
+This is not "an Agent platform that automatically does things", but rather:
+
+> **An enterprise operating system that treats Agents as high-risk automation units subject to strict control, isolation, recovery, auditing, and governance — from one-person companies to ten-thousand-person enterprises, with a ten-layer architecture covering infrastructure, AI operations, business domain onboarding, vertical business domain deepening, intelligent interaction, Harness engineering, Harness eight-pillar deepening, organizational governance, scaled ecosystem, and operational maturity as a full-stack capability.**
+
+Its core is not "how intelligent" but rather:
+
+- Conservative by default
+- High risk must be controlled
+- Exceptions must be classified and handled
+- Execution must be recoverable
+- State must be replayable
+- Behavior must be auditable
+- Platform must be degradable
+- Business must be pluggable but cannot bypass the foundation
+- **Business domains must be structurally understood, not treated as opaque black boxes**
+- **Non-technical users must be able to use it directly without understanding the underlying architecture**
+- **Organizational governance must adapt to enterprise hierarchies, not assume flat structures**
+- **Scaled operation must have fair resource scheduling and differentiated SLA guarantees**
+- **Agent decisions must be explainable, and behavior drift must be detectable**
+- **The platform must support emergency braking, and Agents must have a unified lifecycle**
+- **Offline/edge scenarios must be operational — disconnected does not mean halted**
+- **Multimodal I/O must be under unified security controls and cannot bypass content moderation**
+- **Agent capabilities must be engineered — one-off model calls must be upgraded to a constrained, executable, memorable, feedback-capable, recoverable, evaluable, intervenable, observable Harness eight-pillar closed-loop system**
+- **Business domains must be described with a unified meta-model (§37.11) — the 12-question template ensures structural consistency across 24 domains, configuration-driven, with templated onboarding for new domains**
+- **Multi-Agent collaboration must follow mandatory protocols (§19.5) — permissions do not escalate, risk does not increase, constraints are not bypassed, audit chains are not broken**
+- **Implementation must advance in rings — survival ring for baseline, availability ring for pilots, expansion ring for scale, avoiding breadth-over-depth that leads to nothing landing**
+
+### Ten-Layer Architecture Overview
+
+| Layer                          | Problem Solved                           | Core Sections           | Doc Part  |
+| ------------------------------ | ---------------------------------------- | ----------------------- | --------- |
+| Infrastructure Layer           | How to build the platform                | §4-§14, §24-§32        | Part I    |
+| AI Operations Layer            | How to operate AI                        | §15-§23                 | Part II   |
+| Business Domain Onboarding     | How to onboard business                  | §37-§38                 | Part III  |
+| **Vertical Domain Deepening**  | **How to deepen 24 vertical domains**    | **§71-§94**             | Part IV   |
+| Intelligent Interaction Layer  | How users interact                       | §39-§44                 | Part V    |
+| Harness Engineering Layer      | How to consolidate capabilities          | §45.1-45.12, §58.1-58.5| Part VI   |
+| Harness Eight-Pillar Layer     | How to deepen capabilities               | §45.13-45.21, §58.6    | Part VI   |
+| Organizational Governance      | How to govern the org                    | §46-§51                 | Part VII  |
+| Scale + Ecosystem Layer        | How to handle scale + build ecosystem    | §52-§57                 | Part VIII |
+| Operational Maturity Layer     | How to run well + run safely             | §59-§69                 | Part IX   |
+
+### Harness Eight-Pillar Capability Summary
+
+| Question                          | Before                                                        | Current                                                                     |
+| --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Harness definition model?         | Five-tuple (Constraints+Tools+Context+Feedback+Recovery)      | Eight pillars (+Durability+Evaluation Harness+HITL Runtime+Observability)    |
+| First-class run/step contract?    | Only HarnessRunRequest                                        | §45.13 HarnessRun/HarnessStep full lifecycle                                |
+| Unified decision protocol?        | LoopController five outputs                                   | §58.6 HarnessDecision six standardized verdicts                             |
+| Offline evaluation?               | Runtime Evaluator only                                        | §45.14 Evaluation Harness (pre-release + version comparison + outcome assertions) |
+| Long-running task pause/resume?   | Recovery Controller fault recovery                            | §45.15 Durable Harness (5 pauseReasons + 4 resumeStrategies)               |
+| Memory layered governance?        | HarnessContext four context types                             | §45.16 Memory Namespace (Working/Long-term/Shared + promotion strategy)     |
+| Tool governance?                  | ToolbeltAssembler assembly                                    | §45.17 Tool Harness (Capability Profile + lifecycle + trust score)          |
+| HITL level?                       | escalate to §21 HITL                                          | §45.18 HITL Runtime (inspect/patch/override/takeover/resume)                |
+| Async task management?            | No explicit async pattern                                     | §45.19 Async Harness (create/poll/subscribe/intervene)                      |
+| Where are guardrails enforced?    | Implicit in ConstraintPack                                    | §45.20 Guardrails five layers (input/planning/tool/memory/output)           |
+| Baseline invariant rules?         | Scattered across ADRs                                         | §45.21 Ten invariants                                                       |
+
+Only when combining **Infrastructure Layer stability**, **AI Operations Layer controllability**, **Business Domain Onboarding structuring**, **Vertical Domain Deepening domain expertise**, **Intelligent Interaction Layer usability**, **Harness Engineering Layer standardization**, **Harness Eight-Pillar deepening**, **Organizational Governance adaptability**, **Scale Layer scalability**, and **Operational Maturity Layer production-readiness** can an enterprise elevate its Agent platform from architectural design to a true enterprise-grade productivity operating system covering one-person companies to ten-thousand-person enterprises across 24 vertical business lines.
+
+---
+# Appendix G: Glossary and Abbreviation Index
+
+| Abbreviation/Term         | Full Name                                                  | Description                                                                                                                                                |
+| ------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OAPEFLIR                  | Observe-Assess-Plan-Execute-Feedback-Learn-Improve-Release | Eight stages of the Agent core loop (§13)                                                                                                                  |
+| HITL                      | Human-In-The-Loop                                          | Human-machine collaboration mode where humans participate in the Agent decision chain (§21)                                                                |
+| DLQ                       | Dead Letter Queue                                          | Dead letter queue, a staging area for unprocessable messages/events (§28.6)                                                                                |
+| CAS                       | Compare-And-Swap                                           | Optimistic concurrency control primitive, used for idempotent StateCommand writes (§5.4)                                                                   |
+| SLO / SLA                 | Service Level Objective / Agreement                        | Service level objective / agreement (§27, §54)                                                                                                             |
+| SEV1-4                    | Severity 1-4                                               | Incident severity levels (1 is highest) (§12)                                                                                                              |
+| TTFT                      | Time To First Token                                        | Latency until the first token arrives in LLM streaming responses (§27.7)                                                                                   |
+| SCC                       | Standard Contractual Clauses                               | GDPR standard contractual clauses, a legal mechanism for cross-border data transfers (§52.4)                                                               |
+| BCR                       | Binding Corporate Rules                                    | Binding corporate rules, a mechanism for intra-group cross-border data transfers (§52.4)                                                                   |
+| DPIA                      | Data Protection Impact Assessment                          | Data protection impact assessment (§52.4)                                                                                                                  |
+| PIPL                      | Personal Information Protection Law                        | China's Personal Information Protection Law (§52)                                                                                                          |
+| WCAG                      | Web Content Accessibility Guidelines                       | Web content accessibility guidelines (§44.6)                                                                                                               |
+| SCIM                      | System for Cross-domain Identity Management                | Cross-domain identity management protocol (§48)                                                                                                            |
+| SSO                       | Single Sign-On                                             | Single sign-on (§48)                                                                                                                                       |
+| RBAC                      | Role-Based Access Control                                  | Role-based access control (§11)                                                                                                                            |
+| DAG                       | Directed Acyclic Graph                                     | Directed acyclic graph, used for goal decomposition and task dependencies (§40)                                                                            |
+| Pack                      | Business Pack                                              | Business domain capability pack, the deployable unit of an Agent (§30)                                                                                     |
+| UoW                       | Unit of Work                                               | Unit of work, the atomic boundary of transactional operations                                                                                              |
+| WAL                       | Write-Ahead Log                                            | Write-ahead log, a persistence mechanism for crash recovery (§31)                                                                                          |
+| P1-P5                     | Plane 1-5                                                  | Five-plane architecture (Interface·Control·Orchestration·Execution·State & Evidence) (§4)                                                                  |
+| X1                        | Cross-cutting Fabric                                       | Cross-cutting concerns (Reliability·Governance·Intelligence) (§4)                                                                                          |
+| NL                        | Natural Language                                           | Natural language (§39)                                                                                                                                     |
+| sLLM                      | Small LLM                                                  | Small localized language model, used for edge/offline scenarios (§62)                                                                                      |
+| RTO / RPO                 | Recovery Time / Point Objective                            | Recovery time / point objective (§31)                                                                                                                      |
+| Harness                   | Agent Harness Runtime                                      | Eight-pillar runtime (Constraint·Tool·State/Memory·Feedback·Durable Execution·Evaluation·HITL·Observability) (§45)                                         |
+| PlanBundle                | Planner Agent standardized output                          | Contains goal/taskGraph/budget/riskProfile/successCriteria (§45.8)                                                                                         |
+| WorkProduct               | Generator Agent standardized output                        | Contains stepId/artifacts/observations/telemetry (§45.9)                                                                                                   |
+| EvaluationReport          | Evaluator Agent standardized output                        | Contains passed/score/issues/recommendation/confidence (§45.10)                                                                                            |
+| FeedbackEnvelope          | Unified feedback envelope                                  | Standardized output for four-tier feedback closed loop (Step/Task/Workflow/System level) (§45.6)                                                           |
+| ConstraintPack            | Task-level constraint pack                                 | Explicit constraint envelope carried by each HarnessRun (§45.3)                                                                                            |
+| Toolbelt                  | Task-level tool set                                        | Tool subset assembled per the principle of least privilege (§45.4)                                                                                         |
+| HarnessRun                | Harness run entity                                         | First-class entity of a complete Harness task run, with lifecycle and audit (§45.13)                                                                       |
+| HarnessStep               | Harness step entity                                        | Single execution step contract, with phase/role/inputs/outputs/rationale (§45.13)                                                                          |
+| HarnessDecision           | Harness unified adjudication                               | Six adjudications: accept/retry/replan/escalate/downgrade/abort (§58.6)                                                                                    |
+| Evaluation Harness        | Unified evaluation runtime                                 | Runtime adjudication + pre-release evaluation + version comparison evaluation system (§45.14)                                                              |
+| Durable Harness           | Durable execution pillar                                   | checkpoint/pause/resume as foundational Harness capabilities (§45.15)                                                                                      |
+| Memory Namespace          | Memory namespace                                           | Working/Long-term/Shared Knowledge three-layer isolation and promotion (§45.16)                                                                            |
+| Tool Harness              | Tool governance layer                                      | Tool Capability Profile + lifecycle + trust level governance (§45.17)                                                                                      |
+| HITL Runtime              | Human-in-the-loop runtime                                  | inspect/patch/override/takeover/resume five capability types (§45.18)                                                                                      |
+| Async Harness             | Async execution mode                                       | Multi-hour/multi-turn/multi-approval async Harness execution mode (§45.19)                                                                                 |
+| Guardrails                | Layered guardrails                                         | input/planning/tool/memory/output five-layer dynamic checkpoints (§45.20)                                                                                  |
+| DomainRecipe              | Domain template archetype                                  | Twelve archetypes (CRUD-heavy/Analytics/Creative/Realtime/Trading/Compliance/Research/Adversarial/Moderation/Logistics/Conversational/IncidentOps) (§37.7) |
+| Trading Archetype         | Trading archetype                                          | Signal→Risk Control→Execution→Settlement workflow pattern (§37.7, §71, §74)                                                                                |
+| Compliance Archetype      | Compliance archetype                                       | Monitor→Detect→Assess→Report workflow pattern (§37.7, §74, §81, §82)                                                                                       |
+| Research Archetype        | Research archetype                                         | Collect→Analyze→Synthesize→Publish workflow pattern (§37.7, §78, §79)                                                                                      |
+| Adversarial Archetype     | Adversarial archetype                                      | Attack Surface→Defense→Audit→Remediation workflow pattern (§37.7, §76, §82)                                                                                |
+| FTO                       | Freedom-to-Operate                                         | Freedom-to-operate search, an intellectual property term (§82)                                                                                             |
+| SAR/STR                   | Suspicious Activity/Transaction Report                     | Suspicious activity/transaction report, required by AML regulations (§74)                                                                                  |
+| PSI                       | Population Stability Index                                 | Model stability index, a financial services model monitoring metric (§74)                                                                                  |
+| VaR/CVaR                  | Value at Risk / Conditional VaR                            | Value at risk / conditional value at risk, quantitative trading risk metrics (§71)                                                                         |
+| ROAS                      | Return on Ad Spend                                         | Return on ad spend (§73)                                                                                                                                   |
+| MRR                       | Mean Reciprocal Rank                                       | Mean reciprocal rank, a search quality metric (§80)                                                                                                        |
+| NDCG                      | Normalized Discounted Cumulative Gain                      | Normalized discounted cumulative gain, a search ranking metric (§80)                                                                                       |
+| Moderation Archetype      | Moderation archetype                                       | Content Ingest→Multimodal Detection→Disposition→Appeal workflow pattern (§37.7, §83, §92)                                                                  |
+| Logistics Archetype       | Logistics archetype                                        | Forecast→Optimize→Dispatch→Track→Exception Handling workflow pattern (§37.7, §86, §88)                                                                     |
+| Conversational Archetype  | Conversational archetype                                   | Intent Recognition→Knowledge Retrieval→Answer→Feedback workflow pattern (§37.7, §89, §90, §91)                                                             |
+| IncidentOps Archetype     | IncidentOps archetype                                      | Alert→Diagnose→Remediate→Postmortem→Prevent workflow pattern (§37.7, §93)                                                                                  |
+| CSAM                      | Child Sexual Abuse Material                                | Child sexual abuse material, legally mandated reportable content in content moderation (§92)                                                               |
+| AIR                       | Adverse Impact Ratio                                       | Adverse impact ratio, an HR recruitment fairness metric, compliance requires ≥ 0.8 (§87)                                                                   |
+| MTTR                      | Mean Time To Repair/Resolve                                | Mean time to repair/resolve, a core IT operations efficiency metric (§93)                                                                                  |
+| MTTD                      | Mean Time To Detect                                        | Mean time to detect, an IT operations alerting efficiency metric (§93)                                                                                     |
+| FCR                       | First Contact Resolution                                   | First contact resolution rate, a core customer service quality metric (§91)                                                                                |
+| AHT                       | Average Handle Time                                        | Average handle time, a customer service efficiency metric (§91)                                                                                            |
+| COPPA                     | Children's Online Privacy Protection Act                   | U.S. Children's Online Privacy Protection Act (§90)                                                                                                        |
+| SOV                       | Share of Voice                                             | Brand share of voice, a marketing effectiveness metric (§94)                                                                                               |
+| CDM                       | Canonical Domain Meta-Model                                | Canonical domain meta-model, all 24 domains described using the same 12-question template (§37.11)                                                         |
+| ACP                       | Agent Collaboration Protocol                               | Multi-Agent collaboration protocol, defining 8 message types + 7 inviolable rules (§19.5)                                                                  |
+| Three-Ring Implementation | Three-Ring Implementation Priority                         | Survival Ring→Usability Ring→Expansion Ring layered implementation priority (Part X Preface)                                                               |
+
+---
+# Appendix A: Version Change History
+
+| Version | Date       | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.0    | 2026-04    | Initial five-plane architecture + seven stability layers + OAPEFLIR concept design                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| v1.1    | 2026-04    | Added risk matrix, DLQ model, deployment recommendations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| v1.2    | 2026-04    | Added data model with 44 tables, event namespace, ADR recommendations, recommended directory structure                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| v2.0    | 2026-04-18 | **Infrastructure Improvement Version**: Added inter-plane communication contracts (§5), API contracts (§6), service communication (§7), scalability (§8), configuration governance (§24), performance SLO (§27), disaster recovery & high availability (§31); improved risk scoring (§10), OAPEFLIR interfaces (§13), storage abstraction (§26), deployment (§32), roadmap (§33); resolved 14 design deficiencies from v1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| v2.1    | 2026-04-19 | **AI Operations Completeness Version**: Added LLM Provider abstraction & failover (§15), Prompt management & versioning (§16), model evaluation & quality gate (§17), cost management & token metering (§18), inter-Agent delegation & collaboration (§19), long-running tasks & workflow hibernation (§20), human-machine collaboration modes (§21), SDK & developer experience (§22), compliance & data governance (§23); improved API authentication & Webhook (§6), security threat model (§11), alert routing & distributed tracing (§12), Error Budget & LLM latency (§27), Pack lifecycle & plugin governance (§30); added 9 ADRs; resolved 14 AI operations layer deficiencies from v2.0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| v2.2    | 2026-04-19 | **Business Domain Onboarding Completeness Version**: Added business domain modeling & onboarding architecture (§37) — DomainDescriptor structured domain modeling, DomainRiskProfile domain risk profiling, DomainKnowledgeSchema domain knowledge structure, DomainEvalFramework domain evaluation framework, DomainPromptLibrary domain Prompt library, DomainRecipe domain template prototypes, DomainInteractionPolicy cross-domain interaction strategy, DomainGovernancePolicy domain governance model; added business domain onboarding Runbook (§38) — four-stage gate process (Modeling→Development→Certification→Canary); improved Business Pack model (§30) to link DomainDescriptor; added 4 ADRs; resolved 10 business domain onboarding layer deficiencies from v2.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| v2.3    | 2026-04-19 | **Intelligent Interaction Completeness Version**: Added natural language task entry architecture (§39), goal decomposition engine architecture (§40), proactive Agent framework (§41), progressive autonomy model (§42), unified operations dashboard architecture (§43), non-technical user experience architecture (§44); added 6 ADRs; upgraded platform from "Agent infrastructure" to a "Agent operating system" for non-technical users                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| v2.4    | 2026-04-19 | **Organizational Governance Completeness Version**: Added organizational hierarchy model (§46), org-chart approval routing (§47), enterprise SSO/SCIM integration (§48), departmental compliance policy engine (§49), knowledge domain isolation & controlled sharing (§50), tiered governance delegation (§51); added 6 ADRs; enabled platform to adapt to organizational complexity ranging from one-person companies to 10,000-employee enterprises                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| v2.5    | 2026-04-19 | **Scale Ecosystem Completeness Version**: Added multi-Region deployment architecture (§52), large-scale resource contention management (§53), SLA tiered guarantees (§54), Agent marketplace & ecosystem (§55), feedback-driven continuous improvement pipeline (§56), external system integration framework (§57); added 6 ADRs; completed cross-Region high availability, fair resource scheduling, differentiated SLA guarantees, open ecosystem, and continuous self-improvement capabilities                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| v2.6    | 2026-04-19 | **Operational Maturity Completeness Version**: Added Agent explainability & decision transparency (§59), emergency brake & global circuit breaker (§60), Agent unified lifecycle management (§61), offline & edge deployment (§62), Agent behavior drift detection (§63), cost attribution & optimization engine (§64), workflow visual debugger (§65), compliance report auto-generation engine (§66), capacity planning & cost forecasting (§67), multimodal capabilities (§68), platform self-ops Agent (§69); added 11 ADRs; completed the operational maturity layer bridging from "architecturally complete design" to "production-ready operations"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| v2.7    | 2026-04-19 | **Quality Correction Version**: Fixed ADR autonomy level contradiction (monotonic→guarded progression); unified §9.5/§14.8 pattern enumeration to 8-pattern canonical set; completed missing principal/trace_id fields in ExecutionPlan/StateCommand; expanded Prompt injection defense architecture (§16.5); fixed ADR-NL TaskSpec→RequestEnvelope reference; completed §26 data model (44→71 tables) and §28 event namespace (17→25); completed §33 roadmap Phase 5-7; completed §43 L2/L3 dashboard view definitions; added §39.7 i18n, §44.6 WCAG, §52.4 GDPR cross-border transfer, §55.4-55.6 marketplace revenue/deprecation/dependency management, §15.6 streaming error handling; added §40 circular dependency detection, §5.2 P2→P4 communication paths; fixed §62 typo and §70 conclusion omission; added Appendix G Glossary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| v2.8    | 2026-04-21 | **Harness Engineering Version**: Added Harness Runtime architecture (§45) — HarnessRuntime unified entry, ConstraintPack task-level constraint envelope, ToolbeltAssembler dynamic tool assembly, HarnessContext unified context & token budget, FeedbackEnvelope four-stage feedback closed loop, HarnessLoopController unified loop control, Planner/Generator/Evaluator three Agent role standardization, Recovery Controller failure recovery; added Harness cross-cutting concerns (§58) — Harness-level observability, Prompt layered governance, Failure-to-Learning pipeline, Replay/Simulation capabilities, architecture legacy issue consolidation (§21/§47 approval boundaries, §23/§49 compliance boundaries, §31/§52 HA mapping, §32/§8/§33 phase alignment, unified error classification, §42/§61 autonomy linkage); added §13.5 OAPEFLIR→Harness external semantic mapping; added 7 ADRs; completed §25.6 consistency model & guarantee levels, §25.7 schema migration strategy; fixed §5.4 P5 communication integrity rules, §7.2 communication topology diagram, §8.4 S4 stage TODO, §19.2 global call depth limit, §20.4 extended approval renewal mechanism, §42.3 trust score decay mechanism, §60.3 Admin unavailability fallback plan; updated §33 roadmap with Phase 8 + parallel dependency graph; updated §35 code directory with harness/; updated Appendix G Glossary with 9 Harness terms                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| v2.9    | 2026-04-21 | **Harness Eight-Pillar Deepening Version**: Harness upgraded from five-tuple to eight-pillar model (Constraints·Tools·State/Memory·Feedback·Durability·Evaluation Harness·HITL Runtime·Observability/Replay), fusing three major industry paradigms: Anthropic role-based closed loop, LangGraph durable runtime, and OpenAI governance & Guardrails primitives; added §45.13 HarnessRun/HarnessStep unified execution contract, §45.14 Evaluation Harness unified evaluation runtime (pre-release evaluation+version comparison+outcome assertions), §45.15 Durable Harness persistent execution pillar (5 pauseReason types+4 resumeStrategy types), §45.16 Memory Namespace three-tier memory namespace (Working/Long-term/Shared Knowledge+promotion strategy), §45.17 Tool Harness tool governance (Capability Profile+lifecycle+trust score), §45.18 HITL Runtime human-machine collaboration runtime (inspect/patch/override/takeover/resume), §45.19 Async Harness asynchronous execution mode, §45.20 Guardrails five-layer architecture (input/planning/tool/memory/output), §45.21 ten invariants; added §58.6 HarnessDecision unified adjudication protocol (six adjudication types standardized); updated §45.1 core axioms to eight pillars+industry mapping table, §45.2 overall architecture diagram with new components; updated §33 roadmap Phase 8 split into 8a/8b/8c three stages (20 weeks); added 9 ADRs (81 total); updated §35 code directory with 7 new harness subdirectories; updated §70 conclusion to nine-layer architecture; updated Appendix G Glossary with 11 Harness terms                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| v3.0    | 2026-04-22 | **Vertical Business Domain Deepening Version**: Added 12 vertical business domain architecture chapters (§71-§82) — Quantitative Trading · E-commerce · Advertising & Promotion · Financial Services · Data Processing · Code Development · User Operations · Industry Research · Academic Research · Enterprise Knowledge Base · Finance · Legal; DomainRecipe expanded from 4 archetypes to 8 (added Trading/Compliance/Research/Adversarial); §37.1 problem statement table expanded to 12 domains×8 dimensions panoramic comparison; §37.4/§37.5 knowledge and evaluation tables expanded to cover 12-domain representative scenarios; §33 roadmap added Phase 9 (vertical business domain deepening rollout, 3 batches×8 weeks=24 weeks) with Phase dependency graph update; §34 added 12 domain-specific ADRs (93 total); §35 code directory added 11 domain instance directories; §36 added 8 domain-specific risks and 7 domain-specific hard constraints; §38 onboarding Runbook three Gates added vertical domain-specific checklists; §70 conclusion upgraded from nine-layer to ten-layer architecture (added vertical business domain deepening layer); Appendix G added 13 domain-specific terms                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| v3.1    | 2026-04-22 | **24-Domain Full Coverage Version**: Added 12 vertical business domain architecture chapters (§83-§94) — Live Streaming · Ad Creative Production · Game Development · Game Publishing · Human Resources · Supply Chain & Logistics · Healthcare · Education & Training · Customer Service · Content Moderation & Safety · IT Ops SRE/DevOps · Marketing & Branding; DomainRecipe expanded from 8 archetypes to 12 (added Moderation/Logistics/Conversational/IncidentOps); §37.1 problem statement table expanded to 24 domains×8 dimensions panoramic comparison (4 tables); §33 roadmap Phase 9 expanded from 3 batches to 6 (9a-9f, total 48 weeks) with dependency graph update; §34 added 12 domain-specific ADRs (105 total); §35 code directory added 12 domain instance directories; §36 added 11 domain-specific risks and 11 domain-specific hard constraints; §36.3 Phase 9 success criteria expanded to 24 domains; §38 onboarding Runbook three Gates expanded Critical/High risk domain checklists; §70 conclusion 12→24 vertical domains; Appendix G added 13 domain-specific terms (4 new archetypes + CSAM/AIR/MTTR/MTTD/FCR/AHT/COPPA/SOV/SOV); **Part restructuring**: Full document reorganized into Part I-XI structure following ten-layer architecture — Infrastructure layer (§4-§14, §24-§32) consolidated into Part I, §58 Harness cross-cutting merged after §45 (Part VI), §71-§94 vertical domains moved after §38 (Part IV), §33-§36 implementation summary moved to Part X, §70 conclusion moved to end of document (Part XI); section numbers remain stable for backward compatibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| v3.2    | 2026-04-22 | **Architecture Deepening Version**: Added Canonical Domain Meta-Model (§37.11) — 12-question standard template, 24-domain population matrix (Q1-Q6 + Q7-Q12 two tables), enabling new domain onboarding to be template-driven, platform kernel configuration-driven, and dashboard/approval/evaluation uniformly generated; added Agent Collaboration Protocol (§19.5) — 8 message types (task_request/task_offer/task_accept/task_reject/partial_result/escalation_request/completion_report/takeover_notice), 9 mandatory fields, 7 invariant rules (no privilege escalation/no risk elevation/no constraint bypass/output must be reviewable/takeover must be audited/budget must not be exceeded/depth must not exceed limit), upgrading the §19.1-19.4 delegation model from convention to mandatory protocol; added Three-Ring Implementation Priority (Part X preamble) — Ring 1 Platform Survival Ring (P1-P5+ConstraintPack+HarnessRun+Risk/Audit+Lease/Recovery+Panic/Incident+ModelGateway, corresponding to Phase 1-2+8a, ~16 weeks), Ring 2 Platform Usability Ring (NL Entry+GoalDecomposition+HITL+AsyncHarness+Dashboard+Org/SSO+DomainDescriptor+Meta-Model+Collaboration Protocol, corresponding to Phase 3-5+8b/8c, ~24 weeks), Ring 3 Platform Expansion Ring (Marketplace+MultiRegion+Edge+CostOptimizer+BehaviorDrift+ComplianceReporter+24 DomainPacks, corresponding to Phase 6-9, ~40+ weeks); updated §70 conclusion with 3 new core principles (meta-model unification · collaboration protocol enforcement · ring-based implementation); **Review corrections**: §38 onboarding Runbook added meta-model steps and gate items (§37.11), §45 Harness Runtime added collaboration protocol linkage (§19.5), §33 Phase 5 deliverables added meta-model+collaboration protocol, §33 dependency Phase 8b→8c corrected, §36.3 Phase 8 success criteria completed, §34 domain ADR tags 12→24+completed Game Development domain ADR (105 total), §36.1 completed Game Development domain risks (11 total), §82 Legal domain 12→24 domains corrected, Three-Ring Phase mapping corrected |

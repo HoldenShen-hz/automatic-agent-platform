@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath, createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { CodeDiagnosticsService } from "../../../../../src/platform/execution/tool-executor/code-diagnostics-service.js";
@@ -75,6 +75,63 @@ function createHarness(prefix: string): {
   });
 
   return { workspace, db, store, service };
+}
+
+function insertCompetingExecution(
+  harness: ReturnType<typeof createHarness>,
+  taskId: string,
+  executionId: string,
+  traceId: string,
+): void {
+  const now = nowIso();
+  harness.db.transaction(() => {
+    harness.store.insertTask({
+      id: taskId,
+      parentId: null,
+      rootId: taskId,
+      divisionId: "general_ops",
+      title: `Competing execution ${executionId}`,
+      status: "in_progress",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+    harness.store.insertExecution({
+      id: executionId,
+      taskId,
+      workflowId: "single_agent_minimal",
+      parentExecutionId: null,
+      agentId: "agent-2",
+      roleId: "general_executor",
+      runKind: "tool_call",
+      status: "executing",
+      inputRef: null,
+      traceId,
+      attempt: 1,
+      timeoutMs: 1000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: JSON.stringify(["edit_replace", "edit_batch"]),
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: now,
+      finishedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
 }
 
 test("edit replacement service applies exact matches", async () => {
@@ -481,17 +538,22 @@ test("edit replacement service fails with lock conflict when another execution h
 
   try {
     createFile(filePath, "const value = 1;\n");
+    const normalizedFilePath = checkSandboxPath(
+      createWorkspaceWritePolicy(harness.workspace),
+      filePath,
+    ).normalizedPath;
 
     // Insert a lock from a different owner
     const now = nowIso();
     const lockOwnerId = "other-execution-id";
+    insertCompetingExecution(harness, "other-task", lockOwnerId, "trace-other-edit");
     harness.db.transaction(() => {
       harness.store.lock.insertFileLock({
         id: "existing-lock",
         taskId: "other-task",
         executionId: lockOwnerId,
         lockScope: "workspace_path",
-        resourcePath: filePath,
+        resourcePath: normalizedFilePath,
         lockMode: "write",
         ownerId: lockOwnerId,
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -567,7 +629,7 @@ test("edit replacement service rolls back all edits when a middle edit fails in 
   try {
     createFile(
       filePath,
-      ["const alpha = 1;", "const beta = 2;", "const gamma = 3;", ""].join("\n"),
+      ["const alpha = 1;", "const beta = 2;", "const beta = 2;", "const gamma = 3;", ""].join("\n"),
     );
 
     const result = await harness.service.executeBatch({
@@ -584,7 +646,7 @@ test("edit replacement service rolls back all edits when a middle edit fails in 
           newString: "const alpha = 10;",
         },
         {
-          // This edit will fail because there are multiple matches
+          // This edit will fail because there are multiple matches.
           oldString: "const beta = 2;",
           newString: "const beta = 20;",
         },
@@ -604,7 +666,10 @@ test("edit replacement service rolls back all edits when a middle edit fails in 
     // Third edit should not have been attempted
     assert.equal(result.edits.length, 2);
     // File content must be unchanged - all edits rolled back
-    assert.equal(readFileSync(filePath, "utf8"), ["const alpha = 1;", "const beta = 2;", "const gamma = 3;", ""].join("\n"));
+    assert.equal(
+      readFileSync(filePath, "utf8"),
+      ["const alpha = 1;", "const beta = 2;", "const beta = 2;", "const gamma = 3;", ""].join("\n"),
+    );
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -690,17 +755,22 @@ test("edit replacement service fails with lock conflict in batch mode when anoth
 
   try {
     createFile(filePath, "const alpha = 1;\nconst beta = 2;\n");
+    const normalizedFilePath = checkSandboxPath(
+      createWorkspaceWritePolicy(harness.workspace),
+      filePath,
+    ).normalizedPath;
 
     // Insert a lock from a different owner before batch execution
     const now = nowIso();
     const lockOwnerId = "other-execution-for-batch";
+    insertCompetingExecution(harness, "other-task-batch", lockOwnerId, "trace-other-batch");
     harness.db.transaction(() => {
       harness.store.lock.insertFileLock({
         id: "existing-batch-lock",
         taskId: "other-task-batch",
         executionId: lockOwnerId,
         lockScope: "workspace_path",
-        resourcePath: filePath,
+        resourcePath: normalizedFilePath,
         lockMode: "write",
         ownerId: lockOwnerId,
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -832,9 +902,9 @@ test("edit replacement service rolls back all edits atomically when second edit 
     assert.equal(result.data.rolledBack, true);
     // First edit was prepared before second failed
     assert.equal(result.edits[0]?.status, "applied");
-    // Second edit failed (target not found)
+    // Second edit failed during approximate matching; atomic rollback preserves the file.
     assert.equal(result.edits[1]?.status, "failed");
-    assert.equal(result.edits[1]?.errorCode, "tool.edit_target_not_found");
+    assert.equal(result.edits[1]?.errorCode, "tool.edit_similarity_too_low");
     // Third edit was never attempted due to atomic rollback
     assert.equal(result.edits.length, 2);
     // File content must be completely unchanged - all edits rolled back atomically

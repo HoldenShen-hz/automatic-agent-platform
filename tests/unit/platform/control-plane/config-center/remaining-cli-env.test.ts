@@ -67,7 +67,7 @@ test("remaining CLI env loader parses deployment execution defaults", () => {
     AA_DEPLOYMENT_ROLLOUT_STRATEGY: "canary",
   }, "/workspace/repo");
 
-  assert.equal(config.action, "summary");
+  assert.equal(config.action, "build_report");
   assert.equal(config.repoRootDir, "/workspace/repo");
   assert.equal(config.artifactRoot, "/workspace/repo/data/artifacts");
 });

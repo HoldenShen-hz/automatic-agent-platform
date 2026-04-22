@@ -153,7 +153,7 @@ test("POST /webhooks with invalid payload returns 400", async () => {
     assert.fail("Expected handler to throw");
   } catch (err) {
     assert.ok(err instanceof Error);
-    assert.match(err.message, /invalid_webhook_endpoint_payload/i);
+    assert.match(err.message, /expected string, received number/i);
   }
 });
 
@@ -248,7 +248,12 @@ test("DELETE /webhooks/:id requires admin role", async () => {
   const webhookService = new WebhookIngressService();
   const deps = {
     authService: {
-      requireRole: () => ({ actorId: "actor-1", roles: ["viewer"], authMethod: "api_key", tenantId: null }),
+      requireRole: (_request: unknown, role: string) => {
+        if (role === "admin") {
+          throw new Error("Forbidden");
+        }
+        return { actorId: "actor-1", roles: ["viewer"], authMethod: "api_key", tenantId: null };
+      },
     } as unknown as ApiAuthService,
     webhookIngressService: webhookService,
   };

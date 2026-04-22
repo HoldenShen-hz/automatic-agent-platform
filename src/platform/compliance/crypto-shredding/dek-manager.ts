@@ -103,11 +103,13 @@ export class DekStore {
     if (existingActiveDek) {
       const existing = this.metadata.get(existingActiveDek);
       if (existing && existing.status === "active") {
-        throw new AppError(
-          "dek.active_exists",
-          `An active DEK already exists for subject ${input.subjectId}. Rotate the existing DEK first.`,
-          { statusCode: 409, category: "storage", source: "internal" },
-        );
+        if (input.replacesDekId !== existing.dekId) {
+          throw new AppError(
+            "dek.active_exists",
+            `An active DEK already exists for subject ${input.subjectId}. Rotate the existing DEK first.`,
+            { statusCode: 409, category: "storage", source: "internal" },
+          );
+        }
       }
       if (existing) {
         version = existing.version + 1;
@@ -365,7 +367,7 @@ export class DekManager {
       });
     }
 
-    const iv = Buffer.from(dek.iv, "hex");
+    const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", key, iv);
 
     const encrypted = Buffer.concat([

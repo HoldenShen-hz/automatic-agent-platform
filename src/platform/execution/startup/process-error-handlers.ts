@@ -58,8 +58,7 @@ export function createUncaughtExceptionHandler(
 
     // Ultimate fallback: process.exit(1) after 60s no matter what
     hardExitTimer = setTimeout(() => {
-      // eslint-disable-next-line no-console
-      console.error("FATAL: uncaughtException handler timed out — forcing process.exit(1)");
+      processLogger.error("uncaughtException handler timed out — forcing process.exit(1)");
       process.exit(1);
     }, 60_000).unref();
   };
@@ -128,8 +127,7 @@ export function createUnhandledRejectionHandler(
 
     // Ultimate fallback: process.exit(1) after 60s no matter what
     hardExitTimer = setTimeout(() => {
-      // eslint-disable-next-line no-console
-      console.error("FATAL: unhandledRejection handler timed out — forcing process.exit(1)");
+      processLogger.error("unhandledRejection handler timed out — forcing process.exit(1)");
       process.exit(1);
     }, 60_000).unref();
   };

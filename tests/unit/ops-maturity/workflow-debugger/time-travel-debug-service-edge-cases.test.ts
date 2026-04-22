@@ -111,7 +111,7 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       assert.ok(state3 !== null);
       assert.equal(state1!.currentEventIndex, 1);
       assert.equal(state2!.currentEventIndex, 2);
-      assert.equal(state3!.currentEventIndex, 3);
+      assert.equal(state3!.currentEventIndex, 2);
     });
   });
 
@@ -304,7 +304,7 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       service.loadEventStore("e", [
         { stepId: "s1", timestamp: "2026-04-21T00:00:00.000Z", variables: { x: { value: 1 } }, stackTrace: "line 1" },
       ]);
-      const session = service.createSession("task_1", "exec_1");
+      const session = service.createSession("task_1", "e");
       service.setBreakpoints(session.sessionId, ["s1"]);
       service.replayToCursor(session.sessionId, 10);
 

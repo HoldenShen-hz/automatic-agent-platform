@@ -107,7 +107,6 @@ export class ApiKeyService {
     }
 
     record.status = "revoked";
-    this.keyHashIndex.delete(record.keyHash);
     return true;
   }
 
@@ -126,7 +125,6 @@ export class ApiKeyService {
     }
 
     existing.status = "revoked";
-    this.keyHashIndex.delete(existing.keyHash);
 
     return this.generateApiKey({
       name: existing.name,

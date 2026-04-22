@@ -9,9 +9,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, extname, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const DOC_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../../docs_zh");
+const DOC_ROOT = join(process.cwd(), "docs_zh");
 
 test("documentation: docs_zh directory has required structure", async () => {
   const requiredDirs = [

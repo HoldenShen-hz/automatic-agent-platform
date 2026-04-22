@@ -178,15 +178,21 @@ export class DelegationAuditService {
   }
 
   public getByAgent(agentId: string): DelegationAuditEvent[] {
-    return this.events.filter(
-      (e) => e.parentAgentId === agentId || e.childAgentId === agentId,
-    );
+    return this.events.filter((e) => e.actorId === agentId);
   }
 
   public getRecentEvents(limit: number = 50): DelegationAuditEvent[] {
     return [...this.events]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, limit);
+      .map((event, index) => ({ event, index }))
+      .sort((a, b) => {
+        const timeDiff = b.event.createdAt.localeCompare(a.event.createdAt);
+        if (timeDiff !== 0) {
+          return timeDiff;
+        }
+        return b.index - a.index;
+      })
+      .slice(0, limit)
+      .map(({ event }) => event);
   }
 
   public getSummary(): DelegationAuditSummary {

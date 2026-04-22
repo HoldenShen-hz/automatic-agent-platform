@@ -59,7 +59,7 @@ test("MARKETPLACE_ACTIONS contains expected values", () => {
 });
 
 test("DEPLOYMENT_EXECUTION_ACTIONS contains expected values", () => {
-  assert.deepEqual(DEPLOYMENT_EXECUTION_ACTIONS, ["summary", "export"]);
+  assert.deepEqual(DEPLOYMENT_EXECUTION_ACTIONS, ["summary", "export", "build_report"]);
 });
 
 test("CONTROL_PLANE_ACTIONS contains expected values", () => {
@@ -67,7 +67,7 @@ test("CONTROL_PLANE_ACTIONS contains expected values", () => {
 });
 
 test("OPS_GOVERNANCE_ACTIONS contains expected values", () => {
-  assert.deepEqual(OPS_GOVERNANCE_ACTIONS, ["summary", "export"]);
+  assert.deepEqual(OPS_GOVERNANCE_ACTIONS, ["summary", "export", "check", "report", "audit"]);
 });
 
 test("SECRET_ACTIONS contains expected values", () => {

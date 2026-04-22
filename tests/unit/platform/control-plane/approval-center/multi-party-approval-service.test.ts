@@ -74,6 +74,25 @@ function createMockStore() {
           });
         }
       },
+      updateApprovalDecisionCas(input: {
+        approvalId: string;
+        expectedStatus: ApprovalStatus;
+        status: ApprovalStatus;
+        responseJson: string;
+        respondedAt: string;
+      }): number {
+        const existing = approvals.get(input.approvalId);
+        if (!existing || existing.status !== input.expectedStatus) {
+          return 0;
+        }
+        approvals.set(input.approvalId, {
+          ...existing,
+          status: input.status,
+          responseJson: input.responseJson,
+          respondedAt: input.respondedAt,
+        });
+        return 1;
+      },
       updateApprovalRequest(input: { id: string; requestJson: string }): void {
         const existing = approvals.get(input.id);
         if (existing) {

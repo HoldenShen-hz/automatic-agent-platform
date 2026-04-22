@@ -100,6 +100,7 @@ test("ContextIsolator.isolate() uses PARTIAL level when permission ratio is mode
   const isolator = createContextIsolator();
   const parent = createParentContext({
     delegationDepth: 0,
+    sandboxTier: "process",
     permissions: {
       resources: ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10"],
       actions: ["a1", "a2", "a3", "a4", "a5"],
@@ -108,8 +109,8 @@ test("ContextIsolator.isolate() uses PARTIAL level when permission ratio is mode
   });
   const spec = createDelegationSpec({
     requiredPermissions: {
-      resources: ["r1", "r2"],
-      actions: ["a1"],
+      resources: ["r1", "r2", "r3"],
+      actions: ["a1", "a2", "a3"],
       constraints: {},
     },
   });

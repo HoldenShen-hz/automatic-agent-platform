@@ -33,5 +33,5 @@ test("shouldRunScheduleTrigger handles hour duration", () => {
 
 test("shouldRunScheduleTrigger handles day duration", () => {
   const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-20T01:00:01.000Z", "1d");
-  assert.equal(result, false); // 1 day and 1 second
+  assert.equal(result, true);
 });

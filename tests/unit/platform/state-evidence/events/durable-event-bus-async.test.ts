@@ -58,7 +58,7 @@ test("DurableEventBusAsync.subscribe registers handler", async () => {
     seedTaskAndExecution(db, store, { taskId: "task-async-sub", executionId: "exec-async-sub", traceId: "trace-sub" });
 
     const seen: string[] = [];
-    bus.subscribe("async_consumer", async (event) => {
+    bus.subscribe("task_projection", async (event) => {
       seen.push(event.eventType);
     });
 
@@ -89,7 +89,7 @@ test("DurableEventBusAsync.unsubscribe removes handler", async () => {
     seedTaskAndExecution(db, store, { taskId: "task-unsub", executionId: "exec-unsub", traceId: "trace-unsub" });
 
     const seen: string[] = [];
-    bus.subscribe("unsub_consumer", async (event) => {
+    bus.subscribe("task_projection", async (event) => {
       seen.push(event.eventType);
     });
 
@@ -104,7 +104,7 @@ test("DurableEventBusAsync.unsubscribe removes handler", async () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.equal(seen.length, 1);
 
-    bus.unsubscribe("unsub_consumer");
+    bus.unsubscribe("task_projection");
 
     await bus.publish({
       eventType: "task:status_changed",

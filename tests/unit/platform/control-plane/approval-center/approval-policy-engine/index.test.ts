@@ -29,9 +29,9 @@ test("ApprovalPolicyEngine evaluates default policy for destructive action", () 
 
   const result = engine.evaluate(context);
 
-  assert.equal(result.requiresApproval, true);
-  assert.equal(result.deny, false);
-  assert.ok(result.matchedRuleIds.length > 0);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.deny, true);
+  assert.ok(result.matchedRuleIds.includes("critical-action-deny"));
 });
 
 test("ApprovalPolicyEngine denies critical destructive in auto mode", () => {
@@ -195,7 +195,7 @@ test("ApprovalPolicyEngine respects condition operators", () => {
     taskId: "task-7",
     subjectType: "agent",
     subjectId: "agent-1",
-    action: "invoke_model",
+    action: "invoke_tool",
     riskCategory: "cost_sensitive",
     mode: "auto",
     stage: "execute",

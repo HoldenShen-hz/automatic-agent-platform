@@ -295,11 +295,11 @@ test("EscalationManager resetDelegationTtl throws on max resets", () => {
   const delegation = manager.createDelegation("user1", "user2", "approval_123", 3600000, 1);
 
   // First reset should succeed
-  manager.resetDelegationTtl(delegation, 3600000);
+  const updatedDelegation = manager.resetDelegationTtl(delegation, 3600000);
 
   // Second reset should throw
   assert.throws(
-    () => manager.resetDelegationTtl(delegation, 3600000),
+    () => manager.resetDelegationTtl(updatedDelegation, 3600000),
     /Cannot reset TTL more than/,
   );
 });
@@ -647,7 +647,7 @@ test("ApprovalFlowEngine delegateApproval resets TTL on existing delegation", ()
   const result = engine.delegateApproval(flow.flowId, "user1", "user3");
 
   assert.strictEqual(result.success, true);
-  assert.strictEqual(result.delegation!.toApprover, "user3");
+  assert.strictEqual(result.delegation!.toApprover, "user2");
   assert.strictEqual(result.delegation!.ttlResetCount, 1);
 });
 

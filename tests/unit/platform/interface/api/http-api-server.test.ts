@@ -945,7 +945,32 @@ test("POST /v1/admin/control-plane/load-balancing/select succeeds with admin rol
 });
 
 test("POST /v1/incidents is reachable through HttpApiServer", async () => {
-  const { server, authService } = createTestServer();
+  const { server, authService } = createTestServer({
+    incidentService: {
+      listIncidents: () => [],
+      getIncident: () => null,
+      openIncident: ({ severity, title }) => ({
+        incidentId: "incident_test_1",
+        severity,
+        title,
+        status: "open",
+        owner: null,
+        createdAt: "2026-04-01T00:00:00.000Z",
+        updatedAt: "2026-04-01T00:00:00.000Z",
+        resolvedAt: null,
+        linkedEvidenceRefs: [],
+      }),
+      acknowledge: () => {
+        throw new Error("not implemented");
+      },
+      startMitigation: () => {
+        throw new Error("not implemented");
+      },
+      resolve: () => {
+        throw new Error("not implemented");
+      },
+    },
+  });
   const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
 
   try {

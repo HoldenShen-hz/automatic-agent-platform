@@ -111,6 +111,7 @@ test("scale-ecosystem support modules coordinate connector, region, quota, and S
     {
       shouldFailover: true,
       targetRegionId: "cn-bj",
+      rationale: "multi_region.primary_unhealthy",
     },
   );
 });

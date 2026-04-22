@@ -259,7 +259,7 @@ test("validate fails packId check", () => {
       targetPackId: "disallowed-pack",
       delegationChain: [],
     }),
-    (err: Error) => err.message.includes("not_allowed"),
+    (err: Error & { code?: string }) => err.code === "delegation.pack_id_not_allowed",
   );
 });
 

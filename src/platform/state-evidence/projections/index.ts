@@ -54,10 +54,12 @@ export class EventProjectionService {
 
 export {
   ProjectionRebuildService,
+  ProjectionHandlerRegistry,
+} from "./projection-rebuild-service.js";
+export type {
   ProjectionRebuildResult,
   ProjectionRebuildOptions,
   ProjectionHandler,
-  ProjectionHandlerRegistry,
 } from "./projection-rebuild-service.js";
 
 function projectionNameForEvent(eventType: string): string {

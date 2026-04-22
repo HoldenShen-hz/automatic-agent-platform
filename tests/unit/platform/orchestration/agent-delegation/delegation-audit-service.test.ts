@@ -125,8 +125,8 @@ test("DelegationAuditService records permission narrowing", () => {
   });
 
   assert.equal(event.eventType, "delegation.permission_narrowed");
-  assert.deepEqual(event.metadata.originalPermissions, { resources: ["r1", "r2"], actions: ["read", "write"] });
-  assert.deepEqual(event.metadata.narrowedPermissions, { resources: ["r1"], actions: ["read"] });
+  assert.deepEqual(event.metadata.originalPermissions, { resources: ["r1", "r2"], actions: ["read", "write"], constraints: {} });
+  assert.deepEqual(event.metadata.narrowedPermissions, { resources: ["r1"], actions: ["read"], constraints: {} });
 });
 
 test("DelegationAuditService.getByDelegation returns events for delegation", () => {

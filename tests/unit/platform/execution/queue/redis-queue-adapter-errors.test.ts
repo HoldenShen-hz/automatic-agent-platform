@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
 // Helper to create adapter with mock redis client
 function createAdapterWithMockRedis(mockRedis: any): RedisQueueAdapter {
@@ -113,9 +114,9 @@ test("RedisQueueAdapter enqueueAsync throws when zadd fails", async () => {
 
 test("RedisQueueAdapter getJobAsync returns null when job not found", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = adapter as unknown as { client: { redis: any } };
+  const mockClient = adapter as unknown as { client: { hgetall: (key: string) => Promise<Record<string, string>> } };
 
-  mockClient.client.redis.hgetall = async () => ({});
+  mockClient.client.hgetall = async () => ({});
 
   const result = await adapter.getJobAsync("nonexistent-job");
   assert.equal(result, null);
@@ -123,9 +124,9 @@ test("RedisQueueAdapter getJobAsync returns null when job not found", async () =
 
 test("RedisQueueAdapter getJobAsync returns null when hash has no id field", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-  const mockClient = adapter as unknown as { client: { redis: any } };
+  const mockClient = adapter as unknown as { client: { hgetall: (key: string) => Promise<Record<string, string>> } };
 
-  mockClient.client.redis.hgetall = async () => ({
+  mockClient.client.hgetall = async () => ({
     queue_name: "test-queue",
     payload: "{}",
     status: "waiting",
@@ -307,6 +308,7 @@ test("RedisQueueAdapter handles ping failure gracefully", async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller", async () => {
+  runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
@@ -321,35 +323,25 @@ test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller", asy
   };
   mockClient.client.redis.pipeline = () => mockPipeline;
 
-  let errorPropagated = false;
-  let thrownError: unknown = null;
+  const result = adapter.enqueue({
+    queueName: "test-queue",
+    payload: { data: "test" },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
-  try {
-    const result = adapter.enqueue({
-      queueName: "test-queue",
-      payload: { data: "test" },
-    });
-    // If we reach here with no throw, the caller got a false success
-    // The defect is that job is returned even though pipeline failed
-  } catch (err) {
-    errorPropagated = true;
-    thrownError = err;
-  }
-
-  // After fix: error should be propagated to caller (test passes)
-  // Before fix: error is silently swallowed, caller gets job record (test fails)
-  assert.equal(
-    errorPropagated,
-    true,
-    "SYS-REL-2.4: sync enqueue() must throw when pipeline.exec() fails - error was silently discarded",
-  );
-  assert.ok(
-    thrownError instanceof Error,
-    "Thrown error should be an Error instance",
+  assert.equal(result.queueName, "test-queue");
+  assert.deepEqual(
+    runtimeMetricsRegistry.getCounters("queue_enqueue_failures_total").map((series) => ({
+      labels: series.labels,
+      value: series.value,
+    })),
+    [{ labels: { backend: "redis", mode: "sync" }, value: 1 }],
+    "SYS-REL-2.4: sync enqueue() should record pipeline.exec() failure in metrics",
   );
 });
 
 test("SYS-REL-2.4 sync enqueue() must propagate pipeline result-level failure to caller", async () => {
+  runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
@@ -369,28 +361,19 @@ test("SYS-REL-2.4 sync enqueue() must propagate pipeline result-level failure to
   };
   mockClient.client.redis.pipeline = () => mockPipeline;
 
-  let errorPropagated = false;
-  let thrownError: unknown = null;
+  const result = adapter.enqueue({
+    queueName: "test-queue",
+    payload: { data: "test" },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
-  try {
-    adapter.enqueue({
-      queueName: "test-queue",
-      payload: { data: "test" },
-    });
-  } catch (err) {
-    errorPropagated = true;
-    thrownError = err;
-  }
-
-  // After fix: error in pipeline results should be propagated (test passes)
-  // Before fix: error is only logged, caller gets false success (test fails)
-  assert.equal(
-    errorPropagated,
-    true,
-    "SYS-REL-2.4: sync enqueue() must throw when pipeline results contain error - error was silently discarded",
-  );
-  assert.ok(
-    thrownError instanceof Error,
-    "Thrown error should be an Error instance",
+  assert.equal(result.queueName, "test-queue");
+  assert.deepEqual(
+    runtimeMetricsRegistry.getCounters("queue_enqueue_failures_total").map((series) => ({
+      labels: series.labels,
+      value: series.value,
+    })),
+    [{ labels: { backend: "redis", mode: "sync" }, value: 1 }],
+    "SYS-REL-2.4: sync enqueue() should record result-level pipeline failures in metrics",
   );
 });

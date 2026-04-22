@@ -1,0 +1,60 @@
+export type ComplianceCapabilityId =
+  | "crypto-shredding"
+  | "data-residency"
+  | "encryption"
+  | "erasure"
+  | "lineage";
+
+export interface ComplianceCapabilityBaseline {
+  readonly capabilityId: ComplianceCapabilityId;
+  readonly entryModule: string;
+  readonly description: string;
+  readonly baselineServices: readonly string[];
+}
+
+export const COMPLIANCE_CAPABILITY_BASELINES: readonly ComplianceCapabilityBaseline[] = Object.freeze([
+  {
+    capabilityId: "crypto-shredding",
+    entryModule: "src/platform/compliance/crypto-shredding/index.ts",
+    description: "Key lifecycle, crypto-shredding orchestration, and secure delete baselines.",
+    baselineServices: ["CryptoShreddingService", "DekManager"],
+  },
+  {
+    capabilityId: "data-residency",
+    entryModule: "src/platform/compliance/data-residency/index.ts",
+    description: "Residency policy routing, location constraints, and data placement baselines.",
+    baselineServices: ["DataResidencyService"],
+  },
+  {
+    capabilityId: "encryption",
+    entryModule: "src/platform/compliance/encryption/index.ts",
+    description: "Envelope encryption, rotation orchestration, and protected storage baselines.",
+    baselineServices: ["EncryptionPolicyService"],
+  },
+  {
+    capabilityId: "erasure",
+    entryModule: "src/platform/compliance/erasure/index.ts",
+    description: "Erasure requests, redaction execution, and legal deletion workflow baselines.",
+    baselineServices: ["ErasureService"],
+  },
+  {
+    capabilityId: "lineage",
+    entryModule: "src/platform/compliance/lineage/index.ts",
+    description: "Evidence lineage, provenance tracking, and compliance trace baselines.",
+    baselineServices: ["LineageService"],
+  },
+]);
+
+export function listComplianceCapabilityBaselines(): readonly ComplianceCapabilityBaseline[] {
+  return COMPLIANCE_CAPABILITY_BASELINES;
+}
+
+export function resolveComplianceCapabilityBaseline(
+  capabilityId: ComplianceCapabilityId,
+): ComplianceCapabilityBaseline {
+  const baseline = COMPLIANCE_CAPABILITY_BASELINES.find((item) => item.capabilityId === capabilityId);
+  if (baseline == null) {
+    throw new Error(`compliance_capability.not_found:${capabilityId}`);
+  }
+  return baseline;
+}

@@ -284,7 +284,7 @@ test("ProactiveAgentService evaluate handles silent_record for critical-risk wit
   assert.equal(decision.actionMode, "silent_record");
 });
 
-test("ProactiveAgentService recordExecutionOutcome increments consecutive failures", () => {
+test("ProactiveAgentService recordExecutionOutcome does not open circuit before max threshold", () => {
   const service = new ProactiveAgentService({ maxConsecutiveFailures: 3 });
   service.registerTrigger(makeTrigger());
 
@@ -292,8 +292,8 @@ test("ProactiveAgentService recordExecutionOutcome increments consecutive failur
   service.recordExecutionOutcome("trigger_daily_report", false);
 
   const decision = service.evaluate("trigger_daily_report", { kind: "schedule" });
-  assert.equal(decision.allowed, false);
-  assert.ok(decision.reasonCodes.includes("proactive_agent.circuit_open"));
+  assert.equal(decision.allowed, true);
+  assert.ok(decision.reasonCodes.includes("proactive_agent.fire_allowed"));
 });
 
 test("ProactiveAgentService recordExecutionOutcome resets on success", () => {

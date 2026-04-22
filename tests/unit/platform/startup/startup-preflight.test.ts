@@ -24,7 +24,7 @@ test("startup-preflight module exists and exports expected functions", async () 
 test("deriveProviderApiKeyEnvName returns expected env var name", () => {
   const result = deriveProviderApiKeyEnvName("test-provider");
   assert.ok(typeof result === "string", "Should return a string");
-  assert.ok(result.includes("test-provider"), "Should contain provider ID");
+  assert.equal(result, "TEST_PROVIDER_API_KEY");
 });
 
 test("buildDefaultStartupConfigValidator returns a function", () => {

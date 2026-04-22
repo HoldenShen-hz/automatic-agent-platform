@@ -210,9 +210,9 @@ describe("DekManager", () => {
 
     it("should throw when DEK is destroyed", async () => {
       const created = await manager.createForSubject("user-123");
+      const encrypted = await manager.encryptForSubject("user-123", "test");
       await manager.destroyForSubject("user-123");
 
-      const encrypted = await manager.encryptForSubject("user-123", "test");
       await assert.rejects(
         async () => manager.decrypt(created.metadata.dekId, encrypted.ciphertext),
         (error: unknown) => {

@@ -305,12 +305,12 @@ test("[SYS-REL-2.3] DLQ retry worker processes retryable records", async () => {
   });
 
   // Schedule a retry with a short delay
-  dlq.scheduleRetry(record.deadLetterId, 10);
+  const scheduled = dlq.scheduleRetry(record.deadLetterId, 10);
 
   // Process due retries - retry callback returns "retry" with delay
   const result = await worker.runDueRetries((rec) => {
     return { outcome: "retry" as const, delayMs: 50 };
-  });
+  }, scheduled.nextRetryAt ?? undefined);
 
   assert.equal(result.attempted, 1, "Should have attempted 1 record");
   assert.equal(result.rescheduled, 1, "Should have rescheduled 1 record");
@@ -331,12 +331,12 @@ test("[SYS-REL-2.3] DLQ retry worker resolves records that succeed", async () =>
   });
 
   // Schedule retry
-  dlq.scheduleRetry(record.deadLetterId, 5);
+  const scheduled = dlq.scheduleRetry(record.deadLetterId, 5);
 
   // Process - this time return "resolved"
   const result = await worker.runDueRetries((rec) => {
     return { outcome: "resolved" as const };
-  });
+  }, scheduled.nextRetryAt ?? undefined);
 
   assert.equal(result.attempted, 1, "Should have attempted 1 record");
   assert.equal(result.resolved, 1, "Should have resolved 1 record");
@@ -375,7 +375,7 @@ test("[SYS-REL-2.3] DLQ retry worker handles multiple retryable records in order
   });
 
   // Schedule all as retrying
-  dlq.scheduleRetry(record1.deadLetterId, 5);
+  const scheduled = dlq.scheduleRetry(record1.deadLetterId, 5);
   dlq.scheduleRetry(record2.deadLetterId, 5);
   dlq.scheduleRetry(record3.deadLetterId, 5);
 
@@ -387,7 +387,7 @@ test("[SYS-REL-2.3] DLQ retry worker handles multiple retryable records in order
       return { outcome: "resolved" as const };
     }
     return { outcome: "retry" as const, delayMs: 100 };
-  });
+  }, scheduled.nextRetryAt ?? undefined);
 
   assert.equal(result.attempted, 3, "Should have attempted 3 records");
   assert.equal(result.resolved, 2, "Should have resolved 2 records");
@@ -414,12 +414,12 @@ test("[SYS-REL-2.3] DLQ retry worker only processes records with status=retrying
     errorCode: "retry_error",
     payloadJson: '{"taskId":"t-retry"}',
   });
-  dlq.scheduleRetry(retryRecord.deadLetterId, 5);
+  const scheduled = dlq.scheduleRetry(retryRecord.deadLetterId, 5);
 
   // Process - should only process the retrying one, not the pending one
   const result = await worker.runDueRetries((rec) => {
     return { outcome: "resolved" as const };
-  });
+  }, scheduled.nextRetryAt ?? undefined);
 
   assert.equal(result.attempted, 1, "Should only attempt 1 record (the retrying one)");
   assert.equal(result.resolved, 1, "Should resolve the retrying record");
@@ -440,12 +440,12 @@ test("[SYS-REL-2.3] DLQ retry worker gracefully handles callback errors", async 
     errorCode: "fatal_error",
     payloadJson: '{"taskId":"t-error"}',
   });
-  dlq.scheduleRetry(record.deadLetterId, 5);
+  const scheduled = dlq.scheduleRetry(record.deadLetterId, 5);
 
   // Callback throws an error
   const result = await worker.runDueRetries((rec) => {
     throw new Error("Callback failed unexpectedly");
-  });
+  }, scheduled.nextRetryAt ?? undefined);
 
   assert.equal(result.attempted, 1, "Should have attempted 1 record");
   assert.equal(result.failed, 1, "Should have recorded 1 failure");

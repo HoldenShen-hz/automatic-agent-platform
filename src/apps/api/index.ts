@@ -1,13 +1,4 @@
-export type PlatformAppKind = "api" | "console" | "worker";
-
-export interface PlatformAppManifest {
-  appId: string;
-  kind: PlatformAppKind;
-  entryModule: string;
-  defaultPort: number | null;
-  healthEndpoint: string | null;
-  capabilities: string[];
-}
+import type { PlatformAppManifest } from "../../platform-architecture-types.js";
 
 export const API_APP_MANIFEST: PlatformAppManifest = {
   appId: "automatic-agent-api",
@@ -16,4 +7,7 @@ export const API_APP_MANIFEST: PlatformAppManifest = {
   defaultPort: 8004,
   healthEndpoint: "/health",
   capabilities: ["http_api", "approval_queue", "inspect", "dashboard"],
+  requiredLayers: ["platform", "domains", "interaction", "org-governance", "scale-ecosystem", "ops-maturity", "plugins", "sdk", "apps"],
+  startupCommand: "npm run api",
+  startupMode: "daemon",
 };

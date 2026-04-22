@@ -294,11 +294,8 @@ test("CAS failure - concurrent modification detection via StateTransitionMachine
 test("transitionSessionStatus - session pausing/resuming", () => {
   const machine = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
-  // Session has "paused" state that can be transitioned to from... let's check
-  // From the map: paused: ["streaming", "completed", "failed", "cancelled"]
-  // So "streaming" can go to "paused"
-  machine.assertTransition("streaming", "paused");
-  // And paused can go back to streaming
+  // The current session contract only allows resuming from "paused";
+  // entering paused happens outside this transition map.
   machine.assertTransition("paused", "streaming");
 });
 

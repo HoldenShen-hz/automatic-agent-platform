@@ -29,13 +29,16 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
       // acquired_at + ttl_ms and, if elapsed, evict the stale row and take
       // over with a freshly incremented fencing token.
       const existingAcquiredMs = Date.parse(existing.acquired_at);
-      const expiresAt = Number.isFinite(existingAcquiredMs)
+      const expiresAt = existing.ttl_ms === 0
+        ? Number.POSITIVE_INFINITY
+        : Number.isFinite(existingAcquiredMs)
         ? existingAcquiredMs + (existing.ttl_ms ?? 0)
         : Number.POSITIVE_INFINITY;
       if (Date.now() < expiresAt) {
         return { acquired: false };
       }
       this.db.prepare(`DELETE FROM distributed_locks WHERE lock_key = ?`).run(lockKey);
+      this.fencingCounter = Math.max(this.fencingCounter, existing.fencing_token ?? 0);
       lockLogger.log({
         level: "info",
         message: "sqlite_lock.evicted_expired",

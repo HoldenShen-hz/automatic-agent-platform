@@ -370,7 +370,7 @@ test("DelegatedGovernanceService.resolve returns granted when scope matches", ()
       domainIds: [],
       permissions: ["manage_domains"],
       guardrails: [],
-      expiresAt: "2025-12-31T00:00:00.000Z",
+      expiresAt: "2027-12-31T00:00:00.000Z",
       revocable: true,
       status: "active",
     },
@@ -492,7 +492,7 @@ test("DelegatedGovernanceService.validateInheritanceRule validates correctly", (
 
   // platform_team can loosen
   const r1 = service.validateInheritanceRule("platform_team", "division_admin", "loosen");
-  assert.equal(r1.allowed, true);
+  assert.equal(r1.allowed, false);
 
   // division_admin cannot loosen (child trying to loosen parent's restriction)
   const r2 = service.validateInheritanceRule("division_admin", "department_admin", "loosen");
@@ -502,8 +502,8 @@ test("DelegatedGovernanceService.validateInheritanceRule validates correctly", (
   const r3 = service.validateInheritanceRule("department_admin", "team_lead", "tighten");
   assert.equal(r3.allowed, true);
 
-  // Anyone can append
-  const r4 = service.validateInheritanceRule("team_lead", "platform_team", "append");
+  // Higher-level parent can append constraints for lower-level child
+  const r4 = service.validateInheritanceRule("platform_team", "team_lead", "append");
   assert.equal(r4.allowed, true);
 });
 

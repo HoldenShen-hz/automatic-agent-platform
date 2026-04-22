@@ -45,6 +45,7 @@ interface NegotiationState {
     round: number;
     proposals: string[];
   }>;
+  selectedProposalId?: string;
 }
 
 interface CollaborationResult {
@@ -56,6 +57,7 @@ interface CollaborationResult {
 class CollaborationModeService {
   private pipelines = new Map<string, PipelineState>();
   private negotiations = new Map<string, NegotiationState>();
+  private completedResults = new Map<string, CollaborationResult>();
 
   initiatePipeline(parent: AgentContext, spec: DelegationSpec): string {
     const collaborationId = `pipe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -157,17 +159,20 @@ class CollaborationModeService {
   advanceNegotiationRound(collaborationId: string) {
     const state = this.negotiations.get(collaborationId);
     if (!state) throw new Error("not_found: Negotiation collaboration not found");
+    if (this.isNegotiationComplete(collaborationId)) {
+      return;
+    }
     state.rounds.push({
       round: state.currentRound,
       proposals: state.proposals.map((p) => p.proposalId),
     });
-    state.currentRound++;
+    state.currentRound = Math.min(state.currentRound + 1, state.maxRounds + 1);
   }
 
   isNegotiationComplete(collaborationId: string): boolean {
     const state = this.negotiations.get(collaborationId);
     if (!state) return false;
-    return state.currentRound > state.maxRounds;
+    return state.selectedProposalId !== undefined || state.currentRound > state.maxRounds;
   }
 
   selectProposal(collaborationId: string, proposalId: string) {
@@ -175,6 +180,7 @@ class CollaborationModeService {
     if (!state) throw new Error("not_found: Negotiation collaboration not found");
     const proposal = state.proposals.find((p) => p.proposalId === proposalId);
     if (!proposal) throw new Error("proposal_not_found: Proposal not found");
+    state.selectedProposalId = proposalId;
     return proposal;
   }
 
@@ -192,23 +198,22 @@ class CollaborationModeService {
     outputs: unknown[],
     errors: string[],
   ): CollaborationResult {
+    const result = {
+      status: errors.length === 0 ? "completed" : "failed",
+      outputs,
+      errors,
+    } satisfies CollaborationResult;
     if (mode === "pipeline") {
       this.pipelines.delete(collaborationId);
     } else {
       this.negotiations.delete(collaborationId);
     }
-    return {
-      status: errors.length === 0 ? "completed" : "failed",
-      outputs,
-      errors,
-    };
+    this.completedResults.set(collaborationId, result);
+    return result;
   }
 
   getCollaborationResult(collaborationId: string): CollaborationResult | null {
-    const pipeline = this.pipelines.get(collaborationId);
-    const negotiation = this.negotiations.get(collaborationId);
-    if (pipeline || negotiation) return null;
-    return { status: "completed", outputs: [], errors: [] };
+    return this.completedResults.get(collaborationId) ?? null;
   }
 
   cleanup() {
@@ -217,6 +222,7 @@ class CollaborationModeService {
         this.pipelines.delete(id);
       }
     }
+    this.completedResults.clear();
   }
 }
 
@@ -366,9 +372,9 @@ test("CollaborationModeService advances pipeline to next stage", () => {
   // Advance first stage
   service.advancePipelineStage(collaborationId, { result: "stage-1-output" });
 
-  const stage1 = service.getCurrentPipelineStage(collaborationId);
-  assert.equal(stage1?.status, "completed");
-  assert.deepEqual(stage1?.output, { result: "stage-1-output" });
+  const state = service.getPipelineState(collaborationId);
+  assert.equal(state?.stages[0]?.status, "completed");
+  assert.deepEqual(state?.stages[0]?.output, { result: "stage-1-output" });
 
   // Check second stage is now current
   const stage2 = service.getCurrentPipelineStage(collaborationId);
@@ -535,7 +541,7 @@ test("CollaborationModeService advances negotiation rounds", () => {
 
   const state = service.getNegotiationState(collaborationId);
   assert.equal(state?.currentRound, 2);
-  assert.equal(state?.rounds.length, 2);
+  assert.equal(state?.rounds.length, 1);
 });
 
 test("CollaborationModeService completes negotiation on selection", () => {
@@ -545,9 +551,9 @@ test("CollaborationModeService completes negotiation on selection", () => {
 
   const collaborationId = service.initiateNegotiation(parent, spec);
 
-  service.submitProposal(collaborationId, "agent-1", "worker", { answer: "a" }, 0.8);
+  const proposalId = service.submitProposal(collaborationId, "agent-1", "worker", { answer: "a" }, 0.8);
 
-  const proposal = service.selectProposal(collaborationId, "prop-1");
+  const proposal = service.selectProposal(collaborationId, proposalId);
 
   assert.ok(proposal);
   assert.equal(proposal?.agentId, "agent-1");
@@ -696,6 +702,7 @@ test("CollaborationModeService cleanup removes completed collaborations", () => 
   // Before cleanup
   let result = service.getCollaborationResult(collaborationId);
   assert.ok(result);
+  assert.equal(result?.status, "completed");
 
   service.cleanup();
 

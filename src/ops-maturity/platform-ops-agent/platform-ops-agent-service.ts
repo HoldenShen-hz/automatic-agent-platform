@@ -72,15 +72,19 @@ function riskFromSignals(
   return "low";
 }
 
-function canExecuteAtLevel(level: OpsMaturityLevel, riskLevel: OpsRiskLevel): boolean {
+function canExecuteAtLevel(
+  level: OpsMaturityLevel,
+  riskLevel: OpsRiskLevel,
+  approvalSatisfied: boolean = false,
+): boolean {
   switch (level) {
     case "observe_only":
     case "suggest_only":
       return false;
     case "supervised_execution":
-      return true;
+      return riskLevel === "low" || approvalSatisfied;
     case "trusted_automation":
-      return true;
+      return riskLevel !== "high";
   }
 }
 
@@ -151,9 +155,9 @@ export class PlatformOpsAgentService {
       ...proposal,
       approvals,
       approvalStatus: approvalSatisfied ? "approved" : "pending",
-      executable: proposal.blockedBy.length === 0
+      executable: proposal.blockedBy.filter((item) => !approvalSatisfied || item !== "ops_agent.autonomy_limit_reached").length === 0
         && approvalSatisfied
-        && canExecuteAtLevel(this.definition.maxAutonomyLevel, proposal.riskLevel),
+        && canExecuteAtLevel(this.definition.maxAutonomyLevel, proposal.riskLevel, approvalSatisfied),
     };
 
     this.proposals.set(proposalId, updated);

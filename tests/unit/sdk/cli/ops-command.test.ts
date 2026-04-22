@@ -16,7 +16,7 @@ test("loadOpsProgramCliEnv parses valid summary action", () => {
   const config = loadOpsProgramCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_ENVIRONMENT: "development",
-    AA_HA_PROGRAM_ACTION: "summary",
+    AA_OPS_PROGRAM_ACTION: "summary",
   });
 
   assert.equal(config.action, "summary");
@@ -27,7 +27,7 @@ test("loadOpsProgramCliEnv parses valid export action", () => {
   const config = loadOpsProgramCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_ENVIRONMENT: "production",
-    AA_HA_PROGRAM_ACTION: "export",
+    AA_OPS_PROGRAM_ACTION: "export",
   });
 
   assert.equal(config.action, "export");
@@ -47,7 +47,7 @@ test("loadOpsProgramCliEnv handles optional artifact root", () => {
   const config = loadOpsProgramCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_ENVIRONMENT: "development",
-    AA_ARTIFACT_ROOT: "/tmp/artifacts",
+    AA_OPS_PROGRAM_ARTIFACT_ROOT: "/tmp/artifacts",
   });
 
   assert.equal(config.artifactRoot, "/tmp/artifacts");
@@ -57,7 +57,7 @@ test("loadOpsProgramCliEnv handles optional taskId", () => {
   const config = loadOpsProgramCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_ENVIRONMENT: "development",
-    AA_TASK_ID: "task_ops_123",
+    AA_OPS_PROGRAM_TASK_ID: "task_ops_123",
   });
 
   assert.equal(config.taskId, "task_ops_123");
@@ -67,7 +67,7 @@ test("loadOpsProgramCliEnv handles optional shiftOwner", () => {
   const config = loadOpsProgramCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_ENVIRONMENT: "production",
-    AA_SHIFT_OWNER: "ops-team",
+    AA_OPS_PROGRAM_SHIFT_OWNER: "ops-team",
   });
 
   assert.equal(config.shiftOwner, "ops-team");
@@ -77,10 +77,10 @@ test("loadOpsProgramCliEnv handles all optional fields together", () => {
   const config = loadOpsProgramCliEnv({
     AA_DB_PATH: "/tmp/test.db",
     AA_ENVIRONMENT: "staging",
-    AA_HA_PROGRAM_ACTION: "export",
-    AA_ARTIFACT_ROOT: "/artifacts",
-    AA_TASK_ID: "task_789",
-    AA_SHIFT_OWNER: "night-shift",
+    AA_OPS_PROGRAM_ACTION: "export",
+    AA_OPS_PROGRAM_ARTIFACT_ROOT: "/artifacts",
+    AA_OPS_PROGRAM_TASK_ID: "task_789",
+    AA_OPS_PROGRAM_SHIFT_OWNER: "night-shift",
   });
 
   assert.equal(config.action, "export");
@@ -92,6 +92,7 @@ test("loadOpsProgramCliEnv handles all optional fields together", () => {
 test("loadOpsGovernanceCliEnv parses valid governance action", () => {
   const config = loadOpsGovernanceCliEnv({
     AA_DB_PATH: "/tmp/test.db",
+    AA_ENVIRONMENT: "prod",
     AA_OPS_GOVERNANCE_ACTION: "check",
   });
 
@@ -101,6 +102,7 @@ test("loadOpsGovernanceCliEnv parses valid governance action", () => {
 test("loadOpsGovernanceCliEnv parses report action", () => {
   const config = loadOpsGovernanceCliEnv({
     AA_DB_PATH: "/tmp/test.db",
+    AA_ENVIRONMENT: "prod",
     AA_OPS_GOVERNANCE_ACTION: "report",
   });
 
@@ -110,6 +112,7 @@ test("loadOpsGovernanceCliEnv parses report action", () => {
 test("loadOpsGovernanceCliEnv parses audit action", () => {
   const config = loadOpsGovernanceCliEnv({
     AA_DB_PATH: "/tmp/test.db",
+    AA_ENVIRONMENT: "prod",
     AA_OPS_GOVERNANCE_ACTION: "audit",
   });
 
@@ -119,6 +122,7 @@ test("loadOpsGovernanceCliEnv parses audit action", () => {
 test("loadOpsGovernanceCliEnv uses default action when not specified", () => {
   const config = loadOpsGovernanceCliEnv({
     AA_DB_PATH: "/tmp/test.db",
+    AA_ENVIRONMENT: "prod",
   });
 
   assert.equal(config.action, "check");
@@ -127,6 +131,7 @@ test("loadOpsGovernanceCliEnv uses default action when not specified", () => {
 test("loadOpsGovernanceCliEnv handles optional parameters", () => {
   const config = loadOpsGovernanceCliEnv({
     AA_DB_PATH: "/tmp/test.db",
+    AA_ENVIRONMENT: "prod",
     AA_OPS_GOVERNANCE_ACTION: "report",
   });
 
@@ -139,6 +144,7 @@ test("loadOpsGovernanceCliEnv throws invalid_env for unknown action", () => {
     () =>
       loadOpsGovernanceCliEnv({
         AA_DB_PATH: "/tmp/test.db",
+        AA_ENVIRONMENT: "prod",
         AA_OPS_GOVERNANCE_ACTION: "unknown_action",
       }),
     (e) => e instanceof ValidationError && (e as ValidationError).code.includes("invalid_env"),

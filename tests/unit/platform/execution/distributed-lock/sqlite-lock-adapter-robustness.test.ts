@@ -69,19 +69,17 @@ test("acquire - stale lock eviction logs correctly", () => {
   db.close();
 });
 
-test("acquire - TTL exactly at boundary", () => {
+test("acquire - expired lock at TTL boundary can be reacquired", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  // Insert a lock that expires exactly at the boundary (now - 1ms)
-  const boundaryTime = new Date(Date.now() - 1).toISOString();
+  // Use a tiny TTL and a timestamp safely in the past to avoid millisecond races.
+  const boundaryTime = new Date(Date.now() - 2).toISOString();
   db.prepare(`
     INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms)
     VALUES (?, ?, ?, 'held', ?, ?)
-  `).run("boundary-lock", "old-owner", 1, boundaryTime, 30000);
+  `).run("boundary-lock", "old-owner", 1, boundaryTime, 1);
 
-  // At exactly the boundary, the lock should still be considered expired
-  // because Date.now() >= expiresAt (not >)
   const result = adapter.acquire({ lockKey: "boundary-lock", owner: "new-owner", ttlMs: 30000 });
   assert.equal(result.acquired, true);
   assert.equal(result.lock!.owner, "new-owner");

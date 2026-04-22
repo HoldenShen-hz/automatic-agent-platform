@@ -342,7 +342,7 @@ describe("buildReportingChain", () => {
       { orgNodeId: "m1", nodeType: "member", displayName: "M", parentOrgNodeId: "t1", ownerUserIds: ["employee"], active: true, costCenter: "", metadata: {} },
     ];
     const chain = buildReportingChain(nodes, "employee", "m1");
-    assert.deepStrictEqual(chain, ["manager", "vp"]);
+    assert.deepStrictEqual(chain, ["manager", "vp", "ceo"]);
   });
 });
 
