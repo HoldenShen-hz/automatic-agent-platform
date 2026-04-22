@@ -222,7 +222,22 @@ function containsSymlinkWithinRoot(resolvedPath: string, root: string): boolean 
  */
 export function resolveSandboxPath(inputPath: string, enforceRealpath: boolean): string {
   const resolved = resolve(inputPath);
-  return enforceRealpath ? realpathSync(resolved) : resolved;
+  if (!enforceRealpath) {
+    return resolved;
+  }
+  try {
+    return realpathSync(resolved);
+  } catch (err) {
+    // realpathSync fails with ENOENT when the path doesn't exist yet.
+    // This is acceptable - we allow non-existent paths to pass through
+    // so they can be created later within allowed roots.
+    const errorCode = (err as NodeJS.ErrnoException).code;
+    if (errorCode === "ENOENT") {
+      return resolved;
+    }
+    // For other errors (permission denied, etc.), propagate the error
+    throw err;
+  }
 }
 
 /**

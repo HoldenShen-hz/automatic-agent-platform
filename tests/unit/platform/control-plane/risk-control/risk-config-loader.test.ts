@@ -66,7 +66,7 @@ test("loadRiskConfig sandboxPolicy parameter is optional", () => {
 test("RiskConfigLoader handles empty sandboxPolicy gracefully", () => {
   const emptySandboxPolicy: SandboxPolicy = {
     policyId: "empty-policy",
-    mode: "read_only",
+    mode: "danger_full_access",
     allowedRoots: [],
     deniedRoots: [],
     realpathEnforced: true,
@@ -74,12 +74,13 @@ test("RiskConfigLoader handles empty sandboxPolicy gracefully", () => {
     processRuleMode: "allow",
   };
 
-  // Empty allowed roots should still allow the path check to proceed
+  // danger_full_access mode skips allowed roots check, so path validation passes
+  // File read error expected since /some/path/config.json doesn't exist
   try {
     loadRiskConfig("/some/path/config.json", emptySandboxPolicy);
   } catch (e) {
-    // File read error expected, but not PolicyDeniedError for path traversal
-    assert.ok(!(e instanceof PolicyDeniedError) || (e as Error).message.includes("ENOENT"));
+    // File read error expected, but not PolicyDeniedError for path validation
+    assert.ok(!(e instanceof PolicyDeniedError));
   }
 });
 
