@@ -159,3 +159,21 @@ test("UnifiedChatProvider.dispose disables providers and rejects new requests", 
       && error.code === "provider.disposed",
   );
 });
+
+test("UnifiedChatProvider.complete uses chat completion facade", async () => {
+  const provider = new UnifiedChatProvider({});
+
+  await assert.rejects(
+    () => provider.complete("hello"),
+    /OpenAI provider is not configured/,
+  );
+});
+
+test("UnifiedChatProvider.embed falls back to hash embeddings when no embedding provider is configured", async () => {
+  const provider = new UnifiedChatProvider({});
+  const vectors = await provider.embed(["hello", "world"]);
+
+  assert.equal(vectors.length, 2);
+  assert.equal(vectors[0]?.length, 32);
+  assert.notDeepEqual(vectors[0], vectors[1]);
+});

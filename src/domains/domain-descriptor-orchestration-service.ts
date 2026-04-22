@@ -22,6 +22,8 @@ export interface DomainDescriptorInput {
   readonly interactionRules?: readonly DomainInteractionRule[];
   readonly defaultToolBundleIds: readonly string[];
   readonly defaultWorkflowIds: readonly string[];
+  readonly metaModelCompleteness?: number;
+  readonly metaModelMissingQuestionIds?: readonly string[];
 }
 
 export interface DomainDescriptorReview {
@@ -35,6 +37,8 @@ export interface DomainDescriptorReview {
   readonly defaultKnowledgeNamespaces: readonly string[];
   readonly crossDomainModes: Readonly<Record<string, DomainInteractionRule["mode"]>>;
   readonly reviewRequiredTaskTypes: readonly string[];
+  readonly metaModelCompleteness: number;
+  readonly metaModelMissingQuestionIds: readonly string[];
   readonly onboardingReadiness: "ready" | "needs_evidence" | "blocked";
   readonly findings: readonly string[];
 }
@@ -63,6 +67,8 @@ export class DomainDescriptorOrchestrationService {
       : input.riskProfile.defaultRiskLevel === "high" || input.riskProfile.defaultRiskLevel === "critical"
         ? ["release", "production_change"]
         : [];
+    const metaModelCompleteness = input.metaModelCompleteness ?? 100;
+    const metaModelMissingQuestionIds = [...(input.metaModelMissingQuestionIds ?? [])];
 
     const findings = [
       ...(input.defaultWorkflowIds.length === 0 ? ["domain_descriptor.default_workflow_missing"] : []),
@@ -71,6 +77,8 @@ export class DomainDescriptorOrchestrationService {
       ...(blockingEvaluatorIds.length === 0 ? ["domain_descriptor.blocking_evaluator_missing"] : []),
       ...(defaultKnowledgeNamespaces.length === 0 ? ["domain_descriptor.knowledge_namespace_missing"] : []),
       ...(recipeIds.length === 0 ? ["domain_descriptor.recipe_missing"] : []),
+      ...(metaModelCompleteness < 100 ? [`domain_descriptor.meta_model_incomplete:${metaModelCompleteness}`] : []),
+      ...metaModelMissingQuestionIds.map((questionId) => `domain_descriptor.meta_model_missing:${questionId}`),
       ...(input.lifecycleState === "active" && input.riskProfile.defaultRiskLevel === "critical"
         ? ["domain_descriptor.high_risk_active_requires_canary_history"]
         : []),
@@ -87,6 +95,8 @@ export class DomainDescriptorOrchestrationService {
       defaultKnowledgeNamespaces,
       crossDomainModes,
       reviewRequiredTaskTypes,
+      metaModelCompleteness,
+      metaModelMissingQuestionIds,
       onboardingReadiness: findings.length === 0
         ? "ready"
         : findings.some((item) => item.includes("missing"))

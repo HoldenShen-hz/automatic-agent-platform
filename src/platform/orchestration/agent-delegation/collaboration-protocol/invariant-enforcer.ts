@@ -58,7 +58,7 @@ export class ACPInvariantEnforcer {
 
   public enforceAll(message: ACPMessage, context: InvariantContext): { passed: boolean; violations: string[] } {
     const childPermissions = message.payload.permissions as PermissionSet | undefined;
-    const childConstraints = (message.payload.constraints as Record<string, unknown> | undefined) ?? {};
+    const childConstraints = message.payload.constraints as Record<string, unknown> | undefined;
     const violations: string[] = [];
 
     if (childPermissions && !this.checkPermissionSubset(childPermissions, context.parentPermissions)) {
@@ -67,7 +67,7 @@ export class ACPInvariantEnforcer {
     if (!this.checkRiskNotEscalated(message.risk_level, context.parentRiskMode)) {
       violations.push("acp.risk_escalated");
     }
-    if (!this.checkConstraintNotRelaxed(childConstraints, context.parentConstraints)) {
+    if (childConstraints !== undefined && !this.checkConstraintNotRelaxed(childConstraints, context.parentConstraints)) {
       violations.push("acp.constraints_relaxed");
     }
     if (!this.checkCompletionHasEvidence(message)) {

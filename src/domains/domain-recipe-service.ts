@@ -17,7 +17,19 @@ export interface RecipeTemplate {
   readonly templateId: string;
   readonly name: string;
   readonly description: string;
-  readonly category: "analysis" | "implementation" | "review" | "release" | "general";
+  readonly category:
+    | "analysis"
+    | "implementation"
+    | "review"
+    | "release"
+    | "research"
+    | "operations"
+    | "compliance"
+    | "support"
+    | "creative"
+    | "optimization"
+    | "planning"
+    | "general";
   readonly triggerPatterns: readonly string[];
   readonly defaultWorkflowId: string;
   readonly defaultToolBundleIds: readonly string[];
@@ -54,7 +66,7 @@ export class DomainRecipeService {
   private readonly recipes = new Map<string, DomainRecipe>();
   private readonly versions = new Map<string, RecipeVersion[]>();
 
-  // §37.6 Prototype templates - 4 canonical recipe templates
+  // §37.6 Prototype templates - 12 canonical recipe templates
   private readonly prototypeTemplates: readonly RecipeTemplate[] = [
     {
       templateId: "prototype_analysis",
@@ -95,6 +107,86 @@ export class DomainRecipeService {
       defaultWorkflowId: "release_workflow",
       defaultToolBundleIds: ["deployment_tools", "monitoring_tools"],
       estimatedDurationMinutes: 60,
+    },
+    {
+      templateId: "prototype_research",
+      name: "Research Recipe",
+      description: "Template for research tasks requiring source collection and synthesis",
+      category: "research",
+      triggerPatterns: ["research", "study", "survey", "benchmark", "compare"],
+      defaultWorkflowId: "research_workflow",
+      defaultToolBundleIds: ["knowledge_tools", "citation_tools"],
+      estimatedDurationMinutes: 90,
+    },
+    {
+      templateId: "prototype_operations",
+      name: "Operations Recipe",
+      description: "Template for operational runbook tasks and incident handling",
+      category: "operations",
+      triggerPatterns: ["operate", "triage", "mitigate", "recover", "runbook"],
+      defaultWorkflowId: "operations_workflow",
+      defaultToolBundleIds: ["runbook_tools", "incident_tools"],
+      estimatedDurationMinutes: 40,
+    },
+    {
+      templateId: "prototype_compliance",
+      name: "Compliance Recipe",
+      description: "Template for regulated review, audit, and control evidence work",
+      category: "compliance",
+      triggerPatterns: ["compliance", "audit", "control", "policy", "regulatory"],
+      defaultWorkflowId: "compliance_workflow",
+      defaultToolBundleIds: ["policy_tools", "evidence_tools"],
+      estimatedDurationMinutes: 75,
+    },
+    {
+      templateId: "prototype_support",
+      name: "Support Recipe",
+      description: "Template for customer and operator support requests",
+      category: "support",
+      triggerPatterns: ["support", "help", "ticket", "respond", "escalate"],
+      defaultWorkflowId: "support_workflow",
+      defaultToolBundleIds: ["support_tools", "crm_tools"],
+      estimatedDurationMinutes: 25,
+    },
+    {
+      templateId: "prototype_creative",
+      name: "Creative Recipe",
+      description: "Template for creative production and content iteration",
+      category: "creative",
+      triggerPatterns: ["creative", "draft", "design", "storyboard", "iterate"],
+      defaultWorkflowId: "creative_workflow",
+      defaultToolBundleIds: ["creative_tools", "review_tools"],
+      estimatedDurationMinutes: 80,
+    },
+    {
+      templateId: "prototype_optimization",
+      name: "Optimization Recipe",
+      description: "Template for performance, cost, and quality optimization work",
+      category: "optimization",
+      triggerPatterns: ["optimize", "improve", "tune", "reduce cost", "speed up"],
+      defaultWorkflowId: "optimization_workflow",
+      defaultToolBundleIds: ["metrics_tools", "analysis_tools"],
+      estimatedDurationMinutes: 50,
+    },
+    {
+      templateId: "prototype_planning",
+      name: "Planning Recipe",
+      description: "Template for planning, scoping, and sequencing work",
+      category: "planning",
+      triggerPatterns: ["plan", "scope", "sequence", "roadmap", "prepare"],
+      defaultWorkflowId: "planning_workflow",
+      defaultToolBundleIds: ["planning_tools", "knowledge_tools"],
+      estimatedDurationMinutes: 35,
+    },
+    {
+      templateId: "prototype_general",
+      name: "General Recipe",
+      description: "Fallback template for governed general-purpose tasks",
+      category: "general",
+      triggerPatterns: ["handle", "process", "execute", "deliver", "assist"],
+      defaultWorkflowId: "general_workflow",
+      defaultToolBundleIds: ["general_tools"],
+      estimatedDurationMinutes: 30,
     },
   ];
 

@@ -266,6 +266,14 @@ test("integration: ai operations mainline composes prompt governance, model roll
       approvalMode: budget.requiresApproval ? "required" : "supervised",
       autonomyMode: "supervised",
       toolPolicy: { allowedTools: ["knowledge.query", "artifact.publish"] },
+      risk_policy: {
+        maxRiskScore: 70,
+        escalationThreshold: 55,
+      },
+      output_policy: {
+        requiredEvidence: ["risk_profile", "eval_framework"],
+        redactSensitiveData: true,
+      },
       budget: {
         maxSteps: 6,
         maxCost: Number((budget.remainingBudgetUsd + 1.2).toFixed(2)),

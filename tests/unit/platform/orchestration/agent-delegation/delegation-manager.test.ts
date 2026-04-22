@@ -119,6 +119,16 @@ test("DelegationManagerService completes delegation", async () => {
   assert.equal(delegation?.status, "completed");
 });
 
+test("DelegationManagerService completes delegation with ACP evidence", async () => {
+  const service = createDelegationManager();
+  const handle = await service.delegate(createParentContext(), createDelegationSpec());
+
+  await service.completeWithEvidence(handle.delegationId, ["artifact:proof"], "artifact:result");
+
+  const delegation = service.getDelegation(handle.delegationId);
+  assert.equal(delegation?.status, "completed");
+});
+
 test("DelegationManagerService fails delegation", async () => {
   const service = createDelegationManager();
   const parent = createParentContext();
@@ -173,6 +183,37 @@ test("DelegationManagerService returns active delegations for agent", async () =
 
   const activeDelegations = service.getActiveDelegations("parent-agent");
   assert.ok(activeDelegations.length > 0);
+});
+
+test("DelegationManagerService validates collaboration messages and takeover notices", async () => {
+  const service = createDelegationManager();
+  const handle = await service.delegate(createParentContext(), createDelegationSpec());
+  const context = {
+    parentPermissions: createParentContext().permissions,
+    parentRiskMode: 50,
+    parentConstraints: {},
+    parentBudgetRemaining: 100,
+    globalCallDepth: 4,
+  };
+
+  const message = {
+    messageId: "msg-1",
+    messageType: "takeover_notice" as const,
+    correlation_id: "corr-1",
+    parent_run_id: handle.delegationId,
+    depth: 1,
+    sender_agent_id: handle.childAgentId,
+    receiver_agent_id: handle.parentAgentId,
+    domain_id: "coding",
+    risk_level: 10,
+    budget_remaining: 10,
+    trace_id: "trace-1",
+    payload: { audit_trail_ref: "audit:1" },
+    timestamp: "2026-04-22T00:00:00.000Z",
+  };
+
+  assert.equal(service.validateCollaborationMessage(message, context).accepted, true);
+  assert.equal(service.recordTakeoverNotice(message, context).accepted, true);
 });
 
 test("DelegationManagerService tracks delegation chain", async () => {

@@ -149,6 +149,7 @@ function detectProviderFromModel(modelId: string): ChatProviderType {
 }
 
 export class UnifiedChatProvider {
+  private readonly config: UnifiedProviderConfig;
   private readonly anthropic: AnthropicChatService | null;
   private readonly openai: OpenAIChatService | null;
   private readonly minimax: MiniMaxChatService | null;
@@ -156,6 +157,7 @@ export class UnifiedChatProvider {
   private disposed = false;
 
   public constructor(config: UnifiedProviderConfig) {
+    this.config = config;
     if (config.anthropic?.apiKey) {
       const anthropicConfig: { apiKey: string; baseUrl?: string } = { apiKey: config.anthropic.apiKey };
       if (config.anthropic.baseUrl !== undefined) {
@@ -506,14 +508,16 @@ export class UnifiedChatProvider {
 
   private createEmbeddingProvider(model: string): EmbeddingProvider {
     const normalizedModel = model.toLowerCase();
-    if ((normalizedModel.includes("minimax") || normalizedModel.includes("embo")) && this.minimax) {
+    if ((normalizedModel.includes("minimax") || normalizedModel.includes("embo")) && this.config.minimax?.apiKey) {
       return new MiniMaxEmbeddingProvider({
-        apiKey: "configured-via-unified-provider",
+        apiKey: this.config.minimax.apiKey,
+        ...(this.config.minimax.baseUrl !== undefined ? { baseUrl: this.config.minimax.baseUrl } : {}),
       });
     }
-    if ((normalizedModel.includes("text-embedding") || normalizedModel.includes("openai") || normalizedModel.includes("embedding")) && this.openai) {
+    if ((normalizedModel.includes("text-embedding") || normalizedModel.includes("openai") || normalizedModel.includes("embedding")) && this.config.openai?.apiKey) {
       return new OpenAIEmbeddingProvider({
-        apiKey: "configured-via-unified-provider",
+        apiKey: this.config.openai.apiKey,
+        ...(this.config.openai.baseUrl !== undefined ? { baseUrl: this.config.openai.baseUrl } : {}),
         model,
       });
     }
