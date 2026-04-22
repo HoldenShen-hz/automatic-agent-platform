@@ -97,7 +97,7 @@ Documents that must be completed before core module completion:
 
 Source: `release_readiness_checklist.md`
 
-Must pass before complete version release, see `doc/release-checklist.md`.
+Must pass before complete version release, see [`../quality/01-release-checklist.md`](../quality/01-release-checklist.md).
 
 ---
 

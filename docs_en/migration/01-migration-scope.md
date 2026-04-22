@@ -2,7 +2,7 @@
 
 > **Document Version**: v1.1
 > **Document Status**: Draft
-> **Assessment Scope**: `doc/` (excluding `doc/automatic_agent_platform/`) + `src/` + `config/` + `divisions/` + `tests/`
+> **Assessment Scope**: `docs_zh/` (excluding `docs_zh/automatic_agent_platform/`) + `src/` + `config/` + `divisions/` + `tests/`
 > **Target System**: "Enterprise Agent Platform Overall Technical Architecture Design Document" v2.7 (§1-§70, Seven-Layer Architecture)
 > **Assessment Date**: 2026-04-19
 
@@ -70,18 +70,18 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 
 | Category | File Count | Green Direct | Yellow Transform | Blue Reference | White Archive |
 |----------|------------|--------------|-------------------|----------------|---------------|
-| Main Documents (doc/00-07) | 8 | 0 | 5 | 3 | 0 |
-| Technical Analysis Docs (doc/18, 19) | 2 | 0 | 2 | 0 | 0 |
+| Main Documents (docs_zh/architecture/) | 5 | 0 | 5 | 3 | 0 |
+| Technical Analysis Docs (docs_zh/analysis/) | 3 | 0 | 2 | 0 | 0 |
 | Architecture & Sequence Diagrams | 4 | 0 | 3 | 1 | 0 |
-| Contract Documents (doc/contracts/) | 90 | 22 | 38 | 20 | 10 |
-| ADR (doc/adr/) | 28 | 15 | 8 | 3 | 2 |
-| Operations Documents (doc/operations/) | 30+ | 5 | 10 | 8 | 7+ |
-| Review Documents (doc/reviews/) | 21 | 0 | 3 | 12 | 6 |
-| Governance Documents (doc/governance/) | 8 | 4 | 3 | 1 | 0 |
-| Guide Documents (doc/guides/) | 4 | 2 | 2 | 0 | 0 |
-| Reference Documents (doc/reference/) | 17 | 0 | 0 | 8 | 9 |
-| Research Documents (doc/research/) | 28 | 0 | 0 | 28 | 0 |
-| Archive Documents (doc/archive/) | 3 | 0 | 0 | 0 | 3 |
+| Contract Documents (docs_zh/contracts/) | 113 | 22 | 38 | 20 | 10 |
+| ADR (docs_zh/adr/) | 38 | 15 | 8 | 3 | 2 |
+| Operations Documents (docs_zh/operations/) | 16 | 5 | 10 | 8 | 7+ |
+| Review Documents (docs_zh/reviews/) | 1 | 0 | 3 | 12 | 6 |
+| Governance Documents (docs_zh/governance/) | 7 | 4 | 3 | 1 | 0 |
+| Guide Documents (docs_zh/guides/) | 4 | 2 | 2 | 0 | 0 |
+| Reference Documents (docs_zh/reference/) | 0 | 0 | 0 | 8 | 9 |
+| Research Documents (docs_zh/research/) | 0 | 0 | 0 | 28 | 0 |
+| Archive Documents (docs_zh/archive/) | 0 | 0 | 0 | 0 | 3 |
 | **Total** | **~243** | **~48** | **~74** | **~84** | **~37** |
 
 ### 3.2 Code Porting Overview
@@ -102,36 +102,32 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 
 ## 4. Documentation Porting Detailed Assessment
 
-### 4.1 Main Documents (doc/00-07)
+### 4.1 Main Documents (docs_zh/architecture/)
 
 | File | Lines | Level | Target Architecture Layer | Porting Notes |
 |------|------|-------|---------------------------|---------------|
-| `00_document_architecture_and_source_of_truth.md` | 192 | Yellow B | Cross-layer | Document hierarchical governance model (L0-L10) is reusable, needs update to seven-layer architecture documentation system |
-| `01_architecture_and_technical_design.md` | 153 | Yellow B | Layer 1-2 | Three-layer platform architecture + control-plane role definition is reusable, needs alignment with v2.7 §1-§5 |
-| `02_agents_governance_and_security.md` | 83 | Yellow B | Layer 5 | Agent hierarchy, permissions, and security model are compatible with v2.7 §11 security system, needs expansion on organization governance |
-| `03_data_feedback_and_learning.md` | 107 | Yellow B | Layer 2,4 | 6-layer memory + feedback cycle is compatible with v2.7 §56 feedback pipeline, needs update to align KV cache details |
-| `04_product_growth_and_strategy.md` | 76 | Blue C | Layer 6 | Commercial positioning and growth strategy serve as reference for new platform product planning |
-| `05_delivery_scope_and_milestones.md` | 120 | Yellow B | Cross-layer | Phase roadmap (1a→4) needs remapping to v2.7 §33 seven-phase roadmap |
-| `06_testing_release_and_operations.md` | 107 | Blue C | Layer 7 | Test baseline and release gate logic can be referenced, but needs complete rewrite to adapt to v2.7 §27/§32 |
-| `07_constraints_roadmap_and_appendix.md` | 98 | Blue C | Cross-layer | Constraints and anti-pattern list serve as reference for new platform design |
+| `00-platform-architecture.md` | ~2,000 | Yellow B | Cross-layer | Document hierarchical governance model (L0-L10) is reusable, needs update to seven-layer architecture documentation system |
+| `01-code-structure.md` | ~500 | Yellow B | Layer 1-2 | Directory structure + control-plane role definition is reusable, needs alignment with v2.7 §1-§5 |
+| `02-code-architecture-reference.md` | ~800 | Yellow B | Layer 5 | Agent hierarchy, permissions, and security model are compatible with v2.7 §11 security system, needs expansion on organization governance |
+| `03-module-diagrams.md` | ~400 | Yellow B | Layer 2,4 | Six-layer module diagram and feedback cycle are compatible with v2.7 §56 feedback pipeline, needs update to align KV cache details |
+| `04-runtime-sequence.md` | ~300 | Blue C | Cross-layer | Constraints and anti-pattern list serve as reference for new platform design |
 
-### 4.2 Technical Analysis Documents
+### 4.2 Technical Analysis Documents (docs_zh/analysis/)
 
 | File | Lines | Level | Porting Notes |
 |------|------|-------|---------------|
-| `18_code_architecture.md` | 1,541 | Yellow B | v9 code architecture static analysis, module inventory/dependency graph/quality matrix can be directly used as new platform code architecture baseline, needs update to reflect seven-layer module reorganization |
-| `19_full_coverage_test_manual.md` | 2,082 | Yellow B | v1.2 test methodology manual, OAPEFLIR coverage matrix / golden test / mutation testing (Stryker) chapters can be directly reused, needs supplementary Layer 4-7 testing strategy |
+| `00-architecture-coverage-matrix.md` | ~150 | Yellow B | Coverage matrix needs update to reflect five-plane module reorganization |
+| `01-codebase-vs-design-review.md` | ~2,000 | Yellow B | Code vs design difference analysis manual |
+| `02-implementation-progress-tracker.md` | ~100 | Blue C | Implementation progress tracker serves as reference |
 
 ### 4.3 Architecture & Sequence Diagram Documents
 
 | File | Lines | Level | Porting Notes |
 |------|------|-------|---------------|
-| `automatic-agent-architecture.md` | 166 | Yellow B | Main architecture entry document, SLO quantitative metrics (95%/90%/100%) are reusable, needs alignment with v2.7 §27 |
-| `runtime-sequence.md` | 291 | Yellow B | 4 sets of core runtime sequence diagrams (Intake/Dispatch/Writeback/Recovery) can be directly ported, needs supplementary OAPEFLIR full-cycle sequence |
-| `module-inventory.md` | 317 | Yellow B | Module maturity snapshot, needs update to seven-layer classification |
-| `system-status-matrix.md` | 294 | Blue C | Capability status matrix serves as reference, new platform needs to establish its own status tracking |
+| `00-platform-architecture.md` | ~2,000 | Yellow B | Main architecture entry document, SLO quantitative metrics (95%/90%/100%) are reusable, needs alignment with v2.7 §27 |
+| `04-runtime-sequence.md` | ~300 | Yellow B | 4 sets of core runtime sequence diagrams (Intake/Dispatch/Writeback/Recovery) can be directly ported, needs supplementary OAPEFLIR full-cycle sequence |
 
-### 4.4 Contract Documents (doc/contracts/) — 90 Files
+### 4.4 Contract Documents (docs_zh/contracts/) — 113 Files
 
 **Direct Port (Green A) — 22 Files**: These contract-defined interfaces are fully compatible with the new architecture.
 
@@ -166,7 +162,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 
 **Archive and Retire (White D) — 10 Files**: Early v1.x contracts replaced by v2.7.
 
-### 4.5 ADR (doc/adr/) — 28 Files
+### 4.5 ADR (docs_zh/adr/) — 38 Files
 
 **Direct Port (Green A) — 15 Files**:
 
@@ -191,7 +187,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 **Transform and Port (Yellow B) — 8 Files**: Decisions are valid but need expansion to adapt to seven-layer architecture.
 
 | ADR | Transformation Points |
-|-----|----------------------|
+|-----|-----------------------|
 | `002-division-system.md` | Need to add impact of §46 Org hierarchy on Division |
 | `004-workflow-routing.md` | Need to adapt multi-level routing of §40 Goal Decomposition Engine |
 | `007-evolution-engine.md` | Need to align with v2.7 §65 Behavior drift detection |
@@ -205,7 +201,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 
 **Archive and Retire (White D) — 2 Files**: `015-unified-extension-marketplace.md` (replaced by v2.7 §55), early draft ADRs
 
-### 4.6 Governance Documents (doc/governance/) — 8 Files
+### 4.6 Governance Documents (docs_zh/governance/) — 7 Files
 
 | File | Level | Porting Notes |
 |------|-------|---------------|
@@ -218,7 +214,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 | `phase1_scope_freeze.md` | Yellow B | Need to map to new platform Phase definitions |
 | `README.md` | Blue C | Navigation file reference |
 
-### 4.7 Guide Documents (doc/guides/) — 4 Files
+### 4.7 Guide Documents (docs_zh/guides/) — 4 Files
 
 | File | Level | Porting Notes |
 |------|-------|---------------|
@@ -227,7 +223,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 | `division-authoring.md` | Yellow B | Need update to reflect v2.7 §37 DomainDescriptor |
 | `skill-authoring.md` | Yellow B | Need update to reflect v2.7 §30 Pack lifecycle |
 
-### 4.8 Operations Documents (doc/operations/) — 30+ Files
+### 4.8 Operations Documents (docs_zh/operations/) — 16 Files
 
 **Direct Port (Green A) — 5 Files**:
 
@@ -243,7 +239,7 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 
 **Reference/Archive — 15+ Files**: Historical TODOs, old gap analyses, archived plans under archive/.
 
-### 4.9 Review Documents (doc/reviews/) — 21 Files
+### 4.9 Review Documents (docs_zh/reviews/) — 1 File
 
 | Level | File | Notes |
 |-------|------|-------|
@@ -256,20 +252,20 @@ Layer 1 │ Infrastructure Layer (five planes·stability·risk·security·recove
 | Blue C | Other 9 files | Historical review records as reference |
 | White D | 6 files | Old reviews replaced |
 
-### 4.10 Reference Documents (doc/reference/) — 17 Files
+### 4.10 Reference Documents (docs_zh/reference/) — 0 Files
 
 | Level | Notes |
 |-------|-------|
 | Blue C (8 files) | Architecture/module/security/storage/communication chapters mechanically split from old monolith, design approach can be referenced |
 | White D (9 files) | Old content fully covered by v2.7, archive |
 
-### 4.11 Research Documents (doc/research/) — 28 Files
+### 4.11 Research Documents (docs_zh/research/) — 0 Files
 
 | Level | Notes |
 |-------|-------|
-| Blue C (all 28 files) | Competitive analysis (Claude Code/Codex/Goose/Aider/MetaGPT/LangGraph/Temporal/DeerFlow etc.) and reference alignment reviews. Not directly ported but high reference value for new platform design decisions. Recommend moving entire `doc/research/` directory into new project |
+| Blue C (all 28 files) | Competitive analysis (Claude Code/Codex/Goose/Aider/MetaGPT/LangGraph/Temporal/DeerFlow etc.) and reference alignment reviews. Not directly ported but high reference value for new platform design decisions. Recommend moving entire `docs_zh/research/` directory into new project |
 
-### 4.12 Archive Documents (doc/archive/) — 3 Files
+### 4.12 Archive Documents (docs_zh/archive/) — 0 Files
 
 | Level | Notes |
 |-------|-------|
@@ -701,11 +697,11 @@ Phase │ Content                          │ Files │ Lines   │ Prerequisit
 ──────┼───────────────────────────────────┼────────┼─────────┼───────────────┼──────────
   7   │ Interaction Layer + Tests         │ ~124  │ ~28.8K  │ Phase 5-6      │ 4 person-days
       │ memory/ + knowledge/ +           │  src54│ 10.8K   │               │
-      │ messages/ + gateway/             │ test70│ 18.0K   │               │
+      │ messages/ + gateway/             │ test70│ 18.0K  │               │
 ──────┼───────────────────────────────────┼────────┼─────────┼───────────────┼──────────
   8   │ Business Domain + Tests           │  ~78  │ ~13.5K  │ Phase 2,7      │ 2.5 person-days
       │ domain-registry/ + plugins/     │  src38│  5.8K   │               │
-      │ + divisions/ dir                │ test40│  7.7K   │               │
+      │ + divisions/ dir                │ test40│  7.7K  │               │
 ──────┼───────────────────────────────────┼────────┼─────────┼───────────────┼──────────
   9   │ Operational Maturity + Tests      │ ~271  │ ~72.6K  │ Phase 5        │ 7 person-days
       │ observability/ + ops/ +          │ src106│ 32.6K   │               │
@@ -1236,12 +1232,12 @@ The following content is **explicitly NOT migrated**, archived only:
 
 | Content | Reason |
 |---------|--------|
-| All of `doc/archive/` | Historical archive |
-| 9 White D files in `doc/reference/` | Replaced by v2.7 |
-| `doc/automatic_agent_platform/agent_platform.md` (92K lines) | Unexpurged old version, replaced by v2.7 (6.7K lines) |
-| Intermediate translation fragment files in `doc/automatic_agent_platform/` | chunk_b-j, part1-6 are translation intermediate products |
-| 6 White D files in `doc/reviews/` | Old reviews |
-| 10 White D contracts in `doc/contracts/` | Early v1.x contracts |
+| All of `docs_zh/archive/` | Historical archive |
+| 9 White D files in `docs_zh/reference/` | Replaced by v2.7 |
+| `docs_zh/automatic_agent_platform/agent_platform.md` (92K lines) | Unexpurged old version, replaced by v2.7 (6.7K lines) |
+| Intermediate translation fragment files in `docs_zh/automatic_agent_platform/` | chunk_b-j, part1-6 are translation intermediate products |
+| 6 White D files in `docs_zh/reviews/` | Old reviews |
+| 10 White D contracts in `docs_zh/contracts/` | Early v1.x contracts |
 
 ---
 

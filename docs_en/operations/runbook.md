@@ -1,6 +1,6 @@
 # Automatic Agent System Runbook
 
-> Note: This runbook contains industrial-grade target-state operational entries; items related to `canary / blue-green` correspond to subsequent industrial-grade release paths, and do not indicate that the current phase1-4 authoritative release level supports running levels beyond `off / suggest / shadow`.
+> 说明：本 runbook 包含工业级目标态运维条目；其中 `canary / blue-green` 相关项对应后续工业级发布路径，不表示当前 phase1-4 authoritative release level 已支持超出 `off / suggest / shadow` 的运行级别。
 
 ## 1. API latency breach
 - Symptoms: `aa_http_request_duration_seconds` P95/P99 exceeds the alert threshold, `/healthz` degrades, user requests time out.

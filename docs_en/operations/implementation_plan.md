@@ -1,5 +1,9 @@
 # Implementation Plan
 
+> **Structure Migration Note** - This document references old structure `src/core/`, `src/cli/`, `src/gateway/`.
+> The current codebase has migrated to `src/platform/` five-plane structure + upper-layer business domains (`domains/`, `interaction/`, `ops-maturity/`, etc.).
+> Plan content may need verification against [architecture/README.md](../architecture/README.md) for execution status.
+
 ## Goal
 
 Without shaking the existing document structure, advance implementation and productization in the sequence Phase 1a -> 1b -> 2a -> 2b -> 2c -> 3 -> 4.

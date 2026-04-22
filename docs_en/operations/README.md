@@ -15,6 +15,17 @@
 | [`current_todo_list.md`](./current_todo_list.md) | Current active todos | When current priorities change |
 | [`operations-tracker.md`](./operations-tracker.md) | Lightweight index page | Rarely updated |
 | [`module_remediation_backlog.md`](./module_remediation_backlog.md) | Defect and fix backlog by module | Discovered and entered |
+| [`runbook.md`](./runbook.md) | Operations runbook entry | On playbook change |
+| [`runbooks/incident-response-playbook.md`](./runbooks/incident-response-playbook.md) | Incident response | On playbook change |
+| [`runbooks/runbook-plugin-failure.md`](./runbooks/runbook-plugin-failure.md) | Plugin failure handling | On playbook change |
+| [`runbooks/runbook-high-error-rate.md`](./runbooks/runbook-high-error-rate.md) | High error rate handling | On playbook change |
+| [`runbooks/runbook-database-issues.md`](./runbooks/runbook-database-issues.md) | Database issues handling | On playbook change |
+| [`runbooks/runbook-memory-pressure.md`](./runbooks/runbook-memory-pressure.md) | Memory pressure handling | On playbook change |
+| [`src_module_test_matrix.md`](./src_module_test_matrix.md) | Source module test matrix | On test structure change |
+| [`test_coverage_baseline_gate.md`](./test_coverage_baseline_gate.md) | Coverage baseline threshold | On coverage rule change |
+| [`capacity-planning.md`](./capacity-planning.md) | Capacity planning | On planning cycle update |
+| [`cross-region-validation.md`](./cross-region-validation.md) | Cross-region validation | On plan adjustment |
+| [`hot-upgrade-validation.md`](./hot-upgrade-validation.md) | Hot upgrade validation | On plan adjustment |
 
 ## 2. Finding Entry Point by Task
 

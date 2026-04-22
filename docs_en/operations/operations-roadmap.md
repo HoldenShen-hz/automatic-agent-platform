@@ -215,7 +215,7 @@ Formalize current system-level improvement suggestions into an advancement roadm
 
 ## 7. Reference Documents
 
-- Complete implementation task list (Top 10 tasks): `doc/research/reference-alignment/reference_cross_analysis_and_todolist.md`
-- 90-day industrial roadmap: `doc/research/reference-alignment/reference_industrial_goal.md`
-- System architecture analysis: `doc_en/18_code_architecture.md`
-- Reference research documents: `doc/reviews/`
+- Platform skeleton: `docs_zh/architecture/00-platform-architecture.md`
+- Migration boundary: `docs_zh/migration/01-migration-scope.md`
+- Code architecture reference: `docs_zh/architecture/02-code-architecture-reference.md`
+- Coverage matrix: `docs_zh/analysis/00-architecture-coverage-matrix.md`
