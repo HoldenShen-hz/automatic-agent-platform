@@ -23,7 +23,8 @@ test("domains runtime catalog registers aggregated services", async () => {
   try {
     const catalog = registerDomainsRuntimeCatalog(registry);
     assert.equal(catalog.phase9a.some((item) => item.domainId === "coding"), true);
-    assert.equal(catalog.phase9f.some((item) => item.domainId === "marketing-brand"), true);
+    assert.equal(catalog.phase9b.some((item) => item.domainId === "quant-trading"), true);
+    assert.equal(catalog.phase9f.some((item) => item.domainId === "marketing"), true);
     assert.equal(registry.isInitialized(DOMAINS_RUNTIME_CATALOG_SERVICE_ID), true);
   } finally {
     await registry.reset();

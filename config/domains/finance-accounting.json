@@ -1,0 +1,28 @@
+{
+  "domainId": "finance-accounting",
+  "phase": "9c",
+  "divisionId": "analytics",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "finance-accounting.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "ledger_reader",
+      "variance_checker",
+      "close_calendar"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "reconciliation_accuracy",
+      "approval_completeness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "finance-accounting-owners",
+    "escalationTeam": "finance-accounting-escalation"
+  }
+}

@@ -13,6 +13,8 @@ import {
   RoadmapService,
   bootstrapVerticalDomainBaselines,
   listVerticalDomainBaselines,
+  resolveCanonicalVerticalDomainId,
+  computeMetaModelCompleteness,
 } from "../../../src/domains/index.js";
 
 test("domains root barrel exposes business-pack services", () => {
@@ -33,4 +35,6 @@ test("domains root barrel exposes vertical domain baseline bootstrap", () => {
   assert.equal(typeof buildDomainsBootstrap, "function");
   assert.equal(typeof buildDomainsRuntimeCatalog, "function");
   assert.equal(typeof buildDomainsStartupPlan, "function");
+  assert.equal(typeof resolveCanonicalVerticalDomainId, "function");
+  assert.equal(typeof computeMetaModelCompleteness, "function");
 });

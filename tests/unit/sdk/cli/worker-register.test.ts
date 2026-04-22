@@ -26,7 +26,7 @@ test("worker-register action supports complete", () => {
 });
 
 test("worker-register action throws ValidationError for unknown action", () => {
-  const action = "unknown";
+  const action: string = "unknown";
   const errorPrefix = `unknown_worker_register_action:${action}`;
   assert.throws(
     () => {
@@ -213,7 +213,7 @@ test("complete registration includes all optional fields when provided", () => {
 // ---------------------------------------------------------------------------
 
 test("registration policy uses default challengeTtlMs when not configured", () => {
-  const registration = {};
+  const registration = { challengeTtlMs: undefined } as unknown as { challengeTtlMs?: number };
   const challengeTtlMs =
     typeof registration.challengeTtlMs === "number" && Number.isFinite(registration.challengeTtlMs)
       ? registration.challengeTtlMs
@@ -222,7 +222,7 @@ test("registration policy uses default challengeTtlMs when not configured", () =
 });
 
 test("registration policy uses default allowedCapabilities when not configured", () => {
-  const registration = {};
+  const registration = { allowedCapabilities: undefined } as unknown as { allowedCapabilities?: string[] };
   const allowedCapabilities = Array.isArray(registration.allowedCapabilities)
     ? registration.allowedCapabilities.filter((item): item is string => typeof item === "string")
     : ["bash", "edit", "mcp"];
@@ -230,7 +230,7 @@ test("registration policy uses default allowedCapabilities when not configured",
 });
 
 test("registration policy uses configured challengeTtlMs", () => {
-  const registration = { challengeTtlMs: 600_000 };
+  const registration: { challengeTtlMs?: number } = { challengeTtlMs: 600_000 };
   const challengeTtlMs =
     typeof registration.challengeTtlMs === "number" && Number.isFinite(registration.challengeTtlMs)
       ? registration.challengeTtlMs
@@ -239,7 +239,7 @@ test("registration policy uses configured challengeTtlMs", () => {
 });
 
 test("registration policy filters invalid capabilities", () => {
-  const registration = {
+  const registration: { allowedCapabilities?: (string | number | null | undefined)[] } = {
     allowedCapabilities: ["bash", 123, null, "edit", undefined, "mcp"],
   };
   const allowedCapabilities = Array.isArray(registration.allowedCapabilities)

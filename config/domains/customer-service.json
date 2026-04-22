@@ -1,0 +1,28 @@
+{
+  "domainId": "customer-service",
+  "phase": "9d",
+  "divisionId": "support",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "customer-service.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "ticket_router",
+      "knowledge_search",
+      "response_drafter"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "csat_proxy",
+      "policy_safety"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "customer-service-owners",
+    "escalationTeam": "customer-service-escalation"
+  }
+}

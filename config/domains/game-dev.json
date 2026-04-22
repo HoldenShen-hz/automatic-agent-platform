@@ -1,0 +1,28 @@
+{
+  "domainId": "game-dev",
+  "phase": "9f",
+  "divisionId": "engineering_ops",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "game-dev.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "build_runner",
+      "asset_pipeline",
+      "playtest_tracker"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "build_success",
+      "performance_budget"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "game-dev-owners",
+    "escalationTeam": "game-dev-escalation"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "domainId": "education",
+  "phase": "9e",
+  "divisionId": "general_ops",
+  "latencyTier": "business_day",
+  "workflowProfile": {
+    "workflowId": "education.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "curriculum_planner",
+      "content_library",
+      "assessment_builder"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "assessment_quality",
+      "content_safety"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "education-owners",
+    "escalationTeam": "education-escalation"
+  }
+}

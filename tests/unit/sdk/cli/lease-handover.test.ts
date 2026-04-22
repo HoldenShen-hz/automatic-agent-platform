@@ -331,8 +331,8 @@ test("lease-handover catches errors and sets exit code 1", () => {
 });
 
 test("lease-handover handles non-Error throws", () => {
-  const error = "string_error";
-  const message = error instanceof Error ? error.message : String(error);
+  const error: unknown = "string_error";
+  const message = (error as any) instanceof Error ? (error as Error).message : String(error);
 
   assert.equal(message, "string_error");
 });

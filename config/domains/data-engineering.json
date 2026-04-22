@@ -1,0 +1,28 @@
+{
+  "domainId": "data-engineering",
+  "phase": "9a",
+  "divisionId": "data",
+  "latencyTier": "business_day",
+  "workflowProfile": {
+    "workflowId": "data-engineering.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "schema_registry",
+      "pipeline_runner",
+      "lineage_tracker"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "data_freshness",
+      "schema_validity"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "data-engineering-owners",
+    "escalationTeam": "data-engineering-escalation"
+  }
+}

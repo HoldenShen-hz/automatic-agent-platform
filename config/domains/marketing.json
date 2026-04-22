@@ -1,0 +1,28 @@
+{
+  "domainId": "marketing",
+  "phase": "9f",
+  "divisionId": "content",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "marketing.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "calendar_planner",
+      "content_router",
+      "measurement_dashboard"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "brand_consistency",
+      "approval_completeness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "marketing-owners",
+    "escalationTeam": "marketing-escalation"
+  }
+}

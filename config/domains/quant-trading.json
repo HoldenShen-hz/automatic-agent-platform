@@ -1,0 +1,30 @@
+{
+  "domainId": "quant-trading",
+  "phase": "9b",
+  "divisionId": "analytics",
+  "latencyTier": "ultra_realtime",
+  "workflowProfile": {
+    "workflowId": "quant-trading.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "market_data",
+      "strategy_backtester",
+      "risk_calculator",
+      "order_execution"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "sharpe_ratio",
+      "max_drawdown",
+      "pre_trade_risk"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "quant-trading-owners",
+    "escalationTeam": "quant-trading-escalation"
+  }
+}

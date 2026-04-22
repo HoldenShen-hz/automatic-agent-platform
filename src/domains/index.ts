@@ -1,4 +1,5 @@
 export * from "./business-pack/index.js";
+export * from "./canonical-meta-model/index.js";
 export * from "./domain-baseline-catalog.js";
 export * from "./domains-bootstrap.js";
 export * from "../domains-runtime-catalog.js";

@@ -26,6 +26,7 @@ test("domains bootstrap registers services in the service registry", async () =>
   try {
     const bootstrap = registerDomainsBootstrap(registry);
     assert.equal(bootstrap.catalog.some((item) => item.domainId === "coding"), true);
+    assert.equal(bootstrap.catalog.some((item) => item.domainId === "quant-trading"), true);
     assert.equal(registry.isInitialized(DOMAINS_CATALOG_SERVICE_ID), true);
     assert.equal(registry.isInitialized(DOMAINS_BOOTSTRAP_SERVICE_ID), true);
     assert.equal(registry.isInitialized(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS["9f"]), true);

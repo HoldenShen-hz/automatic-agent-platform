@@ -1,0 +1,28 @@
+{
+  "domainId": "industry-research",
+  "phase": "9c",
+  "divisionId": "research",
+  "latencyTier": "business_day",
+  "workflowProfile": {
+    "workflowId": "industry-research.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "source_collector",
+      "signal_extractor",
+      "brief_builder"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "source_relevance",
+      "citation_coverage"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "industry-research-owners",
+    "escalationTeam": "industry-research-escalation"
+  }
+}

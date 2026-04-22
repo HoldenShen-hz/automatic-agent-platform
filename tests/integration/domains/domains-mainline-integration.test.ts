@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import test from "node:test";
 
 import { getVerticalDomainBaseline, bootstrapVerticalDomainBaselines } from "../../../src/domains/domain-baseline-catalog.js";
@@ -23,6 +24,8 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
     const bootstrapped = bootstrapVerticalDomainBaselines();
     assert.equal(bootstrapped.baselines.length, 24);
     assert.equal(bootstrapped.domainRegistry.listActive().length, 24);
+    assert.equal(bootstrapped.baselines.some((baseline) => baseline.domainId === "quant-trading"), true);
+    assert.equal(bootstrapped.baselines.some((baseline) => baseline.domainId === "finance-accounting"), true);
     assert.equal(
       bootstrapped.baselines.every((baseline) => bootstrapped.domainRegistry.validate(baseline.domainId).passed),
       true,
@@ -33,6 +36,18 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
     );
     assert.equal(
       bootstrapped.baselines.every((baseline) => baseline.governancePolicy.rollout.strategy.length > 0),
+      true,
+    );
+    assert.equal(
+      bootstrapped.baselines.every((baseline) => baseline.metaModelValidation.completeness === 100),
+      true,
+    );
+    assert.equal(
+      bootstrapped.baselines.every((baseline) => existsSync(baseline.ownershipProfile.configPath)),
+      true,
+    );
+    assert.equal(
+      bootstrapped.baselines.every((baseline) => baseline.workflowSpecialization.stageNames.length >= 4),
       true,
     );
 
@@ -83,8 +98,9 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
       executionMode: "supervised",
       storageMode: "mixed",
       cases: Array.from({ length: 20 }, (_, index) => {
-        const metric = index % 3 === 0 ? "quality" : index % 3 === 1 ? "safety" : "latency";
-        const score = metric === "quality" ? 0.91 : metric === "safety" ? 0.95 : 0.82;
+        const evaluator = codingBaseline.evalFramework.evaluators[index % codingBaseline.evalFramework.evaluators.length]!;
+        const metric = evaluator.metric;
+        const score = Math.max(evaluator.threshold + 0.05, 0.9);
         return {
           caseId: `coding_case_${index + 1}`,
           metric,

@@ -36,7 +36,7 @@
 
 ### R1. Harness P0/P1 核心运行时补齐
 
-状态：`todo`
+状态：`in_progress`
 
 - 扩展 `ConstraintPack`，补齐 `risk_policy / output_policy`。
 - 将 `HarnessRun` 升级为多生命周期状态：`created / running / waiting_hitl / sleeping / recovering / completed / aborted`。
@@ -51,7 +51,7 @@
 
 ### R2. ACP、OAPEFLIR↔Harness 语义映射、ModelGateway 补口
 
-状态：`todo`
+状态：`in_progress`
 
 - 新增 `agent-delegation/collaboration-protocol`，落地 ACP message schema、8 种消息类型、强制字段与不变量校验。
 - 将 ACP 接回现有委派主链：委派前校验、完成报告 evidence 约束、takeover notice 审计入口。
@@ -67,7 +67,7 @@
 
 ### R3. 领域元模型、Recipe 扩展、canonical domain_id 收敛
 
-状态：`todo`
+状态：`in_progress`
 
 - 新增 `src/domains/canonical-meta-model/`，实现 Q1-Q12、validator、completeness 计算、24 域 seeder。
 - 将 `DomainDescriptorOrchestrationService` 和 `bootstrapVerticalDomainBaselines()` 接到 meta-model validator。
@@ -82,7 +82,7 @@
 
 ### R4. 24 域特化配置与域内运行面
 
-状态：`todo`
+状态：`in_progress`
 
 - 为 24 域补齐正式配置入口和域特化 workflow/tool/risk/eval/latency/division wiring。
 - 不再把通用 `intake → deliver` 双步工作流当作最终交付。
@@ -143,5 +143,9 @@
 ## 5. 当前回写进度
 
 - `R0` 已启动：todo 口径已切换到 review-driven remediation。
+- `R1` 已完成主干落地：ConstraintPack 扩展、Harness 多生命周期、PlanBundle/WorkProduct/EvaluationReport/ContextSnapshot/WorkflowSleepLease/RecoveryCheckpoint、resume/recovery/sleep 主链和定向测试已落地。
+- `R3` 已完成主体实现：Q1-Q12 meta-model、12 种 recipe、12 个 canonical `domain_id`、legacy alias 兼容、descriptor/ bootstrap 接线和定向测试已落地。
+- `R4` 已完成第一轮主干实现：24 域已具备专属 config 入口、domain-specific workflow/tool/eval/latency/ownership metadata，并已纳入 unit + integration 回归。
+- `R5` 已完成第一轮子系统落地：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime` 已接回 Harness 主链，并有 unit/integration 回归保护。
 - `R1-R6` 仍以 review 缺口为准推进，不再复用旧 `W* done` 结论。
 - 所有后续“已完成”状态，必须以代码、测试、文档三者同时落地为准。

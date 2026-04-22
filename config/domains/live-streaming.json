@@ -1,0 +1,28 @@
+{
+  "domainId": "live-streaming",
+  "phase": "9d",
+  "divisionId": "support",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "live-streaming.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "stream_monitor",
+      "chat_moderator",
+      "incident_feed"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "stream_health",
+      "policy_enforcement"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "live-streaming-owners",
+    "escalationTeam": "live-streaming-escalation"
+  }
+}

@@ -176,7 +176,7 @@ test("campaign env config omits undefined optional fields", () => {
 // ---------------------------------------------------------------------------
 
 test("stable-campaign sets exit code 1 when evidence does not pass", () => {
-  const report = {
+  const report: { finalEvidenceReport?: { summary: { passed: boolean } } } = {
     finalEvidenceReport: {
       summary: {
         passed: false,
@@ -189,7 +189,7 @@ test("stable-campaign sets exit code 1 when evidence does not pass", () => {
 });
 
 test("stable-campaign does not set exit code when evidence passes", () => {
-  const report = {
+  const report: { finalEvidenceReport?: { summary: { passed: boolean } } } = {
     finalEvidenceReport: {
       summary: {
         passed: true,
@@ -202,7 +202,7 @@ test("stable-campaign does not set exit code when evidence passes", () => {
 });
 
 test("stable-campaign does not set exit code when no evidence report", () => {
-  const report = {};
+  const report: { finalEvidenceReport?: { summary: { passed: boolean } } } = {};
 
   const shouldFail = !!(report.finalEvidenceReport && !report.finalEvidenceReport.summary.passed);
   assert.equal(shouldFail, false);

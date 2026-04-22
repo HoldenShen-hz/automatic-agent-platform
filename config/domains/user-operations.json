@@ -1,0 +1,28 @@
+{
+  "domainId": "user-operations",
+  "phase": "9a",
+  "divisionId": "support",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "user-operations.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "crm_sync",
+      "segment_builder",
+      "journey_scheduler"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "opt_in_compliance",
+      "delivery_success"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "user-operations-owners",
+    "escalationTeam": "user-operations-escalation"
+  }
+}

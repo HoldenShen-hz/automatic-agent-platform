@@ -1,0 +1,28 @@
+{
+  "domainId": "healthcare",
+  "phase": "9e",
+  "divisionId": "security",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "healthcare.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "ehr_reader",
+      "guideline_mapper",
+      "clinical_summary"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "clinical_safety",
+      "guideline_adherence"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "healthcare-owners",
+    "escalationTeam": "healthcare-escalation"
+  }
+}

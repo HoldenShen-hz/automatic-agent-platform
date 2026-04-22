@@ -1,0 +1,28 @@
+{
+  "domainId": "financial-services",
+  "phase": "9b",
+  "divisionId": "security",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "financial-services.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "policy_checker",
+      "case_manager",
+      "decision_trace"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "policy_compliance",
+      "suitability"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "financial-services-owners",
+    "escalationTeam": "financial-services-escalation"
+  }
+}

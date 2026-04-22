@@ -1,0 +1,28 @@
+{
+  "domainId": "coding",
+  "phase": "9a",
+  "divisionId": "engineering_ops",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "coding.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "repo_map",
+      "patch_apply",
+      "test_runner"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "quality",
+      "regression_rate"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "coding-owners",
+    "escalationTeam": "coding-escalation"
+  }
+}

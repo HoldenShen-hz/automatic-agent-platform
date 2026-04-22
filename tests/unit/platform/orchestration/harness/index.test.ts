@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import {
+  GuardrailEngine,
+  HarnessRuntimeService,
+  HitlRuntime,
+  ToolbeltAssembler,
+  type ConstraintPack,
+} from "../../../../../src/platform/orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {
@@ -38,6 +44,7 @@ test("HarnessRuntimeService completes a planner-generator-evaluator loop", () =>
     generatorOutput: { artifact: "patch.diff" },
     evaluatorOutput: { verdict: "pass" },
     evaluatorScore: 0.91,
+    producedEvidenceRefs: ["risk_profile"],
   });
 
   assert.equal(run.steps.length, 3);
@@ -57,11 +64,13 @@ test("HarnessRuntimeService escalates to human when runtime requires HITL", () =
     generatorOutput: { artifact: "contract-review" },
     evaluatorOutput: { verdict: "needs-human" },
     evaluatorScore: 0.8,
-    requiresHuman: true,
+    riskScore: 62,
+    producedEvidenceRefs: [],
   });
 
   assert.equal(run.status, "waiting_hitl");
   assert.equal(run.decision?.action, "escalate_to_human");
+  assert.equal(run.hitlRequest?.status, "pending");
 });
 
 test("HarnessRuntimeService replans or aborts based on evaluator score and budget", () => {
@@ -96,4 +105,50 @@ test("HarnessRuntimeService supports sleep recover and resume lifecycle transiti
   assert.equal(recovering.status, "recovering");
   assert.equal(resumed.status, "running");
   assert.equal(resumed.sleepLease, null);
+});
+
+test("ToolbeltAssembler grants only allowed tools and GuardrailEngine blocks unsafe requests", () => {
+  const toolbelt = new ToolbeltAssembler().assemble({
+    allowedTools: ["read", "summarize"],
+    requestedTools: ["read", "write"],
+    requiredEvidence: ["risk_profile"],
+  });
+  const assessment = new GuardrailEngine().assess({
+    toolbelt,
+    evidenceRefs: [],
+    riskScore: 95,
+    maxRiskScore: 70,
+    escalationThreshold: 55,
+    currentStepCount: 2,
+    maxSteps: 8,
+  });
+
+  assert.deepEqual(toolbelt.grantedTools, ["read"]);
+  assert.deepEqual(toolbelt.blockedTools, ["write"]);
+  assert.equal(assessment.passed, false);
+  assert.equal(assessment.suggestedAction, "abort");
+});
+
+test("HitlRuntime resolves manual review requests and HarnessRuntimeService can resume approved runs", () => {
+  const hitlRuntime = new HitlRuntime();
+  const service = new HarnessRuntimeService({ hitlRuntime });
+  const waiting = service.runLoop({
+    taskId: "task-4",
+    domainId: "legal",
+    constraintPack: createConstraintPack(),
+    plannerOutput: { planId: "plan-4" },
+    generatorOutput: { artifact: "legal-review" },
+    evaluatorOutput: { verdict: "manual-review" },
+    evaluatorScore: 0.84,
+    producedEvidenceRefs: [],
+    riskScore: 60,
+  });
+
+  assert.equal(waiting.status, "waiting_hitl");
+  assert.equal(waiting.hitlRequest?.status, "pending");
+
+  const approved = service.resolveHitlReview(waiting, "approved", "legal_manager");
+  assert.equal(approved.status, "running");
+  assert.equal(approved.hitlRequest?.status, "approved");
+  assert.equal(approved.hitlRequest?.resolvedBy, "legal_manager");
 });

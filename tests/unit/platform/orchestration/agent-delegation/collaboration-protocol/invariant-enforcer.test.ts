@@ -7,13 +7,13 @@ import { ACPInvariantEnforcer, CollaborationProtocolService, type ACPMessage, ty
 const parentPermissions: PermissionSet = {
   resources: ["repo", "kb", "artifact"],
   actions: ["read", "write", "delegate"],
-  constraints: { maxTokens: 1000, region: "cn-shanghai" },
+  constraints: { maxTokens: 1000 },
 };
 
 const context: InvariantContext = {
   parentPermissions,
   parentRiskMode: 70,
-  parentConstraints: { maxTokens: 1000, region: "cn-shanghai" },
+  parentConstraints: { maxTokens: 1000 },
   parentBudgetRemaining: 100,
   globalCallDepth: 4,
 };
@@ -35,9 +35,9 @@ function createMessage(overrides: Partial<ACPMessage> = {}): ACPMessage {
       permissions: {
         resources: ["repo"],
         actions: ["read"],
-        constraints: { maxTokens: 1000, region: "cn-shanghai" },
+        constraints: { maxTokens: 1000 },
       },
-      constraints: { maxTokens: 1000, region: "cn-shanghai" },
+      constraints: { maxTokens: 1000 },
     },
     timestamp: "2026-04-22T00:00:00.000Z",
     ...overrides,
@@ -48,7 +48,7 @@ test("ACPInvariantEnforcer validates all seven invariants", () => {
   const enforcer = new ACPInvariantEnforcer();
   assert.equal(enforcer.checkPermissionSubset({ ...parentPermissions, resources: ["repo"], actions: ["read"] }, parentPermissions), true);
   assert.equal(enforcer.checkRiskNotEscalated(10, 70), true);
-  assert.equal(enforcer.checkConstraintNotRelaxed({ maxTokens: 1000, region: "cn-shanghai" }, context.parentConstraints), true);
+  assert.equal(enforcer.checkConstraintNotRelaxed({ maxTokens: 1000 }, context.parentConstraints), true);
   assert.equal(enforcer.checkCompletionHasEvidence(createMessage({ messageType: "completion_report", payload: { evidence: ["artifact:1"], result_summary: "done" } })), true);
   assert.equal(enforcer.checkTakeoverAudit(createMessage({ messageType: "takeover_notice", payload: { audit_trail_ref: "audit:1" } })), true);
   assert.equal(enforcer.checkBudgetNotExceeded(20, 100), true);

@@ -1,9 +1,15 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import { GuardrailEngine, type GuardrailAssessment } from "./guardrails/guardrail-engine.js";
+import { HitlRuntime, type HitlRequest } from "./hitl-runtime.js";
 import { mapHarnessStepToOapeflirPhase, type OapeflirSemanticPhase } from "./oapeflir-harness-mapping.js";
+import { ToolbeltAssembler, type HarnessToolbelt } from "./toolbelt-assembler.js";
 
 export * from "./harness-baseline.js";
 export * from "./harness-bootstrap.js";
+export * from "./guardrails/guardrail-engine.js";
+export * from "./hitl-runtime.js";
 export * from "./oapeflir-harness-mapping.js";
+export * from "./toolbelt-assembler.js";
 
 export type HarnessRole = "planner" | "generator" | "evaluator" | "hitl_operator" | "loop_controller";
 export type HarnessDecisionAction =
@@ -126,6 +132,9 @@ export interface HarnessRun {
   readonly sleepLease: WorkflowSleepLease | null;
   readonly recoveryCheckpoint: RecoveryCheckpoint | null;
   readonly feedbackEnvelope: FeedbackEnvelope | null;
+  readonly toolbelt: HarnessToolbelt | null;
+  readonly guardrailAssessment: GuardrailAssessment | null;
+  readonly hitlRequest: HitlRequest | null;
 }
 
 export interface HarnessLoopInput {
@@ -136,11 +145,30 @@ export interface HarnessLoopInput {
   readonly generatorOutput: Readonly<Record<string, unknown>>;
   readonly evaluatorOutput: Readonly<Record<string, unknown>>;
   readonly evaluatorScore: number;
+  readonly riskScore?: number;
+  readonly requestedTools?: readonly string[];
+  readonly producedEvidenceRefs?: readonly string[];
   readonly requiresHuman?: boolean;
   readonly iteration?: number;
 }
 
 export class HarnessRuntimeService {
+  private readonly toolbeltAssembler: ToolbeltAssembler;
+  private readonly guardrailEngine: GuardrailEngine;
+  private readonly hitlRuntime: HitlRuntime;
+
+  public constructor(
+    options: {
+      toolbeltAssembler?: ToolbeltAssembler;
+      guardrailEngine?: GuardrailEngine;
+      hitlRuntime?: HitlRuntime;
+    } = {},
+  ) {
+    this.toolbeltAssembler = options.toolbeltAssembler ?? new ToolbeltAssembler();
+    this.guardrailEngine = options.guardrailEngine ?? new GuardrailEngine();
+    this.hitlRuntime = options.hitlRuntime ?? new HitlRuntime();
+  }
+
   public createRun(input: {
     taskId: string;
     domainId: string;
@@ -162,6 +190,9 @@ export class HarnessRuntimeService {
       sleepLease: null,
       recoveryCheckpoint: null,
       feedbackEnvelope: null,
+      toolbelt: null,
+      guardrailAssessment: null,
+      hitlRequest: null,
     };
   }
 
@@ -243,6 +274,32 @@ export class HarnessRuntimeService {
     };
   }
 
+  public openHitlReview(run: HarnessRun, reason: string, evidenceRefs: readonly string[]): HarnessRun {
+    return {
+      ...run,
+      status: "waiting_hitl",
+      hitlRequest: this.hitlRuntime.open({
+        runId: run.runId,
+        domainId: run.domainId,
+        reason,
+        evidenceRefs,
+      }),
+    };
+  }
+
+  public resolveHitlReview(run: HarnessRun, resolution: "approved" | "rejected", actorId: string): HarnessRun {
+    if (run.hitlRequest == null) {
+      throw new Error(`harness.hitl.request_not_found_for_run:${run.runId}`);
+    }
+    const resolved = this.hitlRuntime.resolve(run.hitlRequest.requestId, resolution, actorId);
+    return {
+      ...run,
+      status: resolution === "approved" ? "running" : "aborted",
+      completedAt: resolution === "approved" ? null : nowIso(),
+      hitlRequest: resolved,
+    };
+  }
+
   public decide(input: {
     evaluatorScore: number;
     requiresHuman?: boolean;
@@ -292,26 +349,41 @@ export class HarnessRuntimeService {
       stage: "plan",
       inputs: { taskId: input.taskId, domainId: input.domainId },
       outputs: input.plannerOutput,
-      iteration: input.iteration,
+      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
     });
     run = this.appendStep(run, {
       role: "generator",
       stage: "execute",
       inputs: input.plannerOutput,
       outputs: input.generatorOutput,
-      iteration: input.iteration,
+      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
     });
     run = this.appendStep(run, {
       role: "evaluator",
       stage: "evaluate",
       inputs: input.generatorOutput,
       outputs: input.evaluatorOutput,
-      iteration: input.iteration,
+      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
+    });
+
+    const toolbelt = this.toolbeltAssembler.assemble({
+      allowedTools: input.constraintPack.toolPolicy.allowedTools,
+      requestedTools: [...(input.requestedTools ?? [])],
+      requiredEvidence: input.constraintPack.output_policy.requiredEvidence,
+    });
+    const guardrailAssessment = this.guardrailEngine.assess({
+      toolbelt,
+      evidenceRefs: [...(input.producedEvidenceRefs ?? [])],
+      riskScore: input.riskScore ?? Math.max(0, input.constraintPack.risk_policy.escalationThreshold - 1),
+      maxRiskScore: input.constraintPack.risk_policy.maxRiskScore,
+      escalationThreshold: input.constraintPack.risk_policy.escalationThreshold,
+      currentStepCount: run.steps.length,
+      maxSteps: input.constraintPack.budget.maxSteps,
     });
 
     const decision = this.decide({
       evaluatorScore: input.evaluatorScore,
-      ...(input.requiresHuman !== undefined ? { requiresHuman: input.requiresHuman } : {}),
+      requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman,
       maxIterationsReached: run.steps.length >= input.constraintPack.budget.maxSteps,
     });
     const contextSnapshot = this.captureContextSnapshot({
@@ -319,25 +391,45 @@ export class HarnessRuntimeService {
       decision,
     });
 
-    return {
+    const baseRun: HarnessRun = {
       ...run,
+      toolbelt,
+      guardrailAssessment,
+      hitlRequest: null,
       status:
-        decision.action === "accept"
+        guardrailAssessment.suggestedAction === "abort" || decision.action === "abort"
+          ? "aborted"
+          : decision.action === "accept"
           ? "completed"
-          : decision.action === "abort"
-            ? "aborted"
-            : decision.action === "escalate_to_human"
+          : decision.action === "escalate_to_human"
               ? "waiting_hitl"
               : "running",
-      completedAt: decision.action === "accept" || decision.action === "abort" ? nowIso() : null,
+      completedAt:
+        guardrailAssessment.suggestedAction === "abort" || decision.action === "accept" || decision.action === "abort"
+          ? nowIso()
+          : null,
       decision,
       contextSnapshots: [...run.contextSnapshots, contextSnapshot],
       feedbackEnvelope: {
         feedbackId: newId("feedback"),
-        signals: [...decision.reasonCodes],
-        learnedActions: decision.action === "replan" ? ["update_plan_bundle"] : decision.action === "retry_same_plan" ? ["tighten_generator"] : [],
+        signals: [...decision.reasonCodes, ...guardrailAssessment.findings.map((finding) => finding.code)],
+        learnedActions: decision.action === "replan"
+          ? ["update_plan_bundle"]
+          : decision.action === "retry_same_plan"
+            ? ["tighten_generator"]
+            : [],
         createdAt: nowIso(),
       },
     };
+
+    if (baseRun.status !== "waiting_hitl") {
+      return baseRun;
+    }
+
+    return this.openHitlReview(
+      baseRun,
+      "guardrail_or_operator_escalation",
+      [...(input.producedEvidenceRefs ?? []), ...guardrailAssessment.findings.map((finding) => finding.code)],
+    );
   }
 }

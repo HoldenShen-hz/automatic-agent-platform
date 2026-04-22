@@ -1,0 +1,28 @@
+{
+  "domainId": "academic-research",
+  "phase": "9c",
+  "divisionId": "research",
+  "latencyTier": "business_day",
+  "workflowProfile": {
+    "workflowId": "academic-research.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "paper_search",
+      "citation_builder",
+      "evidence_matrix"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "citation_accuracy",
+      "coverage"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "academic-research-owners",
+    "escalationTeam": "academic-research-escalation"
+  }
+}

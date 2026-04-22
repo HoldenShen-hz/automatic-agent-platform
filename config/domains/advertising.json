@@ -1,0 +1,28 @@
+{
+  "domainId": "advertising",
+  "phase": "9b",
+  "divisionId": "content",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "advertising.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "audience_builder",
+      "budget_guard",
+      "channel_launcher"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "budget_adherence",
+      "policy_safety"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "advertising-owners",
+    "escalationTeam": "advertising-escalation"
+  }
+}

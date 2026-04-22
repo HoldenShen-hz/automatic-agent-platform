@@ -1,0 +1,28 @@
+{
+  "domainId": "it-operations",
+  "phase": "9d",
+  "divisionId": "operations",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "it-operations.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "incident_feed",
+      "runbook_executor",
+      "system_observer"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "incident_containment",
+      "recovery_success"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "it-operations-owners",
+    "escalationTeam": "it-operations-escalation"
+  }
+}

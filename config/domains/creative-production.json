@@ -1,0 +1,28 @@
+{
+  "domainId": "creative-production",
+  "phase": "9f",
+  "divisionId": "content",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "creative-production.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "creative_brief",
+      "asset_generator",
+      "brand_checker"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "brand_safety",
+      "brief_alignment"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "creative-production-owners",
+    "escalationTeam": "creative-production-escalation"
+  }
+}

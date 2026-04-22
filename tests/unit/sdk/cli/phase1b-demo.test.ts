@@ -53,8 +53,8 @@ test("phase1b-demo output includes planned steps", () => {
   };
 
   assert.equal(result.plannedWorkflow.executionSteps.length, 2);
-  assert.equal(result.plannedWorkflow.executionSteps[0].roleId, "analyzer");
-  assert.equal(result.plannedWorkflow.executionSteps[1].roleId, "drafter");
+  assert.equal(result.plannedWorkflow.executionSteps[0]!.roleId, "analyzer");
+  assert.equal(result.plannedWorkflow.executionSteps[1]!.roleId, "drafter");
 });
 
 test("phase1b-demo planned steps are simplified in output", () => {
@@ -105,7 +105,7 @@ test("phase1b-demo output includes step outputs", () => {
   };
 
   assert.equal(result.stepOutputs.length, 2);
-  assert.equal(result.stepOutputs[0].summary, "Analysis complete");
+  assert.equal(result.stepOutputs[0]!.summary, "Analysis complete");
 });
 
 test("phase1b-demo step outputs are simplified in output", () => {
@@ -135,7 +135,7 @@ test("phase1b-demo output includes stream frames", () => {
   };
 
   assert.equal(result.streamFrames.length, 2);
-  assert.equal(result.streamFrames[0].eventType, "step_started");
+  assert.equal(result.streamFrames[0]!.eventType, "step_started");
 });
 
 test("phase1b-demo stream frames are simplified in output", () => {

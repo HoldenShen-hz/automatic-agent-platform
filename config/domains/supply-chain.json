@@ -1,0 +1,28 @@
+{
+  "domainId": "supply-chain",
+  "phase": "9e",
+  "divisionId": "operations",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "supply-chain.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "inventory_snapshot",
+      "route_optimizer",
+      "supplier_console"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "fill_rate",
+      "exception_clearance"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "supply-chain-owners",
+    "escalationTeam": "supply-chain-escalation"
+  }
+}

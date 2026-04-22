@@ -1,0 +1,28 @@
+{
+  "domainId": "legal",
+  "phase": "9c",
+  "divisionId": "security",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "legal.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "clause_library",
+      "redline_editor",
+      "approval_router"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "policy_alignment",
+      "approval_completeness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "legal-owners",
+    "escalationTeam": "legal-escalation"
+  }
+}

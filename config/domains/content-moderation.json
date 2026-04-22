@@ -1,0 +1,28 @@
+{
+  "domainId": "content-moderation",
+  "phase": "9d",
+  "divisionId": "security",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "content-moderation.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "policy_engine",
+      "content_classifier",
+      "evidence_logger"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "policy_precision",
+      "appeal_reversal_rate"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "content-moderation-owners",
+    "escalationTeam": "content-moderation-escalation"
+  }
+}

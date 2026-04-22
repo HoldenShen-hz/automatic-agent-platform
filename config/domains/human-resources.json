@@ -1,0 +1,28 @@
+{
+  "domainId": "human-resources",
+  "phase": "9e",
+  "divisionId": "general_ops",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "human-resources.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "hris_reader",
+      "policy_checker",
+      "case_manager"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "policy_compliance",
+      "privacy_safety"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "human-resources-owners",
+    "escalationTeam": "human-resources-escalation"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "domainId": "ecommerce",
+  "phase": "9b",
+  "divisionId": "analytics",
+  "latencyTier": "realtime",
+  "workflowProfile": {
+    "workflowId": "ecommerce.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "catalog_admin",
+      "pricing_engine",
+      "inventory_snapshot"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "margin_guard",
+      "inventory_accuracy"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "ecommerce-owners",
+    "escalationTeam": "ecommerce-escalation"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "domainId": "game-publishing",
+  "phase": "9f",
+  "divisionId": "content",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "game-publishing.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "release_packager",
+      "store_checklist",
+      "submission_router"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "store_compliance",
+      "release_readiness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "game-publishing-owners",
+    "escalationTeam": "game-publishing-escalation"
+  }
+}

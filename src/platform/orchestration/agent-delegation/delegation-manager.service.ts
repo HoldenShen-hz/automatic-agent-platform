@@ -208,7 +208,7 @@ export class DelegationManagerService {
       {
         parentPermissions: delegation.permissions,
         parentRiskMode: 100,
-        parentConstraints: delegation.permissions.constraints,
+        parentConstraints: delegation.permissions.constraints as unknown as Record<string, unknown>,
         parentBudgetRemaining: Number.MAX_SAFE_INTEGER,
         globalCallDepth: delegation.depth,
       },

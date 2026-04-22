@@ -1,0 +1,28 @@
+{
+  "domainId": "knowledge-base",
+  "phase": "9a",
+  "divisionId": "research",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "knowledge-base.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "document_ingest",
+      "retrieval_index",
+      "citation_builder"
+    ],
+    "optionalTools": []
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "citation_coverage",
+      "freshness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "knowledge-base-owners",
+    "escalationTeam": "knowledge-base-escalation"
+  }
+}

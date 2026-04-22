@@ -74,22 +74,22 @@ test("knowledge-semantic-readiness catches errors and reports them", () => {
 });
 
 test("knowledge-semantic-readiness handles non-Error throws", () => {
-  const error = "string_error";
-  const message = error instanceof Error ? error.message : String(error);
+  const error: unknown = "string_error";
+  const message = error instanceof Error ? (error as Error).message : String(error);
 
   assert.equal(message, "string_error");
 });
 
 test("knowledge-semantic-readiness handles null error", () => {
-  const error = null;
-  const message = error instanceof Error ? error.message : String(error);
+  const error: unknown = null;
+  const message = error instanceof Error ? (error as Error).message : String(error);
 
   assert.equal(message, "null");
 });
 
 test("knowledge-semantic-readiness handles undefined error", () => {
-  const error = undefined;
-  const message = error instanceof Error ? error.message : String(error);
+  const error: unknown = undefined;
+  const message = error instanceof Error ? (error as Error).message : String(error);
 
   assert.equal(message, "undefined");
 });

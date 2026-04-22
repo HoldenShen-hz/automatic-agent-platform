@@ -301,6 +301,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
         fallbackProfile: route.profileName,
       },
       evaluatorScore: 0.86,
+      producedEvidenceRefs: ["risk_profile", "eval_framework", ...transfer.lineageEdges.map((edge) => edge.edgeId)],
     });
 
     assert.equal(harnessRun.status, "completed");
