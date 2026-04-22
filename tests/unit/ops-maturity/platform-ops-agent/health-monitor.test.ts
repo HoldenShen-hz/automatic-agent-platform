@@ -204,16 +204,16 @@ test("groupProbesByStatus groups probes correctly", () => {
     { component: "comp5", status: "degraded" },
   ];
   const grouped = groupProbesByStatus(probes);
-  assert.equal(grouped.healthy.length, 2);
-  assert.equal(grouped.degraded.length, 2);
-  assert.equal(grouped.failed.length, 1);
+  assert.equal(grouped.healthy?.length, 2);
+  assert.equal(grouped.degraded?.length, 2);
+  assert.equal(grouped.failed?.length, 1);
 });
 
 test("groupProbesByStatus handles empty array", () => {
   const grouped = groupProbesByStatus([]);
-  assert.equal(grouped.healthy.length, 0);
-  assert.equal(grouped.degraded.length, 0);
-  assert.equal(grouped.failed.length, 0);
+  assert.equal(grouped.healthy?.length, 0);
+  assert.equal(grouped.degraded?.length, 0);
+  assert.equal(grouped.failed?.length, 0);
 });
 
 test("groupProbesByStatus handles all same status", () => {
@@ -222,9 +222,9 @@ test("groupProbesByStatus handles all same status", () => {
     { component: "comp2", status: "healthy" },
   ];
   const grouped = groupProbesByStatus(probes);
-  assert.equal(grouped.healthy.length, 2);
-  assert.equal(grouped.degraded.length, 0);
-  assert.equal(grouped.failed.length, 0);
+  assert.equal(grouped.healthy?.length, 2);
+  assert.equal(grouped.degraded?.length, 0);
+  assert.equal(grouped.failed?.length, 0);
 });
 
 test("analyzeLatencyTrends returns sorted latency list", () => {

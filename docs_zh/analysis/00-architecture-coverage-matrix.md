@@ -97,7 +97,7 @@
 
 ### 本轮新增收敛点
 
-- `docs_zh/adr/088-090`：补齐平台表面、AI 运营治理、runtime/数据可靠性三组 ADR。
+- `docs_zh/adr/088-108`：补齐平台表面、AI 运营治理、runtime/数据可靠性，以及 Harness 八支柱与 Domain 治理 ADR。
 - `src/domains/domain-descriptor-orchestration-service.ts`：把 domain support 层收敛成统一 orchestration service。
 - `src/interaction/ux/user-experience-orchestration-service.ts`：把 onboarding / wizard / template / builder 收敛成统一 UX 编排服务。
 - `src/domains/prompt-library/domain-prompt-governance-service.ts`

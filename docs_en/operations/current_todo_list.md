@@ -70,7 +70,7 @@ Status: `in_progress`
 
 ### R5. Harness P2/P3 subsystems and product closure
 
-Status: `todo`
+Status: `in_progress`
 
 - Add `ToolbeltAssembler`, five-layer guardrails, formal HITL runtime, `FeedbackEnvelope`, memory namespace support, async harness, and evaluation harness.
 - Attach these capabilities to the main `HarnessRun` chain.
@@ -79,7 +79,7 @@ Status: `todo`
 
 ### R6. Roadmap, ADRs, ops-maturity stub reduction, final document closure
 
-Status: `todo`
+Status: `in_progress`
 
 - Fix `RoadmapService` to include Phase 8/9 registration.
 - Add the missing ADR set called out by the review.
@@ -111,6 +111,6 @@ Minimum coverage:
 - `R3` now has its mainline implementation in place: Q1-Q12 meta-model support, 12 recipe prototypes, 12 canonical domain IDs, legacy alias compatibility, descriptor/bootstrap wiring, and targeted tests are landed.
 - `R4` now has its first mainline implementation in place: all 24 domains expose formal config entrypoints plus domain-specific workflow/tool/eval/latency/ownership metadata, with unit and integration coverage.
 - `R5` now has its third subsystem implementation in place: `ToolbeltAssembler`, `GuardrailEngine`, `HitlRuntime`, `HarnessMemoryManager`, `AsyncHarnessService`, `EvalRunService`, `DurableHarnessService`, `ContextAssembler`, `RecoveryController`, plus timeline/invariant enforcement are wired into the Harness mainline and protected by unit/integration coverage.
-- `R6` now has its first implementation slice in place: `RoadmapService` seeds the architecture template for phases `8a/8b/8c/9a-9f`, and the roadmap/success-criteria targeted tests have been updated to the new phase model.
+- `R6` now has its second implementation slice in place: `RoadmapService` seeds phases `8a/8b/8c/9a-9f`, `docs_zh/adr` and `docs_en/adr` now include the missing `091-108` Harness/domain ADR set, and the `harness/` directory now exposes canonical subdirectory entrypoints validated by structure tests.
 - `R1-R6` remain governed by the review gap ledger rather than the older `W* done` status.
 - Future `done` states require code, tests, and documentation to land together.

@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADR)
 
-> 本目录包含项目的架构决策记录（ADR）。每个 ADR 记录了一个重要技术决策的背景、考量与结论。
+> 本目录包含项目的架构决策记录（ADR）。每个 ADR 记录重要技术决策的背景、考量与结论。
 
 ## ADR 索引
 
@@ -8,11 +8,11 @@
 |------|------|------|----------|
 | [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
-| [003](./003-memory-seven-layers.md) | 六层记忆与 KV Cache 固定前缀 | **Superseded by ADR-020** | 2026-04-02 |
+| [003](./003-memory-seven-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
 | [004](./004-workflow-routing.md) | 工作流与路由 | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | 安全模型 | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider 策略 | Accepted | 2026-04-02 |
-| [007](./007-evolution-engine.md) | 进化引擎 | **Partially Superseded by ADR-075** | 2026-04-02 |
+| [007](./007-evolution-engine.md) | 进化引擎 | Partially Superseded by ADR-075 | 2026-04-02 |
 | [008](./008-cost-model.md) | 成本模型 | Accepted | 2026-04-02 |
 | [009](./009-deployment-ops.md) | 部署与运维 | Accepted | 2026-04-02 |
 | [010](./010-commercial-model.md) | 商业模型 | Accepted | 2026-04-02 |
@@ -23,14 +23,14 @@
 | [015](./015-unified-extension-marketplace.md) | Skill 与 Plugin 是否收敛为单市场 | Accepted | 2026-04-03 |
 | [016](./016-oapeflir-loop-model.md) | OAPEFLIR 八阶段认知循环模型 | Accepted | 2026-04-17 |
 | [017](./017-knowledge-architecture-refactor.md) | Knowledge 三索引架构重构 | Accepted | 2026-04-17 |
-| [018](./018-rollout-eleven-state-machine.md) | Rollout 十一态状态机与六阶段发布 | **Superseded by ADR-075** | 2026-04-17 |
+| [018](./018-rollout-eleven-state-machine.md) | Rollout 十一态状态机与六阶段发布 | Superseded by ADR-075 | 2026-04-17 |
 | [019](./019-agent-handoff-four-layer-protocol.md) | Agent Handoff 四层序列化协议 | Accepted | 2026-04-17 |
 | [020](./020-memory-six-plane-model.md) | Memory 六层平面与自动晋升规则 | Accepted | 2026-04-17 |
 | [021](./021-inter-plane-communication-contract.md) | 平面间通信契约 | Accepted | 2026-04-03 |
 | [022](./022-api-contract-and-versioning.md) | API 契约与版本化架构 | Accepted | 2026-04-03 |
 | [023](./023-service-communication-architecture.md) | 服务通信架构 | Accepted | 2026-04-03 |
 | [024](./024-scalability-architecture.md) | 可扩展性架构 | Accepted | 2026-04-03 |
-| [025](./025-stability-architecture-seven-layers.md) | 稳定性架构（7 层） | Accepted | 2026-04-03 |
+| [025](./025-stability-architecture-seven-layers.md) | 稳定性架构 | Accepted | 2026-04-03 |
 | [026](./026-risk-control-architecture.md) | 风险控制架构 | Accepted | 2026-04-03 |
 | [027](./027-security-architecture.md) | 安全可靠架构 | Accepted | 2026-04-03 |
 | [028](./028-incident-and-event-handling-architecture.md) | 异常事件处理架构 | Accepted | 2026-04-03 |
@@ -40,7 +40,7 @@
 | [032](./032-deployment-architecture.md) | 部署架构 | Accepted | 2026-04-03 |
 | [033](./033-phased-roadmap.md) | 分阶段落地路线 | Accepted | 2026-04-17 |
 | [034](./034-adr-freeze-recommendation.md) | ADR 冻结建议 | Accepted | 2026-04-17 |
-| [035](./035-recommended-code-directory-structure.md) | 推荐代码目录结构 | Accepted | 2026-04-17 |
+| [035](./035-recommended-code-directory-structure.md) | 推荐代码目录 | Accepted | 2026-04-17 |
 | [036](./036-risk-constraints-and-success-criteria.md) | 风险、约束与成功标准 | Accepted | 2026-04-17 |
 | [037](./037-domain-modeling-and-onboarding.md) | 业务域建模与接入架构 | Accepted | 2026-04-20 |
 | [038](./038-business-domain-onboarding-runbook.md) | 业务域接入 Runbook | Accepted | 2026-04-20 |
@@ -48,7 +48,7 @@
 | [040](./040-goal-decomposition-engine.md) | 目标分解引擎架构 | Accepted | 2026-04-20 |
 | [041](./041-proactive-agent-framework.md) | 主动式 Agent 框架 | Accepted | 2026-04-20 |
 | [042](./042-progressive-autonomy-model.md) | 渐进式自主权模型 | Accepted | 2026-04-20 |
-| [043](./043-unified-operations-dashboard.md) | 统一运营看板架构 | Accepted | 2026-04-20 |
+| [043](./043-unified-operations-dashboard.md) | Unified Operations Dashboard | Accepted | 2026-04-20 |
 | [044](./044-non-technical-user-experience.md) | 非技术用户体验架构 | Accepted | 2026-04-20 |
 | [046](./046-organization-hierarchy-model.md) | 组织层次模型 | Accepted | 2026-04-20 |
 | [047](./047-organization-approval-routing.md) | 组织架构审批路由 | Accepted | 2026-04-20 |
@@ -70,28 +70,46 @@
 | [063](./063-agent-behavior-drift-detection.md) | Agent 行为漂移检测架构 | Accepted | 2026-04-20 |
 | [064](./064-cost-attribution-and-optimization-engine.md) | 成本归因与优化引擎 | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | 工作流可视化调试器架构 | Accepted | 2026-04-20 |
-| [066](./066-compliance-report-auto-generation.md) | 合规报告自动生成架构 | Accepted | 2026-04-20 |
-| [066](./066-plugin-spi-framework.md) | Plugin SPI 框架 | Accepted | 2026-04-17 |
+| [066](./066-compliance-report-auto-generation.md) | 合规报告自动生成引擎 | Accepted | 2026-04-20 |
+| [066](./066-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Accepted | 2026-04-20 |
 | [070](./070-conclusion.md) | 结论 | Accepted | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略 | Accepted | 2026-04-17 |
-| [073](./073-unified-resource-model.md) | Unified Agent Resource Model | Accepted | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Accepted | 2026-04-17 |
+| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted |  |
 | [075](./075-controlled-rollout-release.md) | 六级受控发布与 Rollout 状态机 | Accepted | 2026-04-17 |
-| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane 架构 | Accepted | 2026-04-17 |
-| [079](./079-feedback-hub-signals.md) | Feedback Hub 与信号系统 | Accepted | 2026-04-17 |
-| [080](./080-learn-hub-pattern-detection.md) | Learn Hub 与模式检测 | Accepted | 2026-04-17 |
-| [081](./081-domain-descriptor-and-onboarding.md) | DomainDescriptor 与领域接入 Runbook | Accepted | 2026-04-20 |
-| [082](./082-natural-language-entry-and-goal-decomposition.md) | 自然语言入口与目标分解引擎 | Accepted | 2026-04-20 |
-| [083](./083-proactive-agent-and-progressive-autonomy.md) | 主动式 Agent 与渐进式自主权 | Accepted | 2026-04-20 |
-| [084](./084-operator-dashboard-and-user-experience.md) | 运营看板与非技术用户体验 | Accepted | 2026-04-20 |
-| [085](./085-organization-governance-and-knowledge-boundary.md) | 组织治理、审批与知识边界 | Accepted | 2026-04-20 |
-| [086](./086-scale-ecosystem-and-cross-region-runtime.md) | 规模化生态与跨 Region 运行时 | Accepted | 2026-04-20 |
-| [087](./087-ops-maturity-runtime.md) | 运营成熟度运行时扩展层 | Accepted | 2026-04-20 |
-| [088](./088-platform-surface-communication-and-extensibility.md) | 平台表面、通信与扩展治理 | Accepted | 2026-04-20 |
-| [089](./089-ai-operations-governance-and-quality.md) | AI 运营治理与质量门禁 | Accepted | 2026-04-20 |
-| [090](./090-runtime-data-reliability-and-operations.md) | Runtime、数据可靠性与运维治理 | Accepted | 2026-04-20 |
+| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane 架构与信任模型 | Accepted | 2026-04-17 |
+| [079](./079-feedback-hub-signals.md) | Feedback Hub 与七类信号预处理 | Accepted | 2026-04-17 |
+| [080](./080-learn-hub-pattern-detection.md) | Learn Hub 与四模式检测器 | Accepted | 2026-04-17 |
+| [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
+| [082](./082-natural-language-entry-and-goal-decomposition.md) | Natural Language Entry And Goal Decomposition | Accepted | 2026-04-20 |
+| [083](./083-proactive-agent-and-progressive-autonomy.md) | Proactive Agent And Progressive Autonomy | Accepted | 2026-04-20 |
+| [084](./084-operator-dashboard-and-user-experience.md) | Operator Dashboard And User Experience | Accepted | 2026-04-20 |
+| [085](./085-organization-governance-and-knowledge-boundary.md) | Organization Governance And Knowledge Boundary | Accepted | 2026-04-20 |
+| [086](./086-scale-ecosystem-and-cross-region-runtime.md) | Scale Ecosystem And Cross Region Runtime | Accepted | 2026-04-20 |
+| [087](./087-ops-maturity-runtime.md) | Ops Maturity Runtime | Accepted | 2026-04-20 |
+| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted |  |
+| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted |  |
+| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted |  |
+| [091](./091-harness-eight-pillar-model.md) | Harness Eight Pillar Model | Accepted | 2026-04-23 |
+| [092](./092-harness-loop-controller.md) | Harness Loop Controller | Accepted | 2026-04-23 |
+| [093](./093-harness-constraint-engine.md) | Harness Constraint Engine | Accepted | 2026-04-23 |
+| [094](./094-harness-durable-execution.md) | Harness Durable Execution | Accepted | 2026-04-23 |
+| [095](./095-harness-context-assembly.md) | Harness Context Assembly | Accepted | 2026-04-23 |
+| [096](./096-harness-recovery-controller.md) | Harness Recovery Controller | Accepted | 2026-04-23 |
+| [097](./097-harness-guardrails.md) | Harness Guardrails | Accepted | 2026-04-23 |
+| [098](./098-harness-hitl-runtime.md) | Harness HITL Runtime | Accepted | 2026-04-23 |
+| [099](./099-harness-async-mode.md) | Harness Async Mode | Accepted | 2026-04-23 |
+| [100](./100-domain-descriptor-semantic-layer.md) | Domain Descriptor As Semantic Layer | Accepted | 2026-04-23 |
+| [101](./101-domain-risk-override-platform-default.md) | Domain Risk Override Over Platform Default | Accepted | 2026-04-23 |
+| [102](./102-domain-recipe-onboarding-accelerator.md) | Domain Recipe As Onboarding Accelerator | Accepted | 2026-04-23 |
+| [103](./103-four-phase-domain-onboarding.md) | Four Phase Domain Onboarding | Accepted | 2026-04-23 |
+| [104](./104-domain-recipe-twelve-archetypes.md) | Domain Recipe Twelve Archetypes | Accepted | 2026-04-23 |
+| [105](./105-domain-latency-tier-classification.md) | Domain Latency Tier Classification | Accepted | 2026-04-23 |
+| [106](./106-quant-trading-pre-trade-risk-mandatory.md) | Quant Trading Pre Trade Risk Mandatory | Accepted | 2026-04-23 |
+| [107](./107-financial-services-explainable-decisions.md) | Financial Services Explainable Decisions | Accepted | 2026-04-23 |
+| [108](./108-legal-output-attorney-review-mandatory.md) | Legal Output Attorney Review Mandatory | Accepted | 2026-04-23 |
 
 ## 状态说明
 
@@ -100,6 +118,11 @@
 - **Accepted**: 已接受并实施
 - **Superseded**: 已被新的 ADR 取代
 - **Deprecated**: 已废弃
+
+## 备注
+
+- 原始历史文件中存在 `066` 号双占用；为避免破坏既有引用，当前保留该历史编号冲突，并在索引中显式列出。
+- 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 
 ## 创建新 ADR
 

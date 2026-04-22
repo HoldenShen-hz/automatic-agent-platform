@@ -1,12 +1,12 @@
 # Architecture Decision Records (ADR)
 
-> This directory contains the project's Architecture Decision Records (ADR). Each ADR records the background, considerations, and conclusions of an important technical decision.
+> This directory contains the project's Architecture Decision Records. Each ADR captures the context, tradeoffs, and conclusion of an important technical decision.
 
 ## ADR Index
 
 | Number | Title | Status | Decision Date |
 |--------|-------|--------|---------------|
-| [001](./001-three-layer-architecture.md) | Three-Layer Distributed Architecture | Accepted | 2026-04-02 |
+| [001](./001-three-layer-architecture.md) | Three-Layer Separation of Authority | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | Division System | Accepted | 2026-04-02 |
 | [003](./003-memory-seven-layers.md) | Six-Layer Memory and KV Cache Fixed Prefix | Accepted | 2026-04-02 |
 | [004](./004-workflow-routing.md) | Workflow and Routing | Accepted | 2026-04-02 |
@@ -64,15 +64,66 @@
 | [057](./057-external-system-integration-framework.md) | External System Integration Framework | Accepted | 2026-04-20 |
 | [058](./058-emergency-stop-and-global-circuit-breaker.md) | Emergency Stop and Global Circuit Breaker | Accepted | 2026-04-20 |
 | [059](./059-agent-explainability-and-decision-transparency.md) | Agent Explainability and Decision Transparency | Accepted | 2026-04-20 |
+| [060](./060-explicit-planning-hub.md) | Explicit Planning Layer and Plan Hub | Accepted | 2026-04-17 |
+| [061](./061-agent-unified-lifecycle-management.md) | Agent Unified Lifecycle Management Architecture | Accepted | 2026-04-20 |
+| [062](./062-offline-and-edge-deployment-architecture.md) | Offline and Edge Deployment Architecture | Accepted | 2026-04-20 |
+| [063](./063-agent-behavior-drift-detection.md) | Agent Behavior Drift Detection Architecture | Accepted | 2026-04-20 |
+| [064](./064-cost-attribution-and-optimization-engine.md) | Cost Attribution and Optimization Engine | Accepted | 2026-04-20 |
+| [065](./065-workflow-visual-debugger.md) | Workflow Visual Debugger Architecture | Accepted | 2026-04-20 |
+| [066](./066-compliance-report-auto-generation.md) | Compliance Report Auto-Generation Engine | Accepted | 2026-04-20 |
+| [066](./066-plugin-spi-framework.md) | Plugin SPI Framework and Lifecycle | Accepted | 2026-04-17 |
+| [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
+| [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
+| [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Accepted | 2026-04-20 |
+| [070](./070-conclusion.md) | Conclusion | Accepted | 2026-04-20 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Accepted | 2026-04-17 |
+| [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted |  |
+| [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
+| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Accepted | 2026-04-17 |
+| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Types | Accepted | 2026-04-17 |
+| [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
+| [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
+| [082](./082-natural-language-entry-and-goal-decomposition.md) | Natural Language Entry And Goal Decomposition | Accepted | 2026-04-20 |
+| [083](./083-proactive-agent-and-progressive-autonomy.md) | Proactive Agent And Progressive Autonomy | Accepted | 2026-04-20 |
+| [084](./084-operator-dashboard-and-user-experience.md) | Operator Dashboard And User Experience | Accepted | 2026-04-20 |
+| [085](./085-organization-governance-and-knowledge-boundary.md) | Organization Governance And Knowledge Boundary | Accepted | 2026-04-20 |
+| [086](./086-scale-ecosystem-and-cross-region-runtime.md) | Scale Ecosystem And Cross Region Runtime | Accepted | 2026-04-20 |
+| [087](./087-ops-maturity-runtime.md) | Ops Maturity Runtime | Accepted | 2026-04-20 |
+| [088](./088-platform-surface-communication-and-extensibility.md) | ADR 088: Platform Surface, Communication, and Extensibility | Accepted |  |
+| [089](./089-ai-operations-governance-and-quality.md) | ADR 089: AI Operations Governance and Quality | Accepted |  |
+| [090](./090-runtime-data-reliability-and-operations.md) | ADR 090: Runtime, Data Reliability, and Operations | Accepted |  |
+| [091](./091-harness-eight-pillar-model.md) | Harness Eight Pillar Model | Accepted | 2026-04-23 |
+| [092](./092-harness-loop-controller.md) | Harness Loop Controller | Accepted | 2026-04-23 |
+| [093](./093-harness-constraint-engine.md) | Harness Constraint Engine | Accepted | 2026-04-23 |
+| [094](./094-harness-durable-execution.md) | Harness Durable Execution | Accepted | 2026-04-23 |
+| [095](./095-harness-context-assembly.md) | Harness Context Assembly | Accepted | 2026-04-23 |
+| [096](./096-harness-recovery-controller.md) | Harness Recovery Controller | Accepted | 2026-04-23 |
+| [097](./097-harness-guardrails.md) | Harness Guardrails | Accepted | 2026-04-23 |
+| [098](./098-harness-hitl-runtime.md) | Harness HITL Runtime | Accepted | 2026-04-23 |
+| [099](./099-harness-async-mode.md) | Harness Async Mode | Accepted | 2026-04-23 |
+| [100](./100-domain-descriptor-semantic-layer.md) | Domain Descriptor As Semantic Layer | Accepted | 2026-04-23 |
+| [101](./101-domain-risk-override-platform-default.md) | Domain Risk Override Over Platform Default | Accepted | 2026-04-23 |
+| [102](./102-domain-recipe-onboarding-accelerator.md) | Domain Recipe As Onboarding Accelerator | Accepted | 2026-04-23 |
+| [103](./103-four-phase-domain-onboarding.md) | Four Phase Domain Onboarding | Accepted | 2026-04-23 |
+| [104](./104-domain-recipe-twelve-archetypes.md) | Domain Recipe Twelve Archetypes | Accepted | 2026-04-23 |
+| [105](./105-domain-latency-tier-classification.md) | Domain Latency Tier Classification | Accepted | 2026-04-23 |
+| [106](./106-quant-trading-pre-trade-risk-mandatory.md) | Quant Trading Pre Trade Risk Mandatory | Accepted | 2026-04-23 |
+| [107](./107-financial-services-explainable-decisions.md) | Financial Services Explainable Decisions | Accepted | 2026-04-23 |
+| [108](./108-legal-output-attorney-review-mandatory.md) | Legal Output Attorney Review Mandatory | Accepted | 2026-04-23 |
 
-## Status Description
+## Status
 
-- **Draft**: Under discussion, decision not yet made
-- **Proposed**: Submitted, waiting for approval
+- **Draft**: Under discussion, no decision yet
+- **Proposed**: Submitted and awaiting approval
 - **Accepted**: Accepted and implemented
-- **Superseded**: Superseded by new ADR
+- **Superseded**: Replaced by a newer ADR
 - **Deprecated**: Deprecated
 
-## Creating New ADR
+## Notes
 
-New ADR should follow standard template, numbering sequentially. For details refer to [../governance/source_of_truth.md](../governance/source_of_truth.md).
+- The historical archive contains a retained `066` numbering collision. The index keeps both entries to avoid breaking existing references.
+- `091-108` are newly added to close the Harness pillar and domain governance ADR gaps tracked by the architecture review.
+
+## Creating New ADRs
+
+New ADRs should follow the standard template. Numbering is preserved by batch and evolution phase; historical gaps do not need to be backfilled. See [../governance/source_of_truth.md](../governance/source_of_truth.md).

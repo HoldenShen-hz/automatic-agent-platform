@@ -96,7 +96,7 @@
 
 ### R5. Harness P2/P3 子系统与产品级运行闭环
 
-状态：`todo`
+状态：`in_progress`
 
 - 新增 `ToolbeltAssembler`、五层 Guardrails、正式 HITL Runtime、FeedbackEnvelope、Memory Namespace、Async Harness、Evaluation Harness。
 - 将上述能力接入 `HarnessRun` 主链，而不是只做 helper。
@@ -110,7 +110,7 @@
 
 ### R6. 路线图、ADR、ops-maturity 桩率与最终文档收口
 
-状态：`todo`
+状态：`in_progress`
 
 - 修正 `RoadmapService`，补齐 Phase 8/9 注册。
 - 补齐 review 点名缺失的 ADR 文件。
@@ -147,6 +147,6 @@
 - `R3` 已完成主体实现：Q1-Q12 meta-model、12 种 recipe、12 个 canonical `domain_id`、legacy alias 兼容、descriptor/ bootstrap 接线和定向测试已落地。
 - `R4` 已完成第一轮主干实现：24 域已具备专属 config 入口、domain-specific workflow/tool/eval/latency/ownership metadata，并已纳入 unit + integration 回归。
 - `R5` 已完成第三轮子系统落地：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、`DurableHarnessService`、`ContextAssembler`、`RecoveryController`、timeline/invariant 检查已接回 Harness 主链，并有 unit/integration 回归保护。
-- `R6` 已完成第一轮实现：`RoadmapService` 已补齐 Phase `8a/8b/8c/9a-9f` 的架构模板注册，相关 roadmap/success-criteria 定向测试已更新到新阶段模型。
+- `R6` 已完成第二轮实现：`RoadmapService` 已补齐 Phase `8a/8b/8c/9a-9f` 的架构模板注册，`docs_zh/adr` 与 `docs_en/adr` 已补齐 `091-108` 的 Harness / Domain ADR，`harness/` 目录也已新增 canonical 子目录导出入口并通过结构对齐测试。
 - `R1-R6` 仍以 review 缺口为准推进，不再复用旧 `W* done` 结论。
 - 所有后续“已完成”状态，必须以代码、测试、文档三者同时落地为准。

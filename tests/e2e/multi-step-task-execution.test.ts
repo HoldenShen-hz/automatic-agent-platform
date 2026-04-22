@@ -364,7 +364,7 @@ test("E2E: multi-step task resumes from checkpoint after failure", () => {
         currentStepIndex: 2,
         outputsJson: JSON.stringify({ step_0: "done", step_1: "done" }),
         updatedAt: now,
-        resumableFromStep: "1", // Can resume from step 1
+        resumableFromStep: "step_1", // Can resume from step 1
         retryCount: 1,
         lastErrorCode: "step.timeout",
       });
@@ -372,7 +372,7 @@ test("E2E: multi-step task resumes from checkpoint after failure", () => {
 
     let workflow = h.store.getWorkflowState(taskId);
     assert.equal(workflow!.retryCount, 1, "Should have retry count 1");
-    assert.equal(workflow!.resumableFromStep, "1", "Should be resumable from step 1");
+    assert.equal(workflow!.resumableFromStep, "step_1", "Should be resumable from step 1");
 
     // Resume and complete
     h.db.transaction(() => {

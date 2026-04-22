@@ -24,9 +24,9 @@
 
 | 环                  | 范围                                                                                                                                       | 验收门禁                                                          | 当前状态                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **生存环** (Ring 1) | P1-P5 核心链 + ConstraintPack + HarnessRun/Step/Decision + 风控/审批/审计 + 租约/CAS/检查点/恢复 + 紧急制动 + ModelGateway/Prompt/EvalGate | "跑通 1 个 Agent 任务端到端，可中断可恢复可审计"                  | 🟡 **基础设施已实现，Harness 运行时仅骨架**                      |
-| **可用环** (Ring 2) | NL 入口 + 目标分解 + HITL Runtime + Async Harness + Dashboard + 组织/SSO/审批路由 + DomainDescriptor/Recipe/Meta-Model + Agent 协作协议    | "至少 2 个垂直域试运行，非技术用户可 NL 提交，审批和 HITL 端到端" | 🔴 **NL/HITL Runtime/Async Harness/Meta-Model/协作协议均未实现** |
-| **扩展环** (Ring 3) | 市场 + 多区域 + 边缘 + 成本优化 + 行为漂移 + 合规报告 + 24 域 Pack                                                                         | "≥12 域生产运行，跨区域故障切换演练通过"                          | 🔴 **24 域仅有泛化种子**                                         |
+| **生存环** (Ring 1) | P1-P5 核心链 + ConstraintPack + HarnessRun/Step/Decision + 风控/审批/审计 + 租约/CAS/检查点/恢复 + 紧急制动 + ModelGateway/Prompt/EvalGate | "跑通 1 个 Agent 任务端到端，可中断可恢复可审计"                  | 🟡 **基础设施已实现，Harness 主链已落地，R5 深水区仍在继续收口** |
+| **可用环** (Ring 2) | NL 入口 + 目标分解 + HITL Runtime + Async Harness + Dashboard + 组织/SSO/审批路由 + DomainDescriptor/Recipe/Meta-Model + Agent 协作协议    | "至少 2 个垂直域试运行，非技术用户可 NL 提交，审批和 HITL 端到端" | 🟡 **NL、HITL、Async Harness、Meta-Model、ACP 已有实现，仍待继续加厚产品闭环** |
+| **扩展环** (Ring 3) | 市场 + 多区域 + 边缘 + 成本优化 + 行为漂移 + 合规报告 + 24 域 Pack                                                                         | "≥12 域生产运行，跨区域故障切换演练通过"                          | 🟡 **24 域 baseline 已落地，规模化与 ops-maturity 仍有收尾项** |
 
 ---
 
@@ -48,7 +48,7 @@
 | §11     | 安全架构 (RBAC + 4 层沙箱 + Vault)                           | ✅   | PolicyEngine + SandboxPolicyService + DataClassificationService 730 行                                             |
 | §12     | 异常事件处理 (E1-E6 + SEV1-4 + 检测规则)                     | ✅   | AnomalyDetectionService 795 行                                                                                     |
 | §13     | OAPEFLIR 8 阶段内核                                          | ✅   | OapeflirLoopService 439 行, 每阶段 Rationale + Timeline                                                            |
-| §13.5   | OAPEFLIR-Harness 外部语义映射                                | 🔴   | 映射关系未代码化                                                                                                   |
+| §13.5   | OAPEFLIR-Harness 外部语义映射                                | ✅   | `oapeflir-harness-mapping.ts` 已落地并接入 Harness step 语义阶段                                                  |
 | §14     | 运行时执行面 (6 执行器 + 6 恢复 worker + 8 运行模式)         | ✅   | 2,748 行恢复逻辑                                                                                                   |
 | §24-§32 | 配置治理/数据一致性/存储/SLO/事件/知识/Pack/灾备/部署        | ✅   | 全部已实现                                                                                                         |
 
@@ -58,31 +58,9 @@
 
 属部署拓扑演进项，不在本仓闭环范围。待 K8s Operator 层面实现。
 
-#### I-2: §13.5 OAPEFLIR-Harness 语义映射未代码化 (P2)
+#### I-2: §13.5 OAPEFLIR-Harness 语义映射已实现 (已关闭)
 
-**问题**: 架构要求 OAPEFLIR 8 阶段与 Harness 三角色（Planner/Generator/Evaluator）之间有显式语义映射，当前代码中无此映射。
-
-**实施方案**:
-
-- **新建文件**: `src/platform/orchestration/harness/oapeflir-harness-mapping.ts`
-- **接口定义**:
-  ```typescript
-  export interface OapeflirHarnessMapping {
-    readonly oapeflirStage: string;
-    readonly harnessRole: HarnessRole;
-    readonly description: string;
-  }
-  export const OAPEFLIR_HARNESS_MAPPINGS: readonly OapeflirHarnessMapping[];
-  // Planner = Observe + Assess + Plan
-  // Generator = Execute
-  // Evaluator = Feedback + Learn + Iterate + Release
-  export function resolveHarnessRoleForOapeflirStage(
-    stage: string,
-  ): HarnessRole;
-  ```
-- **集成点**: 在 `HarnessRuntimeService.appendStep()` 中记录 oapeflirStage 字段
-- **测试**: `tests/unit/orchestration/harness/oapeflir-harness-mapping.test.ts`
-- **工时**: 0.5 人天
+`src/platform/orchestration/harness/oapeflir-harness-mapping.ts` 已落地，并已在 `HarnessRuntimeService.appendStep()` 中写入语义阶段。该项不再作为待开发缺口。
 ---
 
 ## Part II — AI 运营（§15-§23）
@@ -96,7 +74,7 @@
 | §17 | 模型评估 (EvalDataset + QualityGate + 漂移检测 + LLM-as-Judge) | ✅ | PostExecutionQualityGate + changepoint-detector + CrossProviderJudgeService |
 | §18 | 成本管理 (4 级预算) | ✅ | CostAlertService + BillingService 792 行 |
 | §19 | Agent 委派 (深度≤3 + 循环检测 + 权限收缩 + 4 协作模式) | ✅ | TopologyValidator + ContextIsolator 298 行 |
-| §19.5 | **Agent 协作协议 (ACP)** | 🔴 | **完全未实现** |
+| §19.5 | **Agent 协作协议 (ACP)** | ✅ | `collaboration-protocol` 模块、schema、不变量与委派接线已实现 |
 | §20 | 长运行任务/休眠 | ✅ | workflow-hibernation-service 完整 |
 | §21 | HITL 架构 (7 模式 + 审批流 + 超时升级) | ✅ | HitlApprovalOrchestrationService + ApprovalFlowEngine 962 行 |
 | §22 | SDK (PackSDK + CLI 79 命令) | ✅ | pack-scaffold-service 319 行 |
@@ -104,112 +82,9 @@
 
 **当前差距与详细实施方案**:
 
-#### II-1: §19.5 Agent 协作协议 (ACP) 完全未实现 (P0)
+#### II-1: §19.5 Agent 协作协议 (ACP) 已实现 (已关闭)
 
-**问题**: 架构 §19.5 定义了完整的多 Agent 协作协议，包含 8 种消息类型、9 个强制字段、7 项不可违反规则 (C1-C7)。当前代码在 `agent-delegation/index.ts:55-66` 中注释标记 `collaboration-modes.js` 缺失。
-
-**实施方案**:
-
-**新建目录**: `src/platform/orchestration/agent-delegation/collaboration-protocol/`
-
-**文件 1**: `collaboration-protocol/types.ts` (~80 行)
-```typescript
-import { z } from "zod";
-
-export const ACPMessageTypeSchema = z.enum([
-  "task_request", "task_offer", "task_accept", "task_reject",
-  "partial_result", "escalation_request", "completion_report", "takeover_notice",
-]);
-export type ACPMessageType = z.infer<typeof ACPMessageTypeSchema>;
-
-export const ACPMessageSchema = z.object({
-  messageId: z.string(),
-  messageType: ACPMessageTypeSchema,
-  correlation_id: z.string().uuid(),
-  parent_run_id: z.string(),
-  depth: z.number().int().min(0).max(255),
-  sender_agent_id: z.string(),
-  receiver_agent_id: z.string(),
-  domain_id: z.string(),
-  risk_level: z.number().min(0).max(100),
-  budget_remaining: z.number().min(0),
-  trace_id: z.string(),
-  payload: z.record(z.unknown()),
-  timestamp: z.string().datetime(),
-});
-export type ACPMessage = z.infer<typeof ACPMessageSchema>;
-
-export const ACPCompletionPayloadSchema = z.object({
-  evidence: z.array(z.string()).min(1),
-  result_summary: z.string(),
-  artifacts: z.array(z.string()).default([]),
-});
-```
-
-**文件 2**: `collaboration-protocol/invariant-enforcer.ts` (~100 行)
-```typescript
-import type { ACPMessage } from "./types.js";
-import type { PermissionSet } from "../delegation-types.js";
-
-export interface InvariantContext {
-  parentPermissions: PermissionSet;
-  parentRiskMode: number;
-  parentConstraints: Record<string, unknown>;
-  parentBudgetRemaining: number;
-  globalCallDepth: number; // 默认 10
-}
-
-export class ACPInvariantEnforcer {
-  // C1: child.permissions ⊆ parent.permissions
-  public checkPermissionSubset(child: PermissionSet, parent: PermissionSet): boolean;
-  // C2: child.risk_mode ≤ parent.risk_mode
-  public checkRiskNotEscalated(childRisk: number, parentRisk: number): boolean;
-  // C3: child.constraints ⊇ parent.constraints
-  public checkConstraintNotRelaxed(childConstraints: Record<string, unknown>, parentConstraints: Record<string, unknown>): boolean;
-  // C4: completion_report 必须包含 evidence 字段
-  public checkCompletionHasEvidence(message: ACPMessage): boolean;
-  // C5: takeover_notice 触发不可篡改审计
-  public checkTakeoverAudit(message: ACPMessage): boolean;
-  // C6: budget_remaining ≤ parent 剩余
-  public checkBudgetNotExceeded(childBudget: number, parentBudget: number): boolean;
-  // C7: depth ≤ global_call_depth
-  public checkDepthLimit(depth: number, maxDepth: number): boolean;
-
-  public enforceAll(message: ACPMessage, context: InvariantContext): {
-    passed: boolean;
-    violations: string[];
-  };
-}
-```
-
-**文件 3**: `collaboration-protocol/protocol-service.ts` (~120 行)
-```typescript
-import type { ACPMessage, ACPMessageType } from "./types.js";
-import { ACPInvariantEnforcer, type InvariantContext } from "./invariant-enforcer.js";
-import { newId, nowIso } from "../../../contracts/types/ids.js";
-
-export class CollaborationProtocolService {
-  constructor(private readonly invariantEnforcer: ACPInvariantEnforcer);
-  public createMessage(type: ACPMessageType, fields: Omit<ACPMessage, "messageId" | "timestamp">): ACPMessage;
-  public validateAndSend(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] };
-  public handleIncoming(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] };
-}
-```
-
-**文件 4**: `collaboration-protocol/index.ts` (re-exports)
-
-**修改文件**: `src/platform/orchestration/agent-delegation/index.ts:55-66`
-- 取消 collaboration-modes 注释，改为导出新的 collaboration-protocol 模块
-
-**测试文件**: `tests/unit/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.test.ts`
-- 7 个不变量各 2 个用例（通过 + 违反）= 14 个测试
-- 1 个 enforceAll 综合测试
-
-**集成点**:
-- `HarnessRuntimeService` 在 agent 委派前调用 `CollaborationProtocolService.validateAndSend()`
-- `TopologyValidator` 已有的深度/权限检查与 C1/C7 对齐
-
-**工时**: 3-5 人天
+`src/platform/orchestration/agent-delegation/collaboration-protocol/` 已包含 message schema、8 种消息类型、9 个强制字段、不变量检查与发送/接收校验服务，并已接回委派主链。该项不再作为待开发缺口。
 
 #### II-2: ModelGateway 缺少 embed()/complete() 方法 (P2)
 
@@ -1337,64 +1212,24 @@ public assertInvariants(run: HarnessRun): { violations: string[] };
 
 **当前差距与详细实施方案**:
 
-#### X-1: RoadmapService 缺 Phase 8/9 注册 (P2)
+#### X-1: RoadmapService 的 Phase 8/9 注册已实现 (已关闭)
 
-**修改文件**: `src/platform/orchestration/roadmap-service.ts` (或搜索实际路径)
+`src/domains/roadmap/roadmap-service.ts` 已补齐 `phase8a/8b/8c/9a-9f` 的架构模板注册，`SuccessCriteriaService` 与 `PhaseDeliveryService` 也已同步更新到新阶段模型，并已有定向测试保护。
 
-补齐阶段定义:
-- Phase 8a: Harness 核心循环 (VI-1/2/3)
-- Phase 8b: Harness 持久化+恢复 (VI-4/5/6)
-- Phase 8c: Harness 子系统 (VI-7~15)
-- Phase 9a: coding/data-engineering/knowledge-base/user-operations
-- Phase 9b: quant-trading/financial-services/ecommerce/advertising
-- Phase 9c: industry-research/academic-research/finance-accounting/legal
-- Phase 9d: customer-service/it-operations/content-moderation/live-streaming
-- Phase 9e: healthcare/human-resources/supply-chain/education
-- Phase 9f: creative-production/game-dev/game-publishing/marketing
+#### X-2: 缺失 ADR 文件已补齐 (已关闭)
 
-**工时**: 1 人天
+`docs_zh/adr/` 与 `docs_en/adr/` 已新增 `091-108`：
 
-#### X-2: 缺 18 个 ADR 文件 (P2)
+- 9 个 Harness / 八支柱 ADR
+- 9 个 Domain / 领域治理 ADR
 
-**新建文件**: `docs_zh/adr/` 中补齐 18 个 ADR:
+同时 ADR README 索引已同步更新，不再保留“文件不存在但 review 仍列为缺口”的状态。
 
-9 个 Harness 八柱 ADR:
-- `ADR-Harness-Eight-Pillar-Model.md`
-- `ADR-Harness-Loop-Controller.md`
-- `ADR-Harness-Constraint-Engine.md`
-- `ADR-Harness-Durable-Execution.md`
-- `ADR-Harness-Context-Assembly.md`
-- `ADR-Harness-Recovery-Controller.md`
-- `ADR-Harness-Guardrails.md`
-- `ADR-Harness-HITL-Runtime.md`
-- `ADR-Harness-Async-Mode.md`
+#### X-3: harness/ 目录结构已对齐到 canonical 子目录 (大部分关闭)
 
-9 个域相关 ADR (参照 §34 清单)
+`src/platform/orchestration/harness/` 已补齐 runtime / protocol / planner / generator / evaluator / eval-harness / loop / context / memory-namespace / constraints / guardrails / toolbelt / hitl-runtime / durable / types 等 canonical 子目录导出入口。
 
-**工时**: 3-4 人天
-
-#### X-3: harness/ 目录结构不匹配 (P2)
-
-**实施方案**: 创建 14 个子目录:
-
-```
-src/platform/orchestration/harness/
-├── runtime/          # §45.2 HarnessRuntime
-├── protocol/         # §45.13 HarnessRun/Step/Decision
-├── planner/          # §45.8 Planner Agent
-├── generator/        # §45.9 Generator Agent
-├── evaluator/        # §45.10 Evaluator Agent
-├── eval-harness/     # §45.14 Evaluation Harness
-├── loop/             # §45.7 LoopController
-├── context/          # §45.5 ContextAssembler
-├── memory-namespace/ # §45.16 Memory 3 层
-├── constraints/      # §45.3 ConstraintEngine
-├── guardrails/       # §45.20 5 层 Guardrails
-├── toolbelt/         # §45.4 ToolbeltAssembler
-├── hitl-runtime/     # §45.18 HITL Runtime
-├── durable/          # §45.15 Durable Harness
-└── types/            # 共享类型
-```
+仍保留的后续工作仅限“把更多实现从根级文件进一步内聚到这些子目录”，不再是“目录结构缺失”问题。
 
 **工时**: 0.5 人天 (结构创建) + 随各 VI-* 项自然产生
 
@@ -1528,9 +1363,9 @@ src/platform/orchestration/harness/
 
 | 环                  | 范围                                                                                                                                       | 验收门禁                                                          | 当前状态                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **生存环** (Ring 1) | P1-P5 核心链 + ConstraintPack + HarnessRun/Step/Decision + 风控/审批/审计 + 租约/CAS/检查点/恢复 + 紧急制动 + ModelGateway/Prompt/EvalGate | "跑通 1 个 Agent 任务端到端，可中断可恢复可审计"                  | 🟡 **基础设施已实现，Harness 运行时仅骨架**                      |
-| **可用环** (Ring 2) | NL 入口 + 目标分解 + HITL Runtime + Async Harness + Dashboard + 组织/SSO/审批路由 + DomainDescriptor/Recipe/Meta-Model + Agent 协作协议    | "至少 2 个垂直域试运行，非技术用户可 NL 提交，审批和 HITL 端到端" | 🔴 **NL/HITL Runtime/Async Harness/Meta-Model/协作协议均未实现** |
-| **扩展环** (Ring 3) | 市场 + 多区域 + 边缘 + 成本优化 + 行为漂移 + 合规报告 + 24 域 Pack                                                                         | "≥12 域生产运行，跨区域故障切换演练通过"                          | 🔴 **24 域仅有泛化种子**                                         |
+| **生存环** (Ring 1) | P1-P5 核心链 + ConstraintPack + HarnessRun/Step/Decision + 风控/审批/审计 + 租约/CAS/检查点/恢复 + 紧急制动 + ModelGateway/Prompt/EvalGate | "跑通 1 个 Agent 任务端到端，可中断可恢复可审计"                  | 🟡 **基础设施已实现，Harness 主链已落地，R5 深水区仍在继续收口** |
+| **可用环** (Ring 2) | NL 入口 + 目标分解 + HITL Runtime + Async Harness + Dashboard + 组织/SSO/审批路由 + DomainDescriptor/Recipe/Meta-Model + Agent 协作协议    | "至少 2 个垂直域试运行，非技术用户可 NL 提交，审批和 HITL 端到端" | 🟡 **NL、HITL、Async Harness、Meta-Model、ACP 已有实现，仍待继续加厚产品闭环** |
+| **扩展环** (Ring 3) | 市场 + 多区域 + 边缘 + 成本优化 + 行为漂移 + 合规报告 + 24 域 Pack                                                                         | "≥12 域生产运行，跨区域故障切换演练通过"                          | 🟡 **24 域 baseline 已落地，规模化与 ops-maturity 仍有收尾项** |
 
 ---
 
@@ -1552,7 +1387,7 @@ src/platform/orchestration/harness/
 | §11     | 安全架构 (RBAC + 4 层沙箱 + Vault)                           | ✅   | PolicyEngine + SandboxPolicyService + DataClassificationService 730 行                                             |
 | §12     | 异常事件处理 (E1-E6 + SEV1-4 + 检测规则)                     | ✅   | AnomalyDetectionService 795 行                                                                                     |
 | §13     | OAPEFLIR 8 阶段内核                                          | ✅   | OapeflirLoopService 439 行, 每阶段 Rationale + Timeline                                                            |
-| §13.5   | OAPEFLIR-Harness 外部语义映射                                | 🔴   | 映射关系未代码化                                                                                                   |
+| §13.5   | OAPEFLIR-Harness 外部语义映射                                | ✅   | `oapeflir-harness-mapping.ts` 已落地并接入 Harness step 语义阶段                                                  |
 | §14     | 运行时执行面 (6 执行器 + 6 恢复 worker + 8 运行模式)         | ✅   | 2,748 行恢复逻辑                                                                                                   |
 | §24-§32 | 配置治理/数据一致性/存储/SLO/事件/知识/Pack/灾备/部署        | ✅   | 全部已实现                                                                                                         |
 
@@ -1562,31 +1397,9 @@ src/platform/orchestration/harness/
 
 属部署拓扑演进项，不在本仓闭环范围。待 K8s Operator 层面实现。
 
-#### I-2: §13.5 OAPEFLIR-Harness 语义映射未代码化 (P2)
+#### I-2: §13.5 OAPEFLIR-Harness 语义映射已实现 (已关闭)
 
-**问题**: 架构要求 OAPEFLIR 8 阶段与 Harness 三角色（Planner/Generator/Evaluator）之间有显式语义映射，当前代码中无此映射。
-
-**实施方案**:
-
-- **新建文件**: `src/platform/orchestration/harness/oapeflir-harness-mapping.ts`
-- **接口定义**:
-  ```typescript
-  export interface OapeflirHarnessMapping {
-    readonly oapeflirStage: string;
-    readonly harnessRole: HarnessRole;
-    readonly description: string;
-  }
-  export const OAPEFLIR_HARNESS_MAPPINGS: readonly OapeflirHarnessMapping[];
-  // Planner = Observe + Assess + Plan
-  // Generator = Execute
-  // Evaluator = Feedback + Learn + Iterate + Release
-  export function resolveHarnessRoleForOapeflirStage(
-    stage: string,
-  ): HarnessRole;
-  ```
-- **集成点**: 在 `HarnessRuntimeService.appendStep()` 中记录 oapeflirStage 字段
-- **测试**: `tests/unit/orchestration/harness/oapeflir-harness-mapping.test.ts`
-- **工时**: 0.5 人天
+`src/platform/orchestration/harness/oapeflir-harness-mapping.ts` 已落地，并已在 `HarnessRuntimeService.appendStep()` 中写入语义阶段。该项不再作为待开发缺口。
 ---
 
 ## Part II — AI 运营（§15-§23）
@@ -1600,7 +1413,7 @@ src/platform/orchestration/harness/
 | §17 | 模型评估 (EvalDataset + QualityGate + 漂移检测 + LLM-as-Judge) | ✅ | PostExecutionQualityGate + changepoint-detector + CrossProviderJudgeService |
 | §18 | 成本管理 (4 级预算) | ✅ | CostAlertService + BillingService 792 行 |
 | §19 | Agent 委派 (深度≤3 + 循环检测 + 权限收缩 + 4 协作模式) | ✅ | TopologyValidator + ContextIsolator 298 行 |
-| §19.5 | **Agent 协作协议 (ACP)** | 🔴 | **完全未实现** |
+| §19.5 | **Agent 协作协议 (ACP)** | ✅ | `collaboration-protocol` 模块、schema、不变量与委派接线已实现 |
 | §20 | 长运行任务/休眠 | ✅ | workflow-hibernation-service 完整 |
 | §21 | HITL 架构 (7 模式 + 审批流 + 超时升级) | ✅ | HitlApprovalOrchestrationService + ApprovalFlowEngine 962 行 |
 | §22 | SDK (PackSDK + CLI 79 命令) | ✅ | pack-scaffold-service 319 行 |
@@ -1608,112 +1421,9 @@ src/platform/orchestration/harness/
 
 **当前差距与详细实施方案**:
 
-#### II-1: §19.5 Agent 协作协议 (ACP) 完全未实现 (P0)
+#### II-1: §19.5 Agent 协作协议 (ACP) 已实现 (已关闭)
 
-**问题**: 架构 §19.5 定义了完整的多 Agent 协作协议，包含 8 种消息类型、9 个强制字段、7 项不可违反规则 (C1-C7)。当前代码在 `agent-delegation/index.ts:55-66` 中注释标记 `collaboration-modes.js` 缺失。
-
-**实施方案**:
-
-**新建目录**: `src/platform/orchestration/agent-delegation/collaboration-protocol/`
-
-**文件 1**: `collaboration-protocol/types.ts` (~80 行)
-```typescript
-import { z } from "zod";
-
-export const ACPMessageTypeSchema = z.enum([
-  "task_request", "task_offer", "task_accept", "task_reject",
-  "partial_result", "escalation_request", "completion_report", "takeover_notice",
-]);
-export type ACPMessageType = z.infer<typeof ACPMessageTypeSchema>;
-
-export const ACPMessageSchema = z.object({
-  messageId: z.string(),
-  messageType: ACPMessageTypeSchema,
-  correlation_id: z.string().uuid(),
-  parent_run_id: z.string(),
-  depth: z.number().int().min(0).max(255),
-  sender_agent_id: z.string(),
-  receiver_agent_id: z.string(),
-  domain_id: z.string(),
-  risk_level: z.number().min(0).max(100),
-  budget_remaining: z.number().min(0),
-  trace_id: z.string(),
-  payload: z.record(z.unknown()),
-  timestamp: z.string().datetime(),
-});
-export type ACPMessage = z.infer<typeof ACPMessageSchema>;
-
-export const ACPCompletionPayloadSchema = z.object({
-  evidence: z.array(z.string()).min(1),
-  result_summary: z.string(),
-  artifacts: z.array(z.string()).default([]),
-});
-```
-
-**文件 2**: `collaboration-protocol/invariant-enforcer.ts` (~100 行)
-```typescript
-import type { ACPMessage } from "./types.js";
-import type { PermissionSet } from "../delegation-types.js";
-
-export interface InvariantContext {
-  parentPermissions: PermissionSet;
-  parentRiskMode: number;
-  parentConstraints: Record<string, unknown>;
-  parentBudgetRemaining: number;
-  globalCallDepth: number; // 默认 10
-}
-
-export class ACPInvariantEnforcer {
-  // C1: child.permissions ⊆ parent.permissions
-  public checkPermissionSubset(child: PermissionSet, parent: PermissionSet): boolean;
-  // C2: child.risk_mode ≤ parent.risk_mode
-  public checkRiskNotEscalated(childRisk: number, parentRisk: number): boolean;
-  // C3: child.constraints ⊇ parent.constraints
-  public checkConstraintNotRelaxed(childConstraints: Record<string, unknown>, parentConstraints: Record<string, unknown>): boolean;
-  // C4: completion_report 必须包含 evidence 字段
-  public checkCompletionHasEvidence(message: ACPMessage): boolean;
-  // C5: takeover_notice 触发不可篡改审计
-  public checkTakeoverAudit(message: ACPMessage): boolean;
-  // C6: budget_remaining ≤ parent 剩余
-  public checkBudgetNotExceeded(childBudget: number, parentBudget: number): boolean;
-  // C7: depth ≤ global_call_depth
-  public checkDepthLimit(depth: number, maxDepth: number): boolean;
-
-  public enforceAll(message: ACPMessage, context: InvariantContext): {
-    passed: boolean;
-    violations: string[];
-  };
-}
-```
-
-**文件 3**: `collaboration-protocol/protocol-service.ts` (~120 行)
-```typescript
-import type { ACPMessage, ACPMessageType } from "./types.js";
-import { ACPInvariantEnforcer, type InvariantContext } from "./invariant-enforcer.js";
-import { newId, nowIso } from "../../../contracts/types/ids.js";
-
-export class CollaborationProtocolService {
-  constructor(private readonly invariantEnforcer: ACPInvariantEnforcer);
-  public createMessage(type: ACPMessageType, fields: Omit<ACPMessage, "messageId" | "timestamp">): ACPMessage;
-  public validateAndSend(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] };
-  public handleIncoming(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] };
-}
-```
-
-**文件 4**: `collaboration-protocol/index.ts` (re-exports)
-
-**修改文件**: `src/platform/orchestration/agent-delegation/index.ts:55-66`
-- 取消 collaboration-modes 注释，改为导出新的 collaboration-protocol 模块
-
-**测试文件**: `tests/unit/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.test.ts`
-- 7 个不变量各 2 个用例（通过 + 违反）= 14 个测试
-- 1 个 enforceAll 综合测试
-
-**集成点**:
-- `HarnessRuntimeService` 在 agent 委派前调用 `CollaborationProtocolService.validateAndSend()`
-- `TopologyValidator` 已有的深度/权限检查与 C1/C7 对齐
-
-**工时**: 3-5 人天
+`src/platform/orchestration/agent-delegation/collaboration-protocol/` 已包含 message schema、8 种消息类型、9 个强制字段、不变量检查与发送/接收校验服务，并已接回委派主链。该项不再作为待开发缺口。
 
 #### II-2: ModelGateway 缺少 embed()/complete() 方法 (P2)
 
@@ -2841,64 +2551,24 @@ public assertInvariants(run: HarnessRun): { violations: string[] };
 
 **当前差距与详细实施方案**:
 
-#### X-1: RoadmapService 缺 Phase 8/9 注册 (P2)
+#### X-1: RoadmapService 的 Phase 8/9 注册已实现 (已关闭)
 
-**修改文件**: `src/platform/orchestration/roadmap-service.ts` (或搜索实际路径)
+`src/domains/roadmap/roadmap-service.ts` 已补齐 `phase8a/8b/8c/9a-9f` 的架构模板注册，`SuccessCriteriaService` 与 `PhaseDeliveryService` 也已同步更新到新阶段模型，并已有定向测试保护。
 
-补齐阶段定义:
-- Phase 8a: Harness 核心循环 (VI-1/2/3)
-- Phase 8b: Harness 持久化+恢复 (VI-4/5/6)
-- Phase 8c: Harness 子系统 (VI-7~15)
-- Phase 9a: coding/data-engineering/knowledge-base/user-operations
-- Phase 9b: quant-trading/financial-services/ecommerce/advertising
-- Phase 9c: industry-research/academic-research/finance-accounting/legal
-- Phase 9d: customer-service/it-operations/content-moderation/live-streaming
-- Phase 9e: healthcare/human-resources/supply-chain/education
-- Phase 9f: creative-production/game-dev/game-publishing/marketing
+#### X-2: 缺失 ADR 文件已补齐 (已关闭)
 
-**工时**: 1 人天
+`docs_zh/adr/` 与 `docs_en/adr/` 已新增 `091-108`：
 
-#### X-2: 缺 18 个 ADR 文件 (P2)
+- 9 个 Harness / 八支柱 ADR
+- 9 个 Domain / 领域治理 ADR
 
-**新建文件**: `docs_zh/adr/` 中补齐 18 个 ADR:
+同时 ADR README 索引已同步更新，不再保留“文件不存在但 review 仍列为缺口”的状态。
 
-9 个 Harness 八柱 ADR:
-- `ADR-Harness-Eight-Pillar-Model.md`
-- `ADR-Harness-Loop-Controller.md`
-- `ADR-Harness-Constraint-Engine.md`
-- `ADR-Harness-Durable-Execution.md`
-- `ADR-Harness-Context-Assembly.md`
-- `ADR-Harness-Recovery-Controller.md`
-- `ADR-Harness-Guardrails.md`
-- `ADR-Harness-HITL-Runtime.md`
-- `ADR-Harness-Async-Mode.md`
+#### X-3: harness/ 目录结构已对齐到 canonical 子目录 (大部分关闭)
 
-9 个域相关 ADR (参照 §34 清单)
+`src/platform/orchestration/harness/` 已补齐 runtime / protocol / planner / generator / evaluator / eval-harness / loop / context / memory-namespace / constraints / guardrails / toolbelt / hitl-runtime / durable / types 等 canonical 子目录导出入口。
 
-**工时**: 3-4 人天
-
-#### X-3: harness/ 目录结构不匹配 (P2)
-
-**实施方案**: 创建 14 个子目录:
-
-```
-src/platform/orchestration/harness/
-├── runtime/          # §45.2 HarnessRuntime
-├── protocol/         # §45.13 HarnessRun/Step/Decision
-├── planner/          # §45.8 Planner Agent
-├── generator/        # §45.9 Generator Agent
-├── evaluator/        # §45.10 Evaluator Agent
-├── eval-harness/     # §45.14 Evaluation Harness
-├── loop/             # §45.7 LoopController
-├── context/          # §45.5 ContextAssembler
-├── memory-namespace/ # §45.16 Memory 3 层
-├── constraints/      # §45.3 ConstraintEngine
-├── guardrails/       # §45.20 5 层 Guardrails
-├── toolbelt/         # §45.4 ToolbeltAssembler
-├── hitl-runtime/     # §45.18 HITL Runtime
-├── durable/          # §45.15 Durable Harness
-└── types/            # 共享类型
-```
+仍保留的后续工作仅限“把更多实现从根级文件进一步内聚到这些子目录”，不再是“目录结构缺失”问题。
 
 **工时**: 0.5 人天 (结构创建) + 随各 VI-* 项自然产生
 
