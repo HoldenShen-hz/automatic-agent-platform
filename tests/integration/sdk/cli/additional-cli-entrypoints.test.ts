@@ -18,7 +18,7 @@ function runBuiltCli(
 ): string {
   return execFileSync(
     process.execPath,
-    [join(process.cwd(), "dist", "src", "cli", scriptName), ...(options.args ?? [])],
+    [join(process.cwd(), "dist", "src", "sdk", "cli", scriptName), ...(options.args ?? [])],
     {
     cwd: options.cwd ?? process.cwd(),
     env: {

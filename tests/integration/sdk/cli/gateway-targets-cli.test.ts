@@ -8,7 +8,7 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "gateway-targets.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "gateway-targets.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -21,7 +21,7 @@ function runCli<T>(env: NodeJS.ProcessEnv): T {
 
 function runCliExpectFailure(env: NodeJS.ProcessEnv): { stderr: string; status: number } {
   try {
-    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "gateway-targets.js")], {
+    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "gateway-targets.js")], {
       cwd: process.cwd(),
       env: {
         ...process.env,

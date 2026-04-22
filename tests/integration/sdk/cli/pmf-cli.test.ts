@@ -10,7 +10,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { PMF_EVALUATED_AT, seedPmfValidationDataset } from "../../../helpers/pmf.js";
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "pmf.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "pmf.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,

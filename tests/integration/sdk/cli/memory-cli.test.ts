@@ -7,7 +7,7 @@ import { parseStructuredMemoryContent } from "../../../../src/platform/state-evi
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function runCli<T>(scriptName: string, env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", scriptName)], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", scriptName)], {
     cwd: process.cwd(),
     env: {
       ...process.env,

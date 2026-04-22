@@ -237,7 +237,10 @@ export function loadOpsGovernanceCliEnv(env: NodeJS.ProcessEnv = process.env): O
   return {
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     environment: requiredEnumValue(env, "AA_ENVIRONMENT", ENVIRONMENT_NAMES),
-    action: optionalEnumValue(env, "AA_OPS_GOVERNANCE_ACTION", OPS_GOVERNANCE_ACTIONS) ?? "check",
+    action:
+      optionalEnumValue(env, "AA_OPS_GOVERNANCE_ACTION", OPS_GOVERNANCE_ACTIONS) ??
+      optionalEnumValue(env, "AA_OPS_ACTION", OPS_GOVERNANCE_ACTIONS) ??
+      "check",
     generatedAt: optionalEnv(env, "AA_GENERATED_AT"),
     taskId: optionalEnv(env, "AA_OPS_TASK_ID"),
     artifactRoot: optionalEnv(env, "AA_OPS_ARTIFACT_ROOT"),

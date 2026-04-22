@@ -3,7 +3,6 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 
 import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
 import { ProtectedGovernanceIntegrityService } from "../../../../src/platform/control-plane/config-center/protected-governance-integrity-service.js";
@@ -31,7 +30,7 @@ import { SqliteReliabilityService } from "../../../../src/platform/state-evidenc
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function seedHappyPathDb(dbPath: string): void {
   const script = `

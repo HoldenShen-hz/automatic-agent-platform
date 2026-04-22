@@ -8,7 +8,6 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
@@ -16,13 +15,13 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/
 import { cleanupPath } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function runLeaseHandoverCli(env: NodeJS.ProcessEnv): { stdout: string; stderr: string; status: number } {
   try {
     const stdout = execFileSync(
       process.execPath,
-      [join(repoRoot, "dist", "src", "cli", "lease-handover.js")],
+      [join(repoRoot, "dist", "src", "sdk", "cli", "lease-handover.js")],
       {
         cwd: repoRoot,
         env: { ...process.env, ...env },

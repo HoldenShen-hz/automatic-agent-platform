@@ -13,7 +13,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 const execFileAsync = promisify(execFile);
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "billing.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "billing.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -26,7 +26,7 @@ function runCli<T>(env: NodeJS.ProcessEnv): T {
 }
 
 async function runCliAsync<T>(env: NodeJS.ProcessEnv): Promise<T> {
-  const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "billing.js")], {
+  const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "billing.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,

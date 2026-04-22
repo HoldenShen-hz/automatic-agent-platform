@@ -7,7 +7,7 @@ import test from "node:test";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 
 function runShadowSnapshotCli(env: NodeJS.ProcessEnv): unknown {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "shadow-snapshot.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "shadow-snapshot.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -68,4 +68,3 @@ test("shadow snapshot CLI creates, lists, and restores external snapshots", () =
     cleanupPath(shadowRoot);
   }
 });
-

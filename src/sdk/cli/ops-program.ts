@@ -9,8 +9,8 @@
  * Environment Variables (via loadOpsProgramCliEnv):
  *   - AA_DB_PATH: Path to the SQLite database
  *   - AA_ENVIRONMENT: The environment name (development, staging, production)
- *   - AA_HA_PROGRAM_ACTION: Action to perform (summary, export)
- *   - AA_ARTIFACT_ROOT: Root directory for artifact storage
+ *   - AA_OPS_PROGRAM_ACTION: Action to perform (summary, export)
+ *   - AA_OPS_PROGRAM_ARTIFACT_ROOT: Root directory for artifact storage
  *
  * Actions:
  *   - summary: Build and return an operational report

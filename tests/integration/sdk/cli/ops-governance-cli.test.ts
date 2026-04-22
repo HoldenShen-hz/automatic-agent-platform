@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
@@ -11,7 +10,7 @@ import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function seedOpsDb(workspace: string): { dbPath: string; taskId: string } {
   const dbPath = join(workspace, "ops-governance-cli.db");
@@ -71,7 +70,7 @@ function seedOpsDb(workspace: string): { dbPath: string; taskId: string } {
 }
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", "ops-governance.js")], {
+  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", "ops-governance.js")], {
     cwd: repoRoot,
     env: {
       ...process.env,

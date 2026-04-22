@@ -305,10 +305,13 @@ export function loadOpsProgramCliEnv(
   return {
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     environment: requiredEnumValue(env, "AA_ENVIRONMENT", ENVIRONMENT_NAMES),
-    action: optionalEnumValue(env, "AA_HA_PROGRAM_ACTION", OPS_PROGRAM_ACTIONS) ?? "summary",
-    artifactRoot: optionalEnv(env, "AA_ARTIFACT_ROOT"),
-    taskId: optionalEnv(env, "AA_TASK_ID"),
-    shiftOwner: optionalEnv(env, "AA_SHIFT_OWNER"),
+    action:
+      optionalEnumValue(env, "AA_OPS_PROGRAM_ACTION", OPS_PROGRAM_ACTIONS) ??
+      optionalEnumValue(env, "AA_HA_PROGRAM_ACTION", OPS_PROGRAM_ACTIONS) ??
+      "summary",
+    artifactRoot: optionalEnv(env, "AA_OPS_PROGRAM_ARTIFACT_ROOT") ?? optionalEnv(env, "AA_ARTIFACT_ROOT"),
+    taskId: optionalEnv(env, "AA_OPS_PROGRAM_TASK_ID") ?? optionalEnv(env, "AA_TASK_ID"),
+    shiftOwner: optionalEnv(env, "AA_OPS_PROGRAM_SHIFT_OWNER") ?? optionalEnv(env, "AA_SHIFT_OWNER"),
   };
 }
 

@@ -10,7 +10,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "evolution.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "evolution.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -24,7 +24,7 @@ function runCli<T>(env: NodeJS.ProcessEnv): T {
 
 function runCliExpectFailure(env: NodeJS.ProcessEnv): { stderr: string; status: number } {
   try {
-    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "evolution.js")], {
+    execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "evolution.js")], {
       cwd: process.cwd(),
       env: {
         ...process.env,

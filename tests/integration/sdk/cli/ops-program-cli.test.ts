@@ -2,17 +2,16 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", "ops-program.js")], {
+  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", "ops-program.js")], {
     cwd: repoRoot,
     env: {
       ...process.env,

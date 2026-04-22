@@ -23,7 +23,7 @@ test("smoke: CLI commands produce output when executed", async () => {
 
     // Run doctor command - it should produce JSON output
     const output = await new Promise<string>((resolve, reject) => {
-      const proc = spawn("node", ["dist/src/cli/doctor.js"], {
+      const proc = spawn("node", ["dist/src/sdk/cli/doctor.js"], {
         env,
         cwd: process.cwd(),
       });
@@ -84,7 +84,7 @@ test("smoke: CLI produces error for invalid environment", async () => {
 
     // Run doctor - should produce output (either error or diagnostic info)
     const output = await new Promise<string>((resolve) => {
-      const proc = spawn("node", ["dist/src/cli/doctor.js"], {
+      const proc = spawn("node", ["dist/src/sdk/cli/doctor.js"], {
         env,
         cwd: process.cwd(),
       });

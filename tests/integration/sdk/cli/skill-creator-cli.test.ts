@@ -11,7 +11,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function resolveScriptPath(): string {
   return process.env.AA_TEST_SKILL_CREATOR_SCRIPT
-    ?? join(process.cwd(), "dist", "src", "cli", "skill-creator.js");
+    ?? join(process.cwd(), "dist", "src", "sdk", "cli", "skill-creator.js");
 }
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {

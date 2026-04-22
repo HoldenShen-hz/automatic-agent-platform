@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 
 import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
 import { DiagnosticsService } from "../../../../src/platform/shared/observability/diagnostics-service.js";
@@ -28,7 +27,7 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { SqliteReliabilityService } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-reliability-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function seedHappyPathDb(dbPath: string): void {
   const script = `

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { TenantPlatformService } from "../../../../src/scale-ecosystem/marketplace/tenant-platform-service.js";
@@ -11,10 +10,10 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", "compliance-program.js")], {
+  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", "compliance-program.js")], {
     cwd: repoRoot,
     env: {
       ...process.env,

@@ -17,7 +17,7 @@ interface ReceivedWebhookRequest {
 }
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "channel-gateway.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "channel-gateway.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,

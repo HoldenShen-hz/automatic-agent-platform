@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { ApprovalService } from "../../../../src/platform/control-plane/approval-center/approval-service.js";
@@ -12,7 +11,7 @@ import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function writeDependencyFixtures(workspace: string): { manifestPath: string; lockfilePath: string } {
   const manifestPath = join(workspace, "package.enterprise.json");
@@ -115,7 +114,7 @@ function seedOpsDb(workspace: string): { dbPath: string; taskId: string; manifes
 }
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", "enterprise-governance.js")], {
+  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", "enterprise-governance.js")], {
     cwd: repoRoot,
     env: {
       ...process.env,

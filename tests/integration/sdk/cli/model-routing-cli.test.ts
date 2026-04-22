@@ -9,7 +9,7 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "model-routing.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "model-routing.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,

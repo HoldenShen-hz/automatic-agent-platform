@@ -48,7 +48,8 @@ export class ChangepointDetectorService {
     baselineWindow: number = BASELINE_WINDOW_HOURS,
     recentWindow: number = RECENT_WINDOW_HOURS,
   ): ChangepointDetectionResult {
-    const baseline = samples.slice(0, baselineWindow);
+    const effectiveBaselineWindow = Math.min(baselineWindow, Math.max(samples.length - recentWindow, 0));
+    const baseline = samples.slice(0, effectiveBaselineWindow);
     const recent = samples.slice(-recentWindow);
 
     if (baseline.length === 0 || recent.length === 0) {
@@ -63,9 +64,10 @@ export class ChangepointDetectorService {
       };
     }
 
-    // Check if we have enough data for reliable drift detection
-    // Need at least baselineWindow samples for baseline
-    if (samples.length < baselineWindow) {
+    // Fall back to the available pre-recent history when the full baseline window
+    // is not available yet, but still require at least one full recent window of
+    // baseline samples so comparisons are not made against a trivially small set.
+    if (baseline.length < recentWindow) {
       return {
         detected: false,
         baselineMean: average(baseline.map((s) => s.score)),

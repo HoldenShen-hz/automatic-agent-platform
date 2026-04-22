@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const CLI_ENTRYPOINT = join(process.cwd(), "dist", "src", "cli", "doctor.js");
+const CLI_ENTRYPOINT = join(process.cwd(), "dist", "src", "sdk", "cli", "doctor.js");
 
 test("CLI exits with code 1 on missing required arguments", async () => {
   // Call doctor with no args - should exit with code 1

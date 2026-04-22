@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -8,10 +7,10 @@ import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sq
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
+const repoRoot = process.cwd();
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "cli", "data-plane.js")], {
+  const stdout = execFileSync(process.execPath, [join(repoRoot, "dist", "src", "sdk", "cli", "data-plane.js")], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -32,7 +31,7 @@ test("data-plane CLI creates records and exports tenant-aware summary", () => {
     db.migrate();
     db.close();
 
-    const tenantCli = join(repoRoot, "dist", "src", "cli", "tenant-platform.js");
+    const tenantCli = join(repoRoot, "dist", "src", "sdk", "cli", "tenant-platform.js");
     const runTenantCli = (env: NodeJS.ProcessEnv): void => {
       execFileSync(process.execPath, [tenantCli], {
         cwd: repoRoot,

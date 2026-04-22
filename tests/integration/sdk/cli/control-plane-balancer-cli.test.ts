@@ -7,7 +7,7 @@ import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 
 function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "cli", "control-plane-balancer.js")], {
+  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "control-plane-balancer.js")], {
     cwd: process.cwd(),
     env: {
       ...process.env,
