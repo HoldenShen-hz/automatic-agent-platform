@@ -2,9 +2,9 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR Related
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,13 +19,13 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines top-level directories, source code tiering, configuration tiering, and division directory conventions when entering Phase 1a-4 implementation.
+This contract defines the current repository's top-level directories, source code tiering, configuration tiering, and division directory conventions.
 
 ## 2. Top-Level Directories
 
-Phase 1a allows and recommends the following top-level directories:
+Current authoritative top-level directories:
 
-- `doc/`: Documentation system and specifications
+- `docs_zh/` / `docs_en/`: Documentation system and specifications
 - `src/`: Platform source code
 - `config/`: Runtime and platform-level configuration
 - `divisions/`: Division definitions and role materials
@@ -41,83 +41,94 @@ Prohibited:
 
 ## 3. `src/` Authoritative Structure
 
-Phase 1a recommended structure:
+Current implementation structure:
 
 ```text
 src/
-  core/
-    api/
-    artifacts/
-    config/
-    divisions/
-    events/
-    memory/
-    observability/
-    providers/
+  core/                          # Compatibility runtime (only preserves old code migration path)
     runtime/
-    security/
-    storage/
-    tools/
-    workflow/
-    types/
-    approvals/
-    agent-loop/
-    assessment/
-    feedback/
-    improvement/
-    learning/
-    planning/
-    cost/
-    queue/
-  gateway/
-    stream/
-    targets/
-  cli/
+  platform/                      # Authoritative platform core code
+    control-plane/               # IAM, config center, approval center, incident control
+    execution/                   # Scheduler, execution engine, recovery, worker pool
+    orchestration/               # OAPEFLIR, routing, planner, HITL
+    state-evidence/              # Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
+    interface/                   # API, Channel Gateway, Ingress, Scheduler
+    shared/                      # Observability, stability, cache, common infrastructure
+    model-gateway/               # Model gateway, cost tracking
+    prompt-engine/               # Prompt rendering, versioning, evaluation, release
+    compliance/                  # Compliance case orchestration and data governance
+    agent-delegation/            # Agent delegation
+    cost-management/             # Cost management
+    prompt-registry/             # Prompt registry
+  interaction/                   # NL entry, goal decomposition, proactive agent, dashboard, UX
+  org-governance/                # Organization hierarchy, SSO/SCIM, compliance
+  ops-maturity/                  # Explainability, drift detection, edge computing, cost, chaos engineering
+  scale-ecosystem/               # Multi-region, fair scheduling, SLA, connectors, marketplace
+  sdk/                           # CLI, Pack SDK, Plugin SDK, Client SDK
+  domains/                       # Domain descriptors, onboarding, registry
+  plugins/                       # Plugin system
+  testing/                       # Testing tools
+  benchmarks/                    # Performance benchmarks
+  apps/                          # Application entry points
 ```
 
 Rules:
 
-- `core/` only contains platform core domain models and runtime logic.
-- `gateway/` is responsible for channel adaptation; does not own task orchestration semantics.
-- API, tools, providers, and division loader in current implementation are uniformly converged under `src/core/`, not split into top-level directories like `src/server/` / `src/tools/` / `src/providers/`.
-- `src/core/divisions/` is only responsible for loading definitions; does not carry division business content itself.
-
-Can be reserved but not Phase 1a required:
-
-```text
-src/
-  core/
-    memory/
-  supervisor/
-  plugins/
-  domains/
-```
+- `src/platform/` is the authoritative code directory, containing all core runtime logic
+- `src/core/` is only for backward compatibility, does not add new canonical runtime logic
+- `src/platform/` internal organization follows five-plane architecture: control-plane, execution, orchestration, state-evidence, interface
+- Upper-layer business capabilities reside in corresponding upper directories (interaction, org-governance, ops-maturity, etc.)
 
 Notes:
 
-- `memory/`, `supervisor/`, `plugins/`, `domains/` can be reserved for future phases but should not be mistaken as Phase 1a current required deliverables.
-- Current Observe semantics prioritize convergence in `src/core/observability/`, `src/core/agent-loop/`, and `src/core/assessment/`, not new top-level `perception/` directory.
-- If future need arises to further split `api` / `tools` / `providers` from `src/core/` to top-level directories, this contract must be updated first, then migration proceeds.
+- `src/platform/` is the authoritative platform core directory.
+- `src/core/` only preserves compatibility and migration closure, does not add new canonical platform capabilities.
+- `src/domains/`, `src/interaction/`, `src/org-governance/`, `src/scale-ecosystem/`, `src/ops-maturity/` are architecture v2.7 upper-layer capability domains.
+- If future need arises to introduce new top-level domain directory, must first update this contract, then proceed with migration.
 
 ## 4. `config/` Authoritative Structure
 
 ```text
 config/
   bootstrap/
+  conversation/
+  cost-alert/
+  domains/
+  dr/
+  environments/
+  exception-recovery/
+  gateways/
+  knowledge/
+  nl-gateway/
+  plugins/
+  product/
+  providers/
+  quality/
+  risk/
   runtime/
   security/
-  providers/
-  gateways/
   workflows/
 ```
 
 Meaning:
 
 - `bootstrap/`: Base configuration that must be loaded at platform startup.
+- `conversation/`: Conversation templates, threads, and UX-related configuration.
+- `cost-alert/`: Cost thresholds and alert strategies.
+- `domains/`: Domain descriptors, onboarding, and default governance configuration.
+- `dr/`: Cross-region / disaster recovery parameters.
+- `environments/`: Environment-level switches and promote thresholds.
+- `exception-recovery/`: Panic / resume / replay / repair related policies.
 - `runtime/`: Concurrency, timeout, retry, queue, and other runtime parameters.
 - `security/`: Permissions, approval thresholds, dangerous operation policies.
 - `providers/`: LLM provider, model routing, and degradation strategies.
 - `gateways/`: CLI/Web/Telegram and other channel configurations.
+- `knowledge/`: Knowledge / semantic backend / retention configuration.
+- `nl-gateway/`: Natural language entry, ambiguity clarification, and decomposition gates.
+- `plugins/`: Plugin, pack, connector default configuration.
+- `product/`: Billing, marketplace, tenant product surface configuration.
+- `quality/`: Eval, quality gate, and regression baseline.
+- `risk/`: Risk assessment and deny/approve configuration.
 - `workflows/`: HQ-level shared workflow templates.
 
 Supplementary notes:
@@ -147,7 +158,7 @@ Rules:
 
 ## 6. `data/` Structure Constraints
 
-Phase 1a local development can use:
+Local development environment can use:
 
 ```text
 data/
@@ -163,12 +174,12 @@ Rules:
 
 ## 7. Ownership and Change Constraints
 
-- Directory structure changes should first modify this contract, then modify `01` ~ `07`, `operations/` and corresponding implementations.
+- Directory structure changes should first modify this contract, then modify `docs_zh/architecture/00-04`, `operations/` and corresponding implementations.
 - If need arises to introduce `apps/` multi-process structure, add new ADR and update this contract.
-- Phase 1a does not introduce premature microservices splitting.
+- Current phase does not introduce premature microservices splitting.
 
 ## 8. Supplementary Rules
 
-- `server/api` directory is named by resource, such as `tasks/`, `approvals/`, `health/`; avoid splitting by HTTP verbs.
-- `tests/` is divided into at least `unit/`, `integration/`, `e2e/` three layers; fixtures and replay resources are separately placed in shared directory.
+- Route modules under `src/platform/interface/api/http-server/` should be named by resource, such as `task-routes.ts`, `approval-routes.ts`, `health-routes.ts`; avoid splitting by HTTP verbs.
+- `tests/` at minimum is divided into `unit/`, `integration/`, `e2e/` three layers; fixtures and replay resources are separately placed in shared directory.
 - Production environment does not depend on local `data/`; should be replaced with database, object storage, and centralized logging/audit backend.

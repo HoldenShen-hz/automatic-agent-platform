@@ -37,16 +37,16 @@ Related documents:
 Rules:
 
 - Before production declaration, each SLO must have calculation formula, data source, and alert threshold.
-- Goals without observability formula must not be written as external SLA.
+- Targets without observable formula must not be written as external SLA.
 
 ## 4. Alert Classification
 
 | Level | Description | Typical Examples |
 | --- | --- | --- |
-| `P0` | Platform core unavailable | New task cannot execute, authoritative DB not writable |
-| `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain largely failed |
-| `P2` | Single division or local capability significantly degraded | A certain division failure rate spikes |
-| `P3` | Local anomaly or capacity warning | Queue delay increasing, cost drift high |
+| `P0` | Platform core unavailable | New tasks cannot execute, authoritative DB not writable |
+| `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain broadly failed |
+| `P2` | Single division or local capability significantly degraded | Certain division failure rate spikes |
+| `P3` | Local anomaly or capacity warning | Queue latency increasing, cost drift high |
 
 ## 5. Alert Must Include
 
@@ -54,7 +54,7 @@ Rules:
 - Impact scope
 - First discovery time
 - Recommended runbook
-- Whether auto containment action has been executed
+- Whether auto mitigation has been executed
 
 ## 6. Runbook Directory
 
@@ -84,14 +84,14 @@ flowchart TD
     G --> H["Page Oncall / Create Incident"]
 ```
 
-## 8. Auto Containment Boundaries
+## 8. Auto Mitigation Boundaries
 
 Allowed to auto-execute:
 
 - admission control tightening
 - provider failover
 - queue rate limiting
-- A specific tenant / division rate limiting
+- specific tenant / division throttling
 
 Forbidden to auto-execute:
 
@@ -120,4 +120,4 @@ Industrial-grade operations is not "lots of logs", but:
 - Has clear SLO
 - Has actionable alerts
 - Has runbooks
-- Has auto containment boundaries
+- Has auto mitigation boundaries
