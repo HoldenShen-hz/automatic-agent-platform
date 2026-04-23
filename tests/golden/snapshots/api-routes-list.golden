@@ -1,5 +1,5 @@
 {
-  "totalRoutes": 38,
+  "totalRoutes": 41,
   "routes": [
     "GET:/health",
     "GET:/healthz",
@@ -10,6 +10,7 @@
     "GET:/v1/admin/inventories/benchmarks",
     "GET:/v1/admin/inventories/deployments",
     "GET:/v1/admin/inventories/projections",
+    "GET:/v1/admin/inventories/schema",
     "GET:/v1/admin/judges",
     "GET:/v1/approvals",
     "GET:/v1/artifacts/publishes",
@@ -19,7 +20,6 @@
     "GET:/v1/domains/{domainId}",
     "GET:/v1/domains/{domainId}/plugins",
     "GET:/v1/gateway/targets",
-    "GET:/v1/gateway/targets/resolve",
-    "GET:/v1/knowledge/graph"
+    "GET:/v1/gateway/targets/resolve"
   ]
 }

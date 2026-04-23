@@ -4,7 +4,7 @@
     "title": "Automatic Agent API",
     "version": "0.1.0"
   },
-  "pathCount": 38,
+  "pathCount": 41,
   "pathKeys": [
     "/health",
     "/healthz",
@@ -16,6 +16,7 @@
     "/v1/admin/inventories/benchmarks",
     "/v1/admin/inventories/deployments",
     "/v1/admin/inventories/projections",
+    "/v1/admin/inventories/schema",
     "/v1/admin/judges",
     "/v1/approvals",
     "/v1/approvals/{approvalId}/decision",
@@ -43,6 +44,8 @@
     "/v1/tasks/{taskId}",
     "/v1/tasks/{taskId}/events",
     "/v1/tasks/{taskId}/inspect",
-    "/v1/workbench/snapshot"
+    "/v1/webhooks/{endpointId}/receive",
+    "/v1/workbench/snapshot",
+    "/v1/workflows"
   ]
 }

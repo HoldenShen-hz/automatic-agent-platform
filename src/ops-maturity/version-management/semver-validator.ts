@@ -145,7 +145,18 @@ export class SemverValidator {
 
     // Handle tilde (~) ranges
     if (range.startsWith("~")) {
-      const rangeVersion = this.parse(range.slice(1));
+      let rangeVersion = this.parse(range.slice(1));
+      // Handle ~1.2 format (major.minor without patch)
+      if (!rangeVersion.isValid) {
+        const twoPart = range.slice(1).match(/^(\d+)\.(\d+)$/);
+        if (twoPart) {
+          rangeVersion = {
+            version: { major: parseInt(twoPart[1]!, 10), minor: parseInt(twoPart[2]!, 10), patch: 0, prerelease: [], buildMetadata: [] },
+            raw: range.slice(1),
+            isValid: true,
+          };
+        }
+      }
       if (!rangeVersion.isValid) return false;
       return this.satisfiesTilde(parsedVersion.version, rangeVersion.version);
     }
@@ -218,7 +229,7 @@ export class SemverValidator {
 
     for (let i = 0; i < versions.length - 1; i++) {
       const compareResult = this.compare(versions[i]!, versions[i + 1]!);
-      if (compareResult < 0) {
+      if (compareResult > 0) {
         errors.push(`Versions not in valid order: ${versions[i]} should not be less than ${versions[i + 1]}`);
       }
     }
@@ -261,10 +272,16 @@ export class SemverValidator {
     // ^0.0.3 means >=0.0.3 <0.0.4
     if (constraint.major === 0) {
       if (constraint.minor === 0) {
-        return version.major === 0 && version.minor === 0 && version.patch >= constraint.patch;
+        // ^0.0.3: major=0, minor=0, patch >= 3 AND patch < 4
+        return version.major === 0 && version.minor === 0 && version.patch >= constraint.patch && version.patch < constraint.patch + 1;
       }
-      // ^0.2.3: major must be 0, minor must be >= 2
-      return version.major === 0 && version.minor >= constraint.minor && version.patch >= constraint.patch;
+      // ^0.2.3: major=0, minor >= 2, AND patch < constraint.patch + 1 when minor == constraint.minor
+      // i.e. >=0.2.3 <0.3.0
+      const minorUpperBound = constraint.minor + 1;
+      return version.major === 0
+        && version.minor >= constraint.minor
+        && version.minor < minorUpperBound
+        && (version.minor > constraint.minor || version.patch >= constraint.patch);
     }
     // ^1.0.0: major must be 1, then either minor > 0 OR (minor == 0 AND patch >= 0)
     return version.major === constraint.major && (version.minor > constraint.minor || (version.minor === constraint.minor && version.patch >= constraint.patch));
@@ -274,8 +291,10 @@ export class SemverValidator {
     // ~1.2.3 means >=1.2.3 <1.3.0
     // ~1.2 means >=1.2.0 <1.3.0
     if (version.major !== constraint.major) return false;
-    if (version.minor < constraint.minor) return false;
-    if (version.minor === constraint.minor && version.patch < constraint.patch) return false;
+    // minor must be >= constraint.minor AND < constraint.minor + 1
+    if (version.minor < constraint.minor || version.minor > constraint.minor) return false;
+    // minor == constraint.minor, check patch lower bound
+    if (version.patch < constraint.patch) return false;
     return true;
   }
 
