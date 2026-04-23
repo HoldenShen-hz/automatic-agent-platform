@@ -287,10 +287,17 @@ test("validateHitlModeRequest returns HitlModeConstraint with correct mode", () 
     "circuit_breaker_human",
   ];
 
+  const multiOptionModes = new Set(["iterative_feedback"]);
+
   for (const mode of modes) {
+    const options =
+      multiOptionModes.has(mode)
+        ? [{ optionId: "opt-1" }, { optionId: "opt-2" }]
+        : [{ optionId: "opt-1" }];
+
     const result = validateHitlModeRequest({
       mode,
-      options: [{ optionId: "opt-1" }],
+      options,
       riskLevel: mode === "circuit_breaker_human" ? "high" : "medium",
       timeoutPolicy: mode === "circuit_breaker_human" ? "reject" : "remain_pending",
       context:

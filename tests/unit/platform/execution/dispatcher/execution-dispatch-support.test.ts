@@ -178,14 +178,14 @@ function makeEvaluation(placement: WorkerPlacement, accepted: boolean, rejection
   return {
     workerId: "w1",
     status: "idle",
-    schedulingStatus: "idle",
+    schedulingStatus: "healthy",
     placement,
     isolationLevel: "standard",
     repoVersion: null,
     remoteSessionStatus: "connected",
     lastAcknowledgedStreamOffset: "100",
-    sessionConsistencyCheckStatus: "consistent",
-    workspaceSyncStatus: "synced",
+    sessionConsistencyCheckStatus: "passed",
+    workspaceSyncStatus: "aligned",
     queueAffinity: null,
     availableSlots: 1,
     accepted,
@@ -229,10 +229,10 @@ test("resolveRemoteAvailability returns degraded when any degraded rejection", (
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "degraded");
 });
 
-test("resolveRemoteAvailability returns unavailable when all rejected with untrusted", () => {
+test("resolveRemoteAvailability returns unavailable when all rejected with unavailable/draining/offline/quarantined", () => {
   const evaluations = [
-    makeEvaluation("remote", false, "worker_untrusted"),
-    makeEvaluation("remote", false, "worker_remote_session_unready"),
+    makeEvaluation("remote", false, "worker_unavailable"),
+    makeEvaluation("remote", false, "worker_draining"),
   ];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
 });

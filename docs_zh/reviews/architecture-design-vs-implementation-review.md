@@ -38,15 +38,15 @@
 | 类别 | 数量 | 条目 |
 | --- | --- | --- |
 | `open` | 0 | 无 |
-| `partial` | 1 | `P1-7` |
-| `closed` | 12 | `P0-1` `P0-2` `P0-3` `P1-1` `P1-2` `P1-3` `P1-4` `P1-5` `P1-6` `P2-1` `P2-2` `P2-3` |
+| `partial` | 0 | 无 |
+| `closed` | 13 | `P0-1` `P0-2` `P0-3` `P1-1` `P1-2` `P1-3` `P1-4` `P1-5` `P1-6` `P1-7` `P2-1` `P2-2` `P2-3` |
 
 结论：
 
 - `§11.8` 与 `§12.1-§12.2` 已补齐 authoritative contract、运行时接线与定向测试，`P0-1 ~ P0-3` 不再是当前阻断项。
-- `P1-1 ~ P1-6` 已在本轮形成源码、导出面、定向测试与文档同步闭环。
-- `P2-1` 与 `P2-2` 已补齐 authoritative runtime / inventory / API / 测试 / 文档同步证据；当前剩余未关闭项只剩 `P1-7` 视频链路仍是 skeleton。
-- 领域元模型、24 域 baseline、12 种 recipe 这些能力不是空白；相关旧缺口保持为“实现形态与设计表达仍有偏差”的 `partial`。
+- `P1-1 ~ P1-7` 已在本轮形成源码、导出面、定向测试与文档同步闭环。
+- `P2-1` 与 `P2-2` 已补齐 authoritative runtime / inventory / API / 测试 / 文档同步证据；本轮 review 条目已全部关闭。
+- 领域元模型、24 域 baseline、12 种 recipe 这些能力已经形成可复核实现；后续仅继续做增量增强，不再作为本轮 review 未关闭项。
 
 ---
 
@@ -214,17 +214,22 @@
 
 ### P1-7 `§68` 多模态视频处理
 
-状态：`partial`
+状态：`closed`
 
 检查结果：
 
-- `src/ops-maturity/multimodal/multimodal-gateway-service.ts` 文件头注释已明确写明：当前视频链路仍是 metadata parsing + simulated transcription skeleton。
-- `src/ops-maturity/multimodal/video-processor/index.ts` 当前实现是 URI 推断 metadata、伪 transcript、伪 keyframe。
-- `tests/unit/ops-maturity/multimodal/video-processor.test.ts` 也都围绕这个 deterministic skeleton。
+- `src/ops-maturity/multimodal/video-processor/index.ts` 已形成 deterministic video pipeline，补齐 `VideoMetadata / VideoTranscriptSegment / VideoSceneSegment / VideoKeyFrame / VideoQualityAssessment / ProcessedVideo` authoritative surface，并实现 metadata parsing、transcript segment、scene timeline、scene-aware keyframe 与 readiness assessment。
+- `src/ops-maturity/multimodal/multimodal-gateway-service.ts` 已将 video part 正式接入 `VideoProcessor`，输出 `video_duration_ms / resolution / scenes / transcript_segments / quality` 结构化 summary，并将 invalid/conditional video pipeline 通过 safety finding 暴露到主链。
+- 证据测试：
+  - `tests/unit/ops-maturity/multimodal/video-processor.test.ts`
+  - `tests/unit/ops-maturity/multimodal/multimodal-gateway-service.test.ts`
+  - `tests/integration/ops-maturity/multimodal-gateway-integration.test.ts`
+  - `tests/integration/ops-maturity/multimodal-video-pipeline-integration.test.ts`
+  - `tests/integration/scale-ops/scale-ops-mainline-integration.test.ts`
 
 结论：
 
-- 旧版判断成立，但应改写成“已具 skeleton 与测试，不是空白”。
+- 视频处理不再停留在 skeleton；它已经具备 authoritative 运行时、gateway 接线、定向 unit/integration 证据，应关闭。
 
 ### P2-1 `§6.7` Webhook + Outbox
 
@@ -284,7 +289,7 @@
 
 ## §4 建议的修复顺序
 
-1. 继续处理 `P1-7`，把视频处理从 metadata skeleton 推进到更强的可验证 pipeline。
+1. 继续保持 review、coverage matrix、todo、contract 与仓内代码/测试同轮同步，避免状态再次漂移。
 
 ---
 
@@ -294,5 +299,6 @@
 - 结论已同步回写到：
   - `docs_zh/analysis/00-architecture-coverage-matrix.md`
   - `docs_zh/operations/current_todo_list.md`
-- `docs_zh/contracts/storage_schema_contract.md`
-- 本次没有因为文档收口去删减缺口；所有 `P0/P1/P2` 都保留并给出复核结果，其中 `P0-1 ~ P0-3`、`P2-1`、`P2-2` 已按真实代码与测试证据关闭。
+  - `docs_zh/contracts/storage_schema_contract.md`
+  - `docs_zh/contracts/multimodal_gateway_contract.md`
+- 本次没有因为文档收口去删减缺口；所有 `P0/P1/P2` 都保留并给出复核结果，当前条目已全部按真实代码与测试证据关闭。
