@@ -41,7 +41,7 @@ test("WebhookIngressService registers endpoint and receives payload", () => {
     }),
   });
 
-  assert.ok(envelope.envelopeId.startsWith("webhook:"));
+  assert.ok(envelope.envelopeId.startsWith("webhook_"));
   assert.equal(envelope.endpointId, "test-endpoint-1");
   assert.equal(envelope.source, "test-source");
   assert.equal(envelope.eventType, "task.completed");
@@ -91,7 +91,7 @@ test("WebhookIngressService rejects unknown endpoint", () => {
         headers: {},
         body: JSON.stringify({ eventType: "test" }),
       }),
-    /webhook\.endpoint_not_found/,
+    { code: "webhook.endpoint_not_found" },
   );
 });
 
@@ -115,7 +115,7 @@ test("WebhookIngressService rejects disabled endpoint", () => {
         headers: {},
         body: JSON.stringify({ eventType: "test" }),
       }),
-    /webhook\.endpoint_disabled/,
+    { code: "webhook.endpoint_disabled" },
   );
 });
 
@@ -139,7 +139,7 @@ test("WebhookIngressService validates event type is required", () => {
         headers: {},
         body: JSON.stringify({ eventId: "123" }),
       }),
-    /webhook\.event_type_required/,
+    { code: "webhook.event_type_required" },
   );
 });
 
@@ -163,7 +163,7 @@ test("WebhookIngressService filters disallowed event types", () => {
         headers: {},
         body: JSON.stringify({ eventType: "forbidden.event", eventId: "123" }),
       }),
-    /webhook\.event_type_not_allowed/,
+    { code: "webhook.event_type_not_allowed" },
   );
 });
 
@@ -187,7 +187,7 @@ test("WebhookIngressService requires idempotency key", () => {
         headers: {},
         body: JSON.stringify({ eventType: "test" }),
       }),
-    /webhook\.idempotency_key_required/,
+    { code: "webhook.idempotency_key_required" },
   );
 });
 
@@ -244,7 +244,7 @@ test("WebhookIngressService rejects invalid signature", () => {
         headers: { "x-webhook-signature": "sha256=invalid" },
         body,
       }),
-    /webhook\.signature_invalid/,
+    { code: "webhook.signature_invalid" },
   );
 });
 
@@ -269,7 +269,7 @@ test("WebhookIngressService rejects missing signature on signed endpoint", () =>
         headers: {},
         body: JSON.stringify({ eventType: "test", eventId: "no-sig" }),
       }),
-    /webhook\.signature_required/,
+    { code: "webhook.signature_required" },
   );
 });
 
@@ -418,7 +418,7 @@ test("WebhookIngressService validates non-empty endpoint id", () => {
         allowedEventTypes: [],
         algorithm: "none",
       }),
-    /webhook\.invalid_endpoint_id/,
+    { code: "webhook.invalid_endpoint_id" },
   );
 });
 
@@ -436,7 +436,7 @@ test("WebhookIngressService validates non-empty source", () => {
         allowedEventTypes: [],
         algorithm: "none",
       }),
-    /webhook\.invalid_source/,
+    { code: "webhook.invalid_source" },
   );
 });
 
@@ -455,6 +455,6 @@ test("WebhookIngressService requires signing secret for sha256_hmac", () => {
         algorithm: "sha256_hmac",
         signingSecret: "",
       }),
-    /webhook\.signing_secret_required/,
+    { code: "webhook.signing_secret_required" },
   );
 });

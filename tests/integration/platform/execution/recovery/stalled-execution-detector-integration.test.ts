@@ -285,7 +285,7 @@ test("stalled detector: identifies missing heartbeat vs no progress distinction"
         status: "executing",
         inputRef: null,
         traceId: newId("trace"),
-        attempt: 1,
+        attempt: 2,
         timeoutMs: 30000,
         budgetUsdLimit: null,
         requiresApproval: 0,
