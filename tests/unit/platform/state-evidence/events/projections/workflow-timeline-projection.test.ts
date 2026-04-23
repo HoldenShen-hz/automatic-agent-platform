@@ -130,9 +130,9 @@ test("workflowTimelineProjectionHandler handles division:completed", () => {
 
   const state = workflowTimelineProjectionHandler(null, event) as unknown as WorkflowTimelineState;
 
-  assert.equal(state.divisionOutcomes["div_1"].divisionId, "div_1");
-  assert.equal(state.divisionOutcomes["div_1"].status, "completed");
-  assert.equal(state.divisionOutcomes["div_1"].reasonCode, "success");
+  assert.equal(state.divisionOutcomes["div_1"]!.divisionId, "div_1");
+  assert.equal(state.divisionOutcomes["div_1"]!.status, "completed");
+  assert.equal(state.divisionOutcomes["div_1"]!.reasonCode, "success");
 });
 
 test("workflowTimelineProjectionHandler handles division:failed", () => {
@@ -145,9 +145,9 @@ test("workflowTimelineProjectionHandler handles division:failed", () => {
 
   const state = workflowTimelineProjectionHandler(null, event) as unknown as WorkflowTimelineState;
 
-  assert.equal(state.divisionOutcomes["div_1"].divisionId, "div_1");
-  assert.equal(state.divisionOutcomes["div_1"].status, "failed");
-  assert.equal(state.divisionOutcomes["div_1"].reasonCode, "error");
+  assert.equal(state.divisionOutcomes["div_1"]!.divisionId, "div_1");
+  assert.equal(state.divisionOutcomes["div_1"]!.status, "failed");
+  assert.equal(state.divisionOutcomes["div_1"]!.reasonCode, "error");
 });
 
 test("workflowTimelineProjectionHandler handles subtask:completed", () => {
@@ -477,7 +477,7 @@ test("workflowTimelineProjectionHandler event entry contains correct fields", ()
   );
 
   const state = workflowTimelineProjectionHandler(null, event) as unknown as WorkflowTimelineState;
-  const entry = state.events[0];
+  const entry = state.events[0]!;
 
   assert.equal(entry.eventId, "evt_fields");
   assert.equal(entry.eventType, "workflow:step_completed");
@@ -509,7 +509,7 @@ test("workflowTimelineProjectionHandler status transition entry contains correct
   );
 
   const state = workflowTimelineProjectionHandler(null, event) as unknown as WorkflowTimelineState;
-  const transition = state.statusTransitions[0];
+  const transition = state.statusTransitions[0]!;
 
   assert.equal(transition.fromStatus, "running");
   assert.equal(transition.toStatus, "completed");
@@ -558,8 +558,8 @@ test("workflowTimelineProjectionHandler tracks multiple division outcomes", () =
   state = workflowTimelineProjectionHandler(state, event2);
 
   const finalState = state as unknown as WorkflowTimelineState;
-  assert.equal(finalState.divisionOutcomes["div_1"].status, "completed");
-  assert.equal(finalState.divisionOutcomes["div_2"].status, "failed");
+  assert.equal(finalState.divisionOutcomes["div_1"]!.status, "completed");
+  assert.equal(finalState.divisionOutcomes["div_2"]!.status, "failed");
 });
 
 test("workflowTimelineProjectionHandler tracks multiple subtask outcomes", () => {

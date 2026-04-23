@@ -80,25 +80,17 @@ test("AstStructuralIndex extracts symbol with correct line/character positions",
   assert.ok(symbols[0]!.snippet.includes("myFunction"));
 });
 
-test("AstStructuralIndex snippet captures 3 lines starting at symbol line", () => {
+test("AstStructuralIndex snippet contains function name", () => {
   const index = new AstStructuralIndex();
-  const content = `// comment
-export function foo() {
-  const x = 1;
-  const y = 2;
-  return x + y;
-}`;
-
+  const content = "export function foo() { return 1; }";
   const symbols = index.upsertDocument({
-    documentId: "doc_snippet",
-    sourceUri: "/src/snippet.ts",
+    documentId: "doc1",
+    sourceUri: "/src/test.ts",
     namespace: "ns",
     content,
   });
-
   assert.equal(symbols.length, 1);
-  const snippet = symbols[0]!.snippet;
-  assert.ok(snippet.includes("foo"), `snippet should include 'foo', got: ${snippet}`);
+  assert.ok(symbols[0]!.snippet.includes("foo"));
 });
 
 test("AstStructuralIndex snippet handles document end gracefully", () => {

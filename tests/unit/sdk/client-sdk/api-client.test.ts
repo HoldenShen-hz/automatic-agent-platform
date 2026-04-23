@@ -1,0 +1,553 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  RetryableApiClient,
+  ApiClientConfig,
+  buildApiUrl,
+  buildAuthHeaders,
+} from "../../../../src/sdk/client-sdk/index.js";
+
+/**
+ * Unit tests for the RetryableApiClient class.
+ * These tests focus on code paths not covered by the main client-sdk.test.ts
+ * which covers the public API surface.
+ */
+
+test("RetryableApiClient constructor accepts custom retry config", () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const retryConfig = {
+    maxRetries: 5,
+    backoffMs: 500,
+    backoffMultiplier: 1.5,
+    maxBackoffMs: 10000,
+  };
+  const client = new RetryableApiClient(config, retryConfig);
+  assert.ok(client instanceof RetryableApiClient);
+});
+
+test("RetryableApiClient constructor uses default retry config when not provided", () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+  assert.ok(client instanceof RetryableApiClient);
+});
+
+test("RetryableApiClient PATCH method sends body and returns ApiResponse", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ id: 1, name: "updated" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await client.put<{ id: number; name: string }>("/users/1", { name: "updated" });
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.data, { id: 1, name: "updated" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request sets content-type header when body is present", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedHeaders: Record<string, string> = {};
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    capturedHeaders = options?.headers as Record<string, string> ?? {};
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await client.post("/data", { key: "value" });
+    assert.equal(capturedHeaders["content-type"], "application/json");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request does not set content-type when no body", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedHeaders: Record<string, string> = {};
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    capturedHeaders = options?.headers as Record<string, string> ?? {};
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await client.get("/users");
+    assert.ok(!("content-type" in capturedHeaders));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request uses DELETE method when specified", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedMethod = "";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    capturedMethod = options?.method as string ?? "";
+    return new Response(JSON.stringify({ deleted: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.delete("/users/1");
+    assert.equal(capturedMethod, "DELETE");
+    assert.equal(result.status, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request defaults to GET when method not specified", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedMethod = "";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    capturedMethod = (options?.method as string) ?? "";
+    return new Response(JSON.stringify({ id: 1 }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    // Access the private request method via get which calls it
+    await client.get<{ id: number }>("/users/1");
+    assert.equal(capturedMethod, "GET");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request parses JSON response correctly", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const data = { nested: { value: 42 }, array: [1, 2, 3] };
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.get<{ nested: { value: number }; array: number[] }>("/test");
+    assert.deepEqual(result.data, { nested: { value: 42 }, array: [1, 2, 3] });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request handles response with no JSON body", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response("not json", {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+    });
+
+  try {
+    // response.json() will throw on non-JSON content
+    await assert.rejects(client.get("/test"), SyntaxError);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request propagates network error after retries exhausted", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config, {
+    maxRetries: 2,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 100,
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Connection refused");
+  };
+
+  try {
+    await assert.rejects(
+      client.get("/test"),
+      (error: unknown) => error instanceof Error && error.message === "Connection refused",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.request handles non-JSON response gracefully", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response("not json content", {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+    });
+
+  try {
+    // This should throw because response.json() fails on non-JSON
+    await assert.rejects(client.get("/test"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.getPaginated parses x-next-cursor header correctly", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ id: 1 }]), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "x-next-cursor": "next-page",
+      },
+    });
+
+  try {
+    const result = await client.getPaginated<{ id: number }>("/users");
+    assert.equal(result.nextCursor, "next-page");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.getPaginated handles missing x-next-cursor header", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ id: 1 }]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    const result = await client.getPaginated<{ id: number }>("/users");
+    assert.equal(result.nextCursor, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.getPaginated parses x-total-count header correctly", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ id: 1 }]), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "x-total-count": "150",
+      },
+    });
+
+  try {
+    const result = await client.getPaginated<{ id: number }>("/users");
+    assert.equal(result.totalCount, 150);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.getPaginated omits totalCount when x-total-count header missing", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([{ id: 1 }]), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+        "x-next-cursor": "next",
+      },
+    });
+
+  try {
+    const result = await client.getPaginated<{ id: number }>("/users");
+    assert.equal(result.totalCount, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.getPaginated passes query params for cursor when provided", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedUrl: string | undefined;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    capturedUrl = url.toString();
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await client.getPaginated<{ id: number }>("/users", { cursor: "page-abc" });
+    assert.ok(capturedUrl !== undefined);
+    assert.ok(capturedUrl!.includes("cursor=page-abc"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient.getPaginated passes query params for limit when provided", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const client = new RetryableApiClient(config);
+
+  let capturedUrl: string | undefined;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    capturedUrl = url.toString();
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await client.getPaginated<{ id: number }>("/users", { limit: 50 });
+    assert.ok(capturedUrl !== undefined);
+    assert.ok(capturedUrl!.includes("limit=50"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("buildApiUrl handles empty query object", () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const url = buildApiUrl(config, { path: "/users", query: {} });
+  assert.ok(!url.includes("?"));
+});
+
+test("buildApiUrl handles boolean query values", () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const url = buildApiUrl(config, { path: "/users", query: { active: false, admin: true } });
+  assert.ok(url.includes("active=false"));
+  assert.ok(url.includes("admin=true"));
+});
+
+test("buildApiUrl handles numeric query values", () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  const url = buildApiUrl(config, { path: "/users", query: { page: 1, limit: 100 } });
+  assert.ok(url.includes("page=1"));
+  assert.ok(url.includes("limit=100"));
+});
+
+test("buildAuthHeaders works with bearer token containing special characters", () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "token-with-dashes_and_underscores.plus",
+  };
+  const headers = buildAuthHeaders(config);
+  assert.equal(headers["authorization"], "Bearer token-with-dashes_and_underscores.plus");
+});
+
+test("RetryableApiClient uses correct backoff calculation on second retry", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  // Using short backoff for fast test
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 10,
+    backoffMultiplier: 2,
+    maxBackoffMs: 1000,
+  });
+
+  const startTime = Date.now();
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount <= 2) {
+      return new Response(JSON.stringify({ error: "Server error" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.get<{ success: boolean }>("/test");
+    assert.equal(result.status, 200);
+    assert.equal(attemptCount, 3);
+    const elapsed = Date.now() - startTime;
+    // Second retry should have backoff of backoffMs * backoffMultiplier = 10 * 2 = 20ms
+    // But with overhead, just verify it was in the 10-100ms range per attempt
+    assert.ok(elapsed >= 20, `Expected elapsed >= 20ms, got ${elapsed}ms`);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("RetryableApiClient caps backoff at maxBackoffMs", async () => {
+  const config: ApiClientConfig = {
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  };
+  // maxBackoffMs = 50, so even with multiplier of 10, it should cap at 50
+  const client = new RetryableApiClient(config, {
+    maxRetries: 3,
+    backoffMs: 100,
+    backoffMultiplier: 10,
+    maxBackoffMs: 50,
+  });
+
+  const startTime = Date.now();
+  let attemptCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    attemptCount++;
+    if (attemptCount <= 2) {
+      return new Response(JSON.stringify({ error: "Server error" }), {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const result = await client.get<{ success: boolean }>("/test");
+    assert.equal(result.status, 200);
+    const elapsed = Date.now() - startTime;
+    // With maxBackoffMs of 50, two retries should take at most ~100ms plus overhead
+    assert.ok(elapsed < 200, `Expected elapsed < 200ms, got ${elapsed}ms`);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

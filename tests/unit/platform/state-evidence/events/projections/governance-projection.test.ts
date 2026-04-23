@@ -847,7 +847,7 @@ test("governanceProjectionHandler timeline entry contains correct fields", () =>
   );
 
   const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
-  const entry = state.timeline[0];
+  const entry = state.timeline[0]!;
 
   assert.equal(entry.eventId, "evt_timeline_fields");
   assert.equal(entry.eventType, "approval_flow:approved");
@@ -863,8 +863,8 @@ test("governanceProjectionHandler preserves timeline across multiple events", ()
   ];
 
   let state: Record<string, unknown> | null = null;
-  state = governanceProjectionHandler(state, events[0]);
-  state = governanceProjectionHandler(state, events[1]);
+  state = governanceProjectionHandler(state, events[0]!);
+  state = governanceProjectionHandler(state!, events[1]!);
 
   const finalState = state as unknown as GovernanceState;
   assert.equal(finalState.timeline.length, 2);

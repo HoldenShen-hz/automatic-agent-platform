@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DomainInteractionPolicyService,
   isCrossDomainInteractionAllowed,
+  DomainInteractionRuleSchema,
   type DomainInteractionRequest,
   type DomainInteractionRule,
   DomainInteractionModeSchema,
@@ -41,6 +42,132 @@ test("DomainInteractionModeSchema rejects non-string values", () => {
   assert.throws(() => DomainInteractionModeSchema.parse(123), /invalid_type/);
   assert.throws(() => DomainInteractionModeSchema.parse(null), /invalid_type/);
   assert.throws(() => DomainInteractionModeSchema.parse(undefined), /invalid_type/);
+});
+
+// --- DomainInteractionRuleSchema ---
+
+test("DomainInteractionRuleSchema accepts valid rule", () => {
+  const result = DomainInteractionRuleSchema.parse(sampleRule);
+  assert.equal(result.sourceDomainId, "coding");
+  assert.equal(result.targetDomainId, "security");
+  assert.equal(result.mode, "allow");
+  assert.equal(result.maxConcurrentWorkflows, 3);
+  assert.equal(result.compensationRequired, true);
+});
+
+test("DomainInteractionRuleSchema applies defaults for optional fields", () => {
+  const minimalRule = {
+    sourceDomainId: "domain_a",
+    targetDomainId: "domain_b",
+    mode: "allow" as const,
+  };
+  const result = DomainInteractionRuleSchema.parse(minimalRule);
+  assert.equal(result.maxConcurrentWorkflows, 1);
+  assert.equal(result.compensationRequired, false);
+});
+
+test("DomainInteractionRuleSchema rejects empty sourceDomainId", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "",
+        targetDomainId: "security",
+        mode: "allow",
+      }),
+    /too_small/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects empty targetDomainId", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "coding",
+        targetDomainId: "",
+        mode: "allow",
+      }),
+    /too_small/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects invalid mode", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "coding",
+        targetDomainId: "security",
+        mode: "invalid_mode",
+      }),
+    /invalid_enum_value/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects non-positive maxConcurrentWorkflows", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "coding",
+        targetDomainId: "security",
+        mode: "allow",
+        maxConcurrentWorkflows: 0,
+      }),
+    /too_small/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects negative maxConcurrentWorkflows", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "coding",
+        targetDomainId: "security",
+        mode: "allow",
+        maxConcurrentWorkflows: -1,
+      }),
+    /too_small/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects non-integer maxConcurrentWorkflows", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "coding",
+        targetDomainId: "security",
+        mode: "allow",
+        maxConcurrentWorkflows: 1.5,
+      }),
+    /invalid_type/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects non-boolean compensationRequired", () => {
+  assert.throws(
+    () =>
+      DomainInteractionRuleSchema.parse({
+        sourceDomainId: "coding",
+        targetDomainId: "security",
+        mode: "allow",
+        compensationRequired: "yes",
+      }),
+    /invalid_type/,
+  );
+});
+
+test("DomainInteractionRuleSchema rejects missing required fields", () => {
+  assert.throws(() => DomainInteractionRuleSchema.parse({ mode: "allow" }), /invalid_type/);
+});
+
+test("DomainInteractionRuleSchema accepts all valid modes", () => {
+  const modes = ["allow", "approval_required", "deny"] as const;
+  for (const mode of modes) {
+    const rule = DomainInteractionRuleSchema.parse({
+      sourceDomainId: "coding",
+      targetDomainId: "security",
+      mode,
+    });
+    assert.equal(rule.mode, mode);
+  }
 });
 
 // --- isCrossDomainInteractionAllowed ---

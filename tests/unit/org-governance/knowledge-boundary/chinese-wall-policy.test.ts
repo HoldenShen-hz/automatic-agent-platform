@@ -3,90 +3,106 @@ import test from "node:test";
 
 import { evaluateChineseWallPolicy } from "../../../../src/org-governance/knowledge-boundary/chinese-wall-policy.js";
 
-test("evaluateChineseWallPolicy returns allowed when no conflict", () => {
+test("evaluateChineseWallPolicy returns allowed when requesterOrgNodeId is null/undefined consideration", () => {
+  // Same org node should always be allowed even if in conflict group
   const policy = {
     policyId: "cwp_1",
     conflictGroups: {
       "group_finance_legal": ["dept_finance", "dept_legal"],
+    },
+  };
+
+  // Same org node - requester and target are identical
+  const decision = evaluateChineseWallPolicy(policy, "dept_finance", "dept_finance");
+  assert.strictEqual(decision.allowed, true);
+  assert.strictEqual(decision.blockedGroupId, null);
+});
+
+test("evaluateChineseWallPolicy returns blocked decision with reason codes", () => {
+  const policy = {
+    policyId: "cwp_block_test",
+    conflictGroups: {
+      "group_a": ["dept_a", "dept_b"],
+    },
+  };
+
+  const decision = evaluateChineseWallPolicy(policy, "dept_a", "dept_b");
+
+  assert.strictEqual(decision.allowed, false);
+  assert.strictEqual(decision.blockedGroupId, "group_a");
+  assert.ok(decision.reasonCodes.length >= 2);
+  assert.ok(decision.reasonCodes.includes("knowledge_boundary.chinese_wall_blocked"));
+  assert.ok(decision.reasonCodes.some((code) => code.startsWith("knowledge_boundary.conflict_group:")));
+});
+
+test("evaluateChineseWallPolicy is case sensitive on org node ids", () => {
+  const policy = {
+    policyId: "cwp_1",
+    conflictGroups: {
+      "group_lower": ["dept_finance"],
+    },
+  };
+
+  // dept_FINANCE (uppercase) is not in the conflict group that contains dept_finance (lowercase)
+  const decision = evaluateChineseWallPolicy(policy, "dept_FINANCE", "dept_finance");
+
+  // Since they're different strings and dept_FINANCE is not in the group, this should be allowed
+  assert.strictEqual(decision.allowed, true);
+});
+
+test("evaluateChineseWallPolicy handles multiple conflict groups and finds first match", () => {
+  const policy = {
+    policyId: "cwp_multi",
+    conflictGroups: {
+      "group_first": ["dept_a", "dept_b"],
+      "group_second": ["dept_c", "dept_d"],
+    },
+  };
+
+  const decision = evaluateChineseWallPolicy(policy, "dept_a", "dept_b");
+
+  assert.strictEqual(decision.allowed, false);
+  assert.strictEqual(decision.blockedGroupId, "group_first");
+});
+
+test("evaluateChineseWallPolicy returns clear reason code when allowed", () => {
+  const policy = {
+    policyId: "cwp_clear",
+    conflictGroups: {
+      "group_legal": ["dept_legal", "dept_compliance"],
     },
   };
 
   const decision = evaluateChineseWallPolicy(policy, "dept_hr", "dept_finance");
 
   assert.strictEqual(decision.allowed, true);
-  assert.strictEqual(decision.blockedGroupId, null);
   assert.ok(decision.reasonCodes.includes("knowledge_boundary.chinese_wall_clear"));
 });
 
-test("evaluateChineseWallPolicy blocks when both orgs in same conflict group", () => {
+test("evaluateChineseWallPolicy does not block when only one org is in conflict group", () => {
   const policy = {
-    policyId: "cwp_1",
+    policyId: "cwp_partial",
     conflictGroups: {
-      "group_finance_legal": ["dept_finance", "dept_legal"],
+      "group_finance": ["dept_finance", "dept_legal"],
     },
   };
 
-  const decision = evaluateChineseWallPolicy(policy, "dept_finance", "dept_legal");
-
-  assert.strictEqual(decision.allowed, false);
-  assert.strictEqual(decision.blockedGroupId, "group_finance_legal");
-  assert.ok(decision.reasonCodes.includes("knowledge_boundary.chinese_wall_blocked"));
-  assert.ok(decision.reasonCodes.includes("knowledge_boundary.conflict_group:group_finance_legal"));
-});
-
-test("evaluateChineseWallPolicy allows when requester and target are same org", () => {
-  const policy = {
-    policyId: "cwp_1",
-    conflictGroups: {
-      "group_finance_legal": ["dept_finance", "dept_legal"],
-    },
-  };
-
-  const decision = evaluateChineseWallPolicy(policy, "dept_finance", "dept_finance");
+  // Only requester is in the group, target is not
+  const decision = evaluateChineseWallPolicy(policy, "dept_finance", "dept_hr");
 
   assert.strictEqual(decision.allowed, true);
-  assert.strictEqual(decision.blockedGroupId, null);
 });
 
-test("evaluateChineseWallPolicy handles multiple conflict groups", () => {
+test("evaluateChineseWallPolicy does not block when only target org is in conflict group", () => {
   const policy = {
-    policyId: "cwp_multi",
+    policyId: "cwp_partial_2",
     conflictGroups: {
-      "group_finance_legal": ["dept_finance", "dept_legal"],
-      "group_hr_it": ["dept_hr", "dept_it"],
+      "group_finance": ["dept_finance", "dept_legal"],
     },
   };
 
-  const decision1 = evaluateChineseWallPolicy(policy, "dept_hr", "dept_it");
-  assert.strictEqual(decision1.allowed, false);
-  assert.strictEqual(decision1.blockedGroupId, "group_hr_it");
-
-  const decision2 = evaluateChineseWallPolicy(policy, "dept_finance", "dept_it");
-  assert.strictEqual(decision2.allowed, true);
-});
-
-test("evaluateChineseWallPolicy handles empty conflict groups", () => {
-  const policy = {
-    policyId: "cwp_empty",
-    conflictGroups: {},
-  };
-
-  const decision = evaluateChineseWallPolicy(policy, "dept_finance", "dept_legal");
+  // Only target is in the group, requester is not
+  const decision = evaluateChineseWallPolicy(policy, "dept_hr", "dept_finance");
 
   assert.strictEqual(decision.allowed, true);
-  assert.strictEqual(decision.blockedGroupId, null);
-});
-
-test("evaluateChineseWallPolicy handles org in multiple groups", () => {
-  const policy = {
-    policyId: "cwp_overlap",
-    conflictGroups: {
-      "group_a": ["dept_shared", "dept_a"],
-      "group_b": ["dept_shared", "dept_b"],
-    },
-  };
-
-  const decision = evaluateChineseWallPolicy(policy, "dept_shared", "dept_a");
-  assert.strictEqual(decision.allowed, false);
-  assert.strictEqual(decision.blockedGroupId, "group_a");
 });

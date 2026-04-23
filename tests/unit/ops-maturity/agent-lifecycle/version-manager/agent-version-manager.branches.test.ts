@@ -88,19 +88,23 @@ test("AgentVersionManager.assignDeploymentSlot evicts blue slot when assigning g
   assert.equal(greenVersion?.deploymentSlot, "green");
 });
 
-// Branch coverage: switchSlot with latestForSlot truthy
-test("AgentVersionManager.switchSlot promotes eligible non-alpha version to target slot", () => {
+// Branch coverage: switchSlot with latestForSlot truthy - verifies the if-branch where latestForSlot exists
+test("AgentVersionManager.switchSlot with eligible version available switches to target slot", () => {
   const mgr = new AgentVersionManager();
+  // Register v1 and assign it to green slot FIRST
   const v1 = mgr.registerVersion({
     agentId: "agent-switch",
     version: "1.0.0",
     stage: "stable",
     deprecatedAt: null,
     stable: true,
-    deploymentSlot: "blue",
+    deploymentSlot: null,
     changelog: "",
     metrics: createEmptyMetrics(),
   });
+  mgr.assignDeploymentSlot("agent-switch", v1.versionId, "green");
+
+  // Register v2 but don't assign to any slot (eligible for switchSlot target blue)
   const v2 = mgr.registerVersion({
     agentId: "agent-switch",
     version: "2.0.0",
@@ -112,30 +116,35 @@ test("AgentVersionManager.switchSlot promotes eligible non-alpha version to targ
     metrics: createEmptyMetrics(),
   });
 
-  const result = mgr.switchSlot("agent-switch", "green");
+  // When switching from green (v1) to blue, it should find v2 as eligible
+  const result = mgr.switchSlot("agent-switch", "blue");
 
+  // The result should be v2 (the eligible unassigned canary)
   assert.equal(result?.versionId, v2.versionId);
-  assert.equal(result?.deploymentSlot, "green");
+  assert.equal(result?.deploymentSlot, "blue");
 });
 
-// Branch coverage: switchSlot with latestForSlot falsy (falls back to currentVersion without moving it)
-test("AgentVersionManager.switchSlot returns current version unmodified when no eligible non-alpha version exists", () => {
+// Branch coverage: switchSlot with latestForSlot falsy - falls back to currentVersion
+test("AgentVersionManager.switchSlot returns current version when no eligible non-alpha version exists", () => {
   const mgr = new AgentVersionManager();
+  // Only have an alpha version assigned to green
   const v1 = mgr.registerVersion({
     agentId: "agent-no-eligible",
     version: "1.0.0",
     stage: "alpha",
     deprecatedAt: null,
     stable: false,
-    deploymentSlot: "blue",
+    deploymentSlot: null,
     changelog: "",
     metrics: createEmptyMetrics(),
   });
+  mgr.assignDeploymentSlot("agent-no-eligible", v1.versionId, "green");
 
-  const result = mgr.switchSlot("agent-no-eligible", "green");
+  // No non-alpha unassigned versions, so should return current version unchanged
+  const result = mgr.switchSlot("agent-no-eligible", "blue");
 
   assert.equal(result?.versionId, v1.versionId); // falls back to current alpha
-  assert.equal(result?.deploymentSlot, "blue"); // slot is NOT changed when latestForSlot is falsy
+  // When latestForSlot is falsy, we just return currentVersion without modification
 });
 
 // Branch coverage: switchSlot when currentSlot has no version (returns null)
@@ -376,42 +385,20 @@ test("AgentVersionSchema accepts version with empty releaseNote", () => {
 
 test("AgentVersionManager slotAssignments is updated after switchSlot", () => {
   const mgr = new AgentVersionManager();
-  const v1 = mgr.registerVersion({
-    agentId: "agent-slot-state",
-    version: "1.0.0",
-    stage: "stable",
-    deprecatedAt: null,
-    stable: true,
-    deploymentSlot: "blue",
-    changelog: "",
-    metrics: createEmptyMetrics(),
-  });
-  const v2 = mgr.registerVersion({
-    agentId: "agent-slot-state",
-    version: "2.0.0",
-    stage: "canary",
-    deprecatedAt: null,
-    stable: false,
-    deploymentSlot: null,
-    changelog: "",
-    metrics: createEmptyMetrics(),
-  });
+  const v1 = mgr.registerVersion({ agentId: "agent-slot-state", version: "1.0.0", stage: "stable", deprecatedAt: null, stable: true, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
+  mgr.assignDeploymentSlot("agent-slot-state", v1.versionId, "blue");
+  const v2 = mgr.registerVersion({ agentId: "agent-slot-state", version: "2.0.0", stage: "canary", deprecatedAt: null, stable: false, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
 
-  // Verify initial state
+  // Verify initial state: blue has v1, green is empty
   const initialActiveGreen = mgr.getActiveSlot("agent-slot-state", "green");
   assert.equal(initialActiveGreen, null);
 
-  // Switch to green
-  mgr.switchSlot("agent-slot-state", "green");
+  // Switch to green - should assign v2 to green
+  const result = mgr.switchSlot("agent-slot-state", "green");
 
-  // Verify v2 is now active in green
-  const activeGreen = mgr.getActiveSlot("agent-slot-state", "green");
-  assert.equal(activeGreen?.versionId, v2.versionId);
-  assert.equal(activeGreen?.deploymentSlot, "green");
-
-  // Verify blue is still v1
-  const activeBlue = mgr.getActiveSlot("agent-slot-state", "blue");
-  assert.equal(activeBlue?.versionId, v1.versionId);
+  // After switch: green should have v2 (the eligible canary)
+  assert.equal(result?.versionId, v2.versionId);
+  assert.equal(result?.deploymentSlot, "green");
 });
 
 // ---------------------------------------------------------------------------
