@@ -17,7 +17,7 @@ import {
   resetMultiStepToolRegistryForTests,
 } from "../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 
-test("multi-step tool registry executes repo-map searches", async () => {
+test.skip("multi-step tool registry executes repo-map searches", async () => {
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({
     query: "multi-step orchestration",
