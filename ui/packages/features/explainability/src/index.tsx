@@ -1,7 +1,7 @@
-import { FeatureScaffold, ListCard, createFeatureModule } from "@aa/ui-core";
-import { useExplanationsQuery } from "@aa/shared-state";
+import { createFeatureModule } from "@aa/ui-core";
+import { ExplainabilityWebView } from "./web";
 
-export default createFeatureModule({
+const explainabilityFeature = createFeatureModule({
   id: "explainability",
   title: "Explainability",
   group: "Shared",
@@ -10,17 +10,10 @@ export default createFeatureModule({
   status: "Planned",
   kind: "planned",
   summary: "Explainability viewer 与因果链路展示。",
-  render: () => {
-    const explanations = useExplanationsQuery().data ?? [];
-    return (
-      <FeatureScaffold title="Explainability" summary="Explainability viewer 与因果链路展示" status="Planned">
-        <ListCard
-          items={explanations.map((item) => ({
-            title: `${item.title} · ${item.evidenceCount} evidence`,
-            description: item.summary,
-          }))}
-        />
-      </FeatureScaffold>
-    );
-  },
+  render: ExplainabilityWebView,
 });
+
+export default explainabilityFeature;
+export { createExplainabilityMobileCards } from "./mobile";
+export { mapExplanationsToVm, useExplainabilityVm } from "./hooks";
+export { ExplainabilityWebView } from "./web";

@@ -1,6 +1,7 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { IncidentsWebView } from "./web";
 
-export default createFeatureModule({
+const incidentsFeature = createFeatureModule({
   id: "incidents",
   title: "Incidents",
   group: "Operations",
@@ -8,4 +9,10 @@ export default createFeatureModule({
   permission: "platform_sre",
   status: "Implemented/Internal",
   summary: "Incident 时间线与处置流。",
+  render: IncidentsWebView,
 });
+
+export default incidentsFeature;
+export { createIncidentsMobileCards } from "./mobile";
+export { mapIncidentsToVm, useIncidentsVm } from "./hooks";
+export { IncidentsWebView } from "./web";

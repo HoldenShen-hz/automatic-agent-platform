@@ -9,6 +9,7 @@ import dispatch from "@aa/feature-dispatch";
 import inspect from "@aa/feature-inspect";
 import health from "@aa/feature-health";
 import incidents from "@aa/feature-incidents";
+import compliance from "@aa/feature-compliance";
 import policy from "@aa/feature-policy";
 import audit from "@aa/feature-audit";
 import conversation from "@aa/feature-conversation";
@@ -24,7 +25,6 @@ import explainability from "@aa/feature-explainability";
 import costCenter from "@aa/feature-cost-center";
 import marketplace from "@aa/feature-marketplace";
 import analytics from "@aa/feature-analytics";
-import governanceCompliance from "@aa/feature-governance-compliance";
 
 export const featureRegistry = [
   dashboard,
@@ -38,6 +38,7 @@ export const featureRegistry = [
   inspect,
   health,
   incidents,
+  compliance,
   policy,
   audit,
   conversation,
@@ -53,5 +54,4 @@ export const featureRegistry = [
   costCenter,
   marketplace,
   analytics,
-  governanceCompliance,
 ] as const;

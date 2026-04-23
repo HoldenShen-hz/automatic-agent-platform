@@ -1,121 +1,62 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { createContext, createElement, useContext, useEffect, useMemo, type PropsWithChildren, type ReactElement } from "react";
-import { createStore } from "zustand/vanilla";
 import {
   DefaultRESTClient,
   InMemoryWSClient,
   WSEventRouter,
-  fetchAgents,
-  fetchAnalytics,
-  fetchApprovals,
-  fetchCosts,
-  fetchDashboardSnapshot,
   fetchDomainConfigs,
   fetchExplanations,
   fetchFeatureFlags,
-  fetchIncidents,
+  fetchCosts,
   fetchMarketplace,
   fetchModels,
   fetchPreferences,
-  fetchQueues,
   fetchRoles,
-  fetchTasks,
   fetchTenants,
   fetchWebhooks,
-  fetchWorkflows,
-  fetchWorkers,
   type RESTClient,
   type WSClient,
 } from "@aa/shared-api-client";
 import type { SystemStatusVM } from "@aa/shared-types";
+import { AuthService } from "@aa/shared-auth";
+import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
+import { createApprovalsQuery } from "./queries/approval-queries";
+import {
+  createAnalyticsQuery,
+  createDashboardSnapshotQuery,
+  createSystemStatusVm,
+} from "./queries/dashboard-queries";
+import {
+  createAgentsQuery,
+  createIncidentsQuery,
+  createQueuesQuery,
+  createWorkersQuery,
+} from "./queries/mission-control-queries";
+import { createTasksQuery, createWorkflowsQuery } from "./queries/task-queries";
+import { createQueryClientFactory } from "./query-client";
+import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
+import { createRealtimeStore, type RealtimeStoreState } from "./stores/realtime-store";
+import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
+import { createUiStore, type UiStoreState } from "./stores/ui-store";
 
-export interface AuthStoreState {
-  readonly authenticated: boolean;
-  readonly locale: string;
-  setAuthenticated(authenticated: boolean): void;
-  setLocale(locale: string): void;
-}
-
-export interface UiStoreState {
-  readonly activeRoute: string;
-  readonly activeFeature: string;
-  setActiveRoute(route: string): void;
-  setActiveFeature(featureId: string): void;
-}
-
-export interface RealtimeStoreState {
-  readonly wsStatus: string;
-  readonly panicActivated: boolean;
-  readonly offlineQueueSize: number;
-  readonly syncStatus: "idle" | "queued" | "syncing";
-  setWsStatus(status: string): void;
-  triggerPanic(): void;
-  setOfflineQueueSize(size: number): void;
-  setSyncStatus(status: "idle" | "queued" | "syncing"): void;
-}
-
-export function createAuthStore() {
-  return createStore<AuthStoreState>((set) => ({
-    authenticated: false,
-    locale: "zh-CN",
-    setAuthenticated(authenticated) {
-      set({ authenticated });
-    },
-    setLocale(locale) {
-      set({ locale });
-    },
-  }));
-}
-
-export function createUiStore() {
-  return createStore<UiStoreState>((set) => ({
-    activeRoute: "/",
-    activeFeature: "dashboard",
-    setActiveRoute(activeRoute) {
-      set({ activeRoute });
-    },
-    setActiveFeature(activeFeature) {
-      set({ activeFeature });
-    },
-  }));
-}
-
-export function createRealtimeStore() {
-  return createStore<RealtimeStoreState>((set) => ({
-    wsStatus: "disconnected",
-    panicActivated: false,
-    offlineQueueSize: 0,
-    syncStatus: "idle",
-    setWsStatus(wsStatus) {
-      set({ wsStatus });
-    },
-    triggerPanic() {
-      set({ panicActivated: true });
-    },
-    setOfflineQueueSize(offlineQueueSize) {
-      set({ offlineQueueSize });
-    },
-    setSyncStatus(syncStatus) {
-      set({ syncStatus });
-    },
-  }));
-}
-
-export function createQueryClientFactory() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 30_000,
-        gcTime: 5 * 60_000,
-        retry: 1,
-      },
-    },
-  });
-}
+export type { AuthStoreState } from "./stores/auth-store";
+export { createAuthStore } from "./stores/auth-store";
+export type { UiStoreState } from "./stores/ui-store";
+export { createUiStore } from "./stores/ui-store";
+export type { RealtimeStoreState } from "./stores/realtime-store";
+export { createRealtimeStore } from "./stores/realtime-store";
+export type { SyncStoreState } from "./stores/sync-store";
+export { createSyncStore } from "./stores/sync-store";
+export { createQueryClientFactory } from "./query-client";
 
 const ApiClientContext = createContext<RESTClient | null>(null);
 const WsClientContext = createContext<WSClient | null>(null);
+const AuthStoreContext = createContext<ReturnType<typeof createAuthStore> | null>(null);
+const UiStoreContext = createContext<ReturnType<typeof createUiStore> | null>(null);
 const RealtimeStoreContext = createContext<ReturnType<typeof createRealtimeStore> | null>(null);
+const SyncStoreContext = createContext<ReturnType<typeof createSyncStore> | null>(null);
+const AuthServiceContext = createContext<AuthService | null>(null);
+const SyncCoordinatorContext = createContext<SyncCoordinator | null>(null);
 
 export function UiRuntimeProvider(
   { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
@@ -123,8 +64,41 @@ export function UiRuntimeProvider(
   const resolvedClient = client ?? new DefaultRESTClient();
   const resolvedQueryClient = queryClient ?? createQueryClientFactory();
   const resolvedWsClient = wsClient ?? new InMemoryWSClient();
+  const authStore = useMemo(() => createAuthStore(), []);
+  const uiStore = useMemo(() => createUiStore(), []);
   const realtimeStore = useMemo(() => createRealtimeStore(), []);
+  const syncStore = useMemo(() => createSyncStore(), []);
+  const authService = useMemo(() => new AuthService(), []);
+  const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
+
   useEffect(() => {
+    const params = new URLSearchParams("access_token=ui-runtime-access&refresh_token=ui-runtime-refresh&locale=zh-CN");
+    const identity = authService.resolveIdentity(params);
+    authService.handleSsoCallback(params);
+    authStore.getState().setAuthenticated(authService.isAuthenticated());
+    authStore.getState().setLocale(identity.locale);
+    uiStore.getState().setActiveRoute("/mission-control/dashboard");
+    uiStore.getState().setActiveFeature("dashboard");
+
+    const bootstrapMutations: OfflineMutation[] = [
+      {
+        id: "bootstrap-dashboard-prefetch",
+        endpoint: "/api/v1/dashboard/prefetch",
+        method: "POST",
+        body: { scope: "mission-control" },
+        createdAt: "2026-04-23T00:00:00.000Z",
+      },
+      {
+        id: "bootstrap-approvals-prefetch",
+        endpoint: "/api/v1/approvals/prefetch",
+        method: "POST",
+        body: { queue: "primary" },
+        createdAt: "2026-04-23T00:00:01.000Z",
+      },
+    ];
+    syncCoordinator.queueMutations(bootstrapMutations);
+    syncStore.getState().setPendingMutations(syncCoordinator.pendingCount());
+
     const router = new WSEventRouter(
       resolvedWsClient,
       resolvedQueryClient,
@@ -142,14 +116,14 @@ export function UiRuntimeProvider(
     router.subscribe("agents");
     resolvedWsClient.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: { source: "bootstrap" } });
     resolvedWsClient.useSseFallback();
-    realtimeStore.getState().setOfflineQueueSize(2);
+    realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
     realtimeStore.getState().setSyncStatus("queued");
 
     return () => {
       disposeStatus();
       router.disconnect();
     };
-  }, [realtimeStore, resolvedQueryClient, resolvedWsClient]);
+  }, [authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },
@@ -157,9 +131,29 @@ export function UiRuntimeProvider(
       WsClientContext.Provider,
       { value: resolvedWsClient },
       createElement(
-        RealtimeStoreContext.Provider,
-        { value: realtimeStore },
-        createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+        AuthServiceContext.Provider,
+        { value: authService },
+        createElement(
+          SyncCoordinatorContext.Provider,
+          { value: syncCoordinator },
+          createElement(
+            AuthStoreContext.Provider,
+            { value: authStore },
+            createElement(
+              UiStoreContext.Provider,
+              { value: uiStore },
+              createElement(
+                RealtimeStoreContext.Provider,
+                { value: realtimeStore },
+                createElement(
+                  SyncStoreContext.Provider,
+                  { value: syncStore },
+                  createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -173,87 +167,69 @@ export function useWsClient(): WSClient {
   return useContext(WsClientContext) ?? new InMemoryWSClient();
 }
 
+export function useAuthState(): AuthStoreState {
+  const store = useContext(AuthStoreContext);
+  return store?.getState() ?? createAuthStore().getState();
+}
+
+export function useUiState(): UiStoreState {
+  const store = useContext(UiStoreContext);
+  return store?.getState() ?? createUiStore().getState();
+}
+
+export function useSyncState(): SyncStoreState {
+  const store = useContext(SyncStoreContext);
+  return store?.getState() ?? createSyncStore().getState();
+}
+
 export function useSystemStatus(): SystemStatusVM {
   const realtimeStore = useContext(RealtimeStoreContext);
-  const snapshot = realtimeStore?.getState();
-  return {
-    wsStatus: snapshot?.wsStatus ?? "disconnected",
-    offlineQueueSize: snapshot?.offlineQueueSize ?? 0,
-    syncStatus: snapshot?.syncStatus ?? "idle",
-    panicActivated: snapshot?.panicActivated ?? false,
-  };
+  return createSystemStatusVm(realtimeStore?.getState());
 }
 
 export function useDashboardSnapshotQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["dashboard", "snapshot"],
-    queryFn: () => fetchDashboardSnapshot(client),
-  });
+  return useQuery(createDashboardSnapshotQuery(client));
 }
 
 export function useTasksQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["tasks"],
-    queryFn: () => fetchTasks(client),
-  });
+  return useQuery(createTasksQuery(client));
 }
 
 export function useWorkflowsQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["workflows"],
-    queryFn: () => fetchWorkflows(client),
-  });
+  return useQuery(createWorkflowsQuery(client));
 }
 
 export function useApprovalsQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["approvals"],
-    queryFn: () => fetchApprovals(client),
-  });
+  return useQuery(createApprovalsQuery(client));
 }
 
 export function useIncidentsQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["incidents"],
-    queryFn: () => fetchIncidents(client),
-  });
+  return useQuery(createIncidentsQuery(client));
 }
 
 export function useWorkersQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["workers"],
-    queryFn: () => fetchWorkers(client),
-  });
+  return useQuery(createWorkersQuery(client));
 }
 
 export function useQueuesQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["queues"],
-    queryFn: () => fetchQueues(client),
-  });
+  return useQuery(createQueuesQuery(client));
 }
 
 export function useAgentsQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["agents"],
-    queryFn: () => fetchAgents(client),
-  });
+  return useQuery(createAgentsQuery(client));
 }
 
 export function useAnalyticsQuery() {
   const client = useRestClient();
-  return useQuery({
-    queryKey: ["analytics"],
-    queryFn: () => fetchAnalytics(client),
-  });
+  return useQuery(createAnalyticsQuery(client));
 }
 
 export function useCostReportsQuery() {

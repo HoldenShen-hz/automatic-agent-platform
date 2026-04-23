@@ -15,6 +15,14 @@ export class TokenManager {
     return this.session == null || this.session.expiresAt <= now;
   }
 
+  public hasActiveSession(now = Date.now()): boolean {
+    return !this.isExpired(now);
+  }
+
+  public getAccessToken(): string | null {
+    return this.session?.accessToken ?? null;
+  }
+
   public clear(): void {
     this.session = null;
   }

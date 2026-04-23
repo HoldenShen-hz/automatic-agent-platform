@@ -13,7 +13,15 @@ export class OfflineQueue {
     return drained;
   }
 
+  public peek(): readonly OfflineMutation[] {
+    return [...this.queue];
+  }
+
   public size(): number {
     return this.queue.length;
+  }
+
+  public isEmpty(): boolean {
+    return this.queue.length === 0;
   }
 }

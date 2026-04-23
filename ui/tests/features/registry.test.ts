@@ -6,6 +6,7 @@ describe("feature registry", () => {
     expect(featureRegistry.length).toBe(27);
     expect(featureRegistry.some((feature) => feature.manifest.id === "dashboard")).toBe(true);
     expect(featureRegistry.some((feature) => feature.manifest.id === "workflow-builder" && feature.manifest.kind === "planned")).toBe(true);
+    expect(featureRegistry.some((feature) => feature.manifest.id === "compliance")).toBe(true);
     expect(featureRegistry.some((feature) => feature.manifest.id === "policy")).toBe(true);
     expect(featureRegistry.some((feature) => feature.manifest.id === "workers")).toBe(true);
   });

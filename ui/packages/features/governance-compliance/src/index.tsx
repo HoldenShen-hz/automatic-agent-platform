@@ -1,6 +1,7 @@
-import { FeatureScaffold, ListCard, createFeatureModule } from "@aa/ui-core";
+import { createFeatureModule } from "@aa/ui-core";
+import { GovernanceComplianceWebView } from "./web";
 
-export default createFeatureModule({
+const governanceComplianceFeature = createFeatureModule({
   id: "governance-compliance",
   title: "Governance Compliance",
   group: "Governance",
@@ -9,15 +10,10 @@ export default createFeatureModule({
   status: "Planned",
   kind: "planned",
   summary: "治理与合规视图，通过 planned seam 对齐后端增强端点。",
-  render: () => (
-    <FeatureScaffold title="Governance Compliance" summary="治理与合规视图" status="Planned">
-      <ListCard
-        items={[
-          { title: "Compliance Score", description: "标准、检查项和最近审计结果通过 planned seam 呈现。" },
-          { title: "Field Redaction Policy", description: "字段级可见性、PII handling 和审计访问规则。" },
-          { title: "Delegated Governance", description: "域治理委托与审批升级路径。" },
-        ]}
-      />
-    </FeatureScaffold>
-  ),
+  render: GovernanceComplianceWebView,
 });
+
+export default governanceComplianceFeature;
+export { createGovernanceComplianceMobileCards } from "./mobile";
+export { useGovernanceComplianceVm } from "./hooks";
+export { GovernanceComplianceWebView } from "./web";

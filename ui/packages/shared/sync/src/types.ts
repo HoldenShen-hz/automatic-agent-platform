@@ -5,3 +5,10 @@ export interface OfflineMutation {
   readonly body: unknown;
   readonly createdAt: string;
 }
+
+export type ConflictResolutionStrategy = "server_wins" | "local_wins";
+
+export interface SyncFlushResult {
+  readonly mutations: readonly OfflineMutation[];
+  readonly flushedAt: string;
+}

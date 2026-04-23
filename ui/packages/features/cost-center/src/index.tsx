@@ -1,7 +1,7 @@
-import { FeatureScaffold, ListCard, createFeatureModule } from "@aa/ui-core";
-import { useCostReportsQuery } from "@aa/shared-state";
+import { createFeatureModule } from "@aa/ui-core";
+import { CostCenterWebView } from "./web";
 
-export default createFeatureModule({
+const costCenterFeature = createFeatureModule({
   id: "cost-center",
   title: "Cost Center",
   group: "Shared",
@@ -10,17 +10,10 @@ export default createFeatureModule({
   status: "Planned",
   kind: "planned",
   summary: "成本中心与预算视图。",
-  render: () => {
-    const reports = useCostReportsQuery().data ?? [];
-    return (
-      <FeatureScaffold title="Cost Center" summary="成本中心与预算视图" status="Planned">
-        <ListCard
-          items={reports.map((report) => ({
-            title: `${report.scope} · $${report.amountUsd}`,
-            description: `Budget $${report.budgetUsd}`,
-          }))}
-        />
-      </FeatureScaffold>
-    );
-  },
+  render: CostCenterWebView,
 });
+
+export default costCenterFeature;
+export { createCostCenterMobileCards } from "./mobile";
+export { mapCostReportsToVm, useCostCenterVm } from "./hooks";
+export { CostCenterWebView } from "./web";

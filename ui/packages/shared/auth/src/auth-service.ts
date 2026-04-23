@@ -1,5 +1,5 @@
 import { TokenManager } from "./token-manager";
-import type { AuthSession } from "./types";
+import type { AuthIdentity, AuthSession } from "./types";
 
 export class AuthService {
   public constructor(private readonly tokenManager: TokenManager = new TokenManager()) {}
@@ -20,6 +20,17 @@ export class AuthService {
 
   public getSession(): AuthSession | null {
     return this.tokenManager.getSession();
+  }
+
+  public isAuthenticated(now = Date.now()): boolean {
+    return this.tokenManager.hasActiveSession(now);
+  }
+
+  public resolveIdentity(params: URLSearchParams): AuthIdentity {
+    return {
+      locale: params.get("locale") ?? "zh-CN",
+      displayName: params.get("display_name") ?? "Platform Operator",
+    };
   }
 
   public handleSsoCallback(params: URLSearchParams): AuthSession {

@@ -11,4 +11,8 @@ export class SessionGuard {
     }
     return session;
   }
+
+  public isAuthenticated(now = Date.now()): boolean {
+    return this.tokenManager.hasActiveSession(now);
+  }
 }

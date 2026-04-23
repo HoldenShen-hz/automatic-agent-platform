@@ -3,3 +3,8 @@ export interface AuthSession {
   readonly refreshToken: string;
   readonly expiresAt: number;
 }
+
+export interface AuthIdentity {
+  readonly locale: string;
+  readonly displayName: string;
+}

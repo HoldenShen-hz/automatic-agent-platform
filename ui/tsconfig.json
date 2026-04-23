@@ -36,6 +36,7 @@
       "@aa/feature-inspect": ["packages/features/inspect/src/index.tsx"],
       "@aa/feature-health": ["packages/features/health/src/index.tsx"],
       "@aa/feature-incidents": ["packages/features/incidents/src/index.tsx"],
+      "@aa/feature-compliance": ["packages/features/compliance/src/index.tsx"],
       "@aa/feature-policy": ["packages/features/policy/src/index.tsx"],
       "@aa/feature-audit": ["packages/features/audit/src/index.tsx"],
       "@aa/feature-conversation": ["packages/features/conversation/src/index.tsx"],

@@ -1,6 +1,7 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { HealthWebView } from "./web";
 
-export default createFeatureModule({
+const healthFeature = createFeatureModule({
   id: "health",
   title: "Health",
   group: "Operations",
@@ -8,4 +9,10 @@ export default createFeatureModule({
   permission: "platform_sre",
   status: "Implemented/Contracted",
   summary: "健康状态与基础指标。",
+  render: HealthWebView,
 });
+
+export default healthFeature;
+export { createHealthMobileCards } from "./mobile";
+export { useHealthVm } from "./hooks";
+export { HealthWebView } from "./web";

@@ -1,6 +1,6 @@
 import { ConflictResolver } from "./conflict-resolver";
 import { OfflineQueue } from "./offline-queue";
-import type { OfflineMutation } from "./types";
+import type { ConflictResolutionStrategy, OfflineMutation, SyncFlushResult } from "./types";
 
 export class SyncCoordinator {
   public constructor(
@@ -12,11 +12,36 @@ export class SyncCoordinator {
     this.queue.enqueue(mutation);
   }
 
-  public flush(): OfflineMutation[] {
-    return this.queue.drain();
+  public queueMutations(mutations: readonly OfflineMutation[]): void {
+    for (const mutation of mutations) {
+      this.queue.enqueue(mutation);
+    }
   }
 
-  public resolveConflict<T>(serverValue: T, localValue: T): T {
-    return this.resolver.resolve(serverValue, localValue);
+  public hasPending(): boolean {
+    return !this.queue.isEmpty();
+  }
+
+  public pendingCount(): number {
+    return this.queue.size();
+  }
+
+  public peekPending(): readonly OfflineMutation[] {
+    return this.queue.peek();
+  }
+
+  public flush(flushedAt = new Date().toISOString()): SyncFlushResult {
+    return {
+      mutations: this.queue.drain(),
+      flushedAt,
+    };
+  }
+
+  public resolveConflict<T>(
+    serverValue: T,
+    localValue: T,
+    strategy: ConflictResolutionStrategy = "server_wins",
+  ): T {
+    return this.resolver.resolve(serverValue, localValue, strategy);
   }
 }

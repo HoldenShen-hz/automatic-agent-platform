@@ -1,6 +1,7 @@
 import { createFeatureModule } from "@aa/ui-core";
+import { InspectWebView } from "./web";
 
-export default createFeatureModule({
+const inspectFeature = createFeatureModule({
   id: "inspect",
   title: "Inspect",
   group: "Operations",
@@ -8,4 +9,10 @@ export default createFeatureModule({
   permission: "platform_sre",
   status: "Implemented/Internal",
   summary: "Inspect 和 operator snapshot 视图。",
+  render: InspectWebView,
 });
+
+export default inspectFeature;
+export { createInspectMobileCards } from "./mobile";
+export { useInspectVm } from "./hooks";
+export { InspectWebView } from "./web";
