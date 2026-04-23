@@ -77,3 +77,15 @@ test("ChangepointDetectorService keeps relative shift at zero when baseline mean
   assert.equal(result.recentMean, 0);
   assert.equal(result.relativeShift, 0);
 });
+
+test("ChangepointDetectorService reports insufficient data when recent window is effectively empty", () => {
+  const service = new ChangepointDetectorService();
+  const result = service.detect([
+    { observedAt: "2026-04-20T00:00:00.000Z", score: 0.9 },
+  ], 1, -1);
+
+  assert.equal(result.detected, false);
+  assert.equal(result.reasonCode, "drift.insufficient_data");
+  assert.equal(result.baselineMean, 0);
+  assert.equal(result.recentMean, 0);
+});

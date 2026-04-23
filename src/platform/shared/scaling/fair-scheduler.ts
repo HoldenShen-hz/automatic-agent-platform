@@ -169,35 +169,43 @@ export class FairScheduler {
     const tenant = this.tenants.get(tenantId);
     if (!tenant) return;
 
+    const releasedWorkflows = released.maxConcurrentWorkflows ?? 0;
+    const releasedWorkers = released.maxConcurrentWorkers ?? 0;
+    const releasedTokens = released.llmTokensPerMinute ?? 0;
+    const releasedRequests = released.llmRequestsPerMinute ?? 0;
+
     // Return borrowed resources first
     if (tenant.borrowedResources.workflows > 0) {
-      const workflowsToReturn = Math.min(released.maxConcurrentWorkflows ?? 0, tenant.borrowedResources.workflows);
+      const workflowsToReturn = Math.min(releasedWorkflows, tenant.borrowedResources.workflows);
       this.reclaimBorrowed(tenantId, workflowsToReturn, "workflows");
-      released.maxConcurrentWorkflows = Math.max(0, (released.maxConcurrentWorkflows ?? 0) - workflowsToReturn);
     }
 
     if (tenant.borrowedResources.workers > 0) {
-      const workersToReturn = Math.min(released.maxConcurrentWorkers ?? 0, tenant.borrowedResources.workers);
+      const workersToReturn = Math.min(releasedWorkers, tenant.borrowedResources.workers);
       this.reclaimBorrowed(tenantId, workersToReturn, "workers");
-      released.maxConcurrentWorkers = Math.max(0, (released.maxConcurrentWorkers ?? 0) - workersToReturn);
+    }
+
+    if (tenant.borrowedResources.tokensPerMinute > 0) {
+      const tokensToReturn = Math.min(releasedTokens, tenant.borrowedResources.tokensPerMinute);
+      this.reclaimBorrowed(tenantId, tokensToReturn, "tokensPerMinute");
     }
 
     // Decrement used resources
     tenant.currentlyUsed.maxConcurrentWorkflows = Math.max(
       0,
-      tenant.currentlyUsed.maxConcurrentWorkflows - (released.maxConcurrentWorkflows ?? 0),
+      tenant.currentlyUsed.maxConcurrentWorkflows - releasedWorkflows,
     );
     tenant.currentlyUsed.maxConcurrentWorkers = Math.max(
       0,
-      tenant.currentlyUsed.maxConcurrentWorkers - (released.maxConcurrentWorkers ?? 0),
+      tenant.currentlyUsed.maxConcurrentWorkers - releasedWorkers,
     );
     tenant.currentlyUsed.llmTokensPerMinute = Math.max(
       0,
-      tenant.currentlyUsed.llmTokensPerMinute - (released.llmTokensPerMinute ?? 0),
+      tenant.currentlyUsed.llmTokensPerMinute - releasedTokens,
     );
     tenant.currentlyUsed.llmRequestsPerMinute = Math.max(
       0,
-      tenant.currentlyUsed.llmRequestsPerMinute - (released.llmRequestsPerMinute ?? 0),
+      tenant.currentlyUsed.llmRequestsPerMinute - releasedRequests,
     );
   }
 
@@ -225,9 +233,14 @@ export class FairScheduler {
       }
     }
 
-    if (totalBorrowedFromOthers === 0) return;
-
     const returnAmount = Math.min(amount, borrowedAmount);
+    if (returnAmount <= 0) return;
+
+    if (totalBorrowedFromOthers === 0) {
+      tenant.borrowedResources[borrowedKey] -= returnAmount;
+      return;
+    }
+
     for (const lender of lenders) {
       const proportion = lender.proportion / totalBorrowedFromOthers;
       const amountToReturn = Math.floor(returnAmount * proportion);
@@ -385,7 +398,10 @@ export class FairScheduler {
       result.push({
         tenantId,
         utilizationPercent: totalGuaranteed > 0 ? (totalUsage / totalGuaranteed) * 100 : 0,
-        isBorrowing: tenant.borrowedResources.workflows > 0 || tenant.borrowedResources.workers > 0,
+        isBorrowing:
+          tenant.borrowedResources.workflows > 0
+          || tenant.borrowedResources.workers > 0
+          || tenant.borrowedResources.tokensPerMinute > 0,
       });
     }
 

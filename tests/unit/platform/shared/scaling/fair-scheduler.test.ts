@@ -331,6 +331,7 @@ test("FairScheduler returns worker and token borrows before decrementing tenant 
   const lenderStats = scheduler.getTenantStats("tenant-1");
   assert.ok(borrowerStats !== null);
   assert.ok(lenderStats !== null);
+
   assert.equal(borrowerStats!.borrowed.workers, 0);
   assert.equal(borrowerStats!.borrowed.tokensPerMinute, 0);
   assert.equal(borrowerStats!.used.maxConcurrentWorkers, 0);
