@@ -1,5 +1,7 @@
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import type { RiskPreview } from "../nl-gateway/index.js";
+import type { LlmPlanGenerator } from "./llm-plan-generator.js";
+export * from "./llm-plan-generator.js";
 
 export interface SuccessCriterion {
   readonly metric: string;
@@ -64,6 +66,8 @@ export interface GoalDecompositionPort {
 
 export interface GoalDecompositionServiceOptions {
   readonly costEstimator?: { estimate(divisionId?: string | null): CostEstimate } | null;
+  readonly llmPlanGenerator?: LlmPlanGenerator | null;
+  readonly maxLlmPlanLatencyMs?: number;
   /** Maximum decomposition depth to prevent infinite recursion (default: 5) */
   readonly maxDepth?: number;
   /** Current decomposition depth (used internally, do not set manually) */
@@ -80,6 +84,7 @@ const DEFAULT_COST_ESTIMATE: CostEstimate = {
 
 /** Default maximum decomposition depth to prevent infinite recursion */
 const DEFAULT_MAX_DEPTH = 5;
+const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
 
 function normalizeGoal(goal: Goal | string): Goal {
   if (typeof goal !== "string") {
@@ -151,12 +156,43 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     const goal = normalizeGoal(goalInput);
     const matchedTemplate = this.detectTemplate(goal.description);
-    const tasks = this.buildTasks(goal, matchedTemplate);
-    const dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
+    let tasks = this.buildTasks(goal, matchedTemplate);
+    let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
+    let decompositionStrategy: GoalDecomposition["decompositionStrategy"] =
+      matchedTemplate == null
+        ? "human_assisted"
+        : matchedTemplate === "generic_multi_step"
+          ? "hybrid"
+          : "template";
+
+    if ((matchedTemplate == null || matchedTemplate === "generic_multi_step")
+      && goal.description.trim().length > 50
+      && this.options.llmPlanGenerator != null) {
+      try {
+        const llmPlan = await this.withTimeout(
+          this.options.llmPlanGenerator.generate(goal),
+          this.options.maxLlmPlanLatencyMs ?? DEFAULT_LLM_PLAN_LATENCY_MS,
+        );
+        if (llmPlan.tasks.length > 0) {
+          tasks = [...llmPlan.tasks];
+          dependencyGraph = [...llmPlan.dependencyGraph];
+          decompositionStrategy = "llm_plan";
+        }
+      } catch {
+        decompositionStrategy = "hybrid";
+      }
+    }
     const graphAnalysis = this.analyzeDependencyGraph(tasks, dependencyGraph);
     const estimatedCost = totalCost(tasks.map((task) => task.estimatedCost));
     const riskSummary = buildRiskSummary(goal, matchedTemplate);
-    const decompositionConfidence = matchedTemplate == null ? 0.62 : matchedTemplate === "generic_multi_step" ? 0.74 : 0.88;
+    const decompositionConfidence =
+      decompositionStrategy === "llm_plan"
+        ? 0.83
+        : matchedTemplate == null
+          ? 0.62
+          : matchedTemplate === "generic_multi_step"
+            ? 0.74
+            : 0.88;
 
     return {
       goalId: goal.goalId,
@@ -171,17 +207,29 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         || riskSummary.overallRisk === "critical"
         || goal.priority === "critical"
         || graphAnalysis.hasCycle,
-      decompositionStrategy: matchedTemplate == null
-        ? "human_assisted"
-        : matchedTemplate === "generic_multi_step"
-          ? "hybrid"
-          : "template",
+      decompositionStrategy,
       topologicallySortedTaskIds: graphAnalysis.topologicallySortedTaskIds,
       parallelTaskGroups: graphAnalysis.parallelTaskGroups,
       criticalPathTaskIds: graphAnalysis.criticalPathTaskIds,
       depthUsed: currentDepth,
       maxDepthReached,
     };
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timeoutHandle = setTimeout(() => reject(new Error("goal_decomposer.llm_plan_timeout")), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
   }
 
   private detectTemplate(description: string): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {

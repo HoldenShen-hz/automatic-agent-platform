@@ -29,7 +29,10 @@ test("vertical domain baseline catalog exposes 24 canonical domains with 4 domai
 test("vertical domain baseline catalog resolves legacy domain ids to canonical ids", () => {
   assert.equal(resolveCanonicalVerticalDomainId("quantitative-trading"), "quant-trading");
   assert.equal(resolveCanonicalVerticalDomainId("data-processing"), "data-engineering");
+  assert.equal(resolveCanonicalVerticalDomainId("data-analytics"), "data-engineering");
   assert.equal(resolveCanonicalVerticalDomainId("finance"), "finance-accounting");
+  assert.equal(resolveCanonicalVerticalDomainId("sales"), "ecommerce");
+  assert.equal(resolveCanonicalVerticalDomainId("security"), "content-moderation");
   assert.equal(resolveCanonicalVerticalDomainId("marketing-brand"), "marketing");
 
   const quantTrading = getVerticalDomainBaseline("quantitative-trading");

@@ -39,3 +39,13 @@ test("Constants are positive numbers", () => {
 test("DEFAULT_LOCK_TTL_MS is less than a day", () => {
   assert.ok(DEFAULT_LOCK_TTL_MS < MS_PER_DAY, "Lock TTL should be less than a day");
 });
+
+test("DEFAULT_LOCK_TTL_MS is used for lock timeout", () => {
+  const lockTimeout = DEFAULT_LOCK_TTL_MS;
+  assert.ok(lockTimeout > 0);
+  assert.ok(lockTimeout < 60000);
+});
+
+test("SECONDS_PER_DAY multiplied by 1000 equals MS_PER_DAY", () => {
+  assert.equal(SECONDS_PER_DAY * 1000, MS_PER_DAY);
+});

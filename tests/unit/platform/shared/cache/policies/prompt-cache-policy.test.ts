@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PROMPT_CACHE_POLICIES } from "../../../../../src/platform/shared/cache/policies/prompt-cache-policy.js";
+import { PROMPT_CACHE_POLICIES } from "../../../../../../src/platform/shared/cache/policies/prompt-cache-policy.js";
 
 test("PROMPT_CACHE_POLICIES contains prompt.prefix policy", () => {
   const policy = PROMPT_CACHE_POLICIES["prompt.prefix"];

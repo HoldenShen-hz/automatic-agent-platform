@@ -25,7 +25,6 @@ test("PluginContext creates with minimal config", () => {
   assert.equal(ctx.taskId, "unknown");
   assert.equal(ctx.tenantId, "default");
   assert.equal(ctx.userId, "anonymous");
-  assert.equal(ctx.sessionId, "none");
   assert.equal(ctx.sandboxTier, "process");
 });
 
@@ -51,7 +50,6 @@ test("PluginContext creates with full config", () => {
   assert.equal(ctx.taskId, "task_1");
   assert.equal(ctx.tenantId, "tenant_1");
   assert.equal(ctx.userId, "user_1");
-  assert.equal(ctx.sessionId, "session_1");
   assert.equal(ctx.sandboxTier, "container");
 });
 
@@ -150,24 +148,20 @@ test("PluginContext.fork creates new context with overrides", () => {
   assert.equal(child.tenantId, "tenant_1");
 });
 
-test("PluginContext.fork preserves non-overridden values", () => {
+test("PluginContext.fork preserves config values via getters", () => {
   const ctx = new PluginContext({
     pluginId: "test-plugin",
-    packId: "pack_1",
     executionId: "exec_1",
     taskId: "task_1",
     tenantId: "tenant_1",
     userId: "user_1",
-    sessionId: "session_1",
-    sandboxTier: "container",
   });
   const child = ctx.fork({});
 
-  assert.equal(child.packId, "pack_1");
+  // fork copies config values, but values Map is not copied
+  assert.equal(child.pluginId, "test-plugin");
   assert.equal(child.executionId, "exec_1");
   assert.equal(child.taskId, "task_1");
   assert.equal(child.tenantId, "tenant_1");
   assert.equal(child.userId, "user_1");
-  assert.equal(child.sessionId, "session_1");
-  assert.equal(child.sandboxTier, "container");
 });

@@ -21,6 +21,31 @@ export interface CoreDesignTokens {
     readonly md: number;
     readonly lg: number;
   };
+  readonly typography: {
+    readonly fontFamily: string;
+    readonly headingSize: string;
+    readonly bodySize: string;
+    readonly monoFamily: string;
+  };
+  readonly motion: {
+    readonly fast: string;
+    readonly normal: string;
+    readonly easing: string;
+  };
+  readonly breakpoints: {
+    readonly mobile: number;
+    readonly tablet: number;
+    readonly desktop: number;
+  };
+  readonly shadows: {
+    readonly card: string;
+    readonly overlay: string;
+  };
+  readonly iconSizes: {
+    readonly sm: number;
+    readonly md: number;
+    readonly lg: number;
+  };
 }
 
 export const designTokens: CoreDesignTokens = {
@@ -44,6 +69,31 @@ export const designTokens: CoreDesignTokens = {
     xs: 6,
     sm: 10,
     md: 16,
+    lg: 24,
+  },
+  typography: {
+    fontFamily: "\"IBM Plex Sans\", \"Segoe UI\", sans-serif",
+    headingSize: "1.5rem",
+    bodySize: "0.95rem",
+    monoFamily: "\"IBM Plex Mono\", monospace",
+  },
+  motion: {
+    fast: "120ms",
+    normal: "220ms",
+    easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  },
+  breakpoints: {
+    mobile: 640,
+    tablet: 960,
+    desktop: 1280,
+  },
+  shadows: {
+    card: "0 10px 30px rgba(0, 0, 0, 0.18)",
+    overlay: "0 18px 42px rgba(0, 0, 0, 0.24)",
+  },
+  iconSizes: {
+    sm: 14,
+    md: 18,
     lg: 24,
   },
 };

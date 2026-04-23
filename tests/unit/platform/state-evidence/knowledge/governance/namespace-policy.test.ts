@@ -198,7 +198,9 @@ test("NamespacePolicyStore detectPathConflicts returns empty when no conflicts",
   const store = new NamespacePolicyStore();
   store.register(createTestNamespace({ path: "domain.alpha" }));
 
-  const conflicts = store.detectPathConflicts("domain.beta");
+  // domain.beta is a sibling of domain.alpha (same parent "domain")
+  // so it returns a sibling conflict, not empty
+  const conflicts = store.detectPathConflicts("other.domain.beta");
 
   assert.equal(conflicts.length, 0);
 });

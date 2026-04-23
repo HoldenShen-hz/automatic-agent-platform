@@ -1,1 +1,11 @@
-{ "name": "@aa/electron-win", "version": "0.1.0", "private": true, "type": "module" }
+{
+  "name": "@aa/electron-win",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "electron .",
+    "smoke": "node ./src/index.ts"
+  }
+}

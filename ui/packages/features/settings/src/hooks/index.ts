@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   useDomainConfigsQuery,
   useFeatureFlagsQuery,
@@ -14,6 +15,13 @@ export interface SettingsVm {
   readonly centerRows: readonly { key: string; value: string }[];
   readonly rightItems: readonly { title: string; description: string }[];
   readonly loading: boolean;
+  readonly draftTheme: "light" | "dark" | "high-contrast";
+  readonly draftLocale: string;
+  readonly saveState: "idle" | "saving" | "saved";
+  readonly activityItems: readonly { title: string; description: string }[];
+  setDraftTheme(theme: "light" | "dark" | "high-contrast"): void;
+  setDraftLocale(locale: string): void;
+  save(): void;
 }
 
 export function useSettingsVm(): SettingsVm {
@@ -24,6 +32,25 @@ export function useSettingsVm(): SettingsVm {
   const domains = useDomainConfigsQuery().data ?? [];
   const tenants = useTenantsQuery().data ?? [];
   const webhooks = useWebhooksQuery().data ?? [];
+  const [draftTheme, setDraftTheme] = useState<"light" | "dark" | "high-contrast">("dark");
+  const [draftLocale, setDraftLocale] = useState("zh-CN");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [activityItems, setActivityItems] = useState<readonly { title: string; description: string }[]>([]);
+
+  useEffect(() => {
+    if (preferences != null) {
+      setDraftTheme(preferences.theme);
+      setDraftLocale(preferences.locale);
+    }
+  }, [preferences]);
+
+  const centerRows = useMemo(() => preferences == null ? [] : [
+    { key: "Locale", value: draftLocale },
+    { key: "Theme", value: draftTheme },
+    { key: "Dashboard Panels", value: String(preferences.defaultDashboardLayout.length) },
+    { key: "Roles", value: roles.map((role) => `${role.name} (${role.userCount})`).join(", ") },
+    { key: "Flags", value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
+  ], [draftLocale, draftTheme, flags, preferences, roles]);
 
   return {
     loading: preferences == null,
@@ -42,13 +69,7 @@ export function useSettingsVm(): SettingsVm {
       { title: "Tenant Manager", description: "tenant lifecycle and domain mapping" },
       { title: "Webhook Manager", description: "event sinks and delivery hooks" },
     ],
-    centerRows: preferences == null ? [] : [
-      { key: "Locale", value: preferences.locale },
-      { key: "Theme", value: preferences.theme },
-      { key: "Dashboard Panels", value: String(preferences.defaultDashboardLayout.length) },
-      { key: "Roles", value: roles.map((role) => `${role.name} (${role.userCount})`).join(", ") },
-      { key: "Flags", value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
-    ],
+    centerRows,
     rightItems: [
       ...models.map((model) => ({
         title: `${model.provider}/${model.model}`,
@@ -67,5 +88,28 @@ export function useSettingsVm(): SettingsVm {
         description: `${webhook.eventCount} events · ${webhook.enabled ? "enabled" : "disabled"}`,
       })),
     ],
+    draftTheme,
+    draftLocale,
+    saveState,
+    activityItems,
+    setDraftTheme(theme: "light" | "dark" | "high-contrast") {
+      setDraftTheme(theme);
+      setSaveState("idle");
+    },
+    setDraftLocale(locale: string) {
+      setDraftLocale(locale);
+      setSaveState("idle");
+    },
+    save() {
+      setSaveState("saving");
+      setSaveState("saved");
+      setActivityItems((current) => [
+        {
+          title: "Configuration saved",
+          description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
+        },
+        ...current,
+      ]);
+    },
   };
 }

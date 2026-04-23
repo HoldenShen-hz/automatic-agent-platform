@@ -95,6 +95,12 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 | Phase 3 — 移动端 | 基线已落地 | `apps/mobile` 已提供 Android/iOS shell manifest、默认 adapter、deepLink / haptics / secure storage / screen security baseline 与 smoke test |
 | Phase 4 — 增强功能 | 基线已落地 | `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` 已通过 typed seam + feature gate 进入仓内实现；增强模块仍按正文状态标签继续演进 |
 
+补充说明：
+
+- 针对 [ui-design-vs-implementation-review.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/ui-design-vs-implementation-review.md) 的 `UIR1-UIR6` 仓内整改已完成。
+- 当前 UI 子工程已完成 `typecheck / test / build` 闭环。
+- 桌面与移动端按“smoke-ready 工程基线”验收，不将商店发布、签名和真实原生桥接上线伪装为仓内已闭环。
+
 本文档基于对 Doc-10（1229 行）和 Doc-11（2341 行）的全量审查，以及对后端 Interface Plane 实现的交叉验证，识别出以下 12 项改进并在本文档中逐一落地。
 
 ### 0.1 跨文档重复问题

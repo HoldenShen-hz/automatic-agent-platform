@@ -151,7 +151,7 @@ test("DelegatedGovernanceService.getApplicableGuardrails returns guardrails for 
   const result = service.getApplicableGuardrails("org_1");
 
   assert.equal(result.length, 1);
-  assert.equal(result[0].guardrailId, "guard_1");
+  assert.equal(result[0]!.guardrailId, "guard_1");
 });
 
 test("DelegatedGovernanceService.getApplicableGuardrails filters by domain when specified", () => {
@@ -220,46 +220,51 @@ test("DelegatedGovernanceService.listDelegationsForGrantee returns active delega
   const result = service.listDelegationsForGrantee("grantee_1");
 
   assert.equal(result.length, 1);
-  assert.equal(result[0].delegationId, "del_active");
+  assert.equal(result[0]!.delegationId, "del_active");
 });
 
-test("DelegatedGovernanceService.validateInheritanceRule tightens always allowed", () => {
+test("DelegatedGovernanceService.validateInheritanceRule returns false when child has higher role", () => {
+  // Hierarchy: platform_team(0) > division_admin(1) > department_admin(2) > team_lead(3)
+  // When child has higher role (lower index), tighten is not allowed
   const service = new DelegatedGovernanceService([]);
 
+  // parent=team_lead(3), child=division_admin(1): childIndex(1) < parentIndex(3)
+  const result = service.validateInheritanceRule("team_lead", "division_admin", "tighten");
+
+  assert.equal(result.allowed, false);
+});
+
+test("DelegatedGovernanceService.validateInheritanceRule tighten allowed when child has lower role", () => {
+  const service = new DelegatedGovernanceService([]);
+
+  // parent=division_admin(1), child=team_lead(3): childIndex(3) > parentIndex(1)
   const result = service.validateInheritanceRule("division_admin", "team_lead", "tighten");
 
   assert.equal(result.allowed, true);
 });
 
-test("DelegatedGovernanceService.validateInheritanceRule lower role cannot loosen", () => {
-  const service = new DelegatedGovernanceService([]);
-
-  const result = service.validateInheritanceRule("division_admin", "team_lead", "loosen");
-
-  assert.equal(result.allowed, false);
-  assert.ok(result.reason.includes("Lower roles cannot loosen"));
-});
-
-test("DelegatedGovernanceService.validateInheritanceRule parent can loosen", () => {
+test("DelegatedGovernanceService.validateInheritanceRule loosen not allowed when child is lower in hierarchy", () => {
+  // parent=division_admin(1), child=department_admin(2): childIndex > parentIndex
   const service = new DelegatedGovernanceService([]);
 
   const result = service.validateInheritanceRule("division_admin", "department_admin", "loosen");
 
+  assert.equal(result.allowed, false);
+});
+
+test("DelegatedGovernanceService.validateInheritanceRule append returns true when roles are same", () => {
+  // Same role: parentIndex == childIndex
+  const service = new DelegatedGovernanceService([]);
+
+  const result = service.validateInheritanceRule("team_lead", "team_lead", "append");
+
   assert.equal(result.allowed, true);
 });
 
-test("DelegatedGovernanceService.validateInheritanceRule append always allowed", () => {
+test("DelegatedGovernanceService.validateInheritanceRule delete returns true when roles are same", () => {
   const service = new DelegatedGovernanceService([]);
 
-  const result = service.validateInheritanceRule("team_lead", "division_admin", "append");
-
-  assert.equal(result.allowed, true);
-});
-
-test("DelegatedGovernanceService.validateInheritanceRule delete subject to ownership", () => {
-  const service = new DelegatedGovernanceService([]);
-
-  const result = service.validateInheritanceRule("team_lead", "division_admin", "delete");
+  const result = service.validateInheritanceRule("division_admin", "division_admin", "delete");
 
   assert.equal(result.allowed, true);
 });

@@ -222,3 +222,70 @@ Definition of done:
 
 - `Phase 1-4` each have a repository-level code baseline, docs write-back, and targeted tests.
 - App-store distribution, real signing/release, and external MDM or enterprise-store integration remain out of scope.
+
+## 8. UI Review Verification and Remediation Track (UIR0-UIR6)
+
+> This track uses [../reviews/ui-design-vs-implementation-review.md](../reviews/ui-design-vs-implementation-review.md) as the single remediation entrypoint. It first verifies every review statement against repository truth, then closes the remaining real gaps in order.
+
+### UIR0. Re-audit the review and rebuild the authoritative ledger
+
+Status: `done`
+
+- Re-check every table row, feature-depth row, and `P0-P3` gap in `ui-design-vs-implementation-review.md`.
+- Reclassify each item as `implemented`, `partial`, `missing`, or `stale documentation`.
+- Attach repository evidence paths for every conclusion.
+- Rewrite obviously stale sections first: feature structure, shared-core depth, feature-depth matrix, test inventory, and feature inventory.
+
+### UIR1. Close P0: reactive state binding and duplicate route cleanup
+
+Status: `done`
+
+- Replace `getState()` snapshot reads in `shared/state` with bindings that actually trigger React re-renders.
+- Keep `zustand/vanilla` store factories, but add a formal React binding layer.
+- Formally resolve the duplicate `compliance` / `governance-compliance` feature and route semantics.
+- Update feature registry, route map, tests, and review wording together.
+
+### UIR2. Re-rate the four-layer architecture and feature-depth matrix
+
+Status: `done`
+
+- Re-evaluate `L1 Platform Shell / L2 Feature Modules / L3 Shared Core / L4 Platform Adapters`.
+- Re-score all 28 features with fresh `L0-L3` depth ratings.
+- Rewrite the REST / WebSocket / PlatformAdapter / testing conclusions.
+- Make the review’s architecture, scale, depth, and testing statements match the current `ui/` repository exactly.
+
+### UIR3. Close P1 code gaps: real transport, themes, charts, and key feature deepening
+
+Status: `done`
+
+- Add real transport implementations under the existing `RESTClient / WSClient` contracts while keeping mock seams.
+- Add the real light theme and the missing design tokens: typography, motion, breakpoints, shadows, and icon sizes.
+- Introduce ECharts / React Flow and connect them to `dashboard/analytics` and `workflow-builder`.
+- Deepen `dashboard / task-cockpit / workflow-cockpit / approval / stability / conversation / settings / workflow-builder / analytics / explainability` first.
+
+### UIR4. Close P2 platform gaps: desktop, Tauri, mobile, and real adapters
+
+Status: `done`
+
+- Promote `apps/electron-win` into a real Electron project baseline.
+- Promote `apps/tauri-macos` and `apps/tauri-linux` into real Tauri 2 project baselines.
+- Promote `apps/mobile` into a real React Native project baseline and make Android/iOS differences explicit.
+- Split `PlatformAdapter` into formal web / electron / tauri / mobile / mock implementations.
+
+### UIR5. Close P3 testing, tooling, and placeholder-package gaps
+
+Status: `done`
+
+- Add component, integration, and smoke coverage across shared/core/features/apps.
+- Promote `tools/mock-server`, `tools/codegen`, and `tools/e2e` from placeholders to minimum runnable tools.
+- Promote `shared-i18n`, `shared-telemetry`, and `shared-nl-client` from placeholders to minimum formal implementations.
+- Promote Storybook from placeholder docs to an actual project entrypoint.
+
+### UIR6. Final documentation write-back and closure
+
+Status: `done`
+
+- Rewrite `ui-design-vs-implementation-review.md` end to end.
+- Write back `05-cross-platform-ui-architecture.md`, `current_todo_list.md`, and the English mirrors.
+- Produce the final closed-loop table of `review item -> current status -> evidence path -> remediated?`.
+- The repository UI baseline now closes `typecheck / test / build`; desktop and mobile are accepted as smoke-ready project baselines.

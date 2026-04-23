@@ -4,6 +4,11 @@ export interface TelemetryEvent {
   readonly recordedAt: string;
 }
 
+export interface TelemetryScope {
+  readonly name: string;
+  readonly attributes?: Readonly<Record<string, unknown>>;
+}
+
 export class TelemetrySink {
   private readonly events: TelemetryEvent[] = [];
 
@@ -17,6 +22,17 @@ export class TelemetrySink {
 
   public list(): readonly TelemetryEvent[] {
     return this.events;
+  }
+
+  public scoped(scope: TelemetryScope) {
+    return {
+      record: (name: string, attributes: Readonly<Record<string, unknown>> = {}) => {
+        this.record(`${scope.name}.${name}`, {
+          ...(scope.attributes ?? {}),
+          ...attributes,
+        });
+      },
+    };
   }
 }
 

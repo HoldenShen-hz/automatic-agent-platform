@@ -11,3 +11,9 @@ export function createGeneratedBinding(id: string, source: string): GeneratedBin
     generatedAt: new Date().toISOString(),
   };
 }
+
+export function generateEndpointBindingModule(endpoints: readonly { readonly id: string; readonly path: string }[]): string {
+  return endpoints
+    .map((endpoint) => `export const ${endpoint.id}Path = "${endpoint.path}";`)
+    .join("\n");
+}

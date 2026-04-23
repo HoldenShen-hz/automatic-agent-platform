@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { decodeJwtJsonSegment, parseJwtHeader, parseFederatedTokenClaims } from "../../../../../src/platform/interface/api/oidc-oauth/jwt-utils.js";
+import { decodeJwtJsonSegment, parseJwtHeader, parseFederatedTokenClaims } from "../../../../../../src/platform/interface/api/oidc-oauth/jwt-utils.js";
 import { AuthError } from "../../../../../../src/platform/contracts/errors.js";
 
 describe("api/oidc-oauth/jwt-utils", () => {

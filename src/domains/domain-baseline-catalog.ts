@@ -33,19 +33,26 @@ export type VerticalDomainId =
   | "advertising"
   | "industry-research"
   | "academic-research"
+  | "product-management"
+  | "quality-assurance"
   | "finance-accounting"
   | "legal"
+  | "project-management"
   | "customer-service"
   | "it-operations"
   | "content-moderation"
   | "live-streaming"
   | "healthcare"
   | "human-resources"
+  | "facilities"
+  | "executive-assistant"
   | "supply-chain"
   | "education"
   | "creative-production"
   | "game-dev"
   | "game-publishing"
+  | "manufacturing"
+  | "agriculture"
   | "marketing";
 
 export type LegacyVerticalDomainId =
@@ -53,6 +60,9 @@ export type LegacyVerticalDomainId =
   | "enterprise-knowledge-base"
   | "quantitative-trading"
   | "advertising-promotion"
+  | "sales"
+  | "security"
+  | "data-analytics"
   | "finance"
   | "online-livestream"
   | "medical-health"
@@ -158,6 +168,9 @@ const LEGACY_DOMAIN_ID_ALIASES = {
   "enterprise-knowledge-base": "knowledge-base",
   "quantitative-trading": "quant-trading",
   "advertising-promotion": "advertising",
+  sales: "ecommerce",
+  security: "content-moderation",
+  "data-analytics": "data-engineering",
   finance: "finance-accounting",
   "online-livestream": "live-streaming",
   "medical-health": "healthcare",

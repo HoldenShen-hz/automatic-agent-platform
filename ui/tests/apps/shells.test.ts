@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createElectronWinDefaultAdapter, electronWinManifest } from "../../apps/electron-win/src";
 import { tauriMacosManifest } from "../../apps/tauri-macos/src";
@@ -36,5 +38,15 @@ describe("platform shells", () => {
       "settings",
     ]);
     expect(mobileNavigation.modalFlows.some((screen) => screen.id === "hitl")).toBe(true);
+  });
+
+  it("ships real project baseline files for desktop and mobile shells", () => {
+    const root = process.cwd();
+    expect(existsSync(join(root, "apps/electron-win/src/main.ts"))).toBe(true);
+    expect(existsSync(join(root, "apps/electron-win/src/preload.ts"))).toBe(true);
+    expect(existsSync(join(root, "apps/tauri-macos/src-tauri/Cargo.toml"))).toBe(true);
+    expect(existsSync(join(root, "apps/tauri-linux/src-tauri/Cargo.toml"))).toBe(true);
+    expect(existsSync(join(root, "apps/mobile/app.json"))).toBe(true);
+    expect(existsSync(join(root, "apps/mobile/metro.config.js"))).toBe(true);
   });
 });

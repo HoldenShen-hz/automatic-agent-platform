@@ -58,7 +58,7 @@ test("recordWriteback returns a promise resolving to WorkerWritebackDecision", a
     workerId: "worker_1",
     leaseId: "lease_1",
     fencingToken: 1,
-    terminalStatus: "completed",
+    terminalStatus: "done",
   });
   // Without a real store, we get rejected decisions - but it should be a promise
   assert.ok(decision != null);
@@ -72,7 +72,7 @@ test("recordWriteback promise resolves with execution_not_found when no executio
     workerId: "worker_1",
     leaseId: "lease_1",
     fencingToken: 1,
-    terminalStatus: "completed",
+    terminalStatus: "done",
   });
   assert.equal(decision.accepted, false);
   assert.equal(decision.reasonCode, "execution_not_found");
@@ -96,7 +96,7 @@ test("recordWriteback accepts valid writeback input with required fields", async
 test("recordWriteback handles different terminal statuses", async () => {
   const service = makeAsyncWritebackService();
 
-  const statuses = ["completed", "failed", "cancelled"] as const;
+  const statuses = ["done", "failed", "cancelled"] as const;
   for (const status of statuses) {
     const decision = await service.recordWriteback({
       executionId: "exec_1",

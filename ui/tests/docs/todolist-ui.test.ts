@@ -24,4 +24,18 @@ describe("ui docs alignment", () => {
       expect(en).toContain(key);
     }
   });
+
+  it("documents UIR0-UIR6 remediation waves in both zh and en todolists", () => {
+    const root = process.cwd();
+    const zh = readFileSync(join(root, "../docs_zh/operations/current_todo_list.md"), "utf8");
+    const en = readFileSync(join(root, "../docs_en/operations/current_todo_list.md"), "utf8");
+
+    for (const key of ["UIR0", "UIR1", "UIR2", "UIR3", "UIR4", "UIR5", "UIR6"]) {
+      expect(zh).toContain(key);
+      expect(en).toContain(key);
+    }
+
+    expect(zh).toContain("状态：`done`");
+    expect(en).toContain("Status: `done`");
+  });
 });

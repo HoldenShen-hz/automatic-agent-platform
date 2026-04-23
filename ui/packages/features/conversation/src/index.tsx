@@ -7,8 +7,8 @@ const conversationFeature = createFeatureModule({
   group: "Extended",
   path: "/extended/conversation",
   permission: "authenticated",
-  status: "Implemented/Partial",
-  summary: "NL 对话、追问和确认面板基线。",
+  status: "Implemented/Internal",
+  summary: "NL 对话、追问、计划确认与执行闭环。",
   render: ConversationWebView,
 });
 

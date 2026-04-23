@@ -37,6 +37,13 @@ export interface RESTClient {
   delete<T>(path: string): Promise<T>;
 }
 
+export interface HttpTransportOptions {
+  readonly baseUrl: string;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly fetchImplementation?: typeof fetch;
+  readonly fallbackToMock?: boolean;
+}
+
 export class MockTransport {
   public constructor(private readonly data: MockApiShape = defaultMockApiShape) {}
 
@@ -130,6 +137,50 @@ export class MockTransport {
   }
 }
 
+export class HttpTransport {
+  private readonly fetchImplementation: typeof fetch;
+  private readonly fallbackTransport: MockTransport | null;
+
+  public constructor(private readonly options: HttpTransportOptions) {
+    this.fetchImplementation = options.fetchImplementation ?? globalThis.fetch.bind(globalThis);
+    this.fallbackTransport = options.fallbackToMock === true ? new MockTransport() : null;
+  }
+
+  public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
+    const url = request.path.startsWith("http")
+      ? request.path
+      : `${this.options.baseUrl.replace(/\/$/, "")}${request.path.startsWith("/") ? request.path : `/${request.path}`}`;
+    const requestBody = request.body == null ? null : JSON.stringify(request.body);
+    const requestHeaders = new Headers({
+      "content-type": "application/json",
+      ...(this.options.headers ?? {}),
+      ...Object.fromEntries(request.headers.entries()),
+    });
+
+    try {
+      const response = await this.fetchImplementation(url, {
+        method: request.method,
+        headers: requestHeaders,
+        body: requestBody,
+      });
+
+      if (!response.ok) {
+        throw new Error(`rest.http_error:${response.status}`);
+      }
+
+      return {
+        status: response.status,
+        data: (await response.json()) as T,
+      };
+    } catch (error) {
+      if (this.fallbackTransport != null) {
+        return this.fallbackTransport.send(request);
+      }
+      throw error;
+    }
+  }
+}
+
 export class DefaultRESTClient implements RESTClient {
   public constructor(
     private readonly transport: RestTransport = (request) => new MockTransport().send(request),
@@ -172,4 +223,17 @@ export class DefaultRESTClient implements RESTClient {
     }
     return response.data;
   }
+}
+
+export function createRuntimeRESTClient(options?: Partial<HttpTransportOptions>): RESTClient {
+  const baseUrl = options?.baseUrl;
+  if (baseUrl != null) {
+    return new DefaultRESTClient((request) => new HttpTransport({
+      baseUrl,
+      ...(options?.headers == null ? {} : { headers: options.headers }),
+      ...(options?.fetchImplementation == null ? {} : { fetchImplementation: options.fetchImplementation }),
+      fallbackToMock: options?.fallbackToMock ?? true,
+    }).send(request));
+  }
+  return new DefaultRESTClient((request) => new MockTransport().send(request));
 }

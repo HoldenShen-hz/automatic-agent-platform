@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { rsaAlgToNode, ecAlgToNode, hmacAlgToNode } from "../../../../../src/platform/interface/api/oidc-oauth/crypto-utils.js";
+import { rsaAlgToNode, ecAlgToNode, hmacAlgToNode } from "../../../../../../src/platform/interface/api/oidc-oauth/crypto-utils.js";
 
 describe("api/oidc-oauth/crypto-utils", () => {
   describe("rsaAlgToNode", () => {

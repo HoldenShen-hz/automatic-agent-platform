@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { createContext, createElement, useContext, useEffect, useMemo, type PropsWithChildren, type ReactElement } from "react";
+import { useStore } from "zustand";
 import {
   DefaultRESTClient,
   InMemoryWSClient,
@@ -57,6 +58,10 @@ const RealtimeStoreContext = createContext<ReturnType<typeof createRealtimeStore
 const SyncStoreContext = createContext<ReturnType<typeof createSyncStore> | null>(null);
 const AuthServiceContext = createContext<AuthService | null>(null);
 const SyncCoordinatorContext = createContext<SyncCoordinator | null>(null);
+const fallbackAuthStore = createAuthStore();
+const fallbackUiStore = createUiStore();
+const fallbackRealtimeStore = createRealtimeStore();
+const fallbackSyncStore = createSyncStore();
 
 export function UiRuntimeProvider(
   { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
@@ -168,23 +173,24 @@ export function useWsClient(): WSClient {
 }
 
 export function useAuthState(): AuthStoreState {
-  const store = useContext(AuthStoreContext);
-  return store?.getState() ?? createAuthStore().getState();
+  const store = useContext(AuthStoreContext) ?? fallbackAuthStore;
+  return useStore(store, (state) => state);
 }
 
 export function useUiState(): UiStoreState {
-  const store = useContext(UiStoreContext);
-  return store?.getState() ?? createUiStore().getState();
+  const store = useContext(UiStoreContext) ?? fallbackUiStore;
+  return useStore(store, (state) => state);
 }
 
 export function useSyncState(): SyncStoreState {
-  const store = useContext(SyncStoreContext);
-  return store?.getState() ?? createSyncStore().getState();
+  const store = useContext(SyncStoreContext) ?? fallbackSyncStore;
+  return useStore(store, (state) => state);
 }
 
 export function useSystemStatus(): SystemStatusVM {
-  const realtimeStore = useContext(RealtimeStoreContext);
-  return createSystemStatusVm(realtimeStore?.getState());
+  const realtimeStore = useContext(RealtimeStoreContext) ?? fallbackRealtimeStore;
+  const realtimeState = useStore(realtimeStore, (state) => state);
+  return createSystemStatusVm(realtimeState);
 }
 
 export function useDashboardSnapshotQuery() {

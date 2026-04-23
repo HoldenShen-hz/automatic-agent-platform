@@ -3,6 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
+import type { RESTClient, WSClient } from "@aa/shared-api-client";
 import { featureRegistry } from "./feature-registry";
 
 const demoGuardContext = createFeatureGuardContext({
@@ -91,9 +92,14 @@ function AppShell(): ReactElement {
   );
 }
 
-export function App(): ReactElement {
+export function App({ client, wsClient }: { client?: RESTClient; wsClient?: WSClient } = {}): ReactElement {
+  const runtimeProps = {
+    ...(client == null ? {} : { client }),
+    ...(wsClient == null ? {} : { wsClient }),
+  };
+
   return (
-    <UiRuntimeProvider>
+    <UiRuntimeProvider {...runtimeProps}>
       <BrowserRouter>
         <AppShell />
       </BrowserRouter>

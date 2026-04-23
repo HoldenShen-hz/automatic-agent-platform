@@ -7,8 +7,8 @@ const settingsFeature = createFeatureModule({
   group: "Shared",
   path: "/shared/settings",
   permission: "authenticated",
-  status: "Implemented/Partial",
-  summary: "配置中心、用户偏好、域设置与模型配置入口。",
+  status: "Implemented/Internal",
+  summary: "配置中心、偏好保存、域设置与模型配置闭环。",
   render: SettingsWebView,
 });
 

@@ -5,7 +5,7 @@ const governanceComplianceFeature = createFeatureModule({
   id: "governance-compliance",
   title: "Governance Compliance",
   group: "Governance",
-  path: "/governance/compliance",
+  path: "/governance/governance-overview",
   permission: "domain_admin+",
   status: "Planned",
   kind: "planned",

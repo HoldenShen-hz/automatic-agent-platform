@@ -6,9 +6,10 @@ import {
   createQueryClientFactory,
   createRealtimeStore,
   createSyncStore,
+  useUiState,
 } from "@aa/shared-state";
-import { render, screen } from "@testing-library/react";
-import { createElement } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { createElement, type ReactElement } from "react";
 
 describe("shared auth/sync/state split modules", () => {
   it("hydrates auth session and validates guard", () => {
@@ -55,5 +56,25 @@ describe("shared auth/sync/state split modules", () => {
     render(createElement(UiRuntimeProvider, undefined, createElement("div", undefined, "runtime ready")));
 
     expect(screen.getByText("runtime ready")).toBeInTheDocument();
+  });
+
+  it("rerenders ui state consumers when the zustand store changes", () => {
+    function Harness(): ReactElement {
+      const ui = useUiState();
+      return createElement(
+        "button",
+        {
+          onClick: () => {
+            ui.setActiveFeature("analytics");
+          },
+          type: "button",
+        },
+        ui.activeFeature,
+      );
+    }
+
+    render(createElement(UiRuntimeProvider, undefined, createElement(Harness)));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard" }));
+    expect(screen.getByRole("button", { name: "analytics" })).toBeInTheDocument();
   });
 });

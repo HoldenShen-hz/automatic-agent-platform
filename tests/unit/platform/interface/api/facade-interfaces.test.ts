@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createNoOpIncidentFacadeService, createNoOpIncidentFacadeService as createSvc } from "../../../../src/platform/interface/api/facade-interfaces.js";
+import { createNoOpIncidentFacadeService } from "../../../../../src/platform/interface/api/facade-interfaces.js";
 
 describe("api/facade-interfaces", () => {
   describe("createNoOpIncidentFacadeService", () => {

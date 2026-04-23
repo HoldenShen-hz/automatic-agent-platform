@@ -1,0 +1,13 @@
+{
+  "productName": "Automatic Agent Platform UI Mac",
+  "identifier": "com.automaticagent.ui.macos",
+  "app": {
+    "windows": [
+      {
+        "title": "Automatic Agent Platform UI",
+        "width": 1440,
+        "height": 960
+      }
+    ]
+  }
+}

@@ -32,6 +32,12 @@ import {
   type GovernanceOperationType,
   type GovernanceActionScope,
 } from "./scope-manager/index.js";
+import {
+  InMemoryAuditLogStore,
+  InMemoryDelegationStore,
+  type AuditLogStore,
+  type DelegationStore,
+} from "./stores/index.js";
 
 /**
  * Console action types as defined in delegated_governance_contract.md §5
@@ -81,8 +87,16 @@ export interface GovernanceConsoleAuditEntry {
  * - Integration with frontend dashboard
  */
 export class SelfServiceGovernanceConsole {
-  private readonly delegations: Map<string, GovernanceDelegation> = new Map();
-  private readonly auditLog: GovernanceConsoleAuditEntry[] = [];
+  private readonly delegationStore: DelegationStore;
+  private readonly auditLogStore: AuditLogStore;
+
+  public constructor(options: {
+    delegationStore?: DelegationStore;
+    auditLogStore?: AuditLogStore;
+  } = {}) {
+    this.delegationStore = options.delegationStore ?? new InMemoryDelegationStore();
+    this.auditLogStore = options.auditLogStore ?? new InMemoryAuditLogStore();
+  }
 
   /**
    * Creates a new delegation from a grantor to a grantee.
@@ -103,7 +117,7 @@ export class SelfServiceGovernanceConsole {
       status: "active",
     };
 
-    this.delegations.set(delegation.delegationId, delegation);
+    this.delegationStore.save(delegation);
     this.logAudit("delegate", request.grantorId, delegation.delegationId, { request });
     return delegation;
   }
@@ -115,7 +129,7 @@ export class SelfServiceGovernanceConsole {
     delegationId: string,
     actorId: string,
   ): { success: boolean; error?: string } {
-    const delegation = this.delegations.get(delegationId);
+    const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
       return { success: false, error: "delegation_not_found" };
     }
@@ -123,8 +137,11 @@ export class SelfServiceGovernanceConsole {
       return { success: false, error: "delegation_not_revocable" };
     }
 
-    delegation.status = "revoked";
-    this.delegations.set(delegationId, delegation);
+    const revoked: GovernanceDelegation = {
+      ...delegation,
+      status: "revoked",
+    };
+    this.delegationStore.save(revoked);
     this.logAudit("revoke", actorId, delegationId, {});
     return { success: true };
   }
@@ -133,25 +150,27 @@ export class SelfServiceGovernanceConsole {
    * Gets a delegation by ID.
    */
   public getDelegation(delegationId: string): GovernanceDelegation | null {
-    return this.delegations.get(delegationId) ?? null;
+    return this.delegationStore.get(delegationId);
   }
 
   /**
    * Lists all delegations for a grantee.
    */
   public listDelegationsForGrantee(granteeId: string): GovernanceDelegation[] {
-    return Array.from(this.delegations.values()).filter(
-      (d) => d.granteeId === granteeId && d.status === "active",
+    const delegations = this.delegationStore.listByGrantee(granteeId).filter(
+      (d) => d.status === "active",
     );
+    this.logAudit("review", "system", null, { scope: "grantee", granteeId, count: delegations.length });
+    return delegations;
   }
 
   /**
    * Lists all delegations within an org node.
    */
   public listDelegationsForOrgNode(orgNodeId: string): GovernanceDelegation[] {
-    return Array.from(this.delegations.values()).filter(
-      (d) => d.orgNodeIds.length === 0 || d.orgNodeIds.includes(orgNodeId),
-    );
+    const delegations = this.delegationStore.listByOrgNode(orgNodeId);
+    this.logAudit("review", "system", null, { scope: "org_node", orgNodeId, count: delegations.length });
+    return delegations;
   }
 
   /**
@@ -161,7 +180,7 @@ export class SelfServiceGovernanceConsole {
     delegationId: string,
     actorId: string,
   ): GovernanceDelegation | null {
-    const delegation = this.delegations.get(delegationId);
+    const delegation = this.delegationStore.get(delegationId);
     if (delegation) {
       this.logAudit("review", actorId, delegationId ?? null, {});
     }
@@ -177,7 +196,7 @@ export class SelfServiceGovernanceConsole {
     endTime?: string;
     actorId?: string;
   }): GovernanceConsoleAuditEntry[] {
-    let entries = [...this.auditLog];
+    let entries = [...this.auditLogStore.list()];
 
     if (options?.startTime) {
       entries = entries.filter((e) => e.timestamp >= options.startTime!);
@@ -239,7 +258,7 @@ export class SelfServiceGovernanceConsole {
     delegationId: string | null,
     details: Record<string, unknown>,
   ): void {
-    this.auditLog.push({
+    this.auditLogStore.append({
       action,
       actorId,
       delegationId,

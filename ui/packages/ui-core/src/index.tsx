@@ -8,7 +8,7 @@ import { designTokens } from "./design-tokens";
 import { LayoutFrame, ThreePaneLayout } from "./layouts";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
 export { FeatureScaffold, KeyValueTable, ListCard, StatusPill } from "./components";
-export { MetricGrid, MiniTrendBars } from "./charts";
+export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";
 export { darkTheme, highContrastTheme, lightTheme, resolveTheme } from "./themes";

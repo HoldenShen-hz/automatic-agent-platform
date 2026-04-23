@@ -1,0 +1,13 @@
+{
+  "productName": "Automatic Agent Platform UI Linux",
+  "identifier": "com.automaticagent.ui.linux",
+  "app": {
+    "windows": [
+      {
+        "title": "Automatic Agent Platform UI",
+        "width": 1440,
+        "height": 960
+      }
+    ]
+  }
+}

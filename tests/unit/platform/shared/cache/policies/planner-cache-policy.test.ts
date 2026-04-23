@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { PLANNER_CACHE_POLICIES } from "../../../../../src/platform/shared/cache/policies/planner-cache-policy.js";
+import { PLANNER_CACHE_POLICIES } from "../../../../../../src/platform/shared/cache/policies/planner-cache-policy.js";
 
 test("PLANNER_CACHE_POLICIES contains planner.plan policy", () => {
   const policy = PLANNER_CACHE_POLICIES["planner.plan"];

@@ -3,6 +3,7 @@ export * from "./cli/index.js";
 
 // Client SDK exports
 export * from "./client-sdk/index.js";
+export * from "./harness-sdk/index.js";
 
 // Pack SDK exports
 export { PackScaffoldService } from "./pack-sdk/pack-scaffold-service.js";

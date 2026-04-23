@@ -150,14 +150,23 @@ test("RoadmapService throws ValidationError for non-existent item", () => {
   );
 });
 
-test("RoadmapService seeds architecture roadmap phases 8 and 9 from the canonical template", () => {
+test("RoadmapService seeds architecture roadmap phases 1-9 from the canonical template", () => {
   const service = new RoadmapService();
   const seeded = service.seedArchitectureRoadmap();
 
   assert.equal(seeded.length, ARCHITECTURE_ROADMAP_TEMPLATE.length);
+  assert.equal(service.getRoadmap("phase1").some((item) => item.title === "Core execution foundation"), true);
+  assert.equal(service.getRoadmap("phase7").some((item) => item.title === "Cross-platform productization"), true);
   assert.equal(service.getRoadmap("phase8a").some((item) => item.title === "Harness core loop"), true);
   assert.equal(service.getRoadmap("phase9f").some((item) => item.title === "Vertical domains 9f"), true);
   assert.deepEqual(service.listArchitecturePhases(), [
+    "phase1",
+    "phase2",
+    "phase3",
+    "phase4",
+    "phase5",
+    "phase6",
+    "phase7",
     "phase8a",
     "phase8b",
     "phase8c",
@@ -168,6 +177,7 @@ test("RoadmapService seeds architecture roadmap phases 8 and 9 from the canonica
     "phase9e",
     "phase9f",
   ]);
+  assert.equal(service.getRoadmap("phase1")[0]?.status, "completed");
 });
 
 test("RoadmapService seedArchitectureRoadmap skips duplicates", () => {

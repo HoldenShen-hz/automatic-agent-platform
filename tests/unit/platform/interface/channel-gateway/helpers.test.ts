@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseMetadata, requireNonEmpty, readTrackedDeliveryPayload } from "../../../../src/platform/interface/channel-gateway/helpers.js";
-import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import { parseMetadata, requireNonEmpty, readTrackedDeliveryPayload } from "../../../../../src/platform/interface/channel-gateway/helpers.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 describe("channel-gateway/helpers", () => {
   describe("parseMetadata", () => {

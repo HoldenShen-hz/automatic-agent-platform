@@ -13,6 +13,10 @@ export const lightTheme: CoreDesignTokens = {
     text: "#0f172a",
     subtle: "#475569",
   },
+  shadows: {
+    card: "0 10px 24px rgba(15, 23, 42, 0.08)",
+    overlay: "0 16px 40px rgba(15, 23, 42, 0.12)",
+  },
 };
 
 export const highContrastTheme: CoreDesignTokens = {
@@ -28,6 +32,10 @@ export const highContrastTheme: CoreDesignTokens = {
     subtle: "#d1d5db",
     planned: "#ffd400",
     danger: "#ff6b6b",
+  },
+  shadows: {
+    card: "0 0 0 2px rgba(255,255,255,0.7)",
+    overlay: "0 0 0 3px rgba(0,255,149,0.6)",
   },
 };
 

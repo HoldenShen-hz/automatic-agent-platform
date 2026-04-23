@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GoalDecompositionService, type Goal } from "../../../../src/interaction/goal-decomposer/index.js";
+import {
+  GoalDecompositionService,
+  type Goal,
+  type LlmPlanGenerator,
+} from "../../../../src/interaction/goal-decomposer/index.js";
 
 test("GoalDecompositionService uses marketing template and builds dependency graph", async () => {
   const service = new GoalDecompositionService();
@@ -41,4 +45,76 @@ test("GoalDecompositionService requests human review for unmatched short goal", 
 
   assert.equal(result.requiresHumanReview, true);
   assert.equal(result.decompositionConfidence < 0.7, true);
+});
+
+test("GoalDecompositionService uses llm_plan strategy when injected generator succeeds", async () => {
+  const llmPlanGenerator: LlmPlanGenerator = {
+    async generate(goal) {
+      return {
+        tasks: [
+          {
+            taskId: `${goal.goalId}:llm:1`,
+            domainId: "general_ops",
+            description: "分析复杂目标并拆出执行步骤",
+            inputs: {},
+            expectedOutputs: ["analysis"],
+            delegationMode: "supervised",
+            estimatedDuration: "2h",
+            estimatedCost: {
+              estimatedCostUsd: 0.2,
+              confidence: "low",
+              sampleCount: 0,
+              divisionId: null,
+              basedOn: "default",
+            },
+          },
+          {
+            taskId: `${goal.goalId}:llm:2`,
+            domainId: "operations",
+            description: "组织跨域执行和交付",
+            inputs: {},
+            expectedOutputs: ["delivery"],
+            delegationMode: "supervised",
+            estimatedDuration: "4h",
+            estimatedCost: {
+              estimatedCostUsd: 0.4,
+              confidence: "low",
+              sampleCount: 0,
+              divisionId: null,
+              basedOn: "default",
+            },
+          },
+        ],
+        dependencyGraph: [
+          {
+            fromTask: `${goal.goalId}:llm:1`,
+            toTask: `${goal.goalId}:llm:2`,
+            type: "blocks",
+          },
+        ],
+      };
+    },
+  };
+
+  const service = new GoalDecompositionService({ llmPlanGenerator });
+  const result = await service.decompose("请为这个跨多个事业部、跨预算池、跨交付节奏的复杂组织转型项目生成详细计划和依赖图，并补齐审批约束、执行顺序、预算边界和风险缓解方案，以便直接进入执行编排。");
+
+  assert.equal(result.decompositionStrategy, "llm_plan");
+  assert.equal(result.tasks.length, 2);
+  assert.equal(result.dependencyGraph.length, 1);
+  assert.deepEqual(result.topologicallySortedTaskIds, result.tasks.map((task) => task.taskId));
+});
+
+test("GoalDecompositionService falls back to hybrid when llm_plan generator fails", async () => {
+  const llmPlanGenerator: LlmPlanGenerator = {
+    async generate() {
+      throw new Error("llm unavailable");
+    },
+  };
+
+  const service = new GoalDecompositionService({ llmPlanGenerator });
+  const result = await service.decompose("请为这个跨多个事业部、跨预算池、跨交付节奏的复杂组织转型项目生成详细计划和依赖图，并补齐审批约束、执行顺序、预算边界和风险缓解方案，以便直接进入执行编排。");
+
+  assert.equal(result.decompositionStrategy, "hybrid");
+  assert.equal(result.tasks.length, 3);
 });

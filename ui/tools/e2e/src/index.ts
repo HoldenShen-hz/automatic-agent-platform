@@ -7,3 +7,10 @@ export const e2eScenarioCatalog = [
   "nl-conversation",
   "settings-domain-wizard",
 ] as const;
+
+export function createScenarioChecklist() {
+  return e2eScenarioCatalog.map((scenario) => ({
+    scenario,
+    status: "ready" as const,
+  }));
+}

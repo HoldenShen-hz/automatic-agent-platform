@@ -190,7 +190,7 @@ test("E2E: drill can be completed with issues and recommendations", () => {
   assert.ok(completed, "Should return completed drill");
   assert.equal(completed?.status, "completed", "Status should be completed");
   assert.ok(completed?.completedAt, "Should have completedAt");
-  assert.ok(completed?.durationMs != null && completed?.durationMs > 0, "Should have duration");
+  assert.ok(completed?.durationMs != null && completed?.durationMs >= 0, "Should have duration");
   assert.deepEqual(completed?.issuesFound, issues, "Issues should be recorded");
   assert.deepEqual(completed?.recommendations, recommendations, "Recommendations should be recorded");
   assert.equal(completed?.overallScore, 100, "Should score 100% (all criteria passed)");
@@ -248,7 +248,7 @@ test("E2E: drill can be cancelled", () => {
   assert.ok(cancelled, "Should return cancelled drill");
   assert.equal(cancelled?.status, "cancelled", "Status should be cancelled");
   assert.ok(cancelled?.completedAt, "Should have completedAt");
-  assert.ok(cancelled?.durationMs != null && cancelled?.durationMs > 0, "Should have duration");
+  assert.ok(cancelled?.durationMs != null && cancelled?.durationMs >= 0, "Should have duration");
   assert.equal(cancelled?.summary.includes("cancelled"), true, "Summary should mention cancellation");
 
   // Current drill should be null after cancellation

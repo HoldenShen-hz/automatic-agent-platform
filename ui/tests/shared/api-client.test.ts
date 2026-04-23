@@ -1,7 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import {
+  BrowserWSClient,
   DefaultRESTClient,
+  HttpTransport,
   InMemoryWSClient,
   MockTransport,
   WSEventRouter,
@@ -87,5 +89,57 @@ describe("shared api-client", () => {
     router.disconnect();
 
     expect(invalidateCalls).toContain("approvals");
+  });
+
+  it("supports real http transport with injected fetch", async () => {
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      fetchImplementation: async (input) => new Response(
+        JSON.stringify({ ok: true, url: String(input) }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    });
+    const client = new DefaultRESTClient((request) => transport.send(request));
+
+    const response = await client.get<{ ok: boolean; url: string }>("/api/v1/health");
+    expect(response.ok).toBe(true);
+    expect(response.url).toContain("https://example.test/api/v1/health");
+  });
+
+  it("supports browser websocket client with a real socket contract", () => {
+    class FakeSocket {
+      public static readonly OPEN = 1;
+      public readonly sent: string[] = [];
+      public readyState = FakeSocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: (() => void) | null = null;
+      public onerror: (() => void) | null = null;
+
+      public constructor(_url: string) {
+        queueMicrotask(() => {
+          this.onopen?.();
+        });
+      }
+
+      public send(message: string): void {
+        this.sent.push(message);
+      }
+
+      public close(): void {
+        this.onclose?.();
+      }
+    }
+
+    const client = new BrowserWSClient(FakeSocket as unknown as typeof WebSocket, new InMemoryWSClient());
+    const events: string[] = [];
+    client.subscribe("dashboard", (event) => {
+      events.push(event.type);
+    });
+    client.connect("ws://example", "token");
+    client.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: {} });
+    client.disconnect();
+
+    expect(events).toEqual(["dashboard.metric_updated"]);
   });
 });

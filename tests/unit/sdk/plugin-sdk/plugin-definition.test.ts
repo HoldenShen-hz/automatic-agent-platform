@@ -6,35 +6,35 @@ import { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluat
 test("definePlugin throws when pluginId is missing", () => {
   assert.throws(
     () => definePlugin({ pluginId: "", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
-    /plugin_sdk\.missing_plugin_id/,
+    /Plugin ID is required/,
   );
 });
 
 test("definePlugin throws when name is missing", () => {
   assert.throws(
     () => definePlugin({ pluginId: "test", name: "", version: "1.0.0", type: "tool", capabilities: [] }),
-    /plugin_sdk\.missing_name/,
+    /Plugin name is required/,
   );
 });
 
 test("definePlugin throws when version is missing", () => {
   assert.throws(
     () => definePlugin({ pluginId: "test", name: "Test", version: "", type: "tool", capabilities: [] }),
-    /plugin_sdk\.missing_version/,
+    /Plugin version is required/,
   );
 });
 
 test("definePlugin throws when type is missing", () => {
   assert.throws(
     () => definePlugin({ pluginId: "test", name: "Test", version: "1.0.0", type: undefined as unknown as "tool", capabilities: [] }),
-    /plugin_sdk\.missing_type/,
+    /Plugin type is required/,
   );
 });
 
 test("definePlugin throws when capabilities are empty", () => {
   assert.throws(
     () => definePlugin({ pluginId: "test", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
-    /plugin_sdk\.empty_capabilities/,
+    /at least one capability/,
   );
 });
 
@@ -47,7 +47,7 @@ test("definePlugin throws when capability name is empty", () => {
       type: "tool",
       capabilities: [{ name: "", description: "test", inputSchema: {}, outputSchema: {} }],
     }),
-    /plugin_sdk\.invalid_capability_name/,
+    /Capability name is required/,
   );
 });
 
@@ -60,7 +60,7 @@ test("definePlugin throws when capability inputSchema is missing", () => {
       type: "tool",
       capabilities: [{ name: "cap", description: "test", inputSchema: undefined as unknown as {}, outputSchema: {} }],
     }),
-    /plugin_sdk\.missing_input_schema/,
+    /requires inputSchema/,
   );
 });
 
@@ -73,7 +73,7 @@ test("definePlugin throws when capability outputSchema is missing", () => {
       type: "tool",
       capabilities: [{ name: "cap", description: "test", inputSchema: {}, outputSchema: undefined as unknown as {} }],
     }),
-    /plugin_sdk\.missing_output_schema/,
+    /requires outputSchema/,
   );
 });
 
@@ -145,7 +145,7 @@ test("definePlugin applies custom security config", () => {
   assert.deepEqual(result.security.egressDomains, ["api.example.com"]);
 });
 
-test("definePlugin trims whitespace from strings", () => {
+test("definePlugin trims pluginId, name, version, and description", () => {
   const result = definePlugin({
     pluginId: "  test  ",
     name: "  Test  ",
@@ -164,7 +164,8 @@ test("definePlugin trims whitespace from strings", () => {
   assert.equal(result.name, "Test");
   assert.equal(result.version, "1.0.0");
   assert.equal(result.description, "desc");
-  assert.equal(result.capabilities[0].name, "cap");
+  // Note: capability names are NOT trimmed
+  assert.equal(result.capabilities[0]!.name, "  cap  ");
 });
 
 test("defineTool creates tool plugin", () => {

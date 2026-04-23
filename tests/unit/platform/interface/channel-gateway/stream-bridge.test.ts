@@ -6,10 +6,10 @@ import {
   type StreamBridgeOptions,
   type StreamReplayResult,
 } from "../../../../../src/platform/interface/channel-gateway/stream-bridge.js";
-import type { EventRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { EventRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 function createMockEventRecord(taskId: string, eventType: string, payloadJson: string, createdAt = "2024-01-01T00:00:00.000Z"): EventRecord {
-  return { eventId: "evt-1", eventType: eventType as any, taskId, payloadJson, createdAt } as EventRecord;
+  return { eventId: "evt-1", eventType: eventType as any, taskId, payloadJson, createdAt } as unknown as EventRecord;
 }
 
 describe("channel-gateway/stream-bridge", () => {

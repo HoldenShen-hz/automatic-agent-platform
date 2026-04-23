@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { TOOL_CACHE_POLICIES } from "../../../../../src/platform/shared/cache/policies/tool-cache-policy.js";
+import { TOOL_CACHE_POLICIES } from "../../../../../../src/platform/shared/cache/policies/tool-cache-policy.js";
 
 test("TOOL_CACHE_POLICIES contains tool.read policy", () => {
   const policy = TOOL_CACHE_POLICIES["tool.read"];

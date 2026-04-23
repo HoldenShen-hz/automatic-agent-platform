@@ -319,3 +319,70 @@
 
 - `Phase 1-4` 在仓内范围内均已形成代码基线、文档回写与定向测试闭环。
 - 不包含应用商店分发、真实签名发布、外部 MDM/企业商店接入等仓外事项。
+
+## 8. UI Review 逐条核对与整改主线（UIR0-UIR6）
+
+> 本主线以 [../reviews/ui-design-vs-implementation-review.md](../reviews/ui-design-vs-implementation-review.md) 为唯一整改入口。先逐条核对 review 的每项结论是否与仓内实现一致，再按顺序收口剩余真实缺口。
+
+### UIR0. Review 逐条审计与权威台账重建
+
+状态：`done`
+
+- 逐条核对 `ui-design-vs-implementation-review.md` 的表格项、feature 深度项、`P0-P3` 缺口项。
+- 将每项重新标记为：`已实现`、`部分实现`、`未实现`、`文档过期`。
+- 为每项结论补仓内证据路径。
+- 先回写明显过期项：feature 结构、shared core 深度、feature 深度矩阵、测试清单、feature inventory。
+
+### UIR1. P0 收口：状态响应式缺陷与重复路由
+
+状态：`done`
+
+- 将 `shared/state` 从 `getState()` 快照读取切换到真正触发 React 重渲染的绑定方式。
+- 保留 `zustand/vanilla` store 工厂，但补正式 React 绑定层。
+- 正式收口 `compliance` 与 `governance-compliance` 的重复 feature / route 语义。
+- 同步修正 feature registry、route map、review 文档和测试。
+
+### UIR2. 四层架构与 Feature 深度矩阵重评
+
+状态：`done`
+
+- 重评 `L1 Platform Shell / L2 Feature Modules / L3 Shared Core / L4 Platform Adapters`。
+- 重评 28 个 feature 的 `L0-L3` 深度等级。
+- 重写 REST / WebSocket / PlatformAdapter / testing 覆盖结论。
+- 让 review 的结构、规模、深度、测试结论全部与当前 `ui/` 真相一致。
+
+### UIR3. P1 代码缺口：真实 transport、主题、图表与关键 feature 深化
+
+状态：`done`
+
+- 在现有 `RESTClient / WSClient` 接口下补真实 transport 实现，保留 mock seam。
+- 补齐 light theme 与排版、动画、断点、阴影、图标尺寸等设计令牌。
+- 引入 ECharts / React Flow，并接到 `dashboard/analytics` 与 `workflow-builder`。
+- 优先深化 `dashboard / task-cockpit / workflow-cockpit / approval / stability / conversation / settings / workflow-builder / analytics / explainability`。
+
+### UIR4. P2 平台层：桌面、Tauri、移动端与真实适配层
+
+状态：`done`
+
+- 将 `apps/electron-win` 升级为真实 Electron 工程基线。
+- 将 `apps/tauri-macos`、`apps/tauri-linux` 升级为真实 Tauri 2 工程基线。
+- 将 `apps/mobile` 升级为真实 React Native 工程基线，并明确 Android/iOS 差异入口。
+- 将 `PlatformAdapter` 拆成 web / electron / tauri / mobile / mock 的正式实现层。
+
+### UIR5. P3 测试、工具链与占位包补完
+
+状态：`done`
+
+- 增补 shared/core/features/apps 的 component、integration、smoke 测试。
+- 将 `tools/mock-server`、`tools/codegen`、`tools/e2e` 从空壳补到最小可运行。
+- 将 `shared-i18n`、`shared-telemetry`、`shared-nl-client` 从占位补到正式最小实现。
+- 将 Storybook 从占位目录补到实际工程入口。
+
+### UIR6. 最终文档回写与收口
+
+状态：`done`
+
+- 全量回写 `ui-design-vs-implementation-review.md`。
+- 同步回写 `05-cross-platform-ui-architecture.md`、`current_todo_list.md` 及英文镜像。
+- 输出 `review 条目 → 当前状态 → 证据路径 → 是否已整改` 的最终闭环表。
+- 当前仓内 UI 子工程已经完成 `typecheck / test / build` 闭环；桌面与移动端按 smoke-ready 工程基线验收。

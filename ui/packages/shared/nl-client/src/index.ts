@@ -26,7 +26,7 @@ export class ConversationClient {
   }
 
   public send(content: string): ConversationMessage {
-    this.status = "executing";
+    this.status = "parsing";
     const message: ConversationMessage = {
       id: `msg-${this.messages.length + 1}`,
       role: "user",
@@ -52,6 +52,39 @@ export class ConversationClient {
     const message: ConversationMessage = {
       id: `msg-${this.messages.length + 1}`,
       role: "assistant",
+      content,
+    };
+    this.messages.push(message);
+    return message;
+  }
+
+  public buildPlan(content: string): ConversationMessage {
+    this.status = "building";
+    const message: ConversationMessage = {
+      id: `msg-${this.messages.length + 1}`,
+      role: "system",
+      content,
+    };
+    this.messages.push(message);
+    return message;
+  }
+
+  public confirm(content: string): ConversationMessage {
+    this.status = "confirming";
+    const message: ConversationMessage = {
+      id: `msg-${this.messages.length + 1}`,
+      role: "assistant",
+      content,
+    };
+    this.messages.push(message);
+    return message;
+  }
+
+  public execute(content: string): ConversationMessage {
+    this.status = "executing";
+    const message: ConversationMessage = {
+      id: `msg-${this.messages.length + 1}`,
+      role: "system",
       content,
     };
     this.messages.push(message);

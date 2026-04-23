@@ -1,4 +1,4 @@
-import { FeatureScaffold, MetricGrid, MiniTrendBars } from "@aa/ui-core";
+import { EChartSurface, FeatureScaffold, MetricGrid, MiniTrendBars } from "@aa/ui-core";
 import type { ReactElement } from "react";
 import { useAnalyticsVm } from "../hooks";
 
@@ -9,6 +9,9 @@ export function AnalyticsWebView(): ReactElement {
       <MetricGrid metrics={vm.metrics} />
       <div style={{ marginTop: 16 }}>
         <MiniTrendBars values={vm.trendSummary} />
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <EChartSurface title="Analytics Trend" values={vm.trendSummary} />
       </div>
     </FeatureScaffold>
   );

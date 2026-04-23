@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { designTokens } from "../design-tokens";
+export { EChartSurface } from "./echart-surface";
 
 export function MetricGrid({ metrics }: { metrics: readonly { label: string; value: string | number }[] }): ReactElement {
   return (

@@ -23,9 +23,18 @@ export interface ArchitectureRoadmapTemplateItem {
   readonly phase: RoadmapPhase;
   readonly title: string;
   readonly description: string;
+  readonly status?: RoadmapStatus;
+  readonly completionNotes?: string;
 }
 
 export const ARCHITECTURE_ROADMAP_TEMPLATE: readonly ArchitectureRoadmapTemplateItem[] = [
+  { phase: "phase1", title: "Core execution foundation", description: "Build the control, execution, and state-evidence kernel for the platform.", status: "completed", completionNotes: "Core platform kernel, five-plane bootstrap, and runtime baseline are already present in-repo." },
+  { phase: "phase2", title: "AI operations and prompt governance", description: "Introduce model gateway, prompt engine, compliance, and Harness integration.", status: "completed", completionNotes: "Model gateway, prompt engine, compliance baseline, and Harness bootstrap are already wired." },
+  { phase: "phase3", title: "Interaction and governance experience", description: "Deliver natural-language entry, dashboard, portal, and delegated governance workflows.", status: "completed", completionNotes: "Interaction layer, user portal baseline, and governance capabilities are already implemented." },
+  { phase: "phase4", title: "Scale ecosystem", description: "Enable marketplace, connectors, and multi-tenant ecosystem primitives.", status: "completed", completionNotes: "Marketplace and scale ecosystem baselines are seeded in the current repository." },
+  { phase: "phase5", title: "Operations maturity", description: "Ship explainability, forensic controls, observability, and platform self-ops.", status: "completed", completionNotes: "Ops maturity baseline catalog and supporting services are already present." },
+  { phase: "phase6", title: "Delivery hardening", description: "Add rollout governance, release readiness, and enterprise safeguards.", status: "completed", completionNotes: "Release, readiness, and governance services are already represented across control-plane and docs." },
+  { phase: "phase7", title: "Cross-platform productization", description: "Consolidate platform surfaces into productized app and SDK entrypoints.", status: "completed", completionNotes: "Platform application kernel, SDK surfaces, and UI workspace exist in the repository." },
   { phase: "phase8a", title: "Harness core loop", description: "Close VI-1/2/3 and ship the unified Harness protocol." },
   { phase: "phase8b", title: "Harness durable recovery", description: "Close VI-4/5/6 with durability, context assembly, and recovery." },
   { phase: "phase8c", title: "Harness governance and evaluation", description: "Close VI-7~VI-15 with guardrails, HITL, async, eval, and invariants." },
@@ -165,7 +174,23 @@ export class RoadmapService {
       if (exists) {
         continue;
       }
-      seeded.push(this.addRoadmapItem(template));
+      const item = this.addRoadmapItem(template);
+      if (template.status === "completed") {
+        seeded.push(this.completeRoadmapItem(item.itemId, {
+          completedAt: nowIso(),
+          ...(template.completionNotes ? { notes: template.completionNotes } : {}),
+        }));
+        continue;
+      }
+      if (template.status === "in_progress") {
+        seeded.push(this.updateRoadmapItemStatus(item.itemId, "in_progress"));
+        continue;
+      }
+      if (template.status === "deferred") {
+        seeded.push(this.deferRoadmapItem(item.itemId, template.completionNotes ?? "Deferred in architecture template"));
+        continue;
+      }
+      seeded.push(item);
     }
     return seeded;
   }

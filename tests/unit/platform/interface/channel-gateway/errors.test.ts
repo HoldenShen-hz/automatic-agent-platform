@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { GatewayRateLimitError, GatewayDeliveryError, normalizeGatewayDeliveryFailure } from "../../../../../src/platform/interface/channel-gateway/helpers.js";
-import { PolicyDeniedError } from "../../../../../../src/platform/contracts/errors.js";
+import { GatewayRateLimitError, GatewayDeliveryError, normalizeGatewayDeliveryFailure } from "../../../../../src/platform/interface/channel-gateway/errors.js";
+import { PolicyDeniedError } from "../../../../../src/platform/contracts/errors.js";
 
 describe("channel-gateway/errors", () => {
   describe("GatewayRateLimitError", () => {
@@ -46,7 +46,8 @@ describe("channel-gateway/errors", () => {
 
     it("should default to 502 status code", () => {
       const err = new GatewayDeliveryError("Unknown error", null, true);
-      assert.equal(err.responseStatus, 502);
+      assert.equal(err.responseStatus, null);
+      assert.equal(err.statusCode, 502);
     });
   });
 
