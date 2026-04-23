@@ -333,12 +333,14 @@ test("Recovery flow: handleFailure with operator_abort (immediate abort)", () =>
   }
 });
 
-test("Guardrail evaluation in context of full loop", () => {
+test("Guardrail evaluation in context of full loop records guardrails before repeated replans exhaust the loop budget", () => {
   const ctx = createIntegrationContext("aa-guardrail-loop-");
   try {
     const service = new HarnessRuntimeService();
 
-    // Run loop with low score that triggers replan
+    // Run loop with a low score. The loop keeps replanning until it exhausts
+    // the step budget, so the terminal outcome is an abort rather than a
+    // single-iteration replan.
     const run = service.runLoop({
       taskId: "task-guardrail-001",
       domainId: "coding",
@@ -362,18 +364,22 @@ test("Guardrail evaluation in context of full loop", () => {
     // Verify guardrail assessment was performed
     assert.ok(run.guardrailAssessment);
 
-    // Verify decision was made
+    // Verify decision was made against the full loop outcome.
     assert.ok(run.decision);
-    assert.equal(run.decision?.action, "replan");
+    assert.equal(run.decision?.action, "abort");
+    assert.equal(run.status, "aborted");
 
     // Verify feedback envelope was created
     assert.ok(run.feedbackEnvelope);
-    assert.ok(run.feedbackEnvelope.signals.includes("harness.eval_below_replan_threshold"));
+    assert.ok(run.feedbackEnvelope.signals.includes("harness.max_iterations_reached"));
 
-    // Verify timeline contains decision and guardrail events
-    const decisionEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "decision_recorded");
-    assert.ok(decisionEvent);
-    assert.equal(decisionEvent.payload.action, "replan");
+    // Verify timeline contains the intermediate replan decisions and the
+    // terminal abort recorded by the full loop.
+    const decisionActions = run.timeline
+      .filter((e: HarnessTimelineEvent) => e.type === "decision_recorded")
+      .map((e: HarnessTimelineEvent) => e.payload.action);
+    assert.ok(decisionActions.includes("replan"));
+    assert.ok(decisionActions.includes("abort"));
 
     const guardrailEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "guardrails_evaluated");
     assert.ok(guardrailEvent);

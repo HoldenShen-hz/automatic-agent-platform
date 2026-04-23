@@ -13,11 +13,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
 import {
   HarnessRuntimeService,
   type ConstraintPack,
-} from "../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../../src/platform/orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {

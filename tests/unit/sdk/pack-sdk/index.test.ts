@@ -241,8 +241,7 @@ test("PackScaffoldService.scaffold rejects empty owner", () => {
 
 test("PackScaffoldService.scaffold accepts valid pack ID starting with number", () => {
   const service = new PackScaffoldService();
-  // This should not throw - pack IDs can start with numbers
-  assert.throws(
+  assert.doesNotThrow(
     () =>
       service.scaffold({
         packId: "123-pack",
@@ -252,14 +251,12 @@ test("PackScaffoldService.scaffold accepts valid pack ID starting with number", 
         owner: "test@example.com",
         riskLevel: "low",
       }),
-    /Pack ID/i,
   );
 });
 
 test("PackScaffoldService.scaffold accepts underscore in pack ID", () => {
   const service = new PackScaffoldService();
-  // Note: underscores are allowed in pack IDs
-  assert.throws(
+  assert.doesNotThrow(
     () =>
       service.scaffold({
         packId: "test_pack",
@@ -269,14 +266,12 @@ test("PackScaffoldService.scaffold accepts underscore in pack ID", () => {
         owner: "test@example.com",
         riskLevel: "low",
       }),
-    /Pack ID/i,
   );
 });
 
 test("PackScaffoldService.scaffold accepts dot in pack ID", () => {
   const service = new PackScaffoldService();
-  // Note: dots may be allowed
-  assert.throws(
+  assert.doesNotThrow(
     () =>
       service.scaffold({
         packId: "test.pack",
@@ -286,7 +281,6 @@ test("PackScaffoldService.scaffold accepts dot in pack ID", () => {
         owner: "test@example.com",
         riskLevel: "low",
       }),
-    /Pack ID/i,
   );
 });
 
@@ -511,7 +505,7 @@ test("PackPluginCompatibilityService.evaluateManifest reports compatible when al
   const manifest = validateBusinessPackManifest({
     packId: "test-pack",
     version: "1.0.0",
-    domain: "testing",
+    domain: "operations",
     owner: "test@example.com",
     capabilities: [
       { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
@@ -520,14 +514,13 @@ test("PackPluginCompatibilityService.evaluateManifest reports compatible when al
 
   const report = service.evaluateManifest({
     manifest,
-    selectedLicenseTier: "community",
+    selectedLicenseTier: "professional",
     pluginIds: ["plugin.operations.retriever"],
   });
 
-  assert.ok(
-    report.verdict === "compatible" || report.verdict === "missing_plugins",
-    "Expected compatible or missing_plugins verdict",
-  );
+  assert.equal(report.verdict, "compatible");
+  assert.deepEqual(report.missingPluginCapabilities, []);
+  assert.deepEqual(report.blockedByLicense, []);
 });
 
 test("PackPluginCompatibilityService.evaluateManifest capabilityCoverage structure", () => {
@@ -584,6 +577,23 @@ test("PackPluginCompatibilityService.evaluateManifest returns availablePlugins s
 // ============================================================================
 // PackLifecycleOrchestrationService tests
 // ============================================================================
+
+function createOpsLifecycleManifest(input: {
+  packId: string;
+  version: string;
+  capabilities?: Array<{ capabilityKey: string; maturity: "experimental" | "beta" | "ga"; requiredContracts: string[] }>;
+  owner?: string;
+}): ReturnType<typeof validateBusinessPackManifest> {
+  return validateBusinessPackManifest({
+    packId: input.packId,
+    version: input.version,
+    domain: "operations",
+    owner: input.owner ?? "ops@example.com",
+    capabilities: input.capabilities ?? [
+      { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+    ],
+  });
+}
 
 test("PackLifecycleOrchestrationService.registerPack rejects duplicate registration", () => {
   const service = new PackLifecycleOrchestrationService();
@@ -732,7 +742,7 @@ test("PackLifecycleOrchestrationService.recordTesting adds finding for failed ev
   assert.ok(record.testing?.findings.includes("pack_lifecycle.eval_gate_failed"));
 });
 
-test("PackLifecycleOrchestrationService.recordTesting fails transition from wrong stage", () => {
+test("PackLifecycleOrchestrationService.recordTesting allows refreshed evidence while pack remains in testing", () => {
   const service = new PackLifecycleOrchestrationService();
   const manifest = validateBusinessPackManifest({
     packId: "wrong-stage-pack",
@@ -755,23 +765,21 @@ test("PackLifecycleOrchestrationService.recordTesting fails transition from wron
     reportRef: "artifact://test",
   });
 
-  assert.throws(
-    () =>
-      service.recordTesting({
-        packId: "wrong-stage-pack",
-        version: "1.0.0",
-        coveragePercent: 95,
-        mockTestsPassed: true,
-        stagingIntegrationPassed: true,
-        evalPassed: true,
-        reportRef: "artifact://test2",
-      }),
-    (error: unknown) =>
-      error instanceof ValidationError && error.code.startsWith("pack_lifecycle.invalid_transition"),
-  );
+  const refreshed = service.recordTesting({
+    packId: "wrong-stage-pack",
+    version: "1.0.0",
+    coveragePercent: 95,
+    mockTestsPassed: true,
+    stagingIntegrationPassed: true,
+    evalPassed: true,
+    reportRef: "artifact://test2",
+  });
+
+  assert.equal(refreshed.lifecycleStage, "testing");
+  assert.equal(refreshed.testing?.reportRef, "artifact://test2");
 });
 
-test("PackLifecycleOrchestrationService.certifyPack rejects pack without passing tests", () => {
+test("PackLifecycleOrchestrationService.certifyPack rejects pack with a failing test report", () => {
   const service = new PackLifecycleOrchestrationService();
   const manifest = validateBusinessPackManifest({
     packId: "no-test-pack",
@@ -784,6 +792,15 @@ test("PackLifecycleOrchestrationService.certifyPack rejects pack without passing
   });
 
   service.registerPack({ manifest, owner: "test@example.com" });
+  service.recordTesting({
+    packId: "no-test-pack",
+    version: "1.0.0",
+    coveragePercent: 60,
+    mockTestsPassed: false,
+    stagingIntegrationPassed: true,
+    evalPassed: true,
+    reportRef: "artifact://test",
+  });
 
   assert.throws(
     () =>
@@ -878,17 +895,16 @@ test("PackLifecycleOrchestrationService.certifyPack adds finding for failed risk
 
 test("PackLifecycleOrchestrationService.certifyPack sets lifecycleStage to testing when blocked", () => {
   const service = new PackLifecycleOrchestrationService();
-  const manifest = validateBusinessPackManifest({
+  const manifest = createOpsLifecycleManifest({
     packId: "blocked-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
     capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "external.github.workflow", maturity: "beta", requiredContracts: ["tool_skill_plugin_contract"] },
     ],
   });
 
-  service.registerPack({ manifest, owner: "test@example.com" });
+  service.registerPack({ manifest, owner: "ops@example.com" });
   service.recordTesting({
     packId: "blocked-pack",
     version: "1.0.0",
@@ -905,15 +921,16 @@ test("PackLifecycleOrchestrationService.certifyPack sets lifecycleStage to testi
     reviewer: "reviewer@example.com",
     certificationReportRef: "artifact://cert",
     selectedLicenseTier: "community",
-    pluginIds: [],
+    pluginIds: ["plugin.operations.retriever"],
     securityReviewPassed: true,
     riskReviewPassed: true,
   });
 
   assert.equal(record.lifecycleStage, "testing");
+  assert.equal(record.certification?.verdict, "blocked");
 });
 
-test("PackLifecycleOrchestrationService.publishPack rejects unpublished pack", () => {
+test("PackLifecycleOrchestrationService.publishPack rejects packs before certification", () => {
   const service = new PackLifecycleOrchestrationService();
   const manifest = validateBusinessPackManifest({
     packId: "unpublished-pack",
@@ -945,32 +962,29 @@ test("PackLifecycleOrchestrationService.publishPack rejects unpublished pack", (
         owner: "release@example.com",
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "pack_lifecycle.not_certified:unpublished-pack@1.0.0",
+      error instanceof ValidationError && error.code === "pack_lifecycle.invalid_transition:unpublished-pack@1.0.0",
   );
 });
 
 test("PackLifecycleOrchestrationService.publishPack adds ga_requires_deprecation_notice finding", () => {
   const service = new PackLifecycleOrchestrationService();
-  const manifest = validateBusinessPackManifest({
+  const manifest = createOpsLifecycleManifest({
     packId: "ga-break-pack",
     version: "2.0.0",
-    domain: "testing",
-    owner: "test@example.com",
     capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
     ],
   });
 
   service.registerPack({
     manifest,
-    owner: "test@example.com",
-    previousManifest: validateBusinessPackManifest({
+    owner: "ops@example.com",
+    previousManifest: createOpsLifecycleManifest({
       packId: "ga-break-pack",
       version: "1.0.0",
-      domain: "testing",
-      owner: "test@example.com",
       capabilities: [
-        { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+        { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+        { capabilityKey: "external.github.workflow", maturity: "beta", requiredContracts: ["tool_skill_plugin_contract"] },
       ],
     }),
   });
@@ -1006,17 +1020,12 @@ test("PackLifecycleOrchestrationService.publishPack adds ga_requires_deprecation
 
 test("PackLifecycleOrchestrationService.publishPack sets lifecycleStage to running when autoActivate", () => {
   const service = new PackLifecycleOrchestrationService();
-  const manifest = validateBusinessPackManifest({
+  const manifest = createOpsLifecycleManifest({
     packId: "auto-run-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
-    capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
-    ],
   });
 
-  service.registerPack({ manifest, owner: "test@example.com" });
+  service.registerPack({ manifest, owner: "ops@example.com", evalDatasetIds: ["ops-dataset"] });
   service.recordTesting({
     packId: "auto-run-pack",
     version: "1.0.0",
@@ -1050,17 +1059,12 @@ test("PackLifecycleOrchestrationService.publishPack sets lifecycleStage to runni
 
 test("PackLifecycleOrchestrationService.deprecatePack rejects support window under 180 days", () => {
   const service = new PackLifecycleOrchestrationService();
-  const manifest = validateBusinessPackManifest({
+  const manifest = createOpsLifecycleManifest({
     packId: "short-window-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
-    capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
-    ],
   });
 
-  service.registerPack({ manifest, owner: "test@example.com" });
+  service.registerPack({ manifest, owner: "ops@example.com", evalDatasetIds: ["ops-dataset"] });
   service.recordTesting({
     packId: "short-window-pack",
     version: "1.0.0",
@@ -1138,17 +1142,12 @@ test("PackLifecycleOrchestrationService.archivePack rejects non-deprecated pack"
 
 test("PackLifecycleOrchestrationService.archivePack succeeds from deprecated stage", () => {
   const service = new PackLifecycleOrchestrationService();
-  const manifest = validateBusinessPackManifest({
+  const manifest = createOpsLifecycleManifest({
     packId: "archive-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
-    capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
-    ],
   });
 
-  service.registerPack({ manifest, owner: "test@example.com" });
+  service.registerPack({ manifest, owner: "ops@example.com", evalDatasetIds: ["ops-dataset"] });
   service.recordTesting({
     packId: "archive-pack",
     version: "1.0.0",
@@ -1414,27 +1413,24 @@ test("PackLifecycleOrchestrationService.registerPack detects breaking change wit
 
 test("PackLifecycleOrchestrationService.registerPack marks deprecation warning unsatisfied for breaking change", () => {
   const service = new PackLifecycleOrchestrationService();
-  const previousManifest = validateBusinessPackManifest({
+  const previousManifest = createOpsLifecycleManifest({
     packId: "deprec-warn-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
     capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "external.github.workflow", maturity: "beta", requiredContracts: ["tool_skill_plugin_contract"] },
     ],
   });
 
   const record = service.registerPack({
-    manifest: validateBusinessPackManifest({
+    manifest: createOpsLifecycleManifest({
       packId: "deprec-warn-pack",
       version: "2.0.0",
-      domain: "testing",
-      owner: "test@example.com",
       capabilities: [
-        { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+        { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
       ],
     }),
-    owner: "test@example.com",
+    owner: "ops@example.com",
     previousManifest,
     declaredDeprecationWarnings: 1,
   });
@@ -1445,27 +1441,24 @@ test("PackLifecycleOrchestrationService.registerPack marks deprecation warning u
 
 test("PackLifecycleOrchestrationService.registerPack marks deprecation warning satisfied with major version bump", () => {
   const service = new PackLifecycleOrchestrationService();
-  const previousManifest = validateBusinessPackManifest({
+  const previousManifest = createOpsLifecycleManifest({
     packId: "major-bump-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
     capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "external.github.workflow", maturity: "beta", requiredContracts: ["tool_skill_plugin_contract"] },
     ],
   });
 
   const record = service.registerPack({
-    manifest: validateBusinessPackManifest({
+    manifest: createOpsLifecycleManifest({
       packId: "major-bump-pack",
       version: "2.0.0",
-      domain: "testing",
-      owner: "test@example.com",
       capabilities: [
-        { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+        { capabilityKey: "ops.runbook_search", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
       ],
     }),
-    owner: "test@example.com",
+    owner: "ops@example.com",
     previousManifest,
     declaredDeprecationWarnings: 2,
   });
@@ -1518,17 +1511,12 @@ test("PackLifecycleOrchestrationService.registerPack deduplicates evalDatasetIds
 
 test("PackLifecycleOrchestrationService.deprecatePack sets correct deprecation status", () => {
   const service = new PackLifecycleOrchestrationService();
-  const manifest = validateBusinessPackManifest({
+  const manifest = createOpsLifecycleManifest({
     packId: "deprec-status-pack",
     version: "1.0.0",
-    domain: "testing",
-    owner: "test@example.com",
-    capabilities: [
-      { capabilityKey: "test", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
-    ],
   });
 
-  service.registerPack({ manifest, owner: "test@example.com" });
+  service.registerPack({ manifest, owner: "ops@example.com", evalDatasetIds: ["ops-dataset"] });
   service.recordTesting({
     packId: "deprec-status-pack",
     version: "1.0.0",

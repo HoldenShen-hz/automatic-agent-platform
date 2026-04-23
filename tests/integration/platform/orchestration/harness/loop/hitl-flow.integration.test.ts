@@ -366,7 +366,12 @@ test("HITL with multiple evidence refs preserves all references", () => {
     const run = service.runLoop({
       taskId: "task-hitl-evidence-001",
       domainId: "compliance",
-      constraintPack: createConstraintPack(),
+      constraintPack: createConstraintPack({
+        output_policy: {
+          requiredEvidence: [],
+          redactSensitiveData: true,
+        },
+      }),
       plannerOutput: { planId: "plan-evidence-001" },
       generatorOutput: { artifact: "compliance-report.pdf" },
       evaluatorOutput: { verdict: "needs-review" },

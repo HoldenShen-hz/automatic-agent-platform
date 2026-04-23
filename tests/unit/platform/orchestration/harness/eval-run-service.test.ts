@@ -129,6 +129,7 @@ test("EvalRunService.evaluate uses decision.confidence as evaluatorScore", () =>
   const report = service.evaluate(run);
 
   assert.strictEqual(report.grade.score, 0.92);
+  assert.strictEqual(report.grade.passed, true);
 });
 
 test("EvalRunService.evaluate defaults confidence to 0 when decision is null", () => {
@@ -159,15 +160,18 @@ test("EvalRunService.evaluate uses constraintPack.requiredEvidence for expectedE
 test("EvalRunService.evaluate uses feedbackEnvelope.signals as actualEvidenceRefs", () => {
   const service = new EvalRunService();
   const run = createMinimalRun({
+    decision: { decisionId: "d1", confidence: 0.91, action: "accept", reasonCodes: [], createdAt: nowIso() },
     constraintPack: { output_policy: { requiredEvidence: ["evidence_1"] } },
     feedbackEnvelope: { feedbackId: newId("fb"), signals: ["evidence_1", "evidence_2"], learnedActions: [], createdAt: nowIso() },
   });
 
   const report = service.evaluate(run);
 
-  // evidence_1 is present, so no missing evidence for evidence_1
+  // evidence_1 is satisfied by the feedback signals, and extra actual evidence
+  // should not create missing-evidence findings.
+  assert.ok(!report.grade.findingCodes.some((code) => code.includes("missing_evidence:evidence_1")));
+  assert.ok(!report.grade.findingCodes.some((code) => code.includes("missing_evidence:evidence_2")));
   assert.strictEqual(report.grade.findingCodes.length, 0);
-  assert.ok(report.grade.findingCodes.some((code) => code.includes("evidence_2") && code.includes("missing")));
 });
 
 test("EvalRunService.evaluate handles null feedbackEnvelope", () => {

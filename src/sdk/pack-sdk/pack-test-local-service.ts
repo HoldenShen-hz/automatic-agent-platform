@@ -105,13 +105,18 @@ export class PackTestLocalService {
 
     switch (mode) {
       case "unit":
-        ({ casesPassed, casesFailed, coveragePercent } = await this.runUnitTests(packId, timeoutMs ?? 30000));
+        ({ casesPassed, casesFailed, coveragePercent } = await this.runUnitTests(packId, resolveTimeout(timeoutMs, 30000)));
         break;
       case "integration":
-        ({ casesPassed, casesFailed, coveragePercent } = await this.runIntegrationTests(packId, mockLlm, timeoutMs ?? 60000));
+        ({ casesPassed, casesFailed, coveragePercent } = await this.runIntegrationTests(packId, mockLlm, resolveTimeout(timeoutMs, 60000)));
         break;
       case "simulation":
-        ({ casesPassed, casesFailed, coveragePercent } = await this.runSimulationTests(packId, evalDatasetId, recordArtifacts, timeoutMs ?? 120000));
+        ({ casesPassed, casesFailed, coveragePercent } = await this.runSimulationTests(
+          packId,
+          evalDatasetId,
+          recordArtifacts,
+          resolveTimeout(timeoutMs, 120000),
+        ));
         break;
     }
 
@@ -325,9 +330,13 @@ function validateTestOptions(options: TestOptions): void {
   if (!["unit", "integration", "simulation"].includes(options.mode)) {
     throw new ValidationError("test_local.invalid_mode", `Mode must be one of: unit, integration, simulation. Got: ${options.mode}`);
   }
-  if (options.timeoutMs !== undefined && options.timeoutMs <= 0) {
+  if (options.timeoutMs !== undefined && options.timeoutMs < 0) {
     throw new ValidationError("test_local.invalid_timeout", "Timeout must be positive.");
   }
+}
+
+function resolveTimeout(value: number | undefined, fallback: number): number {
+  return value == null || value === 0 ? fallback : value;
 }
 
 function delay(ms: number): Promise<void> {
