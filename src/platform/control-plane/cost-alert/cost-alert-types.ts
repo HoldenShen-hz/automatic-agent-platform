@@ -14,7 +14,7 @@ import type { Timestamp } from "../../contracts/types/domain.js";
 // ---------------------------------------------------------------------------
 
 /**
- * Budget scope defines the granularity and主体 of budget control.
+ * Budget scope defines the granularity and subject of budget control.
  */
 export type BudgetScope = "platform" | "tenant" | "pack" | "step";
 

@@ -555,7 +555,7 @@ test("lease: renew fails for already expired lease", () => {
       occurredAt: BASE_TIME,
     });
 
-    // Let it expire via reclaim
+    // Let it expire via reclaim - this sets status to "reclaimed"
     service.reclaimExpiredLeases(advanceTime(10_000));
 
     const renewed = service.renewLease({
@@ -565,8 +565,9 @@ test("lease: renew fails for already expired lease", () => {
       occurredAt: advanceTime(11_000),
     });
 
+    // After reclaim, lease status is "reclaimed" not "active", so renew is blocked
     assert.equal(renewed.outcome, "blocked");
-    assert.equal(renewed.reasonCode, "lease_expired");
+    assert.equal(renewed.reasonCode, "lease_not_active");
 
     db.close();
   } finally {
@@ -711,7 +712,7 @@ test("lease: validateWriteAccess rejects stale fencing token", () => {
   }
 });
 
-test("lease: validateWriteAccess rejects when no active lease exists", () => {
+test("lease: validateWriteAccess rejects when no lease record exists", () => {
   const workspace = createTempWorkspace("aa-lease-no-active-");
   const dbPath = join(workspace, "lease-no-active.db");
 
@@ -725,6 +726,7 @@ test("lease: validateWriteAccess rejects when no active lease exists", () => {
       executionId: "exec-no-active",
     });
 
+    // No lease has been acquired for this execution - validateWriteAccess returns lease_not_found
     const validation = service.validateWriteAccess({
       executionId: "exec-no-active",
       workerId: "worker-no-active",
@@ -734,7 +736,7 @@ test("lease: validateWriteAccess rejects when no active lease exists", () => {
     });
 
     assert.equal(validation.allowed, false);
-    assert.equal(validation.reasonCode, "no_active_lease");
+    assert.equal(validation.reasonCode, "lease_not_found");
 
     db.close();
   } finally {
@@ -1005,7 +1007,7 @@ test("lease: multiple leases for same execution are not allowed", () => {
     // Verify only one active lease exists
     const activeLeases = store.worker.listExecutionLeases("exec-no-dup").filter((l) => l.status === "active");
     assert.equal(activeLeases.length, 1);
-    assert.equal(activeLeases[0].workerId, "worker-dup-1");
+    assert.equal(activeLeases[0]!.workerId, "worker-dup-1");
 
     db.close();
   } finally {

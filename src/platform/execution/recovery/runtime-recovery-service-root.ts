@@ -21,10 +21,10 @@
  * - **Checkpoint**: State snapshot at recoverable boundary
  *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: checkpoint}
  *
- * - **Partial Result**:阶段性结果可保留可审计
+ * - **Partial Result**: Stage results that can be preserved for audit
  *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: partial result}
  *
- * - **Compensation**: 回滚对账或人工修复
+ * - **Compensation**: Rollback reconciliation or manual repair
  *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: compensation}
  *
  * ## Recovery Suggested Actions

@@ -7,7 +7,7 @@
  * - Static analysis for vulnerability patterns
  * - Dependency conflict detection with version resolution
  *
- * §55 Marketplace - 安全审查自动化 + 依赖冲突检测
+ * §55 Marketplace - Automated Security Review + Dependency Conflict Detection
  */
 
 import { createHash } from "node:crypto";

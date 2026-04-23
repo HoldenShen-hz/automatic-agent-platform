@@ -347,12 +347,12 @@ export class AcceptanceReadinessService {
           : "blocked";
 
     const summary = evidencePresent
-      ? "24h / 72h stable evidence 已完成并可用于阶段签收。"
+      ? "24h / 72h stable evidence completed and available for stage sign-off."
       : sequenceBlocked
-        ? "稳定性证据采集已被失败 verdict 阻断，需要先修复故障再继续。"
+        ? "Stable evidence collection blocked by failed verdict, need to fix the issue first to continue."
         : hasActivity
-          ? "72h 长时证据仍在进行中，当前仍是第一优先级。"
-          : "尚未检测到可用的 24h / 72h stable evidence 状态文件。";
+          ? "72h long-duration evidence still in progress, currently still the first priority."
+          : "No available 24h / 72h stable evidence state file detected yet.";
 
     const recommendedCommands = evidencePresent
       ? [
@@ -365,7 +365,7 @@ export class AcceptanceReadinessService {
 
     return {
       itemId: "P1A-EVID-72",
-      title: "Stable Core 72h 长时稳定性证据",
+      title: "Stable Core 72h Long-Duration Stability Evidence",
       status,
       systemPrepared: profile24h.passed === true,
       evidencePresent,
@@ -400,14 +400,14 @@ export class AcceptanceReadinessService {
         ? ["live_postgres_validation_not_observed_in_current_runtime"]
         : [...runtimeProfile.issues];
     const summary = evidencePresent
-      ? "当前运行已在 PostgreSQL authoritative store 模式下打开，真实联调前置条件已满足。"
+      ? "Current runtime opened in PostgreSQL authoritative store mode, real integration prerequisites satisfied."
       : systemPrepared
-        ? "PostgreSQL 配置已达可联调状态，但当前没有观测到真实 PG 运行路径。"
-        : "PostgreSQL authoritative store 仍未达到可联调配置状态。";
+        ? "PostgreSQL configuration reached integration-ready state, but no live PG runtime path observed."
+        : "PostgreSQL authoritative store not yet at integration-ready configuration state.";
 
     return {
       itemId: "IND-P0-01",
-      title: "PostgreSQL 真实环境联调",
+      title: "PostgreSQL Real Environment Integration",
       status,
       systemPrepared,
       evidencePresent,
@@ -415,10 +415,10 @@ export class AcceptanceReadinessService {
       blockers,
       recommendedCommands: systemPrepared
         ? [
-            "在真实 PostgreSQL 实例可用后，以 postgres storage profile 运行 doctor / authoritative-storage / targeted acceptance。",
+            "After real PostgreSQL instance is available, run doctor / authoritative-storage / targeted acceptance with postgres storage profile.",
           ]
         : [
-            "补齐 AA_STORAGE_DRIVER=postgres、AA_STORAGE_POSTGRES_DSN、AA_STORAGE_POSTGRES_DUAL_RUN=true、AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH。",
+            "Complete AA_STORAGE_DRIVER=postgres, AA_STORAGE_POSTGRES_DSN, AA_STORAGE_POSTGRES_DUAL_RUN=true, AA_STORAGE_POSTGRES_SHADOW_SQLITE_PATH configuration.",
           ],
       targetEnvironment,
       observedStorageDriver: this.observedStorageDriver,
@@ -464,10 +464,10 @@ export class AcceptanceReadinessService {
         ? "blocked_on_external_infra"
         : "blocked";
     const summary = evidencePresent
-      ? "registry publish / CI-CD workflow dispatch evidence 已存在。"
+      ? "Registry publish / CI-CD workflow dispatch evidence exists."
       : bundleReady
-        ? "发布链路配置与 secret baseline 已就绪，但缺 live registry publish evidence。"
-        : "release pipeline 仍存在本地配置或 secret 准备缺口。";
+        ? "Release pipeline configuration and secret baseline ready, but missing live registry publish evidence."
+        : "Release pipeline still has local configuration or secret preparation gaps.";
 
     if (!evidencePresent && bundleReady) {
       blockers.push("live_registry_publish_evidence_missing");
@@ -475,7 +475,7 @@ export class AcceptanceReadinessService {
 
     return {
       itemId: "IND-P0-09",
-      title: "live registry publish / CI-CD 联调",
+      title: "Live Registry Publish / CI-CD Integration",
       status,
       systemPrepared: bundleReady,
       evidencePresent,
@@ -530,10 +530,10 @@ export class AcceptanceReadinessService {
         ? "blocked_on_external_infra"
         : "blocked";
     const summary = evidencePresent
-      ? "多环境部署执行 evidence 已存在。"
+      ? "Multi-environment deployment execution evidence exists."
       : systemPrepared
-        ? "deployment matrix 与 prerequisites 已就绪，但缺真实目标环境执行闭环。"
-        : "多环境部署仍有系统侧 readiness 缺口。";
+        ? "Deployment matrix and prerequisites ready, but missing real target environment execution closure."
+        : "Multi-environment deployment still has system-side readiness gaps.";
 
     blockers.push(...(targetEntry?.blockers ?? []));
     if (!evidencePresent && systemPrepared) {
@@ -542,7 +542,7 @@ export class AcceptanceReadinessService {
 
     return {
       itemId: "IND-P0-10",
-      title: "多环境真实部署联调",
+      title: "Multi-Environment Real Deployment Integration",
       status,
       systemPrepared,
       evidencePresent,

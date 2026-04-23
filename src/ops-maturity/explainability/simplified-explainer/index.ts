@@ -4,7 +4,7 @@
  * Transforms complex technical explanations into simple, jargon-free language
  * that business stakeholders can understand.
  *
- * @see docs_zh/architecture/00-platform-architecture.md §62 (可解释性增强)
+ * @see docs_zh/architecture/00-platform-architecture.md §62 (Explainability Enhancement)
  */
 
 import type { CausalLink } from "../causal-chain-builder/index.js";

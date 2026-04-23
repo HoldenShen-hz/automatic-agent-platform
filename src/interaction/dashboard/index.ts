@@ -181,8 +181,8 @@ export class DashboardAggregationService implements DashboardPort {
       totalCostToday: formatUsd(this.costBurnUsd),
       agentUptimePercent: system.healthStatus === "ok" ? 99 : system.healthStatus === "degraded" ? 95 : 85,
       highlights: [
-        `${recentCompletions.length} 个任务已经完成`,
-        `当前排队 ${system.queueBacklog.size} 个任务`,
+        `${recentCompletions.length} tasks completed`,
+        `${system.queueBacklog.size} tasks currently queued`,
       ],
       concerns: attentionQueue.map((item) => item.title).slice(0, 3),
     };
@@ -284,8 +284,8 @@ export class DashboardAggregationService implements DashboardPort {
         queue.push({
           itemType: "incident",
           priority: "high",
-          title: `任务失败: ${task.title}`,
-          description: `任务 ${task.taskId} 需要关注`,
+          title: `Task failed: ${task.title}`,
+          description: `Task ${task.taskId} requires attention`,
           actionOptions: ["inspect", "retry"],
           createdAt: task.updatedAt,
           domainId: task.divisionId ?? "general_ops",
@@ -295,8 +295,8 @@ export class DashboardAggregationService implements DashboardPort {
         queue.push({
           itemType: "approval_needed",
           priority: "normal",
-          title: `待处理任务: ${task.title}`,
-          description: "该任务尚未开始或仍在等待处理。",
+          title: `Pending task: ${task.title}`,
+          description: "This task has not started or is still waiting to be processed.",
           actionOptions: ["open_task", "prioritize"],
           createdAt: task.updatedAt,
           domainId: task.divisionId ?? "general_ops",
@@ -308,8 +308,8 @@ export class DashboardAggregationService implements DashboardPort {
       queue.push({
         itemType: "incident",
         priority: system.healthStatus === "unhealthy" ? "critical" : "high",
-        title: "平台健康度下降",
-        description: `当前系统状态为 ${system.healthStatus}`,
+        title: "Platform health degraded",
+        description: `Current system status: ${system.healthStatus}`,
         actionOptions: ["open_ops_dashboard", "run_doctor"],
         createdAt: this.now(),
         domainId: "platform",
@@ -320,8 +320,8 @@ export class DashboardAggregationService implements DashboardPort {
       queue.push({
         itemType: "budget_warning",
         priority: "high",
-        title: "成本燃烧超出预测",
-        description: `当前花费 ${formatUsd(this.costBurnUsd)}，已超过预测 ${formatUsd(this.forecastCostUsd)}`,
+        title: "Cost burn exceeds forecast",
+        description: `Current spend ${formatUsd(this.costBurnUsd)} has exceeded forecast ${formatUsd(this.forecastCostUsd)}`,
         actionOptions: ["review_budget", "adjust_scope"],
         createdAt: this.now(),
         domainId: "platform",

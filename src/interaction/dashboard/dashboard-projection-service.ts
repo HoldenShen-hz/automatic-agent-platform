@@ -4,7 +4,7 @@
  * Provides incremental dashboard updates using projections as the data source.
  * Supports delta-based updates instead of full queries.
  *
- * Architecture: §43 仪表盘 - Dashboard with incremental updates
+ * Architecture: §43 Dashboard - Dashboard with incremental updates
  * @see docs_zh/architecture/00-platform-architecture.md §43
  */
 

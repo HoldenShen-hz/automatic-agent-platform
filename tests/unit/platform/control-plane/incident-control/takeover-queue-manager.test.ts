@@ -4,12 +4,12 @@ import test from "node:test";
 import {
   TakeoverQueueManager,
   type TakeoverQueueConfig,
-  type TakeoverRequestEntry,
-  type TakeoverRequestPayload,
 } from "../../../../../src/platform/control-plane/incident-control/takeover-queue-manager.js";
 import type {
   TakeoverLifecycleEvent,
   TakeoverEventPayload,
+  TakeoverRequestEntry,
+  TakeoverRequestPayload,
 } from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
 
 function createMockEventEmitter() {
@@ -363,11 +363,11 @@ test("evictExpiredSessionEntries respects eviction interval", () => {
 test("evictExpiredSessionEntries removes oldest when over capacity", () => {
   const emitter = createMockEventEmitter();
   const manager = new TakeoverQueueManager(
-    createTestConfig({ maxQueueDepth: 100 }),
+    createTestConfig({ maxQueueDepth: 200 }),
     emitter,
   );
 
-  // Add 150 entries
+  // Add 150 completed entries
   for (let i = 0; i < 150; i++) {
     const entry = manager.enqueue({
       taskId: `task-${i}`,

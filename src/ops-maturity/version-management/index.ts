@@ -4,7 +4,7 @@
  * Provides semantic versioning enforcement and version compatibility matrix
  * for pack version management.
  *
- * Architecture: §57 版本管理
+ * Architecture: §57 Version Management
  * @see docs_zh/architecture/00-platform-architecture.md §57
  */
 

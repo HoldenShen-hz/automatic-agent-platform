@@ -3,11 +3,12 @@
  *
  * Provides cost attribution, aggregation, recommendations, and simulation.
  *
- * §65 模型 right-sizing 在线画像能力 (P2 Enhancement for Phase 3):
- * 当前实现支持基于历史成本数据的推荐生成和模拟。要实现"在线画像"能力，
- * 需要接入实时流量分析，动态构建模型使用分布画像，并基于实际流量模式
- * 生成 right-sizing 建议。当前 recommendation-engine 可基于 model-metadata-registry
- * 做静态推荐，缺少实时流量驱动的动态优化。
+ * §65 Model Right-Sizing Online Profiling Capability (P2 Enhancement for Phase 3):
+ * Current implementation supports recommendation generation and simulation based on historical cost data.
+ * To implement "online profiling" capability, real-time traffic analysis needs to be integrated,
+ * dynamically building model usage distribution profiles, and generating right-sizing recommendations
+ * based on actual traffic patterns. Currently recommendation-engine can make static recommendations
+ * based on model-metadata-registry, lacking real-time traffic-driven dynamic optimization.
  */
 
 import { nowIso } from "../../platform/contracts/types/ids.js";

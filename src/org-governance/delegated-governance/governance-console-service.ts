@@ -204,7 +204,7 @@ export class SelfServiceGovernanceConsole {
   ): { allowed: boolean; reason: string } {
     // platform_team can do everything
     if (actorRole === "platform_team") {
-      return { allowed: true, reason: "platform_team has full权限" };
+      return { allowed: true, reason: "platform_team has full authority" };
     }
 
     // Define allowed operations per role per §51.3

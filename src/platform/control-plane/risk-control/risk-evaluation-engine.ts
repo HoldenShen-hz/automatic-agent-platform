@@ -26,10 +26,10 @@
  *
  * | risk_level | auto_execute | log_level | approval | side_effect    | evidence |
  * |------------|--------------|-----------|----------|----------------|----------|
- * | low        | ✅           | info      | 否       | 正常           | 基础      |
- * | medium     | ✅           | warn      | 否       | 正常+校验      | 增强      |
- * | high       | ❌           | error     | 必须      | 受限           | 完整      |
- * | critical   | ❌           | critical  | break-glass | 禁止        | 法务级   |
+ * | low        | ✅           | info      | no        | normal          | basic      |
+ * | medium     | ✅           | warn      | no        | normal+validate | enhanced   |
+ * | high       | ❌           | error     | required   | restricted     | complete   |
+ * | critical   | ❌           | critical  | break-glass | prohibited    | legal-grade |
  *
  * @see docs_zh/architecture/00-platform-architecture.md §10
  */

@@ -7,7 +7,7 @@
  * - Version stability and deprecation tracking
  * - Version comparison and compatibility checking
  *
- * §61 Agent 生命周期 - Agent 版本管理 + 蓝绿部署
+ * §61 Agent Lifecycle - Agent Version Management + Blue-Green Deployment
  */
 
 import { z } from "zod";

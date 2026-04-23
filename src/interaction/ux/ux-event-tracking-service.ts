@@ -5,7 +5,7 @@
  * Uses traffic routing (traffic-routing-service) for A/B test assignment and
  * publishes interaction events to the event bus for analytics.
  *
- * §44 UX 流程 - A/B 测试框架 + 用户操作埋点
+ * §44 UX Workflow - A/B Testing Framework + User Event Tracking
  */
 
 import { TypedEventBusPublisher, type TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";

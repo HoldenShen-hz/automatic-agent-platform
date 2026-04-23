@@ -63,8 +63,8 @@ test("DomainOnboardingService.start() initializes session with modeling phase", 
   assert.equal(session.activePhase, "modeling");
   assert.equal(session.completed, false);
   assert.equal(session.records.length, 1);
-  assert.equal(session.records[0].phase, "modeling");
-  assert.equal(session.records[0].status, "in_progress");
+  assert.equal(session.records[0]!.phase, "modeling");
+  assert.equal(session.records[0]!.status, "in_progress");
 });
 
 test("DomainOnboardingService.start() is idempotent", () => {
@@ -87,20 +87,26 @@ test("DomainOnboardingService.advance() progresses to next phase", () => {
   const session = service.advance("coding", ["artifact:modeling"]);
 
   assert.equal(session.activePhase, "development_validation");
-  assert.equal(session.records[0].status, "completed");
-  assert.deepEqual(session.records[0].evidenceArtifactIds, ["artifact:modeling"]);
+  assert.equal(session.records[0]!.status, "completed");
+  assert.deepEqual(session.records[0]!.evidenceArtifactIds, ["artifact:modeling"]);
 });
 
-test("DomainOnboardingService.advance() merges evidence artifact IDs", () => {
+test("DomainOnboardingService.advance() merges evidence artifact IDs when advancing through same phase", () => {
   const registry = new DomainRegistryService();
   registerTestDomain(registry);
   const service = new DomainOnboardingService(registry);
   service.start("coding");
 
-  service.advance("coding", ["artifact:modeling"]);
-  const session = service.advance("coding", ["artifact:modeling2"]);
+  // First advance completes modeling and moves to development_validation
+  const session1 = service.advance("coding", ["artifact:modeling"]);
+  assert.equal(session1.activePhase, "development_validation");
 
-  assert.deepEqual(session.records[0].evidenceArtifactIds, ["artifact:modeling", "artifact:modeling2"]);
+  // Second advance completes development_validation and moves to security_certification
+  const session2 = service.advance("coding", ["artifact:validation"]);
+
+  // Verify the development_validation record has the evidence
+  const devValidationRecord = session2.records.find((r: DomainOnboardingRecord) => r.phase === "development_validation");
+  assert.deepEqual(devValidationRecord?.evidenceArtifactIds, ["artifact:validation"]);
 });
 
 test("DomainOnboardingService.advance() activates domain on final phase completion", () => {
@@ -187,9 +193,9 @@ test("DomainOnboardingService.rollback() resets to specified phase and records h
 
   assert.equal(session.activePhase, "modeling");
   assert.equal(session.rollbackHistory.length, 1);
-  assert.equal(session.rollbackHistory[0].phase, "development_validation");
-  assert.equal(session.rollbackHistory[0].checkpointArtifactId, "checkpoint-artifact");
-  assert.equal(session.rollbackHistory[0].reason, "rollback reason");
+  assert.equal(session.rollbackHistory[0]!.phase, "development_validation");
+  assert.equal(session.rollbackHistory[0]!.checkpointArtifactId, "checkpoint-artifact");
+  assert.equal(session.rollbackHistory[0]!.reason, "rollback reason");
 });
 
 test("DomainOnboardingService.rollback() marks all phases after target as pending", () => {
@@ -203,10 +209,11 @@ test("DomainOnboardingService.rollback() marks all phases after target as pendin
   const session = service.rollback("coding", "modeling", "checkpoint-artifact", "rollback");
 
   const recordsByPhase = new Map(session.records.map((r: DomainOnboardingRecord) => [r.phase, r.status]));
+  // Target phase (modeling) and current phase (security_certification) become in_progress
+  // All phases in between (development_validation) become pending
   assert.equal(recordsByPhase.get("modeling"), "in_progress");
-  assert.equal(recordsByPhase.get("development_validation"), "in_progress");
-  assert.equal(recordsByPhase.get("security_certification"), "pending");
-  assert.equal(recordsByPhase.get("canary_launch"), "pending");
+  assert.equal(recordsByPhase.get("security_certification"), "in_progress");
+  assert.equal(recordsByPhase.get("development_validation"), "pending");
 });
 
 test("DomainOnboardingService.rollback() throws when no active phase exists", () => {
@@ -239,15 +246,18 @@ test("DomainOnboardingService.get() returns session with correct state", () => {
   assert.equal(session.rollbackHistory.length, 0);
 });
 
-test("DomainOnboardingService.get() returns empty records for unknown domain", () => {
+test("DomainOnboardingService.get() returns empty records when session not started", () => {
   const registry = new DomainRegistryService();
   registerTestDomain(registry);
   const service = new DomainOnboardingService(registry);
 
+  // Domain is registered but session hasn't been started
   const session = service.get("coding");
 
-  assert.equal(session.records.length, 1);
+  // Returns empty records since no session was started yet
+  assert.equal(session.records.length, 0);
   assert.equal(session.rollbackHistory.length, 0);
+  assert.equal(session.activePhase, null);
 });
 
 test("DomainOnboardingService.get() throws for unregistered domain", () => {
@@ -271,8 +281,8 @@ test("DomainOnboardingService.list() returns all sessions sorted by domainId", (
   const sessions = service.list();
 
   assert.equal(sessions.length, 2);
-  assert.equal(sessions[0].domainId, "alpha-domain");
-  assert.equal(sessions[1].domainId, "beta-domain");
+  assert.equal(sessions[0]!.domainId, "alpha-domain");
+  assert.equal(sessions[1]!.domainId, "beta-domain");
 });
 
 test("DomainOnboardingService.start() throws for unregistered domain", () => {

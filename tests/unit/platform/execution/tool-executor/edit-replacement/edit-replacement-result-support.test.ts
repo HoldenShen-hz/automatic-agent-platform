@@ -1,85 +1,174 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  formatRange,
-  findAlreadyAppliedRange,
-} from "../../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-result-support.js";
+import { buildAttempt } from "../../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-result-support.js";
+import type { MatchOutcome } from "../../../../../../src/platform/execution/tool-executor/edit-replacement/edit-replacement-types.js";
 
-// Note: This file tests the pure utility functions in edit-replacement-result-support.
-// buildEditReplacementResult and buildEditBatchResult create complex result objects
-// with many dependencies and Date.now() calls, making them harder to unit test.
-// The primary testable pure functions are formatRange and findAlreadyAppliedRange.
+test("buildAttempt creates attempt with exact level and matched candidate", () => {
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 0, endOffset: 5, text: "hello" },
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "matched",
+  };
 
-test("formatRange returns correct range string for single line", () => {
-  const result = formatRange("hello world", 0, 5);
-  assert.equal(result, "L1:C1-L1:C6");
+  const attempt = buildAttempt("exact", outcome, "hello world");
+
+  assert.equal(attempt.attemptLevel, "exact");
+  assert.equal(attempt.matched, true);
+  assert.equal(attempt.candidateCount, 1);
+  assert.equal(attempt.similarityScore, null);
+  assert.deepEqual(attempt.warningCodes, []);
+  assert.equal(attempt.appliedRange, "L1:C1-L1:C6");
 });
 
-test("formatRange returns correct range string spanning two lines", () => {
-  const content = "hello\nworld";
-  // "hello" is at offset 0-5, "world" starts at offset 6
-  const result = formatRange(content, 0, 10);
-  assert.ok(result.startsWith("L1:C1-"));
-  assert.ok(result.includes("L2:"));
+test("buildAttempt creates attempt with fuzzy level and warning codes", () => {
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 0, endOffset: 5, text: "hello" },
+    similarityScore: 0.92,
+    warningCodes: ["fuzzy_edit_applied"],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("fuzzy", outcome, "hello world");
+
+  assert.equal(attempt.attemptLevel, "fuzzy");
+  assert.equal(attempt.matched, true);
+  assert.equal(attempt.candidateCount, 1);
+  assert.equal(attempt.similarityScore, 0.92);
+  assert.deepEqual(attempt.warningCodes, ["fuzzy_edit_applied"]);
+  assert.equal(attempt.appliedRange, "L1:C1-L1:C6");
 });
 
-test("formatRange returns correct range string for empty content", () => {
-  const result = formatRange("", 0, 0);
-  assert.equal(result, "L1:C1-L1:C1");
+test("buildAttempt returns null appliedRange when candidate is null", () => {
+  const outcome: MatchOutcome = {
+    matched: false,
+    candidateCount: 0,
+    candidate: null,
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "not_found",
+  };
+
+  const attempt = buildAttempt("exact", outcome, "hello world");
+
+  assert.equal(attempt.appliedRange, null);
+  assert.equal(attempt.matched, false);
+  assert.equal(attempt.candidateCount, 0);
 });
 
-test("findAlreadyAppliedRange returns null when content already contains oldString", () => {
-  const result = findAlreadyAppliedRange("hello world", {
-    oldString: "hello",
-    newString: "goodbye",
-  });
-  assert.equal(result, null);
+test("buildAttempt returns null appliedRange for multiple candidates", () => {
+  const outcome: MatchOutcome = {
+    matched: false,
+    candidateCount: 3,
+    candidate: null,
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "multiple_candidates",
+  };
+
+  const attempt = buildAttempt("exact", outcome, "hello hello hello");
+
+  assert.equal(attempt.appliedRange, null);
+  assert.equal(attempt.matched, false);
+  assert.equal(attempt.candidateCount, 3);
 });
 
-test("findAlreadyAppliedRange returns null when oldString equals newString", () => {
-  const result = findAlreadyAppliedRange("hello world", {
-    oldString: "hello",
-    newString: "hello",
-  });
-  assert.equal(result, null);
+test("buildAttempt handles multiline content with correct range", () => {
+  const content = "line1\nline2\nline3";
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 6, endOffset: 11, text: "line2" },
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("exact", outcome, content);
+
+  assert.equal(attempt.appliedRange, "L2:C1-L2:C6");
 });
 
-test("findAlreadyAppliedRange returns candidate when oldString missing but newString found", () => {
-  const result = findAlreadyAppliedRange("say goodbye world", {
-    oldString: "hello",
-    newString: "goodbye",
-  });
-  assert.ok(result !== null);
-  assert.equal(result?.text, "goodbye");
-  assert.equal(result?.startOffset, 4);
-  assert.equal(result?.endOffset, 11);
+test("buildAttempt handles anchored fuzzy with anchored warning", () => {
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 6, endOffset: 11, text: "hello" },
+    similarityScore: 0.88,
+    warningCodes: ["anchored_fuzzy_edit_applied"],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("context_anchored", outcome, "prefix hello suffix");
+
+  assert.equal(attempt.attemptLevel, "context_anchored");
+  assert.ok(attempt.warningCodes.includes("anchored_fuzzy_edit_applied"));
 });
 
-test("findAlreadyAppliedRange returns null when neither old nor new string in content", () => {
-  const result = findAlreadyAppliedRange("completely different", {
-    oldString: "hello",
-    newString: "goodbye",
-  });
-  assert.equal(result, null);
+test("buildAttempt handles whitespace_normalized level", () => {
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 0, endOffset: 11, text: "hello world" },
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("whitespace_normalized", outcome, "hello   world");
+
+  assert.equal(attempt.attemptLevel, "whitespace_normalized");
+  assert.equal(attempt.matched, true);
 });
 
-test("findAlreadyAppliedRange returns null when newString has multiple occurrences", () => {
-  // If there are multiple matches for newString, it can't be a unique "already applied" indicator
-  const result = findAlreadyAppliedRange("foo bar foo", {
-    oldString: "old",
-    newString: "foo",
-  });
-  assert.equal(result, null);
+test("buildAttempt handles indentation_normalized level", () => {
+  const content = "  hello\n  world";
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 0, endOffset: 13, text: "  hello\n  world" },
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("indentation_normalized", outcome, content);
+
+  assert.equal(attempt.attemptLevel, "indentation_normalized");
+  assert.equal(attempt.matched, true);
 });
 
-test("findAlreadyAppliedRange returns candidate with correct offset", () => {
-  const result = findAlreadyAppliedRange("prefix hello suffix", {
-    oldString: "goodbye",
-    newString: "hello",
-  });
-  assert.ok(result !== null);
-  assert.equal(result?.startOffset, 7);
-  assert.equal(result?.endOffset, 12);
-  assert.equal(result?.text, "hello");
+test("buildAttempt preserves all warning codes", () => {
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 0, endOffset: 5, text: "hello" },
+    similarityScore: 0.87,
+    warningCodes: ["fuzzy_edit_applied", "indentation_adjusted"],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("fuzzy", outcome, "hello");
+
+  assert.deepEqual(attempt.warningCodes, ["fuzzy_edit_applied", "indentation_adjusted"]);
+});
+
+test("buildAttempt handles empty content", () => {
+  const outcome: MatchOutcome = {
+    matched: true,
+    candidateCount: 1,
+    candidate: { startOffset: 0, endOffset: 0, text: "" },
+    similarityScore: null,
+    warningCodes: [],
+    stopReason: "matched",
+  };
+
+  const attempt = buildAttempt("exact", outcome, "");
+
+  assert.equal(attempt.appliedRange, "L1:C1-L1:C1");
 });

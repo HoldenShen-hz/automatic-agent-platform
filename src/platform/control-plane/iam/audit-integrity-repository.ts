@@ -5,7 +5,7 @@
  * verification queries. Integrates with the events table to detect
  * tampering in the audit trail.
  *
- * §50 合规审计 - 审计日志防篡改保护
+ * §50 Compliance Audit - Audit Log Tampering Protection
  */
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";

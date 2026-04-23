@@ -1,7 +1,7 @@
 /**
  * @fileoverview Queue Partitioner
  *
- * Implements §8.3 "分片策略" from architecture document.
+ * Implements §8.3 "Sharding Strategy" from architecture document.
  * Partitions dispatch queues by aggregate_type for horizontal scalability.
  */
 

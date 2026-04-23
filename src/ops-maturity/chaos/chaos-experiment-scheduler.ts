@@ -7,13 +7,14 @@
  * - Automated experiment termination on violation
  * - Experiment result classification (success/failure/inconclusive)
  *
- * §68 混沌工程 - 实验调度 + 自动化稳态验证
+ * §68 Chaos Engineering - Experiment Scheduling + Automated Steady-State Validation
  *
- * §66 GameDay 编排器 (P2 Enhancement for Phase 3):
- * 当前 scheduleGameDay() / startGameDay() / refreshGameDayStatus() 已实现基础调度骨架。
- * 要实现完整的 GameDay 编排能力，需要：真实故障注入执行、与监控系统联动验证稳态、
- * 多实验并行编排、以及 GameDay 报告生成。当前 ChaosExperimentScheduler 缺少与外部
- * 故障注入系统的集成和真实稳态验证流水线。
+ * §66 GameDay Orchestrator (P2 Enhancement for Phase 3):
+ * Current scheduleGameDay() / startGameDay() / refreshGameDayStatus() implement basic scheduling skeleton.
+ * To implement complete GameDay orchestration capability, the following are needed: real fault injection
+ * execution, integration with monitoring system for steady-state validation, multi-experiment parallel
+ * orchestration, and GameDay report generation. Currently ChaosExperimentScheduler lacks integration
+ * with external fault injection systems and real steady-state validation pipeline.
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";

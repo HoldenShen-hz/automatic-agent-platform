@@ -1,7 +1,7 @@
 /**
  * @fileoverview Resource Quota Management
  *
- * Implements §53 "规模化资源竞争管理" - Resource Quota Model.
+ * Implements §53 "Scaling Resource Competition Management" - Resource Quota Model.
  * Provides org-level resource allocation with guaranteed, burstable, and max_limit tiers.
  *
  * @see docs_zh/architecture/00-platform-architecture.md §53.2

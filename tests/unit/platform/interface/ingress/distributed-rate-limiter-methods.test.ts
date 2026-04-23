@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DistributedRateLimiter, RateLimitCheckResult } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
 
 // Mock RedisRateLimiter
 const mockCheckAndConsumeResults: Array<{ allowed: boolean; remaining: number; retryAfterMs?: number }> = [];
@@ -17,9 +18,6 @@ const mockRedisRateLimiter = {
     return mockCheckAndConsumeResults.shift() ?? { allowed: true, remaining: limit };
   },
 };
-
-// We need to test the class directly, so we'll test the interface behavior
-import { DistributedRateLimiter, RateLimitCheckResult } from "../../../../../src/platform/interface/ingress/distributed-rate-limiter.js";
 
 function resetMocks() {
   mockCheckAndConsumeResults.length = 0;

@@ -26,7 +26,7 @@ export class PlanStrategySelector {
     if (input.assessment.risk === "critical" || destructiveTools) {
       return "reflexive";
     }
-    if (objective.includes("goal") || objective.includes("目标")) {
+    if (objective.includes("goal") || objective.includes("target")) {
       return "goal_driven";
     }
     if (tokenBudget <= 2_000 || timeoutMs < 20_000) {

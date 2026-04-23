@@ -394,8 +394,8 @@ test("listRollbacks returns recent rollback records ordered by executed_at desc"
   const rollbacks = service.listRollbacks();
   assert.equal(rollbacks.length, 2);
   // Most recent should be first
-  assert.equal(rollbacks[0].trigger, "health_check_failed");
-  assert.equal(rollbacks[1].trigger, "manual");
+  assert.equal(rollbacks[0]!.trigger, "health_check_failed");
+  assert.equal(rollbacks[1]!.trigger, "manual");
 });
 
 test("listRollbacks respects limit parameter", () => {
@@ -525,13 +525,17 @@ test("listShifts returns shifts in descending order by start time", () => {
   service.registerSlot("green", "v2.0.0", 1);
 
   const shift1 = service.startCanaryShift("blue", "green");
+  // Adjust started_at to be older
+  db.connection.prepare(`UPDATE traffic_shifts SET started_at = '2026-04-20T00:00:00.000Z' WHERE id = ?`).run(shift1.id);
+
+  service.registerSlot("blue", "v1.0.1", 1);
   const shift2 = service.startCanaryShift("blue", "green");
 
   const shifts = service.listShifts();
   assert.equal(shifts.length, 2);
   // Most recent first
-  assert.equal(shifts[0].id, shift2.id);
-  assert.equal(shifts[1].id, shift1.id);
+  assert.equal(shifts[0]!.id, shift2.id);
+  assert.equal(shifts[1]!.id, shift1.id);
 });
 
 test("listShifts respects limit parameter", () => {

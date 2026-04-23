@@ -504,7 +504,7 @@ CREATE INDEX IF NOT EXISTS idx_action_proposals_tenant_brief_created_at
 `;
 
 export const MEMORY_ENHANCEMENT_SQL = `
--- 5A-1: memories 表增加 kind/status/importance/freshness/content_hash
+-- 5A-1: Add kind/status/importance/freshness/content_hash columns to memories table
 ALTER TABLE memories ADD COLUMN kind TEXT NOT NULL DEFAULT 'general';
 ALTER TABLE memories ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
 ALTER TABLE memories ADD COLUMN importance_score REAL NULL;
@@ -515,7 +515,7 @@ CREATE INDEX IF NOT EXISTS idx_memories_kind_status ON memories(kind, status);
 CREATE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
 CREATE INDEX IF NOT EXISTS idx_memories_importance ON memories(importance_score DESC);
 
--- 5A-2: session_summaries 表
+-- 5A-2: session_summaries table
 CREATE TABLE IF NOT EXISTS session_summaries (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,

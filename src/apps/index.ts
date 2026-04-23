@@ -40,7 +40,7 @@ export function buildPlatformStartupTargets(): readonly PlatformStartupTarget[] 
     {
       targetKind: "summary",
       rootEntryModule: "src/index.ts",
-      description: "输出系统骨架、七层模块与应用清单摘要。",
+      description: "Output system skeleton, seven-layer module, and application manifest summary.",
       requiredLayers: [],
       startupCommand: "npm run start",
       appManifest: null,
@@ -48,7 +48,7 @@ export function buildPlatformStartupTargets(): readonly PlatformStartupTarget[] 
     {
       targetKind: "demo",
       rootEntryModule: "src/index.ts",
-      description: "运行单任务 happy-path demo，用于最小执行链路验证。",
+      description: "Run single-task happy-path demo for minimal execution path validation.",
       requiredLayers: ["platform", "apps"],
       startupCommand: "npm run demo",
       appManifest: null,
@@ -56,7 +56,7 @@ export function buildPlatformStartupTargets(): readonly PlatformStartupTarget[] 
     ...PLATFORM_APPS.map<PlatformStartupTarget>((appManifest) => ({
       targetKind: appManifest.kind,
       rootEntryModule: "src/index.ts",
-      description: `按架构 target 启动 ${appManifest.kind} 应用面。`,
+      description: `Start ${appManifest.kind} application surface per architecture target.`,
       requiredLayers: [...appManifest.requiredLayers],
       startupCommand: appManifest.startupCommand,
       appManifest,

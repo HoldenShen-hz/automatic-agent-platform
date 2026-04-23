@@ -87,6 +87,9 @@ function createMockStore(state: MockStoreState = {
       getWorkerSnapshot(_workerId: string) {
         return state.workers.get(_workerId) as any;
       },
+      upsertWorkerSnapshot(_snapshot: any): void {
+        // Mock implementation - just store it
+      },
       getAgentExecutionRecord(executionId: string) {
         return state.agentExecutionRecords.get(executionId);
       },
@@ -287,7 +290,7 @@ test("acquireLease creates audit record", () => {
   });
 
   assert.equal(state.audits.length, 1);
-  assert.equal(state.audits[0].eventType, "lease_granted");
+  assert.equal(state.audits[0]!.eventType, "lease_granted");
 });
 
 // ---------------------------------------------------------------------------
@@ -446,7 +449,7 @@ test("renewLease creates audit record", () => {
   });
 
   assert.equal(state.audits.length, 1);
-  assert.equal(state.audits[0].eventType, "lease_renewed");
+  assert.equal(state.audits[0]!.eventType, "lease_renewed");
 });
 
 // ---------------------------------------------------------------------------
@@ -569,8 +572,8 @@ test("releaseLease creates audit record", () => {
   });
 
   assert.equal(state.audits.length, 1);
-  assert.equal(state.audits[0].eventType, "lease_released");
-  assert.equal(state.audits[0].reasonCode, "work_complete");
+  assert.equal(state.audits[0]!.eventType, "lease_released");
+  assert.equal(state.audits[0]!.reasonCode, "work_complete");
 });
 
 // ---------------------------------------------------------------------------
@@ -699,7 +702,7 @@ test("validateWriteAccess creates audit on stale write", () => {
   });
 
   assert.equal(state.audits.length, 1);
-  assert.equal(state.audits[0].eventType, "stale_write_rejected");
+  assert.equal(state.audits[0]!.eventType, "stale_write_rejected");
 });
 
 // ---------------------------------------------------------------------------
@@ -754,7 +757,7 @@ test("reclaimExpiredLeases reclaims expired leases", () => {
   const result = service.reclaimExpiredLeases();
 
   assert.equal(result.length, 1);
-  assert.equal(result[0].id, "lease-1");
+  assert.equal(result[0]!.id, "lease-1");
 });
 
 test("reclaimExpiredLeases creates audit records", () => {
@@ -780,7 +783,7 @@ test("reclaimExpiredLeases creates audit records", () => {
   service.reclaimExpiredLeases();
 
   assert.equal(state.audits.length, 1);
-  assert.equal(state.audits[0].eventType, "lease_reclaimed");
+  assert.equal(state.audits[0]!.eventType, "lease_reclaimed");
 });
 
 // ---------------------------------------------------------------------------
@@ -789,9 +792,16 @@ test("reclaimExpiredLeases creates audit records", () => {
 
 test("handoverLease hands over lease when valid", () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
+  const prevWorker: any = {
+    workerId: "worker-1",
+    runningExecutionsJson: "[\"exec-1\"]",
+    capabilitiesJson: "[]",
+    maxConcurrency: 10,
+  };
   const nextWorker: any = {
     workerId: "worker-2",
     runningExecutionsJson: "[]",
+    capabilitiesJson: "[]",
     maxConcurrency: 10,
   };
   const state: MockStoreState = {
@@ -800,7 +810,7 @@ test("handoverLease hands over lease when valid", () => {
     latestLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
     audits: [],
     executions: new Map([["exec-1", createExecution()]]),
-    workers: new Map([["worker-2", nextWorker]]),
+    workers: new Map([["worker-1", prevWorker], ["worker-2", nextWorker]]),
     agentExecutionRecords: new Map(),
   };
   const store = createMockStore(state);
@@ -1013,9 +1023,16 @@ test("handoverLease blocks when worker capacity full", () => {
 
 test("handoverLease allows when worker already running this execution", () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
+  const prevWorker: any = {
+    workerId: "worker-1",
+    runningExecutionsJson: "[\"exec-1\"]",
+    capabilitiesJson: "[]",
+    maxConcurrency: 10,
+  };
   const nextWorker: any = {
     workerId: "worker-2",
     runningExecutionsJson: "[\"exec-1\"]", // already running exec-1
+    capabilitiesJson: "[]",
     maxConcurrency: 1,
   };
   const state: MockStoreState = {
@@ -1024,7 +1041,7 @@ test("handoverLease allows when worker already running this execution", () => {
     latestLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
     audits: [],
     executions: new Map([["exec-1", createExecution()]]),
-    workers: new Map([["worker-2", nextWorker]]),
+    workers: new Map([["worker-1", prevWorker], ["worker-2", nextWorker]]),
     agentExecutionRecords: new Map(),
   };
   const store = createMockStore(state);
