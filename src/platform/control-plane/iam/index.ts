@@ -12,6 +12,7 @@ export * as outboundUrlPolicy from "./outbound-url-policy.js";
 export * as policyEngine from "./policy-engine.js";
 export * as sandboxPolicy from "./sandbox-policy.js";
 export * as secretManagementSupport from "./secret-management-support.js";
+export * as threatModel from "./threat-model/index.js";
 export * as trustedContextScanner from "./trusted-context-scanner.js";
 export * as vaultHttpSecretProvider from "./vault-http-secret-provider.js";
 export * as awsKmsHttpSecretProvider from "./aws-kms-http-secret-provider.js";

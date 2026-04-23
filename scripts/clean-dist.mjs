@@ -49,6 +49,10 @@ const preserveDist =
   || process.env.NODE_V8_COVERAGE != null
   || hasTestAncestor();
 
+const shouldPruneStaleDistTests =
+  preserveDist
+  && process.env.AA_PRUNE_DIST_TESTS === "1";
+
 function listFilesRecursively(rootPath) {
   const results = [];
   for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
@@ -103,6 +107,6 @@ if (!preserveDist && existsSync(distPath)) {
       throw err;
     }
   }
-} else if (preserveDist) {
+} else if (shouldPruneStaleDistTests) {
   pruneStaleDistTests();
 }

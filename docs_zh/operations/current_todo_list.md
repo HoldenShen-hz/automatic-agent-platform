@@ -3,6 +3,16 @@
 > 当前整改清单以 [../reviews/architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md) 为主索引，并以仓内代码与可运行测试结果做最终对账。
 > 本文件覆盖此前过早标记为 `done` 的 `W0-W6` 口径，只保留“仓内可落地、可测试、可文档回写”的整改任务。
 
+## 0. 2026-04-23 逐条复核结论
+
+> `R0-R6` 的历史收口不再等价于“review 全部关闭”。以本轮逐条复核为准，当前 review 状态如下：
+
+- `open`: `P1-1`、`P1-2`、`P1-3`、`P1-5`、`P2-1`
+- `partial`: `P1-4`、`P1-6`、`P1-7`、`P2-2`
+- `closed`: `P0-1`、`P0-2`、`P0-3`、`P2-3`
+
+本文件后续 `done` 仅表示对应历史波次曾完成过当时范围内的整改，不再作为当前 review 缺口已经清零的依据。
+
 ## 1. 执行边界
 
 - 只纳入仓内可开发、可验证、可在本轮文档回写中闭环的任务。
@@ -168,6 +178,23 @@
 
 - `I-1`：`S4 K8s` 集群级分片
 - `II-3`：额外 LLM provider 丰富度扩展
+
+## 5.1 2026-04-23 P0-1 ~ P0-3 收口补记
+
+状态：`done`
+
+- `P0-1` 已完成：新增 `AnomalyEventClass` / `ClassifiedAnomalyEvent` authoritative contract，并将 anomaly detection 与 tier-1 event surface 接到 `E1-E6` 分类。
+- `P0-2` 已完成：新增 `UnifiedSeverity` / `UNIFIED_SEVERITY_SLA` 与跨 anomaly / alert / runbook / diagnostic 的 severity mapper，incident package 与 alert event 已可输出 `SEV1-SEV4`。
+- `P0-3` 已完成：IAM 下新增 `threat-model/`、`ThreatMatrixRegistry` 与 `config/security/threat-matrix.json`，STRIDE 六维不再只停留在分散安全组件。
+
+完成验证：
+
+- `npm run build`
+- `npx tsx --test tests/unit/platform/contracts/types/unified-severity.test.ts tests/unit/platform/contracts/types/anomaly-event-classification.test.ts tests/unit/platform/contracts/types/index.test.ts tests/unit/platform/control-plane/iam/stride-framework.test.ts tests/unit/platform/shared/observability/anomaly-detection-service.test.ts tests/unit/platform/shared/observability/slo-alerting-service.test.ts tests/unit/platform/state-evidence/events/event-types.test.ts tests/unit/platform/state-evidence/events/typed-event-payloads.test.ts`
+
+已知未纳入本次阻断：
+
+- `npm run build:test` 仍会被仓内既存 integration/type errors 阻塞，当前不是由 `P0-1 ~ P0-3` 这组改动引入。
 
 ## 6. 跨平台 UI 主线（UI0-UI7）
 

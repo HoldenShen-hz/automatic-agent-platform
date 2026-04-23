@@ -6,9 +6,10 @@ import {
   DomainPromptTemplateSchema,
   DomainPromptLibrarySchema,
 } from "../../../../src/domains/prompt-library/index.js";
+import type { DomainPromptLibrary } from "../../../../src/domains/prompt-library/index.js";
 
-test("resolvePromptTemplate returns prompt when found", () => {
-  const library = {
+function createTestLibrary(): DomainPromptLibrary {
+  return DomainPromptLibrarySchema.parse({
     libraryId: "lib_coding",
     domainId: "coding",
     prompts: [
@@ -27,7 +28,11 @@ test("resolvePromptTemplate returns prompt when found", () => {
         guardrails: [],
       },
     ],
-  };
+  });
+}
+
+test("resolvePromptTemplate returns prompt when found", () => {
+  const library = createTestLibrary();
 
   const prompt = resolvePromptTemplate(library, "prompt_plan");
 
@@ -39,19 +44,7 @@ test("resolvePromptTemplate returns prompt when found", () => {
 });
 
 test("resolvePromptTemplate returns null when prompt not found", () => {
-  const library = {
-    libraryId: "lib_coding",
-    domainId: "coding",
-    prompts: [
-      {
-        promptId: "prompt_plan",
-        stage: "plan",
-        version: "1.0",
-        template: "Plan the task",
-        guardrails: [],
-      },
-    ],
-  };
+  const library = createTestLibrary();
 
   const prompt = resolvePromptTemplate(library, "unknown_prompt");
 
@@ -59,11 +52,11 @@ test("resolvePromptTemplate returns null when prompt not found", () => {
 });
 
 test("resolvePromptTemplate returns null for empty library", () => {
-  const library = {
+  const library = DomainPromptLibrarySchema.parse({
     libraryId: "lib_empty",
     domainId: "empty",
     prompts: [],
-  };
+  });
 
   const prompt = resolvePromptTemplate(library, "any_prompt");
 

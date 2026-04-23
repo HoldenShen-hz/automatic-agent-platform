@@ -21,6 +21,10 @@ import { DoctorService, type DoctorReport } from "./doctor-service.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { ArtifactRef, EnvironmentName } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  diagnosticSeverityToUnifiedSeverity,
+  type UnifiedSeverity,
+} from "../../contracts/types/index.js";
 
 export type OperationsSloKey =
   | "task_success_rate"
@@ -85,6 +89,7 @@ export interface OperationsIncidentPackage {
   incidentId: string;
   taskId: string;
   severity: RunbookSeverity;
+  unifiedSeverity: UnifiedSeverity;
   candidateRootCauses: string[];
   recommendedRunbookIds: RunbookDefinition["runbookId"][];
   recommendedCommands: string[];
@@ -371,6 +376,10 @@ function mapIncidentSeverity(value: DiagnosticWarningSeverity): RunbookSeverity 
     default:
       return "P2";
   }
+}
+
+function mapDiagnosticUnifiedSeverity(value: DiagnosticWarningSeverity): UnifiedSeverity {
+  return diagnosticSeverityToUnifiedSeverity(value);
 }
 
 /**
@@ -678,6 +687,7 @@ export class OperationsGovernanceService {
       incidentId: newId("incident"),
       taskId,
       severity,
+      unifiedSeverity: mapDiagnosticUnifiedSeverity(timeline.summary.highestSeverity),
       candidateRootCauses: [...timeline.candidateRootCauses],
       recommendedRunbookIds: recommendedRunbooks,
       recommendedCommands,

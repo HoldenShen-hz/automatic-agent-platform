@@ -20,7 +20,12 @@
  */
 
 import { BoundedCache } from "../utils/bounded-cache.js";
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  type ClassifiedAnomalyEvent,
+  classifyAnomalyEvent,
+  newId,
+  nowIso,
+} from "../../contracts/types/index.js";
 import {
   DEFAULT_CONFIG,
 } from "./anomaly-detection/constants.js";
@@ -171,11 +176,18 @@ export class AnomalyDetectionService {
 
     // Need minimum data points for reliable detection
     if (series.length < this.config.minDataPoints) {
+      const classified = classifyAnomalyEvent({
+        metricName,
+        legacySeverity: "info",
+        context: { reason: "insufficient_data" },
+      });
       return {
         isAnomaly: false,
         score: 0,
         severity: "info",
+        unifiedSeverity: classified.unifiedSeverity,
         category: "static",
+        anomalyEventClass: classified.anomalyEventClass,
         expectedValue: value,
         deviation: 0,
         deviationPercent: 0,
@@ -232,7 +244,9 @@ export class AnomalyDetectionService {
           isAnomaly: true,
           score: 1.0,
           severity: sig.severity,
+          unifiedSeverity: record.unifiedSeverity ?? "SEV4",
           category: sig.category,
+          anomalyEventClass: record.anomalyEventClass ?? "E1_BUSINESS",
           expectedValue: value,
           deviation: 0,
           deviationPercent: 0,
@@ -275,6 +289,14 @@ export class AnomalyDetectionService {
 
     const severity = this.scoreToSeverity(score);
     const category = this.classifyAnomalyCategory(value, mean, series);
+    const classified = this.classifyDetection(metricName, severity, {
+      algorithm: "zscore",
+      score,
+      category,
+      zScore,
+      stdDev,
+      threshold,
+    });
 
     if (isAnomaly) {
       const record = this.createAnomalyRecord(
@@ -294,7 +316,9 @@ export class AnomalyDetectionService {
       isAnomaly,
       score,
       severity,
+      unifiedSeverity: classified.unifiedSeverity,
       category,
+      anomalyEventClass: classified.anomalyEventClass,
       expectedValue: mean,
       deviation,
       deviationPercent,
@@ -337,6 +361,16 @@ export class AnomalyDetectionService {
 
     const severity = this.scoreToSeverity(score);
     const category = value > upper ? "spike" : value < lower ? "dip" : "static";
+    const classified = this.classifyDetection(metricName, severity, {
+      algorithm: "iqr",
+      score,
+      category,
+      q1,
+      q3,
+      iqr,
+      upper,
+      lower,
+    });
 
     if (isAnomaly) {
       const record = this.createAnomalyRecord(
@@ -356,7 +390,9 @@ export class AnomalyDetectionService {
       isAnomaly,
       score,
       severity,
+      unifiedSeverity: classified.unifiedSeverity,
       category,
+      anomalyEventClass: classified.anomalyEventClass,
       expectedValue: mid,
       deviation,
       deviationPercent,
@@ -402,6 +438,14 @@ export class AnomalyDetectionService {
 
     const severity = this.scoreToSeverity(score);
     const category = this.classifyAnomalyCategory(value, ewma, series);
+    const classified = this.classifyDetection(metricName, severity, {
+      algorithm: "ewma",
+      score,
+      category,
+      alpha,
+      ewmaStd,
+      threshold,
+    });
 
     if (isAnomaly) {
       const record = this.createAnomalyRecord(
@@ -421,7 +465,9 @@ export class AnomalyDetectionService {
       isAnomaly,
       score,
       severity,
+      unifiedSeverity: classified.unifiedSeverity,
       category,
+      anomalyEventClass: classified.anomalyEventClass,
       expectedValue: ewma,
       deviation,
       deviationPercent,
@@ -444,11 +490,18 @@ export class AnomalyDetectionService {
     const baseline = series.slice(-this.config.windowSize);
 
     if (baseline.length < 3) {
+      const classified = classifyAnomalyEvent({
+        metricName,
+        legacySeverity: "info",
+        context: { reason: "gradient_insufficient_data" },
+      });
       return {
         isAnomaly: false,
         score: 0,
         severity: "info",
+        unifiedSeverity: classified.unifiedSeverity,
         category: "static",
+        anomalyEventClass: classified.anomalyEventClass,
         expectedValue: value,
         deviation: 0,
         deviationPercent: 0,
@@ -499,6 +552,14 @@ export class AnomalyDetectionService {
     const severity = this.scoreToSeverity(score);
     const category: AnomalyCategory =
       recentGradient > slope * 1.5 ? "spike" : recentGradient < slope * 0.5 ? "dip" : "trend_change";
+    const classified = this.classifyDetection(metricName, severity, {
+      algorithm: "gradient",
+      score,
+      category,
+      slope,
+      recentGradient,
+      deviation,
+    });
 
     if (isAnomaly) {
       const record = this.createAnomalyRecord(
@@ -518,7 +579,9 @@ export class AnomalyDetectionService {
       isAnomaly,
       score,
       severity,
+      unifiedSeverity: classified.unifiedSeverity,
       category,
+      anomalyEventClass: classified.anomalyEventClass,
       expectedValue,
       deviation,
       deviationPercent,
@@ -581,12 +644,15 @@ export class AnomalyDetectionService {
     observedValue: number,
     context: Record<string, unknown>,
   ): AnomalyRecord {
+    const classified = this.classifyDetection(metricName, severity, context);
     return {
       id: newId("anomaly"),
       metricName,
       timestamp,
       severity,
+      unifiedSeverity: classified.unifiedSeverity,
       category,
+      anomalyEventClass: classified.anomalyEventClass,
       score,
       expectedValue,
       observedValue,
@@ -597,6 +663,18 @@ export class AnomalyDetectionService {
       resolved: false,
       resolvedAt: null,
     };
+  }
+
+  private classifyDetection(
+    metricName: string,
+    severity: AnomalySeverity,
+    context: Record<string, unknown>,
+  ): ClassifiedAnomalyEvent {
+    return classifyAnomalyEvent({
+      metricName,
+      legacySeverity: severity,
+      context,
+    });
   }
 
   /**

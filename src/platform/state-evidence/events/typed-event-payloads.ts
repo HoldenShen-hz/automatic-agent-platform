@@ -1,4 +1,8 @@
 import type { TraceContext } from "../../contracts/types/domain.js";
+import type {
+  AnomalyEventClass,
+  UnifiedSeverity,
+} from "../../contracts/types/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Context Types
@@ -224,6 +228,17 @@ export interface LearningKnowledgePromotedPayload {
   trustLevel: string;
   promotedCount: number;
   occurredAt: string;
+}
+
+export interface ClassifiedAnomalyEventPayload {
+  eventId: string;
+  metricName: string;
+  anomalyEventClass: AnomalyEventClass;
+  unifiedSeverity: UnifiedSeverity;
+  legacySeverity: "info" | "warning" | "critical" | "emergency";
+  statisticalCategory: string;
+  occurredAt: string;
+  context?: Record<string, unknown>;
 }
 
 // §28 Missing event namespaces

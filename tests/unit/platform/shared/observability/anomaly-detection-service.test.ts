@@ -5,6 +5,7 @@ import {
   AnomalyDetectionService,
   type TimeSeriesPoint,
 } from "../../../../../src/platform/shared/observability/anomaly-detection-service.js";
+import { ANOMALY_EVENT_CLASSES } from "../../../../../src/platform/contracts/types/anomaly-event-classification.js";
 
 test("ingest and detect zscore anomaly", () => {
   const service = new AnomalyDetectionService({
@@ -43,6 +44,9 @@ test("detect returns insufficient data for new metric", () => {
 
   const result = service.detect("new_metric", 100);
   assert.equal(result.isAnomaly, false);
+  assert.equal(result.unifiedSeverity, "SEV4");
+  assert.ok(result.anomalyEventClass);
+  assert.ok(ANOMALY_EVENT_CLASSES.includes(result.anomalyEventClass));
   assert.ok(result.explanation.includes("Insufficient data"));
 });
 
@@ -133,6 +137,8 @@ test("signature matching detects provider outage", () => {
   const result = service.detect("provider_down_alert", 503);
   assert.equal(result.isAnomaly, true);
   assert.equal(result.severity, "emergency");
+  assert.equal(result.unifiedSeverity, "SEV1");
+  assert.equal(result.anomalyEventClass, "E3_EXTERNAL_DEPENDENCY");
 });
 
 test("registerSignature and unregisterSignature", () => {
@@ -224,6 +230,8 @@ test("resolveAnomaly marks record as resolved", () => {
 
   const all = service.getAnomalies("test_resolve");
   assert.ok(all.length > 0, "Should have created an anomaly record");
+  assert.ok(all[0]?.unifiedSeverity);
+  assert.ok(all[0]?.anomalyEventClass);
 
   const resolved = service.resolveAnomaly(all[0]!.id);
   assert.equal(resolved, true);

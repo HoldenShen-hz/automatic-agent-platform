@@ -3,6 +3,10 @@ import test from "node:test";
 
 // Barrel test for types module
 import {
+  ANOMALY_EVENT_CLASSES,
+  UNIFIED_SEVERITIES,
+  alertSeverityToUnifiedSeverity,
+  classifyAnomalyEvent,
   createControlDirective,
   createExecutionPlan,
   createExecutionReceipt,
@@ -133,4 +137,18 @@ test("platform contract builders produce doc-aligned contracts", () => {
   assert.equal(plan.steps.length, 1);
   assert.equal(receipt.status, "succeeded");
   assert.equal(stateCommand.expectedVersion, 3);
+});
+
+test("types barrel exports anomaly classification and unified severity helpers", () => {
+  assert.deepEqual(UNIFIED_SEVERITIES, ["SEV1", "SEV2", "SEV3", "SEV4"]);
+  assert.ok(ANOMALY_EVENT_CLASSES.includes("E4_SECURITY"));
+  assert.equal(alertSeverityToUnifiedSeverity("page"), "SEV1");
+  assert.equal(
+    classifyAnomalyEvent({
+      metricName: "provider_503_rate",
+      legacySeverity: "emergency",
+      context: { statusCode: 503 },
+    }).anomalyEventClass,
+    "E3_EXTERNAL_DEPENDENCY",
+  );
 });

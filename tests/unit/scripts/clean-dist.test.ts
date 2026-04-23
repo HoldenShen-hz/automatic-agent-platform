@@ -69,6 +69,7 @@ test("clean-dist prunes stale compiled tests even when dist is preserved", () =>
       env: {
         ...process.env,
         AA_PRESERVE_DIST: "1",
+        AA_PRUNE_DIST_TESTS: "1",
       },
       stdio: "pipe",
     });

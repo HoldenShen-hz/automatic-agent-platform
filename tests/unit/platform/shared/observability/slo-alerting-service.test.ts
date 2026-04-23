@@ -149,6 +149,7 @@ test("alert rule fires and delivers to log channel", () => {
     assert.ok(alert.id.startsWith("alert_"));
     assert.equal(alert.status, "firing");
     assert.equal(alert.severity, "critical");
+    assert.equal(alert.unifiedSeverity, "SEV2");
     assert.ok(alert.deliveredAt); // delivered to log channel
 
     const delivered = logChannel.getDelivered();

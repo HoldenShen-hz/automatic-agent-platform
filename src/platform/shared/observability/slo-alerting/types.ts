@@ -1,3 +1,5 @@
+import type { UnifiedSeverity } from "../../../contracts/types/index.js";
+
 /**
  * Types of SLIs (Service Level Indicators) that can be measured.
  */
@@ -66,6 +68,7 @@ export interface AlertRule {
   sloId: string | null;
   condition: string;
   severity: AlertSeverity;
+  unifiedSeverity?: UnifiedSeverity;
   channelKind: AlertChannelKind;
   channelConfig: string;
   cooldownMinutes: number;
@@ -80,6 +83,7 @@ export interface AlertEvent {
   id: string;
   ruleId: string;
   severity: AlertSeverity;
+  unifiedSeverity?: UnifiedSeverity;
   status: AlertStatus;
   title: string;
   detail: string;

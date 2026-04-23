@@ -171,6 +171,7 @@ test("OperationsGovernanceService builds SLO, runbook, oncall, and incident pack
     assert.ok(report.summary.incidentConsoleReady);
     assert.ok(report.incident);
     assert.equal(report.incident?.taskId, harness.taskId);
+    assert.equal(report.incident?.unifiedSeverity, "SEV2");
     assert.ok(report.incident?.recommendedRunbookIds.length);
     assert.ok(report.incident?.recommendedCommands.length);
   } finally {

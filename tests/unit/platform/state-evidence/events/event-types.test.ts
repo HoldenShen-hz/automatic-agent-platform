@@ -34,6 +34,7 @@ test("TIER_1_EVENT_TYPES contains expected events", () => {
   assert.ok(TIER_1_EVENT_TYPES.includes("pack:uninstalled"));
   assert.ok(TIER_1_EVENT_TYPES.includes("marketplace:listing_published"));
   assert.ok(TIER_1_EVENT_TYPES.includes("marketplace:listing_purchased"));
+  assert.ok(TIER_1_EVENT_TYPES.includes("anomaly:classified"));
   assert.ok(TIER_1_EVENT_TYPES.includes("slo:breached"));
   assert.ok(TIER_1_EVENT_TYPES.includes("slo:recovered"));
   assert.ok(TIER_1_EVENT_TYPES.includes("compliance:audit_recorded"));
@@ -43,7 +44,7 @@ test("TIER_1_EVENT_TYPES contains expected events", () => {
 });
 
 test("TIER_1_EVENT_TYPES has correct length", () => {
-  assert.equal(TIER_1_EVENT_TYPES.length, 31);
+  assert.equal(TIER_1_EVENT_TYPES.length, 32);
 });
 
 test("getEventTier returns tier_1 for Tier 1 events", () => {
@@ -182,6 +183,12 @@ test("getRequiredConsumers returns consumers for marketplace events", () => {
 
   const purchased = getRequiredConsumers("marketplace:listing_purchased");
   assert.ok(purchased.includes("marketplace_projection"));
+});
+
+test("getRequiredConsumers returns consumers for anomaly classification events", () => {
+  const anomaly = getRequiredConsumers("anomaly:classified");
+  assert.ok(anomaly.includes("incident_projection"));
+  assert.ok(anomaly.includes("inspect_projection"));
 });
 
 test("getRequiredConsumers returns consumers for slo events", () => {

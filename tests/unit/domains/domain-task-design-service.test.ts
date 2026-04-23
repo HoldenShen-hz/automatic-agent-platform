@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DomainTaskDesignService } from "../../../src/domains/domain-task-design-service.js";
+import type { DomainTaskDesignServiceOptions } from "../../../src/domains/domain-task-design-service.js";
 
-function createDefaultOptions() {
+function createDefaultOptions(): DomainTaskDesignServiceOptions {
   return {
     recipes: [
       {
@@ -20,46 +21,46 @@ function createDefaultOptions() {
       prompts: [
         {
           promptId: "prompt_release",
-          stage: "execute",
+          stage: "execute" as const,
           version: "1.0",
           template: "Release safely",
-          guardrails: ["approval_required"],
+          guardrails: ["approval_required"] as const,
         },
       ],
     },
     riskProfile: {
       profileId: "risk_coding",
       domainId: "coding",
-      defaultRiskLevel: "low",
+      defaultRiskLevel: "low" as const,
       dimensions: [],
     },
     evalFramework: {
       frameworkId: "eval_coding",
       domainId: "coding",
-      fewShotExamples: [],
+      fewShotExamples: [] as const,
       evaluators: [
         { evaluatorId: "tests_pass", metric: "tests_pass", threshold: 0.95, blocking: true },
         { evaluatorId: "docs_sync", metric: "docs_sync", threshold: 0.8, blocking: false },
       ],
-      onlineMetrics: ["latency"],
+      onlineMetrics: ["latency"] as const,
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
     knowledgeSchema: {
       schemaId: "knowledge_coding",
       domainId: "coding",
-      namespaceIds: ["repo", "runbook"],
+      namespaceIds: ["repo", "runbook"] as const,
       freshnessWindowHours: 24,
-      conflictResolution: "trust_priority",
+      conflictResolution: "trust_priority" as const,
       retentionDays: 30,
       knowledgeSources: [],
-      retrievalStrategy: { strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
-      freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
+      retrievalStrategy: { strategy: "semantic" as const, maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
+      freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled" as const, backgroundRefreshEnabled: true },
     },
     interactionRules: [
       {
         sourceDomainId: "coding",
         targetDomainId: "operations",
-        mode: "approval_required",
+        mode: "approval_required" as const,
         maxConcurrentWorkflows: 1,
         compensationRequired: true,
       },
@@ -90,9 +91,15 @@ test("DomainTaskDesignService assembles recipe, prompt, risk, evaluation, and in
 });
 
 test("DomainTaskDesignService returns null workflow and prompt when no match", () => {
-  const options = createDefaultOptions();
-  options.recipes = [];
-  options.promptLibrary.prompts = [];
+  const base = createDefaultOptions();
+  const options: DomainTaskDesignServiceOptions = {
+    ...base,
+    recipes: [],
+    promptLibrary: {
+      ...base.promptLibrary,
+      prompts: [],
+    },
+  };
 
   const service = new DomainTaskDesignService(options);
 
@@ -166,16 +173,19 @@ test("DomainTaskDesignService returns same_domain for same domain interaction", 
 });
 
 test("DomainTaskDesignService returns allow for cross-domain when rule allows", () => {
-  const options = createDefaultOptions();
-  options.interactionRules = [
-    {
-      sourceDomainId: "coding",
-      targetDomainId: "data-engineering",
-      mode: "allow",
-      maxConcurrentWorkflows: 5,
-      compensationRequired: false,
-    },
-  ];
+  const base = createDefaultOptions();
+  const options: DomainTaskDesignServiceOptions = {
+    ...base,
+    interactionRules: [
+      {
+        sourceDomainId: "coding",
+        targetDomainId: "data-engineering",
+        mode: "allow",
+        maxConcurrentWorkflows: 5,
+        compensationRequired: false,
+      },
+    ],
+  };
 
   const service = new DomainTaskDesignService(options);
 
@@ -192,16 +202,19 @@ test("DomainTaskDesignService returns allow for cross-domain when rule allows", 
 });
 
 test("DomainTaskDesignService returns deny when no matching rule", () => {
-  const options = createDefaultOptions();
-  options.interactionRules = [
-    {
-      sourceDomainId: "coding",
-      targetDomainId: "security",
-      mode: "deny",
-      maxConcurrentWorkflows: 1,
-      compensationRequired: false,
-    },
-  ];
+  const base = createDefaultOptions();
+  const options: DomainTaskDesignServiceOptions = {
+    ...base,
+    interactionRules: [
+      {
+        sourceDomainId: "coding",
+        targetDomainId: "security",
+        mode: "deny",
+        maxConcurrentWorkflows: 1,
+        compensationRequired: false,
+      },
+    ],
+  };
 
   const service = new DomainTaskDesignService(options);
 
@@ -218,12 +231,15 @@ test("DomainTaskDesignService returns deny when no matching rule", () => {
 });
 
 test("DomainTaskDesignService sets reviewRequired for high risk", () => {
-  const options = createDefaultOptions();
-  options.riskProfile = {
-    profileId: "risk_coding",
-    domainId: "coding",
-    defaultRiskLevel: "medium",
-    dimensions: [],
+  const base = createDefaultOptions();
+  const options: DomainTaskDesignServiceOptions = {
+    ...base,
+    riskProfile: {
+      profileId: "risk_coding",
+      domainId: "coding",
+      defaultRiskLevel: "medium",
+      dimensions: [],
+    },
   };
 
   const service = new DomainTaskDesignService(options);
@@ -269,9 +285,15 @@ test("DomainTaskDesignService sets reviewRequired for approval_required interact
 });
 
 test("DomainTaskDesignService does not require review for low risk same domain", () => {
-  const options = createDefaultOptions();
-  options.interactionRules = [];
-  options.evalFramework.evaluators = [];
+  const base = createDefaultOptions();
+  const options: DomainTaskDesignServiceOptions = {
+    ...base,
+    interactionRules: [],
+    evalFramework: {
+      ...base.evalFramework,
+      evaluators: [],
+    },
+  };
 
   const service = new DomainTaskDesignService(options);
 
@@ -288,8 +310,11 @@ test("DomainTaskDesignService does not require review for low risk same domain",
 });
 
 test("DomainTaskDesignService handles no interaction rules", () => {
-  const options = createDefaultOptions();
-  options.interactionRules = [];
+  const base = createDefaultOptions();
+  const options: DomainTaskDesignServiceOptions = {
+    ...base,
+    interactionRules: [],
+  };
 
   const service = new DomainTaskDesignService(options);
 

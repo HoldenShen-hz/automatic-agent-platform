@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type {
+  ClassifiedAnomalyEventPayload,
   TaskStatusChangedPayload,
   WorkflowStepCompletedPayload,
   DecisionRequestedPayload,
@@ -15,6 +16,21 @@ import type {
   TakeoverPayload,
   RecoveryPayload,
 } from "../../../../../src/platform/state-evidence/events/typed-event-payloads.js";
+
+test("ClassifiedAnomalyEventPayload structure is correct", () => {
+  const payload: ClassifiedAnomalyEventPayload = {
+    eventId: "evt_123",
+    metricName: "provider_503_rate",
+    anomalyEventClass: "E3_EXTERNAL_DEPENDENCY",
+    unifiedSeverity: "SEV1",
+    legacySeverity: "emergency",
+    statisticalCategory: "level_shift",
+    occurredAt: "2026-04-23T00:00:00.000Z",
+    context: { statusCode: 503 },
+  };
+  assert.equal(payload.anomalyEventClass, "E3_EXTERNAL_DEPENDENCY");
+  assert.equal(payload.unifiedSeverity, "SEV1");
+});
 
 test("TaskStatusChangedPayload structure is correct", () => {
   const payload: TaskStatusChangedPayload = {

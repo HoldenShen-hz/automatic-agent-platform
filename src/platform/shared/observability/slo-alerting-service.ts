@@ -23,7 +23,11 @@
  */
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  alertSeverityToUnifiedSeverity,
+  newId,
+  nowIso,
+} from "../../contracts/types/index.js";
 import { AlertDispatcher } from "./alert-dispatcher.js";
 import { runtimeMetricsRegistry } from "./runtime-metrics-registry.js";
 import { rolloutFreezeManager } from "./rollout-freeze-manager.js";
@@ -563,7 +567,12 @@ export class SloAlertingService {
    */
   defineAlertRule(input: Omit<AlertRule, "id" | "createdAt">): AlertRule {
     const now = nowIso();
-    const rule: AlertRule = { id: newId("arule"), createdAt: now, ...input };
+    const rule: AlertRule = {
+      id: newId("arule"),
+      createdAt: now,
+      ...input,
+      unifiedSeverity: input.unifiedSeverity ?? alertSeverityToUnifiedSeverity(input.severity),
+    };
 
     this.db.connection
       .prepare(
@@ -816,6 +825,7 @@ export class SloAlertingService {
       sloId: row.slo_id != null ? String(row.slo_id) : null,
       condition: String(row.condition ?? ""),
       severity: String(row.severity ?? "warning") as AlertSeverity,
+      unifiedSeverity: alertSeverityToUnifiedSeverity(String(row.severity ?? "warning") as AlertSeverity),
       channelKind: String(row.channel_kind ?? "log") as AlertChannelKind,
       channelConfig: String(row.channel_config ?? "{}"),
       cooldownMinutes: Number(row.cooldown_minutes ?? 5),
@@ -832,6 +842,7 @@ export class SloAlertingService {
       id: String(row.id),
       ruleId: String(row.rule_id ?? ""),
       severity: String(row.severity ?? "warning") as AlertSeverity,
+      unifiedSeverity: alertSeverityToUnifiedSeverity(String(row.severity ?? "warning") as AlertSeverity),
       status: String(row.status ?? "firing") as AlertStatus,
       title: String(row.title ?? ""),
       detail: String(row.detail ?? ""),

@@ -6,6 +6,7 @@
  */
 
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { alertSeverityToUnifiedSeverity } from "../../contracts/types/index.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type {
   AlertChannelKind,
@@ -122,6 +123,7 @@ export class AlertDispatcher {
       id: newId("alert"),
       ruleId,
       severity: resolvedSeverity,
+      unifiedSeverity: alertSeverityToUnifiedSeverity(resolvedSeverity),
       status: "firing",
       title,
       detail,
@@ -166,6 +168,7 @@ export class AlertDispatcher {
       id: newId("alert"),
       ruleId,
       severity,
+      unifiedSeverity: alertSeverityToUnifiedSeverity(severity),
       status: "firing",
       title,
       detail,

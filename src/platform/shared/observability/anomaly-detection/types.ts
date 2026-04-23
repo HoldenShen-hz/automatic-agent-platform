@@ -1,3 +1,8 @@
+import type {
+  AnomalyEventClass,
+  UnifiedSeverity,
+} from "../../../contracts/types/index.js";
+
 export type AnomalySeverity = "info" | "warning" | "critical" | "emergency";
 
 export type AnomalyCategory =
@@ -20,7 +25,9 @@ export interface AnomalyRecord {
   metricName: string;
   timestamp: string;
   severity: AnomalySeverity;
+  unifiedSeverity?: UnifiedSeverity;
   category: AnomalyCategory;
+  anomalyEventClass?: AnomalyEventClass;
   score: number;
   expectedValue: number;
   observedValue: number;
@@ -60,7 +67,9 @@ export interface AnomalyDetectionResult {
   isAnomaly: boolean;
   score: number;
   severity: AnomalySeverity;
+  unifiedSeverity?: UnifiedSeverity;
   category: AnomalyCategory;
+  anomalyEventClass?: AnomalyEventClass;
   expectedValue: number;
   deviation: number;
   deviationPercent: number;
