@@ -16,10 +16,10 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "create_account",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_OWNER_ID: "owner-123",
-      AA_BILLING_WORKSPACE_ID: "ws-456",
-      AA_BILLING_PLAN_ID: "plan-basic",
-      AA_BILLING_ACCOUNT_STATUS: "active",
+      AA_OWNER_ID: "owner-123",
+      AA_WORKSPACE_ID: "ws-456",
+      AA_PLAN_ID: "plan-basic",
+      AA_ACCOUNT_STATUS: "active",
     });
 
     assert.equal(config.action, "create_account");
@@ -33,7 +33,7 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "evaluate",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_ACCOUNT_ID: "acc-123",
+      AA_ACCOUNT_ID: "acc-123",
       AA_FEATURE_KEY: "feature-x",
       AA_METRIC_TYPE: "task_execution",
     });
@@ -48,9 +48,9 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "usage",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_ACCOUNT_ID: "acc-123",
-      AA_BILLING_WORKSPACE_ID: "ws-456",
-      AA_BILLING_TENANT_ID: "tenant-789",
+      AA_ACCOUNT_ID: "acc-123",
+      AA_WORKSPACE_ID: "ws-456",
+      AA_TENANT_ID: "tenant-789",
       AA_METRIC_TYPE: "task_execution",
       AA_QUANTITY: "100",
       AA_SOURCE: "cli-test",
@@ -69,7 +69,7 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "summary",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_ACCOUNT_ID: "acc-123",
+      AA_ACCOUNT_ID: "acc-123",
     });
 
     assert.equal(config.action, "summary");
@@ -80,8 +80,8 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "create_invoice",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_ACCOUNT_ID: "acc-123",
-      AA_BILLING_TENANT_ID: "tenant-789",
+      AA_ACCOUNT_ID: "acc-123",
+      AA_TENANT_ID: "tenant-789",
     });
 
     assert.equal(config.action, "create_invoice");
@@ -93,11 +93,12 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "list_invoices",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_ACCOUNT_ID: "acc-123",
+      AA_ACCOUNT_ID: "acc-123",
       AA_LIMIT: "50",
     });
 
     assert.equal(config.action, "list_invoices");
+    assert.equal(config.accountId, "acc-123");
     assert.equal(config.limit, 50);
   });
 
@@ -118,7 +119,7 @@ describe("loadBillingCliEnv", () => {
     const config = loadBillingCliEnv({
       AA_BILLING_ACTION: "reconcile_pending",
       AA_DB_PATH: "/tmp/test.db",
-      AA_BILLING_TENANT_ID: "tenant-789",
+      AA_TENANT_ID: "tenant-789",
     });
 
     assert.equal(config.action, "reconcile_pending");
@@ -131,8 +132,8 @@ describe("loadBillingCliEnv", () => {
       AA_DB_PATH: "/tmp/test.db",
       AA_PAYMENT_GATEWAY_KIND: "stripe",
       AA_STRIPE_SECRET_KEY: "sk_test_xxx",
-      AA_STRIPE_SUCCESS_URL: "https://success.example.com",
-      AA_STRIPE_CANCEL_URL: "https://cancel.example.com",
+      AA_BILLING_SUCCESS_URL: "https://success.example.com",
+      AA_BILLING_CANCEL_URL: "https://cancel.example.com",
     });
 
     assert.equal(config.paymentGatewayKind, "stripe");
@@ -147,8 +148,8 @@ describe("loadBillingCliEnv", () => {
       AA_DB_PATH: "/tmp/test.db",
       AA_PAYMENT_GATEWAY_KIND: "paddle",
       AA_PADDLE_API_KEY: "paddle_xxx",
-      AA_PADDLE_SUCCESS_URL: "https://success.example.com",
-      AA_PADDLE_CANCEL_URL: "https://cancel.example.com",
+      AA_BILLING_SUCCESS_URL: "https://success.example.com",
+      AA_BILLING_CANCEL_URL: "https://cancel.example.com",
     });
 
     assert.equal(config.paymentGatewayKind, "paddle");
@@ -164,20 +165,22 @@ describe("loadBillingCliEnv", () => {
           AA_BILLING_ACTION: "unknown_action",
           AA_DB_PATH: "/tmp/test.db",
         }),
-      (e) => e instanceof ValidationError && (e as ValidationError).code.includes("unknown_billing_action"),
+      (e) => e instanceof ValidationError && (e as ValidationError).code === "billing.invalid_action",
     );
   });
 
-  it("throws ValidationError for missing stripe config when using stripe gateway", () => {
-    assert.throws(
-      () =>
-        loadBillingCliEnv({
-          AA_BILLING_ACTION: "create_checkout",
-          AA_DB_PATH: "/tmp/test.db",
-          AA_PAYMENT_GATEWAY_KIND: "stripe",
-          // Missing AA_STRIPE_SECRET_KEY, AA_STRIPE_SUCCESS_URL, AA_STRIPE_CANCEL_URL
-        }),
-      (e) => e instanceof ValidationError && (e as ValidationError).code.includes("billing.missing_stripe_gateway_env"),
-    );
+  it("returns null stripe fields when gateway credentials are not provided", () => {
+    const config = loadBillingCliEnv({
+      AA_BILLING_ACTION: "create_checkout",
+      AA_DB_PATH: "/tmp/test.db",
+      AA_PAYMENT_GATEWAY_KIND: "stripe",
+      AA_BILLING_SUCCESS_URL: "https://success.example.com",
+      AA_BILLING_CANCEL_URL: "https://cancel.example.com",
+    });
+
+    assert.equal(config.paymentGatewayKind, "stripe");
+    assert.equal(config.stripeSecretKey, null);
+    assert.equal(config.stripeSuccessUrl, "https://success.example.com");
+    assert.equal(config.stripeCancelUrl, "https://cancel.example.com");
   });
 });

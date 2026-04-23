@@ -2,88 +2,86 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { inheritPolicyLayers, type PolicyLayer } from "../../../../src/org-governance/compliance-engine/inheritance/index.js";
 
-test("inheritPolicyLayers", () => {
-  test("returns empty object for empty layers array", () => {
-    const result = inheritPolicyLayers([]);
-    assert.deepStrictEqual(result, {});
-  });
+test("inheritPolicyLayers returns empty object for empty layers array", () => {
+  const result = inheritPolicyLayers([]);
+  assert.deepStrictEqual(result, {});
+});
 
-  test("merges boolean values with OR logic", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { segregationOfDuties: false } },
-      { policyId: "p2", rules: { segregationOfDuties: true } },
-    ];
+test("inheritPolicyLayers merges boolean values with OR logic", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { segregationOfDuties: false } },
+    { policyId: "p2", rules: { segregationOfDuties: true } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.strictEqual(result.segregationOfDuties, true);
-  });
+  assert.strictEqual(result.segregationOfDuties, true);
+});
 
-  test("merges number values with max", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { auditRetentionDays: 100 } },
-      { policyId: "p2", rules: { auditRetentionDays: 2555 } },
-    ];
+test("inheritPolicyLayers merges number values with max", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { auditRetentionDays: 100 } },
+    { policyId: "p2", rules: { auditRetentionDays: 2555 } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.strictEqual(result.auditRetentionDays, 2555);
-  });
+  assert.strictEqual(result.auditRetentionDays, 2555);
+});
 
-  test("merges string values with restricted taking precedence", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { dataClassification: "standard" } },
-      { policyId: "p2", rules: { dataClassification: "restricted" } },
-    ];
+test("inheritPolicyLayers merges string values with restricted taking precedence", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { dataClassification: "standard" } },
+    { policyId: "p2", rules: { dataClassification: "restricted" } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.strictEqual(result.dataClassification, "restricted");
-  });
+  assert.strictEqual(result.dataClassification, "restricted");
+});
 
-  test("prefers later non-empty string over earlier empty string", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { dataClassification: "" } },
-      { policyId: "p2", rules: { dataClassification: "standard" } },
-    ];
+test("inheritPolicyLayers prefers later non-empty string over earlier empty string", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { dataClassification: "" } },
+    { policyId: "p2", rules: { dataClassification: "standard" } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.strictEqual(result.dataClassification, "standard");
-  });
+  assert.strictEqual(result.dataClassification, "standard");
+});
 
-  test("later layer value overwrites non-boolean/number/string", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { customRule: { a: 1 } } },
-      { policyId: "p2", rules: { customRule: { b: 2 } } },
-    ];
+test("inheritPolicyLayers later layer value overwrites non-boolean/number/string", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { customRule: { a: 1 } } },
+    { policyId: "p2", rules: { customRule: { b: 2 } } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.deepStrictEqual(result.customRule, { b: 2 });
-  });
+  assert.deepStrictEqual(result.customRule, { b: 2 });
+});
 
-  test("handles single layer", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { approvalChainRequired: true } },
-    ];
+test("inheritPolicyLayers handles single layer", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { approvalChainRequired: true } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.strictEqual(result.approvalChainRequired, true);
-  });
+  assert.strictEqual(result.approvalChainRequired, true);
+});
 
-  test("merges multiple layers in order", () => {
-    const layers: readonly PolicyLayer[] = [
-      { policyId: "p1", rules: { rule1: 1, rule2: "a" } },
-      { policyId: "p2", rules: { rule1: 2, rule2: "restricted", rule3: false } },
-      { policyId: "p3", rules: { rule1: 3, rule3: true } },
-    ];
+test("inheritPolicyLayers merges multiple layers in order", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { rule1: 1, rule2: "a" } },
+    { policyId: "p2", rules: { rule1: 2, rule2: "restricted", rule3: false } },
+    { policyId: "p3", rules: { rule1: 3, rule3: true } },
+  ];
 
-    const result = inheritPolicyLayers(layers);
+  const result = inheritPolicyLayers(layers);
 
-    assert.strictEqual(result.rule1, 3);
-    assert.strictEqual(result.rule2, "restricted");
-    assert.strictEqual(result.rule3, true);
-  });
+  assert.strictEqual(result.rule1, 3);
+  assert.strictEqual(result.rule2, "restricted");
+  assert.strictEqual(result.rule3, true);
 });

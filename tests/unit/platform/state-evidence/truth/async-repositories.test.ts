@@ -492,11 +492,9 @@ test("AsyncIntelligenceRepository upserts perception sources and inserts intel i
     capturedAt: now,
     expiresAt: null,
   } as const;
-  // 4 queryOne calls for getPerceptionSource + 3 for getIntelItemBySourceAndDedupeKey = 7 total
   const { connection, calls } = createConnection({
     executeResults: [1, 1],
-    queryRows: [[source], [item]],
-    queryOneRows: [source, undefined, undefined, undefined, item, item, undefined],
+    queryOneRows: [source, source, undefined, undefined, item, item, undefined],
   });
   const repo = new AsyncIntelligenceRepository(connection);
 
@@ -543,10 +541,8 @@ test("AsyncIntelligenceRepository lists perception sources and intel items with 
     capturedAt: now,
     expiresAt: null,
   } as const;
-  // 7 query calls: 3 listPerceptionSources + 3 listIntelItems + 1 listIntelItemsByIds
   const { connection, calls } = createConnection({
     queryRows: [[source], [source], [source], [item], [item], [item], [item]],
-    queryOneRows: [undefined],
   });
   const repo = new AsyncIntelligenceRepository(connection);
 
@@ -560,10 +556,11 @@ test("AsyncIntelligenceRepository lists perception sources and intel items with 
   assert.deepEqual(await repo.listIntelItemsByIds([]), []);
 
   assert.match(calls[1]!.sql, /WHERE enabled = 1/);
-  assert.match(calls[2]!.sql, /tenant_id = \$3/);
-  assert.match(calls[4]!.sql, /source_id IN \(\$1\)/);
-  assert.match(calls[5]!.sql, /captured_at >= \$3 AND captured_at <= \$4/);
-  assert.match(calls[6]!.sql, /[\s\S]*?ORDER BY importance DESC, relevance_score DESC/s);
+  assert.match(calls[2]!.sql, /tenant_id = \$1/);
+  assert.match(calls[3]!.sql, /source_id IN \(\$1\)/);
+  assert.match(calls[4]!.sql, /captured_at >= \$1 AND captured_at <= \$2/);
+  assert.match(calls[5]!.sql, /ORDER BY importance DESC, relevance_score DESC, captured_at DESC/);
+  assert.match(calls[6]!.sql, /WHERE intel_id IN \(\$1, \$2\)/);
 });
 
 test("AsyncIntelligenceRepository writes intel briefs and action proposals", async () => {
@@ -595,8 +592,8 @@ test("AsyncIntelligenceRepository writes intel briefs and action proposals", asy
   } as const;
   const { connection, calls } = createConnection({
     executeResults: [1, 1],
-    queryRows: [[brief], [proposal]],
-    queryOneRows: [brief, undefined],
+    queryRows: [[brief], [brief], [brief], [proposal], [proposal]],
+    queryOneRows: [brief, undefined, brief],
   });
   const repo = new AsyncIntelligenceRepository(connection);
 
@@ -613,9 +610,10 @@ test("AsyncIntelligenceRepository writes intel briefs and action proposals", asy
 
   assert.match(calls[0]!.sql, /INSERT INTO intel_briefs/);
   assert.match(calls[1]!.sql, /INSERT INTO action_proposals/);
-  assert.match(calls[2]!.sql, /FROM intel_briefs WHERE brief_id = \$1/);
-  assert.match(calls[4]!.sql, /WHERE tenant_id = \$1[\s\S]*?ORDER BY generated_at DESC[\s\S]*?LIMIT\$2/s);
-  assert.match(calls[6]!.sql, /FROM action_proposals WHERE brief_id = \$1/);
+  assert.match(calls[2]!.sql, /FROM intel_briefs[\s\S]*?WHERE brief_id = \$1/);
+  assert.match(calls[7]!.sql, /WHERE tenant_id = \$1 ORDER BY generated_at DESC LIMIT \$2/);
+  assert.match(calls[8]!.sql, /FROM action_proposals[\s\S]*?WHERE brief_id = \$1/);
+  assert.match(calls[9]!.sql, /FROM action_proposals[\s\S]*?WHERE brief_id = \$1 AND tenant_id = \$2/);
 });
 
 test("AsyncMarketplaceListingRepository writes and reads marketplace listings", async () => {
@@ -653,7 +651,7 @@ test("AsyncMarketplaceListingRepository writes and reads marketplace listings", 
 
   assert.match(calls[0]!.sql, /INSERT INTO marketplace_listings/);
   assert.match(calls[1]!.sql, /UPDATE marketplace_listings SET/);
-  assert.match(calls[1]!.sql, /deprecated_at = \$7/);
+  assert.match(calls[1]!.sql, /deprecated_at = \$3/);
   assert.match(calls[4]!.sql, /download_count = download_count \+ 1/);
   assert.match(calls[5]!.sql, /rating_avg = \$1, rating_count = \$2/);
 });
@@ -719,8 +717,8 @@ test("AsyncMarketplaceListingRepository writes and reads pack reviews", async ()
   assert.match(calls[0]!.sql, /INSERT INTO pack_reviews/);
   assert.match(calls[1]!.sql, /UPDATE pack_reviews SET/);
   assert.match(calls[1]!.sql, /rating = \$2/);
-  assert.match(calls[2]!.sql, /WHERE listing_id = \$1 AND status = 'active'/);
-  assert.match(calls[4]!.sql, /COUNT\(\*\) AS count FROM pack_reviews/);
+  assert.match(calls[4]!.sql, /WHERE listing_id = \$1 AND status = 'active'/);
+  assert.match(calls[5]!.sql, /COUNT\(\*\) AS count FROM pack_reviews/);
 });
 
 test("AsyncMarketplaceListingRepository writes and reads pack downloads", async () => {
@@ -769,7 +767,7 @@ test("AsyncOrganizationRepository upserts workspace and membership records", asy
   } as const;
   const { connection, calls } = createConnection({
     executeResults: [1, 1],
-    queryRows: [[workspace]],
+    queryRows: [[membership]],
     queryOneRows: [workspace, undefined],
   });
   const repo = new AsyncOrganizationRepository(connection);
@@ -783,7 +781,7 @@ test("AsyncOrganizationRepository upserts workspace and membership records", asy
   assert.match(calls[0]!.sql, /INSERT INTO workspaces/);
   assert.match(calls[0]!.sql, /ON CONFLICT\(workspace_id\) DO UPDATE SET/);
   assert.match(calls[1]!.sql, /INSERT INTO workspace_memberships/);
-  assert.match(calls[2]!.sql, /FROM workspaces WHERE workspace_id = \$1/);
+  assert.match(calls[2]!.sql, /FROM workspaces[\s\S]*?WHERE workspace_id = \$1/);
 });
 
 test("AsyncOrganizationRepository lists workspaces by organization", async () => {
@@ -935,8 +933,7 @@ test("AsyncPromptRepository writes and reads prompt bundles", async () => {
   } as const;
   const { connection, calls } = createConnection({
     executeResults: [1, 1],
-    queryRows: [[bundle]],
-    queryOneRows: [bundle, undefined],
+    queryOneRows: [bundle, undefined, bundle, undefined],
   });
   const repo = new AsyncPromptRepository(connection);
 
@@ -972,7 +969,7 @@ test("AsyncPromptRepository lists prompt bundles by domain and active bundles", 
     updatedAt: now,
   } as const;
   const { connection, calls } = createConnection({
-    queryRows: [[bundle], [bundle]],
+    queryRows: [[bundle], [bundle], [bundle]],
   });
   const repo = new AsyncPromptRepository(connection);
 
@@ -997,8 +994,8 @@ test("AsyncPromptRepository writes and reads prompt versions", async () => {
   } as const;
   const { connection, calls } = createConnection({
     executeResults: [1, 1, 1],
-    queryRows: [[version], [version]],
-    queryOneRows: [version, undefined],
+    queryRows: [[version]],
+    queryOneRows: [version, undefined, version, undefined],
   });
   const repo = new AsyncPromptRepository(connection);
 
@@ -1033,7 +1030,7 @@ test("AsyncPromptRepository writes and reads prompt AB tests", async () => {
   } as const;
   const { connection, calls } = createConnection({
     executeResults: [1, 1],
-    queryRows: [[test]],
+    queryRows: [[test], [test]],
     queryOneRows: [test, undefined],
   });
   const repo = new AsyncPromptRepository(connection);
@@ -1097,8 +1094,8 @@ test("AsyncTenantRepository writes and reads tenants with quotas and billing", a
   };
   const { connection, calls } = createConnection({
     executeResults: [1, 1, 1, 1],
-    queryRows: [[tenant], [quota]],
-    queryOneRows: [tenant, undefined],
+    queryRows: [[tenant], [quota], [billing]],
+    queryOneRows: [tenant, undefined, quota, undefined, billing],
   });
   const repo = new AsyncTenantRepository(connection);
 
@@ -1125,9 +1122,9 @@ test("AsyncTenantRepository writes and reads tenants with quotas and billing", a
   assert.match(calls[0]!.sql, /INSERT INTO tenants/);
   assert.match(calls[1]!.sql, /UPDATE tenants SET/);
   assert.match(calls[2]!.sql, /FROM tenants WHERE tenant_id = \$1/);
-  assert.match(calls[3]!.sql, /DELETE FROM tenants WHERE tenant_id = \$1/);
-  assert.match(calls[4]!.sql, /INSERT INTO tenant_quotas/);
-  assert.match(calls[5]!.sql, /UPDATE tenant_quotas SET current_usage = \$1/);
-  assert.match(calls[6]!.sql, /INSERT INTO tenant_billing/);
-  assert.match(calls[7]!.sql, /UPDATE tenant_billing SET status = \$1/);
+  assert.match(calls[5]!.sql, /DELETE FROM tenants WHERE tenant_id = \$1/);
+  assert.match(calls[6]!.sql, /INSERT INTO tenant_quotas/);
+  assert.match(calls[10]!.sql, /UPDATE tenant_quotas SET current_usage = \$1/);
+  assert.match(calls[11]!.sql, /INSERT INTO tenant_billing/);
+  assert.match(calls[12]!.sql, /UPDATE tenant_billing SET status = \$1/);
 });

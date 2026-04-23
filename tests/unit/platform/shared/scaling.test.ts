@@ -429,7 +429,9 @@ test("canAllocate rejects when exceeding max limit", () => {
 });
 
 test("canAllocate rejects when exceeding burstable but within max", () => {
-  const quota = createResourceQuota("org-1");
+  const quota = createResourceQuota("org-1", {
+    maxLimit: { maxConcurrentWorkflows: 20 },
+  });
   const usage: QuotaUsage = {
     orgNodeId: "org-1",
     activeWorkflows: 8,

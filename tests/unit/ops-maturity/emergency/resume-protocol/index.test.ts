@@ -28,7 +28,7 @@ test.describe("ResumeProtocol", () => {
       assert.equal(result, true);
     });
 
-    test("returns true when all conditions are met with string approver", () => {
+    test("returns false when all conditions are met but only one string approver is provided", () => {
       const plan: ResumePlan = {
         scope: "platform",
         approvedBy: "operator-1",
@@ -40,7 +40,7 @@ test.describe("ResumeProtocol", () => {
 
       const result = canResumeFromPanic(plan);
 
-      assert.equal(result, true);
+      assert.equal(result, false);
     });
 
     test("returns false when checkpointsVerified is false", () => {
@@ -160,7 +160,7 @@ test.describe("ResumeProtocol", () => {
       assert.equal(result, true);
     });
 
-    test("handles approver as single string with sufficient length", () => {
+    test("returns false when approver is a single string with sufficient length", () => {
       const plan: ResumePlan = {
         scope: "platform",
         approvedBy: "super-admin-operator",
@@ -172,7 +172,7 @@ test.describe("ResumeProtocol", () => {
 
       const result = canResumeFromPanic(plan);
 
-      assert.equal(result, true);
+      assert.equal(result, false);
     });
 
     test("returns false when single string approver is only whitespace", () => {

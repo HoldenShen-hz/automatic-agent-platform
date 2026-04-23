@@ -19,7 +19,7 @@ test("loadStablePackageCliEnv returns default outputDir", () => {
 });
 
 test("loadStablePackageCliEnv parses custom outputDir", () => {
-  const result = loadStablePackageCliEnv({ AA_STABLE_PACKAGE_OUTPUT_DIR: "/custom/package" });
+  const result = loadStablePackageCliEnv({ AA_STABLE_PACKAGE: "/custom/package" });
   assert.equal(result.outputDir, "/custom/package");
 });
 

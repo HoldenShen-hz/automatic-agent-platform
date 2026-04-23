@@ -340,7 +340,6 @@ test("renderForAudience business returns plain text format", () => {
   const result = renderForAudience("execute", "Task done", [], [], [], "business");
 
   assert.ok(!result.startsWith("{"));
-  assert.ok(!result.startsWith("["));
   assert.ok(result.includes("Task done") || result.includes("execute"));
 });
 

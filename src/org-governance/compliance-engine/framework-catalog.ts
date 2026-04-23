@@ -18,8 +18,8 @@ export const DepartmentComplianceBindingSchema = z.object({
 export type ComplianceFramework = z.infer<typeof ComplianceFrameworkSchema>;
 export type DepartmentComplianceBinding = z.infer<typeof DepartmentComplianceBindingSchema>;
 
-export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = [
-  {
+export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = Object.freeze([
+  Object.freeze({
     frameworkId: "sox",
     displayName: "Sarbanes-Oxley",
     controlIds: ["access_review", "approval_segregation", "audit_retention"],
@@ -28,8 +28,8 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = [
       auditRetentionDays: 2555,
       approvalChainRequired: true,
     },
-  },
-  {
+  }),
+  Object.freeze({
     frameworkId: "hipaa",
     displayName: "HIPAA",
     controlIds: ["phi_access", "minimum_necessary", "encryption_required"],
@@ -38,8 +38,8 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = [
       encryptionRequired: true,
       breachNotificationHours: 72,
     },
-  },
-  {
+  }),
+  Object.freeze({
     frameworkId: "pci_dss",
     displayName: "PCI DSS",
     controlIds: ["network_segmentation", "key_rotation", "payment_audit"],
@@ -48,8 +48,8 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = [
       keyRotationDays: 90,
       dualControl: true,
     },
-  },
-  {
+  }),
+  Object.freeze({
     frameworkId: "gdpr",
     displayName: "GDPR",
     controlIds: ["lawful_basis", "erasure", "residency", "consent_audit"],
@@ -58,5 +58,5 @@ export const DEFAULT_COMPLIANCE_FRAMEWORKS: readonly ComplianceFramework[] = [
       residencyAwareProcessing: true,
       consentTracking: true,
     },
-  },
-] as const;
+  }),
+]);

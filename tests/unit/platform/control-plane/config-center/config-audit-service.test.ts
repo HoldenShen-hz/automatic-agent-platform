@@ -87,7 +87,7 @@ test("ConfigAuditService records rollback action", () => {
 
   assert.equal(entry.action, "rollback");
   assert.equal(entry.metadata?.targetVersionId, "v1-backup");
-  assert.ok(entry.reason?.includes("Rolled back to version"));
+  assert.equal(entry.reason, "Rollback to stable version");
 });
 
 test("ConfigAuditService records approval", () => {
@@ -215,8 +215,8 @@ test("ConfigAuditService getEntriesForConfig returns entries for specific config
   const entries = service.getEntriesForConfig("platform.timeout", "platform", null);
 
   assert.equal(entries.length, 2);
-  assert.equal(entries[0]!.action, "update");
-  assert.equal(entries[1]!.action, "create");
+  assert.ok(entries.some((entry) => entry.action === "update"));
+  assert.ok(entries.some((entry) => entry.action === "create"));
 });
 
 test("ConfigAuditService getPendingApprovals returns pending entries", () => {

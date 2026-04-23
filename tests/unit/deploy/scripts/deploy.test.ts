@@ -69,7 +69,7 @@ test("deploy script checks for helm dependency", () => {
   const content = readFileSync(DEPLOY_SCRIPT_PATH, "utf-8");
 
   assert.ok(content.includes("command -v helm"), "Should check for helm installation");
-  assert.ok(content.includes("helm is not installed"), "Should error if helm not found");
+  assert.ok(content.includes("Helm is not installed"), "Should error if helm not found");
 });
 
 test("deploy script checks for kubectl dependency", () => {
@@ -99,14 +99,14 @@ test("deploy script uses helm upgrade for deployment", () => {
 test("deploy script supports canary rollout strategy", () => {
   const content = readFileSync(DEPLOY_SCRIPT_PATH, "utf-8");
 
-  assert.ok(content.includes('ROLLOUT_STRATEGY" == "canary"'), "Should check for canary strategy");
+  assert.ok(content.includes('ROLLOUT_STRATEGY}" == "canary"'), "Should check for canary strategy");
   assert.ok(content.includes("automatic-agent-canary"), "Should use canary release name");
 });
 
 test("deploy script supports blue_green rollout strategy", () => {
   const content = readFileSync(DEPLOY_SCRIPT_PATH, "utf-8");
 
-  assert.ok(content.includes('ROLLOUT_STRATEGY" == "blue_green"'), "Should check for blue_green strategy");
+  assert.ok(content.includes('ROLLOUT_STRATEGY}" == "blue_green"'), "Should check for blue_green strategy");
   assert.ok(content.includes("automatic-agent-green"), "Should use green/blue naming");
   assert.ok(content.includes("automatic-agent-blue"), "Should support blue variant");
 });
@@ -130,7 +130,7 @@ test("deploy script verifies service endpoints", () => {
 test("deploy script requires AA_DEPLOY_DOMAIN for production", () => {
   const content = readFileSync(DEPLOY_SCRIPT_PATH, "utf-8");
 
-  assert.ok(content.includes('ENVIRONMENT" == "prod"'), "Should check for production");
+  assert.ok(content.includes('ENVIRONMENT}" == "prod"'), "Should check for production");
   assert.ok(content.includes("AA_DEPLOY_DOMAIN"), "Should require domain for prod");
   assert.ok(content.includes("PRODUCTION"), "Should warn about production deployment");
 });
@@ -139,7 +139,7 @@ test("deploy script handles helm values files", () => {
   const content = readFileSync(DEPLOY_SCRIPT_PATH, "utf-8");
 
   assert.ok(content.includes("values-"), "Should reference environment values files");
-  assert.ok(content.includes("values.yaml"), "Should reference base values file");
+  assert.ok(content.includes("VALUES_FILE"), "Should pass resolved values file to helm");
   assert.ok(content.includes("image.tag"), "Should set image tag");
 });
 
@@ -151,7 +151,7 @@ test("deploy script sets build metadata", () => {
 });
 
 test("deploy workflow exists for CI", () => {
-  const workflowPath = ".github/workflows/deploy.yml";
+  const workflowPath = ".github/workflows/deploy-environment.yml";
   assert.ok(existsSync(workflowPath), "Deploy workflow should exist");
 
   const content = readFileSync(workflowPath, "utf-8");

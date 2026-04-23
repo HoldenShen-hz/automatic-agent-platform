@@ -32,8 +32,8 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md
  */
 
-import { lstatSync, realpathSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { existsSync, lstatSync, realpathSync } from "node:fs";
+import { dirname, relative, resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
@@ -229,11 +229,21 @@ export function resolveSandboxPath(inputPath: string, enforceRealpath: boolean):
     return realpathSync(resolved);
   } catch (err) {
     // realpathSync fails with ENOENT when the path doesn't exist yet.
-    // This is acceptable - we allow non-existent paths to pass through
-    // so they can be created later within allowed roots.
+    // Canonicalize the nearest existing parent so newly-created leaf paths
+    // still compare against canonical allowed roots (for example /var -> /private/var).
     const errorCode = (err as NodeJS.ErrnoException).code;
     if (errorCode === "ENOENT") {
-      return resolved;
+      const remainder: string[] = [];
+      let current = resolved;
+      while (!existsSync(current)) {
+        const parent = dirname(current);
+        if (parent === current) {
+          throw err;
+        }
+        remainder.unshift(relative(parent, current));
+        current = parent;
+      }
+      return resolve(realpathSync(current), ...remainder);
     }
     // For other errors (permission denied, etc.), propagate the error
     throw err;

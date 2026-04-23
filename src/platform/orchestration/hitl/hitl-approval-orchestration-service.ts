@@ -192,11 +192,11 @@ export class HitlApprovalOrchestrationService {
   }
 
   public applyDecision(decision: ApprovalDecision): HitlApprovalDecisionResult {
-    this.approvalService.applyDecision(decision);
     const existingLink = this.feedbackLinks.get(decision.approvalId);
     if (existingLink == null) {
       throw new Error(`hitl_approval.feedback_link_not_found:${decision.approvalId}`);
     }
+    this.approvalService.applyDecision(decision);
     const updatedLink: ApprovalFeedbackLink = {
       ...existingLink,
       feedbackSignalId: decision.decisionType === "text_input" ? newId("feedback_signal") : existingLink.feedbackSignalId,

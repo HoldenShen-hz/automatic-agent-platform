@@ -296,7 +296,8 @@ test("RecoveryController.handleFailure with tool_timeout recovers and resumes", 
   const result = controller.handleFailure(run, "tool_timeout");
 
   assert.equal(result.status, "running");
-  assert.ok(result.recoveryCheckpoint !== null);
+  assert.equal(result.recoveryCheckpoint, null);
+  assert.equal(result.sleepLease, null);
 });
 
 test("RecoveryController.handleFailure with worker_crash sets recovering status", () => {

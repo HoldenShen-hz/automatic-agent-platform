@@ -58,13 +58,13 @@ test("rollback script checks for helm dependency", () => {
   const content = readFileSync(ROLLBACK_SCRIPT_PATH, "utf-8");
 
   assert.ok(content.includes("command -v helm"), "Should check for helm installation");
-  assert.ok(content.includes("helm is not installed"), "Should error if helm not found");
+  assert.ok(content.includes("Helm is not installed"), "Should error if helm not found");
 });
 
 test("rollback script uses helm rollback command", () => {
   const content = readFileSync(ROLLBACK_SCRIPT_PATH, "utf-8");
 
-  assert.ok(content.includes("helm rollback"), "Should use helm rollback command");
+  assert.ok(content.includes('"rollback"'), "Should use helm rollback command");
   assert.ok(content.includes("automatic-agent"), "Should rollback automatic-agent release");
   assert.ok(content.includes("--namespace"), "Should specify namespace");
   assert.ok(content.includes("--wait"), "Should wait for rollback");
