@@ -1,0 +1,1 @@
+export { createMobileScreenDescriptor } from "../index";
