@@ -1,4 +1,18 @@
-import type { DashboardSnapshotDTO, TaskDTO, ApprovalDTO, UserPreferenceDTO } from "@aa/shared-types";
+import type {
+  AgentDTO,
+  AnalyticsMetricDTO,
+  ApprovalDTO,
+  CostReportDTO,
+  DashboardSnapshotDTO,
+  ExplanationDTO,
+  IncidentDTO,
+  MarketplacePackDTO,
+  QueueDTO,
+  TaskDTO,
+  UserPreferenceDTO,
+  WorkerDTO,
+  WorkflowDTO,
+} from "@aa/shared-types";
 import { defaultMockApiShape, type MockApiShape } from "./mock-data";
 import type { RestClientInterceptor, RestClientRequest, RestClientResponse } from "./interceptors";
 
@@ -28,20 +42,61 @@ export class MockTransport {
     };
   }
 
-  private resolve(path: string, body?: unknown): DashboardSnapshotDTO | readonly TaskDTO[] | readonly ApprovalDTO[] | UserPreferenceDTO | { ok: true } {
+  private resolve(path: string, body?: unknown):
+    | DashboardSnapshotDTO
+    | readonly TaskDTO[]
+    | readonly WorkflowDTO[]
+    | readonly ApprovalDTO[]
+    | readonly IncidentDTO[]
+    | readonly WorkerDTO[]
+    | readonly QueueDTO[]
+    | readonly AgentDTO[]
+    | readonly AnalyticsMetricDTO[]
+    | readonly CostReportDTO[]
+    | readonly MarketplacePackDTO[]
+    | readonly ExplanationDTO[]
+    | UserPreferenceDTO
+    | { ok: true; body?: unknown } {
     if (path.includes("/dashboard")) {
       return this.data.dashboard;
     }
     if (path.includes("/tasks")) {
       return this.data.tasks;
     }
+    if (path.includes("/workflows")) {
+      return this.data.workflows;
+    }
     if (path.includes("/approvals")) {
       return this.data.approvals;
+    }
+    if (path.includes("/incidents")) {
+      return this.data.incidents;
+    }
+    if (path.includes("/workers")) {
+      return this.data.workers;
+    }
+    if (path.includes("/queues")) {
+      return this.data.queues;
+    }
+    if (path.includes("/agents")) {
+      return this.data.agents;
+    }
+    if (path.includes("/metrics")) {
+      return this.data.analytics;
+    }
+    if (path.includes("/cost")) {
+      return this.data.costs;
+    }
+    if (path.includes("/marketplace")) {
+      return this.data.marketplace;
+    }
+    if (path.includes("/explanations")) {
+      return this.data.explanations;
     }
     if (path.includes("/preferences")) {
       return this.data.preferences;
     }
-    return { ok: true };
+    return { ok: true, body };
   }
 }
 

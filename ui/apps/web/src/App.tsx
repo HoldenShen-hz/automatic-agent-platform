@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
-import { designTokens, type FeatureModule } from "@aa/ui-core";
-import { UiRuntimeProvider } from "@aa/shared-state";
+import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
+import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
 import { featureRegistry } from "./feature-registry";
 
@@ -48,6 +48,7 @@ const groupedFeatures = Object.entries(
 );
 
 function AppShell(): ReactElement {
+  const systemStatus = useSystemStatus();
   return (
     <div style={{ minHeight: "100vh", background: designTokens.color.background, color: designTokens.color.text, display: "grid", gridTemplateColumns: "280px 1fr" }}>
       <aside style={{ borderRight: `1px solid ${designTokens.color.border}`, padding: 20 }}>
@@ -78,6 +79,7 @@ function AppShell(): ReactElement {
         </nav>
       </aside>
       <main style={{ padding: 24 }}>
+        <SystemStatusBar status={systemStatus} />
         <Routes>
           {featureRegistry.map((feature) => (
             <Route key={feature.manifest.id} element={renderGuardedFeature(feature.route.path)} path={feature.route.path} />

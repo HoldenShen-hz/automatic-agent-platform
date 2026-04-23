@@ -106,12 +106,135 @@ export interface DashboardSnapshotDTO {
   readonly alertSummary: string;
 }
 
+export interface WorkflowStepDTO {
+  readonly id: string;
+  readonly title: string;
+  readonly phase: "Observe" | "Assess" | "Plan" | "Execute" | "Feedback" | "Learn" | "Improve" | "Release";
+  readonly status: "pending" | "running" | "completed" | "failed";
+}
+
+export interface WorkflowDTO {
+  readonly id: string;
+  readonly title: string;
+  readonly status: "draft" | "running" | "paused" | "completed";
+  readonly currentStage: string;
+  readonly owner: string;
+  readonly steps: readonly WorkflowStepDTO[];
+}
+
+export interface IncidentDTO {
+  readonly id: string;
+  readonly severity: "low" | "medium" | "high" | "critical";
+  readonly title: string;
+  readonly summary: string;
+  readonly createdAt: string;
+}
+
+export interface WorkerDTO {
+  readonly id: string;
+  readonly status: "idle" | "busy" | "draining";
+  readonly queue: string;
+  readonly heartbeatLagMs: number;
+}
+
+export interface QueueDTO {
+  readonly id: string;
+  readonly ready: number;
+  readonly inFlight: number;
+  readonly retries: number;
+  readonly dlq: number;
+}
+
+export interface AgentDTO {
+  readonly id: string;
+  readonly name: string;
+  readonly domainId: string;
+  readonly status: "healthy" | "degraded" | "offline";
+  readonly load: number;
+}
+
+export interface AnalyticsMetricDTO {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly trend: "up" | "flat" | "down";
+}
+
+export interface CostReportDTO {
+  readonly id: string;
+  readonly scope: string;
+  readonly amountUsd: number;
+  readonly budgetUsd: number;
+}
+
+export interface MarketplacePackDTO {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  readonly version: string;
+}
+
+export interface ExplanationDTO {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly evidenceCount: number;
+}
+
+export interface RoleDTO {
+  readonly id: string;
+  readonly name: string;
+  readonly scope: "personal" | "domain" | "platform" | "global";
+  readonly permissionCount: number;
+  readonly userCount: number;
+}
+
+export interface FeatureFlagDTO {
+  readonly id: string;
+  readonly enabled: boolean;
+  readonly rolloutPercentage: number;
+  readonly target: string;
+}
+
+export interface ModelConfigDTO {
+  readonly id: string;
+  readonly provider: string;
+  readonly model: string;
+  readonly boundDomains: readonly string[];
+  readonly budgetUsd: number;
+}
+
+export interface DomainConfigDTO {
+  readonly id: string;
+  readonly displayName: string;
+  readonly owner: string;
+  readonly defaultDrillDepth: DrillDepth;
+  readonly featureVisibilityCount: number;
+}
+
+export interface TenantDTO {
+  readonly id: string;
+  readonly name: string;
+  readonly domains: readonly string[];
+  readonly status: "active" | "paused";
+}
+
+export interface WebhookDTO {
+  readonly id: string;
+  readonly targetUrl: string;
+  readonly eventCount: number;
+  readonly enabled: boolean;
+}
+
 export interface TaskDTO {
   readonly id: string;
   readonly title: string;
   readonly status: "queued" | "running" | "blocked" | "completed" | "failed";
   readonly domainId: string;
   readonly currentStep: string;
+  readonly owner?: string;
+  readonly evidenceCount?: number;
+  readonly timelineDepth?: number;
 }
 
 export interface ApprovalDTO {
@@ -125,6 +248,13 @@ export interface UserPreferenceDTO {
   readonly locale: string;
   readonly theme: "light" | "dark" | "high-contrast";
   readonly defaultDashboardLayout: readonly string[];
+}
+
+export interface SystemStatusVM {
+  readonly wsStatus: string;
+  readonly offlineQueueSize: number;
+  readonly syncStatus: "idle" | "queued" | "syncing";
+  readonly panicActivated: boolean;
 }
 
 export interface TaskVM {

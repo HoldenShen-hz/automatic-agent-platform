@@ -46,4 +46,15 @@ export class ConversationClient {
     this.messages.push(message);
     return message;
   }
+
+  public requestClarification(content: string): ConversationMessage {
+    this.status = "clarifying";
+    const message: ConversationMessage = {
+      id: `msg-${this.messages.length + 1}`,
+      role: "assistant",
+      content,
+    };
+    this.messages.push(message);
+    return message;
+  }
 }

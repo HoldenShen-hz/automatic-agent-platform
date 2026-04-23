@@ -7,5 +7,7 @@ describe("web app", () => {
     render(<App />);
     expect(screen.getByText("Automatic Agent Platform UI")).toBeInTheDocument();
     expect(screen.getAllByText("Dashboard").length).toBeGreaterThan(0);
+    expect(screen.getByText("WS")).toBeInTheDocument();
+    expect(screen.getByText("Offline Queue")).toBeInTheDocument();
   });
 });

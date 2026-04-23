@@ -198,7 +198,7 @@
 
 状态：`done`
 
-- 已落 `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / conversation / hitl / domain-wizard / settings`。
+- 已落 `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / policy / audit / workers / queues / conversation / hitl / domain-wizard / settings`。
 - Web 端已接通 Dashboard / Tasks / Approvals / Settings / Conversation 的共享数据流与页面渲染。
 
 ### UI4. Planned 模块与 API seam
@@ -224,10 +224,11 @@
 
 ### UI7. 文档与验收
 
-状态：`in_progress`
+状态：`done`
 
 - `todolist` 已回写。
-- 仍需继续把 `05-cross-platform-ui-architecture.md` 中更细粒度状态标签做更完整的实现态回写。
+- `05-cross-platform-ui-architecture.md` 已补仓内 `Phase 1-4` 对齐快照与 `v3.2` 回写。
+- UI docs 一致性测试已覆盖 `UI0-UI7`、`Phase 1-4` 与架构文档对齐。
 
 ## 7. 跨平台 UI Phase 1-4 对齐计划
 
@@ -235,7 +236,7 @@
 
 ### Phase 1. Web MVP（文档 §7.4）
 
-状态：`in_progress`
+状态：`done`
 
 - 对齐 `Implemented/Contracted` 与 `Implemented/Internal` 的 Web MVP 路由与页面。
 - 补齐 Web 信息架构一级模块缺口：`policy / audit / workers / queues`。
@@ -244,7 +245,7 @@
 
 ### Phase 2. 桌面端（文档 §7.4）
 
-状态：`in_progress`
+状态：`done`
 
 - 固化 `electron-win / tauri-macos / tauri-linux` 的 shell manifest、PlatformAdapter 注入与 smoke bootstrap。
 - 对齐桌面端特有能力：`windowing / shell / process / analyticsConsent` 的 baseline 行为与测试替身。
@@ -252,7 +253,7 @@
 
 ### Phase 3. 移动端（文档 §7.4）
 
-状态：`in_progress`
+状态：`done`
 
 - 固化 `apps/mobile` 的导航、secure storage、deep link、haptics、screen security 基线。
 - 对齐移动端审批/HITL/会话入口与离线同步主链。
@@ -260,8 +261,13 @@
 
 ### Phase 4. 增强功能（文档 §7.4）
 
-状态：`in_progress`
+状态：`done`
 
 - 按文档继续收口 `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`。
 - 建立 `planned feature → typed seam → feature gate → docs status` 的统一收口方式。
 - 将 `05-cross-platform-ui-architecture.md` 的细粒度状态标签回写到当前仓内实现真相。
+
+完成定义：
+
+- `Phase 1-4` 在仓内范围内均已形成代码基线、文档回写与定向测试闭环。
+- 不包含应用商店分发、真实签名发布、外部 MDM/企业商店接入等仓外事项。

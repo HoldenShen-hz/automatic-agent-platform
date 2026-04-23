@@ -149,7 +149,7 @@ Status: `done`
 
 Status: `done`
 
-- Added `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / conversation / hitl / domain-wizard / settings`.
+- Added `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / policy / audit / workers / queues / conversation / hitl / domain-wizard / settings`.
 - Web now renders shared-data-backed pages for Dashboard / Tasks / Approvals / Settings / Conversation.
 
 ### UI4. Planned Modules and API Seams
@@ -175,10 +175,11 @@ Status: `done`
 
 ### UI7. Docs and Acceptance
 
-Status: `in_progress`
+Status: `done`
 
 - `todolist` is updated.
-- The fine-grained status labels inside `05-cross-platform-ui-architecture.md` still need a fuller implementation-state rewrite.
+- `05-cross-platform-ui-architecture.md` now includes the repo-side `Phase 1-4` alignment snapshot and `v3.2` write-back.
+- UI docs consistency tests now cover `UI0-UI7`, `Phase 1-4`, and the architecture doc alignment.
 
 ## 7. Cross-Platform UI Phase 1-4 Alignment Plan
 
@@ -186,7 +187,7 @@ Status: `in_progress`
 
 ### Phase 1. Web MVP
 
-Status: `in_progress`
+Status: `done`
 
 - Align the Web MVP routes and pages for `Implemented/Contracted` and `Implemented/Internal`.
 - Fill the first-level IA gaps: `policy / audit / workers / queues`.
@@ -195,7 +196,7 @@ Status: `in_progress`
 
 ### Phase 2. Desktop
 
-Status: `in_progress`
+Status: `done`
 
 - Harden `electron-win / tauri-macos / tauri-linux` shell manifests, PlatformAdapter injection, and smoke bootstrap.
 - Cover desktop-specific baseline behavior and test doubles for `windowing / shell / process / analyticsConsent`.
@@ -203,7 +204,7 @@ Status: `in_progress`
 
 ### Phase 3. Mobile
 
-Status: `in_progress`
+Status: `done`
 
 - Harden `apps/mobile` navigation, secure storage, deep link, haptics, and screen-security baselines.
 - Keep approvals / HITL / conversation entry flows on the mobile path together with offline sync.
@@ -211,8 +212,13 @@ Status: `in_progress`
 
 ### Phase 4. Enhanced Capabilities
 
-Status: `in_progress`
+Status: `done`
 
 - Continue closing `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`.
 - Keep a single closure path of `planned feature → typed seam → feature gate → docs status`.
 - Rewrite the fine-grained implementation labels in `05-cross-platform-ui-architecture.md` to match the repository truth.
+
+Definition of done:
+
+- `Phase 1-4` each have a repository-level code baseline, docs write-back, and targeted tests.
+- App-store distribution, real signing/release, and external MDM or enterprise-store integration remain out of scope.

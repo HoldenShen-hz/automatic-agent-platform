@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
-import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId } from "@aa/shared-types";
+import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId, SystemStatusVM } from "@aa/shared-types";
 import { createRouteGuardChain } from "@aa/shared-domain";
 
 export interface FeatureModule {
@@ -67,6 +67,51 @@ export function ListCard({ items }: { items: readonly { title: string; descripti
           <div style={{ color: designTokens.color.subtle, marginTop: 6 }}>{item.description}</div>
         </article>
       ))}
+    </div>
+  );
+}
+
+export function ThreePaneLayout(
+  { left, center, right }: { left: ReactNode; center: ReactNode; right: ReactNode },
+): ReactElement {
+  return (
+    <div style={{ display: "grid", gap: 12, gridTemplateColumns: "minmax(220px, 1fr) minmax(260px, 1.2fr) minmax(240px, 1fr)" }}>
+      <div>{left}</div>
+      <div>{center}</div>
+      <div>{right}</div>
+    </div>
+  );
+}
+
+export function KeyValueTable({ rows }: { rows: readonly { key: string; value: ReactNode }[] }): ReactElement {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {rows.map((row) => (
+        <div key={row.key} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, borderBottom: `1px solid ${designTokens.color.border}`, paddingBottom: 8 }}>
+          <strong style={{ color: designTokens.color.subtle }}>{row.key}</strong>
+          <div style={{ color: designTokens.color.text }}>{row.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SystemStatusBar({ status }: { status: SystemStatusVM }): ReactElement {
+  return (
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+      <StatusChip label="WS" value={status.wsStatus} />
+      <StatusChip label="Offline Queue" value={String(status.offlineQueueSize)} />
+      <StatusChip label="Sync" value={status.syncStatus} />
+      <StatusChip label="Panic" value={status.panicActivated ? "active" : "normal"} accent={status.panicActivated ? "#ef4444" : designTokens.color.accent} />
+    </div>
+  );
+}
+
+function StatusChip({ label, value, accent }: { label: string; value: string; accent?: string }): ReactElement {
+  return (
+    <div style={{ border: `1px solid ${designTokens.color.border}`, borderRadius: 999, padding: "6px 10px", color: designTokens.color.text, background: "#0b1325" }}>
+      <span style={{ color: designTokens.color.subtle, marginRight: 8 }}>{label}</span>
+      <strong style={{ color: accent ?? designTokens.color.text }}>{value}</strong>
     </div>
   );
 }

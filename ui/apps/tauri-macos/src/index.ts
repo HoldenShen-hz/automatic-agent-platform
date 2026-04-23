@@ -4,11 +4,15 @@ import { createDesktopPlatformAdapter } from "@aa/shared-platform";
 export interface DesktopShellManifest {
   readonly platform: Extract<PlatformId, "macos">;
   readonly runtime: "tauri";
+  readonly supportsDeepLink: boolean;
+  readonly updateChannel: "stable" | "beta";
 }
 
 export const tauriMacosManifest: DesktopShellManifest = {
   platform: "macos",
   runtime: "tauri",
+  supportsDeepLink: true,
+  updateChannel: "stable",
 };
 
 export function createTauriMacosAdapter(base: PlatformAdapter): PlatformAdapter {

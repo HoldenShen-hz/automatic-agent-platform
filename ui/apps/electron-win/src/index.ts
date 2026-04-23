@@ -5,12 +5,18 @@ export interface DesktopShellManifest {
   readonly platform: Extract<PlatformId, "windows">;
   readonly runtime: "electron";
   readonly secureScreen: boolean;
+  readonly supportsTray: boolean;
+  readonly supportsGlobalShortcuts: boolean;
+  readonly updateChannel: "stable" | "beta";
 }
 
 export const electronWinManifest: DesktopShellManifest = {
   platform: "windows",
   runtime: "electron",
   secureScreen: true,
+  supportsTray: true,
+  supportsGlobalShortcuts: true,
+  updateChannel: "stable",
 };
 
 export function createElectronWinAdapter(base: PlatformAdapter): PlatformAdapter {

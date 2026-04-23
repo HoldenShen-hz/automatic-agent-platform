@@ -1,9 +1,32 @@
-import type { ApprovalDTO, DashboardSnapshotDTO, TaskDTO, UserPreferenceDTO } from "@aa/shared-types";
+import type {
+  AgentDTO,
+  AnalyticsMetricDTO,
+  ApprovalDTO,
+  CostReportDTO,
+  DashboardSnapshotDTO,
+  ExplanationDTO,
+  IncidentDTO,
+  MarketplacePackDTO,
+  QueueDTO,
+  TaskDTO,
+  UserPreferenceDTO,
+  WorkerDTO,
+  WorkflowDTO,
+} from "@aa/shared-types";
 
 export interface MockApiShape {
   readonly dashboard: DashboardSnapshotDTO;
   readonly tasks: readonly TaskDTO[];
+  readonly workflows: readonly WorkflowDTO[];
   readonly approvals: readonly ApprovalDTO[];
+  readonly incidents: readonly IncidentDTO[];
+  readonly workers: readonly WorkerDTO[];
+  readonly queues: readonly QueueDTO[];
+  readonly agents: readonly AgentDTO[];
+  readonly analytics: readonly AnalyticsMetricDTO[];
+  readonly costs: readonly CostReportDTO[];
+  readonly marketplace: readonly MarketplacePackDTO[];
+  readonly explanations: readonly ExplanationDTO[];
   readonly preferences: UserPreferenceDTO;
 }
 
@@ -16,11 +39,72 @@ export const defaultMockApiShape: MockApiShape = {
     alertSummary: "2 medium alerts",
   },
   tasks: [
-    { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets" },
-    { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval" },
+    { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },
+    { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5 },
+  ],
+  workflows: [
+    {
+      id: "workflow-1",
+      title: "Campaign Launch",
+      status: "running",
+      currentStage: "Execute",
+      owner: "growth-ops",
+      steps: [
+        { id: "s1", title: "Observe demand signals", phase: "Observe", status: "completed" },
+        { id: "s2", title: "Assess constraints", phase: "Assess", status: "completed" },
+        { id: "s3", title: "Plan rollout", phase: "Plan", status: "completed" },
+        { id: "s4", title: "Execute launch", phase: "Execute", status: "running" },
+      ],
+    },
+    {
+      id: "workflow-2",
+      title: "Risk Approval Loop",
+      status: "paused",
+      currentStage: "Feedback",
+      owner: "quant-review",
+      steps: [
+        { id: "r1", title: "Observe trade anomaly", phase: "Observe", status: "completed" },
+        { id: "r2", title: "Assess exposure", phase: "Assess", status: "completed" },
+        { id: "r3", title: "Feedback to approver", phase: "Feedback", status: "running" },
+      ],
+    },
   ],
   approvals: [
     { approvalId: "approval-1", taskId: "task-2", riskLevel: "critical", reasonSummary: "策略需要人工审批" },
+  ],
+  incidents: [
+    { id: "inc-1", severity: "high", title: "Queue lag rising", summary: "dispatch queue lag exceeded target for 8m", createdAt: "2026-04-23T16:00:00Z" },
+    { id: "inc-2", severity: "medium", title: "Approval backlog", summary: "critical approvals waiting longer than 20m", createdAt: "2026-04-23T16:10:00Z" },
+  ],
+  workers: [
+    { id: "worker-1", status: "busy", queue: "dispatch", heartbeatLagMs: 140 },
+    { id: "worker-2", status: "idle", queue: "approval", heartbeatLagMs: 80 },
+    { id: "worker-3", status: "draining", queue: "recovery", heartbeatLagMs: 260 },
+  ],
+  queues: [
+    { id: "dispatch", ready: 42, inFlight: 8, retries: 2, dlq: 1 },
+    { id: "approval", ready: 3, inFlight: 1, retries: 0, dlq: 0 },
+  ],
+  agents: [
+    { id: "agent-1", name: "Growth Strategist", domainId: "marketing", status: "healthy", load: 0.62 },
+    { id: "agent-2", name: "Risk Sentinel", domainId: "quant-trading", status: "degraded", load: 0.88 },
+  ],
+  analytics: [
+    { id: "m1", label: "Task Success Rate", value: "98.2%", trend: "up" },
+    { id: "m2", label: "Approval SLA", value: "14m", trend: "flat" },
+    { id: "m3", label: "Queue Throughput", value: "1.8k/h", trend: "up" },
+  ],
+  costs: [
+    { id: "c1", scope: "marketing", amountUsd: 1240, budgetUsd: 1600 },
+    { id: "c2", scope: "quant-trading", amountUsd: 2280, budgetUsd: 2400 },
+  ],
+  marketplace: [
+    { id: "pack-1", name: "Campaign Optimizer", category: "marketing", version: "1.4.0" },
+    { id: "pack-2", name: "Risk Lens", category: "finance", version: "2.1.3" },
+  ],
+  explanations: [
+    { id: "exp-1", title: "Budget Alert Explanation", summary: "Spend increased because approval turnaround improved", evidenceCount: 4 },
+    { id: "exp-2", title: "Workflow Pause Explanation", summary: "Workflow paused waiting for quant approval", evidenceCount: 7 },
   ],
   preferences: {
     locale: "zh-CN",
