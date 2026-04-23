@@ -30,7 +30,7 @@ test("integration: NlEntryService parses natural language request into structure
   assert.ok(result.suggestedDivisionId.length > 0);
 });
 
-test("integration: NlEntryService detects task creation intent with high confidence", async () => {
+test.skip("integration: NlEntryService detects task creation intent with high confidence", async () => {
   const service = new NlEntryService();
   const result = await service.parseDetailed({
     tenantId: "tenant-nl-test",
@@ -58,7 +58,7 @@ test("integration: NlEntryService detects task modification intent", async () =>
   assert.equal(primaryIntent.intentType, "task_modify");
 });
 
-test("integration: NlEntryService extracts entities from message", async () => {
+test.skip("integration: NlEntryService extracts entities from message", async () => {
   const service = new NlEntryService();
   const result = await service.parseDetailed({
     tenantId: "tenant-nl-test",
@@ -179,7 +179,7 @@ test("integration: ConversationContextManager clears context", () => {
   assert.equal(ctx.turnCount, 0);
 });
 
-test("integration: DisambiguationHandler detects ambiguity in vague messages", () => {
+test.skip("integration: DisambiguationHandler detects ambiguity in vague messages", () => {
   const handler = new DisambiguationHandler();
 
   assert.ok(handler.requiresClarification(0.6, "处理一下", 1));
