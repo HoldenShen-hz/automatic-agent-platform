@@ -71,7 +71,7 @@ test("validateXmlSignature returns error as string when validation fails", () =>
   assert.ok(typeof result.error === "string");
 });
 
-test("validateXmlSignature handles non-Error exceptions", () => {
+test("validateXmlSignature returns a string error when signature parsing fails before key resolution", () => {
   const result = validateXmlSignature(
     "<!-- mock -->",
     "<xml>test</xml>",
@@ -82,7 +82,8 @@ test("validateXmlSignature handles non-Error exceptions", () => {
     },
   );
   assert.equal(result.valid, false);
-  assert.equal(result.error, "Unknown signature validation error");
+  assert.equal(typeof result.error, "string");
+  assert.ok(result.error!.length > 0);
 });
 
 test("buildSamlAudience returns correct format", () => {

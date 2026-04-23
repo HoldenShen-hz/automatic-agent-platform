@@ -2,70 +2,68 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { GroupRoleMappingService, type GroupRoleMappingRule } from "../../../../src/org-governance/sso-scim/group-role-mapping-service.js";
 
-test("GroupRoleMappingService", () => {
-  test("register() stores the mapping rule", () => {
-    const service = new GroupRoleMappingService();
-    const rule: GroupRoleMappingRule = { groupName: "admins", roleIds: ["admin", "superuser"] };
+test("register() stores the mapping rule", () => {
+  const service = new GroupRoleMappingService();
+  const rule: GroupRoleMappingRule = { groupName: "admins", roleIds: ["admin", "superuser"] };
 
-    const result = service.register(rule);
+  const result = service.register(rule);
 
-    assert.deepStrictEqual(result, rule);
-  });
+  assert.deepStrictEqual(result, rule);
+});
 
-  test("resolve() returns combined roleIds for multiple groups", () => {
-    const service = new GroupRoleMappingService();
-    service.register({ groupName: "admins", roleIds: ["admin"] });
-    service.register({ groupName: "engineers", roleIds: ["developer"] });
+test("resolve() returns combined roleIds for multiple groups", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin"] });
+  service.register({ groupName: "engineers", roleIds: ["developer"] });
 
-    const roles = service.resolve(["admins", "engineers"]);
+  const roles = service.resolve(["admins", "engineers"]);
 
-    assert.deepStrictEqual(roles.sort(), ["admin", "developer"]);
-  });
+  assert.deepStrictEqual(roles.sort(), ["admin", "developer"]);
+});
 
-  test("resolve() deduplicates roleIds across groups", () => {
-    const service = new GroupRoleMappingService();
-    service.register({ groupName: "admins", roleIds: ["admin", "developer"] });
-    service.register({ groupName: "engineers", roleIds: ["developer", "tester"] });
+test("resolve() deduplicates roleIds across groups", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin", "developer"] });
+  service.register({ groupName: "engineers", roleIds: ["developer", "tester"] });
 
-    const roles = service.resolve(["admins", "engineers"]);
+  const roles = service.resolve(["admins", "engineers"]);
 
-    assert.deepStrictEqual(roles.sort(), ["admin", "developer", "tester"]);
-  });
+  assert.deepStrictEqual(roles.sort(), ["admin", "developer", "tester"]);
+});
 
-  test("resolve() returns empty array when no groups match", () => {
-    const service = new GroupRoleMappingService();
-    service.register({ groupName: "admins", roleIds: ["admin"] });
+test("resolve() returns empty array when no groups match", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin"] });
 
-    const roles = service.resolve(["unknown_group"]);
+  const roles = service.resolve(["unknown_group"]);
 
-    assert.deepStrictEqual(roles, []);
-  });
+  assert.deepStrictEqual(roles, []);
+});
 
-  test("resolve() returns empty array for empty group list", () => {
-    const service = new GroupRoleMappingService();
-    service.register({ groupName: "admins", roleIds: ["admin"] });
+test("resolve() returns empty array for empty group list", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin"] });
 
-    const roles = service.resolve([]);
+  const roles = service.resolve([]);
 
-    assert.deepStrictEqual(roles, []);
-  });
+  assert.deepStrictEqual(roles, []);
+});
 
-  test("resolve() returns roles for single group", () => {
-    const service = new GroupRoleMappingService();
-    service.register({ groupName: "admins", roleIds: ["admin", "superuser"] });
+test("resolve() returns roles for single group", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin", "superuser"] });
 
-    const roles = service.resolve(["admins"]);
+  const roles = service.resolve(["admins"]);
 
-    assert.deepStrictEqual(roles.sort(), ["admin", "superuser"]);
-  });
+  assert.deepStrictEqual(roles.sort(), ["admin", "superuser"]);
+});
 
-  test("register() overwrites existing rule for same groupName", () => {
-    const service = new GroupRoleMappingService();
-    service.register({ groupName: "admins", roleIds: ["admin"] });
-    service.register({ groupName: "admins", roleIds: ["admin", "superuser"] });
+test("register() overwrites existing rule for same groupName", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin"] });
+  service.register({ groupName: "admins", roleIds: ["admin", "superuser"] });
 
-    const roles = service.resolve(["admins"]);
+  const roles = service.resolve(["admins"]);
 
-    assert.deepStrictEqual(roles.sort(), ["admin", "superuser"]);
-  });
+  assert.deepStrictEqual(roles.sort(), ["admin", "superuser"]);
 });

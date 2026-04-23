@@ -107,8 +107,10 @@ test("deploy script supports blue_green rollout strategy", () => {
   const content = readFileSync(DEPLOY_SCRIPT_PATH, "utf-8");
 
   assert.ok(content.includes('ROLLOUT_STRATEGY}" == "blue_green"'), "Should check for blue_green strategy");
-  assert.ok(content.includes("automatic-agent-green"), "Should use green/blue naming");
-  assert.ok(content.includes("automatic-agent-blue"), "Should support blue variant");
+  assert.ok(content.includes('CURRENT_SELECTOR=$(kubectl get svc automatic-agent'), "Should inspect current stable selector");
+  assert.ok(content.includes('COLOR="green"'), "Should default to green deployment slot");
+  assert.ok(content.includes('COLOR="blue"'), "Should switch to blue when green is active");
+  assert.ok(content.includes('automatic-agent-${COLOR}'), "Should construct release name from active blue/green slot");
 });
 
 test("deploy script waits for rollout completion", () => {

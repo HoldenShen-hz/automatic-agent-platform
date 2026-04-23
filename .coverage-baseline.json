@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-23T02:07:50.807Z",
+  "generatedAt": "2026-04-23T03:52:09.941Z",
   "minimums": {
     "lines": 86.4,
     "statements": 86.4,
-    "functions": 91.1,
-    "branches": 83.1
+    "functions": 91.2,
+    "branches": 83.2
   },
   "global": {
     "lines": 86.4,
     "statements": 86.4,
-    "functions": 91.1,
-    "branches": 83.1
+    "functions": 91.2,
+    "branches": 83.2
   },
   "directories": {
     "src/platform/contracts/types/domain": {
@@ -24,15 +24,6 @@
       }
     },
     "src/platform/orchestration/harness/constraints": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/loop": {
       "fileCount": 1,
       "metrics": {
         "lines": 0,
@@ -659,7 +650,7 @@
         "lines": 90,
         "statements": 90,
         "functions": 94.7,
-        "branches": 80.4
+        "branches": 78.3
       }
     },
     "src/domains/prompt-library": {
@@ -923,15 +914,6 @@
         "branches": 66.7
       }
     },
-    "src/platform/orchestration/harness/guardrails": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 92.9,
-        "statements": 92.9,
-        "functions": 100,
-        "branches": 93.3
-      }
-    },
     "src/scale-ecosystem/resource-manager/preemption": {
       "fileCount": 1,
       "metrics": {
@@ -1028,7 +1010,7 @@
         "lines": 94.4,
         "statements": 94.4,
         "functions": 97,
-        "branches": 87.6
+        "branches": 87.7
       }
     },
     "src/platform/state-evidence/truth": {
@@ -1055,7 +1037,7 @@
         "lines": 94.8,
         "statements": 94.8,
         "functions": 96.9,
-        "branches": 86.9
+        "branches": 87.1
       }
     },
     "src/platform/model-gateway/degradation": {
@@ -1154,7 +1136,7 @@
         "lines": 95.3,
         "statements": 95.3,
         "functions": 96.3,
-        "branches": 82
+        "branches": 82.1
       }
     },
     "src/platform/state-evidence/audit": {
@@ -1304,10 +1286,10 @@
     "src/platform/orchestration/harness": {
       "fileCount": 10,
       "metrics": {
-        "lines": 97.2,
-        "statements": 97.2,
-        "functions": 98.1,
-        "branches": 85.1
+        "lines": 97.3,
+        "statements": 97.3,
+        "functions": 100,
+        "branches": 96.8
       }
     },
     "src/platform/shared/observability/transports": {
@@ -1317,6 +1299,15 @@
         "statements": 97.3,
         "functions": 100,
         "branches": 98.3
+      }
+    },
+    "src/ops-maturity/platform-ops-agent": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 97.4,
+        "statements": 97.4,
+        "functions": 100,
+        "branches": 97.2
       }
     },
     "src/platform/control-plane/incident-control/runbook-executor": {
@@ -1353,15 +1344,6 @@
         "statements": 97.6,
         "functions": 100,
         "branches": 76.7
-      }
-    },
-    "src/sdk/pack-sdk": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 97.6,
-        "statements": 97.6,
-        "functions": 100,
-        "branches": 88.7
       }
     },
     "src/platform/state-evidence/events/cas": {
@@ -1425,6 +1407,15 @@
         "statements": 97.9,
         "functions": 96,
         "branches": 90.6
+      }
+    },
+    "src/sdk/pack-sdk": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 97.9,
+        "statements": 97.9,
+        "functions": 100,
+        "branches": 91.1
       }
     },
     "src/ops-maturity/version-management": {
@@ -1721,7 +1712,7 @@
         "lines": 99.5,
         "statements": 99.5,
         "functions": 100,
-        "branches": 94.8
+        "branches": 94.7
       }
     },
     "src/platform/orchestration/oapeflir/improve-rollout/rollout": {
@@ -2201,15 +2192,6 @@
         "branches": 83.3
       }
     },
-    "src/ops-maturity/platform-ops-agent": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 100,
-        "statements": 100,
-        "functions": 100,
-        "branches": 98.6
-      }
-    },
     "src/ops-maturity/platform-ops-agent/config-optimizer": {
       "fileCount": 1,
       "metrics": {
@@ -2597,7 +2579,25 @@
         "branches": 100
       }
     },
+    "src/platform/orchestration/harness/guardrails": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/platform/orchestration/harness/hitl-runtime": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/loop": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,

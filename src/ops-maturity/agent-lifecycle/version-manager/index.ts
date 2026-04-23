@@ -1,4 +1,16 @@
 import { z } from "zod";
+export {
+  AgentVersionManager,
+  AgentVersionDetailSchema,
+  AgentVersionStageSchema,
+  DeploymentSlotSchema,
+} from "./agent-version-manager.js";
+export type {
+  AgentVersionConflict,
+  AgentVersionDetail,
+  AgentVersionStage,
+  DeploymentSlot,
+} from "./agent-version-manager.js";
 
 /**
  * Component snapshot for version tracking.

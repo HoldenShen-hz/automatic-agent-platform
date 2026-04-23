@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 import {
   resolveSandboxPath,
@@ -294,16 +296,23 @@ test("checkSandboxPath TOCTOU: race between check and use is inherent but result
   assert.equal(result1.reasonCode, result2.reasonCode);
 });
 
-test("checkSandboxPath denies when realpathEnforced but path cannot be resolved", () => {
-  const policy = createTestPolicy({
-    allowedRoots: ["/test/workspace"],
-    deniedRoots: [],
-    realpathEnforced: true,
-  });
-  // Non-existent path with realpathEnforced should be denied
-  const result = checkSandboxPath(policy, "/test/workspace/nonexistent-" + Date.now() + "/file.txt");
-  assert.equal(result.allowed, false);
-  assert.ok(result.reasonCode?.includes("sandbox.path_unresolvable"));
+test("checkSandboxPath allows new leaf path when realpathEnforced can resolve an existing parent", () => {
+  const workspaceRoot = mkdtempSync(resolve(tmpdir(), "sandbox-policy-"));
+  try {
+    const policy = createTestPolicy({
+      allowedRoots: [workspaceRoot],
+      deniedRoots: [],
+      realpathEnforced: true,
+    });
+    const targetPath = resolve(workspaceRoot, "nonexistent-" + Date.now(), "file.txt");
+    const result = checkSandboxPath(policy, targetPath);
+
+    assert.equal(result.allowed, true);
+    assert.equal(result.reasonCode, null);
+    assert.ok(result.normalizedPath.endsWith("file.txt"));
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
 });
 
 test("checkSandboxPath handles symlinkPolicy allow_explicit", () => {

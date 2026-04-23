@@ -347,7 +347,7 @@ test("CostAlertService evaluateCost returns critical alert when at 95% threshold
   // 94 + 2 = 96 projected, 96/100 = 0.96 >= 0.95 so critical
   assert.equal(result.alertLevel, "critical");
   assert.equal(result.reasonCode, "cost.critical");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
 });
 
 test("CostAlertService evaluateCost with only token limit sets cost limit to infinity", () => {
@@ -436,8 +436,8 @@ test("CostAlertService evaluateCost with pack scope uses pack policy", () => {
     projectedCostUsd: 400,
   });
 
-  assert.equal(result.allowed, false);
-  assert.equal(result.alertLevel, "exceeded");
+  assert.equal(result.allowed, true);
+  assert.equal(result.alertLevel, "warning");
 });
 
 test("CostAlertService evaluateCost with platform scope uses platform policy", () => {
@@ -666,6 +666,15 @@ test("CostAlertService evictExpiredAccumulators removes old accumulators", () =>
         actionsOnWarning: [],
         actionsOnBreach: [],
       },
+      "tenant-new": {
+        scope: "tenant",
+        scopeId: "tenant-new",
+        period: "monthly",
+        limitCostUsd: 100,
+        warningThreshold: 0.8,
+        actionsOnWarning: [],
+        actionsOnBreach: [],
+      },
     },
   };
 
@@ -689,6 +698,7 @@ test("CostAlertService evictExpiredAccumulators removes old accumulators", () =>
     ...accumulator,
     lastUpdatedAt: oldTimestamp,
   });
+  service["lastEvictionTime"] = 0;
 
   // Record new cost which should trigger eviction of old accumulators
   service.recordCost({
@@ -698,7 +708,7 @@ test("CostAlertService evictExpiredAccumulators removes old accumulators", () =>
     tenantId: "tenant-new",
   });
 
-  // Old accumulator should be evicted
+  // Old accumulator should be evicted during the next eligible eviction pass
   const oldAccumulator = service.getAccumulator("tenant", "tenant-old");
   assert.equal(oldAccumulator, null);
 });

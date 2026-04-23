@@ -209,3 +209,242 @@ test("AnomalyDetectionConfig without optional fields", () => {
   };
   assert.equal(config.seasonalPeriod, undefined);
 });
+
+test("ANOMALY_CATEGORY_LABELS has all 8 categories", () => {
+  assert.equal(Object.keys(ANOMALY_CATEGORY_LABELS).length, 8);
+});
+
+test("ANOMALY_CATEGORY_LABELS labels are descriptive", () => {
+  assert.ok(ANOMALY_CATEGORY_LABELS.spike.includes("increase"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.dip.includes("decrease"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.trend_change.includes("Trend"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.level_shift.includes("Level"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.seasonal_violation.includes("Seasonal"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.rate_of_change.includes("Rate"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.static.includes("Expected"));
+  assert.ok(ANOMALY_CATEGORY_LABELS.pattern_break.toLowerCase().includes("pattern"));
+});
+
+test("AnomalyRecord context can hold arbitrary data", () => {
+  const record: AnomalyRecord = {
+    id: "test_001",
+    metricName: "cpu_usage",
+    timestamp: "2026-04-14T00:00:00.000Z",
+    severity: "warning",
+    category: "spike",
+    score: 0.85,
+    expectedValue: 50,
+    observedValue: 95,
+    deviation: 45,
+    deviationPercent: 90,
+    context: {
+      region: "us-east-1",
+      instance: "i-123456",
+      count: 3,
+      nested: { a: 1, b: 2 },
+    },
+    resolved: false,
+    resolvedAt: null,
+  };
+  assert.equal(record.context.region, "us-east-1");
+  assert.equal(record.context.instance, "i-123456");
+  assert.equal(record.context.count, 3);
+  assert.deepStrictEqual(record.context.nested, { a: 1, b: 2 });
+});
+
+test("AnomalyRecord deviation calculation is accurate", () => {
+  const record: AnomalyRecord = {
+    id: "test_002",
+    metricName: "request_latency",
+    timestamp: "2026-04-14T00:00:00.000Z",
+    severity: "critical",
+    category: "spike",
+    score: 0.99,
+    expectedValue: 100,
+    observedValue: 500,
+    deviation: 400,
+    deviationPercent: 400,
+    context: {},
+    resolved: false,
+    resolvedAt: null,
+  };
+  assert.equal(record.deviation, record.observedValue - record.expectedValue);
+  assert.equal(
+    record.deviationPercent,
+    ((record.deviation / record.expectedValue) * 100)
+  );
+});
+
+test("AnomalySignature pattern matching works", () => {
+  const signature: AnomalySignature = {
+    id: "sig_cpu",
+    name: "CPU Spike",
+    pattern: /cpu.*>\s*[0-9]+/,
+    category: "spike",
+    severity: "critical",
+    description: "CPU usage spike detected",
+  };
+  assert.ok(signature.pattern.test("cpu > 90"));
+  assert.ok(signature.pattern.test("cpu_usage > 95"));
+  assert.ok(!signature.pattern.test("memory > 80"));
+});
+
+test("TimeSeriesPoint with various values", () => {
+  const points: TimeSeriesPoint[] = [
+    { timestamp: "2026-04-14T00:00:00.000Z", value: 0 },
+    { timestamp: "2026-04-14T01:00:00.000Z", value: -100 },
+    { timestamp: "2026-04-14T02:00:00.000Z", value: 0.001 },
+    { timestamp: "2026-04-14T03:00:00.000Z", value: 1e6 },
+  ];
+  assert.equal(points[0]!.value, 0);
+  assert.equal(points[1]!.value, -100);
+  assert.equal(points[2]!.value, 0.001);
+  assert.equal(points[3]!.value, 1e6);
+});
+
+test("AdaptiveThreshold bounds are valid", () => {
+  const threshold: AdaptiveThreshold = {
+    upper: 1000,
+    lower: 0,
+    baseline: 500,
+    algorithm: "zscore",
+    lastUpdated: "2026-04-14T00:00:00.000Z",
+  };
+  assert.ok(threshold.upper > threshold.lower);
+  assert.ok(threshold.baseline >= threshold.lower);
+  assert.ok(threshold.baseline <= threshold.upper);
+});
+
+test("All AnomalySeverity values map correctly", () => {
+  const severities: AnomalySeverity[] = ["info", "warning", "critical", "emergency"];
+  severities.forEach((severity) => {
+    const record: AnomalyRecord = {
+      id: "test",
+      metricName: "test",
+      timestamp: "2026-04-14T00:00:00.000Z",
+      severity,
+      category: "spike",
+      score: 0.5,
+      expectedValue: 100,
+      observedValue: 150,
+      deviation: 50,
+      deviationPercent: 50,
+      context: {},
+      resolved: false,
+      resolvedAt: null,
+    };
+    assert.equal(record.severity, severity);
+  });
+});
+
+test("All AnomalyCategory values work in records", () => {
+  const categories: AnomalyCategory[] = [
+    "spike",
+    "dip",
+    "trend_change",
+    "level_shift",
+    "seasonal_violation",
+    "rate_of_change",
+    "static",
+    "pattern_break",
+  ];
+  categories.forEach((category) => {
+    const record: AnomalyRecord = {
+      id: `test_${category}`,
+      metricName: "test_metric",
+      timestamp: "2026-04-14T00:00:00.000Z",
+      severity: "warning",
+      category,
+      score: 0.5,
+      expectedValue: 100,
+      observedValue: 150,
+      deviation: 50,
+      deviationPercent: 50,
+      context: {},
+      resolved: false,
+      resolvedAt: null,
+    };
+    assert.equal(record.category, category);
+  });
+});
+
+test("AnomalyDetectionConfig with all algorithms", () => {
+  const algorithms: AnomalyDetectionConfig["algorithm"][] = [
+    "zscore",
+    "iqr",
+    "ewma",
+    "gradient",
+  ];
+  algorithms.forEach((algorithm) => {
+    const config: AnomalyDetectionConfig = {
+      algorithm,
+      sensitivity: 0.5,
+      windowSize: 100,
+      minDataPoints: 10,
+    };
+    assert.equal(config.algorithm, algorithm);
+  });
+});
+
+test("AnomalyDetectionConfig sensitivity bounds", () => {
+  const configLow: AnomalyDetectionConfig = {
+    algorithm: "zscore",
+    sensitivity: 0.0,
+    windowSize: 100,
+    minDataPoints: 10,
+  };
+  const configHigh: AnomalyDetectionConfig = {
+    algorithm: "zscore",
+    sensitivity: 1.0,
+    windowSize: 100,
+    minDataPoints: 10,
+  };
+  assert.equal(configLow.sensitivity, 0.0);
+  assert.equal(configHigh.sensitivity, 1.0);
+});
+
+test("AnomalyDetectionResult explanation is present", () => {
+  const result: AnomalyDetectionResult = {
+    isAnomaly: true,
+    score: 0.9,
+    severity: "critical",
+    category: "spike",
+    expectedValue: 100,
+    deviation: 50,
+    deviationPercent: 50,
+    explanation: "",
+  };
+  assert.equal(typeof result.explanation, "string");
+});
+
+test("AnomalyDetectorOptions partial config", () => {
+  const options: { config?: Partial<AnomalyDetectionConfig> } = {
+    config: { sensitivity: 0.8 },
+  };
+  assert.ok(options.config);
+  assert.equal(options.config.sensitivity, 0.8);
+  assert.equal(options.config.algorithm, undefined);
+});
+
+test("AnomalyDetectorOptions with signatures", () => {
+  const signature: AnomalySignature = {
+    id: "sig_test",
+    name: "Test Signature",
+    pattern: /test/,
+    category: "spike",
+    severity: "warning",
+    description: "Test description",
+  };
+  const options: { signatures?: AnomalySignature[] } = {
+    signatures: [signature],
+  };
+  assert.ok(options.signatures);
+  assert.equal(options.signatures.length, 1);
+  assert.equal(options.signatures[0]!.id, "sig_test");
+});
+
+test.skip("Anomaly detection algorithms require implementation", () => {
+  // Source directory only contains types and constants - no detection algorithms present.
+  // Algorithms (zscore, iqr, ewma, gradient) would need to be implemented in this module
+  // or imported from another location to enable actual anomaly detection tests.
+});

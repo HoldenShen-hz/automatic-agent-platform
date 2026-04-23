@@ -238,13 +238,19 @@ export class CostAlertService extends EventEmitter {
       ? accumulator.accumulatedCostUsd / policy.limitCostUsd
       : 0;
 
-    const wasWarning = previousCost < (policy.limitCostUsd ?? Infinity) * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
+    const warningThresholdCost =
+      (policy.limitCostUsd ?? Infinity) * (policy.warningThreshold ?? this.config.defaultWarningThreshold);
+    const criticalThresholdCost =
+      (policy.limitCostUsd ?? Infinity) * DEFAULT_CRITICAL_THRESHOLD;
+    const limitCostUsd = policy.limitCostUsd ?? Infinity;
+
+    const wasWarning = previousCost >= warningThresholdCost;
     const isWarning = thresholdRatio >= (policy.warningThreshold ?? this.config.defaultWarningThreshold);
 
-    const wasCritical = previousCost < (policy.limitCostUsd ?? Infinity) * DEFAULT_CRITICAL_THRESHOLD;
+    const wasCritical = previousCost >= criticalThresholdCost;
     const isCritical = thresholdRatio >= DEFAULT_CRITICAL_THRESHOLD;
 
-    const wasExceeded = previousCost >= (policy.limitCostUsd ?? Infinity);
+    const wasExceeded = previousCost >= limitCostUsd;
     const isExceeded = thresholdRatio >= 1.0;
 
     // Emit events if thresholds were crossed (order matters: exceeded > critical > warning)
