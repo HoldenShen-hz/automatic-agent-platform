@@ -237,11 +237,14 @@ test("HotUpgradeService: completeBatch marks batch completed and triggers next",
     );
 
     const batch = plan.batches[0];
+    assert.ok(batch, "Should have at least one batch");
     service.startBatch(batch.batchId);
 
     const result = service.completeBatch(batch.batchId, []);
     assert.equal(result.completed, true);
-    assert.equal(result.batch.batchId, batch.batchId);
+    const resultBatch = result.batch;
+    assert.ok(resultBatch, "result.batch should not be null");
+    assert.equal(resultBatch.batchId, batch.batchId);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -270,6 +273,7 @@ test("HotUpgradeService: completeBatch with allPassed=false triggers rollback", 
     );
 
     const batch = plan.batches[0];
+    assert.ok(batch, "Should have at least one batch");
     service.startBatch(batch.batchId);
 
     // Fail health check
@@ -344,11 +348,13 @@ test("HotUpgradeService: getUpgradePlansByStatus filters correctly", () => {
 
     const pendingPlans = service.getUpgradePlansByStatus("pending");
     assert.equal(pendingPlans.length, 1);
-    assert.equal(pendingPlans[0].upgradeId, "upgrade-list-002");
+    const firstPending = pendingPlans[0]!;
+    assert.equal(firstPending.upgradeId, "upgrade-list-002");
 
     const inProgressPlans = service.getUpgradePlansByStatus("in_progress");
     assert.equal(inProgressPlans.length, 1);
-    assert.equal(inProgressPlans[0].upgradeId, "upgrade-list-001");
+    const firstInProgress = inProgressPlans[0]!;
+    assert.equal(firstInProgress.upgradeId, "upgrade-list-001");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

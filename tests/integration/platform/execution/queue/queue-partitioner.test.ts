@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteQueueAdapter, QUEUE_JOBS_DDL } from "../../../../../src/platform/execution/queue/queue-adapter.js";
+import { SqliteQueueAdapter, QUEUE_JOBS_DDL } from "../../../../../src/platform/execution/queue/index.js";
 import { QueuePartitioner } from "../../../../../src/platform/execution/queue/queue-partitioner.js";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
@@ -236,8 +236,9 @@ test("QueuePartitioner: detectOverload identifies partitions exceeding max depth
     const overloads = partitioner.detectOverload(adapter);
 
     assert.equal(overloads.length, 1);
-    assert.equal(overloads[0].aggregateType, "task");
-    assert.equal(overloads[0].stats.waiting, 3);
+    const first = overloads[0]!;
+    assert.equal(first.aggregateType, "task");
+    assert.equal(first.stats.waiting, 3);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
