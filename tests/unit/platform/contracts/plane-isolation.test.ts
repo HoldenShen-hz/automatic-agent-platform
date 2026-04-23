@@ -19,6 +19,7 @@ const STATE_EVIDENCE_EXECUTION_EXCEPTION_PREFIXES = [
   "src/platform/state-evidence/knowledge/",
 ];
 const STATE_EVIDENCE_CONTROL_PLANE_EXCEPTIONS = new Set([
+  "src/platform/state-evidence/truth/schema-inventory-service.ts",
   "src/platform/state-evidence/truth/storage-backend-config.ts",
   "src/platform/state-evidence/truth/storage-backend-factory.ts",
   "src/platform/state-evidence/truth/storage-quota-service.ts",

@@ -12,10 +12,10 @@ test("domains runtime catalog aggregates all W5 phase groups", () => {
   const catalog = buildDomainsRuntimeCatalog();
   assert.equal(catalog.phase9a.length, 4);
   assert.equal(catalog.phase9b.length, 4);
-  assert.equal(catalog.phase9c.length, 4);
-  assert.equal(catalog.phase9d.length, 4);
-  assert.equal(catalog.phase9e.length, 4);
-  assert.equal(catalog.phase9f.length, 4);
+  assert.equal(catalog.phase9c.length, 6);
+  assert.equal(catalog.phase9d.length, 5);
+  assert.equal(catalog.phase9e.length, 6);
+  assert.equal(catalog.phase9f.length, 6);
 });
 
 test("domains runtime catalog registers aggregated services", async () => {

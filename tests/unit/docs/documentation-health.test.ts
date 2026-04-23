@@ -34,7 +34,9 @@ function extractRelativeMarkdownLinks(markdown: string): string[] {
       rawTarget.startsWith("#") ||
       rawTarget.startsWith("http://") ||
       rawTarget.startsWith("https://") ||
-      rawTarget.startsWith("mailto:")
+      rawTarget.startsWith("mailto:") ||
+      rawTarget.startsWith("/") ||
+      /^[A-Za-z]:[/\\]/.test(rawTarget)
     ) {
       continue;
     }
