@@ -88,7 +88,7 @@
     "demo": "npm run build && node --enable-source-maps dist/src/index.js",
     "demo:phase1b": "npm run build && node --enable-source-maps dist/src/sdk/cli/phase1b-demo.js",
     "lint": "eslint src/",
-    "test:raw": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 npm run build:test && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 c8 node --test --test-concurrency=12 \"dist/tests/**/*.test.js\"",
+    "test:raw": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 npm run build:test && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 c8 node --test --test-concurrency=12 \"dist/tests/unit/**/*.test.js\" \"dist/tests/integration/**/*.test.js\" \"dist/tests/golden/**/*.test.js\" \"dist/tests/e2e/**/*.test.js\" && AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 c8 --no-clean node --test --test-concurrency=1 \"dist/tests/performance/**/*.test.js\"",
     "coverage:report": "node scripts/ci/generate-coverage-report.mjs",
     "coverage:gate": "npm run coverage:report && node scripts/ci/check-coverage-baseline.mjs",
     "coverage:baseline:update": "npm run coverage:report && node scripts/ci/update-coverage-baseline.mjs",

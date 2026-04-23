@@ -375,9 +375,14 @@ test("[SYS-REL-2.3] DLQ retry worker handles multiple retryable records in order
   });
 
   // Schedule all as retrying
-  const scheduled = dlq.scheduleRetry(record1.deadLetterId, 5);
-  dlq.scheduleRetry(record2.deadLetterId, 5);
-  dlq.scheduleRetry(record3.deadLetterId, 5);
+  const scheduled1 = dlq.scheduleRetry(record1.deadLetterId, 5);
+  const scheduled2 = dlq.scheduleRetry(record2.deadLetterId, 5);
+  const scheduled3 = dlq.scheduleRetry(record3.deadLetterId, 5);
+  const batchAsOf = [scheduled1, scheduled2, scheduled3]
+    .map((record) => record.nextRetryAt)
+    .filter((value): value is string => value != null)
+    .sort()
+    .at(-1);
 
   // Process all - resolve the first two, retry the third
   let callCount = 0;
@@ -387,7 +392,7 @@ test("[SYS-REL-2.3] DLQ retry worker handles multiple retryable records in order
       return { outcome: "resolved" as const };
     }
     return { outcome: "retry" as const, delayMs: 100 };
-  }, scheduled.nextRetryAt ?? undefined);
+  }, batchAsOf);
 
   assert.equal(result.attempted, 3, "Should have attempted 3 records");
   assert.equal(result.resolved, 2, "Should have resolved 2 records");
