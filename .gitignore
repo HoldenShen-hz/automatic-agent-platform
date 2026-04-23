@@ -27,3 +27,4 @@ coverage/
 .stryker-tmp/
 dist_temp/
 dist_test
+dist-test/
