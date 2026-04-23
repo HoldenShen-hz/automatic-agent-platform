@@ -61,7 +61,7 @@ test("SamlService registerProvider validates with SamlProviderConfigSchema", () 
   const service = new SamlService();
 
   // Valid provider should register without error
-  const validProvider: SamlProviderConfig = {
+  const validProvider = {
     providerId: "test-idp",
     entryPoint: "https://idp.test.com/saml/login",
     issuer: "https://idp.test.com",
@@ -69,7 +69,8 @@ test("SamlService registerProvider validates with SamlProviderConfigSchema", () 
     entityId: "https://app.test.com",
     acsUrl: "https://app.test.com/saml/acs",
     attributeMapping: { email: "mail", name: "cn" },
-  };
+    allowUnsignedAssertions: false,
+  } as any;
 
   service.registerProvider(validProvider);
   const retrieved = service.getProvider("test-idp");

@@ -32,7 +32,7 @@ test("PolicyEngine.evaluate throws ValidationError for empty decisionId", () => 
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   assert.throws(
     () => engine.evaluate(makeRequest({ decisionId: "" })),
-    (err: any) => err.message.includes("policy.invalid_decision_id"),
+    (err: any) => err.code === "policy.invalid_decision_id",
   );
 });
 
@@ -40,7 +40,7 @@ test("PolicyEngine.evaluate throws ValidationError for empty taskId", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   assert.throws(
     () => engine.evaluate(makeRequest({ taskId: "" })),
-    (err: any) => err.message.includes("policy.invalid_task_id"),
+    (err: any) => err.code === "policy.invalid_task_id",
   );
 });
 
@@ -48,7 +48,7 @@ test("PolicyEngine.evaluate throws ValidationError for empty subjectId", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   assert.throws(
     () => engine.evaluate(makeRequest({ subjectId: "" })),
-    (err: any) => err.message.includes("policy.invalid_subject_id"),
+    (err: any) => err.code === "policy.invalid_subject_id",
   );
 });
 
@@ -56,7 +56,7 @@ test("PolicyEngine.evaluate throws ValidationError for invalid action", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   assert.throws(
     () => engine.evaluate(makeRequest({ action: "" as any })),
-    (err: any) => err.message.includes("policy.invalid_action"),
+    (err: any) => err.code === "policy.invalid_action",
   );
 });
 
@@ -64,7 +64,7 @@ test("PolicyEngine.evaluate throws ValidationError for invalid riskCategory", ()
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   assert.throws(
     () => engine.evaluate(makeRequest({ riskCategory: "" as any })),
-    (err: any) => err.message.includes("policy.invalid_risk_category"),
+    (err: any) => err.code === "policy.invalid_risk_category",
   );
 });
 
@@ -72,7 +72,7 @@ test("PolicyEngine.evaluate throws ValidationError for invalid mode", () => {
   const engine = new PolicyEngine({ budgetPolicy: makeBudgetPolicy() });
   assert.throws(
     () => engine.evaluate(makeRequest({ mode: "" as any })),
-    (err: any) => err.message.includes("policy.invalid_mode"),
+    (err: any) => err.code === "policy.invalid_mode",
   );
 });
 

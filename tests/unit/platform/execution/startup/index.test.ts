@@ -42,44 +42,46 @@ test("startup/index.ts - exports StartupConsistencyChecker", () => {
   assert.equal(typeof StartupModule.StartupConsistencyChecker, "function");
 });
 
-test("startup/index.ts - exports StartupConsistencyCheckerOptions interface", () => {
-  assert.ok("StartupConsistencyCheckerOptions" in StartupModule);
+// Interfaces and types are not runtime values and cannot be checked with 'in' operator
+// These tests verify TypeScript compilation but cannot work as runtime tests
+test.skip("startup/index.ts - exports StartupConsistencyCheckerOptions interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports StartupConsistencyReport interface", () => {
-  assert.ok("StartupConsistencyReport" in StartupModule);
+test.skip("startup/index.ts - exports StartupConsistencyReport interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports StartupConsistencyOptions interface", () => {
-  assert.ok("StartupConsistencyOptions" in StartupModule);
+test.skip("startup/index.ts - exports StartupConsistencyOptions interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports ConsistencyFinding interface", () => {
-  assert.ok("ConsistencyFinding" in StartupModule);
+test.skip("startup/index.ts - exports ConsistencyFinding interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports RepairAction interface", () => {
-  assert.ok("RepairAction" in StartupModule);
+test.skip("startup/index.ts - exports RepairAction interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports StartupConfigValidationResult interface", () => {
-  assert.ok("StartupConfigValidationResult" in StartupModule);
+test.skip("startup/index.ts - exports StartupConfigValidationResult interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports ProviderReadinessResult interface", () => {
-  assert.ok("ProviderReadinessResult" in StartupModule);
+test.skip("startup/index.ts - exports ProviderReadinessResult interface", () => {
+  // Interface - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports ConsistencySeverity type", () => {
-  assert.ok("ConsistencySeverity" in StartupModule);
+test.skip("startup/index.ts - exports ConsistencySeverity type", () => {
+  // Type alias - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports StartupReportStatus type", () => {
-  assert.ok("StartupReportStatus" in StartupModule);
+test.skip("startup/index.ts - exports StartupReportStatus type", () => {
+  // Type alias - cannot be checked at runtime
 });
 
-test("startup/index.ts - exports RepairActionType type", () => {
-  assert.ok("RepairActionType" in StartupModule);
+test.skip("startup/index.ts - exports RepairActionType type", () => {
+  // Type alias - cannot be checked at runtime
 });
 
 test("startup/index.ts - exports buildDefaultStartupConfigValidator", () => {
