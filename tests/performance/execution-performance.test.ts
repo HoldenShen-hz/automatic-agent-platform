@@ -845,12 +845,21 @@ test("performance: AdmissionController.evaluate() with budget check P99 <0.2ms",
 
 test("performance: AdmissionController.evaluate() with backpressure P99 <0.3ms", (t) => {
   const store = new MockAuthoritativeTaskStore() as unknown as AuthoritativeTaskStore;
-  const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY, () => ({
+  const backpressureSnapshot = () => ({
     status: "degraded" as const,
     degradationMode: "queue_only" as const,
-    queueGovernance: { starvationDetected: false },
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
     findings: [] as string[],
-  }));
+  });
+  const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY, backpressureSnapshot);
 
   const latencies: number[] = [];
   const iterations = 5000;

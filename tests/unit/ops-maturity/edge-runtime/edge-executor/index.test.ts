@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   buildOfflineExecutionRecord,
   completeOfflineExecution,
-} from "../../../../src/ops-maturity/edge-runtime/edge-executor/index.js";
+} from "../../../../../src/ops-maturity/edge-runtime/edge-executor/index.js";
 
 test("buildOfflineExecutionRecord creates record with queued status", () => {
   const result = buildOfflineExecutionRecord("edge-1", "task-1", "2026-04-20T00:00:00Z");

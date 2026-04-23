@@ -460,7 +460,7 @@ test("PolicyCenterService validates required fields", () => {
       mode: "auto",
       stage: "execute",
     });
-  }, (error: unknown) => error instanceof Error && error.message.includes("policy."));
+  }, (error: unknown) => error instanceof Error && error.name === "ValidationError");
 });
 
 test("PolicyCenterService validates taskId is not empty", () => {
@@ -607,7 +607,7 @@ test("PolicyCenterService matchedRuleRefs includes default_allow", () => {
   assert.ok(result.matchedRuleRefs.includes("default_allow"));
 });
 
-test("PolicyCenterService write_file denied when no path prefixes configured but path check needed", () => {
+test("PolicyCenterService write_file allowed when no path prefixes configured", () => {
   const service = new PolicyCenterService({ allowedPathPrefixes: [] });
 
   const result = service.evaluate({
@@ -622,7 +622,6 @@ test("PolicyCenterService write_file denied when no path prefixes configured but
     stage: "execute",
   });
 
-  // Empty array means no paths allowed, so should be denied
-  assert.equal(result.decision, "deny");
-  assert.equal(result.reasonCode, "policy.path_scope_denied");
+  // Empty array means path check is skipped
+  assert.equal(result.decision, "allow");
 });

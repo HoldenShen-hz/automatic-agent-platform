@@ -5,7 +5,7 @@ import {
   forecastCapacityUsage,
   forecastCapacityPeak,
   CapacityForecasterService,
-} from "../../../../src/ops-maturity/capacity-planner/forecaster/index.js";
+} from "../../../../../src/ops-maturity/capacity-planner/forecaster/index.js";
 
 test("forecastCapacityUsage projects usage over periods", () => {
   const result = forecastCapacityUsage(100, 10, 3);

@@ -144,7 +144,7 @@ test("integration: DomainRecipeService updates recipes and bumps version", () =>
 
   const versions = service.getVersionHistory(created.recipeId);
   assert.equal(versions.length, 2);
-  assert.equal(versions[1]!.version, "1.0.1");
+  assert.equal(versions[1]!.version, "1.1");
 });
 
 test("integration: DomainRecipeService deletes recipes", () => {

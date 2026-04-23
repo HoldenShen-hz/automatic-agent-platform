@@ -225,7 +225,11 @@ test("integration: DomainEvalFrameworkService assessment with missing metrics", 
       },
     ],
     onlineMetrics: [],
-    releaseGates: {},
+    releaseGates: {
+      minFewShotCount: 5,
+      minRegressionCaseCount: 20,
+      requirePromptInjectionCoverage: true,
+    },
   };
 
   service.register(framework);
@@ -236,7 +240,7 @@ test("integration: DomainEvalFrameworkService assessment with missing metrics", 
 
   assert.equal(assessment.overallPassed, false);
   assert.equal(assessment.axisResults[0]!.passed, false);
-  assert.equal(assessment.axisResults[0]!.delta, -0.05);
+  assert.ok(Math.abs(assessment.axisResults[0]!.delta - (-0.05)) < 0.0001, `delta should be approximately -0.05, got ${assessment.axisResults[0]!.delta}`);
 });
 
 test("integration: DomainEvalFrameworkService throws for missing framework", () => {

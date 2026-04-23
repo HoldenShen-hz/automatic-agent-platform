@@ -5,7 +5,7 @@ import {
   renderComplianceReportMarkdown,
   renderComplianceReportCsv,
   ComplianceReportRendererService,
-} from "../../../../src/ops-maturity/compliance-reporter/report-renderer/index.js";
+} from "../../../../../src/ops-maturity/compliance-reporter/report-renderer/index.js";
 
 test("renderComplianceReportMarkdown renders title and sections", () => {
   const sections = [

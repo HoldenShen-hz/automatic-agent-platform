@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildExecutionBatches } from "../../../../src/interaction/goal-decomposer/planner/index.js";
-import type { DependencyEdge } from "../../../../src/interaction/goal-decomposer/dependency-graph/index.js";
+import { buildExecutionBatches } from "../../../../../src/interaction/goal-decomposer/planner/index.js";
+import type { DependencyEdge } from "../../../../../src/interaction/goal-decomposer/dependency-graph/index.js";
 
 test("buildExecutionBatches places independent tasks in same batch", () => {
   const taskIds = ["a", "b", "c"];

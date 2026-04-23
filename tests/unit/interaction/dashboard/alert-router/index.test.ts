@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { sortAttentionQueue } from "../../../../src/interaction/dashboard/alert-router/index.js";
-import type { AttentionItem } from "../../../../src/interaction/dashboard/index.js";
+import { sortAttentionQueue } from "../../../../../src/interaction/dashboard/alert-router/index.js";
+import type { AttentionItem } from "../../../../../src/interaction/dashboard/index.js";
 
 test("sortAttentionQueue sorts by priority (critical first)", () => {
   const items: AttentionItem[] = [

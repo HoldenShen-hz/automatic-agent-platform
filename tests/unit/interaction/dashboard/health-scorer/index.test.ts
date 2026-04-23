@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { scoreSystemHealth } from "../../../../src/interaction/dashboard/health-scorer/index.js";
-import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
+import { scoreSystemHealth } from "../../../../../src/interaction/dashboard/health-scorer/index.js";
+import type { SystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
 
 test("scoreSystemHealth returns 100 for ok status with no backlog or findings", () => {
   const system: SystemSituation = {
@@ -32,31 +32,33 @@ test("scoreSystemHealth returns 80 for degraded status", () => {
   assert.equal(scoreSystemHealth(system), 80);
 });
 
-test("scoreSystemHealth returns 60 for overloaded status", () => {
+test("scoreSystemHealth returns 60 for overloaded status with no backlog", () => {
   const system: SystemSituation = {
     healthStatus: "overloaded",
     providerHealth: { status: "degraded", successRate: 0.85, recentCalls: 1000 },
     resourceUtilization: { memoryRssMb: 2048, activeProcesses: 50 },
-    queueBacklog: { size: 20, degraded: true },
+    queueBacklog: { size: 0, degraded: false },
     eventBusBacklog: { tier1PendingAcks: 100 },
     findings: [],
     observedAt: Date.now(),
   };
 
+  // Base is 60 (overloaded), no backlog penalty
   assert.equal(scoreSystemHealth(system), 60);
 });
 
-test("scoreSystemHealth returns 30 for unhealthy status", () => {
+test("scoreSystemHealth returns 30 for unhealthy status with no backlog", () => {
   const system: SystemSituation = {
     healthStatus: "unhealthy",
     providerHealth: { status: "failed", successRate: 0.5, recentCalls: 5000 },
     resourceUtilization: { memoryRssMb: 4096, activeProcesses: 100 },
-    queueBacklog: { size: 100, degraded: true },
+    queueBacklog: { size: 0, degraded: false },
     eventBusBacklog: { tier1PendingAcks: 500 },
     findings: [],
     observedAt: Date.now(),
   };
 
+  // Base is 30 (unhealthy), no backlog penalty
   assert.equal(scoreSystemHealth(system), 30);
 });
 

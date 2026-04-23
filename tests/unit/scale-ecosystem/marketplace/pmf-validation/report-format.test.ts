@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMarkdownReport } from "../../../../../../src/scale-ecosystem/marketplace/pmf-validation/report-format.js";
-import type { PmfValidationReport } from "../../../../../../src/scale-ecosystem/marketplace/pmf-validation/types.js";
+import { buildMarkdownReport } from "../../../../../src/scale-ecosystem/marketplace/pmf-validation/report-format.js";
+import type { PmfValidationReport } from "../../../../../src/scale-ecosystem/marketplace/pmf-validation/types.js";
 
 test("buildMarkdownReport generates header section", () => {
   const report = createMockPmfReport({

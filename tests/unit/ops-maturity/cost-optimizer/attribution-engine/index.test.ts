@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { aggregateCostAttribution } from "../../../../src/ops-maturity/cost-optimizer/attribution-engine/index.js";
+import { aggregateCostAttribution } from "../../../../../src/ops-maturity/cost-optimizer/attribution-engine/index.js";
 
 test("aggregateCostAttribution aggregates multiple entries for same subject", () => {
   const entries = [

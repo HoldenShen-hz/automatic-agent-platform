@@ -175,7 +175,7 @@ test("RoadmapService seedArchitectureRoadmap skips duplicates", () => {
   const first = service.seedArchitectureRoadmap();
   const second = service.seedArchitectureRoadmap();
 
-  assert.equal(first.length, second.length);
+  assert.equal(first.length, ARCHITECTURE_ROADMAP_TEMPLATE.length);
   assert.equal(second.length, 0);
 });
 
@@ -279,17 +279,22 @@ test("RoadmapService evaluatePhaseAdvance returns decision for phase", () => {
 
 test("RoadmapService evaluatePhaseAdvance blocks when items not completed", () => {
   const service = new RoadmapService();
-  service.addRoadmapItem({ title: "Item 1", description: "Desc", phase: "phase1" });
+  // Create items but don't register a gate - the issue is the default gate has no required items
+  // so actually advance is allowed when no gate is registered
+  // We need to set up a gate with required items
+  const item = service.addRoadmapItem({ title: "Item 1", description: "Desc", phase: "phase1" });
   service.registerPhaseGate({
     phase: "phase1",
-    requiredItemIds: [],
+    requiredItemIds: [item.itemId], // Require this item to be completed
     requiredCriteriaIds: [],
     blockOnDeferredItems: false,
   });
 
+  // Don't complete the item - advance should be blocked
   const decision = service.evaluatePhaseAdvance("phase1");
 
   assert.equal(decision.allowed, false);
+  assert.ok(decision.pendingItemIds.includes(item.itemId));
 });
 
 test("RoadmapService evaluatePhaseAdvance considers deferred items when gate blocks on deferred", () => {

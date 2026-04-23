@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { selectEdgeLocalModel } from "../../../../src/ops-maturity/edge-runtime/local-model/index.js";
+import { selectEdgeLocalModel } from "../../../../../src/ops-maturity/edge-runtime/local-model/index.js";
 
 test("selectEdgeLocalModel returns model matching modality", () => {
   const models = [

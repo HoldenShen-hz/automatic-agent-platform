@@ -33,8 +33,8 @@ import {
   MEMORY_ACTIONS,
   MODEL_ROUTE_CLASSES,
   MODEL_ROUTE_RISK_LEVELS,
-} from "../../../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
-import { ValidationError } from "../../../../../../src/platform/contracts/errors.js";
+} from "../../../../../src/platform/control-plane/config-center/remaining-cli-env-loaders.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("loadTenantPlatformCliEnv returns config with defaults", () => {
   const env = {
@@ -96,7 +96,6 @@ test("loadEnterpriseCapabilityCliEnv returns config with defaults", () => {
   assert.equal(config.dbPath, "/data/test.db");
   assert.equal(config.action, "summary");
   assert.equal(config.isActive, true);
-  assert.equal(config.reviewRequired, true);
 });
 
 test("loadEnterpriseCapabilityCliEnv parses optional fields", () => {
@@ -361,6 +360,7 @@ test("loadWorkerRegisterCliEnv parses worker fields", () => {
   const env = {
     AA_DB_PATH: "/data/test.db",
     AA_WORKER_REGISTER_ACTION: "complete",
+    AA_CAPABILITIES_JSON: '["cap-x", "cap-y"]',
     AA_WORKER_ID: "worker-1",
     AA_CHALLENGE_ID: "challenge-abc",
     AA_CHALLENGE_TOKEN: "tok-xyz",

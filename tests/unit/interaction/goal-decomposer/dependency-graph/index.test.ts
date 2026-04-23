@@ -5,7 +5,7 @@ import {
   detectDependencyCycle,
   topologicallySortTaskIds,
   type DependencyEdge,
-} from "../../../../src/interaction/goal-decomposer/dependency-graph/index.js";
+} from "../../../../../src/interaction/goal-decomposer/dependency-graph/index.js";
 
 test("topologicallySortTaskIds returns tasks in topological order", () => {
   const taskIds = ["a", "b", "c"];

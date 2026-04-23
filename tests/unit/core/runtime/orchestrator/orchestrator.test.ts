@@ -8,13 +8,13 @@ import {
   runMultiStepOrchestration,
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
-} from "../../../../src/core/runtime/orchestrator/index.js";
+} from "../../../../../src/core/runtime/orchestrator/index.js";
 
 import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
   StepFailurePlan,
-} from "../../../../src/core/runtime/orchestrator/types.js";
+} from "../../../../../src/core/runtime/orchestrator/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   ComplianceTemplateRegistryService,
   findComplianceTemplate,
-} from "../../../../src/ops-maturity/compliance-reporter/template-registry/index.js";
+} from "../../../../../src/ops-maturity/compliance-reporter/template-registry/index.js";
 
 const makeTemplate = (id: string, framework: string, reportType: string) => ({
   templateId: id,

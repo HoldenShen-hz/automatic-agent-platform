@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildEdgeExecutionPlan } from "../../../../src/ops-maturity/edge-runtime/edge-orchestrator/index.js";
+import { buildEdgeExecutionPlan } from "../../../../../src/ops-maturity/edge-runtime/edge-orchestrator/index.js";
 
 test("buildEdgeExecutionPlan creates plan with given task ids", () => {
   const result = buildEdgeExecutionPlan(["task-1", "task-2"]);

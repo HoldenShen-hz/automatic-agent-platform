@@ -5,7 +5,7 @@ import {
   mapEvidenceByType,
   findMissingEvidenceTypes,
   EvidenceMapperService,
-} from "../../../../src/ops-maturity/compliance-reporter/evidence-mapper/index.js";
+} from "../../../../../src/ops-maturity/compliance-reporter/evidence-mapper/index.js";
 
 test("mapEvidenceByType groups evidence by type", () => {
   const items = [

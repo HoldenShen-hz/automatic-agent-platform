@@ -5,7 +5,7 @@ import {
   canRetireAgent,
   createRetirementRecord,
   isGracePeriodExpired,
-} from "../../../../src/ops-maturity/agent-lifecycle/retirement/index.js";
+} from "../../../../../src/ops-maturity/agent-lifecycle/retirement/index.js";
 
 test("canRetireAgent returns true when revokeAt <= nowIso", () => {
   const plan = {
@@ -36,10 +36,18 @@ test("canRetireAgent returns false when revokeAt > nowIso", () => {
 });
 
 test("createRetirementRecord creates record with initiated status", () => {
-  const plan = {
+  const plan: {
+    agentId: string;
+    successorAgentId: string | null;
+    transferItems: ("triggers" | "subscriptions" | "scheduled_tasks" | "ownership")[];
+    gracePeriodDays: number;
+    notificationTargets: string[];
+    revokeAt: string;
+    reason: string;
+  } = {
     agentId: "agent-1",
     successorAgentId: "agent-2",
-    transferItems: ["triggers", "subscriptions"] as const,
+    transferItems: ["triggers", "subscriptions"],
     gracePeriodDays: 30,
     notificationTargets: ["admin@example.com"],
     revokeAt: "2026-05-01T00:00:00Z",

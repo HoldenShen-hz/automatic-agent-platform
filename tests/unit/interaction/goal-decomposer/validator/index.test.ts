@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateGoalDecomposition } from "../../../../src/interaction/goal-decomposer/validator/index.js";
-import type { GoalDecomposition } from "../../../../src/interaction/goal-decomposer/index.js";
+import { validateGoalDecomposition } from "../../../../../src/interaction/goal-decomposer/validator/index.js";
+import type { GoalDecomposition } from "../../../../../src/interaction/goal-decomposer/index.js";
 
 const makeGoalDecomposition = (overrides: Partial<GoalDecomposition> = {}): GoalDecomposition => ({
   goalId: "goal:test",
@@ -165,8 +165,18 @@ test("validateGoalDecomposition returns multiple findings", () => {
 });
 
 test("validateGoalDecomposition accepts valid confidence boundaries", () => {
-  const decomposition0 = makeGoalDecomposition({ decompositionConfidence: 0 });
-  const decomposition1 = makeGoalDecomposition({ decompositionConfidence: 1 });
+  const validTask = {
+    taskId: "task1",
+    domainId: "d1",
+    description: "Task 1",
+    inputs: {},
+    expectedOutputs: ["out1"],
+    delegationMode: "auto" as const,
+    estimatedDuration: "1h",
+    estimatedCost: { estimatedCostUsd: 0.01, confidence: "default" as const, sampleCount: 0, divisionId: null, basedOn: "default" as const },
+  };
+  const decomposition0 = makeGoalDecomposition({ decompositionConfidence: 0, tasks: [validTask] });
+  const decomposition1 = makeGoalDecomposition({ decompositionConfidence: 1, tasks: [validTask] });
 
   assert.deepEqual(validateGoalDecomposition(decomposition0), []);
   assert.deepEqual(validateGoalDecomposition(decomposition1), []);

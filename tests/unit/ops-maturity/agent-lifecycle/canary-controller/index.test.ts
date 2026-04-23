@@ -7,7 +7,7 @@ import {
   getNextCanaryStage,
   shouldRollbackCanary,
   calculateTrafficSplit,
-} from "../../../../src/ops-maturity/agent-lifecycle/canary-controller/index.js";
+} from "../../../../../src/ops-maturity/agent-lifecycle/canary-controller/index.js";
 
 test("CANARY_STAGES contains expected values", () => {
   assert.deepStrictEqual(CANARY_STAGES, [5, 20, 50, 100]);

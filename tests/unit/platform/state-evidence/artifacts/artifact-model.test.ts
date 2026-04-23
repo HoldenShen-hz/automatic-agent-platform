@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ArtifactTypeSchema, ArtifactRecordSchema, ArtifactLinkSchema, ArtifactBundleSchema } from "../../../../../../src/platform/state-evidence/artifacts/artifact-model.js";
+import {
+  ArtifactTypeSchema,
+  ArtifactRecordSchema,
+  ArtifactLinkSchema,
+  ArtifactBundleSchema,
+} from "../../../../../src/platform/state-evidence/artifacts/artifact-model.js";
 
 test("ArtifactTypeSchema accepts valid artifact types", () => {
   const validTypes = [
