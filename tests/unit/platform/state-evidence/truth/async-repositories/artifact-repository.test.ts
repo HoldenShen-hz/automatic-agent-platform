@@ -80,7 +80,8 @@ test("AsyncArtifactRepository getArtifact returns artifact when found", async ()
   const result = await repo.getArtifact("art-1");
 
   assert.deepEqual(result, artifact);
-  assert.match(calls[0]!.sql, /FROM artifacts WHERE artifact_id = \$1/);
+  assert.match(calls[0]!.sql, /FROM artifacts/);
+  assert.match(calls[0]!.sql, /WHERE artifact_id = \$1/);
 });
 
 test("AsyncArtifactRepository getArtifact returns null when not found", async () => {
@@ -100,9 +101,9 @@ test("AsyncArtifactRepository listArtifactsByTask returns artifacts without tena
   const result = await repo.listArtifactsByTask("task-1");
 
   assert.deepEqual(result, [artifact]);
-  assert.match(calls[0]!.sql, /FROM artifacts a/);
-  assert.match(calls[0]!.sql, /WHERE a\.task_id = \$1/);
-  assert.match(calls[0]!.sql, /ORDER BY a\.created_at ASC/);
+  assert.match(calls[0]!.sql, /FROM artifacts/);
+  assert.match(calls[0]!.sql, /WHERE task_id = \$1/);
+  assert.match(calls[0]!.sql, /ORDER BY created_at ASC/);
   assert.doesNotMatch(calls[0]!.sql, /INNER JOIN tasks/);
 });
 

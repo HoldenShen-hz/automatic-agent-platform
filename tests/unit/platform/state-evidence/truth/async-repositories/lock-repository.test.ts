@@ -116,8 +116,8 @@ test("AsyncLockRepository listFileLocksByTask returns locks without tenant", asy
   const result = await repo.listFileLocksByTask("task-1");
 
   assert.deepEqual(result, [lock]);
-  assert.match(calls[0]!.sql, /FROM file_locks f/);
-  assert.match(calls[0]!.sql, /WHERE f\.task_id = \$1/);
+  assert.match(calls[0]!.sql, /FROM file_locks/);
+  assert.match(calls[0]!.sql, /WHERE task_id = \$1/);
   assert.doesNotMatch(calls[0]!.sql, /INNER JOIN tasks/);
 });
 

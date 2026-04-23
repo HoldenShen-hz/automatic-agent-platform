@@ -600,11 +600,10 @@ export class SubWorkflowExecutor {
   }
 
   private async simulateStepExecution(step: WorkflowStep, timeout: number): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const timer = setTimeout(() => {
         resolve();
       }, Math.min(timeout, 50)); // Simulated
-      setTimeout(() => clearTimeout(timer), timeout);
     });
   }
 
@@ -649,7 +648,9 @@ export class SubWorkflowExecutor {
 
   private async simulateRollback(entry: RollbackHistoryEntry): Promise<void> {
     // Simulated rollback - in real implementation would call rollback handlers
-    return new Promise((resolve) => setTimeout(resolve, 10));
+    return new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
   }
 
   private buildResult(

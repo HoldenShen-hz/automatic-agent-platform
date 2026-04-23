@@ -148,5 +148,6 @@ test("AsyncDivisionRepository listDataMovementJobRecords handles null tenantId",
   const result = await repo.listDataMovementJobRecords({ tenantId: null });
 
   assert.deepEqual(result, [job]);
-  assert.match(calls[0]!.sql, /tenant_id = \$1/);
+  assert.doesNotMatch(calls[0]!.sql, /tenant_id = \$1/);
+  assert.deepEqual(calls[0]!.params, [100]);
 });

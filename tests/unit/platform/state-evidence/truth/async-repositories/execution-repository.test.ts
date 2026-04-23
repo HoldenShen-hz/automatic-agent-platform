@@ -171,7 +171,7 @@ test("AsyncExecutionRepository updateExecutionStatus updates status", async () =
   const result = await repo.updateExecutionStatus("exec-1", "completed", now, null, now, null);
 
   assert.equal(result, 1);
-  assert.match(calls[0]!.sql, /UPDATE executions SET status = \$1/);
+  assert.match(calls[0]!.sql, /UPDATE executions\s+SET status = \$1/);
   assert.match(calls[0]!.sql, /started_at = COALESCE\(\$3, started_at\)/);
 });
 

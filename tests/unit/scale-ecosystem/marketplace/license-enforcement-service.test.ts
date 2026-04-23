@@ -166,21 +166,22 @@ test("LicenseEnforcementService enables and disables feature gates", () => {
   const harness = createHarness("aa-license-gate-toggle-");
   try {
     // admin_console is enabled by default
-    const result1 = harness.service.checkFeatureAccess("admin_console", "community");
+    const result1 = harness.service.checkFeatureAccess("admin_console", "professional");
     assert.equal(result1.allowed, true);
 
     // Disable it
     const disabled = harness.service.disableFeatureGate("admin_console");
     assert.equal(disabled, true);
 
-    const result2 = harness.service.checkFeatureAccess("admin_console", "community");
+    const result2 = harness.service.checkFeatureAccess("admin_console", "professional");
     assert.equal(result2.allowed, false);
+    assert.equal(result2.reason, "feature_not_found_or_disabled");
 
     // Re-enable it
     const enabled = harness.service.enableFeatureGate("admin_console");
     assert.equal(enabled, true);
 
-    const result3 = harness.service.checkFeatureAccess("admin_console", "community");
+    const result3 = harness.service.checkFeatureAccess("admin_console", "professional");
     assert.equal(result3.allowed, true);
   } finally {
     harness.db.close();

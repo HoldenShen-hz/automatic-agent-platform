@@ -1,65 +1,43 @@
-/**
- * HA Program CLI Tests
- *
- * Tests for ha-program CLI module which generates reports on system health,
- * availability, and resilience metrics.
- */
-
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { loadHaProgramCliEnv } from "../../../../src/platform/control-plane/config-center/product-cli-env.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 describe("loadHaProgramCliEnv", () => {
-  it("parses summary action", () => {
-    const config = loadHaProgramCliEnv({
+  it("parses actions and optional artifact root", () => {
+    const summary = loadHaProgramCliEnv({
       AA_HA_PROGRAM_ACTION: "summary",
       AA_DB_PATH: "/tmp/test.db",
       AA_ENVIRONMENT: "dev",
+      AA_HA_PROGRAM_ARTIFACT_ROOT: "/tmp/artifacts",
     });
-
-    assert.equal(config.action, "summary");
-    assert.equal(config.environment, "dev");
-  });
-
-  it("parses export action", () => {
-    const config = loadHaProgramCliEnv({
+    const exportConfig = loadHaProgramCliEnv({
       AA_HA_PROGRAM_ACTION: "export",
       AA_DB_PATH: "/tmp/test.db",
       AA_ENVIRONMENT: "prod",
     });
 
-    assert.equal(config.action, "export");
-    assert.equal(config.environment, "prod");
+    assert.equal(summary.action, "summary");
+    assert.equal(summary.artifactRoot, "/tmp/artifacts");
+    assert.equal(exportConfig.action, "export");
   });
 
-  it("parses optional artifact root", () => {
-    const config = loadHaProgramCliEnv({
-      AA_HA_PROGRAM_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "staging",
-      AA_HA_PROGRAM_ARTIFACT_ROOT: "/tmp/artifacts",
-    });
-
-    assert.equal(config.artifactRoot, "/tmp/artifacts");
-  });
-
-  it("uses summary as default action", () => {
+  it("uses summary as default action and requires environment", () => {
     const config = loadHaProgramCliEnv({
       AA_DB_PATH: "/tmp/test.db",
       AA_ENVIRONMENT: "dev",
     });
 
     assert.equal(config.action, "summary");
-  });
 
-  it("requires environment to be specified", () => {
-    const config = loadHaProgramCliEnv({
-      AA_HA_PROGRAM_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-    });
-
-    // Environment is required and defaults to undefined when not provided
-    assert.equal(config.environment, undefined);
+    assert.throws(
+      () =>
+        loadHaProgramCliEnv({
+          AA_DB_PATH: "/tmp/test.db",
+        }),
+      (error) =>
+        error instanceof ValidationError && error.code === "missing_env:AA_ENVIRONMENT",
+    );
   });
 });

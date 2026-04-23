@@ -1,99 +1,36 @@
-/**
- * Platform Operator CLI Tests
- *
- * Tests for platform-operator CLI module which manages platform-level operations
- * including evidence collection, package generation, and status management.
- */
-
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { loadPlatformOperatorCliEnv } from "../../../../src/platform/control-plane/config-center/operations-cli-env.js";
 
 describe("loadPlatformOperatorCliEnv", () => {
-  it("parses summary action", () => {
+  it("parses current platform operator env names", () => {
     const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "summary",
+      AA_PLATFORM_ACTION: "export",
       AA_DB_PATH: "/tmp/test.db",
       AA_ENVIRONMENT: "dev",
-    });
-
-    assert.equal(config.action, "summary");
-    assert.equal(config.environment, "dev");
-  });
-
-  it("parses export action", () => {
-    const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "export",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "prod",
-    });
-
-    assert.equal(config.action, "export");
-    assert.equal(config.environment, "prod");
-  });
-
-  it("parses optional artifact root", () => {
-    const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "staging",
-      AA_ARTIFACT_ROOT: "/tmp/artifacts",
-    });
-
-    assert.equal(config.artifactRoot, "/tmp/artifacts");
-  });
-
-  it("parses optional evidence root dir", () => {
-    const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "dev",
-      AA_EVIDENCE_ROOT_DIR: "/tmp/evidence",
-    });
-
-    assert.equal(config.evidenceRootDir, "/tmp/evidence");
-  });
-
-  it("parses optional package output dir", () => {
-    const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "dev",
-      AA_PACKAGE_OUTPUT_DIR: "/tmp/packages",
-    });
-
-    assert.equal(config.outputDir, "/tmp/packages");
-  });
-
-  it("parses optional target status", () => {
-    const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "dev",
-      AA_TARGET_STATUS: "healthy",
-    });
-
-    assert.equal(config.targetStatus, "healthy");
-  });
-
-  it("parses optional generated_at", () => {
-    const config = loadPlatformOperatorCliEnv({
-      AA_PLATFORM_OPERATOR_ACTION: "summary",
-      AA_DB_PATH: "/tmp/test.db",
-      AA_ENVIRONMENT: "dev",
+      AA_PLATFORM_ARTIFACT_ROOT: "/tmp/artifacts",
+      AA_PLATFORM_EVIDENCE_ROOT: "/tmp/evidence",
+      AA_PLATFORM_OUTPUT_DIR: "/tmp/packages",
+      AA_PLATFORM_TARGET_STATUS: "tenant_gray",
       AA_GENERATED_AT: "2024-01-25T08:00:00Z",
     });
 
+    assert.equal(config.action, "export");
+    assert.equal(config.artifactRoot, "/tmp/artifacts");
+    assert.equal(config.evidenceRootDir, "/tmp/evidence");
+    assert.equal(config.outputDir, "/tmp/packages");
+    assert.equal(config.targetStatus, "tenant_gray");
     assert.equal(config.generatedAt, "2024-01-25T08:00:00Z");
   });
 
-  it("uses summary as default action", () => {
+  it("uses summary and canary defaults", () => {
     const config = loadPlatformOperatorCliEnv({
       AA_DB_PATH: "/tmp/test.db",
       AA_ENVIRONMENT: "dev",
     });
 
     assert.equal(config.action, "summary");
+    assert.equal(config.targetStatus, "canary");
   });
 });

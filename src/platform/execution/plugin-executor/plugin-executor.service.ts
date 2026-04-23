@@ -483,17 +483,26 @@ export class PluginExecutorService {
     timeoutMs: number,
   ): Promise<T> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const cleanup = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+      };
       const timer = setTimeout(() => {
+        cleanup();
         reject(new Error(`Timeout after ${timeoutMs}ms`));
       }, timeoutMs);
 
       fn()
         .then((result) => {
-          clearTimeout(timer);
+          cleanup();
           resolve(result);
         })
         .catch((err) => {
-          clearTimeout(timer);
+          cleanup();
           reject(err);
         });
     });

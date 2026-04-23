@@ -98,8 +98,7 @@ test("AsyncTaskRepository getTask returns task when found with tenant", async ()
   const result = await repo.getTask("task-1", "tenant-a");
 
   assert.deepEqual(result, task);
-  assert.match(calls[0]!.sql, /INNER JOIN tasks t ON t\.id = w\.task_id/);
-  assert.match(calls[0]!.sql, /t\.tenant_id = \$2/);
+  assert.match(calls[0]!.sql, /FROM tasks t WHERE t\.id = \$1 AND t\.tenant_id = \$2/);
 });
 
 test("AsyncTaskRepository getTask returns null when not found", async () => {
@@ -143,7 +142,7 @@ test("AsyncTaskRepository listTasks respects limit", async () => {
   const result = await repo.listTasks(10);
 
   assert.deepEqual(result, [task]);
-  assert.match(calls[0]!.sql, /LIMIT \$3/);
+  assert.match(calls[0]!.sql, /LIMIT \$1/);
   assert.deepEqual(calls[0]!.params, [10]);
 });
 
@@ -237,6 +236,6 @@ test("AsyncTaskRepository countQueuedTasks returns count with tenant", async () 
   const result = await repo.countQueuedTasks("tenant-a");
 
   assert.equal(result, 7);
-  assert.match(calls[0]!.sql, /AND tenant_id = \$2/);
+  assert.match(calls[0]!.sql, /AND tenant_id = \$1/);
   assert.deepEqual(calls[0]!.params, ["tenant-a"]);
 });

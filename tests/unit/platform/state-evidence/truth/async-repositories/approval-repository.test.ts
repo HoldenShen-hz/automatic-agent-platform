@@ -99,8 +99,8 @@ test("AsyncApprovalRepository listApprovalsByTask returns approvals without tena
   const result = await repo.listApprovalsByTask("task-1");
 
   assert.deepEqual(result, [approval]);
-  assert.match(calls[0]!.sql, /FROM approvals a/);
-  assert.match(calls[0]!.sql, /WHERE a\.task_id = \$1/);
+  assert.match(calls[0]!.sql, /FROM approvals/);
+  assert.match(calls[0]!.sql, /WHERE task_id = \$1/);
   assert.doesNotMatch(calls[0]!.sql, /INNER JOIN tasks/);
 });
 
@@ -171,7 +171,7 @@ test("AsyncApprovalRepository updateApprovalDecision updates decision", async ()
   });
 
   assert.equal(result, 1);
-  assert.match(calls[0]!.sql, /UPDATE approvals SET status = \$1/);
+  assert.match(calls[0]!.sql, /UPDATE approvals\s+SET status = \$1/);
   assert.match(calls[0]!.sql, /response_json = \$2/);
   assert.match(calls[0]!.sql, /responded_at = \$3/);
 });
@@ -198,8 +198,8 @@ test("AsyncApprovalRepository listTakeoverSessionsByTask returns sessions withou
   const result = await repo.listTakeoverSessionsByTask("task-1");
 
   assert.deepEqual(result, [session]);
-  assert.match(calls[0]!.sql, /FROM takeover_sessions x/);
-  assert.match(calls[0]!.sql, /WHERE x\.task_id = \$1/);
+  assert.match(calls[0]!.sql, /FROM takeover_sessions/);
+  assert.match(calls[0]!.sql, /WHERE task_id = \$1/);
 });
 
 test("AsyncApprovalRepository listTakeoverSessionsByTask returns sessions with tenant", async () => {
@@ -276,8 +276,8 @@ test("AsyncApprovalRepository listOperatorActionsByTask returns actions without 
   const result = await repo.listOperatorActionsByTask("task-1");
 
   assert.deepEqual(result, [action]);
-  assert.match(calls[0]!.sql, /FROM operator_actions o/);
-  assert.match(calls[0]!.sql, /WHERE o\.task_id = \$1/);
+  assert.match(calls[0]!.sql, /FROM operator_actions/);
+  assert.match(calls[0]!.sql, /WHERE task_id = \$1/);
 });
 
 test("AsyncApprovalRepository listOperatorActionsByTask returns actions with tenant", async () => {

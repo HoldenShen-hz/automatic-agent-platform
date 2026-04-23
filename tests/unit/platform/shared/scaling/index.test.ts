@@ -229,7 +229,10 @@ test("canAllocate - rejects when exceeding max limit", () => {
 });
 
 test("canAllocate - rejects when exceeding burstable but within max", () => {
-  const quota = createResourceQuota("org-1");
+  const quota = createResourceQuota("org-1", {
+    burstable: { maxConcurrentWorkflows: 10 },
+    maxLimit: { maxConcurrentWorkflows: 20 },
+  });
   const usage: QuotaUsage = {
     orgNodeId: "org-1",
     activeWorkflows: 8,
@@ -242,6 +245,7 @@ test("canAllocate - rejects when exceeding burstable but within max", () => {
   const result = canAllocate(quota, usage, requested);
 
   assert.strictEqual(result.admitted, false);
+  assert.strictEqual(result.rejectedDueTo, "maxConcurrentWorkflows");
   assert.ok(result.reason.includes("burstable"));
 });
 

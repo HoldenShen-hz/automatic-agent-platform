@@ -521,11 +521,10 @@ export class BrowserExecutor {
   }
 
   private async simulateOperation(action: BrowserAction, timeout: number): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const timer = setTimeout(() => {
         resolve();
       }, Math.min(timeout, 100)); // Simulated - real impl would be longer
-      setTimeout(() => clearTimeout(timer), timeout);
     });
   }
 
