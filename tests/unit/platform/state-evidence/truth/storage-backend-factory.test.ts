@@ -10,6 +10,7 @@ import {
   openPostgresAuthoritativeStorageBackend,
   planAuthoritativeStorageBackend,
   requirePostgresAuthoritativeStorageBackend,
+  requireSyncCompatibleAuthoritativeSqlDatabase,
   requireSqliteAuthoritativeStorageBackend,
 } from "../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
@@ -21,6 +22,7 @@ interface MockPgDatabase {
   connection: object;
   migrate(): Promise<void>;
   close(): Promise<void>;
+  healthCheck(): Promise<boolean>;
 }
 
 function installMockRequire(mockRequire: MockRequire): () => void {
@@ -437,6 +439,9 @@ test("storage backend factory postgres opener exposes shadow sqlite compatibilit
     async close(): Promise<void> {
       calls.close += 1;
     },
+    async healthCheck(): Promise<boolean> {
+      return true;
+    },
   };
 
   const restoreRequire = installMockRequire((specifier) => {
@@ -522,6 +527,9 @@ test("storage backend factory async postgres context wires shadow sqlite lifecyc
               async close(): Promise<void> {
                 calls.close += 1;
               },
+              async healthCheck(): Promise<boolean> {
+                return true;
+              },
             };
           },
         },
@@ -572,5 +580,119 @@ test("storage backend factory async postgres context wires shadow sqlite lifecyc
   } finally {
     restoreRequire();
     cleanupPath(workspace);
+  }
+});
+
+test("storage backend factory postgres opener exposes unsupported sync facade without shadow sqlite", async () => {
+  const workspace = createTempWorkspace("aa-storage-backend-postgres-noshadow-");
+  const dbPath = join(workspace, "runtime.db");
+  const env = {
+    AA_STORAGE_DRIVER: "postgres",
+    AA_STORAGE_POSTGRES_DSN: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
+  };
+
+  const fakePgDb: MockPgDatabase = {
+    filePath: "postgres://fake/agent_company_os",
+    connection: { dialect: "postgres" },
+    async migrate(): Promise<void> {},
+    async close(): Promise<void> {},
+    async healthCheck(): Promise<boolean> {
+      return true;
+    },
+  };
+
+  const restoreRequire = installMockRequire((specifier) => {
+    if (specifier === "postgres") {
+      return {};
+    }
+    if (specifier === "./postgres/pg-database.js") {
+      return {
+        PgDatabase: {
+          async open(): Promise<MockPgDatabase> {
+            return fakePgDb;
+          },
+        },
+      };
+    }
+    throw new Error(`unexpected require: ${specifier}`);
+  });
+
+  try {
+    const storage = await openPostgresAuthoritativeStorageBackend({
+      dbPath,
+      environment: "dev",
+      env,
+    });
+
+    assert.equal(storage.shadowSqlite, undefined);
+    assert.equal(storage.sql.filePath, fakePgDb.filePath);
+    await assert.rejects(async () => storage.sql.migrate(), /storage\.postgres_sync_api_unsupported:migrate/);
+    assert.throws(() => storage.sql.getSchemaStatus(), /storage\.postgres_sync_api_unsupported:getSchemaStatus/);
+    assert.throws(() => storage.sql.assertSchemaCurrent(), /storage\.postgres_sync_api_unsupported:assertSchemaCurrent/);
+    assert.throws(() => storage.sql.integrityCheck(), /storage\.postgres_sync_api_unsupported:integrityCheck/);
+    assert.throws(() => storage.sql.transaction(() => "nope"), /storage\.postgres_sync_api_unsupported:transaction/);
+    assert.throws(() => storage.sql.readTransaction(() => "nope"), /storage\.postgres_sync_api_unsupported:readTransaction/);
+    await assert.doesNotReject(() => storage.sql.healthCheck());
+    await storage.close();
+  } finally {
+    restoreRequire();
+    cleanupPath(workspace);
+  }
+});
+
+test("storage backend factory sync compatibility helper returns shadow sqlite and fail-closes without it", () => {
+  const sqliteWorkspace = createTempWorkspace("aa-storage-backend-sync-compat-");
+  const sqliteDbPath = join(sqliteWorkspace, "runtime.db");
+
+  try {
+    const sqliteStorage = openAuthoritativeStorageBackend({
+      dbPath: sqliteDbPath,
+      environment: "dev",
+      env: {},
+    });
+
+    assert.equal(requireSyncCompatibleAuthoritativeSqlDatabase(sqliteStorage).filePath, sqliteDbPath);
+
+    const postgresLike = {
+      driver: "postgres" as const,
+      runtimeProfile: {
+        environment: "dev",
+        driver: "postgres" as const,
+        issues: [],
+        postgres: {
+          dsnConfigured: true,
+          dsnSource: "AA_STORAGE_POSTGRES_DSN",
+          host: "postgres.internal",
+          database: "agent_company_os",
+          sslmode: "require" as const,
+          poolMin: 0,
+          poolMax: 20,
+          dualRun: false,
+          shadowSqlitePath: null,
+          schema: null,
+        },
+      },
+      sql: sqliteStorage.sql,
+      asyncSql: sqliteStorage.asyncSql,
+      asyncRepos: sqliteStorage.asyncRepos,
+      postgres: {
+        filePath: "postgres://fake/agent_company_os",
+      },
+      migrate() {
+        return Promise.resolve();
+      },
+      close() {
+        return Promise.resolve();
+      },
+    };
+
+    assert.throws(
+      () => requireSyncCompatibleAuthoritativeSqlDatabase(postgresLike as any),
+      /storage\.postgres_shadow_sqlite_required_for_sync_compatibility/,
+    );
+
+    sqliteStorage.close();
+  } finally {
+    cleanupPath(sqliteWorkspace);
   }
 });

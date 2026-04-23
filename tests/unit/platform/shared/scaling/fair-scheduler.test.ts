@@ -287,3 +287,78 @@ test("FairScheduler utilization isBorrowing flag", () => {
   assert.ok(tenant2 !== undefined);
   assert.ok(tenant2!.isBorrowing);
 });
+
+test("FairScheduler returns worker and token borrows before decrementing tenant usage", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  scheduler.registerTenant("tenant-1", 1, {
+    maxConcurrentWorkflows: 50,
+    maxConcurrentWorkers: 20,
+    llmTokensPerMinute: 50000,
+    llmRequestsPerMinute: 500,
+  });
+  scheduler.registerTenant("tenant-2", 1, {
+    maxConcurrentWorkflows: 10,
+    maxConcurrentWorkers: 2,
+    llmTokensPerMinute: 5000,
+    llmRequestsPerMinute: 100,
+  });
+
+  scheduler.admitTask("tenant-1", "task-lender", {
+    maxConcurrentWorkers: 15,
+    llmTokensPerMinute: 40000,
+  });
+
+  const borrowed = scheduler.admitTask("tenant-2", "task-borrower", {
+    maxConcurrentWorkers: 5,
+    llmTokensPerMinute: 10000,
+  });
+
+  assert.equal(borrowed.admitted, true);
+  assert.deepEqual(borrowed.borrowedFrom, ["tenant-1"]);
+
+  scheduler.releaseResources("tenant-2", {
+    maxConcurrentWorkers: 5,
+    llmTokensPerMinute: 10000,
+  });
+
+  const borrowerStats = scheduler.getTenantStats("tenant-2");
+  const lenderStats = scheduler.getTenantStats("tenant-1");
+  assert.ok(borrowerStats !== null);
+  assert.ok(lenderStats !== null);
+  assert.equal(borrowerStats!.borrowed.workers, 0);
+  assert.equal(borrowerStats!.borrowed.tokensPerMinute, 0);
+  assert.equal(borrowerStats!.used.maxConcurrentWorkers, 0);
+  assert.equal(borrowerStats!.used.llmTokensPerMinute, 0);
+  assert.equal(lenderStats!.used.maxConcurrentWorkers >= 15, true);
+  assert.equal(lenderStats!.used.llmTokensPerMinute >= 40000, true);
+});
+
+test("FairScheduler reports zero utilization when guaranteed capacity is zero", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 10,
+    maxConcurrentWorkers: 10,
+    llmTokensPerMinute: 1000,
+    llmRequestsPerMinute: 100,
+  });
+
+  scheduler.registerTenant("tenant-zero", 1, {
+    maxConcurrentWorkflows: 0,
+    maxConcurrentWorkers: 0,
+    llmTokensPerMinute: 0,
+    llmRequestsPerMinute: 0,
+  });
+
+  const stats = scheduler.getTenantStats("tenant-zero");
+  const utilization = scheduler.getAllUtilization();
+
+  assert.ok(stats !== null);
+  assert.equal(stats!.utilizationPercent, 0);
+  assert.equal(utilization[0]?.utilizationPercent, 0);
+  assert.equal(utilization[0]?.isBorrowing, false);
+});

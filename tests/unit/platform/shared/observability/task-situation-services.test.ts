@@ -76,3 +76,37 @@ test("TaskSituationReportService renders empty blockers gracefully", () => {
   const markdown = new TaskSituationReportService().renderMarkdown(situation);
   assert.match(markdown, /Task Situation task_4/);
 });
+
+test("TaskSituationBuilder defaults derived fields from file refs and runtime context", () => {
+  const situation = new TaskSituationBuilder().build({
+    taskId: "task_5",
+    objective: "inspect repo state",
+    currentPhase: "planning",
+    fileRefs: ["src/index.ts", "README.md"],
+  });
+
+  assert.equal(situation.userIntent.raw, "inspect repo state");
+  assert.equal(situation.userIntent.normalized, "inspect repo state");
+  assert.equal(situation.userIntent.confidence, 0.9);
+  assert.equal(situation.codebaseSnapshot.relevantFiles.length, 2);
+  assert.deepEqual(
+    situation.codebaseSnapshot.relevantFiles.map((file) => file.path),
+    ["src/index.ts", "README.md"],
+  );
+  assert.deepEqual(situation.environmentContext.availableTools, ["read", "apply_patch", "test"]);
+});
+
+test("AgentStateViewService defaults optional execution and approval state", () => {
+  const view = new AgentStateViewService().build({
+    agentId: "agent_defaults",
+    taskId: "task_6",
+    currentPhase: "planning",
+  });
+
+  assert.equal(view.executionId, null);
+  assert.equal(view.blockerCount, 0);
+  assert.deepEqual(view.activeToolNames, []);
+  assert.deepEqual(view.pendingApprovals, []);
+  assert.match(view.viewId, /^agent_state_view_/);
+  assert.match(view.generatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});

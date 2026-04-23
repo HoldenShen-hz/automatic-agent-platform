@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolve } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 import {
   resolveSandboxPath,
   checkSandboxPath,
   createWorkspaceWritePolicy,
+  createConfigReadPolicy,
   type SandboxPolicy,
   type SandboxPathCheckResult,
 } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
@@ -315,6 +316,28 @@ test("checkSandboxPath allows new leaf path when realpathEnforced can resolve an
   }
 });
 
+test("checkSandboxPath denies paths that traverse a symlink within an allowed root", () => {
+  const workspaceRoot = mkdtempSync(resolve(tmpdir(), "sandbox-policy-symlink-"));
+  try {
+    const realDir = resolve(workspaceRoot, "real");
+    mkdirSync(realDir);
+    symlinkSync(realDir, resolve(workspaceRoot, "linked"));
+
+    const policy = createTestPolicy({
+      allowedRoots: [workspaceRoot],
+      deniedRoots: [],
+      realpathEnforced: false,
+      symlinkPolicy: "deny",
+    });
+    const result = checkSandboxPath(policy, resolve(workspaceRoot, "linked", "artifact.json"));
+
+    assert.equal(result.allowed, false);
+    assert.equal(result.reasonCode, "sandbox.symlink_denied");
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("checkSandboxPath handles symlinkPolicy allow_explicit", () => {
   const policy = createTestPolicy({
     allowedRoots: ["/test/workspace"],
@@ -357,4 +380,63 @@ test("createWorkspaceWritePolicy creates policy with correct security defaults",
   assert.equal(policy.realpathEnforced, true, "realpathEnforced should be true");
   assert.equal(policy.symlinkPolicy, "deny", "symlinkPolicy should be deny");
   assert.equal(policy.mode, "workspace_write", "mode should be workspace_write");
+});
+
+test("resolveSandboxPath applies realpath resolution for existing paths", () => {
+  const workspaceRoot = mkdtempSync(resolve(tmpdir(), "sandbox-policy-realpath-"));
+  try {
+    const resolvedPath = resolveSandboxPath(workspaceRoot, true);
+    assert.equal(resolvedPath.length > 0, true);
+    assert.equal(resolvedPath.includes("sandbox-policy-realpath-"), true);
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("checkSandboxPath returns an unresolvable reason when realpath rejects the input path", () => {
+  const workspaceRoot = mkdtempSync(resolve(tmpdir(), "sandbox-policy-unresolvable-"));
+  try {
+    const policy = createTestPolicy({
+      allowedRoots: [workspaceRoot],
+      deniedRoots: [],
+      realpathEnforced: true,
+      symlinkPolicy: "allow_explicit",
+    });
+    const result = checkSandboxPath(policy, resolve(workspaceRoot, "invalid\0path"));
+
+    assert.equal(result.allowed, false);
+    assert.match(result.reasonCode ?? "", /^sandbox\.path_unresolvable:/);
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("checkSandboxPath fails closed when canonicalizing a malformed allowed root", () => {
+  const workspaceRoot = mkdtempSync(resolve(tmpdir(), "sandbox-policy-root-"));
+  try {
+    const policy = createTestPolicy({
+      allowedRoots: [`${workspaceRoot}\0bad-root`],
+      deniedRoots: [],
+      realpathEnforced: false,
+    });
+
+    assert.throws(
+      () => checkSandboxPath(policy, resolve(workspaceRoot, "file.txt")),
+      /sandbox\.path_canonicalization_failed:/,
+    );
+  } finally {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("createConfigReadPolicy creates a read-only fail-closed config policy", () => {
+  const policy = createConfigReadPolicy("/etc/agent-config");
+
+  assert.equal(policy.policyId, "config_read");
+  assert.equal(policy.mode, "read_only");
+  assert.deepEqual(policy.allowedRoots, ["/etc/agent-config"]);
+  assert.deepEqual(policy.deniedRoots, []);
+  assert.equal(policy.realpathEnforced, true);
+  assert.equal(policy.symlinkPolicy, "deny");
+  assert.equal(policy.processRuleMode, "deny");
 });
