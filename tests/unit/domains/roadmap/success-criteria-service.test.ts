@@ -444,3 +444,251 @@ test("SuccessCriteriaService uses latest measurement for evaluation", () => {
   assert.equal(evaluation.passed, true);
   assert.equal(evaluation.measuredValue, 80);
 });
+
+test("SuccessCriteriaService records multiple measurements for same criterion", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_repeated",
+    phase: "phase1",
+    metricKey: "requests",
+    title: "Requests",
+    measurementType: "count",
+    threshold: 100,
+    operator: "gte",
+    required: false,
+  });
+
+  service.recordMeasurement({
+    criterionId: "crit_repeated",
+    metricKey: "requests",
+    measuredValue: 50,
+    source: "source1",
+    measuredAt: "2026-04-21T10:00:00Z",
+  });
+  service.recordMeasurement({
+    criterionId: "crit_repeated",
+    metricKey: "requests",
+    measuredValue: 75,
+    source: "source2",
+    measuredAt: "2026-04-22T10:00:00Z",
+  });
+  service.recordMeasurement({
+    criterionId: "crit_repeated",
+    metricKey: "requests",
+    measuredValue: 100,
+    source: "source3",
+    measuredAt: "2026-04-23T10:00:00Z",
+  });
+
+  const evaluation = service.evaluateCriterion("crit_repeated");
+  assert.equal(evaluation.passed, true);
+  assert.equal(evaluation.measuredValue, 100);
+});
+
+test("SuccessCriteriaService evaluates lte operator correctly when values equal", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_eq",
+    phase: "phase1",
+    metricKey: "latency",
+    title: "Latency",
+    measurementType: "duration_ms",
+    threshold: 100,
+    operator: "lte",
+    required: true,
+  });
+  service.recordMeasurement({
+    criterionId: "crit_eq",
+    metricKey: "latency",
+    measuredValue: 100,
+    source: "test",
+  });
+
+  const evaluation = service.evaluateCriterion("crit_eq");
+  assert.equal(evaluation.passed, true);
+});
+
+test("SuccessCriteriaService evaluates gte operator correctly when values equal", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_gte_eq",
+    phase: "phase1",
+    metricKey: "coverage",
+    title: "Coverage",
+    measurementType: "percentage",
+    threshold: 80,
+    required: true,
+    // Defaults to gte
+  });
+  service.recordMeasurement({
+    criterionId: "crit_gte_eq",
+    metricKey: "coverage",
+    measuredValue: 80,
+    source: "test",
+  });
+
+  const evaluation = service.evaluateCriterion("crit_gte_eq");
+  assert.equal(evaluation.passed, true);
+});
+
+test("SuccessCriteriaService evaluates neq operator correctly when values differ", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_neq_diff",
+    phase: "phase1",
+    metricKey: "status",
+    title: "Status",
+    measurementType: "custom",
+    threshold: "error",
+    operator: "neq",
+    required: true,
+  });
+  service.recordMeasurement({
+    criterionId: "crit_neq_diff",
+    metricKey: "status",
+    measuredValue: "warning",
+    source: "test",
+  });
+
+  const evaluation = service.evaluateCriterion("crit_neq_diff");
+  assert.equal(evaluation.passed, true);
+});
+
+test("SuccessCriteriaService evaluates neq operator correctly when values equal", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_neq_eq",
+    phase: "phase1",
+    metricKey: "status",
+    title: "Status",
+    measurementType: "custom",
+    threshold: "error",
+    operator: "neq",
+    required: true,
+  });
+  service.recordMeasurement({
+    criterionId: "crit_neq_eq",
+    metricKey: "status",
+    measuredValue: "error",
+    source: "test",
+  });
+
+  const evaluation = service.evaluateCriterion("crit_neq_eq");
+  assert.equal(evaluation.passed, false);
+});
+
+test("SuccessCriteriaService evaluates boolean criterion with eq operator", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_bool",
+    phase: "phase1",
+    metricKey: "is_healthy",
+    title: "Health Check",
+    measurementType: "boolean",
+    threshold: true,
+    operator: "eq",
+    required: true,
+  });
+  service.recordMeasurement({
+    criterionId: "crit_bool",
+    metricKey: "is_healthy",
+    measuredValue: true,
+    source: "test",
+  });
+
+  const evaluation = service.evaluateCriterion("crit_bool");
+  assert.equal(evaluation.passed, true);
+});
+
+test("SuccessCriteriaService evaluatePhaseCriteria returns empty array when no criteria registered", () => {
+  const service = new SuccessCriteriaService();
+
+  const evaluations = service.evaluatePhaseCriteria("phase1");
+  assert.equal(evaluations.length, 0);
+});
+
+test("SuccessCriteriaService listDefinitions returns all definitions when no phase filter", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_1",
+    phase: "phase1",
+    metricKey: "metric_1",
+    title: "Criterion 1",
+    measurementType: "percentage",
+    threshold: 80,
+    required: true,
+  });
+  service.registerCriterion({
+    criterionId: "crit_2",
+    phase: "phase2",
+    metricKey: "metric_2",
+    title: "Criterion 2",
+    measurementType: "count",
+    threshold: 10,
+    required: true,
+  });
+
+  const definitions = service.listDefinitions();
+  assert.equal(definitions.length, 2);
+});
+
+test("SuccessCriteriaService recordMeasurement uses nowIso when measuredAt not provided", () => {
+  const service = new SuccessCriteriaService();
+  service.registerCriterion({
+    criterionId: "crit_time",
+    phase: "phase1",
+    metricKey: "metric",
+    title: "Criterion",
+    measurementType: "count",
+    threshold: 1,
+    operator: "gte",
+    required: true,
+  });
+
+  const measurement = service.recordMeasurement({
+    criterionId: "crit_time",
+    metricKey: "metric",
+    measuredValue: 1,
+    source: "test",
+  });
+
+  assert.ok(measurement.measuredAt);
+  assert.ok(measurement.measuredAt.length > 0);
+  // Verify measuredAt is a valid ISO timestamp
+  assert.ok(new Date(measurement.measuredAt).getTime() > 0);
+});
+
+test("SuccessCriteriaService evaluatePhaseAdvance with no gate registered allows advance", () => {
+  const service = new SuccessCriteriaService();
+  // No gate registered
+
+  const decision = service.evaluatePhaseAdvance("phase1", [], []);
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.phase, "phase1");
+});
+
+test("SuccessCriteriaService evaluatePhaseAdvance returns correct nextPhase sequence", () => {
+  const service = new SuccessCriteriaService();
+
+  const decision1 = service.evaluatePhaseAdvance("phase1", [], []);
+  assert.equal(decision1.nextPhase, "phase2");
+
+  const decision2 = service.evaluatePhaseAdvance("phase2", [], []);
+  assert.equal(decision2.nextPhase, "phase3");
+
+  const decision3 = service.evaluatePhaseAdvance("phase3", [], []);
+  assert.equal(decision3.nextPhase, "phase4");
+
+  const decision4 = service.evaluatePhaseAdvance("phase4", [], []);
+  assert.equal(decision4.nextPhase, "phase5");
+
+  const decision5 = service.evaluatePhaseAdvance("phase5", [], []);
+  assert.equal(decision5.nextPhase, "phase6");
+
+  const decision6 = service.evaluatePhaseAdvance("phase6", [], []);
+  assert.equal(decision6.nextPhase, "phase7");
+
+  const decision7 = service.evaluatePhaseAdvance("phase7", [], []);
+  assert.equal(decision7.nextPhase, "phase8a");
+});

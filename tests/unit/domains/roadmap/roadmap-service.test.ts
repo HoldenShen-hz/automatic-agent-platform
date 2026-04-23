@@ -170,6 +170,159 @@ test("RoadmapService seeds architecture roadmap phases 8 and 9 from the canonica
   ]);
 });
 
+test("RoadmapService seedArchitectureRoadmap skips duplicates", () => {
+  const service = new RoadmapService();
+  const first = service.seedArchitectureRoadmap();
+  const second = service.seedArchitectureRoadmap();
+
+  assert.equal(first.length, second.length);
+  assert.equal(second.length, 0);
+});
+
+test("RoadmapService registerSuccessCriterion registers and retrieves criterion", () => {
+  const service = new RoadmapService();
+  const criterion = {
+    criterionId: "crit_latency",
+    phase: "phase1" as const,
+    metricKey: "latency_p50",
+    title: "P50 Latency",
+    measurementType: "duration_ms" as const,
+    threshold: 100,
+    operator: "lte" as const,
+    required: true,
+  };
+
+  const registered = service.registerSuccessCriterion(criterion);
+  assert.equal(registered.criterionId, "crit_latency");
+});
+
+test("RoadmapService registerPhaseGate registers phase gate", () => {
+  const service = new RoadmapService();
+  const gate = {
+    phase: "phase2" as const,
+    requiredItemIds: ["item_1"],
+    requiredCriteriaIds: ["crit_1"],
+    blockOnDeferredItems: false,
+  };
+
+  const registered = service.registerPhaseGate(gate);
+  assert.equal(registered.phase, "phase2");
+  assert.deepEqual(registered.requiredItemIds, ["item_1"]);
+});
+
+test("RoadmapService recordSuccessMeasurement records measurement", () => {
+  const service = new RoadmapService();
+  service.registerSuccessCriterion({
+    criterionId: "crit_coverage",
+    phase: "phase1",
+    metricKey: "coverage",
+    title: "Coverage",
+    measurementType: "percentage",
+    threshold: 80,
+    operator: "gte",
+    required: true,
+  });
+
+  const measurement = service.recordSuccessMeasurement({
+    criterionId: "crit_coverage",
+    metricKey: "coverage",
+    measuredValue: 85,
+    source: "test",
+  });
+
+  assert.equal(measurement.criterionId, "crit_coverage");
+  assert.equal(measurement.measuredValue, 85);
+  assert.ok(measurement.measuredAt);
+});
+
+test("RoadmapService recordSuccessMeasurement accepts optional measuredAt", () => {
+  const service = new RoadmapService();
+  service.registerSuccessCriterion({
+    criterionId: "crit_count",
+    phase: "phase1",
+    metricKey: "count",
+    title: "Count",
+    measurementType: "count",
+    threshold: 10,
+    operator: "gte",
+    required: true,
+  });
+
+  const measurement = service.recordSuccessMeasurement({
+    criterionId: "crit_count",
+    metricKey: "count",
+    measuredValue: 5,
+    source: "test",
+    measuredAt: "2026-04-21T10:00:00Z",
+  });
+
+  assert.equal(measurement.measuredAt, "2026-04-21T10:00:00Z");
+});
+
+test("RoadmapService evaluatePhaseAdvance returns decision for phase", () => {
+  const service = new RoadmapService();
+  const item = service.addRoadmapItem({ title: "Item 1", description: "Desc", phase: "phase1" });
+  service.completeRoadmapItem(item.itemId, { completedAt: "2026-04-21T10:00:00Z" });
+  service.registerPhaseGate({
+    phase: "phase1",
+    requiredItemIds: [item.itemId],
+    requiredCriteriaIds: [],
+    blockOnDeferredItems: false,
+  });
+
+  const decision = service.evaluatePhaseAdvance("phase1");
+
+  assert.equal(decision.phase, "phase1");
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.nextPhase, "phase2");
+});
+
+test("RoadmapService evaluatePhaseAdvance blocks when items not completed", () => {
+  const service = new RoadmapService();
+  service.addRoadmapItem({ title: "Item 1", description: "Desc", phase: "phase1" });
+  service.registerPhaseGate({
+    phase: "phase1",
+    requiredItemIds: [],
+    requiredCriteriaIds: [],
+    blockOnDeferredItems: false,
+  });
+
+  const decision = service.evaluatePhaseAdvance("phase1");
+
+  assert.equal(decision.allowed, false);
+});
+
+test("RoadmapService evaluatePhaseAdvance considers deferred items when gate blocks on deferred", () => {
+  const service = new RoadmapService();
+  const item = service.addRoadmapItem({ title: "Item 1", description: "Desc", phase: "phase1" });
+  service.deferRoadmapItem(item.itemId, "Waiting");
+  service.registerPhaseGate({
+    phase: "phase1",
+    requiredItemIds: [],
+    requiredCriteriaIds: [],
+    blockOnDeferredItems: true,
+  });
+
+  const decision = service.evaluatePhaseAdvance("phase1");
+
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.reasonCodes.some((r) => r.includes("deferred_item")));
+});
+
+test("RoadmapService seedArchitectureRoadmap does not duplicate items", () => {
+  const service = new RoadmapService();
+  // Add an item with same title as a template item before seeding
+  service.addRoadmapItem({
+    title: "Harness core loop",
+    description: "Custom description",
+    phase: "phase8a",
+  });
+
+  const seeded = service.seedArchitectureRoadmap();
+  // Should skip because item with same title exists
+  assert.equal(seeded.length, ARCHITECTURE_ROADMAP_TEMPLATE.length - 1);
+});
+
 function nowUtc(): string {
   return new Date().toISOString();
 }

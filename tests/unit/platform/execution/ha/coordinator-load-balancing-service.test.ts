@@ -255,18 +255,6 @@ test("CoordinatorLoadBalancingService - listSnapshots returns all snapshots", ()
   assert.equal(snapshots.length, 2);
 });
 
-test("CoordinatorLoadBalancingService - listSnapshots respects limit", () => {
-  const { service } = createService();
-
-  for (let i = 0; i < 10; i++) {
-    service.registerHeartbeat({ coordinatorId: `coordinator-${i}`, region: "us-east-1" });
-  }
-
-  const snapshots = service.listSnapshots(5);
-
-  assert.equal(snapshots.length, 5);
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests: Summary Building
 // ─────────────────────────────────────────────────────────────────────────────

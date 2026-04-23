@@ -185,3 +185,86 @@ test("PhaseDeliveryService returns phases sorted by createdAt", () => {
   assert.equal(phases[0]?.phase, "phase1");
   assert.ok(phases[0]!.createdAt <= phases[1]!.createdAt);
 });
+
+test("PhaseDeliveryService creates all phase8 phases with correct metadata", () => {
+  const service = new PhaseDeliveryService();
+
+  const phase8a = service.createPhase("phase8a");
+  assert.equal(phase8a.name, "Harness Core Protocol");
+  assert.equal(phase8a.description, "Harness loop protocol, core runtime, and constraint model");
+
+  const phase8b = service.createPhase("phase8b");
+  assert.equal(phase8b.name, "Harness Long-Running and HITL");
+  assert.equal(phase8b.description, "Harness durability, context, recovery, and HITL runtime");
+
+  const phase8c = service.createPhase("phase8c");
+  assert.equal(phase8c.name, "Harness Governance and Evaluation");
+  assert.equal(phase8c.description, "Harness guardrails, evaluation, async execution, and invariants");
+});
+
+test("PhaseDeliveryService creates all phase9 phases with correct metadata", () => {
+  const service = new PhaseDeliveryService();
+
+  const phase9a = service.createPhase("phase9a");
+  assert.equal(phase9a.name, "Vertical Domains Batch 9a");
+  assert.equal(phase9a.description, "Coding, data engineering, knowledge base, and user operations");
+
+  const phase9b = service.createPhase("phase9b");
+  assert.equal(phase9b.name, "Vertical Domains Batch 9b");
+  assert.equal(phase9b.description, "Quant trading, financial services, ecommerce, and advertising");
+
+  const phase9c = service.createPhase("phase9c");
+  assert.equal(phase9c.name, "Vertical Domains Batch 9c");
+  assert.equal(phase9c.description, "Industry research, academic research, finance accounting, and legal");
+
+  const phase9d = service.createPhase("phase9d");
+  assert.equal(phase9d.name, "Vertical Domains Batch 9d");
+  assert.equal(phase9d.description, "Customer service, IT operations, moderation, and live streaming");
+
+  const phase9e = service.createPhase("phase9e");
+  assert.equal(phase9e.name, "Vertical Domains Batch 9e");
+  assert.equal(phase9e.description, "Healthcare, human resources, supply chain, and education");
+
+  const phase9f = service.createPhase("phase9f");
+  assert.equal(phase9f.name, "Vertical Domains Batch 9f");
+  assert.equal(phase9f.description, "Creative production, game dev, publishing, and marketing");
+});
+
+test("PhaseDeliveryService calculates 100% progress when all deliverables complete", () => {
+  const service = new PhaseDeliveryService();
+  const phase = service.createPhase("phase1");
+
+  const d1 = service.addDeliverableToPhase(phase.phaseId, { title: "D1", description: "D1" });
+  const d2 = service.addDeliverableToPhase(phase.phaseId, { title: "D2", description: "D2" });
+
+  service.markDeliverableComplete(phase.phaseId, d1.deliverableId);
+  service.markDeliverableComplete(phase.phaseId, d2.deliverableId);
+
+  const progress = service.getPhaseProgress(phase.phaseId);
+  assert.equal(progress.completionPercentage, 100);
+});
+
+test("PhaseDeliveryService calculates 0% progress when no deliverables complete", () => {
+  const service = new PhaseDeliveryService();
+  const phase = service.createPhase("phase1");
+
+  service.addDeliverableToPhase(phase.phaseId, { title: "D1", description: "D1" });
+  service.addDeliverableToPhase(phase.phaseId, { title: "D2", description: "D2" });
+
+  const progress = service.getPhaseProgress(phase.phaseId);
+  assert.equal(progress.completionPercentage, 0);
+});
+
+test("PhaseDeliveryService throws for non-existent phase when getting progress", () => {
+  const service = new PhaseDeliveryService();
+
+  assert.throws(
+    () => service.getPhaseProgress("non_existent"),
+    (err: unknown) => {
+      if (err instanceof Error && "code" in err) {
+        return (err as { code: string }).code === "phase_delivery.phase_not_found";
+      }
+      return false;
+    },
+  );
+});

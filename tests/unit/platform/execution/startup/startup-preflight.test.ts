@@ -169,7 +169,8 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when no default
       layers: {
         // No providers.defaultProvider
       },
-    },
+      version: { versionId: "v1", bundleHash: "hash", layerHashes: {} },
+    } as any,
   });
   assert.deepStrictEqual(results, []);
 });
@@ -190,7 +191,8 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when defaultPro
           defaultProvider: "",
         },
       },
-    },
+      version: { versionId: "v1", bundleHash: "hash", layerHashes: {} },
+    } as any,
   });
   assert.deepStrictEqual(results, []);
 });
@@ -211,7 +213,8 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when defaultPro
           defaultProvider: 123 as any,
         },
       },
-    },
+      version: { versionId: "v1", bundleHash: "hash", layerHashes: {} },
+    } as any,
   });
   assert.deepStrictEqual(results, []);
 });
