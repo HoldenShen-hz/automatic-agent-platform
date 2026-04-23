@@ -16,6 +16,7 @@ test("integration: platform workbench snapshot aggregates HITL, SDK, and invento
       approvalId: "approval-1",
       taskId: "task-1",
       executionId: "exec-1",
+      mode: "single_approval",
       title: "Approve canary rollout",
       reason: "Canary stage requires operator approval",
       riskLevel: "high",

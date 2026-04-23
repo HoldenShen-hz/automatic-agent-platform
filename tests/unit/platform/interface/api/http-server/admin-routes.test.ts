@@ -120,7 +120,7 @@ test("createAdminRoutes returns 14 routes", () => {
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 14);
+  assert.equal(routes.length, 15);
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -398,6 +398,26 @@ test("GET /v1/admin/inventories/deployments returns deployment inventory", async
   assert.equal(body.data.length > 0, true);
   assert.equal(body.data[0]?.deploymentId != null, true);
   assert.equal(body.data[0]?.s4Mode, "contract_only");
+});
+
+test("GET /v1/admin/inventories/schema returns authoritative schema inventory", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/inventories/schema", ["v1", "admin", "inventories", "schema"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as {
+    data: {
+      summary: { totalTables: number };
+      tables: Array<{ tableName: string }>;
+    };
+  };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.summary.totalTables, 98);
+  assert.ok(body.data.tables.some((table) => table.tableName === "outbox"));
 });
 
 test("GET /v1/admin/judges returns default judge registry descriptors", async () => {

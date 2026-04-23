@@ -1,0 +1,1 @@
+{"version":3,"file":"typed-event-publisher.js","sourceRoot":"","sources":["../../../../../src/platform/state-evidence/events/typed-event-publisher.ts"],"names":[],"mappings":"AAeA,MAAM,OAAO,sBAAsB;IAEd;IADnB,YACmB,GAAkB;QAAlB,QAAG,GAAH,GAAG,CAAe;IAClC,CAAC;IAEG,OAAO,CAA+B,KAQ5C;QACC,IAAI,CAAC,GAAG,CAAC,OAAO,CAAC,KAAK,CAAC,CAAC;IAC1B,CAAC;CACF"}

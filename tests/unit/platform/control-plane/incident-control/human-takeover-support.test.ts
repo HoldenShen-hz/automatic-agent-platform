@@ -9,6 +9,7 @@ import {
   normalizeJson,
   parseOutputs,
   resolveManualStepOutputSummary,
+  serializeSnapshot,
   throwTakeoverStorageError,
   throwTakeoverWorkflowError,
 } from "../../../../../src/platform/control-plane/incident-control/human-takeover-support.js";
@@ -167,4 +168,49 @@ test("throwTakeoverWorkflowError includes details", () => {
       return true;
     },
   );
+});
+
+test("serializeSnapshot formats snapshot correctly", () => {
+  const snapshot = {
+    task: { id: "task_1", title: "Test Task" },
+    workflow: { workflowId: "wf_1", status: "running" },
+    execution: { id: "exec_1", status: "active" },
+    session: { id: "sess_1", status: "open" },
+    stepOutputs: [
+      { stepId: "step_1", status: "completed" },
+      { stepId: "step_2", status: "failed" },
+    ],
+    events: [
+      { eventType: "task:started" },
+      { eventType: "task:completed" },
+    ],
+  } as any;
+
+  const result = serializeSnapshot(snapshot);
+
+  assert.equal(result.task, snapshot.task);
+  assert.equal(result.workflow, snapshot.workflow);
+  assert.equal(result.execution, snapshot.execution);
+  assert.equal(result.session, snapshot.session);
+  assert.deepEqual(result.stepOutputs, [
+    { stepId: "step_1", status: "completed" },
+    { stepId: "step_2", status: "failed" },
+  ]);
+  assert.deepEqual(result.recentEventTypes, ["task:started", "task:completed"]);
+});
+
+test("serializeSnapshot handles empty arrays", () => {
+  const snapshot = {
+    task: { id: "task_1" },
+    workflow: null,
+    execution: null,
+    session: null,
+    stepOutputs: [],
+    events: [],
+  } as any;
+
+  const result = serializeSnapshot(snapshot);
+
+  assert.deepEqual(result.stepOutputs, []);
+  assert.deepEqual(result.recentEventTypes, []);
 });

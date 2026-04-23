@@ -33,6 +33,7 @@ test("HitlApprovalOrchestrationService blocks critical auto-approve timeout with
         taskId: "task_hitl_1",
         executionId: "exec_hitl_1",
         sourceAgentId: "agent_ops",
+        mode: "circuit_breaker_human",
         title: "Critical release gate",
         reason: "Release to production",
         riskLevel: "critical",
@@ -71,6 +72,7 @@ test("HitlApprovalOrchestrationService creates approval packet, explanation, and
       taskId: "task_hitl_2",
       executionId: "exec_hitl_2",
       sourceAgentId: "planner_agent",
+      mode: "iterative_feedback",
       title: "Need plan clarification",
       reason: "Ambiguous deployment region",
       riskLevel: "high",
@@ -118,6 +120,7 @@ test("HitlApprovalOrchestrationService builds timeout decisions from packet poli
       taskId: "task_hitl_3",
       executionId: "exec_hitl_3",
       sourceAgentId: "agent_ops",
+      mode: "informed_confirmation",
       title: "Wait for confirmation",
       reason: "Need human confirmation",
       riskLevel: "medium",
@@ -131,6 +134,126 @@ test("HitlApprovalOrchestrationService builds timeout decisions from packet poli
     const timeoutDecision = service.buildTimeoutDecision(packet.approvalId);
     assert.equal(timeoutDecision.decisionType, "confirmed");
     assert.equal(timeoutDecision.confirmed, true);
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+test("HitlApprovalOrchestrationService validates all authoritative HITL modes", async () => {
+  const h = createHarness("aa-hitl-modes-");
+  try {
+    seedTaskAndExecution(h.db, h.store, { taskId: "task_hitl_4", executionId: "exec_hitl_4" });
+    const approvalService = new ApprovalService(h.db, h.store);
+    const explainabilityService = new HITLExplainabilityService(h.store);
+    const service = new HitlApprovalOrchestrationService(approvalService, explainabilityService);
+
+    const packets = await Promise.all([
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_single",
+        mode: "single_approval",
+        title: "Single approval",
+        reason: "baseline",
+        riskLevel: "medium",
+        stageRef: "plan",
+        options: [{ optionId: "approve", label: "Approve", style: "primary", requiresConfirm: true }],
+        timeoutPolicy: "reject",
+      }),
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_multi",
+        mode: "multi_party_approval",
+        title: "Multi approval",
+        reason: "two approvers",
+        riskLevel: "high",
+        stageRef: "release",
+        options: [{ optionId: "approve", label: "Approve", style: "primary", requiresConfirm: true }],
+        timeoutPolicy: "reject",
+        context: { requiredApprovals: 2 },
+      }),
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_delegate",
+        mode: "delegated_approval",
+        title: "Delegate approval",
+        reason: "delegate route",
+        riskLevel: "medium",
+        stageRef: "execute",
+        options: [{ optionId: "approve", label: "Approve", style: "primary", requiresConfirm: true }],
+        timeoutPolicy: "reject",
+        context: { delegationTarget: "ops_lead" },
+      }),
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_feedback",
+        mode: "iterative_feedback",
+        title: "Feedback loop",
+        reason: "needs revision",
+        riskLevel: "high",
+        stageRef: "plan",
+        options: [
+          { optionId: "approve_candidate", label: "Approve", style: "primary", requiresConfirm: true },
+          { optionId: "request_changes", label: "Request changes", style: "secondary", requiresConfirm: false },
+        ],
+        timeoutPolicy: "reject",
+      }),
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_collab",
+        mode: "collaborative_edit",
+        title: "Collaborative edit",
+        reason: "shared artifact edit",
+        riskLevel: "medium",
+        stageRef: "feedback",
+        options: [{ optionId: "approve", label: "Approve", style: "primary", requiresConfirm: true }],
+        timeoutPolicy: "remain_pending",
+        context: { sharedArtifactRef: "artifact:shared-doc" },
+      }),
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_confirm",
+        mode: "informed_confirmation",
+        title: "Confirm",
+        reason: "one-click confirm",
+        riskLevel: "low",
+        stageRef: "execute",
+        options: [{ optionId: "confirm", label: "Confirm", style: "primary", requiresConfirm: true }],
+        timeoutPolicy: "reject",
+      }),
+      service.requestApproval({
+        taskId: "task_hitl_4",
+        executionId: "exec_hitl_4",
+        sourceAgentId: "agent_breaker",
+        mode: "circuit_breaker_human",
+        title: "Circuit breaker",
+        reason: "block critical action",
+        riskLevel: "critical",
+        stageRef: "release",
+        options: [{ optionId: "block", label: "Block", style: "danger", requiresConfirm: true }],
+        timeoutPolicy: "reject",
+      }),
+    ]);
+
+    assert.deepEqual(
+      packets.map((packet) => packet.mode),
+      [
+        "single_approval",
+        "multi_party_approval",
+        "delegated_approval",
+        "iterative_feedback",
+        "collaborative_edit",
+        "informed_confirmation",
+        "circuit_breaker_human",
+      ],
+    );
+    assert.equal(packets.every((packet) => packet.explanation.contextSnapshot.hitlMode === packet.mode), true);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

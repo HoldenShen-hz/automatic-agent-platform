@@ -18,6 +18,10 @@ import {
   parseBoolean,
   parseInteger,
   parseStringArrayFromCsv,
+  parseCompatibilityJson,
+  parseTypedJson,
+  parseProviderHealthJson,
+  buildStructuredMemoryContent,
   ENVIRONMENT_NAMES,
   TENANT_ACTIONS,
   ENTERPRISE_ACTIONS,
@@ -384,4 +388,254 @@ test("parseStringArrayFromCsv returns null for empty string", () => {
 test("parseStringArrayFromCsv handles single value", () => {
   const env = { AA_SINGLE: "only" };
   assert.deepEqual(parseStringArrayFromCsv(env, "AA_SINGLE"), ["only"]);
+});
+
+// parseCompatibilityJson tests
+
+test("parseCompatibilityJson parses valid compatibility object", () => {
+  const env = {
+    AA_COMPAT: JSON.stringify({
+      apiContract: "v1",
+      permissionSurface: "workspace_write",
+      runtimeCapability: "multi-step",
+    }),
+  };
+  const result = parseCompatibilityJson(env, "AA_COMPAT");
+  assert.deepEqual(result, {
+    apiContract: "v1",
+    permissionSurface: "workspace_write",
+    runtimeCapability: "multi-step",
+  });
+});
+
+test("parseCompatibilityJson returns null when missing", () => {
+  assert.equal(parseCompatibilityJson({}, "AA_MISSING"), null);
+});
+
+test("parseCompatibilityJson throws for invalid JSON", () => {
+  assert.throws(
+    () => parseCompatibilityJson({ AA_BAD: "not-json" }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseCompatibilityJson throws for missing apiContract field", () => {
+  assert.throws(
+    () => parseCompatibilityJson({ AA_BAD: '{"permissionSurface": "x", "runtimeCapability": "y"}' }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseCompatibilityJson throws for missing permissionSurface field", () => {
+  assert.throws(
+    () => parseCompatibilityJson({ AA_BAD: '{"apiContract": "v1", "runtimeCapability": "y"}' }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseCompatibilityJson throws for missing runtimeCapability field", () => {
+  assert.throws(
+    () => parseCompatibilityJson({ AA_BAD: '{"apiContract": "v1", "permissionSurface": "x"}' }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseCompatibilityJson throws for non-string apiContract", () => {
+  assert.throws(
+    () => parseCompatibilityJson({ AA_BAD: '{"apiContract": 123, "permissionSurface": "x", "runtimeCapability": "y"}' }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+// parseTypedJson tests
+
+test("parseTypedJson parses valid JSON to type", () => {
+  const env = { AA_JSON: '{"key": "value", "num": 42}' };
+  const result = parseTypedJson<Record<string, unknown>>(env, "AA_JSON");
+  assert.deepEqual(result, { key: "value", num: 42 });
+});
+
+test("parseTypedJson parses arrays", () => {
+  const env = { AA_ARR: '["a", "b", "c"]' };
+  const result = parseTypedJson<string[]>(env, "AA_ARR");
+  assert.deepEqual(result, ["a", "b", "c"]);
+});
+
+test("parseTypedJson parses primitives", () => {
+  const env = { AA_STR: '"hello"', AA_NUM: "42", AA_BOOL: "true" };
+  assert.equal(parseTypedJson<string>(env, "AA_STR"), "hello");
+  assert.equal(parseTypedJson<number>(env, "AA_NUM"), 42);
+  assert.equal(parseTypedJson<boolean>(env, "AA_BOOL"), true);
+});
+
+test("parseTypedJson returns undefined when missing", () => {
+  assert.equal(parseTypedJson<unknown>({}, "AA_MISSING"), undefined);
+});
+
+test("parseTypedJson throws for invalid JSON with error message", () => {
+  assert.throws(
+    () => parseTypedJson({ AA_BAD: "not-json" }, "AA_BAD"),
+    (e: any) => e instanceof ValidationError && e.code.startsWith("invalid_json:AA_BAD:"),
+  );
+});
+
+test("parseTypedJson includes parse error message in code", () => {
+  try {
+    parseTypedJson({ AA_BAD: "invalid{json" }, "AA_BAD");
+    assert.fail("should have thrown");
+  } catch (e: any) {
+    assert.ok(e.code.includes("invalid_json:AA_BAD"));
+    assert.ok(e.code.includes("Unexpected"));
+  }
+});
+
+// parseProviderHealthJson tests
+
+test("parseProviderHealthJson parses string status values", () => {
+  const env = { AA_HEALTH: JSON.stringify({ openai: "healthy", anthropic: "degraded" }) };
+  const result = parseProviderHealthJson(env, "AA_HEALTH");
+  assert.equal(result.openai?.status, "healthy");
+  assert.equal(result.openai?.successRate, 1);
+  assert.equal(result.anthropic?.status, "degraded");
+  assert.equal(result.anthropic?.successRate, 0.75);
+});
+
+test("parseProviderHealthJson parses failed status with low successRate", () => {
+  const env = { AA_HEALTH: JSON.stringify({ provider: "failed" }) };
+  const result = parseProviderHealthJson(env, "AA_HEALTH");
+  assert.equal(result.provider?.status, "failed");
+  assert.equal(result.provider?.successRate, 0.25);
+});
+
+test("parseProviderHealthJson parses object with full details", () => {
+  const env = {
+    AA_HEALTH: JSON.stringify({
+      custom: {
+        status: "degraded",
+        successRate: 0.6,
+        totalCalls: 100,
+        failedCalls: 40,
+        fallbackCount: 5,
+        latestFailureCodes: ["rate_limit", "timeout"],
+      },
+    }),
+  };
+  const result = parseProviderHealthJson(env, "AA_HEALTH");
+  assert.equal(result.custom?.status, "degraded");
+  assert.equal(result.custom?.successRate, 0.6);
+  assert.equal(result.custom?.totalCalls, 100);
+  assert.equal(result.custom?.failedCalls, 40);
+  assert.equal(result.custom?.fallbackCount, 5);
+  assert.deepEqual(result.custom?.latestFailureCodes, ["rate_limit", "timeout"]);
+});
+
+test("parseProviderHealthJson returns empty object when missing", () => {
+  assert.deepEqual(parseProviderHealthJson({}, "AA_MISSING"), {});
+});
+
+test("parseProviderHealthJson returns empty object for empty JSON", () => {
+  assert.deepEqual(parseProviderHealthJson({ AA_EMPTY: "{}" }, "AA_EMPTY"), {});
+});
+
+test("parseProviderHealthJson throws for invalid status string", () => {
+  assert.throws(
+    () => parseProviderHealthJson({ AA_BAD: JSON.stringify({ p: "unknown" }) }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseProviderHealthJson throws for null value", () => {
+  assert.throws(
+    () => parseProviderHealthJson({ AA_BAD: JSON.stringify({ p: null }) }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseProviderHealthJson throws for array value", () => {
+  assert.throws(
+    () => parseProviderHealthJson({ AA_BAD: JSON.stringify({ p: [] }) }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseProviderHealthJson throws for object with invalid status", () => {
+  assert.throws(
+    () => parseProviderHealthJson({ AA_BAD: JSON.stringify({ p: { status: "unknown" } }) }, "AA_BAD"),
+    (e: any) => e.code === "invalid_env:AA_BAD",
+  );
+});
+
+test("parseProviderHealthJson filters non-string latestFailureCodes", () => {
+  const env = {
+    AA_HEALTH: JSON.stringify({
+      p: {
+        status: "healthy",
+        latestFailureCodes: ["ok", 123, null, "valid"],
+      },
+    }),
+  };
+  const result = parseProviderHealthJson(env, "AA_HEALTH");
+  assert.deepEqual(result.p?.latestFailureCodes, ["ok", "valid"]);
+});
+
+test("parseProviderHealthJson uses defaults for missing optional fields in object", () => {
+  const env = { AA_HEALTH: JSON.stringify({ p: { status: "healthy" } }) };
+  const result = parseProviderHealthJson(env, "AA_HEALTH");
+  assert.equal(result.p?.successRate, 1);
+  assert.equal(result.p?.totalCalls, 0);
+  assert.equal(result.p?.failedCalls, 0);
+  assert.equal(result.p?.fallbackCount, 0);
+  assert.deepEqual(result.p?.latestFailureCodes, []);
+});
+
+// buildStructuredMemoryContent tests
+
+test("buildStructuredMemoryContent returns undefined when all fields missing", () => {
+  assert.equal(buildStructuredMemoryContent({}), undefined);
+});
+
+test("buildStructuredMemoryContent returns content with workContext", () => {
+  const env = { AA_MEMORY_WORK_CONTEXT: "current project" };
+  const result = buildStructuredMemoryContent(env);
+  assert.notEqual(result, undefined);
+  assert.equal(result!.schemaVersion, "memory.v2");
+  assert.equal(result!.workContext, "current project");
+});
+
+test("buildStructuredMemoryContent parses CSV arrays", () => {
+  const env = {
+    AA_MEMORY_TOP_OF_MIND: "urgent, important",
+    AA_MEMORY_RECENT_HISTORY: "task1, task2",
+    AA_MEMORY_LONG_TERM_BACKGROUND: "background",
+  };
+  const result = buildStructuredMemoryContent(env);
+  assert.notEqual(result, undefined);
+  assert.deepEqual(result!.topOfMind, ["urgent", "important"]);
+  assert.deepEqual(result!.recentHistory, ["task1", "task2"]);
+  assert.deepEqual(result!.longTermBackground, ["background"]);
+});
+
+test("buildStructuredMemoryContent parses facts JSON", () => {
+  const env = { AA_MEMORY_FACTS_JSON: '[{"content":"fact1","confidence":0.8}]' };
+  const result = buildStructuredMemoryContent(env);
+  assert.notEqual(result, undefined);
+  assert.deepEqual(result!.facts, [{ content: "fact1", confidence: 0.8 }]);
+});
+
+test("buildStructuredMemoryContent returns complete structure", () => {
+  const env = {
+    AA_MEMORY_WORK_CONTEXT: "context",
+    AA_MEMORY_TOP_OF_MIND: "a, b",
+    AA_MEMORY_RECENT_HISTORY: "c, d",
+    AA_MEMORY_LONG_TERM_BACKGROUND: "e, f",
+    AA_MEMORY_FACTS_JSON: '[{"content":"f1","confidence":0.9}]',
+  };
+  const result = buildStructuredMemoryContent(env);
+  assert.notEqual(result, undefined);
+  assert.equal(result!.schemaVersion, "memory.v2");
+  assert.equal(result!.workContext, "context");
+  assert.deepEqual(result!.topOfMind, ["a", "b"]);
+  assert.deepEqual(result!.recentHistory, ["c", "d"]);
+  assert.deepEqual(result!.longTermBackground, ["e", "f"]);
+  assert.deepEqual(result!.facts, [{ content: "f1", confidence: 0.9 }]);
 });

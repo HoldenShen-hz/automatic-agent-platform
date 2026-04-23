@@ -25,6 +25,7 @@ import type { KnowledgePlaneService } from "../../state-evidence/knowledge/knowl
 import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifact-plane-service.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
+import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import {
   createNoOpIncidentFacadeService,
@@ -83,6 +84,7 @@ export interface HttpApiServerOptions {
   channelGatewayService?: ChannelGatewayService | null;
   channelGatewayDeliveryService?: ChannelGatewayDeliveryService | null;
   webhookIngressService?: WebhookIngressService | null;
+  webhookOutboxDispatchService?: WebhookOutboxDispatchService | null;
   webhookSecret?: string | null;
   coordinatorLoadBalancingService?: ApiDelegationService | null;
   prometheusMetricsExporter?: PrometheusMetricsExporter | null;
@@ -526,6 +528,7 @@ export class HttpApiServer {
         ? createWebhookRoutes({
             authService: this.options.authService ?? null,
             webhookIngressService: this.options.webhookIngressService,
+            webhookOutboxDispatchService: this.options.webhookOutboxDispatchService ?? null,
           })
         : []),
       ...createApprovalRoutes({

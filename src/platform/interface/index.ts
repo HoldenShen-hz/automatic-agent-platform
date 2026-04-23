@@ -8,3 +8,4 @@ export * as webhook from "./webhook/index.js";
 export * from "./interface-plane-baseline.js";
 export * from "./interface-plane-bootstrap.js";
 export { WebhookIngressService } from "./webhook/index.js";
+export { WebhookOutboxDispatchService } from "./webhook/webhook-outbox-dispatch-service.js";

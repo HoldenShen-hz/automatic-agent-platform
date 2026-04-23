@@ -19,6 +19,7 @@ export * from "./platform-mainline-bootstrap.js";
 export * from "./platform-module-catalog.js";
 export { buildInterfacePlaneBootstrap } from "./interface/interface-plane-bootstrap.js";
 export { WebhookIngressService } from "./interface/webhook/index.js";
+export { WebhookOutboxDispatchService } from "./interface/webhook/webhook-outbox-dispatch-service.js";
 export { buildModelGatewayBootstrap } from "./model-gateway/model-gateway-bootstrap.js";
 export { HarnessRuntimeService } from "./orchestration/harness/index.js";
 export { PromptTemplateRegistryService } from "./prompt-engine/registry/index.js";

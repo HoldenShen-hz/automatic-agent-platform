@@ -109,9 +109,25 @@
   {
     "method": "GET",
     "path": "/v1/tasks",
-    "summary": "List tasks",
+    "summary": "List tasks with cursor pagination",
     "tags": [
       "tasks"
+    ],
+    "queryParameters": [
+      {
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Page size capped per route policy."
+      },
+      {
+        "name": "cursor",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Opaque cursor returned by the previous page."
+      }
     ]
   },
   {
@@ -241,6 +257,30 @@
     "summary": "List approvals",
     "tags": [
       "approvals"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/workflows",
+    "summary": "List workflows with cursor pagination",
+    "tags": [
+      "tasks"
+    ],
+    "queryParameters": [
+      {
+        "name": "limit",
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Page size capped per route policy."
+      },
+      {
+        "name": "cursor",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Opaque cursor returned by the previous page."
+      }
     ]
   },
   {

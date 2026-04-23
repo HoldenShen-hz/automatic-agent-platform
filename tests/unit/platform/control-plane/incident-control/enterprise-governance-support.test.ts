@@ -10,6 +10,9 @@ import {
   detectSourceType,
   isPrereleaseVersion,
   summarizeVerdict,
+  mapOpsStatusToHandoffStatus,
+  selectSloActualValue,
+  buildMarkdownReport,
 } from "../../../../../src/platform/control-plane/incident-control/enterprise-governance-support.js";
 
 test("sha256 computes correct hash", () => {
@@ -113,4 +116,115 @@ test("summarizeVerdict returns warning when only warnings", () => {
 test("summarizeVerdict returns fail when critical present", () => {
   assert.equal(summarizeVerdict(true, false), "fail");
   assert.equal(summarizeVerdict(true, true), "fail");
+});
+
+test("mapOpsStatusToHandoffStatus returns blocked for fail status", () => {
+  assert.equal(mapOpsStatusToHandoffStatus("fail"), "blocked");
+});
+
+test("mapOpsStatusToHandoffStatus returns warning for warning status", () => {
+  assert.equal(mapOpsStatusToHandoffStatus("warning"), "warning");
+});
+
+test("mapOpsStatusToHandoffStatus returns ready for pass status", () => {
+  assert.equal(mapOpsStatusToHandoffStatus("pass"), "ready");
+});
+
+test("selectSloActualValue returns actual value for matching key", () => {
+  const report = {
+    slos: [
+      { key: "task_success_rate", actualValue: 99.5 },
+      { key: "task_start_latency", actualValue: 15000 },
+    ],
+  } as any;
+  assert.equal(selectSloActualValue(report, "task_success_rate"), 99.5);
+  assert.equal(selectSloActualValue(report, "task_start_latency"), 15000);
+});
+
+test("selectSloActualValue returns 0 for missing key", () => {
+  const report = {
+    slos: [
+      { key: "task_success_rate", actualValue: 99.5 },
+    ],
+  } as any;
+  assert.equal(selectSloActualValue(report, "missing_key"), 0);
+});
+
+test("buildMarkdownReport formats report correctly", () => {
+  const mockReport = {
+    reportId: "test-report-id",
+    environment: "prod",
+    shiftOwner: "test-owner",
+    status: "pass",
+    incidentHandoff: {
+      activeIncidentId: "INC-001",
+      primaryOncall: "oncall-primary",
+      secondaryOncall: "oncall-secondary",
+      checklist: ["Check system health", "Verify backups"],
+    },
+    schemaGate: {
+      portability: { issueCount: 0 },
+      schemaCompatibility: { issueCount: 0 },
+    },
+    supplyChain: {
+      packageCount: 50,
+      summary: {
+        criticalFindingCount: 0,
+        warningFindingCount: 1,
+      },
+    },
+    apmExport: {
+      datadog: { series: [{ metric: "test" }] },
+      grafana: { dashboard: { panels: [{ metric: "test" }] } },
+      otel: { metricSamples: [{ metric: "test" }] },
+    },
+  } as any;
+
+  const markdown = buildMarkdownReport(mockReport);
+
+  assert.ok(markdown.includes("Enterprise Governance Report"));
+  assert.ok(markdown.includes("test-report-id"));
+  assert.ok(markdown.includes("prod"));
+  assert.ok(markdown.includes("test-owner"));
+  assert.ok(markdown.includes("pass"));
+  assert.ok(markdown.includes("INC-001"));
+  assert.ok(markdown.includes("oncall-primary"));
+  assert.ok(markdown.includes("oncall-secondary"));
+});
+
+test("buildMarkdownReport handles null incident", () => {
+  const mockReport = {
+    reportId: "test-report-id",
+    environment: "dev",
+    shiftOwner: "dev-owner",
+    status: "warning",
+    incidentHandoff: {
+      activeIncidentId: null,
+      primaryOncall: "oncall-primary",
+      secondaryOncall: "oncall-secondary",
+      checklist: [],
+    },
+    schemaGate: {
+      portability: { issueCount: 1 },
+      schemaCompatibility: { issueCount: 0 },
+    },
+    supplyChain: {
+      packageCount: 10,
+      summary: {
+        criticalFindingCount: 0,
+        warningFindingCount: 0,
+      },
+    },
+    apmExport: {
+      datadog: { series: [] },
+      grafana: { dashboard: { panels: [] } },
+      otel: { metricSamples: [] },
+    },
+  } as any;
+
+  const markdown = buildMarkdownReport(mockReport);
+
+  assert.ok(markdown.includes("Enterprise Governance Report"));
+  assert.ok(markdown.includes("none")); // For null incident
+  assert.ok(markdown.includes("warning"));
 });

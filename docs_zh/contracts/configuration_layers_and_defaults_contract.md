@@ -83,7 +83,7 @@
 | `runtime` | `defaultTaskTimeoutMs` | 必须为正数 |
 | `runtime` | `defaultStepTimeoutMs` | 必须为正数 |
 | `runtime` | `maxConcurrentTasks` | 必须为正整数 |
-| `security` | `sandboxMode` | 必须为 `read_only \| workspace_write \| danger_full_access` 之一 |
+| `security` | `sandboxMode` | 必须为 `read_only \| workspace_write \| scoped_external_access \| restricted_exec` 之一 |
 | `security` | `remoteWorkerRegistration.challengeTtlMs` | 必须为正数 |
 | `security` | `remoteWorkerRegistration.allowedCapabilities` | 必须为非空字符串数组 |
 | `providers` | provider / profile 引用 | 必须在 model metadata registry 中存在匹配项 |

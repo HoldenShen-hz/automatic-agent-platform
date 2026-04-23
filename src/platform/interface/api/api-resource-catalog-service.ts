@@ -115,7 +115,14 @@ function inferPlane(route: ApiRouteSpec): string {
 }
 
 function inferVisibility(route: ApiRouteSpec): ApiResourceVisibility {
-  if (route.path.startsWith("/health") || route.path === "/metrics" || route.path === "/prometheus" || route.path === "/v1/openapi.json" || route.path === "/v1/auth/token") {
+  if (
+    route.path.startsWith("/health")
+    || route.path === "/metrics"
+    || route.path === "/prometheus"
+    || route.path === "/v1/openapi.json"
+    || route.path === "/v1/auth/token"
+    || route.path === "/v1/webhooks/{endpointId}/receive"
+  ) {
     return "public";
   }
   if (route.tags.includes("admin")) {

@@ -1,0 +1,216 @@
+import { createRequire } from "node:module";
+import { LockingError } from "../../contracts/errors.js";
+import { buildRedisClientOptions } from "../../shared/utils/redis-client-options.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
+import { lockLogger } from "./locking-support.js";
+export class RedisLockAdapter {
+    backendKind = "redis";
+    redis;
+    fencingCounter = 0;
+    cliPath;
+    connectTimeoutMs;
+    host;
+    port;
+    constructor(config) {
+        this.host = config?.host ?? "localhost";
+        this.port = config?.port ?? 6379;
+        this.cliPath = config?.cliPath ?? "redis-cli";
+        this.connectTimeoutMs = config?.connectTimeoutMs ?? 500;
+        const require = createRequire(import.meta.url);
+        const RedisCtor = require("ioredis");
+        this.redis = new RedisCtor(buildRedisClientOptions(config ?? {}, {
+            connectTimeout: config?.connectTimeout ?? this.connectTimeoutMs,
+            maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 1,
+        }));
+        this.redis.on("error", (err) => {
+            runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "distributed-lock" }, 1);
+            lockLogger.log({ level: "error", message: "redis.connection_error", data: { err: err instanceof Error ? err.message : String(err) } });
+        });
+    }
+    async ensureConnected() {
+        if (this.redis.status === "wait") {
+            await this.redis.connect();
+            return;
+        }
+        if (this.redis.status === "end") {
+            await this.redis.connect().catch(() => {
+                throw new LockingError("lock.redis_connection_closed", "lock.redis_connection_closed");
+            });
+        }
+    }
+    acquire(input) {
+        throw new LockingError("lock.sync_acquire_deprecated", "lock.sync_acquire_deprecated: Use acquireAsync instead");
+    }
+    release(_lockKey, _owner) {
+        throw new LockingError("lock.sync_release_not_supported", "lock.sync_release_not_supported: Use releaseAsync for Redis backend");
+    }
+    extend(_lockKey, _owner, _additionalMs) {
+        throw new LockingError("lock.sync_extend_not_supported", "lock.sync_extend_not_supported: Use extendAsync for Redis backend");
+    }
+    forceSteal(_lockKey, _newOwner, _reason) {
+        throw new LockingError("lock.sync_forceSteal_not_supported", "lock.sync_forceSteal_not_supported: Use forceStealAsync for Redis backend");
+    }
+    inspect(_lockKey) {
+        throw new LockingError("lock.sync_inspect_not_supported", "lock.sync_inspect_not_supported: Use inspectAsync for Redis backend");
+    }
+    async acquireAsync(input) {
+        await this.ensureConnected();
+        const now = new Date().toISOString();
+        const ttlMs = input.ttlMs ?? 30_000;
+        const ttlSec = Math.ceil(ttlMs / 1000);
+        const lockKey = `lock:${input.lockKey}`;
+        this.fencingCounter += 1;
+        const lockData = {
+            id: `lock_${Date.now()}_${this.fencingCounter}`,
+            owner: input.owner,
+            fencingToken: this.fencingCounter,
+            ttlMs,
+            acquiredAt: now,
+            metadata: null,
+        };
+        const result = await this.redis.set(lockKey, JSON.stringify(lockData), "EX", ttlSec, "NX");
+        if (result !== "OK") {
+            return { acquired: false };
+        }
+        return {
+            acquired: true,
+            lock: {
+                lockKey: input.lockKey,
+                owner: lockData.owner,
+                fencingToken: lockData.fencingToken,
+                status: "held",
+                acquiredAt: lockData.acquiredAt,
+                ttlMs: lockData.ttlMs,
+                metadata: lockData.metadata,
+            },
+        };
+    }
+    async releaseAsync(lockKey, owner) {
+        await this.ensureConnected();
+        const script = "local current=redis.call('GET',KEYS[1]) if not current then return -1 end local data=cjson.decode(current) if data.owner~=ARGV[1] then return 0 end return redis.call('DEL',KEYS[1])";
+        return Number(await this.redis.eval(script, 1, `lock:${lockKey}`, owner)) === 1;
+    }
+    async extendAsync(lockKey, owner, additionalMs) {
+        await this.ensureConnected();
+        const key = `lock:${lockKey}`;
+        // Lua script that atomically checks owner and extends TTL
+        // ARGV[1] = owner string to compare
+        // ARGV[2] = new TTL in milliseconds
+        const extendLua = `
+local current = redis.call('get', KEYS[1])
+if not current then return -1 end
+local data = cjson.decode(current)
+if data.owner ~= ARGV[1] then return 0 end
+local newTtl = math.min(tonumber(ARGV[2]), 600000)
+redis.call('pexpire', KEYS[1], newTtl)
+return 1`;
+        const newTtlMs = Math.min(additionalMs, 600_000);
+        const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
+        if (result !== 1) {
+            return null;
+        }
+        const current = await this.redis.get(key);
+        if (!current) {
+            return null;
+        }
+        const data = JSON.parse(current);
+        return {
+            lockKey,
+            owner: data.owner,
+            fencingToken: data.fencingToken,
+            status: "held",
+            acquiredAt: data.acquiredAt,
+            ttlMs: data.ttlMs,
+            metadata: data.metadata,
+        };
+    }
+    async forceStealAsync(lockKey, newOwner, reason) {
+        await this.ensureConnected();
+        const key = `lock:${lockKey}`;
+        const now = new Date().toISOString();
+        this.fencingCounter += 1;
+        const ttlMs = 30_000;
+        const lockData = {
+            id: `lock_${Date.now()}_${this.fencingCounter}`,
+            owner: newOwner,
+            fencingToken: this.fencingCounter,
+            ttlMs,
+            acquiredAt: now,
+            metadata: JSON.stringify({ forceStealReason: reason }),
+        };
+        // Use SET with XX to atomically steal only if lock exists
+        // Use NX variant if we want to only set if NOT exists (opposite of XX)
+        // Here we use SET with PX (ms TTL) and XX (only if exists)
+        const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)), "XX");
+        if (result !== "OK") {
+            throw new LockingError("lock.forceSteal_lock_not_found", `lock.forceSteal_lock_not_found: Cannot force-steal non-existent lock ${lockKey}`);
+        }
+        return {
+            lockKey,
+            owner: newOwner,
+            fencingToken: this.fencingCounter,
+            status: "held",
+            acquiredAt: now,
+            ttlMs,
+            metadata: lockData.metadata,
+        };
+    }
+    async inspectAsync(lockKey) {
+        await this.ensureConnected();
+        const current = await this.redis.get(`lock:${lockKey}`);
+        if (!current) {
+            return null;
+        }
+        const data = JSON.parse(current);
+        return {
+            lockKey,
+            owner: data.owner,
+            fencingToken: data.fencingToken,
+            status: "held",
+            acquiredAt: data.acquiredAt,
+            ttlMs: data.ttlMs,
+            metadata: data.metadata,
+        };
+    }
+    async listHeldAsync(limit = 100) {
+        await this.ensureConnected();
+        const records = [];
+        let cursor = 0;
+        const lockPrefix = "lock:";
+        const prefixLen = lockPrefix.length;
+        do {
+            const [nextCursor, keys] = await this.redis.scan(cursor, 'COUNT', 100);
+            cursor = parseInt(nextCursor, 10);
+            if (keys.length > 0) {
+                const values = await this.redis.mget(...keys);
+                for (let i = 0; i < keys.length; i++) {
+                    if (records.length >= limit)
+                        break;
+                    const key = keys[i];
+                    const value = values[i];
+                    if (!value)
+                        continue;
+                    const data = JSON.parse(value);
+                    records.push({
+                        lockKey: key.slice(prefixLen),
+                        owner: data.owner,
+                        fencingToken: data.fencingToken,
+                        status: "held",
+                        acquiredAt: data.acquiredAt,
+                        ttlMs: data.ttlMs,
+                        metadata: data.metadata,
+                    });
+                }
+            }
+        } while (cursor !== 0 && records.length < limit);
+        return records;
+    }
+    async close() {
+        if (this.redis.status === "wait" || this.redis.status === "end") {
+            this.redis.disconnect();
+            return;
+        }
+        await this.redis.quit();
+    }
+}
+//# sourceMappingURL=redis-lock-adapter.js.map

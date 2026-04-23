@@ -248,7 +248,7 @@ test("DelegationGovernanceService.addRule adds rule and re-sorts by priority", (
     name: "New Rule",
     description: "A new rule",
     enabled: true,
-    priority: 5, // Higher priority (lower number)
+    priority: 1, // Highest priority (lowest number)
     condition: {},
     effect: { decision: "allow", reasonCode: "new_rule" },
   });

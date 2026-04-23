@@ -155,6 +155,19 @@ export class WebhookIngressService {
     return [...this.acceptedEnvelopes];
   }
 
+  public rollbackAcceptedEnvelope(endpointId: string, idempotencyKey: string, envelopeId: string): void {
+    const scopedIdempotencyKey = `${endpointId}:${idempotencyKey}`;
+    const existing = this.envelopesByIdempotencyKey.get(scopedIdempotencyKey);
+    if (existing?.envelopeId !== envelopeId) {
+      return;
+    }
+    this.envelopesByIdempotencyKey.delete(scopedIdempotencyKey);
+    const acceptedIndex = this.acceptedEnvelopes.findIndex((envelope) => envelope.envelopeId === envelopeId);
+    if (acceptedIndex >= 0) {
+      this.acceptedEnvelopes.splice(acceptedIndex, 1);
+    }
+  }
+
   public getEndpoint(endpointId: string): WebhookEndpointRegistration | null {
     return this.endpoints.get(endpointId) ?? null;
   }

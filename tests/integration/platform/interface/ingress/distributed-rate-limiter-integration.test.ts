@@ -65,12 +65,13 @@ test("DistributedRateLimiter uses default config values", async () => {
   const limiter = new DistributedRateLimiter({});
 
   // Should use defaults: maxCalls=100, windowMs=1000
+  // Use the SAME key to test per-key limits
   for (let i = 0; i < 100; i++) {
-    const result = await limiter.checkAndConsume(`default-test-${i}`);
-    assert.equal(result.allowed, true);
+    const result = await limiter.checkAndConsume("default-test-same-key");
+    assert.equal(result.allowed, true, `request ${i + 1} should be allowed`);
   }
 
-  const denied = await limiter.checkAndConsume("default-test-overflow");
+  const denied = await limiter.checkAndConsume("default-test-same-key");
   assert.equal(denied.allowed, false);
 });
 

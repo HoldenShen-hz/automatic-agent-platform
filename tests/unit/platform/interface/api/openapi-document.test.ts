@@ -81,6 +81,8 @@ test("listApiRoutes includes all documented routes", () => {
   assert.ok(paths.includes("/v1/divisions"));
   assert.ok(paths.includes("/v1/knowledge/semantic/inspect"));
   assert.ok(paths.includes("/v1/approvals"));
+  assert.ok(paths.includes("/v1/webhooks/{endpointId}/receive"));
+  assert.ok(paths.includes("/v1/admin/inventories/schema"));
 });
 
 test("buildOpenApiDocument paths have both GET and POST where expected", () => {

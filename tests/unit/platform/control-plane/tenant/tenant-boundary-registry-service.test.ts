@@ -6,6 +6,9 @@ import type {
   OrganizationRecord,
   TenantRecord,
   WorkspaceRecord,
+  WorkspaceMembershipRecord,
+  OrganizationMembershipRecord,
+  DeploymentBindingRecord,
 } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("TenantBoundaryRegistryService registers and retrieves a user", () => {
@@ -45,14 +48,16 @@ test("TenantBoundaryRegistryService registers and retrieves an organization", ()
 
   const org: OrganizationRecord = {
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: null,
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   };
 
   const result = service.registerOrganization(org);
   assert.equal(result.organizationId, "org_123");
+  assert.equal(result.displayName, "Test Org");
 });
 
 test("TenantBoundaryRegistryService registers and retrieves a workspace", () => {
@@ -60,18 +65,22 @@ test("TenantBoundaryRegistryService registers and retrieves a workspace", () => 
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: null,
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const workspace: WorkspaceRecord = {
     workspaceId: "ws_123",
+    ownerId: "owner_1",
+    displayName: "Test Workspace",
+    planId: "plan_free",
+    defaultPolicySet: "default",
     organizationId: "org_123",
-    name: "Test Workspace",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   };
 
   const result = service.registerWorkspace(workspace);
@@ -84,19 +93,25 @@ test("TenantBoundaryRegistryService registers and retrieves a tenant", () => {
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
+    displayName: "Test Org",
+    billingAccountId: null,
+    defaultTenantId: "tenant_123",
     createdAt: "2026-04-01T00:00:00.000Z",
-    defaultTenantId: null,
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const tenant: TenantRecord = {
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    displayName: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   };
 
   const result = service.registerTenant(tenant);
@@ -109,27 +124,35 @@ test("TenantBoundaryRegistryService resolves tenant for workspace", () => {
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerWorkspace({
     workspaceId: "ws_123",
+    ownerId: "owner_1",
+    displayName: "Test Workspace",
+    planId: "plan_free",
+    defaultPolicySet: "default",
     organizationId: "org_123",
-    name: "Test Workspace",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const tenant = service.resolveTenantForWorkspace("ws_123");
@@ -142,27 +165,35 @@ test("TenantBoundaryRegistryService returns null for workspace without org defau
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: null,
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerWorkspace({
     workspaceId: "ws_123",
+    ownerId: "owner_1",
+    displayName: "Test Workspace",
+    planId: "plan_free",
+    defaultPolicySet: "default",
     organizationId: "org_123",
-    name: "Test Workspace",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const tenant = service.resolveTenantForWorkspace("ws_123");
@@ -172,7 +203,7 @@ test("TenantBoundaryRegistryService returns null for workspace without org defau
 test("TenantBoundaryRegistryService authorizes tenant access for org member", () => {
   const service = new TenantBoundaryRegistryService();
 
-  const user = service.registerUser({
+  service.registerUser({
     userId: "user_123",
     displayName: "Test User",
     status: "active",
@@ -181,26 +212,31 @@ test("TenantBoundaryRegistryService authorizes tenant access for org member", ()
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.addOrganizationMembership({
     userId: "user_123",
     organizationId: "org_123",
     role: "member",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    joinedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -226,19 +262,24 @@ test("TenantBoundaryRegistryService denies access for disabled user", () => {
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -262,19 +303,24 @@ test("TenantBoundaryRegistryService allows access with governance exception", ()
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -299,44 +345,57 @@ test("TenantBoundaryRegistryService denies cross-tenant workspace access", () =>
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerOrganization({
     organizationId: "org_456",
-    name: "Other Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Other Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_456",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_456",
     organizationId: "org_456",
-    name: "Other Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerWorkspace({
     workspaceId: "ws_123",
+    ownerId: "owner_1",
+    displayName: "Test Workspace",
+    planId: "plan_free",
+    defaultPolicySet: "default",
     organizationId: "org_123",
-    name: "Test Workspace",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   // User is org member of org_123, but accessing tenant_456 with workspace_123
@@ -344,7 +403,7 @@ test("TenantBoundaryRegistryService denies cross-tenant workspace access", () =>
     userId: "user_123",
     organizationId: "org_123",
     role: "member",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    joinedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -369,19 +428,24 @@ test("TenantBoundaryRegistryService denies by default when no membership", () =>
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({
@@ -419,49 +483,58 @@ test("TenantBoundaryRegistryService lists deployment bindings for tenant", () =>
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerDeploymentBinding({
     bindingId: "binding_1",
     tenantId: "tenant_123",
-    deploymentId: "deploy_1",
+    environmentId: "env_1",
+    deploymentMode: "cloud_shared",
     region: "us-east-1",
+    networkBoundary: "public",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerDeploymentBinding({
     bindingId: "binding_2",
     tenantId: "tenant_123",
-    deploymentId: "deploy_2",
+    environmentId: "env_2",
+    deploymentMode: "cloud_shared",
     region: "us-west-2",
+    networkBoundary: "public",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const bindings = service.listDeploymentBindingsForTenant("tenant_123");
   assert.equal(bindings.length, 2);
-  assert.equal(bindings[0]!.deploymentId, "deploy_1");
-  assert.equal(bindings[1]!.deploymentId, "deploy_2");
+  assert.equal(bindings[0]!.environmentId, "env_1");
+  assert.equal(bindings[1]!.environmentId, "env_2");
 });
 
 test("TenantBoundaryRegistryService lists tenants for user via org membership", () => {
   const service = new TenantBoundaryRegistryService();
 
-  const user = service.registerUser({
+  service.registerUser({
     userId: "user_123",
     displayName: "Test User",
     status: "active",
@@ -470,26 +543,31 @@ test("TenantBoundaryRegistryService lists tenants for user via org membership", 
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.addOrganizationMembership({
     userId: "user_123",
     organizationId: "org_123",
     role: "member",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    joinedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const tenants = service.listTenantsForUser("user_123");
@@ -502,20 +580,25 @@ test("TenantBoundaryRegistryService lists tenants with limit", () => {
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: null,
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   for (let i = 0; i < 5; i++) {
     service.registerTenant({
       tenantId: `tenant_${i}`,
       organizationId: "org_123",
-      name: `Tenant ${i}`,
+      storageScope: "tenant",
+      identityScope: "tenant",
+      policyScope: "tenant",
+      artifactScope: "tenant",
+      isolationMode: "shared_logical",
+      deploymentMode: "cloud_shared",
       createdAt: new Date(2026, 3, i + 1).toISOString(),
-      status: "active",
-      metadata: null,
+      updatedAt: new Date(2026, 3, i + 1).toISOString(),
     });
   }
 
@@ -535,7 +618,7 @@ test("TenantBoundaryRegistryService throws on invalid userId format", () => {
       status: "active",
       identityProvider: "idp_1",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.invalid_user_id"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.invalid_user_id",
   );
 });
 
@@ -549,7 +632,7 @@ test("TenantBoundaryRegistryService throws on empty displayName", () => {
       status: "active",
       identityProvider: "idp_1",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.invalid_user_display_name"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.invalid_user_display_name",
   );
 });
 
@@ -559,12 +642,15 @@ test("TenantBoundaryRegistryService throws on invalid workspaceId", () => {
   assert.throws(
     () => service.registerWorkspace({
       workspaceId: "invalid workspace!",
+      ownerId: "owner_1",
+      displayName: "Test Workspace",
+      planId: "plan_free",
+      defaultPolicySet: "default",
       organizationId: "org_123",
-      name: "Test Workspace",
       createdAt: "2026-04-01T00:00:00.000Z",
-      metadata: null,
+      updatedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.invalid_workspace_id"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.invalid_workspace_id",
   );
 });
 
@@ -574,12 +660,13 @@ test("TenantBoundaryRegistryService throws on invalid organizationId", () => {
   assert.throws(
     () => service.registerOrganization({
       organizationId: "invalid org!",
-      name: "Test Org",
-      createdAt: "2026-04-01T00:00:00.000Z",
+      displayName: "Test Org",
+      billingAccountId: null,
       defaultTenantId: null,
-      metadata: null,
+      createdAt: "2026-04-01T00:00:00.000Z",
+      updatedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.invalid_organization_id"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.invalid_organization_id",
   );
 });
 
@@ -588,22 +675,27 @@ test("TenantBoundaryRegistryService throws on invalid tenantId", () => {
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: null,
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   assert.throws(
     () => service.registerTenant({
       tenantId: "invalid tenant!",
       organizationId: "org_123",
-      name: "Test Tenant",
+      storageScope: "tenant",
+      identityScope: "tenant",
+      policyScope: "tenant",
+      artifactScope: "tenant",
+      isolationMode: "shared_logical",
+      deploymentMode: "cloud_shared",
       createdAt: "2026-04-01T00:00:00.000Z",
-      status: "active",
-      metadata: null,
+      updatedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.invalid_tenant_id"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.invalid_tenant_id",
   );
 });
 
@@ -613,12 +705,15 @@ test("TenantBoundaryRegistryService requires organization before workspace with 
   assert.throws(
     () => service.registerWorkspace({
       workspaceId: "ws_123",
+      ownerId: "owner_1",
+      displayName: "Test Workspace",
+      planId: "plan_free",
+      defaultPolicySet: "default",
       organizationId: "org_nonexistent",
-      name: "Test Workspace",
       createdAt: "2026-04-01T00:00:00.000Z",
-      metadata: null,
+      updatedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.organization_not_found"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.organization_not_found",
   );
 });
 
@@ -629,12 +724,16 @@ test("TenantBoundaryRegistryService requires organization before tenant", () => 
     () => service.registerTenant({
       tenantId: "tenant_123",
       organizationId: "org_nonexistent",
-      name: "Test Tenant",
+      storageScope: "tenant",
+      identityScope: "tenant",
+      policyScope: "tenant",
+      artifactScope: "tenant",
+      isolationMode: "shared_logical",
+      deploymentMode: "cloud_shared",
       createdAt: "2026-04-01T00:00:00.000Z",
-      status: "active",
-      metadata: null,
+      updatedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.organization_not_found"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.organization_not_found",
   );
 });
 
@@ -645,20 +744,22 @@ test("TenantBoundaryRegistryService requires tenant before deployment binding", 
     () => service.registerDeploymentBinding({
       bindingId: "binding_1",
       tenantId: "tenant_nonexistent",
-      deploymentId: "deploy_1",
+      environmentId: "env_1",
+      deploymentMode: "cloud_shared",
       region: "us-east-1",
+      networkBoundary: "public",
       createdAt: "2026-04-01T00:00:00.000Z",
-      metadata: null,
+      updatedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && error.message.includes("tenant.not_found"),
+    (error: unknown) => error instanceof Error && "code" in error && (error as Record<string, unknown>).code === "tenant.not_found",
   );
 });
 
 test("TenantBoundaryRegistryService initializes from seed data", () => {
   const service = new TenantBoundaryRegistryService({
     users: [{ userId: "seed_user", displayName: "Seed User", status: "active", identityProvider: "seed" }],
-    organizations: [{ organizationId: "seed_org", name: "Seed Org", createdAt: "2026-04-01T00:00:00.000Z", defaultTenantId: "seed_tenant", metadata: null }],
-    tenants: [{ tenantId: "seed_tenant", organizationId: "seed_org", name: "Seed Tenant", createdAt: "2026-04-01T00:00:00.000Z", status: "active", metadata: null }],
+    organizations: [{ organizationId: "seed_org", displayName: "Seed Org", billingAccountId: null, defaultTenantId: "seed_tenant", createdAt: "2026-04-01T00:00:00.000Z", updatedAt: "2026-04-01T00:00:00.000Z" }],
+    tenants: [{ tenantId: "seed_tenant", organizationId: "seed_org", storageScope: "tenant", identityScope: "tenant", policyScope: "tenant", artifactScope: "tenant", isolationMode: "shared_logical", deploymentMode: "cloud_shared", createdAt: "2026-04-01T00:00:00.000Z", updatedAt: "2026-04-01T00:00:00.000Z" }],
   });
 
   const decision = service.authorizeTenantAccess({
@@ -682,34 +783,42 @@ test("TenantBoundaryRegistryService workspace membership allows tenant access", 
 
   service.registerOrganization({
     organizationId: "org_123",
-    name: "Test Org",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    displayName: "Test Org",
+    billingAccountId: null,
     defaultTenantId: "tenant_123",
-    metadata: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerTenant({
     tenantId: "tenant_123",
     organizationId: "org_123",
-    name: "Test Tenant",
+    storageScope: "tenant",
+    identityScope: "tenant",
+    policyScope: "tenant",
+    artifactScope: "tenant",
+    isolationMode: "shared_logical",
+    deploymentMode: "cloud_shared",
     createdAt: "2026-04-01T00:00:00.000Z",
-    status: "active",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.registerWorkspace({
     workspaceId: "ws_123",
+    ownerId: "owner_1",
+    displayName: "Test Workspace",
+    planId: "plan_free",
+    defaultPolicySet: "default",
     organizationId: "org_123",
-    name: "Test Workspace",
     createdAt: "2026-04-01T00:00:00.000Z",
-    metadata: null,
+    updatedAt: "2026-04-01T00:00:00.000Z",
   });
 
   service.addWorkspaceMembership({
-    userId: "user_123",
     workspaceId: "ws_123",
+    userId: "user_123",
     role: "editor",
-    createdAt: "2026-04-01T00:00:00.000Z",
+    joinedAt: "2026-04-01T00:00:00.000Z",
   });
 
   const decision = service.authorizeTenantAccess({

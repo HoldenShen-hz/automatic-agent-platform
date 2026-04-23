@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import test from "node:test";
 
 import { getVerticalDomainBaseline, bootstrapVerticalDomainBaselines } from "../../../src/domains/domain-baseline-catalog.js";
+import { VerticalDomainArchitectureService } from "../../../src/domains/vertical-domain-architecture-service.js";
 import { DomainTaskDesignService } from "../../../src/domains/domain-task-design-service.js";
 import { DomainEvaluationGateService } from "../../../src/domains/eval-framework/domain-evaluation-gate-service.js";
 import { DomainPromptGovernanceService } from "../../../src/domains/prompt-library/domain-prompt-governance-service.js";
@@ -48,6 +49,12 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
     );
     assert.equal(
       bootstrapped.baselines.every((baseline) => baseline.workflowSpecialization.stageNames.length >= 4),
+      true,
+    );
+    const architectureRecords = new VerticalDomainArchitectureService().listVerticalDomainArchitectures();
+    assert.equal(architectureRecords.length, 24);
+    assert.equal(
+      architectureRecords.every((record) => record.architectureSections.length === 8 && record.workflow.stageNames.length >= 4),
       true,
     );
 

@@ -73,7 +73,7 @@ test("golden: OpenAPI document has task endpoints", () => {
   assert.ok(document.paths["/v1/tasks/{taskId}/inspect"], "/v1/tasks/{taskId}/inspect endpoint should exist");
   assert.ok(document.paths["/v1/workflows"], "/v1/workflows endpoint should exist");
   assert.deepEqual(
-    document.paths["/v1/workflows"].get.parameters?.map((parameter) => parameter.name),
+    document.paths["/v1/workflows"]?.get?.parameters?.map((parameter) => parameter.name),
     ["limit", "cursor"],
   );
 });
@@ -115,6 +115,8 @@ test("golden: OpenAPI document has dashboard endpoint", () => {
   assert.ok(document.paths["/v1/dashboard/snapshot"].get, "/v1/dashboard/snapshot should be GET");
   assert.ok(document.paths["/v1/workbench/snapshot"], "/v1/workbench/snapshot should exist");
   assert.ok(document.paths["/v1/workbench/snapshot"].get, "/v1/workbench/snapshot should be GET");
+  assert.ok(document.paths["/v1/webhooks/{endpointId}/receive"], "/v1/webhooks/{endpointId}/receive should exist");
+  assert.ok(document.paths["/v1/webhooks/{endpointId}/receive"].post, "/v1/webhooks/{endpointId}/receive should be POST");
 });
 
 test("golden: OpenAPI document has artifact ledger endpoint", () => {
@@ -144,6 +146,7 @@ test("golden: OpenAPI document has admin control plane endpoints", () => {
   assert.ok(document.paths["/v1/admin/inventories/benchmarks"], "Benchmark inventory endpoint should exist");
   assert.ok(document.paths["/v1/admin/inventories/projections"], "Projection inventory endpoint should exist");
   assert.ok(document.paths["/v1/admin/inventories/deployments"], "Deployment inventory endpoint should exist");
+  assert.ok(document.paths["/v1/admin/inventories/schema"], "Schema inventory endpoint should exist");
   assert.ok(document.paths["/v1/admin/judges"], "Judge registry endpoint should exist");
   assert.ok(document.paths["/v1/admin/compliance/program-templates"], "Compliance template endpoint should exist");
 });
@@ -152,7 +155,7 @@ test("golden: listApiRoutes returns all routes", () => {
   const routes = listApiRoutes();
 
   // Should have all the routes we expect
-  assert.ok(routes.length >= 38, "Should have at least 38 routes defined");
+  assert.ok(routes.length >= 40, "Should have at least 40 routes defined");
   assertGolden("openapi-route-list", routes);
 
   const pathMethods = routes.map((r) => `${r.method}:${r.path}`);
@@ -161,6 +164,7 @@ test("golden: listApiRoutes returns all routes", () => {
   assert.ok(pathMethods.includes("GET:/healthz"), "Should have GET /healthz");
   assert.ok(pathMethods.includes("GET:/v1/openapi.json"), "Should have GET /v1/openapi.json");
   assert.ok(pathMethods.includes("POST:/v1/auth/token"), "Should have POST /v1/auth/token");
+  assert.ok(pathMethods.includes("POST:/v1/webhooks/{endpointId}/receive"), "Should have POST webhook receive");
   assert.ok(pathMethods.includes("GET:/v1/tasks"), "Should have GET /v1/tasks");
   assert.ok(pathMethods.includes("GET:/v1/tasks/{taskId}"), "Should have GET /v1/tasks/{taskId}");
   assert.ok(pathMethods.includes("POST:/v1/approvals/{approvalId}/decision"), "Should have POST approval decision");
@@ -182,7 +186,7 @@ test("golden: all routes have required fields", () => {
 
 test("golden: route tags are from allowed set", () => {
   const routes = listApiRoutes();
-  const allowedTags = new Set(["health", "meta", "metrics", "auth", "dashboard", "divisions", "gateway", "tasks", "approvals", "admin", "knowledge", "domains", "plugins", "artifacts"]);
+  const allowedTags = new Set(["health", "meta", "metrics", "auth", "dashboard", "divisions", "gateway", "tasks", "approvals", "admin", "knowledge", "domains", "plugins", "artifacts", "webhooks"]);
 
   for (const route of routes) {
     for (const tag of route.tags) {

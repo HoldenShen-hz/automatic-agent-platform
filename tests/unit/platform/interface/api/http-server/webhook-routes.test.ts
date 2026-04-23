@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createWebhookRoutes } from "../../../../../../src/platform/interface/api/http-server/webhook-routes.js";
 import { WebhookIngressService } from "../../../../../../src/platform/interface/webhook/index.js";
+import type { WebhookOutboxDispatchService } from "../../../../../../src/platform/interface/webhook/webhook-outbox-dispatch-service.js";
 import type { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/interface/api/http-server/types.js";
 
@@ -51,9 +52,10 @@ test("createWebhookRoutes returns 6 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
-  assert.equal(routes.length, 6);
+  assert.equal(routes.length, 8);
 });
 
 test("GET /webhooks returns list of webhooks", async () => {
@@ -70,6 +72,7 @@ test("GET /webhooks returns list of webhooks", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks", ["webhooks"]);
@@ -96,6 +99,7 @@ test("GET /v1/webhooks returns list of webhooks", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/v1/webhooks", ["v1", "webhooks"]);
@@ -111,6 +115,7 @@ test("POST /webhooks creates a new webhook endpoint", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks", ["webhooks"], {}, '{"endpointId":"my-webhook","source":"custom","allowedEventTypes":["event.test"]}');
@@ -128,6 +133,7 @@ test("POST /v1/webhooks creates a new webhook endpoint", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/v1/webhooks", ["v1", "webhooks"], {}, '{"endpointId":"v1-webhook","source":"github"}');
@@ -144,6 +150,7 @@ test("POST /webhooks with invalid payload returns 400", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks", ["webhooks"], {}, '{"endpointId":123}');
@@ -162,6 +169,7 @@ test("POST /webhooks requires authentication", async () => {
   const deps = {
     authService: createMockAuthServiceNoAuth(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks", ["webhooks"], {}, '{"endpointId":"test","source":"test"}');
@@ -189,6 +197,7 @@ test("DELETE /webhooks/:id deletes a webhook endpoint", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks/to-delete", ["webhooks", "to-delete"]);
@@ -217,6 +226,7 @@ test("DELETE /v1/webhooks/:id deletes a webhook endpoint", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/v1/webhooks/v1-to-delete", ["v1", "webhooks", "v1-to-delete"]);
@@ -231,6 +241,7 @@ test("DELETE /webhooks/:id returns 404 for non-existent endpoint", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks/non-existent", ["webhooks", "non-existent"]);
@@ -256,6 +267,7 @@ test("DELETE /webhooks/:id requires admin role", async () => {
       },
     } as unknown as ApiAuthService,
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks/test", ["webhooks", "test"]);
@@ -274,6 +286,7 @@ test("GET /webhooks requires authentication", async () => {
   const deps = {
     authService: createMockAuthServiceNoAuth(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks", ["webhooks"]);
@@ -291,6 +304,7 @@ test("POST /webhooks with HMAC algorithm requires signingSecret", async () => {
   const deps = {
     authService: createMockAuthService(),
     webhookIngressService: webhookService,
+    webhookOutboxDispatchService: null,
   };
   const routes = createWebhookRoutes(deps);
   const ctx = createMockContext("/webhooks", ["webhooks"], {}, '{"endpointId":"hmac-webhook","source":"test","algorithm":"sha256_hmac"}');
@@ -302,4 +316,56 @@ test("POST /webhooks with HMAC algorithm requires signingSecret", async () => {
     assert.ok(err instanceof Error);
     assert.match(err.message, /signing secret/i);
   }
+});
+
+test("POST /v1/webhooks/:id/receive accepts webhook intake without auth and returns staged outbox metadata", async () => {
+  const webhookService = new WebhookIngressService();
+  const webhookOutboxDispatchService = {
+    receiveAndStage: () => ({
+      envelope: {
+        envelopeId: "webhook:1",
+        endpointId: "public-endpoint",
+        source: "github",
+        tenantId: null,
+        workspaceId: null,
+        eventType: "push",
+        idempotencyKey: "evt-1",
+        payload: { eventType: "push", eventId: "evt-1" },
+        dispatchTargetRef: null,
+        receivedAt: "2026-04-23T00:00:00.000Z",
+        acceptedAt: "2026-04-23T00:00:00.000Z",
+        signatureVerified: false,
+        dispatchState: "accepted" as const,
+      },
+      duplicate: false,
+      persistedToOutbox: true,
+      outboxEntryId: "outbox:1",
+    }),
+  } satisfies Pick<WebhookOutboxDispatchService, "receiveAndStage">;
+  const routes = createWebhookRoutes({
+    authService: createMockAuthServiceNoAuth(),
+    webhookIngressService: webhookService,
+    webhookOutboxDispatchService: webhookOutboxDispatchService as WebhookOutboxDispatchService,
+  });
+  const ctx = createMockContext("/v1/webhooks/public-endpoint/receive", ["v1", "webhooks", "public-endpoint", "receive"], {}, "{\"eventType\":\"push\",\"eventId\":\"evt-1\"}");
+  (ctx.request as { method: string; body: string }).method = "POST";
+  const response = await callRoute(routes, ctx);
+  assert.ok(response != null);
+  assert.equal(response.statusCode, 202);
+  const body = JSON.parse(response.body);
+  assert.equal(body.data.persistedToOutbox, true);
+  assert.equal(body.data.outboxEntryId, "outbox:1");
+});
+
+test("POST /v1/webhooks/:id/receive returns 503 when outbox dispatch service is unavailable", async () => {
+  const routes = createWebhookRoutes({
+    authService: createMockAuthServiceNoAuth(),
+    webhookIngressService: new WebhookIngressService(),
+    webhookOutboxDispatchService: null,
+  });
+  const ctx = createMockContext("/v1/webhooks/public-endpoint/receive", ["v1", "webhooks", "public-endpoint", "receive"], {}, "{\"eventType\":\"push\",\"eventId\":\"evt-1\"}");
+  (ctx.request as { method: string; body: string }).method = "POST";
+  await assert.rejects(async () => {
+    await callRoute(routes, ctx);
+  }, /dispatch service is not configured/i);
 });

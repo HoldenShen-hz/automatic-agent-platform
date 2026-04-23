@@ -34,7 +34,6 @@ import type { InspectService } from "../../../shared/observability/inspect-servi
 import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { AppError } from "../../../contracts/errors.js";
-import type { TaskInspectSummary, WorkflowInspectSummary } from "../../../shared/observability/inspect-service-support.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -307,11 +306,11 @@ function paginateByCursor<T extends { updatedAt: string; taskId: string }>(
   readonly hasMore: boolean;
   readonly limit: number;
 } {
-  const sorted = [...items].sort(compareCursorRows);
+  const sorted = [...items].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.taskId.localeCompare(right.taskId));
   const decodedCursor = cursor == null ? null : decodeOpaqueCursor<PaginationCursor>(cursor);
   const startIndex = cursor == null
     ? 0
-    : sorted.findIndex((item) => decodedCursor != null && isAfterCursor(item, decodedCursor));
+    : sorted.findIndex((item) => decodedCursor != null && (item.updatedAt < decodedCursor.updatedAt || (item.updatedAt === decodedCursor.updatedAt && item.taskId > decodedCursor.taskId)));
   const normalizedStartIndex = startIndex < 0 ? sorted.length : startIndex;
   const pageItems = sorted.slice(normalizedStartIndex, normalizedStartIndex + limit);
   const hasMore = normalizedStartIndex + limit < sorted.length;
@@ -322,33 +321,10 @@ function paginateByCursor<T extends { updatedAt: string; taskId: string }>(
       })
     : null;
 
-  if (isTaskPage(pageItems)) {
-    return {
-      items: pageItems,
-      nextCursor,
-      hasMore,
-      limit,
-    };
-  }
-
   return {
     items: pageItems,
     nextCursor,
     hasMore,
     limit,
   };
-}
-
-function compareCursorRows(
-  left: TaskInspectSummary | WorkflowInspectSummary,
-  right: TaskInspectSummary | WorkflowInspectSummary,
-): number {
-  return right.updatedAt.localeCompare(left.updatedAt) || left.taskId.localeCompare(right.taskId);
-}
-
-function isAfterCursor(
-  item: TaskInspectSummary | WorkflowInspectSummary,
-  cursor: PaginationCursor,
-): boolean {
-  return item.updatedAt < cursor.updatedAt || (item.updatedAt === cursor.updatedAt && item.taskId > cursor.taskId);
 }

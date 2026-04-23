@@ -7,11 +7,11 @@
 
 > `R0-R6` 的历史收口不再等价于“review 全部关闭”。以本轮逐条复核为准，当前 review 状态如下：
 
-- `open`: `P1-1`、`P1-2`、`P1-3`、`P1-5`、`P2-1`
-- `partial`: `P1-4`、`P1-6`、`P1-7`、`P2-2`
-- `closed`: `P0-1`、`P0-2`、`P0-3`、`P2-3`
+- `open`: `P2-1`
+- `partial`: `P1-7`、`P2-2`
+- `closed`: `P0-1`、`P0-2`、`P0-3`、`P1-1`、`P1-2`、`P1-3`、`P1-4`、`P1-5`、`P1-6`、`P2-3`
 
-本文件后续 `done` 仅表示对应历史波次曾完成过当时范围内的整改，不再作为当前 review 缺口已经清零的依据。
+本文件后续 `done` 仅表示对应历史波次曾完成过当时范围内的整改，不再作为当前 review 缺口已经清零的依据。本轮新增结论是：`P1-1 ~ P1-6` 已形成源码、测试、文档三位一体闭环。
 
 ## 1. 执行边界
 
@@ -162,17 +162,17 @@
 
 完成验证：
 
-- `npm run build:test`
-- Harness / loop / ModelGateway 定向 `unit + integration + performance`
-- 文档 authoritative 回写同步完成
-- `npm test`
+- `npm run build`
+- `npx tsx --test tests/unit/platform/control-plane/iam/access-model.test.ts tests/unit/platform/control-plane/iam/policy-engine.test.ts tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts tests/unit/platform/control-plane/config-center/config-governance-service.test.ts tests/unit/platform/interface/api/http-server/task-routes.test.ts tests/golden/openapi-document.test.ts tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts tests/unit/domains/vertical-domain-architecture-service.test.ts tests/integration/domains/domains-mainline-integration.test.ts`
+- `review / coverage-matrix / current_todo_list` authoritative 回写同步完成
 
 当前结项状态：
 
-- `npm test` 已通过，coverage gate 已通过。
-- 当前 coverage report 为 `Global lines: 87.8%`，已满足现有 baseline gate。
-- `R0-R6` 在仓内边界内无剩余测试阻塞。
-- `review` 旧版重复缺口文本已被 authoritative 收口版本替换，不再与 `todo / coverage-matrix` 冲突。
+- `P1-1 ~ P1-6` 已完成并关闭。
+- `npm run build` 已通过。
+- 以上定向 `unit / integration / golden` 已全部通过。
+- `npm run build:test` 仍被仓内既有 `audit-export`、`risk-config-loader`、`tenant-boundary-registry-service` 类型债阻塞，这些错误不是本轮 `P1-1 ~ P1-6` 改动引入。
+- `review` 旧版缺口描述已与当前实现重新对齐，不再把已落地的 P1 条目标成未完成。
 
 当前仅保留仓外或非本轮阻断项：
 
@@ -195,6 +195,26 @@
 已知未纳入本次阻断：
 
 - `npm run build:test` 仍会被仓内既存 integration/type errors 阻塞，当前不是由 `P0-1 ~ P0-3` 这组改动引入。
+
+## 5.2 2026-04-23 P1-1 ~ P1-6 收口补记
+
+状态：`done`
+
+- `P1-1` 已完成：新增 `src/platform/control-plane/iam/access-model.ts`，形成 6 类 canonical principal，并接入 `policy-engine` 与 `approval policy context`。
+- `P1-2` 已完成：`SandboxMode` 已切换到 `read_only / workspace_write / scoped_external_access / restricted_exec` 四档，并同步 plugin executor 与 config governance。
+- `P1-3` 已完成：`/v1/tasks` 与 `/v1/workflows` 已支持 cursor pagination，OpenAPI/golden 已同步。
+- `P1-4` 已完成：新增 `src/platform/orchestration/hitl/hitl-modes.ts`，HITL 七模式已接入 approval packet / inbox 主链与逐模式测试。
+- `P1-5` 已完成：`policy-engine` 已显式评估 `RBAC -> capability -> context-aware` 三层授权，并补 audit evidence。
+- `P1-6` 已完成：新增 `src/domains/vertical-domain-architecture-service.ts`，把 24 域 baseline 提升为可消费的垂直域专属架构面。
+
+完成验证：
+
+- `npm run build`
+- `npx tsx --test tests/unit/platform/control-plane/iam/access-model.test.ts tests/unit/platform/control-plane/iam/policy-engine.test.ts tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts tests/unit/platform/control-plane/config-center/config-governance-service.test.ts tests/unit/platform/interface/api/http-server/task-routes.test.ts tests/golden/openapi-document.test.ts tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts tests/unit/domains/vertical-domain-architecture-service.test.ts tests/integration/domains/domains-mainline-integration.test.ts`
+
+已知未纳入本次阻断：
+
+- `npm run build:test` 当前仍卡在仓内既有测试类型债：`tests/unit/platform/control-plane/audit-export/audit-export-service.test.ts`、`tests/unit/platform/control-plane/risk-control/risk-config-loader.test.ts`、`tests/unit/platform/control-plane/tenant/tenant-boundary-registry-service.test.ts`。
 
 ## 6. 跨平台 UI 主线（UI0-UI7）
 

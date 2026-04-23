@@ -18,6 +18,7 @@ import { parseCreateWebhookEndpointPayload } from "./schemas.js";
 import { buildJsonResponse, requirePrincipal, validateTaskId } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { WebhookIngressService } from "../../webhook/index.js";
+import type { WebhookOutboxDispatchService } from "../../webhook/webhook-outbox-dispatch-service.js";
 import { AppError } from "../../../contracts/errors.js";
 
 class ApiError extends AppError {
@@ -35,6 +36,7 @@ class ApiError extends AppError {
 export interface WebhookRouteDeps {
   authService: ApiAuthService | null;
   webhookIngressService: WebhookIngressService;
+  webhookOutboxDispatchService?: WebhookOutboxDispatchService | null;
 }
 
 export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
@@ -71,6 +73,31 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
           ...(payload.dispatchTargetRef != null ? { dispatchTargetRef: payload.dispatchTargetRef } : {}),
         });
         return buildJsonResponse(ctx.requestId, 201, { webhook: registration });
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (segments[0] !== "webhooks" || segments[2] !== "receive" || segments.length !== 3) {
+          return null;
+        }
+        const endpointId = segments[1];
+        if (!endpointId) {
+          throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is required.");
+        }
+        if (deps.webhookOutboxDispatchService == null) {
+          throw new ApiError(503, "webhook.dispatch_unavailable", "Webhook outbox dispatch service is not configured.");
+        }
+        const result = deps.webhookOutboxDispatchService.receiveAndStage({
+          endpointId,
+          headers: ctx.request.headers,
+          body: ctx.request.body ?? "{}",
+          traceId: ctx.request.headers["x-request-id"] ?? null,
+        });
+        return buildJsonResponse(ctx.requestId, result.duplicate ? 200 : 202, result);
       },
     },
     {
@@ -126,6 +153,31 @@ export function createWebhookRoutes(deps: WebhookRouteDeps): RouteDefinition[] {
           ...(payload.dispatchTargetRef != null ? { dispatchTargetRef: payload.dispatchTargetRef } : {}),
         });
         return buildJsonResponse(ctx.requestId, 201, { webhook: registration });
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (segments[0] !== "v1" || segments[1] !== "webhooks" || segments[3] !== "receive" || segments.length !== 4) {
+          return null;
+        }
+        const endpointId = segments[2];
+        if (!endpointId) {
+          throw new ApiError(400, "webhook.invalid_endpoint_id", "Webhook endpoint ID is required.");
+        }
+        if (deps.webhookOutboxDispatchService == null) {
+          throw new ApiError(503, "webhook.dispatch_unavailable", "Webhook outbox dispatch service is not configured.");
+        }
+        const result = deps.webhookOutboxDispatchService.receiveAndStage({
+          endpointId,
+          headers: ctx.request.headers,
+          body: ctx.request.body ?? "{}",
+          traceId: ctx.request.headers["x-request-id"] ?? null,
+        });
+        return buildJsonResponse(ctx.requestId, result.duplicate ? 200 : 202, result);
       },
     },
     {

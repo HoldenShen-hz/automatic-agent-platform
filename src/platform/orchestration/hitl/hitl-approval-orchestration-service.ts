@@ -129,7 +129,7 @@ export class HitlApprovalOrchestrationService {
       options: request.options,
       riskLevel: request.riskLevel,
       timeoutPolicy: request.timeoutPolicy,
-      context: request.context,
+      ...(request.context != null ? { context: request.context } : {}),
     });
 
     const approval = this.approvalService.createRequest({

@@ -42,6 +42,7 @@
     "/v1/tasks/{taskId}",
     "/v1/tasks/{taskId}/events",
     "/v1/tasks/{taskId}/inspect",
-    "/v1/workbench/snapshot"
+    "/v1/workbench/snapshot",
+    "/v1/workflows"
   ]
 }

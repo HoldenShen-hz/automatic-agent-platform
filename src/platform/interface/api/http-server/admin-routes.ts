@@ -29,6 +29,7 @@ import type { AdminConfigService } from "../admin-config-service.js";
 import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
 import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
 import { ProjectionInventoryService } from "../../../state-evidence/events/projection-inventory-service.js";
+import { SchemaInventoryService } from "../../../state-evidence/truth/schema-inventory-service.js";
 import { JudgeProviderRegistryService } from "../../../prompt-engine/eval/judge-provider-registry-service.js";
 import { ComplianceProgramTemplateService } from "../../../compliance/compliance-program-template-service.js";
 import { AppError } from "../../../contracts/errors.js";
@@ -254,6 +255,19 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "deployment inventories");
         return buildJsonResponse(ctx.requestId, 200, new DeploymentInventoryService().listDeployments());
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/inventories/schema",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "schema inventories");
+        const service = new SchemaInventoryService();
+        return buildJsonResponse(ctx.requestId, 200, {
+          summary: service.buildSummary(),
+          tables: service.listTables(),
+        });
       },
     },
     {

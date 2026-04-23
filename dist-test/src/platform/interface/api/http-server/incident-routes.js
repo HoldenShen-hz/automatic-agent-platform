@@ -1,0 +1,126 @@
+/**
+ * Incident Routes - REST API for incident management.
+ *
+ * Routes:
+ * - GET /v1/incidents - List incidents
+ * - GET /v1/incidents/:id - Get incident
+ * - POST /v1/incidents - Create incident
+ * - PATCH /v1/incidents/:id - Update incident
+ *
+ * Part of §6 API Endpoints (REST Endpoints)
+ */
+import { readValidatedJsonBody } from "../middleware/input-validation.js";
+import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } from "./utils.js";
+import { z } from "zod";
+import { AppError } from "../../../contracts/errors.js";
+class ApiError extends AppError {
+    constructor(statusCode, code, message) {
+        super(code, message, {
+            statusCode,
+            category: statusCode >= 500 ? "internal" : statusCode >= 400 ? "validation" : "external",
+            source: "runtime",
+            retryable: statusCode >= 500 || statusCode === 429,
+        });
+        this.name = "ApiError";
+    }
+}
+// ─── Schemas ────────────────────────────────────────────────────────────────
+const nonEmptyStringSchema = z.string().trim().min(1);
+const createIncidentSchema = z.object({
+    severity: z.enum(["low", "medium", "high", "critical"]),
+    title: nonEmptyStringSchema,
+    linkedEvidenceRefs: z.array(z.string()).optional(),
+}).strict();
+const updateIncidentSchema = z.object({
+    status: z.enum(["open", "acknowledged", "mitigating", "resolved"]).optional(),
+    owner: z.string().optional(),
+}).strict();
+// ─── Route Factory ─────────────────────────────────────────────────────────
+export function createIncidentRoutes(deps) {
+    return [
+        {
+            method: "GET",
+            pathname: "/v1/incidents",
+            handler: (ctx) => {
+                const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+                const tenantId = resolveTenantScope(principal, undefined);
+                const limit = readLimit(ctx.request, 50);
+                void tenantId;
+                const incidents = deps.incidentService.listIncidents(limit);
+                return buildJsonResponse(ctx.requestId, 200, {
+                    incidents,
+                    total: incidents.length,
+                });
+            },
+        },
+        {
+            method: "GET",
+            pathname: null,
+            segments: true,
+            handler: (ctx) => {
+                const { segments } = ctx.route;
+                if (segments[0] !== "v1" || segments[1] !== "incidents" || segments.length !== 3) {
+                    return null;
+                }
+                const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+                const incidentId = segments[2];
+                void principal;
+                const incident = deps.incidentService.getIncident(incidentId);
+                if (!incident) {
+                    throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
+                }
+                return buildJsonResponse(ctx.requestId, 200, incident);
+            },
+        },
+        {
+            method: "POST",
+            pathname: "/v1/incidents",
+            handler: (ctx) => {
+                const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+                const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
+                const tenantId = resolveTenantScope(principal, undefined);
+                void tenantId;
+                const incident = deps.incidentService.openIncident({
+                    severity: payload.severity,
+                    title: payload.title,
+                    ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
+                });
+                return buildJsonResponse(ctx.requestId, 201, incident);
+            },
+        },
+        {
+            method: "PATCH",
+            pathname: null,
+            segments: true,
+            handler: (ctx) => {
+                const { segments } = ctx.route;
+                if (segments[0] !== "v1" || segments[1] !== "incidents" || segments.length !== 3) {
+                    return null;
+                }
+                const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+                const incidentId = segments[2];
+                const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
+                void principal;
+                const incident = deps.incidentService.getIncident(incidentId);
+                if (!incident) {
+                    throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
+                }
+                let updated;
+                if (payload.status === "acknowledged" && incident.status === "open") {
+                    updated = deps.incidentService.acknowledge(incidentId, payload.owner ?? "unknown");
+                }
+                else if (payload.status === "mitigating") {
+                    updated = deps.incidentService.startMitigation(incidentId);
+                }
+                else if (payload.status === "resolved") {
+                    updated = deps.incidentService.resolve(incidentId);
+                }
+                else {
+                    throw new ApiError(400, "incident.invalid_transition", `Cannot transition from ${incident.status} to ${payload.status}.`);
+                }
+                return buildJsonResponse(ctx.requestId, 200, updated);
+            },
+        },
+    ];
+}
+//# sourceMappingURL=incident-routes.js.map

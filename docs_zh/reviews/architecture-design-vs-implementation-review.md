@@ -37,14 +37,14 @@
 
 | 类别 | 数量 | 条目 |
 | --- | --- | --- |
-| `open` | 5 | `P1-1` `P1-2` `P1-3` `P1-5` `P2-1` |
-| `partial` | 4 | `P1-4` `P1-6` `P1-7` `P2-2` |
-| `closed` | 4 | `P0-1` `P0-2` `P0-3` `P2-3` |
+| `open` | 1 | `P2-1` |
+| `partial` | 2 | `P1-7` `P2-2` |
+| `closed` | 10 | `P0-1` `P0-2` `P0-3` `P1-1` `P1-2` `P1-3` `P1-4` `P1-5` `P1-6` `P2-3` |
 
 结论：
 
 - `§11.8` 与 `§12.1-§12.2` 已补齐 authoritative contract、运行时接线与定向测试，`P0-1 ~ P0-3` 不再是当前阻断项。
-- 当前剩余高优先级缺口集中在 IAM 主模型与 API/outbox 主链：`Principal`、sandbox 层级、三层授权、cursor pagination、webhook-outbox。
+- `P1-1 ~ P1-6` 已在本轮形成源码、导出面、定向测试与文档同步闭环；当前高优先级运行时缺口只剩 `P2-1 webhook + outbox`。
 - 领域元模型、24 域 baseline、12 种 recipe 这些能力不是空白；相关旧缺口保持为“实现形态与设计表达仍有偏差”的 `partial`。
 
 ---
@@ -106,96 +106,110 @@
 
 ### P1-1 `§11.1` Principal 类型
 
-状态：`open`
+状态：`closed`
 
 检查结果：
 
 - `src/platform/control-plane/iam/policy-engine.ts`
 - `src/platform/control-plane/approval-center/approval-policy-engine/types.ts`
 
-上述两处 `subjectType` 仍是：
+检查结果：
 
-```ts
-"user" | "agent" | "system"
-```
-
-- 未扩展到设计要求的 `service | worker | plugin`。
+- `src/platform/control-plane/iam/access-model.ts` 已新增 `PlatformPrincipalType`，并收敛 `user / agent / system / service / worker / plugin` 六类 principal。
+- `src/platform/control-plane/iam/policy-engine.ts` 已改为消费 canonical IAM facade，并把 principal 进入 `RBAC + capability + context-aware` 统一授权链。
+- `src/platform/control-plane/approval-center/approval-policy-engine/types.ts` 的 `ApprovalPolicyContext.subjectType` 已切换到同一 canonical 类型。
+- 证据测试：
+  - `tests/unit/platform/control-plane/iam/access-model.test.ts`
+  - `tests/unit/platform/control-plane/iam/policy-engine.test.ts`
 
 结论：
 
-- 这条仍未收口。
+- Principal 类型已扩展并进入主链，应关闭。
 
 ### P1-2 `§11.4` Sandbox 层级
 
-状态：`open`
+状态：`closed`
 
 检查结果：
 
-- `src/platform/control-plane/iam/sandbox-policy.ts` 仍定义 `read_only | workspace_write | danger_full_access`。
-- `tests/unit/platform/control-plane/iam/sandbox-policy-types.test.ts` 与 `tests/unit/platform/control-plane/iam/index.test.ts` 明确仍把 `danger_full_access` 当作合法值。
-- `src/platform/execution/plugin-executor/plugin-executor.service.ts` 虽然有 `scoped_external_access` sandbox tier，但最终仍映射到 `workspace_write`，没有形成设计要求的四档 canonical sandbox mode。
+- `src/platform/control-plane/iam/sandbox-policy.ts` 已切换到 canonical 四档：
+  `read_only / workspace_write / scoped_external_access / restricted_exec`。
+- `src/platform/execution/plugin-executor/plugin-executor.service.ts` 已把 plugin sandbox tier 映射对齐到 canonical sandbox mode，并为 `scoped_external_access` / `restricted_exec` 生成正式 policy。
+- `src/platform/control-plane/config-center/config-governance-support.ts` 与 `docs_zh/contracts/configuration_layers_and_defaults_contract.md` 已同步到四档枚举。
+- 证据测试：
+  - `tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts`
+  - `tests/unit/platform/control-plane/config-center/config-governance-service.test.ts`
 
 结论：
 
-- 不是完全空白，但仍未达到设计要求的 authoritative 四档模型。
+- authoritative 四档 sandbox model 已闭环，应关闭。
 
 ### P1-3 `§6.6` Cursor-based 分页
 
-状态：`open`
+状态：`closed`
 
 检查结果：
 
-- `src/platform/interface/api/http-server/task-routes.ts` 的 `/v1/tasks`、`/v1/workflows` 仍使用 `limit` 读取，没有 `cursor / next_cursor / has_more`。
-- `src/platform/interface/api/openapi-document.ts` 也没有为这些列表接口声明 cursor 分页面。
-- `tests/unit/platform/interface/api/http-server/task-routes.test.ts` 与 `tests/integration/platform/interface/api/http-api-server.test.ts` 仍围绕 `?limit=` 断言。
+- `src/platform/interface/api/http-server/task-routes.ts` 已为 `/v1/tasks` 与 `/v1/workflows` 增加稳定排序的 cursor 分页，返回 `nextCursor / hasMore / limit`。
+- `src/platform/interface/api/http-server/utils.ts` 已补 opaque cursor 的读写/校验辅助函数。
+- `src/platform/interface/api/openapi-document.ts` 已为两个列表面补上 cursor query parameter 描述。
+- 证据测试：
+  - `tests/unit/platform/interface/api/http-server/task-routes.test.ts`
+  - `tests/golden/openapi-document.test.ts`
 
 结论：
 
-- 这条仍未收口。
+- cursor-based 分页已经形成 API + OpenAPI + golden/unit 证据闭环，应关闭。
 
 ### P1-4 `§21.1` HITL 七种模式
 
-状态：`partial`
+状态：`closed`
 
 检查结果：
 
-- `src/platform/orchestration/hitl/` 已有 `hitl-approval-orchestration-service.ts`、`hitl-inbox-service.ts`、`hitl-operator-console-service.ts`、`hitl-explainability-service.ts`。
-- `tests/integration/platform/orchestration/hitl-integration.test.ts` 覆盖了 `confirmed / text_input / rejected / timeout` 等决策流。
-- 但全仓未形成 authoritative `HitlMode`/`hitl-modes.ts`，也未找到对设计中 7 个模式
-  `single_approval / multi_party_approval / delegated_approval / iterative_feedback / collaborative_edit / informed_confirmation / circuit_breaker_human`
-  的统一枚举、逐模式接线和逐模式测试命名。
+- `src/platform/orchestration/hitl/hitl-modes.ts` 已新增 authoritative `HitlMode`，覆盖
+  `single_approval / multi_party_approval / delegated_approval / iterative_feedback / collaborative_edit / informed_confirmation / circuit_breaker_human` 七种模式。
+- `src/platform/orchestration/hitl/hitl-approval-orchestration-service.ts` 已把 `mode` 接入 approval packet / request 主链，并为逐模式约束提供正式校验。
+- `src/platform/orchestration/hitl/hitl-inbox-service.ts` 已把 `mode` 和 channel policy 接入 inbox surface。
+- 证据测试：
+  - `tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts`
+  - `tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts`
 
 结论：
 
-- HITL 子系统本身存在且不弱，但“七种模式齐备并经 authoritative 类型约束”这件事没有闭环。
+- 七种模式已形成 authoritative 类型、运行时校验与测试闭环，应关闭。
 
 ### P1-5 `§11.2` RBAC + Capability + Context-aware 三层授权
 
-状态：`open`
+状态：`closed`
 
 检查结果：
 
-- `src/platform/control-plane/iam/policy-engine.ts` 主要还是 `decision request -> budget/risk/approval` 的评估链。
-- 仓内未找到 authoritative `PlatformRole`、`role-definitions.ts`、`capability-matrix.ts`。
-- 也未找到清晰的 `RBAC -> capability -> context-aware` 三层统一入口。
+- `src/platform/control-plane/iam/access-model.ts` 已新增 `PlatformRole`、`PlatformCapability`、role→capability map、默认 principal access profile 与 action→capability 推导。
+- `src/platform/control-plane/iam/policy-engine.ts` 已显式按 `RBAC -> capability -> context-aware -> budget/risk` 顺序评估，并把三层结果写入 audit payload。
+- 证据测试：
+  - `tests/unit/platform/control-plane/iam/access-model.test.ts`
+  - `tests/unit/platform/control-plane/iam/policy-engine.test.ts`
 
 结论：
 
-- 这条仍未收口。
+- 三层授权主链已收口，应关闭。
 
 ### P1-6 `§71-§94` 垂直域专属架构
 
-状态：`partial`
+状态：`closed`
 
 检查结果：
 
-- `src/domains/domain-baseline-catalog.ts` 已有 24 域 canonical baseline、legacy alias、workflow/tool/risk/eval/latency/ownership wiring。
-- `tests/unit/domains/domain-baseline-catalog.test.ts` 与 `tests/integration/domains/domains-mainline-integration.test.ts` 明确验证了 24 域激活、canonical `domainId`、legacy alias、specialized workflow 和 config path。
-- 但这些能力目前主要收敛在统一 catalog / orchestration 层，而不是设计文档写法中的“每个垂直域都有独立专属架构模块/章节对应代码面”。
+- `src/domains/vertical-domain-architecture-service.ts` 已新增 authoritative 垂直域架构 surface，可把 24 域 materialize 为 `workflow / tooling / risk / eval / latency / ownership / knowledge / recipes` 八类 architecture section。
+- `src/domains/index.ts` 已导出该服务，避免垂直域架构只停留在 baseline catalog 内部。
+- 证据测试：
+  - `tests/unit/domains/vertical-domain-architecture-service.test.ts`
+  - `tests/integration/domains/domains-mainline-integration.test.ts`
 
 结论：
 
-- 这条不能再写成“缺失”，但也不能写成“完全对齐”；应保留为设计表达与实现形态不完全一致的 `partial`。
+- 已形成可消费的垂直域专属架构面，应关闭。
 
 ### P1-7 `§68` 多模态视频处理
 
@@ -260,9 +274,9 @@
 
 ## §4 建议的修复顺序
 
-1. 先处理 `P1-1/P1-2/P1-5`，把 IAM 主模型一次性补齐。
-2. 再处理 `P1-3` 与 `P2-1`，把 API 列表分页和 webhook-outbox 契约补到主链。
-3. `P1-4/P1-6/P1-7/P2-2` 作为结构深化项继续保留 `partial`，逐个补 authoritative 类型与对账文档。
+1. 先处理 `P2-1`，把 webhook-outbox 投递主链补到 authoritative runtime。
+2. 再继续 `P1-7`，把视频处理从 metadata skeleton 推进到更强的可验证 pipeline。
+3. 最后处理 `P2-2`，把逻辑表数量漂移收敛为设计文档/contract 的正式对照表。
 
 ---
 

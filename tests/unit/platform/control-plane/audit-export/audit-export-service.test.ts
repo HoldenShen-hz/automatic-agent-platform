@@ -11,6 +11,7 @@ type MockStatement = {
   run: (...args: unknown[]) => void;
   get: (...args: unknown[]) => Record<string, unknown> | undefined;
   all: (...args: unknown[]) => Record<string, unknown>[];
+  setData(rows: Record<string, unknown>[]): void;
 };
 
 function createMockStatement(): MockStatement {
@@ -26,7 +27,9 @@ function createMockStatement(): MockStatement {
 }
 
 function createMockDb(): {
-  db: AuthoritativeSqlDatabase;
+  // Use inline type to avoid circular reference with AuthoritativeSqlDatabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any;
   statements: Map<string, MockStatement>;
   execCalls: string[];
 } {
@@ -40,7 +43,7 @@ function createMockDb(): {
     return statements.get(sql)!;
   };
 
-  const db: AuthoritativeSqlDatabase = {
+  const db = {
     filePath: ":memory:",
     backendType: "sqlite",
     connection: {

@@ -20,6 +20,7 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "POST", path: "/v1/auth/token", summary: "Exchange API key for bearer token", tags: ["auth"] },
   { method: "GET", path: "/v1/dashboard/snapshot", summary: "Mission control shared snapshot", tags: ["dashboard"] },
   { method: "GET", path: "/v1/workbench/snapshot", summary: "Platform workbench aggregated snapshot", tags: ["dashboard"] },
+  { method: "POST", path: "/v1/webhooks/{endpointId}/receive", summary: "Receive a signed webhook and stage it into outbox", tags: ["webhooks"] },
   { method: "GET", path: "/v1/divisions", summary: "List configured divisions", tags: ["divisions"] },
   { method: "GET", path: "/v1/gateway/targets", summary: "List gateway targets", tags: ["gateway"] },
   { method: "GET", path: "/v1/gateway/targets/resolve", summary: "Resolve human-readable gateway target", tags: ["gateway"] },
@@ -66,6 +67,7 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "GET", path: "/v1/admin/inventories/benchmarks", summary: "List benchmark inventory records", tags: ["admin"] },
   { method: "GET", path: "/v1/admin/inventories/projections", summary: "List projection inventory records", tags: ["admin"] },
   { method: "GET", path: "/v1/admin/inventories/deployments", summary: "List deployment inventory records", tags: ["admin"] },
+  { method: "GET", path: "/v1/admin/inventories/schema", summary: "List authoritative schema inventory records", tags: ["admin"] },
   { method: "GET", path: "/v1/admin/judges", summary: "List judge provider descriptors", tags: ["admin"] },
   { method: "GET", path: "/v1/admin/compliance/program-templates", summary: "List compliance program templates", tags: ["admin"] },
 ];
