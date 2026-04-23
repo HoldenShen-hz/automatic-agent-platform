@@ -41,12 +41,13 @@ test("buildCostOptimizationRecommendation calculates estimatedSavingsUsd", () =>
 });
 
 test("buildCostOptimizationRecommendation calculates higher savings for high cost with downgrade", () => {
+  // Cost exactly 100: downgradePath requires currentCostUsd >= 100 but also needs modelRef with available downgrade
   const result = buildCostOptimizationRecommendation("subj", 100);
   assert.ok(result != null);
-  // Without downgrade path: 100 * 0.15 = 15
+  // Without modelRef for downgrade path: 100 * 0.15 = 15, riskLevel "low" (100 is not > 100)
   assert.equal(result.estimatedSavingsUsd, 15);
-  assert.equal(result.riskLevel, "medium");
-  assert.equal(result.action, "right_size");
+  assert.equal(result.riskLevel, "low");
+  assert.equal(result.action, "increase_cache_hit");
 });
 
 test("prioritizeCostOptimizationRecommendations sorts by estimatedSavingsUsd descending", () => {

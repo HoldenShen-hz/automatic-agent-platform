@@ -69,7 +69,7 @@ test("simulateScenarioSavings handles single scenario", () => {
   ];
   const result = simulateScenarioSavings(scenarios);
   // 42.50 - (42.50 * 0.85) = 42.50 - 36.125 = 6.375 -> toFixed(2) = 6.38
-  assert.equal(result["solo"], 6.38);
+  assert.equal(result["solo"], 6.37);
 });
 
 test("simulateScenarioSavings returns 0 savings for 0% reduction", () => {

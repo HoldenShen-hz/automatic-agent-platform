@@ -122,7 +122,7 @@ test("v2.7 coverage matrix and new authoritative contracts exist", () => {
 
 test("architecture implementation review is aligned to current closure wording", () => {
   const review = readFileSync(ARCHITECTURE_REVIEW, "utf8");
-  assert.match(review, /架构设计 vs 实现状态/);
+  assert.match(review, /架构设计 vs 代码实现/);
   assert.match(review, /collaboration-protocol/);
   assert.match(review, /canonical-meta-model/);
   assert.match(review, /ConstraintPack/);

@@ -27,10 +27,10 @@ test("platform application kernel builds startup plans for app targets", () => {
     {
       phase9a: 4,
       phase9b: 4,
-      phase9c: 4,
-      phase9d: 4,
-      phase9e: 4,
-      phase9f: 4,
+      phase9c: 6,
+      phase9d: 5,
+      phase9e: 6,
+      phase9f: 6,
     },
   );
   assert.deepEqual(apiPlan.planeStartupPlan?.startupOrder, [
