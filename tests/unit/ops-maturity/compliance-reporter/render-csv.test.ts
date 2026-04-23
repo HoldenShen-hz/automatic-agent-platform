@@ -48,7 +48,6 @@ test("renderComplianceReportCsv handles empty sections array", () => {
 });
 
 test("renderComplianceReportCsv handles section with empty lines", () => {
-  // When a section has no lines, only the header row is produced (no data rows for that section)
   const sections = [{ title: "Empty", lines: [] }];
   const result = reportRenderer.renderComplianceReportCsv(sections);
   assert.ok(result.startsWith("section,line"));

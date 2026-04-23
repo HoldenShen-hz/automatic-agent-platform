@@ -53,8 +53,8 @@ test("E2E: webhook ingress receives event and stages to outbox", () => {
 
     const result = h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "github",
-      payload: { eventType: "pull_request.opened", prId: 123 },
-      idempotencyKey: "evt-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "pull_request.opened", prId: 123, eventId: "evt-001" }),
       traceId: "trace-webhook-001",
     });
 
@@ -92,16 +92,16 @@ test("E2E: duplicate webhook events are detected and rejected", () => {
     // First event
     const first = h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "github",
-      payload: { eventType: "pull_request.opened", prId: 456 },
-      idempotencyKey: "evt-dedup-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "pull_request.opened", prId: 456, eventId: "evt-dedup-001" }),
       traceId: "trace-first",
     });
 
-    // Same event again (duplicate)
+    // Same event again (duplicate) - same eventId
     const second = h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "github",
-      payload: { eventType: "pull_request.opened", prId: 456 },
-      idempotencyKey: "evt-dedup-001", // Same idempotency key
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "pull_request.opened", prId: 456, eventId: "evt-dedup-001" }),
       traceId: "trace-second",
     });
 
@@ -122,7 +122,7 @@ test("E2E: duplicate webhook events are detected and rejected", () => {
   }
 });
 
-test("E2E: webhook with different idempotency keys are separate events", () => {
+test("E2E: webhook with different eventId are separate events", () => {
   const h = createE2eHarness("e2e-webhook-separate-");
 
   try {
@@ -136,18 +136,18 @@ test("E2E: webhook with different idempotency keys are separate events", () => {
       algorithm: "none",
     });
 
-    // Two separate commits
+    // Two separate commits with different eventId
     const first = h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "github",
-      payload: { eventType: "push.commit", sha: "abc123" },
-      idempotencyKey: "commit-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "push.commit", sha: "abc123", eventId: "commit-001" }),
       traceId: "trace-commit-1",
     });
 
     const second = h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "github",
-      payload: { eventType: "push.commit", sha: "def456" },
-      idempotencyKey: "commit-002", // Different key
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "push.commit", sha: "def456", eventId: "commit-002" }),
       traceId: "trace-commit-2",
     });
 
@@ -176,8 +176,8 @@ test("E2E: unregistered endpoint is rejected", () => {
       () => {
         h.webhookOutboxDispatchService.receiveAndStage({
           endpointId: "unknown-endpoint",
-          payload: { eventType: "test.event" },
-          idempotencyKey: "evt-unknown",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ eventType: "test.event", eventId: "evt-unknown" }),
           traceId: "trace-unknown",
         });
       },
@@ -208,8 +208,8 @@ test("E2E: disabled endpoint rejects events", () => {
       () => {
         h.webhookOutboxDispatchService.receiveAndStage({
           endpointId: "disabled-webhook",
-          payload: { eventType: "test.event" },
-          idempotencyKey: "evt-disabled",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ eventType: "test.event", eventId: "evt-disabled" }),
           traceId: "trace-disabled",
         });
       },
@@ -238,8 +238,8 @@ test("E2E: outbox entry can be verified by status", () => {
 
     const result = h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "gitlab",
-      payload: { eventType: "merge_request.opened", mrId: 789 },
-      idempotencyKey: "mr-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "merge_request.opened", mrId: 789, eventId: "mr-001" }),
       traceId: "trace-mr",
     });
 
@@ -282,16 +282,16 @@ test("E2E: multiple endpoints have separate outbox entries", () => {
     // GitHub event
     h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "github",
-      payload: { eventType: "push", repo: "github/repo" },
-      idempotencyKey: "gh-push-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "push", repo: "github/repo", eventId: "gh-push-001" }),
       traceId: "trace-gh",
     });
 
     // GitLab event
     h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "gitlab",
-      payload: { eventType: "push", repo: "gitlab/repo" },
-      idempotencyKey: "gl-push-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "push", repo: "gitlab/repo", eventId: "gl-push-001" }),
       traceId: "trace-gl",
     });
 
@@ -325,7 +325,7 @@ test("E2E: webhook ingress service registers and retrieves endpoints", () => {
       workspaceId: "workspace-456",
       enabled: true,
       allowedEventTypes: ["custom.event.type"],
-      algorithm: "hmac_sha256",
+      algorithm: "sha256_hmac",
     });
 
     const endpoint = h.webhookIngressService.getEndpoint("custom-webhook");
@@ -396,8 +396,8 @@ test("E2E: outbox can track pending and failed entries", () => {
     // Add entry
     h.webhookOutboxDispatchService.receiveAndStage({
       endpointId: "tracker",
-      payload: { eventType: "track.event", data: "test" },
-      idempotencyKey: "track-001",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "track.event", data: "test", eventId: "track-001" }),
       traceId: "trace-track",
     });
 
