@@ -13,12 +13,17 @@ import type {
   AckResult,
 } from "../../../../../src/platform/control-plane/incident-control/human-takeover-service-async.js";
 
-// NOTE: This test file is skipped due to a timer cleanup issue.
-// TakeoverEscalationManager creates background timers (setInterval) that prevent
-// the test suite from exiting cleanly. This is a known Node.js testing issue.
-// To re-enable, remove the test.describe.skip wrapper and ensure proper timer
-// cleanup is added (e.g., afterEach hooks that call clearAllTimers).
-test.describe.skip("TakeoverEscalationManager", () => {
+test.describe("TakeoverEscalationManager", () => {
+  // Track managers created in tests for cleanup
+  const managers: TakeoverEscalationManager[] = [];
+
+  // Clean up timers after each test to prevent event loop blocking
+  test.afterEach(() => {
+    for (const manager of managers) {
+      manager.clearAllTimers();
+    }
+    managers.length = 0;
+  });
 
 function createMockEventEmitter() {
   const events: Array<{ event: TakeoverLifecycleEvent; payload: unknown }> = [];
@@ -40,6 +45,12 @@ function createTestConfig(overrides: Partial<TakeoverTimeoutConfig> = {}): Takeo
   };
 }
 
+function createManager(config?: TakeoverTimeoutConfig, emitter?: ReturnType<typeof createMockEventEmitter>, onAutoClose?: (sessionId: string, taskId: string) => Promise<void>): TakeoverEscalationManager {
+  const mgr = new TakeoverEscalationManager(config ?? createTestConfig(), emitter ?? createMockEventEmitter(), onAutoClose);
+  managers.push(mgr);
+  return mgr;
+}
+
 // =============================================================================
 // Construction
 // =============================================================================
@@ -47,7 +58,7 @@ function createTestConfig(overrides: Partial<TakeoverTimeoutConfig> = {}): Takeo
 test("TakeoverEscalationManager constructs with valid config", () => {
   const emitter = createMockEventEmitter();
   const config = createTestConfig();
-  const manager = new TakeoverEscalationManager(config, emitter);
+  const manager = createManager(config, emitter);
 
   assert.ok(manager);
 });
@@ -60,7 +71,7 @@ test("TakeoverEscalationManager accepts custom config", () => {
     escalationCheckIntervalMs: 500,
     maxRetries: 5,
   });
-  const manager = new TakeoverEscalationManager(config, emitter);
+  const manager = createManager(config, emitter);
 
   assert.ok(manager);
 });
@@ -70,7 +81,7 @@ test("TakeoverEscalationManager accepts auto-close handler", () => {
   const config = createTestConfig();
   let autoCloseCalled = false;
 
-  const manager = new TakeoverEscalationManager(config, emitter, async (sessionId, taskId) => {
+  const manager = createManager(config, emitter, async (sessionId, taskId) => {
     autoCloseCalled = true;
     assert.equal(sessionId, "test-session");
     assert.equal(taskId, "test-task");
@@ -84,8 +95,7 @@ test("TakeoverEscalationManager accepts auto-close handler", () => {
 // =============================================================================
 
 test("startSessionTracking initializes tracking for session", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.startSessionTracking("session-1", "task-1");
 
@@ -93,8 +103,7 @@ test("startSessionTracking initializes tracking for session", () => {
 });
 
 test("stopSessionTracking clears all tracking", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.startSessionTracking("session-1", "task-1");
   manager.stopSessionTracking("session-1");
@@ -103,8 +112,7 @@ test("stopSessionTracking clears all tracking", () => {
 });
 
 test("stopSessionTracking handles unknown session gracefully", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   // Should not throw
   manager.stopSessionTracking("unknown-session");
@@ -116,7 +124,7 @@ test("stopSessionTracking handles unknown session gracefully", () => {
 
 test("acknowledgeSession sets acknowledged status", () => {
   const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager(createTestConfig(), emitter);
 
   const result = manager.acknowledgeSession("session-1", "operator-1", "task-1");
 
@@ -129,7 +137,7 @@ test("acknowledgeSession sets acknowledged status", () => {
 
 test("acknowledgeSession emits event", () => {
   const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager(createTestConfig(), emitter);
 
   manager.acknowledgeSession("session-1", "operator-1", "task-1");
 
@@ -138,8 +146,7 @@ test("acknowledgeSession emits event", () => {
 });
 
 test("acknowledgeSession tracks previous status", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   // First acknowledgment
   const result1 = manager.acknowledgeSession("session-1", "operator-1", "task-1");
@@ -155,8 +162,7 @@ test("acknowledgeSession tracks previous status", () => {
 // =============================================================================
 
 test("getAcknowledgmentStatus returns null for unknown session", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   const status = manager.getAcknowledgmentStatus("unknown-session");
 
@@ -164,8 +170,7 @@ test("getAcknowledgmentStatus returns null for unknown session", () => {
 });
 
 test("getAcknowledgmentStatus returns current status", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.acknowledgeSession("session-1", "operator-1", "task-1");
   const status = manager.getAcknowledgmentStatus("session-1");
@@ -180,8 +185,7 @@ test("getAcknowledgmentStatus returns current status", () => {
 // =============================================================================
 
 test("extendAcknowledgment extends active acknowledgment", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.acknowledgeSession("session-1", "operator-1", "task-1");
   const result = manager.extendAcknowledgment("session-1");
@@ -192,8 +196,7 @@ test("extendAcknowledgment extends active acknowledgment", () => {
 });
 
 test("extendAcknowledgment uses custom extension time", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.acknowledgeSession("session-1", "operator-1", "task-1");
   const result = manager.extendAcknowledgment("session-1", 10000);
@@ -203,8 +206,7 @@ test("extendAcknowledgment uses custom extension time", () => {
 });
 
 test("extendAcknowledgment throws for unknown session", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   assert.throws(
     () => manager.extendAcknowledgment("unknown-session"),
@@ -213,8 +215,7 @@ test("extendAcknowledgment throws for unknown session", () => {
 });
 
 test("extendAcknowledgment throws for non-acknowledged session", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   // Start tracking but don't acknowledge
   manager.startSessionTracking("session-1", "task-1");
@@ -232,7 +233,7 @@ test("extendAcknowledgment throws for non-acknowledged session", () => {
 test("clearAllTimers clears all active timers", () => {
   const emitter = createMockEventEmitter();
   const config = createTestConfig();
-  const manager = new TakeoverEscalationManager(config, emitter);
+  const manager = createManager(config, emitter);
 
   manager.startSessionTracking("session-1", "task-1");
   manager.acknowledgeSession("session-1", "operator-1", "task-1");
@@ -247,16 +248,14 @@ test("clearAllTimers clears all active timers", () => {
 // =============================================================================
 
 test("evictExpiredSessionEntries handles empty queue", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   // Should not throw
   manager.evictExpiredSessionEntries();
 });
 
 test("evictExpiredSessionEntries respects eviction interval", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.evictExpiredSessionEntries();
   manager.evictExpiredSessionEntries(); // Second call is no-op
@@ -265,8 +264,7 @@ test("evictExpiredSessionEntries respects eviction interval", () => {
 });
 
 test("evictExpiredSessionEntries cleans up old entries", () => {
-  const emitter = createMockEventEmitter();
-  const manager = new TakeoverEscalationManager(createTestConfig(), emitter);
+  const manager = createManager();
 
   manager.acknowledgeSession("session-1", "operator-1", "task-1");
 

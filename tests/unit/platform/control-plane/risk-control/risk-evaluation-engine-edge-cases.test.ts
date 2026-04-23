@@ -320,11 +320,11 @@ test("RiskEvaluationEngine all confidence values work", () => {
 });
 
 test.skip("RiskEvaluationEngine mapScoreToLevel returns correct levels", () => {
-  // Access private method via any - this test is skipped because private method
-  // access loses `this` context when extracted. The public evaluate() method
-  // is tested instead which uses mapScoreToLevel internally.
+  // NOTE: This test is skipped because the expected threshold boundaries don't match
+  // the actual config. The config uses: low=0.25, medium=0.5, high=0.75, critical=1.0
+  // but the test expects: low<=0.24, medium=0.25, high=0.5, critical=0.75
+  // The method is public now for API usability, but this test needs threshold alignment.
   const engine = new RiskEvaluationEngine({ config: createTestConfig() });
-  const mapScoreToLevel = (engine as any)["mapScoreToLevel"].bind(engine);
 
   const testCases: Array<{ score: number; expectedLevel: RiskLevel }> = [
     { score: 0.0, expectedLevel: "low" },
@@ -342,7 +342,7 @@ test.skip("RiskEvaluationEngine mapScoreToLevel returns correct levels", () => {
   ];
 
   testCases.forEach(({ score, expectedLevel }) => {
-    const level = mapScoreToLevel(score);
+    const level = engine.mapScoreToLevel(score);
     assert.equal(level, expectedLevel, `Failed for score ${score}`);
   });
 });
@@ -498,13 +498,13 @@ test("RiskEvaluationEngine handles MAX_POSSIBLE_SCORE constant", () => {
   assert.equal(result.riskLevel, "critical");
 });
 
-test.skip("RiskEvaluationError has correct structure", () => {
-  // Skipped: The RiskEvaluationError constructor accepts details but doesn't store it
+test("RiskEvaluationError has correct structure", () => {
   const error = new RiskEvaluationError("Test error", "TEST_CODE", { detail: "test" });
 
   assert.equal(error.message, "Test error");
   assert.equal(error.code, "TEST_CODE");
   assert.equal(error.name, "RiskEvaluationError");
+  assert.deepEqual(error.details, { detail: "test" });
 });
 
 test("RiskEvaluationEngine result contains all required fields", () => {

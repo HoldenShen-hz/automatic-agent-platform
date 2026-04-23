@@ -152,7 +152,7 @@ test("starting new shift while previous is in_progress updates existing shift", 
 // Edge Case: Slot Version Tracking
 // ---------------------------------------------------------------------------
 
-test.skip("getSlotVersion returns 'unknown' when no slot exists - investigation needed", () => {
+test("getSlotVersion returns 'unknown' when no slot exists", () => {
   const db = createTestDb();
   const service = new TrafficRoutingService(db);
 
@@ -164,8 +164,10 @@ test.skip("getSlotVersion returns 'unknown' when no slot exists - investigation 
   const shift = service.startCanaryShift("blue", "green");
   const rollback = service.rollbackShift(shift.id, "manual", "test");
 
-  // toVersion should be unknown because green slot doesn't exist
-  assert.equal(rollback.toVersion, "unknown");
+  // fromVersion should be "unknown" because toSlot (green) doesn't exist
+  // toVersion is blue's version (v1.0.0) since we're rolling back to blue
+  assert.equal(rollback.fromVersion, "unknown");
+  assert.equal(rollback.toVersion, "v1.0.0");
 });
 
 // ---------------------------------------------------------------------------

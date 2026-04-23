@@ -154,8 +154,28 @@ function createHarness(prefix: string) {
   return { workspace, db, store, service, taskId };
 }
 
-test("OperationsGovernanceService builds SLO, runbook, oncall, and incident package views", (context) => {
-  return context.skip();
+test("OperationsGovernanceService builds SLO, runbook, oncall, and incident package views", () => {
+  const harness = createHarness("aa-ops-governance-unit-");
+  try {
+    const report = harness.service.buildReport({
+      environment: "dev",
+      taskId: harness.taskId,
+    });
+
+    // Verify report structure has all required views
+    assert.ok(report.slos, "should have slos");
+    assert.ok(Array.isArray(report.slos), "slos should be an array");
+    assert.ok(report.runbooks, "should have runbooks");
+    assert.ok(Array.isArray(report.runbooks), "runbooks should be an array");
+    assert.ok(report.oncallPolicy, "should have oncallPolicy");
+    assert.ok(report.metrics, "should have metrics");
+    assert.ok(report.doctor, "should have doctor");
+    assert.ok(report.incident, "should have incident when taskId provided");
+    assert.equal(report.environment, "dev");
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
 });
 
 test("OperationsGovernanceService fail-closes when incident task does not exist", () => {
