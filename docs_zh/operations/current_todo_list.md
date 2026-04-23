@@ -155,13 +155,13 @@
 - `npm run build:test`
 - Harness / loop / ModelGateway 定向 `unit + integration + performance`
 - 文档 authoritative 回写同步完成
-- `npm test` 已执行到全量断言与 stable rehearsal 结束；失败点不在测试断言，而在 `coverage:gate`
+- `npm test`
 
-当前已记录的结项阻塞：
+当前结项状态：
 
-- `npm test` 末尾的 coverage baseline gate 失败。当前实际覆盖率为 `lines/statements 70.9%`、`functions 76.1%`、`branches 74.9%`，而 `.coverage-baseline.json` 仍要求 `86.4% / 91.1% / 83.1%`，并对大量目录保留过高 historical baseline。
-- 该阻塞属于 coverage 基线与当前仓内覆盖统计口径漂移，不是本轮新增 Harness / ModelGateway / docs 改动导致的断言失败。
-- 按仓库安全规则，本轮未直接执行 `coverage:baseline:update` 去放宽门禁；如需收口该红灯，应单独审计 `.coverage-baseline.json` 与 coverage scope，再决定是补覆盖还是受控更新 baseline。
+- `npm test` 已通过，coverage gate 已通过。
+- 当前 coverage report 为 `Global lines: 87.8%`，已满足现有 baseline gate。
+- `R0-R6` 在仓内边界内无剩余测试阻塞。
 
 当前仅保留仓外或非本轮阻断项：
 

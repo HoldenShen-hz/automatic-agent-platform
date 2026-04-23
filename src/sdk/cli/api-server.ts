@@ -124,7 +124,7 @@ async function main(): Promise<void> {
       eventPublisher,
       semanticVectorStore,
       snapshotStore: new KnowledgeSnapshotStore({
-        snapshotPath: join(process.cwd(), "data", "knowledge", "knowledge-plane.snapshot.json"),
+        snapshotPath: join("data", "knowledge", "knowledge-plane.snapshot.json"),
       }),
     });
     for (const namespace of registryBootstrap.knowledgeNamespaces) {

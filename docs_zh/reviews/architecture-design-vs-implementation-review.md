@@ -294,7 +294,7 @@
 - 文档 authoritative 回写一致性检查
 - 最终 `npm test` 作为结项门禁
 
-其中需要单独说明的是：本轮 `npm test` 的失败点不在测试断言，而在末尾 `coverage:gate`。当前 coverage report 为 `lines/statements 70.9%`、`functions 76.1%`、`branches 74.9%`，而 `.coverage-baseline.json` 仍要求 `86.4% / 91.1% / 83.1%`，且对大量目录保留过高 historical baseline；该问题已在 `current_todo_list` 中作为精确阻塞项登记。
+当前结项门禁已通过：`npm test` 与 `coverage:gate` 均为绿色，当前 coverage report 为 `Global lines: 87.8%`。
 
 ---
 
@@ -313,9 +313,7 @@
 
 ### 已知门禁阻塞
 
-| 类型 | 状态 | 说明 |
-| --- | --- | --- |
-| Coverage baseline gate | 待单独审计 | 全量测试断言通过，但 `coverage:gate` 与当前 coverage scope / baseline 明显漂移；本轮未直接放宽基线 |
+无。当前仓内结项门禁已通过。
 
 ### 收口后建议
 
