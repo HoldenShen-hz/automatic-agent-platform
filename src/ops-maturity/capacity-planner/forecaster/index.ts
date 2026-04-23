@@ -11,3 +11,18 @@ export function forecastCapacityUsage(currentUsage: number, growthRatePercent: n
 export function forecastCapacityPeak(currentUsage: number, growthRatePercent: number, periods: number): number {
   return Math.max(...forecastCapacityUsage(currentUsage, growthRatePercent, periods), currentUsage);
 }
+
+export interface ForecastSeries {
+  readonly projectedUsage: readonly number[];
+  readonly peak: number;
+}
+
+export class CapacityForecasterService {
+  public forecast(currentUsage: number, growthRatePercent: number, periods: number): ForecastSeries {
+    const projectedUsage = forecastCapacityUsage(currentUsage, growthRatePercent, periods);
+    return {
+      projectedUsage,
+      peak: forecastCapacityPeak(currentUsage, growthRatePercent, periods),
+    };
+  }
+}

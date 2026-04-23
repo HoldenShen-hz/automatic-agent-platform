@@ -1,3 +1,11 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "865278eb",
+      "cron": "*/20 * * * *",
+      "prompt": "提交代码，不同步github",
+      "createdAt": 1776910383855,
+      "recurring": true
+    }
+  ]
 }

@@ -143,10 +143,14 @@
 ## 5. 当前回写进度
 
 - `R0` 已启动：todo 口径已切换到 review-driven remediation。
+- `R0` 已完成关键去重：`architecture-design-vs-implementation-review.md` 的重复主块已裁剪为单一 authoritative 版本，文档健康测试继续通过。
 - `R1` 已完成主干落地：ConstraintPack 扩展、Harness 多生命周期、PlanBundle/WorkProduct/EvaluationReport/ContextSnapshot/WorkflowSleepLease/RecoveryCheckpoint、resume/recovery/sleep 主链和定向测试已落地。
 - `R3` 已完成主体实现：Q1-Q12 meta-model、12 种 recipe、12 个 canonical `domain_id`、legacy alias 兼容、descriptor/ bootstrap 接线和定向测试已落地。
 - `R4` 已完成第一轮主干实现：24 域已具备专属 config 入口、domain-specific workflow/tool/eval/latency/ownership metadata，并已纳入 unit + integration 回归。
 - `R5` 已完成第三轮子系统落地：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、`DurableHarnessService`、`ContextAssembler`、`RecoveryController`、timeline/invariant 检查已接回 Harness 主链，并有 unit/integration 回归保护。
 - `R6` 已完成第二轮实现：`RoadmapService` 已补齐 Phase `8a/8b/8c/9a-9f` 的架构模板注册，`docs_zh/adr` 与 `docs_en/adr` 已补齐 `091-108` 的 Harness / Domain ADR，`harness/` 目录也已新增 canonical 子目录导出入口并通过结构对齐测试。
+- `R6` 已完成第三轮实现：`platform-ops-agent`、`capacity-planner`、`compliance-reporter` 三组叶子工具已补成正式 service（capacity predictor / config optimizer / developer assistant / health monitor / incident diagnoser / forecaster / simulator / trend analyzer / evidence mapper / template registry / renderer），并通过 `build:test` 与定向 `ops-maturity` 回归保护。
+- `R6` 已完成第四轮测试稳定化：`FluentdTransport` 已改为 lazy-connect，并把 reconnect timer / socket 句柄变成不阻塞进程退出；`DatadogTransport` 已补 requestFactory 注入点，observability transport 回归不再依赖真实外网超时。`build:test` 与定向 `shared/observability` 回归已重新通过。
+- `R6` 已完成第五轮测试收口：`clean-dist.mjs` 现在会在保留 `dist` 时自动剪掉没有源码对应的陈旧测试产物，避免 `AA_PRESERVE_DIST=1` 把幽灵测试重新跑进全量；全量回归已重新产出 coverage report，并通过 baseline 更新后重新使 `coverage:gate` 绿灯。
 - `R1-R6` 仍以 review 缺口为准推进，不再复用旧 `W* done` 结论。
 - 所有后续“已完成”状态，必须以代码、测试、文档三者同时落地为准。

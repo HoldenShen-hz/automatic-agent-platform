@@ -15,6 +15,14 @@ export interface CapacityPrediction {
   readonly recommendation: string;
 }
 
+export interface CapacityRiskAssessment {
+  readonly riskLevel: "low" | "medium" | "high";
+  readonly reasonCodes: readonly string[];
+  readonly trend: CapacityTrend | null;
+  readonly confidencePercent: number;
+  readonly recommendedBufferPercent: number;
+}
+
 export interface CapacityTrend {
   readonly direction: "growing" | "stable" | "shrinking";
   readonly growthRatePercent: number;
@@ -193,4 +201,101 @@ export function projectFutureCapacity(
   }
 
   return projections;
+}
+
+export class OpsCapacityPredictorService {
+  private readonly thresholds: CapacityThreshold;
+
+  public constructor(thresholds: CapacityThreshold = DEFAULT_THRESHOLDS) {
+    this.thresholds = thresholds;
+  }
+
+  public assessRisk(
+    currentLoad: number,
+    projectedLoad: number,
+    samples: readonly CapacitySample[] = [],
+  ): CapacityRiskAssessment {
+    const trend = analyzeTrend(samples);
+    const riskLevel = predictCapacityRiskWithHistory(currentLoad, projectedLoad, samples, this.thresholds);
+    const reasonCodes = this.buildReasonCodes(currentLoad, projectedLoad, trend, riskLevel);
+
+    return {
+      riskLevel,
+      reasonCodes,
+      trend,
+      confidencePercent: this.calculateConfidence(samples, trend),
+      recommendedBufferPercent: this.calculateRecommendedBuffer(riskLevel, trend),
+    };
+  }
+
+  public buildPrediction(
+    currentLoad: number,
+    projectedLoad: number,
+    currentCapacity: number,
+    projectedCapacity: number,
+    samples: readonly CapacitySample[] = [],
+  ): CapacityPrediction & { readonly assessment: CapacityRiskAssessment } {
+    const prediction = calculateCapacityPrediction(
+      currentLoad,
+      projectedLoad,
+      currentCapacity,
+      projectedCapacity,
+      samples,
+    );
+    const assessment = this.assessRisk(currentLoad, projectedLoad, samples);
+    return {
+      ...prediction,
+      riskLevel: assessment.riskLevel,
+      assessment,
+    };
+  }
+
+  private calculateConfidence(samples: readonly CapacitySample[], trend: CapacityTrend | null): number {
+    if (samples.length >= 10 && trend != null) {
+      return 92;
+    }
+    if (samples.length >= 5) {
+      return 80;
+    }
+    if (samples.length >= 3) {
+      return 65;
+    }
+    return 50;
+  }
+
+  private calculateRecommendedBuffer(
+    riskLevel: "low" | "medium" | "high",
+    trend: CapacityTrend | null,
+  ): number {
+    const base = riskLevel === "high" ? 30 : riskLevel === "medium" ? 20 : 10;
+    if (trend?.direction === "growing") {
+      return base + 5;
+    }
+    if (trend?.direction === "shrinking") {
+      return Math.max(5, base - 5);
+    }
+    return base;
+  }
+
+  private buildReasonCodes(
+    currentLoad: number,
+    projectedLoad: number,
+    trend: CapacityTrend | null,
+    riskLevel: "low" | "medium" | "high",
+  ): string[] {
+    const ratio = currentLoad === 0 ? projectedLoad : projectedLoad / currentLoad;
+    const reasonCodes = [`capacity.risk.${riskLevel}`];
+    if (ratio >= 2) {
+      reasonCodes.push("capacity.projected_ratio.ge_2x");
+    } else if (ratio >= 1.2) {
+      reasonCodes.push("capacity.projected_ratio.ge_1_2x");
+    }
+    if (trend?.direction === "growing") {
+      reasonCodes.push("capacity.trend.growing");
+    }
+    if (trend?.projectedCapacityExhaustionAt != null) {
+      reasonCodes.push("capacity.exhaustion.predicted");
+    }
+    return reasonCodes;
+  }
 }

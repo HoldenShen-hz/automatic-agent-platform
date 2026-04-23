@@ -1,7 +1,7 @@
 import { nowIso } from "../../platform/contracts/types/ids.js";
-import { forecastCapacityUsage } from "./forecaster/index.js";
-import { simulateCapacityScenario, type CapacityScenarioInput } from "./simulator/index.js";
-import { analyzeCapacityTrend } from "./trend-analyzer/index.js";
+import { CapacityForecasterService, forecastCapacityUsage } from "./forecaster/index.js";
+import { CapacityScenarioSimulatorService, simulateCapacityScenario, type CapacityScenarioInput } from "./simulator/index.js";
+import { CapacityTrendAnalyzerService, analyzeCapacityTrend } from "./trend-analyzer/index.js";
 
 export interface CapacitySignal {
   readonly resourceType: string;
@@ -45,6 +45,9 @@ export interface CapacityRecommendation {
 
 export class CapacityPlanningService {
   private readonly signals = new Map<string, CapacitySignal[]>();
+  private readonly forecaster = new CapacityForecasterService();
+  private readonly simulator = new CapacityScenarioSimulatorService();
+  private readonly analyzer = new CapacityTrendAnalyzerService();
 
   public recordSignal(signal: CapacitySignal): CapacitySignal {
     const key = this.signalKey(signal.resourceType, signal.regionId);
@@ -66,10 +69,10 @@ export class CapacityPlanningService {
     if (window.length === 0) {
       throw new Error(`capacity_planning.empty_window:${resourceType}`);
     }
-    const trend = analyzeCapacityTrend(window.map((item) => item.usage));
+    const trend = this.analyzer.analyze(window.map((item) => item.usage));
     const latestUsage = window.at(-1)!.usage;
     const growthRatePercent = this.estimateGrowthRate(window);
-    const projectedUsage = forecastCapacityUsage(latestUsage, growthRatePercent, periods);
+    const projectedUsage = this.forecaster.forecast(latestUsage, growthRatePercent, periods).projectedUsage;
     const band = Math.max(1, Number((projectedUsage.at(-1)! * 0.1).toFixed(2)));
 
     return {
@@ -93,7 +96,7 @@ export class CapacityPlanningService {
   public compareScenarios(scenarios: readonly CapacityScenario[]): Array<CapacityScenario & { readonly projectedUnits: number }> {
     return scenarios.map((scenario) => ({
       ...scenario,
-      projectedUnits: simulateCapacityScenario(scenario),
+      projectedUnits: this.simulator.simulate(scenario).projectedUnits,
     })).sort((left, right) => left.projectedUnits - right.projectedUnits);
   }
 

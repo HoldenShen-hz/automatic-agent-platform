@@ -1,0 +1,15 @@
+{
+  "packId": "123-pack",
+  "version": "0.1.0",
+  "domain": "testing",
+  "owner": "test@example.com",
+  "capabilities": [
+    {
+      "capabilityKey": "query.execute",
+      "maturity": "ga",
+      "requiredContracts": [
+        "runtime_execution_contract"
+      ]
+    }
+  ]
+}

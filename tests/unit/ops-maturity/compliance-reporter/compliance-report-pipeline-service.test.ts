@@ -7,7 +7,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  ComplianceReportRendererService,
   ComplianceReportPipelineService,
+  ComplianceTemplateRegistryService,
+  EvidenceMapperService,
   type ComplianceReportRequest,
   type ComplianceReportTemplateDefinition,
   type EvidenceReference,
@@ -173,4 +176,49 @@ test("ComplianceReportPipelineService.generate handles GDPR template with data e
   assert.equal(report.templateId, "gdpr-data-processing");
   assert.equal(report.framework, "GDPR");
   assert.equal(report.status, "complete");
+});
+
+test("EvidenceMapperService summarizes coverage ratio", () => {
+  const service = new EvidenceMapperService();
+  const coverage = service.summarizeCoverage(
+    createEvidence(["access_log", "incident_log"]),
+    ["access_log", "change_record", "incident_log"],
+  );
+
+  assert.equal(coverage.coverageRatio, 0.67);
+  assert.deepEqual(coverage.missingTypes, ["change_record"]);
+});
+
+test("EvidenceMapperService treats empty required types as fully covered", () => {
+  const service = new EvidenceMapperService();
+  const coverage = service.summarizeCoverage([], []);
+
+  assert.equal(coverage.coverageRatio, 1);
+  assert.deepEqual(coverage.coveredTypes, []);
+  assert.deepEqual(coverage.missingTypes, []);
+});
+
+test("ComplianceTemplateRegistryService finds templates by framework", () => {
+  const service = new ComplianceTemplateRegistryService(createTestTemplates());
+  const templates = service.listByFramework("SOC2");
+
+  assert.equal(templates.length, 1);
+  assert.equal(templates[0]?.templateId, "soc2-type2");
+});
+
+test("ComplianceTemplateRegistryService returns null for unknown template and exposes all", () => {
+  const service = new ComplianceTemplateRegistryService(createTestTemplates());
+
+  assert.equal(service.find("missing-template"), null);
+  assert.equal(service.all().length, 2);
+});
+
+test("ComplianceReportRendererService renders JSON output", () => {
+  const service = new ComplianceReportRendererService();
+  const output = service.renderJson("report-title", [
+    { title: "Template", lines: ["a=1"] },
+  ]);
+
+  assert.ok(output.includes("\"title\": \"report-title\""));
+  assert.ok(output.includes("\"Template\""));
 });

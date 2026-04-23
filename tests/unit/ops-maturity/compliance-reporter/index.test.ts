@@ -7,3 +7,9 @@ test("compliance-reporter index exports ComplianceReportPipelineService", () => 
   assert.ok(complianceReporter);
   assert.equal(typeof complianceReporter.ComplianceReportPipelineService, "function");
 });
+
+test("compliance-reporter index exports new registry and renderer services", () => {
+  assert.equal(typeof complianceReporter.ComplianceTemplateRegistryService, "function");
+  assert.equal(typeof complianceReporter.ComplianceReportRendererService, "function");
+  assert.equal(typeof complianceReporter.EvidenceMapperService, "function");
+});

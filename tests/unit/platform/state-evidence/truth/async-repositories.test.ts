@@ -1,71 +1,34 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AsyncApprovalRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/approval-repository.js";
-import { AsyncArtifactRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/artifact-repository.js";
-import { AsyncBillingRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/billing-repository.js";
-import { AsyncDispatchRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/dispatch-repository.js";
-import { AsyncDivisionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/division-repository.js";
-import { AsyncExecutionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/execution-repository.js";
-import { AsyncEventRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/event-repository.js";
-import { AsyncLeaseRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/lease-repository.js";
-import { AsyncLockRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/lock-repository.js";
-import { AsyncMemoryRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/memory-repository.js";
-import { AsyncOperationsRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/operations-repository.js";
-import { AsyncReleaseRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/release-repository.js";
-import { AsyncSecretRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/secret-repository.js";
-import { AsyncSessionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/session-repository.js";
-import { AsyncTaskRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
-import { AsyncWorkflowRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/workflow-repository.js";
+import {
+  AsyncCostManagementRepository,
+  type BudgetAlertRecord,
+  type CostReportRecord,
+  type TokenUsageDailyRecord,
+} from "../../../../../src/platform/state-evidence/truth/async-repositories/cost-management-repository.js";
+import {
+  AsyncDelegationRepository,
+  type DelegationEventRecord,
+  type DelegationRecord,
+} from "../../../../../src/platform/state-evidence/truth/async-repositories/delegation-repository.js";
+import { AsyncEvolutionRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/evolution-repository.js";
+import { AsyncIntelligenceRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/intelligence-repository.js";
+import {
+  AsyncMarketplaceListingRepository,
+  type MarketplaceListingRecord,
+  type PackDownloadRecord,
+  type PackReviewRecord,
+} from "../../../../../src/platform/state-evidence/truth/async-repositories/marketplace-repository-ext.js";
+import { AsyncOrganizationRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/organization-repository.js";
+import { AsyncPromptRepository } from "../../../../../src/platform/state-evidence/truth/async-repositories/prompt-repository.js";
+import {
+  AsyncTenantRepository,
+  type TenantBillingRecord,
+  type TenantQuotaRecord,
+  type TenantRecord,
+} from "../../../../../src/platform/state-evidence/truth/async-repositories/tenant-repository.js";
 import type { AsyncSqlConnection, AsyncQueryResult } from "../../../../../src/platform/state-evidence/truth/async-sql-database.js";
-import type {
-  ApprovalRecord,
-  ArtifactRecord,
-  AnalyticsFactRecord,
-  BillingAccountRecord,
-  BillingInvoiceRecord,
-  BillingPaymentSessionRecord,
-  CompactionRecord,
-  CostEventRecord,
-  DataMovementJobRecord,
-  DeadLetterRecord,
-  DeploymentExecutionReportRecord,
-  EntitlementDecisionRecord,
-  EnterpriseCapabilityReportRecord,
-  EnterpriseGovernanceReportRecord,
-  EnvironmentPromotionHistoryRecord,
-  EventConsumerAckRecord,
-  EventDeadLetterRecord,
-  EventRecord,
-  ExecutionPrecheckRecord,
-  ExecutionRecord,
-  FileLockRecord,
-  GatewayTargetRecord,
-  IncidentHandoffRecord,
-  LedgerEntryRecord,
-  LeaseAuditRecord,
-  MemoryRecord,
-  MessageRecord,
-  OperatorActionRecord,
-  QuotaCounterRecord,
-  ArchiveBundleRecord,
-  ReplayDatasetRecord,
-  ReleaseBundleRecord,
-  ReleaseExecutionReportRecord,
-  SecretLeaseRecord,
-  SecretRegistryRecord,
-  SecretRotationEventRecord,
-  SecretUsageAuditRecord,
-  SessionEventRecord,
-  SessionRecord,
-  SessionSummaryRecord,
-  StepOutputRecord,
-  TakeoverSessionRecord,
-  TaskRecord,
-  UsageEventRecord,
-  WorkerSnapshotRecord,
-  WorkflowStateRecord,
-} from "../../../../../src/platform/contracts/types/domain.js";
 
 type SqlCall = {
   method: "query" | "queryOne" | "execute";
@@ -104,1597 +67,1067 @@ function createConnection(options: {
 
 const now = "2026-04-16T10:00:00.000Z";
 
-function taskRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
+function costReportRecord(overrides: Partial<CostReportRecord> = {}): CostReportRecord {
   return {
-    id: "task-1",
-    parentId: null,
-    rootId: "task-1",
-    divisionId: "general_ops",
+    reportId: "report-1",
     tenantId: "tenant-a",
-    title: "Async task",
-    status: "queued",
-    source: "user",
-    priority: "normal",
-    inputJson: "{}",
-    normalizedInputJson: "{}",
-    outputJson: null,
-    estimatedCostUsd: null,
-    actualCostUsd: 0,
-    errorCode: null,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: null,
-    ...overrides,
-  };
-}
-
-function sessionRecord(overrides: Partial<SessionRecord> = {}): SessionRecord {
-  return {
-    id: "session-1",
-    taskId: "task-1",
-    channel: "cli",
-    status: "open",
-    externalSessionId: null,
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function messageRecord(overrides: Partial<MessageRecord> = {}): MessageRecord {
-  return {
-    id: "message-1",
-    sessionId: "session-1",
-    direction: "inbound",
-    messageType: "text",
-    content: "hello",
-    partsJson: null,
-    attachmentsJson: null,
-    createdAt: now,
-    ...overrides,
-  };
-}
-
-function executionRecord(overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
-  return {
-    id: "execution-1",
-    taskId: "task-1",
-    workflowId: "single_agent_minimal",
-    parentExecutionId: null,
-    agentId: "agent-1",
-    roleId: "general_executor",
-    runKind: "task_run",
-    status: "executing",
-    inputRef: null,
-    traceId: "trace-1",
-    attempt: 1,
-    timeoutMs: 60000,
-    budgetUsdLimit: 1,
-    requiresApproval: 0,
-    sandboxMode: "workspace_write",
-    allowedToolsJson: "[]",
-    allowedPathsJson: "[]",
-    maxRetries: 0,
-    retryBackoff: "none",
-    lastErrorCode: null,
-    lastErrorMessage: null,
-    startedAt: now,
-    finishedAt: null,
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function approvalRecord(overrides: Partial<ApprovalRecord> = {}): ApprovalRecord {
-  return {
-    id: "approval-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    status: "requested",
-    requestJson: "{}",
-    responseJson: null,
-    timeoutPolicy: "5m",
-    createdAt: now,
-    respondedAt: null,
-    ...overrides,
-  };
-}
-
-function artifactRecord(overrides: Partial<ArtifactRecord> = {}): ArtifactRecord {
-  return {
-    artifactId: "artifact-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    stepId: "step-1",
-    kind: "output",
-    storagePath: "/tmp/output.json",
-    fileName: "output.json",
-    mimeType: "application/json",
-    sizeBytes: 128,
-    checksum: "abc123",
-    lineageJson: "[]",
-    createdAt: now,
-    ...overrides,
-  };
-}
-
-function dataMovementJobRecord(overrides: Partial<DataMovementJobRecord> = {}): DataMovementJobRecord {
-  return {
-    jobId: "job-1",
-    tenantId: "tenant-a",
-    organizationId: "org-1",
-    workspaceId: "ws-1",
-    sourceNamespaceId: "ns-source",
-    targetNamespaceId: "ns-target",
-    sourcePlane: "analytics",
-    targetPlane: "artifact",
-    movementType: "analytics_etl",
-    inputRefsJson: "[]",
-    status: "completed",
-    startedAt: now,
-    finishedAt: now,
-    reportJson: "{}",
-    ...overrides,
-  };
-}
-
-function eventRecord(overrides: Partial<EventRecord> = {}): EventRecord {
-  return {
-    id: "event-1",
-    taskId: "task-1",
-    sessionId: null,
-    executionId: "execution-1",
-    eventType: "task:created",
-    eventTier: "tier_1",
-    payloadJson: "{}",
-    traceId: "trace-1",
-    createdAt: now,
-    ...overrides,
-  };
-}
-
-function eventAckRecord(overrides: Partial<EventConsumerAckRecord> = {}): EventConsumerAckRecord {
-  return {
-    id: "ack-1",
-    eventId: "event-1",
-    consumerId: "consumer-1",
-    status: "pending",
-    lastAttemptAt: now,
-    ackedAt: null,
-    errorCode: null,
-    attemptCount: 0,
-    ...overrides,
-  };
-}
-
-function eventDeadLetterRecord(overrides: Partial<EventDeadLetterRecord> = {}): EventDeadLetterRecord {
-  return {
-    id: "dead-letter-1",
-    originalEventId: "event-1",
-    eventType: "task:created",
-    payloadJson: "{}",
-    consumerId: "consumer-1",
-    failureCount: 2,
-    lastError: "boom",
-    deadLetteredAt: now,
-    reprocessedAt: null,
-    reprocessResult: null,
-    ...overrides,
-  };
-}
-
-function leaseAuditRecord(overrides: Partial<LeaseAuditRecord> = {}): LeaseAuditRecord {
-  return {
-    id: "lease-audit-1",
-    executionId: "execution-1",
-    leaseId: "lease-1",
-    workerId: "worker-1",
-    fencingToken: 1,
-    eventType: "lease_granted",
-    reasonCode: "initial",
-    recordedAt: now,
-    ...overrides,
-  };
-}
-
-function fileLockRecord(overrides: Partial<FileLockRecord> = {}): FileLockRecord {
-  return {
-    id: "lock-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    lockScope: "task",
-    resourcePath: "/tmp/file.txt",
-    lockMode: "exclusive",
-    ownerId: "worker-1",
-    expiresAt: "2026-04-16T12:00:00.000Z",
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function workflowStateRecord(overrides: Partial<WorkflowStateRecord> = {}): WorkflowStateRecord {
-  return {
-    taskId: "task-1",
-    divisionId: "general_ops",
-    workflowId: "wf-1",
-    currentStepIndex: 0,
-    status: "running",
-    outputsJson: "{}",
-    lastErrorCode: null,
-    retryCount: 0,
-    resumableFromStep: null,
-    startedAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function stepOutputRecord(overrides: Partial<StepOutputRecord> = {}): StepOutputRecord {
-  return {
-    id: "step-output-1",
-    taskId: "task-1",
-    stepId: "step-1",
-    roleId: "general_executor",
-    status: "succeeded",
-    dataJson: '{"ok":true}',
-    summary: "done",
-    artifactsJson: null,
-    tokenCost: 42,
-    durationMs: 1200,
-    validationJson: null,
-    producedAt: now,
-    ...overrides,
-  };
-}
-
-function analyticsFactRecord(overrides: Partial<AnalyticsFactRecord> = {}): AnalyticsFactRecord {
-  return {
-    factId: "fact-1",
-    namespaceId: "ns-1",
-    tenantId: "tenant-a",
-    organizationId: "org-1",
-    workspaceId: "ws-1",
-    metricName: "runtime.cost",
-    dimensionJson: "{}",
-    value: 12.5,
-    windowStart: now,
-    windowEnd: "2026-04-16T11:00:00.000Z",
-    sourceRef: "task-1",
-    capturedAt: now,
-    ...overrides,
-  };
-}
-
-function archiveBundleRecord(overrides: Partial<ArchiveBundleRecord> = {}): ArchiveBundleRecord {
-  return {
-    bundleId: "bundle-1",
-    namespaceId: "ns-1",
-    tenantId: "tenant-a",
-    organizationId: "org-1",
-    workspaceId: "ws-1",
-    bundleType: "session_archive",
-    sourceRefsJson: "[]",
-    summaryRef: "summary-1",
-    createdAt: now,
-    ...overrides,
-  };
-}
-
-function replayDatasetRecord(overrides: Partial<ReplayDatasetRecord> = {}): ReplayDatasetRecord {
-  return {
-    datasetId: "dataset-1",
-    namespaceId: "ns-1",
-    tenantId: "tenant-a",
-    organizationId: "org-1",
-    workspaceId: "ws-1",
-    datasetType: "golden_replay",
-    sampleRefsJson: "[]",
-    truthRefsJson: "[]",
-    version: "v1",
-    createdAt: now,
-    ...overrides,
-  };
-}
-
-function costEventRecord(overrides: Partial<CostEventRecord> = {}): CostEventRecord {
-  return {
-    id: "cost-1",
-    taskId: "task-1",
-    sessionId: "session-1",
-    executionId: "execution-1",
-    agentId: "agent-1",
-    provider: "openai",
-    model: "gpt-5.4-mini",
-    inputTokens: 100,
-    outputTokens: 50,
-    costUsd: 0.12,
-    budgetScope: "task_execution",
-    providerRequestId: "req-1",
-    pricingVersion: "2026-04",
-    createdAt: now,
-    ...overrides,
-  };
-}
-
-function billingAccountRecord(overrides: Partial<BillingAccountRecord> = {}): BillingAccountRecord {
-  return {
-    accountId: "acct-1",
-    ownerId: "owner-1",
-    workspaceId: "ws-1",
-    planId: "plan-pro",
-    status: "active",
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function billingInvoiceRecord(overrides: Partial<BillingInvoiceRecord> = {}): BillingInvoiceRecord {
-  return {
-    invoiceId: "inv-1",
-    accountId: "acct-1",
-    workspaceId: "ws-1",
-    tenantId: "tenant-a",
-    periodId: "2026-04",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-30T23:59:59.999Z",
+    totalCostUsd: 42.5,
     currency: "USD",
-    subtotalUsd: 10,
-    taxUsd: 1,
-    totalUsd: 11,
-    status: "open",
-    summaryJson: '{"lines":1}',
-    externalInvoiceRef: null,
-    dueAt: "2026-04-30T00:00:00.000Z",
+    resourceCostsJson: '{"compute":30,"storage":12.5}',
+    submittedBy: "system",
+    submittedAt: now,
     createdAt: now,
-    updatedAt: now,
-    paidAt: null,
     ...overrides,
   };
 }
 
-function billingPaymentSessionRecord(overrides: Partial<BillingPaymentSessionRecord> = {}): BillingPaymentSessionRecord {
+function budgetAlertRecord(overrides: Partial<BudgetAlertRecord> = {}): BudgetAlertRecord {
   return {
-    sessionId: "pay-1",
-    invoiceId: "inv-1",
-    accountId: "acct-1",
-    gatewayKind: "stripe",
-    gatewaySessionRef: "stripe-ref-1",
-    checkoutUrl: "https://payments.example/pay-1",
-    status: "pending",
-    amountUsd: 11,
-    currency: "USD",
-    expiresAt: "2026-04-16T12:00:00.000Z",
+    alertId: "alert-1",
+    tenantId: "tenant-a",
+    budgetType: "monthly_spend",
+    thresholdUsd: 1000,
+    currentSpendUsd: 750,
+    alertLevel: "warning",
+    triggeredAt: null,
+    acknowledgedAt: null,
     createdAt: now,
     updatedAt: now,
-    settledAt: null,
-    failureCode: null,
     ...overrides,
   };
 }
 
-function usageEventRecord(overrides: Partial<UsageEventRecord> = {}): UsageEventRecord {
+function tokenUsageDailyRecord(overrides: Partial<TokenUsageDailyRecord> = {}): TokenUsageDailyRecord {
   return {
     usageId: "usage-1",
-    accountId: "acct-1",
-    subjectId: "subject-1",
-    workspaceId: "ws-1",
     tenantId: "tenant-a",
-    taskId: "task-1",
-    executionId: "execution-1",
+    packId: "pack-1",
+    date: "2026-04-15",
+    modelId: "gpt-5.4-mini",
+    inputTokens: 10000,
+    outputTokens: 5000,
+    requestCount: 100,
+    costUsd: 1.25,
     stepId: null,
-    metricType: "tokens",
-    quantity: 150,
-    source: "runtime",
-    unitPriceUsd: 0.001,
-    capturedAt: now,
-    ...overrides,
-  };
-}
-
-function quotaCounterRecord(overrides: Partial<QuotaCounterRecord> = {}): QuotaCounterRecord {
-  return {
-    counterId: "quota-1",
-    accountId: "acct-1",
-    metricType: "tokens",
-    windowStart: now,
-    windowEnd: "2026-04-30T00:00:00.000Z",
-    usedQuantity: 150,
-    limitQuantity: 1000,
-    limitType: "hard",
-    resetPolicy: "calendar_month",
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function ledgerEntryRecord(overrides: Partial<LedgerEntryRecord> = {}): LedgerEntryRecord {
-  return {
-    entryId: "ledger-1",
-    accountId: "acct-1",
-    usageId: "usage-1",
-    periodId: "2026-04",
-    entryType: "usage_charge",
-    amountUsd: 11,
-    currency: "USD",
-    sourceRef: "invoice:inv-1",
-    recordedAt: now,
-    ...overrides,
-  };
-}
-
-function entitlementDecisionRecord(overrides: Partial<EntitlementDecisionRecord> = {}): EntitlementDecisionRecord {
-  return {
-    decisionId: "decision-1",
-    accountId: "acct-1",
-    featureKey: "priority-routing",
-    metricType: "tokens",
-    requestedQuantity: 10,
-    allowed: 1,
-    decisionType: "allow",
-    reasonCode: "within_limit",
-    policyVersion: "v1",
-    evaluatedAt: now,
-    ...overrides,
-  };
-}
-
-function workerSnapshotRecord(overrides: Partial<WorkerSnapshotRecord> = {}): WorkerSnapshotRecord {
-  return {
-    workerId: "worker-1",
-    status: "idle",
-    placement: "local",
-    isolationLevel: "standard",
-    repoVersion: "v1.0.0",
-    remoteSessionStatus: "connected",
-    lastAcknowledgedStreamOffset: "100",
-    streamResumeSuccessRate: 0.95,
-    credentialRefreshSuccessRate: 1,
-    sessionConsistencyCheckStatus: "passed",
-    sessionConsistencyCheckedAt: now,
-    workspaceSyncStatus: "aligned",
-    workspaceSyncCheckedAt: now,
-    saturation: 0.5,
-    activeLeaseCount: 1,
-    meanStartupLatencyMs: 150,
-    sandboxSuccessRate: 0.99,
-    repoCacheHitRate: 0.85,
-    registrationVerifiedAt: now,
-    registrationChallengeId: "challenge-1",
-    capabilitiesJson: '["code_edit"]',
-    runningExecutionsJson: '["execution-1"]',
-    maxConcurrency: 10,
-    queueAffinity: null,
-    runtimeInstanceId: null,
-    restartedFromRuntimeInstanceId: null,
-    restartGeneration: 0,
-    cpuPct: 10.5,
-    memoryMb: 256,
-    toolBacklogCount: 0,
-    currentStepId: null,
-    lastProgressAt: now,
-    lastHeartbeatAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-function memoryRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
-  return {
-    id: "memory-1",
-    taskId: "task-1",
-    sessionId: "session-1",
-    agentId: "agent-1",
-    executionId: "execution-1",
-    memoryLayer: "layer_3",
-    scope: "task",
-    contentJson: '{"note":"remember"}',
-    classification: "fact",
-    sourceTrustLevel: "trusted",
-    qualityScore: 0.9,
-    hitCount: 1,
-    createdAt: now,
-    lastAccessedAt: now,
-    expiresAt: null,
-    revokedAt: null,
-    revocationReason: null,
-    kind: "fact",
-    status: "active",
-    importanceScore: 0.8,
-    freshnessScore: 0.9,
-    contentHash: "hash-1",
-    ...overrides,
-  };
-}
-
-function secretRegistryRecord(overrides: Partial<SecretRegistryRecord> = {}): SecretRegistryRecord {
-  return {
-    secretRef: "secret://provider/openai",
-    displayName: "OpenAI key",
-    category: "provider_api_key",
-    providerKind: "vault",
-    scopeType: "tenant",
-    scopeRef: "tenant-a",
-    status: "active",
-    rotationPolicyJson: '{"days":30}',
-    metadataJson: '{"owner":"ops"}',
-    currentVersion: "v2",
-    lastRotatedAt: now,
-    nextRotationDueAt: "2026-05-16T10:00:00.000Z",
     createdAt: now,
     updatedAt: now,
     ...overrides,
   };
 }
 
-function secretUsageAuditRecord(overrides: Partial<SecretUsageAuditRecord> = {}): SecretUsageAuditRecord {
+function delegationRecord(overrides: Partial<DelegationRecord> = {}): DelegationRecord {
   return {
-    auditId: "audit-1",
-    secretRef: "secret://provider/openai",
-    providerKind: "vault",
-    taskId: "task-1",
-    executionId: "execution-1",
-    requestedBy: "planner",
-    grantedTo: "worker-1",
-    usagePurpose: "publish_release",
-    resolvedAt: now,
+    delegationId: "delegation-1",
+    parentAgentId: "agent-parent",
+    childAgentId: "agent-child",
+    delegationChainJson: '["agent-parent","agent-child"]',
+    status: "active",
+    depth: 2,
     expiresAt: "2026-04-16T12:00:00.000Z",
-    maskedValue: "sk-***",
-    metadataJson: '{"request":"release"}',
+    resultRef: null,
+    createdAt: now,
+    updatedAt: now,
     ...overrides,
   };
 }
 
-function secretRotationEventRecord(overrides: Partial<SecretRotationEventRecord> = {}): SecretRotationEventRecord {
+function delegationEventRecord(overrides: Partial<DelegationEventRecord> = {}): DelegationEventRecord {
   return {
-    eventId: "rotation-1",
-    secretRef: "secret://provider/openai",
-    providerKind: "vault",
-    rotationMode: "scheduled",
+    eventId: "event-delegation-1",
+    delegationId: "delegation-1",
+    eventType: "delegation_created",
+    payloadJson: '{"reason":"parallel_work"}',
+    createdAt: now,
+    ...overrides,
+  };
+}
+
+test("AsyncCostManagementRepository writes and reads cost reports", async () => {
+  const report = costReportRecord();
+  const { connection, calls } = createConnection({
+    queryRows: [[report]],
+    queryOneRows: [report, undefined],
+  });
+  const repo = new AsyncCostManagementRepository(connection);
+
+  await repo.insertCostReport(report);
+  assert.equal(await repo.getCostReport("report-1"), report);
+  assert.equal(await repo.getCostReport("missing-report"), null);
+
+  assert.match(calls[0]!.sql, /INSERT INTO cost_reports/);
+  assert.match(calls[1]!.sql, /FROM cost_reports WHERE report_id = \$1/);
+});
+
+test("AsyncCostManagementRepository lists cost reports by tenant with limit", async () => {
+  const report = costReportRecord();
+  const { connection, calls } = createConnection({
+    queryRows: [[report], [report]],
+  });
+  const repo = new AsyncCostManagementRepository(connection);
+
+  assert.deepEqual(await repo.listCostReportsByTenant("tenant-a", 10), [report]);
+  assert.deepEqual(await repo.listCostReportsByTenant(null, 5), [report]);
+
+  assert.deepEqual(calls[0]!.params, ["tenant-a", 10]);
+  assert.deepEqual(calls[1]!.params, [5]);
+});
+
+test("AsyncCostManagementRepository writes and reads budget alerts", async () => {
+  const alert = budgetAlertRecord();
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1, 1, 2],
+    queryRows: [[alert]],
+    queryOneRows: [alert, undefined],
+  });
+  const repo = new AsyncCostManagementRepository(connection);
+
+  await repo.insertBudgetAlert(alert);
+  const updated = await repo.updateBudgetAlert({
+    alertId: "alert-1",
+    currentSpendUsd: 800,
+    alertLevel: "critical",
+    triggeredAt: now,
+    updatedAt: now,
+  });
+  assert.equal(updated, 1);
+  await repo.insertBudgetAlert({ ...alert, alertId: "alert-2" } as BudgetAlertRecord);
+  assert.equal(await repo.getBudgetAlert("alert-1"), alert);
+  assert.equal(await repo.getBudgetAlert("missing-alert"), null);
+
+  assert.match(calls[0]!.sql, /INSERT INTO budget_alerts/);
+  assert.match(calls[1]!.sql, /UPDATE budget_alerts SET/);
+  assert.match(calls[1]!.sql, /current_spend_usd = \$2/);
+  assert.match(calls[1]!.sql, /alert_level = \$3/);
+});
+
+test("AsyncCostManagementRepository lists budget alerts by tenant and active alerts", async () => {
+  const alert = budgetAlertRecord({ alertId: "alert-1", triggeredAt: null, acknowledgedAt: null });
+  const activeAlert = budgetAlertRecord({ alertId: "active-alert", triggeredAt: now, acknowledgedAt: null });
+  const { connection, calls } = createConnection({
+    queryRows: [[alert], [activeAlert], [activeAlert]],
+  });
+  const repo = new AsyncCostManagementRepository(connection);
+
+  const resultTenant = await repo.listBudgetAlertsByTenant("tenant-a");
+  assert.equal(resultTenant.length, 1);
+  assert.equal(resultTenant[0]!.alertId, "alert-1");
+
+  const resultNull = await repo.listBudgetAlertsByTenant(null);
+  assert.equal(resultNull.length, 1);
+
+  const activeResult = await repo.listActiveAlerts();
+  assert.equal(activeResult.length, 1);
+  assert.equal(activeResult[0]!.alertId, "active-alert");
+
+  assert.deepEqual(calls[0]!.params, ["tenant-a"]);
+});
+
+test("AsyncCostManagementRepository upserts and queries token usage daily", async () => {
+  const usage = tokenUsageDailyRecord();
+  // queryOneRows: [usage, undefined] for getTokenUsageDaily calls
+  // queryRows: [[usage], [usage]] for listTokenUsageByTenantAndDate calls
+  // queryOneRows[2] for sumTokenCostsByTenant
+  const { connection, calls } = createConnection({
+    executeResults: [1],
+    queryRows: [[usage], [usage]],
+    queryOneRows: [usage, undefined, { total: 5.0 }],
+  });
+  const repo = new AsyncCostManagementRepository(connection);
+
+  await repo.upsertTokenUsageDaily(usage);
+  assert.equal(await repo.getTokenUsageDaily("usage-1"), usage);
+  assert.equal(await repo.getTokenUsageDaily("missing-usage"), null);
+  assert.deepEqual(await repo.listTokenUsageByTenantAndDate("tenant-a", "2026-04-01", "2026-04-30"), [usage]);
+  assert.deepEqual(await repo.listTokenUsageByTenantAndDate(null, "2026-04-01", "2026-04-30"), [usage]);
+  assert.equal(await repo.sumTokenCostsByTenant("tenant-a", "2026-04-01", "2026-04-30"), 5.0);
+
+  assert.match(calls[0]!.sql, /INSERT INTO token_usage_daily/);
+  assert.match(calls[0]!.sql, /ON CONFLICT\(tenant_id, date, model_id, step_id\) DO UPDATE SET/);
+  // calls[1] = getTokenUsageDaily("usage-1") - queryOne
+  // calls[2] = getTokenUsageDaily("missing-usage") - queryOne
+  // calls[3] = listTokenUsageByTenantAndDate("tenant-a") - query
+  // calls[4] = listTokenUsageByTenantAndDate(null) - query
+  // calls[5] = sumTokenCostsByTenant - queryOne
+  assert.match(calls[3]!.sql, /WHERE tenant_id = \$1 AND date >= \$2 AND date <= \$3/);
+  assert.match(calls[5]!.sql, /COALESCE\(SUM\(cost_usd\), 0\)/);
+});
+
+test("AsyncDelegationRepository writes and reads delegations", async () => {
+  const delegation = delegationRecord();
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1, 1],
+    queryRows: [[delegation], [delegation]],
+    queryOneRows: [delegation, undefined],
+  });
+  const repo = new AsyncDelegationRepository(connection);
+
+  await repo.insertDelegation(delegation);
+  const updated = await repo.updateDelegation({
+    delegationId: "delegation-1",
     status: "completed",
-    reasonCode: "policy_due",
-    requestedBy: "scheduler",
-    previousVersion: "v1",
-    nextVersion: "v2",
-    occurredAt: now,
-    metadataJson: '{"window":"nightly"}',
-    ...overrides,
-  };
-}
+    resultRef: "s3://results/delegation-1.json",
+    updatedAt: now,
+  });
+  assert.equal(updated, 1);
+  assert.equal(await repo.getDelegation("delegation-1"), delegation);
+  assert.equal(await repo.getDelegation("missing-delegation"), null);
 
-function secretLeaseRecord(overrides: Partial<SecretLeaseRecord> = {}): SecretLeaseRecord {
-  return {
-    leaseId: "lease-secret-1",
-    secretRef: "secret://provider/openai",
-    providerKind: "vault",
+  assert.match(calls[0]!.sql, /INSERT INTO delegations/);
+  assert.match(calls[1]!.sql, /UPDATE delegations SET/);
+  assert.match(calls[1]!.sql, /status = \$2/);
+  assert.match(calls[2]!.sql, /FROM delegations WHERE delegation_id = \$1/);
+});
+
+test("AsyncDelegationRepository lists delegations by parent and status", async () => {
+  const delegation = delegationRecord();
+  const { connection, calls } = createConnection({
+    queryRows: [[delegation], [delegation], [delegation]],
+  });
+  const repo = new AsyncDelegationRepository(connection);
+
+  assert.deepEqual(await repo.listDelegationsByParent("agent-parent"), [delegation]);
+  assert.deepEqual(await repo.listDelegationsByStatus("active"), [delegation]);
+  assert.deepEqual(await repo.listExpiredDelegations(), [delegation]);
+
+  assert.deepEqual(calls[0]!.params, ["agent-parent"]);
+  assert.deepEqual(calls[1]!.params, ["active"]);
+});
+
+test("AsyncDelegationRepository deletes delegation and manages events", async () => {
+  const event = delegationEventRecord();
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[event]],
+    queryOneRows: [{ count: 5 }],
+  });
+  const repo = new AsyncDelegationRepository(connection);
+
+  await repo.insertDelegationEvent(event);
+  assert.deepEqual(await repo.listDelegationEvents("delegation-1"), [event]);
+  assert.equal(await repo.countDelegationEvents("delegation-1"), 5);
+  assert.equal(await repo.deleteDelegation("delegation-1"), 1);
+
+  assert.deepEqual(calls[1]!.params, ["delegation-1"]);
+  assert.deepEqual(calls[3]!.params, ["delegation-1"]);
+});
+
+test("AsyncEvolutionRepository writes and reads evolution proposals", async () => {
+  const proposal = {
+    id: "proposal-1",
     taskId: "task-1",
     executionId: "execution-1",
-    requestedBy: "planner",
-    grantedTo: "worker-1",
-    usagePurpose: "deploy_prod",
-    issuedAt: now,
-    expiresAt: "2026-04-16T12:00:00.000Z",
+    sourceAgentId: "agent-1",
+    kind: "capability",
+    scopeType: "task",
+    scopeRef: "task-1",
+    status: "pending",
+    approvalId: null,
+    summary: "Improve routing",
+    proposalJson: '{"changes":[]}',
+    evidenceJson: "[]",
+    createdAt: now,
+    updatedAt: now,
+    approvedAt: null,
+    appliedAt: null,
+    rolledBackAt: null,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[proposal]],
+    queryOneRows: [proposal, undefined],
+  });
+  const repo = new AsyncEvolutionRepository(connection);
+
+  await repo.insertEvolutionProposal(proposal as any);
+  const updated = await repo.updateEvolutionProposal({
+    ...proposal,
+    status: "approved",
+    approvalId: "approval-1",
+    updatedAt: now,
+    approvedAt: now,
+  } as any);
+  assert.equal(updated, 1);
+  assert.equal(await repo.getEvolutionProposal("proposal-1"), proposal);
+  assert.equal(await repo.getEvolutionProposal("missing-proposal"), null);
+
+  assert.match(calls[0]!.sql, /INSERT INTO evolution_proposals/);
+});
+
+test("AsyncEvolutionRepository lists evolution proposals by status", async () => {
+  const proposal = {
+    id: "proposal-1",
+    taskId: "task-1",
+    executionId: "execution-1",
+    sourceAgentId: "agent-1",
+    kind: "capability",
+    scopeType: "task",
+    scopeRef: "task-1",
+    status: "approved",
+    approvalId: "approval-1",
+    summary: "Improve routing",
+    proposalJson: '{"changes":[]}',
+    evidenceJson: "[]",
+    createdAt: now,
+    updatedAt: now,
+    approvedAt: now,
+    appliedAt: null,
+    rolledBackAt: null,
+  } as const;
+  const { connection, calls } = createConnection({
+    queryRows: [[proposal], [proposal]],
+  });
+  const repo = new AsyncEvolutionRepository(connection);
+
+  assert.deepEqual(await repo.listEvolutionProposals(), [proposal]);
+  assert.deepEqual(await repo.listEvolutionProposals("approved" as any), [proposal]);
+
+  assert.match(calls[0]!.sql, /FROM evolution_proposals[\s\S]*?ORDER BY created_at DESC/s);
+  assert.match(calls[1]!.sql, /WHERE status = \$1[\s\S]*?ORDER BY created_at DESC/s);
+});
+
+test("AsyncEvolutionRepository writes and reads evolution policies and logs", async () => {
+  const policy = {
+    id: "policy-1",
+    proposalId: "proposal-1",
+    kind: "routing",
+    scopeType: "task",
+    scopeRef: "task-1",
     status: "active",
-    revokedAt: null,
-    revokedBy: null,
-    revocationReasonCode: null,
-    sourceVersion: "v2",
-    maskedValue: "sk-***",
-    metadataJson: '{"scope":"release"}',
-    ...overrides,
-  };
-}
-
-function releaseBundleRecord(overrides: Partial<ReleaseBundleRecord> = {}): ReleaseBundleRecord {
-  return {
-    bundleId: "bundle-release-1",
-    environment: "staging",
-    version: "1.2.3",
-    commitSha: "abc1234",
-    imageTag: "app:1.2.3",
-    imageRef: "registry.example/app:1.2.3",
-    rolloutStrategy: "canary",
-    deploymentNamespace: "app-staging",
-    clusterName: "cluster-staging",
-    configPath: "deploy/staging.yaml",
-    configBundleRef: "config-bundle-1",
-    registryCredentialRef: "secret://registry",
-    deploymentCredentialRef: "secret://deploy",
-    publishWorkflowPath: ".github/workflows/publish.yml",
-    deployWorkflowPath: ".github/workflows/deploy.yml",
-    requiredReadinessChecksJson: '["db","gateway"]',
-    recommendedCommandsJson: '["npm test"]',
+    valueJson: '{"priority":1}',
+    createdAt: now,
+    updatedAt: now,
+    rolledBackAt: null,
+  } as const;
+  const log = {
+    id: "log-1",
+    proposalId: "proposal-1",
     taskId: "task-1",
-    jsonArtifactUri: "s3://bundle.json",
-    markdownArtifactUri: "s3://bundle.md",
-    generatedAt: now,
-    exportedAt: now,
-    ...overrides,
-  };
-}
+    executionId: "execution-1",
+    eventType: "proposal_created",
+    reasonCode: "init",
+    beforeStateJson: "{}",
+    afterStateJson: '{"status":"pending"}',
+    metadataJson: "{}",
+    createdAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1, 1],
+    queryRows: [[policy], [log]],
+    queryOneRows: [policy, undefined],
+  });
+  const repo = new AsyncEvolutionRepository(connection);
 
-function releaseExecutionReportRecord(overrides: Partial<ReleaseExecutionReportRecord> = {}): ReleaseExecutionReportRecord {
-  return {
-    executionId: "release-exec-1",
-    bundleId: "bundle-release-1",
-    environment: "staging",
-    version: "1.2.3",
-    commitSha: "abc1234",
-    rolloutStrategy: "rolling",
-    imageRef: "registry.example/app:1.2.3",
-    imageRepository: "registry.example/app",
-    registrySecretRef: "secret://registry",
-    registrySecretProviderKind: "vault",
-    registrySecretResolved: 1,
-    registrySecretAccessMode: "lease",
-    registryLeaseId: "lease-secret-1",
-    registryLeaseStatus: "active",
-    registryLeaseExpiresAt: "2026-04-16T12:00:00.000Z",
-    registryLeaseRevokedAt: null,
-    publishWorkflowRunId: "1001",
-    publishWorkflowRunUrl: "https://ci.example/run/1001",
-    buildCommand: "npm run build",
-    publishCommand: "npm run publish",
-    commandResultsJson: '{"publish":"ok"}',
-    taskId: "task-1",
-    jsonArtifactUri: "s3://publish.json",
-    markdownArtifactUri: "s3://publish.md",
-    generatedAt: now,
-    exportedAt: now,
-    ...overrides,
-  };
-}
+  await repo.insertEvolutionPolicy(policy as any);
+  const updated = await repo.updateEvolutionPolicy({
+    ...policy,
+    status: "superseded",
+    updatedAt: now,
+    rolledBackAt: now,
+  } as any);
+  assert.equal(updated, 1);
+  assert.equal(await repo.getEvolutionPolicyByProposal("proposal-1"), policy);
+  assert.deepEqual(await repo.listEvolutionPolicies({ kind: "routing" as any }), [policy]);
+  await repo.insertEvolutionLog(log as any);
+  assert.deepEqual(await repo.listEvolutionLogsByProposal("proposal-1"), [log]);
 
-function deploymentExecutionReportRecord(
-  overrides: Partial<DeploymentExecutionReportRecord> = {},
-): DeploymentExecutionReportRecord {
-  return {
-    executionId: "deploy-exec-1",
-    environment: "staging",
-    version: "1.2.3",
-    commitSha: "abc1234",
-    rolloutStrategy: "blue_green",
-    targetEligible: 1,
-    configBundleRef: "config-bundle-1",
-    configVersionId: "cfg-v1",
-    registrySecretRef: "secret://registry",
-    registrySecretProviderKind: "vault",
-    registrySecretResolved: 1,
-    deploymentSecretRef: "secret://deploy",
-    deploymentSecretProviderKind: "vault",
-    deploymentSecretResolved: 1,
-    publishWorkflowRunId: "1001",
-    publishWorkflowRunUrl: "https://ci.example/run/1001",
-    deployWorkflowRunId: "1002",
-    deployWorkflowRunUrl: "https://ci.example/run/1002",
-    executionMode: "execute",
-    publishCommand: "npm run publish",
-    deployCommand: "npm run deploy",
-    commandResultsJson: '{"deploy":"ok"}',
-    releaseBundleId: "bundle-release-1",
-    taskId: "task-1",
-    jsonArtifactUri: "s3://deploy.json",
-    markdownArtifactUri: "s3://deploy.md",
-    generatedAt: now,
-    exportedAt: now,
-    ...overrides,
-  };
-}
+  assert.match(calls[0]!.sql, /INSERT INTO evolution_policies/);
+  assert.match(calls[4]!.sql, /INSERT INTO evolution_logs/);
+});
 
-function environmentPromotionHistoryRecord(
-  overrides: Partial<EnvironmentPromotionHistoryRecord> = {},
-): EnvironmentPromotionHistoryRecord {
-  return {
-    promotionId: "promotion-1",
-    sourceEnvironment: "dev",
-    targetEnvironment: "staging",
-    version: "1.2.3",
-    commitSha: "abc1234",
-    rolloutStrategy: "canary",
-    decisionType: "execute",
-    decisionStatus: "executed",
-    releaseBundleId: "bundle-release-1",
-    deploymentExecutionId: "deploy-exec-1",
-    reasonCode: "passed_checks",
-    actor: "release-bot",
-    metadataJson: '{"ticket":"change-1"}',
-    recordedAt: now,
-    ...overrides,
-  };
-}
-
-function enterpriseCapabilityReportRecord(
-  overrides: Partial<EnterpriseCapabilityReportRecord> = {},
-): EnterpriseCapabilityReportRecord {
-  return {
-    reportId: "capability-1",
-    accountId: "acct-1",
-    workspaceId: "ws-1",
-    tenantId: "tenant-a",
-    environment: "staging",
-    deploymentMode: "private_cloud",
-    summaryJson: '{"status":"ok"}',
+test("AsyncEvolutionRepository writes and reads PMF validation reports", async () => {
+  const report = {
+    id: "pmf-1",
+    profileName: "routing_v2",
+    windowStart: "2026-04-01T00:00:00.000Z",
+    windowEnd: "2026-04-15T23:59:59.999Z",
+    divisionId: "general_ops",
+    verdict: "pass",
+    summaryJson: '{"score":0.85}',
     reportJson: '{"details":[]}',
     generatedAt: now,
-    ...overrides,
-  };
-}
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1],
+    queryRows: [[report], [report]],
+    queryOneRows: [report, undefined, report],
+  });
+  const repo = new AsyncEvolutionRepository(connection);
 
-function incidentHandoffRecord(overrides: Partial<IncidentHandoffRecord> = {}): IncidentHandoffRecord {
-  return {
-    handoffId: "handoff-1",
-    incidentId: "incident-1",
-    environment: "staging",
-    status: "ready",
-    shiftOwner: "ops-a",
-    primaryOncall: "alice",
-    secondaryOncall: "bob",
-    severity: "sev2",
-    handoffJson: '{"runbook":"rb-1"}',
+  await repo.insertPmfValidationReport(report as any);
+  assert.deepEqual(await repo.listPmfValidationReports(5), [report]);
+  assert.deepEqual(await repo.listPmfValidationReports(Number.NaN), [report]);
+  assert.equal(await repo.getLatestPmfValidationReport("routing_v2"), report);
+  assert.equal(await repo.getLatestPmfValidationReport("missing-profile"), null);
+  assert.equal(await repo.getLatestPmfValidationReport(), report);
+
+  assert.match(calls[0]!.sql, /INSERT INTO pmf_validation_reports/);
+});
+
+test("AsyncIntelligenceRepository upserts perception sources and inserts intel items", async () => {
+  const source = {
+    sourceId: "src-1",
+    tenantId: "tenant-a",
+    type: "feed",
+    name: "News Feed",
+    enabled: 1,
+    scheduleJson: '{"interval":"1h"}',
+    filtersJson: '{"topics":["tech"]}',
+    priority: 10,
     createdAt: now,
-    ...overrides,
-  };
-}
+    updatedAt: now,
+  } as const;
+  const item = {
+    intelId: "intel-1",
+    tenantId: "tenant-a",
+    sourceId: "src-1",
+    title: "AI Breakthrough",
+    summary: "New model released",
+    rawRef: "https://news.example/123",
+    relevanceScore: 0.9,
+    importance: 8,
+    tagsJson: '["ai","research"]',
+    dedupeKey: "article-123",
+    capturedAt: now,
+    expiresAt: null,
+  } as const;
+  // 4 queryOne calls for getPerceptionSource + 3 for getIntelItemBySourceAndDedupeKey = 7 total
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[source], [item]],
+    queryOneRows: [source, undefined, undefined, undefined, item, item, undefined],
+  });
+  const repo = new AsyncIntelligenceRepository(connection);
 
-function enterpriseGovernanceReportRecord(
-  overrides: Partial<EnterpriseGovernanceReportRecord> = {},
-): EnterpriseGovernanceReportRecord {
-  return {
-    reportId: "governance-1",
-    taskId: "task-1",
-    environment: "staging",
-    status: "pass",
-    shiftOwner: "ops-a",
-    summaryJson: '{"ready":true}',
-    reportJson: '{"checks":[]}',
+  await repo.upsertPerceptionSource(source as any);
+  assert.equal(await repo.getPerceptionSource("src-1"), source);
+  assert.equal(await repo.getPerceptionSource("src-1", "tenant-a"), source);
+  assert.equal(await repo.getPerceptionSource("missing-source"), null);
+  assert.equal(await repo.getPerceptionSource("missing-source", "tenant-a"), null);
+
+  await repo.insertIntelItem(item as any);
+  assert.equal(await repo.getIntelItemBySourceAndDedupeKey("src-1", "article-123"), item);
+  assert.equal(await repo.getIntelItemBySourceAndDedupeKey("src-1", "article-123", "tenant-a"), item);
+  assert.equal(await repo.getIntelItemBySourceAndDedupeKey("src-1", "missing-key"), null);
+
+  assert.match(calls[0]!.sql, /INSERT INTO perception_sources/);
+  assert.match(calls[0]!.sql, /ON CONFLICT\(source_id\) DO UPDATE SET/);
+  assert.match(calls[5]!.sql, /INSERT INTO intel_items/);
+});
+
+test("AsyncIntelligenceRepository lists perception sources and intel items with filters", async () => {
+  const source = {
+    sourceId: "src-1",
+    tenantId: "tenant-a",
+    type: "feed",
+    name: "News Feed",
+    enabled: 1,
+    scheduleJson: "{}",
+    filtersJson: "{}",
+    priority: 10,
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const item = {
+    intelId: "intel-1",
+    tenantId: "tenant-a",
+    sourceId: "src-1",
+    title: "AI News",
+    summary: "Summary",
+    rawRef: "https://example.com/1",
+    relevanceScore: 0.9,
+    importance: 8,
+    tagsJson: "[]",
+    dedupeKey: "key-1",
+    capturedAt: now,
+    expiresAt: null,
+  } as const;
+  // 7 query calls: 3 listPerceptionSources + 3 listIntelItems + 1 listIntelItemsByIds
+  const { connection, calls } = createConnection({
+    queryRows: [[source], [source], [source], [item], [item], [item], [item]],
+    queryOneRows: [undefined],
+  });
+  const repo = new AsyncIntelligenceRepository(connection);
+
+  assert.deepEqual(await repo.listPerceptionSources(false), [source]);
+  assert.deepEqual(await repo.listPerceptionSources(true), [source]);
+  assert.deepEqual(await repo.listPerceptionSources(true, "tenant-a"), [source]);
+  assert.deepEqual(await repo.listIntelItems({ sourceIds: ["src-1"], limit: 10 }), [item]);
+  assert.deepEqual(await repo.listIntelItems({ since: now, until: now, limit: 5 }), [item]);
+  assert.deepEqual(await repo.listIntelItems({}), [item]);
+  assert.deepEqual(await repo.listIntelItemsByIds(["intel-1", "intel-2"]), [item]);
+  assert.deepEqual(await repo.listIntelItemsByIds([]), []);
+
+  assert.match(calls[1]!.sql, /WHERE enabled = 1/);
+  assert.match(calls[2]!.sql, /tenant_id = \$3/);
+  assert.match(calls[4]!.sql, /source_id IN \(\$1\)/);
+  assert.match(calls[5]!.sql, /captured_at >= \$3 AND captured_at <= \$4/);
+  assert.match(calls[6]!.sql, /[\s\S]*?ORDER BY importance DESC, relevance_score DESC/s);
+});
+
+test("AsyncIntelligenceRepository writes intel briefs and action proposals", async () => {
+  const brief = {
+    briefId: "brief-1",
+    tenantId: "tenant-a",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-15T23:59:59.999Z",
+    sourceScopeJson: '{"sources":["src-1"]}',
+    itemIdsJson: '["intel-1","intel-2"]',
+    overallSummary: "AI developments trending",
+    recommendedActionsJson: '["review_research"]',
     generatedAt: now,
-    handoffId: "handoff-1",
-    ...overrides,
-  };
-}
-
-test("AsyncTaskRepository writes task mutations through async execute", async () => {
-  const { connection, calls } = createConnection({ executeResults: [1, 2, 3, 4, 5, 6] });
-  const repo = new AsyncTaskRepository(connection);
-  const task = taskRecord();
-
-  await repo.insertTask(task);
-  await repo.updateTaskStatus("task-1", "failed", now, "boom", now);
-  const casChanges = await repo.updateTaskStatusCas("task-1", "queued", "in_progress", now, null, null);
-  await repo.setTaskState({ taskId: "task-1", status: "done", updatedAt: now, errorCode: null, completedAt: now });
-  await repo.updateTaskOutput("task-1", '{"ok":true}', now);
-  await repo.updateTaskInput("task-1", '{"raw":true}', '{"raw":true}', now);
-
-  assert.equal(casChanges, 3);
-  assert.equal(calls.length, 6);
-  assert.match(calls[0]!.sql, /INSERT INTO tasks/);
-  assert.deepEqual(calls[0]!.params.slice(0, 5), ["task-1", null, "task-1", "general_ops", "tenant-a"]);
-  assert.match(calls[2]!.sql, /WHERE id = \$5 AND status = \$6/);
-  assert.deepEqual(calls[2]!.params, ["in_progress", now, null, null, "task-1", "queued"]);
-  assert.match(calls[4]!.sql, /UPDATE tasks SET output_json = \$1/);
-  assert.deepEqual(calls[5]!.params, ['{"raw":true}', '{"raw":true}', now, "task-1"]);
-});
-
-test("AsyncTaskRepository builds scoped and unscoped read queries", async () => {
-  const task = taskRecord();
-  const { connection, calls } = createConnection({
-    queryRows: [[task], [task]],
-    queryOneRows: [task, undefined, { count: 3 }, undefined],
-  });
-  const repo = new AsyncTaskRepository(connection);
-
-  assert.equal(await repo.getTask("task-1", "tenant-a"), task);
-  assert.equal(await repo.getTask("missing-task"), null);
-  assert.deepEqual(await repo.listTasks(5, "tenant-a"), [task]);
-  assert.deepEqual(await repo.listTasks(), [task]);
-  assert.equal(await repo.countQueuedTasks("tenant-a"), 3);
-  assert.equal(await repo.countQueuedTasks(), 0);
-
-  assert.match(calls[0]!.sql, /FROM tasks t WHERE t\.id = \$1 AND t\.tenant_id = \$2/);
-  assert.deepEqual(calls[0]!.params, ["task-1", "tenant-a"]);
-  assert.match(calls[2]!.sql, /WHERE tenant_id = \$1\s+ORDER BY updated_at DESC,\s+id DESC\s+LIMIT \$2/);
-  assert.deepEqual(calls[2]!.params, ["tenant-a", 5]);
-  assert.doesNotMatch(calls[3]!.sql, /WHERE tenant_id/);
-  assert.match(calls[4]!.sql, /status IN \('queued', 'pending'\) AND tenant_id = \$1/);
-});
-
-test("AsyncSessionRepository delegates writes and point lookups", async () => {
-  const summary: SessionSummaryRecord = {
-    id: "summary-1",
-    sessionId: "session-1",
+  } as const;
+  const proposal = {
+    proposalId: "proposal-1",
+    tenantId: "tenant-a",
+    briefId: "brief-1",
+    intelId: "intel-1",
     taskId: "task-1",
-    agentId: "agent-1",
-    summaryText: "summary",
-    keyDecisions: null,
-    keyOutcomes: null,
-    memoryIdsReferenced: null,
-    tokenCount: 12,
+    title: "Review AI paper",
+    summary: "Review new AI paper",
+    actionType: "review",
+    status: "pending",
+    requiresApproval: 0,
+    proposalJson: "{}",
     createdAt: now,
-  };
-  const target: GatewayTargetRecord = {
-    targetId: "target-1",
-    channel: "slack",
-    targetKind: "user",
-    externalTargetId: "U1",
-    displayName: "Operator",
-    aliasesJson: "[]",
-    metadataJson: "{}",
-    source: "session_history",
-    lastSeenAt: now,
+    decidedAt: null,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[brief], [proposal]],
+    queryOneRows: [brief, undefined],
+  });
+  const repo = new AsyncIntelligenceRepository(connection);
+
+  await repo.insertIntelBrief(brief as any);
+  await repo.insertActionProposal(proposal as any);
+  assert.equal(await repo.getIntelBrief("brief-1"), brief);
+  assert.equal(await repo.getIntelBrief("missing-brief"), null);
+  assert.equal(await repo.getIntelBrief("brief-1", "tenant-a"), brief);
+  assert.deepEqual(await repo.listIntelBriefs(10), [brief]);
+  assert.deepEqual(await repo.listIntelBriefs(Number.NaN), [brief]);
+  assert.deepEqual(await repo.listIntelBriefs(5, "tenant-a"), [brief]);
+  assert.deepEqual(await repo.listActionProposalsByBrief("brief-1"), [proposal]);
+  assert.deepEqual(await repo.listActionProposalsByBrief("brief-1", "tenant-a"), [proposal]);
+
+  assert.match(calls[0]!.sql, /INSERT INTO intel_briefs/);
+  assert.match(calls[1]!.sql, /INSERT INTO action_proposals/);
+  assert.match(calls[2]!.sql, /FROM intel_briefs WHERE brief_id = \$1/);
+  assert.match(calls[4]!.sql, /WHERE tenant_id = \$1[\s\S]*?ORDER BY generated_at DESC[\s\S]*?LIMIT\$2/s);
+  assert.match(calls[6]!.sql, /FROM action_proposals WHERE brief_id = \$1/);
+});
+
+test("AsyncMarketplaceListingRepository writes and reads marketplace listings", async () => {
+  const listing: MarketplaceListingRecord = {
+    listingId: "listing-1",
+    packId: "pack-1",
+    status: "published",
+    title: "AI Tools Pack",
+    description: "Useful AI tools",
+    category: "productivity",
+    version: "1.0.0",
+    publishedAt: now,
+    deprecatedAt: null,
+    downloadCount: 100,
+    ratingAvg: 4.5,
+    ratingCount: 20,
     createdAt: now,
     updatedAt: now,
   };
-  const { connection, calls } = createConnection({ queryOneRows: [sessionRecord(), summary, target] });
-  const repo = new AsyncSessionRepository(connection);
-
-  await repo.insertSession(sessionRecord());
-  assert.deepEqual(await repo.getSession("session-1"), sessionRecord());
-  await repo.insertMessage(messageRecord());
-  await repo.insertSessionSummary(summary);
-  assert.equal(await repo.getLatestSessionSummary("session-1"), summary);
-  await repo.insertSessionEvent({
-    id: "event-1",
-    sessionId: "session-1",
-    eventType: "session.created",
-    payloadJson: "{}",
-    createdAt: now,
-  });
-  await repo.upsertGatewayTarget(target);
-  assert.equal(await repo.getGatewayTarget("target-1"), target);
-
-  assert.match(calls[0]!.sql, /INSERT INTO sessions/);
-  assert.deepEqual(calls[0]!.params, ["session-1", "task-1", "cli", "open", null, now, now]);
-  assert.match(calls[5]!.sql, /INSERT INTO session_events/);
-  assert.match(calls[6]!.sql, /ON CONFLICT\(target_id\) DO UPDATE/);
-  assert.match(calls[7]!.sql, /FROM gateway_targets WHERE target_id = \$1/);
-});
-
-test("AsyncSessionRepository builds list queries with limits and tenant joins", async () => {
-  const compaction: CompactionRecord = {
-    id: "compaction-1",
-    sessionId: "session-1",
-    taskId: "task-1",
-    stage: "summarize",
-    sourceMessageIdsJson: "[]",
-    summaryText: "compact",
-    summaryRef: null,
-    compactionReason: "token_limit",
-    overflowTriggered: 1,
-    autoTriggered: 1,
-    tokenReductionEstimate: 100,
-    createdAt: now,
-  };
-  const { connection, calls } = createConnection({
-    queryRows: [
-      [sessionRecord()],
-      [messageRecord()],
-      [messageRecord()],
-      [{ id: "event-1", sessionId: "session-1", eventType: "created", payloadJson: "{}", createdAt: now } satisfies SessionEventRecord],
-      [{ targetId: "target-1", channel: "slack" }],
-      [compaction],
-      [compaction],
-    ],
-  });
-  const repo = new AsyncSessionRepository(connection);
-
-  assert.equal((await repo.listSessionsByTask("task-1")).length, 1);
-  assert.equal((await repo.listMessagesBySession("session-1", 3)).length, 1);
-  assert.equal((await repo.listMessagesBySession("session-1")).length, 1);
-  assert.equal((await repo.listSessionEvents("session-1")).length, 1);
-  assert.equal((await repo.listGatewayTargetsByChannel("slack")).length, 1);
-  assert.equal((await repo.listCompactionRecordsBySession("session-1", "tenant-a")).length, 1);
-  assert.equal((await repo.listCompactionRecordsBySession("session-1")).length, 1);
-
-  assert.match(calls[1]!.sql, /ORDER BY created_at ASC LIMIT 3/);
-  assert.doesNotMatch(calls[2]!.sql, /LIMIT/);
-  assert.deepEqual(calls[3]!.params, ["session-1", 100]);
-  assert.match(calls[5]!.sql, /INNER JOIN tasks t ON t\.id = c\.task_id/);
-  assert.deepEqual(calls[5]!.params, ["session-1", "tenant-a"]);
-  assert.doesNotMatch(calls[6]!.sql, /INNER JOIN tasks/);
-});
-
-test("AsyncExecutionRepository writes execution lifecycle records", async () => {
-  const { connection, calls } = createConnection({ executeResults: [1, 2, 3, 4, 5, 6] });
-  const repo = new AsyncExecutionRepository(connection);
-  const execution = executionRecord();
-  const precheck: ExecutionPrecheckRecord = {
-    id: "precheck-1",
-    executionId: "execution-1",
-    allowed: 1,
-    reasonCode: "ok",
-    resolvedBudgetUsd: 1,
-    resolvedTimeoutMs: 60000,
-    resolvedSandboxMode: "workspace_write",
-    resolvedToolsJson: "[]",
-    resolvedPathsJson: "[]",
-    checkedAt: now,
-  };
-  const deadLetter: DeadLetterRecord = {
-    id: "dead-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    finalReasonCode: "agent_failed",
-    retryCount: 2,
-    lastErrorMessage: "boom",
-    movedAt: now,
-  };
-
-  await repo.insertExecution(execution);
-  await repo.updateExecutionStatus("execution-1", "failed", now, now, now, "agent.crash");
-  await repo.updateExecutionFailure({
-    executionId: "execution-1",
-    status: "failed",
-    updatedAt: now,
-    finishedAt: now,
-    lastErrorCode: "agent.crash",
-    lastErrorMessage: "boom",
-  });
-  await repo.updateExecutionAgent("execution-1", "agent-2", now);
-  await repo.insertExecutionPrecheck(precheck);
-  await repo.insertDeadLetter(deadLetter);
-
-  assert.equal(calls.length, 6);
-  assert.match(calls[0]!.sql, /INSERT INTO executions/);
-  assert.match(calls[1]!.sql, /started_at = COALESCE\(\$3, started_at\)/);
-  assert.deepEqual(calls[3]!.params, ["agent-2", now, "execution-1"]);
-  assert.match(calls[4]!.sql, /INSERT INTO execution_prechecks/);
-  assert.match(calls[5]!.sql, /INSERT INTO dead_letters/);
-});
-
-test("AsyncArtifactRepository writes and scopes artifact queries", async () => {
-  const artifact = artifactRecord();
-  const { connection, calls } = createConnection({
-    queryRows: [[artifact], [artifact]],
-    queryOneRows: [artifact, undefined],
-  });
-  const repo = new AsyncArtifactRepository(connection);
-
-  await repo.insertArtifact(artifact);
-  assert.equal(await repo.getArtifact("artifact-1"), artifact);
-  assert.equal(await repo.getArtifact("missing-artifact"), null);
-  assert.deepEqual(await repo.listArtifactsByTask("task-1", "tenant-a"), [artifact]);
-  assert.deepEqual(await repo.listArtifactsByTask("task-1"), [artifact]);
-
-  assert.match(calls[0]!.sql, /INSERT INTO artifacts/);
-  assert.deepEqual(calls[0]!.params.slice(0, 4), ["artifact-1", "task-1", "execution-1", "step-1"]);
-  assert.match(calls[1]!.sql, /WHERE artifact_id = \$1/);
-  assert.match(calls[3]!.sql, /INNER JOIN tasks t ON t\.id = a\.task_id/);
-  assert.deepEqual(calls[3]!.params, ["task-1", "tenant-a"]);
-  assert.doesNotMatch(calls[4]!.sql, /INNER JOIN tasks/);
-});
-
-test("AsyncDivisionRepository builds filtered movement job queries and sanitizes limits", async () => {
-  const job = dataMovementJobRecord();
-  const { connection, calls } = createConnection({
-    queryRows: [[job], [job], [job], [job], [job]],
-  });
-  const repo = new AsyncDivisionRepository(connection);
-
-  assert.deepEqual(await repo.listDataMovementJobRecords(), [job]);
-  assert.deepEqual(await repo.listDataMovementJobRecords({ tenantId: "tenant-a" }), [job]);
-  assert.deepEqual(await repo.listDataMovementJobRecords({ status: "running", movementType: "archive_compaction", limit: 5.8 }), [job]);
-  assert.deepEqual(await repo.listDataMovementJobRecords({ tenantId: null, limit: 0 }), [job]);
-  assert.deepEqual(await repo.listDataMovementJobRecords({ limit: Number.NaN }), [job]);
-
-  assert.match(calls[0]!.sql, /FROM data_movement_jobs\s+ORDER BY started_at DESC, job_id ASC\s+LIMIT \$1/);
-  assert.deepEqual(calls[0]!.params, [100]);
-  assert.match(calls[1]!.sql, /WHERE tenant_id = \$1/);
-  assert.deepEqual(calls[1]!.params, ["tenant-a", 100]);
-  assert.match(calls[2]!.sql, /WHERE status = \$1 AND movement_type = \$2/);
-  assert.deepEqual(calls[2]!.params, ["running", "archive_compaction", 5]);
-  assert.deepEqual(calls[3]!.params, [1]);
-  assert.deepEqual(calls[4]!.params, [100]);
-});
-
-test("AsyncEventRepository writes event and ack mutations", async () => {
-  const { connection, calls } = createConnection({ executeResults: [1, 2, 3, 4, 5] });
-  const repo = new AsyncEventRepository(connection);
-  const deadLetter = eventDeadLetterRecord();
-  const ack = eventAckRecord();
-
-  await repo.insertEventDeadLetter(deadLetter);
-  await repo.insertEventConsumerAck(ack);
-  await repo.markEventAck("event-1", "consumer-1", "acked", now);
-  await repo.markEventDeadLettered({
-    eventId: "event-1",
-    consumerId: "consumer-1",
-    occurredAt: now,
-    errorCode: "timeout",
-  });
-  await repo.ackAllConsumersForEvent("event-1", now);
-
-  assert.match(calls[0]!.sql, /INSERT INTO event_dead_letters/);
-  assert.match(calls[1]!.sql, /INSERT INTO event_consumer_acks/);
-  assert.match(calls[2]!.sql, /acked_at = CASE WHEN \$1 = 'acked' THEN \$2 ELSE acked_at END/);
-  assert.deepEqual(calls[2]!.params, ["acked", now, null, "event-1", "consumer-1"]);
-  assert.match(calls[3]!.sql, /status = 'dead_lettered'/);
-  assert.match(calls[4]!.sql, /status IN \('pending', 'failed'\)/);
-});
-
-test("AsyncEventRepository handles list, tenant, and count queries", async () => {
-  const event = eventRecord();
-  const ack = eventAckRecord();
-  const deadLetter = eventDeadLetterRecord();
-  const { connection, calls } = createConnection({
-    queryRows: [
-      [deadLetter],
-      [event],
-      [event],
-      [{ consumerId: "consumer-1" }, { consumerId: "consumer-2" }],
-      [event],
-      [event],
-      [event],
-    ],
-    queryOneRows: [ack, event, { count: 2 }, undefined],
-  });
-  const repo = new AsyncEventRepository(connection);
-
-  assert.deepEqual(await repo.listEventDeadLetters(25), [deadLetter]);
-  assert.deepEqual(await repo.listEventsByType("task:created", 5), [event]);
-  assert.deepEqual(await repo.listEventsByType("task:created"), [event]);
-  assert.equal(await repo.getEventConsumerAck("event-1", "consumer-1"), ack);
-  assert.deepEqual(await repo.getRequiredConsumerIds("event-1"), ["consumer-1", "consumer-2"]);
-  assert.deepEqual(await repo.listEventsForTask("task-1", 3), [event]);
-  assert.deepEqual(await repo.listEventsForTask("task-1", "tenant-a"), [event]);
-  assert.deepEqual(await repo.listEventsForTask("task-1"), [event]);
-  assert.equal(await repo.getEvent("event-1"), event);
-  assert.equal(await repo.countPendingTier1Acks(), 2);
-  assert.equal(await repo.countFailedTier1Acks(), 0);
-
-  assert.deepEqual(calls[0]!.params, [25]);
-  assert.match(calls[1]!.sql, /ORDER BY created_at DESC LIMIT \$2/);
-  assert.deepEqual(calls[1]!.params, ["task:created", 5]);
-  assert.doesNotMatch(calls[2]!.sql, /LIMIT/);
-  assert.match(calls[5]!.sql, /WHERE task_id = \$1 ORDER BY created_at DESC LIMIT \$2/);
-  assert.deepEqual(calls[5]!.params, ["task-1", 3]);
-  assert.match(calls[6]!.sql, /INNER JOIN tasks t ON t\.id = e\.task_id/);
-  assert.deepEqual(calls[6]!.params, ["task-1", "tenant-a"]);
-  assert.doesNotMatch(calls[7]!.sql, /INNER JOIN tasks/);
-});
-
-test("AsyncLeaseRepository lists lease audits for an execution", async () => {
-  const audit = leaseAuditRecord();
-  const { connection, calls } = createConnection({ queryRows: [[audit], []] });
-  const repo = new AsyncLeaseRepository(connection);
-
-  assert.deepEqual(await repo.listLeaseAudits("execution-1"), [audit]);
-  assert.deepEqual(await repo.listLeaseAudits("missing-execution"), []);
-
-  assert.match(calls[0]!.sql, /FROM lease_audits/);
-  assert.match(calls[0]!.sql, /ORDER BY recorded_at ASC/);
-  assert.deepEqual(calls[0]!.params, ["execution-1"]);
-  assert.deepEqual(calls[1]!.params, ["missing-execution"]);
-});
-
-test("AsyncLockRepository writes file locks and builds scoped lock queries", async () => {
-  const lock = fileLockRecord();
-  const { connection, calls } = createConnection({
-    executeResults: [1, 2],
-    queryRows: [[lock], [lock], [lock], [lock], [lock]],
-  });
-  const repo = new AsyncLockRepository(connection);
-
-  await repo.insertFileLock(lock);
-  assert.deepEqual(await repo.listActiveFileLocksForResource("/tmp/file.txt", now), [lock]);
-  assert.deepEqual(await repo.listExpiredFileLocks(now), [lock]);
-  assert.deepEqual(await repo.listFileLocks(), [lock]);
-  assert.deepEqual(await repo.listFileLocksByTask("task-1", "tenant-a"), [lock]);
-  assert.deepEqual(await repo.listFileLocksByTask("task-1"), [lock]);
-  assert.equal(await repo.deleteFileLock("lock-1"), 2);
-
-  assert.match(calls[0]!.sql, /INSERT INTO file_locks/);
-  assert.match(calls[1]!.sql, /WHERE resource_path = \$1\s+AND expires_at >= \$2/);
-  assert.deepEqual(calls[1]!.params, ["/tmp/file.txt", now]);
-  assert.match(calls[4]!.sql, /INNER JOIN tasks t ON t\.id = f\.task_id/);
-  assert.deepEqual(calls[4]!.params, ["task-1", "tenant-a"]);
-  assert.doesNotMatch(calls[5]!.sql, /INNER JOIN tasks/);
-  assert.deepEqual(calls[6]!.params, ["lock-1"]);
-});
-
-test("AsyncWorkflowRepository writes workflow states and tenant-scoped reads", async () => {
-  const workflow = workflowStateRecord();
-  const stepOutput = stepOutputRecord();
-  const { connection, calls } = createConnection({
-    executeResults: [1, 2, 3, 4],
-    queryRows: [[workflow], [workflow]],
-    queryOneRows: [workflow, undefined],
-  });
-  const repo = new AsyncWorkflowRepository(connection);
-
-  await repo.insertWorkflowState(workflow);
-  await repo.insertStepOutput(stepOutput);
-  assert.equal(await repo.getWorkflowState("task-1", "tenant-a"), workflow);
-  assert.equal(await repo.getWorkflowState("missing-workflow"), null);
-  assert.deepEqual(await repo.listWorkflowStates("tenant-a"), [workflow]);
-  assert.deepEqual(await repo.listWorkflowStates(), [workflow]);
-  await repo.updateWorkflowState("task-1", "failed", 2, '{"step":2}', now, "step-2");
-  await repo.updateWorkflowRecoveryState({
-    taskId: "task-1",
-    status: "failed",
-    currentStepIndex: 3,
-    outputsJson: '{"step":3}',
-    updatedAt: now,
-    resumableFromStep: "step-3",
-    retryCount: 2,
-    lastErrorCode: "ERR_WORKFLOW",
-  });
-
-  assert.match(calls[0]!.sql, /INSERT INTO workflow_state/);
-  assert.match(calls[1]!.sql, /INSERT INTO workflow_step_outputs/);
-  assert.match(calls[2]!.sql, /FROM workflow_state w INNER JOIN tasks t ON t\.id = w\.task_id/);
-  assert.deepEqual(calls[2]!.params, ["task-1", "tenant-a"]);
-  assert.match(calls[4]!.sql, /WHERE w\.task_id IN \(SELECT id FROM tasks WHERE tenant_id = \$1\)/);
-  assert.deepEqual(calls[4]!.params, ["tenant-a"]);
-  assert.doesNotMatch(calls[5]!.sql, /tenant_id/);
-  assert.match(calls[6]!.sql, /UPDATE workflow_state SET status = \$1, current_step_index = \$2/);
-  assert.match(calls[7]!.sql, /retry_count = \$6, last_error_code = \$7 WHERE task_id = \$8/);
-});
-
-test("AsyncDispatchRepository handles execution, session, gateway, message, and worker lookups", async () => {
-  const execution = executionRecord();
-  const precheck: ExecutionPrecheckRecord = {
-    id: "precheck-1",
-    executionId: "execution-1",
-    allowed: 1,
-    reasonCode: "ok",
-    resolvedBudgetUsd: 1,
-    resolvedTimeoutMs: 60000,
-    resolvedSandboxMode: "workspace_write",
-    resolvedToolsJson: "[]",
-    resolvedPathsJson: "[]",
-    checkedAt: now,
-  };
-  const deadLetter: DeadLetterRecord = {
-    id: "dead-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    finalReasonCode: "timeout",
-    retryCount: 2,
-    lastErrorMessage: "boom",
-    movedAt: now,
-  };
-  const target: GatewayTargetRecord = {
-    targetId: "target-1",
-    channel: "slack",
-    targetKind: "user",
-    externalTargetId: "U1",
-    displayName: "Operator",
-    aliasesJson: "[]",
-    metadataJson: "{}",
-    source: "directory",
-    lastSeenAt: now,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const worker = workerSnapshotRecord();
-  const { connection, calls } = createConnection({
-    queryRows: [
-      [execution],
-      [deadLetter],
-      [target],
-      [target],
-      [messageRecord()],
-    ],
-    queryOneRows: [
-      execution,
-      undefined,
-      precheck,
-      deadLetter,
-      sessionRecord(),
-      sessionRecord({ id: "session-latest" }),
-      target,
-      worker,
-    ],
-  });
-  const repo = new AsyncDispatchRepository(connection);
-
-  assert.deepEqual(await repo.listExecutionsByStatuses(["executing", "blocked"]), [execution]);
-  assert.deepEqual(await repo.listExecutionsByStatuses([]), []);
-  assert.equal(await repo.getExecution("execution-1", "tenant-a"), execution);
-  assert.equal(await repo.getExecution("missing-exec"), null);
-  assert.equal(await repo.getExecutionPrecheck("execution-1", "tenant-a"), precheck);
-  assert.equal(await repo.getDeadLetterByExecutionId("execution-1"), deadLetter);
-  assert.deepEqual(await repo.listDeadLettersByTask("task-1", "tenant-a"), [deadLetter]);
-  assert.deepEqual(await repo.getSession("session-1", "tenant-a"), sessionRecord());
-  assert.deepEqual(await repo.selectLatestSessionByTask("task-1"), sessionRecord({ id: "session-latest" }));
-  assert.equal(await repo.getGatewayTarget("target-1"), target);
-  assert.deepEqual(await repo.listGatewayTargets(20, "slack"), [target]);
-  assert.deepEqual(await repo.listGatewayTargets(Number.NaN), [target]);
-  assert.deepEqual(await repo.listMessagesBySession("session-1", "tenant-a"), [messageRecord()]);
-  assert.equal(await repo.getWorkerSnapshot("worker-1"), worker);
-
-  assert.match(calls[0]!.sql, /WHERE status IN \(\$1, \$2\)/);
-  assert.match(calls[1]!.sql, /INNER JOIN tasks t ON t\.id = e\.task_id/);
-  assert.deepEqual(calls[1]!.params, ["execution-1", "tenant-a"]);
-  assert.match(calls[3]!.sql, /INNER JOIN executions e ON e\.id = ep\.execution_id/);
-  assert.deepEqual(calls[5]!.params, ["task-1", "tenant-a"]);
-  assert.match(calls[6]!.sql, /INNER JOIN tasks t ON t\.id = s\.task_id/);
-  assert.match(calls[9]!.sql, /WHERE channel = \$1 .* LIMIT \$2/);
-  assert.deepEqual(calls[10]!.params, [100]);
-  assert.match(calls[11]!.sql, /INNER JOIN sessions s ON s\.id = m\.session_id/);
-  assert.match(calls[12]!.sql, /FROM worker_snapshots WHERE worker_id = \$1/);
-});
-
-test("AsyncOperationsRepository writes analytics, archive, replay, and movement records", async () => {
-  const analytics = analyticsFactRecord();
-  const archive = archiveBundleRecord();
-  const replay = replayDatasetRecord();
-  const movement = dataMovementJobRecord();
-  const { connection, calls } = createConnection({
-    queryRows: [[analytics], [archive], [replay], [movement], [movement]],
-    queryOneRows: [movement, undefined],
-  });
-  const repo = new AsyncOperationsRepository(connection);
-
-  await repo.insertAnalyticsFactRecord(analytics);
-  assert.deepEqual(await repo.listAnalyticsFactRecords({ namespaceId: "ns-1", tenantId: "tenant-a", metricName: "runtime.cost", limit: 9.9 }), [analytics]);
-  await repo.insertArchiveBundleRecord(archive);
-  assert.deepEqual(await repo.listArchiveBundleRecords({ namespaceId: "ns-1", tenantId: null, bundleType: "session_archive", limit: 0 }), [archive]);
-  await repo.insertReplayDatasetRecord(replay);
-  assert.deepEqual(await repo.listReplayDatasetRecords({ namespaceId: "ns-1", datasetType: "golden_replay" }), [replay]);
-  await repo.upsertDataMovementJobRecord(movement);
-  assert.equal(await repo.getDataMovementJobRecord("job-1"), movement);
-  assert.equal(await repo.getDataMovementJobRecord("missing-job"), null);
-  assert.deepEqual(await repo.listDataMovementJobRecords({ tenantId: "tenant-a", status: "completed", movementType: "analytics_etl", limit: 5 }), [movement]);
-  assert.deepEqual(await repo.listDataMovementJobRecords(), [movement]);
-
-  assert.match(calls[0]!.sql, /INSERT INTO analytics_facts/);
-  assert.match(calls[1]!.sql, /WHERE namespace_id = \$1 AND tenant_id IS \$2 AND metric_name = \$3/);
-  assert.deepEqual(calls[1]!.params, ["ns-1", "tenant-a", "runtime.cost", 9]);
-  assert.match(calls[2]!.sql, /INSERT INTO archive_bundles/);
-  assert.deepEqual(calls[3]!.params, ["ns-1", null, "session_archive", 1]);
-  assert.match(calls[4]!.sql, /INSERT INTO replay_datasets/);
-  assert.deepEqual(calls[5]!.params, ["ns-1", "golden_replay", 100]);
-  assert.match(calls[6]!.sql, /INSERT INTO data_movement_jobs/);
-  assert.match(calls[6]!.sql, /ON CONFLICT\(job_id\) DO UPDATE/);
-  assert.match(calls[9]!.sql, /WHERE tenant_id = \$1 AND status = \$2 AND movement_type = \$3/);
-  assert.deepEqual(calls[9]!.params, ["tenant-a", "completed", "analytics_etl", 5]);
-  assert.deepEqual(calls[10]!.params, [100]);
-});
-
-test("AsyncBillingRepository writes billing entities and builds scoped cost queries", async () => {
-  const cost = costEventRecord();
-  const account = billingAccountRecord();
-  const invoice = billingInvoiceRecord();
-  const payment = billingPaymentSessionRecord();
-  const usage = usageEventRecord();
-  const quota = quotaCounterRecord();
-  const ledger = ledgerEntryRecord();
-  const entitlement = entitlementDecisionRecord();
-  const { connection, calls } = createConnection({
-    executeResults: [1, 1, 1, 1, 1, 2, 1, 1, 1, 1],
-    queryRows: [[cost], [cost]],
-    queryOneRows: [{ total: 1.23 }, undefined, account, { count: 4 }, undefined],
-  });
-  const repo = new AsyncBillingRepository(connection);
-
-  await repo.insertCostEvent(cost);
-  assert.deepEqual(await repo.listCostEventsByTask("task-1", "tenant-a"), [cost]);
-  assert.deepEqual(await repo.listCostEventsByTask("task-1"), [cost]);
-  assert.equal(await repo.sumCostByTask("task-1", "tenant-a"), 1.23);
-  assert.equal(await repo.sumCostByTask("task-1"), 0);
-  await repo.upsertBillingAccount(account);
-  await repo.insertBillingInvoice(invoice);
-  assert.equal(await repo.updateBillingInvoiceStatus({ invoiceId: "inv-1", status: "paid", updatedAt: now, paidAt: now, externalInvoiceRef: "ext-1" }), 1);
-  await repo.insertBillingPaymentSession(payment);
-  assert.equal(await repo.updateBillingPaymentSessionStatus({ sessionId: "pay-1", status: "paid", updatedAt: now, settledAt: now }), 2);
-  await repo.insertUsageEvent(usage);
-  await repo.upsertQuotaCounter(quota);
-  await repo.insertLedgerEntry(ledger);
-  await repo.insertEntitlementDecision(entitlement);
-  assert.equal(await repo.getBillingAccount("acct-1"), account);
-  assert.equal(await repo.countActiveExecutionsByTenant("tenant-a"), 4);
-  assert.equal(await repo.countQueuedTasksByTenant("tenant-a"), 0);
-
-  assert.match(calls[0]!.sql, /INSERT INTO cost_events/);
-  assert.match(calls[1]!.sql, /INNER JOIN tasks t ON t\.id = c\.task_id/);
-  assert.deepEqual(calls[1]!.params, ["task-1", "tenant-a"]);
-  assert.doesNotMatch(calls[2]!.sql, /INNER JOIN tasks/);
-  assert.match(calls[3]!.sql, /COALESCE\(SUM\(c\.cost_usd\), 0\)/);
-  assert.deepEqual(calls[3]!.params, ["task-1", "tenant-a"]);
-  assert.deepEqual(calls[4]!.params, ["task-1"]);
-  assert.match(calls[5]!.sql, /INSERT INTO billing_accounts/);
-  assert.match(calls[5]!.sql, /ON CONFLICT\(account_id\) DO UPDATE/);
-  assert.match(calls[7]!.sql, /UPDATE billing_invoices/);
-  assert.match(calls[9]!.sql, /UPDATE billing_payment_sessions/);
-  assert.match(calls[11]!.sql, /INSERT INTO quota_counters/);
-  assert.match(calls[11]!.sql, /ON CONFLICT\(account_id, metric_type, window_start, window_end\) DO UPDATE/);
-  assert.match(calls[14]!.sql, /FROM billing_accounts/);
-  assert.match(calls[15]!.sql, /WHERE t\.tenant_id = \$1 AND e\.status IN \('pending', 'in_progress'\)/);
-  assert.match(calls[16]!.sql, /FROM tasks WHERE tenant_id = \$1 AND status = 'queued'/);
-});
-
-test("AsyncMemoryRepository writes memories, builds layered recall filters, and summarizes quality", async () => {
-  const activeMemory = memoryRecord();
-  const expiredMemory = memoryRecord({
-    id: "memory-2",
-    memoryLayer: "layer_5",
-    scope: "workspace",
-    classification: "note",
-    sourceTrustLevel: "external",
-    qualityScore: 0.4,
-    hitCount: 0,
-    createdAt: "2026-04-15T10:00:00.000Z",
-    lastAccessedAt: null,
-    expiresAt: "2026-04-16T09:00:00.000Z",
-    contentHash: "hash-2",
-  });
-  const revokedMemory = memoryRecord({
-    id: "memory-3",
-    memoryLayer: "layer_7",
-    classification: "decision",
-    qualityScore: 0.7,
-    hitCount: 2,
-    createdAt: "2026-04-14T10:00:00.000Z",
-    revokedAt: "2026-04-16T08:00:00.000Z",
-    revocationReason: "superseded",
-    contentHash: "hash-3",
-  });
-  const { connection, calls } = createConnection({
-    executeResults: [1, 2, 3],
-    queryRows: [[activeMemory, expiredMemory, revokedMemory], [activeMemory, expiredMemory, revokedMemory]],
-    queryOneRows: [activeMemory, undefined, activeMemory],
-  });
-  const repo = new AsyncMemoryRepository(connection);
-
-  await repo.insertMemory(activeMemory);
-  assert.deepEqual(
-    await repo.listMemories({
-      taskId: "task-1",
-      agentId: "agent-1",
-      memoryLayers: ["layer_3", "layer_5"],
-      classifications: ["fact"],
-      sourceTrustLevels: ["trusted"],
-      limit: 1,
-      evaluatedAt: now,
-    }),
-    [activeMemory],
-  );
-  assert.equal(await repo.getMemory("memory-1"), activeMemory);
-  assert.equal(await repo.getMemory("missing-memory"), null);
-  assert.equal(await repo.recordMemoryAccess("memory-1", now), 2);
-  assert.equal(await repo.revokeMemory("memory-1", now, "superseded"), 3);
-  assert.equal(await repo.findMemoryByContentHash("hash-1", "task"), activeMemory);
-
-  const report = await repo.getMemoryQualityReport({ evaluatedAt: now });
-  assert.equal(report.totalCount, 3);
-  assert.equal(report.activeCount, 1);
-  assert.equal(report.expiredCount, 1);
-  assert.equal(report.revokedCount, 1);
-  assert.equal(report.recalledCount, 2);
-  assert.equal(report.neverRecalledCount, 1);
-  assert.equal(report.averageQualityScore, (0.9 + 0.4 + 0.7) / 3);
-
-  assert.match(calls[0]!.sql, /INSERT INTO memories/);
-  assert.match(calls[1]!.sql, /WHERE task_id = \$1 AND agent_id = \$2 AND memory_layer IN \(\$3, \$4\)/);
-  assert.deepEqual(calls[1]!.params, ["task-1", "agent-1", "layer_3", "layer_5", "fact", "trusted"]);
-  assert.match(calls[4]!.sql, /SET hit_count = hit_count \+ 1/);
-  assert.deepEqual(calls[4]!.params, [now, "memory-1"]);
-  assert.match(calls[5]!.sql, /SET revoked_at = \$1,\s+revocation_reason = \$2/);
-  assert.deepEqual(calls[5]!.params, [now, "superseded", "memory-1"]);
-  assert.match(calls[6]!.sql, /WHERE content_hash = \$1 AND scope = \$2 AND status = 'active'/);
-});
-
-test("AsyncSecretRepository upserts registry and lease records and lists audits by secret ref", async () => {
-  const registry = secretRegistryRecord();
-  const usageAudit = secretUsageAuditRecord();
-  const rotationEvent = secretRotationEventRecord();
-  const lease = secretLeaseRecord();
+  // Operations: insertListing(execute), updateListing(execute), getListing x2(queryOne), increment(execute), updateRating(execute)
   const { connection, calls } = createConnection({
     executeResults: [1, 1, 1, 1],
-    queryRows: [[registry], [usageAudit], [rotationEvent], [lease]],
-    queryOneRows: [registry, undefined, lease],
+    queryRows: [[listing]],
+    queryOneRows: [listing, undefined],
   });
-  const repo = new AsyncSecretRepository(connection);
+  const repo = new AsyncMarketplaceListingRepository(connection);
 
-  await repo.upsertSecretRegistryRecord(registry);
-  await repo.insertSecretUsageAudit(usageAudit);
-  await repo.insertSecretRotationEvent(rotationEvent);
-  await repo.upsertSecretLeaseRecord(lease);
-  assert.equal(await repo.getSecretRegistryRecord("secret://provider/openai"), registry);
-  assert.equal(await repo.getSecretRegistryRecord("missing-secret"), null);
-  assert.deepEqual(await repo.listSecretRegistryRecords(), [registry]);
-  assert.deepEqual(await repo.listSecretUsageAuditsBySecretRef("secret://provider/openai"), [usageAudit]);
-  assert.deepEqual(await repo.listSecretRotationEventsBySecretRef("secret://provider/openai"), [rotationEvent]);
-  assert.equal(await repo.getSecretLeaseRecord("lease-secret-1"), lease);
-  assert.deepEqual(await repo.listSecretLeasesBySecretRef("secret://provider/openai"), [lease]);
+  await repo.insertListing(listing);
+  const updated = await repo.updateListing({ listingId: "listing-1", status: "deprecated", deprecatedAt: now, updatedAt: now });
+  assert.equal(updated, 1);
+  assert.equal(await repo.getListing("listing-1"), listing);
+  assert.equal(await repo.getListing("missing-listing"), null);
+  assert.equal(await repo.incrementDownloadCount("listing-1"), 1);
+  assert.equal(await repo.updateRating("listing-1", 4.8, 25), 1);
 
-  assert.match(calls[0]!.sql, /INSERT INTO secret_registry/);
-  assert.match(calls[0]!.sql, /ON CONFLICT\(secret_ref\) DO UPDATE SET/);
-  assert.match(calls[3]!.sql, /INSERT INTO secret_leases/);
-  assert.match(calls[3]!.sql, /ON CONFLICT\(lease_id\) DO UPDATE SET/);
-  assert.match(calls[4]!.sql, /FROM secret_registry\s+WHERE secret_ref = \$1/);
-  assert.match(calls[6]!.sql, /FROM secret_registry\s+ORDER BY secret_ref ASC/);
-  assert.deepEqual(calls[7]!.params, ["secret://provider/openai"]);
-  assert.match(calls[8]!.sql, /ORDER BY occurred_at DESC, event_id DESC/);
-  assert.match(calls[10]!.sql, /ORDER BY issued_at DESC, lease_id DESC/);
+  assert.match(calls[0]!.sql, /INSERT INTO marketplace_listings/);
+  assert.match(calls[1]!.sql, /UPDATE marketplace_listings SET/);
+  assert.match(calls[1]!.sql, /deprecated_at = \$7/);
+  assert.match(calls[4]!.sql, /download_count = download_count \+ 1/);
+  assert.match(calls[5]!.sql, /rating_avg = \$1, rating_count = \$2/);
 });
 
-test("AsyncReleaseRepository writes release evidence and sanitizes list limits", async () => {
-  const bundle = releaseBundleRecord();
-  const releaseExecution = releaseExecutionReportRecord();
-  const deploymentExecution = deploymentExecutionReportRecord();
-  const promotion = environmentPromotionHistoryRecord();
-  const capabilityReport = enterpriseCapabilityReportRecord();
-  const handoff = incidentHandoffRecord();
-  const governanceReport = enterpriseGovernanceReportRecord();
+test("AsyncMarketplaceListingRepository lists listings by status and category", async () => {
+  const listing: MarketplaceListingRecord = {
+    listingId: "listing-1",
+    packId: "pack-1",
+    status: "published",
+    title: "AI Tools Pack",
+    description: null,
+    category: "productivity",
+    version: "1.0.0",
+    publishedAt: now,
+    deprecatedAt: null,
+    downloadCount: 50,
+    ratingAvg: 4.0,
+    ratingCount: 10,
+    createdAt: now,
+    updatedAt: now,
+  };
   const { connection, calls } = createConnection({
-    executeResults: [1, 1, 1, 1, 1, 1, 1],
-    queryRows: [[bundle], [bundle], [capabilityReport], [handoff], [governanceReport]],
+    queryRows: [[listing], [listing]],
+  });
+  const repo = new AsyncMarketplaceListingRepository(connection);
+
+  assert.deepEqual(await repo.listListingsByStatus("published"), [listing]);
+  assert.deepEqual(await repo.listListingsByCategory("productivity"), [listing]);
+
+  assert.match(calls[0]!.sql, /WHERE status = \$1[\s\S]*?ORDER BY download_count DESC/s);
+  assert.match(calls[1]!.sql, /WHERE category = \$1[\s\S]*?ORDER BY rating_avg DESC/s);
+});
+
+test("AsyncMarketplaceListingRepository writes and reads pack reviews", async () => {
+  const review: PackReviewRecord = {
+    reviewId: "review-1",
+    listingId: "listing-1",
+    userId: "user-1",
+    rating: 5,
+    title: "Great pack!",
+    body: "Very useful",
+    helpfulCount: 10,
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+  };
+  // insertReview(execute), updateReview(execute), getReview x2(queryOne), listReviews(query), countReviews(queryOne)
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[review]],
+    queryOneRows: [review, undefined, { count: 1 }],
+  });
+  const repo = new AsyncMarketplaceListingRepository(connection);
+
+  await repo.insertReview(review);
+  const updated = await repo.updateReview({ reviewId: "review-1", rating: 4, helpfulCount: 11, updatedAt: now });
+  assert.equal(updated, 1);
+  assert.equal(await repo.getReview("review-1"), review);
+  assert.equal(await repo.getReview("missing-review"), null);
+  assert.deepEqual(await repo.listReviewsByListing("listing-1"), [review]);
+  assert.equal(await repo.countReviewsByListing("listing-1"), 1);
+
+  assert.match(calls[0]!.sql, /INSERT INTO pack_reviews/);
+  assert.match(calls[1]!.sql, /UPDATE pack_reviews SET/);
+  assert.match(calls[1]!.sql, /rating = \$2/);
+  assert.match(calls[2]!.sql, /WHERE listing_id = \$1 AND status = 'active'/);
+  assert.match(calls[4]!.sql, /COUNT\(\*\) AS count FROM pack_reviews/);
+});
+
+test("AsyncMarketplaceListingRepository writes and reads pack downloads", async () => {
+  const download: PackDownloadRecord = {
+    downloadId: "dl-1",
+    listingId: "listing-1",
+    tenantId: "tenant-a",
+    userId: "user-1",
+    packVersion: "1.0.0",
+    downloadedAt: now,
+    source: "marketplace",
+  };
+  const { connection, calls } = createConnection({
+    executeResults: [1],
+    queryRows: [[download], [download], [download]],
+    queryOneRows: [{ count: 5 }],
+  });
+  const repo = new AsyncMarketplaceListingRepository(connection);
+
+  await repo.insertDownload(download);
+  assert.deepEqual(await repo.listDownloadsByTenant("tenant-a"), [download]);
+  assert.deepEqual(await repo.listDownloadsByListing("listing-1", 50), [download]);
+  assert.deepEqual(await repo.listDownloadsByListing("listing-1"), [download]);
+  assert.equal(await repo.countDownloadsByListing("listing-1"), 5);
+
+  assert.deepEqual(calls[1]!.params, ["tenant-a"]);
+  assert.deepEqual(calls[2]!.params, ["listing-1", 50]);
+});
+
+test("AsyncOrganizationRepository upserts workspace and membership records", async () => {
+  const workspace = {
+    workspaceId: "ws-1",
+    ownerId: "user-1",
+    displayName: "My Workspace",
+    planId: "pro",
+    defaultPolicySet: "default",
+    organizationId: "org-1",
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const membership = {
+    workspaceId: "ws-1",
+    userId: "user-2",
+    role: "editor",
+    joinedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[workspace]],
+    queryOneRows: [workspace, undefined],
+  });
+  const repo = new AsyncOrganizationRepository(connection);
+
+  await repo.upsertWorkspaceRecord(workspace as any);
+  await repo.upsertWorkspaceMembershipRecord(membership as any);
+  assert.equal(await repo.getWorkspaceRecord("ws-1"), workspace);
+  assert.equal(await repo.getWorkspaceRecord("missing-ws"), null);
+  assert.deepEqual(await repo.listWorkspaceMemberships("ws-1"), [membership]);
+
+  assert.match(calls[0]!.sql, /INSERT INTO workspaces/);
+  assert.match(calls[0]!.sql, /ON CONFLICT\(workspace_id\) DO UPDATE SET/);
+  assert.match(calls[1]!.sql, /INSERT INTO workspace_memberships/);
+  assert.match(calls[2]!.sql, /FROM workspaces WHERE workspace_id = \$1/);
+});
+
+test("AsyncOrganizationRepository lists workspaces by organization", async () => {
+  const workspace = {
+    workspaceId: "ws-1",
+    ownerId: "user-1",
+    displayName: "My Workspace",
+    planId: "pro",
+    defaultPolicySet: "default",
+    organizationId: "org-1",
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    queryRows: [[workspace], [workspace], [workspace], [workspace]],
+  });
+  const repo = new AsyncOrganizationRepository(connection);
+
+  assert.deepEqual(await repo.listWorkspaceRecords({ organizationId: "org-1" }), [workspace]);
+  assert.deepEqual(await repo.listWorkspaceRecords({ organizationId: null }), [workspace]);
+  assert.deepEqual(await repo.listWorkspaceRecords({ limit: 5 }), [workspace]);
+  assert.deepEqual(await repo.listWorkspaceRecords({}), [workspace]);
+
+  assert.deepEqual(calls[0]!.params, ["org-1", 50]);
+});
+
+test("AsyncOrganizationRepository upserts and reads organizations", async () => {
+  const org = {
+    organizationId: "org-1",
+    displayName: "Acme Corp",
+    billingAccountId: "acct-1",
+    defaultTenantId: "tenant-a",
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const membership = {
+    organizationId: "org-1",
+    userId: "user-1",
+    role: "admin",
+    joinedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[org], [membership]],
+    queryOneRows: [org, undefined],
+  });
+  const repo = new AsyncOrganizationRepository(connection);
+
+  await repo.upsertOrganizationRecord(org as any);
+  await repo.upsertOrganizationMembershipRecord(membership as any);
+  assert.equal(await repo.getOrganizationRecord("org-1"), org);
+  assert.equal(await repo.getOrganizationRecord("missing-org"), null);
+  assert.deepEqual(await repo.listOrganizationRecords(10), [org]);
+  assert.deepEqual(await repo.listOrganizationMemberships("org-1"), [membership]);
+
+  assert.match(calls[0]!.sql, /INSERT INTO organizations/);
+  assert.match(calls[1]!.sql, /INSERT INTO organization_memberships/);
+});
+
+test("AsyncOrganizationRepository upserts and reads tenant records", async () => {
+  const tenant: TenantRecord = {
+    tenantId: "tenant-a",
+    displayName: "Tenant A",
+    status: "active",
+    billingPlan: "pro",
+    slaLevel: "standard",
+    allowedRegionsJson: '["us-east-1"]',
+    quotasJson: '{"tasks":1000}',
+    metadataJson: "{}",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const { connection, calls } = createConnection({
+    executeResults: [1],
+    queryRows: [[tenant], [tenant]],
+    queryOneRows: [tenant, undefined],
+  });
+  const repo = new AsyncOrganizationRepository(connection);
+
+  await repo.upsertTenantRecord(tenant as any);
+  assert.equal(await repo.getTenantRecord("tenant-a"), tenant);
+  assert.equal(await repo.getTenantRecord("missing-tenant"), null);
+  assert.deepEqual(await repo.listTenantRecords({ organizationId: "org-1" }), [tenant]);
+  assert.deepEqual(await repo.listTenantRecords({}), [tenant]);
+
+  assert.match(calls[0]!.sql, /INSERT INTO tenants/);
+});
+
+test("AsyncOrganizationRepository upserts deployment bindings and data namespaces", async () => {
+  const binding = {
+    bindingId: "binding-1",
+    tenantId: "tenant-a",
+    environmentId: "env-1",
+    deploymentMode: "cloud",
+    region: "us-east-1",
+    networkBoundary: "public",
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const ns = {
+    namespaceId: "ns-1",
+    plane: "artifact",
+    tenantId: "tenant-a",
+    organizationId: "org-1",
+    workspaceId: "ws-1",
+    retentionPolicy: "standard",
+    encryptionPolicy: "aes256",
+    residencyPolicy: "us",
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[binding], [binding], [ns]],
+    queryOneRows: [binding, undefined, ns, undefined],
+  });
+  const repo = new AsyncOrganizationRepository(connection);
+
+  await repo.upsertDeploymentBindingRecord(binding as any);
+  await repo.upsertDataNamespaceRecord(ns as any);
+  assert.equal(await repo.getDeploymentBindingRecord("binding-1"), binding);
+  assert.equal(await repo.getDeploymentBindingRecord("missing-binding"), null);
+  assert.deepEqual(await repo.listDeploymentBindings({ tenantId: "tenant-a" }), [binding]);
+  assert.deepEqual(await repo.listDeploymentBindings({}), [binding]);
+  assert.equal(await repo.getDataNamespaceRecord("ns-1"), ns);
+  assert.equal(await repo.getDataNamespaceRecord("missing-ns"), null);
+  assert.deepEqual(await repo.listDataNamespaces({ plane: "artifact" }), [ns]);
+
+  assert.match(calls[0]!.sql, /INSERT INTO deployment_bindings/);
+  assert.match(calls[1]!.sql, /INSERT INTO data_namespaces/);
+});
+
+test("AsyncPromptRepository writes and reads prompt bundles", async () => {
+  const bundle = {
+    bundleId: "bundle-1",
+    name: "routing_prompt",
+    version: "1.0.0",
+    domain: "routing",
+    taskType: "task_run",
+    packId: null,
+    systemPromptContent: "You are a router",
+    userPromptContent: "Route this task",
+    fewShotExamplesJson: null,
+    constraintsJson: "{}",
+    metadataJson: "{}",
+    deprecated: 0,
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[bundle]],
     queryOneRows: [bundle, undefined],
   });
-  const repo = new AsyncReleaseRepository(connection);
+  const repo = new AsyncPromptRepository(connection);
 
-  await repo.insertReleaseBundleRecord(bundle);
-  await repo.insertReleaseExecutionReportRecord(releaseExecution);
-  await repo.insertDeploymentExecutionReportRecord(deploymentExecution);
-  await repo.insertEnvironmentPromotionHistoryRecord(promotion);
-  assert.equal(await repo.getReleaseBundleRecord("bundle-release-1"), bundle);
-  assert.equal(await repo.getReleaseBundleRecord("missing-bundle"), null);
-  assert.deepEqual(await repo.listReleaseBundleRecords({ environment: "staging", limit: 9.9 }), [bundle]);
-  assert.deepEqual(await repo.listReleaseBundleRecords(), [bundle]);
-  await repo.insertEnterpriseCapabilityReport(capabilityReport);
-  await repo.insertIncidentHandoffRecord(handoff);
-  await repo.insertEnterpriseGovernanceReport(governanceReport);
-  assert.deepEqual(await repo.listEnterpriseCapabilityReports(0), [capabilityReport]);
-  assert.deepEqual(await repo.listIncidentHandoffRecords(Number.NaN), [handoff]);
-  assert.deepEqual(await repo.listEnterpriseGovernanceReports(5.8), [governanceReport]);
+  await repo.insertPromptBundle(bundle as any);
+  const updated = await repo.updatePromptBundle({ bundleId: "bundle-1", version: "1.1.0", updatedAt: now } as any);
+  assert.equal(updated, 1);
+  assert.equal(await repo.getPromptBundle("bundle-1"), bundle);
+  assert.equal(await repo.getPromptBundle("missing-bundle"), null);
+  assert.equal(await repo.getPromptBundleByNameVersion("routing_prompt", "1.0.0"), bundle);
+  assert.equal(await repo.getPromptBundleByNameVersion("missing", "1.0.0"), null);
 
-  assert.match(calls[0]!.sql, /INSERT INTO release_bundles/);
-  assert.match(calls[1]!.sql, /INSERT INTO release_execution_reports/);
-  assert.match(calls[2]!.sql, /INSERT INTO deployment_execution_reports/);
-  assert.match(calls[3]!.sql, /INSERT INTO environment_promotion_history/);
-  assert.match(calls[4]!.sql, /FROM release_bundles\s+WHERE bundle_id = \$1\s+LIMIT 1/);
-  assert.match(calls[6]!.sql, /WHERE environment IS \$1 ORDER BY exported_at DESC, bundle_id DESC LIMIT \$2/);
-  assert.deepEqual(calls[6]!.params, ["staging", 9]);
-  assert.match(calls[7]!.sql, /ORDER BY exported_at DESC, bundle_id DESC LIMIT \$1/);
-  assert.deepEqual(calls[7]!.params, [50]);
-  assert.match(calls[8]!.sql, /INSERT INTO enterprise_capability_reports/);
-  assert.match(calls[9]!.sql, /INSERT INTO incident_handoff_records/);
-  assert.match(calls[10]!.sql, /INSERT INTO enterprise_governance_reports/);
-  assert.deepEqual(calls[11]!.params, [1]);
-  assert.deepEqual(calls[12]!.params, [20]);
-  assert.deepEqual(calls[13]!.params, [5]);
+  assert.match(calls[0]!.sql, /INSERT INTO prompt_bundles/);
+  assert.match(calls[1]!.sql, /UPDATE prompt_bundles SET/);
+  assert.match(calls[1]!.sql, /version = \$2/);
+  assert.match(calls[2]!.sql, /FROM prompt_bundles WHERE bundle_id = \$1/);
 });
 
-test("AsyncExecutionRepository handles scoped lists, status filters, and empty counts", async () => {
-  const execution = executionRecord();
-  const precheck: ExecutionPrecheckRecord = {
-    id: "precheck-1",
-    executionId: "execution-1",
-    allowed: 1,
-    reasonCode: "ok",
-    resolvedBudgetUsd: 1,
-    resolvedTimeoutMs: 60000,
-    resolvedSandboxMode: "workspace_write",
-    resolvedToolsJson: "[]",
-    resolvedPathsJson: "[]",
-    checkedAt: now,
+test("AsyncPromptRepository lists prompt bundles by domain and active bundles", async () => {
+  const bundle = {
+    bundleId: "bundle-1",
+    name: "routing_prompt",
+    version: "1.0.0",
+    domain: "routing",
+    taskType: "task_run",
+    packId: null,
+    systemPromptContent: "You are a router",
+    userPromptContent: null,
+    fewShotExamplesJson: null,
+    constraintsJson: "{}",
+    metadataJson: "{}",
+    deprecated: 0,
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    queryRows: [[bundle], [bundle]],
+  });
+  const repo = new AsyncPromptRepository(connection);
+
+  assert.deepEqual(await repo.listPromptBundlesByDomain("routing"), [bundle]);
+  assert.deepEqual(await repo.listPromptBundlesByDomain("routing", "task_run"), [bundle]);
+  assert.deepEqual(await repo.listActivePromptBundles(), [bundle]);
+
+  assert.match(calls[0]!.sql, /WHERE domain = \$1 AND deprecated = 0/);
+  assert.match(calls[1]!.sql, /WHERE domain = \$1 AND task_type = \$2 AND deprecated = 0/);
+});
+
+test("AsyncPromptRepository writes and reads prompt versions", async () => {
+  const version = {
+    versionId: "ver-1",
+    bundleId: "bundle-1",
+    version: "1.0.0",
+    isCurrent: 1,
+    trafficWeight: 100,
+    trafficAllocationJson: null,
+    createdAt: now,
+    deprecatedAt: null,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1, 1],
+    queryRows: [[version], [version]],
+    queryOneRows: [version, undefined],
+  });
+  const repo = new AsyncPromptRepository(connection);
+
+  await repo.insertPromptVersion(version as any);
+  await repo.setCurrentVersion("bundle-1", "ver-1");
+  assert.equal(await repo.getPromptVersion("ver-1"), version);
+  assert.equal(await repo.getPromptVersion("missing-ver"), null);
+  assert.deepEqual(await repo.listPromptVersions("bundle-1"), [version]);
+  assert.equal(await repo.getCurrentVersion("bundle-1"), version);
+  assert.equal(await repo.getCurrentVersion("missing-bundle"), null);
+
+  assert.match(calls[0]!.sql, /INSERT INTO prompt_versions/);
+  assert.match(calls[1]!.sql, /UPDATE prompt_versions SET is_current = 0 WHERE bundle_id = \$1/);
+  assert.match(calls[2]!.sql, /UPDATE prompt_versions SET is_current = 1 WHERE version_id = \$1/);
+});
+
+test("AsyncPromptRepository writes and reads prompt AB tests", async () => {
+  const test = {
+    testId: "test-1",
+    bundleId: "bundle-1",
+    testName: "Routing v1 vs v2",
+    controlVersion: "1.0.0",
+    treatmentVersion: "1.1.0",
+    trafficSplitPercent: 50,
+    status: "running",
+    startTime: now,
+    endTime: null,
+    metricsJson: '{"accuracy":0.95}',
+    resultsJson: null,
+    createdAt: now,
+    updatedAt: now,
+  } as const;
+  const { connection, calls } = createConnection({
+    executeResults: [1, 1],
+    queryRows: [[test]],
+    queryOneRows: [test, undefined],
+  });
+  const repo = new AsyncPromptRepository(connection);
+
+  await repo.insertPromptAbTest(test as any);
+  const updated = await repo.updatePromptAbTest({
+    testId: "test-1",
+    status: "completed",
+    resultsJson: '{"winner":"treatment"}',
+    updatedAt: now,
+  } as any);
+  assert.equal(updated, 1);
+  assert.equal(await repo.getPromptAbTest("test-1"), test);
+  assert.equal(await repo.getPromptAbTest("missing-test"), null);
+  assert.deepEqual(await repo.listPromptAbTestsByBundle("bundle-1"), [test]);
+  assert.deepEqual(await repo.listActiveAbTests(), [test]);
+
+  assert.match(calls[0]!.sql, /INSERT INTO prompt_ab_tests/);
+  assert.match(calls[1]!.sql, /UPDATE prompt_ab_tests SET/);
+  assert.match(calls[1]!.sql, /status = \$2/);
+  assert.match(calls[2]!.sql, /FROM prompt_ab_tests WHERE test_id = \$1/);
+});
+
+test("AsyncTenantRepository writes and reads tenants with quotas and billing", async () => {
+  const tenant: TenantRecord = {
+    tenantId: "tenant-a",
+    displayName: "Tenant A",
+    status: "active",
+    billingPlan: "pro",
+    slaLevel: "standard",
+    allowedRegionsJson: '["us-east-1"]',
+    quotasJson: '{"tasks":1000}',
+    metadataJson: "{}",
+    createdAt: now,
+    updatedAt: now,
   };
-  const deadLetter: DeadLetterRecord = {
-    id: "dead-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    finalReasonCode: "agent_failed",
-    retryCount: 2,
-    lastErrorMessage: "boom",
-    movedAt: now,
+  const quota: TenantQuotaRecord = {
+    quotaId: "quota-1",
+    tenantId: "tenant-a",
+    resourceType: "tasks",
+    monthlyLimit: 1000,
+    currentUsage: 500,
+    alertThreshold: 0.8,
+    resetAt: "2026-05-01T00:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const billing: TenantBillingRecord = {
+    billingId: "billing-1",
+    tenantId: "tenant-a",
+    billingPlan: "pro",
+    billingPeriodStart: "2026-04-01T00:00:00.000Z",
+    billingPeriodEnd: "2026-04-30T23:59:59.999Z",
+    totalCostUsd: 99.99,
+    currency: "USD",
+    status: "pending",
+    invoiceUrl: "https://billing.example/invoice-1",
+    paidAt: null,
+    createdAt: now,
+    updatedAt: now,
   };
   const { connection, calls } = createConnection({
-    queryRows: [[execution], [execution], [execution], [deadLetter]],
-    queryOneRows: [execution, { count: 2 }, precheck, deadLetter],
+    executeResults: [1, 1, 1, 1],
+    queryRows: [[tenant], [quota]],
+    queryOneRows: [tenant, undefined],
   });
-  const repo = new AsyncExecutionRepository(connection);
+  const repo = new AsyncTenantRepository(connection);
 
-  assert.equal(await repo.getExecution("execution-1"), execution);
-  assert.deepEqual(await repo.listExecutionsByTask("task-1", "tenant-a"), [execution]);
-  assert.deepEqual(await repo.listExecutionsByTask("task-1"), [execution]);
-  assert.deepEqual(await repo.listExecutionsByStatuses([]), []);
-  assert.deepEqual(await repo.listExecutionsByStatuses(["executing", "prechecking"], 10), [execution]);
-  assert.equal(await repo.countActiveExecutions(), 2);
-  assert.equal(await repo.getExecutionPrecheck("execution-1"), precheck);
-  assert.equal(await repo.getDeadLetterByExecutionId("execution-1"), deadLetter);
-  assert.deepEqual(await repo.listDeadLettersByTask("task-1"), [deadLetter]);
+  await repo.insertTenant(tenant);
+  const updatedTenant = await repo.updateTenant({ tenantId: "tenant-a", displayName: "Updated Tenant", status: "suspended", updatedAt: now });
+  assert.equal(updatedTenant, 1);
+  assert.equal(await repo.getTenant("tenant-a"), tenant);
+  assert.equal(await repo.getTenant("missing-tenant"), null);
+  assert.deepEqual(await repo.listTenantsByStatus("active"), [tenant]);
+  assert.equal(await repo.deleteTenant("tenant-a"), 1);
 
-  assert.match(calls[1]!.sql, /INNER JOIN tasks t ON t\.id = e\.task_id/);
-  assert.deepEqual(calls[1]!.params, ["task-1", "tenant-a"]);
-  assert.doesNotMatch(calls[2]!.sql, /INNER JOIN tasks/);
-  assert.match(calls[3]!.sql, /status IN \(\$1,\$2\).*LIMIT \$3/);
-  assert.deepEqual(calls[3]!.params, ["executing", "prechecking", 10]);
-});
+  await repo.upsertTenantQuota(quota);
+  assert.equal(await repo.getTenantQuota("quota-1"), quota);
+  assert.equal(await repo.getTenantQuota("missing-quota"), null);
+  assert.deepEqual(await repo.listTenantQuotas("tenant-a"), [quota]);
+  assert.equal(await repo.updateQuotaUsage("quota-1", 600, now), 1);
 
-test("AsyncApprovalRepository writes approvals, takeover sessions, and operator actions", async () => {
-  const { connection, calls } = createConnection({ executeResults: [1, 2, 3, 4, 5] });
-  const repo = new AsyncApprovalRepository(connection);
-  const takeover: TakeoverSessionRecord = {
-    id: "takeover-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    operatorId: "operator-1",
-    status: "open",
-    reasonCode: "manual",
-    startedAt: now,
-    closedAt: null,
-  };
-  const action: OperatorActionRecord = {
-    id: "action-1",
-    takeoverSessionId: "takeover-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    operatorId: "operator-1",
-    actionType: "complete_task",
-    reasonCode: "manual",
-    actionPayloadJson: "{}",
-    beforeStateJson: "{}",
-    afterStateJson: "{}",
-    createdAt: now,
-  };
+  await repo.insertTenantBilling(billing);
+  const updatedBilling = await repo.updateTenantBillingStatus({ billingId: "billing-1", status: "paid", paidAt: now, totalCostUsd: 99.99, updatedAt: now });
+  assert.equal(updatedBilling, 1);
+  assert.equal(await repo.getTenantBilling("billing-1"), billing);
+  assert.deepEqual(await repo.listTenantBillingHistory("tenant-a", 5), [billing]);
 
-  await repo.insertApproval(approvalRecord());
-  await repo.updateApprovalDecision({
-    approvalId: "approval-1",
-    status: "approved",
-    responseJson: '{"approved":true}',
-    respondedAt: now,
-  });
-  await repo.insertTakeoverSession(takeover);
-  await repo.closeTakeoverSession("takeover-1", now);
-  await repo.insertOperatorAction(action);
-
-  assert.match(calls[0]!.sql, /INSERT INTO approvals/);
-  assert.deepEqual(calls[1]!.params, ["approved", '{"approved":true}', now, "approval-1"]);
-  assert.match(calls[2]!.sql, /INSERT INTO takeover_sessions/);
-  assert.match(calls[3]!.sql, /UPDATE takeover_sessions SET status = 'closed'/);
-  assert.match(calls[4]!.sql, /INSERT INTO operator_actions/);
-});
-
-test("AsyncApprovalRepository builds tenant-scoped and unscoped approval queries", async () => {
-  const approval = approvalRecord();
-  const takeover: TakeoverSessionRecord = {
-    id: "takeover-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    operatorId: "operator-1",
-    status: "open",
-    reasonCode: "manual",
-    startedAt: now,
-    closedAt: null,
-  };
-  const action: OperatorActionRecord = {
-    id: "action-1",
-    takeoverSessionId: "takeover-1",
-    taskId: "task-1",
-    executionId: "execution-1",
-    operatorId: "operator-1",
-    actionType: "complete_task",
-    reasonCode: "manual",
-    actionPayloadJson: "{}",
-    beforeStateJson: "{}",
-    afterStateJson: "{}",
-    createdAt: now,
-  };
-  const { connection, calls } = createConnection({
-    queryRows: [[approval], [approval], [approval], [takeover], [takeover], [action], [action]],
-    queryOneRows: [approval, undefined, takeover, undefined],
-  });
-  const repo = new AsyncApprovalRepository(connection);
-
-  assert.deepEqual(await repo.listApprovalsByTask("task-1", "tenant-a"), [approval]);
-  assert.deepEqual(await repo.listApprovalsByTask("task-1"), [approval]);
-  assert.equal(await repo.getApproval("approval-1", "tenant-a"), approval);
-  assert.equal(await repo.getApproval("missing-approval"), null);
-  assert.deepEqual(await repo.listApprovalsByStatus("requested"), [approval]);
-  assert.deepEqual(await repo.listTakeoverSessionsByTask("task-1", "tenant-a"), [takeover]);
-  assert.deepEqual(await repo.listTakeoverSessionsByTask("task-1"), [takeover]);
-  assert.equal(await repo.getTakeoverSession("takeover-1", "tenant-a"), takeover);
-  assert.equal(await repo.getTakeoverSession("missing-takeover"), null);
-  assert.deepEqual(await repo.listOperatorActionsByTask("task-1", "tenant-a"), [action]);
-  assert.deepEqual(await repo.listOperatorActionsByTask("task-1"), [action]);
-
-  assert.match(calls[0]!.sql, /INNER JOIN tasks t ON t\.id = a\.task_id/);
-  assert.deepEqual(calls[0]!.params, ["task-1", "tenant-a"]);
-  assert.doesNotMatch(calls[1]!.sql, /INNER JOIN tasks/);
-  assert.match(calls[2]!.sql, /WHERE a\.id = \$1\s+AND t\.tenant_id = \$2/);
-  assert.match(calls[5]!.sql, /INNER JOIN tasks t ON t\.id = x\.task_id/);
-  assert.match(calls[9]!.sql, /INNER JOIN tasks t ON t\.id = o\.task_id/);
+  assert.match(calls[0]!.sql, /INSERT INTO tenants/);
+  assert.match(calls[1]!.sql, /UPDATE tenants SET/);
+  assert.match(calls[2]!.sql, /FROM tenants WHERE tenant_id = \$1/);
+  assert.match(calls[3]!.sql, /DELETE FROM tenants WHERE tenant_id = \$1/);
+  assert.match(calls[4]!.sql, /INSERT INTO tenant_quotas/);
+  assert.match(calls[5]!.sql, /UPDATE tenant_quotas SET current_usage = \$1/);
+  assert.match(calls[6]!.sql, /INSERT INTO tenant_billing/);
+  assert.match(calls[7]!.sql, /UPDATE tenant_billing SET status = \$1/);
 });

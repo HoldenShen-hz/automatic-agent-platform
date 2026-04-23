@@ -14,3 +14,23 @@ export function estimateCapacityVolatility(samples: readonly number[]): number {
   const deltas = samples.slice(1).map((value, index) => Math.abs(value - samples[index]!));
   return Number((deltas.reduce((sum, value) => sum + value, 0) / deltas.length).toFixed(2));
 }
+
+export interface CapacityTrendAnalysis {
+  readonly average: number;
+  readonly direction: "up" | "down" | "flat";
+  readonly volatility: number;
+  readonly confidencePercent: number;
+}
+
+export class CapacityTrendAnalyzerService {
+  public analyze(samples: readonly number[]): CapacityTrendAnalysis {
+    const trend = analyzeCapacityTrend(samples);
+    const volatility = estimateCapacityVolatility(samples);
+    const confidencePercent = samples.length >= 8 ? 90 : samples.length >= 4 ? 75 : 55;
+    return {
+      ...trend,
+      volatility,
+      confidencePercent,
+    };
+  }
+}

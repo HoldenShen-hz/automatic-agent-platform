@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { CapacityPlanningService } from "../../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
+import { CapacityForecasterService } from "../../../../src/ops-maturity/capacity-planner/forecaster/index.js";
+import { CapacityScenarioSimulatorService } from "../../../../src/ops-maturity/capacity-planner/simulator/index.js";
 
 test("CapacityPlanningService records signals and retrieves them in forecast windows", () => {
   const service = new CapacityPlanningService();
@@ -307,4 +309,24 @@ test("CapacityPlanningService handles signals without regionId as global", () =>
   assert.equal(forecast.resourceType, "cpu");
   assert.ok(forecast.regionId === undefined);
   assert.equal(forecast.trainingWindow.sampleCount, 2);
+});
+
+test("CapacityForecasterService returns projected series and peak", () => {
+  const service = new CapacityForecasterService();
+  const forecast = service.forecast(100, 10, 3);
+
+  assert.deepEqual(forecast.projectedUsage, [110, 121, 133.1]);
+  assert.equal(forecast.peak, 133.1);
+});
+
+test("CapacityScenarioSimulatorService computes projected units and savings", () => {
+  const service = new CapacityScenarioSimulatorService();
+  const result = service.simulate({
+    baselineUnits: 100,
+    growthPercent: 20,
+    optimizationPercent: 25,
+  });
+
+  assert.equal(result.projectedUnits, 90);
+  assert.equal(result.savingsPercent, 10);
 });

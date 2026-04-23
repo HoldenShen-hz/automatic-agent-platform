@@ -1,0 +1,10 @@
+{
+  "name": "test_pack",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test tests/"
+  }
+}

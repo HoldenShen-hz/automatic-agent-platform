@@ -17,6 +17,18 @@ export interface OpsHealthMetrics {
   readonly mostRecentCheck: string | null;
 }
 
+export interface OpsHealthAlert {
+  readonly component: string;
+  readonly severity: "warning" | "critical";
+  readonly reasonCode: string;
+}
+
+export interface OpsHealthSnapshot {
+  readonly status: "healthy" | "degraded" | "failed";
+  readonly metrics: OpsHealthMetrics;
+  readonly alerts: readonly OpsHealthAlert[];
+}
+
 function calculateHealthScore(probes: readonly OpsHealthProbe[]): number {
   if (probes.length === 0) return 100;
 
@@ -155,4 +167,46 @@ export function generateHealthSummary(probes: readonly OpsHealthProbe[]): string
   }
 
   return parts.join(" | ");
+}
+
+export class OpsHealthMonitorService {
+  public evaluate(
+    probes: readonly OpsHealthProbe[],
+    options: { readonly latencyThresholdMs?: number } = {},
+  ): OpsHealthSnapshot {
+    const metrics = calculateHealthMetrics(probes);
+    const status = summarizeOpsHealth(probes);
+    const latencyThresholdMs = options.latencyThresholdMs ?? 1_000;
+    const alerts: OpsHealthAlert[] = [];
+
+    for (const probe of probes) {
+      if (probe.status === "failed") {
+        alerts.push({
+          component: probe.component,
+          severity: "critical",
+          reasonCode: "ops.health.component_failed",
+        });
+      } else if (probe.status === "degraded") {
+        alerts.push({
+          component: probe.component,
+          severity: "warning",
+          reasonCode: "ops.health.component_degraded",
+        });
+      }
+
+      if (probe.latencyMs != null && probe.latencyMs > latencyThresholdMs) {
+        alerts.push({
+          component: probe.component,
+          severity: probe.latencyMs > latencyThresholdMs * 2 ? "critical" : "warning",
+          reasonCode: "ops.health.latency_anomaly",
+        });
+      }
+    }
+
+    return {
+      status,
+      metrics,
+      alerts,
+    };
+  }
 }

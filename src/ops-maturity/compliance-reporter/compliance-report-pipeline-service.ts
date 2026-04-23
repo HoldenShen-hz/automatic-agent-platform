@@ -1,7 +1,7 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { mapEvidenceByType, type EvidenceReference } from "./evidence-mapper/index.js";
-import { renderComplianceReportMarkdown, type ComplianceReportSection } from "./report-renderer/index.js";
-import { findComplianceTemplate } from "./template-registry/index.js";
+import { EvidenceMapperService, mapEvidenceByType, type EvidenceReference } from "./evidence-mapper/index.js";
+import { ComplianceReportRendererService, renderComplianceReportMarkdown, type ComplianceReportSection } from "./report-renderer/index.js";
+import { ComplianceTemplateRegistryService, findComplianceTemplate } from "./template-registry/index.js";
 
 export interface ComplianceReportTemplateDefinition {
   readonly templateId: string;
@@ -44,20 +44,24 @@ export interface ComplianceReportAccessReceipt {
 export class ComplianceReportPipelineService {
   private readonly templates: readonly ComplianceReportTemplateDefinition[];
   private readonly accessLog = new Map<string, ComplianceReportAccessReceipt[]>();
+  private readonly evidenceMapper = new EvidenceMapperService();
+  private readonly renderer = new ComplianceReportRendererService();
+  private readonly registry: ComplianceTemplateRegistryService<ComplianceReportTemplateDefinition>;
 
   public constructor(templates: readonly ComplianceReportTemplateDefinition[]) {
     this.templates = templates;
+    this.registry = new ComplianceTemplateRegistryService(templates);
   }
 
   public generate(request: ComplianceReportRequest): ComplianceReportArtifact {
-    const template = findComplianceTemplate(this.templates, request.templateId);
+    const template = this.registry.find(request.templateId) ?? findComplianceTemplate(this.templates, request.templateId);
     if (template == null) {
       throw new Error(`compliance_report.template_not_found:${request.templateId}`);
     }
 
-    const evidenceMap = mapEvidenceByType(request.evidence);
-    const missingEvidenceTypes = template.requiredEvidenceTypes
-      .filter((evidenceType) => (evidenceMap[evidenceType] ?? []).length === 0);
+    const evidenceMap = this.evidenceMapper.map(request.evidence);
+    const coverage = this.evidenceMapper.summarizeCoverage(request.evidence, template.requiredEvidenceTypes);
+    const missingEvidenceTypes = coverage.missingTypes;
     const sections = this.buildSections(template, evidenceMap, missingEvidenceTypes);
 
     return {
@@ -69,7 +73,7 @@ export class ComplianceReportPipelineService {
       status: missingEvidenceTypes.length === 0 ? "complete" : "partial",
       missingEvidenceTypes,
       evidenceMap,
-      markdown: renderComplianceReportMarkdown(
+      markdown: this.renderer.renderMarkdown(
         `${template.framework} ${template.reportType} report`,
         sections,
       ),
@@ -125,7 +129,7 @@ export class ComplianceReportPipelineService {
       },
       {
         title: "Completeness",
-        lines: gapLines,
+        lines: [...gapLines, `coverage_ratio=${missingEvidenceTypes.length === 0 ? "1" : ((template.requiredEvidenceTypes.length - missingEvidenceTypes.length) / Math.max(1, template.requiredEvidenceTypes.length)).toFixed(2)}`],
       },
     ];
   }

@@ -1,9 +1,9 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { predictOpsCapacityRisk } from "./capacity-predictor/index.js";
-import { buildConfigOptimizationSuggestion } from "./config-optimizer/index.js";
-import { summarizeDeveloperAssistSuggestion } from "./dev-assistant/index.js";
-import { summarizeOpsHealth, type OpsHealthProbe } from "./health-monitor/index.js";
-import { classifyOpsIncident } from "./incident-diagnoser/index.js";
+import { OpsCapacityPredictorService } from "./capacity-predictor/index.js";
+import { ConfigOptimizerService } from "./config-optimizer/index.js";
+import { DeveloperAssistantService } from "./dev-assistant/index.js";
+import { OpsHealthMonitorService, summarizeOpsHealth, type OpsHealthProbe } from "./health-monitor/index.js";
+import { IncidentDiagnoserService, classifyOpsIncident } from "./incident-diagnoser/index.js";
 
 export type OpsActionType = "scale_capacity" | "tune_config" | "investigate_incident" | "developer_assist";
 export type OpsMaturityLevel = "observe_only" | "suggest_only" | "supervised_execution" | "trusted_automation";
@@ -91,6 +91,11 @@ function canExecuteAtLevel(
 export class PlatformOpsAgentService {
   private readonly definition: OpsAgentDefinition;
   private readonly proposals = new Map<string, OpsProposal>();
+  private readonly capacityPredictor = new OpsCapacityPredictorService();
+  private readonly configOptimizer = new ConfigOptimizerService();
+  private readonly developerAssistant = new DeveloperAssistantService();
+  private readonly healthMonitor = new OpsHealthMonitorService();
+  private readonly incidentDiagnoser = new IncidentDiagnoserService();
 
   public constructor(definition: OpsAgentDefinition) {
     this.definition = definition;
@@ -98,8 +103,10 @@ export class PlatformOpsAgentService {
 
   public createProposal(input: OpsProposalInput): OpsProposal {
     const observedAt = input.observedAt ?? nowIso();
-    const incidentLevel = classifyOpsIncident(input.errorRate, input.backlog);
-    const capacityRisk = predictOpsCapacityRisk(input.currentLoad, input.projectedLoad);
+    const healthSnapshot = this.healthMonitor.evaluate(input.probes);
+    const diagnosis = this.incidentDiagnoser.diagnose(input.errorRate, input.backlog, healthSnapshot.status);
+    const incidentLevel = diagnosis.level;
+    const capacityRisk = this.capacityPredictor.assessRisk(input.currentLoad, input.projectedLoad).riskLevel;
     const actionType = this.chooseActionType(input, incidentLevel, capacityRisk);
     const riskLevel = riskFromSignals(incidentLevel, capacityRisk, actionType);
     const reasonCodes = this.buildReasonCodes(input, incidentLevel, capacityRisk, actionType);
@@ -123,7 +130,7 @@ export class PlatformOpsAgentService {
       reasonCodes,
       incidentLevel,
       capacityRisk,
-      healthStatus: summarizeOpsHealth(input.probes),
+      healthStatus: healthSnapshot.status,
       evidenceRequirements: [...this.definition.evidenceRequirements],
       observedAt,
       createdAt: nowIso(),
@@ -205,13 +212,19 @@ export class PlatformOpsAgentService {
       case "scale_capacity":
         return `capacity:${capacityRisk}: ${input.currentLoad} -> ${input.projectedLoad}`;
       case "tune_config":
-        return buildConfigOptimizationSuggestion("worker_pool", input.currentLoad, input.projectedLoad);
+        return this.configOptimizer.optimize({
+          key: "worker_pool",
+          currentValue: input.currentLoad,
+          recommendedValue: input.projectedLoad,
+          currentLoad: input.currentLoad,
+          projectedLoad: input.projectedLoad,
+        }).summary;
       case "developer_assist":
-        return summarizeDeveloperAssistSuggestion("ops_agent", [
+        return this.developerAssistant.recommend("ops_agent", [
           `health=${summarizeOpsHealth(input.probes)}`,
           `errorRate=${input.errorRate}`,
           `backlog=${input.backlog}`,
-        ]);
+        ]).summary;
     }
   }
 

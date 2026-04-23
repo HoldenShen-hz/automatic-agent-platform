@@ -33,7 +33,6 @@ export class FluentdTransport implements LogTransport {
     this.tag = config.tag;
     this.reconnectIntervalMs = config.reconnectIntervalMs ?? 5000;
     this.bufferLimit = config.bufferLimit ?? 10000;
-    this.connect();
   }
 
   private connect(): void {
@@ -42,28 +41,37 @@ export class FluentdTransport implements LogTransport {
     }
     this.connecting = true;
     this.socket = createConnection(this.config.port, this.config.host);
+    if (typeof this.socket.unref === "function") {
+      this.socket.unref();
+    }
     this.socket.on("connect", () => {
-      this.connecting = false;
-      if (this.reconnectTimer != null) {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
-      this.reconnectAttempts = 0;
-      for (const buffered of this.buffer) {
-        this.socket!.write(buffered);
-      }
-      this.buffer = [];
+      this.handleConnected();
     });
     this.socket.on("error", () => {
-      this.socket = null;
-      this.connecting = false;
-      this.handleReconnect();
+      this.handleDisconnected();
     });
     this.socket.on("close", () => {
-      this.socket = null;
-      this.connecting = false;
-      this.handleReconnect();
+      this.handleDisconnected();
     });
+  }
+
+  private handleConnected(): void {
+    this.connecting = false;
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
+    for (const buffered of this.buffer) {
+      this.socket?.write(buffered);
+    }
+    this.buffer = [];
+  }
+
+  private handleDisconnected(): void {
+    this.socket = null;
+    this.connecting = false;
+    this.handleReconnect();
   }
 
   private reconnectAttempts = 0;
@@ -91,6 +99,7 @@ export class FluentdTransport implements LogTransport {
       this.reconnectTimer = null;
       this.connect();
     }, backoffMs);
+    this.reconnectTimer.unref();
   }
 
   write(entry: StructuredLogEntry): void {
@@ -120,7 +129,12 @@ export class FluentdTransport implements LogTransport {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.socket?.end();
+    if (typeof this.socket?.end === "function") {
+      this.socket.end();
+    }
+    if (typeof this.socket?.destroy === "function") {
+      this.socket.destroy();
+    }
     this.socket = null;
   }
 }

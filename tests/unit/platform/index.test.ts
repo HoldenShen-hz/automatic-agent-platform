@@ -14,6 +14,12 @@ import {
   PromptTemplateRegistryService,
   registerPlatformSurfaceCatalog,
   WebhookIngressService,
+  ExecutionLeaseService,
+  HaCoordinatorService,
+  TransitionService,
+  HitlApprovalOrchestrationService,
+  OapeflirLoopService,
+  TaskDecompositionService,
 } from "../../../src/platform/index.js";
 
 test("platform root barrel exposes canonical cross-surface capabilities", () => {
@@ -29,4 +35,16 @@ test("platform root barrel exposes canonical cross-surface capabilities", () => 
   assert.equal(typeof WebhookIngressService, "function");
   assert.equal(typeof PromptTemplateRegistryService, "function");
   assert.equal(typeof HarnessRuntimeService, "function");
+});
+
+test("platform root barrel exports execution services", () => {
+  assert.equal(typeof ExecutionLeaseService, "function");
+  assert.equal(typeof HaCoordinatorService, "function");
+  assert.equal(typeof TransitionService, "function");
+});
+
+test("platform root barrel exports orchestration services", () => {
+  assert.equal(typeof HitlApprovalOrchestrationService, "function");
+  assert.equal(typeof OapeflirLoopService, "function");
+  assert.equal(typeof TaskDecompositionService, "function");
 });

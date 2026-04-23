@@ -35,12 +35,14 @@ export { createDelegationTracker } from "../orchestration/agent-delegation/deleg
 
 export {
   ContextIsolator,
+  createContextIsolator,
+  IsolationLevel,
   type IsolatedContext,
 } from "../orchestration/agent-delegation/context-isolator.js";
-export { createContextIsolator } from "../orchestration/agent-delegation/context-isolator.js";
 
 export {
   TopologyValidator,
+  createTopologyValidator,
   type TopologyValidatorConfig,
 } from "../orchestration/agent-delegation/topology-validator.js";
 export {

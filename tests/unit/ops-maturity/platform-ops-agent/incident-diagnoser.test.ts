@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  IncidentDiagnoserService,
   classifyOpsIncident,
   summarizeIncidentDiagnosis,
 } from "../../../../src/ops-maturity/platform-ops-agent/incident-diagnoser/index.js";
@@ -91,4 +92,15 @@ test("summarizeIncidentDiagnosis includes correct classification", () => {
 
   const critical = summarizeIncidentDiagnosis(0.2, 1000);
   assert.ok(critical.includes("critical_incident"));
+});
+
+test("IncidentDiagnoserService returns causes and escalation action", () => {
+  const service = new IncidentDiagnoserService();
+  const diagnosis = service.diagnose(0.3, 1200, "failed");
+
+  assert.equal(diagnosis.level, "critical_incident");
+  assert.equal(diagnosis.recommendedAction, "escalate");
+  assert.ok(diagnosis.suspectedCauses.includes("ops.incident.error_rate_spike"));
+  assert.ok(diagnosis.suspectedCauses.includes("ops.incident.backlog_saturation"));
+  assert.ok(diagnosis.suspectedCauses.includes("ops.incident.health_failed"));
 });

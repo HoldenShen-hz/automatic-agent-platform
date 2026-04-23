@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  OpsHealthMonitorService,
   summarizeOpsHealth,
   findUnhealthyComponents,
   calculateHealthMetrics,
@@ -345,4 +346,342 @@ test("generateHealthSummary includes slowest component when present", () => {
 test("generateHealthSummary handles empty probes", () => {
   const summary = generateHealthSummary([]);
   assert.ok(typeof summary === "string");
+});
+
+// Additional edge case tests for improved coverage
+
+test("calculateHealthMetrics all degraded returns 50 score", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "degraded" },
+    { component: "comp2", status: "degraded" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.healthScore, 50);
+});
+
+test("calculateHealthMetrics mixed healthy and degraded", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "degraded" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  // (100 + 50) / 2 = 75
+  assert.equal(metrics.healthScore, 75);
+});
+
+test("calculateHealthMetrics mixed healthy and failed", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "failed" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  // (100 + 0) / 2 = 50
+  assert.equal(metrics.healthScore, 50);
+});
+
+test("calculateHealthMetrics mixed degraded and failed", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "degraded" },
+    { component: "comp2", status: "failed" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  // (50 + 0) / 2 = 25
+  assert.equal(metrics.healthScore, 25);
+});
+
+test("calculateHealthMetrics single healthy probe", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.healthScore, 100);
+  assert.equal(metrics.totalComponents, 1);
+  assert.equal(metrics.healthyCount, 1);
+  assert.equal(metrics.degradedCount, 0);
+  assert.equal(metrics.failedCount, 0);
+});
+
+test("calculateHealthMetrics single degraded probe", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "degraded" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.healthScore, 50);
+  assert.equal(metrics.totalComponents, 1);
+  assert.equal(metrics.healthyCount, 0);
+  assert.equal(metrics.degradedCount, 1);
+  assert.equal(metrics.failedCount, 0);
+});
+
+test("calculateHealthMetrics single failed probe", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "failed" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.healthScore, 0);
+  assert.equal(metrics.totalComponents, 1);
+  assert.equal(metrics.healthyCount, 0);
+  assert.equal(metrics.degradedCount, 0);
+  assert.equal(metrics.failedCount, 1);
+});
+
+test("calculateHealthMetrics rounds average latency", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 101 },
+    { component: "comp2", status: "healthy", latencyMs: 102 },
+    { component: "comp3", status: "healthy", latencyMs: 103 },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  // (101 + 102 + 103) / 3 = 102
+  assert.equal(metrics.averageLatencyMs, 102);
+});
+
+test("calculateHealthMetrics slowest component with equal latencies returns first", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 100 },
+    { component: "comp2", status: "healthy", latencyMs: 100 },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  // First one with max latency should be returned
+  assert.equal(metrics.slowestComponent, "comp1");
+});
+
+test("calculateHealthMetrics handles zero latency", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 0 },
+    { component: "comp2", status: "healthy", latencyMs: 100 },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.slowestComponent, "comp2");
+});
+
+test("calculateHealthMetrics handles mixed probes with and without latency", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "degraded", latencyMs: 200 },
+    { component: "comp3", status: "failed" },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.averageLatencyMs, 200);
+  assert.equal(metrics.slowestComponent, "comp2");
+  assert.equal(metrics.healthyCount, 1);
+  assert.equal(metrics.degradedCount, 1);
+  assert.equal(metrics.failedCount, 1);
+});
+
+test("calculateHealthMetrics handles probes with metadata", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", metadata: { region: "us-east" } },
+    { component: "comp2", status: "healthy", metadata: { region: "us-west" } },
+  ];
+  const metrics = calculateHealthMetrics(probes);
+  assert.equal(metrics.totalComponents, 2);
+  assert.equal(metrics.healthScore, 100);
+});
+
+test("hasLatencyAnomalies returns false for empty array", () => {
+  assert.equal(hasLatencyAnomalies([], 100), false);
+});
+
+test("hasLatencyAnomalies returns false when no probes have latency", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "healthy" },
+  ];
+  assert.equal(hasLatencyAnomalies(probes, 100), false);
+});
+
+test("hasLatencyAnomalies detects exact threshold as not anomalous", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 100 },
+  ];
+  assert.equal(hasLatencyAnomalies(probes, 100), false);
+});
+
+test("hasLatencyAnomalies detects above threshold", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 101 },
+  ];
+  assert.equal(hasLatencyAnomalies(probes, 100), true);
+});
+
+test("hasLatencyAnomalies handles zero threshold", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 1 },
+  ];
+  assert.equal(hasLatencyAnomalies(probes, 0), true);
+});
+
+test("hasLatencyAnomalies ignores zero latency probes", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 0 },
+  ];
+  assert.equal(hasLatencyAnomalies(probes, 0), false);
+});
+
+test("generateHealthSummary includes health score value", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+  ];
+  const summary = generateHealthSummary(probes);
+  assert.ok(summary.includes("100"));
+});
+
+test("generateHealthSummary handles all degraded components", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "degraded" },
+    { component: "comp2", status: "degraded" },
+  ];
+  const summary = generateHealthSummary(probes);
+  assert.ok(summary.includes("DEGRADED") || summary.includes("degraded"));
+});
+
+test("generateHealthSummary handles all failed components", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "failed" },
+    { component: "comp2", status: "failed" },
+  ];
+  const summary = generateHealthSummary(probes);
+  assert.ok(summary.includes("FAILED") || summary.includes("failed"));
+});
+
+test("generateHealthSummary does not include latency when absent", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+  ];
+  const summary = generateHealthSummary(probes);
+  assert.ok(!summary.includes("Avg latency"));
+});
+
+test("groupProbesByStatus preserves probe objects", () => {
+  const probe1 = { component: "comp1", status: "healthy" as const };
+  const probes: OpsHealthProbe[] = [probe1];
+  const grouped = groupProbesByStatus(probes);
+  assert.strictEqual(grouped.healthy[0], probe1);
+});
+
+test("groupProbesByStatus handles single probe of each status", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "degraded" },
+    { component: "comp3", status: "failed" },
+  ];
+  const grouped = groupProbesByStatus(probes);
+  assert.equal(grouped.healthy.length, 1);
+  assert.equal(grouped.degraded.length, 1);
+  assert.equal(grouped.failed.length, 1);
+  assert.equal(grouped.healthy[0]?.component, "comp1");
+  assert.equal(grouped.degraded[0]?.component, "comp2");
+  assert.equal(grouped.failed[0]?.component, "comp3");
+});
+
+test("analyzeLatencyTrends returns empty for empty array", () => {
+  const trends = analyzeLatencyTrends([]);
+  assert.equal(trends.length, 0);
+});
+
+test("analyzeLatencyTrends returns empty when no latencies", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "healthy" },
+  ];
+  const trends = analyzeLatencyTrends(probes);
+  assert.equal(trends.length, 0);
+});
+
+test("analyzeLatencyTrends returns single probe sorted", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy", latencyMs: 100 },
+  ];
+  const trends = analyzeLatencyTrends(probes);
+  assert.equal(trends.length, 1);
+  assert.equal(trends[0]?.component, "comp1");
+  assert.equal(trends[0]?.latencyMs, 100);
+});
+
+test("analyzeLatencyTrends ignores probes without latency", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "healthy", latencyMs: 100 },
+    { component: "comp3", status: "healthy" },
+  ];
+  const trends = analyzeLatencyTrends(probes);
+  assert.equal(trends.length, 1);
+  assert.equal(trends[0]?.component, "comp2");
+});
+
+test("summarizeOpsHealth returns healthy for empty array", () => {
+  assert.equal(summarizeOpsHealth([]), "healthy");
+});
+
+test("summarizeOpsHealth failed takes priority over degraded", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "degraded" },
+    { component: "comp2", status: "failed" },
+    { component: "comp3", status: "degraded" },
+  ];
+  assert.equal(summarizeOpsHealth(probes), "failed");
+});
+
+test("findUnhealthyComponents returns empty for all healthy", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "healthy" },
+  ];
+  const unhealthy = findUnhealthyComponents(probes);
+  assert.equal(unhealthy.length, 0);
+});
+
+test("findUnhealthyComponents returns only degraded when no failed", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "degraded" },
+  ];
+  const unhealthy = findUnhealthyComponents(probes);
+  assert.equal(unhealthy.length, 1);
+  assert.ok(unhealthy.includes("comp2"));
+});
+
+test("findUnhealthyComponents returns only failed when no degraded", () => {
+  const probes: OpsHealthProbe[] = [
+    { component: "comp1", status: "healthy" },
+    { component: "comp2", status: "failed" },
+  ];
+  const unhealthy = findUnhealthyComponents(probes);
+  assert.equal(unhealthy.length, 1);
+  assert.ok(unhealthy.includes("comp2"));
+});
+
+test("OpsHealthMonitorService emits alerts for failed and slow probes", () => {
+  const service = new OpsHealthMonitorService();
+  const snapshot = service.evaluate([
+    { component: "worker-a", status: "failed", latencyMs: 2500 },
+    { component: "worker-b", status: "degraded", latencyMs: 1200 },
+    { component: "worker-c", status: "healthy", latencyMs: 100 },
+  ], { latencyThresholdMs: 1000 });
+
+  assert.equal(snapshot.status, "failed");
+  assert.ok(snapshot.alerts.some((item) => item.component === "worker-a" && item.reasonCode === "ops.health.component_failed"));
+  assert.ok(snapshot.alerts.some((item) => item.reasonCode === "ops.health.latency_anomaly"));
+});
+
+test("OpsHealthMonitorService returns healthy snapshot without alerts", () => {
+  const service = new OpsHealthMonitorService();
+  const snapshot = service.evaluate([
+    { component: "worker-a", status: "healthy", latencyMs: 50 },
+    { component: "worker-b", status: "healthy", latencyMs: 70 },
+  ], { latencyThresholdMs: 1000 });
+
+  assert.equal(snapshot.status, "healthy");
+  assert.equal(snapshot.alerts.length, 0);
+});
+
+test("OpsHealthMonitorService emits warning alerts for degraded and mildly slow probes", () => {
+  const service = new OpsHealthMonitorService();
+  const snapshot = service.evaluate([
+    { component: "worker-a", status: "degraded", latencyMs: 1200 },
+  ], { latencyThresholdMs: 1000 });
+
+  assert.equal(snapshot.status, "degraded");
+  assert.ok(snapshot.alerts.some((item) => item.severity === "warning" && item.reasonCode === "ops.health.component_degraded"));
 });

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "workflow_step_checkpoint.v1",
+  "taskId": "task_4a7dbcc0-10f2-4acd-90bf-d4962441399f",
+  "executionId": "exec_84b1251a-0835-46e9-bcc5-360120c7b872",
+  "workflowId": "single_agent_minimal",
+  "divisionId": "general_ops",
+  "stepId": "analyze_request",
+  "roleId": "general_executor",
+  "outputKey": "analysis",
+  "status": "succeeded",
+  "producedAt": "2026-04-22T18:14:19.108Z",
+  "output": {
+    "summary": "Analyzed request for Test Synthetic Output",
+    "result": "Single-agent happy path finished for: Synthetic test"
+  },
+  "decisionContext": {
+    "source": "single_task_execution",
+    "request": "Synthetic test",
+    "routeReason": null,
+    "priorStepSummaries": [],
+    "dependsOnStepIds": []
+  },
+  "resumeContext": {
+    "completedStepIds": [
+      "analyze_request"
+    ],
+    "nextStepId": null,
+    "outputKeys": [
+      "analysis"
+    ]
+  },
+  "fileDiffSummary": {
+    "summary": null,
+    "createdPaths": [],
+    "updatedPaths": [],
+    "deletedPaths": []
+  },
+  "upstreamArtifactRefs": [],
+  "compensationModel": "idempotent_replay"
+}
