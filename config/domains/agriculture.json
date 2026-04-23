@@ -1,0 +1,31 @@
+{
+  "domainId": "agriculture",
+  "phase": "9f",
+  "divisionId": "operations",
+  "latencyTier": "business_day",
+  "workflowProfile": {
+    "workflowId": "agriculture.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "field_monitor",
+      "compliance_mapper",
+      "advisory_builder"
+    ],
+    "optionalTools": [
+      "weather_feed",
+      "supply_router"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "compliance_safety",
+      "signal_accuracy"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "agri-ops",
+    "escalationTeam": "agri-governance"
+  }
+}

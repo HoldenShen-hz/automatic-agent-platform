@@ -1,0 +1,31 @@
+{
+  "domainId": "executive-assistant",
+  "phase": "9e",
+  "divisionId": "general_ops",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "executive-assistant.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "calendar_manager",
+      "brief_builder",
+      "followup_tracker"
+    ],
+    "optionalTools": [
+      "travel_coordinator",
+      "crm_sync"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "brief_accuracy",
+      "scheduling_conflict_rate"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "executive-ops",
+    "escalationTeam": "chief-of-staff"
+  }
+}

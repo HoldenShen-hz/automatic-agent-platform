@@ -1,0 +1,31 @@
+{
+  "domainId": "quality-assurance",
+  "phase": "9c",
+  "divisionId": "engineering_ops",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "quality-assurance.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "test_manager",
+      "regression_runner",
+      "defect_tracker"
+    ],
+    "optionalTools": [
+      "coverage_analyzer",
+      "performance_profiler"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "regression_rate",
+      "quality_gate"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "qa-platform",
+    "escalationTeam": "release-quality"
+  }
+}

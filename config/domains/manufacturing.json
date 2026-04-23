@@ -1,0 +1,31 @@
+{
+  "domainId": "manufacturing",
+  "phase": "9f",
+  "divisionId": "operations",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "manufacturing.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "mes_console",
+      "quality_gate",
+      "inventory_snapshot"
+    ],
+    "optionalTools": [
+      "supplier_console",
+      "maintenance_router"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "quality_yield",
+      "production_readiness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "manufacturing-control",
+    "escalationTeam": "plant-operations"
+  }
+}

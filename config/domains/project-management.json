@@ -1,0 +1,31 @@
+{
+  "domainId": "project-management",
+  "phase": "9d",
+  "divisionId": "operations",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "project-management.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "dependency_tracker",
+      "milestone_planner",
+      "status_reporter"
+    ],
+    "optionalTools": [
+      "risk_register",
+      "resource_forecaster"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "dependency_integrity",
+      "milestone_adherence"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "delivery-ops",
+    "escalationTeam": "pm-governance"
+  }
+}

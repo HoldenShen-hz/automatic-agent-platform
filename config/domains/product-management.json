@@ -1,0 +1,31 @@
+{
+  "domainId": "product-management",
+  "phase": "9c",
+  "divisionId": "general_ops",
+  "latencyTier": "business_day",
+  "workflowProfile": {
+    "workflowId": "product-management.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "roadmap_planner",
+      "requirements_editor",
+      "feedback_synthesizer"
+    ],
+    "optionalTools": [
+      "experiment_tracker",
+      "release_calendar"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "requirement_quality",
+      "roadmap_alignment"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "product-ops",
+    "escalationTeam": "product-leadership"
+  }
+}

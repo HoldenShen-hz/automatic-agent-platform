@@ -1,0 +1,31 @@
+{
+  "domainId": "facilities",
+  "phase": "9e",
+  "divisionId": "general_ops",
+  "latencyTier": "near_realtime",
+  "workflowProfile": {
+    "workflowId": "facilities.primary",
+    "rollout": "baseline"
+  },
+  "toolProfile": {
+    "requiredTools": [
+      "work_order_console",
+      "asset_directory",
+      "schedule_planner"
+    ],
+    "optionalTools": [
+      "vendor_router",
+      "badge_system"
+    ]
+  },
+  "evalProfile": {
+    "blockingMetrics": [
+      "work_order_sla",
+      "safety_readiness"
+    ]
+  },
+  "ownership": {
+    "ownerTeam": "facilities-ops",
+    "escalationTeam": "workplace-services"
+  }
+}
