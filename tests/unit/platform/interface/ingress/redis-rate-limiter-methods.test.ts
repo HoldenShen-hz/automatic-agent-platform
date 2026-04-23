@@ -118,7 +118,7 @@ test("RedisRateLimiter requestId format", () => {
 
   assert.equal(parts.length, 2);
   assert.equal(parts[0], "1000000000000");
-  assert.ok(parts[1].length > 0);
+  assert.ok(parts[1]!.length > 0);
 });
 
 test("RedisRateLimiter pipeline operations composition", () => {
@@ -142,7 +142,11 @@ test("RedisRateLimiter pipeline operations composition", () => {
 });
 
 test("RedisRateLimiter RateLimitResult structure - allowed case", () => {
-  const result = {
+  const result: {
+    allowed: boolean;
+    remaining: number;
+    retryAfterMs?: number;
+  } = {
     allowed: true,
     remaining: 7,
   };
@@ -273,21 +277,21 @@ test("RedisRateLimiter pexpire sets TTL for auto-cleanup", () => {
 });
 
 test("RedisRateLimiter config defaults - keyPrefix", () => {
-  const config = { host: "localhost", port: 6379 };
+  const config: { host: string; port: number; keyPrefix?: string } = { host: "localhost", port: 6379 };
   const keyPrefix = config.keyPrefix ?? "ratelimit:";
 
   assert.equal(keyPrefix, "ratelimit:");
 });
 
 test("RedisRateLimiter config defaults - maxRetriesPerRequest", () => {
-  const config = { host: "localhost", port: 6379 };
+  const config: { host: string; port: number; maxRetriesPerRequest?: number } = { host: "localhost", port: 6379 };
   const maxRetriesPerRequest = config.maxRetriesPerRequest ?? 1;
 
   assert.equal(maxRetriesPerRequest, 1);
 });
 
 test("RedisRateLimiter config defaults - connectTimeout", () => {
-  const config = { host: "localhost", port: 6379 };
+  const config: { host: string; port: number; connectTimeout?: number } = { host: "localhost", port: 6379 };
   const connectTimeout = config.connectTimeout ?? 500;
 
   assert.equal(connectTimeout, 500);

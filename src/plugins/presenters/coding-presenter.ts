@@ -36,8 +36,8 @@ export function createCodingPresenterPlugin(): DomainPresenterPlugin {
       }
       return {
         summary: completedSteps.length > 0
-          ? `完成 ${completedSteps.length} 个 coding 步骤：${completedSteps.join(", ")}`
-          : "未产生 coding 输出",
+          ? `Completed ${completedSteps.length} coding step(s): ${completedSteps.join(", ")}`
+          : "No coding output produced",
         sections,
         citations: input.artifacts.map((artifactRef) => artifactRef),
       };

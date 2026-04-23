@@ -7,7 +7,7 @@
  * - Alert severity classification
  * - Root cause direction hints
  *
- * §66 监控增强 - 异常检测（基于 SLO 阈值的统计方法）
+ * §66 Monitoring Enhancement - Anomaly Detection (SLO threshold-based statistical method)
  */
 
 import { nowIso } from "../../platform/contracts/types/ids.js";

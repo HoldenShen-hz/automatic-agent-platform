@@ -1,7 +1,7 @@
 /**
  * @fileoverview Priority Scheduler with Preemption Support
  *
- * Implements §53 "规模化资源竞争管理" - Priority Preemption.
+ * Implements §53 "Scale-out resource competition management" - Priority Preemption.
  * Provides 5-level priority classes with preemption policies.
  *
  * @see docs_zh/architecture/00-platform-architecture.md §53.3

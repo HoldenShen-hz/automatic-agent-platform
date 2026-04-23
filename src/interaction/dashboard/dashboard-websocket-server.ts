@@ -4,7 +4,7 @@
  * Provides real-time WebSocket push for dashboard updates.
  * Connects to DashboardProjectionService to push deltas to frontend clients.
  *
- * Architecture: §43 仪表盘 - WebSocket real-time push
+ * Architecture: §43 Dashboard - WebSocket real-time push
  * @see docs_zh/architecture/00-platform-architecture.md §43
  */
 

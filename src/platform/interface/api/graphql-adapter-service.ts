@@ -2,9 +2,9 @@
  * GraphQL Adapter Service
  *
  * Provides GraphQL adapter for cross-platform support.
- * Implements §52 "跨平台适配层" requirement for GraphQL protocol support.
+ * Implements §52 "Cross-Platform Adapter Layer" requirement for GraphQL protocol support.
  *
- * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §52
+ * @see docs_en/reviews/architecture-design-vs-implementation-review.md §52
  */
 
 /**

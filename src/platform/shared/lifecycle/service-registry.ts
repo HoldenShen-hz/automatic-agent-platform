@@ -24,10 +24,10 @@
  * const service = registry.get<ModelCallProviderService>('model-call-provider');
  * ```
  *
- * ## Singleton清单
+ * ## Singleton List
  *
- * | ID | 模块 | 变量 |
- * |----|------|------|
+ * | ID | Module | Variable |
+ * |----|--------|----------|
  * | division-loader | divisions/division-loader.ts | defaultRegistryCache |
  * | tool-registry | runtime/dispatcher/index.ts | _toolRegistry |
  * | middleware-context | runtime/middleware-init.ts | middlewareContext |

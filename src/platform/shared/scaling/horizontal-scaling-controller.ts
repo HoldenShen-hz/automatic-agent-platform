@@ -1,7 +1,7 @@
 /**
  * @fileoverview Horizontal Scaling Controller
  *
- * Implements §8 "可扩展性" - automatic scaling strategy.
+ * Implements §8 "Scalability" - automatic scaling strategy.
  * Monitors queue depth and worker utilization to trigger HPA events.
  *
  * Scaling triggers:

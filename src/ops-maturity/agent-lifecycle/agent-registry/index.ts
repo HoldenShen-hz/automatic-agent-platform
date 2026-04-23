@@ -100,7 +100,7 @@ export const OrgNodeRefSchema = z.object({
 });
 
 /**
- * Agent definition -复合 entity as defined in architecture doc §61.1.
+ * Agent definition - composite entity as defined in architecture doc §61.1.
  * This is the primary entity for Agent lifecycle management.
  */
 export const AgentDefinitionSchema = z.object({

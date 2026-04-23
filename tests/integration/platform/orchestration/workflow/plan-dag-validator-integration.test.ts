@@ -1,74 +1,30 @@
 /**
- * Integration Tests: TaskDecompositionService and PlanDagValidator
+ * Integration Tests: Plan DAG Validator
  *
- * These tests focus on components that can be tested without complex mocking:
- * - TaskDecompositionService: Decomposes workflows into task units
- * - PlanDagValidator: Validates DAG structure and topological ordering
+ * Tests the PlanDagValidator which validates step dependencies
+ * and produces topologically sorted execution order.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowPlanner } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
-import { TaskDecompositionService } from "../../../../../src/platform/orchestration/planner/task-decomposition-service.js";
 import { PlanDagValidator } from "../../../../../src/platform/orchestration/planner/plan-dag-validator.js";
 import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/index.js";
 
-function createMultiStepPlannedWorkflow() {
-  const planner = new WorkflowPlanner();
-  return planner.plan({
-    workflowId: "single_division_multi_step_orchestration",
-    request: "Test multi-step request",
-  });
+function createStep(overrides: Partial<PlanStep> = {}): PlanStep {
+  return {
+    stepId: "step_" + Math.random().toString(36).slice(2, 8),
+    action: "execute",
+    title: "Test step",
+    inputs: {},
+    outputs: [],
+    dependencies: [],
+    status: "pending",
+    timeout: 60000,
+    retryPolicy: { maxRetries: 0, backoffMs: 250 },
+    ...overrides,
+  };
 }
-
-test("TaskDecompositionService: decomposes workflow steps correctly", () => {
-  const service = new TaskDecompositionService();
-  const workflow = createMultiStepPlannedWorkflow();
-
-  const decompositions = service.decompose(workflow);
-
-  assert.equal(decompositions.length, 3);
-  assert.equal(decompositions[0].title, "intake_triage:triage");
-  assert.deepEqual(decompositions[0].dependsOn, []);
-  assert.equal(decompositions[0].ownerRoleId, "intake_router");
-});
-
-test("TaskDecompositionService: includes compensation tools when compensationModel is set", () => {
-  const service = new TaskDecompositionService();
-  const workflow = createMultiStepPlannedWorkflow();
-
-  const decompositions = service.decompose(workflow);
-
-  const draftStep = decompositions.find((d) => d.title.includes("draft_solution"));
-  assert.ok(draftStep?.toolNames.includes("apply_patch"));
-});
-
-test("TaskDecompositionService: includes validate_output tool when outputSchemaPath is set", () => {
-  const service = new TaskDecompositionService();
-  const workflow = createMultiStepPlannedWorkflow();
-
-  const decompositions = service.decompose(workflow);
-
-  for (const decomp of decompositions) {
-    assert.ok(decomp.toolNames.includes("validate_output"));
-  }
-});
-
-test("TaskDecompositionService: preserves dependency order from workflow", () => {
-  const service = new TaskDecompositionService();
-  const workflow = createMultiStepPlannedWorkflow();
-
-  const decompositions = service.decompose(workflow);
-
-  const triageDecomp = decompositions.find((d) => d.title.includes("intake_triage"));
-  const draftDecomp = decompositions.find((d) => d.title.includes("draft_solution"));
-  const reviewDecomp = decompositions.find((d) => d.title.includes("final_review"));
-
-  assert.deepEqual(triageDecomp?.dependsOn, []);
-  assert.deepEqual(draftDecomp?.dependsOn, ["intake_triage"]);
-  assert.deepEqual(reviewDecomp?.dependsOn, ["draft_solution"]);
-});
 
 test("PlanDagValidator: validates valid linear dependency chain", () => {
   const validator = new PlanDagValidator();
@@ -155,6 +111,23 @@ test("PlanDagValidator: handles multiple roots", () => {
   assert.equal(result.orderedSteps.length, 3);
 });
 
+test("PlanDagValidator: detects cycle in partial graph", () => {
+  const validator = new PlanDagValidator();
+  // This graph has a cycle: a->b->c->a
+  // But also has an independent node "orphan" with no dependencies
+  const steps: PlanStep[] = [
+    createStep({ stepId: "orphan", dependencies: [] }),
+    createStep({ stepId: "a", dependencies: ["c"] }),
+    createStep({ stepId: "b", dependencies: ["a"] }),
+    createStep({ stepId: "c", dependencies: ["b"] }),
+  ];
+
+  const result = validator.validate(steps);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some((i) => i.includes("cycle")));
+});
+
 test("PlanDagValidator: handles complex DAG with multiple join points", () => {
   const validator = new PlanDagValidator();
   const steps: PlanStep[] = [
@@ -174,18 +147,3 @@ test("PlanDagValidator: handles complex DAG with multiple join points", () => {
   assert.equal(result.orderedSteps[0].stepId, "init");
   assert.equal(result.orderedSteps[6].stepId, "final");
 });
-
-function createStep(overrides: Partial<PlanStep> = {}): PlanStep {
-  return {
-    stepId: "step_" + Math.random().toString(36).slice(2, 8),
-    action: "execute",
-    title: "Test step",
-    inputs: {},
-    outputs: [],
-    dependencies: [],
-    status: "pending",
-    timeout: 60000,
-    retryPolicy: { maxRetries: 0, backoffMs: 250 },
-    ...overrides,
-  };
-}

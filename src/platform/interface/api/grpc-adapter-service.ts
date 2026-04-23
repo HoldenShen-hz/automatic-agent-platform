@@ -2,9 +2,9 @@
  * gRPC Adapter Service
  *
  * Provides gRPC adapter for cross-platform support.
- * Implements §52 "跨平台适配层" requirement using @grpc/grpc-js.
+ * Implements §52 "Cross-Platform Adapter Layer" requirement using @grpc/grpc-js.
  *
- * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §52
+ * @see docs_en/reviews/architecture-design-vs-implementation-review.md §52
  */
 
 // Note: @grpc/grpc-js would be imported in production

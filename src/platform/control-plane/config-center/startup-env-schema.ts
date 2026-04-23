@@ -4,8 +4,8 @@
  * Provides Zod schemas for all startup-critical environment variables.
  * Validation runs at process startup — invalid config causes process.exit(1).
  *
- * §9 配置与部署架构要求 8 层配置校验，此文件提供第 1 层：
- * 启动时入口点校验（P0 级字段）。
+ * §9 Configuration and deployment architecture requires 8-layer config validation, this file provides layer 1:
+ * Startup entry point validation (P0 fields).
  */
 
 import { z } from "zod";

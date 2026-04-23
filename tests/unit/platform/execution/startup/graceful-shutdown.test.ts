@@ -231,7 +231,7 @@ test("GracefulShutdown - shutdown reports failures", async () => {
   assert.equal(result.handlersRun, 1);
   assert.equal(result.handlersFailed, 1);
   assert.ok(result.errors.length > 0);
-  assert.ok(result.errors[0].includes("failing-handler"));
+  assert.ok(result.errors[0]?.includes("failing-handler"));
 
   shutdown.reset();
 });
@@ -294,7 +294,7 @@ test("GracefulShutdown - handler timeout works", async () => {
 
   assert.equal(result.success, false);
   assert.equal(result.handlersFailed, 1);
-  assert.ok(result.errors[0].includes("timed out"));
+  assert.ok(result.errors[0]?.includes("timed out"));
 
   shutdown.reset();
 });

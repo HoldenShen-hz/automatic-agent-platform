@@ -7,7 +7,7 @@
  * - Performance metrics aggregation (latency, cost, error rate)
  * - Agent capability profile generation for intelligent routing
  *
- * §61 Agent 生命周期 - Agent 性能画像
+ * §61 Agent Lifecycle - Agent Performance Profiling
  */
 
 import { nowIso } from "../../platform/contracts/types/ids.js";

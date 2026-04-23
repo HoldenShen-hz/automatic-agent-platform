@@ -1,7 +1,7 @@
 /**
  * @fileoverview Fair Scheduler with Weighted Fair Queuing
  *
- * Implements §53 "规模化资源竞争管理" - Fair Scheduling.
+ * Implements §53 "Scale-out resource competition management" - Fair Scheduling.
  * Provides Weighted Fair Queuing, borrowing, reclaim, and starvation prevention.
  *
  * @see docs_zh/architecture/00-platform-architecture.md §53.4

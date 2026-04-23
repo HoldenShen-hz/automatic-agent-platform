@@ -4,7 +4,7 @@
  * Maintains a compatibility matrix for pack versions and their dependencies.
  * Supports installation-time compatibility checks.
  *
- * Architecture: §57 版本管理 - Version Compatibility Matrix
+ * Architecture: §57 Version Management - Version Compatibility Matrix
  * @see docs_zh/architecture/00-platform-architecture.md §57
  */
 

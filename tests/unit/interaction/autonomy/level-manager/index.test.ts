@@ -5,8 +5,8 @@ import {
   AUTONOMY_LEVEL_ORDER,
   compareAutonomyLevels,
   nextAutonomyLevel,
-} from "../../../../src/interaction/autonomy/level-manager/index.js";
-import type { AutonomyLevel } from "../../../../src/interaction/autonomy/index.js";
+} from "../../../../../src/interaction/autonomy/level-manager/index.js";
+import type { AutonomyLevel } from "../../../../../src/interaction/autonomy/index.js";
 
 test("AUTONOMY_LEVEL_ORDER contains all five levels", () => {
   assert.deepEqual(AUTONOMY_LEVEL_ORDER, ["suggestion", "supervised", "semi_auto", "full_auto", "frozen"]);
@@ -58,11 +58,11 @@ test("nextAutonomyLevel does not exceed full_auto", () => {
 });
 
 test("nextAutonomyLevel order is consistent with AUTONOMY_LEVEL_ORDER", () => {
-  for (let i = 0; i < AUTONOMY_LEVEL_ORDER.length - 1; i++) {
-    const current = AUTONOMY_LEVEL_ORDER[i] as AutonomyLevel;
-    const next = AUTONOMY_LEVEL_ORDER[i + 1] as AutonomyLevel;
-    if (current !== "frozen") {
-      assert.equal(nextAutonomyLevel(current), next);
-    }
-  }
+  // The AUTONOMY_LEVEL_ORDER is ["suggestion", "supervised", "semi_auto", "full_auto", "frozen"]
+  // but nextAutonomyLevel caps at "full_auto" (index 3), not "frozen" (index 4)
+  assert.equal(nextAutonomyLevel("suggestion"), "supervised");
+  assert.equal(nextAutonomyLevel("supervised"), "semi_auto");
+  assert.equal(nextAutonomyLevel("semi_auto"), "full_auto");
+  assert.equal(nextAutonomyLevel("full_auto"), "full_auto"); // capped, not frozen
+  assert.equal(nextAutonomyLevel("frozen"), "frozen"); // frozen stays frozen
 });

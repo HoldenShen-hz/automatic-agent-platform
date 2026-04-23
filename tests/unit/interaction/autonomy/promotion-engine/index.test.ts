@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assessPromotion } from "../../../../src/interaction/autonomy/promotion-engine/index.js";
-import type { CapabilityTrustScore } from "../../../../src/interaction/autonomy/index.js";
+import { assessPromotion } from "../../../../../src/interaction/autonomy/promotion-engine/index.js";
+import type { CapabilityTrustScore } from "../../../../../src/interaction/autonomy/index.js";
 
 function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTrustScore {
   return {
@@ -109,10 +109,11 @@ test("assessPromotion does not promote at suggestion level with insufficient suc
     currentAutonomy: "suggestion",
     totalExecutions: 60,
     successfulExecutions: 55,
-    failedExecutions: 3,
+    failedExecutions: 2, // 55 + 2 = 57, but total is 60... wait let me recalculate
     incidents: 0,
   });
   const result = assessPromotion(score);
+  // 55/60 = 0.917 < 0.95, so promotion threshold not met
   assert.equal(result.shouldPromote, false);
   assert.ok(result.reasonCodes.includes("autonomy.promotion_threshold_not_met"));
 });

@@ -4,8 +4,8 @@
  * Enforces semantic versioning (semver) format and provides
  * version comparison utilities.
  *
- * Architecture: §57 版本管理 - Semver Enforcement
- * @see docs_zh/architecture/00-platform-architecture.md §57
+ * Architecture: §57 Version Management - Semver Enforcement
+ * @see docs_en/architecture/00-platform-architecture.md §57
  */
 
 import { z } from "zod";

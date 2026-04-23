@@ -4,7 +4,7 @@
  * Implements intent disambiguation when confidence is below threshold.
  * Generates clarification questions to help users refine their intent.
  *
- * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §39
+ * @see docs_en/reviews/architecture-design-vs-implementation-review.md §39
  */
 
 import type { DetectedIntent, ExtractedEntity } from "../index.js";

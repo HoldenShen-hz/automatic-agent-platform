@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MemoryCacheStore } from "../../../../../../../src/platform/shared/cache/stores/memory-cache-store.js";
-import type { CacheMeta } from "../../../../../../../src/platform/shared/cache/cache-types.js";
+import { MemoryCacheStore } from "../../../../../../src/platform/shared/cache/stores/memory-cache-store.js";
+import type { CacheMeta } from "../../../../../../src/platform/shared/cache/cache-types.js";
 
 function createTestMeta(overrides: Partial<CacheMeta> = {}): CacheMeta {
   return {

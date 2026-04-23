@@ -7,7 +7,7 @@
  * - Usage tracking and expiration
  * - Owner-based key management
  *
- * §58 认证体系 - API Key 管理界面
+ * §58 Authentication system - API Key management interface
  */
 
 import { createHash, randomBytes } from "node:crypto";

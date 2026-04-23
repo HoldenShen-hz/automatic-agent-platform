@@ -2,9 +2,9 @@
  * Conversation Template Service
  *
  * Provides conversation templates for the UX layer.
- * Implements §45 "对话模板" requirement.
+ * Implements §45 "Conversation Template" requirement.
  *
- * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §45
+ * @see docs_en/reviews/architecture-design-vs-implementation-review.md §45
  */
 
 import { z } from "zod";

@@ -45,7 +45,7 @@ export const PLATFORM_LAYER_MANIFESTS: readonly PlatformLayerManifest[] = Object
   {
     layerId: "domains",
     entryModule: "src/domains/index.ts",
-description: "
+    description: "Business domain access layer, responsible for DomainDescriptor, DomainRiskProfile, DomainRecipe and domain governance.",
     architectureSections: ["§37", "§38"],
     canonicalSubdomains: ["business-pack", "registry", "risk-profile", "knowledge-schema", "eval-framework", "prompt-library", "recipes", "governance", "roadmap"],
   },
@@ -59,7 +59,7 @@ description: "
   {
     layerId: "org-governance",
     entryModule: "src/org-governance/index.ts",
-description: "Organization governance layer, hosting org model, approval routing, SSO
+    description: "Organization governance layer, hosting org model, approval routing, SSO/SCIM, knowledge boundary and governance delegation.",
     architectureSections: ["§46", "§51"],
     canonicalSubdomains: ["org-model", "approval-routing", "sso-scim", "compliance-engine", "knowledge-boundary", "delegated-governance"],
   },

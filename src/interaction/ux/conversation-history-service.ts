@@ -2,9 +2,9 @@
  * Conversation History Service
  *
  * Provides persistent conversation history storage using the memory store.
- * Implements §45 "对话历史持久化" requirement.
+ * Implements §45 "Conversation History Persistence" requirement.
  *
- * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §45
+ * @see docs_en/reviews/architecture-design-vs-implementation-review.md §45
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
