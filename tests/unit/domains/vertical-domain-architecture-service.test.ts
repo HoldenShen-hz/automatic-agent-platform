@@ -3,11 +3,11 @@ import test from "node:test";
 
 import { VerticalDomainArchitectureService } from "../../../src/domains/vertical-domain-architecture-service.js";
 
-test("vertical domain architecture service exposes authoritative architecture records for all 24 domains", () => {
+test("vertical domain architecture service exposes authoritative architecture records for all 31 domains", () => {
   const service = new VerticalDomainArchitectureService();
   const records = service.listVerticalDomainArchitectures();
 
-  assert.equal(records.length, 24);
+  assert.equal(records.length, 31);
   assert.equal(records.every((record) => record.architectureSections.length === 8), true);
   assert.equal(records.every((record) => record.configPath.endsWith(`${record.domainId}.json`)), true);
 });

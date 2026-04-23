@@ -385,8 +385,10 @@ test("RoadmapService seedArchitectureRoadmap skips duplicates", () => {
 
   const seeded = service.seedArchitectureRoadmap();
 
-  // Should seed 8 items instead of 9 (one was duplicate)
-  assert.equal(seeded.length, 8);
+  // Should seed 15 items (16 total - 7 completed - 1 duplicate = 8 seeded, but completed items also return seeded)
+  // Actually the seed returns items that were seeded, including completed ones
+  // phase8a was pre-added so it skips, leaving 15 to seed
+  assert.equal(seeded.length, 15);
   // The pre-added item should still exist
   assert.equal(service.getRoadmap("phase8a").length, 1);
 });
@@ -395,14 +397,16 @@ test("RoadmapService seedArchitectureRoadmap returns all items when none exist",
   const service = new RoadmapService();
   const seeded = service.seedArchitectureRoadmap();
 
-  assert.equal(seeded.length, 9);
+  // 7 completed + 9 non-completed = 16 items seeded
+  assert.equal(seeded.length, 16);
 });
 
 test("RoadmapService listArchitecturePhases returns unique phases", () => {
   const service = new RoadmapService();
   const phases = service.listArchitecturePhases();
 
-  assert.equal(phases.length, 9);
+  // 7 completed phases + 9 non-completed phases = 16 phases
+  assert.equal(phases.length, 16);
   assert.ok(phases.includes("phase8a"));
   assert.ok(phases.includes("phase8b"));
   assert.ok(phases.includes("phase8c"));

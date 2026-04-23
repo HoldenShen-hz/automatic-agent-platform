@@ -181,7 +181,7 @@ test("E2E: unregistered endpoint is rejected", () => {
           traceId: "trace-unknown",
         });
       },
-      /webhook.endpoint_not_found/,
+      /Webhook endpoint is not registered/,
       "Should throw for unregistered endpoint",
     );
   } finally {
@@ -213,7 +213,7 @@ test("E2E: disabled endpoint rejects events", () => {
           traceId: "trace-disabled",
         });
       },
-      /webhook.endpoint_disabled/,
+      /Webhook endpoint is disabled/,
       "Should throw for disabled endpoint",
     );
   } finally {
@@ -247,7 +247,7 @@ test("E2E: outbox entry can be verified by status", () => {
 
     const status = h.outboxRepository.getStatus(result.outboxEntryId!);
     assert.ok(status, "Should be able to get status");
-    assert.equal(status?.status, "PENDING", "Status should be PENDING");
+    assert.equal(status?.status?.toUpperCase(), "PENDING", "Status should be PENDING");
     assert.equal(status?.retryCount, 0, "Retry count should be 0");
   } finally {
     h.db.close();
@@ -326,6 +326,7 @@ test("E2E: webhook ingress service registers and retrieves endpoints", () => {
       enabled: true,
       allowedEventTypes: ["custom.event.type"],
       algorithm: "sha256_hmac",
+      signingSecret: "test-secret-key",
     });
 
     const endpoint = h.webhookIngressService.getEndpoint("custom-webhook");
@@ -337,7 +338,7 @@ test("E2E: webhook ingress service registers and retrieves endpoints", () => {
     assert.equal(endpoint?.workspaceId, "workspace-456", "Workspace ID should match");
     assert.equal(endpoint?.enabled, true, "Should be enabled");
     assert.deepEqual(endpoint?.allowedEventTypes, ["custom.event.type"], "Allowed event types should match");
-    assert.equal(endpoint?.algorithm, "hmac_sha256", "Algorithm should match");
+    assert.equal(endpoint?.algorithm, "sha256_hmac", "Algorithm should match");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

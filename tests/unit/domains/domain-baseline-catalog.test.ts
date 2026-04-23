@@ -13,13 +13,13 @@ import {
   type VerticalDomainPhase,
 } from "../../../src/domains/domain-baseline-catalog.js";
 
-test("vertical domain baseline catalog exposes 24 canonical domains with 4 domains per phase", () => {
+test("vertical domain baseline catalog exposes 31 canonical domains across 6 phases", () => {
   const baselines = listVerticalDomainBaselines();
-  assert.equal(baselines.length, 24);
+  assert.equal(baselines.length, 31);
   assert.deepEqual(
     (["9a", "9b", "9c", "9d", "9e", "9f"] as const satisfies readonly VerticalDomainPhase[])
       .map((phase) => listVerticalDomainBaselinesByPhase(phase).length),
-    [4, 4, 4, 4, 4, 4],
+    [4, 4, 6, 5, 6, 6],
   );
   assert.equal(baselines.some((baseline) => baseline.domainId === "quant-trading"), true);
   assert.equal(baselines.some((baseline) => baseline.domainId === "finance-accounting"), true);
@@ -54,15 +54,15 @@ test("vertical domain baseline catalog wires meta-model completeness and domain 
 
 test("vertical domain baseline catalog points every domain to a real config file", () => {
   const configPaths = listVerticalDomainConfigPaths();
-  assert.equal(configPaths.length, 24);
+  assert.equal(configPaths.length, 31);
   assert.equal(configPaths.every((configPath) => existsSync(configPath)), true);
   assert.deepEqual(validateVerticalDomainConfigs(), []);
 });
 
 test("vertical domain bootstrap activates all canonical domain definitions with specialized workflows", () => {
   const bootstrapped = bootstrapVerticalDomainBaselines();
-  assert.equal(bootstrapped.baselines.length, 24);
-  assert.equal(bootstrapped.activatedDomainIds.length, 24);
+  assert.equal(bootstrapped.baselines.length, 31);
+  assert.equal(bootstrapped.activatedDomainIds.length, 31);
   assert.equal(
     bootstrapped.baselines.every((baseline) => baseline.definition.workflows[0]!.steps.length >= 4),
     true,

@@ -39,7 +39,7 @@ describe("console-backend/index", () => {
     it("should throw if operator id is empty", () => {
       const service = new OperatorConsoleBackendService({});
       const operator = { operatorId: "   ", roles: ["operator"], tenantId: null, workspaceId: null };
-      assert.throws(() => service.buildSnapshot(operator), /operator_id_required/);
+      assert.throws(() => service.buildSnapshot(operator), /Operator id is required/);
     });
 
     it("should plan human takeover action", () => {
@@ -94,7 +94,7 @@ describe("console-backend/index", () => {
         taskId: "   ",
         operator,
         reasonCode: "x",
-      }), /task_id_required/);
+      }), /Operator action requires a task id/);
     });
 
     it("should throw if reasonCode is empty in plan action", () => {
@@ -106,7 +106,7 @@ describe("console-backend/index", () => {
         taskId: "t-123",
         operator,
         reasonCode: "  ",
-      }), /reason_required/);
+      }), /Operator action requires a reason code/);
     });
   });
 });

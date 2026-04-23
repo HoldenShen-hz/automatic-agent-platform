@@ -17,7 +17,7 @@ test("domains bootstrap exposes canonical W5 domain services", () => {
     DOMAINS_CATALOG_SERVICE_ID,
     DOMAINS_BOOTSTRAP_SERVICE_ID,
   ]);
-  assert.equal(bootstrap.catalog.length, 24);
+  assert.equal(bootstrap.catalog.length, 31);
   assert.deepEqual(bootstrap.phases.map((phase) => phase.phase), ["9a", "9b", "9c", "9d", "9e", "9f"]);
 });
 

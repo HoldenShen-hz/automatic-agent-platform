@@ -23,8 +23,8 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
     assert.deepEqual(startup.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
 
     const bootstrapped = bootstrapVerticalDomainBaselines();
-    assert.equal(bootstrapped.baselines.length, 24);
-    assert.equal(bootstrapped.domainRegistry.listActive().length, 24);
+    assert.equal(bootstrapped.baselines.length, 31);
+    assert.equal(bootstrapped.domainRegistry.listActive().length, 31);
     assert.equal(bootstrapped.baselines.some((baseline) => baseline.domainId === "quant-trading"), true);
     assert.equal(bootstrapped.baselines.some((baseline) => baseline.domainId === "finance-accounting"), true);
     assert.equal(
@@ -52,7 +52,7 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
       true,
     );
     const architectureRecords = new VerticalDomainArchitectureService().listVerticalDomainArchitectures();
-    assert.equal(architectureRecords.length, 24);
+    assert.equal(architectureRecords.length, 31);
     assert.equal(
       architectureRecords.every((record) => record.architectureSections.length === 8 && record.workflow.stageNames.length >= 4),
       true,

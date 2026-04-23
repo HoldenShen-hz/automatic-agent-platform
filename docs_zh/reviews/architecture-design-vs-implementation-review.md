@@ -581,29 +581,20 @@
 
 #### G-01 §18 成本管理 — 级联预算执行链 + 聚合 + Chargeback (P1)
 
-**当前状态（2026-04-24）**: `[x] 已完成`
+**当前状态（2026-04-24）**: `[ ] 未完成`
 
-**证据**:
+**补充说明（2026-04-24）**:
 
-- `src/platform/contracts/types/unified-budget-policy.ts` 已新增统一预算阈值契约，`BudgetGuard` 与 `CostAlertService` 均已对齐到同一套基础类型。
-- `src/platform/model-gateway/cost-tracker/budget-guard.ts` 已补上 task/daily/monthly 级联预算判断，并暴露 `breachedScope` 与 tightest remaining budget。
-- `src/platform/control-plane/cost-alert/cost-alert-service.ts` 已支持多周期 tenant policy、budget alert 持久化、token usage 持久化桥接。
-- `src/platform/control-plane/cost-alert/cost-alert-persistence.ts` 已提供 repository-backed persistence adapter。
-- `src/platform/state-evidence/truth/async-repositories/cost-management-repository.ts` 的 `token_usage_daily` upsert 已改为累积语义，而不是覆盖语义。
-- `src/ops-maturity/cost-optimizer/cost-optimization-service.ts` 已支持从 `token_usage_daily` 仓储回灌历史成本记录。
-- `src/platform/model-gateway/cost-tracker/chargeback-service.ts` 已落仓，并已接入 `src/platform/interface/api/http-server/admin-routes.ts` / `src/platform/interface/api/http-api-server.ts` 的 `GET /v1/admin/chargeback/reports`。
-- 定向验证已通过:
-  - `npx tsx --test tests/unit/platform/model-gateway/cost-tracker/budget-guard.test.ts tests/unit/platform/model-gateway/cost-tracker/index.test.ts tests/unit/platform/model-gateway/cost-tracker/chargeback-service.test.ts tests/integration/platform/model-gateway/cost-tracker/budget-guard-integration.test.ts`
-  - `npx tsx --test tests/unit/platform/control-plane/cost-alert/cost-alert-service.test.ts tests/unit/platform/state-evidence/truth/async-repositories.test.ts tests/integration/ops-maturity/cost-optimization-integration.test.ts`
-  - 额外运行时验证已确认 `createAdminRoutes()` 暴露 `/v1/admin/chargeback/reports`，且 `HttpApiServer.inject()` 对该端点返回 `200`。
+- 已完成一次实现路径验证与运行时探针设计，确认收口方向应为:
+  - 统一预算契约
+  - `BudgetGuard` 级联 task/daily/monthly 检查
+  - `CostAlertService -> AsyncCostManagementRepository` 持久化桥接
+  - `ChargebackService + /v1/admin/chargeback/reports`
+- 但本 worktree 在本轮执行中出现源码文件被外部过程回写的异常，导致运行时代码改动未稳定保留，当前不能据此将本项标记为完成。
 
-**收口结果**:
+**现状诊断**:
 
-原先 5 个互不连通的成本模块已通过统一预算类型、持久化桥接和 chargeback API 收敛成单条主链；本项 review 缺口关闭。
-
-**历史诊断（已关闭）**:
-
-代码库此前存在 **5 个互不连通的成本模块**:
+代码库当前仍存在 **5 个互不连通的成本模块**:
 
 | 模块                          | 位置                                                                    | 能力                                                            | 问题                                                                           |
 | ----------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
