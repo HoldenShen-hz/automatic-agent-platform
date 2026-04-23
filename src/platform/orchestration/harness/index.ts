@@ -360,6 +360,7 @@ export class HarnessRuntimeService {
       ...run,
       status: "running",
       sleepLease: null,
+      recoveryCheckpoint: null,
     };
   }
 

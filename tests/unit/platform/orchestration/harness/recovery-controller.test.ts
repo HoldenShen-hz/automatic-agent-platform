@@ -95,7 +95,7 @@ test("RecoveryController.handleFailure restores from checkpoint when available",
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
 
-  const run = createRun({ status: "running", steps: [{ stepId: "step-1", role: "planner", stage: "plan", iteration: 1, semanticPhase: "planning", inputs: {}, outputs: {}, startedAt: "", completedAt: "" }] });
+  const run = createRun({ status: "running", steps: [{ stepId: "step-1", role: "planner", stage: "plan", iteration: 1, semanticPhase: "plan" as const, inputs: {}, outputs: {}, startedAt: "", completedAt: "" }] });
   const checkpointRef = durableService.checkpoint(run);
 
   const freshRun = createRun({ runId: "run-fresh", status: "running" });

@@ -144,10 +144,11 @@ test("HarnessLoopController.getGuardViolation returns max_duration_exceeded", ()
 });
 
 test("HarnessLoopController.getGuardViolation accepts custom now parameter", () => {
-  const controller = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 9, maxCost: 5, maxDurationMs: 60_000 } }), {}, {
-    startedAt: 1000,
+  const controller = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 9, maxCost: 5, maxDurationMs: 1000 } }), {}, {
+    startedAt: 0,
   });
 
+  // With startedAt=0 and now=5000, diff is 5000 which exceeds maxDurationMs of 1000
   const result = controller.getGuardViolation(5000);
   assert.equal(result, "harness.guard.max_duration_exceeded");
 });

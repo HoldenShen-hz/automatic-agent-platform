@@ -651,12 +651,12 @@ describe("HarnessRuntimeService Performance Benchmarks", () => {
 
       // Warm up
       for (let i = 0; i < 50; i++) {
-        service.restore(runIds[i % 100]);
+        service.restore(runIds[i % 100]!);
       }
 
       const start = performance.now();
       for (let i = 0; i < iterations; i++) {
-        service.restore(runIds[i % 100]);
+        service.restore(runIds[i % 100]!);
       }
       const end = performance.now();
 

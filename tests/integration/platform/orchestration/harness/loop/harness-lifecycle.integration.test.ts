@@ -13,12 +13,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createIntegrationContext } from "../../../../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
 import {
   HarnessRuntimeService,
   type ConstraintPack,
   type HarnessRun,
   type HarnessContextSourceSet,
+  type HarnessTimelineEvent,
 } from "../../../../../../src/platform/orchestration/harness/index.js";
 
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
@@ -100,7 +101,7 @@ test("Full loop lifecycle: createRun -> appendStep -> sleep -> recover -> resume
     assert.equal(run.sleepLease?.runId, run.runId);
 
     // Verify sleep lease timeline event was added
-    const sleepEvent = run.timeline.find((e) => e.type === "sleep_started");
+    const sleepEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "sleep_started");
     assert.ok(sleepEvent);
     assert.deepEqual(sleepEvent.payload, { reason: "awaiting_resource", resumeAt: futureTime });
 
@@ -113,7 +114,7 @@ test("Full loop lifecycle: createRun -> appendStep -> sleep -> recover -> resume
     assert.equal(run.recoveryCheckpoint?.lastCompletedStepId, run.steps[2]?.stepId);
 
     // Verify recovery timeline event was added
-    const recoveryEvent = run.timeline.find((e) => e.type === "recovery_started");
+    const recoveryEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "recovery_started");
     assert.ok(recoveryEvent);
     assert.deepEqual(recoveryEvent.payload, { statusBeforeRecovery: "sleeping" });
 
@@ -370,11 +371,11 @@ test("Guardrail evaluation in context of full loop", () => {
     assert.ok(run.feedbackEnvelope.signals.includes("harness.eval_below_replan_threshold"));
 
     // Verify timeline contains decision and guardrail events
-    const decisionEvent = run.timeline.find((e) => e.type === "decision_recorded");
+    const decisionEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "decision_recorded");
     assert.ok(decisionEvent);
     assert.equal(decisionEvent.payload.action, "replan");
 
-    const guardrailEvent = run.timeline.find((e) => e.type === "guardrails_evaluated");
+    const guardrailEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "guardrails_evaluated");
     assert.ok(guardrailEvent);
   } finally {
     ctx.cleanup();
@@ -458,7 +459,7 @@ test("runLoop aborts when max iterations reached", () => {
     assert.equal(run.status, "aborted");
     assert.equal(run.decision?.action, "abort");
     assert.ok(run.completedAt);
-    assert.ok(run.feedbackEnvelope?.signals.some((s) => s.includes("harness.max_iterations")));
+    assert.ok(run.feedbackEnvelope?.signals.some((s: string) => s.includes("harness.max_iterations")));
   } finally {
     ctx.cleanup();
   }

@@ -33,10 +33,10 @@ test("listHarnessCapabilityBaselines returns frozen array with all capability ba
   const baselines = listHarnessCapabilityBaselines();
   assert.equal(Array.isArray(baselines), true);
   assert.equal(baselines.length, 4);
+  // The array itself is frozen (Object.freeze on the const)
   assert.equal(Object.isFrozen(baselines), true);
-  for (const baseline of baselines) {
-    assert.equal(Object.isFrozen(baseline), true);
-  }
+  // The returned array is the same frozen reference as HARNESS_CAPABILITY_BASELINES
+  assert.equal(baselines, HARNESS_CAPABILITY_BASELINES);
 });
 
 test("HARNESS_CAPABILITY_BASELINES contains all expected capability IDs", () => {

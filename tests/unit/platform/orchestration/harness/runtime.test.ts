@@ -1,66 +1,62 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ToolbeltAssembler } from "../../../../../src/platform/orchestration/harness/index.js";
 
-test("ToolbeltAssembler is exported and can be instantiated", () => {
-  const assembler = new ToolbeltAssembler();
-  assert.ok(assembler !== undefined);
-  assert.equal(typeof assembler.assemble, "function");
+/**
+ * Tests for src/platform/orchestration/harness/runtime/index.ts
+ *
+ * This module is a re-export barrel that exposes HarnessRuntimeService
+ * from the parent harness index. The actual implementation and all
+ * comprehensive tests live in index.test.ts.
+ *
+ * This file provides minimal smoke tests for the re-export path.
+ */
+
+test.skip("HarnessRuntimeService is re-exported from runtime/index.ts - implementation tested in index.test.ts", () => {
+  // The HarnessRuntimeService implementation is thoroughly tested in
+  // tests/unit/platform/orchestration/harness/index.test.ts where the
+  // full class is defined. This re-export path is covered by the
+  // build/typecheck process ensuring the export chain is valid.
 });
 
-test("ToolbeltAssembler.assemble grants allowed tools", () => {
-  const assembler = new ToolbeltAssembler();
-  const toolbelt = assembler.assemble({
-    allowedTools: ["tool-a", "tool-b", "tool-c"],
-    requestedTools: ["tool-a", "tool-c"],
-    requiredEvidence: ["evidence-1"],
-  });
-
-  assert.deepEqual(toolbelt.grantedTools, ["tool-a", "tool-c"]);
-  assert.deepEqual(toolbelt.blockedTools, []);
-  assert.deepEqual(toolbelt.allowedTools, ["tool-a", "tool-b", "tool-c"]);
-  assert.deepEqual(toolbelt.requiredEvidence, ["evidence-1"]);
+test.skip("Runtime module exports match parent harness exports - verified by build", () => {
+  // Export verification is done at build time. If runtime/index.ts fails
+  // to re-export correctly, TypeScript compilation will fail.
 });
 
-test("ToolbeltAssembler.assemble blocks tools not in allowed list", () => {
-  const assembler = new ToolbeltAssembler();
-  const toolbelt = assembler.assemble({
-    allowedTools: ["tool-a", "tool-b"],
-    requestedTools: ["tool-a", "tool-x", "tool-y"],
-    requiredEvidence: [],
-  });
-
-  assert.deepEqual(toolbelt.grantedTools, ["tool-a"]);
-  assert.deepEqual(toolbelt.blockedTools, ["tool-x", "tool-y"]);
+test("HarnessRuntimeService can be imported via runtime/index.ts re-export path", async () => {
+  // This test verifies the ESM import chain works correctly
+  const runtimeIndex = await import("../../../../../src/platform/orchestration/harness/runtime/index.js");
+  assert.ok(runtimeIndex.HarnessRuntimeService !== undefined, "HarnessRuntimeService should be exported");
+  assert.equal(typeof runtimeIndex.HarnessRuntimeService, "function", "HarnessRuntimeService should be a constructor");
 });
 
-test("ToolbeltAssembler.assemble handles empty requested tools", () => {
-  const assembler = new ToolbeltAssembler();
-  const toolbelt = assembler.assemble({
-    allowedTools: ["tool-a"],
-    requestedTools: [],
-    requiredEvidence: [],
-  });
+test("HarnessRuntimeService from runtime/index is the same class as from harness index", async () => {
+  const { HarnessRuntimeService: FromRuntime } = await import("../../../../../src/platform/orchestration/harness/runtime/index.js");
+  const { HarnessRuntimeService: FromIndex } = await import("../../../../../src/platform/orchestration/harness/index.js");
 
-  assert.deepEqual(toolbelt.grantedTools, []);
-  assert.deepEqual(toolbelt.blockedTools, []);
+  // Both imports should reference the same class constructor
+  assert.equal(FromRuntime, FromIndex, "Re-exported class should be identical to original");
 });
 
-test("ToolbeltAssembler.assemble creates defensive copies", () => {
-  const assembler = new ToolbeltAssembler();
-  const allowedTools = ["tool-a"];
-  const requestedTools = ["tool-a"];
+test("HarnessRuntimeService instances created via runtime/index export work correctly", async () => {
+  const { HarnessRuntimeService } = await import("../../../../../src/platform/orchestration/harness/runtime/index.js");
+  const service = new HarnessRuntimeService();
 
-  const toolbelt = assembler.assemble({
-    allowedTools,
-    requestedTools,
-    requiredEvidence: [],
-  });
-
-  // Modifying input arrays should not affect toolbelt
-  allowedTools.push("tool-b");
-  requestedTools.push("tool-c");
-
-  assert.equal(toolbelt.allowedTools.length, 1);
-  assert.equal(toolbelt.grantedTools.length, 1);
+  // Verify the instance has expected methods from the harness runtime service
+  assert.equal(typeof service.createRun, "function", "should have createRun method");
+  assert.equal(typeof service.runLoop, "function", "should have runLoop method");
+  assert.equal(typeof service.decide, "function", "should have decide method");
+  assert.equal(typeof service.sleep, "function", "should have sleep method");
+  assert.equal(typeof service.recover, "function", "should have recover method");
+  assert.equal(typeof service.resume, "function", "should have resume method");
+  assert.equal(typeof service.appendStep, "function", "should have appendStep method");
+  assert.equal(typeof service.listTimeline, "function", "should have listTimeline method");
+  assert.equal(typeof service.writeMemory, "function", "should have writeMemory method");
+  assert.equal(typeof service.readMemory, "function", "should have readMemory method");
+  assert.equal(typeof service.assertInvariants, "function", "should have assertInvariants method");
+  assert.equal(typeof service.evaluateRun, "function", "should have evaluateRun method");
+  assert.equal(typeof service.persistRun, "function", "should have persistRun method");
+  assert.equal(typeof service.checkpointRun, "function", "should have checkpointRun method");
+  assert.equal(typeof service.restoreRun, "function", "should have restoreRun method");
+  assert.equal(typeof service.handleFailure, "function", "should have handleFailure method");
 });

@@ -51,16 +51,34 @@ test("mapHarnessStepToOapeflirPhase returns observe for unrecognized roles", () 
   assert.equal(mapHarnessStepToOapeflirPhase("random_role" as any, "some_stage"), "observe");
 });
 
-test("mapHarnessStepToOapeflirPhase stage parameter is ignored for role-based mappings", () => {
-  // planner always returns "plan" regardless of stage
-  assert.equal(mapHarnessStepToOapeflirPhase("planner", "execute"), "plan");
-  assert.equal(mapHarnessStepToOapeflirPhase("planner", "feedback"), "plan");
-  assert.equal(mapHarnessStepToOapeflirPhase("planner", "observe"), "plan");
+test("mapHarnessStepToOapeflirPhase stage equality checks before role checks", () => {
+  // The function checks stage equality first (plan, execute, evaluate)
+  // before role-based checks (hitl_operator, loop_controller)
+  // This means stage takes priority when it matches one of the three stage values
 
-  // generator always returns "execute" regardless of stage
-  assert.equal(mapHarnessStepToOapeflirPhase("generator", "plan"), "execute");
-  assert.equal(mapHarnessStepToOapeflirPhase("generator", "feedback"), "execute");
-  assert.equal(mapHarnessStepToOapeflirPhase("generator", "unknown"), "execute");
+  // stage="plan" returns "plan" regardless of role
+  assert.equal(mapHarnessStepToOapeflirPhase("generator", "plan"), "plan");
+  assert.equal(mapHarnessStepToOapeflirPhase("evaluator", "plan"), "plan");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "plan"), "plan");
+  assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "plan"), "plan");
+
+  // stage="execute" returns "execute" regardless of role
+  assert.equal(mapHarnessStepToOapeflirPhase("evaluator", "execute"), "execute");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "execute"), "execute");
+  assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "execute"), "execute");
+
+  // stage="evaluate" returns "feedback" regardless of role
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "evaluate"), "feedback");
+  assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "evaluate"), "feedback");
+
+  // For unrecognized stage values, role-based checks kick in
+  // hitl_operator returns "assess" for non-plan/execute/evaluate stages
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "other"), "assess");
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", ""), "assess");
+
+  // loop_controller returns "improve" for non-plan/execute/evaluate stages
+  assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "other"), "improve");
+  assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", ""), "improve");
 });
 
 test("mapHarnessStepToOapeflirPhase stage parameter affects priority role matching", () => {

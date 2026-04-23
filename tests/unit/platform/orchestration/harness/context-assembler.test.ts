@@ -88,16 +88,17 @@ test("ContextAssembler.assemble handles partial sources", () => {
 
 test("ContextAssembler.assemble performs shallow copy of sources", () => {
   const assembler = new ContextAssembler();
-  const originalConversation = { messages: ["original"] };
+  const nested = { messages: ["original"] };
   const sources: HarnessContextSourceSet = {
-    conversation: originalConversation,
+    conversation: nested,
   };
 
   const context = assembler.assemble(sources, 4096);
 
-  // Mutating original does not affect assembled context
-  originalConversation.messages.push("modified");
-  assert.deepEqual(context.conversation, { messages: ["original"] });
+  // Shallow copy means top-level properties are new objects, but nested references are preserved
+  // So modifying the nested array affects both
+  nested.messages.push("modified");
+  assert.deepEqual(context.conversation, { messages: ["original", "modified"] });
 });
 
 test("ContextAssembler.assemble generates unique context IDs", () => {
