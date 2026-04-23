@@ -118,3 +118,101 @@ Minimum coverage:
 - `R6` now has its fifth test-closure slice in place: `clean-dist.mjs` now prunes stale compiled tests even when `dist` is preserved, preventing orphaned artifacts from re-entering full runs under `AA_PRESERVE_DIST=1`; a fresh full regression regenerated coverage and the baseline-aligned `coverage:gate` is green again.
 - `R1-R6` remain governed by the review gap ledger rather than the older `W* done` status.
 - Future `done` states require code, tests, and documentation to land together.
+
+## 6. Cross-Platform UI Track (UI0-UI7)
+
+> This track uses [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) as the single UI source of truth and does not replace the historical `R0-R6` backend remediation record.
+
+### UI0. Workspace and Todo Baseline
+
+Status: `done`
+
+- Added in-repo `ui/` monorepo baseline.
+- Extended `current_todo_list` with `UI0-UI7` without overwriting `R0-R6`.
+- Locked the delivery boundary to `runnable Web + six-platform shell baseline + typed seams + docs/tests sync`.
+
+### UI1. Shared Core
+
+Status: `done`
+
+- Added `shared/types`, `api-client`, `auth`, `state`, `sync`, `domain`, `i18n`, `telemetry`, and `nl-client`.
+- Added DTO→VM→Props mapping, permission guards, field redaction, offline queue, and REST/WS client baseline.
+
+### UI2. Adapter / Design System / Cross-Platform Base
+
+Status: `done`
+
+- Added the authoritative `PlatformAdapter` contract.
+- Added `ui-core`, `ui-mobile`, design tokens, feature scaffold, and mobile navigation baseline.
+
+### UI3. Implemented-First Feature Modules
+
+Status: `done`
+
+- Added `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / conversation / hitl / domain-wizard / settings`.
+- Web now renders shared-data-backed pages for Dashboard / Tasks / Approvals / Settings / Conversation.
+
+### UI4. Planned Modules and API Seams
+
+Status: `done`
+
+- Added formal feature packages for `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`.
+- Planned modules use typed seams and explicit planned-state UX instead of pretending the backend already exists.
+
+### UI5. Six-Platform Shells
+
+Status: `done`
+
+- Added `apps/web`, `apps/electron-win`, `apps/tauri-macos`, `apps/tauri-linux`, and `apps/mobile`.
+- `apps/web` is buildable; the other shells are smoke-ready adapter baselines.
+
+### UI6. Tooling and Tests
+
+Status: `done`
+
+- Added `tools/codegen`, `tools/mock-server`, and `tools/e2e`.
+- Added UI shared/feature/app/docs targeted tests and wired them into the `ui` workspace `typecheck / test / build`.
+
+### UI7. Docs and Acceptance
+
+Status: `in_progress`
+
+- `todolist` is updated.
+- The fine-grained status labels inside `05-cross-platform-ui-architecture.md` still need a fuller implementation-state rewrite.
+
+## 7. Cross-Platform UI Phase 1-4 Alignment Plan
+
+> This section mirrors `Phase 1-4` in `/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/architecture/05-cross-platform-ui-architecture.md` §7.4 and serves as the stage-oriented execution view for `UI0-UI7`.
+
+### Phase 1. Web MVP
+
+Status: `in_progress`
+
+- Align the Web MVP routes and pages for `Implemented/Contracted` and `Implemented/Internal`.
+- Fill the first-level IA gaps: `policy / audit / workers / queues`.
+- Keep Dashboard / TaskCockpit / Approval / Stability / Conversation / HITL / Settings on the shared route-guard, Query, and DTO→VM→Props path.
+- Continue the Phase 1 documentation rewrite and docs tests.
+
+### Phase 2. Desktop
+
+Status: `in_progress`
+
+- Harden `electron-win / tauri-macos / tauri-linux` shell manifests, PlatformAdapter injection, and smoke bootstrap.
+- Cover desktop-specific baseline behavior and test doubles for `windowing / shell / process / analyticsConsent`.
+- Reuse the shared runtime between Web and desktop shells instead of forking logic.
+
+### Phase 3. Mobile
+
+Status: `in_progress`
+
+- Harden `apps/mobile` navigation, secure storage, deep link, haptics, and screen-security baselines.
+- Keep approvals / HITL / conversation entry flows on the mobile path together with offline sync.
+- Add mobile smoke and platform capability contract tests.
+
+### Phase 4. Enhanced Capabilities
+
+Status: `in_progress`
+
+- Continue closing `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`.
+- Keep a single closure path of `planned feature → typed seam → feature gate → docs status`.
+- Rewrite the fine-grained implementation labels in `05-cross-platform-ui-architecture.md` to match the repository truth.

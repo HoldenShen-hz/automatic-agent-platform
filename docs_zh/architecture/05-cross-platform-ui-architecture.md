@@ -20,6 +20,8 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 | v2.2 | 2026-04-23 | —    | 专家评审修订：引入四级状态标签(Implemented/Planned/Proposed/Deferred)；增加桌面混合壳层治理规则；扩展 PlatformAdapter 五组能力(windowing/shell/process/analyticsConsent/screenSecurity)；增加页面级权限矩阵；增加 DTO→VM→Props 反腐层规范；增加 WebSocket 订阅域模型；增加离线操作许可矩阵；扩展 DomainUIConfig 四组域治理接口；增加交付阶段依赖门禁；增加前端错误分级与降级策略；增加契约版本协商；文档卫生清理；状态 Draft→Accepted。Doc-11 高价值内容提取：§4.6 实施参考蓝图(NL 对话/HITL/Workflow 调试器/审批中心)；§5.4.1-5.4.5 API 通信层详情(RESTClient/WSClient/Endpoint 模式/认证流程/离线队列)；§6.3 设计令牌补充(primitive.ts) + 组件开发规范；§7.1.4-7.1.5 CI Stage 详情 + 自动更新策略；§7.2.4-7.2.5 测试工具链 + 覆盖率要求 |
 | v2.3 | 2026-04-23 | —    | 基线强化修订：Implemented 状态拆分三级子标签(Contracted/Internal/Partial)；新增 §5.2.3 Public UI API Surface 分层（service method / route / public contract endpoint）；新增 §4.7 Planned 模块 mini-contract（AgentManager/WorkflowBuilder/WorkflowDebugger/Marketplace/Explainability/CostCenter）；新增 §4.5.4 字段级可见性与脱敏矩阵（FieldVisibilityPolicy/RedactionRule/PIIHandlingByRole）；新增 §5.6.4 Mutation 幂等与重试规范；文档卫生收尾（`[已实现]`/`[需新增]` 统一为 `[Implemented]`/`[Planned]` 标签；service/route/endpoint 术语统一；整改清单附录 E）                                                                                                                                                                     |
 | v3.0 | 2026-04-23 | —    | 详见下方 v3.0 变更明细                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| v3.1 | 2026-04-23 | —    | 仓内 `ui/` Monorepo 基线已落地：补齐 shared core、PlatformAdapter、design tokens、implemented-first feature registry、planned feature seam、Web 可构建 app shell、桌面/移动端 smoke-ready shell、UI 子工程测试基线与 `current_todo_list` 的 `UI0-UI7` 波次。 |
+| v3.2 | 2026-04-23 | —    | 仓内 `Phase 1-4` 代码基线对齐：补齐 `policy / audit / workers / queues` 四个一级 feature，增强 Web 分组导航、桌面/移动平台能力测试与 `current_todo_list` 的 `Phase 1-4` 阶段计划；正文新增仓内对齐快照。 |
 
 #### v3.0 变更明细
 
@@ -81,6 +83,17 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 ---
 
 ## 0. Review 摘要与改进清单
+
+> **仓内实现备注（2026-04-23）**：当前仓库已新增 `ui/` 子工程，作为本文档的实现基线。已落地内容优先覆盖 `UI0-UI7`：工程骨架、shared core、PlatformAdapter、design system、implemented-first feature registry、planned feature seam、Web 构建链路、桌面/移动 smoke shell、文档一致性测试，以及按 `§7.4` 回写的 `Phase 1-4` 仓内代码基线。
+
+### 0.0 仓内 Phase 1-4 对齐快照（2026-04-23）
+
+| Phase | 仓内对齐状态 | 当前仓内实现 |
+| --- | --- | --- |
+| Phase 1 — Web MVP | 基线已落地 | `apps/web` 可构建运行；`dashboard / task-cockpit / workflow-cockpit / approval / stability / alerts / dispatch / inspect / health / incidents / policy / audit / takeover / workers / queues / conversation / hitl / domain-wizard / settings` 已纳入 Web route registry 与 route guard |
+| Phase 2 — 桌面端 | 基线已落地 | `apps/electron-win / apps/tauri-macos / apps/tauri-linux` 已提供 shell manifest、默认 adapter、shared runtime 复用与 smoke test；`windowing / shell / process / analyticsConsent` 已有 PlatformAdapter baseline / test double |
+| Phase 3 — 移动端 | 基线已落地 | `apps/mobile` 已提供 Android/iOS shell manifest、默认 adapter、deepLink / haptics / secure storage / screen security baseline 与 smoke test |
+| Phase 4 — 增强功能 | 基线已落地 | `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` 已通过 typed seam + feature gate 进入仓内实现；增强模块仍按正文状态标签继续演进 |
 
 本文档基于对 Doc-10（1229 行）和 Doc-11（2341 行）的全量审查，以及对后端 Interface Plane 实现的交叉验证，识别出以下 12 项改进并在本文档中逐一落地。
 

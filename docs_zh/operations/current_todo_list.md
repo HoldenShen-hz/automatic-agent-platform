@@ -167,3 +167,101 @@
 
 - `I-1`：`S4 K8s` 集群级分片
 - `II-3`：额外 LLM provider 丰富度扩展
+
+## 6. 跨平台 UI 主线（UI0-UI7）
+
+> 本主线以 [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) 为唯一 UI 权威规格，不覆盖 `R0-R6` 的后端整改历史。
+
+### UI0. 工程与 Todo 基线
+
+状态：`done`
+
+- 仓内新增 `ui/` Monorepo 根目录。
+- `current_todo_list` 追加 `UI0-UI7` 波次，不覆盖 `R0-R6`。
+- 明确本轮边界：`Web 可运行 + 六平台 shell smoke-ready + typed seam + docs/tests 同步`。
+
+### UI1. Shared Core
+
+状态：`done`
+
+- 已落 `shared/types`、`api-client`、`auth`、`state`、`sync`、`domain`、`i18n`、`telemetry`、`nl-client`。
+- 已落 DTO→VM→Props、权限 guard、字段脱敏、offline queue、REST/WS 客户端基线。
+
+### UI2. Adapter / 设计系统 / 跨端基座
+
+状态：`done`
+
+- 已落 `PlatformAdapter` 权威接口。
+- 已落 `ui-core`、`ui-mobile`、design tokens、feature scaffold、移动端导航描述基线。
+
+### UI3. 已实现能力优先模块
+
+状态：`done`
+
+- 已落 `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / conversation / hitl / domain-wizard / settings`。
+- Web 端已接通 Dashboard / Tasks / Approvals / Settings / Conversation 的共享数据流与页面渲染。
+
+### UI4. Planned 模块与 API seam
+
+状态：`done`
+
+- 已落 `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` 正式 feature 包。
+- Planned 模块统一使用 typed seam + feature gate 文案，不伪造后端已完成。
+
+### UI5. 六平台壳层
+
+状态：`done`
+
+- 已落 `apps/web`、`apps/electron-win`、`apps/tauri-macos`、`apps/tauri-linux`、`apps/mobile`。
+- 其中 `apps/web` 可构建运行，其余为 adapter/shell smoke-ready 基线。
+
+### UI6. 工具链与测试
+
+状态：`done`
+
+- 已落 `tools/codegen`、`tools/mock-server`、`tools/e2e`。
+- 已补 UI shared/feature/app/docs 定向测试，并纳入 `ui` 子工程 `typecheck / test / build`。
+
+### UI7. 文档与验收
+
+状态：`in_progress`
+
+- `todolist` 已回写。
+- 仍需继续把 `05-cross-platform-ui-architecture.md` 中更细粒度状态标签做更完整的实现态回写。
+
+## 7. 跨平台 UI Phase 1-4 对齐计划
+
+> 本节直接对齐 [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) §7.4 的 `Phase 1-4`，作为 `UI0-UI7` 的阶段化执行视图。
+
+### Phase 1. Web MVP（文档 §7.4）
+
+状态：`in_progress`
+
+- 对齐 `Implemented/Contracted` 与 `Implemented/Internal` 的 Web MVP 路由与页面。
+- 补齐 Web 信息架构一级模块缺口：`policy / audit / workers / queues`。
+- 将 Dashboard / TaskCockpit / Approval / Stability / Conversation / HITL / Settings 纳入统一 route guard、Query、DTO→VM→Props 主链。
+- 继续补文档中 Phase 1 相关的状态回写与 docs 测试。
+
+### Phase 2. 桌面端（文档 §7.4）
+
+状态：`in_progress`
+
+- 固化 `electron-win / tauri-macos / tauri-linux` 的 shell manifest、PlatformAdapter 注入与 smoke bootstrap。
+- 对齐桌面端特有能力：`windowing / shell / process / analyticsConsent` 的 baseline 行为与测试替身。
+- 将 Web 运行时与桌面适配器的共享层正式复用，避免各壳层各自实现一套。
+
+### Phase 3. 移动端（文档 §7.4）
+
+状态：`in_progress`
+
+- 固化 `apps/mobile` 的导航、secure storage、deep link、haptics、screen security 基线。
+- 对齐移动端审批/HITL/会话入口与离线同步主链。
+- 补齐移动端 smoke test 与平台能力契约测试。
+
+### Phase 4. 增强功能（文档 §7.4）
+
+状态：`in_progress`
+
+- 按文档继续收口 `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`。
+- 建立 `planned feature → typed seam → feature gate → docs status` 的统一收口方式。
+- 将 `05-cross-platform-ui-architecture.md` 的细粒度状态标签回写到当前仓内实现真相。

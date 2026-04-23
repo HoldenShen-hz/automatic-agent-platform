@@ -1,0 +1,12 @@
+import { createFeatureModule } from "@aa/ui-core";
+
+export default createFeatureModule({
+  id: "governance-compliance",
+  title: "Governance Compliance",
+  group: "Governance",
+  path: "/governance/compliance",
+  permission: "domain_admin+",
+  status: "Planned",
+  kind: "planned",
+  summary: "治理与合规视图，通过 planned seam 对齐后端增强端点。",
+});

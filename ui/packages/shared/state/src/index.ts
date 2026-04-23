@@ -1,5 +1,14 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { createContext, createElement, useContext, type PropsWithChildren, type ReactElement } from "react";
 import { createStore } from "zustand/vanilla";
+import {
+  DefaultRESTClient,
+  fetchApprovals,
+  fetchDashboardSnapshot,
+  fetchPreferences,
+  fetchTasks,
+  type RESTClient,
+} from "@aa/shared-api-client";
 
 export interface AuthStoreState {
   readonly authenticated: boolean;
@@ -70,5 +79,55 @@ export function createQueryClientFactory() {
         retry: 1,
       },
     },
+  });
+}
+
+const ApiClientContext = createContext<RESTClient | null>(null);
+
+export function UiRuntimeProvider(
+  { children, client, queryClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient }>,
+): ReactElement {
+  const resolvedClient = client ?? new DefaultRESTClient();
+  const resolvedQueryClient = queryClient ?? createQueryClientFactory();
+  return createElement(
+    ApiClientContext.Provider,
+    { value: resolvedClient },
+    createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+  );
+}
+
+export function useRestClient(): RESTClient {
+  return useContext(ApiClientContext) ?? new DefaultRESTClient();
+}
+
+export function useDashboardSnapshotQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["dashboard", "snapshot"],
+    queryFn: () => fetchDashboardSnapshot(client),
+  });
+}
+
+export function useTasksQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => fetchTasks(client),
+  });
+}
+
+export function useApprovalsQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["approvals"],
+    queryFn: () => fetchApprovals(client),
+  });
+}
+
+export function usePreferencesQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["preferences"],
+    queryFn: () => fetchPreferences(client),
   });
 }
