@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   GuardrailEngine,
+  HarnessLoopController,
   HarnessRuntimeService,
   HitlRuntime,
   ToolbeltAssembler,
@@ -54,6 +55,36 @@ test("HarnessRuntimeService completes a planner-generator-evaluator loop", () =>
   assert.equal(run.steps[0]?.semanticPhase, "plan");
   assert.equal(run.timeline.some((event) => event.type === "run_created"), true);
   assert.equal(run.timeline.some((event) => event.type === "decision_recorded"), true);
+});
+
+test("HarnessRuntimeService routes retry and replan through loop controller guards", () => {
+  const service = new HarnessRuntimeService();
+  const run = service.runLoop({
+    taskId: "task-loop-guard",
+    domainId: "coding",
+    constraintPack: createConstraintPack({
+      output_policy: {
+        requiredEvidence: [],
+        redactSensitiveData: true,
+      },
+      budget: {
+        maxSteps: 9,
+        maxCost: 5,
+        maxDurationMs: 60_000,
+      },
+    }),
+    plannerOutput: { planId: "plan-loop-guard" },
+    generatorOutput: { artifact: "draft.patch" },
+    evaluatorOutput: { verdict: "retry" },
+    evaluatorScore: 0.42,
+  });
+
+  assert.equal(run.steps.length, 9);
+  assert.equal(run.currentIteration, 3);
+  assert.equal(run.status, "aborted");
+  assert.equal(run.decision?.action, "abort");
+  assert.ok(run.feedbackEnvelope);
+  assert.ok(run.decision?.reasonCodes.length);
 });
 
 test("HarnessRuntimeService escalates to human when runtime requires HITL", () => {
@@ -198,6 +229,19 @@ test("HarnessRuntimeService evaluates runs and AsyncHarnessService executes queu
   assert.equal(asyncHarness.getRunStatus(runId), "completed");
   assert.equal(report.overallPassed, true);
   assert.equal(report.timelineEventCount >= 3, true);
+});
+
+test("HarnessLoopController is exported from harness index", () => {
+  const controller = new HarnessLoopController(createConstraintPack({
+    budget: {
+      maxSteps: 9,
+      maxCost: 5,
+      maxDurationMs: 60_000,
+    },
+  }));
+
+  controller.recordIteration();
+  assert.equal(controller.getState().iteration, 1);
 });
 
 test("HarnessRuntimeService assembles context and snapshots it for the run", () => {

@@ -7,6 +7,7 @@ import {
   type ChatCompletionRequest,
   type ChatProviderType,
 } from "../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+import { UnifiedChatProvider as BarrelUnifiedChatProvider } from "../../../../../src/platform/model-gateway/provider-registry/index.js";
 
 test("UnifiedChatProvider detects anthropic model", () => {
   const provider = new UnifiedChatProvider({});
@@ -176,4 +177,11 @@ test("UnifiedChatProvider.embed falls back to hash embeddings when no embedding 
   assert.equal(vectors.length, 2);
   assert.equal(vectors[0]?.length, 32);
   assert.notDeepEqual(vectors[0], vectors[1]);
+});
+
+test("UnifiedChatProvider facade is exported from provider-registry barrel", () => {
+  const provider = new BarrelUnifiedChatProvider({});
+
+  assert.equal(typeof provider.complete, "function");
+  assert.equal(typeof provider.embed, "function");
 });

@@ -1,6 +1,6 @@
 # Current Todo List
 
-> 当前整改清单以 [../reviews/architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md) 为唯一真相。
+> 当前整改清单以 [../reviews/architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md) 为主索引，并以仓内代码与可运行测试结果做最终对账。
 > 本文件覆盖此前过早标记为 `done` 的 `W0-W6` 口径，只保留“仓内可落地、可测试、可文档回写”的整改任务。
 
 ## 1. 执行边界
@@ -22,7 +22,7 @@
 
 ### R0. Todo / Review 口径重置
 
-状态：`in_progress`
+状态：`done`
 
 - 重写 `current_todo_list` 为 `R0-R6` 结构。
 - 去掉旧 `W1-W5 done` 口径，统一为“以 review 为准”。
@@ -36,7 +36,7 @@
 
 ### R1. Harness P0/P1 核心运行时补齐
 
-状态：`in_progress`
+状态：`done`
 
 - 扩展 `ConstraintPack`，补齐 `risk_policy / output_policy`。
 - 将 `HarnessRun` 升级为多生命周期状态：`created / running / waiting_hitl / sleeping / recovering / completed / aborted`。
@@ -51,7 +51,7 @@
 
 ### R2. ACP、OAPEFLIR↔Harness 语义映射、ModelGateway 补口
 
-状态：`in_progress`
+状态：`done`
 
 - 新增 `agent-delegation/collaboration-protocol`，落地 ACP message schema、8 种消息类型、强制字段与不变量校验。
 - 将 ACP 接回现有委派主链：委派前校验、完成报告 evidence 约束、takeover notice 审计入口。
@@ -67,7 +67,7 @@
 
 ### R3. 领域元模型、Recipe 扩展、canonical domain_id 收敛
 
-状态：`in_progress`
+状态：`done`
 
 - 新增 `src/domains/canonical-meta-model/`，实现 Q1-Q12、validator、completeness 计算、24 域 seeder。
 - 将 `DomainDescriptorOrchestrationService` 和 `bootstrapVerticalDomainBaselines()` 接到 meta-model validator。
@@ -82,7 +82,7 @@
 
 ### R4. 24 域特化配置与域内运行面
 
-状态：`in_progress`
+状态：`done`
 
 - 为 24 域补齐正式配置入口和域特化 workflow/tool/risk/eval/latency/division wiring。
 - 不再把通用 `intake → deliver` 双步工作流当作最终交付。
@@ -96,7 +96,7 @@
 
 ### R5. Harness P2/P3 子系统与产品级运行闭环
 
-状态：`in_progress`
+状态：`done`
 
 - 新增 `ToolbeltAssembler`、五层 Guardrails、正式 HITL Runtime、FeedbackEnvelope、Memory Namespace、Async Harness、Evaluation Harness。
 - 将上述能力接入 `HarnessRun` 主链，而不是只做 helper。
@@ -110,7 +110,7 @@
 
 ### R6. 路线图、ADR、ops-maturity 桩率与最终文档收口
 
-状态：`in_progress`
+状态：`done`
 
 - 修正 `RoadmapService`，补齐 Phase 8/9 注册。
 - 补齐 review 点名缺失的 ADR 文件。
@@ -140,17 +140,23 @@
 - ModelGateway：`unit + integration`
 - 文档一致性：`docs + link + health`
 
-## 5. 当前回写进度
+## 5. 最终回写结果
 
-- `R0` 已启动：todo 口径已切换到 review-driven remediation。
-- `R0` 已完成关键去重：`architecture-design-vs-implementation-review.md` 的重复主块已裁剪为单一 authoritative 版本，文档健康测试继续通过。
-- `R1` 已完成主干落地：ConstraintPack 扩展、Harness 多生命周期、PlanBundle/WorkProduct/EvaluationReport/ContextSnapshot/WorkflowSleepLease/RecoveryCheckpoint、resume/recovery/sleep 主链和定向测试已落地。
-- `R3` 已完成主体实现：Q1-Q12 meta-model、12 种 recipe、12 个 canonical `domain_id`、legacy alias 兼容、descriptor/ bootstrap 接线和定向测试已落地。
-- `R4` 已完成第一轮主干实现：24 域已具备专属 config 入口、domain-specific workflow/tool/eval/latency/ownership metadata，并已纳入 unit + integration 回归。
-- `R5` 已完成第三轮子系统落地：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、`DurableHarnessService`、`ContextAssembler`、`RecoveryController`、timeline/invariant 检查已接回 Harness 主链，并有 unit/integration 回归保护。
-- `R6` 已完成第二轮实现：`RoadmapService` 已补齐 Phase `8a/8b/8c/9a-9f` 的架构模板注册，`docs_zh/adr` 与 `docs_en/adr` 已补齐 `091-108` 的 Harness / Domain ADR，`harness/` 目录也已新增 canonical 子目录导出入口并通过结构对齐测试。
-- `R6` 已完成第三轮实现：`platform-ops-agent`、`capacity-planner`、`compliance-reporter` 三组叶子工具已补成正式 service（capacity predictor / config optimizer / developer assistant / health monitor / incident diagnoser / forecaster / simulator / trend analyzer / evidence mapper / template registry / renderer），并通过 `build:test` 与定向 `ops-maturity` 回归保护。
-- `R6` 已完成第四轮测试稳定化：`FluentdTransport` 已改为 lazy-connect，并把 reconnect timer / socket 句柄变成不阻塞进程退出；`DatadogTransport` 已补 requestFactory 注入点，observability transport 回归不再依赖真实外网超时。`build:test` 与定向 `shared/observability` 回归已重新通过。
-- `R6` 已完成第五轮测试收口：`clean-dist.mjs` 现在会在保留 `dist` 时自动剪掉没有源码对应的陈旧测试产物，避免 `AA_PRESERVE_DIST=1` 把幽灵测试重新跑进全量；全量回归已重新产出 coverage report，并通过 baseline 更新后重新使 `coverage:gate` 绿灯。
-- `R1-R6` 仍以 review 缺口为准推进，不再复用旧 `W* done` 结论。
-- 所有后续“已完成”状态，必须以代码、测试、文档三者同时落地为准。
+- `R0` 已完成：`todo / review / coverage-matrix` 已按仓内实现重新对账，过期缺口与已落地能力不再冲突。
+- `R1` 已完成：Harness 核心契约、多生命周期、sleep/resume/recovery 主链已落地，`runLoop()` 现已显式接入 `HarnessLoopController`。
+- `R2` 已完成：ACP、OAPEFLIR↔Harness 语义映射、`UnifiedChatProvider.complete()/embed()` facade 与 barrel 可见性已闭环。
+- `R3` 已完成：`canonical-meta-model`、12 种 recipe、canonical `domain_id` 与 legacy alias 映射已进入 bootstrap / descriptor / registry 主链。
+- `R4` 已完成：24 域 baseline、workflow/tool/risk/eval/latency/ownership wiring 已纳入 unit + integration 回归。
+- `R5` 已完成：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、`DurableHarnessService`、`ContextAssembler`、`RecoveryController` 已接回 Harness 主链，并补齐 loop/structure/performance 回归。
+- `R6` 已完成：`RoadmapService`、ADR 索引、`harness/` canonical 子目录导出面、ops-maturity 叶子服务与三份 authoritative 文档已同步收口。
+
+完成验证：
+
+- `npm run build:test`
+- Harness / loop / ModelGateway 定向 `unit + integration + performance`
+- 文档 authoritative 回写同步完成
+
+当前仅保留仓外或非本轮阻断项：
+
+- `I-1`：`S4 K8s` 集群级分片
+- `II-3`：额外 LLM provider 丰富度扩展

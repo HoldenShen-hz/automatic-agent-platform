@@ -6,6 +6,7 @@ import { GuardrailEngine, type GuardrailAssessment } from "./guardrails/guardrai
 import { HitlRuntime, type HitlRequest } from "./hitl-runtime.js";
 import { EvalRunService } from "./evaluation/eval-run-service.js";
 import { HarnessMemoryManager } from "./memory-manager.js";
+import { HarnessLoopController } from "./loop/index.js";
 import { mapHarnessStepToOapeflirPhase, type OapeflirSemanticPhase } from "./oapeflir-harness-mapping.js";
 import { RecoveryController, type HarnessFailureType } from "./recovery-controller.js";
 import { ToolbeltAssembler, type HarnessToolbelt } from "./toolbelt-assembler.js";
@@ -19,6 +20,7 @@ export * from "./evaluation/eval-run-service.js";
 export * from "./evaluation/task-outcome-grader.js";
 export * from "./guardrails/guardrail-engine.js";
 export * from "./hitl-runtime.js";
+export * from "./loop/index.js";
 export * from "./memory-manager.js";
 export * from "./oapeflir-harness-mapping.js";
 export * from "./recovery-controller.js";
@@ -520,6 +522,9 @@ export class HarnessRuntimeService {
   }
 
   public runLoop(input: HarnessLoopInput): HarnessRun {
+    const loop = new HarnessLoopController(input.constraintPack, {}, {
+      iteration: Math.max(0, (input.iteration ?? 1) - 1),
+    });
     let run = this.createRun({
       taskId: input.taskId,
       domainId: input.domainId,
@@ -530,110 +535,153 @@ export class HarnessRuntimeService {
       status: "running",
       currentIteration: input.iteration ?? 1,
     };
-    run = this.appendStep(run, {
-      role: "planner",
-      stage: "plan",
-      inputs: { taskId: input.taskId, domainId: input.domainId },
-      outputs: input.plannerOutput,
-      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
-    });
-    run = this.appendStep(run, {
-      role: "generator",
-      stage: "execute",
-      inputs: input.plannerOutput,
-      outputs: input.generatorOutput,
-      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
-    });
-    run = this.appendStep(run, {
-      role: "evaluator",
-      stage: "evaluate",
-      inputs: input.generatorOutput,
-      outputs: input.evaluatorOutput,
-      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
-    });
 
-    const toolbelt = this.toolbeltAssembler.assemble({
-      allowedTools: input.constraintPack.toolPolicy.allowedTools,
-      requestedTools: [...(input.requestedTools ?? [])],
-      requiredEvidence: input.constraintPack.output_policy.requiredEvidence,
-    });
-    const guardrailAssessment = this.guardrailEngine.assess({
-      toolbelt,
-      evidenceRefs: [...(input.producedEvidenceRefs ?? [])],
-      riskScore: input.riskScore ?? Math.max(0, input.constraintPack.risk_policy.escalationThreshold - 1),
-      maxRiskScore: input.constraintPack.risk_policy.maxRiskScore,
-      escalationThreshold: input.constraintPack.risk_policy.escalationThreshold,
-      currentStepCount: run.steps.length,
-      maxSteps: input.constraintPack.budget.maxSteps,
-    });
-    this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
-    this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
+    while (true) {
+      const iteration = (input.iteration ?? 1) + loop.getState().iteration;
+      run = this.appendStep(run, {
+        role: "planner",
+        stage: "plan",
+        inputs: { taskId: input.taskId, domainId: input.domainId },
+        outputs: input.plannerOutput,
+        iteration,
+      });
+      run = this.appendStep(run, {
+        role: "generator",
+        stage: "execute",
+        inputs: input.plannerOutput,
+        outputs: input.generatorOutput,
+        iteration,
+      });
+      run = this.appendStep(run, {
+        role: "evaluator",
+        stage: "evaluate",
+        inputs: input.generatorOutput,
+        outputs: input.evaluatorOutput,
+        iteration,
+      });
 
-    const decision = this.decide({
-      evaluatorScore: input.evaluatorScore,
-      requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman,
-      maxIterationsReached: run.steps.length >= input.constraintPack.budget.maxSteps,
-    });
-    const contextSnapshot = this.captureContextSnapshot({
-      ...run,
-      decision,
-    });
+      const toolbelt = this.toolbeltAssembler.assemble({
+        allowedTools: input.constraintPack.toolPolicy.allowedTools,
+        requestedTools: [...(input.requestedTools ?? [])],
+        requiredEvidence: input.constraintPack.output_policy.requiredEvidence,
+      });
+      const guardrailAssessment = this.guardrailEngine.assess({
+        toolbelt,
+        evidenceRefs: [...(input.producedEvidenceRefs ?? [])],
+        riskScore: input.riskScore ?? Math.max(0, input.constraintPack.risk_policy.escalationThreshold - 1),
+        maxRiskScore: input.constraintPack.risk_policy.maxRiskScore,
+        escalationThreshold: input.constraintPack.risk_policy.escalationThreshold,
+        currentStepCount: run.steps.length,
+        maxSteps: input.constraintPack.budget.maxSteps,
+      });
+      this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
+      this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
 
-    let baseRun: HarnessRun = {
-      ...run,
-      toolbelt,
-      guardrailAssessment,
-      hitlRequest: null,
-      status:
-        guardrailAssessment.suggestedAction === "abort" || decision.action === "abort"
-          ? "aborted"
-          : decision.action === "accept"
-          ? "completed"
-          : decision.action === "escalate_to_human"
-              ? "waiting_hitl"
-              : "running",
-      completedAt:
-        guardrailAssessment.suggestedAction === "abort" || decision.action === "accept" || decision.action === "abort"
-          ? nowIso()
-          : null,
-      decision,
-      contextSnapshots: [...run.contextSnapshots, contextSnapshot],
-      feedbackEnvelope: {
-        feedbackId: newId("feedback"),
-        signals: [
-          ...(input.producedEvidenceRefs ?? []),
-          ...decision.reasonCodes,
-          ...guardrailAssessment.findings.map((finding) => finding.code),
-        ],
-        learnedActions: decision.action === "replan"
-          ? ["update_plan_bundle"]
-          : decision.action === "retry_same_plan"
-            ? ["tighten_generator"]
-            : [],
-        createdAt: nowIso(),
-      },
-    };
-    baseRun = this.appendTimelineEvent(baseRun, "guardrails_evaluated", {
-      passed: guardrailAssessment.passed,
-      requiresHuman: guardrailAssessment.requiresHuman,
-      suggestedAction: guardrailAssessment.suggestedAction,
-    });
-    baseRun = this.appendTimelineEvent(baseRun, "decision_recorded", {
-      action: decision.action,
-      confidence: decision.confidence,
-    });
+      const decision = this.decide({
+        evaluatorScore: input.evaluatorScore,
+        requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman,
+        maxIterationsReached: run.steps.length >= input.constraintPack.budget.maxSteps,
+      });
+      const contextSnapshot = this.captureContextSnapshot({
+        ...run,
+        decision,
+      });
 
-    if (baseRun.status !== "waiting_hitl") {
-      this.durableService.persist(baseRun);
-      return baseRun;
+      let baseRun: HarnessRun = {
+        ...run,
+        toolbelt,
+        guardrailAssessment,
+        hitlRequest: null,
+        status:
+          guardrailAssessment.suggestedAction === "abort" || decision.action === "abort"
+            ? "aborted"
+            : decision.action === "accept"
+            ? "completed"
+            : decision.action === "escalate_to_human"
+                ? "waiting_hitl"
+                : "running",
+        completedAt:
+          guardrailAssessment.suggestedAction === "abort" || decision.action === "accept" || decision.action === "abort"
+            ? nowIso()
+            : null,
+        decision,
+        contextSnapshots: [...run.contextSnapshots, contextSnapshot],
+        feedbackEnvelope: {
+          feedbackId: newId("feedback"),
+          signals: [
+            ...(input.producedEvidenceRefs ?? []),
+            ...decision.reasonCodes,
+            ...guardrailAssessment.findings.map((finding) => finding.code),
+          ],
+          learnedActions: decision.action === "replan"
+            ? ["update_plan_bundle"]
+            : decision.action === "retry_same_plan"
+              ? ["tighten_generator"]
+              : [],
+          createdAt: nowIso(),
+        },
+      };
+      baseRun = this.appendTimelineEvent(baseRun, "guardrails_evaluated", {
+        passed: guardrailAssessment.passed,
+        requiresHuman: guardrailAssessment.requiresHuman,
+        suggestedAction: guardrailAssessment.suggestedAction,
+      });
+      baseRun = this.appendTimelineEvent(baseRun, "decision_recorded", {
+        action: decision.action,
+        confidence: decision.confidence,
+      });
+
+      loop.recordIteration();
+      if (decision.action === "replan") {
+        loop.recordReplan();
+      }
+      const progress = loop.evaluateProgress(
+        decision.action,
+        baseRun.steps.length + 3 <= input.constraintPack.budget.maxSteps,
+      );
+      const shouldStop = baseRun.status !== "running" || !progress.shouldContinue;
+
+      if (shouldStop) {
+        const finalRun = progress.violation !== null && baseRun.status === "running"
+          ? {
+              ...baseRun,
+              status: "aborted" as const,
+              completedAt: nowIso(),
+              decision: {
+                decisionId: newId("harness_decision"),
+                action: "abort" as const,
+                reasonCodes: progress.reasonCodes,
+                confidence: baseRun.decision?.confidence ?? 0,
+                createdAt: nowIso(),
+              },
+              feedbackEnvelope: baseRun.feedbackEnvelope == null
+                ? null
+                : {
+                    ...baseRun.feedbackEnvelope,
+                    signals: [...baseRun.feedbackEnvelope.signals, ...progress.reasonCodes],
+                  },
+            }
+          : baseRun;
+
+        if (finalRun.status !== "waiting_hitl") {
+          this.durableService.persist(finalRun);
+          return finalRun;
+        }
+
+        const withHitl = this.openHitlReview(
+          finalRun,
+          "guardrail_or_operator_escalation",
+          [...(input.producedEvidenceRefs ?? []), ...guardrailAssessment.findings.map((finding) => finding.code)],
+        );
+        this.durableService.persist(withHitl);
+        return withHitl;
+      }
+
+      run = {
+        ...baseRun,
+        status: "running",
+        completedAt: null,
+      };
     }
-
-    const withHitl = this.openHitlReview(
-      baseRun,
-      "guardrail_or_operator_escalation",
-      [...(input.producedEvidenceRefs ?? []), ...guardrailAssessment.findings.map((finding) => finding.code)],
-    );
-    this.durableService.persist(withHitl);
-    return withHitl;
   }
 }

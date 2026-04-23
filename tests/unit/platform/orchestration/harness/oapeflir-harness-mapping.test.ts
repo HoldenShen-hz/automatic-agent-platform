@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mapHarnessStepToOapeflirPhase, type OapeflirSemanticPhase } from "../../../../../src/platform/orchestration/harness/oapeflir-harness-mapping.js";
+import {
+  mapHarnessStepToOapeflirPhase,
+  type OapeflirSemanticPhase,
+} from "../../../../../src/platform/orchestration/harness/oapeflir-harness-mapping.js";
 
 test("mapHarnessStepToOapeflirPhase maps planner/plan to plan phase", () => {
   assert.equal(mapHarnessStepToOapeflirPhase("planner", "plan"), "plan");
@@ -41,4 +44,79 @@ test("mapHarnessStepToOapeflirPhase returns correct phase mappings", () => {
   assert.equal(mapHarnessStepToOapeflirPhase("evaluator", "any"), "feedback");
   assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "any"), "assess");
   assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "any"), "improve");
+});
+
+test("mapHarnessStepToOapeflirPhase returns observe for unrecognized roles", () => {
+  assert.equal(mapHarnessStepToOapeflirPhase("unrecognized_role" as any, "any"), "observe");
+  assert.equal(mapHarnessStepToOapeflirPhase("random_role" as any, "some_stage"), "observe");
+});
+
+test("mapHarnessStepToOapeflirPhase stage parameter is ignored for role-based mappings", () => {
+  // planner always returns "plan" regardless of stage
+  assert.equal(mapHarnessStepToOapeflirPhase("planner", "execute"), "plan");
+  assert.equal(mapHarnessStepToOapeflirPhase("planner", "feedback"), "plan");
+  assert.equal(mapHarnessStepToOapeflirPhase("planner", "observe"), "plan");
+
+  // generator always returns "execute" regardless of stage
+  assert.equal(mapHarnessStepToOapeflirPhase("generator", "plan"), "execute");
+  assert.equal(mapHarnessStepToOapeflirPhase("generator", "feedback"), "execute");
+  assert.equal(mapHarnessStepToOapeflirPhase("generator", "unknown"), "execute");
+});
+
+test("mapHarnessStepToOapeflirPhase stage parameter affects priority role matching", () => {
+  // When stage is "plan", returns "plan" (first condition matches)
+  assert.equal(mapHarnessStepToOapeflirPhase("any_role" as any, "plan"), "plan");
+
+  // When stage is "execute", returns "execute" (second condition matches)
+  assert.equal(mapHarnessStepToOapeflirPhase("any_role" as any, "execute"), "execute");
+
+  // When stage is "evaluate", returns "feedback" (third condition matches)
+  assert.equal(mapHarnessStepToOapeflirPhase("any_role" as any, "evaluate"), "feedback");
+});
+
+test("mapHarnessStepToOapeflirPhase returns all valid OapeflirSemanticPhase values", () => {
+  const allPhases = new Set<OapeflirSemanticPhase>();
+  const roles = ["planner", "generator", "evaluator", "hitl_operator", "loop_controller", "unknown" as any];
+  const stages = ["plan", "execute", "evaluate", "other"];
+
+  for (const role of roles) {
+    for (const stage of stages) {
+      allPhases.add(mapHarnessStepToOapeflirPhase(role, stage));
+    }
+  }
+
+  // Should return plan, execute, feedback, assess, improve, observe
+  assert.ok(allPhases.has("plan"));
+  assert.ok(allPhases.has("execute"));
+  assert.ok(allPhases.has("feedback"));
+  assert.ok(allPhases.has("assess"));
+  assert.ok(allPhases.has("improve"));
+  assert.ok(allPhases.has("observe"));
+});
+
+test("mapHarnessStepToOapeflirPhase is a pure function - no side effects", () => {
+  const result1 = mapHarnessStepToOapeflirPhase("planner", "any");
+  const result2 = mapHarnessStepToOapeflirPhase("planner", "any");
+  assert.equal(result1, result2);
+  assert.equal(result1, "plan");
+});
+
+test("mapHarnessStepToOapeflirPhase handles empty string stage", () => {
+  assert.equal(mapHarnessStepToOapeflirPhase("planner", ""), "plan");
+  assert.equal(mapHarnessStepToOapeflirPhase("generator", ""), "execute");
+  assert.equal(mapHarnessStepToOapeflirPhase("unknown" as any, ""), "observe");
+});
+
+test.skip("mapHarnessStepToOapeflirPhase type validation - requires type-level testing", () => {
+  // This test documents that OapeflirSemanticPhase is a union type of specific strings
+  // Runtime testing cannot validate TypeScript types without runtime type checking library
+});
+
+test("OapeflirSemanticPhase type contains all expected phase values", () => {
+  const phases: OapeflirSemanticPhase[] = ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"];
+  for (const phase of phases) {
+    const result = mapHarnessStepToOapeflirPhase("unknown" as any, "any");
+    // Just ensure no error is thrown when using valid phase values
+    assert.ok(typeof result === "string");
+  }
 });

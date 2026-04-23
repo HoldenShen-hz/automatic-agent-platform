@@ -4,6 +4,7 @@ import test from "node:test";
 import { HARNESS_PLANNER_ROLE } from "../../../../../src/platform/orchestration/harness/planner/index.js";
 import { HARNESS_GENERATOR_ROLE } from "../../../../../src/platform/orchestration/harness/generator/index.js";
 import { HARNESS_EVALUATOR_ROLE } from "../../../../../src/platform/orchestration/harness/evaluator/index.js";
+import { HarnessLoopController } from "../../../../../src/platform/orchestration/harness/loop/index.js";
 import { HarnessRuntimeService } from "../../../../../src/platform/orchestration/harness/runtime/index.js";
 import { ContextAssembler } from "../../../../../src/platform/orchestration/harness/context/index.js";
 import { HarnessMemoryManager } from "../../../../../src/platform/orchestration/harness/memory-namespace/index.js";
@@ -21,6 +22,15 @@ test("harness canonical subdirectories expose runtime-aligned entrypoints", () =
   assert.ok(new ContextAssembler() instanceof ContextAssembler);
   assert.ok(new HarnessMemoryManager() instanceof HarnessMemoryManager);
   assert.ok(new ToolbeltAssembler() instanceof ToolbeltAssembler);
+  assert.ok(new HarnessLoopController({
+    policyIds: [],
+    approvalMode: "none",
+    autonomyMode: "manual",
+    toolPolicy: { allowedTools: [] },
+    risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
+    output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    budget: { maxSteps: 9, maxCost: 1, maxDurationMs: 60_000 },
+  }) instanceof HarnessLoopController);
   assert.ok(new HitlRuntime() instanceof HitlRuntime);
   assert.ok(new DurableHarnessService() instanceof DurableHarnessService);
   assert.ok(new EvalRunService() instanceof EvalRunService);
