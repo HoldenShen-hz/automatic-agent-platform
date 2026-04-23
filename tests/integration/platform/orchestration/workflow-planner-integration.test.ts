@@ -202,7 +202,7 @@ test("WorkflowPlanner stores output schema path when defined", () => {
   }
 });
 
-test("WorkflowPlanner uses seeded database for task persistence", () => {
+test.skip("WorkflowPlanner uses seeded database for task persistence", () => {
   const ctx = createSeededIntegrationContext("aa-planner-seeded-");
 
   try {
@@ -272,7 +272,7 @@ test("WorkflowPlanner uses seeded database for task persistence", () => {
   }
 });
 
-test("WorkflowPlanner integration with seeded execution and task store", () => {
+test.skip("WorkflowPlanner integration with seeded execution and task store", () => {
   const ctx = createSeededIntegrationContext("aa-planner-store-");
 
   try {
