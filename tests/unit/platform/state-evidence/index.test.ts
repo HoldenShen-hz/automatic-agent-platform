@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import * as stateEvidence from "../../../../../../src/platform/state-evidence/index.js";
+import * as stateEvidence from "../../../../src/platform/state-evidence/index.js";
 
 describe("state-evidence/index", () => {
   describe("module exports", () => {
@@ -54,42 +54,14 @@ describe("state-evidence/index", () => {
       assert.ok(typeof stateEvidence.truth === "object");
     });
 
-    it("should export state-evidence-plane-baseline", () => {
-      assert.ok(stateEvidence.stateEvidencePlaneBaseline !== undefined);
+    it("should export buildStateEvidencePlaneBootstrap function", () => {
+      assert.ok(stateEvidence.buildStateEvidencePlaneBootstrap !== undefined);
+      assert.strictEqual(typeof stateEvidence.buildStateEvidencePlaneBootstrap, "function");
     });
 
-    it("should export state-evidence-plane-bootstrap", () => {
-      assert.ok(stateEvidence.stateEvidencePlaneBootstrap !== undefined);
-    });
-  });
-
-  describe("artifacts exports", () => {
-    it("should have index from artifacts module", () => {
-      assert.ok(stateEvidence.artifacts.index !== undefined);
-    });
-  });
-
-  describe("events exports", () => {
-    it("should have index from events module", () => {
-      assert.ok(stateEvidence.events.index !== undefined);
-    });
-  });
-
-  describe("knowledge exports", () => {
-    it("should have index from knowledge module", () => {
-      assert.ok(stateEvidence.knowledge.index !== undefined);
-    });
-  });
-
-  describe("memory exports", () => {
-    it("should have index from memory module", () => {
-      assert.ok(stateEvidence.memory.index !== undefined);
-    });
-  });
-
-  describe("truth exports", () => {
-    it("should have index from truth module", () => {
-      assert.ok(stateEvidence.truth.index !== undefined);
+    it("should export STATE_EVIDENCE_CAPABILITY_BASELINES constant", () => {
+      assert.ok(stateEvidence.STATE_EVIDENCE_CAPABILITY_BASELINES !== undefined);
+      assert.ok(Array.isArray(stateEvidence.STATE_EVIDENCE_CAPABILITY_BASELINES));
     });
   });
 });

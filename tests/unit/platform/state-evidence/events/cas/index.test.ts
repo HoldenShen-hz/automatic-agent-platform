@@ -7,7 +7,7 @@ import {
   type FenceMode,
   type FenceInfo,
   type FencingTokenValidation,
-} from "../../../../../../../src/platform/state-evidence/events/cas/index.js";
+} from "../../../../../../src/platform/state-evidence/events/cas/index.js";
 
 describe("events/cas/index", () => {
   describe("module exports", () => {
@@ -20,10 +20,10 @@ describe("events/cas/index", () => {
       // Verify the type exists by creating a value that conforms to it
       const result: CasResult = {
         success: true,
-        version: 1,
+        currentVersion: 1,
       };
       assert.strictEqual(result.success, true);
-      assert.strictEqual(result.version, 1);
+      assert.strictEqual(result.currentVersion, 1);
     });
 
     it("should export FencingTokenService", () => {
