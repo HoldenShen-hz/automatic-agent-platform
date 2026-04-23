@@ -10,12 +10,18 @@ import {
   fetchApprovals,
   fetchCosts,
   fetchDashboardSnapshot,
+  fetchDomainConfigs,
   fetchExplanations,
+  fetchFeatureFlags,
   fetchIncidents,
   fetchMarketplace,
+  fetchModels,
   fetchPreferences,
   fetchQueues,
+  fetchRoles,
   fetchTasks,
+  fetchTenants,
+  fetchWebhooks,
   fetchWorkflows,
   fetchWorkers,
   type RESTClient,
@@ -271,6 +277,54 @@ export function useExplanationsQuery() {
   return useQuery({
     queryKey: ["explanations"],
     queryFn: () => fetchExplanations(client),
+  });
+}
+
+export function useRolesQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["roles"],
+    queryFn: () => fetchRoles(client),
+  });
+}
+
+export function useFeatureFlagsQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFeatureFlags(client),
+  });
+}
+
+export function useModelsQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["models"],
+    queryFn: () => fetchModels(client),
+  });
+}
+
+export function useDomainConfigsQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["domain-configs"],
+    queryFn: () => fetchDomainConfigs(client),
+  });
+}
+
+export function useTenantsQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["tenants"],
+    queryFn: () => fetchTenants(client),
+  });
+}
+
+export function useWebhooksQuery() {
+  const client = useRestClient();
+  return useQuery({
+    queryKey: ["webhooks"],
+    queryFn: () => fetchWebhooks(client),
   });
 }
 

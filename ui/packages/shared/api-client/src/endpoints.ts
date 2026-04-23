@@ -4,12 +4,18 @@ import type {
   ApprovalDTO,
   CostReportDTO,
   DashboardSnapshotDTO,
+  DomainConfigDTO,
   ExplanationDTO,
+  FeatureFlagDTO,
   IncidentDTO,
   MarketplacePackDTO,
+  ModelConfigDTO,
   QueueDTO,
+  RoleDTO,
   TaskDTO,
+  TenantDTO,
   UserPreferenceDTO,
+  WebhookDTO,
   WorkerDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
@@ -95,6 +101,42 @@ export const endpointCatalog = {
     apiLayer: "C",
     planned: true,
   },
+  roles: {
+    id: "admin.roles",
+    path: "/admin/roles",
+    apiLayer: "C",
+    planned: true,
+  },
+  featureFlags: {
+    id: "admin.feature-flags",
+    path: "/admin/feature-flags",
+    apiLayer: "C",
+    planned: true,
+  },
+  models: {
+    id: "admin.models",
+    path: "/admin/models",
+    apiLayer: "C",
+    planned: true,
+  },
+  domainConfigs: {
+    id: "admin.domains",
+    path: "/admin/domains",
+    apiLayer: "C",
+    planned: true,
+  },
+  tenants: {
+    id: "admin.tenants",
+    path: "/admin/tenants",
+    apiLayer: "C",
+    planned: true,
+  },
+  webhooks: {
+    id: "admin.webhooks",
+    path: "/webhooks",
+    apiLayer: "C",
+    planned: true,
+  },
   preferences: {
     id: "user.preferences",
     path: "/preferences",
@@ -155,6 +197,30 @@ export async function fetchMarketplace(client: RESTClient): Promise<readonly Mar
 
 export async function fetchExplanations(client: RESTClient): Promise<readonly ExplanationDTO[]> {
   return client.get<readonly ExplanationDTO[]>(endpointCatalog.explanations.path);
+}
+
+export async function fetchRoles(client: RESTClient): Promise<readonly RoleDTO[]> {
+  return client.get<readonly RoleDTO[]>(endpointCatalog.roles.path);
+}
+
+export async function fetchFeatureFlags(client: RESTClient): Promise<readonly FeatureFlagDTO[]> {
+  return client.get<readonly FeatureFlagDTO[]>(endpointCatalog.featureFlags.path);
+}
+
+export async function fetchModels(client: RESTClient): Promise<readonly ModelConfigDTO[]> {
+  return client.get<readonly ModelConfigDTO[]>(endpointCatalog.models.path);
+}
+
+export async function fetchDomainConfigs(client: RESTClient): Promise<readonly DomainConfigDTO[]> {
+  return client.get<readonly DomainConfigDTO[]>(endpointCatalog.domainConfigs.path);
+}
+
+export async function fetchTenants(client: RESTClient): Promise<readonly TenantDTO[]> {
+  return client.get<readonly TenantDTO[]>(endpointCatalog.tenants.path);
+}
+
+export async function fetchWebhooks(client: RESTClient): Promise<readonly WebhookDTO[]> {
+  return client.get<readonly WebhookDTO[]>(endpointCatalog.webhooks.path);
 }
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {

@@ -4,12 +4,18 @@ import type {
   ApprovalDTO,
   CostReportDTO,
   DashboardSnapshotDTO,
+  DomainConfigDTO,
   ExplanationDTO,
+  FeatureFlagDTO,
   IncidentDTO,
   MarketplacePackDTO,
+  ModelConfigDTO,
   QueueDTO,
+  RoleDTO,
   TaskDTO,
+  TenantDTO,
   UserPreferenceDTO,
+  WebhookDTO,
   WorkerDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
@@ -27,6 +33,12 @@ export interface MockApiShape {
   readonly costs: readonly CostReportDTO[];
   readonly marketplace: readonly MarketplacePackDTO[];
   readonly explanations: readonly ExplanationDTO[];
+  readonly roles: readonly RoleDTO[];
+  readonly featureFlags: readonly FeatureFlagDTO[];
+  readonly models: readonly ModelConfigDTO[];
+  readonly domainConfigs: readonly DomainConfigDTO[];
+  readonly tenants: readonly TenantDTO[];
+  readonly webhooks: readonly WebhookDTO[];
   readonly preferences: UserPreferenceDTO;
 }
 
@@ -105,6 +117,32 @@ export const defaultMockApiShape: MockApiShape = {
   explanations: [
     { id: "exp-1", title: "Budget Alert Explanation", summary: "Spend increased because approval turnaround improved", evidenceCount: 4 },
     { id: "exp-2", title: "Workflow Pause Explanation", summary: "Workflow paused waiting for quant approval", evidenceCount: 7 },
+  ],
+  roles: [
+    { id: "role-l1", name: "Operator", scope: "personal", permissionCount: 12, userCount: 150 },
+    { id: "role-l2", name: "Domain Admin", scope: "domain", permissionCount: 28, userCount: 25 },
+    { id: "role-l3", name: "Platform SRE", scope: "platform", permissionCount: 45, userCount: 8 },
+  ],
+  featureFlags: [
+    { id: "analytics", enabled: true, rolloutPercentage: 100, target: "global" },
+    { id: "workflow-builder", enabled: true, rolloutPercentage: 35, target: "pack-developers" },
+    { id: "marketplace", enabled: true, rolloutPercentage: 60, target: "shared" },
+  ],
+  models: [
+    { id: "model-1", provider: "openai", model: "gpt-5.4", boundDomains: ["marketing", "quant-trading"], budgetUsd: 2400 },
+    { id: "model-2", provider: "openai", model: "gpt-5.4-mini", boundDomains: ["customer-service", "education"], budgetUsd: 900 },
+  ],
+  domainConfigs: [
+    { id: "marketing", displayName: "Marketing", owner: "growth-ops", defaultDrillDepth: 3, featureVisibilityCount: 12 },
+    { id: "quant-trading", displayName: "Quant Trading", owner: "risk-office", defaultDrillDepth: 5, featureVisibilityCount: 14 },
+  ],
+  tenants: [
+    { id: "tenant-default", name: "Default Tenant", domains: ["marketing", "quant-trading"], status: "active" },
+    { id: "tenant-beta", name: "Beta Sandbox", domains: ["customer-service"], status: "paused" },
+  ],
+  webhooks: [
+    { id: "wh-1", targetUrl: "https://ops.example.com/webhooks/incidents", eventCount: 6, enabled: true },
+    { id: "wh-2", targetUrl: "https://audit.example.com/webhooks/config", eventCount: 3, enabled: true },
   ],
   preferences: {
     locale: "zh-CN",

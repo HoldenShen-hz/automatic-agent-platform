@@ -4,12 +4,18 @@ import type {
   ApprovalDTO,
   CostReportDTO,
   DashboardSnapshotDTO,
+  DomainConfigDTO,
   ExplanationDTO,
+  FeatureFlagDTO,
   IncidentDTO,
   MarketplacePackDTO,
+  ModelConfigDTO,
   QueueDTO,
+  RoleDTO,
   TaskDTO,
+  TenantDTO,
   UserPreferenceDTO,
+  WebhookDTO,
   WorkerDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
@@ -55,6 +61,12 @@ export class MockTransport {
     | readonly CostReportDTO[]
     | readonly MarketplacePackDTO[]
     | readonly ExplanationDTO[]
+    | readonly RoleDTO[]
+    | readonly FeatureFlagDTO[]
+    | readonly ModelConfigDTO[]
+    | readonly DomainConfigDTO[]
+    | readonly TenantDTO[]
+    | readonly WebhookDTO[]
     | UserPreferenceDTO
     | { ok: true; body?: unknown } {
     if (path.includes("/dashboard")) {
@@ -92,6 +104,24 @@ export class MockTransport {
     }
     if (path.includes("/explanations")) {
       return this.data.explanations;
+    }
+    if (path.includes("/roles")) {
+      return this.data.roles;
+    }
+    if (path.includes("/feature-flags")) {
+      return this.data.featureFlags;
+    }
+    if (path.includes("/models")) {
+      return this.data.models;
+    }
+    if (path.includes("/domains")) {
+      return this.data.domainConfigs;
+    }
+    if (path.includes("/tenants")) {
+      return this.data.tenants;
+    }
+    if (path.includes("/webhooks")) {
+      return this.data.webhooks;
     }
     if (path.includes("/preferences")) {
       return this.data.preferences;
