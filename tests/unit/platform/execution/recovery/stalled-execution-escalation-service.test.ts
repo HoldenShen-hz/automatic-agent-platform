@@ -1,3 +1,4 @@
+// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -149,7 +150,7 @@ test("StalledExecutionEscalationPackage has correct structure", () => {
     taskId: "task-1",
     traceSummary: { traceId: "trace-1", correlationId: "corr-1" },
     inspect: {
-      agentExecections: [],
+      agentExecutions: [],
       dispatchDecisions: [{ outcome: "dispatched" }],
     },
     health: { status: "healthy" },

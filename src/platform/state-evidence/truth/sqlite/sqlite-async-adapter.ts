@@ -39,18 +39,19 @@ export class SqliteAsyncAdapter implements AsyncSqlDatabase {
 
   constructor(private readonly db: AuthoritativeSqlDatabase) {
     const syncConn = db.connection;
+    const normalizeSql = (sql: string): string => sql.replace(/\$\d+/g, "?");
     this.conn = {
       query: async <T>(sql: string, ...params: unknown[]): Promise<{ rows: T[]; rowCount: number }> => {
-        const stmt = syncConn.prepare(sql);
+        const stmt = syncConn.prepare(normalizeSql(sql));
         const rows = stmt.all(...(params as SQLInputValue[])) as T[];
         return { rows, rowCount: rows.length };
       },
       queryOne: async <T>(sql: string, ...params: unknown[]): Promise<T | undefined> => {
-        const row = syncConn.prepare(sql).get(...(params as SQLInputValue[])) as T | undefined;
+        const row = syncConn.prepare(normalizeSql(sql)).get(...(params as SQLInputValue[])) as T | undefined;
         return row;
       },
       execute: async (sql: string, ...params: unknown[]): Promise<number> => {
-        const result = syncConn.prepare(sql).run(...(params as SQLInputValue[]));
+        const result = syncConn.prepare(normalizeSql(sql)).run(...(params as SQLInputValue[]));
         return Number(result.changes);
       },
     };

@@ -37,7 +37,8 @@ test('ProcessTracker sandbox: process group isolation', async () => {
   const tracker = new ProcessTracker();
 
   // Create a process group using detached mode
-  const proc = spawn('bash', ['-c', 'sleep 60'], { detached: true });
+  const proc = spawn('bash', ['-c', 'sleep 60'], { detached: true, stdio: 'ignore' });
+  proc.unref();
   await new Promise(r => setTimeout(r, 100));
 
   const procWithPgid = proc as ChildProcessWithPgid;
@@ -59,6 +60,8 @@ test('ProcessTracker sandbox: process group isolation', async () => {
   // Cleanup
   if (procWithPgid.pgid) {
     try { process.kill(-procWithPgid.pgid, 'SIGKILL'); } catch {}
+  } else if (proc.pid) {
+    try { process.kill(proc.pid, 'SIGKILL'); } catch {}
   }
   tracker.reset();
 });

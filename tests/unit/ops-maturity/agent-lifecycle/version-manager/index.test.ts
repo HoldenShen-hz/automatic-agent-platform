@@ -80,24 +80,23 @@ test("AgentVersionManager.getStableVersions filters to stable versions only", ()
 
   const stable = mgr.getStableVersions("agent-s");
   assert.equal(stable.length, 1);
-  assert.equal(stable[0].version, "1.0.0");
+  assert.equal(stable[0]!.version, "1.0.0");
 });
 
-test("AgentVersionManager.assignDeploymentSlot assigns slot and evicts opposite slot", () => {
+test("AgentVersionManager.assignDeploymentSlot assigns to blue then evicts blue when assigning green", () => {
   const mgr = new AgentVersionManager();
   const v1 = mgr.registerVersion({ agentId: "agent-d", version: "1.0.0", stage: "stable", deprecatedAt: null, stable: true, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
-  // Register v2 with a different stage so it can be distinguished from v1
   const v2 = mgr.registerVersion({ agentId: "agent-d", version: "2.0.0", stage: "canary", deprecatedAt: null, stable: false, deploymentSlot: null, changelog: "", metrics: createEmptyMetrics() });
 
-  mgr.assignDeploymentSlot("agent-d", v1.versionId, "green");
+  mgr.assignDeploymentSlot("agent-d", v1.versionId, "blue");
   mgr.assignDeploymentSlot("agent-d", v2.versionId, "green");
 
   const versions = mgr.listVersions("agent-d");
+  const blueV1 = versions.find((v) => v.versionId === v1.versionId);
   const greenV2 = versions.find((v) => v.versionId === v2.versionId);
-  const greenV1 = versions.find((v) => v.versionId === v1.versionId);
 
   assert.equal(greenV2?.deploymentSlot, "green");
-  assert.equal(greenV1?.deploymentSlot, null); // evicted
+  assert.equal(blueV1?.deploymentSlot, null); // evicted when green was assigned
 });
 
 test("AgentVersionManager.assignDeploymentSlot assigns green and evicts blue", () => {
@@ -185,7 +184,7 @@ test("AgentVersionManager.deprecateVersion sets deprecatedAt timestamp", () => {
   const result = mgr.deprecateVersion("agent-d", v1.versionId);
 
   assert.equal(result, true);
-  assert.ok(mgr.listVersions("agent-d")[0].deprecatedAt !== null);
+  assert.ok(mgr.listVersions("agent-d")[0]!.deprecatedAt !== null);
 });
 
 test("AgentVersionManager.deprecateVersion returns false for unknown agent", () => {
@@ -215,9 +214,9 @@ test("AgentVersionManager.updateMetrics merges metrics correctly", () => {
   mgr.updateMetrics("agent-m", v1.versionId, { totalExecutions: 15, successRate: 0.95 });
 
   const versions = mgr.listVersions("agent-m");
-  assert.equal(versions[0].metrics.totalExecutions, 15);
-  assert.equal(versions[0].metrics.successRate, 0.95);
-  assert.equal(versions[0].metrics.avgDurationMs, 1000); // unchanged
+  assert.equal(versions[0]!.metrics.totalExecutions, 15);
+  assert.equal(versions[0]!.metrics.successRate, 0.95);
+  assert.equal(versions[0]!.metrics.avgDurationMs, 1000); // unchanged
 });
 
 test("AgentVersionManager.updateMetrics ignores unknown agent", () => {

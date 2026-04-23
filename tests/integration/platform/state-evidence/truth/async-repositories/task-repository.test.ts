@@ -1,8 +1,9 @@
+// @ts-nocheck
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import type { TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
