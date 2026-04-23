@@ -19,12 +19,22 @@ import { newId, nowIso } from "../../../contracts/types/ids.js";
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseCreateTaskPayload, parseUpdateTaskPayload } from "./schemas.js";
-import { buildJsonResponse, requirePrincipal, assertTaskTenantAccess, validateTaskId, readLimit } from "./utils.js";
+import {
+  assertTaskTenantAccess,
+  buildJsonResponse,
+  decodeOpaqueCursor,
+  encodeOpaqueCursor,
+  readCursor,
+  readLimit,
+  requirePrincipal,
+  validateTaskId,
+} from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { InspectService } from "../../../shared/observability/inspect-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { TaskInspectSummary, WorkflowInspectSummary } from "../../../shared/observability/inspect-service-support.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -45,6 +55,11 @@ export interface TaskRouteDeps {
   taskStore?: AuthoritativeTaskStore;
 }
 
+interface PaginationCursor {
+  readonly updatedAt: string;
+  readonly taskId: string;
+}
+
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   return [
     // ── v1 ───────────────────────────────────────────────────────────────────
@@ -57,10 +72,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           ? 25
           : readLimit(ctx.request, 25);
         const tasks = deps.inspectService.queryTaskInspectSummaries({
-          limit,
+          limit: 200,
           ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
         });
-        return buildJsonResponse(ctx.requestId, 200, { tasks });
+        const page = paginateByCursor(tasks, limit, readCursor(ctx.request));
+        return buildJsonResponse(ctx.requestId, 200, {
+          tasks: page.items,
+          nextCursor: page.nextCursor,
+          hasMore: page.hasMore,
+          limit: page.limit,
+        });
       },
     },
     {
@@ -71,11 +92,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const limit = principal.tenantId != null
           ? 25
           : readLimit(ctx.request, 25);
+        const workflows = deps.missionControlService.listWorkflowCockpits(
+          200,
+          principal.tenantId != null ? principal.tenantId : undefined,
+        );
+        const page = paginateByCursor(workflows, limit, readCursor(ctx.request));
         return buildJsonResponse(ctx.requestId, 200, {
-          workflows: deps.missionControlService.listWorkflowCockpits(
-            limit,
-            principal.tenantId != null ? principal.tenantId : undefined,
-          ),
+          workflows: page.items,
+          nextCursor: page.nextCursor,
+          hasMore: page.hasMore,
+          limit: page.limit,
         });
       },
     },
@@ -269,4 +295,60 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       },
     },
   ];
+}
+
+function paginateByCursor<T extends { updatedAt: string; taskId: string }>(
+  items: readonly T[],
+  limit: number,
+  cursor: string | undefined,
+): {
+  readonly items: readonly T[];
+  readonly nextCursor: string | null;
+  readonly hasMore: boolean;
+  readonly limit: number;
+} {
+  const sorted = [...items].sort(compareCursorRows);
+  const decodedCursor = cursor == null ? null : decodeOpaqueCursor<PaginationCursor>(cursor);
+  const startIndex = cursor == null
+    ? 0
+    : sorted.findIndex((item) => decodedCursor != null && isAfterCursor(item, decodedCursor));
+  const normalizedStartIndex = startIndex < 0 ? sorted.length : startIndex;
+  const pageItems = sorted.slice(normalizedStartIndex, normalizedStartIndex + limit);
+  const hasMore = normalizedStartIndex + limit < sorted.length;
+  const nextCursor = hasMore && pageItems.length > 0
+    ? encodeOpaqueCursor({
+        updatedAt: pageItems.at(-1)?.updatedAt ?? null,
+        taskId: pageItems.at(-1)?.taskId ?? null,
+      })
+    : null;
+
+  if (isTaskPage(pageItems)) {
+    return {
+      items: pageItems,
+      nextCursor,
+      hasMore,
+      limit,
+    };
+  }
+
+  return {
+    items: pageItems,
+    nextCursor,
+    hasMore,
+    limit,
+  };
+}
+
+function compareCursorRows(
+  left: TaskInspectSummary | WorkflowInspectSummary,
+  right: TaskInspectSummary | WorkflowInspectSummary,
+): number {
+  return right.updatedAt.localeCompare(left.updatedAt) || left.taskId.localeCompare(right.taskId);
+}
+
+function isAfterCursor(
+  item: TaskInspectSummary | WorkflowInspectSummary,
+  cursor: PaginationCursor,
+): boolean {
+  return item.updatedAt < cursor.updatedAt || (item.updatedAt === cursor.updatedAt && item.taskId > cursor.taskId);
 }

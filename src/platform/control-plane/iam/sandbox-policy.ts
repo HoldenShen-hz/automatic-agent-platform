@@ -18,7 +18,8 @@
  *
  * - `read_only`: Only read operations allowed
  * - `workspace_write`: Write allowed only within designated workspace
- * - `danger_full_access`: All operations allowed (use with caution)
+ * - `scoped_external_access`: Workspace sandbox plus explicit outbound access contract
+ * - `restricted_exec`: Executor-restricted mode for tightly controlled execution runtimes
  *
  * ## Security Features
  *
@@ -42,9 +43,10 @@ const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
  * Sandbox operating mode determining what operations are permitted.
  * - read_only: No write operations allowed
  * - workspace_write: Write allowed only within the workspace boundary
- * - danger_full_access: All operations allowed (use with extreme caution)
+ * - scoped_external_access: Workspace sandbox with explicit outbound access allowances
+ * - restricted_exec: Execution is constrained by executor policy rather than broad path roots
  */
-export type SandboxMode = "read_only" | "workspace_write" | "danger_full_access";
+export type SandboxMode = "read_only" | "workspace_write" | "scoped_external_access" | "restricted_exec";
 
 /**
  * Policy for handling symbolic links within sandbox roots.
@@ -281,8 +283,8 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
     };
   }
 
-  // Second check: Is path outside allowed roots (in non-danger_full_access mode)?
-  if (policy.mode !== "danger_full_access" && containsPathTraversalOutside(resolvedInputPath, rawAllowedRoots)) {
+  // Second check: Is path outside allowed roots (except for restricted_exec mode)?
+  if (policy.mode !== "restricted_exec" && containsPathTraversalOutside(resolvedInputPath, rawAllowedRoots)) {
     return {
       allowed: false,
       normalizedPath: resolvedInputPath,
@@ -327,7 +329,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
 
   // Sixth check: Is resolved path outside allowed roots?
   if (
-    policy.mode !== "danger_full_access" &&
+    policy.mode !== "restricted_exec" &&
     containsPathTraversalOutside(normalizedPath, canonicalAllowedRoots)
   ) {
     return {
@@ -361,6 +363,30 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
   return {
     policyId: "workspace_write",
     mode: "workspace_write",
+    allowedRoots: [workspaceRoot],
+    deniedRoots: [],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "allow",
+  };
+}
+
+export function createScopedExternalAccessPolicy(workspaceRoot: string): SandboxPolicy {
+  return {
+    policyId: "scoped_external_access",
+    mode: "scoped_external_access",
+    allowedRoots: [workspaceRoot],
+    deniedRoots: [],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "allow",
+  };
+}
+
+export function createRestrictedExecPolicy(workspaceRoot: string): SandboxPolicy {
+  return {
+    policyId: "restricted_exec",
+    mode: "restricted_exec",
     allowedRoots: [workspaceRoot],
     deniedRoots: [],
     realpathEnforced: true,

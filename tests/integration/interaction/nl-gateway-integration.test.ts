@@ -67,6 +67,9 @@ test("integration: NlEntryService extracts entities from message", async () => {
   });
 
   const primaryIntent = result.detectedIntents[0];
+  if (!primaryIntent) {
+    assert.fail("Should have at least one detected intent");
+  }
   const hasDateEntity = primaryIntent.entities.some((e) => e.entityType === "date");
   const hasEnvironmentEntity = primaryIntent.entities.some((e) => e.entityType === "environment");
   const hasMoneyEntity = primaryIntent.entities.some((e) => e.entityType === "money");
@@ -238,9 +241,9 @@ test("integration: parseIntentTokens extracts intent from message", () => {
   assert.ok(tokens4[0]?.confidence > 0.8);
 });
 
-test("integration: NlEntryService resolves locale from accept-language header", () => {
+test("integration: NlEntryService resolves locale from accept-language header", async () => {
   const service = new NlEntryService();
-  const result = service.parseDetailed({
+  const result = await service.parseDetailed({
     tenantId: "tenant-nl-test",
     userId: "user-nl-test",
     message: "创建任务",
@@ -250,9 +253,9 @@ test("integration: NlEntryService resolves locale from accept-language header", 
   assert.equal(result.locale, "en-US");
 });
 
-test("integration: NlEntryService auto-detects Chinese locale from message content", () => {
+test("integration: NlEntryService auto-detects Chinese locale from message content", async () => {
   const service = new NlEntryService();
-  const result = service.parseDetailed({
+  const result = await service.parseDetailed({
     tenantId: "tenant-nl-test",
     userId: "user-nl-test",
     message: "帮我创建一个任务",
@@ -261,17 +264,17 @@ test("integration: NlEntryService auto-detects Chinese locale from message conte
   assert.equal(result.locale, "zh-CN");
 });
 
-test("integration: NlEntryService derives urgency from message", () => {
+test("integration: NlEntryService derives urgency from message", async () => {
   const service = new NlEntryService();
 
-  const urgentResult = service.parseDetailed({
+  const urgentResult = await service.parseDetailed({
     tenantId: "tenant-nl-test",
     userId: "user-nl-test",
     message: "立刻帮我创建这个任务",
   });
   assert.equal(urgentResult.detectedIntents[0]?.urgency, "high");
 
-  const normalResult = service.parseDetailed({
+  const normalResult = await service.parseDetailed({
     tenantId: "tenant-nl-test",
     userId: "user-nl-test",
     message: "帮我创建任务",

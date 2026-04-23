@@ -9,6 +9,7 @@ function buildPacket(): ApprovalPacket {
     approvalId: "approval-1",
     taskId: "task-1",
     executionId: "exec-1",
+    mode: "circuit_breaker_human",
     title: "Approve rollout",
     reason: "Release requires approval",
     riskLevel: "critical",

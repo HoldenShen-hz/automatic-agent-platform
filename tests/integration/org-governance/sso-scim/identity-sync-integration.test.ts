@@ -65,8 +65,8 @@ test("SSO-SCIM: IdentitySyncService bootstraps with OIDC and SAML configs", () =
     assert.ok(snapshot.oidcAuthorizationUrl.includes("scope="));
     assert.equal(snapshot.samlAudience, "app.example.com:saml-test");
     assert.equal(snapshot.appliedScimEvents.length, 2);
-    assert.equal(snapshot.appliedScimEvents[0].terminal, false);
-    assert.equal(snapshot.appliedScimEvents[1].terminal, false);
+    assert.equal(snapshot.appliedScimEvents[0]!.terminal, false);
+    assert.equal(snapshot.appliedScimEvents[1]!.terminal, false);
     assert.ok(snapshot.activeSubjects.includes("user-001"));
 
     db.close();
@@ -129,9 +129,9 @@ test("SSO-SCIM: terminal SCIM events remove subjects from active set", () => {
 
     const snapshot = identityService.bootstrap(oidcConfig, samlConfig, events);
 
-    assert.equal(snapshot.appliedScimEvents[0].terminal, false);
-    assert.equal(snapshot.appliedScimEvents[1].terminal, true);
-    assert.equal(snapshot.appliedScimEvents[2].terminal, true);
+    assert.equal(snapshot.appliedScimEvents[0]!.terminal, false);
+    assert.equal(snapshot.appliedScimEvents[1]!.terminal, true);
+    assert.equal(snapshot.appliedScimEvents[2]!.terminal, true);
     assert.ok(!snapshot.activeSubjects.includes("user-active"));
     assert.ok(!snapshot.activeSubjects.includes("user-deleted"));
 

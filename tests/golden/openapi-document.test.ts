@@ -56,17 +56,26 @@ test("golden: OpenAPI document has auth endpoints", () => {
 });
 
 test("golden: OpenAPI document has task endpoints", () => {
-  const document = buildOpenApiDocument() as { paths: Record<string, Record<string, unknown>> };
+  const document = buildOpenApiDocument() as { paths: Record<string, Record<string, { parameters?: Array<{ name: string }> }>> };
 
   // Verify task endpoints exist
   assert.ok(document.paths["/v1/tasks"], "/v1/tasks endpoint should exist");
   assert.ok(document.paths["/v1/tasks"].get, "/v1/tasks should support GET");
+  assert.deepEqual(
+    document.paths["/v1/tasks"].get.parameters?.map((parameter) => parameter.name),
+    ["limit", "cursor"],
+  );
 
   assert.ok(document.paths["/v1/tasks/{taskId}"], "/v1/tasks/{taskId} endpoint should exist");
   assert.ok(document.paths["/v1/tasks/{taskId}"].get, "/v1/tasks/{taskId} should support GET");
 
   assert.ok(document.paths["/v1/tasks/{taskId}/events"], "/v1/tasks/{taskId}/events endpoint should exist");
   assert.ok(document.paths["/v1/tasks/{taskId}/inspect"], "/v1/tasks/{taskId}/inspect endpoint should exist");
+  assert.ok(document.paths["/v1/workflows"], "/v1/workflows endpoint should exist");
+  assert.deepEqual(
+    document.paths["/v1/workflows"].get.parameters?.map((parameter) => parameter.name),
+    ["limit", "cursor"],
+  );
 });
 
 test("golden: OpenAPI document has approval endpoints", () => {

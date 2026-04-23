@@ -29,7 +29,8 @@ function createMockMissionControlService(): MissionControlService {
       timeline: { entries: [] },
     }),
     listWorkflowCockpits: () => [
-      { taskId: "task-1", workflowId: "wf-1", workflowStatus: "done", currentStepIndex: 0, pendingApprovalCount: 0, retryCount: 0 },
+      { taskId: "task-2", workflowId: "wf-2", workflowStatus: "running", currentStepIndex: 1, pendingApprovalCount: 1, retryCount: 0, updatedAt: "2026-04-17T00:00:00.000Z" },
+      { taskId: "task-1", workflowId: "wf-1", workflowStatus: "done", currentStepIndex: 0, pendingApprovalCount: 0, retryCount: 0, updatedAt: "2026-04-16T00:00:00.000Z" },
     ],
     getWorkflowCockpit: () => ({
       summary: { taskId: "task-1", workflowId: "wf-1", workflowStatus: "done", currentStepIndex: 0, pendingApprovalCount: 0, retryCount: 0, resumableFromStep: null },
@@ -42,7 +43,9 @@ function createMockMissionControlService(): MissionControlService {
 function createMockInspectService(): InspectService {
   return {
     queryTaskInspectSummaries: () => [
-      { taskId: "task-1", title: "Test Task", status: "done", createdAt: "2026-04-16T00:00:00.000Z", updatedAt: "2026-04-16T00:00:00.000Z", tenantId: null },
+      { taskId: "task-3", title: "Test Task 3", divisionId: null, priority: "normal", taskStatus: "queued", workflowId: null, workflowStatus: null, currentStepIndex: null, sessionStatus: null, activeExecutionId: null, latestExecutionStatus: null, pendingApprovalCount: 0, resolvedApprovalCount: 0, dispatchDecisionCount: 0, latestEventAt: null, updatedAt: "2026-04-18T00:00:00.000Z" },
+      { taskId: "task-2", title: "Test Task 2", divisionId: null, priority: "normal", taskStatus: "running", workflowId: null, workflowStatus: null, currentStepIndex: null, sessionStatus: null, activeExecutionId: null, latestExecutionStatus: null, pendingApprovalCount: 0, resolvedApprovalCount: 0, dispatchDecisionCount: 0, latestEventAt: null, updatedAt: "2026-04-17T00:00:00.000Z" },
+      { taskId: "task-1", title: "Test Task", divisionId: null, priority: "normal", taskStatus: "done", workflowId: null, workflowStatus: null, currentStepIndex: null, sessionStatus: null, activeExecutionId: null, latestExecutionStatus: null, pendingApprovalCount: 0, resolvedApprovalCount: 0, dispatchDecisionCount: 0, latestEventAt: null, updatedAt: "2026-04-16T00:00:00.000Z" },
     ],
     getTaskInspectView: () => ({
       task: { id: "task-1", tenantId: null },
@@ -118,7 +121,10 @@ test("GET /v1/tasks returns task list", async () => {
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
-  assert.ok(response.body.includes("task-1"));
+  const body = JSON.parse(response.body);
+  assert.deepEqual(body.data.tasks.map((task: { taskId: string }) => task.taskId), ["task-3", "task-2", "task-1"]);
+  assert.equal(body.data.nextCursor, null);
+  assert.equal(body.data.hasMore, false);
 });
 
 test("GET /v1/tasks rejects non-numeric limit values", async () => {
@@ -145,7 +151,49 @@ test("GET /v1/workflows returns workflow list", async () => {
   const response = await callRoute(routes, ctx);
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
-  assert.ok(response.body.includes("wf-1"));
+  const body = JSON.parse(response.body);
+  assert.deepEqual(body.data.workflows.map((workflow: { taskId: string }) => workflow.taskId), ["task-2", "task-1"]);
+});
+
+test("GET /v1/tasks supports cursor pagination", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+  };
+  const routes = createTaskRoutes(deps);
+
+  const firstPage = await callRoute(routes, createMockContext("/v1/tasks?limit=2", ["v1", "tasks"]));
+  if (!firstPage) throw new Error("Handler returned null");
+  const firstBody = JSON.parse(firstPage.body);
+  assert.deepEqual(firstBody.data.tasks.map((task: { taskId: string }) => task.taskId), ["task-3", "task-2"]);
+  assert.equal(firstBody.data.hasMore, true);
+  assert.equal(typeof firstBody.data.nextCursor, "string");
+
+  const secondPage = await callRoute(
+    routes,
+    createMockContext(`/v1/tasks?limit=2&cursor=${encodeURIComponent(firstBody.data.nextCursor)}`, ["v1", "tasks"]),
+  );
+  if (!secondPage) throw new Error("Handler returned null");
+  const secondBody = JSON.parse(secondPage.body);
+  assert.deepEqual(secondBody.data.tasks.map((task: { taskId: string }) => task.taskId), ["task-1"]);
+  assert.equal(secondBody.data.hasMore, false);
+  assert.equal(secondBody.data.nextCursor, null);
+});
+
+test("GET /v1/workflows supports cursor pagination", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    inspectService: createMockInspectService(),
+    missionControlService: createMockMissionControlService(),
+  };
+  const routes = createTaskRoutes(deps);
+  const response = await callRoute(routes, createMockContext("/v1/workflows?limit=1", ["v1", "workflows"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body);
+  assert.deepEqual(body.data.workflows.map((workflow: { taskId: string }) => workflow.taskId), ["task-2"]);
+  assert.equal(body.data.hasMore, true);
+  assert.equal(typeof body.data.nextCursor, "string");
 });
 
 test("GET /v1/tasks/:id returns task cockpit", async () => {

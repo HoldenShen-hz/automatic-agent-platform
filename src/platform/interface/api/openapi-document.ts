@@ -3,6 +3,11 @@ export interface ApiRouteSpec {
   path: string;
   summary: string;
   tags: string[];
+  queryParameters?: readonly {
+    name: string;
+    schema: { type: string };
+    description: string;
+  }[];
 }
 
 const ROUTES: ApiRouteSpec[] = [
@@ -19,7 +24,16 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "GET", path: "/v1/gateway/targets", summary: "List gateway targets", tags: ["gateway"] },
   { method: "GET", path: "/v1/gateway/targets/resolve", summary: "Resolve human-readable gateway target", tags: ["gateway"] },
   { method: "POST", path: "/v1/gateway/messages/send", summary: "Send gateway message via configured channel adapter", tags: ["gateway"] },
-  { method: "GET", path: "/v1/tasks", summary: "List tasks", tags: ["tasks"] },
+  {
+    method: "GET",
+    path: "/v1/tasks",
+    summary: "List tasks with cursor pagination",
+    tags: ["tasks"],
+    queryParameters: [
+      { name: "limit", schema: { type: "integer" }, description: "Page size capped per route policy." },
+      { name: "cursor", schema: { type: "string" }, description: "Opaque cursor returned by the previous page." },
+    ],
+  },
   { method: "GET", path: "/v1/tasks/{taskId}", summary: "Load task snapshot", tags: ["tasks"] },
   { method: "GET", path: "/v1/tasks/{taskId}/events", summary: "List task events", tags: ["tasks"] },
   { method: "GET", path: "/v1/tasks/{taskId}/inspect", summary: "Inspect task details", tags: ["tasks"] },
@@ -36,6 +50,16 @@ const ROUTES: ApiRouteSpec[] = [
   { method: "POST", path: "/v1/artifacts/bundles/preview", summary: "Build artifact bundle preview", tags: ["artifacts"] },
   { method: "POST", path: "/v1/artifacts/bundles/publish", summary: "Publish artifact bundle", tags: ["artifacts"] },
   { method: "GET", path: "/v1/approvals", summary: "List approvals", tags: ["approvals"] },
+  {
+    method: "GET",
+    path: "/v1/workflows",
+    summary: "List workflows with cursor pagination",
+    tags: ["tasks"],
+    queryParameters: [
+      { name: "limit", schema: { type: "integer" }, description: "Page size capped per route policy." },
+      { name: "cursor", schema: { type: "string" }, description: "Opaque cursor returned by the previous page." },
+    ],
+  },
   { method: "POST", path: "/v1/approvals/{approvalId}/decision", summary: "Submit approval decision", tags: ["approvals"] },
   { method: "GET", path: "/v1/admin/control-plane/load-balancing", summary: "Get control-plane load balancing summary", tags: ["admin"] },
   { method: "POST", path: "/v1/admin/control-plane/load-balancing/select", summary: "Select coordinator for control-plane request", tags: ["admin"] },
@@ -53,6 +77,13 @@ export function buildOpenApiDocument() {
     existing[route.method.toLowerCase()] = {
       summary: route.summary,
       tags: route.tags,
+      parameters: route.queryParameters?.map((parameter) => ({
+        name: parameter.name,
+        in: "query",
+        required: false,
+        description: parameter.description,
+        schema: parameter.schema,
+      })) ?? [],
       responses: {
         200: {
           description: "Successful response",

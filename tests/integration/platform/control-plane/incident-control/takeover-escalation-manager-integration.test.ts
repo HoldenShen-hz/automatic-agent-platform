@@ -150,7 +150,7 @@ test("TakeoverEscalationManager integration: acknowledgeSession emits acknowledg
   }
 });
 
-test("TakeoverEscalationManager integration: getAckStatus returns correct status", () => {
+test("TakeoverEscalationManager integration: getAcknowledgmentStatus returns correct status", () => {
   const workspace = createTempWorkspace("aa-escalation-status-");
   const dbPath = join(workspace, "escalation-status.db");
 
@@ -170,14 +170,14 @@ test("TakeoverEscalationManager integration: getAckStatus returns correct status
     manager.startSessionTracking("session-status-1", "task-escalation-status");
 
     // Before acknowledgment
-    let status = manager.getAckStatus("session-status-1");
+    let status = manager.getAcknowledgmentStatus("session-status-1");
     assert.equal(status?.status, "pending");
 
     // Acknowledge
     manager.acknowledgeSession("session-status-1", "operator-status", "task-escalation-status");
 
     // After acknowledgment
-    status = manager.getAckStatus("session-status-1");
+    status = manager.getAcknowledgmentStatus("session-status-1");
     assert.equal(status?.status, "acknowledged");
     assert.equal(status?.acknowledgedBy, "operator-status");
     assert.ok(status?.acknowledgedAt);
@@ -212,11 +212,11 @@ test("TakeoverEscalationManager integration: multiple sessions tracked independe
     manager.acknowledgeSession("session-multi-1", "operator-multi-1", "task-escalation-multi");
 
     // Session 1 should be acknowledged
-    const status1 = manager.getAckStatus("session-multi-1");
+    const status1 = manager.getAcknowledgmentStatus("session-multi-1");
     assert.equal(status1?.status, "acknowledged");
 
     // Session 2 should still be pending
-    const status2 = manager.getAckStatus("session-multi-2");
+    const status2 = manager.getAcknowledgmentStatus("session-multi-2");
     assert.equal(status2?.status, "pending");
 
     db.close();

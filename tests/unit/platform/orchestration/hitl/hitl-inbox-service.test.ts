@@ -13,6 +13,7 @@ function createPacket(overrides: Partial<ApprovalPacket> = {}): ApprovalPacket {
     approvalId,
     taskId: overrides.taskId ?? "task-1",
     executionId: overrides.executionId ?? "exec-1",
+    mode: overrides.mode ?? "single_approval",
     title: overrides.title ?? "Approval required",
     reason: overrides.reason ?? "Human review required",
     riskLevel: overrides.riskLevel ?? "medium",
@@ -103,6 +104,7 @@ test("HitlInboxService builds ordered inbox items and summary", () => {
   );
   assert.deepEqual(items[1]?.notificationChannels, ["console", "slack", "mobile_push"]);
   assert.equal(items[0]?.explanationSummary, "Decision has side effects");
+  assert.equal(items[2]?.mode, "single_approval");
 
   assert.deepEqual(service.buildSummary(items), {
     total: 4,
@@ -112,4 +114,17 @@ test("HitlInboxService builds ordered inbox items and summary", () => {
     decided: 1,
     critical: 1,
   });
+});
+
+test("HitlInboxService adjusts notification channels for circuit breaker and delegated modes", () => {
+  const service = new HitlInboxService();
+  const items = service.buildInbox([
+    createPacket({ approvalId: "approval-circuit", mode: "circuit_breaker_human", riskLevel: "critical" }),
+    createPacket({ approvalId: "approval-delegated", mode: "delegated_approval", riskLevel: "medium" }),
+  ]);
+
+  const circuit = items.find((item) => item.approvalId === "approval-circuit");
+  const delegated = items.find((item) => item.approvalId === "approval-delegated");
+  assert.deepEqual(circuit?.notificationChannels, ["console", "slack", "mobile_push", "webhook"]);
+  assert.deepEqual(delegated?.notificationChannels, ["console", "email", "slack"]);
 });

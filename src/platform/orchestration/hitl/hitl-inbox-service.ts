@@ -3,6 +3,7 @@ import type {
   ApprovalPacket,
   ApprovalPacketOption,
 } from "./hitl-approval-orchestration-service.js";
+import type { HitlMode } from "./hitl-modes.js";
 
 export type HitlNotificationChannel = "console" | "email" | "slack" | "webhook" | "mobile_push";
 export type HitlInboxStatus = "pending" | "due_soon" | "expired" | "decided";
@@ -12,6 +13,7 @@ export interface HitlInboxItem {
   readonly approvalId: string;
   readonly taskId: string;
   readonly executionId: string | null;
+  readonly mode: HitlMode;
   readonly title: string;
   readonly reason: string;
   readonly riskLevel: ApprovalPacket["riskLevel"];
@@ -72,6 +74,7 @@ export class HitlInboxService {
       approvalId: packet.approvalId,
       taskId: packet.taskId,
       executionId: packet.executionId,
+      mode: packet.mode,
       title: packet.title,
       reason: packet.reason,
       riskLevel: packet.riskLevel,
@@ -81,7 +84,7 @@ export class HitlInboxService {
       timeoutPolicy: packet.timeoutPolicy,
       recommendedOptionId: packet.recommendedOptionId,
       availableActions: packet.options,
-      notificationChannels: defaultNotificationChannels(packet.riskLevel),
+      notificationChannels: defaultNotificationChannels(packet.riskLevel, packet.mode),
       explanationSummary: packet.explanation.summary,
     };
   }
@@ -108,7 +111,16 @@ function resolveStatus(
   return "pending";
 }
 
-function defaultNotificationChannels(riskLevel: ApprovalPacket["riskLevel"]): readonly HitlNotificationChannel[] {
+function defaultNotificationChannels(
+  riskLevel: ApprovalPacket["riskLevel"],
+  mode: HitlMode,
+): readonly HitlNotificationChannel[] {
+  if (mode === "circuit_breaker_human") {
+    return ["console", "slack", "mobile_push", "webhook"];
+  }
+  if (mode === "delegated_approval") {
+    return ["console", "email", "slack"];
+  }
   if (riskLevel === "critical") {
     return ["console", "slack", "mobile_push"];
   }

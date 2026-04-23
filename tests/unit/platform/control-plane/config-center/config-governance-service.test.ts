@@ -100,7 +100,7 @@ test("config governance service diffs bundles and enforces prod restrictions", (
     const before = service.loadBundle("dev");
     createFile(
       join(configRoot, "security/default.json"),
-      JSON.stringify({ approvalMode: "supervised", sandboxMode: "danger_full_access", allowDestructiveActions: true }, null, 2),
+      JSON.stringify({ approvalMode: "supervised", sandboxMode: "restricted_exec", allowDestructiveActions: true }, null, 2),
     );
     const after = service.loadBundle("prod");
     const diff = service.diffBundles(before, after);

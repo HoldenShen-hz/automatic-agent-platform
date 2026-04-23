@@ -175,7 +175,7 @@ export const SECURITY_LAYER_SCHEMA: ConfigFieldSchema = {
     sandboxMode: {
       kind: "enum",
       issue: "config.invalid_security.sandboxMode",
-      values: ["read_only", "workspace_write", "danger_full_access"],
+      values: ["read_only", "workspace_write", "scoped_external_access", "restricted_exec"],
     },
     allowDestructiveActions: { kind: "boolean", issue: "config.invalid_security.allowDestructiveActions" },
     remoteWorkerRegistration: {

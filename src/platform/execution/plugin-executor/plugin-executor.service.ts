@@ -20,6 +20,8 @@ import {
 } from "../../../domains/registry/plugin-spi.js";
 import {
   checkSandboxPath,
+  createRestrictedExecPolicy,
+  createScopedExternalAccessPolicy,
   createWorkspaceWritePolicy,
   type SandboxPolicy,
   type SandboxMode,
@@ -84,10 +86,10 @@ interface PluginInstance {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SANDBOX_MODE_MAP: Record<SandboxTier, SandboxMode> = {
-  none: "danger_full_access",
+  none: "restricted_exec",
   process: "read_only",
   container: "workspace_write",
-  scoped_external_access: "workspace_write",
+  scoped_external_access: "scoped_external_access",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -426,16 +428,21 @@ export class PluginExecutorService {
     // Validate plugin directory against workspace policy
     const pluginRoot = this.pluginDir;
     const pathCheck = checkSandboxPath(this.sandboxPolicy, pluginRoot);
+    const basePolicy =
+      tier === "none"
+        ? createRestrictedExecPolicy(pluginRoot)
+        : tier === "scoped_external_access"
+          ? createScopedExternalAccessPolicy(pluginRoot)
+          : createWorkspaceWritePolicy(pluginRoot);
 
     return {
+      ...basePolicy,
       policyId: `plugin-${manifest.pluginId}-${tier}`,
       mode,
       allowedRoots: pathCheck.allowed
         ? [pathCheck.normalizedPath]
         : [],
       deniedRoots: [],
-      realpathEnforced: true,
-      symlinkPolicy: "deny",
       processRuleMode: tier === "none" ? "allow" : "deny",
     };
   }

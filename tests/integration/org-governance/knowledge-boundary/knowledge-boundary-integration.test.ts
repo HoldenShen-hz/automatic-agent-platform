@@ -330,8 +330,8 @@ test("Knowledge Boundary: listRedactedLogs returns redacted access records", () 
     const redactedLogs = kbService.listRedactedLogs("kb-redact-test");
 
     assert.equal(redactedLogs.length, 2);
-    assert.ok(redactedLogs[0].requesterId.startsWith("redacted:"));
-    assert.ok(redactedLogs[1].requesterId.startsWith("redacted:"));
+    assert.ok(redactedLogs[0]!.requesterId.startsWith("redacted:"));
+    assert.ok(redactedLogs[1]!.requesterId.startsWith("redacted:"));
 
     db.close();
   } finally {
@@ -584,9 +584,9 @@ test("Knowledge Boundary: evaluateAccess records correct access log entries", ()
     const logs = kbService.listRedactedLogs("kb-log-record-test");
 
     assert.equal(logs.length, 1);
-    assert.equal(logs[0].boundaryId, "kb-log-record-test");
-    assert.equal(logs[0].purpose, "test-purpose");
-    assert.equal(logs[0].allowed, true);
+    assert.equal(logs[0]!.boundaryId, "kb-log-record-test");
+    assert.equal(logs[0]!.purpose, "test-purpose");
+    assert.equal(logs[0]!.allowed, true);
 
     db.close();
   } finally {

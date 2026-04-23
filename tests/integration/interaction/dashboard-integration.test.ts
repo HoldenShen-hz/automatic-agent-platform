@@ -62,10 +62,10 @@ function createMockSystemSource(
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("integration: DashboardAggregationService builds operator dashboard snapshot", () => {
-  const tasks = [
-    { taskId: "task-1", title: "Report generation", taskStatus: "done", divisionId: "marketing", createdAt: nowIso(), updatedAt: nowIso() },
-    { taskId: "task-2", title: "Deploy to staging", taskStatus: "in_progress", divisionId: "engineering", createdAt: nowIso(), updatedAt: nowIso() },
-    { taskId: "task-3", title: "Fix critical bug", taskStatus: "failed", divisionId: "engineering", createdAt: nowIso(), updatedAt: nowIso() },
+  const tasks: TaskBoardItem[] = [
+    { taskId: "task-1", title: "Report generation", taskStatus: "done" as const, priority: "normal" as const, divisionId: "marketing", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
+    { taskId: "task-2", title: "Deploy to staging", taskStatus: "in_progress" as const, priority: "normal" as const, divisionId: "engineering", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
+    { taskId: "task-3", title: "Fix critical bug", taskStatus: "failed" as const, priority: "normal" as const, divisionId: "engineering", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
   ];
 
   const service = new DashboardAggregationService({
@@ -88,9 +88,9 @@ test("integration: DashboardAggregationService builds operator dashboard snapsho
 });
 
 test("integration: DashboardAggregationService builds domain admin dashboard", () => {
-  const tasks = [
-    { taskId: "task-1", title: "Marketing campaign", taskStatus: "in_progress", divisionId: "marketing", createdAt: nowIso(), updatedAt: nowIso() },
-    { taskId: "task-2", title: "Another marketing task", taskStatus: "pending", divisionId: "marketing", createdAt: nowIso(), updatedAt: nowIso() },
+  const tasks: TaskBoardItem[] = [
+    { taskId: "task-1", title: "Marketing campaign", taskStatus: "in_progress" as const, priority: "normal" as const, divisionId: "marketing", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
+    { taskId: "task-2", title: "Another marketing task", taskStatus: "pending" as const, priority: "normal" as const, divisionId: "marketing", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
   ];
 
   const service = new DashboardAggregationService({
@@ -107,8 +107,8 @@ test("integration: DashboardAggregationService builds domain admin dashboard", (
 });
 
 test("integration: DashboardAggregationService builds platform ops dashboard", () => {
-  const tasks = [
-    { taskId: "task-1", title: "System task", taskStatus: "in_progress", divisionId: "platform", createdAt: nowIso(), updatedAt: nowIso() },
+  const tasks: TaskBoardItem[] = [
+    { taskId: "task-1", title: "System task", taskStatus: "in_progress" as const, priority: "normal" as const, divisionId: "platform", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
   ];
 
   const service = new DashboardAggregationService({
@@ -125,10 +125,10 @@ test("integration: DashboardAggregationService builds platform ops dashboard", (
 });
 
 test("integration: DashboardAggregationService builds fleet dashboard", () => {
-  const tasks = [
-    { taskId: "task-1", title: "Marketing task", taskStatus: "done", divisionId: "marketing", createdAt: nowIso(), updatedAt: nowIso() },
-    { taskId: "task-2", title: "Engineering task", taskStatus: "failed", divisionId: "engineering", createdAt: nowIso(), updatedAt: nowIso() },
-    { taskId: "task-3", title: "HR task", taskStatus: "pending", divisionId: "hr", createdAt: nowIso(), updatedAt: nowIso() },
+  const tasks: TaskBoardItem[] = [
+    { taskId: "task-1", title: "Marketing task", taskStatus: "done" as const, priority: "normal" as const, divisionId: "marketing", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
+    { taskId: "task-2", title: "Engineering task", taskStatus: "failed" as const, priority: "normal" as const, divisionId: "engineering", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
+    { taskId: "task-3", title: "HR task", taskStatus: "pending" as const, priority: "normal" as const, divisionId: "hr", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
   ];
 
   const service = new DashboardAggregationService({
@@ -144,9 +144,9 @@ test("integration: DashboardAggregationService builds fleet dashboard", () => {
 });
 
 test("integration: DashboardAggregationService getSnapshot returns correct metrics", async () => {
-  const tasks = [
-    { taskId: "task-1", title: "Task 1", taskStatus: "done", divisionId: "ops", createdAt: nowIso(), updatedAt: nowIso() },
-    { taskId: "task-2", title: "Task 2", taskStatus: "failed", divisionId: "ops", createdAt: nowIso(), updatedAt: nowIso() },
+  const tasks: TaskBoardItem[] = [
+    { taskId: "task-1", title: "Task 1", taskStatus: "done" as const, priority: "normal" as const, divisionId: "ops", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
+    { taskId: "task-2", title: "Task 2", taskStatus: "failed" as const, priority: "normal" as const, divisionId: "ops", workflowStatus: null, currentStepIndex: null, sessionStatus: null, latestEventAt: null, updatedAt: nowIso() },
   ];
 
   const service = new DashboardAggregationService({
@@ -169,10 +169,11 @@ test("integration: DashboardProjectionService processes projection updates and g
   const service = new DashboardProjectionService({ emitDebounceMs: 50 });
 
   const record = {
+    projectionId: "proj-1",
+    sourceEventId: "evt-1",
     projectionName: "task_summary" as const,
     entityRef: "task-123",
     state: { taskStatus: "done" },
-    version: 1,
     updatedAt: nowIso(),
   };
 
@@ -224,11 +225,11 @@ test("integration: DashboardProjectionService builds state from projection recor
   const service = new DashboardProjectionService();
 
   const projections = [
-    { projectionName: "task_summary" as const, entityRef: "task-1", state: { taskStatus: "done" }, version: 1, updatedAt: nowIso() },
-    { projectionName: "task_summary" as const, entityRef: "task-2", state: { taskStatus: "failed" }, version: 1, updatedAt: nowIso() },
-    { projectionName: "task_summary" as const, entityRef: "task-3", state: { taskStatus: "pending" }, version: 1, updatedAt: nowIso() },
-    { projectionName: "incident_summary" as const, entityRef: "inc-1", state: { priority: "high", resolved: false }, version: 1, updatedAt: nowIso() },
-    { projectionName: "workflow_summary" as const, entityRef: "wf-1", state: {}, version: 1, updatedAt: nowIso() },
+    { projectionId: "proj-1", sourceEventId: "evt-1", projectionName: "task_summary" as const, entityRef: "task-1", state: { taskStatus: "done" }, updatedAt: nowIso() },
+    { projectionId: "proj-2", sourceEventId: "evt-2", projectionName: "task_summary" as const, entityRef: "task-2", state: { taskStatus: "failed" }, updatedAt: nowIso() },
+    { projectionId: "proj-3", sourceEventId: "evt-3", projectionName: "task_summary" as const, entityRef: "task-3", state: { taskStatus: "pending" }, updatedAt: nowIso() },
+    { projectionId: "proj-4", sourceEventId: "evt-4", projectionName: "incident_summary" as const, entityRef: "inc-1", state: { priority: "high", resolved: false }, updatedAt: nowIso() },
+    { projectionId: "proj-5", sourceEventId: "evt-5", projectionName: "workflow_summary" as const, entityRef: "wf-1", state: {}, updatedAt: nowIso() },
   ];
 
   const state = service.buildStateFromProjections(projections);
@@ -245,7 +246,7 @@ test("integration: DashboardProjectionService builds state from projection recor
 test("integration: DashboardProjectionService clears pending deltas", () => {
   const service = new DashboardProjectionService({ emitDebounceMs: 1000 });
 
-  service.processEvent("task.failed", { taskId: "task-clear" });
+  service.processEvent("task:status_changed", { taskId: "task-clear" } as any);
   assert.ok(service.hasPendingDeltas());
 
   service.clearPendingDeltas();
@@ -441,9 +442,9 @@ test("integration: Full dashboard pipeline - task events flow through projection
 });
 
 test("integration: DashboardAggregationService with attention items includes incidents and warnings", () => {
-  const tasks = [
-    { taskId: "task-1", title: "Failed deployment", taskStatus: "failed", divisionId: "engineering", createdAt: nowIso(), updatedAt: nowIso(), priority: "high", workflowStatus: "completed", currentStepIndex: 0, sessionStatus: "closed", latestEventAt: nowIso() },
-    { taskId: "task-2", title: "Pending approval", taskStatus: "pending", divisionId: "ops", createdAt: nowIso(), updatedAt: nowIso(), priority: "normal", workflowStatus: "running", currentStepIndex: 1, sessionStatus: "active", latestEventAt: nowIso() },
+  const tasks: TaskBoardItem[] = [
+    { taskId: "task-1", title: "Failed deployment", taskStatus: "failed" as const, priority: "high" as const, divisionId: "engineering", workflowStatus: "completed" as const, currentStepIndex: 0, sessionStatus: "failed" as const, latestEventAt: nowIso(), updatedAt: nowIso() },
+    { taskId: "task-2", title: "Pending approval", taskStatus: "pending" as const, priority: "normal" as const, divisionId: "ops", workflowStatus: "running" as const, currentStepIndex: 1, sessionStatus: "open" as const, latestEventAt: nowIso(), updatedAt: nowIso() },
   ];
 
   const suggestions: AttentionItem[] = [

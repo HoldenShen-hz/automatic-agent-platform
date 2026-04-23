@@ -6,7 +6,7 @@ import {
   MultiRegionReplicationCoordinator,
   type CDCReplicationEvent,
   type RegionReplicationConfig,
-} from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
+} from "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
 
 test("cdc replication service registers and retrieves replication config", () => {
   const service = new CDCReplicationService();
@@ -291,8 +291,8 @@ test("cdc replication service returns registered region pairs", () => {
 
   const pairs = service.getRegisteredRegionPairs();
   assert.equal(pairs.length, 2);
-  assert.ok(pairs.some((p) => p.sourceRegionId === "us-east-1" && p.targetRegionId === "us-west-2"));
-  assert.ok(pairs.some((p) => p.sourceRegionId === "us-east-1" && p.targetRegionId === "eu-west-1"));
+  assert.ok(pairs.some((p: { sourceRegionId: string; targetRegionId: string }) => p.sourceRegionId === "us-east-1" && p.targetRegionId === "us-west-2"));
+  assert.ok(pairs.some((p: { sourceRegionId: string; targetRegionId: string }) => p.sourceRegionId === "us-east-1" && p.targetRegionId === "eu-west-1"));
 });
 
 test("multi region replication coordinator sets up region with multiple targets", () => {
@@ -306,9 +306,9 @@ test("multi region replication coordinator sets up region with multiple targets"
 
   const replications = coordinator.getRegionReplications("us-east-1");
   assert.equal(replications.length, 3);
-  assert.ok(replications.some((r) => r.targetRegionId === "us-west-2"));
-  assert.ok(replications.some((r) => r.targetRegionId === "eu-west-1"));
-  assert.ok(replications.some((r) => r.targetRegionId === "ap-south-1"));
+  assert.ok(replications.some((r: RegionReplicationConfig) => r.targetRegionId === "us-west-2"));
+  assert.ok(replications.some((r: RegionReplicationConfig) => r.targetRegionId === "eu-west-1"));
+  assert.ok(replications.some((r: RegionReplicationConfig) => r.targetRegionId === "ap-south-1"));
 });
 
 test("multi region replication coordinator uses default batch size and interval", () => {
@@ -320,6 +320,6 @@ test("multi region replication coordinator uses default batch size and interval"
 
   const replications = coordinator.getRegionReplications("us-east-1");
   assert.equal(replications.length, 1);
-  assert.equal(replications[0].batchSize, 100);
-  assert.equal(replications[0].replicationIntervalMs, 5000);
+  assert.equal(replications[0]!.batchSize, 100);
+  assert.equal(replications[0]!.replicationIntervalMs, 5000);
 });

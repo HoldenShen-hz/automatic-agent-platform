@@ -48,6 +48,10 @@ export function readStatusFilter(request: ApiRequestLike): string | undefined {
   return readQueryParam(request, "status", { maxLength: 64 });
 }
 
+export function readCursor(request: ApiRequestLike): string | undefined {
+  return readQueryParam(request, "cursor", { maxLength: 1024, trim: false });
+}
+
 export interface ReadQueryParamOptions {
   required?: boolean;
   maxLength?: number;
@@ -217,6 +221,18 @@ export function buildTextResponse(text: string): ApiResponsePayload {
     },
     body: text,
   };
+}
+
+export function encodeOpaqueCursor(payload: Record<string, unknown>): string {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+export function decodeOpaqueCursor<T>(cursor: string, code = "api.invalid_cursor"): T {
+  try {
+    return JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as T;
+  } catch {
+    throw new ApiError(400, code, "cursor is invalid.");
+  }
 }
 
 /**

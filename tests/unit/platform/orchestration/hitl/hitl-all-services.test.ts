@@ -23,6 +23,7 @@ function makePacket(overrides: Partial<ApprovalPacket> = {}): ApprovalPacket {
     approvalId: id,
     taskId: overrides.taskId ?? "task-1",
     executionId: overrides.executionId ?? "exec-1",
+    mode: overrides.mode ?? "single_approval",
     title: overrides.title ?? "Approval needed",
     reason: overrides.reason ?? "Review required",
     riskLevel: overrides.riskLevel ?? "medium",

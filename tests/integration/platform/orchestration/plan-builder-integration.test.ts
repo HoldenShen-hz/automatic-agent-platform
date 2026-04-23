@@ -12,11 +12,11 @@ import test from "node:test";
 import { createIntegrationContext, createSeededIntegrationContext } from "../../../helpers/integration-context.js";
 import { PlanBuilder, type PlanBuilderInput } from "../../../../src/platform/orchestration/planner/index.js";
 import { WorkflowPlanner } from "../../../../src/platform/orchestration/routing/workflow-planner.js";
-import { createTaskSituation, createUnifiedAssessment, createAssessmentRef } from "../../../../src/platform/orchestration/oapeflir/types/index.js";
+import { parseTaskSituation, parseUnifiedAssessment, createAssessmentRef } from "../../../../src/platform/orchestration/oapeflir/types/index.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
-function createTestTaskSituation(taskId: string): ReturnType<typeof createTaskSituation> {
-  return createTaskSituation({
+function createTestTaskSituation(taskId: string): ReturnType<typeof parseTaskSituation> {
+  return parseTaskSituation({
     taskId,
     timestamp: Date.now(),
     objective: "test objective",
@@ -46,8 +46,8 @@ function createTestTaskSituation(taskId: string): ReturnType<typeof createTaskSi
   });
 }
 
-function createTestAssessment(taskId: string, situationRef: string): ReturnType<typeof createUnifiedAssessment> {
-  return createUnifiedAssessment({
+function createTestAssessment(taskId: string, situationRef: string): ReturnType<typeof parseUnifiedAssessment> {
+  return parseUnifiedAssessment({
     taskId,
     timestamp: Date.now(),
     situationRef,
@@ -161,7 +161,7 @@ test("PlanBuilder assigns correct strategy based on complexity", () => {
     });
 
     const situation = createTestTaskSituation("task-plan-builder-strategy-001");
-    const assessment = createUnifiedAssessment({
+    const assessment = parseUnifiedAssessment({
       taskId: "task-plan-builder-strategy-001",
       timestamp: Date.now(),
       situationRef: `assessment:task-plan-builder-strategy-001:${Date.now()}`,

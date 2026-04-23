@@ -5,6 +5,7 @@ import {
 } from "../../control-plane/approval-center/approval-service.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { HITLExplainabilityService, type DecisionExplanation } from "./hitl-explainability-service.js";
+import { validateHitlModeRequest, type HitlMode } from "./hitl-modes.js";
 
 export type OapeflirStageRef =
   | "observe"
@@ -45,6 +46,7 @@ export interface ApprovalPacket {
   readonly approvalId: string;
   readonly taskId: string;
   readonly executionId: string | null;
+  readonly mode: HitlMode;
   readonly title: string;
   readonly reason: string;
   readonly riskLevel: ApprovalRequest["riskLevel"];
@@ -64,6 +66,7 @@ export interface HitlApprovalRequest {
   readonly taskId: string;
   readonly executionId?: string | null;
   readonly sourceAgentId: string;
+  readonly mode?: HitlMode;
   readonly title: string;
   readonly reason: string;
   readonly riskLevel: ApprovalRequest["riskLevel"];
@@ -114,12 +117,20 @@ export class HitlApprovalOrchestrationService {
   ) {}
 
   public async requestApproval(request: HitlApprovalRequest): Promise<ApprovalPacket> {
+    const mode = request.mode ?? "single_approval";
     if (request.options.length === 0) {
       throw new Error("hitl_approval.options_required");
     }
     if (request.riskLevel === "critical" && request.timeoutPolicy === "approve" && request.breakGlassApproved !== true) {
       throw new Error("hitl_approval.critical_timeout_auto_approve_forbidden");
     }
+    const modeConstraint = validateHitlModeRequest({
+      mode,
+      options: request.options,
+      riskLevel: request.riskLevel,
+      timeoutPolicy: request.timeoutPolicy,
+      context: request.context,
+    });
 
     const approval = this.approvalService.createRequest({
       taskId: request.taskId,
@@ -136,6 +147,8 @@ export class HitlApprovalOrchestrationService {
         refId: request.refId ?? null,
         recommendedOptionId: request.recommendedOptionId ?? null,
         deadlineAt: request.deadlineAt ?? null,
+        hitlMode: mode,
+        hitlModeSummary: modeConstraint.summary,
       },
       timeoutPolicy: request.timeoutPolicy,
     });
@@ -156,6 +169,7 @@ export class HitlApprovalOrchestrationService {
           title: request.title,
           stageRef: request.stageRef,
           recommendedOptionId: request.recommendedOptionId ?? null,
+          hitlMode: mode,
         },
       },
     );
@@ -172,6 +186,7 @@ export class HitlApprovalOrchestrationService {
       approvalId: approval.approvalId,
       taskId: request.taskId,
       executionId: request.executionId ?? null,
+      mode,
       title: request.title,
       reason: request.reason,
       riskLevel: request.riskLevel,

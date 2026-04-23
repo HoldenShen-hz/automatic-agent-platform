@@ -33,4 +33,8 @@ export type {
   SecretProviderValue,
 } from "./env-secret-provider.js";
 export { SecretManagementService } from "./secret-management-service.js";
-export { createWorkspaceWritePolicy } from "./sandbox-policy.js";
+export {
+  createRestrictedExecPolicy,
+  createScopedExternalAccessPolicy,
+  createWorkspaceWritePolicy,
+} from "./sandbox-policy.js";

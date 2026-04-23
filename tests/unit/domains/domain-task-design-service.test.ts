@@ -230,7 +230,8 @@ test("DomainTaskDesignService returns deny when no matching rule", () => {
   assert.equal(design.interactionMode, "deny");
 });
 
-test("DomainTaskDesignService sets reviewRequired for high risk", () => {
+test("DomainTaskDesignService sets reviewRequired for implement task in coding domain", () => {
+  // Note: "implement" is a coding task type that requires review per CODING_DOMAIN_PRESET
   const base = createDefaultOptions();
   const options: DomainTaskDesignServiceOptions = {
     ...base,
@@ -246,26 +247,29 @@ test("DomainTaskDesignService sets reviewRequired for high risk", () => {
 
   const design = service.design({
     domainId: "coding",
-    taskType: "analyze",
-    userInput: "analyze this",
+    taskType: "implement",
+    userInput: "implement this feature",
     promptId: "prompt_release",
     riskScore: 70,
   });
 
+  // "implement" requires coding review regardless of risk score
   assert.equal(design.reviewRequired, true);
 });
 
-test("DomainTaskDesignService sets reviewRequired for critical risk", () => {
+test("DomainTaskDesignService sets reviewRequired for release task in coding domain", () => {
+  // Note: "release" is a coding task type that requires review per CODING_DOMAIN_PRESET
   const service = new DomainTaskDesignService(createDefaultOptions());
 
   const design = service.design({
     domainId: "coding",
-    taskType: "analyze",
-    userInput: "analyze this",
+    taskType: "release",
+    userInput: "release this package",
     promptId: "prompt_release",
     riskScore: 90,
   });
 
+  // "release" requires coding review regardless of risk score
   assert.equal(design.reviewRequired, true);
 });
 
@@ -274,13 +278,15 @@ test("DomainTaskDesignService sets reviewRequired for approval_required interact
 
   const design = service.design({
     domainId: "coding",
-    taskType: "analyze",
-    userInput: "analyze this",
+    taskType: "transform", // non-coding task type so it falls through to interaction mode check
+    userInput: "transform this data",
     promptId: "prompt_release",
     riskScore: 20,
-    targetDomainId: "operations", // has approval_required rule
+    targetDomainId: "operations", // has approval_required rule in createDefaultOptions
   });
 
+  // approval_required interaction mode triggers reviewRequired
+  assert.equal(design.interactionMode, "approval_required");
   assert.equal(design.reviewRequired, true);
 });
 

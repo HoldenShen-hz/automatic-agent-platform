@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CrossRegionRoutingService, type CrossRegionRouteRequest } from "../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
-import { resolveRegionFailover, type RegionFailoverInput } from "../../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
-import { selectPreferredRegion, type RegionDescriptor } from "../../../../src/scale-ecosystem/multi-region/region-router/index.js";
+import { CrossRegionRoutingService, type CrossRegionRouteRequest } from "../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
+import { resolveRegionFailover, type RegionFailoverInput } from "../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
+import { selectPreferredRegion, type RegionDescriptor } from "../../../src/scale-ecosystem/multi-region/region-router/index.js";
 
 test("cross region routing selects preferred region when available and allowed", () => {
   const service = new CrossRegionRoutingService();
@@ -178,7 +178,7 @@ test("cross region routing includes replication targets in recovery topology", (
   const decision = service.route(request);
 
   assert.equal(decision.selectedRegionId, "us-east-1");
-  assert.deepEqual(decision.recoveryTopology.replicationTargets.sort(), ["us-west-2", "eu-west-1"].sort());
+  assert.deepEqual([...decision.recoveryTopology.replicationTargets].sort(), ["us-west-2", "eu-west-1"].sort());
 });
 
 test("cross region routing respects blocked region list", () => {
