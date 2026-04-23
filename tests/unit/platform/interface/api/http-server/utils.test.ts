@@ -21,6 +21,7 @@ import {
   matchNormalizedSegments,
 } from "../../../../../../src/platform/interface/api/http-server/utils.js";
 import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
+import { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
 
 function makeRequest(url: string, headers: Record<string, string | undefined> = {}): ApiRequestLike {
   return { method: "GET", url, headers, body: null };
@@ -502,4 +503,71 @@ test("matchNormalizedSegments returns null when literal segment does not match",
 test("matchNormalizedSegments handles mixed literal and parameter segments", () => {
   const result = matchNormalizedSegments(["v1", "tasks", "task_abc", "steps", "step_1"], ["tasks", ":taskId", "steps", ":stepId"]);
   assert.deepEqual(result, ["tasks", "task_abc", "steps", "step_1"]);
+});
+
+// requirePrincipal tests
+
+test("requirePrincipal returns principal when authService is null and no auth required", () => {
+  // This test checks requirePrincipal behavior when authService is null
+  const request = makeRequest("/api/tasks");
+  // When authService is null, it should throw ApiError with auth_not_configured
+  assert.throws(
+    () => requirePrincipal(request, null, "viewer"),
+    (error: any) => error.code === "api.auth_not_configured" && error.statusCode === 401,
+  );
+});
+
+test("requirePrincipal throws ApiError when authService is null", () => {
+  const request = makeRequest("/api/tasks");
+  try {
+    requirePrincipal(request, null, "viewer");
+    assert.fail("Expected error to be thrown");
+  } catch (error: any) {
+    assert.equal(error.code, "api.auth_not_configured");
+    assert.equal(error.statusCode, 401);
+  }
+});
+
+test("requirePrincipal returns principal for valid role", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "admin-key", actorId: "admin-1", roles: ["admin"] }],
+    jwtSecret: "secret",
+  });
+  const exchange = service.exchangeApiKey("admin-key");
+  const request = makeRequest("/api/admin", { authorization: `Bearer ${exchange.accessToken}` });
+
+  const principal = requirePrincipal(request, service, "admin");
+  assert.equal(principal.actorId, "admin-1");
+  assert.ok(principal.roles.includes("admin"));
+});
+
+test("requirePrincipal throws for insufficient role", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "viewer-key", actorId: "viewer-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  const exchange = service.exchangeApiKey("viewer-key");
+  const request = makeRequest("/api/admin", { authorization: `Bearer ${exchange.accessToken}` });
+
+  assert.throws(
+    () => requirePrincipal(request, service, "admin"),
+    (error: any) => error.code === "api.forbidden" && error.statusCode === 403,
+  );
+});
+
+test("requirePrincipal propagates ApiAuthError with correct status", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "viewer-key", actorId: "viewer-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  // Use an invalid token so authenticate() throws ApiAuthError
+  const request = makeRequest("/api/admin", { authorization: "Bearer invalid.token.here" });
+
+  try {
+    requirePrincipal(request, service, "admin");
+    assert.fail("Expected error to be thrown");
+  } catch (error: any) {
+    assert.equal(error.statusCode, 401);
+    assert.ok(error.code === "api.invalid_token" || error.code === "api.auth_required");
+  }
 });

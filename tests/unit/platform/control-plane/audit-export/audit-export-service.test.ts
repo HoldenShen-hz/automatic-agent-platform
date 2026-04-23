@@ -75,12 +75,14 @@ function createMockDb(): {
 }
 
 function createMockIntegrityRepo(): {
-  repo: AuditIntegrityRepository;
+  // Use inline type to avoid circular reference with AuditIntegrityRepository
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  repo: any;
   records: Tier1AuditIntegrityRecord[];
 } {
   let records: Tier1AuditIntegrityRecord[] = [];
 
-  const repo: AuditIntegrityRepository = {
+  const repo = {
     insertIntegrityRecord() {},
     getIntegrityRecord() {
       return null;
@@ -838,8 +840,8 @@ test("AuditExportService.listExports returns all exports without filter", () => 
   const results = service.listExports();
 
   assert.equal(results.length, 2);
-  assert.equal(results[0].id, "aexport_1");
-  assert.equal(results[1].id, "aexport_2");
+  assert.equal(results[0]?.id, "aexport_1");
+  assert.equal(results[1]?.id, "aexport_2");
 });
 
 test("AuditExportService.listExports filters by status", () => {

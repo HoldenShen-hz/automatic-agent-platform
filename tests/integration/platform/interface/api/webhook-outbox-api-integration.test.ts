@@ -69,7 +69,9 @@ test("integration: public webhook receive endpoint stages accepted payload into 
 
     const firstPayload = first.json<{ data: { persistedToOutbox: boolean; duplicate: boolean } }>();
     const secondPayload = second.json<{ data: { persistedToOutbox: boolean; duplicate: boolean } }>();
-    const pending = outboxRepository.listPendingEntries(10);
+    const stagedWebhookEntries = outboxRepository
+      .listPendingEntries(20)
+      .filter((entry) => entry.aggregateType === "webhook_endpoint" && entry.aggregateId === "github");
 
     assert.equal(first.statusCode, 202);
     assert.equal(firstPayload.data.persistedToOutbox, true);
@@ -77,9 +79,9 @@ test("integration: public webhook receive endpoint stages accepted payload into 
     assert.equal(second.statusCode, 200);
     assert.equal(secondPayload.data.persistedToOutbox, false);
     assert.equal(secondPayload.data.duplicate, true);
-    assert.equal(pending.length, 1);
-    assert.equal(pending[0]?.eventType, "webhook.received");
-    assert.match(pending[0]?.payloadJson ?? "", /pullRequestId/);
+    assert.equal(stagedWebhookEntries.length, 1);
+    assert.equal(stagedWebhookEntries[0]?.eventType, "webhook.received");
+    assert.match(stagedWebhookEntries[0]?.payloadJson ?? "", /pullRequestId/);
   } finally {
     cleanupPath(workspace);
   }

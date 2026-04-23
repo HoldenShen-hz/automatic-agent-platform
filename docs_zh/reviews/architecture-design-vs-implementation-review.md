@@ -1,6 +1,6 @@
 # 平台架构设计 vs 代码实现 — 逐条复核版
 
-> **版本**: v8.2
+> **版本**: v8.3
 > **复核日期**: 2026-04-23
 > **设计基线**: `docs_zh/architecture/00-platform-architecture.md` v3.2
 > **复核对象**: `src/`、`tests/`、`docs_zh/contracts/`
@@ -37,14 +37,15 @@
 
 | 类别 | 数量 | 条目 |
 | --- | --- | --- |
-| `open` | 1 | `P2-1` |
-| `partial` | 2 | `P1-7` `P2-2` |
-| `closed` | 10 | `P0-1` `P0-2` `P0-3` `P1-1` `P1-2` `P1-3` `P1-4` `P1-5` `P1-6` `P2-3` |
+| `open` | 0 | 无 |
+| `partial` | 1 | `P1-7` |
+| `closed` | 12 | `P0-1` `P0-2` `P0-3` `P1-1` `P1-2` `P1-3` `P1-4` `P1-5` `P1-6` `P2-1` `P2-2` `P2-3` |
 
 结论：
 
 - `§11.8` 与 `§12.1-§12.2` 已补齐 authoritative contract、运行时接线与定向测试，`P0-1 ~ P0-3` 不再是当前阻断项。
-- `P1-1 ~ P1-6` 已在本轮形成源码、导出面、定向测试与文档同步闭环；当前高优先级运行时缺口只剩 `P2-1 webhook + outbox`。
+- `P1-1 ~ P1-6` 已在本轮形成源码、导出面、定向测试与文档同步闭环。
+- `P2-1` 与 `P2-2` 已补齐 authoritative runtime / inventory / API / 测试 / 文档同步证据；当前剩余未关闭项只剩 `P1-7` 视频链路仍是 skeleton。
 - 领域元模型、24 域 baseline、12 种 recipe 这些能力不是空白；相关旧缺口保持为“实现形态与设计表达仍有偏差”的 `partial`。
 
 ---
@@ -227,31 +228,40 @@
 
 ### P2-1 `§6.7` Webhook + Outbox
 
-状态：`open`
+状态：`closed`
 
 检查结果：
 
-- `src/platform/interface/api/http-server/webhook-routes.ts` 只做 endpoint 管理。
-- `src/platform/shared/outbox/` 与 `src/platform/state-evidence/events/transactional-event-appender.ts` 已有 outbox 基础设施。
-- 但没有看到 webhook 管理/投递主链接入 outbox 的 authoritative 集成点。
+- 已新增 `src/platform/interface/webhook/webhook-outbox-dispatch-service.ts`，把 `WebhookIngressService` 与 `OutboxRepository` 接成 authoritative runtime。
+- `src/platform/interface/api/http-server/webhook-routes.ts` 新增 `POST /v1/webhooks/{endpointId}/receive` 与兼容路径的公开 intake surface。
+- `src/platform/interface/api/http-api-server.ts` 已把 webhook receive/outbox dispatch 接入 canonical route table。
+- `tests/unit/platform/interface/webhook/webhook-outbox-dispatch-service.test.ts`
+- `tests/unit/platform/interface/api/http-server/webhook-routes.test.ts`
+- `tests/integration/platform/interface/api/webhook-outbox-api-integration.test.ts`
+- `tests/golden/openapi-document.test.ts`
 
 结论：
 
-- 这条仍是有效缺口。
+- Webhook intake -> envelope 校验 -> outbox staging -> OpenAPI/API catalog 可见性已形成章节级闭环。
 
 ### P2-2 `§26.3` 逻辑表数量差异
 
-状态：`partial`
+状态：`closed`
 
 检查结果：
 
-- 旧版 review 的“实际 55 张表”已经过时。
-- 本次按 schema/migration 文件静态对账，仓内可见 `CREATE TABLE IF NOT EXISTS` 唯一表名为 **85** 张。
-- 问题已经不是“表太少”，而是“设计文档 `71` 张逻辑表的数字与当前 schema 演进不一致”。
+- 已新增 `src/platform/state-evidence/truth/schema-inventory-service.ts` 作为 authoritative schema inventory surface。
+- inventory 当前以 core schema + runtime/governance/reliability extension 对账，唯一逻辑表数为 **86**。
+- `src/platform/interface/api/http-server/admin-routes.ts` 新增 `GET /v1/admin/inventories/schema`。
+- `src/platform/interface/api/openapi-document.ts`、`src/platform/interface/api/api-resource-catalog-service.ts` 已同步暴露 schema inventory 与 webhook receive surface。
+- `tests/unit/platform/state-evidence/truth/schema-inventory-service.test.ts`
+- `tests/unit/platform/interface/api/http-server/admin-routes.test.ts`
+- `tests/integration/platform/interface/api/schema-inventory-api-integration.test.ts`
+- `tests/golden/openapi-document.test.ts`
 
 结论：
 
-- 这是文档/contract 对账问题，不是运行时缺失；保留为 `partial`，等待设计文档或 schema 对照表修正。
+- 已从“数字漂移争议”收口为 authoritative inventory + admin API + contract 对照表的闭环，后续若 schema 演进，只需更新 inventory 与对应文档，不再依赖旧的静态口径。
 
 ### P2-3 `§37.11` 统一领域元模型 12 问
 
@@ -274,9 +284,7 @@
 
 ## §4 建议的修复顺序
 
-1. 先处理 `P2-1`，把 webhook-outbox 投递主链补到 authoritative runtime。
-2. 再继续 `P1-7`，把视频处理从 metadata skeleton 推进到更强的可验证 pipeline。
-3. 最后处理 `P2-2`，把逻辑表数量漂移收敛为设计文档/contract 的正式对照表。
+1. 继续处理 `P1-7`，把视频处理从 metadata skeleton 推进到更强的可验证 pipeline。
 
 ---
 
@@ -286,4 +294,5 @@
 - 结论已同步回写到：
   - `docs_zh/analysis/00-architecture-coverage-matrix.md`
   - `docs_zh/operations/current_todo_list.md`
-- 本次没有因为文档收口去删减缺口；所有 `P0/P1/P2` 都保留并给出复核结果，其中 `P0-1 ~ P0-3` 已按真实代码与测试证据关闭。
+- `docs_zh/contracts/storage_schema_contract.md`
+- 本次没有因为文档收口去删减缺口；所有 `P0/P1/P2` 都保留并给出复核结果，其中 `P0-1 ~ P0-3`、`P2-1`、`P2-2` 已按真实代码与测试证据关闭。

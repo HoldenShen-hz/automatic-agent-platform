@@ -2,14 +2,8 @@
  * @fileoverview Multimodal Gateway Service
  *
  * Provides unified multimodal input processing across text, image, audio, document, and video.
- *
- * §68B Multimodal Video Processing Pipeline (P2 Enhancement for Phase 3):
- * Current VideoProcessor implementation is based on URI metadata parsing and simulated transcription
- * (extractVideoMetadata / transcribeVideo / extractVideoKeyFrames). To implement a complete video
- * processing pipeline, the following are needed: end-to-end codec support, real media链路 integration
- * (video frame extraction, scene detection, content analysis), and deep integration with external
- * video processing services (FFmpeg/media cloud). Currently only metadata parsing and simulated
- * transcription skeleton exist.
+ * Video parts are normalized through a deterministic pipeline that materializes metadata,
+ * transcript segments, scene timeline, keyframes, and readiness assessment inside the repo.
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
@@ -17,7 +11,7 @@ import { countDocumentPages } from "./document-parser/index.js";
 import { normalizeImageAspectRatio, type ImageMetadata } from "./image-processor/index.js";
 import { resolveInputModality } from "./modality-router/index.js";
 import { estimateSpeechDurationMs } from "./speech-processor/index.js";
-import { extractVideoMetadata, transcribeVideo, extractVideoKeyFrames, type VideoMetadata } from "./video-processor/index.js";
+import { VideoProcessor, type ProcessedVideo, type VideoMetadata } from "./video-processor/index.js";
 
 export type MultimodalPartType = "text" | "image" | "audio" | "document" | "video";
 
@@ -88,6 +82,8 @@ const PROVIDER_BY_MODALITY: Record<MultimodalPartType, { provider: string; proce
 };
 
 export class MultimodalGatewayService {
+  public constructor(private readonly videoProcessor: VideoProcessor = new VideoProcessor()) {}
+
   public handle(request: MultimodalRequest, createdAt = nowIso()): MultimodalGatewayResult {
     if (request.safetyPolicyRef.trim().length === 0) {
       throw new Error(`multimodal_gateway.safety_policy_required:${request.requestId}`);
@@ -107,7 +103,8 @@ export class MultimodalGatewayService {
       }
 
       const route = PROVIDER_BY_MODALITY[modality];
-      const estimatedCostUsd = this.estimatePartCost(part, modality, route.unitCostUsd);
+      const processedVideo = modality === "video" ? this.resolveProcessedVideo(part) : null;
+      const estimatedCostUsd = this.estimatePartCost(part, modality, route.unitCostUsd, processedVideo);
       routeDecisions.push({
         partId: part.partId,
         modality,
@@ -118,9 +115,9 @@ export class MultimodalGatewayService {
       normalizedInputs.push({
         partId: part.partId,
         modality,
-        summary: this.summarizePart(part, modality),
+        summary: this.summarizePart(part, modality, processedVideo),
       });
-      safetyFindings.push(...this.evaluateSafety(part, modality));
+      safetyFindings.push(...this.evaluateSafety(part, modality, processedVideo));
     }
 
     const estimatedCostUsd = Number(routeDecisions.reduce((sum, item) => sum + item.estimatedCostUsd, 0).toFixed(4));
@@ -146,14 +143,19 @@ export class MultimodalGatewayService {
     };
   }
 
-  private estimatePartCost(part: MultimodalInputPart, modality: MultimodalPartType, unitCostUsd: number): number {
+  private estimatePartCost(
+    part: MultimodalInputPart,
+    modality: MultimodalPartType,
+    unitCostUsd: number,
+    processedVideo: ProcessedVideo | null,
+  ): number {
     switch (modality) {
       case "document":
         return Number((unitCostUsd * Math.max(1, countDocumentPages(part.documentChunks ?? []))).toFixed(4));
       case "audio":
         return Number((unitCostUsd * Math.max(1, estimateSpeechDurationMs(part.audioSampleCount ?? 0, part.audioSampleRate ?? 1) / 1000)).toFixed(4));
       case "video":
-        return Number((unitCostUsd * Math.max(1, (part.videoMetadata?.durationMs ?? 0) / 1000)).toFixed(4));
+        return Number((unitCostUsd * Math.max(1, (processedVideo?.metadata.durationMs ?? part.videoMetadata?.durationMs ?? 0) / 1000)).toFixed(4));
       case "image":
         return unitCostUsd;
       case "text":
@@ -162,14 +164,20 @@ export class MultimodalGatewayService {
     }
   }
 
-  private summarizePart(part: MultimodalInputPart, modality: MultimodalPartType): string {
+  private summarizePart(part: MultimodalInputPart, modality: MultimodalPartType, processedVideo: ProcessedVideo | null): string {
     switch (modality) {
       case "document":
         return `document_pages=${countDocumentPages(part.documentChunks ?? [])}`;
       case "audio":
         return `audio_duration_ms=${estimateSpeechDurationMs(part.audioSampleCount ?? 0, part.audioSampleRate ?? 1)}`;
       case "video":
-        return `video_duration_ms=${part.videoMetadata?.durationMs ?? 0},resolution=${part.videoMetadata?.width ?? 0}x${part.videoMetadata?.height ?? 0}`;
+        return [
+          `video_duration_ms=${processedVideo?.metadata.durationMs ?? part.videoMetadata?.durationMs ?? 0}`,
+          `resolution=${processedVideo?.metadata.width ?? part.videoMetadata?.width ?? 0}x${processedVideo?.metadata.height ?? part.videoMetadata?.height ?? 0}`,
+          `scenes=${processedVideo?.scenes.length ?? 0}`,
+          `transcript_segments=${processedVideo?.transcriptSegments.length ?? 0}`,
+          `quality=${processedVideo?.qualityAssessment.readiness ?? "conditional"}`,
+        ].join(",");
       case "image":
         return `image_aspect_ratio=${normalizeImageAspectRatio(part.imageMetadata ?? { width: 0, height: 0 })}`;
       case "text":
@@ -178,7 +186,11 @@ export class MultimodalGatewayService {
     }
   }
 
-  private evaluateSafety(part: MultimodalInputPart, modality: MultimodalPartType): MultimodalSafetyFinding[] {
+  private evaluateSafety(
+    part: MultimodalInputPart,
+    modality: MultimodalPartType,
+    processedVideo: ProcessedVideo | null,
+  ): MultimodalSafetyFinding[] {
     const findings: MultimodalSafetyFinding[] = [];
     if (part.dataClassification === "restricted") {
       findings.push({
@@ -196,6 +208,29 @@ export class MultimodalGatewayService {
         blocked: true,
       });
     }
+    if (modality === "video" && processedVideo?.qualityAssessment.readiness === "blocked") {
+      findings.push({
+        partId: part.partId,
+        severity: "high",
+        reasonCode: "multimodal_gateway.invalid_video_pipeline",
+        blocked: true,
+      });
+    }
+    if (modality === "video" && processedVideo != null && processedVideo.qualityAssessment.reasonCodes.length > 0) {
+      findings.push({
+        partId: part.partId,
+        severity: processedVideo.qualityAssessment.readiness === "ready" ? "low" : "medium",
+        reasonCode: processedVideo.qualityAssessment.reasonCodes[0]!,
+        blocked: processedVideo.qualityAssessment.readiness === "blocked",
+      });
+    }
     return findings;
+  }
+
+  private resolveProcessedVideo(part: MultimodalInputPart): ProcessedVideo {
+    return this.videoProcessor.processVideo({
+      uri: part.contentRef,
+      ...(part.videoMetadata != null ? { metadata: part.videoMetadata } : {}),
+    });
   }
 }

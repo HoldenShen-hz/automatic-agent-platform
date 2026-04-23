@@ -32,8 +32,8 @@ test("integration: admin schema inventory endpoint exposes authoritative logical
     }>();
 
     assert.equal(response.statusCode, 200);
-    assert.equal(payload.data.summary.totalTables, 98);
-    assert.ok(payload.data.summary.byCategory["core_truth"] > 0);
+    assert.equal(payload.data.summary.totalTables, 86);
+    assert.ok((payload.data.summary.byCategory["core_truth"] ?? 0) > 0);
     assert.ok(payload.data.tables.some((table) => table.tableName === "tasks"));
     assert.ok(payload.data.tables.some((table) => table.tableName === "outbox"));
   } finally {

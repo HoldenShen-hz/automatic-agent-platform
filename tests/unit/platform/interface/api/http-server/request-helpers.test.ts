@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 
-import { matchRoute, normalizeHeaders, readIncomingBody } from "../../../../../../src/platform/interface/api/http-server/request-helpers.js";
+import { matchRoute, normalizeHeaders, readIncomingBody, authenticateOptionalPrincipal } from "../../../../../../src/platform/interface/api/http-server/request-helpers.js";
 import type { ApiRequestLike } from "../../../../../../src/platform/interface/api/http-server/types.js";
 import { IncomingMessage } from "node:http";
+import { ApiAuthService } from "../../../../../../src/platform/interface/api/api-auth-service.js";
 
 // Helper to create a minimal IncomingMessage-like that works with for-await-of
 function createMockIncomingMessage(data: Buffer | null): IncomingMessage {
@@ -205,4 +206,112 @@ test("readIncomingBody reads normal-sized body correctly", async () => {
   const mockReq = createMockIncomingMessage(data);
   const result = await readIncomingBody(mockReq);
   assert.equal(result, "hello world");
+});
+
+// authenticateOptionalPrincipal tests
+
+test("authenticateOptionalPrincipal returns null when authService is null", () => {
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: { authorization: "Bearer token123" },
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, null);
+  assert.equal(result, null);
+});
+
+test("authenticateOptionalPrincipal returns null when no auth headers present", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: {},
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, service);
+  assert.equal(result, null);
+});
+
+test("authenticateOptionalPrincipal returns null when auth headers are empty", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: { authorization: "", "x-api-key": "" },
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, service);
+  assert.equal(result, null);
+});
+
+test("authenticateOptionalPrincipal returns principal for valid Bearer token", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  const exchange = service.exchangeApiKey("test-key");
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: { authorization: `Bearer ${exchange.accessToken}` },
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, service);
+  assert.ok(result !== null);
+  assert.equal(result!.actorId, "actor-1");
+  assert.deepEqual(result!.roles, ["viewer"]);
+});
+
+test("authenticateOptionalPrincipal returns principal for valid API key", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "actor-2", roles: ["operator"] }],
+    jwtSecret: "secret",
+  });
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: { "x-api-key": "test-key" },
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, service);
+  assert.ok(result !== null);
+  assert.equal(result!.actorId, "actor-2");
+  assert.deepEqual(result!.roles, ["operator"]);
+});
+
+test("authenticateOptionalPrincipal returns null for invalid token (swallows error)", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: { authorization: "Bearer invalid.token.here" },
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, service);
+  assert.equal(result, null);
+});
+
+test("authenticateOptionalPrincipal returns null for invalid API key (swallows error)", () => {
+  const service = new ApiAuthService({
+    apiKeys: [{ apiKey: "test-key", actorId: "actor-1", roles: ["viewer"] }],
+    jwtSecret: "secret",
+  });
+  const request: ApiRequestLike = {
+    method: "GET",
+    url: "/api/tasks",
+    headers: { "x-api-key": "wrong-key" },
+    body: null,
+  };
+  const result = authenticateOptionalPrincipal(request, service);
+  assert.equal(result, null);
 });

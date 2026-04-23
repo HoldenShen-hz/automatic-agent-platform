@@ -223,7 +223,12 @@ test("MultimodalGatewayService processes video input correctly", () => {
   assert.equal(result.routeDecisions[0]!.processor, "video-processor");
   // 60 seconds of video: 0.12 * (60000ms / 1000) = 0.12 * 60 = 7.2
   assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 7.2);
-  assert.equal(result.normalizedInputs[0]!.summary, "video_duration_ms=60000,resolution=1920x1080");
+  assert.equal(
+    result.normalizedInputs[0]!.summary,
+    "video_duration_ms=60000,resolution=1920x1080,scenes=4,transcript_segments=0,quality=conditional",
+  );
+  assert.equal(result.blocked, false);
+  assert.ok(result.safetyFindings.some((finding) => finding.reasonCode === "video_processor.no_transcript_segments"));
 });
 
 test("MultimodalGatewayService processes video with zero duration", () => {
@@ -243,7 +248,12 @@ test("MultimodalGatewayService processes video with zero duration", () => {
   }, "2026-04-21T00:00:00.000Z");
 
   assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 0.12);
-  assert.equal(result.normalizedInputs[0]!.summary, "video_duration_ms=0,resolution=0x0");
+  assert.equal(
+    result.normalizedInputs[0]!.summary,
+    "video_duration_ms=0,resolution=0x0,scenes=1,transcript_segments=1,quality=blocked",
+  );
+  assert.equal(result.blocked, true);
+  assert.ok(result.safetyFindings.some((finding) => finding.reasonCode === "multimodal_gateway.invalid_video_pipeline"));
 });
 
 test("MultimodalGatewayService rejects video modality not declared", () => {
@@ -292,6 +302,29 @@ test("MultimodalGatewayService handles mixed modalities including video", () => 
   assert.equal(videoDecision?.processor, "video-processor");
   // 30 seconds of video: 0.12 * 30 = 3.6
   assert.equal(videoDecision?.estimatedCostUsd, 3.6);
+});
+
+test("MultimodalGatewayService derives video pipeline evidence from contentRef when metadata is absent", () => {
+  const service = new MultimodalGatewayService();
+  const result = service.handle({
+    requestId: "req_video_pipeline",
+    modalities: ["video"],
+    inputParts: [{
+      partId: "p_video_pipeline",
+      type: "video",
+      contentRef: "/tmp/operator_handoff_scenes3_1280x720_45s.webm",
+    }],
+    requestedOutputs: ["summary", "transcript"],
+    safetyPolicyRef: "policy_video",
+    costBudget: { maxUsd: 10 },
+  }, "2026-04-21T00:00:00.000Z");
+
+  assert.equal(result.blocked, false);
+  assert.equal(result.routeDecisions[0]!.estimatedCostUsd, 5.4);
+  assert.equal(
+    result.normalizedInputs[0]!.summary,
+    "video_duration_ms=45000,resolution=1280x720,scenes=3,transcript_segments=1,quality=ready",
+  );
 });
 
 test("MultimodalGatewayService blocks when cost budget is exceeded", () => {

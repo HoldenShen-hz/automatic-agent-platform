@@ -75,6 +75,14 @@
     ]
   },
   {
+    "method": "POST",
+    "path": "/v1/webhooks/{endpointId}/receive",
+    "summary": "Receive a signed webhook and stage it into outbox",
+    "tags": [
+      "webhooks"
+    ]
+  },
+  {
     "method": "GET",
     "path": "/v1/divisions",
     "summary": "List configured divisions",
@@ -327,6 +335,14 @@
     "method": "GET",
     "path": "/v1/admin/inventories/deployments",
     "summary": "List deployment inventory records",
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/v1/admin/inventories/schema",
+    "summary": "List authoritative schema inventory records",
     "tags": [
       "admin"
     ]

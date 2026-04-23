@@ -58,6 +58,24 @@ authoritative schema 至少包含以下核心表：
   - 进化与 Observe-compatible 域：`evolution_*`、`perception_sources`、`intel_items`、`intel_briefs`（保留 legacy 表名，语义已按 Observe 收口）
 - 因此 contract 对核心表使用“最小集合”约束；扩展表可在不破坏核心约束的前提下继续增加。
 
+### 3B. Authoritative Schema Inventory
+
+当前仓内不再用架构文档中的静态“总表数”直接做验收口径，而是以 authoritative inventory 为准：
+
+- authoritative service：`src/platform/state-evidence/truth/schema-inventory-service.ts`
+- authoritative API surface：`GET /v1/admin/inventories/schema`
+- 当前 inventory 对账口径：`86` 张唯一逻辑表
+- 分类汇总：
+  - `core_truth`: `55`
+  - `runtime_extension`: `18`
+  - `governance_extension`: `9`
+  - `reliability_extension`: `4`
+
+约束：
+
+- 后续 schema 演进必须同步更新 inventory service 与对应测试，不再只在 review 中手工维护数字。
+- review / coverage-matrix / contract 中出现的表数量，应以 inventory service 导出的数字为 authoritative source。
+
 ### 3A. OAPEFLIR 扩展表族
 
 以下表族属于 `§K` 对 storage schema 的 canonical 扩展方向：

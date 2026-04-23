@@ -47,7 +47,7 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createWebhookRoutes returns 6 routes", () => {
+test("createWebhookRoutes returns 8 routes", () => {
   const webhookService = new WebhookIngressService();
   const deps = {
     authService: createMockAuthService(),
@@ -320,7 +320,7 @@ test("POST /webhooks with HMAC algorithm requires signingSecret", async () => {
 
 test("POST /v1/webhooks/:id/receive accepts webhook intake without auth and returns staged outbox metadata", async () => {
   const webhookService = new WebhookIngressService();
-  const webhookOutboxDispatchService = {
+  const webhookOutboxDispatchService: Pick<WebhookOutboxDispatchService, "receiveAndStage"> = {
     receiveAndStage: () => ({
       envelope: {
         envelopeId: "webhook:1",
@@ -341,11 +341,11 @@ test("POST /v1/webhooks/:id/receive accepts webhook intake without auth and retu
       persistedToOutbox: true,
       outboxEntryId: "outbox:1",
     }),
-  } satisfies Pick<WebhookOutboxDispatchService, "receiveAndStage">;
+  };
   const routes = createWebhookRoutes({
     authService: createMockAuthServiceNoAuth(),
     webhookIngressService: webhookService,
-    webhookOutboxDispatchService: webhookOutboxDispatchService as WebhookOutboxDispatchService,
+    webhookOutboxDispatchService: webhookOutboxDispatchService as unknown as WebhookOutboxDispatchService,
   });
   const ctx = createMockContext("/v1/webhooks/public-endpoint/receive", ["v1", "webhooks", "public-endpoint", "receive"], {}, "{\"eventType\":\"push\",\"eventId\":\"evt-1\"}");
   (ctx.request as { method: string; body: string }).method = "POST";

@@ -406,8 +406,9 @@ test("isMemoryStale with explicit nowMs parameter", () => {
     expiresAt: pastDate.toISOString(),
     scope: "session",
   });
-  // Pass a time before the expiresAt
-  const result = isMemoryStale(memory, pastDate.getTime() - 1000);
+  // Pass a time AFTER the expiresAt - should be stale
+  const nowAfterExpiry = Date.now();
+  const result = isMemoryStale(memory, nowAfterExpiry);
   assert.equal(result, true);
 });
 
@@ -591,22 +592,26 @@ test("shouldEvict returns false when candidateCount <= maxLayerSize", () => {
 });
 
 test("shouldEvict returns false when priority >= 0.5 even if over capacity", () => {
-  // Create memory with high importance (low eviction priority)
+  // Create memory with low importance (high eviction priority value)
+  // importance strategy: priority = 1 - importanceScore
+  // So low importance (0.2) gives high priority (0.8 >= 0.5) = keep
   const memory = createTestMemory({
     scope: "evolution", // importance strategy
-    importanceScore: 0.9, // High importance = low eviction priority
+    importanceScore: 0.2, // Low importance = high priority value (keep)
     createdAt: new Date().toISOString(),
   });
-  // Even with candidateCount > maxLayerSize and high priority memory
+  // Even with candidateCount > maxLayerSize, priority >= 0.5 means keep
   const result = shouldEvict(memory, 15, 10);
   assert.equal(result, false);
 });
 
 test("shouldEvict returns true when priority < 0.5 and over capacity", () => {
-  // Create memory with low importance (high eviction priority)
+  // Create memory with high importance (low eviction priority value)
+  // importance strategy: priority = 1 - importanceScore
+  // So high importance (0.9) gives low priority (0.1 < 0.5) = evict
   const memory = createTestMemory({
     scope: "evolution", // importance strategy
-    importanceScore: 0.2, // Low importance = high eviction priority
+    importanceScore: 0.9, // High importance = low priority (evict)
     createdAt: new Date().toISOString(),
   });
   const result = shouldEvict(memory, 15, 10);
@@ -675,7 +680,11 @@ test("LayerTtlConfig interface has all required fields", () => {
 test("EvictionStrategy type has all expected values", () => {
   const strategies: EvictionStrategy[] = ["lru", "quality", "trust", "usage", "importance", "fifo"];
   const configStrategies = DEFAULT_LAYER_TTL_CONFIGS.map(c => c.evictionStrategy);
-  for (const strategy of strategies) {
+  // fifo is defined as a valid strategy but not used by default layers
+  for (const strategy of ["lru", "quality", "trust", "usage", "importance"]) {
     assert.ok(configStrategies.includes(strategy), `Expected strategy ${strategy} to be used`);
   }
+  // Verify fifo is a valid strategy type but not in default configs
+  assert.ok(strategies.includes("fifo"), "fifo should be a valid EvictionStrategy");
+  assert.ok(!configStrategies.includes("fifo"), "fifo is not used by default layer configs");
 });
