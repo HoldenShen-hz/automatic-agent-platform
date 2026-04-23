@@ -141,7 +141,7 @@ test("ForkedPluginRuntimeHost executes presenter plugin through a sandboxed chil
       audience: "developer",
     });
 
-    assert.match(result.summary, /完成 1 个 coding 步骤/);
+    assert.match(result.summary, /Completed 1 coding step\(s\)/);
     assert.ok(result.sections.some((section) => section.includes("step_present")));
     assert.deepEqual(result.citations, ["artifact:presented"]);
   } finally {

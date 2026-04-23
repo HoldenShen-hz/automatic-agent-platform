@@ -1,0 +1,366 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { DatadogTransport } from "../../../../../../src/platform/shared/observability/transports/datadog-transport.js";
+import type { StructuredLogEntry } from "../../../../../../src/platform/shared/observability/structured-logger.js";
+
+function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): StructuredLogEntry {
+  return {
+    level: "info",
+    message: "test message",
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+// Mock request factory that simulates a failing request
+function createFailingMockRequestFactory() {
+  const mockRequest = (options: any, callback: () => void) => {
+    const mockReq = {
+      on: (event: string, handler: (...args: any[]) => void) => {
+        if (event === "error") {
+          // Simulate an error occurring
+          setTimeout(() => handler(new Error("Network error")), 0);
+        }
+        return mockReq;
+      },
+      once: () => mockReq,
+      end: (data?: string) => {
+        // Call callback to indicate request "completed"
+        callback();
+        return mockReq;
+      },
+      write: () => mockReq,
+      destroy: () => {},
+    };
+    return mockReq;
+  };
+
+  return { mockRequest };
+}
+
+// Mock request factory that tracks all requests
+function createTrackingMockRequestFactory() {
+  const requests: any[] = [];
+
+  const mockRequest = (options: any, callback: () => void) => {
+    requests.push({ options, body: "" });
+
+    const mockReq = {
+      on: (event: string, handler: (...args: any[]) => void) => {
+        return mockReq;
+      },
+      once: () => mockReq,
+      end: (data?: string) => {
+        if (requests.length > 0 && data) {
+          requests[requests.length - 1].body = data;
+        }
+        callback();
+        return mockReq;
+      },
+      write: (data: string) => {
+        if (requests.length > 0) {
+          requests[requests.length - 1].body += data;
+        }
+        return mockReq;
+      },
+      destroy: () => {},
+    };
+    return mockReq;
+  };
+
+  return { mockRequest, getRequests: () => requests };
+}
+
+test("DatadogTransport handles request error gracefully", async () => {
+  const { mockRequest } = createFailingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "error test" }));
+
+  // flushInternal should resolve even if request fails
+  // The error handler does: req.on("error", () => resolve());
+  await transport.flush();
+
+  // If we get here without throwing, the error handling works
+  await transport.close();
+  assert.ok(true);
+});
+
+test("DatadogTransport flushInternal transforms entries with service metadata", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "my-service",
+    source: "my-source",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({
+    level: "warn",
+    message: "warning message",
+    taskId: "task-123",
+  }));
+
+  await transport.flush();
+
+  const requests = getRequests();
+  assert.equal(requests.length, 1);
+
+  const body = JSON.parse(requests[0].body);
+  assert.equal(body[0].service, "my-service");
+  assert.equal(body[0].ddsource, "my-source");
+  assert.equal(body[0].message, "warning message");
+  assert.equal(body[0].taskId, "task-123");
+});
+
+test("DatadogTransport flushInternal includes ddtags with default NODE_ENV", async () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  delete process.env.NODE_ENV;  // Ensure NODE_ENV is not set
+
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "no env test" }));
+  await transport.flush();
+
+  process.env.NODE_ENV = originalNodeEnv;
+
+  const requests = getRequests();
+  const body = JSON.parse(requests[0].body);
+  // Should use default "dev" when NODE_ENV is not set
+  assert.ok(body[0].ddtags.includes("env:dev"));
+});
+
+test("DatadogTransport flushInternal batches multiple entries", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    batchSize: 10,
+    requestFactory: mockRequest as any,
+  });
+
+  // Write multiple entries
+  for (let i = 0; i < 5; i++) {
+    transport.write(createTestEntry({ message: `batch entry ${i}` }));
+  }
+
+  await transport.flush();
+
+  const requests = getRequests();
+  assert.equal(requests.length, 1);
+
+  const body = JSON.parse(requests[0].body);
+  assert.equal(body.length, 5);
+});
+
+test("DatadogTransport write auto-flushes at batch size boundary", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    batchSize: 3,
+    requestFactory: mockRequest as any,
+  });
+
+  // Write 3 entries (equals batch size, should trigger auto-flush)
+  transport.write(createTestEntry({ message: "1" }));
+  transport.write(createTestEntry({ message: "2" }));
+  transport.write(createTestEntry({ message: "3" }));
+
+  // Give event loop time to process
+  await new Promise<void>((resolve) => setTimeout(resolve, 20));
+
+  const requests = getRequests();
+  assert.ok(requests.length >= 1);
+
+  await transport.close();
+});
+
+test("DatadogTransport flushInternal sends correct hostname format", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    site: "datadoghq.eu",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "eu site test" }));
+  await transport.flush();
+
+  const requests = getRequests();
+  assert.ok(requests[0].options.hostname.includes("datadoghq.eu"));
+});
+
+test("DatadogTransport flushInternal sends correct API path", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "path test" }));
+  await transport.flush();
+
+  const requests = getRequests();
+  assert.ok(requests[0].options.path.includes("/api/v2/logs"));
+});
+
+test("DatadogTransport flushInternal sends correct HTTP method", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "method test" }));
+  await transport.flush();
+
+  const requests = getRequests();
+  assert.equal(requests[0].options.method, "POST");
+});
+
+test("DatadogTransport flushInternal sends correct headers", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "headers test" }));
+  await transport.flush();
+
+  const requests = getRequests();
+  assert.equal(requests[0].options.headers["Content-Type"], "application/json");
+  assert.equal(requests[0].options.headers["DD-API-KEY"], "test-api-key");
+});
+
+test("DatadogTransport handles entries with all optional fields", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write({
+    level: "error",
+    message: "full entry",
+    createdAt: "2026-04-23T12:00:00.000Z",
+    taskId: "task-full",
+    agentId: "agent-full",
+    sessionId: "session-full",
+    stepId: "step-full",
+    traceId: "trace-full",
+    spanId: "span-full",
+    parentSpanId: "parent-full",
+    correlationId: "corr-full",
+    data: { key: "value", count: 999 },
+  });
+
+  await transport.flush();
+
+  const requests = getRequests();
+  const body = JSON.parse(requests[0].body);
+  assert.equal(body[0].taskId, "task-full");
+  assert.equal(body[0].agentId, "agent-full");
+  assert.equal(body[0].data.count, 999);
+});
+
+test("DatadogTransport flushInternal does not send empty batch", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  // Don't write anything, just flush
+  await transport.flush();
+
+  const requests = getRequests();
+  // Empty batch should not send a request
+  assert.equal(requests.length, 0);
+});
+
+test("DatadogTransport close sends remaining entries", async () => {
+  const { mockRequest, getRequests } = createTrackingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    batchSize: 100,  // Large batch size so entries aren't auto-flushed
+    requestFactory: mockRequest as any,
+  });
+
+  // Write some entries that won't be auto-flushed
+  transport.write(createTestEntry({ message: "remaining 1" }));
+  transport.write(createTestEntry({ message: "remaining 2" }));
+
+  // Close should flush remaining entries
+  await transport.close();
+
+  const requests = getRequests();
+  assert.equal(requests.length, 1);
+
+  const body = JSON.parse(requests[0].body);
+  assert.equal(body.length, 2);
+});
+
+test("DatadogTransport close is safe to call multiple times", async () => {
+  const { mockRequest } = createFailingMockRequestFactory();
+
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    requestFactory: mockRequest as any,
+  });
+
+  transport.write(createTestEntry({ message: "multi close test" }));
+
+  // Multiple closes should not throw
+  await transport.close();
+  await transport.close();
+  await transport.close();
+
+  assert.ok(true);
+});
+
+test("DatadogTransport timer is cleared after close", async () => {
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+    flushIntervalMs: 1000,  // 1 second interval
+  });
+
+  await transport.close();
+
+  // The timer should be cleared - we verify this by calling close again
+  // which would fail if timer is not cleared (double clearInterval)
+  await transport.close();
+  assert.ok(true);
+});

@@ -5,7 +5,7 @@
       "cron": "*/20 * * * *",
       "prompt": "提交代码，不同步github",
       "createdAt": 1776910383855,
-      "lastFiredAt": 1776942315789,
+      "lastFiredAt": 1776943514901,
       "recurring": true
     }
   ]

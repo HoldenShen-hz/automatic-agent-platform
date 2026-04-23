@@ -544,7 +544,7 @@ test("PluginSpiRegistry runs builtin presenter plugins in a forked process runti
   });
 
   const record = registry.get("plugin.coding.presenter");
-  assert.equal(output.summary, "完成 1 个 coding 步骤：step_1");
+  assert.equal(output.summary, "Completed 1 coding step(s): step_1");
   assert.ok(record?.runtimeProcessId);
   assert.notEqual(record?.runtimeProcessId, process.pid);
   assert.equal(record?.manifest.sandbox.runtimeIsolation, "forked_process");

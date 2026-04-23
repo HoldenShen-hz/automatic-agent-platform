@@ -220,7 +220,11 @@ test("OperatorConsoleBackendService validates task id required", () => {
         operator,
         reasonCode: "test",
       }),
-    /console\.task_id_required/,
+    (error) =>
+      error instanceof Error
+      && "code" in error
+      && error.code === "console.task_id_required"
+      && error.message === "Operator action requires a task id.",
   );
 });
 
@@ -237,7 +241,11 @@ test("OperatorConsoleBackendService validates reason required", () => {
         operator,
         reasonCode: "",
       }),
-    /console\.reason_required/,
+    (error) =>
+      error instanceof Error
+      && "code" in error
+      && error.code === "console.reason_required"
+      && error.message === "Operator action requires a reason code.",
   );
 });
 
@@ -250,7 +258,11 @@ test("OperatorConsoleBackendService validates operator id required", () => {
         operatorId: "",
         roles: ["viewer"],
       }),
-    /console\.operator_id_required/,
+    (error) =>
+      error instanceof Error
+      && "code" in error
+      && error.code === "console.operator_id_required"
+      && error.message === "Operator id is required.",
   );
 });
 

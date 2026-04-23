@@ -41,7 +41,7 @@ test("formatOutput with no machine outputs returns no coding output message", as
     audience: "end_user",
   });
 
-  assert.equal(result.summary, "未产生 coding 输出");
+  assert.equal(result.summary, "No coding output produced");
   assert.deepEqual(result.sections, []);
   assert.deepEqual(result.citations, []);
 });
@@ -60,7 +60,7 @@ test("formatOutput with no artifacts returns no artifacts section", async () => 
     audience: "developer",
   });
 
-  assert.ok(result.summary.includes("完成 1 个 coding 步骤"));
+  assert.ok(result.summary.includes("Completed 1 coding step(s)"));
   assert.ok(result.summary.includes("step_1"));
   assert.ok(result.sections.some((s: string) => s.includes("step_1")));
 });

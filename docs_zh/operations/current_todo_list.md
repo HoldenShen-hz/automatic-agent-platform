@@ -162,6 +162,7 @@
 - `npm test` 已通过，coverage gate 已通过。
 - 当前 coverage report 为 `Global lines: 87.8%`，已满足现有 baseline gate。
 - `R0-R6` 在仓内边界内无剩余测试阻塞。
+- `review` 旧版重复缺口文本已被 authoritative 收口版本替换，不再与 `todo / coverage-matrix` 冲突。
 
 当前仅保留仓外或非本轮阻断项：
 

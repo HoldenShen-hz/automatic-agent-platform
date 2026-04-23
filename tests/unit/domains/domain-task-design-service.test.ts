@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { DomainTaskDesignService } from "../../../src/domains/domain-task-design-service.js";
 
-test("DomainTaskDesignService assembles recipe, prompt, risk, evaluation, and interaction decisions", () => {
-  const service = new DomainTaskDesignService({
+function createDefaultOptions() {
+  return {
     recipes: [
       {
         recipeId: "recipe_release",
@@ -64,7 +64,11 @@ test("DomainTaskDesignService assembles recipe, prompt, risk, evaluation, and in
         compensationRequired: true,
       },
     ],
-  });
+  };
+}
+
+test("DomainTaskDesignService assembles recipe, prompt, risk, evaluation, and interaction decisions", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
 
   const design = service.design({
     domainId: "coding",
@@ -83,4 +87,270 @@ test("DomainTaskDesignService assembles recipe, prompt, risk, evaluation, and in
   assert.deepEqual(design.blockingEvaluatorIds, ["tests_pass"]);
   assert.deepEqual(design.knowledgeNamespaces, ["repo", "runbook", "change_log"]);
   assert.equal(design.interactionMode, "approval_required");
+});
+
+test("DomainTaskDesignService returns null workflow and prompt when no match", () => {
+  const options = createDefaultOptions();
+  options.recipes = [];
+  options.promptLibrary.prompts = [];
+
+  const service = new DomainTaskDesignService(options);
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "unknown_prompt",
+    riskScore: 10,
+  });
+
+  assert.equal(design.workflowId, null);
+  assert.equal(design.prompt, null);
+});
+
+test("DomainTaskDesignService computes low risk for low score", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+  });
+
+  assert.equal(design.riskLevel, "low");
+});
+
+test("DomainTaskDesignService computes medium risk for medium score", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 50,
+  });
+
+  assert.equal(design.riskLevel, "medium");
+});
+
+test("DomainTaskDesignService computes high risk for high score", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 70,
+  });
+
+  assert.equal(design.riskLevel, "high");
+});
+
+test("DomainTaskDesignService returns same_domain for same domain interaction", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    targetDomainId: "coding",
+  });
+
+  assert.equal(design.interactionMode, "same_domain");
+});
+
+test("DomainTaskDesignService returns allow for cross-domain when rule allows", () => {
+  const options = createDefaultOptions();
+  options.interactionRules = [
+    {
+      sourceDomainId: "coding",
+      targetDomainId: "data-engineering",
+      mode: "allow",
+      maxConcurrentWorkflows: 5,
+      compensationRequired: false,
+    },
+  ];
+
+  const service = new DomainTaskDesignService(options);
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    targetDomainId: "data-engineering",
+  });
+
+  assert.equal(design.interactionMode, "allow");
+});
+
+test("DomainTaskDesignService returns deny when no matching rule", () => {
+  const options = createDefaultOptions();
+  options.interactionRules = [
+    {
+      sourceDomainId: "coding",
+      targetDomainId: "security",
+      mode: "deny",
+      maxConcurrentWorkflows: 1,
+      compensationRequired: false,
+    },
+  ];
+
+  const service = new DomainTaskDesignService(options);
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    targetDomainId: "operations", // no rule for coding -> operations
+  });
+
+  assert.equal(design.interactionMode, "deny");
+});
+
+test("DomainTaskDesignService sets reviewRequired for high risk", () => {
+  const options = createDefaultOptions();
+  options.riskProfile = {
+    profileId: "risk_coding",
+    domainId: "coding",
+    defaultRiskLevel: "medium",
+    dimensions: [],
+  };
+
+  const service = new DomainTaskDesignService(options);
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 70,
+  });
+
+  assert.equal(design.reviewRequired, true);
+});
+
+test("DomainTaskDesignService sets reviewRequired for critical risk", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 90,
+  });
+
+  assert.equal(design.reviewRequired, true);
+});
+
+test("DomainTaskDesignService sets reviewRequired for approval_required interaction mode", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    targetDomainId: "operations", // has approval_required rule
+  });
+
+  assert.equal(design.reviewRequired, true);
+});
+
+test("DomainTaskDesignService does not require review for low risk same domain", () => {
+  const options = createDefaultOptions();
+  options.interactionRules = [];
+  options.evalFramework.evaluators = [];
+
+  const service = new DomainTaskDesignService(options);
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    targetDomainId: null,
+  });
+
+  assert.equal(design.reviewRequired, false);
+});
+
+test("DomainTaskDesignService handles no interaction rules", () => {
+  const options = createDefaultOptions();
+  options.interactionRules = [];
+
+  const service = new DomainTaskDesignService(options);
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    targetDomainId: "operations",
+  });
+
+  assert.equal(design.interactionMode, "deny"); // defaults to deny when no rule
+});
+
+test("DomainTaskDesignService includes decision summary", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+  });
+
+  assert.ok(design.decisionSummary.length > 0);
+  assert.ok(design.decisionSummary.some((s) => s.startsWith("risk=")));
+  assert.ok(design.decisionSummary.some((s) => s.startsWith("workflow=")));
+  assert.ok(design.decisionSummary.some((s) => s.startsWith("prompt=")));
+  assert.ok(design.decisionSummary.some((s) => s.startsWith("interaction=")));
+});
+
+test("DomainTaskDesignService merges additional namespace ids", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    additionalNamespaceIds: ["extra_ns_1", "extra_ns_2"],
+  });
+
+  assert.ok(design.knowledgeNamespaces.includes("extra_ns_1"));
+  assert.ok(design.knowledgeNamespaces.includes("extra_ns_2"));
+});
+
+test("DomainTaskDesignService dedupes knowledge namespaces", () => {
+  const service = new DomainTaskDesignService(createDefaultOptions());
+
+  const design = service.design({
+    domainId: "coding",
+    taskType: "analyze",
+    userInput: "analyze this",
+    promptId: "prompt_release",
+    riskScore: 20,
+    additionalNamespaceIds: ["repo", "extra"],
+  });
+
+  const repoCount = design.knowledgeNamespaces.filter((ns) => ns === "repo").length;
+  assert.equal(repoCount, 1);
 });

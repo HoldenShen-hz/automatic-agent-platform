@@ -368,6 +368,38 @@ test("GET /v1/admin/inventories/benchmarks returns benchmark inventory", async (
   assert.equal(body.data[0]?.architectureSection != null, true);
 });
 
+test("GET /v1/admin/inventories/projections returns projection inventory", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/inventories/projections", ["v1", "admin", "inventories", "projections"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.length > 0, true);
+  assert.equal(body.data[0]?.projectionName != null, true);
+  assert.equal(body.data[0]?.consumerId != null, true);
+});
+
+test("GET /v1/admin/inventories/deployments returns deployment inventory", async () => {
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/inventories/deployments", ["v1", "admin", "inventories", "deployments"]));
+  if (!response) throw new Error("Handler returned null");
+  const body = JSON.parse(response.body) as { data: Array<Record<string, unknown>> };
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.data.length > 0, true);
+  assert.equal(body.data[0]?.deploymentId != null, true);
+  assert.equal(body.data[0]?.s4Mode, "contract_only");
+});
+
 test("GET /v1/admin/judges returns default judge registry descriptors", async () => {
   const routes = createAdminRoutes({
     authService: createMockAuthService(["admin"]),
