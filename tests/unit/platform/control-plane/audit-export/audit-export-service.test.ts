@@ -69,6 +69,14 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 recordedAt: args[8] as string,
               };
               integrityRecords.set(record.eventId, record);
+            } else if (sql.includes("INSERT INTO events")) {
+              const record: Record<string, unknown> = {
+                id: args[0],
+                event_type: args[1],
+                event_tier: args[2],
+                created_at: args[3],
+              };
+              events.set(args[0] as string, record);
             }
           },
           get: (...args: unknown[]) => {
@@ -466,14 +474,7 @@ test("summarizeWindow correctly counts events by tier", () => {
     { id: "evt-4", event_type: "task:failed", event_tier: "tier_3", created_at: "2026-04-25T00:00:00.000Z" },
   ]);
 
-  // Debug: check what's in events
-  const eventsMap = (db as any)._events;
-  console.log("DEBUG events size:", eventsMap?.size);
-  console.log("DEBUG events:", Array.from(eventsMap?.values() ?? []));
-
   const summary = service.summarizeWindow("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
-
-  console.log("DEBUG summary:", summary);
 
   assert.equal(summary.totalEvents, 4);
   assert.equal(summary.tier1Count, 2);

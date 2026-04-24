@@ -10,7 +10,14 @@ import type { ExecutionTicketRecord, WorkerSnapshotRecord } from "../../../../..
 // Mock factories
 // ---------------------------------------------------------------------------
 
-function createMockStore(): AuthoritativeTaskStore {
+function createMockStore(overrides: Partial<{
+  getLatestExecutionLease: (execId: string) => unknown;
+  getActiveExecutionLease: (execId: string) => unknown;
+  getExecutionTicket: (ticketId: string) => unknown;
+  getWorkerSnapshot: (workerId: string) => unknown;
+  getAgentExecutionRecord: (execId: string) => unknown;
+  dispatchGetExecution: (execId: string) => unknown;
+}> = {}): AuthoritativeTaskStore {
   return {
     operations: {
       loadExecutionAuthoritativeView: () => null,
@@ -35,12 +42,12 @@ function createMockStore(): AuthoritativeTaskStore {
       insertExecutionTicket: () => {},
       listDispatchableExecutionTickets: () => [],
       claimExecutionTicket: () => {},
-      getExecutionTicket: () => null,
+      getExecutionTicket: overrides.getExecutionTicket ?? (() => null),
       consumeExecutionTicket: () => {},
-      getAgentExecutionRecord: () => null,
+      getAgentExecutionRecord: overrides.getAgentExecutionRecord ?? (() => null),
       upsertAgentExecutionRecord: () => {},
-      getActiveExecutionLease: () => null,
-      getLatestExecutionLease: () => null,
+      getActiveExecutionLease: overrides.getActiveExecutionLease ?? (() => null),
+      getLatestExecutionLease: overrides.getLatestExecutionLease ?? (() => null),
       getLatestFencingToken: () => 0,
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
@@ -48,7 +55,7 @@ function createMockStore(): AuthoritativeTaskStore {
       listExecutionTicketsByExecution: () => [],
       listWorkerSnapshots: () => [],
       upsertWorkerSnapshot: () => {},
-      getWorkerSnapshot: () => null,
+      getWorkerSnapshot: overrides.getWorkerSnapshot ?? (() => null),
       insertHeartbeatSnapshot: () => {},
       getExecutionLease: () => null,
       closeExecutionLease: () => {},
@@ -56,7 +63,7 @@ function createMockStore(): AuthoritativeTaskStore {
       listStaleWorkerSnapshots: () => [],
     },
     dispatch: {
-      getExecution: () => null,
+      getExecution: overrides.dispatchGetExecution ?? (() => null),
     },
     workflow: {
       getWorkflowState: () => null,
