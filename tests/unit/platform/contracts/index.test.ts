@@ -22,6 +22,26 @@ test("contracts barrel loads without errors", async () => {
   assert.ok(mod !== undefined);
 });
 
+test("contracts barrel re-exports namespaced core contract modules", async () => {
+  const mod = await import("../../../../src/platform/contracts/index.js");
+
+  assert.equal(typeof mod.requestEnvelopeContract.createRequestEnvelope, "function");
+  assert.equal(typeof mod.controlDirectiveContract.createControlDirective, "function");
+  assert.equal(typeof mod.executionPlanContract.createExecutionPlan, "function");
+  assert.equal(typeof mod.executionReceiptContract.createExecutionReceipt, "function");
+  assert.equal(typeof mod.stateCommandContract.createStateCommand, "function");
+});
+
+test("contracts barrel exposes aliased core contract factories without colliding with platform-contracts", async () => {
+  const mod = await import("../../../../src/platform/contracts/index.js");
+
+  assert.equal(typeof mod.createPlaneRequestEnvelope, "function");
+  assert.equal(typeof mod.createPlaneControlDirective, "function");
+  assert.equal(typeof mod.createPlaneExecutionPlan, "function");
+  assert.equal(typeof mod.createPlaneExecutionReceipt, "function");
+  assert.equal(typeof mod.createPlaneStateCommand, "function");
+});
+
 test("contracts barrel exports constants module", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
   // Time constants should be available from constants sub-module

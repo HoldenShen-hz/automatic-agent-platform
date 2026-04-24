@@ -14,30 +14,35 @@ import {
 } from "../../../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
 import type { DetectedIntent, ExtractedEntity } from "../../../../../src/interaction/nl-gateway/index.js";
 
-import { DEFAULT_DISAMBIGUATION_CONFIG } from "../../../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
+// Local constant matching the expected default config values from the source
+const DEFAULT_DISAMBIGUATION_CONFIG = {
+  threshold: 0.7,
+  lowConfidenceThreshold: 0.5,
+  maxClarificationQuestions: 3,
+  enableProactiveClarification: true,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Test Data Factory
 // ---------------------------------------------------------------------------
 
 function makeIntent(overrides: Partial<DetectedIntent> = {}): DetectedIntent {
-  // @ts-expect-error - Test helper adding extra properties
   return {
     intentType: "task_query",
     confidence: 0.8,
     entities: [],
-    // @ts-expect-error - Test helper adding extra properties
+    // @ts-expect-error - reasoning not in DetectedIntent but used in tests
     reasoning: "test",
     ...overrides,
   };
 }
 
 function makeEntity(overrides: Partial<ExtractedEntity> = {}): ExtractedEntity {
-  // @ts-expect-error - Test helper adding extra properties
+  // @ts-expect-error - confidence not in ExtractedEntity but used in tests
   return {
     entityType: "general",
     value: "test",
-    // @ts-expect-error - Test helper adding extra properties
+    // @ts-expect-error - confidence not in ExtractedEntity but used in tests
     confidence: 0.9,
     ...overrides,
   };

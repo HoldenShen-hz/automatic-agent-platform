@@ -10,8 +10,19 @@ test("SchemaInventoryService exposes authoritative logical table inventory", () 
 
   assert.equal(summary.totalTables, 86);
   assert.equal(tables.length, 86);
-  assert.ok(tables.some((table) => table.tableName === "tasks" && table.category === "core_truth"));
-  assert.ok(tables.some((table) => table.tableName === "outbox" && table.category === "reliability_extension"));
-  assert.ok(tables.some((table) => table.tableName === "eval_runs" && table.category === "governance_extension"));
-  assert.ok(tables.some((table) => table.tableName === "deployment_bindings" && table.category === "runtime_extension"));
+  assert.ok(tables.some((table) => table.tableName === "tasks" && table.category === "core_truth" && table.documentedGroup === "workflow_execution"));
+  assert.ok(tables.some((table) => table.tableName === "outbox" && table.category === "reliability_extension" && table.documentedGroup === "workflow_execution"));
+  assert.ok(tables.some((table) => table.tableName === "eval_runs" && table.category === "governance_extension" && table.documentedGroup === "ai_operations"));
+  assert.ok(tables.some((table) => table.tableName === "deployment_bindings" && table.category === "runtime_extension" && table.documentedGroup === "domain_organization"));
+  assert.ok(tables.some((table) => table.tableName === "artifacts" && table.documentedGroup === "knowledge_artifact"));
+  assert.ok(tables.some((table) => table.tableName === "approvals" && table.documentedGroup === "decision_policy"));
+  assert.ok(tables.some((table) => table.tableName === "enterprise_governance_reports" && table.documentedGroup === "ops_governance"));
+  assert.ok(tables.some((table) => table.tableName === "release_bundles" && table.documentedGroup === "maturity_lifecycle"));
+  assert.equal(summary.byDocumentedGroup.workflow_execution > 0, true);
+  assert.equal(summary.byDocumentedGroup.decision_policy > 0, true);
+  assert.equal(summary.byDocumentedGroup.knowledge_artifact > 0, true);
+  assert.equal(summary.byDocumentedGroup.ops_governance > 0, true);
+  assert.equal(summary.byDocumentedGroup.ai_operations > 0, true);
+  assert.equal(summary.byDocumentedGroup.domain_organization > 0, true);
+  assert.equal(summary.byDocumentedGroup.maturity_lifecycle > 0, true);
 });

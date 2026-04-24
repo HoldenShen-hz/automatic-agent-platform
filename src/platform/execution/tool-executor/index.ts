@@ -18,6 +18,7 @@ export * from "./tool-argument-coercion.js";
 export * from "./tool-call-result.js";
 export * from "./tool-contract-validator.js";
 export * from "./tool-execution-access.js";
+export * from "./tool-executor.js";
 export * from "./tool-metadata.js";
 export * from "./tool-output-sanitizer.js";
 export * from "./tool-parallel-executor.js";

@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { UnifiedChatProvider } from "../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+import { UnifiedChatProvider, type ChatCompletionResult } from "../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 
 test("UnifiedChatProvider: initializes with single provider", () => {
   const provider = new UnifiedChatProvider({
@@ -126,7 +126,7 @@ test("UnifiedChatProvider: streamChat compatibility wrapper delegates to streami
 
   await provider.streamChat(
     { model: "gpt-5.2", messages: [{ role: "user", content: "hello" }], maxTokens: 16 },
-    (chunk) => {
+    (chunk: ChatCompletionResult) => {
       observedChunk = chunk.content;
     },
   );

@@ -26,12 +26,13 @@
 
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
-import { dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
 import { getActiveTelemetryContext } from "./otel-tracer.js";
 
 export type StructuredPlane = "P1" | "P2" | "P3" | "P4" | "P5" | "X1";
+export type StructuredLogLevel = "debug" | "info" | "warn" | "error" | "fatal";
 
 /**
  * Structured log entry with level, message, optional correlation IDs
@@ -39,8 +40,9 @@ export type StructuredPlane = "P1" | "P2" | "P3" | "P4" | "P5" | "X1";
  * and ISO timestamp.
  */
 export interface StructuredLogEntry {
-  level: "debug" | "info" | "warn" | "error";
+  level: StructuredLogLevel;
   message: string;
+  service: string;
   plane?: StructuredPlane;
   taskId?: string;
   agentId?: string;
@@ -51,7 +53,9 @@ export interface StructuredLogEntry {
   parentSpanId?: string;
   correlationId?: string;
   data?: Record<string, unknown>;
+  structuredPayload?: Record<string, unknown>;
   createdAt: string;
+  timestamp: string;
 }
 
 export interface StructuredLoggerBufferSummary {
@@ -76,7 +80,14 @@ export interface StructuredLoggerOptions {
   retentionLimit?: number;
   plane?: StructuredPlane;
   planeSourceFile?: string;
+  service?: string;
 }
+
+type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "service" | "structuredPayload"> & {
+  service?: string;
+  timestamp?: string;
+  structuredPayload?: Record<string, unknown>;
+};
 
 /**
  * Validates and sanitizes a file path to prevent path traversal attacks.
@@ -127,6 +138,7 @@ export class StructuredLogger {
   private readonly buffer: (StructuredLogEntry | undefined)[];
   private readonly retentionLimit: number;
   private readonly plane: StructuredPlane;
+  private readonly service: string;
   private head: number = 0;
   private count: number = 0;
   private droppedEntryCount: number = 0;
@@ -221,6 +233,7 @@ export class StructuredLogger {
   public constructor(options: StructuredLoggerOptions = {}) {
     this.retentionLimit = Math.max(1, Math.trunc(options.retentionLimit ?? 500));
     this.plane = options.plane ?? inferStructuredPlane(options.planeSourceFile);
+    this.service = normalizeStructuredService(options.service ?? options.planeSourceFile);
     // Pre-allocate buffer for O(1) insertion
     this.buffer = new Array(this.retentionLimit);
   }
@@ -231,7 +244,7 @@ export class StructuredLogger {
    * @param entry - Log entry without timestamp (timestamp is auto-generated)
    * @returns The complete log entry with createdAt timestamp
    */
-  public log(entry: Omit<StructuredLogEntry, "createdAt">): StructuredLogEntry {
+  public log(entry: StructuredLogInput): StructuredLogEntry {
     const activeTelemetryContext = getActiveTelemetryContext();
     const traceId = entry.traceId ?? activeTelemetryContext?.traceId;
     const spanId = entry.spanId ?? activeTelemetryContext?.spanId;
@@ -239,14 +252,20 @@ export class StructuredLogger {
     const parentSpanId = (entry.parentSpanId ?? activeTelemetryContext?.parentSpanId) ?? undefined;
     const correlationId = entry.correlationId ?? entry.traceId ?? activeTelemetryContext?.traceId;
 
+    const timestamp = entry.timestamp ?? new Date().toISOString();
+    const data = entry.data ?? entry.structuredPayload;
+
     const record: StructuredLogEntry = {
       ...entry,
+      service: entry.service ?? this.service,
       plane: entry.plane ?? this.plane,
       ...(traceId !== undefined ? { traceId } : {}),
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
       ...(correlationId !== undefined && correlationId !== null ? { correlationId } : {}),
-      createdAt: new Date().toISOString(),
+      ...(data !== undefined ? { data, structuredPayload: data } : {}),
+      createdAt: timestamp,
+      timestamp,
     };
 
     // If buffer is full, track overflow
@@ -281,6 +300,10 @@ export class StructuredLogger {
 
   public error(message: string, data?: Record<string, unknown>): StructuredLogEntry {
     return this.log({ level: "error", message, ...(data ? { data } : {}) });
+  }
+
+  public fatal(message: string, data?: Record<string, unknown>): StructuredLogEntry {
+    return this.log({ level: "fatal", message, ...(data ? { data } : {}) });
   }
 
   /**
@@ -446,6 +469,20 @@ export class StructuredLogger {
       this.rotationScheduled = false;
     }
   }
+}
+
+function normalizeStructuredService(value: string | undefined): string {
+  if (value == null) {
+    return "unknown_service";
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return "unknown_service";
+  }
+  const candidate = trimmed.includes("/") || trimmed.includes("\\")
+    ? basename(trimmed).replace(/\.[cm]?[jt]sx?$/i, "")
+    : trimmed;
+  return candidate.length > 0 ? candidate : "unknown_service";
 }
 
 function inferStructuredPlane(explicitSourceFile?: string): StructuredPlane {

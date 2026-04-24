@@ -290,6 +290,10 @@ export class UnifiedChatProvider {
     return result;
   }
 
+  public async chat(request: ChatCompletionRequest): Promise<ChatCompletionResult> {
+    return this.createChatCompletion(request);
+  }
+
   public async createStreamingChatCompletion(
     request: ChatCompletionRequest,
     onChunk: (chunk: ChatCompletionResult, isFinal: boolean) => void,
@@ -329,6 +333,13 @@ export class UnifiedChatProvider {
         return;
       }
     }
+  }
+
+  public async streamChat(
+    request: ChatCompletionRequest,
+    onChunk: (chunk: ChatCompletionResult, isFinal: boolean) => void,
+  ): Promise<void> {
+    await this.createStreamingChatCompletion(request, onChunk);
   }
 
   public async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {

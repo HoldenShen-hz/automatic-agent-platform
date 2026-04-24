@@ -6,7 +6,7 @@ import { ToolExecutor } from "../../../../../src/platform/execution/tool-executo
 test("ToolExecutor delegates command execution to the command executor", async () => {
   let observedCommand = "";
   const executor = new ToolExecutor({
-    execute: async (request) => {
+    execute: async (request: { command: string; toolName: string }) => {
       observedCommand = request.command;
       return {
         callId: "call-1",

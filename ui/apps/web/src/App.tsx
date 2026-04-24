@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, NavLink, Route, Routes } from "react-router-dom";
 import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
@@ -92,7 +92,23 @@ function AppShell(): ReactElement {
   );
 }
 
-export function App({ client, wsClient }: { client?: RESTClient; wsClient?: WSClient } = {}): ReactElement {
+export interface AppProps {
+  readonly client?: RESTClient;
+  readonly wsClient?: WSClient;
+  readonly router?: "browser" | "memory";
+  readonly initialEntries?: readonly string[];
+}
+
+function AppRouter(
+  { children, initialEntries, router }: { children: ReactElement; initialEntries?: readonly string[]; router: "browser" | "memory" },
+): ReactElement {
+  if (router === "memory") {
+    return <MemoryRouter initialEntries={initialEntries ?? ["/"]}>{children}</MemoryRouter>;
+  }
+  return <BrowserRouter>{children}</BrowserRouter>;
+}
+
+export function App({ client, wsClient, router = "browser", initialEntries }: AppProps = {}): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(wsClient == null ? {} : { wsClient }),
@@ -100,9 +116,9 @@ export function App({ client, wsClient }: { client?: RESTClient; wsClient?: WSCl
 
   return (
     <UiRuntimeProvider {...runtimeProps}>
-      <BrowserRouter>
+      <AppRouter initialEntries={initialEntries} router={router}>
         <AppShell />
-      </BrowserRouter>
+      </AppRouter>
     </UiRuntimeProvider>
   );
 }

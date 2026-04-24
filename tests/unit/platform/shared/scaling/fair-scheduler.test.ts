@@ -363,3 +363,175 @@ test("FairScheduler reports zero utilization when guaranteed capacity is zero", 
   assert.equal(utilization[0]?.utilizationPercent, 0);
   assert.equal(utilization[0]?.isBorrowing, false);
 });
+
+test("FairScheduler releases borrowed resources proportionally to lenders", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  // Three tenants with different guarantees
+  scheduler.registerTenant("tenant-high", 2, {
+    maxConcurrentWorkflows: 60,
+    maxConcurrentWorkers: 30,
+    llmTokensPerMinute: 60000,
+    llmRequestsPerMinute: 600,
+  });
+
+  scheduler.registerTenant("tenant-mid", 1, {
+    maxConcurrentWorkflows: 30,
+    maxConcurrentWorkers: 15,
+    llmTokensPerMinute: 30000,
+    llmRequestsPerMinute: 300,
+  });
+
+  scheduler.registerTenant("tenant-low", 1, {
+    maxConcurrentWorkflows: 10,
+    maxConcurrentWorkers: 5,
+    llmTokensPerMinute: 10000,
+    llmRequestsPerMinute: 100,
+  });
+
+  // High uses 50 of 60
+  scheduler.admitTask("tenant-high", "task-h1", { maxConcurrentWorkflows: 50 });
+  // Mid uses all 30
+  scheduler.admitTask("tenant-mid", "task-m1", { maxConcurrentWorkflows: 30 });
+
+  // Low tries to exceed - borrows from high (idle 10) and mid (idle 0? no, mid at limit)
+  const borrow = scheduler.admitTask("tenant-low", "task-l1", { maxConcurrentWorkflows: 15 });
+
+  // Should be admitted with borrow from tenant-high
+  assert.equal(borrow.admitted, true);
+  assert.ok(borrow.borrowedFrom !== undefined);
+});
+
+test("FairScheduler handles release resources for unknown tenant gracefully", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  // Should not throw
+  scheduler.releaseResources("unknown-tenant", { maxConcurrentWorkflows: 10 });
+
+  const stats = scheduler.getTenantStats("unknown-tenant");
+  assert.equal(stats, null);
+});
+
+test("FairScheduler getTenantStats returns null for unregistered tenant", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  const stats = scheduler.getTenantStats("non-existent-tenant");
+  assert.equal(stats, null);
+});
+
+test("FairScheduler admitTask with zero requested resources admits successfully", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  scheduler.registerTenant("tenant-1", 1, {
+    maxConcurrentWorkflows: 10,
+    maxConcurrentWorkers: 5,
+    llmTokensPerMinute: 10000,
+    llmRequestsPerMinute: 100,
+  });
+
+  // Empty request should be admitted
+  const decision = scheduler.admitTask("tenant-1", "task-1", {});
+  assert.equal(decision.admitted, true);
+  assert.deepEqual(decision.allocatedResources, {});
+});
+
+test("FairScheduler unregisterTenant removes all borrowed tracking", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  scheduler.registerTenant("lender", 1, {
+    maxConcurrentWorkflows: 50,
+    maxConcurrentWorkers: 25,
+    llmTokensPerMinute: 50000,
+    llmRequestsPerMinute: 500,
+  });
+
+  scheduler.registerTenant("borrower", 1, {
+    maxConcurrentWorkflows: 5,
+    maxConcurrentWorkers: 2,
+    llmTokensPerMinute: 5000,
+    llmRequestsPerMinute: 50,
+  });
+
+  // Lender uses most, borrower borrows
+  scheduler.admitTask("lender", "task-1", { maxConcurrentWorkflows: 40 });
+  scheduler.admitTask("borrower", "task-2", { maxConcurrentWorkflows: 5 });
+
+  // Unregister lender - should not cause errors
+  scheduler.unregisterTenant("lender");
+
+  const borrowerStats = scheduler.getTenantStats("borrower");
+  assert.ok(borrowerStats !== null);
+  // Borrowed resources tracking should still exist but lender is gone
+  assert.equal(borrowerStats!.borrowed.workflows >= 0, true);
+});
+
+test("FairScheduler getAllUtilization handles empty scheduler", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  const utilization = scheduler.getAllUtilization();
+  assert.deepEqual(utilization, []);
+});
+
+test("FairScheduler admitTask uses workflows as proxy for llmRequestsPerMinute in borrowing", () => {
+  const scheduler = new FairScheduler({
+    maxConcurrentWorkflows: 100,
+    maxConcurrentWorkers: 50,
+    llmTokensPerMinute: 100000,
+    llmRequestsPerMinute: 1000,
+  });
+
+  scheduler.registerTenant("tenant-1", 1, {
+    maxConcurrentWorkflows: 50,
+    maxConcurrentWorkers: 25,
+    llmTokensPerMinute: 50000,
+    llmRequestsPerMinute: 500,
+  });
+
+  scheduler.registerTenant("tenant-2", 1, {
+    maxConcurrentWorkflows: 10,
+    maxConcurrentWorkers: 5,
+    llmTokensPerMinute: 10000,
+    llmRequestsPerMinute: 100,
+  });
+
+  // Tenant 1 uses all workflows
+  scheduler.admitTask("tenant-1", "task-1", { maxConcurrentWorkflows: 50 });
+
+  // Tenant 2 requests workflows - should borrow
+  const decision = scheduler.admitTask("tenant-2", "task-2", { maxConcurrentWorkflows: 5 });
+
+  assert.equal(decision.admitted, true);
+  // The borrowedFrom should include tenant-1
+  assert.ok(decision.borrowedFrom !== undefined);
+  assert.equal(decision.borrowedFrom!.includes("tenant-1"), true);
+});

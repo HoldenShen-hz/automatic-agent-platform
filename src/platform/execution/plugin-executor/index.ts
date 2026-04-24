@@ -112,3 +112,28 @@ export {
   type BrowserScrollOptions,
   type BrowserExecutorOptions,
 } from "./browser-executor.js";
+
+export {
+  HumanWaitExecutor,
+  type HumanWaitExecutionContext,
+  type HumanWaitExecutionResult,
+  type HumanWaitExecutorOptions,
+  type HumanWaitRequest,
+  type HumanWaitResolution,
+  type HumanWaitStatus,
+  type HumanWaitTimeoutPolicy,
+} from "./human-wait-executor.js";
+
+export {
+  SubWorkflowExecutor,
+  createSubWorkflowExecutor,
+  type RollbackPolicy,
+  type SubWorkflowContext,
+  type SubWorkflowDefinition,
+  type SubWorkflowExecutionResult,
+  type SubWorkflowExecutorOptions,
+  type WorkflowStatus,
+  type WorkflowStep,
+  type WorkflowStepDefinition,
+  type WorkflowStepStatus,
+} from "./sub-workflow-executor.js";

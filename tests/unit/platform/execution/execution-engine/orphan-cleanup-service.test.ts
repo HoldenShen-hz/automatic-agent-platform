@@ -72,6 +72,41 @@ interface MockActiveLease {
   workerId: string;
 }
 
+function createMockWorkerSnapshot(overrides: Partial<MockWorkerSnapshot> = {}): MockWorkerSnapshot {
+  return {
+    workerId: "worker-default",
+    runningExecutionsJson: "[]",
+    status: "idle",
+    placement: "local",
+    isolationLevel: "standard",
+    repoVersion: null,
+    remoteSessionStatus: null,
+    lastAcknowledgedStreamOffset: null,
+    streamResumeSuccessRate: null,
+    credentialRefreshSuccessRate: null,
+    sessionConsistencyCheckStatus: null,
+    sessionConsistencyCheckedAt: null,
+    saturation: null,
+    activeLeaseCount: null,
+    meanStartupLatencyMs: null,
+    sandboxSuccessRate: null,
+    repoCacheHitRate: null,
+    registrationVerifiedAt: null,
+    registrationChallengeId: null,
+    capabilitiesJson: "[]",
+    maxConcurrency: null,
+    queueAffinity: null,
+    runtimeInstanceId: null,
+    restartedFromRuntimeInstanceId: null,
+    cpuPct: null,
+    memoryMb: null,
+    toolBacklogCount: null,
+    currentStepId: null,
+    lastProgressAt: null,
+    ...overrides,
+  };
+}
+
 function createMockStore(overrides: {
   orphanSessions?: MockOrphanSession[];
   dispatchReconciliationIssues?: MockTicket[];
@@ -92,11 +127,14 @@ function createMockStore(overrides: {
       listOrphanSessions: () => orphanSessions,
     },
     worker: {
+      listExecutionTicketsByStatuses: (statuses: string[]) =>
+        dispatchReconciliationIssues.filter(t => statuses.includes(t.status)),
       listWorkerSnapshots: () => workerSnapshots,
       getWorkerSnapshot: (workerId: string) =>
         workerSnapshots.find((w) => w.workerId === workerId) ?? null,
       getActiveExecutionLease: (executionId: string) =>
         activeLeases.get(executionId) ?? null,
+      recordHeartbeat: (_params: Record<string, unknown>) => {},
     },
     dispatch: {
       getExecution: (id: string) => executions.get(id) ?? null,

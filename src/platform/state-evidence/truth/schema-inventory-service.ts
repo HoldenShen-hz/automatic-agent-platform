@@ -31,9 +31,19 @@ export type SchemaInventoryCategory =
   | "governance_extension"
   | "reliability_extension";
 
+export type DocumentedSchemaInventoryGroup =
+  | "workflow_execution"
+  | "decision_policy"
+  | "knowledge_artifact"
+  | "ops_governance"
+  | "ai_operations"
+  | "domain_organization"
+  | "maturity_lifecycle";
+
 export interface SchemaInventoryRecord {
   readonly tableName: string;
   readonly category: SchemaInventoryCategory;
+  readonly documentedGroup: DocumentedSchemaInventoryGroup;
   readonly source: string;
 }
 
@@ -152,6 +162,59 @@ const SCHEMA_INVENTORY_SOURCES = [
 
 const CREATE_TABLE_PATTERN = /CREATE TABLE IF NOT EXISTS\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
 
+const DOCUMENTED_GROUP_PATTERNS: readonly Array<{
+  readonly group: DocumentedSchemaInventoryGroup;
+  readonly pattern: RegExp;
+}> = [
+  {
+    group: "workflow_execution",
+    pattern: /^(agent_execution_records|delegation_events|delegations|event_consumer_acks|events|execution_.*|executions|heartbeat_snapshots|lease_audits|messages|outbox|sessions|session_events|takeover_sessions|tasks|worker_snapshots|workflow_.*)$/,
+  },
+  {
+    group: "decision_policy",
+    pattern: /^(action_proposals|approvals|budget_alerts|entitlement_decisions|evolution_policies|evolution_proposals|governance_gate_events|governance_releases|operator_actions|quota_counters|skill_execution_policies)$/,
+  },
+  {
+    group: "knowledge_artifact",
+    pattern: /^(artifacts|experience_cache|intel_briefs|intel_items|marketplace_listings|memories|pack_.*|perception_sources|prompt_.*|tool_result_files)$/,
+  },
+  {
+    group: "ops_governance",
+    pattern: /^(coordinator_instance_snapshots|dead_letters|dlq_records|enterprise_governance_reports|event_dead_letters|file_locks|gateway_targets|incident_handoff_records|remote_log_entries|secret_leases)$/,
+  },
+  {
+    group: "ai_operations",
+    pattern: /^(analytics_facts|cost_.*|eval_.*|pmf_validation_reports|token_usage_daily|usage_events)$/,
+  },
+  {
+    group: "domain_organization",
+    pattern: /^(billing_accounts|billing_invoices|billing_payment_sessions|data_namespaces|deployment_bindings|organization_memberships|organizations|tenant_.*|tenants|workspace_memberships|workspaces)$/,
+  },
+  {
+    group: "maturity_lifecycle",
+    pattern: /^(archive_bundles|compaction_records|data_movement_jobs|deployment_execution_reports|environment_promotion_history|evolution_logs|release_.*|replay_datasets)$/,
+  },
+] as const;
+
+const DEFAULT_DOCUMENTED_GROUP_BY_CATEGORY: Readonly<Record<SchemaInventoryCategory, DocumentedSchemaInventoryGroup>> = {
+  core_truth: "workflow_execution",
+  runtime_extension: "maturity_lifecycle",
+  governance_extension: "decision_policy",
+  reliability_extension: "ops_governance",
+};
+
+function resolveDocumentedGroup(
+  tableName: string,
+  category: SchemaInventoryCategory,
+): DocumentedSchemaInventoryGroup {
+  for (const candidate of DOCUMENTED_GROUP_PATTERNS) {
+    if (candidate.pattern.test(tableName)) {
+      return candidate.group;
+    }
+  }
+  return DEFAULT_DOCUMENTED_GROUP_BY_CATEGORY[category];
+}
+
 export class SchemaInventoryService {
   public listTables(): SchemaInventoryRecord[] {
     const tables = new Map<string, SchemaInventoryRecord>();
@@ -164,6 +227,7 @@ export class SchemaInventoryService {
         tables.set(tableName, {
           tableName,
           category: source.category,
+          documentedGroup: resolveDocumentedGroup(tableName, source.category),
           source: source.source,
         });
       }
@@ -174,6 +238,7 @@ export class SchemaInventoryService {
   public buildSummary(): {
     totalTables: number;
     byCategory: Record<SchemaInventoryCategory, number>;
+    byDocumentedGroup: Record<DocumentedSchemaInventoryGroup, number>;
     sources: string[];
   } {
     const tables = this.listTables();
@@ -189,6 +254,21 @@ export class SchemaInventoryService {
           runtime_extension: 0,
           governance_extension: 0,
           reliability_extension: 0,
+        },
+      ),
+      byDocumentedGroup: tables.reduce<Record<DocumentedSchemaInventoryGroup, number>>(
+        (summary, table) => {
+          summary[table.documentedGroup] += 1;
+          return summary;
+        },
+        {
+          workflow_execution: 0,
+          decision_policy: 0,
+          knowledge_artifact: 0,
+          ops_governance: 0,
+          ai_operations: 0,
+          domain_organization: 0,
+          maturity_lifecycle: 0,
         },
       ),
       sources: [...new Set(tables.map((table) => table.source))],

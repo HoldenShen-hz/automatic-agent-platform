@@ -204,3 +204,29 @@ test("KnowledgeSnapshotStore generatedAt is in UTC", () => {
 
   assert.ok(saved.generatedAt.endsWith("Z"));
 });
+
+// =============================================================================
+// path scope validation edge cases
+// =============================================================================
+
+test("KnowledgeSnapshotStore rejects path traversal attempt with encoded dots", () => {
+  assert.throws(
+    () => new KnowledgeSnapshotStore({ snapshotPath: "/tmp/aa-sandbox/../etc/passwd" }),
+    /path_traversal_denied/,
+  );
+});
+
+test("KnowledgeSnapshotStore accepts path within sandbox subdirectory", () => {
+  const store = new KnowledgeSnapshotStore({
+    snapshotPath: "/tmp/aa-sandbox/subdir/nested/test.json",
+  });
+  assert.ok(store != null);
+});
+
+test("KnowledgeSnapshotStore rejects path with null bytes", () => {
+  assert.throws(
+    // @ts-expect-error testing invalid input
+    () => new KnowledgeSnapshotStore({ snapshotPath: "/tmp/aa-sandbox/\0invalid" }),
+    /path_traversal_denied/,
+  );
+});

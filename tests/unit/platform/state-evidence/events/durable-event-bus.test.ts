@@ -467,3 +467,366 @@ test("durable event bus dispose clears subscribers", async () => {
     cleanupPath(workspace);
   }
 });
+
+test("durable event bus publishBatch inserts multiple events in transaction", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch", executionId: "exec-batch", traceId: "trace-batch" });
+
+    const events = bus.publishBatch([
+      {
+        eventType: "task:status_changed",
+        taskId: "task-batch",
+        executionId: "exec-batch",
+        traceId: "trace-batch",
+        payload: { fromStatus: "queued", toStatus: "in_progress", sequence: 1 },
+      },
+      {
+        eventType: "task:status_changed",
+        taskId: "task-batch",
+        executionId: "exec-batch",
+        traceId: "trace-batch",
+        payload: { fromStatus: "in_progress", toStatus: "completed", sequence: 2 },
+      },
+      {
+        eventType: "task:status_changed",
+        taskId: "task-batch",
+        executionId: "exec-batch",
+        traceId: "trace-batch",
+        payload: { fromStatus: "completed", toStatus: "done", sequence: 3 },
+      },
+    ]);
+
+    assert.equal(events.length, 3);
+    assert.notEqual(events[0].id, events[1].id);
+    assert.notEqual(events[1].id, events[2].id);
+
+    const allEvents = store.listEventsForTask("task-batch");
+    assert.equal(allEvents.length, 3);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publishBatch validates all payloads before inserting", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-validate-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch-validate", executionId: "exec-batch-validate", traceId: "trace-batch-validate" });
+
+    // Second event has invalid payload (missing required fromStatus/toStatus)
+    assert.throws(
+      () =>
+        bus.publishBatch([
+          {
+            eventType: "task:status_changed",
+            taskId: "task-batch-validate",
+            executionId: "exec-batch-validate",
+            traceId: "trace-batch-validate",
+            payload: { fromStatus: "queued", toStatus: "in_progress" },
+          },
+          {
+            eventType: "task:status_changed",
+            taskId: "task-batch-validate",
+            executionId: "exec-batch-validate",
+            traceId: "trace-batch-validate",
+            payload: { invalid: "payload" },
+          },
+        ]),
+      /Invalid payload for event type/,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publishBatch rejects oversized payload", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-size-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch-size", executionId: "exec-batch-size", traceId: "trace-batch-size" });
+
+    assert.throws(
+      () =>
+        bus.publishBatch([
+          {
+            eventType: "task:status_changed",
+            taskId: "task-batch-size",
+            executionId: "exec-batch-size",
+            traceId: "trace-batch-size",
+            payload: {
+              fromStatus: "queued",
+              toStatus: "in_progress",
+              largeData: "x".repeat(1_100_000),
+            },
+          },
+        ]),
+      /event\.payload_too_large/,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publishBatch fanning out to subscribers", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-fanout-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch-fanout", executionId: "exec-batch-fanout", traceId: "trace-batch-fanout" });
+
+    const seen: string[] = [];
+    bus.subscribe("inspect_projection", async (event) => {
+      seen.push(event.id);
+    });
+
+    const events = bus.publishBatch([
+      {
+        eventType: "task:status_changed",
+        taskId: "task-batch-fanout",
+        executionId: "exec-batch-fanout",
+        traceId: "trace-batch-fanout",
+        payload: { fromStatus: "queued", toStatus: "in_progress" },
+      },
+      {
+        eventType: "task:status_changed",
+        taskId: "task-batch-fanout",
+        executionId: "exec-batch-fanout",
+        traceId: "trace-batch-fanout",
+        payload: { fromStatus: "in_progress", toStatus: "completed" },
+      },
+    ]);
+
+    // Wait for async fan-out delivery
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    assert.equal(seen.length, 2);
+    assert.ok(seen.includes(events[0].id));
+    assert.ok(seen.includes(events[1].id));
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publishBatch creates ack records for tier1 events", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-ack-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch-ack", executionId: "exec-batch-ack", traceId: "trace-batch-ack" });
+
+    bus.publishBatch([
+      {
+        eventType: "task:status_changed",
+        taskId: "task-batch-ack",
+        executionId: "exec-batch-ack",
+        traceId: "trace-batch-ack",
+        payload: { fromStatus: "queued", toStatus: "in_progress" },
+      },
+    ]);
+
+    const pending = bus.pendingForConsumer("task_projection");
+    assert.equal(pending.length, 1);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publishBatch dispose rejects new batch publish", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-dispose-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-batch-dispose", executionId: "exec-batch-dispose", traceId: "trace-batch-dispose" });
+
+    bus.dispose();
+
+    assert.throws(
+      () =>
+        bus.publishBatch([
+          {
+            eventType: "task:status_changed",
+            taskId: "task-batch-dispose",
+            executionId: "exec-batch-dispose",
+            traceId: "trace-batch-dispose",
+            payload: { fromStatus: "queued", toStatus: "in_progress" },
+          },
+        ]),
+      /event_bus\.disposed/,
+    );
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus multiple subscribers each receive events", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-multi-sub-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-multi-sub", executionId: "exec-multi-sub", traceId: "trace-multi-sub" });
+
+    const seen1: string[] = [];
+    const seen2: string[] = [];
+    bus.subscribe("subscriber_1", async (event) => {
+      seen1.push(event.eventType);
+    });
+    bus.subscribe("subscriber_2", async (event) => {
+      seen2.push(event.eventType);
+    });
+
+    bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-multi-sub",
+      executionId: "exec-multi-sub",
+      traceId: "trace-multi-sub",
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    assert.equal(seen1.length, 1);
+    assert.equal(seen2.length, 1);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus deliverPending returns count of delivered events", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-deliver-count-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-deliver-count", executionId: "exec-deliver-count", traceId: "trace-deliver-count" });
+
+    bus.subscribe("task_projection", async () => {});
+
+    bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-deliver-count",
+      executionId: "exec-deliver-count",
+      traceId: "trace-deliver-count",
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
+
+    const delivered = await bus.deliverPending("task_projection");
+    assert.equal(delivered, 1);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus pendingForConsumer returns empty for unknown consumer", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-pending-unknown-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+
+    const pending = bus.pendingForConsumer("unknown_consumer");
+    assert.equal(pending.length, 0);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus publish with traceContext injects trace fields into payload", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-trace-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-trace", executionId: "exec-trace", traceId: "trace-trace" });
+
+    bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-trace",
+      executionId: "exec-trace",
+      traceId: "trace-trace",
+      traceContext: {
+        traceId: "trace-trace",
+        spanId: "span-abc",
+        parentSpanId: "span-root",
+        correlationId: "corr-123",
+      },
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
+
+    const events = store.listEventsForTask("task-trace");
+    assert.equal(events.length, 1);
+    const payload = JSON.parse(events[0].payloadJson) as Record<string, unknown>;
+    assert.equal(payload.traceContext, undefined); // traceContext not included in payload itself
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("durable event bus empty batch returns empty array", async () => {
+  const workspace = createTempWorkspace("aa-event-bus-batch-empty-");
+
+  try {
+    const db = new SqliteDatabase(join(workspace, "events.db"));
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+
+    const events = bus.publishBatch([]);
+    assert.deepEqual(events, []);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

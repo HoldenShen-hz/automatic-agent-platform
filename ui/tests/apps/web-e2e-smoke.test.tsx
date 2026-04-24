@@ -1,16 +1,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { InMemoryWSClient } from "@aa/shared-api-client";
 import { App } from "../../apps/web/src/App";
 
 function renderAt(path: string) {
-  window.history.pushState({}, "", path);
-  return render(<App />);
+  return render(<App initialEntries={[path]} router="memory" wsClient={new InMemoryWSClient()} />);
 }
 
 describe("web app route smoke", () => {
   afterEach(() => {
     cleanup();
-    window.history.pushState({}, "", "/");
   });
 
   it("loads approval route and allows operator decisions from app shell", async () => {
