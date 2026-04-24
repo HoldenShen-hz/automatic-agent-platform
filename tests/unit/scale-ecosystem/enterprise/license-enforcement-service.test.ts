@@ -201,7 +201,7 @@ test("LicenseEnforcementService updateFeatureLimit works", () => {
   assert.equal(updated, true);
   const gate = service.getFeatureGate("audit_export");
   assert.equal(gate?.usageLimit, 5000);
-  assert.equal(gate?.usageWindowMs, 60000);
+  assert.equal(gate?.usageWindowMs, 60 * 60 * 1000);
 });
 
 test("LicenseEnforcementService getConfig returns config", () => {
