@@ -7,11 +7,19 @@ import {
   type CostEstimationConfig,
 } from "../../../../src/scale-ecosystem/billing/cost-estimation-service.js";
 
+type CostRow = { avg_cost: number | null; sample_count: number };
+type MockStatement = { get: (...args: unknown[]) => CostRow | null };
+type MockDb = {
+  connection: {
+    prepare: (sql: string) => MockStatement;
+  };
+};
+
 // Mock database
-function createMockDb() {
+function createMockDb(): MockDb {
   return {
     connection: {
-      prepare: () => ({
+      prepare: (_sql: string) => ({
         get: () => null,
       }),
     },

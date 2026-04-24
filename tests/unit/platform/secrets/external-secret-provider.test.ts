@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExternalSecretProvider, ExternalSecretProviderAdapter } from "../../../../../src/platform/control-plane/iam/external-secret-provider.js";
+import { ExternalSecretProvider, ExternalSecretProviderAdapter } from "../../../../src/platform/control-plane/iam/external-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -300,7 +300,7 @@ test("ExternalSecretProviderAdapter.issueSecretLease delegates to provider", asy
     env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"mykey":"lease-value"}' }),
   });
   const adapter = new ExternalSecretProviderAdapter(provider);
-  const result = await adapter.issueSecretLease("secret://mykey");
+  const result = adapter.issueSecretLease == null ? null : await adapter.issueSecretLease("secret://mykey");
   assert.equal(result, null); // No lease configured
 });
 

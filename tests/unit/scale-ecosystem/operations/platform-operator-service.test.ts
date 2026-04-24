@@ -7,20 +7,20 @@ import {
 } from "../../../../src/scale-ecosystem/operations/platform-operator-service.js";
 
 // Mock stores and db
-function createMockStore() {
+function createMockStore(): any {
   return {
     worker: {
       listWorkerSnapshots: () => [],
-      listExecutionTicketsByStatuses: () => () => [],
-      listExecutionLeasesByStatuses: () => () => [],
+      listExecutionTicketsByStatuses: () => [],
+      listExecutionLeasesByStatuses: () => [],
     },
     release: {
       listEnvironmentReadinessRecords: () => [],
     },
     organization: {
       listOrganizationRecords: () => [],
-      listWorkspaceRecords: () => () => [],
-      listTenantRecords: () => () => [],
+      listWorkspaceRecords: () => [],
+      listTenantRecords: () => [],
       listDeploymentBindings: () => [],
       listDataNamespaces: () => [],
     },
@@ -34,8 +34,12 @@ function createMockStore() {
   };
 }
 
-function createMockDb() {
+function createMockDb(): any {
   return {};
+}
+
+function createCountArray(count: number): unknown[] {
+  return Array.from({ length: count }, () => ({}));
 }
 
 test("PlatformOperatorService can be instantiated", () => {
@@ -47,12 +51,12 @@ test("PlatformOperatorService can be instantiated", () => {
 test("PlatformOperatorService buildReport returns valid report structure", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -77,12 +81,12 @@ test("PlatformOperatorService buildReport returns valid report structure", () =>
 test("PlatformOperatorService buildReport with custom target status", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -92,23 +96,23 @@ test("PlatformOperatorService buildReport with custom target status", () => {
     environment: "production",
     evidenceRootDir: "/tmp/evidence",
     packageOutputDir: "/tmp/output",
-    targetStatus: "stable",
+    targetStatus: "production_ready",
   };
 
   const report = service.buildReport(input);
 
-  assert.equal(report.targetStatus, "stable");
+  assert.equal(report.targetStatus, "production_ready");
 });
 
 test("PlatformOperatorService buildReport validates generatedAt", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -129,12 +133,12 @@ test("PlatformOperatorService buildReport validates generatedAt", () => {
 test("PlatformOperatorService buildReport throws on invalid generatedAt", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -158,12 +162,12 @@ test("PlatformOperatorService buildReport counts workers correctly", () => {
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
     { workerId: "w2", status: "degraded", maxConcurrency: 3, runningExecutionsJson: "[1]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch2" },
   ];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -186,12 +190,12 @@ test("PlatformOperatorService buildReport identifies stale workers", () => {
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: oldHeartbeat, placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
   ];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -214,12 +218,12 @@ test("PlatformOperatorService buildReport identifies untrusted workers", () => {
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null },
   ];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -239,16 +243,16 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = (statuses: string[]) => {
-    if (statuses.includes("pending")) return 5;
-    if (statuses.includes("claimed")) return 3;
-    if (statuses.includes("consumed")) return 10;
-    return 0;
+    if (statuses.includes("pending")) return createCountArray(5);
+    if (statuses.includes("claimed")) return createCountArray(3);
+    if (statuses.includes("consumed")) return createCountArray(10);
+    return [];
   };
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -268,16 +272,16 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
 test("PlatformOperatorService buildReport counts leases by status", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
   mockStore.worker.listExecutionLeasesByStatuses = (statuses: string[]) => {
-    if (statuses.includes("active")) return 4;
-    if (statuses.includes("expired")) return 2;
-    return 0;
+    if (statuses.includes("active")) return createCountArray(4);
+    if (statuses.includes("expired")) return createCountArray(2);
+    return [];
   };
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -296,16 +300,16 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
 test("PlatformOperatorService buildReport readiness summary", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [
     { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
     { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
     { componentType: "sandbox", credentialReady: 0, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
   ];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -331,12 +335,12 @@ test("PlatformOperatorService buildReport readiness summary", () => {
 test("PlatformOperatorService buildReport topology counts", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [1, 2, 3] as any;
-  mockStore.organization.listWorkspaceRecords = (_opts: any) => [10, 11, 12, 13] as any;
-  mockStore.organization.listTenantRecords = (_opts: any) => [20, 21] as any;
+  mockStore.organization.listWorkspaceRecords = (opts: any) => [10, 11, 12, 13] as any;
+  mockStore.organization.listTenantRecords = (opts: any) => [20, 21] as any;
   mockStore.organization.listDeploymentBindings = () => [100, 101] as any;
   mockStore.organization.listDataNamespaces = () => [200, 201, 202] as any;
 
@@ -358,12 +362,12 @@ test("PlatformOperatorService buildReport topology counts", () => {
 test("PlatformOperatorService exportReport returns artifacts", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
   mockStore.task.getTask = () => null;
@@ -388,12 +392,12 @@ test("PlatformOperatorService available slots calculation", () => {
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[1,2,3]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
     { workerId: "w2", status: "healthy", maxConcurrency: 10, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch2" },
   ];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -415,12 +419,12 @@ test("PlatformOperatorService handles malformed runningExecutionsJson", () => {
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "not valid json", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
   ];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 
@@ -439,12 +443,12 @@ test("PlatformOperatorService handles malformed runningExecutionsJson", () => {
 test("PlatformOperatorService promotion eligibility", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
-  mockStore.worker.listExecutionTicketsByStatuses = () => () => 0;
-  mockStore.worker.listExecutionLeasesByStatuses = () => () => 0;
+  mockStore.worker.listExecutionTicketsByStatuses = () => [];
+  mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
-  mockStore.organization.listWorkspaceRecords = () => () => [];
-  mockStore.organization.listTenantRecords = () => () => [];
+  mockStore.organization.listWorkspaceRecords = () => [];
+  mockStore.organization.listTenantRecords = () => [];
   mockStore.organization.listDeploymentBindings = () => [];
   mockStore.organization.listDataNamespaces = () => [];
 

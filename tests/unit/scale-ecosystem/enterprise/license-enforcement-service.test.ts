@@ -78,9 +78,11 @@ test("LicenseEnforcementService tracks violations", () => {
 
   const violations = service.getViolations();
   assert.ok(violations.length > 0);
-  assert.equal(violations[violations.length - 1].capability, "sso");
-  assert.equal(violations[violations.length - 1].tierActual, "community");
-  assert.equal(violations[violations.length - 1].tierRequired, "enterprise");
+  const latestViolation = violations.at(-1);
+  assert.ok(latestViolation);
+  assert.equal(latestViolation.capability, "sso");
+  assert.equal(latestViolation.tierActual, "community");
+  assert.equal(latestViolation.tierRequired, "enterprise");
 });
 
 test("LicenseEnforcementService does not log violations when disabled", () => {

@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { EnvSecretProvider } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
-import { SecretManagementService } from "../../../../../src/platform/control-plane/iam/secret-management-service.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
+import { EnvSecretProvider } from "../../../../src/platform/control-plane/iam/env-secret-provider.js";
+import { SecretManagementService } from "../../../../src/platform/control-plane/iam/secret-management-service.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -581,12 +581,12 @@ test("issueSecretLease uses ttlMinutes from rotation policy when not provided", 
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret(secretRef) {
+          async describeSecret(secretRef: string) {
             return new EnvSecretProvider({
               env: { AA_SECRET_SYSTEM_TEST_LEASE_POLICY: "lease-policy-value" },
             }).describeSecret(secretRef);
           },
-          async requireSecret(secretRef) {
+          async requireSecret(secretRef: string) {
             return new EnvSecretProvider({
               env: { AA_SECRET_SYSTEM_TEST_LEASE_POLICY: "lease-policy-value" },
             }).requireSecret(secretRef);

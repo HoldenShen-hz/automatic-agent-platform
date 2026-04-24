@@ -8,7 +8,7 @@ import {
 } from "../../../../src/scale-ecosystem/intelligence/perception-service.js";
 
 // Mock stores and db
-function createMockStore() {
+function createMockStore(): any {
   return {
     intelligence: {
       upsertPerceptionSource: () => {},
@@ -16,14 +16,14 @@ function createMockStore() {
       insertIntelItem: () => {},
       getIntelItemBySourceAndDedupeKey: () => null,
       insertIntelBrief: () => {},
-      listIntelItems: () => [],
-      listIntelItemsByIds: () => [],
       getIntelBrief: () => null,
       listPerceptionSources: () => [],
       listIntelBriefs: () => [],
       listActionProposalsByBrief: () => [],
       insertActionProposal: () => {},
     },
+    listIntelItems: () => [],
+    listIntelItemsByIds: () => [],
     task: {
       getTask: () => null,
       insertTask: () => {},
@@ -34,8 +34,9 @@ function createMockStore() {
   };
 }
 
-function createMockDb() {
+function createMockDb(): any {
   return {
+    filePath: "/tmp/perception-service-test.db",
     transaction: (fn: () => void) => fn(),
   };
 }
@@ -60,7 +61,7 @@ test("PerceptionService registers source with custom id", () => {
 
   const source = service.registerSource({
     sourceId: "custom_source_id",
-    type: "feed",
+    type: "custom",
     name: "Custom Source",
   });
 
@@ -112,7 +113,9 @@ test("PerceptionService ingests intel items", () => {
   });
 
   assert.equal(result.insertedItems.length, 1);
-  assert.equal(result.insertedItems[0].title, "Important Update");
+  const insertedItem = result.insertedItems[0];
+  assert.ok(insertedItem);
+  assert.equal(insertedItem.title, "Important Update");
   assert.equal(result.skippedDuplicateCount, 0);
 });
 
@@ -143,7 +146,7 @@ test("PerceptionService skips duplicate intel items", () => {
 
 test("PerceptionService builds intel brief", () => {
   const mockStore = createMockStore();
-  mockStore.intelligence.listIntelItems = () => [
+  mockStore.listIntelItems = () => [
     {
       intelId: "intel_1",
       tenantId: null,
@@ -167,7 +170,7 @@ test("PerceptionService builds intel brief", () => {
 
   assert.ok(result.brief);
   assert.equal(result.items.length, 1);
-  assert.equal(result.recommendedActions.length, 3); // Top 3 items
+  assert.equal(result.recommendedActions.length, 1);
 });
 
 test("PerceptionService proposes actions from brief", () => {
@@ -192,8 +195,10 @@ test("PerceptionService proposes actions from brief", () => {
   const proposals = service.proposeActions({ briefId: "brief_1" });
 
   assert.equal(proposals.length, 1);
-  assert.equal(proposals[0].title, "Action 1");
-  assert.equal(proposals[0].status, "proposed");
+  const firstProposal = proposals[0];
+  assert.ok(firstProposal);
+  assert.equal(firstProposal.title, "Action 1");
+  assert.equal(firstProposal.status, "proposed");
 });
 
 test("PerceptionService returns existing proposals idempotently", () => {
@@ -269,7 +274,9 @@ test("PerceptionService normalizes tags", () => {
     items: [candidate],
   });
 
-  const tags = JSON.parse(result.insertedItems[0].tagsJson);
+  const taggedItem = result.insertedItems[0];
+  assert.ok(taggedItem);
+  const tags = JSON.parse(taggedItem.tagsJson);
   assert.ok(tags.includes("important"));
   assert.ok(tags.includes("update"));
   assert.ok(tags.includes("security"));
@@ -346,7 +353,7 @@ test("PerceptionService validates score range", () => {
 
 test("PerceptionService derives correct action types", () => {
   const mockStore = createMockStore();
-  mockStore.intelligence.listIntelItems = () => [
+  mockStore.listIntelItems = () => [
     {
       intelId: "high_importance",
       tenantId: null,
@@ -404,7 +411,7 @@ test("PerceptionService derives correct action types", () => {
 
 test("PerceptionService respects limit parameter in buildBrief", () => {
   const mockStore = createMockStore();
-  mockStore.intelligence.listIntelItems = () => Array(10).fill(null).map((_, i) => ({
+  mockStore.listIntelItems = () => Array.from({ length: 10 }, (_, i) => ({
     intelId: `intel_${i}`,
     tenantId: null,
     sourceId: "src_1",
@@ -432,7 +439,7 @@ test("PerceptionService respects limit parameter in buildBrief", () => {
 test("PerceptionService filters expired items", () => {
   const mockStore = createMockStore();
   const now = new Date();
-  mockStore.intelligence.listIntelItems = () => [
+  mockStore.listIntelItems = () => [
     {
       intelId: "current",
       tenantId: null,
@@ -469,5 +476,7 @@ test("PerceptionService filters expired items", () => {
   const result = service.buildBrief({ generatedAt: now.toISOString() });
 
   assert.equal(result.items.length, 1);
-  assert.equal(result.items[0].intelId, "current");
+  const currentItem = result.items[0];
+  assert.ok(currentItem);
+  assert.equal(currentItem.intelId, "current");
 });

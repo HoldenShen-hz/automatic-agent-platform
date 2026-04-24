@@ -14,19 +14,8 @@ import type { GatewayDeliveryReceipt } from "../../../../../src/platform/interfa
  * without requiring database or external dependencies.
  */
 
-interface MockGatewayTarget extends GatewayTargetRecord {
-  targetId: string;
-  channel: string;
-  targetKind: GatewayTargetKind;
-  externalTargetId: string;
-  displayName: string;
-  aliasesJson: string;
-  metadataJson: string | null;
-  source: string;
-  lastSeenAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
+type MockGatewayTarget = GatewayTargetRecord;
+type FetchInput = Parameters<typeof fetch>[0];
 
 function createMockStoragePort(targets: Map<string, MockGatewayTarget> = new Map()): GatewayStoragePort {
   return {
@@ -66,7 +55,7 @@ interface CapturedRequest {
 }
 
 function createMockFetch(responses: Map<string, { ok: boolean; status: number; body: unknown }> = new Map()): typeof fetch {
-  return async (input: RequestInfo | URL) => {
+  return async (input: FetchInput) => {
     const url = typeof input === "string" ? input : input.toString();
     const response = responses.get(url) ?? { ok: true, status: 200, body: {} };
     return {
@@ -319,7 +308,7 @@ test("ChannelGatewayService sends slack message with bearer token", async () => 
   const store = createMockStoragePort(targets);
   const targetDirectory = new GatewayTargetDirectoryService(store);
   let capturedRequest: CapturedRequest | null = null;
-  const mockFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const mockFetch: typeof fetch = async (input: FetchInput, init?: RequestInit) => {
     capturedRequest = {
       url: typeof input === "string" ? input : input.toString(),
       method: init?.method ?? "GET",
@@ -338,7 +327,11 @@ test("ChannelGatewayService sends slack message with bearer token", async () => 
 
   assert.equal(receipt.channel, "slack");
   assert.equal(receipt.providerMessageId, "1234567890.123456");
-  assert.ok(capturedRequest?.headers.authorization?.startsWith("Bearer "));
+  if (capturedRequest == null) {
+    assert.fail("capturedRequest should be populated");
+  }
+  const recordedRequest: CapturedRequest = capturedRequest;
+  assert.ok(recordedRequest.headers.authorization?.startsWith("Bearer "));
 });
 
 test("ChannelGatewayService throws on slack API error response", async () => {
@@ -391,7 +384,7 @@ test("ChannelGatewayService sends webhook message with merged metadata", async (
   const store = createMockStoragePort(targets);
   const targetDirectory = new GatewayTargetDirectoryService(store);
   let capturedBody: Record<string, unknown> | null = null;
-  const mockFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  const mockFetch: typeof fetch = async (_input: FetchInput, init?: RequestInit) => {
     if (init?.body) capturedBody = JSON.parse(String(init.body));
     return { ok: true, status: 200, json: async () => ({}) } as Response;
   };
@@ -408,7 +401,11 @@ test("ChannelGatewayService sends webhook message with merged metadata", async (
   });
 
   assert.equal(receipt.channel, "webhook");
-  assert.deepEqual(capturedBody?.metadata, { webhookUrl: "https://primary.example.com/webhook", region: "us-east", traceId: "abc123" });
+  if (capturedBody == null) {
+    assert.fail("capturedBody should be populated");
+  }
+  const recordedBody: Record<string, unknown> = capturedBody;
+  assert.deepEqual(recordedBody.metadata, { webhookUrl: "https://primary.example.com/webhook", region: "us-east", traceId: "abc123" });
 });
 
 test("ChannelGatewayService throws on webhook delivery failure", async () => {

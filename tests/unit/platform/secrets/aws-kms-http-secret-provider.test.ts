@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AwsKmsHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
+import { AwsKmsHttpSecretProvider } from "../../../../src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

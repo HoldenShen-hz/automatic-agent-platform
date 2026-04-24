@@ -6,8 +6,121 @@ import {
   DEFAULT_PMF_THRESHOLDS,
 } from "../../../../src/scale-ecosystem/intelligence/pmf-validation-service.js";
 
+const DEFAULT_RUNTIME_SUMMARY = {
+  generatedAt: "2026-01-01T00:00:00.000Z",
+  window: {
+    firstTaskCreatedAt: null,
+    lastTaskUpdatedAt: null,
+  },
+  taskMetrics: {
+    total: 0,
+    terminalCount: 0,
+    successCount: 0,
+    failedCount: 0,
+    cancelledCount: 0,
+    activeCount: 0,
+    successRate: 0,
+    completionRate: 0,
+  },
+  workflowMetrics: {
+    total: 0,
+    completedCount: 0,
+    failedCount: 0,
+    cancelledCount: 0,
+    retriedCount: 0,
+    retryRate: 0,
+  },
+  executionMetrics: {
+    total: 0,
+    activeCount: 0,
+    retryAttemptCount: 0,
+    retryRate: 0,
+    supersededCount: 0,
+  },
+  recoveryMetrics: {
+    taskCount: 0,
+    successfulTaskCount: 0,
+    successRate: 0,
+    decisionCount: 0,
+    repairEventCount: 0,
+    deadLetterCount: 0,
+    cancelledCount: 0,
+  },
+  stepMetrics: {
+    total: 0,
+    averageDurationMs: null,
+    p95DurationMs: null,
+    averageTokenCost: null,
+    totalTokenCost: 0,
+  },
+  costMetrics: {
+    totalActualCostUsd: 0,
+    averageActualCostUsdPerTask: null,
+    averageActualCostUsdPerSuccessfulTask: null,
+  },
+  approvalMetrics: {
+    total: 0,
+    pendingCount: 0,
+    resolvedCount: 0,
+    taskTriggerCount: 0,
+    taskTriggerRate: 0,
+  },
+  eventMetrics: {
+    total: 0,
+    tier1Count: 0,
+    tier2Count: 0,
+    tier3Count: 0,
+    pendingTier1AckCount: 0,
+    failedTier1AckCount: 0,
+  },
+  runtimeMetrics: {
+    status: "ok",
+    degradationMode: "none",
+    providerSuccessRate: 1,
+    activeExecutions: 0,
+    queuedTasks: 0,
+    eventLoopLagMs: 0,
+    memoryRssMb: 0,
+    tier1AckBacklog: 0,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    workerHealth: {
+      totalWorkers: 0,
+      healthyWorkers: 0,
+      busyWorkers: 0,
+      drainingWorkers: 0,
+      degradedWorkers: 0,
+      quarantinedWorkers: 0,
+      offlineWorkers: 0,
+      remoteWorkers: 0,
+      remoteConnectedWorkers: 0,
+      remoteReconnectingWorkers: 0,
+      remoteDegradedSessions: 0,
+      remoteFailedSessions: 0,
+      remoteViewerOnlyWorkers: 0,
+      remoteConsistencyMismatchWorkers: 0,
+      remoteWorkspaceSyncConflictWorkers: 0,
+      remoteOffsetMissingWorkers: 0,
+      staleWorkers: 0,
+      staleBusyWorkers: 0,
+      loadSkewDetected: false,
+      dominantWorkerId: null,
+      dominantWorkerShare: null,
+      skewedWorkerIds: [],
+    },
+    findings: [],
+  },
+} as const;
+
 // Mock stores and db
-function createMockStore() {
+function createMockStore(): any {
   return {
     operations: {
       insertPmfValidationReport: () => {},
@@ -24,15 +137,61 @@ function createMockStore() {
   };
 }
 
-function createMockDb() {
+function buildDefaultRow(sql: string): Record<string, number | string | null> | null {
+  if (sql.includes("COUNT(*) AS taskCount")) {
+    return {
+      taskCount: 24,
+      terminalTaskCount: 20,
+      successfulTaskCount: 18,
+      divisionCount: 1,
+      crossDivisionTaskCount: 12,
+      averageSuccessfulTaskCostUsd: 0.05,
+    };
+  }
+  if (sql.includes("COUNT(*) AS sessionCount")) {
+    return {
+      sessionCount: 20,
+      activationSessionCount: 18,
+    };
+  }
+  if (sql.includes("COUNT(*) AS rootCount")) {
+    return {
+      rootCount: 12,
+      repeatedRootCount: 6,
+    };
+  }
+  if (sql.includes("COUNT(*) AS approvalCount")) {
+    return {
+      approvalCount: 10,
+      resolvedApprovalCount: 9,
+    };
+  }
+  return null;
+}
+
+function createMockDb(overrides: {
+  get?: (sql: string) => Record<string, unknown> | null | undefined;
+  all?: (sql: string) => Array<Record<string, unknown>>;
+} = {}): any {
   return {
     connection: {
-      prepare: () => ({
-        get: () => null,
-        all: () => [],
+      prepare: (sql: string) => ({
+        get: () => overrides.get?.(sql) ?? buildDefaultRow(sql),
+        all: () => overrides.all?.(sql) ?? [],
       }),
     },
   };
+}
+
+function createService(
+  db: any = createMockDb(),
+  store: any = createMockStore(),
+): PmfValidationService {
+  const service = new PmfValidationService(db as any, store as any);
+  (service as any).metricsService = {
+    buildSummary: () => DEFAULT_RUNTIME_SUMMARY,
+  };
+  return service;
 }
 
 test("DEFAULT_PMF_THRESHOLDS has expected structure", () => {
@@ -47,7 +206,7 @@ test("DEFAULT_PMF_THRESHOLDS has expected structure", () => {
 });
 
 test("PmfValidationService can be instantiated", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   assert.ok(service);
 });
@@ -56,7 +215,7 @@ test("PmfValidationService runValidation returns report and record", () => {
   const mockStore = createMockStore();
   mockStore.operations.insertPmfValidationReport = () => {};
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const result = service.runValidation({});
 
@@ -69,7 +228,7 @@ test("PmfValidationService runValidation returns report and record", () => {
 });
 
 test("PmfValidationService buildReport returns valid report structure", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({});
 
@@ -87,7 +246,7 @@ test("PmfValidationService buildReport returns valid report structure", () => {
 });
 
 test("PmfValidationService buildReport accepts custom window days", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({ windowDays: 30 });
 
@@ -95,7 +254,7 @@ test("PmfValidationService buildReport accepts custom window days", () => {
 });
 
 test("PmfValidationService buildReport accepts custom profile name", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({ profileName: "custom_profile" });
 
@@ -103,7 +262,7 @@ test("PmfValidationService buildReport accepts custom profile name", () => {
 });
 
 test("PmfValidationService buildReport accepts custom division id", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({ divisionId: "engineering" });
 
@@ -111,22 +270,31 @@ test("PmfValidationService buildReport accepts custom division id", () => {
 });
 
 test("PmfValidationService buildReport calculates checks correctly for pass", () => {
-  const mockDb = createMockDb();
-  mockDb.connection.prepare = () => ({
-    get: () => ({
-      taskCount: 100,
-      terminalTaskCount: 90,
-      successfulTaskCount: 81,
-      divisionCount: 1,
-      crossDivisionTaskCount: 50,
-      averageSuccessfulTaskCostUsd: 0.05,
-    }),
-    all: () => [],
+  const mockDb = createMockDb({
+    get: (sql) => {
+      if (sql.includes("COUNT(*) AS taskCount")) {
+        return {
+          taskCount: 100,
+          terminalTaskCount: 90,
+          successfulTaskCount: 81,
+          divisionCount: 1,
+          crossDivisionTaskCount: 50,
+          averageSuccessfulTaskCostUsd: 0.05,
+        };
+      }
+      if (sql.includes("COUNT(*) AS sessionCount")) {
+        return {
+          sessionCount: 70,
+          activationSessionCount: 63,
+        };
+      }
+      return buildDefaultRow(sql);
+    },
   });
 
   const mockStore = createMockStore();
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
+  const service = createService(mockDb, mockStore);
 
   const report = service.buildReport({});
 
@@ -137,15 +305,43 @@ test("PmfValidationService buildReport calculates checks correctly for pass", ()
 });
 
 test("PmfValidationService buildReport handles null metrics gracefully", () => {
-  const mockDb = createMockDb();
-  mockDb.connection.prepare = () => ({
-    get: () => null,
-    all: () => [],
+  const mockDb = createMockDb({
+    get: (sql) => {
+      if (sql.includes("COUNT(*) AS taskCount")) {
+        return {
+          taskCount: 0,
+          terminalTaskCount: 0,
+          successfulTaskCount: 0,
+          divisionCount: 0,
+          crossDivisionTaskCount: 0,
+          averageSuccessfulTaskCostUsd: null,
+        };
+      }
+      if (sql.includes("COUNT(*) AS sessionCount")) {
+        return {
+          sessionCount: 0,
+          activationSessionCount: 0,
+        };
+      }
+      if (sql.includes("COUNT(*) AS rootCount")) {
+        return {
+          rootCount: 0,
+          repeatedRootCount: 0,
+        };
+      }
+      if (sql.includes("COUNT(*) AS approvalCount")) {
+        return {
+          approvalCount: 0,
+          resolvedApprovalCount: 0,
+        };
+      }
+      return null;
+    },
   });
 
   const mockStore = createMockStore();
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
+  const service = createService(mockDb, mockStore);
 
   const report = service.buildReport({});
 
@@ -165,7 +361,7 @@ test("PmfValidationService exportValidation returns artifacts", () => {
     all: () => [],
   });
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
+  const service = createService(mockDb, mockStore);
 
   const result = service.exportValidation({});
 
@@ -182,7 +378,7 @@ test("PmfValidationService listHistory returns reports", () => {
     { id: "report_2" } as any,
   ];
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const history = service.listHistory(10);
 
@@ -193,7 +389,7 @@ test("PmfValidationService getLatest returns most recent report", () => {
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => ({ id: "report_latest" } as any);
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const latest = service.getLatest();
 
@@ -205,7 +401,7 @@ test("PmfValidationService getLatest with profile returns filtered report", () =
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => ({ id: "report_production" } as any);
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const latest = service.getLatest("production");
 
@@ -224,7 +420,7 @@ test("PmfValidationService getLatest returns null when no reports", () => {
 });
 
 test("PmfValidationService buildReport with custom thresholds", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const customThresholds = {
     ...DEFAULT_PMF_THRESHOLDS,
@@ -240,22 +436,31 @@ test("PmfValidationService buildReport with custom thresholds", () => {
 });
 
 test("PmfValidationService verdict is fail when sample size insufficient", () => {
-  const mockDb = createMockDb();
-  mockDb.connection.prepare = () => ({
-    get: () => ({
-      taskCount: 5, // Very low
-      terminalTaskCount: 5,
-      successfulTaskCount: 3,
-      divisionCount: 1,
-      crossDivisionTaskCount: 2,
-      averageSuccessfulTaskCostUsd: 0.10,
-    }),
-    all: () => [],
+  const mockDb = createMockDb({
+    get: (sql) => {
+      if (sql.includes("COUNT(*) AS taskCount")) {
+        return {
+          taskCount: 5,
+          terminalTaskCount: 5,
+          successfulTaskCount: 3,
+          divisionCount: 1,
+          crossDivisionTaskCount: 2,
+          averageSuccessfulTaskCostUsd: 0.10,
+        };
+      }
+      if (sql.includes("COUNT(*) AS sessionCount")) {
+        return {
+          sessionCount: 4,
+          activationSessionCount: 3,
+        };
+      }
+      return buildDefaultRow(sql);
+    },
   });
 
   const mockStore = createMockStore();
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
+  const service = createService(mockDb, mockStore);
 
   const report = service.buildReport({});
 
@@ -265,7 +470,7 @@ test("PmfValidationService verdict is fail when sample size insufficient", () =>
 });
 
 test("PmfValidationService check IDs are unique", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({});
 
@@ -275,7 +480,7 @@ test("PmfValidationService check IDs are unique", () => {
 });
 
 test("PmfValidationService checks cover all expected metric types", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({});
 
@@ -295,7 +500,7 @@ test("PmfValidationService checks cover all expected metric types", () => {
 });
 
 test("PmfValidationService each check has required fields", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({});
 
@@ -310,7 +515,7 @@ test("PmfValidationService each check has required fields", () => {
 });
 
 test("PmfValidationService metrics are all numbers or null", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({});
 
@@ -340,7 +545,7 @@ test("PmfValidationService report can be converted to record", () => {
     assert.ok(record.windowEnd);
   };
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const result = service.runValidation({});
 
