@@ -297,38 +297,38 @@ test("claimExecution returns execution_not_found when execution does not exist",
 });
 
 test("claimExecution returns resource_limit_exceeded when resource ceiling guard fails", () => {
-  const store = createMockStore();
-  const ticket = makeTicket();
-  store.worker.getExecutionTicket = () => ticket;
-  store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
-  store.worker.getLatestExecutionLease = () => makeExecutionLease();
-  store.worker.getActiveExecutionLease = () => makeExecutionLease();
-  store.dispatch.getExecution = () => ({
-    id: "exec-001",
-    taskId: "task-001",
-    workflowId: "wf-001",
-    parentExecutionId: null,
-    agentId: "agent-001",
-    roleId: null,
-    runKind: "task_run" as const,
-    status: "created",
-    inputRef: null,
-    traceId: "trace-001",
-    attempt: 1,
-    timeoutMs: 60000,
-    budgetUsdLimit: 1.0,
-    requiresApproval: 0,
-    sandboxMode: "workspace_write",
-    allowedToolsJson: "[]",
-    allowedPathsJson: "[]",
-    maxRetries: 0,
-    retryBackoff: "none",
-    lastErrorCode: null,
-    lastErrorMessage: null,
-    startedAt: null,
-    finishedAt: null,
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
+  const store = createMockStore({
+    getLatestExecutionLease: () => makeExecutionLease(),
+    getActiveExecutionLease: () => makeExecutionLease(),
+    getExecutionTicket: () => makeTicket(),
+    getWorkerSnapshot: () => makeWorkerSnapshot(),
+    dispatchGetExecution: () => ({
+      id: "exec-001",
+      taskId: "task-001",
+      workflowId: "wf-001",
+      parentExecutionId: null,
+      agentId: "agent-001",
+      roleId: null,
+      runKind: "task_run" as const,
+      status: "created",
+      inputRef: null,
+      traceId: "trace-001",
+      attempt: 1,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1.0,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: null,
+      finishedAt: null,
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    }),
   });
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
@@ -457,38 +457,39 @@ test("recordHeartbeat returns worker_not_trusted for remote worker without regis
 });
 
 test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guard fails", () => {
-  const store = createMockStore();
-  store.dispatch.getExecution = () => ({
-    id: "exec-001",
-    taskId: "task-001",
-    workflowId: "wf-001",
-    parentExecutionId: null,
-    agentId: "agent-001",
-    roleId: null,
-    runKind: "task_run" as const,
-    status: "executing",
-    inputRef: null,
-    traceId: "trace-001",
-    attempt: 1,
-    timeoutMs: 60000,
-    budgetUsdLimit: 1.0,
-    requiresApproval: 0,
-    sandboxMode: "workspace_write",
-    allowedToolsJson: "[]",
-    allowedPathsJson: "[]",
-    maxRetries: 0,
-    retryBackoff: "none",
-    lastErrorCode: null,
-    lastErrorMessage: null,
-    startedAt: "2024-01-01T00:00:00.000Z",
-    finishedAt: null,
-    createdAt: "2024-01-01T00:00:00.000Z",
-    updatedAt: "2024-01-01T00:00:00.000Z",
+  const store = createMockStore({
+    getLatestExecutionLease: () => makeExecutionLease(),
+    getActiveExecutionLease: () => makeExecutionLease(),
+    getWorkerSnapshot: () => makeWorkerSnapshot(),
+    getAgentExecutionRecord: () => undefined,
+    dispatchGetExecution: () => ({
+      id: "exec-001",
+      taskId: "task-001",
+      workflowId: "wf-001",
+      parentExecutionId: null,
+      agentId: "agent-001",
+      roleId: null,
+      runKind: "task_run" as const,
+      status: "executing",
+      inputRef: null,
+      traceId: "trace-001",
+      attempt: 1,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1.0,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: "2024-01-01T00:00:00.000Z",
+      finishedAt: null,
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    }),
   });
-  store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
-  store.worker.getLatestExecutionLease = () => makeExecutionLease();
-  store.worker.getActiveExecutionLease = () => makeExecutionLease();
-  store.worker.getAgentExecutionRecord = () => undefined;
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
 

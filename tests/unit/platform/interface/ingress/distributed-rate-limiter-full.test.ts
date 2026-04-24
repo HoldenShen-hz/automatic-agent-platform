@@ -330,10 +330,15 @@ test("DistributedRateLimiter in-memory multiple keys exhaust separately", async 
   await limiter.checkAndConsume("key1");
   await limiter.checkAndConsume("key1");
   await limiter.checkAndConsume("key2");
+  // 4th call: key2 has count=1 (<maxCalls=2), so allowed and increments to count=2
+  const result1 = await limiter.checkAndConsume("key2");
+  assert.equal(result1.allowed, true);
+  assert.equal(result1.remaining, 0);
 
-  const result = await limiter.checkAndConsume("key2");
-  assert.equal(result.allowed, false);
-  assert.equal(result.remaining, 0);
+  // 5th call: key2 count=2 >= maxCalls=2, so rejected
+  const result2 = await limiter.checkAndConsume("key2");
+  assert.equal(result2.allowed, false);
+  assert.equal(result2.remaining, 0);
 });
 
 test("DistributedRateLimiter default maxCalls is 100", async () => {

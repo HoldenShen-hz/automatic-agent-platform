@@ -94,7 +94,7 @@ test("isWithinDomainBlockBudget returns true when under budget", () => {
 
 test("isWithinDomainBlockBudget returns false when over budget", () => {
   const config = createKvCachePrefixConfig();
-  const text = "A".repeat(1000);
+  const text = "A".repeat(2000);
 
   assert.equal(isWithinDomainBlockBudget(text, "domain-a", config), false);
 });
@@ -117,7 +117,7 @@ test("isWithinDomainBlockBudget handles different domains independently", () => 
     },
   });
 
-  const smallText = "A".repeat(200);
+  const smallText = "A".repeat(500);
   assert.equal(isWithinDomainBlockBudget(smallText, "domain-a", config), false);
   assert.equal(isWithinDomainBlockBudget(smallText, "domain-b", config), false);
 });

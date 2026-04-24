@@ -132,17 +132,18 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .filter((r) => {
                   return r.eventCreatedAt >= windowStart && r.eventCreatedAt <= windowEnd;
                 })
-                .sort((a, b) => a.chainPosition - b.chainPosition);
-            } else if (sql.includes("FROM events") && sql.includes("WHERE created_at >=")) {
-              const windowStart = args[0] as string;
-              const windowEnd = args[1] as string;
-              const limit = (args[2] as number) ?? 10_000;
-              return Array.from(events.values())
-                .filter((e) => {
-                  const createdAt = e.created_at as string;
-                  return createdAt >= windowStart && createdAt <= windowEnd;
-                })
-                .slice(0, limit);
+                .sort((a, b) => a.chainPosition - b.chainPosition)
+                .map((r) => ({
+                  id: r.recordedAt, // placeholder
+                  event_id: r.eventId,
+                  chain_position: r.chainPosition,
+                  event_type: r.eventType,
+                  event_created_at: r.eventCreatedAt,
+                  event_checksum: r.eventChecksum,
+                  previous_chain_hash: r.previousChainHash,
+                  chain_hash: r.chainHash,
+                  recorded_at: r.recordedAt,
+                }));
             } else if (sql.includes("GROUP BY event_tier")) {
               const windowStart = args[0] as string;
               const windowEnd = args[1] as string;
@@ -172,6 +173,16 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .map(([event_type, cnt]) => ({ event_type, cnt }))
                 .sort((a, b) => b.cnt - a.cnt)
                 .slice(0, 10);
+            } else if (sql.includes("FROM events") && sql.includes("WHERE created_at >=")) {
+              const windowStart = args[0] as string;
+              const windowEnd = args[1] as string;
+              const limit = (args[2] as number) ?? 10_000;
+              return Array.from(events.values())
+                .filter((e) => {
+                  const createdAt = e.created_at as string;
+                  return createdAt >= windowStart && createdAt <= windowEnd;
+                })
+                .slice(0, limit);
             }
             return [];
           },

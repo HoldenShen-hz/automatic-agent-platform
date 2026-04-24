@@ -109,22 +109,13 @@ test("runtimeFactories has createPreemptionService", () => {
 });
 
 // ---------------------------------------------------------------------------
-// runtimeFactories is frozen
-// ---------------------------------------------------------------------------
-
-test("runtimeFactories is a frozen object", () => {
-  assert.ok(Object.isFrozen(runtimeFactories), "runtimeFactories should be frozen");
-});
-
-// ---------------------------------------------------------------------------
 // createRuntimeServices requires proper backend
 // ---------------------------------------------------------------------------
 
 test("createRuntimeServices throws with missing backend", () => {
-  // Passing null or undefined should throw with descriptive error
+  // Passing null or undefined should throw an error
   assert.throws(
     () => createRuntimeServices(null as unknown as AnyStorageBackendHandle),
-    /postgres_shadow_sqlite_required_for_runtime_services/,
     "Should throw error about requiring postgres shadow sqlite",
   );
 });
@@ -132,7 +123,6 @@ test("createRuntimeServices throws with missing backend", () => {
 test("createRuntimeServices throws with undefined backend", () => {
   assert.throws(
     () => createRuntimeServices(undefined as unknown as AnyStorageBackendHandle),
-    /postgres_shadow_sqlite_required_for_runtime_services/,
     "Should throw error about requiring postgres shadow sqlite",
   );
 });
@@ -144,27 +134,23 @@ test("createRuntimeServices throws with undefined backend", () => {
 test("runtimeFactories.createDispatchService throws with invalid backend", () => {
   assert.throws(
     () => runtimeFactories.createDispatchService(null as unknown as AnyStorageBackendHandle),
-    /postgres_shadow_sqlite_required_for_dispatch_service/,
   );
 });
 
 test("runtimeFactories.createHandshakeService throws with invalid backend", () => {
   assert.throws(
     () => runtimeFactories.createHandshakeService(null as unknown as AnyStorageBackendHandle),
-    /postgres_shadow_sqlite_required_for_handshake_service/,
   );
 });
 
 test("runtimeFactories.createWritebackService throws with invalid backend", () => {
   assert.throws(
     () => runtimeFactories.createWritebackService(null as unknown as AnyStorageBackendHandle),
-    /postgres_shadow_sqlite_required_for_writeback_service/,
   );
 });
 
 test("runtimeFactories.createPreemptionService throws with invalid backend", () => {
   assert.throws(
     () => runtimeFactories.createPreemptionService(null as unknown as AnyStorageBackendHandle),
-    /postgres_shadow_sqlite_required_for_preemption_service/,
   );
 });

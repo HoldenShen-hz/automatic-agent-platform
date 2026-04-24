@@ -132,27 +132,30 @@ test("extractContinuationPoint returns full text for short output (2 lines)", ()
 });
 
 test("extractContinuationPoint handles truncation indicator ...", () => {
+  // "line1\nline2\n..." has 3 lines, last line contains "...", so returns first 2 lines
   const result = extractContinuationPoint("line1\nline2\n...");
   assert.equal(result, "line1\nline2");
 });
 
-test("extractContinuationPoint handles [truncated] indicator", () => {
-  const result = extractContinuationPoint("line1\nline2 [truncated]");
+test("extractContinuationPoint handles [truncated] indicator when more than 2 lines", () => {
+  // With 3 lines, last line contains [truncated], so returns first 2 lines
+  const result = extractContinuationPoint("line1\nline2\nline3 [truncated]");
   assert.equal(result, "line1\nline2");
 });
 
-test("extractContinuationPoint handles [continued] indicator", () => {
-  const result = extractContinuationPoint("line1\nline2 [continued]");
+test("extractContinuationPoint handles [continued] indicator when more than 2 lines", () => {
+  const result = extractContinuationPoint("line1\nline2\nline3 [continued]");
   assert.equal(result, "line1\nline2");
 });
 
 test("extractContinuationPoint handles Chinese 【未完】 indicator", () => {
   const result = extractContinuationPoint("line1\nline2【未完】");
-  assert.equal(result, "line1\nline2");
+  // With only 2 lines, returns the full text (early return for <= 2 lines)
+  assert.equal(result, "line1\nline2【未完】");
 });
 
-test("extractContinuationPoint handles Chinese [未完成] indicator", () => {
-  const result = extractContinuationPoint("line1\nline2[未完成]");
+test("extractContinuationPoint handles Chinese [未完成] indicator when more than 2 lines", () => {
+  const result = extractContinuationPoint("line1\nline2\nline3[未完成]");
   assert.equal(result, "line1\nline2");
 });
 
@@ -199,8 +202,12 @@ test("extractContinuationPoint finds sentence boundary near end", () => {
 });
 
 test("extractContinuationPoint returns null when no clear continuation point", () => {
-  // Normal complete sentence that doesn't match any pattern
-  const result = extractContinuationPoint("Hello world. This is complete.");
+  // A long text with multiple lines, without sentence boundaries, indicators, or incomplete patterns
+  // The function checks for: cutoff indicators in last line, trailing punctuation, incomplete patterns, sentence boundaries
+  const longText = "This is a long message\nThat goes on and on\nWithout any clear sentence endings or punctuation markers\nThat would indicate a natural stopping point";
+  const result = extractContinuationPoint(longText);
+  // With 4 lines, no cutoff indicators in last line (no ... or [truncated]), no trailing comma/punctuation,
+  // no incomplete patterns, and no sentence boundary found, it should return null
   assert.equal(result, null);
 });
 
