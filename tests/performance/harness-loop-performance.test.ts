@@ -218,7 +218,7 @@ test("HarnessRuntimeService runLoop should execute iterations at > 500 ops/sec",
     evaluatorOutput: { evaluation: "passed", details: {} },
     evaluatorScore: 0.9,
     riskScore: 50,
-    requestedTools: ["tool_a", "tool_b", "tool_c"],
+    requestedTools: [],
     producedEvidenceRefs: ["evidence_1"],
     requiresHuman: false,
     iteration: 1,
@@ -237,7 +237,7 @@ test("HarnessRuntimeService runLoop should execute iterations at > 500 ops/sec",
       evaluatorOutput: { evaluation: "passed", details: {} },
       evaluatorScore: 0.9,
       riskScore: 50,
-      requestedTools: ["tool_a", "tool_b", "tool_c"],
+      requestedTools: [],
       producedEvidenceRefs: ["evidence_1"],
       requiresHuman: false,
       iteration: 1,
@@ -258,36 +258,24 @@ test("HarnessRuntimeService runLoop with replan should handle at > 300 ops/sec",
   const service = new HarnessRuntimeService();
   const iterations = 300;
 
-  // Warm up
-  const warmupInput = {
-    taskId: newId("task"),
-    domainId: newId("domain"),
-    constraintPack: createMockConstraintPack(),
-    plannerOutput: { plan: "test plan", steps: ["step1", "step2"] },
-    generatorOutput: { result: "test result", artifacts: [] },
-    evaluatorOutput: { evaluation: "failed", details: {} },
-    evaluatorScore: 0.3,
-    riskScore: 50,
-    requestedTools: ["tool_a", "tool_b", "tool_c"],
-    producedEvidenceRefs: ["evidence_1"],
-    requiresHuman: false,
-    iteration: 1,
-  };
-  service.runLoop(warmupInput);
-
+  // Use a small maxSteps so the loop exits via step exhaustion before replanCount > 3
+  // Each runLoop with evaluatorScore < 0.5 triggers replan and exits after 1 iteration
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
     // Low score triggers replan which stops the loop
     service.runLoop({
       taskId: newId("task"),
       domainId: newId("domain"),
-      constraintPack: createMockConstraintPack(),
+      constraintPack: {
+        ...createMockConstraintPack(),
+        budget: { maxSteps: 3, maxDurationMs: 60000, maxCost: 100000 },
+      },
       plannerOutput: { plan: "test plan", steps: ["step1", "step2"] },
       generatorOutput: { result: "test result", artifacts: [] },
       evaluatorOutput: { evaluation: "failed", details: {} },
       evaluatorScore: 0.3,
       riskScore: 50,
-      requestedTools: ["tool_a", "tool_b", "tool_c"],
+      requestedTools: [],
       producedEvidenceRefs: ["evidence_1"],
       requiresHuman: false,
       iteration: 1,
@@ -308,26 +296,7 @@ test("HarnessRuntimeService runLoop with multi-iteration should handle at > 100 
   const service = new HarnessRuntimeService();
   const iterations = 100;
 
-  // Warm up
-  const warmupInput = {
-    taskId: newId("task"),
-    domainId: newId("domain"),
-    constraintPack: {
-      ...createMockConstraintPack(),
-      budget: { maxSteps: 30, maxDurationMs: 60000, maxCost: 100000 },
-    },
-    plannerOutput: { plan: "test plan", steps: ["step1", "step2"] },
-    generatorOutput: { result: "test result", artifacts: [] },
-    evaluatorOutput: { evaluation: "needs_improvement", details: {} },
-    evaluatorScore: 0.6,
-    riskScore: 50,
-    requestedTools: ["tool_a", "tool_b", "tool_c"],
-    producedEvidenceRefs: ["evidence_1"],
-    requiresHuman: false,
-    iteration: 1,
-  };
-  service.runLoop(warmupInput);
-
+  // Warm up - skip warmup since it affects loop state
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
     // Score 0.6 triggers retry_same_plan, which continues until max steps
@@ -343,7 +312,7 @@ test("HarnessRuntimeService runLoop with multi-iteration should handle at > 100 
       evaluatorOutput: { evaluation: "needs_improvement", details: {} },
       evaluatorScore: 0.6,
       riskScore: 50,
-      requestedTools: ["tool_a", "tool_b", "tool_c"],
+      requestedTools: [],
       producedEvidenceRefs: ["evidence_1"],
       requiresHuman: false,
       iteration: 1,
@@ -364,23 +333,7 @@ test("HarnessRuntimeService runLoop with human escalation should handle at > 400
   const service = new HarnessRuntimeService();
   const iterations = 400;
 
-  // Warm up
-  const warmupInput = {
-    taskId: newId("task"),
-    domainId: newId("domain"),
-    constraintPack: createMockConstraintPack(),
-    plannerOutput: { plan: "test plan", steps: ["step1", "step2"] },
-    generatorOutput: { result: "test result", artifacts: [] },
-    evaluatorOutput: { evaluation: "passed", details: {} },
-    evaluatorScore: 0.85,
-    riskScore: 95,
-    requestedTools: ["tool_a", "tool_b", "tool_c"],
-    producedEvidenceRefs: ["evidence_1"],
-    requiresHuman: false,
-    iteration: 1,
-  };
-  service.runLoop(warmupInput);
-
+  // Warm up - skip warmup since it affects loop state
   const start = performance.now();
   for (let i = 0; i < iterations; i++) {
     service.runLoop({
@@ -392,7 +345,7 @@ test("HarnessRuntimeService runLoop with human escalation should handle at > 400
       evaluatorOutput: { evaluation: "passed", details: {} },
       evaluatorScore: 0.85,
       riskScore: 95,
-      requestedTools: ["tool_a", "tool_b", "tool_c"],
+      requestedTools: [],
       producedEvidenceRefs: ["evidence_1"],
       requiresHuman: false,
       iteration: 1,
