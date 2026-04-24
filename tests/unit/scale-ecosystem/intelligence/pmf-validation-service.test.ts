@@ -355,10 +355,38 @@ test("PmfValidationService exportValidation returns artifacts", () => {
   mockStore.task.getTask = () => null;
   mockStore.task.insertTask = () => {};
 
-  const mockDb = createMockDb();
-  mockDb.connection.prepare = () => ({
-    get: () => null,
-    all: () => [],
+  const mockDb = createMockDb({
+    get: (sql) => {
+      if (sql.includes("COUNT(*) AS taskCount")) {
+        return {
+          taskCount: 0,
+          terminalTaskCount: 0,
+          successfulTaskCount: 0,
+          divisionCount: 0,
+          crossDivisionTaskCount: 0,
+          averageSuccessfulTaskCostUsd: null,
+        };
+      }
+      if (sql.includes("COUNT(*) AS sessionCount")) {
+        return {
+          sessionCount: 0,
+          activationSessionCount: 0,
+        };
+      }
+      if (sql.includes("COUNT(*) AS rootCount")) {
+        return {
+          rootCount: 0,
+          repeatedRootCount: 0,
+        };
+      }
+      if (sql.includes("COUNT(*) AS approvalCount")) {
+        return {
+          approvalCount: 0,
+          resolvedApprovalCount: 0,
+        };
+      }
+      return null;
+    },
   });
 
   const service = createService(mockDb, mockStore);
@@ -412,7 +440,7 @@ test("PmfValidationService getLatest returns null when no reports", () => {
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => null;
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const latest = service.getLatest();
 
@@ -440,18 +468,18 @@ test("PmfValidationService verdict is fail when sample size insufficient", () =>
     get: (sql) => {
       if (sql.includes("COUNT(*) AS taskCount")) {
         return {
-          taskCount: 5,
-          terminalTaskCount: 5,
-          successfulTaskCount: 3,
+          taskCount: 1,
+          terminalTaskCount: 1,
+          successfulTaskCount: 0,
           divisionCount: 1,
-          crossDivisionTaskCount: 2,
+          crossDivisionTaskCount: 0,
           averageSuccessfulTaskCostUsd: 0.10,
         };
       }
       if (sql.includes("COUNT(*) AS sessionCount")) {
         return {
-          sessionCount: 4,
-          activationSessionCount: 3,
+          sessionCount: 1,
+          activationSessionCount: 0,
         };
       }
       return buildDefaultRow(sql);

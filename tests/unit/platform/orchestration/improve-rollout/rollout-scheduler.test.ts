@@ -234,13 +234,14 @@ test("RolloutScheduler advance uses custom now function", async () => {
   const scheduler = new RolloutScheduler({
     rolloutService: mockRolloutService,
     now: customNow,
-    minimumStageDwellMs: { canary_5: 0 },
+    minimumStageDwellMs: { canary_5: 200 },
   });
   const candidate = createMockCandidate();
-  const record = createMockRolloutRecord({ status: "canary_5" });
+  const record = createMockRolloutRecord({ status: "canary_5", transitionedAt: 900 });
 
-  await scheduler.advance({ candidate, record });
+  const decision = await scheduler.advance({ candidate, record });
 
+  assert.equal(decision.action, "wait");
   assert.ok(callCount > 0);
 });
 
@@ -264,7 +265,8 @@ test("RolloutScheduler advance uses default minimum stage dwell times", async ()
 
   const decision = await scheduler.advance({ candidate, record });
 
-  assert.equal(decision.action, "promote");
+  assert.equal(decision.action, "wait");
+  assert.ok(decision.reasonCodes.includes("rollout.stage_dwell_required"));
 });
 
 test("RolloutScheduler advance handles rejected status gracefully", async () => {
