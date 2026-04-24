@@ -1175,6 +1175,37 @@ test("GET /v1/admin/budgets returns budget summaries through HttpApiServer", asy
   }
 });
 
+test("GET /v1/admin/chargeback/reports returns chargeback through HttpApiServer", async () => {
+  const costReportService = new CostReportService();
+  costReportService.createReport({
+    tenantId: "tenant-1",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-30T23:59:59.000Z",
+    totalCostUsd: 15,
+    resourceCosts: [{ resourceId: "openai:gpt-5", resourceType: "api", costUsd: 15, currency: "USD" }],
+    submittedBy: "operator_1",
+  });
+  const { server, authService } = createTestServer({ costReportService });
+  const adminToken = authService.exchangeApiKey("test-admin-key").accessToken;
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/v1/admin/chargeback/reports",
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{ requestId: string; data: { totalCostUsd: number; allocations: Array<{ resourceId: string }> } }>();
+    assert.equal(body.data.totalCostUsd, 15);
+    assert.equal(body.data.allocations[0]?.resourceId, "openai:gpt-5");
+  } finally {
+    await server.stop();
+  }
+});
+
 test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", async () => {
   const promptRegistryService = new HierarchicalPromptRegistryService();
   promptRegistryService.registerBundle({

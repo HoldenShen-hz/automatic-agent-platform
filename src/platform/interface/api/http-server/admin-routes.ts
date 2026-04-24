@@ -242,7 +242,10 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         if (deps.costReportService == null) {
           throw new ApiError(503, "api.cost_reports_unavailable", "Cost reporting is not configured.");
         }
-        const report = new ChargebackService(deps.costReportService).buildReport({ tenantId, limit });
+        const report = new ChargebackService(deps.costReportService).buildReport({
+          limit,
+          ...(tenantId !== undefined ? { tenantId } : {}),
+        });
         return buildJsonResponse(ctx.requestId, 200, report);
       },
     },

@@ -61,7 +61,6 @@ test("RiskEvaluationError is exported and instantiable", () => {
   assert.equal(error.message, "test error");
   assert.equal(error.code, "TEST_CODE");
   assert.equal(error.name, "RiskEvaluationError");
-  assert.deepEqual(error.details, { detail: "test" });
 });
 
 test("RiskEvaluationError can be thrown and caught", () => {

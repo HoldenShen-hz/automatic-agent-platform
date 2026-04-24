@@ -689,6 +689,13 @@ export class HarnessRuntimeService {
         action: decision.action,
         confidence: decision.confidence,
       });
+      if (baseRun.status === "waiting_hitl") {
+        baseRun = this.openHitlReview(
+          baseRun,
+          decision.reasonCodes[0] ?? "harness.requires_human_review",
+          input.producedEvidenceRefs ?? [],
+        );
+      }
 
       loop.recordIteration(this.estimateIterationCost(input));
       if (decision.action === "replan") {

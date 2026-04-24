@@ -9,6 +9,8 @@ import type { AssessmentPhase, AssessmentComplexity, AssessmentRisk, ExecutionMo
 import type { SuccessCriterion } from "./success-criterion.js";
 import type { FailureMode } from "./failure-mode.js";
 
+export type { FailureMode } from "./failure-mode.js";
+
 export interface ExecutionAssessment {
   /** Unique identifier for this assessment */
   assessmentId: string;

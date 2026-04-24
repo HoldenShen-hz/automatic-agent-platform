@@ -458,8 +458,8 @@ test("summarizeWindow returns top event types", () => {
   const summary = service.summarizeWindow("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 
   assert.ok(summary.topEventTypes.length > 0);
-  assert.equal(summary.topEventTypes[0].type, "task:created");
-  assert.equal(summary.topEventTypes[0].count, 3);
+  assert.equal(summary.topEventTypes[0]?.type, "task:created");
+  assert.equal(summary.topEventTypes[0]?.count, 3);
 });
 
 test("verifyIntegrity returns valid with no integrity records", () => {

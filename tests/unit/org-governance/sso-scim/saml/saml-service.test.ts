@@ -14,6 +14,7 @@ function createProvider(): SamlProviderConfig {
     attributeMapping: {
       email: "mail",
     },
+    allowUnsignedAssertions: false,
   };
 }
 

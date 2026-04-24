@@ -323,7 +323,8 @@ test("DelegationManagerService uses defaultTimeout when spec timeout is zero", a
   const handle = await service.delegate(parent, spec);
 
   // Should use defaultTimeout of 120000ms (2 minutes)
-  const expiresIn = new Date(handle.expiresAt).getTime() - Date.now();
+  const delegation = service.getDelegation(handle.delegationId);
+  const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn > 100000); // At least 100 seconds
 });
 
@@ -335,7 +336,8 @@ test("DelegationManagerService uses spec timeout when positive", async () => {
   const handle = await service.delegate(parent, spec);
 
   // Should use spec timeout of 10000ms
-  const expiresIn = new Date(handle.expiresAt).getTime() - Date.now();
+  const delegation = service.getDelegation(handle.delegationId);
+  const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn < 20000); // Less than 20 seconds
 });
 

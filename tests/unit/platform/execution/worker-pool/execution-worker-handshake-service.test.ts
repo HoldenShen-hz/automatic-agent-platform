@@ -40,6 +40,8 @@ function createMockStore(): AuthoritativeTaskStore {
       getAgentExecutionRecord: () => null,
       upsertAgentExecutionRecord: () => {},
       getActiveExecutionLease: () => null,
+      getLatestExecutionLease: () => null,
+      getLatestFencingToken: () => 0,
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
       getWorker: () => null,
@@ -74,12 +76,24 @@ function makeTicket(overrides: Partial<ExecutionTicketRecord> = {}): ExecutionTi
     id: "ticket-001",
     taskId: "task-001",
     executionId: "exec-001",
+    // @ts-ignore
+    priority: 0,
+    // @ts-ignore
+    queueName: null,
     status: "claimed",
     assignedWorkerId: "worker-001",
     leaseId: "lease-001",
-    fencingToken: 1,
-    availableAt: "2024-01-01T00:00:00.000Z",
+    claimedAt: "2024-01-01T00:00:00.000Z",
+    // @ts-ignore
+    consumedAt: null,
+    // @ts-ignore
+    invalidatedAt: null,
     createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    requiredCapabilitiesJson: "[]",
+    // @ts-ignore
+    dispatchAfter: null,
+    attempt: 1,
     ...overrides,
   };
 }
@@ -164,7 +178,7 @@ test("claimExecution returns worker_not_trusted for remote worker without regist
 
 test("claimExecution returns ticket_not_claimed when ticket status is not claimed", () => {
   const store = createMockStore();
-  store.worker.getExecutionTicket = () => makeTicket({ status: "dispatched" });
+  store.worker.getExecutionTicket = () => makeTicket({ status: "pending" });
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
@@ -245,7 +259,7 @@ test("claimExecution returns resource_limit_exceeded when resource ceiling guard
     taskId: "task-001",
     workflowId: "wf-001",
     parentExecutionId: null,
-    agentId: null,
+    agentId: "agent-001",
     roleId: null,
     runKind: "task_run" as const,
     status: "created",
@@ -311,7 +325,7 @@ test("recordHeartbeat returns worker_not_registered when worker snapshot not fou
     taskId: "task-001",
     workflowId: "wf-001",
     parentExecutionId: null,
-    agentId: null,
+    agentId: "agent-001",
     roleId: null,
     runKind: "task_run" as const,
     status: "executing",
@@ -355,7 +369,7 @@ test("recordHeartbeat returns worker_not_trusted for remote worker without regis
     taskId: "task-001",
     workflowId: "wf-001",
     parentExecutionId: null,
-    agentId: null,
+    agentId: "agent-001",
     roleId: null,
     runKind: "task_run" as const,
     status: "executing",
@@ -400,7 +414,7 @@ test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guar
     taskId: "task-001",
     workflowId: "wf-001",
     parentExecutionId: null,
-    agentId: null,
+    agentId: "agent-001",
     roleId: null,
     runKind: "task_run" as const,
     status: "executing",
@@ -423,7 +437,7 @@ test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guar
     updatedAt: "2024-01-01T00:00:00.000Z",
   });
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
-  store.worker.getAgentExecutionRecord = () => null;
+  store.worker.getAgentExecutionRecord = () => undefined;
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
 
@@ -448,7 +462,7 @@ test("recordHeartbeat returns rejected reason when lease renewal fails", () => {
     taskId: "task-001",
     workflowId: "wf-001",
     parentExecutionId: null,
-    agentId: null,
+    agentId: "agent-001",
     roleId: null,
     runKind: "task_run" as const,
     status: "executing",
@@ -471,7 +485,7 @@ test("recordHeartbeat returns rejected reason when lease renewal fails", () => {
     updatedAt: "2024-01-01T00:00:00.000Z",
   });
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
-  store.worker.getAgentExecutionRecord = () => null;
+  store.worker.getAgentExecutionRecord = () => undefined;
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
 

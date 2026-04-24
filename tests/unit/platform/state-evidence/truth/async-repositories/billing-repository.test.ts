@@ -1,4 +1,3 @@
-// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -64,7 +63,7 @@ function costEventRecord(overrides: Partial<CostEventRecord> = {}): CostEventRec
     inputTokens: 100,
     outputTokens: 200,
     costUsd: 0.03,
-    budgetScope: "task",
+    budgetScope: "task_execution",
     providerRequestId: "req-1",
     pricingVersion: "2024-01",
     createdAt: now,
@@ -96,7 +95,7 @@ function billingInvoiceRecord(overrides: Partial<BillingInvoiceRecord> = {}): Bi
     subtotalUsd: 100.0,
     taxUsd: 10.0,
     totalUsd: 110.0,
-    status: "pending",
+    status: "open",
     summaryJson: "{}",
     externalInvoiceRef: null,
     dueAt: now,
@@ -134,11 +133,12 @@ function usageEventRecord(overrides: Partial<UsageEventRecord> = {}): UsageEvent
     subjectId: "tenant-1",
     workspaceId: "ws-1",
     tenantId: "tenant-1",
-    taskId: "task-1",
-    executionId: "exec-1",
+    taskId: null,
+    executionId: null,
+    stepId: null,
     metricType: "api_calls",
     quantity: 100,
-    source: "agent",
+    source: "runtime",
     unitPriceUsd: 0.001,
     capturedAt: now,
     ...overrides,
@@ -154,8 +154,8 @@ function quotaCounterRecord(overrides: Partial<QuotaCounterRecord> = {}): QuotaC
     windowEnd: "2024-01-31T23:59:59Z",
     usedQuantity: 500,
     limitQuantity: 10000,
-    limitType: "monthly",
-    resetPolicy: "rolling",
+    limitType: "hard",
+    resetPolicy: "calendar_month",
     updatedAt: now,
     ...overrides,
   };
@@ -167,7 +167,7 @@ function ledgerEntryRecord(overrides: Partial<LedgerEntryRecord> = {}): LedgerEn
     accountId: "acct-1",
     usageId: "usage-1",
     periodId: "2024-01",
-    entryType: "debit",
+    entryType: "usage_charge",
     amountUsd: 0.1,
     currency: "USD",
     sourceRef: "usage:task-1",
@@ -183,8 +183,8 @@ function entitlementDecisionRecord(overrides: Partial<EntitlementDecisionRecord>
     featureKey: "advanced_agents",
     metricType: "concurrent_agents",
     requestedQuantity: 5,
-    allowed: true,
-    decisionType: "automatic",
+    allowed: 1,
+    decisionType: "allow",
     reasonCode: "within_limit",
     policyVersion: "2024-01",
     evaluatedAt: now,
@@ -340,7 +340,7 @@ test("AsyncBillingRepository updateBillingPaymentSessionStatus updates status", 
 
   const result = await repo.updateBillingPaymentSessionStatus({
     sessionId: "pay-session-1",
-    status: "settled",
+    status: "paid",
     updatedAt: now,
     settledAt: now,
   });

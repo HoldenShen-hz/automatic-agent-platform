@@ -22,6 +22,9 @@
  */
 
 import { z } from "zod";
+import { DatabaseSync } from "node:sqlite";
+import { dirname, resolve } from "node:path";
+import { mkdirSync } from "node:fs";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
   GovernanceDelegationSchema,
@@ -35,6 +38,8 @@ import {
 import {
   InMemoryAuditLogStore,
   InMemoryDelegationStore,
+  SqliteAuditLogStore,
+  SqliteDelegationStore,
   type AuditLogStore,
   type DelegationStore,
 } from "./stores/index.js";
@@ -77,6 +82,12 @@ export interface GovernanceConsoleAuditEntry {
   readonly details: Record<string, unknown>;
 }
 
+function openGovernanceConsoleDb(sqliteDbPath: string): DatabaseSync {
+  const dbPath = resolve(sqliteDbPath);
+  mkdirSync(dirname(dbPath), { recursive: true });
+  return new DatabaseSync(dbPath);
+}
+
 /**
  * SelfServiceGovernanceConsole - Basic stub service
  *
@@ -89,13 +100,17 @@ export interface GovernanceConsoleAuditEntry {
 export class SelfServiceGovernanceConsole {
   private readonly delegationStore: DelegationStore;
   private readonly auditLogStore: AuditLogStore;
+  private readonly defaultDb: DatabaseSync | null;
 
   public constructor(options: {
     delegationStore?: DelegationStore;
     auditLogStore?: AuditLogStore;
+    sqliteDb?: DatabaseSync;
+    sqliteDbPath?: string;
   } = {}) {
-    this.delegationStore = options.delegationStore ?? new InMemoryDelegationStore();
-    this.auditLogStore = options.auditLogStore ?? new InMemoryAuditLogStore();
+    this.defaultDb = options.sqliteDb ?? (options.sqliteDbPath !== undefined ? openGovernanceConsoleDb(options.sqliteDbPath) : null);
+    this.delegationStore = options.delegationStore ?? (this.defaultDb != null ? new SqliteDelegationStore(this.defaultDb) : new InMemoryDelegationStore());
+    this.auditLogStore = options.auditLogStore ?? (this.defaultDb != null ? new SqliteAuditLogStore(this.defaultDb) : new InMemoryAuditLogStore());
   }
 
   /**

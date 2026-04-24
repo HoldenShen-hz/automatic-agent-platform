@@ -81,7 +81,8 @@ export const SamlProviderConfigSchema = z.object({
   attributeMapping: z.record(z.string()).optional(),
 });
 
-export type SamlProviderConfig = z.infer<typeof SamlProviderConfigSchema>;
+export type SamlProviderConfig = z.input<typeof SamlProviderConfigSchema>;
+type NormalizedSamlProviderConfig = z.output<typeof SamlProviderConfigSchema>;
 
 export interface SamlLoginRequest {
   readonly requestId: string;
@@ -145,7 +146,7 @@ function isAssertionTimeValid(assertion: SamlAssertionInput, now: Date): boolean
 }
 
 export class SamlService {
-  private readonly providers = new Map<string, SamlProviderConfig>();
+  private readonly providers = new Map<string, NormalizedSamlProviderConfig>();
   private readonly consumedAssertionIds = new Map<string, string>();
 
   public registerProvider(config: SamlProviderConfig): void {
@@ -199,19 +200,6 @@ export class SamlService {
     if (assertion.issuer !== provider.issuer) {
       throw new Error(`saml.invalid_issuer:${providerId}`);
     }
-    if (provider.allowUnsignedAssertions !== true) {
-      if (!assertion.xmlSignature || !assertion.rawXml) {
-        throw new Error(`saml.signature_required:${providerId}`);
-      }
-    }
-    if (assertion.xmlSignature && assertion.rawXml) {
-      // Production SAML: Always validate XML signatures when present
-      // This uses xml-crypto for signature verification
-      const result = validateXmlSignature(assertion.xmlSignature, assertion.rawXml);
-      if (!result.valid) {
-        throw new Error(`saml.invalid_signature:${providerId}:${result.error ?? "validation failed"}`);
-      }
-    }
     if (assertion.fingerprint !== provider.certificateFingerprint) {
       throw new Error(`saml.invalid_fingerprint:${providerId}`);
     }
@@ -227,6 +215,18 @@ export class SamlService {
     }
     if (!isAssertionTimeValid(assertion, now)) {
       throw new Error(`saml.assertion_expired:${providerId}`);
+    }
+    if (provider.allowUnsignedAssertions !== true) {
+      if (!assertion.xmlSignature || !assertion.rawXml) {
+        throw new Error(`saml.signature_required:${providerId}`);
+      }
+    }
+    if (assertion.xmlSignature && assertion.rawXml) {
+      // Production SAML: Always validate XML signatures when present.
+      const result = validateXmlSignature(assertion.xmlSignature, assertion.rawXml);
+      if (!result.valid) {
+        throw new Error(`saml.invalid_signature:${providerId}:${result.error ?? "validation failed"}`);
+      }
     }
     if (assertion.assertionId) {
       const replayKey = `${providerId}:${assertion.assertionId}`;
@@ -275,7 +275,7 @@ export class SamlService {
     };
   }
 
-  private requireProvider(providerId: string): SamlProviderConfig {
+  private requireProvider(providerId: string): NormalizedSamlProviderConfig {
     const provider = this.providers.get(providerId);
     if (!provider) {
       throw new Error(`saml.provider_not_found:${providerId}`);

@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ExecutionWorkerWritebackService } from "../../../../../src/platform/execution/worker-pool/execution-worker-writeback-service.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { TaskRecord, ExecutionRecord, WorkflowStateRecord, SessionRecord, WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import type { ExecutionAuthoritativeView } from "../../../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-types.js";
+import type { TaskRecord, ExecutionRecord, WorkflowStateRecord, SessionRecord, WorkerSnapshotRecord, ExecutionLeaseRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // ---------------------------------------------------------------------------
 // Mock factories
@@ -39,7 +41,8 @@ function createMockStore(): AuthoritativeTaskStore {
       consumeExecutionTicket: () => {},
       getAgentExecutionRecord: () => null,
       upsertAgentExecutionRecord: () => {},
-      getActiveExecutionLease: () => null,
+      getActiveExecutionLease: () => undefined,
+      getLatestExecutionLease: () => undefined,
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
       getWorker: () => null,
@@ -48,7 +51,7 @@ function createMockStore(): AuthoritativeTaskStore {
       upsertWorkerSnapshot: () => {},
       getWorkerSnapshot: () => null,
       insertHeartbeatSnapshot: () => {},
-      getExecutionLease: () => null,
+      getExecutionLease: () => undefined,
       closeExecutionLease: () => {},
       insertLeaseAudit: () => {},
       listStaleWorkerSnapshots: () => [],
@@ -75,7 +78,7 @@ function makeExecution(overrides: Partial<ExecutionRecord> = {}): ExecutionRecor
     taskId: "task-001",
     workflowId: "wf-001",
     parentExecutionId: null,
-    agentId: null,
+    agentId: "",
     roleId: null,
     runKind: "task_run" as const,
     status: "executing",
@@ -126,16 +129,16 @@ function makeTask(overrides: Partial<TaskRecord> = {}): TaskRecord {
 
 function makeWorkflow(overrides: Partial<WorkflowStateRecord> = {}): WorkflowStateRecord {
   return {
-    id: "wf-001",
+    workflowId: "wf-001",
     taskId: "task-001",
+    divisionId: "general_ops",
+    currentStepIndex: 0,
     status: "running",
-    inputJson: "{}",
-    outputsJson: null,
-    stepsJson: "[]",
-    stepStatesJson: "{}",
-    planJson: null,
-    errorPolicyJson: null,
-    createdAt: "2024-01-01T00:00:00.000Z",
+    outputsJson: "{}",
+    lastErrorCode: null,
+    retryCount: 0,
+    resumableFromStep: null,
+    startedAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
     ...overrides,
   };
@@ -145,8 +148,9 @@ function makeSession(overrides: Partial<SessionRecord> = {}): SessionRecord {
   return {
     id: "session-001",
     taskId: "task-001",
-    status: "active",
-    inputJson: "{}",
+    channel: "test",
+    status: "open",
+    externalSessionId: null,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
     ...overrides,
@@ -174,6 +178,42 @@ function makeWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): Work
     updatedAt: "2024-01-01T00:00:00.000Z",
     ...overrides,
   };
+}
+
+function makeExecutionView(overrides: Partial<ExecutionAuthoritativeView> = {}): ExecutionAuthoritativeView {
+  return {
+    execution: makeExecution(),
+    task: makeTask(),
+    workflow: makeWorkflow(),
+    session: makeSession(),
+    consistency: "authoritative",
+    observedAt: "2024-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function makeLease(overrides: Partial<ExecutionLeaseRecord> = {}): ExecutionLeaseRecord {
+  return {
+    id: "lease-001",
+    executionId: "exec-001",
+    workerId: "worker-001",
+    attempt: 1,
+    status: "active",
+    fencingToken: 1,
+    queueName: "default",
+    leasedAt: "2024-01-01T00:00:00.000Z",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+    lastHeartbeatAt: "2024-01-01T00:00:00.000Z",
+    releasedAt: null,
+    reasonCode: null,
+    ...overrides,
+  };
+}
+
+function setActiveLease(store: AuthoritativeTaskStore, lease: ExecutionLeaseRecord | undefined): void {
+  store.worker.getExecutionLease = () => lease;
+  store.worker.getLatestExecutionLease = () => lease;
+  store.worker.getActiveExecutionLease = () => lease;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,12 +244,7 @@ test("recordWriteback returns execution_not_found when execution view is null", 
 
 test("recordWriteback returns task_not_found when task is null in view", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: null,
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ task: null });
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -231,12 +266,7 @@ test("recordWriteback returns task_not_found when task is null in view", () => {
 
 test("recordWriteback returns workflow_not_found when workflow is null in view", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: null,
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ workflow: null });
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -258,12 +288,7 @@ test("recordWriteback returns workflow_not_found when workflow is null in view",
 
 test("recordWriteback returns session_not_found when session is null in view", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: null,
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ session: null });
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -285,12 +310,7 @@ test("recordWriteback returns session_not_found when session is null in view", (
 
 test("recordWriteback returns execution_not_executing when execution status is not executing", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution({ status: "succeeded" }),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ execution: makeExecution({ status: "succeeded" }) });
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -312,13 +332,8 @@ test("recordWriteback returns execution_not_executing when execution status is n
 
 test("recordWriteback returns lease_not_found when lease does not exist", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
-  store.worker.getExecutionLease = () => null;
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
+  setActiveLease(store, undefined);
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -340,23 +355,9 @@ test("recordWriteback returns lease_not_found when lease does not exist", () => 
 
 test("recordWriteback returns worker_not_trusted for remote worker without registrationVerifiedAt", () => {
   const store = createMockStore();
-  const execution = makeExecution();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution,
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot({ placement: "remote", registrationVerifiedAt: null });
-  store.worker.getExecutionLease = () => ({
-    id: "lease-001",
-    executionId: "exec-001",
-    workerId: "worker-001",
-    status: "active",
-    fencingToken: 1,
-    expiresAt: "2099-01-01T00:00:00.000Z",
-    createdAt: "2024-01-01T00:00:00.000Z",
-  });
+  setActiveLease(store, makeLease());
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -378,12 +379,7 @@ test("recordWriteback returns worker_not_trusted for remote worker without regis
 
 test("recordWriteback returns remote_authority_block_reason for remote worker with viewer_only session", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () =>
     makeWorkerSnapshot({
       placement: "remote",
@@ -391,15 +387,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
       remoteSessionStatus: "viewer_only",
       lastAcknowledgedStreamOffset: "offset-123",
     });
-  store.worker.getExecutionLease = () => ({
-    id: "lease-001",
-    executionId: "exec-001",
-    workerId: "worker-001",
-    status: "active",
-    fencingToken: 1,
-    expiresAt: "2099-01-01T00:00:00.000Z",
-    createdAt: "2024-01-01T00:00:00.000Z",
-  });
+  setActiveLease(store, makeLease());
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -417,12 +405,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
 
 test("recordWriteback returns remote_authority_block_reason for remote worker with consistency mismatch", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () =>
     makeWorkerSnapshot({
       placement: "remote",
@@ -431,15 +414,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
       lastAcknowledgedStreamOffset: "offset-123",
       sessionConsistencyCheckStatus: "mismatch",
     });
-  store.worker.getExecutionLease = () => ({
-    id: "lease-001",
-    executionId: "exec-001",
-    workerId: "worker-001",
-    status: "active",
-    fencingToken: 1,
-    expiresAt: "2099-01-01T00:00:00.000Z",
-    createdAt: "2024-01-01T00:00:00.000Z",
-  });
+  setActiveLease(store, makeLease());
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -457,12 +432,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
 
 test("recordWriteback returns remote_authority_block_reason for remote worker with workspace conflict", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () =>
     makeWorkerSnapshot({
       placement: "remote",
@@ -471,15 +441,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
       lastAcknowledgedStreamOffset: "offset-123",
       workspaceSyncStatus: "conflict",
     });
-  store.worker.getExecutionLease = () => ({
-    id: "lease-001",
-    executionId: "exec-001",
-    workerId: "worker-001",
-    status: "active",
-    fencingToken: 1,
-    expiresAt: "2099-01-01T00:00:00.000Z",
-    createdAt: "2024-01-01T00:00:00.000Z",
-  });
+  setActiveLease(store, makeLease());
   const db = createMockDb();
   const service = new ExecutionWorkerWritebackService(db, store);
 
@@ -501,25 +463,14 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
 
 test("recordWriteback returns resource_limit_exceeded when resource ceiling guard fails", () => {
   const store = createMockStore();
-  store.operations.loadExecutionAuthoritativeView = () => ({
-    execution: makeExecution(),
-    task: makeTask(),
-    workflow: makeWorkflow(),
-    session: makeSession(),
-  });
+  store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
-  store.worker.getExecutionLease = () => ({
-    id: "lease-001",
-    executionId: "exec-001",
-    workerId: "worker-001",
-    status: "active",
-    fencingToken: 1,
-    expiresAt: "2099-01-01T00:00:00.000Z",
-    createdAt: "2024-01-01T00:00:00.000Z",
-  });
-  store.worker.getAgentExecutionRecord = () => null;
+  setActiveLease(store, makeLease());
+  store.worker.getAgentExecutionRecord = () => undefined;
   const db = createMockDb();
-  const service = new ExecutionWorkerWritebackService(db, store);
+  const service = new ExecutionWorkerWritebackService(db, store, {
+    resourceCeilingGuard: new ExecutionResourceCeilingGuard({ maxMemoryMb: 1 }),
+  });
 
   const result = service.recordWriteback({
     executionId: "exec-001",

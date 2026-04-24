@@ -30,7 +30,14 @@ function createMockStore(overrides: {
   execution?: { updateExecutionStatus?: () => void; updateExecutionFailure?: () => void };
   task?: { setTaskState?: () => void; getTask?: (id: string) => { id: string; status: string; priority?: string; errorCode?: string | null } | null };
   session?: { updateSessionStatus?: () => void; insertSession?: () => void };
-  event?: { insertEvent?: () => void; getEvent?: (id: string) => { id: string; eventType: string; eventTier: string; payloadJson?: string } | null; countPendingTier1Acks?: () => number; ensureEventConsumerAckPending?: () => void };
+  event?: {
+    insertEvent?: () => void;
+    getEvent?: (id: string) => { id: string; eventType: string; eventTier: string; payloadJson?: string } | null;
+    countPendingTier1Acks?: () => number;
+    ensureEventConsumerAckPending?: () => void;
+    listPendingEventsForConsumer?: (consumerId: string) => Array<{ event: { id: string; eventType: string; eventTier: string }; ack: { status: string } }>;
+    listFailedEventsForConsumer?: (consumerId: string) => Array<{ event: { id: string; eventType: string; eventTier: string }; ack: { status: string } }>;
+  };
   operations?: { loadTaskSnapshot?: (taskId: string) => { task: { id: string; status: string; errorCode?: string | null }; execution: { id: string; status: string } | null; workflow: { id: string; status: string; currentStepIndex?: number; outputsJson?: string; resumableFromStep?: number; retryCount?: number; lastErrorCode?: string | null } | null; session: { id: string; status: string; channel: string; externalSessionId: string } | null } };
   dispatch?: { getExecution?: (id: string) => { id: string; taskId: string; status: string; attempt?: number; traceId?: string; lastErrorCode?: string | null; lastErrorMessage?: string | null; agentId?: string } | null; getSession?: (id: string) => { id: string; taskId: string; status: string; channel?: string; externalSessionId?: string } | null };
 } = {}): AuthoritativeTaskStore {
@@ -48,6 +55,8 @@ function createMockStore(overrides: {
       getEvent: (id: string) => overrides.events?.find((e) => e.id === id) ?? null,
       countPendingTier1Acks: () => 0,
       ensureEventConsumerAckPending: () => {},
+      listPendingEventsForConsumer: overrides.event?.listPendingEventsForConsumer ?? (() => []),
+      listFailedEventsForConsumer: overrides.event?.listFailedEventsForConsumer ?? (() => []),
     },
     execution: {
       updateExecutionStatus: () => {},

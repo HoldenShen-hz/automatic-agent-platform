@@ -41,6 +41,7 @@ test("SSO-SCIM: IdentitySyncService bootstraps with OIDC and SAML configs", () =
       entryPoint: "https://idp.example.com/saml/sso",
       issuer: "app.example.com",
       certificateFingerprint: "sha256:test-fingerprint",
+      allowUnsignedAssertions: false,
     };
 
     const events: ScimProvisioningEvent[] = [
@@ -104,6 +105,7 @@ test("SSO-SCIM: terminal SCIM events remove subjects from active set", () => {
       entryPoint: "https://idp.example.com/saml/sso",
       issuer: "app.example.com",
       certificateFingerprint: "sha256:terminal-fp",
+      allowUnsignedAssertions: false,
     };
 
     const events: ScimProvisioningEvent[] = [
@@ -166,6 +168,7 @@ test("SSO-SCIM: buildSamlAudience combines issuer and providerId", () => {
     entryPoint: "https://sso.example.com/saml",
     issuer: "my-app",
     certificateFingerprint: "sha256:abc123",
+    allowUnsignedAssertions: false,
   };
 
   const audience = buildSamlAudience(config);
@@ -210,6 +213,7 @@ test("SSO-SCIM: IdentitySyncService handles empty SCIM event list", () => {
       entryPoint: "https://idp.example.com/saml",
       issuer: "app.example.com",
       certificateFingerprint: "sha256:empty",
+      allowUnsignedAssertions: false,
     };
 
     const snapshot = identityService.bootstrap(oidcConfig, samlConfig, []);
@@ -254,6 +258,7 @@ test("SSO-SCIM: IdentitySyncService processes mixed terminal and non-terminal ev
       entryPoint: "https://idp.example.com/saml",
       issuer: "app.example.com",
       certificateFingerprint: "sha256:mixed",
+      allowUnsignedAssertions: false,
     };
 
     const events: ScimProvisioningEvent[] = [

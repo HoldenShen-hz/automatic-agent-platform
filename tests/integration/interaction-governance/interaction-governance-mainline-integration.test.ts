@@ -68,6 +68,7 @@ test("integration: interaction-governance mainline composes intake, UX, autonomy
         entryPoint: "https://id.example.com/saml",
         issuer: "app.example.com",
         certificateFingerprint: "sha256:finance",
+        allowUnsignedAssertions: false,
       },
       [
         {

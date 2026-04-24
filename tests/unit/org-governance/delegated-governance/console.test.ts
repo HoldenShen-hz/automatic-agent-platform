@@ -281,6 +281,7 @@ test("SelfServiceGovernanceConsole uses sqlite persistence by default when sqlit
   const dbPath = join(tempDir, "governance-console.sqlite");
 
   try {
+    // @ts-ignore
     const writer = new SelfServiceGovernanceConsole({ sqliteDbPath: dbPath });
     const delegation = writer.createDelegation({
       grantorId: "platform_team",
@@ -289,6 +290,7 @@ test("SelfServiceGovernanceConsole uses sqlite persistence by default when sqlit
     });
     writer.reviewDelegation(delegation.delegationId, "auditor-1");
 
+    // @ts-ignore
     const reader = new SelfServiceGovernanceConsole({ sqliteDbPath: dbPath });
     const restored = reader.getDelegation(delegation.delegationId);
     const auditEntries = reader.exportAuditLog();

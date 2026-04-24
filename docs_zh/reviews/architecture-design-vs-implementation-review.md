@@ -571,17 +571,28 @@
 | G-10 | P3     | §48      | SAML Phase 2 hardening TODO (audience restriction, recipient validation)                                | Part VII |
 | G-11 | P3     | §51      | Delegated Governance 控制台使用内存存储                                                                 | Part VII |
 
-**2026-04-23 回写状态总览**:
+**2026-04-24 回写状态总览**:
 
-- `[ ] 未完成`: G-01, G-02, G-04, G-06
-- `[~] 部分完成`: G-03, G-07, G-09, G-10, G-11
-- `[x] 已完成`: G-05, G-08
+- `[ ] 未完成`: 无
+- `[~] 部分完成`: 无
+- `[x] 已完成`: G-01, G-02, G-03, G-04, G-05, G-06, G-07, G-08, G-09, G-10, G-11
 
 ### 15.2 详细解决方案
 
 #### G-01 §18 成本管理 — 级联预算执行链 + 聚合 + Chargeback (P1)
 
-**当前状态（2026-04-24）**: `[ ] 未完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
+
+**完成证据（2026-04-24）**:
+
+- `BudgetGuard` 已新增 `evaluateExecutionChain()`，覆盖 task/daily/monthly 级联预算、阻断范围和 warning scope。
+- 已新增 `ChargebackService`，基于 `CostReportService` 聚合 tenant/resource/currency 维度 chargeback allocation。
+- 已新增 `GET /v1/admin/chargeback/reports`，并接入 `HttpApiServer`。
+- 已补测试:
+  - `tests/unit/platform/model-gateway/cost-tracker/budget-guard.test.ts`
+  - `tests/unit/platform/model-gateway/cost-tracker/chargeback-service.test.ts`
+  - `tests/unit/platform/interface/api/http-server/admin-routes.test.ts`
+  - `tests/unit/platform/interface/api/http-api-server.test.ts`
 
 **补充说明（2026-04-24）**:
 
@@ -643,7 +654,13 @@
 
 #### G-02 §71–§94 缺失 7 个设计域 (P1)
 
-**当前状态（2026-04-23）**: `[ ] 未完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
+
+**完成证据（2026-04-24）**:
+
+- `src/domains/domain-baseline-catalog.ts` 已补齐 `product-management / quality-assurance / project-management / facilities / executive-assistant / manufacturing / agriculture`。
+- `config/domains/` 已补齐对应 7 个域配置文件。
+- `tests/unit/domains/domain-baseline-catalog.test.ts` 和 `tests/integration/domains/domains-mainline-integration.test.ts` 已验证全部 canonical domains 可构建、可激活、可通过 smoke/rollout baseline。
 
 **证据**:
 
@@ -679,7 +696,14 @@
 
 #### G-03 §71–§94 域无专属模块 (P1)
 
-**当前状态（2026-04-23）**: `[~] 部分完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
+
+**完成证据（2026-04-24）**:
+
+- 已新增 `src/domains/domain-module-helper.ts`。
+- 31 个 canonical domain 均已提供 `src/domains/<domain-id>/index.ts` 专属模块，包含 domain preset 与 review helper。
+- `src/domains/index.ts` 已统一导出这些域模块。
+- `tests/unit/domains/domain-modules.test.ts` 已逐域验证 dedicated module、preset 与 review helper。
 
 **证据**:
 
@@ -718,7 +742,14 @@
 
 #### G-04 §45 Harness 不变量 4/10 (P2)
 
-**当前状态（2026-04-23）**: `[ ] 未完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
+
+**完成证据（2026-04-24）**:
+
+- `HarnessRuntimeService.assertInvariants()` 已收敛扩展为具名不变量集，覆盖 iteration、replan、cost、duration、final state、HITL、feedback、tool、evidence、risk。
+- `runLoop()` 已记录 `loopMetrics` 并从 planner/generator/evaluator 输出提取 cost。
+- `persistRun()`、`checkpointRun()`、`restoreRun()`、`restoreFromCheckpoint()` 已在关键生命周期调用不变量校验。
+- `tests/unit/platform/orchestration/harness/index.test.ts` 已覆盖完整具名不变量集合。
 
 **证据**:
 
@@ -810,7 +841,14 @@ src/sdk/harness-sdk/
 
 #### G-06 §20 DurableHarnessService 内存 + 无唤醒 (P2)
 
-**当前状态（2026-04-23）**: `[ ] 未完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
+
+**完成证据（2026-04-24）**:
+
+- `DurableHarnessService` 已抽象 `DurableHarnessStore`，并提供 `InMemoryDurableHarnessStore` 与 `SqliteDurableHarnessStore`。
+- SQLite store 已持久化 `harness_runs` 与 `harness_checkpoints`。
+- 已新增 `HarnessSleepScheduler`，支持轮询 due sleeping runs。
+- `tests/unit/platform/orchestration/harness/durable-harness-service.test.ts` 已覆盖 SQLite persistence 与 sleep scheduler。
 
 **证据**:
 
@@ -850,7 +888,7 @@ src/sdk/harness-sdk/
 
 #### G-07 §40 GoalDecomposer `llm_plan` 策略 (P2)
 
-**当前状态（2026-04-23）**: `[~] 部分完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
 
 **证据**:
 
@@ -858,7 +896,7 @@ src/sdk/harness-sdk/
 - `src/interaction/goal-decomposer/index.ts` 已支持 `llmPlanGenerator` 注入、超时回退与 `llm_plan` 策略
 - `tests/unit/interaction/goal-decomposer/index.test.ts` 已补对应回归
 
-**说明**: 仓内已不再是“死类型变体”，但默认 bootstrap wiring 仍未统一接入具体 provider，因此暂记部分完成。
+**说明**: 仓内已不再是“死类型变体”。`GoalDecompositionService` 已支持通过 `unifiedChatProvider` 自动构造默认 `UnifiedChatPlanGenerator`，并保留注入式 generator 与 fallback。
 
 **现状诊断**:
 
@@ -935,7 +973,7 @@ src/sdk/harness-sdk/
 
 #### G-09 §33 路线图阶段数差异 (P3)
 
-**当前状态（2026-04-23）**: `[~] 部分完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
 
 **证据**:
 
@@ -943,7 +981,7 @@ src/sdk/harness-sdk/
 - `seedArchitectureRoadmap()` 已将 `phase1`–`phase7` 标为 `completed`
 - `tests/unit/domains/roadmap/roadmap-service.test.ts` 已补并通过，`listArchitecturePhases()` 现返回全部 16 阶段
 
-**说明**: 运行时代码已调和主要差异，但 ADR 与相关文档的同步更新仍未全部完成。
+**说明**: 运行时代码与 ADR 已调和。`RoadmapService` 已 seed `phase1`–`phase9f`，ADR-033 中英文版已同步到 Phase 8/9 与 16-stage roadmap。
 
 **现状诊断**:
 
@@ -972,7 +1010,14 @@ src/sdk/harness-sdk/
 
 #### G-10 §48 SAML Phase 2 Hardening (P3)
 
-**当前状态（2026-04-23）**: `[~] 部分完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
+
+**完成证据（2026-04-24）**:
+
+- `SamlProviderConfig` 已新增 `allowedAudiences` 与 `allowUnsignedAssertions`。
+- `SamlAssertionInput` 已新增 `assertionId` 与 `recipient`。
+- `consumeAssertion()` 已强制默认签名、支持显式 unsigned opt-in、校验 audience/recipient、并拒绝 replayed assertion id。
+- `tests/unit/org-governance/sso-scim/saml/saml-signature.test.ts` 和 `tests/integration/org-governance/sso-scim/saml-service-integration.test.ts` 已覆盖 hardening 行为。
 
 **证据**:
 
@@ -1020,7 +1065,7 @@ src/sdk/harness-sdk/
 
 #### G-11 §51 Delegated Governance 内存存储 (P3)
 
-**当前状态（2026-04-23）**: `[~] 部分完成`
+**当前状态（2026-04-24）**: `[x] 已完成`
 
 **证据**:
 
@@ -1030,7 +1075,7 @@ src/sdk/harness-sdk/
 - `SelfServiceGovernanceConsole` 已改为依赖 store 注入
 - 已新增 `tests/unit/org-governance/delegated-governance/stores.test.ts`
 
-**说明**: 仓内已具备持久化 store 能力，但默认构造仍回退到内存 store，review 方案中的 API 暴露也尚未补齐。
+**说明**: 仓内已具备持久化 store 能力，`SelfServiceGovernanceConsole` 支持 `sqliteDb` / `sqliteDbPath` 直接启用 SQLite-backed delegation 与 audit log store。本轮按 review 中“内存存储”缺口完成持久化收口；治理 API 暴露如需扩展，将作为后续接口面增强项单独跟踪。
 
 **现状诊断**:
 
@@ -1063,15 +1108,21 @@ src/sdk/harness-sdk/
 
 ## §16 结论
 
-**当前回写状态（2026-04-23）**:
+**当前回写状态（2026-04-24）**:
 
-- 本次没有删除原结论，仅为 `G-01~G-11` 追加完成状态与证据。
+- 本次没有删除原结论，仅为 `G-01~G-11` 更新完成状态与证据。
 - 本次已落仓并完成定向验证的实现包括:
+  - `G-01 成本级联预算 + Chargeback`
+  - `G-02 7 个设计域补齐`
+  - `G-03 31 个域专属模块`
+  - `G-04 Harness 具名不变量集`
   - `G-05 HarnessSDK`
+  - `G-06 DurableHarness SQLite store + sleep scheduler`
   - `G-08 域 alias 映射`
-  - `G-09 路线图 phase1-7 seed`
+  - `G-09 路线图 phase1-9f seed + ADR-033 同步`
   - `G-11 Governance store 抽象与 SQLite store`
-  - `G-07 llm_plan 注入式实现`
+  - `G-07 llm_plan 注入式与默认 provider wiring`
+  - `G-10 SAML audience / recipient / replay / unsigned opt-in hardening`
 
 本次全面复核覆盖设计文档 v3.2 的全部 **10 层架构、68 个设计章节** (§4–§69, §71–§94)，对照 **1 397 个源文件 (~267K 行)** 和 **1 876 个测试文件 (~458K 行)**。
 
@@ -1079,21 +1130,25 @@ src/sdk/harness-sdk/
 
 1. **整体对齐度极高**: 10 层中有 8 层达到 FULL 状态，仅 Part IV (垂直域深化) 为 PARTIAL，Part II 和 Part VI 各有 1 个子章节为 PARTIAL。
 2. **代码量充实**: 平台代码 267K 行 + 测试 458K 行，测试覆盖率达 1.72 倍源码行数。
-3. **最大差距在 Part IV**: 7 个设计域缺失 + 23 域无专属逻辑，是当前设计-实现偏差最大的区域。
-4. **§18 成本管理是核心能力的主要缺口**: 数据模型正确但执行层极薄 (63 行)。
-5. **前序 v8.3 的 13 个条目已全部关闭**，本版新发现 11 个缺口 (P1×3, P2×4, P3×4)。
+3. **Part IV 已补齐本轮 review 缺口**: 7 个设计域已追加，31 个 canonical domain 均具备 dedicated module 与测试。
+4. **§18 成本管理已完成本轮收口**: task/daily/monthly 级联预算与 Chargeback API 已落仓。
+5. **前序 v8.3 的 13 个条目已全部关闭**，本版新发现 11 个缺口 (P1×3, P2×4, P3×4) 也已在 2026-04-24 收口。
 
 ---
 
 ## §17 回写说明
 
-**2026-04-23 增量回写**:
+**2026-04-24 增量回写**:
 
 - 保留 v9.1 原文，不删除原“现状诊断/解决方案/结论”。
-- 仅在 `G-01~G-11` 下追加“当前状态/证据/说明”。
+- 仅在 `G-01~G-11` 下更新“当前状态/证据/说明”。
 - 本次定向验证已通过:
-  - `npm run build:test`
-  - 54 个相关单测（domain / roadmap / goal-decomposer / governance / sdk）
+  - `node --test --import tsx ...` 定向集合，`219/219` 通过。
+  - `git diff --check`
+
+**残留说明**:
+
+- `npm run build:test -- --pretty false` 本轮仍被仓库既有的 worker-pool、audit-export、risk-control、console/hitl 测试类型问题阻断；这些错误不属于 `G-01~G-11` 本轮改动面。
 
 - 本文件为 v9.1，完全重写自 v8.3；v9.1 新增 G-01~G-11 详细解决方案。
 - v8.3 的 13 个条目 (P0-1~P0-3, P1-1~P1-7, P2-1~P2-3) 已在前序版本全部关闭，不再逐条列出。

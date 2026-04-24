@@ -92,6 +92,7 @@ test("integration: org-governance services compose policy, delegation, knowledge
       entryPoint: "https://id.example.com/saml",
       issuer: "app.example.com",
       certificateFingerprint: "sha256:abc",
+      allowUnsignedAssertions: false,
     },
     [{
       eventId: "evt_1",

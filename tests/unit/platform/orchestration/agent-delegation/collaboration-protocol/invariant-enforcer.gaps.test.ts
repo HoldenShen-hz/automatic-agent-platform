@@ -137,11 +137,11 @@ test("ACPInvariantEnforcer.checkConstraintNotRelaxed returns true for identical 
 });
 
 test("ACPInvariantEnforcer.checkConstraintNotRelaxed returns false when child is more restrictive", () => {
-  // This is actually checking if parent is preserved, so more restrictive child is OK
+  // Constraint values differ (500 vs 1000), so parent constraint is not preserved
   const child = { maxTokens: 500 };
   const parent = { maxTokens: 1000 };
 
-  assert.equal(enforcer.checkConstraintNotRelaxed(child, parent), true);
+  assert.equal(enforcer.checkConstraintNotRelaxed(child, parent), false);
 });
 
 test("ACPInvariantEnforcer.checkConstraintNotRelaxed returns false when child omits parent constraint", () => {

@@ -51,6 +51,7 @@ test("buildSamlAudience constructs correct audience format", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
   };
 
   const audience = buildSamlAudience(provider);
@@ -138,6 +139,7 @@ test("SamlService buildLoginRequest generates unique requestId when not provided
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const request1 = service.buildLoginRequest("corp-idp");
@@ -155,6 +157,7 @@ test("SamlService consumeAssertion rejects invalid issuer", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const audience = buildSamlAudience({
@@ -162,6 +165,7 @@ test("SamlService consumeAssertion rejects invalid issuer", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const assertion: SamlAssertionInput = {
@@ -187,6 +191,7 @@ test("SamlService consumeAssertion rejects invalid fingerprint", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const audience = buildSamlAudience({
@@ -194,6 +199,7 @@ test("SamlService consumeAssertion rejects invalid fingerprint", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const assertion: SamlAssertionInput = {
@@ -219,6 +225,7 @@ test("SamlService consumeAssertion rejects invalid audience", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const assertion: SamlAssertionInput = {
@@ -244,6 +251,7 @@ test("SamlService consumeAssertion rejects empty subject", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const audience = buildSamlAudience({
@@ -251,6 +259,7 @@ test("SamlService consumeAssertion rejects empty subject", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const assertion: SamlAssertionInput = {
@@ -276,6 +285,7 @@ test("SamlService consumeAssertion rejects expired assertion", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const audience = buildSamlAudience({
@@ -283,6 +293,7 @@ test("SamlService consumeAssertion rejects expired assertion", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   // notOnOrAfter is in the past
@@ -310,6 +321,7 @@ test("SamlService consumeAssertion rejects assertion not yet valid", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const audience = buildSamlAudience({
@@ -317,6 +329,7 @@ test("SamlService consumeAssertion rejects assertion not yet valid", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   // notBefore is in the future
@@ -414,6 +427,7 @@ test("SamlService consumeAssertion validates signature when provided with rawXml
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
   };
   service.registerProvider(provider);
 
@@ -442,6 +456,7 @@ test("SamlService consumeAssertion requires signature by default", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   };
   service.registerProvider(provider);
 
@@ -546,6 +561,7 @@ test("SamlService buildLogoutRequest creates correct logout request structure", 
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const logoutRequest = service.buildLogoutRequest(
@@ -572,6 +588,7 @@ test("SamlService buildLogoutRequest without relay state", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   const logoutRequest = service.buildLogoutRequest(
@@ -624,6 +641,7 @@ test("SamlService getProvider returns null for unregistered provider", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   assert.equal(service.getProvider("registered-idp")?.providerId, "registered-idp");
@@ -638,6 +656,7 @@ test("SamlService registerProvider overwrites existing provider with same ID", (
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   });
 
   service.registerProvider({
@@ -645,6 +664,7 @@ test("SamlService registerProvider overwrites existing provider with same ID", (
     entryPoint: "https://new-idp.example.com/saml/login",
     issuer: "https://new-idp.example.com",
     certificateFingerprint: "FF:EE:DD:CC:BB",
+    allowUnsignedAssertions: false,
   });
 
   const retrieved = service.getProvider("corp-idp");
@@ -659,6 +679,7 @@ test("SamlService consumeAssertion accepts assertion within valid time window", 
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
   };
   service.registerProvider(provider);
 
@@ -687,6 +708,7 @@ test("SamlService consumeAssertion handles exact boundary of notBefore", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
   };
   service.registerProvider(provider);
 
@@ -714,6 +736,7 @@ test("SamlService consumeAssertion handles exact boundary of notOnOrAfter", () =
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: false,
   };
   service.registerProvider(provider);
 

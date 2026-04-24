@@ -298,7 +298,7 @@ test("SamlService buildLoginRequest includes all required fields in redirect URL
 
 test("SamlService consumeAssertion skips signature validation when rawXml is missing", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -340,7 +340,7 @@ test("SamlService consumeAssertion with xmlSignature and rawXml triggers validat
 
 test("SamlService consumeAssertion creates session with null sessionIndex", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -357,7 +357,7 @@ test("SamlService consumeAssertion creates session with null sessionIndex", () =
 
 test("SamlService consumeAssertion creates session with provided sessionIndex", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -375,7 +375,7 @@ test("SamlService consumeAssertion creates session with provided sessionIndex", 
 
 test("SamlService consumeAssertion creates session with empty attributes", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -392,7 +392,7 @@ test("SamlService consumeAssertion creates session with empty attributes", () =>
 
 test("SamlService consumeAssertion creates session with multiple attributes", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -412,7 +412,7 @@ test("SamlService consumeAssertion creates session with multiple attributes", ()
 
 test("SamlService consumeAssertion uses custom now parameter", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
   const customNow = new Date("2026-03-15T12:00:00.000Z");
@@ -432,7 +432,7 @@ test("SamlService consumeAssertion uses custom now parameter", () => {
 
 test("SamlService consumeAssertion rejects nameId with only whitespace", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -451,7 +451,7 @@ test("SamlService consumeAssertion rejects nameId with only whitespace", () => {
 
 test("SamlService consumeAssertion rejects nameId with tabs and newlines", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -568,7 +568,7 @@ test("SamlService fails closed for buildLogoutRequest with unknown provider", ()
 
 test("SamlService consumeAssertion with notBefore exactly at current time is valid", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
   const now = new Date("2026-04-23T10:00:00.000Z");
@@ -588,7 +588,7 @@ test("SamlService consumeAssertion with notBefore exactly at current time is val
 
 test("SamlService consumeAssertion with notOnOrAfter exactly at current time is invalid", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
   const now = new Date("2026-04-23T10:00:00.000Z");
@@ -609,7 +609,7 @@ test("SamlService consumeAssertion with notOnOrAfter exactly at current time is 
 
 test("SamlService consumeAssertion with notBefore in past and notOnOrAfter in future is valid", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -628,7 +628,7 @@ test("SamlService consumeAssertion with notBefore in past and notOnOrAfter in fu
 
 test("SamlService consumeAssertion with only notBefore set is valid when in future", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -646,7 +646,7 @@ test("SamlService consumeAssertion with only notBefore set is valid when in futu
 
 test("SamlService consumeAssertion with only notOnOrAfter set expires when past", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -666,7 +666,7 @@ test("SamlService consumeAssertion with only notOnOrAfter set expires when past"
 
 test("SamlService consumeAssertion with expired notBefore is invalid", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -731,7 +731,7 @@ test("SamlService multiple providers are isolated", () => {
 
 test("SamlService consumeAssertion stores correct expiresAt from notOnOrAfter", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 
@@ -749,7 +749,7 @@ test("SamlService consumeAssertion stores correct expiresAt from notOnOrAfter", 
 
 test("SamlService consumeAssertion with no expiration sets expiresAt to null", () => {
   const service = new SamlService();
-  service.registerProvider(createProvider());
+  service.registerProvider(createProvider({ allowUnsignedAssertions: true }));
 
   const audience = buildSamlAudience(createProvider());
 

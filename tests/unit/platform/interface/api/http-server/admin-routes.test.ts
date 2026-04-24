@@ -113,14 +113,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createAdminRoutes returns 15 routes", () => {
+test("createAdminRoutes returns 16 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 15);
+  assert.equal(routes.length, 16);
 });
 
 test("GET /v1/stability returns stability panel", async () => {
@@ -351,6 +351,30 @@ test("GET /v1/admin/budgets returns aggregated budget summaries", async () => {
   if (!response) throw new Error("Handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("\"totalCostUsd\": 25"));
+});
+
+test("GET /v1/admin/chargeback/reports returns chargeback allocations", async () => {
+  const costReportService = new CostReportService();
+  costReportService.createReport({
+    tenantId: "tenant-1",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-30T23:59:59.000Z",
+    totalCostUsd: 25,
+    resourceCosts: [{ resourceId: "openai:gpt-5", resourceType: "api", costUsd: 25, currency: "USD" }],
+    submittedBy: "operator-1",
+  });
+  const routes = createAdminRoutes({
+    authService: createMockAuthService(["admin"]),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    costReportService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/admin/chargeback/reports", ["v1", "admin", "chargeback", "reports"]));
+  if (!response) throw new Error("Handler returned null");
+  assert.equal(response.statusCode, 200);
+  assert.ok(response.body.includes("\"totalCostUsd\": 25"));
+  assert.ok(response.body.includes("openai:gpt-5"));
 });
 
 test("GET /v1/admin/inventories/benchmarks returns benchmark inventory", async () => {
