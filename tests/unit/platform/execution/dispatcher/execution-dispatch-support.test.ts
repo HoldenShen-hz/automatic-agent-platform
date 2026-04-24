@@ -15,8 +15,12 @@ import {
   selectWorkersForDispatch,
   toWorkerEvaluation,
   isElevatedPriority,
+  isRemoteSessionReadyForDispatch,
+  buildDispatchAgentExecutionRecord,
+  resolveDispatchBackpressureReason,
 } from "../../../../../src/platform/execution/dispatcher/execution-dispatch-support.js";
-import type { WorkerPlacement, DispatchWorkerEvaluation, DispatchTarget, WorkerIsolationLevel } from "../../../../../src/platform/contracts/types/domain.js";
+import type { WorkerPlacement, DispatchWorkerEvaluation, DispatchTarget, WorkerIsolationLevel, ExecutionTicketRecord, ExecutionRecord, AgentExecutionRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // ---------------------------------------------------------------------------
 // normalizeStringArray
@@ -441,4 +445,325 @@ test("isElevatedPriority returns false for normal", () => {
 
 test("isElevatedPriority returns false for low", () => {
   assert.equal(isElevatedPriority("low"), false);
+});
+
+// ---------------------------------------------------------------------------
+// isRemoteSessionReadyForDispatch
+// ---------------------------------------------------------------------------
+
+test("isRemoteSessionReadyForDispatch returns true for local placement", () => {
+  const worker = {
+    workerId: "w1",
+    placement: "local" as const,
+    remoteSessionStatus: null,
+    lastAcknowledgedStreamOffset: null,
+    sessionConsistencyCheckStatus: null,
+    workspaceSyncStatus: null,
+  };
+  assert.equal(isRemoteSessionReadyForDispatch(worker as any), true);
+});
+
+test("isRemoteSessionReadyForDispatch returns true for remote with connected status and no block reason", () => {
+  const worker = {
+    workerId: "w1",
+    placement: "remote" as const,
+    remoteSessionStatus: "connected",
+    lastAcknowledgedStreamOffset: "100",
+    sessionConsistencyCheckStatus: "passed",
+    workspaceSyncStatus: "aligned",
+  };
+  assert.equal(isRemoteSessionReadyForDispatch(worker as any), true);
+});
+
+test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only status", () => {
+  const worker = {
+    workerId: "w1",
+    placement: "remote" as const,
+    remoteSessionStatus: "viewer_only",
+    lastAcknowledgedStreamOffset: null,
+    sessionConsistencyCheckStatus: null,
+    workspaceSyncStatus: null,
+  };
+  assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
+});
+
+test("isRemoteSessionReadyForDispatch returns false for remote with consistency mismatch", () => {
+  const worker = {
+    workerId: "w1",
+    placement: "remote" as const,
+    remoteSessionStatus: "connected",
+    lastAcknowledgedStreamOffset: "100",
+    sessionConsistencyCheckStatus: "mismatch" as const,
+    workspaceSyncStatus: "aligned",
+  };
+  assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
+});
+
+test("isRemoteSessionReadyForDispatch returns false for remote with workspace sync conflict", () => {
+  const worker = {
+    workerId: "w1",
+    placement: "remote" as const,
+    remoteSessionStatus: "connected",
+    lastAcknowledgedStreamOffset: "100",
+    sessionConsistencyCheckStatus: "passed",
+    workspaceSyncStatus: "conflict" as const,
+  };
+  assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
+});
+
+test("isRemoteSessionReadyForDispatch returns false for remote with missing stream offset", () => {
+  const worker = {
+    workerId: "w1",
+    placement: "remote" as const,
+    remoteSessionStatus: "connected",
+    lastAcknowledgedStreamOffset: null,
+    sessionConsistencyCheckStatus: "passed",
+    workspaceSyncStatus: "aligned",
+  };
+  assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
+});
+
+// ---------------------------------------------------------------------------
+// resolveDispatchBackpressureReason
+// ---------------------------------------------------------------------------
+
+test("resolveDispatchBackpressureReason returns null when snapshot is null", () => {
+  const ticket = { priority: "low" as const } as ExecutionTicketRecord;
+  assert.equal(resolveDispatchBackpressureReason(ticket, null), null);
+});
+
+test("resolveDispatchBackpressureReason returns null when degradationMode is ok", () => {
+  const ticket = { priority: "low" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "ok", queueGovernance: { starvationDetected: false } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
+});
+
+test("resolveDispatchBackpressureReason returns read_only_mode for read_only_operations_only", () => {
+  const ticket = { priority: "low" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "read_only_operations_only", queueGovernance: { starvationDetected: false } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.read_only_mode");
+});
+
+test("resolveDispatchBackpressureReason returns pause_non_critical for elevated priority with pause_non_critical", () => {
+  const ticket = { priority: "urgent" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
+});
+
+test("resolveDispatchBackpressureReason returns pause_non_critical for non-elevated priority with pause_non_critical", () => {
+  const ticket = { priority: "normal" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.pause_non_critical");
+});
+
+test("resolveDispatchBackpressureReason returns starvation_protection for low priority with queue_only and starvation", () => {
+  const ticket = { priority: "low" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.starvation_protection");
+});
+
+test("resolveDispatchBackpressureReason returns queue_only for non-elevated priority with queue_only and no starvation", () => {
+  const ticket = { priority: "normal" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.queue_only");
+});
+
+test("resolveDispatchBackpressureReason returns null for elevated priority with queue_only and no starvation", () => {
+  const ticket = { priority: "high" as const } as ExecutionTicketRecord;
+  const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
+  assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
+});
+
+// ---------------------------------------------------------------------------
+// buildDispatchAgentExecutionRecord
+// ---------------------------------------------------------------------------
+
+function createMockStoreForBuildRecord(
+  existingAgentRecord?: AgentExecutionRecord | null,
+): AuthoritativeTaskStore {
+  return {
+    worker: {
+      getAgentExecutionRecord: () => existingAgentRecord ?? null,
+    },
+  } as unknown as AuthoritativeTaskStore;
+}
+
+function createMockExecution(id = "exec-1"): ExecutionRecord {
+  return {
+    id,
+    taskId: "task-1",
+    workflowId: "wf-1",
+    roleId: "role-1",
+    agentId: "original-agent-id",
+    status: "executing",
+    runKind: "task_run",
+    attempt: 1,
+    traceId: "trace-1",
+    parentExecutionId: null,
+    inputRef: null,
+    budgetUsdLimit: null,
+    requiresApproval: 0,
+    sandboxMode: null,
+    allowedToolsJson: null,
+    allowedPathsJson: null,
+    maxRetries: 3,
+    retryBackoff: "exponential",
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    timeoutMs: 3600000,
+  };
+}
+
+test("buildDispatchAgentExecutionRecord creates new record when no existing record", () => {
+  const store = createMockStoreForBuildRecord(null);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1" };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.executionId, "exec-1");
+  assert.equal(record.taskId, "task-1");
+  assert.equal(record.agentId, "original-agent-id");
+  assert.equal(record.workflowId, "wf-1");
+  assert.equal(record.roleId, "role-1");
+  assert.equal(record.runKind, "task_run");
+  assert.equal(record.runtimeInstanceId, null);
+  assert.equal(record.restartGeneration, 0);
+  assert.equal(record.toolCallCount, 0);
+  assert.equal(record.retryCount, 0);
+});
+
+test("buildDispatchAgentExecutionRecord preserves existing values when no updates", () => {
+  const existingRecord: AgentExecutionRecord = {
+    executionId: "exec-1",
+    taskId: "task-1",
+    agentId: "existing-agent",
+    workflowId: "wf-1",
+    roleId: "role-1",
+    runKind: "task_run",
+    runtimeInstanceId: "runtime-123",
+    restartedFromRuntimeInstanceId: "runtime-100",
+    restartGeneration: 2,
+    status: "executing",
+    planJson: '{"plan":"data"}',
+    currentStepId: "step-5",
+    lastToolName: "tool_a",
+    toolCallCount: 50,
+    lastDecisionJson: '{"decision":"test"}',
+    lastErrorCode: null,
+    retryCount: 1,
+    progressMessage: "running",
+    startedAt: "2024-01-01T00:00:00.000Z",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    completedAt: null,
+  };
+  const store = createMockStoreForBuildRecord(existingRecord);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1" };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.agentId, "existing-agent");
+  assert.equal(record.runtimeInstanceId, "runtime-123");
+  assert.equal(record.restartGeneration, 2);
+  assert.equal(record.toolCallCount, 50);
+  assert.equal(record.currentStepId, "step-5");
+});
+
+test("buildDispatchAgentExecutionRecord applies status update", () => {
+  const store = createMockStoreForBuildRecord(null);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1", status: "completed" };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.status, "completed");
+});
+
+test("buildDispatchAgentExecutionRecord applies planJson update", () => {
+  const store = createMockStoreForBuildRecord(null);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1", planJson: '{"new":"plan"}' };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.planJson, '{"new":"plan"}');
+});
+
+test("buildDispatchAgentExecutionRecord applies lastDecisionJson update", () => {
+  const store = createMockStoreForBuildRecord(null);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1", lastDecisionJson: '{"decision":"new"}' };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.lastDecisionJson, '{"decision":"new"}');
+});
+
+test("buildDispatchAgentExecutionRecord applies progressMessage update", () => {
+  const store = createMockStoreForBuildRecord(null);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1", progressMessage: "new progress" };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.progressMessage, "new progress");
+});
+
+test("buildDispatchAgentExecutionRecord uses existing startedAt when present", () => {
+  const existingRecord: AgentExecutionRecord = {
+    executionId: "exec-1",
+    taskId: "task-1",
+    agentId: "agent-1",
+    workflowId: "wf-1",
+    roleId: "role-1",
+    runKind: "task_run",
+    runtimeInstanceId: null,
+    restartedFromRuntimeInstanceId: null,
+    restartGeneration: 0,
+    status: "executing",
+    planJson: "{}",
+    currentStepId: null,
+    lastToolName: null,
+    toolCallCount: 0,
+    lastDecisionJson: null,
+    lastErrorCode: null,
+    retryCount: 0,
+    progressMessage: null,
+    startedAt: "2024-01-01T00:00:00.000Z",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    completedAt: null,
+  };
+  const store = createMockStoreForBuildRecord(existingRecord);
+  const execution = createMockExecution();
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1" };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.startedAt, "2024-01-01T00:00:00.000Z");
+});
+
+test("buildDispatchAgentExecutionRecord sets retryCount from execution attempt", () => {
+  const store = createMockStoreForBuildRecord(null);
+  const execution = createMockExecution();
+  execution.attempt = 3;
+  const occurredAt = new Date().toISOString();
+  const updates = { taskId: "task-1" };
+
+  const record = buildDispatchAgentExecutionRecord(store, execution, occurredAt, updates);
+
+  assert.equal(record.retryCount, 2); // attempt - 1
 });

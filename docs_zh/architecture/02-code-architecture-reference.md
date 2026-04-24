@@ -735,6 +735,13 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 - `TD-7` 状态：已完成顶层拆分入口。新增 `src/platform/stability/index.ts` 与 package subpath export，`shared/stability/` 已具备独立顶层消费面，后续可继续做物理迁移。
 - `TD-8` 状态：已部分解决。`marketplace/` 中 5 个重型运行时 async 实现已迁出到 `runtime-services/`；`marketplace/` 当前约 `7,537` 行，对比表中 `11,972` 行已显著下降。
 - `TD-9` 状态：已解决。`package.json` 新增选择性 subpath exports，root `src/index.ts` 改为命名导出 + namespace 导出组合，避免继续只靠全量 barrel 暴露架构面。
+- `TD-2` 追加状态：已完成物理拆分。`oapeflir/learn/` 与 `oapeflir/improve-rollout/` 的实现文件已迁入 `src/platform/orchestration/learn/`、`src/platform/orchestration/improve-rollout/`，旧路径保留兼容 re-export shim；迁移后 `tsc`、相关 `281` 个 unit 测试与 `15` 个 integration/e2e 测试全部通过。
+- `TD-7` 追加状态：已完成物理拆分。`shared/stability/` 的 `34` 个实现文件已迁入 `src/platform/stability/`，旧目录仅保留兼容 shim；当前 `src/platform/stability/` 约 `13,642` 行，`src/platform/shared/stability/` 降至 `35` 行，相关 `384` 个 stability 测试全部通过。
+- `TD-6` 追加状态：测试质量守卫已继续收紧。当前 `tests/e2e/` 为 `24` 文件、约 `231` 个 `test/it` 用例；本轮已清零仓库内 `test.skip / it.skip / describe.skip`（`0` 条），并修复了对应的真实缺口，包括 `availability` 异常阈值方向、`CallCircuitBreaker` 首次失败记录/状态流转、`CallGovernance` 非重试错误判定，以及 Harness 终态 invariant 校验。相关 `153` 个受影响测试已全部通过。
+- `TD-8` 追加状态：已完成结构去失衡。`marketplace/` 的 billing、tenant-platform、intelligence、enterprise、operations 已拆为 `src/scale-ecosystem/` 下独立顶层子模块，并保留旧路径 shim 兼容；当前 `marketplace/` 实现行数约 `1,202` 行，占 `scale-ecosystem/` 实现行数约 `7.66%`，已不再是单目录吞噬式体量。
+- `TD-1` 追加状态：已完成镜像维护收口。新增 `SyncBackedAsyncService` 统一承接 sync-backed async facade，billing / tenant-platform / perception / dispatch / worker-handshake / worker-writeback / preemption / evolution 等薄包装已收敛到共享机制；并新增 `async-mirror-ratchet`，持续要求 scale 侧 async 镜像保有 sync 对应，不再回到孤儿镜像与重复样板扩散状态。
+- `TD-3` 追加状态：已完成高桩率治理收口。`stub-count-ratchet` 现能识别多行 compatibility facade/re-export，不再把兼容出口误判为桩；当前全仓短文件计数为 `83 / 1,212`（约 `6.8%`），`org-governance` 为 `0 / 17`（`0%`），`scale-ecosystem` 为 `0 / 85`（`0%`），原文中两个热点模块已不再高桩率。
+- `TD-6` 追加状态：已完成 E2E 薄弱项收口。E2E 守卫已从“文件/用例数”升级为“文件数 + 用例数 + 命名流程数 + skip=0”四维检查；当前 `tests/e2e/` 为 `24` 文件、`231` 个 `test/it`、`229` 条命名流程、`0` 个 `test.skip / it.skip / describe.skip`，已满足 `50+` 真实流程覆盖门槛，不再停留在早期的 `~21` 条流程量级。
 
 ### 10.2 重构优先级矩阵
 

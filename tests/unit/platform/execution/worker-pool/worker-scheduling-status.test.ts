@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { toWorkerSchedulingStatus } from "../../../../../src/platform/execution/worker-pool/worker/worker-scheduling-status.js";
+import { toWorkerSchedulingStatus } from "../../../../../src/platform/execution/worker-pool/worker-scheduling-status.js";
 import type { WorkerStatus, WorkerSchedulingStatus } from "../../../../../src/platform/contracts/types/domain.js";
 
 test("toWorkerSchedulingStatus maps degraded to degraded", () => {

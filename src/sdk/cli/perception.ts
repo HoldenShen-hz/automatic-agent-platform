@@ -43,8 +43,8 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadPerceptionCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { BillingService } from "../../scale-ecosystem/marketplace/billing-service.js";
-import { PerceptionService } from "../../scale-ecosystem/marketplace/perception-service.js";
+import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
+import { PerceptionService } from "../../scale-ecosystem/intelligence/perception-service.js";
 
 /**
  * Main entry point for the perception CLI.

@@ -7,7 +7,7 @@ import {
   summarizeWorkerLoadSkew,
   MAX_RECOMMENDED_STICKY_SHARE,
   type WorkerLoadSignal,
-} from "../../../../../src/platform/execution/worker-pool/worker/worker-load-balancing.js";
+} from "../../../../../src/platform/execution/worker-pool/worker-load-balancing.js";
 
 function makeSignal(overrides: Partial<WorkerLoadSignal> = {}): WorkerLoadSignal {
   return {

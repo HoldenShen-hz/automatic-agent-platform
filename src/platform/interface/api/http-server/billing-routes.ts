@@ -12,7 +12,7 @@ import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseBillingReconcilePayload } from "./schemas.js";
 import { buildJsonResponse } from "./utils.js";
-import type { BillingService } from "../../../../scale-ecosystem/marketplace/billing-service.js";
+import type { BillingService } from "../../../../scale-ecosystem/billing/billing-service.js";
 import { AppError } from "../../../contracts/errors.js";
 
 class ApiError extends AppError {

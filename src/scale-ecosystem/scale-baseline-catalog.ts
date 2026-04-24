@@ -3,6 +3,11 @@ export type ScaleCapabilityId =
   | "resource-manager"
   | "sla-engine"
   | "marketplace"
+  | "billing"
+  | "tenant-platform"
+  | "intelligence"
+  | "enterprise"
+  | "operations"
   | "feedback-loop"
   | "integration";
 
@@ -39,9 +44,44 @@ export const SCALE_CAPABILITY_BASELINES: readonly ScaleCapabilityBaseline[] = Ob
   {
     capabilityId: "marketplace",
     entryModule: "src/scale-ecosystem/marketplace/index.ts",
-    description: "Marketplace governance, pack security, PMF validation, billing, and tenant platform baselines.",
+    description: "Marketplace governance, publisher, certification, catalog, and pack-security core baselines.",
     architectureSections: ["§55"],
-    baselineServices: ["MarketplaceGovernanceService", "PackSecurityService", "TenantPlatformService"],
+    baselineServices: ["MarketplaceGovernanceService", "PackSecurityService", "sortMarketplaceCatalog"],
+  },
+  {
+    capabilityId: "billing",
+    entryModule: "src/scale-ecosystem/billing/index.ts",
+    description: "Revenue, entitlements, checkout gateway, and cost-estimation baselines extracted from marketplace.",
+    architectureSections: ["§55"],
+    baselineServices: ["BillingService", "StripeBillingPaymentGateway", "buildBillingMarkdown"],
+  },
+  {
+    capabilityId: "tenant-platform",
+    entryModule: "src/scale-ecosystem/tenant-platform/index.ts",
+    description: "Tenant topology, compliance program, HA program, and data-plane flow baselines.",
+    architectureSections: ["§55"],
+    baselineServices: ["TenantPlatformService", "ComplianceProgramService", "DataPlaneFlowService"],
+  },
+  {
+    capabilityId: "intelligence",
+    entryModule: "src/scale-ecosystem/intelligence/index.ts",
+    description: "Perception ingest, PMF validation, and intelligence report shaping baselines.",
+    architectureSections: ["§55"],
+    baselineServices: ["PerceptionService", "PmfValidationService"],
+  },
+  {
+    capabilityId: "enterprise",
+    entryModule: "src/scale-ecosystem/enterprise/index.ts",
+    description: "Enterprise capability matrix and license enforcement baselines.",
+    architectureSections: ["§55"],
+    baselineServices: ["EnterpriseCapabilityMatrixService", "LicenseEnforcementService"],
+  },
+  {
+    capabilityId: "operations",
+    entryModule: "src/scale-ecosystem/operations/index.ts",
+    description: "Platform operator operational readiness and marketplace operator workflow baselines.",
+    architectureSections: ["§55"],
+    baselineServices: ["PlatformOperatorService"],
   },
   {
     capabilityId: "feedback-loop",

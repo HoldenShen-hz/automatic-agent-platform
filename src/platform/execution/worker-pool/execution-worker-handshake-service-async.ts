@@ -12,6 +12,7 @@
  * @see ExecutionWorkerHandshakeService for the sync implementation
  */
 
+import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type {
@@ -40,8 +41,7 @@ export type {
  * This async version provides the same functionality as ExecutionWorkerHandshakeService
  * but with async/await interface for modern async contexts.
  */
-export class ExecutionWorkerHandshakeServiceAsync {
-  private readonly sync: ExecutionWorkerHandshakeService;
+export class ExecutionWorkerHandshakeServiceAsync extends SyncBackedAsyncService<ExecutionWorkerHandshakeService> {
 
   /**
    * Creates a new ExecutionWorkerHandshakeServiceAsync instance.
@@ -55,28 +55,20 @@ export class ExecutionWorkerHandshakeServiceAsync {
     store: AuthoritativeTaskStore,
     options: ExecutionWorkerHandshakeServiceOptions = {},
   ) {
-    this.sync = new ExecutionWorkerHandshakeService(db, store, options);
+    super(() => new ExecutionWorkerHandshakeService(db, store, options));
   }
 
   /**
    * Handles a worker's request to claim an execution ticket.
    */
   public claimExecution(input: WorkerClaimExecutionInput): Promise<WorkerHandshakeDecision> {
-    return Promise.resolve(this.sync.claimExecution(input));
+    return this.asPromise((sync) => sync.claimExecution(input));
   }
 
   /**
    * Records a heartbeat from a worker.
    */
   public recordHeartbeat(input: WorkerExecutionHeartbeatInput): Promise<WorkerHandshakeDecision> {
-    return Promise.resolve(this.sync.recordHeartbeat(input));
-  }
-
-  /**
-   * Gets the synchronous service instance for internal use.
-   * @internal
-   */
-  public getSyncService(): ExecutionWorkerHandshakeService {
-    return this.sync;
+    return this.asPromise((sync) => sync.recordHeartbeat(input));
   }
 }

@@ -192,10 +192,11 @@ test("performance: priority queue orders high priority first", (t) => {
     const expectedOrder = [10, 9, 5, 2, 1]; // descending priority
 
     for (let i = 0; i < priorityOrder.length; i++) {
+      const priority = priorityOrder[i]!;
       adapter.enqueue({
         queueName,
-        payload: { index: i, priority: priorityOrder[i] },
-        priority: priorityOrder[i],
+        payload: { index: i, priority },
+        priority,
       });
     }
 

@@ -5,7 +5,7 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadTenantPlatformCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { TenantPlatformService } from "../../scale-ecosystem/marketplace/tenant-platform-service.js";
+import { TenantPlatformService } from "../../scale-ecosystem/tenant-platform/tenant-platform-service.js";
 
 const envConfig = loadTenantPlatformCliEnv();
 const result = withCliStorage((storage) => {

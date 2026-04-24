@@ -27,7 +27,7 @@ import { dirname } from "node:path";
 
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadPlatformOperatorCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
-import { PlatformOperatorService } from "../../scale-ecosystem/marketplace/platform-operator-service.js";
+import { PlatformOperatorService } from "../../scale-ecosystem/operations/platform-operator-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 const envConfig = loadPlatformOperatorCliEnv();

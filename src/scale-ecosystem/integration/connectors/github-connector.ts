@@ -1,13 +1,26 @@
 import type { ConnectorExecutionRequest, ConnectorExecutionResult } from "../connector-runtime/index.js";
 
+const GITHUB_CAPABILITIES = ["create_pr", "create_issue", "dispatch_workflow"] as const;
+
 export class GitHubConnector {
-  public execute(request: ConnectorExecutionRequest): ConnectorExecutionResult {
+  public listCapabilities(): readonly string[] {
+    return GITHUB_CAPABILITIES;
+  }
+
+  public supportsCapability(capability: string): boolean {
+    return GITHUB_CAPABILITIES.includes(capability as (typeof GITHUB_CAPABILITIES)[number]);
+  }
+
+  private buildResult(request: ConnectorExecutionRequest, supported: boolean): ConnectorExecutionResult {
     return {
       connectorId: request.connectorId,
-      success: request.capability === "create_pr" || request.capability === "create_issue" || request.capability === "dispatch_workflow",
-      status: request.capability === "create_pr" || request.capability === "create_issue" || request.capability === "dispatch_workflow"
-        ? "succeeded"
-        : "failed",
+      success: supported,
+      status: supported ? "succeeded" : "failed",
     };
+  }
+
+  public execute(request: ConnectorExecutionRequest): ConnectorExecutionResult {
+    const supported = this.supportsCapability(request.capability);
+    return this.buildResult(request, supported);
   }
 }

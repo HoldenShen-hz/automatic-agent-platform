@@ -227,15 +227,15 @@ test("All connectors preserve connectorId in result", () => {
   const connectorIds = ["slack", "github", "jira", "servicenow"];
 
   for (let i = 0; i < connectors.length; i++) {
-    const connector = connectors[i];
+    const connector = connectors[i]!;
     const request = createMockRequest({
-      connectorId: connectorIds[i],
+      connectorId: connectorIds[i]!,
       capability: "unknown",
       payload: {},
     });
 
     const result = connector.execute(request);
-    assert.equal(result.connectorId, connectorIds[i]);
+    assert.equal(result.connectorId, connectorIds[i]!);
   }
 });
 

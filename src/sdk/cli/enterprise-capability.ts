@@ -26,7 +26,7 @@ import { dirname } from "node:path";
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadEnterpriseCapabilityCliEnv } from "../../platform/control-plane/config-center/remaining-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { EnterpriseCapabilityMatrixService } from "../../scale-ecosystem/marketplace/enterprise-capability-matrix-service.js";
+import { EnterpriseCapabilityMatrixService } from "../../scale-ecosystem/enterprise/enterprise-capability-matrix-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 const envConfig = loadEnterpriseCapabilityCliEnv();

@@ -17,7 +17,12 @@
     "./platform/stability": "./dist/src/platform/stability/index.js",
     "./plugins": "./dist/src/plugins/index.js",
     "./scale-ecosystem": "./dist/src/scale-ecosystem/index.js",
+    "./scale-ecosystem/billing": "./dist/src/scale-ecosystem/billing/index.js",
+    "./scale-ecosystem/enterprise": "./dist/src/scale-ecosystem/enterprise/index.js",
+    "./scale-ecosystem/intelligence": "./dist/src/scale-ecosystem/intelligence/index.js",
+    "./scale-ecosystem/operations": "./dist/src/scale-ecosystem/operations/index.js",
     "./scale-ecosystem/runtime-services": "./dist/src/scale-ecosystem/runtime-services/index.js",
+    "./scale-ecosystem/tenant-platform": "./dist/src/scale-ecosystem/tenant-platform/index.js",
     "./sdk": "./dist/src/sdk/index.js",
     "./package.json": "./package.json"
   },

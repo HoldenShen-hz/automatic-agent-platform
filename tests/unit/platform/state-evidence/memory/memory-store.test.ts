@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ProjectMemoryStore, type ProjectMemoryEntry } from "../../../../../src/platform/state-evidence/memory/project-memory-store.js";
-import { UserMemoryStore, type UserMemoryEntry } from "../../../../../src/platform/state-evidence/memory/user-memory-store.js";
+import { ProjectMemoryStore } from "../../../../../src/platform/state-evidence/memory/project-memory-store.js";
+import { UserMemoryStore } from "../../../../../src/platform/state-evidence/memory/user-memory-store.js";
 import type { MemoryRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // =============================================================================
@@ -40,68 +40,61 @@ function createMockMemoryRecord(id: string, contentJson: string = "test content"
 // ProjectMemoryStore Tests
 // =============================================================================
 
-test("ProjectMemoryStore.upsert creates a new entry with correct fields", () => {
+test("ProjectMemoryStore.upsert creates entry with correct projectId", () => {
   const store = new ProjectMemoryStore();
-  const memory = createMockMemoryRecord("mem_1", "test content");
+  const memory = createMockMemoryRecord("mem_1", "content");
 
-  const entry = store.upsert("proj_1", memory);
+  const entry = store.upsert("proj_abc", memory);
 
-  assert.equal(entry.projectId, "proj_1");
+  assert.equal(entry.projectId, "proj_abc");
   assert.equal(entry.memory.id, "mem_1");
-  assert.equal(entry.memory.contentJson, "test content");
-  assert.ok(entry.promotedAt.length > 0);
 });
 
 test("ProjectMemoryStore.upsert uses provided promotedAt timestamp", () => {
   const store = new ProjectMemoryStore();
   const memory = createMockMemoryRecord("mem_ts", "content");
-  const customTimestamp = "2024-01-15T10:30:00.000Z";
+  const customTs = "2025-06-15T12:00:00.000Z";
 
-  const entry = store.upsert("proj_ts", memory, customTimestamp);
+  const entry = store.upsert("proj_ts", memory, customTs);
 
-  assert.equal(entry.promotedAt, customTimestamp);
+  assert.equal(entry.promotedAt, customTs);
 });
 
 test("ProjectMemoryStore.upsert defaults promotedAt to current time", () => {
   const store = new ProjectMemoryStore();
-  const memory = createMockMemoryRecord("mem_default", "content");
+  const memory = createMockMemoryRecord("mem_now", "content");
   const before = new Date().toISOString();
 
-  const entry = store.upsert("proj_default", memory);
+  const entry = store.upsert("proj_now", memory);
 
   const after = new Date().toISOString();
   assert.ok(entry.promotedAt >= before && entry.promotedAt <= after);
 });
 
-test("ProjectMemoryStore.upsert updates existing entry with same memory id", () => {
+test("ProjectMemoryStore.upsert overwrites existing entry with same memory id", () => {
   const store = new ProjectMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_same", "original content");
-  const memory2 = createMockMemoryRecord("mem_same", "updated content");
+  const memory1 = createMockMemoryRecord("mem_id", "original");
+  const memory2 = createMockMemoryRecord("mem_id", "updated");
 
-  store.upsert("proj_1", memory1);
-  const updated = store.upsert("proj_1", memory2);
+  store.upsert("proj_overwrite", memory1);
+  const updated = store.upsert("proj_overwrite", memory2);
 
-  assert.equal(updated.memory.contentJson, "updated content");
-  const list = store.list("proj_1");
-  assert.equal(list.length, 1);
-  assert.equal(list[0].memory.contentJson, "updated content");
+  assert.equal(updated.memory.contentJson, "updated");
+  assert.equal(store.list("proj_overwrite").length, 1);
 });
 
 test("ProjectMemoryStore.list returns empty array for unknown project", () => {
   const store = new ProjectMemoryStore();
 
-  const result = store.list("nonexistent_project");
+  const result = store.list("nonexistent");
 
   assert.deepEqual(result, []);
 });
 
-test("ProjectMemoryStore.list returns all entries for a project", () => {
+test("ProjectMemoryStore.list returns all entries for project", () => {
   const store = new ProjectMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_1", "content 1");
-  const memory2 = createMockMemoryRecord("mem_2", "content 2");
-
-  store.upsert("proj_list", memory1);
-  store.upsert("proj_list", memory2);
+  store.upsert("proj_list", createMockMemoryRecord("mem_a", "content a"));
+  store.upsert("proj_list", createMockMemoryRecord("mem_b", "content b"));
 
   const result = store.list("proj_list");
 
@@ -110,36 +103,31 @@ test("ProjectMemoryStore.list returns all entries for a project", () => {
 
 test("ProjectMemoryStore.list returns separate entries per project", () => {
   const store = new ProjectMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_proj1", "proj1 content");
-  const memory2 = createMockMemoryRecord("mem_proj2", "proj2 content");
+  store.upsert("proj_x", createMockMemoryRecord("mem_x", "x content"));
+  store.upsert("proj_y", createMockMemoryRecord("mem_y", "y content"));
 
-  store.upsert("project_a", memory1);
-  store.upsert("project_b", memory2);
+  const listX = store.list("proj_x");
+  const listY = store.list("proj_y");
 
-  const projAList = store.list("project_a");
-  const projBList = store.list("project_b");
-
-  assert.equal(projAList.length, 1);
-  assert.equal(projAList[0].memory.contentJson, "proj1 content");
-  assert.equal(projBList.length, 1);
-  assert.equal(projBList[0].memory.contentJson, "proj2 content");
+  assert.equal(listX.length, 1);
+  assert.equal(listY.length, 1);
+  assert.equal(listX[0]?.memory.contentJson, "x content");
+  assert.equal(listY[0]?.memory.contentJson, "y content");
 });
 
 test("ProjectMemoryStore.get returns null for unknown project", () => {
   const store = new ProjectMemoryStore();
 
-  const result = store.get("nonexistent_project", "mem_1");
+  const result = store.get("unknown_proj", "mem_1");
 
   assert.equal(result, null);
 });
 
-test("ProjectMemoryStore.get returns null for unknown memoryId", () => {
+test("ProjectMemoryStore.get returns null for unknown memory id", () => {
   const store = new ProjectMemoryStore();
-  const memory = createMockMemoryRecord("mem_known", "content");
+  store.upsert("proj_known", createMockMemoryRecord("mem_known", "content"));
 
-  store.upsert("proj_get", memory);
-
-  const result = store.get("proj_get", "mem_unknown");
+  const result = store.get("proj_known", "mem_unknown");
 
   assert.equal(result, null);
 });
@@ -147,234 +135,172 @@ test("ProjectMemoryStore.get returns null for unknown memoryId", () => {
 test("ProjectMemoryStore.get returns correct entry", () => {
   const store = new ProjectMemoryStore();
   const memory = createMockMemoryRecord("mem_target", "target content");
+  store.upsert("proj_t", memory);
 
-  store.upsert("proj_target", memory);
-  const result = store.get("proj_target", "mem_target");
+  const result = store.get("proj_t", "mem_target");
 
   assert.notEqual(result, null);
-  assert.equal(result?.projectId, "proj_target");
+  assert.equal(result?.projectId, "proj_t");
   assert.equal(result?.memory.id, "mem_target");
-  assert.equal(result?.memory.contentJson, "target content");
-});
-
-test("ProjectMemoryStore.upsert stores full memory record", () => {
-  const store = new ProjectMemoryStore();
-  const memory = createMockMemoryRecord("mem_full", '{"key":"value"}');
-  memory.qualityScore = 0.95;
-  memory.hitCount = 42;
-
-  store.upsert("proj_full", memory);
-  const result = store.get("proj_full", "mem_full");
-
-  assert.notEqual(result, null);
-  assert.equal(result?.memory.qualityScore, 0.95);
-  assert.equal(result?.memory.hitCount, 42);
 });
 
 // =============================================================================
 // UserMemoryStore Tests
 // =============================================================================
 
-test("UserMemoryStore.upsert creates a new entry with correct fields", () => {
+test("UserMemoryStore.upsert creates entry with correct userId", () => {
   const store = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_u1", "user memory content");
+  const memory = createMockMemoryRecord("mem_u1", "user content");
 
-  const entry = store.upsert("user_1", memory);
+  const entry = store.upsert("user_123", memory);
 
-  assert.equal(entry.userId, "user_1");
+  assert.equal(entry.userId, "user_123");
   assert.equal(entry.memory.id, "mem_u1");
-  assert.equal(entry.memory.contentJson, "user memory content");
-  assert.ok(entry.promotedAt.length > 0);
 });
 
 test("UserMemoryStore.upsert uses provided promotedAt timestamp", () => {
   const store = new UserMemoryStore();
   const memory = createMockMemoryRecord("mem_uts", "content");
-  const customTimestamp = "2024-02-20T15:45:00.000Z";
+  const customTs = "2025-07-20T09:30:00.000Z";
 
-  const entry = store.upsert("user_ts", memory, customTimestamp);
+  const entry = store.upsert("user_ts", memory, customTs);
 
-  assert.equal(entry.promotedAt, customTimestamp);
+  assert.equal(entry.promotedAt, customTs);
 });
 
 test("UserMemoryStore.upsert defaults promotedAt to current time", () => {
   const store = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_udefault", "content");
+  const memory = createMockMemoryRecord("mem_unow", "content");
   const before = new Date().toISOString();
 
-  const entry = store.upsert("user_default", memory);
+  const entry = store.upsert("user_now", memory);
 
   const after = new Date().toISOString();
   assert.ok(entry.promotedAt >= before && entry.promotedAt <= after);
 });
 
-test("UserMemoryStore.upsert updates existing entry with same memory id", () => {
+test("UserMemoryStore.upsert overwrites existing entry with same memory id", () => {
   const store = new UserMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_usame", "original user content");
-  const memory2 = createMockMemoryRecord("mem_usame", "updated user content");
+  const memory1 = createMockMemoryRecord("mem_uid", "first");
+  const memory2 = createMockMemoryRecord("mem_uid", "second");
 
-  store.upsert("user_1", memory1);
-  const updated = store.upsert("user_1", memory2);
+  store.upsert("user_overwrite", memory1);
+  const updated = store.upsert("user_overwrite", memory2);
 
-  assert.equal(updated.memory.contentJson, "updated user content");
-  const list = store.list("user_1");
-  assert.equal(list.length, 1);
-  assert.equal(list[0].memory.contentJson, "updated user content");
+  assert.equal(updated.memory.contentJson, "second");
+  assert.equal(store.list("user_overwrite").length, 1);
 });
 
 test("UserMemoryStore.list returns empty array for unknown user", () => {
   const store = new UserMemoryStore();
 
-  const result = store.list("nonexistent_user");
+  const result = store.list("unknown_user");
 
   assert.deepEqual(result, []);
 });
 
-test("UserMemoryStore.list returns all entries for a user", () => {
+test("UserMemoryStore.list returns all entries for user", () => {
   const store = new UserMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_u1", "user content 1");
-  const memory2 = createMockMemoryRecord("mem_u2", "user content 2");
-
-  store.upsert("user_list", memory1);
-  store.upsert("user_list", memory2);
+  store.upsert("user_list", createMockMemoryRecord("mem_ua", "a content"));
+  store.upsert("user_list", createMockMemoryRecord("mem_ub", "b content"));
 
   const result = store.list("user_list");
 
   assert.equal(result.length, 2);
 });
 
-test("UserMemoryStore.list returns separate entries per user", () => {
-  const store = new UserMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_usera1", "userA content");
-  const memory2 = createMockMemoryRecord("mem_userb1", "userB content");
-
-  store.upsert("user_a", memory1);
-  store.upsert("user_b", memory2);
-
-  const userAList = store.list("user_a");
-  const userBList = store.list("user_b");
-
-  assert.equal(userAList.length, 1);
-  assert.equal(userAList[0].memory.contentJson, "userA content");
-  assert.equal(userBList.length, 1);
-  assert.equal(userBList[0].memory.contentJson, "userB content");
-});
-
 test("UserMemoryStore.get returns null for unknown user", () => {
   const store = new UserMemoryStore();
 
-  const result = store.get("nonexistent_user", "mem_1");
+  const result = store.get("unknown_user", "mem_1");
 
   assert.equal(result, null);
 });
 
-test("UserMemoryStore.get returns null for unknown memoryId", () => {
+test("UserMemoryStore.get returns null for unknown memory id", () => {
   const store = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_uknown", "content");
+  store.upsert("user_known", createMockMemoryRecord("mem_uk", "content"));
 
-  store.upsert("user_get", memory);
-
-  const result = store.get("user_get", "mem_unknown");
+  const result = store.get("user_known", "mem_unknown");
 
   assert.equal(result, null);
 });
 
 test("UserMemoryStore.get returns correct entry", () => {
   const store = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_utarget", "target user content");
+  const memory = createMockMemoryRecord("mem_utarget", "user target content");
+  store.upsert("user_t", memory);
 
-  store.upsert("user_target", memory);
-  const result = store.get("user_target", "mem_utarget");
+  const result = store.get("user_t", "mem_utarget");
 
   assert.notEqual(result, null);
-  assert.equal(result?.userId, "user_target");
+  assert.equal(result?.userId, "user_t");
   assert.equal(result?.memory.id, "mem_utarget");
-  assert.equal(result?.memory.contentJson, "target user content");
-});
-
-test("UserMemoryStore.upsert stores full memory record", () => {
-  const store = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_ufull", '{"userKey":"userValue"}');
-  memory.qualityScore = 0.88;
-  memory.hitCount = 100;
-
-  store.upsert("user_full", memory);
-  const result = store.get("user_full", "mem_ufull");
-
-  assert.notEqual(result, null);
-  assert.equal(result?.memory.qualityScore, 0.88);
-  assert.equal(result?.memory.hitCount, 100);
 });
 
 // =============================================================================
-// Cross-Store Isolation Tests
+// Isolation Tests
 // =============================================================================
 
-test("ProjectMemoryStore and UserMemoryStore are isolated", () => {
-  const projectStore = new ProjectMemoryStore();
+test("ProjectMemoryStore entries are isolated from UserMemoryStore", () => {
+  const projStore = new ProjectMemoryStore();
   const userStore = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_iso", "isolated content");
+  const memory = createMockMemoryRecord("mem_iso", "isolated");
 
-  projectStore.upsert("proj_iso", memory);
+  projStore.upsert("proj_iso", memory);
   userStore.upsert("user_iso", memory);
 
-  const projectResult = projectStore.get("proj_iso", "mem_iso");
+  const projResult = projStore.get("proj_iso", "mem_iso");
   const userResult = userStore.get("user_iso", "mem_iso");
 
-  assert.notEqual(projectResult, null);
+  assert.notEqual(projResult, null);
   assert.notEqual(userResult, null);
-  assert.equal(projectResult?.projectId, "proj_iso");
+  assert.equal(projResult?.projectId, "proj_iso");
   assert.equal(userResult?.userId, "user_iso");
 });
 
-test("ProjectMemoryStore does not leak entries to UserMemoryStore", () => {
-  const projectStore = new ProjectMemoryStore();
+test("ProjectMemoryStore does not leak to UserMemoryStore", () => {
+  const projStore = new ProjectMemoryStore();
   const userStore = new UserMemoryStore();
 
-  projectStore.upsert("proj_leak", createMockMemoryRecord("mem_leak", "leak content"));
+  projStore.upsert("proj_leak", createMockMemoryRecord("mem_leak", "leak content"));
 
-  const userList = userStore.list("proj_leak");
-  const userGet = userStore.get("proj_leak", "mem_leak");
-
-  assert.deepEqual(userList, []);
-  assert.equal(userGet, null);
+  assert.deepEqual(userStore.list("proj_leak"), []);
+  assert.equal(userStore.get("proj_leak", "mem_leak"), null);
 });
 
-test("UserMemoryStore does not leak entries to ProjectMemoryStore", () => {
-  const projectStore = new ProjectMemoryStore();
+test("UserMemoryStore does not leak to ProjectMemoryStore", () => {
+  const projStore = new ProjectMemoryStore();
   const userStore = new UserMemoryStore();
 
   userStore.upsert("user_leak", createMockMemoryRecord("mem_uleak", "uleak content"));
 
-  const projectList = projectStore.list("user_leak");
-  const projectGet = projectStore.get("user_leak", "mem_uleak");
-
-  assert.deepEqual(projectList, []);
-  assert.equal(projectGet, null);
+  assert.deepEqual(projStore.list("user_leak"), []);
+  assert.equal(projStore.get("user_leak", "mem_uleak"), null);
 });
 
 // =============================================================================
 // Edge Cases
 // =============================================================================
 
-test("ProjectMemoryStore handles multiple upserts with same id across different projects", () => {
+test("ProjectMemoryStore handles same memory id across different projects", () => {
   const store = new ProjectMemoryStore();
-  const memory1 = createMockMemoryRecord("mem_shared", "project1 content");
-  const memory2 = createMockMemoryRecord("mem_shared", "project2 content");
+  const memory1 = createMockMemoryRecord("mem_shared", "proj1 content");
+  const memory2 = createMockMemoryRecord("mem_shared", "proj2 content");
 
   store.upsert("project_1", memory1);
   store.upsert("project_2", memory2);
 
-  const proj1Entry = store.get("project_1", "mem_shared");
-  const proj2Entry = store.get("project_2", "mem_shared");
+  const entry1 = store.get("project_1", "mem_shared");
+  const entry2 = store.get("project_2", "mem_shared");
 
-  assert.notEqual(proj1Entry, null);
-  assert.notEqual(proj2Entry, null);
-  assert.equal(proj1Entry?.memory.contentJson, "project1 content");
-  assert.equal(proj2Entry?.memory.contentJson, "project2 content");
+  assert.notEqual(entry1, null);
+  assert.notEqual(entry2, null);
+  assert.equal(entry1?.memory.contentJson, "proj1 content");
+  assert.equal(entry2?.memory.contentJson, "proj2 content");
 });
 
-test("UserMemoryStore handles multiple upserts with same id across different users", () => {
+test("UserMemoryStore handles same memory id across different users", () => {
   const store = new UserMemoryStore();
   const memory1 = createMockMemoryRecord("mem_ushared", "user1 content");
   const memory2 = createMockMemoryRecord("mem_ushared", "user2 content");
@@ -382,63 +308,67 @@ test("UserMemoryStore handles multiple upserts with same id across different use
   store.upsert("user_1", memory1);
   store.upsert("user_2", memory2);
 
-  const user1Entry = store.get("user_1", "mem_ushared");
-  const user2Entry = store.get("user_2", "mem_ushared");
+  const entry1 = store.get("user_1", "mem_ushared");
+  const entry2 = store.get("user_2", "mem_ushared");
 
-  assert.notEqual(user1Entry, null);
-  assert.notEqual(user2Entry, null);
-  assert.equal(user1Entry?.memory.contentJson, "user1 content");
-  assert.equal(user2Entry?.memory.contentJson, "user2 content");
+  assert.notEqual(entry1, null);
+  assert.notEqual(entry2, null);
+  assert.equal(entry1?.memory.contentJson, "user1 content");
+  assert.equal(entry2?.memory.contentJson, "user2 content");
 });
 
-test("ProjectMemoryStore entry preserves original memory scope", () => {
+test("ProjectMemoryStore preserves memory record fields", () => {
   const store = new ProjectMemoryStore();
-  const memory = createMockMemoryRecord("mem_scope", "scope content");
+  const memory = createMockMemoryRecord("mem_fields", "json content");
+  memory.qualityScore = 0.95;
+  memory.hitCount = 42;
   memory.scope = "agent";
 
-  store.upsert("proj_scope", memory);
-  const entry = store.get("proj_scope", "mem_scope");
+  store.upsert("proj_fields", memory);
+  const entry = store.get("proj_fields", "mem_fields");
 
   assert.notEqual(entry, null);
+  assert.equal(entry?.memory.qualityScore, 0.95);
+  assert.equal(entry?.memory.hitCount, 42);
   assert.equal(entry?.memory.scope, "agent");
 });
 
-test("UserMemoryStore entry preserves original memory scope", () => {
+test("UserMemoryStore preserves memory record fields", () => {
   const store = new UserMemoryStore();
-  const memory = createMockMemoryRecord("mem_uscope", "uscope content");
-  memory.scope = "project";
+  const memory = createMockMemoryRecord("mem_ufields", "json content");
+  memory.qualityScore = 0.88;
+  memory.hitCount = 100;
 
-  store.upsert("user_scope", memory);
-  const entry = store.get("user_scope", "mem_uscope");
+  store.upsert("user_fields", memory);
+  const entry = store.get("user_fields", "mem_ufields");
 
   assert.notEqual(entry, null);
-  assert.equal(entry?.memory.scope, "project");
+  assert.equal(entry?.memory.qualityScore, 0.88);
+  assert.equal(entry?.memory.hitCount, 100);
 });
 
 test("ProjectMemoryStore.list returns new array each call", () => {
   const store = new ProjectMemoryStore();
-  store.upsert("proj_array", createMockMemoryRecord("mem_array", "content"));
+  store.upsert("proj_arr", createMockMemoryRecord("mem_arr", "content"));
 
-  const list1 = store.list("proj_array");
-  const list2 = store.list("proj_array");
+  const list1 = store.list("proj_arr");
+  const list2 = store.list("proj_arr");
 
   assert.deepEqual(list1, list2);
-  // Verify they are different array instances
-  list1.push({} as ProjectMemoryEntry);
-  const list3 = store.list("proj_array");
+  list1.push({} as any);
+  const list3 = store.list("proj_arr");
   assert.equal(list3.length, 1);
 });
 
 test("UserMemoryStore.list returns new array each call", () => {
   const store = new UserMemoryStore();
-  store.upsert("user_array", createMockMemoryRecord("mem_uarray", "ucontent"));
+  store.upsert("user_arr", createMockMemoryRecord("mem_uarr", "content"));
 
-  const list1 = store.list("user_array");
-  const list2 = store.list("user_array");
+  const list1 = store.list("user_arr");
+  const list2 = store.list("user_arr");
 
   assert.deepEqual(list1, list2);
-  // Verify they are different array instances
-  list1.push({} as UserMemoryEntry);
-  const list3 = store.list("user_array");
+  list1.push({} as any);
+  const list3 = store.list("user_arr");
   assert.equal(list3.length, 1);
 });

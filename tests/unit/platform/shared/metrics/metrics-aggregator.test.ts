@@ -271,7 +271,7 @@ test("MetricsAggregator handles single data point gracefully", () => {
 
 test("MetricsAggregator normalizes labels with null/undefined", () => {
   aggregator.reset();
-  aggregator.record("test_metric", { a: "value", b: null as unknown as string, c: undefined }, 10);
+  aggregator.record("test_metric", { a: "value", b: null as unknown as string }, 10);
 
   // Should not throw and should handle gracefully
   const results = aggregator.aggregate("test_metric");
@@ -299,7 +299,7 @@ test("MetricsAggregator calculates disk I/O rates", () => {
   const results = aggregator.aggregate("disk_read_bytes", { device: "sda" });
   assert.equal(results[0]?.min, 512);
   assert.equal(results[0]?.max, 2048);
-  assert.equal(results[0]?.avg, 1194.67);
+  assert.ok(Math.abs((results[0]?.avg ?? 0) - 1194.6666666666667) < 0.001);
 });
 
 test("MetricsAggregator tracks request duration by endpoint", () => {

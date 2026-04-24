@@ -95,8 +95,7 @@ test("evaluate matches rule with eq operator", () => {
   assert.equal(result.matchedRuleIds[0], "test-rule");
 });
 
-// @ts-ignore - riskCategory override is not cast to PolicyRiskCategory in createMockContext
-test.skip("evaluate does not match rule when eq condition fails", () => {
+test("evaluate does not match rule when eq condition fails", () => {
   const bundle = createBundle([
     {
       ruleId: "test-rule",
@@ -368,8 +367,7 @@ test("evaluate requires all conditions to match with AND logic", () => {
 // Rule matching - multiple conditions with OR logic
 // ---------------------------------------------------------------------------
 
-// @ts-ignore - riskCategory override is not cast to PolicyRiskCategory in createMockContext
-test.skip("evaluate requires any condition to match with OR logic", () => {
+test("evaluate requires any condition to match with OR logic", () => {
   const bundle = createBundle([
     {
       ruleId: "test-rule",
@@ -434,8 +432,7 @@ test("evaluate uses priority to order rules", () => {
 // Action types
 // ---------------------------------------------------------------------------
 
-// @ts-ignore - riskCategory override is not cast to PolicyRiskCategory in createMockContext
-test.skip("evaluate handles allow action", () => {
+test("evaluate handles allow action", () => {
   const bundle = createBundle([
     {
       ruleId: "test-rule",

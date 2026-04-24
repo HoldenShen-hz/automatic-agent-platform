@@ -108,7 +108,7 @@ test("CallCircuitBreaker starts in closed state", () => {
   assert.equal(result.state, "closed");
 });
 
-test.skip("CallCircuitBreaker records failures - implementation issue: circuit breaker not opening", () => {
+test("CallCircuitBreaker records failures", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   breaker.recordFailure("key1");
@@ -118,7 +118,7 @@ test.skip("CallCircuitBreaker records failures - implementation issue: circuit b
   assert.equal(result.state, "open");
 });
 
-test.skip("CallCircuitBreaker opens after threshold - implementation issue: circuit breaker not opening", () => {
+test("CallCircuitBreaker opens after threshold", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 2, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   breaker.recordFailure("key1");
@@ -127,7 +127,7 @@ test.skip("CallCircuitBreaker opens after threshold - implementation issue: circ
   assert.equal(result.allowed, false);
 });
 
-test.skip("CallCircuitBreaker.transitions to half_open after timeout - implementation issue: circuit breaker not transitioning", () => {
+test("CallCircuitBreaker.transitions to half_open after timeout", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 1, successThreshold: 2, resetTimeoutMs: 50 });
   breaker.recordFailure("key1");
   assert.equal(breaker.check("key1").state, "open");
@@ -168,7 +168,7 @@ test("CallCircuitBreaker.closes after success threshold in half_open", () => {
   });
 });
 
-test.skip("CallCircuitBreaker.getSnapshot returns state - implementation issue: failures not recorded", () => {
+test("CallCircuitBreaker.getSnapshot returns state", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   const snapshot = breaker.getSnapshot("key1");
@@ -366,7 +366,7 @@ test("CallGovernance.execute retries on retryable error", async () => {
   assert.equal(attempts, 2);
 });
 
-test.skip("CallGovernance.execute does not retry non-retryable error - implementation issue: retry logic not working", async () => {
+test("CallGovernance.execute does not retry non-retryable error", async () => {
   let attempts = 0;
   const governance = new CallGovernance({
     retry: { maxAttempts: 3, baseDelayMs: 10, maxDelayMs: 50, backoffMultiplier: 2 },

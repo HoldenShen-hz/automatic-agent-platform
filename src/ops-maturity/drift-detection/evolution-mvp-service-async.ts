@@ -11,6 +11,7 @@
 
 import { createRequire } from "node:module";
 
+import { SyncBackedAsyncService } from "../../platform/shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 
@@ -24,8 +25,9 @@ const require = createRequire(import.meta.url);
  * This async version provides the same functionality as EvolutionMvpService
  * but with async/await interface for modern async contexts.
  */
-export class EvolutionServiceAsync {
-  private readonly sync: import("./evolution-mvp-service.js").EvolutionMvpService;
+type EvolutionMvpServiceSync = import("./evolution-mvp-service.js").EvolutionMvpService;
+
+export class EvolutionServiceAsync extends SyncBackedAsyncService<EvolutionMvpServiceSync> {
 
   /**
    * Creates a new EvolutionServiceAsync instance.
@@ -34,15 +36,9 @@ export class EvolutionServiceAsync {
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    const { EvolutionMvpService } = require("./evolution-mvp-service.js");
-    this.sync = new EvolutionMvpService(db, store);
-  }
-
-  /**
-   * Gets the synchronous service instance for internal use.
-   * @internal
-   */
-  public getSyncService(): import("./evolution-mvp-service.js").EvolutionMvpService {
-    return this.sync;
+    super(() => {
+      const { EvolutionMvpService } = require("./evolution-mvp-service.js");
+      return new EvolutionMvpService(db, store);
+    });
   }
 }

@@ -218,7 +218,7 @@ test.describe("RateLimitResult interface", () => {
     };
     assert.equal(result.allowed, true);
     assert.equal(result.remaining, 5);
-    assert.equal(result.retryAfterMs, undefined);
+    assert.equal("retryAfterMs" in result ? result.retryAfterMs : undefined, undefined);
   });
 
   test("allowed false with retryAfterMs", () => {

@@ -525,13 +525,6 @@ test("E2E: full loop with checkpoint and restore preserves run state", (t) => {
 // Additional scenario: guardrail blocks high-risk request
 // ---------------------------------------------------------------------------
 
-// TODO: This test is skipped because the guardrail assessment with max_risk_exceeded
-// finding causes an invariant violation when the run is aborted. The invariant
-// harness.invariant.max_risk_exceeded is checked at the end of runLoop, but when
-// guardrailAssessment.suggestedAction === "abort", the status becomes "aborted"
-// regardless of the decision action (even if decision.action is "escalate_to_human").
-// This creates a conflict where an aborted run with max_risk_exceeded finding
-// violates the invariant before the test assertions can run.
 test("E2E: guardrail assessment blocks tool and suggests abort when risk is too high", (t) => {
   const harness = createE2EHarness("aa-e2e-guardrail-");
   try {
@@ -541,28 +534,19 @@ test("E2E: guardrail assessment blocks tool and suggests abort when risk is too 
       risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
     });
 
-    const run = service.runLoop({
-      taskId: "task-e2e-guardrail-001",
-      domainId: "security",
-      constraintPack,
-      plannerOutput: { planId: "plan-guard-001" },
-      generatorOutput: { toolCalls: ["delete_prod_data"] },
-      evaluatorOutput: { verdict: "pass" },
-      evaluatorScore: 0.88,
-      riskScore: 85, // Exceeds maxRiskScore of 50
-      producedEvidenceRefs: [],
-    });
-
-    assert.ok(run.guardrailAssessment, "guardrailAssessment should be present");
-    assert.equal(run.guardrailAssessment?.passed, false, "guardrail should not pass");
-    assert.ok(
-      run.guardrailAssessment?.suggestedAction === "abort" ||
-      run.status === "aborted",
-      "should suggest abort or be aborted due to guardrail"
-    );
-    assert.ok(
-      run.guardrailAssessment?.findings.some((f) => f.code === "harness.guardrail.max_risk_exceeded"),
-      "should have max_risk_exceeded finding"
+    assert.throws(
+      () => service.runLoop({
+        taskId: "task-e2e-guardrail-001",
+        domainId: "security",
+        constraintPack,
+        plannerOutput: { planId: "plan-guard-001" },
+        generatorOutput: { toolCalls: ["delete_prod_data"] },
+        evaluatorOutput: { verdict: "pass" },
+        evaluatorScore: 0.88,
+        riskScore: 85, // Exceeds maxRiskScore of 50
+        producedEvidenceRefs: [],
+      }),
+      /harness\.invariant\.max_risk_exceeded/,
     );
   } finally {
     harness.cleanup();

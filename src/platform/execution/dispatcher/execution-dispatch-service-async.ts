@@ -12,6 +12,7 @@
  * @see ExecutionDispatchService for the sync implementation
  */
 
+import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
@@ -50,8 +51,7 @@ export interface ExecutionDispatchServiceAsyncOptions {
  * This async version provides the same functionality as ExecutionDispatchService
  * but with async/await interface for modern async contexts.
  */
-export class ExecutionDispatchServiceAsync {
-  private readonly sync: ExecutionDispatchService;
+export class ExecutionDispatchServiceAsync extends SyncBackedAsyncService<ExecutionDispatchService> {
 
   /**
    * Creates a new ExecutionDispatchServiceAsync instance.
@@ -67,28 +67,20 @@ export class ExecutionDispatchServiceAsync {
     backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
     queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
   ) {
-    this.sync = new ExecutionDispatchService(db, store, backpressureSnapshot, queueAvailabilitySnapshot);
+    super(() => new ExecutionDispatchService(db, store, backpressureSnapshot, queueAvailabilitySnapshot));
   }
 
   /**
    * Creates a new execution ticket for an execution.
    */
   public createTicket(input: CreateExecutionTicketInput): Promise<ExecutionTicketDecision> {
-    return Promise.resolve(this.sync.createTicket(input));
+    return this.asPromise((sync) => sync.createTicket(input));
   }
 
   /**
    * Dispatches the next available ticket to an available worker.
    */
   public dispatchNext(options: DispatchExecutionOptions): Promise<DispatchExecutionDecision> {
-    return Promise.resolve(this.sync.dispatchNext(options));
-  }
-
-  /**
-   * Gets the synchronous service instance for internal use.
-   * @internal
-   */
-  public getSyncService(): ExecutionDispatchService {
-    return this.sync;
+    return this.asPromise((sync) => sync.dispatchNext(options));
   }
 }

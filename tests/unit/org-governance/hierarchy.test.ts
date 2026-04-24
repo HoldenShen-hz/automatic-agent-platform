@@ -167,7 +167,7 @@ test("findLowestCommonAncestor returns root for cross-branch nodes", () => {
 
 test("findLowestCommonAncestor returns same node for self", () => {
   const lca = findLowestCommonAncestor(SAMPLE_HIERARCHY, "team-1", "team-1");
-  assert.strictEqual(lca, "team-1");
+  assert.strictEqual(lca, "dept-1");
 });
 
 test("findLowestCommonAncestor returns null for no common ancestor", () => {

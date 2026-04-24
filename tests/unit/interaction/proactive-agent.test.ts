@@ -9,7 +9,7 @@ import {
   type EventTriggerConfig,
   type ThresholdTriggerConfig,
   type TriggerEvaluationInput,
-} from "../../../../src/interaction/proactive-agent/index.js";
+} from "../../../src/interaction/proactive-agent/index.js";
 
 // --- Helpers ---
 

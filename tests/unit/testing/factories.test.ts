@@ -93,9 +93,14 @@ test("createMockCacheStore.set is no-op", async () => {
   const store = createMockCacheStore();
   // Should not throw
   await store.set("namespace", "key", "value", {
+    scope: "memory",
     ttlMs: 1000,
     tags: [],
+    version: "test-v1",
     createdAt: Date.now(),
+    lastAccessedAt: Date.now(),
+    hitCount: 0,
+    sizeBytes: 5,
   });
   assert.ok(true, "set should complete without error");
 });
@@ -129,6 +134,7 @@ test("createMockCacheFacade returns object with CacheFacade interface", () => {
   const facade = createMockCacheFacade();
   assert.ok(typeof facade.get === "function", "should have get method");
   assert.ok(typeof facade.set === "function", "should have set method");
+  assert.ok(typeof facade.getOrCompute === "function", "should have getOrCompute method");
   assert.ok(
     typeof facade.invalidateByTag === "function",
     "should have invalidateByTag method"
@@ -137,15 +143,9 @@ test("createMockCacheFacade returns object with CacheFacade interface", () => {
     typeof facade.invalidateNamespace === "function",
     "should have invalidateNamespace method"
   );
-  assert.ok(
-    typeof facade.cleanupExpired === "function",
-    "should have cleanupExpired method"
-  );
+  assert.ok(typeof facade.cleanupExpired === "function", "should have cleanupExpired method");
   assert.ok(typeof facade.getStats === "function", "should have getStats method");
-  assert.ok(
-    typeof facade.resetMetrics === "function",
-    "should have resetMetrics method"
-  );
+  assert.ok(typeof facade.resetMetrics === "function", "should have resetMetrics method");
 });
 
 test("createMockCacheFacade.get returns cache miss", async () => {
@@ -247,10 +247,10 @@ test("partial works with complex nested types", () => {
   }
   const result = partial<ComplexType>({
     id: "test-id",
-    config: { enabled: true },
+    config: { enabled: true, timeout: 0 },
   });
   assert.equal(result.id, "test-id");
-  assert.deepEqual(result.config, { enabled: true });
+  assert.deepEqual(result.config, { enabled: true, timeout: 0 });
   assert.strictEqual(result.tags, undefined);
 });
 

@@ -4,10 +4,10 @@ import test from "node:test";
 import { buildAgentExecutionRecord } from "../../../../../src/platform/execution/worker-pool/execution-worker-handshake-support.js";
 import type {
   AgentExecutionRecord,
-  AuthoritativeTaskStore,
   ExecutionRecord,
   RunKind,
 } from "../../../../../src/platform/contracts/types/domain.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // ---------------------------------------------------------------------------
 // Mock factories
@@ -38,8 +38,8 @@ function createMockExecution(overrides: Partial<ExecutionRecord> = {}): Executio
     parentExecutionId: null,
     agentId: "agent-001",
     roleId: "role-001",
-    runKind: "standard" as RunKind,
-    status: "running",
+    runKind: "task_run" as RunKind,
+    status: "executing",
     inputRef: null,
     traceId: "trace-001",
     attempt: 1,
@@ -50,13 +50,11 @@ function createMockExecution(overrides: Partial<ExecutionRecord> = {}): Executio
     allowedToolsJson: null,
     allowedPathsJson: null,
     maxRetries: 3,
+    retryBackoff: "none",
     lastErrorCode: null,
     lastErrorMessage: null,
     startedAt: null,
-    completedAt: null,
-    nextStepId: null,
-    cancelledAt: null,
-    cancelledReason: null,
+    finishedAt: null,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
     ...overrides,
@@ -111,7 +109,7 @@ test("buildAgentExecutionRecord creates new record with required fields", () => 
   assert.equal(result.agentId, "agent-001");
   assert.equal(result.workflowId, "workflow-001");
   assert.equal(result.roleId, "role-001");
-  assert.equal(result.runKind, "standard");
+  assert.equal(result.runKind, "task_run");
   assert.equal(result.runtimeInstanceId, "runtime-001");
   assert.equal(result.status, "running");
   assert.equal(result.currentStepId, "step-001");
@@ -131,7 +129,7 @@ test("buildAgentExecutionRecord sets planJson from execution details when no exi
   const planJson = JSON.parse(result.planJson);
   assert.equal(planJson.workflowId, "workflow-001");
   assert.equal(planJson.roleId, "role-001");
-  assert.equal(planJson.runKind, "standard");
+  assert.equal(planJson.runKind, "task_run");
 });
 
 test("buildAgentExecutionRecord preserves existing planJson when present", () => {
@@ -141,7 +139,7 @@ test("buildAgentExecutionRecord preserves existing planJson when present", () =>
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: "runtime-001",
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 1,
@@ -179,7 +177,7 @@ test("buildAgentExecutionRecord preserves existing lastDecisionJson when no upda
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
@@ -227,7 +225,7 @@ test("buildAgentExecutionRecord preserves existing retryCount when present", () 
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
@@ -286,7 +284,7 @@ test("buildAgentExecutionRecord preserves existing startedAt when startedAt is u
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
@@ -345,7 +343,7 @@ test("buildAgentExecutionRecord preserves existing completedAt when completedAt 
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
@@ -404,7 +402,7 @@ test("buildAgentExecutionRecord sets createdAt from existing record when present
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
@@ -452,7 +450,7 @@ test("buildAgentExecutionRecord always sets updatedAt to occurredAt", () => {
     agentId: "agent-001",
     workflowId: "workflow-001",
     roleId: "role-001",
-    runKind: "standard",
+    runKind: "task_run",
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,

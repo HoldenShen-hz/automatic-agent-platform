@@ -198,6 +198,9 @@ export class RunbookExecutor {
 
       stepResult.status = result.success ? "completed" : "failed";
       stepResult.output = result.output ?? "";
+      if (!result.success) {
+        stepResult.errorMessage = result.output ?? "Step execution failed";
+      }
       stepResult.completedAt = nowIso();
       stepResult.durationMs = new Date(stepResult.completedAt).getTime() - new Date(stepResult.startedAt).getTime();
     } catch (error) {

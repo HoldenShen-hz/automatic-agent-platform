@@ -29,7 +29,7 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadPmfCliEnv } from "../../platform/control-plane/config-center/product-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { PmfValidationService } from "../../scale-ecosystem/marketplace/pmf-validation-service.js";
+import { PmfValidationService } from "../../scale-ecosystem/intelligence/pmf-validation-service.js";
 
 /**
  * Main entry point for the PMF validation CLI.

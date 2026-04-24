@@ -19,8 +19,72 @@ import { MultiPartyApprovalService } from "../../../../src/platform/control-plan
 import { QuorumCalculator } from "../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
+function seedApprovalTarget(
+  ctx: ReturnType<typeof createIntegrationContext>,
+  taskId: string,
+  executionId: string,
+): void {
+  const now = nowIso();
+  ctx.db.transaction(() => {
+    ctx.store.insertTask({
+      id: taskId,
+      parentId: null,
+      rootId: taskId,
+      divisionId: "general_ops",
+      tenantId: null,
+      title: `Seeded approval task ${taskId}`,
+      status: "in_progress",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+
+    ctx.store.insertExecution({
+      id: executionId,
+      taskId,
+      workflowId: "single_agent_minimal",
+      parentExecutionId: null,
+      agentId: "agent-seeded",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "executing",
+      inputRef: null,
+      traceId: `trace-${executionId}`,
+      attempt: 1,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: now,
+      finishedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+}
+
+function createApprovalContext(prefix: string, taskId: string, executionId: string) {
+  const ctx = createIntegrationContext(prefix);
+  seedApprovalTarget(ctx, taskId, executionId);
+  return ctx;
+}
+
 test("ApprovalService: createRequest creates approval with correct fields", () => {
-  const ctx = createIntegrationContext("aa-approval-create-");
+  const ctx = createApprovalContext("aa-approval-create-", "task-approval-001", "exec-approval-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -50,7 +114,7 @@ test("ApprovalService: createRequest creates approval with correct fields", () =
 });
 
 test("ApprovalService: createRequest emits decision:requested event", () => {
-  const ctx = createIntegrationContext("aa-approval-event-");
+  const ctx = createApprovalContext("aa-approval-event-", "task-event-001", "exec-event-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -76,7 +140,7 @@ test("ApprovalService: createRequest emits decision:requested event", () => {
 });
 
 test("ApprovalService: applyDecision confirms pending request", () => {
-  const ctx = createIntegrationContext("aa-approval-confirm-");
+  const ctx = createApprovalContext("aa-approval-confirm-", "task-confirm-001", "exec-confirm-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -108,7 +172,7 @@ test("ApprovalService: applyDecision confirms pending request", () => {
 });
 
 test("ApprovalService: applyDecision rejects pending request", () => {
-  const ctx = createIntegrationContext("aa-approval-reject-");
+  const ctx = createApprovalContext("aa-approval-reject-", "task-reject-001", "exec-reject-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -139,7 +203,7 @@ test("ApprovalService: applyDecision rejects pending request", () => {
 });
 
 test("ApprovalService: applyDecision is idempotent for non-pending approval", () => {
-  const ctx = createIntegrationContext("aa-approval-idempotent-");
+  const ctx = createApprovalContext("aa-approval-idempotent-", "task-idempotent-001", "exec-idempotent-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -198,14 +262,14 @@ test("ApprovalService: applyDecision throws for non-existent approval", () => {
       error = e as Error;
     }
     assert.ok(error, "Should throw an error for non-existent approval");
-    assert.ok(error.message.includes("approval.not_found"), `Error message: ${error.message}`);
+    assert.ok(error.message.includes("Approval not found"), `Error message: ${error.message}`);
   } finally {
     ctx.cleanup();
   }
 });
 
 test("ApprovalService: option_selected decision requires selectedOptionId", () => {
-  const ctx = createIntegrationContext("aa-approval-option-");
+  const ctx = createApprovalContext("aa-approval-option-", "task-option-001", "exec-option-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -239,7 +303,7 @@ test("ApprovalService: option_selected decision requires selectedOptionId", () =
 });
 
 test("ApprovalService: text_input decision requires inputText", () => {
-  const ctx = createIntegrationContext("aa-approval-text-");
+  const ctx = createApprovalContext("aa-approval-text-", "task-text-001", "exec-text-001");
   try {
     const service = new ApprovalService(ctx.db, ctx.store);
 
@@ -273,7 +337,7 @@ test("ApprovalService: text_input decision requires inputText", () => {
 });
 
 test("MultiPartyApprovalService: createMultiPartyRequest with 2-of-3 required approvals", () => {
-  const ctx = createIntegrationContext("aa-multiparty-2of3-");
+  const ctx = createApprovalContext("aa-multiparty-2of3-", "task-mp-001", "exec-mp-001");
   try {
     const service = new MultiPartyApprovalService(ctx.db, ctx.store);
 
@@ -302,7 +366,7 @@ test("MultiPartyApprovalService: createMultiPartyRequest with 2-of-3 required ap
 });
 
 test("MultiPartyApprovalService: createMultiPartyRequest with single approval", () => {
-  const ctx = createIntegrationContext("aa-multiparty-single-");
+  const ctx = createApprovalContext("aa-multiparty-single-", "task-mp-single-001", "exec-mp-single-001");
   try {
     const service = new MultiPartyApprovalService(ctx.db, ctx.store);
 
@@ -328,7 +392,7 @@ test("MultiPartyApprovalService: createMultiPartyRequest with single approval", 
 });
 
 test("MultiPartyApprovalService: createMultiPartyRequest defaults to single approval", () => {
-  const ctx = createIntegrationContext("aa-multiparty-default-");
+  const ctx = createApprovalContext("aa-multiparty-default-", "task-mp-default-001", "exec-mp-default-001");
   try {
     const service = new MultiPartyApprovalService(ctx.db, ctx.store);
 
@@ -406,6 +470,7 @@ test("ApprovalService: different risk levels produce valid approvals", () => {
     const riskLevels: Array<"low" | "medium" | "high" | "critical"> = ["low", "medium", "high", "critical"];
 
     for (const riskLevel of riskLevels) {
+      seedApprovalTarget(ctx, `task-risk-${riskLevel}`, `exec-risk-${riskLevel}`);
       const approval = service.createRequest({
         taskId: `task-risk-${riskLevel}`,
         executionId: `exec-risk-${riskLevel}`,
@@ -431,6 +496,7 @@ test("ApprovalService: different timeout policies are preserved", () => {
     const policies: Array<"reject" | "approve" | "remain_pending"> = ["reject", "approve", "remain_pending"];
 
     for (const timeoutPolicy of policies) {
+      seedApprovalTarget(ctx, `task-timeout-${timeoutPolicy}`, `exec-timeout-${timeoutPolicy}`);
       const approval = service.createRequest({
         taskId: `task-timeout-${timeoutPolicy}`,
         executionId: `exec-timeout-${timeoutPolicy}`,

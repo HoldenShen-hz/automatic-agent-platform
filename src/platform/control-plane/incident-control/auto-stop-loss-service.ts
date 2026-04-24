@@ -424,8 +424,10 @@ export class AutoStopLossService {
 
       case "metric_threshold": {
         if (!condition.metricName || condition.metricValue === undefined) return false;
-        if (ctx.metricName !== condition.metricName) return false;
-        const metricValue = ctx.context?.[condition.metricName] as number | undefined;
+        if (ctx.metricName !== undefined && !this.metricNameMatches(ctx.metricName, condition.metricName)) {
+          return false;
+        }
+        const metricValue = this.getMetricValue(ctx.context, condition.metricName);
         if (metricValue === undefined) return false;
         return this.compareValue(metricValue, condition.metricValue, condition.operator ?? "gt");
       }
@@ -475,6 +477,48 @@ export class AutoStopLossService {
     }
   }
 
+  private metricNameMatches(actualMetricName: string, expectedMetricName: string): boolean {
+    const normalized = new Set([
+      actualMetricName,
+      this.toSnakeCase(actualMetricName),
+      this.toCamelCase(actualMetricName),
+    ]);
+    return normalized.has(expectedMetricName) || normalized.has(this.toSnakeCase(expectedMetricName)) || normalized.has(this.toCamelCase(expectedMetricName));
+  }
+
+  private getMetricValue(context: Record<string, unknown> | undefined, metricName: string): number | undefined {
+    if (context === undefined) {
+      return undefined;
+    }
+
+    const candidateNames = [
+      metricName,
+      this.toSnakeCase(metricName),
+      this.toCamelCase(metricName),
+    ];
+
+    for (const candidateName of candidateNames) {
+      const value = context[candidateName];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+      }
+    }
+
+    return undefined;
+  }
+
+  private toSnakeCase(value: string): string {
+    return value
+      .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+      .replace(/[\s-]+/g, "_")
+      .toLowerCase();
+  }
+
+  private toCamelCase(value: string): string {
+    const normalized = value.replace(/[\s-]+/g, "_");
+    return normalized.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
+  }
+
   /**
    * Checks if a playbook is currently in its cooldown period.
    */
@@ -488,7 +532,7 @@ export class AutoStopLossService {
    * Checks if a playbook has exceeded its hourly execution limit.
    */
   private isPlaybookRateLimited(playbook: StopLossPlaybook): boolean {
-    const count = this.executionCounts.get(playbook.id) ?? 0;
+    const count = this.executionCounts.get(`${playbook.id}_${this.getHourKey()}`) ?? 0;
     return count >= playbook.maxExecutionsPerHour;
   }
 

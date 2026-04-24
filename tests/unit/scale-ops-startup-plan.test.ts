@@ -13,7 +13,7 @@ import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-reg
 test("scale-ops startup plan captures canonical W4 startup order", () => {
   const plan = buildScaleOpsStartupPlan();
   assert.deepEqual(plan.startupOrder, ["scale-ecosystem", "ops-maturity"]);
-  assert.equal(plan.totalCapabilityCount, 18);
+  assert.equal(plan.totalCapabilityCount, 23);
   assert.equal(plan.steps[1]?.bootstrapServiceId, "w4.ops-maturity.bootstrap");
 });
 

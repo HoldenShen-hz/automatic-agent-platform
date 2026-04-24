@@ -23,10 +23,21 @@ import {
 } from "../../../../src/platform/control-plane/incident-control/auto-stop-loss-service.js";
 import {
   TenantExecutionIsolationService,
+  TENANT_ISOLATION_DDL,
   type QuotaKind,
   type EnforcementAction,
 } from "../../../../src/platform/control-plane/incident-control/tenant-execution-isolation-service.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+
+function ensureTenantIsolationSchema(ctx: ReturnType<typeof createIntegrationContext>): void {
+  ctx.db.connection.exec(`
+    DROP TABLE IF EXISTS tenant_quotas;
+    DROP TABLE IF EXISTS quota_usage_samples;
+    DROP TABLE IF EXISTS execution_resource_usage;
+    DROP TABLE IF EXISTS noisy_neighbor_signals;
+  `);
+  ctx.db.connection.exec(TENANT_ISOLATION_DDL);
+}
 
 test("HumanTakeoverService: openSession creates takeover session", () => {
   const ctx = createSeededIntegrationContext("aa-takeover-open-");
@@ -100,7 +111,7 @@ test("HumanTakeoverService: modifyInput updates task input", () => {
     assert.strictEqual(result.taskId, "task-seeded-001");
 
     // Verify the task input was updated
-    const task = ctx.store.getTaskById("task-seeded-001");
+    const task = ctx.store.getTask("task-seeded-001", null);
     assert.ok(task, "Task should exist");
     const input = JSON.parse(task.inputJson);
     assert.strictEqual(input.prompt, "modified prompt");
@@ -132,7 +143,7 @@ test("HumanTakeoverService: completeTask with done status", () => {
     assert.ok(result.operatorActionId.startsWith("opact_"));
 
     // Verify task is done
-    const task = ctx.store.getTaskById("task-seeded-001");
+    const task = ctx.store.getTask("task-seeded-001", null);
     assert.ok(task, "Task should exist");
     assert.strictEqual(task.status, "done");
     assert.ok(task.completedAt, "Task should have completedAt");
@@ -161,7 +172,7 @@ test("HumanTakeoverService: completeTask with failed status", () => {
     });
 
     // Verify task is failed
-    const task = ctx.store.getTaskById("task-seeded-001");
+    const task = ctx.store.getTask("task-seeded-001", null);
     assert.ok(task, "Task should exist");
     assert.strictEqual(task.status, "failed");
     assert.strictEqual(task.errorCode, "operator_failed");
@@ -192,57 +203,56 @@ test("HumanTakeoverService: openSession throws for non-existent task", () => {
   }
 });
 
-test("AutoStopLossService: creates service instance with default config", () => {
+test("AutoStopLossService: creates service instance with explicit config", () => {
   const ctx = createIntegrationContext("aa-autostop-basic-");
   try {
-    const service = new AutoStopLossService(ctx.db, ctx.store, {
-      enabled: true,
-      defaultCooldownMs: 60000,
-      maxEventsPerHour: 10,
-      enableAutoExecution: true,
-      enableHumanEscalation: true,
-      healthCheckIntervalMs: 30000,
+    const service = new AutoStopLossService({
+      config: {
+        enabled: true,
+        defaultCooldownMs: 60000,
+        maxEventsPerHour: 10,
+        enableAutoExecution: true,
+        enableHumanEscalation: true,
+        healthCheckIntervalMs: 30000,
+      },
     });
 
     assert.ok(service, "Service should be created");
+    assert.strictEqual(service.isEnabled(), true);
+    assert.strictEqual(service.getConfig().maxEventsPerHour, 10);
   } finally {
     ctx.cleanup();
   }
 });
 
-test("AutoStopLossService: getSystemHealth returns valid health snapshot", () => {
+test("AutoStopLossService: updateHealthCheck stores latest health snapshot", () => {
   const ctx = createIntegrationContext("aa-autostop-health-");
   try {
-    const service = new AutoStopLossService(ctx.db, ctx.store, {
-      enabled: true,
-      defaultCooldownMs: 60000,
-      maxEventsPerHour: 10,
-      enableAutoExecution: true,
-      enableHumanEscalation: true,
-      healthCheckIntervalMs: 30000,
+    const service = new AutoStopLossService();
+
+    service.updateHealthCheck({
+      status: "degraded",
+      anomalySeverity: "warning",
+      activeExecutions: 3,
+      queuedTasks: 8,
+      memoryUsageMb: 768,
+      eventLoopLagMs: 22,
+      providerHealth: "degraded",
     });
 
-    const health = service.getSystemHealth();
-
-    assert.ok(health, "Should return health snapshot");
-    assert.ok(["ok", "degraded", "overloaded", "unhealthy"].includes(health.status));
-    assert.ok(health.lastCheckedAt, "Should have lastCheckedAt");
+    const health = service.getLastHealthCheck();
+    assert.ok(health, "Should store health snapshot");
+    assert.strictEqual(health?.status, "degraded");
+    assert.strictEqual(health?.memoryUsageMb, 768);
   } finally {
     ctx.cleanup();
   }
 });
 
-test("AutoStopLossService: registerPlaybook stores playbook", () => {
+test("AutoStopLossService: registerPlaybook stores playbook and appears in listing", () => {
   const ctx = createIntegrationContext("aa-autostop-playbook-");
   try {
-    const service = new AutoStopLossService(ctx.db, ctx.store, {
-      enabled: true,
-      defaultCooldownMs: 60000,
-      maxEventsPerHour: 10,
-      enableAutoExecution: true,
-      enableHumanEscalation: true,
-      healthCheckIntervalMs: 30000,
-    });
+    const service = new AutoStopLossService();
 
     const playbook: StopLossPlaybook = {
       id: "playbook-test-001",
@@ -262,30 +272,23 @@ test("AutoStopLossService: registerPlaybook stores playbook", () => {
     service.registerPlaybook(playbook);
 
     const retrieved = service.getPlaybook("playbook-test-001");
+    const playbookIds = service.listPlaybooks().map((item) => item.id);
     assert.ok(retrieved, "Playbook should be retrievable");
-    assert.strictEqual(retrieved.name, "Test Playbook");
-    assert.deepStrictEqual(retrieved.actions, ["circuit_break", "scale_down"]);
+    assert.strictEqual(retrieved?.name, "Test Playbook");
+    assert.ok(playbookIds.includes("playbook-test-001"));
   } finally {
     ctx.cleanup();
   }
 });
 
-test("AutoStopLossService: listPlaybooks returns all registered playbooks", () => {
-  const ctx = createIntegrationContext("aa-autostop-list-");
+test("AutoStopLossService: executePlaybook records execution history", async () => {
+  const ctx = createIntegrationContext("aa-autostop-record-");
   try {
-    const service = new AutoStopLossService(ctx.db, ctx.store, {
-      enabled: true,
-      defaultCooldownMs: 60000,
-      maxEventsPerHour: 10,
-      enableAutoExecution: true,
-      enableHumanEscalation: true,
-      healthCheckIntervalMs: 30000,
-    });
-
-    const playbook1: StopLossPlaybook = {
+    const service = new AutoStopLossService();
+    const playbook: StopLossPlaybook = {
       id: "playbook-001",
-      name: "Playbook One",
-      description: "First playbook",
+      name: "Test Playbook",
+      description: "Executes one protective action",
       triggerCondition: { type: "anomaly_severity", severityThreshold: "warning" },
       actions: ["circuit_break"],
       cooldownMs: 60000,
@@ -294,56 +297,15 @@ test("AutoStopLossService: listPlaybooks returns all registered playbooks", () =
       enabled: true,
     };
 
-    const playbook2: StopLossPlaybook = {
-      id: "playbook-002",
-      name: "Playbook Two",
-      description: "Second playbook",
-      triggerCondition: { type: "health_status", healthStatusThreshold: "degraded" },
-      actions: ["scale_down"],
-      cooldownMs: 120000,
-      maxExecutionsPerHour: 3,
-      requireHumanApproval: true,
-      enabled: true,
-    };
+    const event = await service.executePlaybook(playbook, "High error rate detected");
+    const events = service.getExecutionHistory(10);
+    const lastEvent = events.at(-1);
 
-    service.registerPlaybook(playbook1);
-    service.registerPlaybook(playbook2);
-
-    const playbooks = service.listPlaybooks();
-    assert.strictEqual(playbooks.length, 2);
-  } finally {
-    ctx.cleanup();
-  }
-});
-
-test("AutoStopLossService: recordStopLossEvent creates event record", () => {
-  const ctx = createIntegrationContext("aa-autostop-record-");
-  try {
-    const service = new AutoStopLossService(ctx.db, ctx.store, {
-      enabled: true,
-      defaultCooldownMs: 60000,
-      maxEventsPerHour: 10,
-      enableAutoExecution: true,
-      enableHumanEscalation: true,
-      healthCheckIntervalMs: 30000,
-    });
-
-    service.recordStopLossEvent({
-      playbookId: "playbook-001",
-      playbookName: "Test Playbook",
-      triggerReason: "High error rate detected",
-      actionsExecuted: ["circuit_break"],
-      escalationLevel: "act",
-      autoTriggered: true,
-      humanApproved: false,
-    });
-
-    const events = service.listRecentEvents(10);
+    assert.strictEqual(event.playbookName, "Test Playbook");
     assert.ok(events.length > 0, "Should have recorded events");
-    const lastEvent = events[0];
-    assert.strictEqual(lastEvent.playbookName, "Test Playbook");
-    assert.deepStrictEqual(lastEvent.actionsExecuted, ["circuit_break"]);
-    assert.strictEqual(lastEvent.escalationLevel, "act");
+    assert.strictEqual(lastEvent?.playbookName, "Test Playbook");
+    assert.deepStrictEqual(lastEvent?.actionsExecuted, ["circuit_break"]);
+    assert.strictEqual(lastEvent?.escalationLevel, "warn");
   } finally {
     ctx.cleanup();
   }
@@ -352,9 +314,10 @@ test("AutoStopLossService: recordStopLossEvent creates event record", () => {
 test("TenantExecutionIsolationService: creates tenant quota", () => {
   const ctx = createIntegrationContext("aa-tenant-quota-");
   try {
-    const service = new TenantExecutionIsolationService(ctx.db, ctx.store);
+    ensureTenantIsolationSchema(ctx);
+    const service = new TenantExecutionIsolationService(ctx.db);
 
-    service.createOrUpdateQuota({
+    service.defineQuota({
       tenantId: "tenant-001",
       quotaKind: "executions_per_minute",
       limitValue: 100,
@@ -365,38 +328,43 @@ test("TenantExecutionIsolationService: creates tenant quota", () => {
 
     const quota = service.getQuota("tenant-001", "executions_per_minute");
     assert.ok(quota, "Quota should be created");
-    assert.strictEqual(quota.tenantId, "tenant-001");
-    assert.strictEqual(quota.limitValue, 100);
-    assert.strictEqual(quota.windowSeconds, 60);
+    assert.strictEqual(quota?.tenantId, "tenant-001");
+    assert.strictEqual(quota?.limitValue, 100);
+    assert.strictEqual(quota?.windowSeconds, 60);
   } finally {
     ctx.cleanup();
   }
 });
 
-test("TenantExecutionIsolationService: records quota usage", () => {
+test("TenantExecutionIsolationService: records compute-minute quota usage from resource samples", () => {
   const ctx = createIntegrationContext("aa-tenant-usage-");
   try {
-    const service = new TenantExecutionIsolationService(ctx.db, ctx.store);
+    ensureTenantIsolationSchema(ctx);
+    const service = new TenantExecutionIsolationService(ctx.db);
 
-    service.createOrUpdateQuota({
+    service.defineQuota({
       tenantId: "tenant-002",
-      quotaKind: "executions_per_minute",
-      limitValue: 50,
+      quotaKind: "total_compute_minutes",
+      limitValue: 30,
       windowSeconds: 60,
       enforcementAction: "reject",
       enabled: true,
     });
 
-    service.recordQuotaUsage({
+    service.recordResourceUsage({
+      executionId: "exec-tenant-002",
       tenantId: "tenant-002",
-      quotaKind: "executions_per_minute",
-      sampleValue: 25,
+      cpuMs: 1250,
+      memoryBytes: 256 * 1024 * 1024,
+      networkBytes: 2 * 1024 * 1024,
+      durationMs: 25 * 60 * 1000,
+      recordedAt: nowIso(),
     });
 
-    const usage = service.getQuotaUsage("tenant-002", "executions_per_minute");
+    const usage = service.getQuotaUsage("tenant-002", "total_compute_minutes");
     assert.ok(usage, "Should return quota usage");
-    assert.strictEqual(usage.currentValue, 25);
-    assert.strictEqual(usage.status, "ok");
+    assert.strictEqual(usage?.currentValue, 25);
+    assert.strictEqual(usage?.status, "warning");
   } finally {
     ctx.cleanup();
   }
@@ -405,9 +373,10 @@ test("TenantExecutionIsolationService: records quota usage", () => {
 test("TenantExecutionIsolationService: getIsolationStatus returns tenant status", () => {
   const ctx = createIntegrationContext("aa-tenant-status-");
   try {
-    const service = new TenantExecutionIsolationService(ctx.db, ctx.store);
+    ensureTenantIsolationSchema(ctx);
+    const service = new TenantExecutionIsolationService(ctx.db);
 
-    service.createOrUpdateQuota({
+    service.defineQuota({
       tenantId: "tenant-003",
       quotaKind: "concurrent_executions",
       limitValue: 10,
@@ -429,10 +398,10 @@ test("TenantExecutionIsolationService: getIsolationStatus returns tenant status"
 test("TenantExecutionIsolationService: different quota kinds are tracked separately", () => {
   const ctx = createIntegrationContext("aa-tenant-kinds-");
   try {
-    const service = new TenantExecutionIsolationService(ctx.db, ctx.store);
+    ensureTenantIsolationSchema(ctx);
+    const service = new TenantExecutionIsolationService(ctx.db);
 
-    // Create quotas for different kinds
-    service.createOrUpdateQuota({
+    service.defineQuota({
       tenantId: "tenant-004",
       quotaKind: "executions_per_minute",
       limitValue: 100,
@@ -441,7 +410,7 @@ test("TenantExecutionIsolationService: different quota kinds are tracked separat
       enabled: true,
     });
 
-    service.createOrUpdateQuota({
+    service.defineQuota({
       tenantId: "tenant-004",
       quotaKind: "concurrent_executions",
       limitValue: 5,
@@ -450,7 +419,7 @@ test("TenantExecutionIsolationService: different quota kinds are tracked separat
       enabled: true,
     });
 
-    service.createOrUpdateQuota({
+    service.defineQuota({
       tenantId: "tenant-004",
       quotaKind: "total_compute_minutes",
       limitValue: 1000,
@@ -466,33 +435,32 @@ test("TenantExecutionIsolationService: different quota kinds are tracked separat
     assert.ok(epmQuota, "executions_per_minute quota should exist");
     assert.ok(ceQuota, "concurrent_executions quota should exist");
     assert.ok(tcmQuota, "total_compute_minutes quota should exist");
-
-    assert.strictEqual(epmQuota.limitValue, 100);
-    assert.strictEqual(ceQuota.limitValue, 5);
-    assert.strictEqual(tcmQuota.limitValue, 1000);
+    assert.strictEqual(epmQuota?.limitValue, 100);
+    assert.strictEqual(ceQuota?.limitValue, 5);
+    assert.strictEqual(tcmQuota?.limitValue, 1000);
   } finally {
     ctx.cleanup();
   }
 });
 
-test("TenantExecutionIsolationService: recordResourceUsage tracks execution resources", () => {
+test("TenantExecutionIsolationService: recordResourceUsage contributes to active execution count", () => {
   const ctx = createIntegrationContext("aa-tenant-resources-");
   try {
-    const service = new TenantExecutionIsolationService(ctx.db, ctx.store);
+    ensureTenantIsolationSchema(ctx);
+    const service = new TenantExecutionIsolationService(ctx.db);
 
     service.recordResourceUsage({
       executionId: "exec-resource-001",
       tenantId: "tenant-005",
       cpuMs: 1500,
-      memoryBytes: 512 * 1024 * 1024, // 512 MB
-      networkBytes: 10 * 1024 * 1024, // 10 MB
+      memoryBytes: 512 * 1024 * 1024,
+      networkBytes: 10 * 1024 * 1024,
       durationMs: 30000,
+      recordedAt: nowIso(),
     });
 
-    const usage = service.getExecutionResourceUsage("exec-resource-001");
-    assert.ok(usage, "Should return resource usage");
-    assert.strictEqual(usage.tenantId, "tenant-005");
-    assert.strictEqual(usage.cpuMs, 1500);
+    const activeExecutions = service.getActiveExecutionCount("tenant-005");
+    assert.strictEqual(activeExecutions, 1);
   } finally {
     ctx.cleanup();
   }
@@ -534,31 +502,24 @@ test("HumanTakeoverService: multiple actions within same session are recorded", 
   }
 });
 
-test("AutoStopLossService: getSystemHealth reflects recent anomalies", () => {
+test("AutoStopLossService: updateHealthCheck preserves anomaly severity in latest snapshot", () => {
   const ctx = createIntegrationContext("aa-autostop-anomaly-");
   try {
-    const service = new AutoStopLossService(ctx.db, ctx.store, {
-      enabled: true,
-      defaultCooldownMs: 60000,
-      maxEventsPerHour: 10,
-      enableAutoExecution: true,
-      enableHumanEscalation: true,
-      healthCheckIntervalMs: 30000,
+    const service = new AutoStopLossService();
+
+    service.updateHealthCheck({
+      status: "unhealthy",
+      anomalySeverity: "critical",
+      activeExecutions: 12,
+      queuedTasks: 40,
+      memoryUsageMb: 2048,
+      eventLoopLagMs: 90,
+      providerHealth: "failed",
     });
 
-    // Record some stop-loss events
-    service.recordStopLossEvent({
-      playbookId: "playbook-001",
-      playbookName: "Critical Response",
-      triggerReason: "Critical anomaly detected",
-      actionsExecuted: ["escalate_to_human"],
-      escalationLevel: "critical",
-      autoTriggered: true,
-      humanApproved: false,
-    });
-
-    const health = service.getSystemHealth();
-    assert.ok(health.anomalySeverity !== undefined);
+    const health = service.getLastHealthCheck();
+    assert.strictEqual(health?.anomalySeverity, "critical");
+    assert.strictEqual(health?.status, "unhealthy");
   } finally {
     ctx.cleanup();
   }

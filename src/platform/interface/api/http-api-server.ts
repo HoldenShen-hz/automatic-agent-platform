@@ -18,7 +18,7 @@ import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { PrometheusMetricsExporter } from "../../shared/observability/prometheus-metrics-exporter.js";
 import { AppError } from "../../contracts/errors.js";
-import { BillingService } from "../../../scale-ecosystem/marketplace/billing-service.js";
+import { BillingService } from "../../../scale-ecosystem/billing/billing-service.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
 import type { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";

@@ -31,7 +31,7 @@ test("contracts barrel exports constants module", async () => {
 test("contracts barrel exports errors module", async () => {
   const mod = await import("../../../../src/platform/contracts/errors.js");
   assert.ok(mod !== null);
-  assert.ok("AppError" in mod || mod.AppError !== undefined);
+  assert.equal(typeof mod.AppError, "function");
 });
 
 test("contracts barrel exports evidence-record module", async () => {

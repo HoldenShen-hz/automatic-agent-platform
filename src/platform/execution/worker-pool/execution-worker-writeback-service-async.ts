@@ -14,6 +14,7 @@
 
 import { createRequire } from "node:module";
 
+import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { WorkerWritebackInput, WorkerWritebackDecision } from "./execution-worker-writeback-service.js";
@@ -29,8 +30,9 @@ const require = createRequire(import.meta.url);
  * This async version provides the same functionality as ExecutionWorkerWritebackService
  * but with async/await interface for modern async contexts.
  */
-export class ExecutionWorkerWritebackServiceAsync {
-  private readonly sync: import("./execution-worker-writeback-service.js").ExecutionWorkerWritebackService;
+type ExecutionWorkerWritebackServiceSync = import("./execution-worker-writeback-service.js").ExecutionWorkerWritebackService;
+
+export class ExecutionWorkerWritebackServiceAsync extends SyncBackedAsyncService<ExecutionWorkerWritebackServiceSync> {
 
   /**
    * Creates a new ExecutionWorkerWritebackServiceAsync instance.
@@ -39,16 +41,18 @@ export class ExecutionWorkerWritebackServiceAsync {
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    // Import dynamically to avoid circular dependency
-    const { ExecutionWorkerWritebackService } = require("./execution-worker-writeback-service.js");
-    this.sync = new ExecutionWorkerWritebackService(db, store);
+    super(() => {
+      // Import dynamically to avoid circular dependency
+      const { ExecutionWorkerWritebackService } = require("./execution-worker-writeback-service.js");
+      return new ExecutionWorkerWritebackService(db, store);
+    });
   }
 
   /**
    * Records a writeback from a worker reporting execution completion or failure.
    */
   public async recordWriteback(input: WorkerWritebackInput): Promise<WorkerWritebackDecision> {
-    return Promise.resolve(this.sync.recordWriteback(input));
+    return this.asPromise((sync) => sync.recordWriteback(input));
   }
 }
 

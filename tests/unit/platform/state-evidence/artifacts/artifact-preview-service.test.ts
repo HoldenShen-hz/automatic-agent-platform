@@ -158,3 +158,128 @@ test("ArtifactPreviewService.previewMarkdown handles empty markdown", () => {
   assert.ok(rendered.includes("# Markdown Preview"));
   assert.ok(rendered.includes("## Raw"));
 });
+
+test("ArtifactPreviewService.renderBundle handles empty artifacts array", () => {
+  const service = new ArtifactPreviewService();
+  const bundle = createBundle({ artifacts: [] });
+  const rendered = service.renderBundle(bundle);
+
+  assert.ok(rendered.includes("# Artifact Bundle bundle_1"));
+  assert.ok(rendered.includes("## Artifacts"));
+  assert.ok(!rendered.includes("- artifact"));
+});
+
+test("ArtifactPreviewService.renderBundle includes all final deliverables", () => {
+  const service = new ArtifactPreviewService();
+  const bundle = createBundle({
+    finalDeliverables: ["/output/a.txt", "/output/b.txt", "/output/c.txt"],
+  });
+  const rendered = service.renderBundle(bundle);
+
+  assert.ok(rendered.includes("/output/a.txt"));
+  assert.ok(rendered.includes("/output/b.txt"));
+  assert.ok(rendered.includes("/output/c.txt"));
+});
+
+test("ArtifactPreviewService.renderArtifact shows all artifact fields", () => {
+  const service = new ArtifactPreviewService();
+  const artifact = createArtifact({
+    artifactId: "full_artifact",
+    type: "document",
+    path: "/docs/readme.md",
+    version: 3,
+    status: "draft",
+  });
+  const rendered = service.renderArtifact(artifact);
+
+  assert.ok(rendered.includes("# Artifact full_artifact"));
+  assert.ok(rendered.includes("- type: document"));
+  assert.ok(rendered.includes("- path: /docs/readme.md"));
+  assert.ok(rendered.includes("- version: 3"));
+  assert.ok(rendered.includes("- status: draft"));
+});
+
+test("ArtifactPreviewService.renderArtifact handles all artifact statuses", () => {
+  const service = new ArtifactPreviewService();
+  const statuses = ["draft", "committed", "published", "archived"] as const;
+
+  for (const status of statuses) {
+    const artifact = createArtifact({ artifactId: `artifact_${status}`, status });
+    const rendered = service.renderArtifact(artifact);
+    assert.ok(rendered.includes(`- status: ${status}`), `Should render status: ${status}`);
+  }
+});
+
+test("ArtifactPreviewService.previewDiff handles completely different content", () => {
+  const service = new ArtifactPreviewService();
+  const previous = "old content\nold line 2";
+  const current = "new content\nnew line 2";
+  const rendered = service.previewDiff(previous, current);
+
+  assert.ok(rendered.includes("-old content"));
+  assert.ok(rendered.includes("-old line 2"));
+  assert.ok(rendered.includes("+new content"));
+  assert.ok(rendered.includes("+new line 2"));
+});
+
+test("ArtifactPreviewService.previewDiff handles multiple mixed changes", () => {
+  const service = new ArtifactPreviewService();
+  const previous = "line1\nline2\nline3\nline4";
+  const current = "line1\nmodified_line2\nline3\nadded_line5";
+  const rendered = service.previewDiff(previous, current);
+
+  assert.ok(rendered.includes("-line2"));
+  assert.ok(rendered.includes("+modified_line2"));
+  assert.ok(rendered.includes("+added_line5"));
+});
+
+test("ArtifactPreviewService.previewJson handles null value", () => {
+  const service = new ArtifactPreviewService();
+  const rendered = service.previewJson(null);
+
+  assert.ok(rendered.includes("# JSON Preview"));
+  assert.ok(rendered.includes("## Tree"));
+  assert.ok(rendered.includes("- null"));
+});
+
+test("ArtifactPreviewService.previewJson handles empty object", () => {
+  const service = new ArtifactPreviewService();
+  const rendered = service.previewJson({});
+
+  assert.ok(rendered.includes("# JSON Preview"));
+  assert.ok(rendered.includes("## Tree"));
+  // Empty object produces no tree entries beyond the header
+  assert.ok(rendered.includes("{}"));
+});
+
+test("ArtifactPreviewService.previewJson handles nested arrays", () => {
+  const service = new ArtifactPreviewService();
+  const value = { items: [["a", "b"], ["c", "d"]] };
+  const rendered = service.previewJson(value);
+
+  assert.ok(rendered.includes("# JSON Preview"));
+  assert.ok(rendered.includes("- items"));
+  assert.ok(rendered.includes("- [0]"));
+});
+
+test("ArtifactPreviewService.previewMarkdown handles h1 through h6 headings", () => {
+  const service = new ArtifactPreviewService();
+  const markdown = "# Heading1\n## Heading2\n### Heading3\n#### Heading4\n##### Heading5\n###### Heading6";
+  const rendered = service.previewMarkdown(markdown);
+
+  assert.ok(rendered.includes("- Heading1"));
+  assert.ok(rendered.includes("- Heading2"));
+  assert.ok(rendered.includes("- Heading3"));
+  assert.ok(rendered.includes("- Heading4"));
+  assert.ok(rendered.includes("- Heading5"));
+  assert.ok(rendered.includes("- Heading6"));
+});
+
+test("ArtifactPreviewService.previewMarkdown handles headings with special characters", () => {
+  const service = new ArtifactPreviewService();
+  const markdown = "# Hello & World <test>\n## Code: `inline` and **bold**";
+  const rendered = service.previewMarkdown(markdown);
+
+  assert.ok(rendered.includes("- Hello & World <test>"));
+  assert.ok(rendered.includes("- Code: `inline` and **bold**"));
+});

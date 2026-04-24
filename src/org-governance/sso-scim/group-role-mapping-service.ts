@@ -14,4 +14,14 @@ export class GroupRoleMappingService {
   public resolve(groups: readonly string[]): string[] {
     return [...new Set(groups.flatMap((group) => this.rules.get(group) ?? []))];
   }
+
+  public unregister(groupName: string): boolean {
+    return this.rules.delete(groupName);
+  }
+
+  public listRules(): GroupRoleMappingRule[] {
+    return [...this.rules.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([groupName, roleIds]) => ({ groupName, roleIds }));
+  }
 }

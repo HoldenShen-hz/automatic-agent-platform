@@ -123,13 +123,13 @@ test("SessionRepository insertSession calls prepare and run with correct SQL", (
 
 test("SessionRepository getSession returns session when found", () => {
   const session = sessionRecord();
-  const { connection } = createMockConnection({ queryOneRows: [session] });
+  const { connection, calls } = createMockConnection({ queryOneRows: [session] });
   const repo = new SessionRepository(connection);
 
   const result = repo.getSession("sess-1");
 
   assert.deepEqual(result, session);
-  assert.match((calls) => calls.some(c => c.sql.includes("FROM sessions WHERE id = ?")), true);
+  assert.ok(calls.some((c) => c.sql.includes("FROM sessions WHERE id = ?")));
 });
 
 test("SessionRepository getSession returns undefined when not found", () => {

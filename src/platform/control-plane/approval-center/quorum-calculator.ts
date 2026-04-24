@@ -326,3 +326,24 @@ export function hasApproverVoted(votes: QuorumVote[], approverId: string): boole
 export function getApproverVote(votes: QuorumVote[], approverId: string): QuorumVote | undefined {
   return votes.find((v) => v.approverId === approverId);
 }
+
+/**
+ * Backward-compatible facade retained for older callers that still instantiate
+ * a calculator object instead of using the functional helpers directly.
+ */
+export class QuorumCalculator {
+  calculateQuorum(requiredApprovals: number, totalApprovers: number): number {
+    return Math.min(Math.max(requiredApprovals, 0), Math.max(totalApprovers, 0));
+  }
+
+  isQuorumMet(approvalsReceived: number, requiredApprovals: number): boolean {
+    return approvalsReceived >= requiredApprovals;
+  }
+
+  calculatePercentage(part: number, total: number): number {
+    if (total <= 0) {
+      return 0;
+    }
+    return Math.round(((part / total) * 100) * 100) / 100;
+  }
+}

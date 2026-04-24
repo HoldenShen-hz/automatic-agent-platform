@@ -67,3 +67,24 @@ test("register() overwrites existing rule for same groupName", () => {
 
   assert.deepStrictEqual(roles.sort(), ["admin", "superuser"]);
 });
+
+test("unregister() removes an existing mapping rule", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "admins", roleIds: ["admin"] });
+
+  const removed = service.unregister("admins");
+
+  assert.equal(removed, true);
+  assert.deepStrictEqual(service.resolve(["admins"]), []);
+});
+
+test("listRules() returns registered rules sorted by group name", () => {
+  const service = new GroupRoleMappingService();
+  service.register({ groupName: "z-team", roleIds: ["viewer"] });
+  service.register({ groupName: "admins", roleIds: ["admin"] });
+
+  assert.deepStrictEqual(service.listRules(), [
+    { groupName: "admins", roleIds: ["admin"] },
+    { groupName: "z-team", roleIds: ["viewer"] },
+  ]);
+});

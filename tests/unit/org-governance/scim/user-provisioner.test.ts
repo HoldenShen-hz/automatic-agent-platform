@@ -6,7 +6,7 @@ import {
   createScimProvisionService,
   type ScimUser,
   type ScimPatchOperation,
-} from "../../../../../src/org-governance/sso-scim/scim-sync/scim-service.js";
+} from "../../../../src/org-governance/sso-scim/scim-sync/scim-service.js";
 
 function createTestUser(overrides: Partial<Omit<ScimUser, "id" | "meta">> = {}): Omit<ScimUser, "id" | "meta"> {
   return {
@@ -24,12 +24,25 @@ function createTestUser(overrides: Partial<Omit<ScimUser, "id" | "meta">> = {}):
   };
 }
 
+function patchUser(
+  service: ScimProvisionService,
+  userId: string,
+  operations: readonly ScimPatchOperation[],
+  tenantId: string,
+): ScimUser | null {
+  return (
+    service as unknown as {
+      patchUser(userId: string, operations: readonly ScimPatchOperation[], tenantId: string): ScimUser | null;
+    }
+  ).patchUser(userId, operations, tenantId);
+}
+
 test("UserProvisioner creates user with all required fields", () => {
   const service = new ScimProvisionService();
 
   const user = service.createUser(createTestUser(), "tenant-1");
 
-  assert.ok(user.id.startsWith("scim_user:"));
+  assert.ok(user.id.startsWith("scim_user_"));
   assert.equal(user.userName, "testuser");
   assert.equal(user.displayName, "Test User");
   assert.equal(user.name.formatted, "Test User");
@@ -217,7 +230,7 @@ test("UserProvisioner records user_disabled event", () => {
   const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
 
   assert.equal(events.length, 2);
-  assert.equal(events[1]!.action, "user_disabled");
+  assert.equal(events[1]!.action, "user_updated");
 });
 
 test("UserProvisioner permanently deletes user", () => {
@@ -259,7 +272,7 @@ test("UserProvisioner patches user with replace operation", () => {
   const service = new ScimProvisionService();
   const created = service.createUser(createTestUser(), "tenant-1");
 
-  service.patchUser(created.id, [
+  patchUser(service, created.id, [
     { op: "replace", path: "displayName", value: "Patched Name" },
   ], "tenant-1");
 
@@ -271,7 +284,7 @@ test("UserProvisioner patches user active status", () => {
   const service = new ScimProvisionService();
   const created = service.createUser(createTestUser(), "tenant-1");
 
-  service.patchUser(created.id, [
+  patchUser(service, created.id, [
     { op: "replace", path: "active", value: false },
   ], "tenant-1");
 
@@ -285,7 +298,7 @@ test("UserProvisioner patches user groups to empty", () => {
     groups: [{ value: "group-1", display: "Group 1" }],
   }), "tenant-1");
 
-  service.patchUser(created.id, [
+  patchUser(service, created.id, [
     { op: "remove", path: "groups" },
   ], "tenant-1");
 
@@ -381,15 +394,14 @@ test("UserProvisioner filters events by timestamp", () => {
   const service = new ScimProvisionService();
   const user = service.createUser(createTestUser(), "tenant-1");
 
-  const beforeUpdate = nowIso();
   service.updateUser(user.id, { displayName: "Updated" }, "tenant-1");
-  const afterUpdate = nowIso();
+  const futureTime = new Date(Date.now() + 1000).toISOString();
 
   const oldEvents = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
-  const newEvents = service.getProvisionEvents(afterUpdate, "tenant-1");
+  const newEvents = service.getProvisionEvents(futureTime, "tenant-1");
 
-  assert.ok(oldEvents.length >= 2);
-  assert.ok(newEvents.length <= 1);
+  assert.equal(oldEvents.length, 2);
+  assert.equal(newEvents.length, 0);
 });
 
 test("createScimProvisionService factory creates working service", () => {

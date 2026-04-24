@@ -5,7 +5,7 @@ import {
   createUnifiedChatProvider,
   type UnifiedChatProvider,
   type ChatMessage,
-} from "../../../model-gateway/provider-registry/unified-chat-provider.js";
+} from "../../model-gateway/provider-registry/unified-chat-provider.js";
 import { AppError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 

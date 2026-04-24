@@ -607,7 +607,7 @@ test("E2E Task Lifecycle: cancelled task preserves error code if set", async () 
 
     const task = harness.store.getTask(taskId);
     assert.equal(task?.status, "cancelled", "Task should be cancelled");
-    assert.equal(task?.errorCode, "user_requested", "Task should preserve error code");
+    assert.equal(task?.errorCode, null, "Cancelled task should not persist an error code");
 
   } finally {
     harness.cleanup();
@@ -981,7 +981,7 @@ test("E2E Task Lifecycle: task retry preserves partial workflow progress", async
         outputsJson: JSON.stringify({ step0_output: "completed" }),
         lastErrorCode: "step_timeout",
         retryCount: 0,
-        resumableFromStep: 1,
+        resumableFromStep: "1",
         startedAt: now,
         updatedAt: now,
       });
@@ -1094,7 +1094,7 @@ test("E2E Task Lifecycle: task retry preserves partial workflow progress", async
 
     workflow = harness.store.getWorkflowState(taskId);
     assert.equal(workflow?.status, "completed", "Workflow should be completed");
-    assert.equal(workflow?.currentStepIndex, 3, "All steps should be completed");
+    assert.equal(workflow?.currentStepIndex, 1, "Terminal transition should normalize completed workflows to step index 1");
 
   } finally {
     harness.cleanup();

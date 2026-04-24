@@ -153,3 +153,67 @@ test("ArtifactPublishLedger stores all publishStatus values", () => {
     assert.equal(entry.publishStatus, status);
   }
 });
+
+test("ArtifactPublishLedger list() returns copy of entries array", () => {
+  const ledger = new ArtifactPublishLedger();
+  const bundle = createMockBundle();
+  ledger.record(bundle);
+
+  const entries1 = ledger.list();
+  const entries2 = ledger.list();
+
+  entries1.push({} as ArtifactPublishLedgerEntry);
+
+  assert.equal(entries2.length, 1);
+});
+
+test("ArtifactPublishLedger list() returns empty array when no entries recorded", () => {
+  const ledger = new ArtifactPublishLedger();
+  const entries = ledger.list();
+  assert.equal(entries.length, 0);
+});
+
+test("ArtifactPublishLedger record() accepts null target and destination explicitly", () => {
+  const ledger = new ArtifactPublishLedger();
+  const bundle = createMockBundle();
+
+  const entry = ledger.record(bundle, { target: null, destination: null });
+
+  assert.equal(entry.target, null);
+  assert.equal(entry.destination, null);
+});
+
+test("ArtifactPublishLedger record() preserves bundleType from bundle", () => {
+  const ledger = new ArtifactPublishLedger();
+
+  for (const bundleType of ["release_bundle", "asset_bundle", "campaign_bundle", "incident_bundle", "workflow_snapshot"] as const) {
+    const bundle = createMockBundle({ bundleType });
+    const entry = ledger.record(bundle);
+    assert.equal(entry.bundleType, bundleType);
+  }
+});
+
+test("ArtifactPublishLedger record() sets publishId with correct prefix", () => {
+  const ledger = new ArtifactPublishLedger();
+  const bundle = createMockBundle();
+
+  const entry = ledger.record(bundle);
+
+  assert.ok(entry.publishId.startsWith("artifact_publish_"));
+});
+
+test("ArtifactPublishLedger record() returns entry with all required fields", () => {
+  const ledger = new ArtifactPublishLedger();
+  const bundle = createMockBundle({ bundleId: "test_bundle", taskId: "test_task", domainId: "test_domain" });
+
+  const entry = ledger.record(bundle);
+
+  assert.ok(entry.publishId.length > 0);
+  assert.equal(entry.bundleId, "test_bundle");
+  assert.equal(entry.taskId, "test_task");
+  assert.equal(entry.domainId, "test_domain");
+  assert.ok(typeof entry.artifactCount === "number");
+  assert.ok(typeof entry.totalSize === "number");
+  assert.ok(entry.publishedAt.length > 0);
+  assert.ok(entry.publishStatus.length > 0);
+});

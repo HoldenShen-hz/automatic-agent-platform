@@ -6,7 +6,7 @@ import {
   type IncidentResolution,
   type ResolutionStrategy,
   type ResolutionAction,
-} from "../../../../../src/platform/control-plane/incident-resolver.js";
+} from "../../../../../src/platform/control-plane/incident-control/incident-resolver.js";
 import type {
   IncidentDetection,
   IncidentSeverity,
@@ -109,13 +109,13 @@ test("IncidentResolver builds correct actions for self_heal strategy", () => {
   const actions = resolver.buildActions(createMockIncident(), "self_heal");
 
   assert.equal(actions.length, 3);
-  assert.equal(actions[0].step, 1);
-  assert.equal(actions[0].description, "Monitor and collect metrics");
-  assert.equal(actions[0].strategy, "self_heal");
-  assert.equal(actions[1].step, 2);
-  assert.equal(actions[1].description, "Apply automated remediation");
-  assert.equal(actions[2].step, 3);
-  assert.equal(actions[2].description, "Verify resolution");
+  assert.equal(actions[0]!.step, 1);
+  assert.equal(actions[0]!.description, "Monitor and collect metrics");
+  assert.equal(actions[0]!.strategy, "self_heal");
+  assert.equal(actions[1]!.step, 2);
+  assert.equal(actions[1]!.description, "Apply automated remediation");
+  assert.equal(actions[2]!.step, 3);
+  assert.equal(actions[2]!.description, "Verify resolution");
 });
 
 test("IncidentResolver builds correct actions for automated strategy", () => {
@@ -124,8 +124,8 @@ test("IncidentResolver builds correct actions for automated strategy", () => {
   const actions = resolver.buildActions(createMockIncident(), "automated");
 
   assert.equal(actions.length, 4);
-  assert.equal(actions[0].description, "Isolate affected components");
-  assert.equal(actions[3].description, "Remove isolation");
+  assert.equal(actions[0]!.description, "Isolate affected components");
+  assert.equal(actions[3]!.description, "Remove isolation");
 });
 
 test("IncidentResolver builds correct actions for assisted strategy", () => {
@@ -134,8 +134,8 @@ test("IncidentResolver builds correct actions for assisted strategy", () => {
   const actions = resolver.buildActions(createMockIncident(), "assisted");
 
   assert.equal(actions.length, 4);
-  assert.ok(actions.some((a) => a.description.includes("Analyze root cause")));
-  assert.ok(actions.some((a) => a.description.includes("Prepare remediation plan")));
+  assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Analyze root cause")));
+  assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Prepare remediation plan")));
 });
 
 test("IncidentResolver builds correct actions for manual strategy", () => {
@@ -144,9 +144,9 @@ test("IncidentResolver builds correct actions for manual strategy", () => {
   const actions = resolver.buildActions(createMockIncident(), "manual");
 
   assert.equal(actions.length, 6);
-  assert.ok(actions.some((a) => a.description.includes("Page on-call engineer")));
-  assert.ok(actions.some((a) => a.description.includes("Establish incident commander")));
-  assert.ok(actions.some((a) => a.description.includes("Develop resolution plan")));
+  assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Page on-call engineer")));
+  assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Establish incident commander")));
+  assert.ok(actions.some((a: ResolutionAction) => a.description.includes("Develop resolution plan")));
 });
 
 test("IncidentResolver shouldEscalate returns false for completed resolutions", () => {

@@ -140,9 +140,16 @@ class MockCheckpointManager implements CheckpointManager {
     const artifactId = `artifact_${input.workflowId}_${input.stepId}_${Date.now()}`;
     const artifact: ArtifactRecord = {
       artifactId,
+      taskId: input.taskId,
+      executionId: input.executionId,
+      stepId: input.stepId,
       kind: "workflow_step_snapshot",
-      uri: `file://checkpoints/${input.workflowId}/${artifactId}.json`,
       storagePath: `/checkpoints/${input.workflowId}/${artifactId}.json`,
+      fileName: `${artifactId}.json`,
+      mimeType: "application/json",
+      sizeBytes: JSON.stringify(checkpoint).length,
+      checksum: null,
+      lineageJson: null,
       createdAt: checkpoint.producedAt,
     };
 
@@ -203,7 +210,7 @@ class MockCheckpointManager implements CheckpointManager {
       (cp) => cp.resumeContext.nextStepId !== null,
     );
     const nextStepId = nextStepCheckpoints.length > 0
-      ? nextStepCheckpoints[nextStepCheckpoints.length - 1].resumeContext.nextStepId
+      ? nextStepCheckpoints[nextStepCheckpoints.length - 1]!.resumeContext.nextStepId
       : null;
 
     return {

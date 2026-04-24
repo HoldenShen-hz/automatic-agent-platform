@@ -9,16 +9,16 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { getMultiStepToolDefinitions } from "../../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js";
-import { getPhase1BToolDefinitions, PHASE1B_TOOL_DEFINITIONS } from "../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
-import { AgentExecutor } from "../../../../../src/platform/execution/execution-engine/agent-executor.js";
-import { ComplexityRouter } from "../../../../../src/platform/execution/execution-engine/complexity-router.js";
-import { LoopDetectionService } from "../../../../../src/platform/execution/execution-engine/loop-detection.js";
-import { TightLoopDetector } from "../../../../../src/platform/execution/execution-engine/tight-loop-detector.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { getMultiStepToolDefinitions } from "../../../../src/platform/execution/execution-engine/multi-step-tool-definitions.js";
+import { getPhase1BToolDefinitions, PHASE1B_TOOL_DEFINITIONS } from "../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { AgentExecutor } from "../../../../src/platform/execution/execution-engine/agent-executor.js";
+import { routeComplexity } from "../../../../src/platform/execution/execution-engine/complexity-router.js";
+import { LoopDetectionState } from "../../../../src/platform/execution/execution-engine/loop-detection.js";
+import { TightLoopDetector } from "../../../../src/platform/execution/execution-engine/tight-loop-detector.js";
 
 function createIntegrationContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -42,7 +42,7 @@ test("getMultiStepToolDefinitions returns empty array for unknown tools", () => 
 });
 
 test("PHASE1B_TOOL_DEFINITIONS contains expected tools", () => {
-  const toolNames = PHASE1B_TOOL_DEFINITIONS.map((t) => t.name);
+  const toolNames = PHASE1B_TOOL_DEFINITIONS.map((t: { name: string }) => t.name);
   assert.ok(toolNames.includes("bash"));
   assert.ok(toolNames.includes("edit"));
   assert.ok(toolNames.includes("read"));
@@ -52,157 +52,101 @@ test("PHASE1B_TOOL_DEFINITIONS contains expected tools", () => {
 });
 
 test("getPhase1BToolDefinitions returns all Phase1B tools", () => {
-  const tools = getPhase1BToolDefinitions();
+  const tools = getPhase1BToolDefinitions(["bash", "edit", "read", "glob", "greptest", "todo_write"]);
   assert.ok(Array.isArray(tools));
   assert.equal(tools.length, PHASE1B_TOOL_DEFINITIONS.length);
 });
 
 test("AgentExecutor can be instantiated with required dependencies", () => {
-  const ctx = createIntegrationContext("aa-agent-executor-");
-  try {
-    const executor = new AgentExecutor(ctx.store);
-    assert.ok(executor);
-    ctx.db.close();
-  } finally {
-    ctx.cleanup();
-  }
+  const executor = new AgentExecutor();
+  assert.ok(executor);
 });
 
-test("ComplexityRouter categorizes simple requests as simple", () => {
-  const router = new ComplexityRouter();
-  const result = router.route({
-    request: "What is the status?",
-    title: "Simple query",
-  });
-
-  assert.equal(result.complexity, "simple");
-  ctx.db.close();
+test("routeComplexity categorizes simple requests as fast", () => {
+  const result = routeComplexity("What is the status?");
+  assert.equal(result.path, "fast");
 });
 
-test("ComplexityRouter categorizes multi-step requests as complex", () => {
-  const router = new ComplexityRouter();
-  const result = router.route({
-    request: "Read the file, analyze it, fix any bugs, and then test the changes",
-    title: "Complex task",
-  });
-
-  assert.equal(result.complexity, "complex");
+test("routeComplexity categorizes multi-step requests as full", () => {
+  const result = routeComplexity(
+    "Read the file, analyze it, fix any bugs, and then test the changes",
+    { stepCount: 4 },
+  );
+  assert.equal(result.path, "full");
 });
 
-test("ComplexityRouter categorizes requests with error context as complex", () => {
-  const router = new ComplexityRouter();
-  const result = router.route({
-    request: "Fix the bug in the authentication module",
-    title: "Bug fix",
-    errorContext: { errorCode: "AUTH_FAILED", stack: "at auth.js:42" },
+test("routeComplexity categorizes QA mode requests as full", () => {
+  const result = routeComplexity("Fix the bug in the authentication module", {
+    qaMode: true,
   });
-
-  assert.equal(result.complexity, "complex");
+  assert.equal(result.path, "full");
 });
 
-test("ComplexityRouter handles missing optional fields", () => {
-  const router = new ComplexityRouter();
-  const result = router.route({
-    request: "Hello",
-    title: "Greeting",
-  });
-
-  assert.ok(result.complexity);
-  assert.ok(result.workflowId);
+test("routeComplexity handles missing optional fields", () => {
+  const result = routeComplexity("Hello");
+  assert.ok(result.path);
+  assert.ok(result.routedAt);
 });
 
-test("LoopDetectionService detects when iteration count exceeds limit", () => {
-  const service = new LoopDetectionService({ maxIterations: 10 });
+test("LoopDetectionState escalates after repeated identical tool calls", () => {
+  const state = new LoopDetectionState({ warnThreshold: 2, escalateThreshold: 3 });
 
-  const status1 = service.checkIteration({
-    stepId: "step-1",
-    iteration: 5,
-    toolName: "bash",
-  });
-  assert.equal(status1.action, "continue");
+  const first = state.recordToolCall("bash", { command: "pwd" });
+  const second = state.recordToolCall("bash", { command: "pwd" });
+  const third = state.recordToolCall("bash", { command: "pwd" });
 
-  const status2 = service.checkIteration({
-    stepId: "step-1",
-    iteration: 11,
-    toolName: "bash",
-  });
-  assert.equal(status2.action, "stop");
-  assert.equal(status2.reason, "max_iterations_exceeded");
+  assert.equal(first.action, "continue");
+  assert.equal(second.action, "warn");
+  assert.equal(third.action, "escalate");
 });
 
-test("LoopDetectionService resets state for new steps", () => {
-  const service = new LoopDetectionService({ maxIterations: 10 });
+test("LoopDetectionState tracks counts independently by normalized input", () => {
+  const state = new LoopDetectionState({ warnThreshold: 2, escalateThreshold: 4 });
 
-  service.checkIteration({ stepId: "step-1", iteration: 5, toolName: "bash" });
-  service.checkIteration({ stepId: "step-1", iteration: 6, toolName: "bash" });
+  state.recordToolCall("bash", { command: "pwd" });
+  state.recordToolCall("bash", { command: "ls" });
+  const repeat = state.recordToolCall("bash", { command: "pwd" });
 
-  // Different step should reset
-  const status = service.checkIteration({
-    stepId: "step-2",
-    iteration: 1,
-    toolName: "bash",
-  });
-  assert.equal(status.action, "continue");
+  assert.equal(repeat.action, "warn");
+  assert.equal(state.getRepeatCount("bash", { command: "pwd" }), 2);
+  assert.equal(state.getRepeatCount("bash", { command: "ls" }), 1);
 });
 
-test("LoopDetectionService detects repeated tool calls", () => {
-  const service = new LoopDetectionService({
-    maxIterations: 10,
-    repeatedToolCallThreshold: 3,
-  });
-
-  for (let i = 0; i < 3; i++) {
-    service.checkIteration({
-      stepId: "step-1",
-      iteration: i + 1,
-      toolName: "bash",
-      toolInputHash: "same_input_hash",
-    });
-  }
-
-  const status = service.checkIteration({
-    stepId: "step-1",
-    iteration: 4,
-    toolName: "bash",
-    toolInputHash: "same_input_hash",
-  });
-  assert.equal(status.action, "stop");
-  assert.equal(status.reason, "repeated_tool_calls_detected");
+test("LoopDetectionState resets all patterns", () => {
+  const state = new LoopDetectionState({ warnThreshold: 2, escalateThreshold: 3 });
+  state.recordToolCall("bash", { command: "pwd" });
+  state.recordToolCall("bash", { command: "pwd" });
+  assert.equal(state.getPatterns().length, 1);
+  state.reset();
+  assert.equal(state.getPatterns().length, 0);
 });
 
-test("TightLoopDetector identifies tight loops", () => {
-  const detector = new TightLoopDetector({ windowSize: 5, threshold: 3 });
+test("TightLoopDetector identifies exact tight loops", () => {
+  const detector = new TightLoopDetector({ warnThreshold: 2, escalateThreshold: 3 });
 
-  const history = [
-    { toolName: "bash", toolInputHash: "hash1" },
-    { toolName: "bash", toolInputHash: "hash1" },
-    { toolName: "bash", toolInputHash: "hash1" },
-    { toolName: "bash", toolInputHash: "hash1" },
-  ];
+  detector.recordToolCall("bash", { command: "pwd" });
+  detector.recordToolCall("bash", { command: "pwd" });
+  const result = detector.recordToolCall("bash", { command: "pwd" });
 
-  const result = detector.detect(history);
-  assert.ok(result.isTightLoop);
-  assert.equal(result.cycleLength, 1);
+  assert.equal(result.action, "escalate");
+  assert.equal(result.patternType, "exact");
 });
 
 test("TightLoopDetector allows varied tool calls", () => {
-  const detector = new TightLoopDetector({ windowSize: 5, threshold: 3 });
+  const detector = new TightLoopDetector({ sequenceWindowSize: 3, sequenceRepeatThreshold: 2 });
 
-  const history = [
-    { toolName: "bash", toolInputHash: "hash1" },
-    { toolName: "edit", toolInputHash: "hash2" },
-    { toolName: "read", toolInputHash: "hash3" },
-    { toolName: "bash", toolInputHash: "hash4" },
-  ];
+  detector.recordToolCall("bash", { command: "pwd" });
+  detector.recordToolCall("edit", { file: "a.ts" });
+  detector.recordToolCall("read", { file: "b.ts" });
 
-  const result = detector.detect(history);
-  assert.ok(!result.isTightLoop);
+  const result = detector.checkSequentialLoop();
+  assert.equal(result.isLoop, false);
 });
 
 test("AgentExecutor creates execution record with correct initial state", () => {
   const ctx = createIntegrationContext("aa-agent-executor-record-");
   try {
-    const executor = new AgentExecutor(ctx.store);
+    const executor = new AgentExecutor();
     const executionId = newId("exec");
     const taskId = newId("task");
     const now = nowIso();
@@ -351,7 +295,7 @@ test("AuthoritativeTaskStore tracks workflow state for execution", () => {
 });
 
 test("Phase1B tool definitions have valid input schemas", () => {
-  const tools = getPhase1BToolDefinitions();
+  const tools = getPhase1BToolDefinitions(["bash", "edit", "read", "glob", "greptest", "todo_write"]);
 
   for (const tool of tools) {
     assert.ok(tool.name);
@@ -363,7 +307,7 @@ test("Phase1B tool definitions have valid input schemas", () => {
 
 test("MultiStep tool definitions include web_fetch and web_search", () => {
   const tools = getMultiStepToolDefinitions(["web_fetch", "web_search"]);
-  const toolNames = tools.map((t) => t.name);
+  const toolNames = tools.map((t: { name: string }) => t.name);
 
   assert.ok(toolNames.includes("web_fetch"));
   assert.ok(toolNames.includes("web_search"));

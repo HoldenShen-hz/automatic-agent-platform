@@ -14,6 +14,7 @@
 
 import { createRequire } from "node:module";
 
+import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type {
@@ -31,8 +32,9 @@ const require = createRequire(import.meta.url);
  * This async version provides the same functionality as ExecutionPriorityPreemptionService
  * but with async/await interface for modern async contexts.
  */
-export class ExecutionPriorityPreemptionServiceAsync {
-  private readonly sync: import("./execution-priority-preemption-service.js").ExecutionPriorityPreemptionService;
+type ExecutionPriorityPreemptionServiceSync = import("./execution-priority-preemption-service.js").ExecutionPriorityPreemptionService;
+
+export class ExecutionPriorityPreemptionServiceAsync extends SyncBackedAsyncService<ExecutionPriorityPreemptionServiceSync> {
 
   /**
    * Creates a new ExecutionPriorityPreemptionServiceAsync instance.
@@ -41,15 +43,17 @@ export class ExecutionPriorityPreemptionServiceAsync {
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    const { ExecutionPriorityPreemptionService } = require("./execution-priority-preemption-service.js");
-    this.sync = new ExecutionPriorityPreemptionService(db, store);
+    super(() => {
+      const { ExecutionPriorityPreemptionService } = require("./execution-priority-preemption-service.js");
+      return new ExecutionPriorityPreemptionService(db, store);
+    });
   }
 
   /**
    * Attempts to preempt a lower-priority execution to make room for an urgent ticket.
    */
   public preemptForUrgentTicket(input: PriorityPreemptionRequest): Promise<PriorityPreemptionDecision> {
-    return Promise.resolve(this.sync.preemptForUrgentTicket(input));
+    return this.asPromise((sync) => sync.preemptForUrgentTicket(input));
   }
 }
 

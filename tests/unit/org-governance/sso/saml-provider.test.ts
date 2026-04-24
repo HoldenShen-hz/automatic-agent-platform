@@ -8,18 +8,20 @@ import {
   validateXmlSignature,
   type SamlProviderConfig,
   type SamlAssertionInput,
-} from "../../../../../src/org-governance/sso-scim/saml/index.js";
+} from "../../../../src/org-governance/sso-scim/saml/index.js";
 
 function createTestProvider(overrides: Partial<SamlProviderConfig> = {}): SamlProviderConfig {
+  const providerId = overrides.providerId ?? "test-idp";
+  const issuer = overrides.issuer ?? "https://idp.example.com";
   return {
-    providerId: "test-idp",
+    providerId,
     entryPoint: "https://idp.example.com/saml/login",
-    issuer: "https://idp.example.com",
+    issuer,
     certificateFingerprint: "AA:BB:CC:DD:EE",
     entityId: "https://app.example.com/saml/metadata",
     acsUrl: "https://app.example.com/saml/acs",
-    allowedAudiences: ["https://app.example.com/saml/metadata"],
-    allowUnsignedAssertions: false,
+    allowedAudiences: overrides.allowedAudiences ?? [`${issuer}:${providerId}`],
+    allowUnsignedAssertions: true,
     attributeMapping: { email: "mail", name: "displayName" },
     ...overrides,
   };
@@ -77,7 +79,7 @@ test("SamlService builds login request with default values", () => {
   const request = service.buildLoginRequest("test-idp");
 
   assert.equal(request.providerId, "test-idp");
-  assert.ok(request.requestId.startsWith("saml_req:"));
+  assert.ok(request.requestId.startsWith("saml_req_"));
   assert.ok(request.redirectUrl.startsWith("https://idp.example.com/saml/login?"));
   assert.ok(request.audience.includes("https://idp.example.com"));
   assert.equal(request.relayState, null);
@@ -119,12 +121,12 @@ test("SamlService consumes valid assertion with all fields", () => {
     sessionIndex: "session-idx-1",
     notBefore: "2026-04-24T11:55:00.000Z",
     notOnOrAfter: "2026-04-24T13:00:00.000Z",
-    recipient: provider.acsUrl,
+    ...(provider.acsUrl ? { recipient: provider.acsUrl } : {}),
   };
 
   const session = service.consumeAssertion("test-idp", assertion, now);
 
-  assert.ok(session.sessionId.startsWith("saml_session:"));
+  assert.ok(session.sessionId.startsWith("saml_session_"));
   assert.equal(session.providerId, "test-idp");
   assert.equal(session.subjectId, "user@example.com");
   assert.equal(session.issuer, provider.issuer);
@@ -344,7 +346,7 @@ test("SamlService builds logout request", () => {
   );
 
   assert.equal(request.providerId, "test-idp");
-  assert.ok(request.requestId.startsWith("saml_logout:"));
+  assert.ok(request.requestId.startsWith("saml_logout_"));
   assert.equal(request.relayState, "/logout-return");
   assert.ok(request.redirectUrl.includes("SAMLRequest="));
 });

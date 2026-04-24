@@ -482,14 +482,21 @@ test("OperationsGovernanceService integration: exportReport includes lineage in 
   const dbPath = join(workspace, "ops-governance-export-lineage.db");
 
   try {
-    const { governance } = createTestServices(workspace, dbPath);
+    const { governance, db, store } = createTestServices(workspace, dbPath);
+
+    seedTaskAndExecution(db, store, {
+      taskId: "task-lineage-test",
+      executionId: "exec-lineage-test",
+      traceId: "trace-lineage-test",
+    });
 
     const result = governance.exportReport({
       environment: "test",
       taskId: "task-lineage-test",
     });
 
-    assert.ok(result.report.taskId === "task-lineage-test" || result.report.taskId === null);
+    assert.equal(result.report.incident?.taskId, "task-lineage-test");
+    assert.ok(result.jsonArtifact.uri.includes("task-lineage-test"));
 
     dbPath;
     workspace;

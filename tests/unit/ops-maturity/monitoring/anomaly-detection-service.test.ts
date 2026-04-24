@@ -87,16 +87,12 @@ test("AnomalyDetectionService rootCauseHints generated for latency_p99_ms", () =
   assert.ok(hints.some((h) => h.includes("database") || h.includes("queue")));
 });
 
-// @ts-ignore - implementation has inverted logic bug where >= threshold triggers alert incorrectly
-test.skip("AnomalyDetectionService rootCauseHints generated for availability - implementation issue: inverted threshold logic", () => {
+test("AnomalyDetectionService rootCauseHints generated for availability", () => {
   const service = new AnomalyDetectionService();
   // Availability: warning=0.995, critical=0.99, window=60 min
-  // Note: code has inverted logic where >= threshold triggers alert
-  // (higher availability values exceed thresholds incorrectly)
   for (let i = 10; i >= 1; i--) {
     service.ingestMetric("availability", 0.985, minutesAgo(i));
   }
-  // Latest value above threshold triggers alert (code bug, but test matches reality)
   service.ingestMetric("availability", 0.986, minutesAgo(0));
 
   const alerts = service.detectAnomalies("availability");

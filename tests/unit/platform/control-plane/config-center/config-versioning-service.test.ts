@@ -8,6 +8,15 @@ import {
   ConfigVersioningService,
 } from "../../../../../src/platform/control-plane/config-center/config-versioning-service.js";
 
+// Mock DurableEventBus for testing event emission
+class MockEventBus {
+  public publishedEvents: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
+
+  publish(event: { eventType: string; payload: Record<string, unknown> }): void {
+    this.publishedEvents.push(event);
+  }
+}
+
 test("ConfigVersioningService.createVersion creates a new version snapshot", () => {
   const service = new ConfigVersioningService();
   const snapshot = service.createVersion(
@@ -20,15 +29,15 @@ test("ConfigVersioningService.createVersion creates a new version snapshot", () 
   );
 
   assert.ok(snapshot.versionId);
-  assert.equal(snapshot.configPath, "runtime.timeout");
-  assert.equal(snapshot.layer, "platform");
-  assert.equal(snapshot.sourceId, null);
-  assert.deepEqual(snapshot.content, { value: 30000 });
+  assert.strictEqual(snapshot.configPath, "runtime.timeout");
+  assert.strictEqual(snapshot.layer, "platform");
+  assert.strictEqual(snapshot.sourceId, null);
+  assert.deepStrictEqual(snapshot.content, { value: 30000 });
   assert.ok(snapshot.contentHash);
   assert.ok(snapshot.createdAt);
-  assert.equal(snapshot.createdBy, "user-123");
-  assert.equal(snapshot.reason, "Initial configuration");
-  assert.equal(snapshot.parentVersionId, null);
+  assert.strictEqual(snapshot.createdBy, "user-123");
+  assert.strictEqual(snapshot.reason, "Initial configuration");
+  assert.strictEqual(snapshot.parentVersionId, null);
 });
 
 test("ConfigVersioningService.createVersion tracks parent version", () => {
@@ -37,8 +46,8 @@ test("ConfigVersioningService.createVersion tracks parent version", () => {
   const v1 = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user-1", "v1");
   const v2 = service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user-2", "v2");
 
-  assert.equal(v1.parentVersionId, null);
-  assert.equal(v2.parentVersionId, v1.versionId);
+  assert.strictEqual(v1.parentVersionId, null);
+  assert.strictEqual(v2.parentVersionId, v1.versionId);
 });
 
 test("ConfigVersioningService.getCurrentVersion returns latest version", () => {
@@ -51,8 +60,8 @@ test("ConfigVersioningService.getCurrentVersion returns latest version", () => {
   const current = service.getCurrentVersion("runtime.timeout", "platform", null);
 
   assert.ok(current);
-  assert.equal(current!.versionId, v3.versionId);
-  assert.deepEqual(current!.content, { value: 3000 });
+  assert.strictEqual(current!.versionId, v3.versionId);
+  assert.deepStrictEqual(current!.content, { value: 3000 });
 });
 
 test("ConfigVersioningService.getCurrentVersion returns null for non-existent path", () => {
@@ -60,7 +69,7 @@ test("ConfigVersioningService.getCurrentVersion returns null for non-existent pa
 
   const current = service.getCurrentVersion("non.existent", "platform", null);
 
-  assert.equal(current, null);
+  assert.strictEqual(current, null);
 });
 
 test("ConfigVersioningService.getVersion finds version by ID", () => {
@@ -70,7 +79,7 @@ test("ConfigVersioningService.getVersion finds version by ID", () => {
   const found = service.getVersion(created.versionId);
 
   assert.ok(found);
-  assert.equal(found!.versionId, created.versionId);
+  assert.strictEqual(found!.versionId, created.versionId);
 });
 
 test("ConfigVersioningService.getVersion returns null for non-existent ID", () => {
@@ -78,7 +87,7 @@ test("ConfigVersioningService.getVersion returns null for non-existent ID", () =
 
   const found = service.getVersion("non-existent-id");
 
-  assert.equal(found, null);
+  assert.strictEqual(found, null);
 });
 
 test("ConfigVersioningService.getVersionHistory returns all versions in order", () => {
@@ -90,10 +99,10 @@ test("ConfigVersioningService.getVersionHistory returns all versions in order", 
 
   const history = service.getVersionHistory("runtime.timeout", "platform", null);
 
-  assert.equal(history.length, 3);
-  assert.equal(history[0]!.versionId, v1.versionId);
-  assert.equal(history[1]!.versionId, v2.versionId);
-  assert.equal(history[2]!.versionId, v3.versionId);
+  assert.strictEqual(history.length, 3);
+  assert.strictEqual(history[0]!.versionId, v1.versionId);
+  assert.strictEqual(history[1]!.versionId, v2.versionId);
+  assert.strictEqual(history[2]!.versionId, v3.versionId);
 });
 
 test("ConfigVersioningService.diffVersions computes correct diff", () => {
@@ -105,8 +114,8 @@ test("ConfigVersioningService.diffVersions computes correct diff", () => {
   const diff = service.diffVersions(v1.versionId, v2.versionId);
 
   assert.ok(diff);
-  assert.equal(diff!.versionA, v1.versionId);
-  assert.equal(diff!.versionB, v2.versionId);
+  assert.strictEqual(diff!.versionA, v1.versionId);
+  assert.strictEqual(diff!.versionB, v2.versionId);
   assert.ok(diff!.additions >= 0);
   assert.ok(diff!.removals >= 0);
   assert.ok(diff!.modifications >= 0);
@@ -118,7 +127,7 @@ test("ConfigVersioningService.diffVersions returns null for non-existent version
   const created = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
   const diff = service.diffVersions(created.versionId, "non-existent-id");
 
-  assert.equal(diff, null);
+  assert.strictEqual(diff, null);
 });
 
 test("ConfigVersioningService.createRollbackPoint creates a rollback point", () => {
@@ -128,12 +137,12 @@ test("ConfigVersioningService.createRollbackPoint creates a rollback point", () 
   const rollbackPoint = service.createRollbackPoint("runtime.timeout", "platform", null, "user");
 
   assert.ok(rollbackPoint);
-  assert.ok(rollbackPoint!.rollbackId);
-  assert.equal(rollbackPoint!.versionId, version.versionId);
-  assert.equal(rollbackPoint!.configPath, "runtime.timeout");
-  assert.equal(rollbackPoint!.layer, "platform");
+  assert.ok(rollbackPoint!.rollbackId.startsWith("rbp_"));
+  assert.strictEqual(rollbackPoint!.versionId, version.versionId);
+  assert.strictEqual(rollbackPoint!.configPath, "runtime.timeout");
+  assert.strictEqual(rollbackPoint!.layer, "platform");
   assert.ok(rollbackPoint!.createdAt);
-  assert.equal(rollbackPoint!.createdBy, "user");
+  assert.strictEqual(rollbackPoint!.createdBy, "user");
 });
 
 test("ConfigVersioningService.createRollbackPoint returns null without current version", () => {
@@ -141,7 +150,7 @@ test("ConfigVersioningService.createRollbackPoint returns null without current v
 
   const rollbackPoint = service.createRollbackPoint("runtime.timeout", "platform", null, "user");
 
-  assert.equal(rollbackPoint, null);
+  assert.strictEqual(rollbackPoint, null);
 });
 
 test("ConfigVersioningService.getRollbackPoints returns all rollback points", () => {
@@ -155,8 +164,8 @@ test("ConfigVersioningService.getRollbackPoints returns all rollback points", ()
 
   const points = service.getRollbackPoints("runtime.timeout", "platform", null);
 
-  assert.equal(points.length, 2);
-  assert.equal(points[1]!.rollbackId, rp2!.rollbackId);
+  assert.strictEqual(points.length, 2);
+  assert.strictEqual(points[1]!.rollbackId, rp2!.rollbackId);
 });
 
 test("ConfigVersioningService.rollback creates new version with old content", () => {
@@ -169,10 +178,10 @@ test("ConfigVersioningService.rollback creates new version with old content", ()
   const rollbackVersion = service.rollback(v1.versionId, "admin", "Reverting to v1");
 
   assert.ok(rollbackVersion);
-  assert.notEqual(rollbackVersion!.versionId, v1.versionId);
-  assert.deepEqual(rollbackVersion!.content, { value: 1000 });
-  assert.equal(rollbackVersion!.reason, "Reverting to v1");
-  assert.equal(rollbackVersion!.createdBy, "admin");
+  assert.notStrictEqual(rollbackVersion!.versionId, v1.versionId);
+  assert.deepStrictEqual(rollbackVersion!.content, { value: 1000 });
+  assert.strictEqual(rollbackVersion!.reason, "Reverting to v1");
+  assert.strictEqual(rollbackVersion!.createdBy, "admin");
 });
 
 test("ConfigVersioningService.rollback returns null for non-existent version", () => {
@@ -180,7 +189,7 @@ test("ConfigVersioningService.rollback returns null for non-existent version", (
 
   const rollbackVersion = service.rollback("non-existent-id", "user", "test");
 
-  assert.equal(rollbackVersion, null);
+  assert.strictEqual(rollbackVersion, null);
 });
 
 test("ConfigVersioningService.getVersionContent returns content for version", () => {
@@ -189,7 +198,7 @@ test("ConfigVersioningService.getVersionContent returns content for version", ()
   const created = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
   const content = service.getVersionContent(created.versionId);
 
-  assert.deepEqual(content, { value: 1000 });
+  assert.deepStrictEqual(content, { value: 1000 });
 });
 
 test("ConfigVersioningService.getVersionContent returns null for non-existent version", () => {
@@ -197,7 +206,7 @@ test("ConfigVersioningService.getVersionContent returns null for non-existent ve
 
   const content = service.getVersionContent("non-existent-id");
 
-  assert.equal(content, null);
+  assert.strictEqual(content, null);
 });
 
 test("ConfigVersioningService.pruneVersions removes old versions", () => {
@@ -210,10 +219,10 @@ test("ConfigVersioningService.pruneVersions removes old versions", () => {
 
   const history = service.getVersionHistory("runtime.timeout", "platform", null);
 
-  assert.equal(history.length, 3);
-  assert.deepEqual(history[0]!.content, { value: 3 });
-  assert.deepEqual(history[1]!.content, { value: 4 });
-  assert.deepEqual(history[2]!.content, { value: 5 });
+  assert.strictEqual(history.length, 3);
+  assert.deepStrictEqual(history[0]!.content, { value: 3 });
+  assert.deepStrictEqual(history[1]!.content, { value: 4 });
+  assert.deepStrictEqual(history[2]!.content, { value: 5 });
 });
 
 test("ConfigVersioningService handles different layers and sourceIds separately", () => {
@@ -227,9 +236,9 @@ test("ConfigVersioningService handles different layers and sourceIds separately"
   const tenant1 = service.getCurrentVersion("runtime.timeout", "tenant", "tenant-1");
   const tenant2 = service.getCurrentVersion("runtime.timeout", "tenant", "tenant-2");
 
-  assert.deepEqual(platform!.content, { value: 100 });
-  assert.deepEqual(tenant1!.content, { value: 200 });
-  assert.deepEqual(tenant2!.content, { value: 300 });
+  assert.deepStrictEqual(platform!.content, { value: 100 });
+  assert.deepStrictEqual(tenant1!.content, { value: 200 });
+  assert.deepStrictEqual(tenant2!.content, { value: 300 });
 });
 
 test("ConfigVersioningService.getCurrentVersion works with sourceId", () => {
@@ -241,8 +250,8 @@ test("ConfigVersioningService.getCurrentVersion works with sourceId", () => {
   const current = service.getCurrentVersion("runtime.timeout", "tenant", "tenant-1");
 
   assert.ok(current);
-  assert.equal(current!.versionId, v2.versionId);
-  assert.deepEqual(current!.content, { value: 200 });
+  assert.strictEqual(current!.versionId, v2.versionId);
+  assert.deepStrictEqual(current!.content, { value: 200 });
 });
 
 test("ConfigVersioningService.diffVersions detects additions", () => {
@@ -267,4 +276,72 @@ test("ConfigVersioningService.diffVersions detects removals", () => {
 
   assert.ok(diff);
   assert.ok(diff!.removals > 0);
+});
+
+test("ConfigVersioningService emits version event when eventBus is provided", () => {
+  const mockBus = new MockEventBus();
+  const service = new ConfigVersioningService({ eventBus: mockBus as any });
+
+  const version = service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1", "test reason");
+
+  assert.strictEqual(mockBus.publishedEvents.length, 1);
+  assert.strictEqual(mockBus.publishedEvents[0]!.eventType, "config.version.created");
+  assert.strictEqual(mockBus.publishedEvents[0]!.payload.versionId, version.versionId);
+  assert.strictEqual(mockBus.publishedEvents[0]!.payload.createdBy, "user1");
+});
+
+test("ConfigVersioningService emits rollback event on rollback operation", () => {
+  const mockBus = new MockEventBus();
+  const service = new ConfigVersioningService({ eventBus: mockBus as any });
+
+  service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1");
+  const oldVersion = service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user1");
+
+  mockBus.publishedEvents = [];
+  const rollbackVersion = service.rollback(oldVersion.versionId, "admin");
+
+  assert.ok(rollbackVersion);
+  // rollback creates a new version, so we get both "config.version.created" and "config.version.rollback"
+  const rollbackEvent = mockBus.publishedEvents.find((e) => e.eventType === "config.version.rollback");
+  assert.ok(rollbackEvent, "should have a rollback event");
+  assert.strictEqual(rollbackEvent!.payload.versionId, rollbackVersion!.versionId);
+});
+
+test("ConfigVersioningService emits rollback point event when creating rollback point", () => {
+  const mockBus = new MockEventBus();
+  const service = new ConfigVersioningService({ eventBus: mockBus as any });
+
+  service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1");
+  service.createRollbackPoint("runtime.timeout", "platform", null, "user1");
+
+  assert.strictEqual(mockBus.publishedEvents.length, 2);
+  assert.strictEqual(mockBus.publishedEvents[1]!.eventType, "config.rollback_point.created");
+});
+
+test("ConfigVersioningService.pruneAllVersions returns 0 when nothing to prune", () => {
+  const service = new ConfigVersioningService({ maxVersionsPerPath: 50 });
+
+  service.createVersion("runtime.task", "platform", null, { a: 1 }, "user1");
+  service.createVersion("runtime.task", "platform", null, { a: 2 }, "user1");
+
+  const totalPruned = service.pruneAllVersions();
+
+  assert.strictEqual(totalPruned, 0);
+});
+
+test("ConfigVersioningService.pruneVersions prunes by path", () => {
+  const service = new ConfigVersioningService({ maxVersionsPerPath: 2 });
+
+  service.createVersion("runtime.task", "platform", null, { a: 1 }, "user1");
+  service.createVersion("runtime.task", "platform", null, { a: 2 }, "user1");
+  service.createVersion("runtime.task", "platform", null, { a: 3 }, "user1");
+  service.createVersion("runtime.task", "platform", null, { a: 4 }, "user1");
+
+  // After creating 4 versions with maxVersionsPerPath=2, only 2 remain (v3, v4)
+  // because pruning happens during createVersion
+  assert.strictEqual(service.getVersionHistory("runtime.task", "platform", null).length, 2);
+
+  // Calling pruneVersions explicitly returns 0 since nothing to prune
+  const pruned = service.pruneVersions("runtime.task", "platform", null);
+  assert.strictEqual(pruned, 0);
 });

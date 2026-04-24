@@ -17,6 +17,9 @@ import {
 } from "../../../src/org-governance/compliance-engine/compliance-governance-service.js";
 import { ComplianceEvidenceCollector } from "../../../src/org-governance/compliance-engine/evidence-collector.js";
 import { DEFAULT_COMPLIANCE_FRAMEWORKS } from "../../../src/org-governance/compliance-engine/framework-catalog.js";
+import { resolveCompliancePolicyForNode } from "../../../src/org-governance/compliance-engine/policy-resolver/index.js";
+import { inheritPolicyLayers } from "../../../src/org-governance/compliance-engine/inheritance/index.js";
+import { buildGovernanceAuditRecord } from "../../../src/org-governance/compliance-engine/audit-enforcer/index.js";
 
 // Mock OrgNode factory
 function createMockOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeType: OrgNode["nodeType"] }): OrgNode {
@@ -187,10 +190,15 @@ test("ComplianceGovernanceService.listEvidence filters by framework", () => {
 });
 
 test("ComplianceGovernanceService.evaluate allows action when policy satisfied", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], [SOX_BINDING]);
   const policies: Record<string, PolicyLayer[]> = {
-    "dept-1": [createMockPolicyLayer("sox_policy", { segregationOfDuties: true, auditRetentionDays: 3000 })],
+    "dept-1": [createMockPolicyLayer("sox_policy", {
+      segregationOfDuties: true,
+      auditRetentionDays: 3000,
+      access_review: true,
+      approval_segregation: true,
+    })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], [SOX_BINDING]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -204,10 +212,10 @@ test("ComplianceGovernanceService.evaluate allows action when policy satisfied",
 });
 
 test("ComplianceGovernanceService.evaluate blocks action when required policy missing", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], [SOX_BINDING]);
   const policies: Record<string, PolicyLayer[]> = {
     "dept-1": [createMockPolicyLayer("incomplete_policy", { segregationOfDuties: true })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], [SOX_BINDING]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -248,10 +256,10 @@ test("ComplianceGovernanceService.evaluate checks control requirements", () => {
 });
 
 test("ComplianceGovernanceService.evaluate checks framework minimum policies", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], [SOX_BINDING]);
   const policies: Record<string, PolicyLayer[]> = {
     "dept-1": [createMockPolicyLayer("weak_policy", { segregationOfDuties: false })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], [SOX_BINDING]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -264,11 +272,16 @@ test("ComplianceGovernanceService.evaluate checks framework minimum policies", (
 });
 
 test("ComplianceGovernanceService.evaluate inherits policies from ancestor nodes", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], [SOX_BINDING]);
   const policies: Record<string, PolicyLayer[]> = {
     "company-1": [createMockPolicyLayer("company_policy", { globalSetting: true })],
-    "dept-1": [createMockPolicyLayer("dept_policy", { segregationOfDuties: true, auditRetentionDays: 3000 })],
+    "dept-1": [createMockPolicyLayer("dept_policy", {
+      segregationOfDuties: true,
+      auditRetentionDays: 3000,
+      access_review: true,
+      approval_segregation: true,
+    })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], [SOX_BINDING]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -298,10 +311,15 @@ test("ComplianceGovernanceService.evaluate generates audit record", () => {
 });
 
 test("ComplianceGovernanceService.evaluate audit record has correct reason codes when allowed", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], [SOX_BINDING]);
   const policies: Record<string, PolicyLayer[]> = {
-    "dept-1": [createMockPolicyLayer("full_policy", { segregationOfDuties: true, auditRetentionDays: 3000 })],
+    "dept-1": [createMockPolicyLayer("full_policy", {
+      segregationOfDuties: true,
+      auditRetentionDays: 3000,
+      access_review: true,
+      approval_segregation: true,
+    })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], [SOX_BINDING]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -347,11 +365,11 @@ test("ComplianceGovernanceService.evaluate resolves frameworks through lineage",
 });
 
 test("ComplianceGovernanceService.evaluate handles boolean merge in policy inheritance", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], [SOX_BINDING]);
   const policies: Record<string, PolicyLayer[]> = {
     "division-1": [createMockPolicyLayer("div_policy", { segregationOfDuties: false })],
     "dept-1": [createMockPolicyLayer("dept_policy", { segregationOfDuties: true })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], [SOX_BINDING]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -364,11 +382,11 @@ test("ComplianceGovernanceService.evaluate handles boolean merge in policy inher
 });
 
 test("ComplianceGovernanceService.evaluate handles number merge in policy inheritance", () => {
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [SOX_FRAMEWORK], []);
   const policies: Record<string, PolicyLayer[]> = {
     "division-1": [createMockPolicyLayer("div_policy", { auditRetentionDays: 1000 })],
     "dept-1": [createMockPolicyLayer("dept_policy", { auditRetentionDays: 3000 })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [SOX_FRAMEWORK], []);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -395,11 +413,11 @@ test("ComplianceGovernanceService.evaluate handles string merge in policy inheri
     attachedBy: "admin",
   };
 
-  const service = new ComplianceGovernanceService(HIERARCHY, {}, [hipaaFramework], [binding]);
   const policies: Record<string, PolicyLayer[]> = {
     "division-1": [createMockPolicyLayer("div_policy", { dataClassification: "public" })],
     "dept-1": [createMockPolicyLayer("dept_policy", { dataClassification: "restricted" })],
   };
+  const service = new ComplianceGovernanceService(HIERARCHY, policies, [hipaaFramework], [binding]);
 
   const result = service.evaluate({
     actorId: "user-1",
@@ -485,4 +503,76 @@ test("ComplianceGovernanceService evaluate deduplicates missing controls", () =>
 
   // Should deduplicate shared_control and shared_policy
   assert.ok(result.missingControls.length <= 2);
+});
+
+test("inheritPolicyLayers merges multiple policy layers", () => {
+  const layers: PolicyLayer[] = [
+    createMockPolicyLayer("layer1", { boolVal: false, numVal: 100 }),
+    createMockPolicyLayer("layer2", { boolVal: true, numVal: 200 }),
+  ];
+
+  const result = inheritPolicyLayers(layers);
+  assert.strictEqual(result["boolVal"], true);
+  assert.strictEqual(result["numVal"], 200);
+});
+
+test("inheritPolicyLayers returns empty object for empty layers", () => {
+  const result = inheritPolicyLayers([]);
+  assert.deepStrictEqual(result, {});
+});
+
+test("inheritPolicyLayers prefers restricted string over others", () => {
+  const layers: PolicyLayer[] = [
+    createMockPolicyLayer("layer1", { classification: "public" }),
+    createMockPolicyLayer("layer2", { classification: "restricted" }),
+  ];
+
+  const result = inheritPolicyLayers(layers);
+  assert.strictEqual(result["classification"], "restricted");
+});
+
+test("resolveCompliancePolicyForNode builds lineage correctly", () => {
+  const policies: Record<string, PolicyLayer[]> = {
+    "company-1": [createMockPolicyLayer("company_policy", { companyLevel: true })],
+    "dept-1": [createMockPolicyLayer("dept_policy", { deptLevel: true })],
+  };
+
+  const result = resolveCompliancePolicyForNode(HIERARCHY, "dept-1", policies);
+  assert.ok("companyLevel" in result);
+  assert.ok("deptLevel" in result);
+});
+
+test("resolveCompliancePolicyForNode returns empty for node without policies", () => {
+  const result = resolveCompliancePolicyForNode(HIERARCHY, "member-1", {});
+  assert.deepStrictEqual(result, {});
+});
+
+test("buildGovernanceAuditRecord creates valid audit record", () => {
+  const record = buildGovernanceAuditRecord({
+    recordId: "audit_123",
+    action: "test_action",
+    actorId: "user_456",
+    orgNodeId: "node_789",
+    allowed: true,
+    reasonCodes: ["compliance.policy_resolved"],
+    occurredAt: "2024-07-01T12:00:00Z",
+  });
+
+  assert.strictEqual(record.recordId, "audit_123");
+  assert.strictEqual(record.action, "test_action");
+  assert.strictEqual(record.allowed, true);
+});
+
+test("buildGovernanceAuditRecord throws on invalid input", () => {
+  assert.throws(() => {
+    buildGovernanceAuditRecord({
+      recordId: "",
+      action: "test",
+      actorId: "user",
+      orgNodeId: "node",
+      allowed: true,
+      reasonCodes: [],
+      occurredAt: "2024-07-01T12:00:00Z",
+    });
+  });
 });

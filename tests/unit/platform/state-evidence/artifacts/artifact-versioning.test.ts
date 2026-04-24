@@ -28,7 +28,8 @@ function createMinimalArtifact(overrides: Partial<ArtifactRecordExtended> = {}):
   return base;
 }
 
-test("ArtifactVersioningService.createNextVersion increments version", () => {
+// Test: Version increment from 1
+test("ArtifactVersioningService.createNextVersion increments version from 1 to 2", () => {
   const service = new ArtifactVersioningService();
   const previous = createMinimalArtifact({ version: 1 });
   const next = service.createNextVersion(previous, {});
@@ -36,7 +37,26 @@ test("ArtifactVersioningService.createNextVersion increments version", () => {
   assert.equal(next.version, 2);
 });
 
-test("ArtifactVersioningService.createNextVersion sets parentArtifactId", () => {
+// Test: Version increment from higher version
+test("ArtifactVersioningService.createNextVersion increments version from 5 to 6", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 5 });
+  const next = service.createNextVersion(previous, {});
+
+  assert.equal(next.version, 6);
+});
+
+// Test: Version increment from zero
+test("ArtifactVersioningService.createNextVersion increments version from 0 to 1", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 0 });
+  const next = service.createNextVersion(previous, {});
+
+  assert.equal(next.version, 1);
+});
+
+// Test: parentArtifactId is set to previous artifactId
+test("ArtifactVersioningService.createNextVersion sets parentArtifactId to previous artifactId", () => {
   const service = new ArtifactVersioningService();
   const previous = createMinimalArtifact({ artifactId: "artifact:v1", version: 1 });
   const next = service.createNextVersion(previous, {});
@@ -44,43 +64,55 @@ test("ArtifactVersioningService.createNextVersion sets parentArtifactId", () => 
   assert.equal(next.parentArtifactId, "artifact:v1");
 });
 
-test("ArtifactVersioningService.createNextVersion preserves previous fields", () => {
+// Test: parentArtifactId is not affected by overrides
+test("ArtifactVersioningService.createNextVersion parentArtifactId ignores overrides", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifact({
-    artifactId: "artifact:test",
-    taskId: "task:123",
-    version: 5,
-    namespace: "my-namespace",
-  });
+  const previous = createMinimalArtifact({ artifactId: "artifact:v1", version: 1 });
+  const next = service.createNextVersion(previous, { parentArtifactId: "artifact:ignored" });
 
+  assert.equal(next.parentArtifactId, "artifact:v1");
+});
+
+// Test: Initial artifact has null parentArtifactId
+test("ArtifactVersioningService.createNextVersion initial artifact has null parentArtifactId", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ artifactId: "artifact:base", version: 1, parentArtifactId: null });
   const next = service.createNextVersion(previous, {});
 
-  assert.equal(next.taskId, "task:123");
-  assert.equal(next.namespace, "my-namespace");
+  assert.equal(next.parentArtifactId, "artifact:base");
 });
 
-test("ArtifactVersioningService.createNextVersion applies overrides but version is always incremented", () => {
+// Test: Overrides replace previous field values
+test("ArtifactVersioningService.createNextVersion applies overrides to all fields", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifact({ version: 1, namespace: "Original" });
-  const next = service.createNextVersion(previous, { namespace: "Updated" });
+  const previous = createMinimalArtifact({
+    version: 1,
+    namespace: "original-namespace",
+    createdBy: "original-user",
+  });
+  const next = service.createNextVersion(previous, {
+    namespace: "new-namespace",
+    createdBy: "new-user",
+  });
 
-  assert.equal(next.namespace, "Updated");
-  assert.equal(next.version, 2); // Version is ALWAYS incremented from previous, not from overrides
+  assert.equal(next.namespace, "new-namespace");
+  assert.equal(next.createdBy, "new-user");
 });
 
-test("ArtifactVersioningService.createNextVersion version override is ignored", () => {
+// Test: Version override is always ignored
+test("ArtifactVersioningService.createNextVersion ignores version override", () => {
   const service = new ArtifactVersioningService();
   const previous = createMinimalArtifact({ version: 5 });
   const next = service.createNextVersion(previous, { version: 99 });
 
-  assert.equal(next.version, 6); // Version is always previous.version + 1, not 99
+  assert.equal(next.version, 6);
 });
 
-test("ArtifactVersioningService.createNextVersion allows multiple consecutive versions", () => {
+// Test: Multiple consecutive version chains
+test("ArtifactVersioningService.createNextVersion maintains version chain", () => {
   const service = new ArtifactVersioningService();
-  // parentArtifactId is always set to previous.artifactId
   let current = createMinimalArtifact({ artifactId: "artifact:base", version: 1 });
-  assert.equal(current.parentArtifactId, null); // Initial version has no parent
+  assert.equal(current.parentArtifactId, null);
 
   current = service.createNextVersion(current, { artifactId: "artifact:v2" });
   assert.equal(current.version, 2);
@@ -89,12 +121,103 @@ test("ArtifactVersioningService.createNextVersion allows multiple consecutive ve
   current = service.createNextVersion(current, { artifactId: "artifact:v3" });
   assert.equal(current.version, 3);
   assert.equal(current.parentArtifactId, "artifact:v2");
+
+  current = service.createNextVersion(current, { artifactId: "artifact:v4" });
+  assert.equal(current.version, 4);
+  assert.equal(current.parentArtifactId, "artifact:v3");
 });
 
-test("ArtifactVersioningService.createNextVersion handles zero version", () => {
+// Test: Metadata is preserved when not overridden
+test("ArtifactVersioningService.createNextVersion preserves metadata", () => {
   const service = new ArtifactVersioningService();
-  const previous = createMinimalArtifact({ version: 0 });
+  const metadata = { key: "value", nested: { a: 1 } };
+  const previous = createMinimalArtifact({ version: 1, metadata });
   const next = service.createNextVersion(previous, {});
 
-  assert.equal(next.version, 1);
+  assert.deepEqual(next.metadata, metadata);
+});
+
+// Test: Metadata override replaces previous metadata
+test("ArtifactVersioningService.createNextVersion applies metadata override", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1, metadata: { old: "value" } });
+  const next = service.createNextVersion(previous, { metadata: { new: "value" } });
+
+  assert.deepEqual(next.metadata, { new: "value" });
+});
+
+// Test: Status can be overridden
+test("ArtifactVersioningService.createNextVersion allows status override", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1, status: "draft" });
+  const next = service.createNextVersion(previous, { status: "published" });
+
+  assert.equal(next.status, "published");
+});
+
+// Test: Size can be overridden
+test("ArtifactVersioningService.createNextVersion allows size override", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1, size: 100 });
+  const next = service.createNextVersion(previous, { size: 200 });
+
+  assert.equal(next.size, 200);
+});
+
+// Test: TaskId is preserved
+test("ArtifactVersioningService.createNextVersion preserves taskId", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1, taskId: "task:12345" });
+  const next = service.createNextVersion(previous, {});
+
+  assert.equal(next.taskId, "task:12345");
+});
+
+// Test: ArtifactType can be overridden
+test("ArtifactVersioningService.createNextVersion allows artifactType override", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1, artifactType: "config" });
+  const next = service.createNextVersion(previous, { artifactType: "document" });
+
+  assert.equal(next.artifactType, "document");
+});
+
+// Test: StorageUri is preserved
+test("ArtifactVersioningService.createNextVersion preserves storageUri", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1, storageUri: "file:///original/path" });
+  const next = service.createNextVersion(previous, {});
+
+  assert.equal(next.storageUri, "file:///original/path");
+});
+
+// Test: Empty overrides object still increments version and sets parentArtifactId
+test("ArtifactVersioningService.createNextVersion works with empty overrides", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 3, artifactId: "artifact:test", parentArtifactId: "artifact:parent" });
+  const next = service.createNextVersion(previous, {});
+
+  assert.equal(next.version, 4);
+  assert.equal(next.parentArtifactId, "artifact:test");
+});
+
+// Test: All required fields from ArtifactRecordExtended are present in output
+test("ArtifactVersioningService.createNextVersion returns complete ArtifactRecordExtended", () => {
+  const service = new ArtifactVersioningService();
+  const previous = createMinimalArtifact({ version: 1 });
+  const next = service.createNextVersion(previous, {});
+
+  // Check all required fields exist
+  assert.ok(next.artifactId);
+  assert.ok(next.taskId);
+  assert.ok(next.stepId);
+  assert.ok(next.agentRole);
+  assert.ok(next.type);
+  assert.ok(next.path);
+  assert.ok(next.contentHash);
+  assert.ok(next.namespace);
+  assert.ok(next.artifactType);
+  assert.ok(next.storageUri);
+  assert.ok(next.createdBy);
+  assert.ok(next.metadata !== undefined);
 });

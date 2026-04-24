@@ -30,13 +30,14 @@ function makeExecCommand(
   fromStatus: ExecutionStatus,
   toStatus: ExecutionStatus,
   traceId: string,
+  reasonCode: string = "e2e_error_handling",
 ) {
   return {
     entityKind: "execution" as const,
     entityId: executionId,
     fromStatus,
     toStatus,
-    reasonCode: "e2e_error_handling",
+    reasonCode,
     traceId,
     actorType: "agent" as const,
     occurredAt: nowIso(),
@@ -124,13 +125,8 @@ test("E2E Error: task execution times out and transitions to failed state", asyn
 
     // Simulate timeout: execution transitions to failed with timeout error code
     ts.transitionExecutionStatus(
-      makeExecCommand(executionId, "executing", "failed", traceId),
+      makeExecCommand(executionId, "executing", "failed", traceId, "execution.timeout"),
     );
-
-    // Update execution with timeout error details
-    harness.db.transaction(() => {
-      harness.store.updateExecutionError(executionId, "execution.timeout", "Task execution timed out after 5000ms");
-    });
 
     exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed after timeout");
@@ -403,12 +399,9 @@ test("E2E Error: worker failure marks execution as failed and triggers recovery"
     });
 
     // Simulate worker failure: execution fails with worker error
-    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
-
-    // Update with worker failure error
-    harness.db.transaction(() => {
-      harness.store.updateExecutionError(executionId, "worker.failure", "Worker process terminated unexpectedly");
-    });
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "worker.failure"),
+    );
 
     let exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");
@@ -486,7 +479,7 @@ test("E2E Error: worker becomes unavailable and execution is superseded", async 
         agentId: "agent-unavailable",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "executing",
+        status: "blocked",
         inputRef: null,
         traceId: traceId1,
         attempt: 1,
@@ -518,7 +511,7 @@ test("E2E Error: worker becomes unavailable and execution is superseded", async 
     });
 
     // Worker becomes unavailable - first execution gets superseded
-    ts.transitionExecutionStatus(makeExecCommand(executionId1, "executing", "superseded", traceId1));
+    ts.transitionExecutionStatus(makeExecCommand(executionId1, "blocked", "superseded", traceId1));
 
     let exec1 = harness.store.getExecution(executionId1);
     assert.equal(exec1?.status, "superseded", "First execution should be superseded");
@@ -664,11 +657,9 @@ test("E2E Error: memory exhaustion causes execution failure", async () => {
     });
 
     // Memory exhaustion - execution fails with resource error
-    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
-
-    harness.db.transaction(() => {
-      harness.store.updateExecutionError(executionId, "resource.memory_exhausted", "Memory limit exceeded during execution");
-    });
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "resource.memory_exhausted"),
+    );
 
     let exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");
@@ -713,7 +704,7 @@ test("E2E Error: budget exhaustion prevents execution start", async () => {
     const ts = new TransitionService(harness.db, harness.store);
     const now = nowIso();
 
-    // Setup: Task in pending state, execution created but not started
+    // Setup: Task has entered execution orchestration, but the execution fails before work starts
     harness.db.transaction(() => {
       harness.store.insertTask({
         id: taskId,
@@ -721,7 +712,7 @@ test("E2E Error: budget exhaustion prevents execution start", async () => {
         rootId: taskId,
         divisionId: "general_ops",
         title: "Budget exhaustion test",
-        status: "pending",
+        status: "in_progress",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -775,14 +766,12 @@ test("E2E Error: budget exhaustion prevents execution start", async () => {
     });
 
     // Budget check fails - execution cancelled due to insufficient budget
-    ts.transitionExecutionStatus(makeExecCommand(executionId, "created", "cancelled", traceId));
-
-    harness.db.transaction(() => {
-      harness.store.updateExecutionError(executionId, "budget.exhausted", "Budget limit of $0.01 exceeded");
-    });
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "created", "failed", traceId, "budget.exhausted"),
+    );
 
     const exec = harness.store.getExecution(executionId);
-    assert.equal(exec?.status, "cancelled", "Execution should be cancelled due to budget");
+    assert.equal(exec?.status, "failed", "Execution should be failed due to budget exhaustion");
     assert.equal(exec?.lastErrorCode, "budget.exhausted", "Should have budget exhausted error");
 
     // Task reaches failed state
@@ -790,10 +779,10 @@ test("E2E Error: budget exhaustion prevents execution start", async () => {
       taskId,
       sessionId,
       executionId,
-      currentTaskStatus: "pending",
-      currentWorkflowStatus: "pending",
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
       currentSessionStatus: "open",
-      currentExecutionStatus: "cancelled",
+      currentExecutionStatus: "failed",
       terminalStatus: "failed",
       taskOutputJson: JSON.stringify({ error: "budget.exhausted" }),
       outputsJson: "{}",
@@ -886,11 +875,9 @@ test("E2E Error: disk space exhaustion triggers workflow failure", async () => {
     });
 
     // Disk exhaustion - execution fails
-    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
-
-    harness.db.transaction(() => {
-      harness.store.updateExecutionError(executionId, "resource.disk_exhausted", "Disk space limit exceeded");
-    });
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "resource.disk_exhausted"),
+    );
 
     let exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");
@@ -1419,15 +1406,9 @@ test("E2E Error: timeout combined with worker failure leads to failed state", as
     });
 
     // Both timeout and worker failure occur - execution fails
-    ts.transitionExecutionStatus(makeExecCommand(executionId, "executing", "failed", traceId));
-
-    harness.db.transaction(() => {
-      harness.store.updateExecutionError(
-        executionId,
-        "execution.timeout",
-        "Task timed out and worker became unavailable",
-      );
-    });
+    ts.transitionExecutionStatus(
+      makeExecCommand(executionId, "executing", "failed", traceId, "execution.timeout"),
+    );
 
     let exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");

@@ -93,10 +93,9 @@ export class AnomalyDetectionService {
     const stats = this.computeStats(baseline);
     const alerts: AnomalyAlert[] = [];
 
-    if (latest.value >= threshold.criticalThreshold) {
-      alerts.push(this.createAlert(metricName, latest, stats, "critical", threshold));
-    } else if (latest.value >= threshold.warningThreshold) {
-      alerts.push(this.createAlert(metricName, latest, stats, "warning", threshold));
+    const thresholdSeverity = this.evaluateThresholdSeverity(metricName, latest.value, threshold);
+    if (thresholdSeverity != null) {
+      alerts.push(this.createAlert(metricName, latest, stats, thresholdSeverity, threshold));
     }
 
     // Statistical anomaly: value > mean + 3*stdDev
@@ -163,12 +162,44 @@ export class AnomalyDetectionService {
       metricName,
       severity,
       detectedAt: latest.timestamp,
-      reason: `${metricName}=${latest.value.toFixed(2)} ${severity === "critical" ? "exceeds" : "exceeds"} ${severity} threshold`,
+      reason: `${metricName}=${latest.value.toFixed(2)} ${this.describeThresholdBreach(metricName, severity)} ${severity} threshold`,
       currentValue: latest.value,
       expectedRange: { low: stats.mean - 2 * stats.stdDev, high: stats.mean + 2 * stats.stdDev },
       deviationPercent,
       rootCauseHints: this.generateRootCauseHints(metricName, latest.value, stats),
     };
+  }
+
+  private evaluateThresholdSeverity(
+    metricName: string,
+    value: number,
+    threshold: SloThreshold,
+  ): "warning" | "critical" | null {
+    if (this.isLowerValueWorse(metricName)) {
+      if (value <= threshold.criticalThreshold) {
+        return "critical";
+      }
+      if (value <= threshold.warningThreshold) {
+        return "warning";
+      }
+      return null;
+    }
+
+    if (value >= threshold.criticalThreshold) {
+      return "critical";
+    }
+    if (value >= threshold.warningThreshold) {
+      return "warning";
+    }
+    return null;
+  }
+
+  private isLowerValueWorse(metricName: string): boolean {
+    return metricName === "availability";
+  }
+
+  private describeThresholdBreach(metricName: string, severity: "warning" | "critical"): string {
+    return this.isLowerValueWorse(metricName) ? "falls below" : "exceeds";
   }
 
   private createStatisticalAlert(

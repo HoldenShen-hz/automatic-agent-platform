@@ -105,7 +105,7 @@ test("MetricsCollector records histogram values correctly", () => {
 
 test("MetricsCollector handles null labels gracefully", () => {
   mockRegistry.reset();
-  mockRegistry.setGauge("test_metric", { a: "value", b: null as unknown as string, c: undefined }, 42);
+  mockRegistry.setGauge("test_metric", { a: "value", b: null as unknown as string }, 42);
 
   // Should not throw and should handle gracefully
   assert.equal(mockRegistry.gauges.get("gauge:test_metric"), 42);

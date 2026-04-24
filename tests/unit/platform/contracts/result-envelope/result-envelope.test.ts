@@ -447,21 +447,15 @@ test("extractHumanSummary returns string values directly", () => {
   assert.equal(result!.humanSummary, "just a string result");
 });
 
-// @ts-ignore - implementation does not return null for arrays
-test.skip("extractHumanSummary returns null for arrays - implementation issue: array not handled correctly", () => {
-  const task = createTaskRecord({
-    outputJson: '["array", "result"]',
-    status: "done",
+test("extractHumanSummary returns null for arrays when no explicit summary is present", () => {
+  const stepOutput = createStepOutputRecord({
+    dataJson: '["array", "result"]',
+    summary: null,
+    status: "succeeded",
   });
-  const result = buildTaskResultEnvelope({
-    task,
-    workflowState: null,
-    stepOutputs: [],
-    artifacts: [],
-  });
+  const result = buildStepResultEnvelope(stepOutput, []);
 
-  assert.notEqual(result, null);
-  assert.equal(result!.humanSummary, null);
+  assert.equal(result.humanSummary, null);
 });
 
 test("extractHumanSummary prefers summary over humanSummary over result", () => {

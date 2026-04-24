@@ -481,7 +481,7 @@ export class HarnessRuntimeService {
       violations.push("harness.invariant.required_evidence_missing");
     }
     if (
-      run.status === "completed"
+      hasOpenExecutionBlockers
       && run.guardrailAssessment?.findings.some((finding) => finding.code === "harness.guardrail.max_risk_exceeded")
     ) {
       violations.push("harness.invariant.max_risk_exceeded");

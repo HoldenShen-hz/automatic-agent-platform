@@ -1,19 +1,19 @@
+// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// Barrel test for product module
+// Barrel test for billing module
 import {
   assertIdentifier,
   assertPositiveNumber,
   roundCurrency,
   monthWindow,
   buildBillingMarkdown,
-  PackSecurityService,
   type CostEstimate,
   type CreateBillingAccountInput,
   type EvaluateEntitlementInput,
   type RecordUsageInput,
-} from "../../../../src/scale-ecosystem/marketplace/index.js";
+} from "../../../../src/scale-ecosystem/billing/index.js";
 
 test("assertIdentifier returns value when valid", () => {
   const result = assertIdentifier("valid_id", "test.code");
@@ -129,7 +129,7 @@ test("RecordUsageInput with api source", () => {
   assert.equal(input.metricType, "token_usage");
 });
 
-test("CostEstimate type is exported from product barrel", () => {
+test("CostEstimate type is exported from billing barrel", () => {
   const estimate: CostEstimate = {
     estimatedCostUsd: 0.25,
     confidence: "medium",
@@ -138,10 +138,4 @@ test("CostEstimate type is exported from product barrel", () => {
     basedOn: "division_avg",
   };
   assert.equal(estimate.basedOn, "division_avg");
-});
-
-test("PackSecurityService is exported from product barrel", () => {
-  const service = new PackSecurityService();
-
-  assert.ok(service instanceof PackSecurityService);
 });

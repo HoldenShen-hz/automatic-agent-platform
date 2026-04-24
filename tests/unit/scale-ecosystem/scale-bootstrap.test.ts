@@ -16,7 +16,7 @@ test("scale bootstrap exposes canonical W4 scale services", () => {
     SCALE_CATALOG_SERVICE_ID,
     SCALE_BOOTSTRAP_SERVICE_ID,
   ]);
-  assert.equal(bootstrap.catalog.length, 6);
+  assert.equal(bootstrap.catalog.length, 11);
 });
 
 test("scale bootstrap registers services in the service registry", async () => {

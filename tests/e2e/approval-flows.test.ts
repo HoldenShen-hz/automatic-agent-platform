@@ -20,6 +20,7 @@ import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { ApprovalService } from "../../src/platform/control-plane/approval-center/approval-service.js";
 import { ApprovalTimeoutExecutor } from "../../src/platform/control-plane/approval-center/approval-timeout-executor.js";
+import { ApprovalRepository } from "../../src/platform/state-evidence/truth/sqlite/repositories/approval-repository.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 
@@ -787,6 +788,7 @@ test("E2E Approval: timeout executor auto-rejects expired approvals with reject 
     const executionId = newId("exec");
     const traceId = newId("trace");
     const approvals = new ApprovalService(harness.db, harness.store);
+    const approvalRepo = new ApprovalRepository(harness.db.connection);
     const ts = new TransitionService(harness.db, harness.store);
     const now = nowIso();
 
@@ -856,25 +858,22 @@ test("E2E Approval: timeout executor auto-rejects expired approvals with reject 
     // Manually backdate the approval to simulate expiration
     const oldCreatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(); // 25 hours ago
     harness.db.transaction(() => {
-      const repo = new (await import("../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js"))
-        .RuntimeLifecycleRepository(harness.store);
       // Update the approval record's createdAt to simulate expiration
       const approval = harness.store.getApproval(approvalRequest.approvalId);
       if (approval) {
-        harness.db.transaction(() => {
-          harness.store.getDb().execute(
-            `UPDATE approvals SET created_at = ? WHERE id = ?`,
-            oldCreatedAt,
-            approvalRequest.approvalId,
-          );
-        });
+        harness.db.connection
+          .prepare(`UPDATE approvals SET created_at = ? WHERE id = ?`)
+          .run(oldCreatedAt, approvalRequest.approvalId);
       }
     });
 
     // Create timeout executor with short default timeout
-    const executor = new ApprovalTimeoutExecutor(approvals, harness.store, {
-      conn: harness.store.getDb(),
-    } as any, { defaultTimeoutMs: 60 * 60 * 1000 }); // 1 hour
+    const executor = new ApprovalTimeoutExecutor(
+      approvals,
+      harness.store,
+      approvalRepo,
+      { defaultTimeoutMs: 60 * 60 * 1000 },
+    ); // 1 hour
 
     // Run sweep
     const result = executor.sweep();
@@ -900,6 +899,7 @@ test("E2E Approval: timeout executor auto-approves expired approvals with approv
     const executionId = newId("exec");
     const traceId = newId("trace");
     const approvals = new ApprovalService(harness.db, harness.store);
+    const approvalRepo = new ApprovalRepository(harness.db.connection);
     const now = nowIso();
 
     // Setup task with execution
@@ -968,17 +968,18 @@ test("E2E Approval: timeout executor auto-approves expired approvals with approv
     // Backdate the approval
     const oldCreatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     harness.db.transaction(() => {
-      harness.store.getDb().execute(
-        `UPDATE approvals SET created_at = ? WHERE id = ?`,
-        oldCreatedAt,
-        approvalRequest.approvalId,
-      );
+      harness.db.connection
+        .prepare(`UPDATE approvals SET created_at = ? WHERE id = ?`)
+        .run(oldCreatedAt, approvalRequest.approvalId);
     });
 
     // Create timeout executor
-    const executor = new ApprovalTimeoutExecutor(approvals, harness.store, {
-      conn: harness.store.getDb(),
-    } as any, { defaultTimeoutMs: 60 * 60 * 1000 });
+    const executor = new ApprovalTimeoutExecutor(
+      approvals,
+      harness.store,
+      approvalRepo,
+      { defaultTimeoutMs: 60 * 60 * 1000 },
+    );
 
     // Run sweep
     const result = executor.sweep();
@@ -1000,6 +1001,7 @@ test("E2E Approval: timeout executor skips remain_pending approvals", async () =
     const executionId = newId("exec");
     const traceId = newId("trace");
     const approvals = new ApprovalService(harness.db, harness.store);
+    const approvalRepo = new ApprovalRepository(harness.db.connection);
     const now = nowIso();
 
     // Setup task with execution
@@ -1068,17 +1070,18 @@ test("E2E Approval: timeout executor skips remain_pending approvals", async () =
     // Backdate the approval
     const oldCreatedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     harness.db.transaction(() => {
-      harness.store.getDb().execute(
-        `UPDATE approvals SET created_at = ? WHERE id = ?`,
-        oldCreatedAt,
-        approvalRequest.approvalId,
-      );
+      harness.db.connection
+        .prepare(`UPDATE approvals SET created_at = ? WHERE id = ?`)
+        .run(oldCreatedAt, approvalRequest.approvalId);
     });
 
     // Create timeout executor
-    const executor = new ApprovalTimeoutExecutor(approvals, harness.store, {
-      conn: harness.store.getDb(),
-    } as any, { defaultTimeoutMs: 60 * 60 * 1000 });
+    const executor = new ApprovalTimeoutExecutor(
+      approvals,
+      harness.store,
+      approvalRepo,
+      { defaultTimeoutMs: 60 * 60 * 1000 },
+    );
 
     // Run sweep
     const result = executor.sweep();
@@ -1102,6 +1105,7 @@ test("E2E Approval: non-expired approvals are not affected by timeout sweep", as
     const executionId = newId("exec");
     const traceId = newId("trace");
     const approvals = new ApprovalService(harness.db, harness.store);
+    const approvalRepo = new ApprovalRepository(harness.db.connection);
     const now = nowIso();
 
     // Setup task with execution
@@ -1168,9 +1172,12 @@ test("E2E Approval: non-expired approvals are not affected by timeout sweep", as
     });
 
     // Create timeout executor
-    const executor = new ApprovalTimeoutExecutor(approvals, harness.store, {
-      conn: harness.store.getDb(),
-    } as any, { defaultTimeoutMs: 60 * 60 * 1000 });
+    const executor = new ApprovalTimeoutExecutor(
+      approvals,
+      harness.store,
+      approvalRepo,
+      { defaultTimeoutMs: 60 * 60 * 1000 },
+    );
 
     // Run sweep
     const result = executor.sweep();

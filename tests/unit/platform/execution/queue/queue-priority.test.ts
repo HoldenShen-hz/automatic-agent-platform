@@ -230,9 +230,9 @@ test("listJobs returns jobs in priority order", () => {
 
     const jobs = adapter.listJobs("tasks");
     assert.equal(jobs.length, 3);
-    assert.equal(JSON.parse(jobs[0].payload), "high");
-    assert.equal(JSON.parse(jobs[1].payload), "medium");
-    assert.equal(JSON.parse(jobs[2].payload), "low");
+    assert.equal(JSON.parse(jobs[0]!.payload), "high");
+    assert.equal(JSON.parse(jobs[1]!.payload), "medium");
+    assert.equal(JSON.parse(jobs[2]!.payload), "low");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -251,12 +251,12 @@ test("listJobs with status filter maintains priority order", () => {
 
     const waiting = adapter.listJobs("tasks", "waiting");
     assert.equal(waiting.length, 2);
-    assert.equal(JSON.parse(waiting[0].payload), "high");
-    assert.equal(JSON.parse(waiting[1].payload), "medium");
+    assert.equal(JSON.parse(waiting[0]!.payload), "high");
+    assert.equal(JSON.parse(waiting[1]!.payload), "medium");
 
     const completed = adapter.listJobs("tasks", "completed");
     assert.equal(completed.length, 1);
-    assert.equal(JSON.parse(completed[0].payload), "low");
+    assert.equal(JSON.parse(completed[0]!.payload), "low");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

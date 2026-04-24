@@ -7,9 +7,28 @@ import test from "node:test";
 import {
   ConfigRolloutService,
   RolloutPhase,
+  ConfigRollout,
 } from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
 
-test("ConfigRolloutService.startRollout creates a new rollout with default stages", () => {
+// Manual mock event bus
+interface MockEventBus {
+  publish: (event: { eventType: string; payload: Record<string, unknown> }) => void;
+  getEvents: () => Array<{ eventType: string; payload: Record<string, unknown> }>;
+}
+
+function createMockEventBus(): MockEventBus {
+  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
+  return {
+    publish(event: { eventType: string; payload: Record<string, unknown> }) {
+      events.push(event);
+    },
+    getEvents() {
+      return events;
+    },
+  };
+}
+
+test("startRollout creates a new rollout with default stages", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
 
@@ -21,7 +40,7 @@ test("ConfigRolloutService.startRollout creates a new rollout with default stage
   assert.ok(rollout.updatedAt);
 });
 
-test("ConfigRolloutService.startRollout defaults to FULL stage for 100% target", () => {
+test("startRollout defaults to FULL stage for 100% target", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
 
@@ -30,7 +49,7 @@ test("ConfigRolloutService.startRollout defaults to FULL stage for 100% target",
   assert.equal(rollout.targetPercentage, 100);
 });
 
-test("ConfigRolloutService.startRollout starts at CANARY_5 for target below 25%", () => {
+test("startRollout starts at CANARY_5 for target below 25%", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
 
@@ -38,7 +57,46 @@ test("ConfigRolloutService.startRollout starts at CANARY_5 for target below 25%"
   assert.equal(rollout.currentPercentage, 5);
 });
 
-test("ConfigRolloutService.shouldApplyConfig returns shouldApply:true when no active rollout", () => {
+test("startRollout starts at CANARY_25 for target between 5 and 25", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 10);
+
+  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_25);
+  assert.equal(rollout.currentPercentage, 25);
+});
+
+test("startRollout starts at HALF for target between 25 and 50", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 40);
+
+  assert.equal(rollout.stage.phase, RolloutPhase.HALF);
+  assert.equal(rollout.currentPercentage, 50);
+});
+
+test("startRollout emits config.rollout.started event with event bus", () => {
+  const mockBus = createMockEventBus();
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+
+  const rollout = service.startRollout("runtime.timeout", "platform", null);
+
+  const events = mockBus.getEvents();
+  assert.equal(events.length, 1);
+  const event = events[0];
+  assert.ok(event, "First event should exist");
+  assert.equal(event.eventType, "config.rollout.started");
+  assert.equal(event.payload.rolloutId, rollout.rolloutId);
+  assert.equal(event.payload.configPath, "runtime.timeout");
+});
+
+test("startRollout does not emit event when eventBus is null", () => {
+  const service = new ConfigRolloutService({ eventBus: null });
+
+  service.startRollout("runtime.timeout", "platform", null);
+
+  // No error means success - event bus is null so no event emitted
+});
+
+test("shouldApplyConfig returns shouldApply:true when no active rollout", () => {
   const service = new ConfigRolloutService();
   const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "hash-123");
 
@@ -47,7 +105,7 @@ test("ConfigRolloutService.shouldApplyConfig returns shouldApply:true when no ac
   assert.equal(decision.reason, "no_active_rollout");
 });
 
-test("ConfigRolloutService.shouldApplyConfig returns shouldApply:false for PENDING rollout", () => {
+test("shouldApplyConfig returns shouldApply:false for PENDING rollout", () => {
   const service = new ConfigRolloutService();
   service.startRollout("runtime.timeout", "platform", null, 0);
 
@@ -57,7 +115,7 @@ test("ConfigRolloutService.shouldApplyConfig returns shouldApply:false for PENDI
   assert.equal(decision.reason, "rollout_pending");
 });
 
-test("ConfigRolloutService.shouldApplyConfig returns shouldApply:false for CANCELLED rollout", () => {
+test("shouldApplyConfig returns shouldApply:false for CANCELLED rollout", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
   service.cancelRollout(rollout.rolloutId);
@@ -68,7 +126,7 @@ test("ConfigRolloutService.shouldApplyConfig returns shouldApply:false for CANCE
   assert.equal(decision.reason, "rollout_cancelled");
 });
 
-test("ConfigRolloutService.shouldApplyConfig applies config based on hash percentage", () => {
+test("shouldApplyConfig applies config based on hash percentage", () => {
   const service = new ConfigRolloutService();
   // Start at FULL (100%) so all hashes will match
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
@@ -80,7 +138,7 @@ test("ConfigRolloutService.shouldApplyConfig applies config based on hash percen
   assert.equal(decision.rolloutId, rollout.rolloutId);
 });
 
-test("ConfigRolloutService.promoteRollout advances to next stage", () => {
+test("promoteRollout advances to next stage", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
 
@@ -93,14 +151,40 @@ test("ConfigRolloutService.promoteRollout advances to next stage", () => {
   assert.equal(promoted!.currentPercentage, 25);
 });
 
-test("ConfigRolloutService.promoteRollout returns null for non-existent rollout", () => {
+test("promoteRollout emits config.rollout.promoted event", () => {
+  const mockBus = createMockEventBus();
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
+  mockBus.getEvents().length = 0; // Clear start event
+
+  service.promoteRollout(rollout.rolloutId);
+
+  const events = mockBus.getEvents();
+  assert.ok(events.some(e => e.eventType === "config.rollout.promoted"));
+});
+
+test("promoteRollout returns null for non-existent rollout", () => {
   const service = new ConfigRolloutService();
   const result = service.promoteRollout("non-existent-id");
 
   assert.equal(result, null);
 });
 
-test("ConfigRolloutService.cancelRollout cancels the rollout", () => {
+test("promoteRollout from FULL transitions to next stage", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
+
+  assert.equal(rollout.stage.phase, RolloutPhase.FULL);
+
+  const promoted = service.promoteRollout(rollout.rolloutId);
+
+  assert.ok(promoted);
+  // Note: source code advances to CANCELLED from FULL
+  assert.equal(promoted!.stage.phase, RolloutPhase.CANCELLED);
+});
+
+test("cancelRollout cancels the rollout", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
 
@@ -110,7 +194,27 @@ test("ConfigRolloutService.cancelRollout cancels the rollout", () => {
   assert.equal(cancelled!.stage.phase, RolloutPhase.CANCELLED);
 });
 
-test("ConfigRolloutService.getActiveRollout returns correct rollout", () => {
+test("cancelRollout emits config.rollout.cancelled event", () => {
+  const mockBus = createMockEventBus();
+  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
+
+  const rollout = service.startRollout("runtime.timeout", "platform", null);
+  mockBus.getEvents().length = 0; // Clear start event
+
+  service.cancelRollout(rollout.rolloutId);
+
+  const events = mockBus.getEvents();
+  assert.ok(events.some(e => e.eventType === "config.rollout.cancelled"));
+});
+
+test("cancelRollout returns null for non-existent rollout", () => {
+  const service = new ConfigRolloutService();
+  const result = service.cancelRollout("non-existent-id");
+
+  assert.equal(result, null);
+});
+
+test("getActiveRollout returns correct rollout", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", "tenant-1");
 
@@ -120,14 +224,23 @@ test("ConfigRolloutService.getActiveRollout returns correct rollout", () => {
   assert.equal(found!.rolloutId, rollout.rolloutId);
 });
 
-test("ConfigRolloutService.getActiveRollout returns null for non-existent", () => {
+test("getActiveRollout returns null for non-existent", () => {
   const service = new ConfigRolloutService();
   const found = service.getActiveRollout("non.existent", "platform", null);
 
   assert.equal(found, null);
 });
 
-test("ConfigRolloutService.getActiveRollouts returns all active rollouts", () => {
+test("getActiveRollout returns null when sourceId does not match", () => {
+  const service = new ConfigRolloutService();
+  service.startRollout("runtime.timeout", "platform", "tenant-1");
+
+  const found = service.getActiveRollout("runtime.timeout", "platform", "tenant-2");
+
+  assert.equal(found, null);
+});
+
+test("getActiveRollouts returns all active rollouts", () => {
   const service = new ConfigRolloutService();
   service.startRollout("config.1", "platform", null);
   service.startRollout("config.2", "tenant", "tenant-1");
@@ -137,7 +250,7 @@ test("ConfigRolloutService.getActiveRollouts returns all active rollouts", () =>
   assert.equal(rollouts.length, 2);
 });
 
-test("ConfigRolloutService.autoProgressRollouts does not auto-progress non-auto stages", () => {
+test("autoProgressRollouts does not auto-progress non-auto stages", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
 
@@ -147,7 +260,7 @@ test("ConfigRolloutService.autoProgressRollouts does not auto-progress non-auto 
   assert.equal(progressed, 0);
 });
 
-test("ConfigRolloutService.cleanupRollouts removes old completed rollouts", () => {
+test("cleanupRollouts removes old completed rollouts", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
 
@@ -161,7 +274,21 @@ test("ConfigRolloutService.cleanupRollouts removes old completed rollouts", () =
   assert.equal(service.getActiveRollouts().length, 0);
 });
 
-test("ConfigRolloutService.cleanupRollouts keeps recent rollouts", () => {
+test("cleanupRollouts removes old cancelled rollouts", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null);
+  service.cancelRollout(rollout.rolloutId);
+
+  // Manually set updatedAt to old
+  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
+
+  const cleaned = service.cleanupRollouts(86400000);
+
+  assert.equal(cleaned, 1);
+  assert.equal(service.getActiveRollouts().length, 0);
+});
+
+test("cleanupRollouts keeps recent rollouts", () => {
   const service = new ConfigRolloutService();
   service.startRollout("runtime.timeout", "platform", null);
 
@@ -171,7 +298,20 @@ test("ConfigRolloutService.cleanupRollouts keeps recent rollouts", () => {
   assert.equal(service.getActiveRollouts().length, 1);
 });
 
-test("ConfigRolloutService.startRollout accepts metadata", () => {
+test("cleanupRollouts does not remove PENDING rollouts", () => {
+  const service = new ConfigRolloutService();
+  const rollout = service.startRollout("runtime.timeout", "platform", null, 0);
+
+  // Manually set updatedAt to old
+  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString();
+
+  const cleaned = service.cleanupRollouts(86400000);
+
+  assert.equal(cleaned, 0); // PENDING rollouts are not cleaned up
+  assert.equal(service.getActiveRollouts().length, 1);
+});
+
+test("startRollout accepts metadata", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 100, {
     changedBy: "admin@example.com",

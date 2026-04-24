@@ -122,6 +122,13 @@ test("GitHubConnector.execute is case-sensitive", () => {
   assert.equal(lowerResult.status, "succeeded");
 });
 
+test("GitHubConnector exposes supported capabilities", () => {
+  const connector = new GitHubConnector();
+  assert.deepStrictEqual(connector.listCapabilities(), ["create_pr", "create_issue", "dispatch_workflow"]);
+  assert.equal(connector.supportsCapability("create_pr"), true);
+  assert.equal(connector.supportsCapability("merge_pr"), false);
+});
+
 // JiraConnector tests
 
 test("JiraConnector.execute returns success for create_issue capability", () => {
@@ -212,6 +219,13 @@ test("JiraConnector.execute rejects delete_issue", () => {
 
   assert.equal(result.success, false);
   assert.equal(result.status, "failed");
+});
+
+test("JiraConnector exposes supported capabilities", () => {
+  const connector = new JiraConnector();
+  assert.deepStrictEqual(connector.listCapabilities(), ["create_issue", "search_issue"]);
+  assert.equal(connector.supportsCapability("create_issue"), true);
+  assert.equal(connector.supportsCapability("delete_issue"), false);
 });
 
 // ServiceNowConnector tests

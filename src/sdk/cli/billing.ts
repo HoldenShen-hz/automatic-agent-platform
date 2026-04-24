@@ -34,13 +34,13 @@ import { dirname } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
 import { loadBillingCliEnv } from "../../platform/control-plane/config-center/billing-env.js";
-import { BillingService } from "../../scale-ecosystem/marketplace/billing-service.js";
+import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import {
   ManualBillingPaymentGateway,
   PaddleBillingPaymentGateway,
   StripeBillingPaymentGateway,
   type BillingPaymentGateway,
-} from "../../scale-ecosystem/marketplace/billing-payment-gateway.js";
+} from "../../scale-ecosystem/billing/billing-payment-gateway.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 

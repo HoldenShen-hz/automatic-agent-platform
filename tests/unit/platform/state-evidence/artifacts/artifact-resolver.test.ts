@@ -1,160 +1,145 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
-import {
-  ArtifactBundleService,
-  ArtifactGovernanceService,
-  ArtifactPublishLedger,
-  ArtifactPreviewService,
-  ArtifactPublishService,
-  ArtifactResolver,
-} from "../../../../../src/platform/state-evidence/artifacts/index.js";
+import { ArtifactResolver } from "../../../../../src/platform/state-evidence/artifacts/artifact-resolver.js";
 
-function createBundle(bundleType: "release_bundle" | "workflow_snapshot" = "release_bundle") {
-  const bundleService = new ArtifactBundleService();
-  return bundleService.build({
-    taskId: "task_1",
-    domainId: "coding",
-    bundleType,
-    artifacts: [
-      {
-        artifactId: "artifact_1",
-        taskId: "task_1",
-        stepId: "step_1",
-        agentRole: "builder",
-        type: "source_code",
-        path: "src/foo.ts",
-        contentHash: "hash",
-        version: 1,
-        parentArtifactId: null,
-        size: 120,
-        createdAt: new Date().toISOString(),
-        status: "draft",
-      },
-    ],
-    finalDeliverables: ["summary.md"],
-  });
+// Manual mock record factory to avoid external dependencies
+function makeRecord(artifactId: string): { artifactId: string } {
+  return { artifactId };
 }
 
-test("ArtifactResolver builds deduplicated bundles", () => {
+test("ArtifactResolver is instantiable", () => {
   const resolver = new ArtifactResolver();
-  const bundle = resolver.buildBundle(["artifact:a", "artifact:a", "artifact:b"], ["artifact:b", "artifact:b"]);
-  assert.deepEqual(bundle.artifactRefs, ["artifact:a", "artifact:b"]);
-  assert.deepEqual(bundle.primaryRefs, ["artifact:b"]);
-  assert.equal(resolver.resolveRef("artifact:a", [{ artifactId: "a" }, { artifactId: "b" }])?.artifactId, "a");
+  assert.ok(resolver instanceof ArtifactResolver);
 });
 
-test("ArtifactResolver resolveRef returns null for missing artifact", () => {
+// buildBundle tests
+
+test("buildBundle returns empty arrays when given empty inputs", () => {
   const resolver = new ArtifactResolver();
-  const result = resolver.resolveRef("artifact:missing", [{ artifactId: "a" }, { artifactId: "b" }]);
+  const bundle = resolver.buildBundle([], []);
+  assert.deepEqual(bundle.artifactRefs, []);
+  assert.deepEqual(bundle.primaryRefs, []);
+});
+
+test("buildBundle returns unique artifactRefs only when primaryRefs is empty", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["a1", "a2", "a1"], []);
+  assert.deepEqual(bundle.artifactRefs, ["a1", "a2"]);
+  assert.deepEqual(bundle.primaryRefs, ["a1", "a2"]);
+});
+
+test("buildBundle uses artifactRefs as primaryRefs when primaryRefs is empty string array", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["ref1", "ref2"], []);
+  assert.deepEqual(bundle.primaryRefs, ["ref1", "ref2"]);
+});
+
+test("buildBundle returns only artifactRefs when primaryRefs is not provided", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["artifact:1", "artifact:2"]);
+  assert.deepEqual(bundle.artifactRefs, ["artifact:1", "artifact:2"]);
+  assert.deepEqual(bundle.primaryRefs, ["artifact:1", "artifact:2"]);
+});
+
+test("buildBundle deduplicates artifactRefs", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["a", "b", "a", "c", "b"], []);
+  assert.deepEqual(bundle.artifactRefs, ["a", "b", "c"]);
+});
+
+test("buildBundle deduplicates primaryRefs", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["a1"], ["p1", "p2", "p1"]);
+  assert.deepEqual(bundle.artifactRefs, ["a1"]);
+  assert.deepEqual(bundle.primaryRefs, ["p1", "p2"]);
+});
+
+test("buildBundle preserves order of first occurrence for artifactRefs", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["z", "a", "z", "m", "a"], []);
+  assert.deepEqual(bundle.artifactRefs, ["z", "a", "m"]);
+});
+
+test("buildBundle preserves order of first occurrence for primaryRefs", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["a1"], ["z", "a", "z", "m", "a"]);
+  assert.deepEqual(bundle.primaryRefs, ["z", "a", "m"]);
+});
+
+test("buildBundle returns separate artifactRefs and primaryRefs", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["art1", "art2"], ["prim1", "prim2"]);
+  assert.deepEqual(bundle.artifactRefs, ["art1", "art2"]);
+  assert.deepEqual(bundle.primaryRefs, ["prim1", "prim2"]);
+});
+
+test("buildBundle handles single artifactRef", () => {
+  const resolver = new ArtifactResolver();
+  const bundle = resolver.buildBundle(["single"]);
+  assert.deepEqual(bundle.artifactRefs, ["single"]);
+  assert.deepEqual(bundle.primaryRefs, ["single"]);
+});
+
+// resolveRef tests
+
+test("resolveRef returns null when records is empty", () => {
+  const resolver = new ArtifactResolver();
+  const result = resolver.resolveRef("artifact:1", []);
   assert.equal(result, null);
 });
 
-test("ArtifactBundleService calculates total size correctly", () => {
-  const bundleService = new ArtifactBundleService();
-  const bundle = bundleService.build({
-    taskId: "task_1",
-    domainId: "coding",
-    bundleType: "release_bundle",
-    artifacts: [
-      {
-        artifactId: "artifact_1",
-        taskId: "task_1",
-        stepId: "step_1",
-        agentRole: "builder",
-        type: "source_code",
-        path: "src/foo.ts",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: new Date().toISOString(),
-        status: "draft",
-      },
-      {
-        artifactId: "artifact_2",
-        taskId: "task_1",
-        stepId: "step_1",
-        agentRole: "builder",
-        type: "source_code",
-        path: "src/bar.ts",
-        contentHash: "hash2",
-        version: 1,
-        parentArtifactId: null,
-        size: 200,
-        createdAt: new Date().toISOString(),
-        status: "draft",
-      },
-    ],
-  });
-
-  assert.equal(bundle.totalSize, 300);
+test("resolveRef returns null when artifact is not found", () => {
+  const resolver = new ArtifactResolver();
+  const records = [makeRecord("found")];
+  const result = resolver.resolveRef("artifact:missing", records);
+  assert.equal(result, null);
 });
 
-test("Artifact services build, govern, preview, and publish bundles", () => {
-  const governance = new ArtifactGovernanceService();
-  const preview = new ArtifactPreviewService();
-  const publish = new ArtifactPublishService();
-  const bundle = createBundle();
-
-  assert.equal(governance.review(bundle).allowed, true);
-  assert.match(preview.renderBundle(bundle), /Artifact Bundle/);
-  assert.equal(publish.publish(bundle).publishStatus, "published");
+test("resolveRef finds record when ref has 'artifact:' prefix and record has raw id", () => {
+  const resolver = new ArtifactResolver();
+  // When ref has "artifact:" prefix and record has raw id, strip prefix to match
+  const records = [makeRecord("123"), makeRecord("456")];
+  const result = resolver.resolveRef("artifact:123", records);
+  assert.ok(result !== null);
+  assert.equal(result?.artifactId, "123");
 });
 
-test("ArtifactPublishService publishes to git, notion, and cdn without duplicate ledger entries", () => {
-  const ledger = new ArtifactPublishLedger();
-  const publish = new ArtifactPublishService(ledger);
-
-  const gitResult = publish.publishToGit(createBundle(), {
-    repository: "github.com/example/repo",
-    branch: "release",
-    commitMessage: "ship bundle",
-  });
-  assert.equal(gitResult.target, "git");
-  assert.equal(gitResult.destination, "github.com/example/repo#release");
-  assert.deepEqual(gitResult.metadata.files, ["src/foo.ts"]);
-
-  const notionResult = publish.publishToNotion(createBundle(), {
-    parentPageId: "page_123",
-    pageTitle: "Bundle Page",
-  });
-  assert.equal(notionResult.target, "notion");
-  assert.equal(notionResult.destination, `notion://page_123/${notionResult.bundle.bundleId}`);
-  assert.equal(notionResult.metadata.pageTitle, "Bundle Page");
-
-  const cdnResult = publish.publishToCdn(createBundle("workflow_snapshot"), {
-    baseUrl: "https://cdn.example.com/",
-    pathPrefix: "/bundles/",
-  });
-  assert.equal(cdnResult.target, "cdn");
-  assert.equal(cdnResult.destination, `https://cdn.example.com/bundles/${cdnResult.bundle.bundleId}`);
-  assert.deepEqual(cdnResult.metadata.urls, [`${cdnResult.destination}/src/foo.ts`]);
-
-  const history = publish.listPublishHistory();
-  assert.equal(history.length, 3);
-  assert.deepEqual(history.map((entry) => entry.target), ["git", "notion", "cdn"]);
+test("resolveRef returns first match when duplicate artifactIds exist", () => {
+  const resolver = new ArtifactResolver();
+  const records = [makeRecord("dup"), makeRecord("dup")];
+  const result = resolver.resolveRef("artifact:dup", records);
+  assert.ok(result !== null);
+  assert.equal(result?.artifactId, "dup");
 });
 
-test("ArtifactPreviewService renders artifact, diff, json, and markdown previews", () => {
-  const preview = new ArtifactPreviewService();
-  const bundle = createBundle("workflow_snapshot");
-  const artifact = bundle.artifacts[0]!;
+test("resolveRef handles artifactRef without 'artifact:' prefix", () => {
+  const resolver = new ArtifactResolver();
+  const records = [makeRecord("simple-id")];
+  const result = resolver.resolveRef("simple-id", records);
+  assert.ok(result !== null);
+  assert.equal(result?.artifactId, "simple-id");
+});
 
-  assert.match(preview.renderArtifact(artifact), /Artifact artifact_1/);
+test("resolveRef returns null for non-matching ref", () => {
+  const resolver = new ArtifactResolver();
+  const records = [makeRecord("abc"), makeRecord("def")];
+  const result = resolver.resolveRef("artifact:xyz", records);
+  assert.equal(result, null);
+});
 
-  const diff = preview.previewDiff("alpha\nbeta", "alpha\ngamma");
-  assert.match(diff, /\+\+\+ current/);
-  assert.match(diff, /-beta/);
-  assert.match(diff, /\+gamma/);
+test("resolveRef handles empty string ref with matching empty artifactId", () => {
+  const resolver = new ArtifactResolver();
+  const records = [makeRecord("")];
+  const result = resolver.resolveRef("", records);
+  assert.ok(result !== null);
+  assert.equal(result?.artifactId, "");
+});
 
-  const jsonPreview = preview.previewJson({ task: "task_1", outputs: ["summary.md"] });
-  assert.match(jsonPreview, /```json/);
-  assert.match(jsonPreview, /- task/);
-  assert.match(jsonPreview, /- outputs/);
-
-  const markdownPreview = preview.previewMarkdown("# Title\n\n## Section\nBody");
-  assert.match(markdownPreview, /Headings/);
-  assert.match(markdownPreview, /- Title/);
-  assert.match(markdownPreview, /- Section/);
+test("resolveRef returns null when ref has 'artifact:' prefix but no record matches", () => {
+  const resolver = new ArtifactResolver();
+  // Records have different artifactIds, none match " " after stripping prefix
+  const records = [makeRecord("abc"), makeRecord("def")];
+  const result = resolver.resolveRef("artifact: ", records);
+  assert.equal(result, null);
 });

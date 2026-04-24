@@ -354,9 +354,20 @@ export class CallCircuitBreaker {
    * transitions to open (fail fast mode).
    */
   public recordFailure(key: string): void {
-    const entry = this.entries.get(key);
-    if (!entry || !this.config) {
+    if (!this.config) {
       return;
+    }
+
+    let entry = this.entries.get(key);
+    if (!entry) {
+      entry = {
+        failures: 0,
+        successes: 0,
+        state: "closed",
+        lastFailure: 0,
+        halfOpenCalls: 0,
+      };
+      this.entries.set(key, entry);
     }
 
     entry.lastFailure = Date.now();
@@ -628,8 +639,13 @@ export class CallGovernance {
    * retryable. Defaults to true if no matches are found.
    */
   private isRetryable(code: string): boolean {
-    const retryableCodes = this.policy.retry?.retryableCodes;
-    const nonRetryableCodes = this.policy.retry?.nonRetryableCodes;
+    if (!this.policy.retry) {
+      return false;
+    }
+
+    const retryPolicy = createRetryPolicy(this.policy.retry);
+    const retryableCodes = retryPolicy.retryableCodes;
+    const nonRetryableCodes = retryPolicy.nonRetryableCodes;
 
     if (nonRetryableCodes?.some((item) => code.includes(item))) {
       return false;

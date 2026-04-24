@@ -110,13 +110,21 @@ import type { CacheMetrics } from "../../src/platform/shared/cache/cache-metrics
  * Creates a mock CacheFacade for testing.
  * Uses `as unknown as` since CacheFacade has private state that can't be fully mocked.
  */
-export function createMockCacheFacade(): CacheFacade {
+export function createMockCacheFacade(): CacheFacade & {
+  cleanupExpired(): Promise<number>;
+  getStats(): Promise<{ totalHits: number; totalMisses: number; hitRate: number; byNamespace: Record<string, unknown> }>;
+  resetMetrics(): void;
+} {
   return {
     get: async <T>(_namespace: string, _normalizedInput: unknown) =>
       ({ hit: false, value: null, reason: "not_found" } as CacheLookupResult<T>),
     set: async <T>(_namespace: string, _normalizedInput: unknown, _value: T, _options?: unknown) => {
       // no-op
     },
+    getOrCompute: async <T>(_namespace: string, _normalizedInput: unknown, compute: () => Promise<T>) => ({
+      value: await compute(),
+      fromCache: false,
+    }),
     invalidateByTag: async (_tag: string) => 0,
     invalidateNamespace: async (_namespace: string) => 0,
     cleanupExpired: async () => 0,
@@ -124,7 +132,11 @@ export function createMockCacheFacade(): CacheFacade {
     resetMetrics: () => {
       // no-op
     },
-  } as unknown as CacheFacade;
+  } as unknown as CacheFacade & {
+    cleanupExpired(): Promise<number>;
+    getStats(): Promise<{ totalHits: number; totalMisses: number; hitRate: number; byNamespace: Record<string, unknown> }>;
+    resetMetrics(): void;
+  };
 }
 
 /**

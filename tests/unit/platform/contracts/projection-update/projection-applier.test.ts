@@ -360,7 +360,7 @@ test("ProjectionApplier can be used to build up state incrementally", () => {
       projectionType: "incremental-test",
       version: i + 1,
       sourceEvents: [`evt-step-${i + 1}`],
-      patch: updates[i].data,
+      patch: updates[i]!.data,
       triggeredBy: "incremental-tester",
     });
 

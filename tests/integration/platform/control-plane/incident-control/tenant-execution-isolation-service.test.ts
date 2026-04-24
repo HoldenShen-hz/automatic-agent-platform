@@ -766,6 +766,7 @@ test("TenantExecutionIsolationService integration: noisy neighbor score affects 
     // Record multiple high severity signals to push score above threshold
     service.recordNoisyNeighborSignal("tenant-noise-status", "high_cpu", "high", { cpuPct: 99 });
     service.recordNoisyNeighborSignal("tenant-noise-status", "high_memory", "high", { memoryMb: 8000 });
+    service.recordNoisyNeighborSignal("tenant-noise-status", "network_saturation", "high", { networkMbps: 900 });
 
     const status = service.getIsolationStatus("tenant-noise-status");
 

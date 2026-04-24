@@ -5,7 +5,7 @@ import {
   InMemoryPromptBundleRepository,
   InMemoryPromptVersionRepository,
   InMemoryPromptAbTestRepository,
-} from "../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
+} from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 import type {
   PromptBundleRepository,
   PromptVersionRepository,
@@ -17,7 +17,7 @@ import type {
   UpdateBundleInput,
   CreateVersionInput,
   CreateTestInput,
-} from "../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
+} from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/prompt-bundle-repository.js";
 
 // =============================================================================
 // InMemoryPromptBundleRepository Tests
@@ -171,7 +171,7 @@ test("InMemoryPromptBundleRepository.findByDomainTask returns matching records",
 
   const results = await repo.findByDomainTask("assistant", "chat");
   assert.equal(results.length, 2);
-  assert.ok(results.every((r) => r.domain === "assistant" && r.taskType === "chat"));
+  assert.ok(results.every((r: PromptBundleRecord) => r.domain === "assistant" && r.taskType === "chat"));
 });
 
 test("InMemoryPromptBundleRepository.findByDomainTask excludes deprecated bundles", async () => {
@@ -414,8 +414,8 @@ test("InMemoryPromptVersionRepository.setCurrent updates isCurrent flags", async
   await repo.setCurrent(bundle.bundleId, "2.0.0");
 
   const versions = await repo.findByBundleId(bundle.bundleId);
-  const v1 = versions.find((v) => v.version === "1.0.0");
-  const v2 = versions.find((v) => v.version === "2.0.0");
+  const v1 = versions.find((v: PromptVersionRecord) => v.version === "1.0.0");
+  const v2 = versions.find((v: PromptVersionRecord) => v.version === "2.0.0");
 
   assert.ok(v1 !== undefined);
   assert.ok(v2 !== undefined);
@@ -587,8 +587,8 @@ test("InMemoryPromptAbTestRepository.findByStatus returns filtered results", asy
   const draftTests = await repo.findByStatus("draft");
   const runningTests = await repo.findByStatus("running");
 
-  assert.ok(draftTests.some((t) => t.testName === "Draft Test"));
-  assert.ok(runningTests.some((t) => t.testName === "Running Test"));
+  assert.ok(draftTests.some((t: PromptAbTestRecord) => t.testName === "Draft Test"));
+  assert.ok(runningTests.some((t: PromptAbTestRecord) => t.testName === "Running Test"));
 });
 
 test("InMemoryPromptAbTestRepository.updateResults stores results JSON", async () => {

@@ -4,6 +4,18 @@ import test from "node:test";
 import { ExplanationPipelineService, type ExplanationRequest } from "../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
 import { buildCausalChainSummary, buildCausalChain, type CausalLink } from "../../../src/ops-maturity/explainability/causal-chain-builder/index.js";
 import { collectExplanationEvidenceIds, collectExplanationEvidence, type ExplanationEvidence } from "../../../src/ops-maturity/explainability/evidence-collector/index.js";
+import {
+  renderStageExplanation,
+  buildDecisionTree,
+  renderStructuredExplanation,
+  renderPlainTextExplanation,
+  renderForAudience,
+} from "../../../src/ops-maturity/explainability/explanation-renderer/index.js";
+import {
+  simplifyExplanation,
+  formatAsMarkdown,
+  formatAsNotification,
+} from "../../../src/ops-maturity/explainability/simplified-explainer/index.js";
 
 test("ExplanationPipelineService generate creates L1 brief explanation", () => {
   const service = new ExplanationPipelineService();
@@ -21,7 +33,7 @@ test("ExplanationPipelineService generate creates L1 brief explanation", () => {
   assert.equal(bundle.rendered, "planning: Selected optimal route");
   assert.equal(bundle.rationale.decisionFactors.length, 2);
   assert.equal(bundle.rationale.riskNotes.length, 1);
-  assert.ok(bundle.explanationId.startsWith("expl_"));
+  assert.ok(bundle.explanationId.startsWith("explanation_"));
 });
 
 test("ExplanationPipelineService generate creates L2 standard explanation with factors and risks", () => {
@@ -184,8 +196,8 @@ test("collectExplanationEvidence groups evidence by category", () => {
   const bundle = collectExplanationEvidence(evidence);
 
   assert.deepEqual(bundle.evidenceIds, ["e1", "e2", "e3"]);
-  assert.equal(bundle.groupedByCategory["security"].length, 2);
-  assert.equal(bundle.groupedByCategory["performance"].length, 1);
+  assert.equal(bundle.groupedByCategory["security"]!.length, 2);
+  assert.equal(bundle.groupedByCategory["performance"]!.length, 1);
 });
 
 test("collectExplanationEvidence handles empty evidence", () => {
@@ -193,4 +205,179 @@ test("collectExplanationEvidence handles empty evidence", () => {
 
   assert.deepEqual(bundle.evidenceIds, []);
   assert.deepEqual(Object.keys(bundle.groupedByCategory), []);
+});
+
+// renderStageExplanation tests
+test("renderStageExplanation creates basic stage explanation", () => {
+  const result = renderStageExplanation("planning", "Task analysis complete", ["ev_1", "ev_2"]);
+
+  assert.equal(result, "planning: Task analysis complete [evidence=ev_1,ev_2]");
+});
+
+test("renderStageExplanation handles empty evidence", () => {
+  const result = renderStageExplanation("execution", "Running task", []);
+
+  assert.equal(result, "execution: Running task");
+});
+
+// buildDecisionTree tests
+test("buildDecisionTree creates structured decision tree", () => {
+  const causalLinks: CausalLink[] = [
+    { source: "input", target: "validation", rationale: "check format" },
+    { source: "validation", target: "process", rationale: "valid input" },
+  ];
+  const evidenceLabels = ["trace_1", "trace_2"];
+  const decisionFactors = ["factor_1", "factor_2"];
+
+  const tree = buildDecisionTree("Task Approved", causalLinks, evidenceLabels, decisionFactors);
+
+  assert.equal(tree.format, "decision_tree");
+  assert.equal(tree.version, "1.0");
+  assert.equal(tree.rootNode.label, "Task Approved");
+  assert.equal(tree.rootNode.type, "decision");
+  assert.ok(tree.allNodes.length > 0);
+  assert.equal(tree.maxDepth >= 0, true);
+});
+
+test("buildDecisionTree handles empty inputs", () => {
+  const tree = buildDecisionTree("No Decision", [], [], []);
+
+  assert.equal(tree.format, "decision_tree");
+  assert.equal(tree.allNodes.length, 1); // Only root node
+  assert.equal(tree.rootNode.label, "No Decision");
+});
+
+// renderStructuredExplanation tests
+test("renderStructuredExplanation produces valid JSON", () => {
+  const causalLinks: CausalLink[] = [
+    { source: "A", target: "B", rationale: "A leads to B" },
+  ];
+
+  const result = renderStructuredExplanation("test_stage", "Test summary", causalLinks, ["ev_1"], ["factor_1"]);
+
+  const parsed = JSON.parse(result);
+  assert.equal(parsed.format, "decision_tree");
+  assert.equal(parsed.version, "1.0");
+});
+
+// renderPlainTextExplanation tests
+test("renderPlainTextExplanation formats with sections", () => {
+  const causalLinks: CausalLink[] = [
+    { source: "start", target: "end", rationale: "completes workflow" },
+  ];
+
+  const result = renderPlainTextExplanation("approval", "Request approved", causalLinks, ["ev_1"], ["security_check_passed"]);
+
+  assert.ok(result.includes("[approval] Request approved"));
+  assert.ok(result.includes("Factors:"));
+  assert.ok(result.includes("Evidence:"));
+  assert.ok(result.includes("Reasoning Chain:"));
+  assert.ok(result.includes("start → end"));
+});
+
+test("renderPlainTextExplanation handles minimal input", () => {
+  const result = renderPlainTextExplanation("start", "Task started", [], [], []);
+
+  assert.ok(result.includes("[start] Task started"));
+  assert.ok(!result.includes("Factors:"));
+});
+
+// renderForAudience tests
+test("renderForAudience renders structured for technical audience", () => {
+  const result = renderForAudience("review", "Code reviewed", [], ["ev_1"], ["quality_passed"], "technical");
+
+  const parsed = JSON.parse(result);
+  assert.equal(parsed.format, "decision_tree");
+});
+
+test("renderForAudience renders structured for audit audience", () => {
+  const result = renderForAudience("approval", "Approved", [], [], [], "audit");
+
+  const parsed = JSON.parse(result);
+  assert.equal(parsed.format, "decision_tree");
+});
+
+test("renderForAudience renders plain text for business audience", () => {
+  const result = renderForAudience("decision", "Go ahead", [], ["ev_1"], ["cost_low"], "business");
+
+  assert.ok(result.includes("[decision]"));
+  assert.ok(!result.includes("decision_tree"));
+});
+
+// simplifyExplanation tests
+test("simplifyExplanation creates simplified output", () => {
+  const causalLinks: CausalLink[] = [
+    { source: "observe", target: "assess", rationale: "data collected" },
+  ];
+
+  const result = simplifyExplanation("execution", "Task completed successfully", ["cost_under_budget", "quality_passed"], causalLinks, "low");
+
+  assert.ok(result.headline.length > 0);
+  assert.ok(result.whatHappened.length > 0);
+  assert.ok(result.whyItMatters.length > 0);
+  assert.ok(result.whatToDo.length > 0);
+  assert.ok(["low", "medium", "high", "critical"].includes(result.riskLevel));
+  assert.ok(result.confidencePercent >= 0 && result.confidencePercent <= 100);
+});
+
+test("simplifyExplanation uses risk mapping", () => {
+  const resultLow = simplifyExplanation("execute", "Done", [], [], "low");
+  const resultCritical = simplifyExplanation("failed", "Error", [], [], "critical");
+
+  assert.equal(resultLow.riskLevel, "low");
+  assert.equal(resultCritical.riskLevel, "critical");
+});
+
+test("simplifyExplanation translates technical jargon", () => {
+  const result = simplifyExplanation("execution", "Workflow completed with deployment", [], [], "medium");
+
+  // Workflow should be translated to "process" or kept as-is depending on implementation
+  assert.ok(result.whatHappened.length > 0);
+});
+
+test("simplifyExplanation calculates confidence based on factors and links", () => {
+  const withFactors = simplifyExplanation("test", "Test", ["f1", "f2", "f3", "f4", "f5"], [], "medium");
+  const withoutFactors = simplifyExplanation("test", "Test", [], [], "medium");
+
+  // More factors and links should increase confidence
+  assert.ok(withFactors.confidencePercent >= withoutFactors.confidencePercent);
+});
+
+// formatAsMarkdown tests
+test("formatAsMarkdown creates markdown formatted output", () => {
+  const explanation = simplifyExplanation("approval", "Release approved", ["quality_passed"], [], "low");
+  const markdown = formatAsMarkdown(explanation);
+
+  assert.ok(markdown.includes(`## ${explanation.headline}`));
+  assert.ok(markdown.includes("**Risk Level:**"));
+  assert.ok(markdown.includes("### What Happened"));
+  assert.ok(markdown.includes("### Why It Matters"));
+  assert.ok(markdown.includes("### Recommended Action"));
+});
+
+test("formatAsMarkdown includes confidence percentage", () => {
+  const explanation = simplifyExplanation("test", "Test", [], [], "medium");
+  const markdown = formatAsMarkdown(explanation);
+
+  assert.ok(markdown.includes(`${explanation.confidencePercent}%`));
+});
+
+// formatAsNotification tests
+test("formatAsNotification creates compact notification format", () => {
+  const explanation = simplifyExplanation("execution", "Task done", ["cost_ok"], [], "high");
+  const notification = formatAsNotification(explanation);
+
+  assert.ok(notification.includes(explanation.headline));
+  assert.ok(notification.includes(explanation.whatHappened));
+  assert.ok(notification.includes("Action:"));
+  assert.ok(notification.includes("Risk:"));
+  assert.ok(notification.includes("Confidence:"));
+});
+
+test("formatAsNotification is single-line friendly", () => {
+  const explanation = simplifyExplanation("complete", "Job finished", [], [], "low");
+  const notification = formatAsNotification(explanation);
+
+  // Notification should be relatively compact (typically 7 lines)
+  assert.ok(notification.split("\n").length <= 8);
 });

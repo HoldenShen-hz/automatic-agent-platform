@@ -52,7 +52,7 @@ import { PrometheusMetricsExporter } from "../../platform/shared/observability/p
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { CoordinatorLoadBalancingService } from "../../platform/execution/ha/coordinator-load-balancing-service.js";
 import { getGlobalGracefulShutdown } from "../../platform/execution/startup/graceful-shutdown.js";
-import { BillingService } from "../../scale-ecosystem/marketplace/billing-service.js";
+import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import { ArtifactPublishLedger } from "../../platform/state-evidence/artifacts/artifact-publish-ledger.js";
 import { ArtifactPublishService } from "../../platform/state-evidence/artifacts/artifact-publish-service.js";
 import { ArtifactPlaneService } from "../../platform/state-evidence/artifacts/artifact-plane-service.js";

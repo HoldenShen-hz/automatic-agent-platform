@@ -187,7 +187,7 @@ test("AutoStopLossService integration: evaluateAnomaly does not match below thre
   assert.ok(!result.matchingPlaybooks.some((p) => p.id === "high_threshold"));
 });
 
-test("AutoStopLossService integration: evaluateAnomaly respects playbook cooldown", () => {
+test("AutoStopLossService integration: evaluateAnomaly respects playbook cooldown", async () => {
   const service = new AutoStopLossService({
     config: { defaultCooldownMs: 10000 },
   });
@@ -205,27 +205,30 @@ test("AutoStopLossService integration: evaluateAnomaly respects playbook cooldow
   assert.ok(result1.matchingPlaybooks.some((p) => p.id === "cooldown_test"));
 
   // Simulate execution by calling executePlaybook
-  service.executePlaybook(playbook, "test cooldown");
+  await service.executePlaybook(playbook, "test cooldown");
 
   // Second evaluation within cooldown should not match
   const result2 = service.evaluateAnomaly("warning", "queue_depth");
   assert.ok(!result2.matchingPlaybooks.some((p) => p.id === "cooldown_test"));
 });
 
-test("AutoStopLossService integration: evaluateAnomaly respects rate limits", () => {
+test("AutoStopLossService integration: evaluateAnomaly respects rate limits", async () => {
   const service = new AutoStopLossService();
   const playbook = createTestPlaybook({
     id: "rate_limit_test",
     triggerCondition: { type: "anomaly_severity", severityThreshold: "info" },
     actions: ["reject_low_priority"],
+    cooldownMs: 0,
     maxExecutionsPerHour: 2,
     enabled: true,
   });
   service.registerPlaybook(playbook);
 
-  // First two evaluations should match (at rate limit)
+  // First two evaluations should match while the playbook still has available executions.
   const result1 = service.evaluateAnomaly("info", "test_metric");
+  await service.executePlaybook(playbook, "rate limit test 1");
   const result2 = service.evaluateAnomaly("info", "test_metric");
+  await service.executePlaybook(playbook, "rate limit test 2");
 
   assert.ok(result1.matchingPlaybooks.some((p) => p.id === "rate_limit_test"));
   assert.ok(result2.matchingPlaybooks.some((p) => p.id === "rate_limit_test"));

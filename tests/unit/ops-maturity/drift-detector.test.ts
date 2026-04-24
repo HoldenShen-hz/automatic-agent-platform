@@ -156,7 +156,7 @@ test("SimpleProposalEngine listPending returns proposed proposals", async () => 
   const pending = await engine.listPending();
 
   assert.equal(pending.length, 1);
-  assert.equal(pending[0].title, "Pending");
+  assert.equal(pending[0]!.title, "Pending");
 });
 
 test("SimpleBenchmarkRunner evaluate produces evaluation report", async () => {
@@ -578,7 +578,7 @@ test("InMemoryEvolutionRegistry saveReflection and listReflections", async () =>
   const reflections = await registry.listReflections();
 
   assert.equal(reflections.length, 1);
-  assert.equal(reflections[0].id, "refl_1");
+  assert.equal(reflections[0]!.id, "refl_1");
 });
 
 test("InMemoryEvolutionRegistry listReflections filters by taskType", async () => {
@@ -589,5 +589,5 @@ test("InMemoryEvolutionRegistry listReflections filters by taskType", async () =
   const codeReflections = await registry.listReflections("code");
 
   assert.equal(codeReflections.length, 1);
-  assert.equal(codeReflections[0].taskType, "code");
+  assert.equal(codeReflections[0]!.taskType, "code");
 });

@@ -30,7 +30,7 @@
 import { withCliStorage } from "./authoritative-storage.js";
 import { loadDataPlaneCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { DataPlaneFlowService } from "../../scale-ecosystem/marketplace/data-plane-flow-service.js";
+import { DataPlaneFlowService } from "../../scale-ecosystem/tenant-platform/data-plane-flow-service.js";
 
 const envConfig = loadDataPlaneCliEnv();
 const action = envConfig.action;

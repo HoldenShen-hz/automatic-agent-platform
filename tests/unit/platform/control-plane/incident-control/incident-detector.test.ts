@@ -23,10 +23,10 @@ test("IncidentDetector detects incidents from fail_closed checks as P1", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 1);
-  assert.equal(incidents[0].severity, "p1");
-  assert.equal(incidents[0].category, "data_integrity");
-  assert.equal(incidents[0].status, "open");
-  assert.equal(incidents[0].title, "Critical failure in db");
+  assert.equal(incidents[0]!.severity, "p1");
+  assert.equal(incidents[0]!.category, "data_integrity");
+  assert.equal(incidents[0]!.status, "open");
+  assert.equal(incidents[0]!.title, "Critical failure in db");
 });
 
 test("IncidentDetector detects incidents from degraded checks as P2", () => {
@@ -45,8 +45,8 @@ test("IncidentDetector detects incidents from degraded checks as P2", () => {
   const incidents = detector.detectFromChecks(checks);
 
   assert.equal(incidents.length, 1);
-  assert.equal(incidents[0].severity, "p2");
-  assert.equal(incidents[0].category, "availability");
+  assert.equal(incidents[0]!.severity, "p2");
+  assert.equal(incidents[0]!.category, "availability");
 });
 
 test("IncidentDetector creates incidents with correct structure", () => {
@@ -213,7 +213,7 @@ test("IncidentDetector options are applied correctly", () => {
 
   const incidents = detector.detectFromChecks(checks);
   assert.equal(incidents.length, 1);
-  assert.equal(incidents[0].severity, "p1");
+  assert.equal(incidents[0]!.severity, "p1");
 });
 
 test("IncidentDetector creates incident with default values", () => {

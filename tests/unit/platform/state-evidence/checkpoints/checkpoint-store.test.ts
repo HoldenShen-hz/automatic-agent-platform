@@ -38,9 +38,15 @@ class MockCheckpointStore implements CheckpointStore {
     const artifactId = `artifact_${uniqueSuffix}`;
     const artifact: ArtifactRecord = {
       artifactId,
+      taskId: checkpoint.taskId,
+      executionId: checkpoint.executionId,
+      stepId: checkpoint.stepId,
       kind: "workflow_step_snapshot",
-      uri: `file://checkpoints/${checkpoint.workflowId}/${artifactId}.json`,
       storagePath: `/checkpoints/${checkpoint.workflowId}/${artifactId}.json`,
+      fileName: `${artifactId}.json`,
+      mimeType: "application/json",
+      checksum: null,
+      lineageJson: null,
       createdAt: new Date().toISOString(),
       sizeBytes: JSON.stringify(checkpoint).length,
     };
@@ -133,6 +139,7 @@ describe("CheckpointStore", () => {
 
   beforeEach(() => {
     store = new MockCheckpointStore();
+    checkpointIdCounter = 0;
   });
 
   describe("saveCheckpoint", () => {
@@ -142,7 +149,6 @@ describe("CheckpointStore", () => {
 
       assert.strictEqual(artifact.kind, "workflow_step_snapshot");
       assert.ok(artifact.artifactId.startsWith("artifact_"));
-      assert.ok(artifact.uri.startsWith("file://"));
       assert.ok(artifact.storagePath.startsWith("/"));
       assert.strictEqual(typeof artifact.sizeBytes, "number");
     });
@@ -276,7 +282,13 @@ describe("CheckpointStore", () => {
         stepId: "step-test",
         status: "succeeded",
         output: { summary: "Operation completed successfully" },
-        decisionContext: { source: "model:claude" },
+        decisionContext: {
+          source: "model:claude",
+          request: "Summarize checkpoint",
+          routeReason: null,
+          priorStepSummaries: [],
+          dependsOnStepIds: [],
+        },
         resumeContext: {
           completedStepIds: ["s1", "s2"],
           nextStepId: "s3",
@@ -288,7 +300,7 @@ describe("CheckpointStore", () => {
       const summaries = await store.listCheckpoints("wf-789");
       assert.strictEqual(summaries.length, 1);
 
-      const summary = summaries[0];
+      const summary = summaries[0]!;
       assert.strictEqual(summary.stepId, "step-test");
       assert.strictEqual(summary.workflowId, "wf-789");
       assert.strictEqual(summary.status, "succeeded");
@@ -330,7 +342,7 @@ describe("CheckpointStore", () => {
 
       const remaining = await store.listCheckpoints("wf-789");
       assert.strictEqual(remaining.length, 1);
-      assert.strictEqual(remaining[0].stepId, "step-2");
+      assert.strictEqual(remaining[0]!.stepId, "step-2");
 
       const retrieved2 = await store.getCheckpoint(artifact2.artifactId);
       assert.ok(retrieved2 !== null);

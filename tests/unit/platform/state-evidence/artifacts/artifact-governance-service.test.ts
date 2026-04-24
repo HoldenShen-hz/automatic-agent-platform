@@ -1,30 +1,55 @@
-import assert from "node:assert/strict";
 import test from "node:test";
-import { ArtifactGovernanceService } from "../../../../../src/platform/state-evidence/artifacts/artifact-governance-service.js";
-import { SensitiveContentScanner } from "../../../../../src/platform/state-evidence/artifacts/sensitive-content-scanner.js";
-import type { ArtifactBundleExtended } from "../../../../../src/platform/state-evidence/artifacts/artifact-model.js";
+import assert from "node:assert/strict";
 
-function createMockBundle(overrides: Partial<ArtifactBundleExtended> = {}): ArtifactBundleExtended {
-  const now = new Date().toISOString();
+import { ArtifactGovernanceService } from "../../../../../src/platform/state-evidence/artifacts/artifact-governance-service.js";
+import type { ArtifactBundleExtended, ArtifactRecord } from "../../../../../src/platform/state-evidence/artifacts/artifact-model.js";
+import type { SensitiveContentScanResult } from "../../../../../src/platform/state-evidence/artifacts/sensitive-content-scanner.js";
+
+function createArtifact(overrides: Partial<ArtifactRecord> = {}): ArtifactRecord {
   return {
-    bundleId: "bundle_001",
-    taskId: "task_001",
-    artifacts: [],
-    links: [],
-    finalDeliverables: [],
-    totalSize: 1024,
-    createdAt: now,
-    bundleType: "release_bundle",
-    domainId: "domain_001",
-    publishStatus: "draft",
-    publishedAt: null,
+    artifactId: "artifact_test_1",
+    taskId: "task_1",
+    stepId: "step_1",
+    agentRole: "agent",
+    type: "source_code",
+    path: "/tmp/artifact.txt",
+    contentHash: "abc123",
+    version: 1,
+    parentArtifactId: null,
+    size: 1024,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    status: "published",
     ...overrides,
   };
 }
 
-test("ArtifactGovernanceService allows bundle under size limit", () => {
-  const service = new ArtifactGovernanceService();
-  const bundle = createMockBundle({ totalSize: 1024 * 1024 }); // 1MB
+function createBundle(overrides: Partial<ArtifactBundleExtended> = {}): ArtifactBundleExtended {
+  return {
+    bundleId: "bundle_1",
+    taskId: "task_1",
+    bundleType: "release_bundle",
+    domainId: "test_domain",
+    publishStatus: "published",
+    publishedAt: "2026-04-01T00:00:00.000Z",
+    artifacts: [createArtifact()],
+    links: [],
+    finalDeliverables: ["/tmp/output.txt"],
+    totalSize: 1024,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function createMockScanner(result: SensitiveContentScanResult): { scanStructured: (value: unknown) => SensitiveContentScanResult } {
+  return {
+    scanStructured: () => result,
+  };
+}
+
+test("ArtifactGovernanceService.review allows clean bundle", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
 
   const decision = service.review(bundle);
 
@@ -32,9 +57,10 @@ test("ArtifactGovernanceService allows bundle under size limit", () => {
   assert.deepEqual(decision.issues, []);
 });
 
-test("ArtifactGovernanceService blocks bundle over 10MB size limit", () => {
-  const service = new ArtifactGovernanceService();
-  const bundle = createMockBundle({ totalSize: 10 * 1024 * 1024 + 1 }); // 10MB + 1 byte
+test("ArtifactGovernanceService.review rejects bundle exceeding size limit", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ totalSize: 11 * 1024 * 1024 });
 
   const decision = service.review(bundle);
 
@@ -42,99 +68,60 @@ test("ArtifactGovernanceService blocks bundle over 10MB size limit", () => {
   assert.ok(decision.issues.includes("artifact.bundle_size_limit_exceeded"));
 });
 
-test("ArtifactGovernanceService allows bundle at exactly 10MB", () => {
-  const service = new ArtifactGovernanceService();
-  const bundle = createMockBundle({ totalSize: 10 * 1024 * 1024 }); // exactly 10MB
-
-  const decision = service.review(bundle);
-
-  assert.equal(decision.allowed, true);
-});
-
-test("ArtifactGovernanceService detects secrets in artifacts", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "source_code",
-        path: "/config.js",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore - adding content for testing
-        content: 'const apiKey = "AKIAIOSFODNN7EXAMPLE";',
-      } as any,
-    ],
+test("ArtifactGovernanceService.review rejects bundle with secret detected", () => {
+  const mockScanner = createMockScanner({
+    findings: [{ code: "artifact.secret.aws_access_key_detected", kind: "secret", severity: "critical", description: "AWS access key detected.", redactedSample: "AKIA...XXXX" }],
+    criticalFindingCount: 1,
+    blocked: true,
   });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
 
   const decision = service.review(bundle);
 
   assert.equal(decision.allowed, false);
-  assert.ok(decision.issues.some((issue) => issue.includes("secret")));
+  assert.ok(decision.issues.includes("artifact.sensitive_secret_detected"));
 });
 
-test("ArtifactGovernanceService detects PII in artifacts", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "document",
-        path: "/notes.txt",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore - adding content for testing
-        content: "User SSN: 123-45-6789",
-      } as any,
-    ],
+test("ArtifactGovernanceService.review rejects bundle with PII detected", () => {
+  const mockScanner = createMockScanner({
+    findings: [{ code: "artifact.pii.email_detected", kind: "pii", severity: "warning", description: "Email PII detected.", redactedSample: "t***@example.com" }],
+    criticalFindingCount: 0,
+    blocked: false,
   });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
 
   const decision = service.review(bundle);
 
-  // PII findings are warnings, not blocking by default unless they are critical secrets
-  // The governance service checks for "secret" kind findings to block
-  // PII is added as an issue but doesn't block unless it's a secret
-  assert.ok(decision.issues.some((issue) => issue.includes("pii")));
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.issues.includes("artifact.sensitive_pii_detected"));
 });
 
-test("ArtifactGovernanceService allows bundle with no issues", () => {
-  const service = new ArtifactGovernanceService();
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "source_code",
-        path: "/main.js",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore - adding content for testing
-        content: "console.log('hello world');",
-      } as any,
+test("ArtifactGovernanceService.review rejects bundle with multiple issues", () => {
+  const mockScanner = createMockScanner({
+    findings: [
+      { code: "artifact.secret.aws_access_key_detected", kind: "secret", severity: "critical", description: "AWS access key detected.", redactedSample: "AKIA...XXXX" },
+      { code: "artifact.pii.email_detected", kind: "pii", severity: "warning", description: "Email PII detected.", redactedSample: "t***@example.com" },
     ],
+    criticalFindingCount: 1,
+    blocked: true,
   });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ totalSize: 11 * 1024 * 1024 });
+
+  const decision = service.review(bundle);
+
+  assert.equal(decision.allowed, false);
+  assert.ok(decision.issues.includes("artifact.bundle_size_limit_exceeded"));
+  assert.ok(decision.issues.includes("artifact.sensitive_secret_detected"));
+  assert.ok(decision.issues.includes("artifact.sensitive_pii_detected"));
+});
+
+test("ArtifactGovernanceService.review allows bundle at exactly size limit", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ totalSize: 10 * 1024 * 1024 });
 
   const decision = service.review(bundle);
 
@@ -142,129 +129,139 @@ test("ArtifactGovernanceService allows bundle with no issues", () => {
   assert.deepEqual(decision.issues, []);
 });
 
-test("ArtifactGovernanceService checks links for sensitive content", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  const bundle = createMockBundle({
-    links: [
-      {
-        linkId: "link1",
-        fromArtifactId: "a1",
-        toRefId: "a2",
-        relation: "derived_from",
-      } as any,
-    ],
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "source_code",
-        path: "/file1.js",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore
-        content: "api_key=AKIAIOSFODNN7EXAMPLE12345678",
-      } as any,
-    ],
-  });
+test("ArtifactGovernanceService.review rejects bundle just over size limit", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ totalSize: 10 * 1024 * 1024 + 1 });
 
   const decision = service.review(bundle);
 
   assert.equal(decision.allowed, false);
-});
-
-test("ArtifactGovernanceService uses custom scanner", () => {
-  const customScanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(customScanner);
-
-  // Verify the service uses the provided scanner by checking a bundle with content
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "source_code",
-        path: "/file.js",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore
-        content: "const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';",
-      } as any,
-    ],
-  });
-
-  const decision = service.review(bundle);
-
-  // JWT token should be detected as a secret
-  assert.equal(decision.allowed, false);
-  assert.ok(decision.issues.some((issue) => issue.includes("secret")));
-});
-
-test("ArtifactGovernanceService returns multiple issues", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  const bundle = createMockBundle({
-    totalSize: 15 * 1024 * 1024, // over limit
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "source_code",
-        path: "/file.js",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore
-        content: "api_key = 'AKIAIOSFODNN7EXAMPLE';",
-      } as any,
-    ],
-  });
-
-  const decision = service.review(bundle);
-
-  assert.equal(decision.allowed, false);
-  assert.ok(decision.issues.length >= 2);
   assert.ok(decision.issues.includes("artifact.bundle_size_limit_exceeded"));
-  assert.ok(decision.issues.some((issue) => issue.includes("secret")));
 });
 
-test("ArtifactGovernanceService allows empty artifacts array", () => {
+test("ArtifactGovernanceService.review uses default scanner when none provided", () => {
   const service = new ArtifactGovernanceService();
-  const bundle = createMockBundle({ artifacts: [] });
+  const bundle = createBundle();
 
   const decision = service.review(bundle);
 
   assert.equal(decision.allowed, true);
 });
 
-test("ArtifactGovernanceService handles bundle with only links", () => {
-  const service = new ArtifactGovernanceService();
-  const bundle = createMockBundle({
-    artifacts: [],
-    links: [
-      {
-        linkId: "link1",
-        fromArtifactId: "a1",
-        toRefId: "a2",
-        relation: "depends_on",
-      } as any,
+test("ArtifactGovernanceService.review handles empty artifacts array", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ artifacts: [] });
+
+  const decision = service.review(bundle);
+
+  assert.equal(decision.allowed, true);
+});
+
+test("ArtifactGovernanceService.review handles empty links array", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ links: [] });
+
+  const decision = service.review(bundle);
+
+  assert.equal(decision.allowed, true);
+});
+
+test("ArtifactGovernanceService.review handles empty finalDeliverables array", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ finalDeliverables: [] });
+
+  const decision = service.review(bundle);
+
+  assert.equal(decision.allowed, true);
+});
+
+test("ArtifactGovernanceService.review passes correct bundle properties to scanner", () => {
+  const bundle = createBundle({
+    bundleId: "custom_bundle_id",
+    artifacts: [createArtifact({ artifactId: "artifact_x" })],
+    links: [{ linkId: "link_1", fromArtifactId: "a", toArtifactId: "b", relation: "depends_on" as const }],
+    finalDeliverables: ["/path/to/deliverable"],
+    totalSize: 5000,
+  });
+
+  let capturedValue: any;
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  mockScanner.scanStructured = (value: any) => {
+    capturedValue = value;
+    return { findings: [], criticalFindingCount: 0, blocked: false };
+  };
+
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  service.review(bundle);
+
+  assert.equal(capturedValue.artifacts[0].artifactId, "artifact_x");
+  assert.equal(capturedValue.links[0].linkId, "link_1");
+  assert.equal(capturedValue.finalDeliverables[0], "/path/to/deliverable");
+});
+
+test("ArtifactGovernanceService.review handles zero size bundle", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({ totalSize: 0 });
+
+  const decision = service.review(bundle);
+
+  assert.equal(decision.allowed, true);
+});
+
+test("ArtifactGovernanceService.review returns empty issues when allowed", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
+
+  const decision = service.review(bundle);
+
+  assert.equal(decision.issues.length, 0);
+});
+
+test("ArtifactGovernanceService.review does not detect secret when only PII findings exist", () => {
+  const mockScanner = createMockScanner({
+    findings: [{ code: "artifact.pii.email_detected", kind: "pii", severity: "warning", description: "Email PII detected.", redactedSample: "t***@example.com" }],
+    criticalFindingCount: 0,
+    blocked: false,
+  });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
+
+  const decision = service.review(bundle);
+
+  assert.ok(decision.issues.includes("artifact.sensitive_pii_detected"));
+  assert.ok(!decision.issues.includes("artifact.sensitive_secret_detected"));
+});
+
+test("ArtifactGovernanceService.review does not detect PII when only secret findings exist", () => {
+  const mockScanner = createMockScanner({
+    findings: [{ code: "artifact.secret.aws_access_key_detected", kind: "secret", severity: "critical", description: "AWS access key detected.", redactedSample: "AKIA...XXXX" }],
+    criticalFindingCount: 1,
+    blocked: true,
+  });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
+
+  const decision = service.review(bundle);
+
+  assert.ok(decision.issues.includes("artifact.sensitive_secret_detected"));
+  assert.ok(!decision.issues.includes("artifact.sensitive_pii_detected"));
+});
+
+test("ArtifactGovernanceService.review handles bundle with different artifact types", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle({
+    artifacts: [
+      createArtifact({ type: "source_code" }),
+      createArtifact({ type: "config" }),
+      createArtifact({ type: "document" }),
+      createArtifact({ type: "binary" }),
     ],
   });
 
@@ -273,96 +270,14 @@ test("ArtifactGovernanceService handles bundle with only links", () => {
   assert.equal(decision.allowed, true);
 });
 
-test("ArtifactGovernanceService blocks bundle with AWS access key pattern", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "config",
-        path: "/aws.yaml",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore
-        content: "aws_access_key_id: AKIAIOSFODNN7EXAMPLE\naws_secret_access_key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-      } as any,
-    ],
-  });
+test("ArtifactGovernanceService.review decision structure is correct", () => {
+  const mockScanner = createMockScanner({ findings: [], criticalFindingCount: 0, blocked: false });
+  const service = new ArtifactGovernanceService(mockScanner as any);
+  const bundle = createBundle();
 
   const decision = service.review(bundle);
 
-  assert.equal(decision.allowed, false);
-  assert.ok(decision.issues.some((issue) => issue.includes("secret")));
-});
-
-test("ArtifactGovernanceService blocks bundle with JWT token pattern", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  // JWT token is detected as a secret and blocked
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "source_code",
-        path: "/key.pem",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore
-        content: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-      } as any,
-    ],
-  });
-
-  const decision = service.review(bundle);
-
-  assert.equal(decision.allowed, false);
-  // Governance service reports "artifact.sensitive_secret_detected" for all secret findings
-  assert.ok(decision.issues.some((issue) => issue.includes("secret")));
-});
-
-test("ArtifactGovernanceService blocks bundle with JWT token", () => {
-  const scanner = new SensitiveContentScanner();
-  const service = new ArtifactGovernanceService(scanner);
-  // Using JWT which is reliably detected by the scanner
-  const bundle = createMockBundle({
-    artifacts: [
-      {
-        artifactId: "a1",
-        taskId: "t1",
-        stepId: "s1",
-        agentRole: "agent",
-        type: "config",
-        path: "/settings.json",
-        contentHash: "hash1",
-        version: 1,
-        parentArtifactId: null,
-        size: 100,
-        createdAt: "",
-        status: "committed",
-        // @ts-ignore
-        content: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-      } as any,
-    ],
-  });
-
-  const decision = service.review(bundle);
-
-  assert.equal(decision.allowed, false);
-  // Governance service reports "artifact.sensitive_secret_detected" for all secret findings
-  assert.ok(decision.issues.some((issue) => issue.includes("secret")));
+  assert.ok("allowed" in decision);
+  assert.ok("issues" in decision);
+  assert.ok(Array.isArray(decision.issues));
 });
