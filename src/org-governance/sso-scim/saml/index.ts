@@ -76,6 +76,8 @@ export const SamlProviderConfigSchema = z.object({
   certificateFingerprint: z.string().min(1),
   entityId: z.string().min(1).optional(),
   acsUrl: z.string().min(1).optional(),
+  allowedAudiences: z.array(z.string().min(1)).optional(),
+  allowUnsignedAssertions: z.boolean().default(false),
   attributeMapping: z.record(z.string()).optional(),
 });
 
@@ -91,6 +93,7 @@ export interface SamlLoginRequest {
 }
 
 export interface SamlAssertionInput {
+  readonly assertionId?: string;
   readonly issuer: string;
   readonly audience: string;
   readonly nameId: string;
@@ -101,6 +104,7 @@ export interface SamlAssertionInput {
   readonly notOnOrAfter?: string;
   readonly xmlSignature?: string;
   readonly rawXml?: string;
+  readonly recipient?: string;
 }
 
 export interface SamlSession {
@@ -142,6 +146,7 @@ function isAssertionTimeValid(assertion: SamlAssertionInput, now: Date): boolean
 
 export class SamlService {
   private readonly providers = new Map<string, SamlProviderConfig>();
+  private readonly consumedAssertionIds = new Map<string, string>();
 
   public registerProvider(config: SamlProviderConfig): void {
     this.providers.set(config.providerId, SamlProviderConfigSchema.parse(config));
@@ -194,6 +199,11 @@ export class SamlService {
     if (assertion.issuer !== provider.issuer) {
       throw new Error(`saml.invalid_issuer:${providerId}`);
     }
+    if (provider.allowUnsignedAssertions !== true) {
+      if (!assertion.xmlSignature || !assertion.rawXml) {
+        throw new Error(`saml.signature_required:${providerId}`);
+      }
+    }
     if (assertion.xmlSignature && assertion.rawXml) {
       // Production SAML: Always validate XML signatures when present
       // This uses xml-crypto for signature verification
@@ -205,14 +215,25 @@ export class SamlService {
     if (assertion.fingerprint !== provider.certificateFingerprint) {
       throw new Error(`saml.invalid_fingerprint:${providerId}`);
     }
-    if (assertion.audience !== buildSamlAudience(provider)) {
+    const allowedAudiences = provider.allowedAudiences ?? [buildSamlAudience(provider)];
+    if (!allowedAudiences.includes(assertion.audience)) {
       throw new Error(`saml.invalid_audience:${providerId}`);
+    }
+    if (provider.acsUrl && assertion.recipient && assertion.recipient !== provider.acsUrl) {
+      throw new Error(`saml.invalid_recipient:${providerId}`);
     }
     if (assertion.nameId.trim().length === 0) {
       throw new Error(`saml.invalid_subject:${providerId}`);
     }
     if (!isAssertionTimeValid(assertion, now)) {
       throw new Error(`saml.assertion_expired:${providerId}`);
+    }
+    if (assertion.assertionId) {
+      const replayKey = `${providerId}:${assertion.assertionId}`;
+      if (this.consumedAssertionIds.has(replayKey)) {
+        throw new Error(`saml.assertion_replayed:${providerId}`);
+      }
+      this.consumedAssertionIds.set(replayKey, now.toISOString());
     }
 
     return {

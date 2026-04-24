@@ -76,6 +76,7 @@ test("SamlService registerProvider validates with SamlProviderConfigSchema", () 
   const retrieved = service.getProvider("test-idp");
   assert.equal(retrieved?.providerId, "test-idp");
   assert.equal(retrieved?.issuer, "https://idp.test.com");
+  assert.equal(retrieved?.allowUnsignedAssertions, false);
 });
 
 test("SamlService rejects provider registration with missing required fields", () => {
@@ -164,10 +165,13 @@ test("SamlService consumeAssertion rejects invalid issuer", () => {
   });
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-invalid-issuer",
     issuer: "https://wrong-idp.example.com",
     audience,
     nameId: "user-123",
     fingerprint: "AA:BB:CC",
+    xmlSignature: "<Signature />",
+    rawXml: "<Response />",
   };
 
   assert.throws(
@@ -193,10 +197,13 @@ test("SamlService consumeAssertion rejects invalid fingerprint", () => {
   });
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-invalid-fingerprint",
     issuer: "https://idp.example.com",
     audience,
     nameId: "user-123",
     fingerprint: "WRONG:FINGERPRINT",
+    xmlSignature: "<Signature />",
+    rawXml: "<Response />",
   };
 
   assert.throws(
@@ -215,10 +222,13 @@ test("SamlService consumeAssertion rejects invalid audience", () => {
   });
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-invalid-audience",
     issuer: "https://idp.example.com",
     audience: "wrong-audience-format",
     nameId: "user-123",
     fingerprint: "AA:BB:CC",
+    xmlSignature: "<Signature />",
+    rawXml: "<Response />",
   };
 
   assert.throws(
@@ -244,10 +254,13 @@ test("SamlService consumeAssertion rejects empty subject", () => {
   });
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-empty-subject",
     issuer: "https://idp.example.com",
     audience,
     nameId: "   ",
     fingerprint: "AA:BB:CC",
+    xmlSignature: "<Signature />",
+    rawXml: "<Response />",
   };
 
   assert.throws(
@@ -274,11 +287,14 @@ test("SamlService consumeAssertion rejects expired assertion", () => {
 
   // notOnOrAfter is in the past
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-expired",
     issuer: "https://idp.example.com",
     audience,
     nameId: "user-123",
     fingerprint: "AA:BB:CC",
     notOnOrAfter: "2020-01-01T00:00:00.000Z",
+    xmlSignature: "<Signature />",
+    rawXml: "<Response />",
   };
 
   assert.throws(
@@ -305,11 +321,14 @@ test("SamlService consumeAssertion rejects assertion not yet valid", () => {
 
   // notBefore is in the future
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-not-yet-valid",
     issuer: "https://idp.example.com",
     audience,
     nameId: "user-123",
     fingerprint: "AA:BB:CC",
     notBefore: "2099-01-01T00:00:00.000Z",
+    xmlSignature: "<Signature />",
+    rawXml: "<Response />",
   };
 
   assert.throws(
@@ -327,6 +346,7 @@ test("SamlService consumeAssertion accepts valid assertion and creates session",
     certificateFingerprint: "AA:BB:CC",
     entityId: "https://app.example.com/saml/metadata",
     acsUrl: "https://app.example.com/saml/acs",
+    allowUnsignedAssertions: true,
   };
   service.registerProvider(provider);
 
@@ -334,6 +354,7 @@ test("SamlService consumeAssertion accepts valid assertion and creates session",
   const now = new Date("2026-04-21T10:00:00.000Z");
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-valid-session",
     issuer: provider.issuer,
     audience,
     nameId: "john.doe@example.com",
@@ -364,12 +385,14 @@ test("SamlService consumeAssertion handles missing optional fields", () => {
     entryPoint: "https://idp.example.com/saml/login",
     issuer: "https://idp.example.com",
     certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
   };
   service.registerProvider(provider);
 
   const audience = buildSamlAudience(provider);
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-optional-fields",
     issuer: provider.issuer,
     audience,
     nameId: "user-456",
@@ -412,7 +435,7 @@ test("SamlService consumeAssertion validates signature when provided with rawXml
   );
 });
 
-test("SamlService consumeAssertion does not require signature when rawXml is not provided", () => {
+test("SamlService consumeAssertion requires signature by default", () => {
   const service = new SamlService();
   const provider: SamlProviderConfig = {
     providerId: "corp-idp",
@@ -425,16 +448,95 @@ test("SamlService consumeAssertion does not require signature when rawXml is not
   const audience = buildSamlAudience(provider);
 
   const assertion: SamlAssertionInput = {
+    assertionId: "assertion-signature-required",
     issuer: provider.issuer,
     audience,
     nameId: "user-123",
     fingerprint: provider.certificateFingerprint,
-    // No xmlSignature or rawXml provided
   };
 
-  // Should not throw for missing signature since rawXml is not provided
+  assert.throws(
+    () => service.consumeAssertion("corp-idp", assertion, new Date()),
+    /saml\.signature_required:corp-idp/,
+  );
+});
+
+test("SamlService consumeAssertion allows unsigned assertion only when provider opts in", () => {
+  const service = new SamlService();
+  const provider: SamlProviderConfig = {
+    providerId: "corp-idp",
+    entryPoint: "https://idp.example.com/saml/login",
+    issuer: "https://idp.example.com",
+    certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
+  };
+  service.registerProvider(provider);
+
+  const audience = buildSamlAudience(provider);
+
+  const assertion: SamlAssertionInput = {
+    assertionId: "assertion-unsigned-allowed",
+    issuer: provider.issuer,
+    audience,
+    nameId: "user-123",
+    fingerprint: provider.certificateFingerprint,
+  };
+
   const session = service.consumeAssertion("corp-idp", assertion, new Date());
   assert.equal(session.subjectId, "user-123");
+});
+
+test("SamlService consumeAssertion rejects recipient mismatch", () => {
+  const service = new SamlService();
+  const provider: SamlProviderConfig = {
+    providerId: "corp-idp",
+    entryPoint: "https://idp.example.com/saml/login",
+    issuer: "https://idp.example.com",
+    certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
+    acsUrl: "https://app.example.com/saml/acs",
+  };
+  service.registerProvider(provider);
+
+  const assertion: SamlAssertionInput = {
+    assertionId: "assertion-invalid-recipient",
+    issuer: provider.issuer,
+    audience: buildSamlAudience(provider),
+    nameId: "user-123",
+    fingerprint: provider.certificateFingerprint,
+    recipient: "https://evil.example.com/saml/acs",
+  };
+
+  assert.throws(
+    () => service.consumeAssertion("corp-idp", assertion, new Date()),
+    /saml\.invalid_recipient:corp-idp/,
+  );
+});
+
+test("SamlService consumeAssertion rejects replayed assertion id", () => {
+  const service = new SamlService();
+  const provider: SamlProviderConfig = {
+    providerId: "corp-idp",
+    entryPoint: "https://idp.example.com/saml/login",
+    issuer: "https://idp.example.com",
+    certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
+  };
+  service.registerProvider(provider);
+
+  const assertion: SamlAssertionInput = {
+    assertionId: "assertion-replayed",
+    issuer: provider.issuer,
+    audience: buildSamlAudience(provider),
+    nameId: "user-123",
+    fingerprint: provider.certificateFingerprint,
+  };
+
+  service.consumeAssertion("corp-idp", assertion, new Date());
+  assert.throws(
+    () => service.consumeAssertion("corp-idp", assertion, new Date()),
+    /saml\.assertion_replayed:corp-idp/,
+  );
 });
 
 test("SamlService buildLogoutRequest creates correct logout request structure", () => {

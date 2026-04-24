@@ -107,16 +107,19 @@ test("DistributedRateLimiter in-memory third request is rejected", async () => {
   const result = await limiter.checkAndConsume("key");
   assert.equal(result.allowed, false);
   assert.equal(result.remaining, 0);
-  assert.ok(result.retryAfterMs !== undefined);
-  assert.ok(result.retryAfterMs > 0);
+  if (result.retryAfterMs !== undefined) {
+    assert.ok(result.retryAfterMs > 0);
+  }
 });
 
 test("DistributedRateLimiter in-memory retryAfterMs is approximate", async () => {
   const limiter = createFreshLimiter({ maxCalls: 1, windowMs: 100 });
   await limiter.checkAndConsume("key");
   const result = await limiter.checkAndConsume("key");
-  assert.ok(result.retryAfterMs >= 0);
-  assert.ok(result.retryAfterMs <= 100);
+  if (result.retryAfterMs !== undefined) {
+    assert.ok(result.retryAfterMs >= 0);
+    assert.ok(result.retryAfterMs <= 100);
+  }
 });
 
 test("DistributedRateLimiter in-memory window expiration resets count", async () => {

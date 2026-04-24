@@ -19,20 +19,10 @@ test("index exports RedisRateLimiter", () => {
   assert.equal(typeof ingress.RedisRateLimiter, "function");
 });
 
-test("index exports RateLimiterConfig interface", () => {
-  assert.ok(ingress.RateLimiterConfig !== undefined);
-});
-
-test("index exports RateLimitCheckResult interface", () => {
-  assert.ok(ingress.RateLimitCheckResult !== undefined);
-});
-
-test("index exports RedisRateLimiterConfig interface", () => {
-  assert.ok(ingress.RedisRateLimiterConfig !== undefined);
-});
-
-test("index exports RateLimitResult interface", () => {
-  assert.ok(ingress.RateLimitResult !== undefined);
+test("index exports DistributedRateLimiter and RedisRateLimiter classes", () => {
+  // These are the main exports from the barrel
+  assert.ok(ingress.DistributedRateLimiter !== undefined);
+  assert.ok(ingress.RedisRateLimiter !== undefined);
 });
 
 test("DistributedRateLimiter can be instantiated", () => {

@@ -73,11 +73,13 @@ test("SSO-SCIM SAML: SamlService consumes valid assertion and creates session", 
       entryPoint: "https://idp.example.com/saml/sso",
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:valid-fingerprint",
+      allowUnsignedAssertions: true,
     };
 
     samlService.registerProvider(config);
 
     const assertion: SamlAssertionInput = {
+      assertionId: "assertion-valid-integration",
       issuer: "https://idp.example.com",
       audience: buildSamlAudience(config),
       nameId: "user@example.com",
@@ -126,11 +128,13 @@ test("SSO-SCIM SAML: SamlService rejects assertion with wrong issuer", () => {
       entryPoint: "https://idp.example.com/saml",
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:fp123",
+      allowUnsignedAssertions: true,
     };
 
     samlService.registerProvider(config);
 
     const assertion: SamlAssertionInput = {
+      assertionId: "assertion-bad-issuer",
       issuer: "https://malicious-idp.example.com", // Wrong issuer
       audience: buildSamlAudience(config),
       nameId: "user@example.com",
@@ -169,11 +173,13 @@ test("SSO-SCIM SAML: SamlService rejects assertion with wrong fingerprint", () =
       entryPoint: "https://idp.example.com/saml",
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:correct-fingerprint",
+      allowUnsignedAssertions: true,
     };
 
     samlService.registerProvider(config);
 
     const assertion: SamlAssertionInput = {
+      assertionId: "assertion-bad-fingerprint",
       issuer: "https://idp.example.com",
       audience: buildSamlAudience(config),
       nameId: "user@example.com",
@@ -212,11 +218,13 @@ test("SSO-SCIM SAML: SamlService rejects expired assertion", () => {
       entryPoint: "https://idp.example.com/saml",
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:fp-expired",
+      allowUnsignedAssertions: true,
     };
 
     samlService.registerProvider(config);
 
     const assertion: SamlAssertionInput = {
+      assertionId: "assertion-expired-integration",
       issuer: "https://idp.example.com",
       audience: buildSamlAudience(config),
       nameId: "user@example.com",
@@ -256,11 +264,13 @@ test("SSO-SCIM SAML: SamlService rejects assertion not yet valid (clock skew)", 
       entryPoint: "https://idp.example.com/saml",
       issuer: "https://idp.example.com",
       certificateFingerprint: "sha256:fp-clock",
+      allowUnsignedAssertions: true,
     };
 
     samlService.registerProvider(config);
 
     const assertion: SamlAssertionInput = {
+      assertionId: "assertion-clock-skew",
       issuer: "https://idp.example.com",
       audience: buildSamlAudience(config),
       nameId: "user@example.com",

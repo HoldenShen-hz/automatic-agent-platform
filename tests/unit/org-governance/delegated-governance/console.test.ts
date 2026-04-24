@@ -9,6 +9,9 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -271,6 +274,31 @@ test("exportAuditLog filters by actorId", () => {
 
   const entries = console.exportAuditLog({ actorId: "platform_team" });
   assert.ok(entries.every((e) => e.actorId === "platform_team"));
+});
+
+test("SelfServiceGovernanceConsole uses sqlite persistence by default when sqliteDbPath is provided", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "aa-governance-console-"));
+  const dbPath = join(tempDir, "governance-console.sqlite");
+
+  try {
+    const writer = new SelfServiceGovernanceConsole({ sqliteDbPath: dbPath });
+    const delegation = writer.createDelegation({
+      grantorId: "platform_team",
+      granteeId: "admin-1",
+      expiresAt: "2025-12-31T00:00:00.000Z",
+    });
+    writer.reviewDelegation(delegation.delegationId, "auditor-1");
+
+    const reader = new SelfServiceGovernanceConsole({ sqliteDbPath: dbPath });
+    const restored = reader.getDelegation(delegation.delegationId);
+    const auditEntries = reader.exportAuditLog();
+
+    assert.equal(restored?.granteeId, "admin-1");
+    assert.ok(auditEntries.some((entry) => entry.action === "delegate"));
+    assert.ok(auditEntries.some((entry) => entry.action === "review"));
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
