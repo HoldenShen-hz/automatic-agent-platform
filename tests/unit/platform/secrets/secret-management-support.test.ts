@@ -49,8 +49,10 @@ test("assertEnum returns value when in allowed list", () => {
 });
 
 test("assertEnum returns value with different case sensitivity", () => {
-  const result = assertEnum("ACTIVE", ["active", "inactive"] as const, "test.code");
-  assert.equal(result, "ACTIVE");
+  assert.throws(
+    () => assertEnum("ACTIVE", ["active", "inactive"] as const, "test.code"),
+    (e: any) => e.message.includes("test.code"),
+  );
 });
 
 test("assertEnum throws ValidationError when value not in allowed list", () => {

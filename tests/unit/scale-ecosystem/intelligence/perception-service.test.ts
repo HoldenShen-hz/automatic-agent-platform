@@ -221,10 +221,13 @@ test("PerceptionService returns existing proposals idempotently", () => {
 
 test("PerceptionService lists sources", () => {
   const mockStore = createMockStore();
-  mockStore.intelligence.listPerceptionSources = () => [
-    { sourceId: "src_1", enabled: 1, tenantId: null } as any,
-    { sourceId: "src_2", enabled: 0, tenantId: null } as any,
-  ];
+  mockStore.intelligence.listPerceptionSources = (enabledOnly?: boolean) => {
+    const sources = [
+      { sourceId: "src_1", enabled: 1, tenantId: null } as any,
+      { sourceId: "src_2", enabled: 0, tenantId: null } as any,
+    ];
+    return enabledOnly ? sources.filter((source) => source.enabled === 1) : sources;
+  };
 
   const service = new PerceptionService(createMockDb() as any, mockStore as any);
 

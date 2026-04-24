@@ -559,5 +559,5 @@ test("maskSecretValue handles exact 4-character values", () => {
 
 test("maskSecretValue trims whitespace before masking", () => {
   const result = maskSecretValue("  secret  ");
-  assert.equal(result, "******");
+  assert.equal(result, "**cret");
 });

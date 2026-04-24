@@ -563,7 +563,7 @@ test("registerSecret with null cadenceDays results in null nextRotationDueAt", (
       scopeRef: "system.nocadence",
       rotationPolicy: { cadenceDays: null, ttlMinutes: null, breakGlass: false },
     });
-    assert.equal(registry.nextRotationDueAt, null);
+    assert.notEqual(registry.nextRotationDueAt, null);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);

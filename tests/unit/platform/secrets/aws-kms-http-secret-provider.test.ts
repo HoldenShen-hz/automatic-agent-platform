@@ -182,9 +182,10 @@ test("requireSecret decrypts and returns secret value", async () => {
   const mockFetch = async (_url: string, _init?: any) => ({
     ok: true,
     status: 200,
-    json: async () => ({
-      Plaintext: { B: Array.from(Buffer.from(plaintext)) },
-    }),
+    text: async () =>
+      JSON.stringify({
+        Plaintext: { B: Array.from(Buffer.from(plaintext)) },
+      }),
   });
   const originalFetch = globalThis.fetch;
   globalThis.fetch = mockFetch as any;
@@ -211,9 +212,10 @@ test("requireSecret extracts key ID from secret ref path", async () => {
   const mockFetch = async (_url: string, _init?: any) => ({
     ok: true,
     status: 200,
-    json: async () => ({
-      Plaintext: { B: Array.from(Buffer.from(plaintext)) },
-    }),
+    text: async () =>
+      JSON.stringify({
+        Plaintext: { B: Array.from(Buffer.from(plaintext)) },
+      }),
   });
   const originalFetch = globalThis.fetch;
   globalThis.fetch = mockFetch as any;
@@ -277,7 +279,7 @@ test("requireSecret throws ProviderError when KMS returns non-retryable error", 
 });
 
 test("requireSecret throws when KMS response has no Plaintext", async () => {
-  const mockFetch = async () => ({ ok: true, status: 200, json: async () => ({}) });
+  const mockFetch = async () => ({ ok: true, status: 200, text: async () => "{}" });
   const originalFetch = globalThis.fetch;
   globalThis.fetch = mockFetch as any;
   try {
@@ -319,7 +321,7 @@ test("isAvailable returns false when not configured", async () => {
 });
 
 test("isAvailable returns true when KMS responds OK", async () => {
-  const mockFetch = async () => ({ ok: true, status: 200 });
+  const mockFetch = async () => ({ ok: true, status: 200, text: async () => '{"Keys":[]}' });
   const originalFetch = globalThis.fetch;
   globalThis.fetch = mockFetch as any;
   try {

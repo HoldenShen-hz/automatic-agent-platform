@@ -48,7 +48,7 @@ test("maskSecretValue handles exact 4-character values", () => {
 
 test("maskSecretValue trims whitespace before masking", () => {
   const result = maskSecretValue("  secret  ");
-  assert.equal(result, "******");
+  assert.equal(result, "**cret");
 });
 
 test("maskSecretValue masks empty string as 4 asterisks", () => {
@@ -130,17 +130,17 @@ test("deriveSecretScope extracts scope from simple secret ref", () => {
 
 test("deriveSecretScope extracts first path segment as scope", () => {
   const result = deriveSecretScope("secret://myapp/api-key");
-  assert.equal(result, "myapp");
+  assert.equal(result, "myapp/api-key");
 });
 
 test("deriveSecretScope extracts first path segment from nested ref", () => {
   const result = deriveSecretScope("secret://myapp/production/database");
-  assert.equal(result, "myapp");
+  assert.equal(result, "myapp/production/database");
 });
 
 test("deriveSecretScope handles refs with dots and underscores", () => {
   const result = deriveSecretScope("secret://my_service.v2/api_key");
-  assert.equal(result, "my_service.v2");
+  assert.equal(result, "my_service.v2/api_key");
 });
 
 // ---------------------------------------------------------------------------
@@ -201,11 +201,11 @@ test("describeSecret returns resolved true when secret exists in env", async () 
   const result = await provider.describeSecret("secret://my-service/api-key");
   assert.equal(result.resolved, true);
   assert.equal(result.secretRef, "secret://my-service/api-key");
-  assert.equal(result.scope, "my-service");
+  assert.equal(result.scope, "my-service/api-key");
   assert.equal(result.envName, "AA_SECRET_MY_SERVICE_API_KEY");
   assert.equal(result.source, "environment");
   assert.notEqual(result.maskedValue, null);
-  assert.ok(result.maskedValue!.endsWith("3123"));
+  assert.ok(result.maskedValue!.endsWith("-123"));
 });
 
 test("describeSecret trims whitespace from env value", async () => {

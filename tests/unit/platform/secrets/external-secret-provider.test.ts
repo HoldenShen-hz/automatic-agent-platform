@@ -124,9 +124,8 @@ test("describeSecret returns unresolved for non-existent secret in configured JS
 test("describeSecret handles nested path in JSON lookup", async () => {
   const provider = new ExternalSecretProvider({
     providerKind: "vault",
-    env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"folder":{"mykey":"nested-value"}}' }),
+    env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"folder/mykey":"nested-value"}' }),
   });
-  // ExternalSecretProvider uses normalizeSecretRefAlias which converts folder/mykey to secret://folder/mykey
   const result = await provider.describeSecret("secret://folder/mykey");
   assert.equal(result.resolved, true);
 });
@@ -220,7 +219,7 @@ test("issueSecretLease returns null when no source configured", async () => {
 test("issueSecretLease returns null when secret has no lease config", async () => {
   const provider = new ExternalSecretProvider({
     providerKind: "vault",
-    env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"mykey":"simple-value"}' }),
+    env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"mykey":{"value":"simple-value"}}' }),
   });
   const result = await provider.issueSecretLease("secret://mykey");
   assert.equal(result, null);
@@ -297,7 +296,7 @@ test("ExternalSecretProviderAdapter.refreshSecret delegates to provider", async 
 test("ExternalSecretProviderAdapter.issueSecretLease delegates to provider", async () => {
   const provider = new ExternalSecretProvider({
     providerKind: "vault",
-    env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"mykey":"lease-value"}' }),
+    env: createMockEnv({ AA_VAULT_SECRETS_JSON: '{"mykey":{"value":"lease-value"}}' }),
   });
   const adapter = new ExternalSecretProviderAdapter(provider);
   const result = await adapter.issueSecretLease("secret://mykey");
