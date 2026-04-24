@@ -278,19 +278,27 @@ test("DlqService.scheduleRetry uses exponential backoff", () => {
   });
 
   const first = service.scheduleRetry(record.deadLetterId);
-  const firstDelay = new Date(first.nextRetryAt!).getTime() - Date.parse(first.createdAt);
+  assert.equal(first.retryCount, 1, "First retry should have retryCount 1");
+  assert.ok(first.nextRetryAt !== null, "First retry should have nextRetryAt");
 
-  // Create second record for second retry
+  // Create another record for second retry to compare delays
   const record2 = service.enqueue({
     sourceEventId: "evt_backoff2",
     consumerId: "test_consumer",
     errorCode: "transient",
     payloadJson: '{}',
   });
-  const second = service.scheduleRetry(record2.deadLetterId);
-  const secondDelay = new Date(second.nextRetryAt!).getTime() - Date.parse(second.createdAt);
 
-  assert.ok(secondDelay > firstDelay, "Second retry should have longer delay than first");
+  // First retry on record2
+  const firstOfSecond = service.scheduleRetry(record2.deadLetterId);
+  // Second retry on record2
+  const secondOfSecond = service.scheduleRetry(record2.deadLetterId);
+
+  // Second retry should have longer delay than first retry on same record
+  const firstDelay = new Date(firstOfSecond.nextRetryAt!).getTime() - Date.parse(firstOfSecond.createdAt);
+  const secondDelay = new Date(secondOfSecond.nextRetryAt!).getTime() - Date.parse(secondOfSecond.createdAt);
+
+  assert.ok(secondDelay > firstDelay, `Second delay (${secondDelay}ms) should be longer than first delay (${firstDelay}ms)`);
 });
 
 test("DlqService.markResolved updates status and logs action", () => {

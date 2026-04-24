@@ -175,7 +175,8 @@ test("TypedEventBus.unsubscribe removes consumer", async () => {
     seedTaskAndExecution(db, store, { taskId: "task-unsub", executionId: "exec-unsub", traceId: "trace-unsub" });
     const seen: string[] = [];
 
-    bus.subscribe("unsub_consumer", ["task:status_changed"], async (event) => {
+    // Use task_projection which is a required consumer for tier_1 events
+    bus.subscribe("task_projection", ["task:status_changed"], async (event) => {
       seen.push(event.event.eventType);
     });
 
@@ -185,11 +186,11 @@ test("TypedEventBus.unsubscribe removes consumer", async () => {
       executionId: "exec-unsub",
       payload: { fromStatus: "a", toStatus: "b", occurredAt: new Date().toISOString() },
     });
-    // Wait for async fan-out delivery
-    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await bus.deliverPending("task_projection");
     assert.equal(seen.length, 1);
 
-    bus.unsubscribe("unsub_consumer");
+    bus.unsubscribe("task_projection");
 
     bus.publish({
       eventType: "task:status_changed",
@@ -197,8 +198,9 @@ test("TypedEventBus.unsubscribe removes consumer", async () => {
       executionId: "exec-unsub",
       payload: { fromStatus: "b", toStatus: "c", occurredAt: new Date().toISOString() },
     });
-    // Wait for async fan-out delivery
-    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    await bus.deliverPending("task_projection");
+    // After unsubscribe, should not receive new events (but may still see old pending)
     assert.equal(seen.length, 1, "Should not receive events after unsubscribe");
 
     db.close();
