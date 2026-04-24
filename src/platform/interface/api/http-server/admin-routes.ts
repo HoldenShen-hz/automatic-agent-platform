@@ -11,6 +11,7 @@
  * - GET /v1/admin/rollouts
  * - GET /v1/admin/tenants
  * - GET /v1/admin/budgets
+ * - GET /v1/admin/chargeback/reports
  *
  * Part of §6 API Endpoints - Missing endpoints implementation
  */
@@ -26,6 +27,7 @@ import type { ConfigRolloutService } from "../../../control-plane/config-center/
 import type { TenantBoundaryRegistryService } from "../../../control-plane/tenant/index.js";
 import type { CostReportService } from "../cost-report-service.js";
 import type { AdminConfigService } from "../admin-config-service.js";
+import { ChargebackService } from "../../../model-gateway/cost-tracker/chargeback-service.js";
 import { BenchmarkInventoryService } from "../../../shared/stability/benchmark-inventory-service.js";
 import { DeploymentInventoryService } from "../../../shared/stability/deployment-inventory-service.js";
 import { ProjectionInventoryService } from "../../../state-evidence/events/projection-inventory-service.js";
@@ -228,6 +230,20 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           budgets,
           total: budgets.length,
         });
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/v1/admin/chargeback/reports",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        const tenantId = resolveTenantScope(principal, undefined);
+        const limit = readLimit(ctx.request, 500);
+        if (deps.costReportService == null) {
+          throw new ApiError(503, "api.cost_reports_unavailable", "Cost reporting is not configured.");
+        }
+        const report = new ChargebackService(deps.costReportService).buildReport({ tenantId, limit });
+        return buildJsonResponse(ctx.requestId, 200, report);
       },
     },
     {

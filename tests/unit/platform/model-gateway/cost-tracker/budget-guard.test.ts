@@ -171,3 +171,54 @@ test("BudgetGuard evaluateTaskSpend different modes", () => {
   // Mode doesn't affect evaluation logic in this simple implementation
   assert.equal(result.allowed, true);
 });
+
+test("BudgetGuard evaluateExecutionChain blocks monthly cascade violations", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 500,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.8,
+    mode: "auto",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 20,
+      currentDailyCostUsd: 200,
+      currentMonthlyCostUsd: 990,
+      nextEstimatedCostUsd: 15,
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.violatedScope, "monthly");
+  assert.equal(result.reasonCode, "budget.monthly_limit_exceeded");
+});
+
+test("BudgetGuard evaluateExecutionChain reports warning scopes across task daily monthly budgets", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 200,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.75,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 70,
+      currentDailyCostUsd: 140,
+      currentMonthlyCostUsd: 600,
+      nextEstimatedCostUsd: 10,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.deepEqual(result.warningScopes, ["task", "daily"]);
+  assert.equal(result.projectedMonthlyCostUsd, 610);
+});

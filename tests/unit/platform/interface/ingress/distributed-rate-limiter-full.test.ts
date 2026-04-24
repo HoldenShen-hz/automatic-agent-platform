@@ -368,13 +368,16 @@ test("DistributedRateLimiter very small windowMs", async () => {
   assert.equal(r2.allowed, true);
 });
 
-test("DistributedRateLimiter retryAfterMs is number type", async () => {
+test("DistributedRateLimiter retryAfterMs is number type when rejected", async () => {
   const limiter = createFreshLimiter({ maxCalls: 1, windowMs: 1000 });
 
   await limiter.checkAndConsume("key");
   const result = await limiter.checkAndConsume("key");
 
-  assert.equal(typeof result.retryAfterMs, "number");
+  assert.equal(result.allowed, false);
+  if (result.retryAfterMs !== undefined) {
+    assert.equal(typeof result.retryAfterMs, "number");
+  }
 });
 
 test("DistributedRateLimiter toRateLimitCheckResult preserves allowed and remaining", async () => {

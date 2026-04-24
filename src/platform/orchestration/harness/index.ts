@@ -16,6 +16,7 @@ export * from "./harness-bootstrap.js";
 export * from "./async-harness-service.js";
 export * from "./context-assembler.js";
 export * from "./durable/durable-harness-service.js";
+export * from "./durable/sleep-scheduler.js";
 export * from "./evaluation/eval-run-service.js";
 export * from "./evaluation/task-outcome-grader.js";
 export * from "./guardrails/guardrail-engine.js";
@@ -167,6 +168,15 @@ export interface HarnessRun {
   readonly guardrailAssessment: GuardrailAssessment | null;
   readonly hitlRequest: HitlRequest | null;
   readonly timeline: readonly HarnessTimelineEvent[];
+  readonly loopMetrics?: {
+    readonly iterationCount: number;
+    readonly replanCount: number;
+    readonly totalCost: number;
+    readonly durationMs: number;
+    readonly maxIterations: number;
+    readonly maxCost: number;
+    readonly maxDurationMs: number;
+  };
 }
 
 export interface HarnessLoopInput {
@@ -240,6 +250,15 @@ export class HarnessRuntimeService {
       guardrailAssessment: null,
       hitlRequest: null,
       timeline: [],
+      loopMetrics: {
+        iterationCount: 0,
+        replanCount: 0,
+        totalCost: 0,
+        durationMs: 0,
+        maxIterations: input.constraintPack.budget.maxSteps,
+        maxCost: input.constraintPack.budget.maxCost,
+        maxDurationMs: input.constraintPack.budget.maxDurationMs,
+      },
     };
     return this.appendTimelineEvent(run, "run_created", {
       taskId: input.taskId,
@@ -426,8 +445,21 @@ export class HarnessRuntimeService {
 
   public assertInvariants(run: HarnessRun): { violations: string[] } {
     const violations: string[] = [];
-    if (run.currentIteration > run.maxIterations) {
+    const iterationCount = run.loopMetrics?.iterationCount ?? run.currentIteration;
+    const replanCount = run.loopMetrics?.replanCount ?? 0;
+    const totalCost = run.loopMetrics?.totalCost ?? 0;
+    const durationMs = run.loopMetrics?.durationMs ?? 0;
+    if (iterationCount > run.maxIterations) {
       violations.push("harness.invariant.iteration_exceeds_budget");
+    }
+    if (replanCount > 3) {
+      violations.push("harness.invariant.replan_count_exceeds_budget");
+    }
+    if (totalCost > run.constraintPack.budget.maxCost) {
+      violations.push("harness.invariant.total_cost_exceeds_budget");
+    }
+    if (durationMs > run.constraintPack.budget.maxDurationMs) {
+      violations.push("harness.invariant.duration_exceeds_budget");
     }
     if ((run.status === "completed" || run.status === "aborted") && run.completedAt == null) {
       violations.push("harness.invariant.final_state_requires_completed_at");
@@ -437,6 +469,22 @@ export class HarnessRuntimeService {
     }
     if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
       violations.push("harness.invariant.non_accept_decision_requires_feedback");
+    }
+    const hasOpenExecutionBlockers = run.status === "completed" || run.status === "aborted";
+    if (hasOpenExecutionBlockers && (run.toolbelt?.blockedTools.length ?? 0) > 0) {
+      violations.push("harness.invariant.blocked_tool_requested");
+    }
+    if (
+      hasOpenExecutionBlockers
+      && run.guardrailAssessment?.findings.some((finding) => finding.code === "harness.guardrail.required_evidence_missing")
+    ) {
+      violations.push("harness.invariant.required_evidence_missing");
+    }
+    if (
+      hasOpenExecutionBlockers
+      && run.guardrailAssessment?.findings.some((finding) => finding.code === "harness.guardrail.max_risk_exceeded")
+    ) {
+      violations.push("harness.invariant.max_risk_exceeded");
     }
     return { violations };
   }
@@ -450,19 +498,29 @@ export class HarnessRuntimeService {
   }
 
   public persistRun(run: HarnessRun) {
+    this.ensureInvariantSafe(run);
     return this.durableService.persist(run);
   }
 
   public checkpointRun(run: HarnessRun): string {
+    this.ensureInvariantSafe(run);
     return this.durableService.checkpoint(run);
   }
 
   public restoreRun(runId: string): HarnessRun | null {
-    return this.durableService.restore(runId);
+    const run = this.durableService.restore(runId);
+    if (run) {
+      this.ensureInvariantSafe(run);
+    }
+    return run;
   }
 
   public restoreFromCheckpoint(checkpointRef: string): HarnessRun | null {
-    return this.durableService.restoreFromCheckpoint(checkpointRef);
+    const run = this.durableService.restoreFromCheckpoint(checkpointRef);
+    if (run) {
+      this.ensureInvariantSafe(run);
+    }
+    return run;
   }
 
   public handleFailure(run: HarnessRun, failure: HarnessFailureType): HarnessRun {
@@ -632,10 +690,20 @@ export class HarnessRuntimeService {
         confidence: decision.confidence,
       });
 
-      loop.recordIteration();
+      loop.recordIteration(this.estimateIterationCost(input));
       if (decision.action === "replan") {
         loop.recordReplan();
       }
+      const loopState = loop.getState();
+      const currentMetrics = {
+        iterationCount: loopState.iteration,
+        replanCount: loopState.replanCount,
+        totalCost: loopState.totalCost,
+        durationMs: Math.max(0, Date.now() - new Date(run.createdAt).getTime()),
+        maxIterations: loop.getGuards().maxIterations,
+        maxCost: loop.getGuards().maxCost,
+        maxDurationMs: loop.getGuards().maxDurationMs,
+      };
       const progress = loop.evaluateProgress(
         decision.action,
         baseRun.steps.length + 3 <= input.constraintPack.budget.maxSteps,
@@ -646,6 +714,7 @@ export class HarnessRuntimeService {
         const finalRun = progress.violation !== null && baseRun.status === "running"
           ? {
               ...baseRun,
+              loopMetrics: currentMetrics,
               status: "aborted" as const,
               completedAt: nowIso(),
               decision: {
@@ -660,9 +729,14 @@ export class HarnessRuntimeService {
                 : {
                     ...baseRun.feedbackEnvelope,
                     signals: [...baseRun.feedbackEnvelope.signals, ...progress.reasonCodes],
-                  },
+                },
             }
-          : baseRun;
+          : {
+              ...baseRun,
+              loopMetrics: currentMetrics,
+            };
+
+        this.ensureInvariantSafe(finalRun);
 
         if (finalRun.status !== "waiting_hitl") {
           this.durableService.persist(finalRun);
@@ -680,9 +754,32 @@ export class HarnessRuntimeService {
 
       run = {
         ...baseRun,
+        loopMetrics: currentMetrics,
         status: "running",
         completedAt: null,
       };
     }
+  }
+
+  private ensureInvariantSafe(run: HarnessRun): void {
+    const result = this.assertInvariants(run);
+    if (result.violations.length > 0) {
+      throw new Error(`harness.invariant_violation:${result.violations.join(",")}`);
+    }
+  }
+
+  private estimateIterationCost(input: HarnessLoopInput): number {
+    const extract = (value: unknown): number => {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+      }
+      if (value && typeof value === "object") {
+        const record = value as Record<string, unknown>;
+        return extract(record["costUsd"] ?? record["estimatedCostUsd"] ?? record["totalCostUsd"] ?? record["usage"]);
+      }
+      return 0;
+    };
+
+    return Number((extract(input.plannerOutput) + extract(input.generatorOutput) + extract(input.evaluatorOutput)).toFixed(6));
   }
 }

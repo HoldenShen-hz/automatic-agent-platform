@@ -27,6 +27,21 @@ export interface BudgetGuardResult {
   remainingBudgetUsd: number;
 }
 
+export interface ExecutionChainBudgetSpend {
+  readonly currentTaskCostUsd: number;
+  readonly nextEstimatedCostUsd: number;
+  readonly currentDailyCostUsd: number;
+  readonly currentMonthlyCostUsd: number;
+}
+
+export interface BudgetGuardCascadeResult extends BudgetGuardResult {
+  readonly projectedTaskCostUsd: number;
+  readonly projectedDailyCostUsd: number;
+  readonly projectedMonthlyCostUsd: number;
+  readonly violatedScope: "task" | "daily" | "monthly" | null;
+  readonly warningScopes: readonly ("task" | "daily" | "monthly")[];
+}
+
 /**
  * Evaluates whether a task can proceed given its current cost and next step estimate.
  *
@@ -58,6 +73,60 @@ export class BudgetGuard {
       requiresApproval,
       reasonCode: requiresApproval ? "budget.approaching_limit" : null,
       remainingBudgetUsd: remaining,
+    };
+  }
+
+  public evaluateExecutionChain(input: {
+    policy: BudgetPolicy;
+    spend: ExecutionChainBudgetSpend;
+  }): BudgetGuardCascadeResult {
+    const next = input.spend.nextEstimatedCostUsd;
+    const projectedTask = input.spend.currentTaskCostUsd + next;
+    const projectedDaily = input.spend.currentDailyCostUsd + next;
+    const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
+
+    const checks = [
+      { scope: "task" as const, projected: projectedTask, limit: input.policy.maxTaskCostUsd },
+      { scope: "daily" as const, projected: projectedDaily, limit: input.policy.maxDailyCostUsd },
+      { scope: "monthly" as const, projected: projectedMonthly, limit: input.policy.maxMonthlyCostUsd },
+    ];
+    const violation = checks.find((check) => check.projected > check.limit) ?? null;
+    const warningScopes = checks
+      .filter((check) => check.projected >= check.limit * input.policy.warnAtRatio)
+      .map((check) => check.scope);
+    const remainingBudgetUsd = Math.max(
+      0,
+      Math.min(
+        input.policy.maxTaskCostUsd - projectedTask,
+        input.policy.maxDailyCostUsd - projectedDaily,
+        input.policy.maxMonthlyCostUsd - projectedMonthly,
+      ),
+    );
+
+    if (violation != null) {
+      return {
+        allowed: false,
+        requiresApproval: false,
+        reasonCode: `budget.${violation.scope}_limit_exceeded`,
+        remainingBudgetUsd,
+        projectedTaskCostUsd: projectedTask,
+        projectedDailyCostUsd: projectedDaily,
+        projectedMonthlyCostUsd: projectedMonthly,
+        violatedScope: violation.scope,
+        warningScopes,
+      };
+    }
+
+    return {
+      allowed: true,
+      requiresApproval: warningScopes.length > 0,
+      reasonCode: warningScopes.length > 0 ? "budget.cascade_approaching_limit" : null,
+      remainingBudgetUsd,
+      projectedTaskCostUsd: projectedTask,
+      projectedDailyCostUsd: projectedDaily,
+      projectedMonthlyCostUsd: projectedMonthly,
+      violatedScope: null,
+      warningScopes,
     };
   }
 }

@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { DatabaseSync } from "node:sqlite";
+import {
+  DurableHarnessService,
+  SqliteDurableHarnessStore,
+} from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { HarnessSleepScheduler } from "../../../../../src/platform/orchestration/harness/durable/sleep-scheduler.js";
 import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 import type { HarnessRun, ConstraintPack, HarnessRunStatus } from "../../../../../src/platform/orchestration/harness/index.js";
 
@@ -182,4 +187,39 @@ test("DurableHarnessService.restoreFromCheckpoint is independent of run persist"
 
   const fromCheckpoint = service.restoreFromCheckpoint(checkpointRef);
   assert.ok(fromCheckpoint !== null);
+});
+
+test("DurableHarnessService supports sqlite-backed persistence", () => {
+  const db = new DatabaseSync(":memory:");
+  const service = new DurableHarnessService({
+    store: new SqliteDurableHarnessStore(db),
+  });
+  const run = createMinimalHarnessRun({ runId: "sqlite-run" });
+
+  service.persist(run);
+
+  const restored = service.restore("sqlite-run");
+  assert.equal(restored?.runId, "sqlite-run");
+});
+
+test("HarnessSleepScheduler polls due sleeping runs", () => {
+  const service = new DurableHarnessService();
+  const sleepingRun = createMinimalHarnessRun({
+    runId: "sleeping-run",
+    status: "sleeping",
+    sleepLease: {
+      leaseId: "lease-1",
+      runId: "sleeping-run",
+      reason: "awaiting_approval",
+      resumeAt: "2026-04-20T00:00:00.000Z",
+      createdAt: "2026-04-19T23:00:00.000Z",
+    },
+  });
+  service.persist(sleepingRun);
+
+  const scheduler = new HarnessSleepScheduler(service);
+  const dueRuns = scheduler.pollDueRuns("2026-04-21T00:00:00.000Z");
+
+  assert.equal(dueRuns.length, 1);
+  assert.equal(dueRuns[0]?.runId, "sleeping-run");
 });

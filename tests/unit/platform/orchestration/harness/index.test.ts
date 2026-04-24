@@ -41,9 +41,9 @@ test("HarnessRuntimeService completes a planner-generator-evaluator loop", () =>
     taskId: "task-1",
     domainId: "coding",
     constraintPack: createConstraintPack(),
-    plannerOutput: { planId: "plan-1" },
-    generatorOutput: { artifact: "patch.diff" },
-    evaluatorOutput: { verdict: "pass" },
+    plannerOutput: { planId: "plan-1", costUsd: 0.1 },
+    generatorOutput: { artifact: "patch.diff", costUsd: 0.25 },
+    evaluatorOutput: { verdict: "pass", costUsd: 0.05 },
     evaluatorScore: 0.91,
     producedEvidenceRefs: ["risk_profile"],
   });
@@ -55,6 +55,7 @@ test("HarnessRuntimeService completes a planner-generator-evaluator loop", () =>
   assert.equal(run.steps[0]?.semanticPhase, "plan");
   assert.equal(run.timeline.some((event) => event.type === "run_created"), true);
   assert.equal(run.timeline.some((event) => event.type === "decision_recorded"), true);
+  assert.ok((run.loopMetrics?.totalCost ?? 0) > 0);
 });
 
 test("HarnessRuntimeService routes retry and replan through loop controller guards", () => {
@@ -205,6 +206,73 @@ test("HarnessRuntimeService stores run/domain memory and enforces invariants", (
   assert.equal(service.readMemory(run, "run", "release_ticket"), "CHG-5");
   assert.equal(service.readMemory(run, "domain", "last_release_owner"), "eng_manager");
   assert.deepEqual(service.assertInvariants(run).violations, []);
+});
+
+test("HarnessRuntimeService assertInvariants collects the full named invariant set", () => {
+  const service = new HarnessRuntimeService();
+  const run = {
+    ...service.createRun({
+      taskId: "task-invariants",
+      domainId: "coding",
+      constraintPack: createConstraintPack({
+        budget: { maxSteps: 3, maxCost: 1, maxDurationMs: 1000 },
+      }),
+    }),
+    currentIteration: 5,
+    status: "aborted" as const,
+    completedAt: null,
+    decision: {
+      decisionId: "decision-1",
+      action: "retry_same_plan" as const,
+      reasonCodes: ["retry"],
+      confidence: 0.4,
+      createdAt: "2026-04-21T00:00:00.000Z",
+    },
+    toolbelt: {
+      grantedTools: [],
+      blockedTools: ["write"],
+      requiredEvidence: ["risk_profile"],
+    },
+    guardrailAssessment: {
+      passed: false,
+      requiresHuman: false,
+      suggestedAction: "abort" as const,
+      findings: [
+        {
+          layer: "evidence" as const,
+          severity: "warn" as const,
+          code: "harness.guardrail.required_evidence_missing",
+          message: "missing evidence",
+        },
+        {
+          layer: "risk" as const,
+          severity: "block" as const,
+          code: "harness.guardrail.max_risk_exceeded",
+          message: "risk too high",
+        },
+      ],
+    },
+    loopMetrics: {
+      iterationCount: 5,
+      replanCount: 4,
+      totalCost: 2,
+      durationMs: 5000,
+      maxIterations: 3,
+      maxCost: 1,
+      maxDurationMs: 1000,
+    },
+  };
+
+  const violations = service.assertInvariants(run).violations;
+  assert.ok(violations.includes("harness.invariant.iteration_exceeds_budget"));
+  assert.ok(violations.includes("harness.invariant.replan_count_exceeds_budget"));
+  assert.ok(violations.includes("harness.invariant.total_cost_exceeds_budget"));
+  assert.ok(violations.includes("harness.invariant.duration_exceeds_budget"));
+  assert.ok(violations.includes("harness.invariant.final_state_requires_completed_at"));
+  assert.ok(violations.includes("harness.invariant.non_accept_decision_requires_feedback"));
+  assert.ok(violations.includes("harness.invariant.blocked_tool_requested"));
+  assert.ok(violations.includes("harness.invariant.required_evidence_missing"));
+  assert.ok(violations.includes("harness.invariant.max_risk_exceeded"));
 });
 
 test("HarnessRuntimeService evaluates runs and AsyncHarnessService executes queued work", async () => {
