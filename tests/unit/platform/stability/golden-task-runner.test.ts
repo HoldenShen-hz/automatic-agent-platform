@@ -7,7 +7,6 @@ import {
   REQUIRED_GOLDEN_TASK_CLASSES,
   GoldenTaskCase,
   GoldenTaskClass,
-  GoldenTaskInventoryBaseline,
 } from "../../../../src/platform/stability/golden-task-runner.js";
 
 test("SINGLE_TASK_GOLDEN_TASKS contains expected number of cases", () => {

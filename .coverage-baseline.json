@@ -1,227 +1,20 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-23T12:33:05.426Z",
+  "generatedAt": "2026-04-24T13:24:52.131Z",
   "minimums": {
-    "lines": 31.2,
-    "statements": 31.2,
-    "functions": 49.8,
-    "branches": 60.4
+    "lines": 91.4,
+    "statements": 91.4,
+    "functions": 93.6,
+    "branches": 85.6
   },
   "global": {
-    "lines": 31.2,
-    "statements": 31.2,
-    "functions": 49.8,
-    "branches": 60.4
+    "lines": 91.4,
+    "statements": 91.4,
+    "functions": 93.6,
+    "branches": 85.6
   },
   "directories": {
-    "src/apps": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/apps/api": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/apps/console": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/apps/workers": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/benchmarks": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/core/runtime": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/core/runtime/orchestrator": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/core/runtime/planner": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/core/runtime/supervisor": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/dashboard/alert-router": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/dashboard/health-scorer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/dashboard/metric-aggregator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/goal-decomposer/dependency-graph": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/goal-decomposer/planner": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/goal-decomposer/validator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/proactive-agent/event-watcher": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/proactive-agent/schedule-manager": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/interaction/proactive-agent/trigger-engine": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/agent-delegation": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/compliance/crypto-shredding": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/contracts/constants": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/contracts/evidence-record": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/contracts/projection-update": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/contracts/prompt-bundle": {
+    "src/platform/contracts/model-response": {
       "fileCount": 1,
       "metrics": {
         "lines": 0,
@@ -239,295 +32,7 @@
         "branches": 0
       }
     },
-    "src/platform/control-plane": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/approval-center/approval-policy-engine": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/audit-export": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/compliance": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/cost-alert": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/incident-control/runbook-executor": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/replay-repair-control": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/rollout-controller": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/cost-management": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/ha": {
-      "fileCount": 18,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/hot-upgrade": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/plugin-executor": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/tool-executor/edit-replacement": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/interface": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/interface/api/http-server": {
-      "fileCount": 24,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/interface/api/middleware": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/interface/api/oidc-oauth": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/interface/console/hitl": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/model-gateway/cache": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/model-gateway/degradation": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/model-gateway/fallback": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/model-gateway/router": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/escalation": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
     "src/platform/orchestration/harness/constraints": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/context": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/eval-harness": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/evaluator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/generator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/hitl-runtime": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/memory-namespace": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/planner": {
       "fileCount": 1,
       "metrics": {
         "lines": 0,
@@ -545,24 +50,6 @@
         "branches": 0
       }
     },
-    "src/platform/orchestration/harness/runtime": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/orchestration/harness/toolbelt": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
     "src/platform/orchestration/harness/types": {
       "fileCount": 2,
       "metrics": {
@@ -572,29 +59,11 @@
         "branches": 0
       }
     },
-    "src/platform/orchestration/replan": {
-      "fileCount": 1,
+    "src/core/runtime/orchestrator": {
+      "fileCount": 2,
       "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/prompt-registry": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/shared": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
+        "lines": 16.7,
+        "statements": 16.7,
         "functions": 0,
         "branches": 0
       }
@@ -602,2056 +71,1696 @@
     "src/platform/shared/observability/anomaly-detection": {
       "fileCount": 2,
       "metrics": {
-        "lines": 0,
-        "statements": 0,
+        "lines": 18.8,
+        "statements": 18.8,
         "functions": 0,
         "branches": 0
-      }
-    },
-    "src/platform/shared/observability/slo-alerting": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/shared/observability/transports": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/shared/scaling": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/audit": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/dlq": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/events/cas": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/events/projections": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/incident": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/knowledge/intake": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/projections": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/truth/postgres": {
-      "fileCount": 11,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/sdk": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/sdk/cli": {
-      "fileCount": 79,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/sdk/plugin-sdk": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/testing": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 0,
-        "statements": 0,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/org-governance/sso-scim/scim-sync": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 1.7,
-        "statements": 1.7,
-        "functions": 50,
-        "branches": 66.7
-      }
-    },
-    "src/platform/interface/api": {
-      "fileCount": 15,
-      "metrics": {
-        "lines": 2,
-        "statements": 2,
-        "functions": 12.5,
-        "branches": 17.6
-      }
-    },
-    "src/plugins/planners": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 3.4,
-        "statements": 3.4,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/shared/outbox": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 3.5,
-        "statements": 3.5,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/org-governance/sso-scim/oidc": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 3.6,
-        "statements": 3.6,
-        "functions": 50,
-        "branches": 50
-      }
-    },
-    "src/platform/shared/stability": {
-      "fileCount": 35,
-      "metrics": {
-        "lines": 6,
-        "statements": 6,
-        "functions": 8.9,
-        "branches": 23.3
-      }
-    },
-    "src/interaction/nl-gateway/ambiguity-handler": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 10,
-        "statements": 10,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/control-plane/approval-center": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 10,
-        "statements": 10,
-        "functions": 53.8,
-        "branches": 55
-      }
-    },
-    "src/platform/interface/channel-gateway": {
-      "fileCount": 13,
-      "metrics": {
-        "lines": 10.4,
-        "statements": 10.4,
-        "functions": 48.3,
-        "branches": 55.3
-      }
-    },
-    "src/plugins": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 10.4,
-        "statements": 10.4,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/plugins/validators": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 12.5,
-        "statements": 12.5,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/scale-ecosystem/marketplace": {
-      "fileCount": 24,
-      "metrics": {
-        "lines": 12.7,
-        "statements": 12.7,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/state-evidence/memory": {
-      "fileCount": 20,
-      "metrics": {
-        "lines": 13.1,
-        "statements": 13.1,
-        "functions": 11.1,
-        "branches": 51.7
-      }
-    },
-    "src/plugins/presenters": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 14.5,
-        "statements": 14.5,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/recovery": {
-      "fileCount": 23,
-      "metrics": {
-        "lines": 15.3,
-        "statements": 15.3,
-        "functions": 55.4,
-        "branches": 46.4
-      }
-    },
-    "src/platform/prompt-engine": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 15.3,
-        "statements": 15.3,
-        "functions": 55.6,
-        "branches": 62.5
-      }
-    },
-    "src/interaction/nl-gateway/disambiguation-handler": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 16.2,
-        "statements": 16.2,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/state-evidence/truth/async-repositories": {
-      "fileCount": 27,
-      "metrics": {
-        "lines": 16.6,
-        "statements": 16.6,
-        "functions": 14.8,
-        "branches": 100
-      }
-    },
-    "src/platform/state-evidence/knowledge/retrieval": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 17.1,
-        "statements": 17.1,
-        "functions": 14.3,
-        "branches": 100
-      }
-    },
-    "src/interaction/nl-gateway/slot-resolver": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 17.6,
-        "statements": 17.6,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/control-plane/config-center": {
-      "fileCount": 32,
-      "metrics": {
-        "lines": 17.9,
-        "statements": 17.9,
-        "functions": 54.1,
-        "branches": 53.6
-      }
-    },
-    "src/scale-ecosystem/marketplace/pmf-validation": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 19.4,
-        "statements": 19.4,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/plugins/retrievers": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 19.6,
-        "statements": 19.6,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/plugins/adapters": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 19.9,
-        "statements": 19.9,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/resource": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 21.1,
-        "statements": 21.1,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/control-plane/incident-control": {
-      "fileCount": 21,
-      "metrics": {
-        "lines": 21.2,
-        "statements": 21.2,
-        "functions": 60.7,
-        "branches": 70.7
-      }
-    },
-    "src/org-governance/org-model/hierarchy": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 23.6,
-        "statements": 23.6,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/interface/ingress": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 24.6,
-        "statements": 24.6,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/prompt-engine/registry": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 24.7,
-        "statements": 24.7,
-        "functions": 54.5,
-        "branches": 40
-      }
-    },
-    "src/platform/execution/tool-executor": {
-      "fileCount": 31,
-      "metrics": {
-        "lines": 26.2,
-        "statements": 26.2,
-        "functions": 26.1,
-        "branches": 63.9
-      }
-    },
-    "src/platform/state-evidence/checkpoints": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 26.9,
-        "statements": 26.9,
-        "functions": 8.3,
-        "branches": 33.3
-      }
-    },
-    "src/scale-ecosystem/feedback-loop": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 27.1,
-        "statements": 27.1,
-        "functions": 10,
-        "branches": 33.3
-      }
-    },
-    "src/platform/state-evidence/knowledge/indexing": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 28.3,
-        "statements": 28.3,
-        "functions": 18.8,
-        "branches": 42.9
-      }
-    },
-    "src/interaction/nl-gateway/intent-parser": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 28.6,
-        "statements": 28.6,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/state-evidence/knowledge/archive": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 29.1,
-        "statements": 29.1,
-        "functions": 25,
-        "branches": 60
-      }
-    },
-    "src/interaction/dashboard": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 29.3,
-        "statements": 29.3,
-        "functions": 42.9,
-        "branches": 45.2
-      }
-    },
-    "src/platform/control-plane/iam": {
-      "fileCount": 21,
-      "metrics": {
-        "lines": 29.4,
-        "statements": 29.4,
-        "functions": 42.5,
-        "branches": 59.1
-      }
-    },
-    "src/platform/orchestration/agent-delegation": {
-      "fileCount": 8,
-      "metrics": {
-        "lines": 29.4,
-        "statements": 29.4,
-        "functions": 70.5,
-        "branches": 59.3
-      }
-    },
-    "src/ops-maturity/explainability/explanation-renderer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 29.5,
-        "statements": 29.5,
-        "functions": 20,
-        "branches": 50
-      }
-    },
-    "src/org-governance/sso-scim": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 30.6,
-        "statements": 30.6,
-        "functions": 83.3,
-        "branches": 83.3
-      }
-    },
-    "src/platform/shared/cache/stores": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 30.7,
-        "statements": 30.7,
-        "functions": 44,
-        "branches": 66.7
-      }
-    },
-    "src/platform/execution/queue": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 31,
-        "statements": 31,
-        "functions": 47.4,
-        "branches": 50
-      }
-    },
-    "src/scale-ecosystem/feedback-loop/analyzer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 31,
-        "statements": 31,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/ops-maturity/multimodal/video-processor": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 31.6,
-        "statements": 31.6,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src": {
-      "fileCount": 13,
-      "metrics": {
-        "lines": 32.4,
-        "statements": 32.4,
-        "functions": 68.6,
-        "branches": 75.4
-      }
-    },
-    "src/platform/state-evidence/knowledge": {
-      "fileCount": 10,
-      "metrics": {
-        "lines": 32.4,
-        "statements": 32.4,
-        "functions": 50.8,
-        "branches": 71.6
-      }
-    },
-    "src/platform/model-gateway/provider-registry/anthropic": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 32.7,
-        "statements": 32.7,
-        "functions": 15.4,
-        "branches": 75
-      }
-    },
-    "src/domains/business-pack": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 33.8,
-        "statements": 33.8,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/domains/roadmap": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 34.6,
-        "statements": 34.6,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/lease": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 35.7,
-        "statements": 35.7,
-        "functions": 75,
-        "branches": 43.4
-      }
-    },
-    "src/platform/model-gateway/provider-registry/openai": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 35.9,
-        "statements": 35.9,
-        "functions": 15.4,
-        "branches": 75
-      }
-    },
-    "src/org-governance/sso-scim/saml": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 36,
-        "statements": 36,
-        "functions": 20,
-        "branches": 100
-      }
-    },
-    "src/platform/state-evidence/knowledge/governance": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 36,
-        "statements": 36,
-        "functions": 14.8,
-        "branches": 80
-      }
-    },
-    "src/ops-maturity/drift-detection": {
-      "fileCount": 12,
-      "metrics": {
-        "lines": 36.8,
-        "statements": 36.8,
-        "functions": 41.9,
-        "branches": 53.8
-      }
-    },
-    "src/platform/state-evidence/events": {
-      "fileCount": 14,
-      "metrics": {
-        "lines": 36.8,
-        "statements": 36.8,
-        "functions": 46.7,
-        "branches": 68
-      }
-    },
-    "src/org-governance/org-model": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 36.9,
-        "statements": 36.9,
-        "functions": 0,
-        "branches": 0
-      }
-    },
-    "src/platform/execution/distributed-lock": {
-      "fileCount": 8,
-      "metrics": {
-        "lines": 37,
-        "statements": 37,
-        "functions": 53.8,
-        "branches": 33.3
-      }
-    },
-    "src/interaction/proactive-agent": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 37.7,
-        "statements": 37.7,
-        "functions": 71.4,
-        "branches": 23.9
-      }
-    },
-    "src/platform/orchestration/hitl": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 37.7,
-        "statements": 37.7,
-        "functions": 23.1,
-        "branches": 22.2
-      }
-    },
-    "src/org-governance/org-model/sync": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 38.1,
-        "statements": 38.1,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/orchestration/oapeflir": {
-      "fileCount": 15,
-      "metrics": {
-        "lines": 38.5,
-        "statements": 38.5,
-        "functions": 40.4,
-        "branches": 47.1
-      }
-    },
-    "src/platform/shared/observability": {
-      "fileCount": 32,
-      "metrics": {
-        "lines": 40,
-        "statements": 40,
-        "functions": 55.7,
-        "branches": 57.4
-      }
-    },
-    "src/platform/model-gateway/provider-registry/minimax": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 40.1,
-        "statements": 40.1,
-        "functions": 23.1,
-        "branches": 62.5
-      }
-    },
-    "src/platform/execution/worker-pool": {
-      "fileCount": 13,
-      "metrics": {
-        "lines": 40.8,
-        "statements": 40.8,
-        "functions": 53.3,
-        "branches": 51.7
-      }
-    },
-    "src/sdk/client-sdk": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 40.8,
-        "statements": 40.8,
-        "functions": 14.3,
-        "branches": 60
-      }
-    },
-    "src/sdk/pack-sdk": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 40.8,
-        "statements": 40.8,
-        "functions": 3,
-        "branches": 50
-      }
-    },
-    "src/interaction/ux": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 41.8,
-        "statements": 41.8,
-        "functions": 77.8,
-        "branches": 61.5
-      }
-    },
-    "src/ops-maturity/agent-lifecycle": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 42,
-        "statements": 42,
-        "functions": 47.4,
-        "branches": 59.3
-      }
-    },
-    "src/interaction/autonomy": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 42.5,
-        "statements": 42.5,
-        "functions": 15,
-        "branches": 62.5
-      }
-    },
-    "src/platform/state-evidence/artifacts": {
-      "fileCount": 13,
-      "metrics": {
-        "lines": 42.5,
-        "statements": 42.5,
-        "functions": 44.4,
-        "branches": 39
-      }
-    },
-    "src/ops-maturity/platform-ops-agent/config-optimizer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 42.9,
-        "statements": 42.9,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 43.2,
-        "statements": 43.2,
-        "functions": 66.7,
-        "branches": 78.1
-      }
-    },
-    "src/scale-ecosystem/integration/connectors": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 43.5,
-        "statements": 43.5,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/orchestration/oapeflir/learn": {
-      "fileCount": 10,
-      "metrics": {
-        "lines": 43.8,
-        "statements": 43.8,
-        "functions": 57.1,
-        "branches": 53.7
-      }
-    },
-    "src/ops-maturity/explainability/simplified-explainer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 43.9,
-        "statements": 43.9,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/state-evidence/truth/sqlite/repositories": {
-      "fileCount": 29,
-      "metrics": {
-        "lines": 44.4,
-        "statements": 44.4,
-        "functions": 52,
-        "branches": 76.4
-      }
-    },
-    "src/platform/orchestration/oapeflir/schemas": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 44.5,
-        "statements": 44.5,
-        "functions": 72.7,
-        "branches": 50
-      }
-    },
-    "src/ops-maturity/platform-ops-agent/dev-assistant": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 45.2,
-        "statements": 45.2,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/orchestration/oapeflir/improve-rollout/rollout": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 46,
-        "statements": 46,
-        "functions": 80,
-        "branches": 83.3
-      }
-    },
-    "src/platform/model-gateway/provider-registry": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 46.1,
-        "statements": 46.1,
-        "functions": 34.1,
-        "branches": 44.4
-      }
-    },
-    "src/platform/control-plane/risk-control": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 46.5,
-        "statements": 46.5,
-        "functions": 66.7,
-        "branches": 86.8
-      }
-    },
-    "src/ops-maturity/platform-ops-agent/capacity-predictor": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 46.8,
-        "statements": 46.8,
-        "functions": 64.3,
-        "branches": 28.1
-      }
-    },
-    "src/platform/execution/startup": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 47.6,
-        "statements": 47.6,
-        "functions": 63.6,
-        "branches": 58.5
-      }
-    },
-    "src/domains/registry": {
-      "fileCount": 15,
-      "metrics": {
-        "lines": 48.1,
-        "statements": 48.1,
-        "functions": 47.5,
-        "branches": 51.8
-      }
-    },
-    "src/org-governance/delegated-governance": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 48.1,
-        "statements": 48.1,
-        "functions": 50,
-        "branches": 61.1
-      }
-    },
-    "src/ops-maturity/workflow-debugger": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 48.9,
-        "statements": 48.9,
-        "functions": 60,
-        "branches": 86.4
-      }
-    },
-    "src/ops-maturity/platform-ops-agent": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 51.8,
-        "statements": 51.8,
-        "functions": 72.2,
-        "branches": 42.1
-      }
-    },
-    "src/ops-maturity/multimodal/document-parser": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 52.4,
-        "statements": 52.4,
-        "functions": 50,
-        "branches": 100
-      }
-    },
-    "src/platform/execution/execution-engine": {
-      "fileCount": 30,
-      "metrics": {
-        "lines": 52.6,
-        "statements": 52.6,
-        "functions": 49.1,
-        "branches": 63.2
-      }
-    },
-    "src/platform/shared/utils": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 52.6,
-        "statements": 52.6,
-        "functions": 31.8,
-        "branches": 14.6
-      }
-    },
-    "src/platform/orchestration/oapeflir/improve-rollout": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 52.7,
-        "statements": 52.7,
-        "functions": 63.6,
-        "branches": 53.1
-      }
-    },
-    "src/platform/orchestration/harness/evaluation": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 52.9,
-        "statements": 52.9,
-        "functions": 50,
-        "branches": 100
-      }
-    },
-    "src/platform/shared/lifecycle": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 53.5,
-        "statements": 53.5,
-        "functions": 53.8,
-        "branches": 77.3
-      }
-    },
-    "src/platform/shared/cache/middleware": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 53.7,
-        "statements": 53.7,
-        "functions": 60,
-        "branches": 75
-      }
-    },
-    "src/ops-maturity/agent-lifecycle/version-manager": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 54.1,
-        "statements": 54.1,
-        "functions": 75,
-        "branches": 50
-      }
-    },
-    "src/ops-maturity/monitoring": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 54.2,
-        "statements": 54.2,
-        "functions": 66.7,
-        "branches": 74.1
-      }
-    },
-    "src/ops-maturity/multimodal/image-processor": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 57.1,
-        "statements": 57.1,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/ops-maturity/multimodal/speech-processor": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 57.1,
-        "statements": 57.1,
-        "functions": 50,
-        "branches": 50
-      }
-    },
-    "src/platform/state-evidence/truth": {
-      "fileCount": 13,
-      "metrics": {
-        "lines": 57.6,
-        "statements": 57.6,
-        "functions": 53.3,
-        "branches": 45.1
-      }
-    },
-    "src/platform/shared/cache/utils": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 59.5,
-        "statements": 59.5,
-        "functions": 14.3,
-        "branches": 54.5
-      }
-    },
-    "src/platform/execution/worker-pool/worker": {
-      "fileCount": 7,
-      "metrics": {
-        "lines": 60.2,
-        "statements": 60.2,
-        "functions": 80,
-        "branches": 83.5
-      }
-    },
-    "src/ops-maturity/cost-optimizer/simulator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 61.1,
-        "statements": 61.1,
-        "functions": 50,
-        "branches": 100
-      }
-    },
-    "src/scale-ecosystem/integration": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 61.7,
-        "statements": 61.7,
-        "functions": 66.7,
-        "branches": 66.7
-      }
-    },
-    "src/interaction": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 62.5,
-        "statements": 62.5,
-        "functions": 71.4,
-        "branches": 83.3
-      }
-    },
-    "src/scale-ecosystem/resource-manager": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 62.9,
-        "statements": 62.9,
-        "functions": 50,
-        "branches": 44.4
-      }
-    },
-    "src/platform/prompt-engine/eval": {
-      "fileCount": 12,
-      "metrics": {
-        "lines": 63.6,
-        "statements": 63.6,
-        "functions": 70.2,
-        "branches": 41.2
-      }
-    },
-    "src/ops-maturity/platform-ops-agent/health-monitor": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 63.7,
-        "statements": 63.7,
-        "functions": 58.3,
-        "branches": 55.6
-      }
-    },
-    "src/ops-maturity/capacity-planner/simulator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 64,
-        "statements": 64,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/interaction/ux/onboarding": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 64.1,
-        "statements": 64.1,
-        "functions": 66.7,
-        "branches": 66.7
-      }
-    },
-    "src/platform/orchestration/planner": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 64.6,
-        "statements": 64.6,
-        "functions": 58.3,
-        "branches": 40.8
-      }
-    },
-    "src/scale-ecosystem/marketplace/catalog": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 65.6,
-        "statements": 65.6,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/ops-maturity/workflow-debugger/run-comparator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 65.7,
-        "statements": 65.7,
-        "functions": 50,
-        "branches": 80
-      }
-    },
-    "src/platform/orchestration/oapeflir/learn/pattern-detectors": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 66.5,
-        "statements": 66.5,
-        "functions": 100,
-        "branches": 37.5
-      }
-    },
-    "src/platform/contracts": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 66.9,
-        "statements": 66.9,
-        "functions": 18.5,
-        "branches": 50
-      }
-    },
-    "src/ops-maturity/multimodal/modality-router": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 67.9,
-        "statements": 67.9,
-        "functions": 50,
-        "branches": 83.3
-      }
-    },
-    "src/ops-maturity/explainability/evidence-collector": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 68,
-        "statements": 68,
-        "functions": 50,
-        "branches": 100
-      }
-    },
-    "src/domains/governance": {
-      "fileCount": 6,
-      "metrics": {
-        "lines": 68.2,
-        "statements": 68.2,
-        "functions": 63,
-        "branches": 55.6
-      }
-    },
-    "src/platform/control-plane/policy-center": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 68.2,
-        "statements": 68.2,
-        "functions": 91.7,
-        "branches": 28.3
-      }
-    },
-    "src/platform/control-plane/tenant": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 68.8,
-        "statements": 68.8,
-        "functions": 70.8,
-        "branches": 57.9
-      }
-    },
-    "src/platform/shared/context": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 69.8,
-        "statements": 69.8,
-        "functions": 27.3,
-        "branches": 71.4
-      }
-    },
-    "src/scale-ecosystem/feedback-loop/improvement-tracker": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 70.6,
-        "statements": 70.6,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/shared/cache": {
-      "fileCount": 12,
-      "metrics": {
-        "lines": 71,
-        "statements": 71,
-        "functions": 40.5,
-        "branches": 75
-      }
-    },
-    "src/platform/execution/dispatcher": {
-      "fileCount": 11,
-      "metrics": {
-        "lines": 71.1,
-        "statements": 71.1,
-        "functions": 82.9,
-        "branches": 68.7
-      }
-    },
-    "src/interaction/autonomy/level-manager": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 71.4,
-        "statements": 71.4,
-        "functions": 50,
-        "branches": 100
-      }
-    },
-    "src/scale-ecosystem/resource-manager/preemption": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 71.4,
-        "statements": 71.4,
-        "functions": 100,
-        "branches": 50
-      }
-    },
-    "src/interaction/autonomy/promotion-engine": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 71.8,
-        "statements": 71.8,
-        "functions": 100,
-        "branches": 58.8
-      }
-    },
-    "src/ops-maturity/edge-runtime/sync-queue": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 72.7,
-        "statements": 72.7,
-        "functions": 50,
-        "branches": 50
-      }
-    },
-    "src/platform/contracts/result-envelope": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 73.1,
-        "statements": 73.1,
-        "functions": 84.2,
-        "branches": 61.6
-      }
-    },
-    "src/platform/interface/webhook": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 73.2,
-        "statements": 73.2,
-        "functions": 56.3,
-        "branches": 36.4
-      }
-    },
-    "src/org-governance/org-model/org-node": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 74.1,
-        "statements": 74.1,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/contracts/types": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 74.2,
-        "statements": 74.2,
-        "functions": 38.9,
-        "branches": 50
-      }
-    },
-    "src/org-governance/knowledge-boundary": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 74.3,
-        "statements": 74.3,
-        "functions": 80,
-        "branches": 83.3
-      }
-    },
-    "src/platform/interface/scheduler": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 74.3,
-        "statements": 74.3,
-        "functions": 57.1,
-        "branches": 53.8
-      }
-    },
-    "src/ops-maturity/agent-lifecycle/retirement": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 75,
-        "statements": 75,
-        "functions": 33.3,
-        "branches": 100
-      }
-    },
-    "src/ops-maturity/cost-optimizer/recommendation-engine": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 76,
-        "statements": 76,
-        "functions": 50,
-        "branches": 54.5
-      }
-    },
-    "src/platform/prompt-engine/rollout": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 76.3,
-        "statements": 76.3,
-        "functions": 57.1,
-        "branches": 50
       }
     },
     "src/scale-ecosystem/marketplace/billing": {
       "fileCount": 2,
       "metrics": {
-        "lines": 76.4,
-        "statements": 76.4,
+        "lines": 50,
+        "statements": 50,
         "functions": 0,
-        "branches": 100
+        "branches": 0
       }
     },
-    "src/platform/state-evidence/truth/repositories": {
-      "fileCount": 4,
+    "src/scale-ecosystem/runtime-services": {
+      "fileCount": 11,
       "metrics": {
-        "lines": 76.7,
-        "statements": 76.7,
-        "functions": 75.7,
-        "branches": 94.5
+        "lines": 51.5,
+        "statements": 51.5,
+        "functions": 27,
+        "branches": 76.3
       }
     },
-    "src/ops-maturity/compliance-reporter/report-renderer": {
-      "fileCount": 1,
+    "src/platform/interface/api/oidc-oauth": {
+      "fileCount": 3,
       "metrics": {
-        "lines": 76.9,
-        "statements": 76.9,
-        "functions": 40,
-        "branches": 100
+        "lines": 55.1,
+        "statements": 55.1,
+        "functions": 88.9,
+        "branches": 98.7
       }
     },
-    "src/org-governance/approval-routing/route-engine": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 77,
-        "statements": 77,
-        "functions": 66.7,
-        "branches": 45.5
-      }
-    },
-    "src/domains/operations": {
+    "src/platform/orchestration/oapeflir/schemas": {
       "fileCount": 2,
       "metrics": {
-        "lines": 77.2,
-        "statements": 77.2,
-        "functions": 83.3,
-        "branches": 84.8
+        "lines": 64.6,
+        "statements": 64.6,
+        "functions": 90.9,
+        "branches": 71.4
       }
     },
-    "src/ops-maturity/emergency": {
+    "src/platform/orchestration/oapeflir/learn/pattern-detectors": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 66.7,
+        "statements": 66.7,
+        "functions": 0,
+        "branches": 0
+      }
+    },
+    "src/scale-ecosystem/marketplace/pmf-validation": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 66.7,
+        "statements": 66.7,
+        "functions": 0,
+        "branches": 0
+      }
+    },
+    "src/platform/execution/ha": {
+      "fileCount": 19,
+      "metrics": {
+        "lines": 75.8,
+        "statements": 75.8,
+        "functions": 69,
+        "branches": 83
+      }
+    },
+    "src/platform/state-evidence/projections": {
       "fileCount": 2,
       "metrics": {
-        "lines": 77.5,
-        "statements": 77.5,
-        "functions": 70,
-        "branches": 59.3
+        "lines": 76.5,
+        "statements": 76.5,
+        "functions": 73.1,
+        "branches": 84.1
       }
     },
-    "src/org-governance/delegated-governance/scope-manager": {
-      "fileCount": 1,
+    "src/platform/orchestration/oapeflir/improve-rollout": {
+      "fileCount": 9,
       "metrics": {
-        "lines": 78.4,
-        "statements": 78.4,
-        "functions": 100,
-        "branches": 36.4
+        "lines": 77.8,
+        "statements": 77.8,
+        "functions": 0,
+        "branches": 0
       }
     },
-    "src/platform/orchestration/oapeflir/workflow": {
+    "src/platform/shared/cache/stores": {
       "fileCount": 5,
       "metrics": {
-        "lines": 78.9,
-        "statements": 78.9,
-        "functions": 78.9,
-        "branches": 63.1
+        "lines": 78.2,
+        "statements": 78.2,
+        "functions": 72.7,
+        "branches": 92.2
       }
     },
-    "src/platform/orchestration/harness": {
-      "fileCount": 10,
+    "src/platform/execution/recovery": {
+      "fileCount": 23,
       "metrics": {
-        "lines": 79.1,
-        "statements": 79.1,
+        "lines": 80.3,
+        "statements": 80.3,
+        "functions": 92.1,
+        "branches": 83.9
+      }
+    },
+    "src/platform/shared/observability/slo-alerting": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 80.9,
+        "statements": 80.9,
+        "functions": 0,
+        "branches": 0
+      }
+    },
+    "src/platform/state-evidence/truth/async-repositories": {
+      "fileCount": 28,
+      "metrics": {
+        "lines": 81.6,
+        "statements": 81.6,
+        "functions": 87.8,
+        "branches": 84.4
+      }
+    },
+    "src/platform/execution/tool-executor/edit-replacement": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 83.6,
+        "statements": 83.6,
+        "functions": 96.3,
+        "branches": 88.7
+      }
+    },
+    "src/platform/execution/lease": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 83.9,
+        "statements": 83.9,
         "functions": 66.7,
         "branches": 80
       }
     },
-    "src/ops-maturity/explainability/causal-chain-builder": {
-      "fileCount": 1,
+    "src/platform/model-gateway/provider-registry": {
+      "fileCount": 7,
       "metrics": {
-        "lines": 80,
-        "statements": 80,
-        "functions": 50,
-        "branches": 100
+        "lines": 84.7,
+        "statements": 84.7,
+        "functions": 91.7,
+        "branches": 86.6
       }
     },
-    "src/platform/orchestration/agent-delegation/collaboration-protocol": {
-      "fileCount": 4,
+    "src/org-governance/org-model": {
+      "fileCount": 2,
       "metrics": {
-        "lines": 80,
-        "statements": 80,
-        "functions": 71.4,
+        "lines": 84.9,
+        "statements": 84.9,
+        "functions": 93.8,
+        "branches": 60.6
+      }
+    },
+    "src/platform/execution/hot-upgrade": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 84.9,
+        "statements": 84.9,
+        "functions": 75.9,
+        "branches": 84.3
+      }
+    },
+    "src/platform/interface/channel-gateway": {
+      "fileCount": 13,
+      "metrics": {
+        "lines": 85.1,
+        "statements": 85.1,
+        "functions": 97,
+        "branches": 86.1
+      }
+    },
+    "src/sdk/cli": {
+      "fileCount": 79,
+      "metrics": {
+        "lines": 85.3,
+        "statements": 85.3,
+        "functions": 90.2,
         "branches": 47.6
       }
     },
-    "src/scale-ecosystem/integration/health-monitor": {
+    "src/platform/state-evidence/truth/postgres": {
+      "fileCount": 11,
+      "metrics": {
+        "lines": 85.5,
+        "statements": 85.5,
+        "functions": 77.1,
+        "branches": 70.3
+      }
+    },
+    "src/sdk/harness-sdk": {
       "fileCount": 1,
       "metrics": {
-        "lines": 80,
-        "statements": 80,
-        "functions": 100,
-        "branches": 60
+        "lines": 85.6,
+        "statements": 85.6,
+        "functions": 72.2,
+        "branches": 92.9
       }
     },
-    "src/sdk/workbench": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 80,
-        "statements": 80,
-        "functions": 80,
-        "branches": 90.5
-      }
-    },
-    "src/scale-ecosystem/feedback-loop/collector": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 80.8,
-        "statements": 80.8,
-        "functions": 76.5,
-        "branches": 58.3
-      }
-    },
-    "src/ops-maturity/drift-detection/changepoint-detector": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 81.1,
-        "statements": 81.1,
-        "functions": 100,
-        "branches": 45.5
-      }
-    },
-    "src/platform/orchestration/routing": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 81.2,
-        "statements": 81.2,
-        "functions": 90.9,
-        "branches": 58.9
-      }
-    },
-    "src/domains/prompt-library": {
+    "src/scale-ecosystem/integration": {
       "fileCount": 2,
       "metrics": {
-        "lines": 81.3,
-        "statements": 81.3,
-        "functions": 77.8,
-        "branches": 50
+        "lines": 85.9,
+        "statements": 85.9,
+        "functions": 88.9,
+        "branches": 67.9
       }
     },
-    "src/org-governance/compliance-engine": {
-      "fileCount": 4,
+    "src/platform/orchestration/improve-rollout": {
+      "fileCount": 9,
       "metrics": {
-        "lines": 82.1,
-        "statements": 82.1,
-        "functions": 38.5,
-        "branches": 78.3
+        "lines": 86.1,
+        "statements": 86.1,
+        "functions": 92,
+        "branches": 90.6
       }
     },
-    "src/ops-maturity/emergency/forensic-snapshot": {
-      "fileCount": 1,
+    "src/interaction/ux": {
+      "fileCount": 6,
       "metrics": {
-        "lines": 82.5,
-        "statements": 82.5,
-        "functions": 50,
-        "branches": 50
+        "lines": 86.6,
+        "statements": 86.6,
+        "functions": 77.4,
+        "branches": 84
       }
     },
-    "src/interaction/goal-decomposer": {
-      "fileCount": 1,
+    "src/platform/orchestration/agent-delegation": {
+      "fileCount": 8,
       "metrics": {
-        "lines": 83.1,
-        "statements": 83.1,
-        "functions": 100,
-        "branches": 48.4
+        "lines": 86.7,
+        "statements": 86.7,
+        "functions": 98.8,
+        "branches": 90.9
       }
     },
-    "src/ops-maturity/drift-detection/cross-agent-analyzer": {
-      "fileCount": 1,
+    "src/platform/state-evidence/knowledge/indexing": {
+      "fileCount": 2,
       "metrics": {
-        "lines": 83.3,
-        "statements": 83.3,
-        "functions": 100,
-        "branches": 60
+        "lines": 86.9,
+        "statements": 86.9,
+        "functions": 96.3,
+        "branches": 95.8
       }
     },
-    "src/platform/prompt-engine/renderer": {
-      "fileCount": 1,
+    "src/platform/control-plane/approval-center": {
+      "fileCount": 8,
       "metrics": {
-        "lines": 83.9,
-        "statements": 83.9,
-        "functions": 100,
-        "branches": 30
+        "lines": 87.6,
+        "statements": 87.6,
+        "functions": 97.5,
+        "branches": 84
       }
     },
-    "src/ops-maturity/agent-lifecycle/canary-controller": {
-      "fileCount": 1,
+    "src/platform/orchestration/oapeflir": {
+      "fileCount": 15,
       "metrics": {
-        "lines": 84.1,
-        "statements": 84.1,
-        "functions": 25,
-        "branches": 100
-      }
-    },
-    "src/scale-ecosystem/multi-region": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 84.2,
-        "statements": 84.2,
-        "functions": 68.2,
-        "branches": 70.7
+        "lines": 87.9,
+        "statements": 87.9,
+        "functions": 95.7,
+        "branches": 86.5
       }
     },
     "src/platform/compliance/encryption": {
       "fileCount": 1,
       "metrics": {
-        "lines": 84.3,
-        "statements": 84.3,
-        "functions": 83.3,
-        "branches": 60
-      }
-    },
-    "src/ops-maturity/drift-detection/fingerprint-builder": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 84.9,
-        "statements": 84.9,
+        "lines": 88.8,
+        "statements": 88.8,
         "functions": 100,
-        "branches": 42.9
+        "branches": 64.3
       }
     },
-    "src/platform/orchestration/harness/loop": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 84.9,
-        "statements": 84.9,
-        "functions": 88.9,
-        "branches": 72
-      }
-    },
-    "src/platform/model-gateway": {
+    "src/platform/orchestration/harness/durable": {
       "fileCount": 3,
       "metrics": {
-        "lines": 85,
-        "statements": 85,
-        "functions": 71.4,
-        "branches": 83.3
+        "lines": 89,
+        "statements": 89,
+        "functions": 88.5,
+        "branches": 96.1
       }
     },
-    "src/org-governance/knowledge-boundary/sharing-gate": {
+    "src/platform/shared/cache/middleware": {
       "fileCount": 1,
       "metrics": {
-        "lines": 85.7,
-        "statements": 85.7,
-        "functions": 100,
-        "branches": 50
+        "lines": 89.3,
+        "statements": 89.3,
+        "functions": 80,
+        "branches": 95.2
       }
     },
-    "src/scale-ecosystem/marketplace/certification": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 85.7,
-        "statements": 85.7,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/ops-maturity": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 85.8,
-        "statements": 85.8,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/orchestration/harness/guardrails": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 85.9,
-        "statements": 85.9,
-        "functions": 100,
-        "branches": 81.3
-      }
-    },
-    "src/platform/contracts/execution-plan": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 86,
-        "statements": 86,
-        "functions": 100,
-        "branches": 50
-      }
-    },
-    "src/platform/model-gateway/messages": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 86.1,
-        "statements": 86.1,
-        "functions": 94.4,
-        "branches": 61.7
-      }
-    },
-    "src/platform/compliance": {
-      "fileCount": 5,
-      "metrics": {
-        "lines": 86.7,
-        "statements": 86.7,
-        "functions": 76.5,
-        "branches": 38.3
-      }
-    },
-    "src/platform/contracts/model-request": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 86.7,
-        "statements": 86.7,
-        "functions": 100,
-        "branches": 22.2
-      }
-    },
-    "src/scale-ecosystem": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 86.8,
-        "statements": 86.8,
-        "functions": 20,
-        "branches": 53.8
-      }
-    },
-    "src/ops-maturity/platform-ops-agent/incident-diagnoser": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 87,
-        "statements": 87,
-        "functions": 100,
-        "branches": 58.3
-      }
-    },
-    "src/ops-maturity/compliance-reporter/evidence-mapper": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 87.2,
-        "statements": 87.2,
-        "functions": 75,
-        "branches": 88.9
-      }
-    },
-    "src/scale-ecosystem/multi-region/data-replicator": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 87.3,
-        "statements": 87.3,
-        "functions": 86.4,
-        "branches": 87.8
-      }
-    },
-    "src/platform/contracts/execution-receipt": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 87.5,
-        "statements": 87.5,
-        "functions": 100,
-        "branches": 55.6
-      }
-    },
-    "src/interaction/nl-gateway": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 87.9,
-        "statements": 87.9,
-        "functions": 73.3,
-        "branches": 44.9
-      }
-    },
-    "src/scale-ecosystem/marketplace/publisher": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 88.2,
-        "statements": 88.2,
-        "functions": 0,
-        "branches": 100
-      }
-    },
-    "src/platform/state-evidence/truth/sqlite": {
-      "fileCount": 25,
-      "metrics": {
-        "lines": 88.3,
-        "statements": 88.3,
-        "functions": 92.7,
-        "branches": 82.8
-      }
-    },
-    "src/ops-maturity/capacity-planner/trend-analyzer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 88.9,
-        "statements": 88.9,
-        "functions": 100,
-        "branches": 54.5
-      }
-    },
-    "src/ops-maturity/workflow-debugger/timeline-renderer": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 88.9,
-        "statements": 88.9,
-        "functions": 50,
-        "branches": 50
-      }
-    },
-    "src/platform/compliance/data-residency": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 88.9,
-        "statements": 88.9,
-        "functions": 100,
-        "branches": 55.6
-      }
-    },
-    "src/platform/model-gateway/cost-tracker": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 89.1,
-        "statements": 89.1,
-        "functions": 100,
-        "branches": 33.3
-      }
-    },
-    "src/platform/contracts/state-command": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 89.2,
-        "statements": 89.2,
-        "functions": 100,
-        "branches": 25
-      }
-    },
-    "src/ops-maturity/multimodal": {
-      "fileCount": 2,
+    "src": {
+      "fileCount": 13,
       "metrics": {
         "lines": 89.4,
         "statements": 89.4,
-        "functions": 100,
-        "branches": 55.6
+        "functions": 88.4,
+        "branches": 80.8
       }
     },
-    "src/scale-ecosystem/integration/connector-runtime": {
-      "fileCount": 1,
+    "src/platform/execution/tool-executor": {
+      "fileCount": 31,
+      "metrics": {
+        "lines": 89.5,
+        "statements": 89.5,
+        "functions": 92.8,
+        "branches": 80.7
+      }
+    },
+    "src/domains/registry": {
+      "fileCount": 15,
+      "metrics": {
+        "lines": 89.8,
+        "statements": 89.8,
+        "functions": 96.2,
+        "branches": 80.4
+      }
+    },
+    "src/platform/execution/resource": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 90,
+        "statements": 90,
+        "functions": 94.7,
+        "branches": 80.4
+      }
+    },
+    "src/platform/orchestration/oapeflir/learn": {
+      "fileCount": 10,
       "metrics": {
         "lines": 90,
         "statements": 90,
         "functions": 0,
-        "branches": 100
+        "branches": 0
       }
     },
-    "src/interaction/autonomy/trust-scorer": {
-      "fileCount": 1,
+    "src/platform/prompt-engine/eval": {
+      "fileCount": 12,
       "metrics": {
-        "lines": 90.5,
-        "statements": 90.5,
-        "functions": 100,
-        "branches": 69.2
+        "lines": 90.1,
+        "statements": 90.1,
+        "functions": 93.7,
+        "branches": 72.4
       }
     },
-    "src/org-governance/compliance-engine/inheritance": {
-      "fileCount": 1,
+    "src/platform/interface/api": {
+      "fileCount": 15,
       "metrics": {
-        "lines": 90.6,
-        "statements": 90.6,
-        "functions": 100,
-        "branches": 75
+        "lines": 90.7,
+        "statements": 90.7,
+        "functions": 91.7,
+        "branches": 84.4
       }
     },
-    "src/org-governance/approval-routing/escalation": {
+    "src/interaction": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 90.9,
+        "statements": 90.9,
+        "functions": 92.3,
+        "branches": 76.2
+      }
+    },
+    "src/interaction/proactive-agent/schedule-manager": {
       "fileCount": 1,
       "metrics": {
         "lines": 90.9,
         "statements": 90.9,
         "functions": 100,
-        "branches": 50
+        "branches": 72.7
       }
     },
-    "src/ops-maturity/capacity-planner": {
+    "src/scale-ecosystem/feedback-loop": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 91.1,
+        "statements": 91.1,
+        "functions": 96.9,
+        "branches": 81.4
+      }
+    },
+    "src/platform/execution/startup": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 91.3,
+        "statements": 91.3,
+        "functions": 94.7,
+        "branches": 88.1
+      }
+    },
+    "src/platform/model-gateway/provider-registry/openai": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 91.6,
+        "statements": 91.6,
+        "functions": 100,
+        "branches": 75.3
+      }
+    },
+    "src/org-governance/sso-scim/oidc": {
       "fileCount": 2,
       "metrics": {
         "lines": 91.7,
         "statements": 91.7,
-        "functions": 87.5,
-        "branches": 53.8
+        "functions": 96.4,
+        "branches": 61.2
       }
     },
-    "src/ops-maturity/compliance-reporter/template-registry": {
-      "fileCount": 1,
+    "src/platform/interface/api/http-server": {
+      "fileCount": 24,
       "metrics": {
         "lines": 91.7,
         "statements": 91.7,
-        "functions": 66.7,
-        "branches": 85.7
+        "functions": 93.7,
+        "branches": 82.7
       }
     },
-    "src/platform/contracts/delegation-request": {
-      "fileCount": 1,
+    "src/ops-maturity/agent-lifecycle": {
+      "fileCount": 3,
       "metrics": {
         "lines": 92,
         "statements": 92,
-        "functions": 100,
-        "branches": 66.7
+        "functions": 87.5,
+        "branches": 77
       }
     },
-    "src/platform/compliance/erasure": {
-      "fileCount": 1,
+    "src/domains/business-pack": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 92.1,
+        "statements": 92.1,
+        "functions": 91.3,
+        "branches": 84
+      }
+    },
+    "src/scale-ecosystem/marketplace": {
+      "fileCount": 29,
+      "metrics": {
+        "lines": 92.3,
+        "statements": 92.3,
+        "functions": 86.1,
+        "branches": 70.1
+      }
+    },
+    "src/scale-ecosystem/multi-region": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 92.3,
+        "statements": 92.3,
+        "functions": 93.2,
+        "branches": 83.7
+      }
+    },
+    "src/scale-ecosystem/tenant-platform": {
+      "fileCount": 7,
       "metrics": {
         "lines": 92.5,
         "statements": 92.5,
-        "functions": 100,
-        "branches": 55.6
+        "functions": 83.6,
+        "branches": 73.5
       }
     },
-    "src/scale-ecosystem/sla-engine": {
+    "src/platform/compliance/data-residency": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 92.6,
+        "statements": 92.6,
+        "functions": 100,
+        "branches": 70
+      }
+    },
+    "src/platform/execution/execution-engine": {
+      "fileCount": 30,
+      "metrics": {
+        "lines": 92.6,
+        "statements": 92.6,
+        "functions": 92.9,
+        "branches": 85.6
+      }
+    },
+    "src/scale-ecosystem/operations": {
       "fileCount": 2,
       "metrics": {
         "lines": 92.7,
         "statements": 92.7,
         "functions": 100,
-        "branches": 26.3
+        "branches": 57.7
       }
     },
-    "src/domains": {
-      "fileCount": 9,
-      "metrics": {
-        "lines": 93.4,
-        "statements": 93.4,
-        "functions": 88.7,
-        "branches": 78.7
-      }
-    },
-    "src/ops-maturity/agent-lifecycle/agent-registry": {
+    "src/platform/control-plane/tenant": {
       "fileCount": 1,
       "metrics": {
-        "lines": 93.9,
-        "statements": 93.9,
-        "functions": 25,
+        "lines": 92.9,
+        "statements": 92.9,
+        "functions": 100,
+        "branches": 88.6
+      }
+    },
+    "src/platform/state-evidence/knowledge": {
+      "fileCount": 10,
+      "metrics": {
+        "lines": 92.9,
+        "statements": 92.9,
+        "functions": 99,
+        "branches": 81.5
+      }
+    },
+    "src/platform/control-plane/incident-control": {
+      "fileCount": 23,
+      "metrics": {
+        "lines": 93.2,
+        "statements": 93.2,
+        "functions": 95.2,
+        "branches": 77.8
+      }
+    },
+    "src/platform/state-evidence/knowledge/retrieval": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 93.3,
+        "statements": 93.3,
+        "functions": 100,
+        "branches": 83.1
+      }
+    },
+    "src/platform/compliance": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 93.5,
+        "statements": 93.5,
+        "functions": 100,
+        "branches": 59.1
+      }
+    },
+    "src/platform/shared/outbox": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 93.5,
+        "statements": 93.5,
+        "functions": 94.6,
+        "branches": 86.7
+      }
+    },
+    "src/platform/state-evidence/checkpoints": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 93.5,
+        "statements": 93.5,
+        "functions": 95.5,
+        "branches": 86.1
+      }
+    },
+    "src/interaction/goal-decomposer": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 94,
+        "statements": 94,
+        "functions": 100,
+        "branches": 80.5
+      }
+    },
+    "src/interaction/nl-gateway": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 94.2,
+        "statements": 94.2,
+        "functions": 93.3,
+        "branches": 82.1
+      }
+    },
+    "src/domains/governance": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 94.3,
+        "statements": 94.3,
+        "functions": 98,
+        "branches": 85.8
+      }
+    },
+    "src/scale-ecosystem/billing": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 94.5,
+        "statements": 94.5,
+        "functions": 91.1,
+        "branches": 70.3
+      }
+    },
+    "src/scale-ecosystem/enterprise": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 94.5,
+        "statements": 94.5,
+        "functions": 94.7,
+        "branches": 77.3
+      }
+    },
+    "src/platform/execution/plugin-executor": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 94.6,
+        "statements": 94.6,
+        "functions": 96.8,
+        "branches": 85.2
+      }
+    },
+    "src/platform/control-plane/cost-alert": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 94.8,
+        "statements": 94.8,
+        "functions": 100,
+        "branches": 75.2
+      }
+    },
+    "src/platform/control-plane/iam": {
+      "fileCount": 22,
+      "metrics": {
+        "lines": 94.8,
+        "statements": 94.8,
+        "functions": 97.3,
+        "branches": 84
+      }
+    },
+    "src/platform/execution/dispatcher": {
+      "fileCount": 11,
+      "metrics": {
+        "lines": 94.8,
+        "statements": 94.8,
+        "functions": 97.7,
+        "branches": 85.5
+      }
+    },
+    "src/platform/model-gateway/degradation": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 94.8,
+        "statements": 94.8,
+        "functions": 100,
+        "branches": 93
+      }
+    },
+    "src/platform/model-gateway/provider-registry/anthropic": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 94.8,
+        "statements": 94.8,
+        "functions": 100,
+        "branches": 80.2
+      }
+    },
+    "src/org-governance/sso-scim/scim-sync": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 94.9,
+        "statements": 94.9,
+        "functions": 100,
+        "branches": 71.6
+      }
+    },
+    "src/platform/state-evidence/truth/repositories": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 95,
+        "statements": 95,
+        "functions": 93.2,
+        "branches": 89.2
+      }
+    },
+    "src/interaction/dashboard": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 95.2,
+        "statements": 95.2,
+        "functions": 95.8,
+        "branches": 87.9
+      }
+    },
+    "src/platform/compliance/crypto-shredding": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 95.2,
+        "statements": 95.2,
+        "functions": 100,
+        "branches": 86.7
+      }
+    },
+    "src/platform/control-plane/config-center": {
+      "fileCount": 34,
+      "metrics": {
+        "lines": 95.2,
+        "statements": 95.2,
+        "functions": 97.9,
+        "branches": 89.5
+      }
+    },
+    "src/platform/shared/observability": {
+      "fileCount": 32,
+      "metrics": {
+        "lines": 95.3,
+        "statements": 95.3,
+        "functions": 96.1,
+        "branches": 83.4
+      }
+    },
+    "src/org-governance/sso-scim/saml": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 95.4,
+        "statements": 95.4,
+        "functions": 100,
+        "branches": 95.5
+      }
+    },
+    "src/ops-maturity/monitoring": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 95.5,
+        "statements": 95.5,
+        "functions": 100,
+        "branches": 90.9
+      }
+    },
+    "src/platform/state-evidence/audit": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 95.5,
+        "statements": 95.5,
+        "functions": 80,
         "branches": 100
       }
     },
-    "src/ops-maturity/chaos": {
-      "fileCount": 2,
+    "src/scale-ecosystem/multi-region/data-replicator": {
+      "fileCount": 1,
       "metrics": {
-        "lines": 93.9,
-        "statements": 93.9,
+        "lines": 95.6,
+        "statements": 95.6,
         "functions": 100,
-        "branches": 69.4
+        "branches": 94.6
       }
     },
-    "src/platform/orchestration/harness/durable": {
+    "src/org-governance/knowledge-boundary": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 95.7,
+        "statements": 95.7,
+        "functions": 100,
+        "branches": 89.8
+      }
+    },
+    "src/platform/execution/worker-pool/worker": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 95.8,
+        "statements": 95.8,
+        "functions": 100,
+        "branches": 92.7
+      }
+    },
+    "src/platform/state-evidence/incident": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 95.8,
+        "statements": 95.8,
+        "functions": 100,
+        "branches": 77.8
+      }
+    },
+    "src/scale-ecosystem/intelligence": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 95.8,
+        "statements": 95.8,
+        "functions": 95.7,
+        "branches": 80.2
+      }
+    },
+    "src/interaction/autonomy": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 95.9,
+        "statements": 95.9,
+        "functions": 89.3,
+        "branches": 87.4
+      }
+    },
+    "src/platform/control-plane/compliance": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 95.9,
+        "statements": 95.9,
+        "functions": 98.1,
+        "branches": 93.1
+      }
+    },
+    "src/sdk/plugin-sdk": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 95.9,
+        "statements": 95.9,
+        "functions": 97.1,
+        "branches": 94.6
+      }
+    },
+    "src/interaction/proactive-agent": {
       "fileCount": 2,
       "metrics": {
-        "lines": 94.1,
-        "statements": 94.1,
-        "functions": 71.4,
-        "branches": 72.7
+        "lines": 96,
+        "statements": 96,
+        "functions": 96.6,
+        "branches": 88.2
+      }
+    },
+    "src/platform/state-evidence/memory": {
+      "fileCount": 20,
+      "metrics": {
+        "lines": 96,
+        "statements": 96,
+        "functions": 96.6,
+        "branches": 94.2
+      }
+    },
+    "src/domains": {
+      "fileCount": 12,
+      "metrics": {
+        "lines": 96.1,
+        "statements": 96.1,
+        "functions": 93.8,
+        "branches": 88.8
+      }
+    },
+    "src/scale-ecosystem/integration/connectors": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 96.2,
+        "statements": 96.2,
+        "functions": 87.5,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/capacity-planner": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 96.4,
+        "statements": 96.4,
+        "functions": 100,
+        "branches": 92.9
+      }
+    },
+    "src/ops-maturity/multimodal/video-processor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 96.4,
+        "statements": 96.4,
+        "functions": 100,
+        "branches": 83.3
+      }
+    },
+    "src/platform/state-evidence/truth": {
+      "fileCount": 14,
+      "metrics": {
+        "lines": 96.5,
+        "statements": 96.5,
+        "functions": 98.8,
+        "branches": 89.3
+      }
+    },
+    "src/platform/shared/scaling": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 96.6,
+        "statements": 96.6,
+        "functions": 100,
+        "branches": 90.8
+      }
+    },
+    "src/platform/control-plane/approval-center/approval-policy-engine": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 96.7,
+        "statements": 96.7,
+        "functions": 89.7,
+        "branches": 83.7
+      }
+    },
+    "src/platform/orchestration/oapeflir/workflow": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 96.7,
+        "statements": 96.7,
+        "functions": 100,
+        "branches": 91.2
+      }
+    },
+    "src/platform/prompt-engine/rollout": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 96.7,
+        "statements": 96.7,
+        "functions": 100,
+        "branches": 93.6
+      }
+    },
+    "src/platform/prompt-engine/registry": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 97,
+        "statements": 97,
+        "functions": 100,
+        "branches": 89.3
+      }
+    },
+    "src/platform/state-evidence/knowledge/archive": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 97,
+        "statements": 97,
+        "functions": 100,
+        "branches": 93.5
+      }
+    },
+    "src/ops-maturity/drift-detection": {
+      "fileCount": 12,
+      "metrics": {
+        "lines": 97.1,
+        "statements": 97.1,
+        "functions": 97.9,
+        "branches": 88.6
+      }
+    },
+    "src/platform/control-plane/policy-center": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 97.1,
+        "statements": 97.1,
+        "functions": 85.7,
+        "branches": 97.9
+      }
+    },
+    "src/ops-maturity/workflow-debugger": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 97.2,
+        "statements": 97.2,
+        "functions": 100,
+        "branches": 87.3
+      }
+    },
+    "src/platform/execution/worker-pool": {
+      "fileCount": 13,
+      "metrics": {
+        "lines": 97.2,
+        "statements": 97.2,
+        "functions": 100,
+        "branches": 86.3
+      }
+    },
+    "src/apps": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 97.3,
+        "statements": 97.3,
+        "functions": 100,
+        "branches": 93.8
+      }
+    },
+    "src/ops-maturity/platform-ops-agent": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 97.4,
+        "statements": 97.4,
+        "functions": 100,
+        "branches": 97.2
+      }
+    },
+    "src/platform/orchestration/harness": {
+      "fileCount": 10,
+      "metrics": {
+        "lines": 97.7,
+        "statements": 97.7,
+        "functions": 100,
+        "branches": 96.5
+      }
+    },
+    "src/domains/prompt-library": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 97.8,
+        "statements": 97.8,
+        "functions": 100,
+        "branches": 92.7
+      }
+    },
+    "src/platform/orchestration": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 97.8,
+        "statements": 97.8,
+        "functions": 100,
+        "branches": 87.5
+      }
+    },
+    "src/platform/state-evidence": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 97.8,
+        "statements": 97.8,
+        "functions": 100,
+        "branches": 87.5
+      }
+    },
+    "src/scale-ecosystem/feedback-loop/collector": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 97.9,
+        "statements": 97.9,
+        "functions": 96,
+        "branches": 90.6
+      }
+    },
+    "src/sdk/pack-sdk": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 97.9,
+        "statements": 97.9,
+        "functions": 100,
+        "branches": 91.1
       }
     },
     "src/ops-maturity/version-management": {
       "fileCount": 3,
       "metrics": {
-        "lines": 94.3,
-        "statements": 94.3,
+        "lines": 98,
+        "statements": 98,
         "functions": 100,
-        "branches": 81.1
+        "branches": 95.1
       }
     },
-    "src/platform/contracts/request-envelope": {
+    "src/org-governance/approval-routing/route-engine": {
       "fileCount": 1,
       "metrics": {
-        "lines": 94.7,
-        "statements": 94.7,
+        "lines": 98,
+        "statements": 98,
         "functions": 100,
-        "branches": 50
+        "branches": 75
+      }
+    },
+    "src/platform/contracts/types": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 98,
+        "statements": 98,
+        "functions": 96.6,
+        "branches": 96.7
+      }
+    },
+    "src/platform/control-plane": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98,
+        "statements": 98,
+        "functions": 100,
+        "branches": 87.5
+      }
+    },
+    "src/platform/shared/cache": {
+      "fileCount": 12,
+      "metrics": {
+        "lines": 98,
+        "statements": 98,
+        "functions": 97.6,
+        "branches": 93.7
+      }
+    },
+    "src/platform/stability": {
+      "fileCount": 35,
+      "metrics": {
+        "lines": 98,
+        "statements": 98,
+        "functions": 99.3,
+        "branches": 84.7
+      }
+    },
+    "src/platform/execution": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98.1,
+        "statements": 98.1,
+        "functions": 100,
+        "branches": 87.5
+      }
+    },
+    "src/platform/execution/distributed-lock": {
+      "fileCount": 8,
+      "metrics": {
+        "lines": 98.1,
+        "statements": 98.1,
+        "functions": 100,
+        "branches": 92.9
+      }
+    },
+    "src/platform/model-gateway/provider-registry/minimax": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 98.1,
+        "statements": 98.1,
+        "functions": 100,
+        "branches": 92
+      }
+    },
+    "src/platform/orchestration/learn": {
+      "fileCount": 10,
+      "metrics": {
+        "lines": 98.1,
+        "statements": 98.1,
+        "functions": 100,
+        "branches": 82.4
+      }
+    },
+    "src/platform/shared/observability/transports": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98.1,
+        "statements": 98.1,
+        "functions": 100,
+        "branches": 98.4
+      }
+    },
+    "src/platform/control-plane/risk-control": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 98.2,
+        "statements": 98.2,
+        "functions": 100,
+        "branches": 97.4
+      }
+    },
+    "src/platform/state-evidence/truth/sqlite/repositories": {
+      "fileCount": 29,
+      "metrics": {
+        "lines": 98.2,
+        "statements": 98.2,
+        "functions": 99.6,
+        "branches": 88.2
       }
     },
     "src/org-governance": {
       "fileCount": 3,
       "metrics": {
-        "lines": 94.9,
-        "statements": 94.9,
-        "functions": 83.3,
+        "lines": 98.3,
+        "statements": 98.3,
+        "functions": 100,
+        "branches": 87.5
+      }
+    },
+    "src/platform/interface/scheduler": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98.3,
+        "statements": 98.3,
+        "functions": 100,
+        "branches": 91.8
+      }
+    },
+    "src/platform/model-gateway/messages": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98.4,
+        "statements": 98.4,
+        "functions": 100,
+        "branches": 87.8
+      }
+    },
+    "src/platform/orchestration/routing": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 98.4,
+        "statements": 98.4,
+        "functions": 100,
+        "branches": 86.5
+      }
+    },
+    "src/interaction/nl-gateway/disambiguation-handler": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 98.5,
+        "statements": 98.5,
+        "functions": 100,
+        "branches": 96.5
+      }
+    },
+    "src/platform/prompt-engine": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 98.5,
+        "statements": 98.5,
+        "functions": 95.8,
+        "branches": 91.7
+      }
+    },
+    "src/platform/control-plane/incident-control/runbook-executor": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 98.6,
+        "statements": 98.6,
+        "functions": 100,
+        "branches": 90.7
+      }
+    },
+    "src/platform/state-evidence/dlq": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 98.6,
+        "statements": 98.6,
+        "functions": 100,
+        "branches": 94.1
+      }
+    },
+    "src/ops-maturity/cost-optimizer/recommendation-engine": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 98.7,
+        "statements": 98.7,
+        "functions": 100,
+        "branches": 97.4
+      }
+    },
+    "src/domains/roadmap": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 98.8,
+        "statements": 98.8,
+        "functions": 100,
+        "branches": 96.5
+      }
+    },
+    "src/platform/shared/utils": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98.8,
+        "statements": 98.8,
+        "functions": 100,
+        "branches": 94.6
+      }
+    },
+    "src/platform/state-evidence/events": {
+      "fileCount": 14,
+      "metrics": {
+        "lines": 98.8,
+        "statements": 98.8,
+        "functions": 96.9,
+        "branches": 88.4
+      }
+    },
+    "src/ops-maturity": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 98.9,
+        "statements": 98.9,
+        "functions": 100,
+        "branches": 87.5
+      }
+    },
+    "src/platform/shared/cache/utils": {
+      "fileCount": 5,
+      "metrics": {
+        "lines": 98.9,
+        "statements": 98.9,
+        "functions": 100,
+        "branches": 93.3
+      }
+    },
+    "src/platform/state-evidence/truth/sqlite": {
+      "fileCount": 25,
+      "metrics": {
+        "lines": 98.9,
+        "statements": 98.9,
+        "functions": 99.2,
+        "branches": 92.7
+      }
+    },
+    "src/org-governance/delegated-governance/stores": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 99,
+        "statements": 99,
+        "functions": 95.8,
+        "branches": 91.4
+      }
+    },
+    "src/org-governance/sso-scim": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 99.1,
+        "statements": 99.1,
+        "functions": 100,
+        "branches": 97.7
+      }
+    },
+    "src/platform": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 99.1,
+        "statements": 99.1,
+        "functions": 100,
+        "branches": 93.3
+      }
+    },
+    "src/plugins/adapters": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 99.1,
+        "statements": 99.1,
+        "functions": 97.1,
+        "branches": 96.1
+      }
+    },
+    "src/scale-ecosystem": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 99.1,
+        "statements": 99.1,
+        "functions": 100,
+        "branches": 66.7
+      }
+    },
+    "src/org-governance/compliance-engine": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 99.2,
+        "statements": 99.2,
+        "functions": 100,
+        "branches": 94.5
+      }
+    },
+    "src/plugins/retrievers": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 99.2,
+        "statements": 99.2,
+        "functions": 100,
+        "branches": 93.2
+      }
+    },
+    "src/platform/state-evidence/events/projections": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 99.3,
+        "statements": 99.3,
+        "functions": 100,
+        "branches": 92.8
+      }
+    },
+    "src/platform/interface/webhook": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 99.4,
+        "statements": 99.4,
+        "functions": 100,
+        "branches": 95.2
+      }
+    },
+    "src/platform/orchestration/hitl": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 99.4,
+        "statements": 99.4,
+        "functions": 100,
+        "branches": 96.9
+      }
+    },
+    "src/platform/orchestration/planner": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 99.4,
+        "statements": 99.4,
+        "functions": 100,
+        "branches": 91.8
+      }
+    },
+    "src/domains/operations": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 99.5,
+        "statements": 99.5,
+        "functions": 100,
+        "branches": 93.9
+      }
+    },
+    "src/platform/contracts/result-envelope": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 99.5,
+        "statements": 99.5,
+        "functions": 100,
+        "branches": 99.3
+      }
+    },
+    "src/platform/state-evidence/artifacts": {
+      "fileCount": 13,
+      "metrics": {
+        "lines": 99.5,
+        "statements": 99.5,
+        "functions": 100,
+        "branches": 94.7
+      }
+    },
+    "src/org-governance/delegated-governance": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 99.6,
+        "statements": 99.6,
+        "functions": 100,
+        "branches": 91.4
+      }
+    },
+    "src/platform/orchestration/improve-rollout/rollout": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 99.6,
+        "statements": 99.6,
+        "functions": 100,
+        "branches": 95
+      }
+    },
+    "src/platform/execution/queue": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 99.7,
+        "statements": 99.7,
+        "functions": 100,
+        "branches": 91.2
+      }
+    },
+    "src/platform/execution/state-transition": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 99.8,
+        "statements": 99.8,
+        "functions": 97.7,
+        "branches": 96.8
+      }
+    },
+    "src/apps/api": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/apps/console": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/apps/workers": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/benchmarks": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/core/runtime": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/core/runtime/planner": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/core/runtime/supervisor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/academic-research": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/advertising": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/agriculture": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/canonical-meta-model": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/coding": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/content-moderation": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/creative-production": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/customer-service": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/data-engineering": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/ecommerce": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/education": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
         "branches": 100
       }
     },
     "src/domains/eval-framework": {
       "fileCount": 2,
       "metrics": {
-        "lines": 95,
-        "statements": 95,
+        "lines": 100,
+        "statements": 100,
         "functions": 100,
-        "branches": 83.9
-      }
-    },
-    "src/platform/contracts/control-directive": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 95.2,
-        "statements": 95.2,
-        "functions": 100,
-        "branches": 50
-      }
-    },
-    "src/platform/compliance/lineage": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 96.2,
-        "statements": 96.2,
-        "functions": 80,
-        "branches": 85.7
-      }
-    },
-    "src/platform/execution/state-transition": {
-      "fileCount": 3,
-      "metrics": {
-        "lines": 96.4,
-        "statements": 96.4,
-        "functions": 95.5,
-        "branches": 88.5
-      }
-    },
-    "src/platform/interface/console-backend": {
-      "fileCount": 1,
-      "metrics": {
-        "lines": 96.8,
-        "statements": 96.8,
-        "functions": 100,
-        "branches": 67.4
-      }
-    },
-    "src/ops-maturity/compliance-reporter": {
-      "fileCount": 2,
-      "metrics": {
-        "lines": 97.1,
-        "statements": 97.1,
-        "functions": 83.3,
-        "branches": 62.5
-      }
-    },
-    "src/domains/canonical-meta-model": {
-      "fileCount": 4,
-      "metrics": {
-        "lines": 98.6,
-        "statements": 98.6,
-        "functions": 80,
         "branches": 100
       }
     },
-    "src/platform/orchestration/oapeflir/types": {
-      "fileCount": 15,
+    "src/domains/executive-assistant": {
+      "fileCount": 1,
       "metrics": {
-        "lines": 99.3,
-        "statements": 99.3,
-        "functions": 77.8,
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
         "branches": 100
       }
     },
-    "src/platform/state-evidence/truth/sql": {
-      "fileCount": 9,
+    "src/domains/facilities": {
+      "fileCount": 1,
       "metrics": {
-        "lines": 99.7,
-        "statements": 99.7,
-        "functions": 0,
-        "branches": 0
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     },
-    "src/domains/coding": {
+    "src/domains/finance-accounting": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/financial-services": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/game-dev": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/game-publishing": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/healthcare": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/human-resources": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/industry-research": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
@@ -2669,6 +1778,24 @@
         "branches": 100
       }
     },
+    "src/domains/it-operations": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/knowledge-base": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/domains/knowledge-schema": {
       "fileCount": 1,
       "metrics": {
@@ -2676,6 +1803,78 @@
         "statements": 100,
         "functions": 100,
         "branches": 66.7
+      }
+    },
+    "src/domains/legal": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/live-streaming": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/manufacturing": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/marketing": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/product-management": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/project-management": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/quality-assurance": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/quant-trading": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     },
     "src/domains/recipes": {
@@ -2696,6 +1895,159 @@
         "branches": 100
       }
     },
+    "src/domains/supply-chain": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/domains/user-operations": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/autonomy/level-manager": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 80
+      }
+    },
+    "src/interaction/autonomy/promotion-engine": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/autonomy/trust-scorer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/dashboard/alert-router": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/dashboard/health-scorer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/dashboard/metric-aggregator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/goal-decomposer/dependency-graph": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 76.9
+      }
+    },
+    "src/interaction/goal-decomposer/planner": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 90.9
+      }
+    },
+    "src/interaction/goal-decomposer/validator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/nl-gateway/ambiguity-handler": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/nl-gateway/intent-parser": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/nl-gateway/slot-resolver": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/proactive-agent/event-watcher": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/proactive-agent/trigger-engine": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/interaction/ux/onboarding": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 97.8
+      }
+    },
     "src/interaction/ux/template-engine": {
       "fileCount": 1,
       "metrics": {
@@ -2711,10 +2063,109 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 66.7
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/agent-lifecycle/agent-registry": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/agent-lifecycle/canary-controller": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/agent-lifecycle/retirement": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/agent-lifecycle/version-manager": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 95.5
       }
     },
     "src/ops-maturity/capacity-planner/forecaster": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/capacity-planner/simulator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/capacity-planner/trend-analyzer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 94.1
+      }
+    },
+    "src/ops-maturity/chaos": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 98.4
+      }
+    },
+    "src/ops-maturity/compliance-reporter": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/compliance-reporter/evidence-mapper": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/compliance-reporter/report-renderer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/compliance-reporter/template-registry": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
@@ -2729,10 +2180,46 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 97
+        "branches": 100
       }
     },
     "src/ops-maturity/cost-optimizer/attribution-engine": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/cost-optimizer/simulator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/drift-detection/changepoint-detector": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 95
+      }
+    },
+    "src/ops-maturity/drift-detection/cross-agent-analyzer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/drift-detection/fingerprint-builder": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
@@ -2747,7 +2234,7 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 94.4
+        "branches": 94.1
       }
     },
     "src/ops-maturity/edge-runtime/edge-executor": {
@@ -2774,7 +2261,34 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 66.7
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/edge-runtime/sync-queue": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 88.9
+      }
+    },
+    "src/ops-maturity/emergency": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/emergency/forensic-snapshot": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     },
     "src/ops-maturity/emergency/panic-controller": {
@@ -2783,7 +2297,7 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 50
+        "branches": 100
       }
     },
     "src/ops-maturity/emergency/resume-protocol": {
@@ -2792,7 +2306,7 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 33.3
+        "branches": 100
       }
     },
     "src/ops-maturity/explainability": {
@@ -2801,10 +2315,136 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 83.3
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/explainability/causal-chain-builder": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/explainability/evidence-collector": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     },
     "src/ops-maturity/explainability/explanation-cache": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/explainability/explanation-renderer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/explainability/simplified-explainer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/multimodal": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 68.7
+      }
+    },
+    "src/ops-maturity/multimodal/document-parser": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 83.3
+      }
+    },
+    "src/ops-maturity/multimodal/image-processor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/multimodal/modality-router": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/multimodal/speech-processor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/platform-ops-agent/capacity-predictor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 97.1
+      }
+    },
+    "src/ops-maturity/platform-ops-agent/config-optimizer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 84.6
+      }
+    },
+    "src/ops-maturity/platform-ops-agent/dev-assistant": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/platform-ops-agent/health-monitor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 98.6
+      }
+    },
+    "src/ops-maturity/platform-ops-agent/incident-diagnoser": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
@@ -2822,13 +2462,31 @@
         "branches": 100
       }
     },
+    "src/ops-maturity/workflow-debugger/run-comparator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/ops-maturity/workflow-debugger/timeline-renderer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/org-governance/approval-routing": {
       "fileCount": 2,
       "metrics": {
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 50
+        "branches": 97.4
       }
     },
     "src/org-governance/approval-routing/delegation": {
@@ -2837,10 +2495,28 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 66.7
+        "branches": 100
+      }
+    },
+    "src/org-governance/approval-routing/escalation": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     },
     "src/org-governance/compliance-engine/audit-enforcer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/org-governance/compliance-engine/inheritance": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
@@ -2855,7 +2531,7 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 70
+        "branches": 80
       }
     },
     "src/org-governance/delegated-governance/delegation-registry": {
@@ -2865,6 +2541,15 @@
         "statements": 100,
         "functions": 100,
         "branches": 100
+      }
+    },
+    "src/org-governance/delegated-governance/scope-manager": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 95.8
       }
     },
     "src/org-governance/knowledge-boundary/access-log": {
@@ -2885,8 +2570,629 @@
         "branches": 100
       }
     },
+    "src/org-governance/knowledge-boundary/sharing-gate": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/org-governance/org-model/hierarchy": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 83.9
+      }
+    },
+    "src/org-governance/org-model/org-node": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/org-governance/org-model/sync": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/agent-delegation": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/compliance/erasure": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/compliance/lineage": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/constants": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/control-directive": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/delegation-request": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/evidence-record": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/execution-plan": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/execution-receipt": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/model-request": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/projection-update": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/prompt-bundle": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/request-envelope": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/contracts/state-command": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/control-plane/audit-export": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 74.6
+      }
+    },
+    "src/platform/control-plane/iam/threat-model": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/control-plane/replay-repair-control": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/control-plane/rollout-controller": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 70.5
+      }
+    },
+    "src/platform/cost-management": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/interface": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/interface/api/middleware": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 95.2
+      }
+    },
+    "src/platform/interface/console-backend": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/interface/console/hitl": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/interface/ingress": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 97.8
+      }
+    },
+    "src/platform/model-gateway": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/model-gateway/cache": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/model-gateway/cost-tracker": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/model-gateway/fallback": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/model-gateway/router": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/agent-delegation/collaboration-protocol": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/escalation": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/context": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/eval-harness": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/evaluation": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/evaluator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/generator": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/guardrails": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/hitl-runtime": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/loop": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/memory-namespace": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/planner": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/runtime": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/harness/toolbelt": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/learn/pattern-detectors": {
+      "fileCount": 6,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 96.1
+      }
+    },
+    "src/platform/orchestration/oapeflir/improve-rollout/rollout": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/oapeflir/types": {
+      "fileCount": 15,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/orchestration/replan": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/prompt-engine/renderer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 90.5
+      }
+    },
+    "src/platform/prompt-registry": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/shared": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/shared/async": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/platform/shared/cache/policies": {
       "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/shared/context": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/shared/lifecycle": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 62.5,
+        "branches": 89.6
+      }
+    },
+    "src/platform/shared/stability": {
+      "fileCount": 35,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/state-evidence/events/cas": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/state-evidence/knowledge/governance": {
+      "fileCount": 7,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 98.7
+      }
+    },
+    "src/platform/state-evidence/knowledge/intake": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/platform/state-evidence/truth/sql": {
+      "fileCount": 9,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/plugins": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/plugins/planners": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/plugins/presenters": {
+      "fileCount": 4,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 98.5
+      }
+    },
+    "src/plugins/validators": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 89.5
+      }
+    },
+    "src/scale-ecosystem/feedback-loop/analyzer": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/scale-ecosystem/feedback-loop/improvement-tracker": {
+      "fileCount": 1,
       "metrics": {
         "lines": 100,
         "statements": 100,
@@ -2903,13 +3209,67 @@
         "branches": 100
       }
     },
+    "src/scale-ecosystem/integration/connector-runtime": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/scale-ecosystem/integration/health-monitor": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/scale-ecosystem/intelligence/pmf-validation": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 96.6
+      }
+    },
+    "src/scale-ecosystem/marketplace/catalog": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/scale-ecosystem/marketplace/certification": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/scale-ecosystem/marketplace/publisher": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
     "src/scale-ecosystem/multi-region/failover-controller": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 95
+        "branches": 95.2
       }
     },
     "src/scale-ecosystem/multi-region/region-router": {
@@ -2918,10 +3278,28 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 66.7
+        "branches": 88.9
+      }
+    },
+    "src/scale-ecosystem/resource-manager": {
+      "fileCount": 3,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     },
     "src/scale-ecosystem/resource-manager/fair-queue": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/scale-ecosystem/resource-manager/preemption": {
       "fileCount": 1,
       "metrics": {
         "lines": 100,
@@ -2937,6 +3315,15 @@
         "statements": 100,
         "functions": 100,
         "branches": 100
+      }
+    },
+    "src/scale-ecosystem/sla-engine": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 69.2
       }
     },
     "src/scale-ecosystem/sla-engine/breach-detector": {
@@ -2963,7 +3350,43 @@
         "lines": 100,
         "statements": 100,
         "functions": 100,
-        "branches": 50
+        "branches": 100
+      }
+    },
+    "src/sdk": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/sdk/client-sdk": {
+      "fileCount": 2,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 98.3
+      }
+    },
+    "src/sdk/workbench": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
+      }
+    },
+    "src/testing": {
+      "fileCount": 1,
+      "metrics": {
+        "lines": 100,
+        "statements": 100,
+        "functions": 100,
+        "branches": 100
       }
     }
   }

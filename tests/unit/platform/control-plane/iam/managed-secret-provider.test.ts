@@ -8,9 +8,9 @@ import test from "node:test";
 import type {
   ManagedSecretProvider,
   SecretProviderMetadata,
-} from "../../../../../../src/platform/control-plane/iam/managed-secret-provider.js";
-import type { SecretProviderIssuedLease } from "../../../../../../src/platform/control-plane/iam/env-secret-provider.js";
-import type { SecretProviderKind } from "../../../../../../src/platform/contracts/types/domain.js";
+} from "../../../../../src/platform/control-plane/iam/managed-secret-provider.js";
+import type { SecretProviderIssuedLease } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+import type { SecretProviderKind } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Mock implementation to test interface conformance
 const createMockProvider = (): ManagedSecretProvider & {
