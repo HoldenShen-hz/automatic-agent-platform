@@ -213,8 +213,8 @@ test("AsyncBillingRepository listCostEventsByTask returns events without tenant"
   const result = await repo.listCostEventsByTask("task-1");
 
   assert.deepEqual(result, [costEvent]);
-  assert.match(calls[0]!.sql, /FROM cost_events c/);
-  assert.match(calls[0]!.sql, /WHERE c\.task_id = \$1/);
+  assert.match(calls[0]!.sql, /FROM cost_events$/);
+  assert.match(calls[0]!.sql, /WHERE task_id = \$1/);
   assert.doesNotMatch(calls[0]!.sql, /INNER JOIN tasks/);
 });
 

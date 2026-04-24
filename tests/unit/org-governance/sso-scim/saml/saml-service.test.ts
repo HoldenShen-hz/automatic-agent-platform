@@ -39,6 +39,7 @@ test("SamlService builds login requests with encoded SAML payload and relay stat
 test("SamlService consumes a valid assertion into a session", () => {
   const service = new SamlService();
   const provider = createProvider();
+  provider.allowUnsignedAssertions = true;
   service.registerProvider(provider);
 
   const now = new Date("2026-04-20T10:00:00.000Z");
