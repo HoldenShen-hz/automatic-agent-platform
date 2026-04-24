@@ -86,6 +86,17 @@ export {
 // ─── Browser Executor ──────────────────────────────────────────────────────
 
 export {
+  AdapterExecutor,
+  type AdapterDescriptor,
+  type AdapterExecutionContext,
+  type AdapterExecutionRequest,
+  type AdapterExecutionResult,
+  type AdapterExecutorOptions,
+  type AdapterProtocol,
+  type AdapterRetryPolicy,
+} from "./adapter-executor.js";
+
+export {
   BrowserExecutor,
   createBrowserExecutor,
   type BrowserAction,

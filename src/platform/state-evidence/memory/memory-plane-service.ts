@@ -8,6 +8,7 @@ import type {
 } from "./memory-provider.js";
 import type { CacheOrchestrationService } from "../../shared/cache/cache-orchestration-service.js";
 import { MemoryPromotionEngine, type MemoryPromotionResult } from "./memory-promotion-engine.js";
+import { scopeToArchitectureLayer } from "./memory-layer-model.js";
 
 export type MemoryPlaneLayer =
   | "runtime"
@@ -17,8 +18,17 @@ export type MemoryPlaneLayer =
   | "user"
   | "evolution";
 
+export type ArchitectureMemoryPlaneLayer =
+  | "working"
+  | "session"
+  | "episodic"
+  | "semantic"
+  | "procedural"
+  | "meta";
+
 export interface MemoryPlaneView {
   layers: Record<MemoryPlaneLayer, MemoryRecord[]>;
+  architectureLayers: Record<ArchitectureMemoryPlaneLayer, MemoryRecord[]>;
   promptBlock: string;
   fewShotExampleCount: number;
   memoryIds: string[];
@@ -58,6 +68,17 @@ function emptyLayers(): Record<MemoryPlaneLayer, MemoryRecord[]> {
   };
 }
 
+function emptyArchitectureLayers(): Record<ArchitectureMemoryPlaneLayer, MemoryRecord[]> {
+  return {
+    working: [],
+    session: [],
+    episodic: [],
+    semantic: [],
+    procedural: [],
+    meta: [],
+  };
+}
+
 export class MemoryPlaneService {
   public constructor(
     private readonly provider: MemoryProvider,
@@ -78,12 +99,15 @@ export class MemoryPlaneService {
       : await this.cache.getOrComputeMemoryRetrieval(query, loader, tags);
 
     const layers = emptyLayers();
+    const architectureLayers = emptyArchitectureLayers();
     for (const memory of wrapped.value.memories) {
       layers[toLayer(memory.scope)].push(memory);
+      architectureLayers[scopeToArchitectureLayer(memory.scope) as ArchitectureMemoryPlaneLayer].push(memory);
     }
 
     return {
       layers,
+      architectureLayers,
       promptBlock: wrapped.value.promptBlock,
       fewShotExampleCount: wrapped.value.fewShotExamples.length,
       memoryIds: wrapped.value.memories.map((memory) => memory.id),

@@ -6,3 +6,4 @@ export * from "./prompt-engine-baseline.js";
 export * from "./prompt-engine-bootstrap.js";
 export * from "./conversation-template-service.js";
 export * from "./conversation-template-config-loader.js";
+export * from "./prompt-injection-guard.js";

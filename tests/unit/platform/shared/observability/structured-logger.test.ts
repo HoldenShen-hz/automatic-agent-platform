@@ -34,8 +34,19 @@ test("StructuredLogger.log adds entry with timestamp", () => {
 
   assert.equal(entry.level, "info");
   assert.equal(entry.message, "test message");
+  assert.equal(entry.plane, "X1");
   assert.equal(typeof entry.createdAt, "string");
   assert.ok(entry.createdAt.includes("T"), "ISO timestamp should contain T");
+});
+
+test("StructuredLogger infers plane from source file path", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+  });
+
+  const entry = logger.info("dispatch");
+  assert.equal(entry.plane, "P4");
 });
 
 test("StructuredLogger.log includes optional fields when provided", () => {

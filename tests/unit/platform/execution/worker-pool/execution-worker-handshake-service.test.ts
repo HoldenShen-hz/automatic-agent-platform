@@ -296,7 +296,7 @@ test("claimExecution returns execution_not_found when execution does not exist",
   assert.equal(result.reasonCode, "execution_not_found");
 });
 
-test.skip("claimExecution returns resource_limit_exceeded when resource ceiling guard fails", () => {
+test("claimExecution returns resource_limit_exceeded when resource ceiling guard fails", () => {
   const store = createMockStore({
     getLatestExecutionLease: () => makeExecutionLease(),
     getActiveExecutionLease: () => makeExecutionLease(),
@@ -456,7 +456,7 @@ test("recordHeartbeat returns worker_not_trusted for remote worker without regis
   assert.equal(result.reasonCode, "worker_not_trusted");
 });
 
-test.skip("recordHeartbeat returns resource_limit_exceeded when resource ceiling guard fails", () => {
+test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guard fails", () => {
   const store = createMockStore({
     getLatestExecutionLease: () => makeExecutionLease(),
     getActiveExecutionLease: () => makeExecutionLease(),

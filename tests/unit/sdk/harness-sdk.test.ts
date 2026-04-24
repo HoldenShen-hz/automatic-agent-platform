@@ -26,9 +26,19 @@ test("HarnessSdk provides a stable facade over HarnessRuntimeService", () => {
     outputs: { plan: "ok" },
   });
   const decision = sdk.decide({ evaluatorScore: 0.9 });
+  const sleeping = sdk.sleep(runWithStep, "wait_for_event", "2026-04-25T00:00:00.000Z");
+  const resumed = sdk.resume(sleeping);
+  const reviewRequested = sdk.requestHumanReview(resumed, "needs signoff", ["evidence_1"]);
+  const reviewResolved = sdk.resolveReview(reviewRequested, "approved", "operator_1");
+  const timeline = sdk.getTimeline(reviewResolved);
+  const evaluation = sdk.getEvaluation(reviewResolved);
 
   assert.ok(run.runId.startsWith("harness_run_"));
   assert.equal(runWithStep.steps.length, 1);
   assert.equal(decision.action, "accept");
+  assert.equal(reviewRequested.status, "waiting_hitl");
+  assert.equal(reviewResolved.status, "running");
+  assert.ok(timeline.length >= 3);
+  assert.ok(evaluation != null);
   assert.deepEqual(sdk.assertInvariants(runWithStep).violations, []);
 });

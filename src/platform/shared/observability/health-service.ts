@@ -35,6 +35,10 @@
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { summarizeWorkerLoadSkew } from "../../execution/worker-pool/worker-load-balancing.js";
+import {
+  mapHealthDegradationModeToUnifiedRuntimeMode,
+  type UnifiedRuntimeMode,
+} from "../../contracts/types/unified-runtime-mode.js";
 import { ProviderHealthTracker } from "./provider-health-tracker.js";
 import { StructuredLogger } from "./structured-logger.js";
 
@@ -490,6 +494,10 @@ export class HealthService {
     const row = this.db.connection.prepare(sql).get() as { count?: number } | undefined;
     return Number(row?.count ?? 0);
   }
+}
+
+export function toUnifiedRuntimeMode(mode: HealthStatusReport["degradationMode"]): UnifiedRuntimeMode {
+  return mapHealthDegradationModeToUnifiedRuntimeMode(mode);
 }
 
 function oldestAgeSeconds(timestamps: string[], nowMs: number): number | null {

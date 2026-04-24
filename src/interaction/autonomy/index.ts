@@ -1,4 +1,8 @@
 import { nowIso } from "../../platform/contracts/types/ids.js";
+import {
+  mapAutonomyLevelToUnifiedRuntimeMode,
+  type UnifiedRuntimeMode,
+} from "../../platform/contracts/types/unified-runtime-mode.js";
 import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-service.js";
 export { AutonomyGovernanceService } from "./autonomy-governance-service.js";
 
@@ -287,6 +291,10 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
       changeEvents,
     };
   }
+}
+
+export function toUnifiedRuntimeMode(level: AutonomyLevel): UnifiedRuntimeMode {
+  return mapAutonomyLevelToUnifiedRuntimeMode(level);
 }
 
 function compareLevels(left: AutonomyLevel, right: AutonomyLevel): number {

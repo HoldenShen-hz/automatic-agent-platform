@@ -5,7 +5,7 @@ import type { BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard
 import { ValidationError } from "../../contracts/errors.js";
 import { readTrimmedEnv } from "./runtime-env.js";
 
-const COMPLIANCE_PROGRAM_ACTIONS = ["summary", "export"] as const;
+export const COMPLIANCE_PROGRAM_ACTIONS = ["summary", "export"] as const;
 const HA_PROGRAM_ACTIONS = ["summary", "export"] as const;
 const PMF_ACTIONS = ["report", "run", "export", "history", "latest"] as const;
 const PERCEPTION_ACTIONS = ["upsert_source", "ingest", "brief", "propose", "export", "sources", "briefs"] as const;

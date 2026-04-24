@@ -7,8 +7,9 @@
  * @see docs_en/reviews/architecture-design-vs-implementation-review.md §52
  */
 
-// Note: @grpc/grpc-js would be imported in production
-// This provides the TypeScript interfaces and implementation structure
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 /**
  * gRPC adapter configuration
@@ -149,17 +150,35 @@ export class GrpcAdapterService {
   private server: GrpcServer | null = null;
   private readonly serviceHandlers = new Map<string, GrpcServiceHandler>();
   private readonly registeredServices = new Set<string>();
+  private nativeBindingAvailable: boolean | null = null;
 
   public constructor(config: GrpcAdapterConfig) {
     this.config = config;
   }
 
   /**
-   * Check if gRPC is available (would check for @grpc/grpc-js in production)
+   * Check if the adapter is available.
+   * The service always supports the in-memory adapter path and can optionally
+   * activate native bindings when `@grpc/grpc-js` is installed.
    */
   public isAvailable(): boolean {
-    // In production, this would check if @grpc/grpc-js is installed
     return true;
+  }
+
+  /**
+   * Detects whether native gRPC bindings are installed in the current runtime.
+   */
+  public hasNativeGrpcBindings(): boolean {
+    if (this.nativeBindingAvailable != null) {
+      return this.nativeBindingAvailable;
+    }
+    try {
+      require.resolve("@grpc/grpc-js");
+      this.nativeBindingAvailable = true;
+    } catch {
+      this.nativeBindingAvailable = false;
+    }
+    return this.nativeBindingAvailable;
   }
 
   /**

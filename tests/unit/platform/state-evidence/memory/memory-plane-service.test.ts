@@ -142,6 +142,7 @@ test("buildView returns MemoryPlaneView with correct layer categorization for ag
   const result = await service.buildView({ scopes: ["agent"] });
 
   assert.equal(result.layers.agent.length, 1);
+  assert.equal(result.architectureLayers.episodic.length, 1);
   assert.equal(result.layers.session.length, 0);
 });
 
@@ -162,6 +163,7 @@ test("buildView returns MemoryPlaneView with correct layer categorization for pr
   const result = await service.buildView({ scopes: ["project"] });
 
   assert.equal(result.layers.project.length, 1);
+  assert.equal(result.architectureLayers.semantic.length, 1);
 });
 
 test("buildView returns MemoryPlaneView with correct layer categorization for user scope", async () => {

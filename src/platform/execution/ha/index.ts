@@ -7,6 +7,7 @@ export * from "./ha-coordinator-service.js";
 export * from "./ha-repository.js";
 export * from "./leader-election-service.js";
 export * from "./lease-reclaimer-service.js";
+export * from "./recovery-orchestrator-service.js";
 export * from "./stuck-run-sweeper-service.js";
 export * from "./types.js";
 export * from "./wal-checkpoint-service.js";

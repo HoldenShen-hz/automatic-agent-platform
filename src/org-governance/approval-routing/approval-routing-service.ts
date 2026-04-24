@@ -14,6 +14,29 @@ export interface ApprovalRoutingResult extends ApprovalRouteDecision {
   readonly auditRecord: GovernanceAuditRecord;
 }
 
+export type ApprovalChainMode = "sequential" | "parallel" | "conditional";
+
+export interface ApprovalChainStep {
+  readonly stepId: string;
+  readonly approverIds: readonly string[];
+  readonly mode: ApprovalChainMode;
+  readonly deadlineAt: string | null;
+  readonly escalationTarget: string | null;
+  readonly reasonCodes: readonly string[];
+}
+
+export interface ApprovalChainPlan {
+  readonly chainMode: ApprovalChainMode;
+  readonly matchedOrgNodeId: string;
+  readonly steps: readonly ApprovalChainStep[];
+}
+
+export interface ApprovalChainOptions {
+  readonly chainMode?: ApprovalChainMode;
+  readonly timeoutMinutes?: number;
+  readonly conditionalApproverIds?: readonly string[];
+}
+
 export interface ApprovalRoutingServiceOptions {
   readonly orgNodes: readonly OrgNode[];
   readonly delegations?: readonly ApprovalDelegation[];
@@ -61,6 +84,56 @@ export class ApprovalRoutingService {
         ],
         occurredAt: nowIso,
       }),
+    };
+  }
+
+  public getAmountThresholdMatrix(): readonly AmountThresholdRule[] {
+    return [...this.amountThresholdRules];
+  }
+
+  public planChain(
+    request: ApprovalRouteRequest,
+    createdAtIso: string,
+    nowIso: string,
+    options: ApprovalChainOptions = {},
+  ): ApprovalChainPlan {
+    const routing = this.route(request, createdAtIso, nowIso);
+    const chainMode = options.chainMode ?? "sequential";
+    const deadlineAt = options.timeoutMinutes == null
+      ? null
+      : new Date(Date.parse(nowIso) + options.timeoutMinutes * 60_000).toISOString();
+    const conditionalApproverIds = [...(options.conditionalApproverIds ?? [])].filter((id) => id.length > 0);
+
+    let steps: ApprovalChainStep[];
+    if (chainMode === "parallel") {
+      steps = [{
+        stepId: `approval_step_${routing.matchedOrgNodeId}_1`,
+        approverIds: routing.approverChain,
+        mode: "parallel",
+        deadlineAt,
+        escalationTarget: routing.escalatedTo,
+        reasonCodes: routing.auditRecord.reasonCodes,
+      }];
+    } else {
+      const orderedApprovers = chainMode === "conditional"
+        ? [...routing.approverChain, ...conditionalApproverIds.filter((id) => !routing.approverChain.includes(id))]
+        : [...routing.approverChain];
+      steps = orderedApprovers.map((approverId, index) => ({
+        stepId: `approval_step_${routing.matchedOrgNodeId}_${index + 1}`,
+        approverIds: [approverId],
+        mode: chainMode,
+        deadlineAt,
+        escalationTarget: routing.escalatedTo,
+        reasonCodes: chainMode === "conditional"
+          ? [...routing.auditRecord.reasonCodes, "approval.routing.conditional"]
+          : routing.auditRecord.reasonCodes,
+      }));
+    }
+
+    return {
+      chainMode,
+      matchedOrgNodeId: routing.matchedOrgNodeId,
+      steps,
     };
   }
 

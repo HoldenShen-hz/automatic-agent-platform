@@ -28,7 +28,7 @@ export const EXECUTION_CAPABILITY_BASELINES: readonly ExecutionCapabilityBaselin
   { capabilityId: "ha", entryModule: "src/platform/execution/ha/index.ts", description: "HA coordinator, leader election, and lease reclaim baselines.", baselineServices: ["HaCoordinatorService"] },
   { capabilityId: "hot-upgrade", entryModule: "src/platform/execution/hot-upgrade/index.ts", description: "Hot upgrade planning and execution baselines.", baselineServices: ["HotUpgradeService"] },
   { capabilityId: "lease", entryModule: "src/platform/execution/lease/index.ts", description: "Execution lease, renewal, and expiration baselines.", baselineServices: ["ExecutionLeaseService"] },
-  { capabilityId: "plugin-executor", entryModule: "src/platform/execution/plugin-executor/index.ts", description: "Plugin execution runtime baselines.", baselineServices: ["PluginExecutorService"] },
+  { capabilityId: "plugin-executor", entryModule: "src/platform/execution/plugin-executor/index.ts", description: "Plugin execution runtime baselines.", baselineServices: ["PluginExecutorService", "AdapterExecutor"] },
   { capabilityId: "queue", entryModule: "src/platform/execution/queue/index.ts", description: "Task queueing and durable enqueue baselines.", baselineServices: ["RedisQueueAdapter"] },
   { capabilityId: "recovery", entryModule: "src/platform/execution/recovery/index.ts", description: "Recovery, replay, and stuck-run resolution baselines.", baselineServices: ["RecoveryService"] },
   { capabilityId: "resource", entryModule: "src/platform/execution/resource/index.ts", description: "Runtime resource and process tracking baselines.", baselineServices: ["ProcessTrackerService"] },

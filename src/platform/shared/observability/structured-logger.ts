@@ -31,6 +31,8 @@ import { dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 import type { LogTransport } from "./log-transport.js";
 import { getActiveTelemetryContext } from "./otel-tracer.js";
 
+export type StructuredPlane = "P1" | "P2" | "P3" | "P4" | "P5" | "X1";
+
 /**
  * Structured log entry with level, message, optional correlation IDs
  * (taskId, agentId, sessionId, stepId, traceId), optional data payload,
@@ -39,6 +41,7 @@ import { getActiveTelemetryContext } from "./otel-tracer.js";
 export interface StructuredLogEntry {
   level: "debug" | "info" | "warn" | "error";
   message: string;
+  plane?: StructuredPlane;
   taskId?: string;
   agentId?: string;
   sessionId?: string;
@@ -67,6 +70,12 @@ export interface StructuredLoggerFileSinkOptions {
   filePath: string;
   maxBytes?: number | null;
   maxFiles?: number;
+}
+
+export interface StructuredLoggerOptions {
+  retentionLimit?: number;
+  plane?: StructuredPlane;
+  planeSourceFile?: string;
 }
 
 /**
@@ -117,6 +126,7 @@ export class StructuredLogger {
 
   private readonly buffer: (StructuredLogEntry | undefined)[];
   private readonly retentionLimit: number;
+  private readonly plane: StructuredPlane;
   private head: number = 0;
   private count: number = 0;
   private droppedEntryCount: number = 0;
@@ -208,8 +218,9 @@ export class StructuredLogger {
     StructuredLogger.transports = [];
   }
 
-  public constructor(options: { retentionLimit?: number } = {}) {
+  public constructor(options: StructuredLoggerOptions = {}) {
     this.retentionLimit = Math.max(1, Math.trunc(options.retentionLimit ?? 500));
+    this.plane = options.plane ?? inferStructuredPlane(options.planeSourceFile);
     // Pre-allocate buffer for O(1) insertion
     this.buffer = new Array(this.retentionLimit);
   }
@@ -230,6 +241,7 @@ export class StructuredLogger {
 
     const record: StructuredLogEntry = {
       ...entry,
+      plane: entry.plane ?? this.plane,
       ...(traceId !== undefined ? { traceId } : {}),
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
@@ -434,4 +446,32 @@ export class StructuredLogger {
       this.rotationScheduled = false;
     }
   }
+}
+
+function inferStructuredPlane(explicitSourceFile?: string): StructuredPlane {
+  const sourcePath = explicitSourceFile ?? inferCallerSourcePath();
+  return mapPathToStructuredPlane(sourcePath);
+}
+
+function inferCallerSourcePath(): string {
+  const stack = new Error().stack?.split("\n") ?? [];
+  for (const line of stack) {
+    if (line.includes("structured-logger")) {
+      continue;
+    }
+    const match = line.match(/(?:file:\/\/)?(\/[^:\)\s]+(?:src|dist)\/[^:\)\s]+)/);
+    if (match?.[1] != null) {
+      return match[1];
+    }
+  }
+  return "";
+}
+
+function mapPathToStructuredPlane(sourcePath: string): StructuredPlane {
+  if (sourcePath.includes("/platform/interface/")) return "P1";
+  if (sourcePath.includes("/platform/control-plane/")) return "P2";
+  if (sourcePath.includes("/platform/orchestration/")) return "P3";
+  if (sourcePath.includes("/platform/execution/")) return "P4";
+  if (sourcePath.includes("/platform/state-evidence/")) return "P5";
+  return "X1";
 }

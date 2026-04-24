@@ -1,5 +1,9 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
+import {
+  mapPolicyModeToUnifiedRuntimeMode,
+  type UnifiedRuntimeMode,
+} from "../../contracts/types/unified-runtime-mode.js";
 
 export type PolicySubjectType = "user" | "agent" | "system";
 
@@ -159,6 +163,10 @@ export class PolicyCenterService {
       return this.result(input, "allow_with_constraints", "policy.allow_with_constraints", false, constraints.constraints, false, constraints.matchedRuleRefs, "Action allowed with authoritative constraints.", auditPayload);
     }
     return this.result(input, "allow", "policy.allow", false, {}, false, ["default_allow"], "Action allowed by policy center.", auditPayload);
+  }
+
+  public static toUnifiedRuntimeMode(mode: PolicyMode): UnifiedRuntimeMode {
+    return mapPolicyModeToUnifiedRuntimeMode(mode);
   }
 
   private isActionAllowedByRole(input: PolicyDecisionRequest): boolean {
@@ -352,6 +360,10 @@ export class PolicyCenterService {
       explainSummary,
     };
   }
+}
+
+export function toUnifiedRuntimeMode(mode: PolicyMode): UnifiedRuntimeMode {
+  return PolicyCenterService.toUnifiedRuntimeMode(mode);
 }
 
 function validateRequest(input: PolicyDecisionRequest): void {

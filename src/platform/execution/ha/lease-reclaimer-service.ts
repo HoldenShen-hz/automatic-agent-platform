@@ -11,6 +11,12 @@
  */
 
 import { nowIso } from "../../contracts/types/ids.js";
+import {
+  buildRecoveryCadence,
+  type RecoveryCadence,
+  type RecoveryReport,
+  type RecoveryWorker,
+} from "../../contracts/types/recovery-cadence.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type {
   HaLevel,
@@ -54,7 +60,7 @@ export interface LeaseReclaimerServiceOptions {
  * Works in conjunction with the LeaderElectionService to ensure proper failover
  * when leadership is lost.
  */
-export class LeaseReclaimerService {
+export class LeaseReclaimerService implements RecoveryWorker {
   private intervalHandle: ReturnType<typeof setTimeout> | null = null;
   private disposed: boolean = false;
   private running: boolean = false;
@@ -166,6 +172,58 @@ export class LeaseReclaimerService {
    */
   public async reclaimOnce(): Promise<LeaseReclaimResult> {
     return this.doReclaimCycle();
+  }
+
+  public getWorkerId(): string {
+    return this.nodeId;
+  }
+
+  public getRecoveryCadence(): RecoveryCadence {
+    return buildRecoveryCadence({
+      intervalMs: this.config.reclaimIntervalMs,
+      maxConcurrent: 1,
+      priority: "high",
+    });
+  }
+
+  public async runRecoveryCycle(): Promise<RecoveryReport> {
+    const startedAt = nowIso();
+    const startedMs = Date.now();
+    try {
+      const result = await this.reclaimOnce();
+      return {
+        workerId: this.getWorkerId(),
+        workerType: "lease_reclaimer",
+        startedAt,
+        completedAt: nowIso(),
+        durationMs: Date.now() - startedMs,
+        itemsProcessed: result.reclaimedCount + result.failedNodeIds.length,
+        itemsRecovered: result.reclaimedCount,
+        errors: result.failedNodeIds.map((nodeId) => ({
+          code: "lease_reclaimer.failed_node",
+          message: `Lease reclaim or failover failed for node ${nodeId}.`,
+          details: { nodeId },
+        })),
+        metadata: {
+          failoverTriggered: result.failoverTriggered,
+          failedNodeIds: result.failedNodeIds,
+        },
+      };
+    } catch (error) {
+      return {
+        workerId: this.getWorkerId(),
+        workerType: "lease_reclaimer",
+        startedAt,
+        completedAt: nowIso(),
+        durationMs: Date.now() - startedMs,
+        itemsProcessed: 0,
+        itemsRecovered: 0,
+        errors: [{
+          code: "lease_reclaimer.cycle_failed",
+          message: error instanceof Error ? error.message : String(error),
+        }],
+      };
+    }
   }
 
   /**

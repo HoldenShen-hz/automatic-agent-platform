@@ -11,6 +11,12 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  buildRecoveryCadence,
+  type RecoveryCadence,
+  type RecoveryReport,
+  type RecoveryWorker,
+} from "../../contracts/types/recovery-cadence.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type {
   HaLevel,
@@ -66,7 +72,7 @@ export interface StuckRunSweeperServiceOptions {
  *
  * The service tracks runs in memory and persists state for recovery.
  */
-export class StuckRunSweeperService {
+export class StuckRunSweeperService implements RecoveryWorker {
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private disposed: boolean = false;
   private running: boolean = false;
@@ -297,6 +303,57 @@ export class StuckRunSweeperService {
    */
   public async sweepOnce(): Promise<StuckRun[]> {
     return this.doSweepCycle();
+  }
+
+  public getWorkerId(): string {
+    return "stuck-run-sweeper";
+  }
+
+  public getRecoveryCadence(): RecoveryCadence {
+    return buildRecoveryCadence({
+      intervalMs: this.config.sweepIntervalMs,
+      maxConcurrent: 1,
+      priority: "normal",
+    });
+  }
+
+  public async runRecoveryCycle(): Promise<RecoveryReport> {
+    const startedAt = nowIso();
+    const startedMs = Date.now();
+    try {
+      const sweptRuns = await this.sweepOnce();
+      const metrics = this.getMetrics();
+      const recoveredCount = sweptRuns.filter((run) => run.status === "resolved" || run.status === "cleaned_up").length;
+      return {
+        workerId: this.getWorkerId(),
+        workerType: "stuck_run_sweeper",
+        startedAt,
+        completedAt: nowIso(),
+        durationMs: Date.now() - startedMs,
+        itemsProcessed: sweptRuns.length,
+        itemsRecovered: recoveredCount,
+        errors: [],
+        metadata: {
+          warningCount: metrics.totalWarnings,
+          killedCount: metrics.totalKilled,
+          cleanedUpCount: metrics.totalCleanedUp,
+        },
+      };
+    } catch (error) {
+      return {
+        workerId: this.getWorkerId(),
+        workerType: "stuck_run_sweeper",
+        startedAt,
+        completedAt: nowIso(),
+        durationMs: Date.now() - startedMs,
+        itemsProcessed: 0,
+        itemsRecovered: 0,
+        errors: [{
+          code: "stuck_run_sweeper.cycle_failed",
+          message: error instanceof Error ? error.message : String(error),
+        }],
+      };
+    }
   }
 
   /**

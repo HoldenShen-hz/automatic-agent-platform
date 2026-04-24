@@ -451,3 +451,46 @@ test("ApprovalRoutingService finds owner at department level in hierarchy", () =
   assert.equal(result.matchedOrgNodeId, "dept");
   assert.deepStrictEqual(result.approverChain, ["director"]);
 });
+
+test("ApprovalRoutingService exposes amount threshold matrix and sequential chain plan", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director", "vp"] })];
+  const thresholdRules = [{ maxAmountUsd: 5_000, targetNodeTypes: ["department"] as const }];
+  const service = new ApprovalRoutingService({ orgNodes: nodes, amountThresholdRules: thresholdRules });
+
+  const matrix = service.getAmountThresholdMatrix();
+  const plan = service.planChain(
+    { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "medium", amountUsd: 300 },
+    "2026-04-20T00:00:00.000Z",
+    "2026-04-20T00:05:00.000Z",
+    { chainMode: "sequential", timeoutMinutes: 15 },
+  );
+
+  assert.equal(matrix.length, 1);
+  assert.equal(plan.chainMode, "sequential");
+  assert.equal(plan.steps.length, 2);
+  assert.deepStrictEqual(plan.steps[0]?.approverIds, ["director"]);
+  assert.ok(plan.steps[0]?.deadlineAt?.includes("T"));
+});
+
+test("ApprovalRoutingService builds parallel and conditional chain plans", () => {
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director", "vp"] })];
+  const service = new ApprovalRoutingService({ orgNodes: nodes });
+
+  const parallelPlan = service.planChain(
+    { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 600 },
+    "2026-04-20T00:00:00.000Z",
+    "2026-04-20T00:05:00.000Z",
+    { chainMode: "parallel" },
+  );
+  const conditionalPlan = service.planChain(
+    { requesterId: "user-1", orgNodeId: "dept-1", riskLevel: "high", amountUsd: 600 },
+    "2026-04-20T00:00:00.000Z",
+    "2026-04-20T00:05:00.000Z",
+    { chainMode: "conditional", conditionalApproverIds: ["legal-reviewer"] },
+  );
+
+  assert.equal(parallelPlan.steps.length, 1);
+  assert.deepStrictEqual(parallelPlan.steps[0]?.approverIds, ["director", "vp"]);
+  assert.equal(conditionalPlan.steps.length, 3);
+  assert.deepStrictEqual(conditionalPlan.steps[2]?.approverIds, ["legal-reviewer"]);
+});

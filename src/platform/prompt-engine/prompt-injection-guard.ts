@@ -1,0 +1,15 @@
+export {
+  DEFAULT_ML_CLASSIFIER_CONFIG,
+  classifyPromptInjectionRisk,
+  embedCanaryToken,
+  detectCanaryTokenLeakage,
+  classifyRiskLevel,
+  protectSystemPrompt,
+  inspectProtectedModelOutput,
+  type CanaryTokenResult,
+  type MLInjectionClassifierConfig,
+  type PromptInjectionClassification,
+  type PromptInjectionSignal,
+  type PromptProtectionInspection,
+  type PromptProtectionPlan,
+} from "../shared/stability/prompt-injection-guard.js";

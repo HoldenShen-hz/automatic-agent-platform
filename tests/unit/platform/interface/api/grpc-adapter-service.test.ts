@@ -21,6 +21,7 @@ test("GrpcAdapterService creates with config", () => {
   const adapter = new GrpcAdapterService(config);
 
   assert.equal(adapter.isAvailable(), true);
+  assert.equal(typeof adapter.hasNativeGrpcBindings(), "boolean");
   assert.equal(adapter.getServerAddress(), "0.0.0.0:50051");
 });
 

@@ -4,6 +4,7 @@ import {
   type HarnessDecision,
   type HarnessRun,
   type HarnessRole,
+  type HarnessTimelineEvent,
 } from "../../platform/orchestration/harness/index.js";
 
 export interface HarnessSdkCreateRunInput {
@@ -57,5 +58,54 @@ export class HarnessSdk {
 
   public assertInvariants(run: HarnessRun) {
     return this.runtime.assertInvariants(run);
+  }
+
+  public sleep(runOrId: HarnessRun | string, reason: string, resumeAt: string): HarnessRun {
+    const run = this.requireRun(runOrId);
+    return this.runtime.sleep(run, reason, resumeAt);
+  }
+
+  public resume(runOrId: HarnessRun | string): HarnessRun {
+    const run = this.requireRun(runOrId);
+    return this.runtime.resume(run);
+  }
+
+  public requestHumanReview(
+    runOrId: HarnessRun | string,
+    reason: string,
+    evidenceRefs: readonly string[] = [],
+  ): HarnessRun {
+    const run = this.requireRun(runOrId);
+    return this.runtime.openHitlReview(run, reason, evidenceRefs);
+  }
+
+  public resolveReview(
+    runOrId: HarnessRun | string,
+    resolution: "approved" | "rejected",
+    actorId: string,
+  ): HarnessRun {
+    const run = this.requireRun(runOrId);
+    return this.runtime.resolveHitlReview(run, resolution, actorId);
+  }
+
+  public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {
+    const run = this.requireRun(runOrId);
+    return this.runtime.listTimeline(run);
+  }
+
+  public getEvaluation(runOrId: HarnessRun | string) {
+    const run = this.requireRun(runOrId);
+    return this.runtime.evaluateRun(run);
+  }
+
+  private requireRun(runOrId: HarnessRun | string): HarnessRun {
+    if (typeof runOrId !== "string") {
+      return runOrId;
+    }
+    const restored = this.runtime.restoreRun(runOrId);
+    if (restored == null) {
+      throw new Error(`harness_sdk.run_not_found:${runOrId}`);
+    }
+    return restored;
   }
 }

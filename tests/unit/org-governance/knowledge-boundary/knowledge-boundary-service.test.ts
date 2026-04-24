@@ -293,3 +293,35 @@ test("KnowledgeBoundaryService deny reason codes include chinese wall codes plus
   assert.ok(decision.reasonCodes.includes("knowledge_boundary.conflict_group:group_blocked"));
   assert.ok(decision.reasonCodes.includes("knowledge_boundary.access_denied"));
 });
+
+test("KnowledgeBoundaryService evaluates dynamic isolation policies and tracks violations", () => {
+  const service = new KnowledgeBoundaryService();
+  const boundary = {
+    boundaryId: "kb_dynamic",
+    ownerOrgNodeId: "dept_finance",
+    namespaceIds: [],
+    defaultVisibility: "private" as const,
+    allowedOrgNodeIds: [],
+  };
+
+  const decision = service.evaluateDynamicAccess({
+    boundary,
+    requesterId: "user_blocked",
+    requesterOrgNodeId: "dept_hr",
+    purpose: "export",
+    grants: [],
+    dynamicPolicy: {
+      policyId: "iso-1",
+      blockedRequesterIds: ["user_blocked"],
+    },
+    relatedBoundaryIds: ["kb_peer"],
+    occurredAt: "2026-04-20T00:00:00.000Z",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.deepStrictEqual(decision.relatedBoundaryIds, ["kb_peer"]);
+  assert.equal(decision.dynamicPolicyApplied, true);
+  assert.ok(decision.violationCodes?.some((code) => code.includes("knowledge_boundary.blocked_requester:iso-1")));
+  assert.equal(service.traceBoundaryAccess("kb_dynamic").length, 1);
+  assert.equal(service.listIsolationViolations("kb_dynamic").length >= 1, true);
+});

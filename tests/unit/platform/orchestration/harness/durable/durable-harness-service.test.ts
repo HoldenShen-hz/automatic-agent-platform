@@ -222,10 +222,11 @@ test("DurableHarnessService.getCheckpointRef returns null when no checkpoint", (
   assert.equal(ref, null);
 });
 
-test.skip("DurableHarnessService.listDueSleepLeases returns leases ready to resume", () => {
+test("DurableHarnessService.listDueSleepLeases returns leases ready to resume", () => {
   const service = new DurableHarnessService();
   const now = new Date().toISOString();
   const past = new Date(Date.now() - 1000).toISOString();
+  const future = new Date(Date.now() + 10000).toISOString();
 
   const run1 = createMinimalHarnessRun({
     runId: "run_with_lease_1",
@@ -233,7 +234,7 @@ test.skip("DurableHarnessService.listDueSleepLeases returns leases ready to resu
   });
   const run2 = createMinimalHarnessRun({
     runId: "run_with_lease_2",
-    sleepLease: createSleepLease("run_with_lease_2", now),
+    sleepLease: createSleepLease("run_with_lease_2", future),
   });
   const run3 = createMinimalHarnessRun({
     runId: "run_without_lease",
