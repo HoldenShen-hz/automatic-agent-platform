@@ -94,7 +94,7 @@ test("E2E: runtime-services async human takeover modifies input and completes th
     });
     await takeover.completeTask({
       takeoverSessionId: opened.takeoverSessionId,
-      terminalStatus: "completed",
+      terminalStatus: "done",
       reasonCode: "operator_completed_task",
       outputJson: JSON.stringify({ outcome: "manual_recovery_complete" }),
     });

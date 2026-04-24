@@ -102,7 +102,7 @@ test("E2E: async human takeover retries a failed multi-step workflow, reposition
     });
     await takeover.completeTask({
       takeoverSessionId: opened.takeoverSessionId,
-      terminalStatus: "completed",
+      terminalStatus: "done",
       reasonCode: "takeover.complete_task",
       outputJson: JSON.stringify({ outcome: "manual_recovery_complete" }),
     });
