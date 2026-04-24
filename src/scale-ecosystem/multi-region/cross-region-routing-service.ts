@@ -45,6 +45,7 @@ export class CrossRegionRoutingService {
     const blockedRegions = request.regions
       .filter((region) =>
         blockedRegionIds.has(region.regionId)
+        || region.status === "disabled"
         || !region.residencyAllowed
         || !allowedJurisdictions.has(region.jurisdiction)
         || !includesAllCapabilities(region, requiredCapabilities))

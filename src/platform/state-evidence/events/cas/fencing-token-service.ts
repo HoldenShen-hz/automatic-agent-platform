@@ -54,8 +54,8 @@ export interface FencingTokenValidation {
  * - isFenceHeld(executionId): Check if fence is held
  */
 export class FencingTokenService {
-  // Active fences (executionId -> FenceInfo)
-  private readonly activeFences = new Map<string, FenceInfo>();
+  // Active fences are process-wide so multiple service instances can enforce exclusivity.
+  private static readonly activeFences = new Map<string, FenceInfo>();
 
   // Fencing token counter for monotonically increasing tokens
   private tokenCounter = 0;
@@ -143,7 +143,7 @@ export class FencingTokenService {
    */
   public acquireFence(executionId: string, mode: FenceMode): FenceInfo | null {
     // Check if any fence exists for this execution
-    for (const fence of this.activeFences.values()) {
+    for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId) {
         // A fence exists - check if we can acquire
         if (fence.ownerNodeId !== this.nodeId && fence.mode === "exclusive") {
@@ -168,7 +168,7 @@ export class FencingTokenService {
       expiresAt: null,
     };
 
-    this.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
+    FencingTokenService.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
     return fenceInfo;
   }
 
@@ -180,9 +180,9 @@ export class FencingTokenService {
    */
   public releaseFence(executionId: string): boolean {
     // Find and remove the fence
-    for (const [key, fence] of this.activeFences.entries()) {
+    for (const [key, fence] of FencingTokenService.activeFences.entries()) {
       if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
-        this.activeFences.delete(key);
+        FencingTokenService.activeFences.delete(key);
         return true;
       }
     }
@@ -197,7 +197,7 @@ export class FencingTokenService {
    * @returns true if a fence is held
    */
   public isFenceHeld(executionId: string): boolean {
-    for (const fence of this.activeFences.values()) {
+    for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId) {
         return true;
       }
@@ -212,7 +212,7 @@ export class FencingTokenService {
    * @returns The fence info or undefined if no fence held
    */
   public getFenceInfo(executionId: string): FenceInfo | undefined {
-    for (const fence of this.activeFences.values()) {
+    for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
         return fence;
       }
@@ -233,7 +233,7 @@ export class FencingTokenService {
    * Clears all active fences. Used for testing.
    */
   public clearAllFences(): void {
-    this.activeFences.clear();
+    FencingTokenService.activeFences.clear();
   }
 
   /**
@@ -242,6 +242,6 @@ export class FencingTokenService {
    * @returns Number of active fences
    */
   public getActiveFenceCount(): number {
-    return this.activeFences.size;
+    return FencingTokenService.activeFences.size;
   }
 }

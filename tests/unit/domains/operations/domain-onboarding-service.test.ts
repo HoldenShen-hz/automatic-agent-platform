@@ -209,10 +209,9 @@ test("DomainOnboardingService.rollback() marks all phases after target as pendin
   const session = service.rollback("coding", "modeling", "checkpoint-artifact", "rollback");
 
   const recordsByPhase = new Map(session.records.map((r: DomainOnboardingRecord) => [r.phase, r.status]));
-  // Target phase (modeling) and current phase (security_certification) become in_progress
-  // All phases in between (development_validation) become pending
+  // Target phase reopens; later phases are reset to pending.
   assert.equal(recordsByPhase.get("modeling"), "in_progress");
-  assert.equal(recordsByPhase.get("security_certification"), "in_progress");
+  assert.equal(recordsByPhase.get("security_certification"), "pending");
   assert.equal(recordsByPhase.get("development_validation"), "pending");
 });
 

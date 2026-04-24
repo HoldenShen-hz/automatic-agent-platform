@@ -213,7 +213,7 @@ test("PlanDagValidator produces deterministic ordering for same-level nodes", ()
   }
 });
 
-test.skip("PlanDagValidator integration with seeded context", () => {
+test("PlanDagValidator integration with seeded context", () => {
   const ctx = createIntegrationContext("aa-dag-validator-seeded-");
 
   try {
@@ -229,8 +229,6 @@ test.skip("PlanDagValidator integration with seeded context", () => {
 
     assert.equal(result.valid, true);
     assert.equal(result.orderedSteps.length, 3);
-
-    ctx.db.close();
   } finally {
     ctx.cleanup();
   }

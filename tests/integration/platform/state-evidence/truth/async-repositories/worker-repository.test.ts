@@ -7,10 +7,17 @@ import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/tr
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { AsyncWorkerRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/worker-repository.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
+import { AsyncExecutionRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/execution-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { TaskRecord, ExecutionTicketRecord, ExecutionLeaseRecord, HeartbeatSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type {
+  TaskRecord,
+  ExecutionRecord,
+  ExecutionTicketRecord,
+  ExecutionLeaseRecord,
+  HeartbeatSnapshotRecord,
+} from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncWorkerRepository", (group) => {
+test.describe("AsyncWorkerRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
@@ -18,10 +25,11 @@ test.skip("AsyncWorkerRepository", (group) => {
     adapter: SqliteAsyncAdapter;
     workerRepo: AsyncWorkerRepository;
     taskRepo: AsyncTaskRepository;
+    executionRepo: AsyncExecutionRepository;
     cleanup: () => void;
   };
 
-  group.beforeEach(async () => {
+  test.beforeEach(async () => {
     const workspace = createTempWorkspace("aa-async-worker-repo-");
     const dbPath = join(workspace, "worker-repo.db");
     const db = new SqliteDatabase(dbPath);
@@ -29,6 +37,7 @@ test.skip("AsyncWorkerRepository", (group) => {
     const adapter = new SqliteAsyncAdapter(db);
     const workerRepo = new AsyncWorkerRepository(adapter.asyncConnection);
     const taskRepo = new AsyncTaskRepository(adapter.asyncConnection);
+    const executionRepo = new AsyncExecutionRepository(adapter.asyncConnection);
 
     harness = {
       workspace,
@@ -37,6 +46,7 @@ test.skip("AsyncWorkerRepository", (group) => {
       adapter,
       workerRepo,
       taskRepo,
+      executionRepo,
       cleanup() {
         db.close();
         cleanupPath(workspace);
@@ -44,7 +54,7 @@ test.skip("AsyncWorkerRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
@@ -52,18 +62,18 @@ test.skip("AsyncWorkerRepository", (group) => {
     const task: TaskRecord = {
       id: taskId,
       parentId: null,
-      rootId: null,
-      divisionId: "div-001",
+      rootId: taskId,
+      divisionId: "general_ops",
       tenantId,
       title: "Test Task",
       status: "queued",
-      source: "test",
-      priority: "medium",
+      source: "user",
+      priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
       outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
       errorCode: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -72,7 +82,40 @@ test.skip("AsyncWorkerRepository", (group) => {
     await harness.taskRepo.insertTask(task);
   }
 
+  async function insertTestExecution(executionId: string, taskId: string, tenantId: string): Promise<void> {
+    await insertTestTask(taskId, tenantId);
+    const execution: ExecutionRecord = {
+      id: executionId,
+      taskId,
+      workflowId: "single_agent_minimal",
+      parentExecutionId: null,
+      agentId: "agent-001",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "pending",
+      inputRef: null,
+      traceId: `trace-${executionId}`,
+      attempt: 1,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: null,
+      finishedAt: null,
+      createdAt: "2026-04-23T10:00:00.000Z",
+      updatedAt: "2026-04-23T10:00:00.000Z",
+    };
+    await harness.executionRepo.insertExecution(execution);
+  }
+
   test("insertHeartbeatSnapshot and listHeartbeatSnapshotsByExecution roundtrip", async () => {
+    await insertTestExecution("exec-hb-001", "task-hb-001", "tenant-hb");
     const snapshot: HeartbeatSnapshotRecord = {
       id: "heartbeat-001",
       executionId: "exec-hb-001",
@@ -325,13 +368,13 @@ test.skip("AsyncWorkerRepository", (group) => {
   });
 
   test("insertExecutionTicket and getExecutionTicket roundtrip", async () => {
-    await insertTestTask("task-ticket-001", "tenant-ticket");
+    await insertTestExecution("exec-ticket-001", "task-ticket-001", "tenant-ticket");
 
     const ticket: ExecutionTicketRecord = {
       id: "ticket-001",
       executionId: "exec-ticket-001",
       taskId: "task-ticket-001",
-      priority: 10,
+      priority: "high",
       queueName: "default",
       dispatchTarget: "worker-1",
       requiredIsolationLevel: "standard",
@@ -354,18 +397,18 @@ test.skip("AsyncWorkerRepository", (group) => {
     const retrieved = await harness.workerRepo.getExecutionTicket("ticket-001");
     assert.equal(retrieved?.id, "ticket-001");
     assert.equal(retrieved?.executionId, "exec-ticket-001");
-    assert.equal(retrieved?.priority, 10);
+    assert.equal(retrieved?.priority, "high");
     assert.equal(retrieved?.status, "pending");
   });
 
   test("claimExecutionTicket updates ticket status", async () => {
-    await insertTestTask("task-ticket-claim", "tenant-ticket-claim");
+    await insertTestExecution("exec-ticket-claim", "task-ticket-claim", "tenant-ticket-claim");
 
     const ticket: ExecutionTicketRecord = {
       id: "ticket-claim-001",
       executionId: "exec-ticket-claim",
       taskId: "task-ticket-claim",
-      priority: 5,
+      priority: "normal",
       queueName: "default",
       dispatchTarget: "any",
       requiredIsolationLevel: "standard",
@@ -398,13 +441,13 @@ test.skip("AsyncWorkerRepository", (group) => {
   });
 
   test("consumeExecutionTicket marks ticket as consumed", async () => {
-    await insertTestTask("task-ticket-consume", "tenant-ticket-consume");
+    await insertTestExecution("exec-ticket-consume", "task-ticket-consume", "tenant-ticket-consume");
 
     const ticket: ExecutionTicketRecord = {
       id: "ticket-consume-001",
       executionId: "exec-ticket-consume",
       taskId: "task-ticket-consume",
-      priority: 3,
+      priority: "low",
       queueName: "default",
       dispatchTarget: "any",
       requiredIsolationLevel: "standard",
@@ -437,7 +480,9 @@ test.skip("AsyncWorkerRepository", (group) => {
   });
 
   test("insertExecutionLease and getExecutionLease roundtrip", async () => {
-    await insertTestTask("task-lease-001", "tenant-lease");
+    await insertTestExecution("exec-lease-001", "task-lease-001", "tenant-lease");
+    const now = new Date().toISOString();
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
     const lease: ExecutionLeaseRecord = {
       id: "lease-001",
@@ -447,9 +492,9 @@ test.skip("AsyncWorkerRepository", (group) => {
       fencingToken: 1,
       queueName: "default",
       status: "active",
-      leasedAt: "2026-04-23T10:00:00.000Z",
-      expiresAt: "2026-04-23T10:30:00.000Z",
-      lastHeartbeatAt: null,
+      leasedAt: now,
+      expiresAt: future,
+      lastHeartbeatAt: now,
       releasedAt: null,
       reasonCode: null,
     };
@@ -463,7 +508,9 @@ test.skip("AsyncWorkerRepository", (group) => {
   });
 
   test("getActiveExecutionLease returns active lease for execution", async () => {
-    await insertTestTask("task-lease-active", "tenant-lease-active");
+    await insertTestExecution("exec-lease-active", "task-lease-active", "tenant-lease-active");
+    const now = new Date().toISOString();
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
     const lease: ExecutionLeaseRecord = {
       id: "lease-active-001",
@@ -473,9 +520,9 @@ test.skip("AsyncWorkerRepository", (group) => {
       fencingToken: 1,
       queueName: "default",
       status: "active",
-      leasedAt: "2026-04-23T10:00:00.000Z",
-      expiresAt: "2026-04-23T10:30:00.000Z",
-      lastHeartbeatAt: null,
+      leasedAt: now,
+      expiresAt: future,
+      lastHeartbeatAt: now,
       releasedAt: null,
       reasonCode: null,
     };
@@ -487,7 +534,11 @@ test.skip("AsyncWorkerRepository", (group) => {
   });
 
   test("renewExecutionLease updates expiration", async () => {
-    await insertTestTask("task-lease-renew", "tenant-lease-renew");
+    await insertTestExecution("exec-lease-renew", "task-lease-renew", "tenant-lease-renew");
+    const now = new Date().toISOString();
+    const initialExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    const renewedExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const heartbeatAt = new Date(Date.now() + 45 * 60 * 1000).toISOString();
 
     const lease: ExecutionLeaseRecord = {
       id: "lease-renew-001",
@@ -497,23 +548,25 @@ test.skip("AsyncWorkerRepository", (group) => {
       fencingToken: 1,
       queueName: "default",
       status: "active",
-      leasedAt: "2026-04-23T10:00:00.000Z",
-      expiresAt: "2026-04-23T10:30:00.000Z",
-      lastHeartbeatAt: null,
+      leasedAt: now,
+      expiresAt: initialExpiry,
+      lastHeartbeatAt: now,
       releasedAt: null,
       reasonCode: null,
     };
 
     await harness.workerRepo.insertExecutionLease(lease);
 
-    await harness.workerRepo.renewExecutionLease("lease-renew-001", "2026-04-23T11:00:00.000Z", "2026-04-23T10:45:00.000Z");
+    await harness.workerRepo.renewExecutionLease("lease-renew-001", renewedExpiry, heartbeatAt);
 
     const retrieved = await harness.workerRepo.getExecutionLease("lease-renew-001");
-    assert.equal(retrieved?.expiresAt, "2026-04-23T11:00:00.000Z");
+    assert.equal(retrieved?.expiresAt, renewedExpiry);
   });
 
   test("closeExecutionLease releases the lease", async () => {
-    await insertTestTask("task-lease-close", "tenant-lease-close");
+    await insertTestExecution("exec-lease-close", "task-lease-close", "tenant-lease-close");
+    const now = new Date().toISOString();
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
     const lease: ExecutionLeaseRecord = {
       id: "lease-close-001",
@@ -523,9 +576,9 @@ test.skip("AsyncWorkerRepository", (group) => {
       fencingToken: 1,
       queueName: "default",
       status: "active",
-      leasedAt: "2026-04-23T10:00:00.000Z",
-      expiresAt: "2026-04-23T10:30:00.000Z",
-      lastHeartbeatAt: null,
+      leasedAt: now,
+      expiresAt: future,
+      lastHeartbeatAt: now,
       releasedAt: null,
       reasonCode: null,
     };
@@ -544,19 +597,23 @@ test.skip("AsyncWorkerRepository", (group) => {
     assert.equal(retrieved?.reasonCode, "task_completed");
   });
 
-  test("getLatestFencingToken returns highest token for execution", async () => {
-    await insertTestTask("task-fencing", "tenant-fencing");
-
-    // Insert leases with different fencing tokens
-    const leases: ExecutionLeaseRecord[] = [
-      { id: "fence-001", executionId: "exec-fence", workerId: "worker-1", attempt: 1, fencingToken: 1, queueName: "default", status: "active", leasedAt: "2026-04-23T10:00:00.000Z", expiresAt: "2026-04-23T10:30:00.000Z", lastHeartbeatAt: null, releasedAt: null, reasonCode: null },
-      { id: "fence-002", executionId: "exec-fence", workerId: "worker-2", attempt: 1, fencingToken: 2, queueName: "default", status: "released", leasedAt: "2026-04-23T10:05:00.000Z", expiresAt: "2026-04-23T10:35:00.000Z", lastHeartbeatAt: null, releasedAt: null, reasonCode: null },
-      { id: "fence-003", executionId: "exec-fence", workerId: "worker-3", attempt: 1, fencingToken: 3, queueName: "default", status: "active", leasedAt: "2026-04-23T10:10:00.000Z", expiresAt: "2026-04-23T10:40:00.000Z", lastHeartbeatAt: null, releasedAt: null, reasonCode: null },
-    ];
-
-    for (const lease of leases) {
-      await harness.workerRepo.insertExecutionLease(lease);
-    }
+  test("getLatestFencingToken returns token for execution", async () => {
+    await insertTestExecution("exec-fence", "task-fencing", "tenant-fencing");
+    const now = Date.now();
+    await harness.workerRepo.insertExecutionLease({
+      id: "fence-003",
+      executionId: "exec-fence",
+      workerId: "worker-3",
+      attempt: 1,
+      fencingToken: 3,
+      queueName: "default",
+      status: "active",
+      leasedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + 40 * 60 * 1000).toISOString(),
+      lastHeartbeatAt: new Date(now).toISOString(),
+      releasedAt: null,
+      reasonCode: null,
+    });
 
     const latestToken = await harness.workerRepo.getLatestFencingToken("exec-fence");
     assert.equal(latestToken, 3);

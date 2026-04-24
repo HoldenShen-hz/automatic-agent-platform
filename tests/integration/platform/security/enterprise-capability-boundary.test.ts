@@ -74,7 +74,7 @@ test("enterprise capability CLI fail-closes on invalid component identifiers", (
 // but the storage validation may not recognize temp directories as allowed.
 // This is an infrastructure/test environment issue, not a code bug.
 // Fix: either use a path within allowed roots, or mock the storage backend.
-test.skip("enterprise capability service factory routes postgres dual-run sync access through shadow sqlite", () => {
+test("enterprise capability service factory routes postgres dual-run sync access through shadow sqlite", () => {
   const workspace = createTempWorkspace("aa-enterprise-security-");
   const dbPath = join(workspace, "enterprise-security-factory.db");
   const shadowPath = join(workspace, "shadow.db");

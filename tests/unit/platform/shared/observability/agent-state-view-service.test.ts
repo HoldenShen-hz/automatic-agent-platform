@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 
 import { AgentStateViewService } from "../../../../../src/platform/shared/observability/agent-state-view-service.js";
 
-test.skip("AgentStateViewService.build creates view with all fields", () => {
+test("AgentStateViewService.build creates view with all fields", () => {
   const service = new AgentStateViewService();
   const view = service.build({
     agentId: "agent-1",
@@ -19,7 +19,7 @@ test.skip("AgentStateViewService.build creates view with all fields", () => {
     pendingApprovals: ["high-risk-operation"],
   });
 
-  assert.ok(view.viewId.startsWith("asv_"), "viewId should be generated");
+  assert.ok(view.viewId.startsWith("agent_state_view_"), "viewId should be generated");
   assert.equal(view.agentId, "agent-1");
   assert.equal(view.taskId, "task-1");
   assert.equal(view.executionId, "exec-1");

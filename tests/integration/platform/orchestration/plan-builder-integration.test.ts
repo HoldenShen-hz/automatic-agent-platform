@@ -222,7 +222,7 @@ test("PlanBuilder creates replan with incremented version", () => {
   }
 });
 
-test.skip("PlanBuilder uses seeded integration context", () => {
+test("PlanBuilder uses seeded integration context", () => {
   const ctx = createSeededIntegrationContext("aa-plan-builder-seeded-");
 
   try {
@@ -244,8 +244,6 @@ test.skip("PlanBuilder uses seeded integration context", () => {
 
     assert.ok(result.taskId, "task-seeded-001");
     assert.equal(result.steps.length, 1);
-
-    ctx.db.close();
   } finally {
     ctx.cleanup();
   }

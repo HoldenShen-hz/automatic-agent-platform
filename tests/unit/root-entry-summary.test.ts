@@ -3,18 +3,18 @@ import test from "node:test";
 
 import { buildPlatformRootSummary } from "../../src/index.js";
 
-test.skip("platform root summary includes architecture and five-plane startup views", () => {
+test("platform root summary includes architecture and five-plane startup views", () => {
   const summary = buildPlatformRootSummary();
   assert.equal(summary.architecture.startupEntryModule, "src/index.ts");
   assert.deepEqual(summary.domains.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
-  assert.equal(summary.domains.totalCapabilityCount, 24);
+  assert.equal(summary.domains.totalCapabilityCount, 31);
   assert.deepEqual(summary.domains.capabilityCounts, {
     phase9a: 4,
     phase9b: 4,
-    phase9c: 4,
-    phase9d: 4,
-    phase9e: 4,
-    phase9f: 4,
+    phase9c: 6,
+    phase9d: 5,
+    phase9e: 6,
+    phase9f: 6,
   });
   assert.deepEqual(summary.planes.startupOrder, [
     "interface",

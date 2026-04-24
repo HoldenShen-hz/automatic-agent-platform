@@ -300,7 +300,7 @@ test("AdmissionController decision includes snapshot in response", () => {
   }
 });
 
-test.skip("AdmissionController evaluate uses backpressureSnapshot when provided", () => {
+test("AdmissionController evaluate uses backpressureSnapshot when provided", () => {
   // This test is skipped because it requires a more complex setup
   // with a backpressureSnapshot function
 });

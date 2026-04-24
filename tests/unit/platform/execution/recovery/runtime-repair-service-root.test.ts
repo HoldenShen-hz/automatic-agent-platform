@@ -24,29 +24,37 @@ function createMockStore(overrides: {
   tasks?: Array<{ id: string; status: string; priority?: string }>;
   events?: Array<{ id: string }>;
   locks?: { deleteFileLock?: () => void };
-  workflow?: { updateWorkflowRecoveryState?: () => void };
+  workflow?: { updateWorkflowRecoveryState?: () => void; loadTaskSnapshot?: () => { task: { id: string; status: string }; execution: { id: string; status: string } | null; workflow: { status: string; currentStepIndex?: number; outputsJson?: string; resumableFromStep?: number; retryCount?: number; lastErrorCode?: string | null } | null; session: { id: string; status: string; channel?: string; externalSessionId?: string } | null } };
+  task?: { setTaskState?: () => void; getTask?: (id: string) => { id: string; status: string; priority?: string } | null };
+  execution?: { updateExecutionStatus?: () => void };
+  session?: { updateSessionStatus?: () => void; insertSession?: () => void };
+  dispatch?: { getExecution?: (id: string) => { id: string; taskId: string; status: string; attempt?: number } | null; getSession?: (id: string) => { id: string; taskId: string; status: string } | null };
+  event?: { insertEvent?: () => void; getEvent?: (id: string) => { id: string; eventType: string; eventTier: string } | null; countPendingTier1Acks?: () => number; ensureEventConsumerAckPending?: () => void; listFailedEventsForConsumer?: () => unknown[]; listPendingEventsForConsumer?: () => unknown[] };
+  worker?: { getActiveExecutionTicket?: () => { id: string; status: string; attempt?: number } | null; listExecutionTicketsByExecution?: () => Array<{ id: string; attempt: number }>; getExecutionTicket?: () => null };
 } = {}) {
   return {
     dispatch: {
-      getExecution: (id: string) => overrides.executions?.find((e) => e.id === id) ?? null,
-      getSession: (id: string) => overrides.sessions?.find((s) => s.id === id) ?? null,
+      getExecution: overrides.dispatch?.getExecution ?? ((id: string) => overrides.executions?.find((e) => e.id === id) ?? null),
+      getSession: overrides.dispatch?.getSession ?? ((id: string) => overrides.sessions?.find((s) => s.id === id) ?? null),
     },
     task: {
-      getTask: (id: string) => overrides.tasks?.find((t) => t.id === id) ?? null,
-      setTaskState: () => {},
+      getTask: overrides.task?.getTask ?? ((id: string) => overrides.tasks?.find((t) => t.id === id) ?? null),
+      setTaskState: overrides.task?.setTaskState ?? (() => {}),
     },
     event: {
-      insertEvent: () => {},
-      getEvent: () => null,
-      countPendingTier1Acks: () => 0,
-      ensureEventConsumerAckPending: () => {},
+      insertEvent: overrides.event?.insertEvent ?? (() => {}),
+      getEvent: overrides.event?.getEvent ?? (() => null),
+      countPendingTier1Acks: overrides.event?.countPendingTier1Acks ?? (() => 0),
+      ensureEventConsumerAckPending: overrides.event?.ensureEventConsumerAckPending ?? (() => {}),
+      listFailedEventsForConsumer: overrides.event?.listFailedEventsForConsumer ?? (() => []),
+      listPendingEventsForConsumer: overrides.event?.listPendingEventsForConsumer ?? (() => []),
     },
     execution: {
-      updateExecutionStatus: () => {},
+      updateExecutionStatus: overrides.execution?.updateExecutionStatus ?? (() => {}),
     },
     session: {
-      updateSessionStatus: () => {},
-      insertSession: () => {},
+      updateSessionStatus: overrides.session?.updateSessionStatus ?? (() => {}),
+      insertSession: overrides.session?.insertSession ?? (() => {}),
     },
     lock: {
       deleteFileLock: overrides.locks?.deleteFileLock ?? (() => {}),
@@ -55,16 +63,22 @@ function createMockStore(overrides: {
       updateWorkflowRecoveryState: overrides.workflow?.updateWorkflowRecoveryState ?? (() => {}),
     },
     operations: {
-      loadTaskSnapshot: () => ({
+      loadTaskSnapshot: overrides.workflow?.loadTaskSnapshot ?? (() => ({
         task: { id: "task-1", status: "pending" },
         execution: null,
         workflow: null,
         session: null,
-      }),
+      })),
     },
     worker: {
-      getActiveExecutionTicket: () => null,
-      listTicketsByExecution: () => [],
+      getActiveExecutionTicket: overrides.worker?.getActiveExecutionTicket ?? (() => null),
+      listExecutionTicketsByExecution: overrides.worker?.listExecutionTicketsByExecution ?? (() => []),
+      getExecutionTicket: overrides.worker?.getExecutionTicket ?? (() => null),
+      getActiveExecutionLease: () => null,
+      closeExecutionLease: () => {},
+      insertLeaseAudit: () => {},
+      getExecutionLease: () => null,
+      getWorkerSnapshot: () => null,
     },
   } as unknown as AuthoritativeTaskStore;
 }
@@ -132,35 +146,134 @@ test("RuntimeRepairService.apply returns manual_intervention_required when actio
   assert.equal(results[0]!.detail, "manual intervention required");
 });
 
-test.skip("RuntimeRepairService.apply handles requeue_execution - requires full store mock", async () => {
-  // This test is skipped because requeue_execution requires extensive mocking of:
-  // - store.dispatch.getExecution
-  // - store.leases.reclaimActiveLease
-  // - store.execution.updateExecutionStatus
-  // - store.task.setTaskState
-  // - store.operations.loadTaskSnapshot
-  // - store.workflow.updateWorkflowRecoveryState
-  // - store.session methods
-  // - store.event.insertEvent
-  // - store.worker.getActiveExecutionTicket
-  // - ExecutionDispatchService and ExecutionDispatchReconciliationService
+test("RuntimeRepairService.apply handles requeue_execution with pending ticket", async () => {
+  const db = createMockDb();
+  let executionUpdated = false;
+  let taskUpdated = false;
+  const store = createMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "failed", attempt: 1 }],
+    tasks: [{ id: "task-1", status: "failed", priority: "normal" }],
+    execution: {
+      updateExecutionStatus: () => { executionUpdated = true; },
+    },
+    task: {
+      getTask: (id: string) => ({ id, status: "failed", priority: "normal" }),
+      setTaskState: () => { taskUpdated = true; },
+    },
+    worker: {
+      getActiveExecutionTicket: () => ({ id: "ticket-1", status: "pending", attempt: 1 }),
+      listExecutionTicketsByExecution: () => [],
+      getExecutionTicket: () => null,
+    },
+  });
+  const service = new RuntimeRepairService(db, store);
+
+  const results = await service.apply({
+    taskId: "task-1",
+    generatedAt: new Date().toISOString(),
+    repairActions: [{ action: "requeue_execution", targetId: "exec-1", reason: "stale execution" }],
+  });
+
+  assert.equal(results[0]!.action, "requeue_execution");
+  assert.equal(results[0]!.applied, true);
+  assert.equal(results[0]!.detail, "execution requeued");
+  assert.equal(executionUpdated, true);
+  assert.equal(taskUpdated, true);
 });
 
-test.skip("RuntimeRepairService.apply handles reconcile_dispatch_ticket - requires dispatch reconciliation mock", async () => {
-  // This test is skipped because reconcile_dispatch_ticket requires mocking
-  // ExecutionDispatchReconciliationService which is complex
+test("RuntimeRepairService.apply handles reconcile_dispatch_ticket when ticket missing", async () => {
+  const db = createMockDb();
+  const store = createMockStore();
+  const service = new RuntimeRepairService(db, store);
+
+  const results = await service.apply({
+    taskId: "task-1",
+    generatedAt: new Date().toISOString(),
+    repairActions: [{ action: "reconcile_dispatch_ticket", targetId: "ticket-1", reason: "missing ticket" }],
+  });
+
+  assert.equal(results[0]!.action, "reconcile_dispatch_ticket");
+  assert.equal(results[0]!.applied, false);
+  assert.equal(results[0]!.detail, "dispatch ticket already healthy or missing");
 });
 
-test.skip("RuntimeRepairService.apply handles reconcile_terminal_state - requires full store mock", async () => {
-  // This test is skipped because reconcile_terminal_state requires extensive mocking
+test("RuntimeRepairService.apply handles reconcile_terminal_state when workflow missing", async () => {
+  const db = createMockDb();
+  const store = createMockStore({
+    workflow: {
+      loadTaskSnapshot: () => ({
+        task: { id: "task-1", status: "pending" },
+        execution: null,
+        workflow: null,
+        session: null,
+      }),
+    },
+  });
+  const service = new RuntimeRepairService(db, store);
+
+  const results = await service.apply({
+    taskId: "task-1",
+    generatedAt: new Date().toISOString(),
+    repairActions: [{ action: "reconcile_terminal_state", targetId: "task-1", reason: "workflow missing" }],
+  });
+
+  assert.equal(results[0]!.applied, false);
+  assert.equal(results[0]!.detail, "workflow missing");
 });
 
-test.skip("RuntimeRepairService.apply handles close_orphan_session - requires session mock", async () => {
-  // This test is skipped because close_orphan_session requires session mocking
+test("RuntimeRepairService.apply handles close_orphan_session", async () => {
+  const db = createMockDb();
+  let sessionUpdated = false;
+  const store = createMockStore({
+    sessions: [{ id: "sess-1", taskId: "task-1", status: "open" }],
+    session: {
+      updateSessionStatus: () => { sessionUpdated = true; },
+      insertSession: () => {},
+    },
+  });
+  const service = new RuntimeRepairService(db, store);
+
+  const results = await service.apply({
+    taskId: "task-1",
+    generatedAt: new Date().toISOString(),
+    repairActions: [{ action: "close_orphan_session", targetId: "sess-1", reason: "orphan session" }],
+  });
+
+  assert.equal(results[0]!.applied, true);
+  assert.equal(results[0]!.detail, "orphan session closed");
+  assert.equal(sessionUpdated, true);
 });
 
-test.skip("RuntimeRepairService.apply handles replace_terminal_session - requires complex session/workflow mock", async () => {
-  // This test is skipped because replace_terminal_session requires complex mocking
+test("RuntimeRepairService.apply handles replace_terminal_session", async () => {
+  const db = createMockDb();
+  let inserted = false;
+  const store = createMockStore({
+    sessions: [{ id: "sess-1", taskId: "task-1", status: "completed" }],
+    tasks: [{ id: "task-1", status: "in_progress", priority: "normal" }],
+    workflow: {
+      loadTaskSnapshot: () => ({
+        task: { id: "task-1", status: "in_progress" },
+        execution: null,
+        workflow: null,
+        session: { id: "sess-1", taskId: "task-1", status: "completed", channel: "chat", externalSessionId: "ext-1" },
+      }),
+    },
+    session: {
+      updateSessionStatus: () => {},
+      insertSession: () => { inserted = true; },
+    },
+  });
+  const service = new RuntimeRepairService(db, store);
+
+  const results = await service.apply({
+    taskId: "task-1",
+    generatedAt: new Date().toISOString(),
+    repairActions: [{ action: "replace_terminal_session", targetId: "sess-1", reason: "replace session" }],
+  });
+
+  assert.equal(results[0]!.applied, true);
+  assert.match(results[0]!.detail, /replacement session created:/);
+  assert.equal(inserted, true);
 });
 
 test("RuntimeRepairService.apply handles release_stale_lock", async () => {
@@ -196,13 +309,28 @@ test("RuntimeRepairService.apply handles release_stale_lock", async () => {
   assert.equal(lockDeleted, true);
 });
 
-test.skip("RuntimeRepairService.apply handles rebuild_ack - requires event system mock", async () => {
-  // This test is skipped because rebuild_ack requires mocking:
-  // - store.event.getEvent
-  // - Event registry functions
-  // - EventOpsService.drainDefaultConsumers
-  // - store.event.countPendingTier1Acks
-  // - store.event.ensureEventConsumerAckPending
+test("RuntimeRepairService.apply handles rebuild_ack for missing event without draining changes", async () => {
+  const db = createMockDb();
+  const store = createMockStore({
+    event: {
+      getEvent: () => null,
+      insertEvent: () => {},
+      countPendingTier1Acks: () => 0,
+      ensureEventConsumerAckPending: () => {},
+      listFailedEventsForConsumer: () => [],
+      listPendingEventsForConsumer: () => [],
+    },
+  });
+  const service = new RuntimeRepairService(db, store);
+
+  const results = await service.apply({
+    taskId: "task-1",
+    generatedAt: new Date().toISOString(),
+    repairActions: [{ action: "rebuild_ack", targetId: "evt-1", reason: "missing ack" }],
+  });
+
+  assert.equal(results[0]!.applied, false);
+  assert.equal(results[0]!.detail, "pending acknowledgements drained from 0 to 0");
 });
 
 test("RuntimeRepairService applies multiple repair actions in sequence", async () => {

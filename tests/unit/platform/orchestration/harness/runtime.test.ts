@@ -1,5 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { HarnessRuntimeService as HarnessRuntimeServiceType } from "../../../../../src/platform/orchestration/harness/runtime/index.js";
+
+type HarnessRuntimeReExport = HarnessRuntimeServiceType;
+void (null as unknown as HarnessRuntimeReExport);
 
 /**
  * Tests for src/platform/orchestration/harness/runtime/index.ts
@@ -11,16 +15,15 @@ import assert from "node:assert/strict";
  * This file provides minimal smoke tests for the re-export path.
  */
 
-test.skip("HarnessRuntimeService is re-exported from runtime/index.ts - implementation tested in index.test.ts", () => {
-  // The HarnessRuntimeService implementation is thoroughly tested in
-  // tests/unit/platform/orchestration/harness/index.test.ts where the
-  // full class is defined. This re-export path is covered by the
-  // build/typecheck process ensuring the export chain is valid.
+test("HarnessRuntimeService is re-exported from runtime/index.ts - implementation tested in index.test.ts", async () => {
+  const runtimeIndex = await import("../../../../../src/platform/orchestration/harness/runtime/index.js");
+  assert.ok("HarnessRuntimeService" in runtimeIndex);
 });
 
-test.skip("Runtime module exports match parent harness exports - verified by build", () => {
-  // Export verification is done at build time. If runtime/index.ts fails
-  // to re-export correctly, TypeScript compilation will fail.
+test("Runtime module exports match parent harness exports - verified by build", async () => {
+  const runtimeIndex = await import("../../../../../src/platform/orchestration/harness/runtime/index.js");
+  const harnessIndex = await import("../../../../../src/platform/orchestration/harness/index.js");
+  assert.equal(runtimeIndex.HarnessRuntimeService, harnessIndex.HarnessRuntimeService);
 });
 
 test("HarnessRuntimeService can be imported via runtime/index.ts re-export path", async () => {

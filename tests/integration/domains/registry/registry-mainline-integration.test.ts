@@ -25,11 +25,7 @@ function createRegistryContext(prefix: string) {
   return { workspace, db, store };
 }
 
-// TODO: fix - Test registers domains with status="testing" but then calls
-// registry.listActive() which only returns domains with status="active".
-// The test expects 4 active domains but gets 0 because they're all "testing".
-// Fix: either register domains with status="active" or use registry.list() instead.
-test.skip("Domain registry: registers multiple domains and validates each", () => {
+test("Domain registry: registers multiple domains and validates each", () => {
   const ctx = createRegistryContext("aa-registry-multi-");
   try {
     const registry = new DomainRegistryService();
@@ -74,9 +70,9 @@ test.skip("Domain registry: registers multiple domains and validates each", () =
           optionalTools: [],
           modelPreferences: {},
           budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
-          securityLevel: "standard",
+          securityLevel: "restricted",
         },
-        status: "testing",
+        status: "active",
         externalAdapters: [],
         pluginBindings: [],
       });
@@ -156,12 +152,7 @@ test("Domain registry: builds capability entry for domain", () => {
   }
 });
 
-// TODO: fix - Same issue as "Onboarding: advances through all phases and completes":
-// DomainOnboardingService.advance() calls registry.activate() when all phases complete,
-// which triggers DomainSmokeTestRunner. The smoke test fails because bash (restricted tool)
-// requires securityLevel="restricted" but the domain uses securityLevel="standard".
-// Fix: use securityLevel="restricted" or remove bash from requiredTools.
-test.skip("Domain registry: onboarding advances through phases", () => {
+test("Domain registry: onboarding advances through phases", () => {
   const ctx = createRegistryContext("aa-registry-onboard-");
   try {
     const registry = new DomainRegistryService();
@@ -204,7 +195,7 @@ test.skip("Domain registry: onboarding advances through phases", () => {
         optionalTools: [],
         modelPreferences: {},
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
-        securityLevel: "standard",
+        securityLevel: "restricted",
       },
       status: "testing",
       externalAdapters: [],
@@ -223,6 +214,7 @@ test.skip("Domain registry: onboarding advances through phases", () => {
     }
 
     assert.equal(onboarding.get("test_domain")?.completed, true);
+    assert.equal(registry.get("test_domain")?.status, "active");
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

@@ -14,7 +14,7 @@ import { DomainRegistryService } from "../../../../src/domains/registry/domain-r
 import { DomainPromptGovernanceService } from "../../../../src/domains/prompt-library/domain-prompt-governance-service.js";
 import { DomainEvaluationGateService } from "../../../../src/domains/eval-framework/domain-evaluation-gate-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
-import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 function createEvalContext(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -25,30 +25,46 @@ function createEvalContext(prefix: string) {
   return { workspace, db, store };
 }
 
-// TODO: fix - DomainPromptGovernanceService.proposeRelease calls review() internally
-// which validates that the prompt exists in the library. The test passes an empty prompts array
-// so "coding.plan" is not found, causing review() to throw prompt_not_found error.
-// Fix: pre-populate the prompt library with "coding.plan" before proposing release.
-test.skip("Prompt governance: proposes and activates release", () => {
+test("Prompt governance: proposes and activates release", () => {
   const ctx = createEvalContext("aa-gov-release-");
   try {
     const governance = new DomainPromptGovernanceService();
+    const library = {
+      libraryId: "lib_001",
+      domainId: "coding",
+      prompts: [
+        {
+          promptId: "coding.plan",
+          stage: "plan" as const,
+          version: "v1",
+          template: "Plan the coding task",
+          guardrails: ["human_review"],
+        },
+        {
+          promptId: "coding.plan",
+          stage: "plan" as const,
+          version: "v0",
+          template: "Legacy coding plan",
+          guardrails: ["human_review"],
+        },
+      ],
+    };
 
     const release = governance.proposeRelease(
-      { libraryId: "lib_001", domainId: "coding", prompts: [] },
+      library,
       {
         promptId: "coding.plan",
         owner: "owner_001",
         rolloutScope: ["tenant:prod"],
         rolloutMode: "suggest",
         lintEvidence: ["lint:passed"],
-        evalEvidence: ["eval_report_001"],
+        evalEvidence: ["eval:passed"],
         approvalTicketId: "CHG-001",
         rollbackVersion: "v0",
       },
     );
 
-    assert.ok(release.releaseId.startsWith("release_"));
+    assert.ok(release.releaseId.startsWith("prompt_release_"));
 
     const activeRelease = governance.activate(release.releaseId);
     assert.equal(activeRelease.status, "active");
@@ -59,16 +75,31 @@ test.skip("Prompt governance: proposes and activates release", () => {
   }
 });
 
-// TODO: fix - Same issue as "Prompt governance: proposes and activates release":
-// DomainPromptGovernanceService.review() throws prompt_not_found when the prompt
-// "ops.execute" is not in the empty library. The test should pre-populate the library
-// with the required prompt before proposing release.
-test.skip("Prompt governance: activates and deactivates release", () => {
+test("Prompt governance: activates and deactivates release", () => {
   const ctx = createEvalContext("aa-gov-deactivate-");
   try {
     const governance = new DomainPromptGovernanceService();
 
-    const library = { libraryId: "lib_002", domainId: "ops", prompts: [] };
+    const library = {
+      libraryId: "lib_002",
+      domainId: "ops",
+      prompts: [
+        {
+          promptId: "ops.execute",
+          stage: "execute" as const,
+          version: "v1",
+          template: "Execute the ops task",
+          guardrails: [],
+        },
+        {
+          promptId: "ops.execute",
+          stage: "execute" as const,
+          version: "v0",
+          template: "Previous ops prompt",
+          guardrails: [],
+        },
+      ],
+    };
     const release = governance.proposeRelease(
       library,
       {
@@ -76,9 +107,8 @@ test.skip("Prompt governance: activates and deactivates release", () => {
         owner: "owner_002",
         rolloutScope: ["tenant:staging"],
         rolloutMode: "suggest",
-        lintEvidence: [],
-        evalEvidence: [],
-        approvalTicketId: "CHG-002",
+        lintEvidence: ["lint:passed"],
+        evalEvidence: ["eval:passed"],
         rollbackVersion: "v0",
       },
     );
@@ -94,11 +124,7 @@ test.skip("Prompt governance: activates and deactivates release", () => {
   }
 });
 
-// TODO: fix - DomainEvaluationGateService.evaluateSuite returns a report where
-// reportId does not start with "eval_report_". The service may return a different
-// ID format or the report object structure doesn't match expectations.
-// Fix: check the actual reportId format returned by the service.
-test.skip("Evaluation gate: evaluates suite and returns promote decision", () => {
+test("Evaluation gate: evaluates suite and returns promote decision", () => {
   const ctx = createEvalContext("aa-eval-promote-");
   try {
     const gate = new DomainEvaluationGateService();
@@ -107,7 +133,7 @@ test.skip("Evaluation gate: evaluates suite and returns promote decision", () =>
       {
         frameworkId: "eval_coding",
         domainId: "coding",
-        fewShotExamples: [],
+        fewShotExamples: Array.from({ length: 5 }, (_, i) => `few_shot_${i}`),
         evaluators: [
           { evaluatorId: "accuracy", metric: "accuracy", threshold: 0.9, blocking: true },
           { evaluatorId: "latency", metric: "latency_ms", threshold: 200, blocking: false },
@@ -135,17 +161,16 @@ test.skip("Evaluation gate: evaluates suite and returns promote decision", () =>
       },
     );
 
-    assert.ok(report.reportId.startsWith("eval_report_"));
+    assert.ok(report.reportId.startsWith("release_gate_"));
     assert.equal(report.releaseDecision, "promote");
+    assert.equal(report.overallPass, true);
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);
   }
 });
 
-// TODO: fix - Same issue as "Evaluation gate: evaluates suite and returns promote decision".
-// DomainEvaluationGateService.evaluateSuite returns a report with an unexpected reportId format.
-test.skip("Evaluation gate: returns block decision when scores below threshold", () => {
+test("Evaluation gate: returns hold decision when scores below threshold", () => {
   const ctx = createEvalContext("aa-eval-block-");
   try {
     const gate = new DomainEvaluationGateService();
@@ -154,7 +179,7 @@ test.skip("Evaluation gate: returns block decision when scores below threshold",
       {
         frameworkId: "eval_security",
         domainId: "security",
-        fewShotExamples: [],
+        fewShotExamples: Array.from({ length: 10 }, (_, i) => `few_shot_${i}`),
         evaluators: [
           { evaluatorId: "security_score", metric: "security", threshold: 0.95, blocking: true },
         ],
@@ -181,7 +206,9 @@ test.skip("Evaluation gate: returns block decision when scores below threshold",
       },
     );
 
-    assert.equal(report.releaseDecision, "block");
+    assert.ok(report.reportId.startsWith("release_gate_"));
+    assert.equal(report.releaseDecision, "hold");
+    assert.equal(report.overallPass, false);
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);
@@ -255,10 +282,7 @@ test("Evaluation gate: stores evaluation cases in task store", () => {
   }
 });
 
-// TODO: fix - Same issue as "Prompt governance: proposes and activates release":
-// DomainPromptGovernanceService.review() throws prompt_not_found for "prompt_cap.execute"
-// because the library is empty. Fix: pre-populate library with the required prompt.
-test.skip("Prompt governance with registry: builds capability for domain with prompt library", () => {
+test("Prompt governance with registry: builds capability for domain with prompt library", () => {
   const ctx = createEvalContext("aa-gov-cap-");
   try {
     const registry = new DomainRegistryService();
@@ -296,15 +320,33 @@ test.skip("Prompt governance with registry: builds capability for domain with pr
 
     const governance = new DomainPromptGovernanceService();
     const release = governance.proposeRelease(
-      { libraryId: "lib_prompt_cap", domainId: "prompt_cap", prompts: [] },
+      {
+        libraryId: "lib_prompt_cap",
+        domainId: "prompt_cap",
+        prompts: [
+          {
+            promptId: "prompt_cap.execute",
+            stage: "execute" as const,
+            version: "v1",
+            template: "Execute capability workflow",
+            guardrails: [],
+          },
+          {
+            promptId: "prompt_cap.execute",
+            stage: "execute" as const,
+            version: "v0",
+            template: "Legacy capability workflow",
+            guardrails: [],
+          },
+        ],
+      },
       {
         promptId: "prompt_cap.execute",
         owner: "owner_cap",
         rolloutScope: ["tenant:canary"],
         rolloutMode: "suggest",
-        lintEvidence: [],
-        evalEvidence: [],
-        approvalTicketId: "CHG-CAP",
+        lintEvidence: ["lint:passed"],
+        evalEvidence: ["eval:passed"],
         rollbackVersion: "v0",
       },
     );

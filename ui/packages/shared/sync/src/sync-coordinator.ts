@@ -1,10 +1,10 @@
 import { ConflictResolver } from "./conflict-resolver";
-import { OfflineQueue } from "./offline-queue";
+import { createPersistentOfflineQueue, OfflineQueue } from "./offline-queue";
 import type { ConflictResolutionStrategy, OfflineMutation, SyncFlushResult } from "./types";
 
 export class SyncCoordinator {
   public constructor(
-    private readonly queue: OfflineQueue = new OfflineQueue(),
+    private readonly queue: OfflineQueue = createPersistentOfflineQueue(),
     private readonly resolver: ConflictResolver = new ConflictResolver(),
   ) {}
 

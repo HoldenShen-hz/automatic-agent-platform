@@ -3,6 +3,13 @@ import type { DomainRegistryService } from "../registry/domain-registry-service.
 import type { DomainDefinition } from "../registry/domain-model.js";
 import { type DomainOnboardingPhase, type DomainOnboardingRecord, nextOnboardingPhase } from "./index.js";
 
+const PHASE_SEQUENCE: readonly DomainOnboardingPhase[] = [
+  "modeling",
+  "development_validation",
+  "security_certification",
+  "canary_launch",
+];
+
 export interface RollbackPoint {
   readonly phase: DomainOnboardingPhase;
   readonly checkpointArtifactId: string;
@@ -42,7 +49,8 @@ export class DomainOnboardingService {
 
   public advance(domainId: string, evidenceArtifactIds: readonly string[]): DomainOnboardingSession {
     const records = [...this.requireSession(domainId)];
-    const current = records.find((item) => item.status === "in_progress");
+    const current = records.find((item) => item.status === "in_progress")
+      ?? records.find((item) => item.status === "blocked");
     if (current == null) {
       throw this.validationError("domain_onboarding.no_active_phase", "No active onboarding phase exists.");
     }
@@ -61,6 +69,19 @@ export class DomainOnboardingService {
     if (nextPhase == null) {
       this.sessions.set(domainId, replaced);
       this.registry.activate(domainId);
+      return this.get(domainId);
+    }
+
+    const existingNext = replaced.find((item) => item.phase === nextPhase);
+    if (existingNext != null) {
+      const reopenedNext: DomainOnboardingRecord = {
+        ...existingNext,
+        status: "in_progress",
+      };
+      this.sessions.set(
+        domainId,
+        replaced.map((item) => item.phase === nextPhase ? reopenedNext : item),
+      );
       return this.get(domainId);
     }
 
@@ -106,13 +127,17 @@ export class DomainOnboardingService {
     this.rollbackHistory.set(domainId, [...history, rollbackPoint]);
 
     const rollbackRecords: DomainOnboardingRecord[] = records.map((item) => {
-      if (item.phase === current.phase) {
-        return { ...item, status: "in_progress", evidenceArtifactIds: [checkpointArtifactId] };
-      }
       if (item.phase === toPhase) {
-        return { ...item, status: "in_progress", evidenceArtifactIds: [] };
+        return {
+          ...item,
+          status: "in_progress",
+          evidenceArtifactIds: [...new Set([...item.evidenceArtifactIds, checkpointArtifactId])],
+        };
       }
-      return { ...item, status: "pending" };
+      if (compareOnboardingPhase(item.phase, toPhase) > 0) {
+        return { ...item, status: "pending" };
+      }
+      return item;
     });
     this.sessions.set(domainId, rollbackRecords);
     return this.get(domainId);
@@ -158,4 +183,8 @@ export class DomainOnboardingService {
       source: "internal",
     });
   }
+}
+
+function compareOnboardingPhase(left: DomainOnboardingPhase, right: DomainOnboardingPhase): number {
+  return PHASE_SEQUENCE.indexOf(left) - PHASE_SEQUENCE.indexOf(right);
 }

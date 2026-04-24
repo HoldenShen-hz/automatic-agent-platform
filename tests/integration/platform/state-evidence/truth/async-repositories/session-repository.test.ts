@@ -6,26 +6,29 @@ import test from "node:test";
 import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { AsyncSessionRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/session-repository.js";
+import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { SessionRecord, MessageRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { SessionRecord, MessageRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncSessionRepository", (group) => {
+test.describe("AsyncSessionRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
     db: SqliteDatabase;
     adapter: SqliteAsyncAdapter;
     repo: AsyncSessionRepository;
+    taskRepo: AsyncTaskRepository;
     cleanup: () => void;
   };
 
-  group.beforeEach(() => {
+  test.beforeEach(() => {
     const workspace = createTempWorkspace("aa-async-session-repo-");
     const dbPath = join(workspace, "session-repo.db");
     const db = new SqliteDatabase(dbPath);
     db.migrate();
     const adapter = new SqliteAsyncAdapter(db);
     const repo = new AsyncSessionRepository(adapter.asyncConnection);
+    const taskRepo = new AsyncTaskRepository(adapter.asyncConnection);
 
     harness = {
       workspace,
@@ -33,6 +36,7 @@ test.skip("AsyncSessionRepository", (group) => {
       db,
       adapter,
       repo,
+      taskRepo,
       cleanup() {
         db.close();
         cleanupPath(workspace);
@@ -40,11 +44,36 @@ test.skip("AsyncSessionRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
+  async function insertTestTask(taskId: string): Promise<void> {
+    const task: TaskRecord = {
+      id: taskId,
+      parentId: null,
+      rootId: taskId,
+      divisionId: "general_ops",
+      tenantId: "tenant-session",
+      title: `Task ${taskId}`,
+      status: "in_progress",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: "2026-04-23T10:00:00.000Z",
+      updatedAt: "2026-04-23T10:00:00.000Z",
+      completedAt: null,
+    };
+    await harness.taskRepo.insertTask(task);
+  }
+
   test("insertSession and getSession roundtrip", async () => {
+    await insertTestTask("task-session-001");
     const session: SessionRecord = {
       id: "session-001",
       taskId: "task-session-001",
@@ -70,6 +99,7 @@ test.skip("AsyncSessionRepository", (group) => {
   });
 
   test("listSessionsByTask returns sessions for a task", async () => {
+    await insertTestTask("task-session-list");
     const sessions: SessionRecord[] = [
       {
         id: "session-list-001",
@@ -100,6 +130,7 @@ test.skip("AsyncSessionRepository", (group) => {
   });
 
   test("updateSessionStatus updates status and timestamp", async () => {
+    await insertTestTask("task-session-update");
     const session: SessionRecord = {
       id: "session-update-001",
       taskId: "task-session-update",
@@ -120,6 +151,7 @@ test.skip("AsyncSessionRepository", (group) => {
   });
 
   test("insertMessage and listMessagesBySession roundtrip", async () => {
+    await insertTestTask("task-msg-001");
     const session: SessionRecord = {
       id: "session-msg-001",
       taskId: "task-msg-001",
@@ -166,6 +198,7 @@ test.skip("AsyncSessionRepository", (group) => {
   });
 
   test("listMessagesBySession with limit", async () => {
+    await insertTestTask("task-msg-limit");
     const session: SessionRecord = {
       id: "session-msg-limit",
       taskId: "task-msg-limit",
@@ -267,6 +300,7 @@ test.skip("AsyncSessionRepository", (group) => {
   });
 
   test("insertSessionEvent and listSessionEvents roundtrip", async () => {
+    await insertTestTask("task-event-001");
     const session: SessionRecord = {
       id: "session-event-001",
       taskId: "task-event-001",
@@ -293,6 +327,7 @@ test.skip("AsyncSessionRepository", (group) => {
   });
 
   test("listSessionEvents respects limit", async () => {
+    await insertTestTask("task-event-limit");
     const session: SessionRecord = {
       id: "session-event-limit",
       taskId: "task-event-limit",

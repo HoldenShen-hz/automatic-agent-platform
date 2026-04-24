@@ -6,7 +6,7 @@ import {
   buildContainerizedPluginRuntimeLaunchSpec,
   buildPluginRuntimeExecArgv,
 } from "../../../../src/domains/registry/plugin-runtime-host.js";
-import type { HumanOutput, PluginLifecycleContext, PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
+import type { PluginLifecycleContext, PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
 
 function createSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
@@ -109,9 +109,27 @@ test("buildContainerizedPluginRuntimeLaunchSpec renders container launcher place
 });
 
 test("ForkedPluginRuntimeHost executes presenter plugin through a sandboxed child runtime", async () => {
-  // Skipped: Requires Node.js --permission flag support and proper sandbox configuration
-  // The child process exits due to permission issues in the test environment
-  test.skip();
+  const host = new ForkedPluginRuntimeHost({
+    pluginId: "plugin.coding.presenter",
+    isolation: "sandboxed_process",
+    sandboxPolicy: createSandboxPolicy({
+      runtimeIsolation: "sandboxed_process",
+    }),
+    workspaceRoot: process.cwd(),
+  });
+
+  try {
+    const output = await host.invoke<{ summary: string }>("present", createLifecycleContext(), {
+      domainId: "coding",
+      machineOutputs: [{ stepId: "step_1", outputRef: null, payload: { ok: true } }],
+      artifacts: [],
+      audience: "developer",
+    });
+
+    assert.equal(output.summary, "Completed 1 coding step(s): step_1");
+  } finally {
+    await host.stop();
+  }
 });
 
 test("ForkedPluginRuntimeHost surfaces child runtime errors for unsupported actions", async () => {

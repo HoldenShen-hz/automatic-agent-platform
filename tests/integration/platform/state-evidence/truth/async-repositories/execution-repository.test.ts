@@ -10,7 +10,7 @@ import { AsyncTaskRepository } from "../../../../../../src/platform/state-eviden
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
 import type { ExecutionRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncExecutionRepository", (group) => {
+test.describe("AsyncExecutionRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
@@ -21,7 +21,7 @@ test.skip("AsyncExecutionRepository", (group) => {
     cleanup: () => void;
   };
 
-  group.beforeEach(async () => {
+  test.beforeEach(async () => {
     const workspace = createTempWorkspace("aa-async-exec-repo-");
     const dbPath = join(workspace, "exec-repo.db");
     const db = new SqliteDatabase(dbPath);
@@ -44,7 +44,7 @@ test.skip("AsyncExecutionRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
@@ -52,18 +52,18 @@ test.skip("AsyncExecutionRepository", (group) => {
     const task: TaskRecord = {
       id: taskId,
       parentId: null,
-      rootId: null,
-      divisionId: "div-001",
+      rootId: taskId,
+      divisionId: "general_ops",
       tenantId,
       title: "Test Task",
       status: "queued",
-      source: "test",
-      priority: "medium",
+      source: "user",
+      priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
       outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
       errorCode: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -72,36 +72,44 @@ test.skip("AsyncExecutionRepository", (group) => {
     await harness.taskRepo.insertTask(task);
   }
 
+  function createExecution(overrides: Partial<ExecutionRecord> & Pick<ExecutionRecord, "id" | "taskId" | "status">): ExecutionRecord {
+    return {
+      id: overrides.id,
+      taskId: overrides.taskId,
+      workflowId: overrides.workflowId ?? "single_agent_minimal",
+      parentExecutionId: overrides.parentExecutionId ?? null,
+      agentId: overrides.agentId ?? "agent-001",
+      roleId: overrides.roleId ?? "general_executor",
+      runKind: overrides.runKind ?? "task_run",
+      status: overrides.status,
+      inputRef: overrides.inputRef ?? null,
+      traceId: overrides.traceId ?? `trace-${overrides.id}`,
+      attempt: overrides.attempt ?? 1,
+      timeoutMs: overrides.timeoutMs ?? 60000,
+      budgetUsdLimit: overrides.budgetUsdLimit ?? 1,
+      requiresApproval: overrides.requiresApproval ?? 0,
+      sandboxMode: overrides.sandboxMode ?? "workspace_write",
+      allowedToolsJson: overrides.allowedToolsJson ?? "[]",
+      allowedPathsJson: overrides.allowedPathsJson ?? "[]",
+      maxRetries: overrides.maxRetries ?? 0,
+      retryBackoff: overrides.retryBackoff ?? "none",
+      lastErrorCode: overrides.lastErrorCode ?? null,
+      lastErrorMessage: overrides.lastErrorMessage ?? null,
+      startedAt: overrides.startedAt ?? null,
+      finishedAt: overrides.finishedAt ?? null,
+      createdAt: overrides.createdAt ?? "2026-04-23T10:00:00.000Z",
+      updatedAt: overrides.updatedAt ?? (overrides.createdAt ?? "2026-04-23T10:00:00.000Z"),
+    };
+  }
+
   test("insertExecution and getExecution roundtrip", async () => {
     await insertTestTask("task-exec-001", "tenant-exec");
 
-    const execution: ExecutionRecord = {
+    const execution = createExecution({
       id: "exec-001",
       taskId: "task-exec-001",
-      workflowId: "wf-001",
-      parentExecutionId: null,
-      agentId: "agent-001",
-      roleId: null,
-      runKind: "execute",
       status: "pending",
-      inputRef: null,
-      traceId: null,
-      attempt: 1,
-      timeoutMs: 300000,
-      budgetUsdLimit: null,
-      requiresApproval: false,
-      sandboxMode: "standard",
-      allowedToolsJson: "[]",
-      allowedPathsJson: "[]",
-      maxRetries: 3,
-      retryBackoff: "exponential",
-      lastErrorCode: null,
-      lastErrorMessage: null,
-      startedAt: null,
-      finishedAt: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-      updatedAt: "2026-04-23T10:00:00.000Z",
-    };
+    });
 
     await harness.executionRepo.insertExecution(execution);
     const retrieved = await harness.executionRepo.getExecution("exec-001");
@@ -121,60 +129,23 @@ test.skip("AsyncExecutionRepository", (group) => {
     await insertTestTask("task-exec-list", "tenant-exec-list");
 
     const executions: ExecutionRecord[] = [
-      {
+      createExecution({
         id: "exec-list-001",
         taskId: "task-exec-list",
-        workflowId: "wf-001",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: null,
-        runKind: "execute",
         status: "pending",
-        inputRef: null,
-        traceId: null,
         attempt: 1,
-        timeoutMs: 300000,
-        budgetUsdLimit: null,
-        requiresApproval: false,
-        sandboxMode: "standard",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 3,
-        retryBackoff: "exponential",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
         createdAt: "2026-04-23T10:00:00.000Z",
         updatedAt: "2026-04-23T10:00:00.000Z",
-      },
-      {
+      }),
+      createExecution({
         id: "exec-list-002",
         taskId: "task-exec-list",
-        workflowId: "wf-001",
-        parentExecutionId: null,
-        agentId: "agent-002",
-        roleId: null,
-        runKind: "execute",
         status: "pending",
-        inputRef: null,
-        traceId: null,
-        attempt: 1,
-        timeoutMs: 300000,
-        budgetUsdLimit: null,
-        requiresApproval: false,
-        sandboxMode: "standard",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 3,
-        retryBackoff: "exponential",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
+        agentId: "agent-002",
+        attempt: 2,
         createdAt: "2026-04-23T10:01:00.000Z",
         updatedAt: "2026-04-23T10:01:00.000Z",
-      },
+      }),
     ];
 
     for (const exec of executions) {
@@ -192,33 +163,14 @@ test.skip("AsyncExecutionRepository", (group) => {
     const execIds = ["exec-status-001", "exec-status-002", "exec-status-003", "exec-status-004"];
 
     for (let i = 0; i < statuses.length; i++) {
-      const exec: ExecutionRecord = {
+      const exec = createExecution({
         id: execIds[i],
         taskId: "task-exec-status",
-        workflowId: "wf-001",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: null,
-        runKind: "execute",
         status: statuses[i],
-        inputRef: null,
-        traceId: null,
-        attempt: 1,
-        timeoutMs: 300000,
-        budgetUsdLimit: null,
-        requiresApproval: false,
-        sandboxMode: "standard",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 3,
-        retryBackoff: "exponential",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
+        attempt: i + 1,
         createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
         updatedAt: new Date(2026, 3, 23, 10, i).toISOString(),
-      };
+      });
       await harness.executionRepo.insertExecution(exec);
     }
 
@@ -240,33 +192,11 @@ test.skip("AsyncExecutionRepository", (group) => {
   test("updateExecutionStatus updates status and timestamps", async () => {
     await insertTestTask("task-exec-update", "tenant-exec-update");
 
-    const exec: ExecutionRecord = {
+    const exec = createExecution({
       id: "exec-update-001",
       taskId: "task-exec-update",
-      workflowId: "wf-001",
-      parentExecutionId: null,
-      agentId: "agent-001",
-      roleId: null,
-      runKind: "execute",
       status: "pending",
-      inputRef: null,
-      traceId: null,
-      attempt: 1,
-      timeoutMs: 300000,
-      budgetUsdLimit: null,
-      requiresApproval: false,
-      sandboxMode: "standard",
-      allowedToolsJson: "[]",
-      allowedPathsJson: "[]",
-      maxRetries: 3,
-      retryBackoff: "exponential",
-      lastErrorCode: null,
-      lastErrorMessage: null,
-      startedAt: null,
-      finishedAt: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-      updatedAt: "2026-04-23T10:00:00.000Z",
-    };
+    });
     await harness.executionRepo.insertExecution(exec);
 
     const affected = await harness.executionRepo.updateExecutionStatus(
@@ -286,33 +216,12 @@ test.skip("AsyncExecutionRepository", (group) => {
   test("updateExecutionFailure updates failure info", async () => {
     await insertTestTask("task-exec-fail", "tenant-exec-fail");
 
-    const exec: ExecutionRecord = {
+    const exec = createExecution({
       id: "exec-fail-001",
       taskId: "task-exec-fail",
-      workflowId: "wf-001",
-      parentExecutionId: null,
-      agentId: "agent-001",
-      roleId: null,
-      runKind: "execute",
       status: "executing",
-      inputRef: null,
-      traceId: null,
-      attempt: 1,
-      timeoutMs: 300000,
-      budgetUsdLimit: null,
-      requiresApproval: false,
-      sandboxMode: "standard",
-      allowedToolsJson: "[]",
-      allowedPathsJson: "[]",
-      maxRetries: 3,
-      retryBackoff: "exponential",
-      lastErrorCode: null,
-      lastErrorMessage: null,
       startedAt: "2026-04-23T10:00:00.000Z",
-      finishedAt: null,
-      createdAt: "2026-04-23T10:00:00.000Z",
-      updatedAt: "2026-04-23T10:00:00.000Z",
-    };
+    });
     await harness.executionRepo.insertExecution(exec);
 
     await harness.executionRepo.updateExecutionFailure({
@@ -335,33 +244,14 @@ test.skip("AsyncExecutionRepository", (group) => {
     const statuses: Array<ExecutionRecord["status"]> = ["executing", "prechecking", "pending", "completed", "executing"];
 
     for (let i = 0; i < statuses.length; i++) {
-      const exec: ExecutionRecord = {
+      const exec = createExecution({
         id: `exec-active-${i}`,
         taskId: "task-exec-active",
-        workflowId: "wf-001",
-        parentExecutionId: null,
-        agentId: "agent-001",
-        roleId: null,
-        runKind: "execute",
         status: statuses[i],
-        inputRef: null,
-        traceId: null,
-        attempt: 1,
-        timeoutMs: 300000,
-        budgetUsdLimit: null,
-        requiresApproval: false,
-        sandboxMode: "standard",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 3,
-        retryBackoff: "exponential",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: null,
-        finishedAt: null,
+        attempt: i + 1,
         createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
         updatedAt: new Date(2026, 3, 23, 10, i).toISOString(),
-      };
+      });
       await harness.executionRepo.insertExecution(exec);
     }
 

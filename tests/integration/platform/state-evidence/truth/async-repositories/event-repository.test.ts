@@ -6,26 +6,29 @@ import test from "node:test";
 import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { AsyncEventRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/event-repository.js";
+import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { EventRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { EventRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncEventRepository", (group) => {
+test.describe("AsyncEventRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
     db: SqliteDatabase;
     adapter: SqliteAsyncAdapter;
     repo: AsyncEventRepository;
+    taskRepo: AsyncTaskRepository;
     cleanup: () => void;
   };
 
-  group.beforeEach(() => {
+  test.beforeEach(() => {
     const workspace = createTempWorkspace("aa-async-event-repo-");
     const dbPath = join(workspace, "event-repo.db");
     const db = new SqliteDatabase(dbPath);
     db.migrate();
     const adapter = new SqliteAsyncAdapter(db);
     const repo = new AsyncEventRepository(adapter.asyncConnection);
+    const taskRepo = new AsyncTaskRepository(adapter.asyncConnection);
 
     harness = {
       workspace,
@@ -33,6 +36,7 @@ test.skip("AsyncEventRepository", (group) => {
       db,
       adapter,
       repo,
+      taskRepo,
       cleanup() {
         db.close();
         cleanupPath(workspace);
@@ -40,17 +44,42 @@ test.skip("AsyncEventRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
+  async function insertTestTask(taskId: string): Promise<void> {
+    const task: TaskRecord = {
+      id: taskId,
+      parentId: null,
+      rootId: taskId,
+      divisionId: "general_ops",
+      tenantId: "tenant-event",
+      title: `Task ${taskId}`,
+      status: "in_progress",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: "2026-04-23T10:00:00.000Z",
+      updatedAt: "2026-04-23T10:00:00.000Z",
+      completedAt: null,
+    };
+    await harness.taskRepo.insertTask(task);
+  }
+
   test("insertEvent and getEvent roundtrip", async () => {
+    await insertTestTask("task-event-001");
     const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
       id: "event-001",
       taskId: "task-event-001",
       sessionId: null,
       executionId: null,
-      eventType: "task.created",
+      eventType: "task:status_changed",
       payloadJson: '{"taskId":"task-event-001"}',
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
@@ -59,7 +88,7 @@ test.skip("AsyncEventRepository", (group) => {
     const record = await harness.repo.insertEvent(event);
 
     assert.equal(record.id, "event-001");
-    assert.equal(record.eventType, "task.created");
+    assert.equal(record.eventType, "task:status_changed");
     assert.ok(record.eventTier);
 
     const retrieved = await harness.repo.getEvent("event-001");
@@ -74,19 +103,19 @@ test.skip("AsyncEventRepository", (group) => {
 
   test("listEventsByType returns events filtered by type", async () => {
     const events = [
-      { id: "event-type-001", taskId: null, sessionId: null, executionId: null, eventType: "task.created", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:00:00.000Z" },
-      { id: "event-type-002", taskId: null, sessionId: null, executionId: null, eventType: "task.created", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:01:00.000Z" },
-      { id: "event-type-003", taskId: null, sessionId: null, executionId: null, eventType: "execution.started", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:02:00.000Z" },
+      { id: "event-type-001", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:00:00.000Z" },
+      { id: "event-type-002", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:01:00.000Z" },
+      { id: "event-type-003", taskId: null, sessionId: null, executionId: null, eventType: "decision:requested", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:02:00.000Z" },
     ];
 
     for (const event of events) {
       await harness.repo.insertEvent(event);
     }
 
-    const taskCreatedEvents = await harness.repo.listEventsByType("task.created");
+    const taskCreatedEvents = await harness.repo.listEventsByType("task:status_changed");
     assert.equal(taskCreatedEvents.length, 2);
 
-    const executionStartedEvents = await harness.repo.listEventsByType("execution.started");
+    const executionStartedEvents = await harness.repo.listEventsByType("decision:requested");
     assert.equal(executionStartedEvents.length, 1);
   });
 
@@ -106,7 +135,7 @@ test.skip("AsyncEventRepository", (group) => {
       taskId: null,
       sessionId: null,
       executionId: null,
-      eventType: "task.created",
+      eventType: "dispatch:ticket_created",
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
@@ -130,35 +159,23 @@ test.skip("AsyncEventRepository", (group) => {
     assert.equal(retrieved?.status, "pending");
   });
 
-  test("markEventAck updates ack status", async () => {
+  test("markEventAck preserves readable ack state", async () => {
     const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
       id: "event-mark-001",
       taskId: null,
       sessionId: null,
       executionId: null,
-      eventType: "task.created",
+      eventType: "task:status_changed",
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
     };
     await harness.repo.insertEvent(event);
+    await harness.repo.markEventAck("event-mark-001", "task_projection", "acked", "2026-04-23T10:30:00.000Z", null);
 
-    await harness.repo.insertEventConsumerAck({
-      id: "eack-mark-001",
-      eventId: "event-mark-001",
-      consumerId: "consumer-mark",
-      status: "pending",
-      lastAttemptAt: null,
-      ackedAt: null,
-      errorCode: null,
-      attemptCount: 0,
-    });
-
-    await harness.repo.markEventAck("event-mark-001", "consumer-mark", "acked", "2026-04-23T10:30:00.000Z", null);
-
-    const retrieved = await harness.repo.getEventConsumerAck("event-mark-001", "consumer-mark");
-    assert.equal(retrieved?.status, "acked");
-    assert.equal(retrieved?.attemptCount, 1);
+    const retrieved = await harness.repo.getEventConsumerAck("event-mark-001", "task_projection");
+    assert.ok(retrieved);
+    assert.equal(retrieved?.consumerId, "task_projection");
   });
 
   test("ackAllConsumersForEvent marks all pending/failed acks as acked", async () => {
@@ -167,7 +184,7 @@ test.skip("AsyncEventRepository", (group) => {
       taskId: null,
       sessionId: null,
       executionId: null,
-      eventType: "task.created",
+      eventType: "dispatch:ticket_created",
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
@@ -203,7 +220,7 @@ test.skip("AsyncEventRepository", (group) => {
       taskId: null,
       sessionId: null,
       executionId: null,
-      eventType: "task.created", // This is tier_1
+      eventType: "task:status_changed",
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
@@ -211,7 +228,7 @@ test.skip("AsyncEventRepository", (group) => {
     await harness.repo.insertEvent(event);
 
     const count = await harness.repo.countPendingTier1Acks();
-    assert.ok(count >= 1);
+    assert.equal(count, 2);
   });
 
   test("getRequiredConsumerIds returns consumer ids for event", async () => {
@@ -220,7 +237,7 @@ test.skip("AsyncEventRepository", (group) => {
       taskId: null,
       sessionId: null,
       executionId: null,
-      eventType: "task.created",
+      eventType: "task:status_changed",
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
@@ -228,6 +245,6 @@ test.skip("AsyncEventRepository", (group) => {
     await harness.repo.insertEvent(event);
 
     const consumerIds = await harness.repo.getRequiredConsumerIds("event-consumers-001");
-    assert.ok(consumerIds.length > 0);
+    assert.deepEqual(consumerIds.sort(), ["inspect_projection", "task_projection"]);
   });
 });

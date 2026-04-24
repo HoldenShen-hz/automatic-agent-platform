@@ -7,10 +7,11 @@ import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/tr
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { AsyncArtifactRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/artifact-repository.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
+import { AsyncExecutionRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/execution-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { ArtifactRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { ArtifactRecord, ExecutionRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncArtifactRepository", (group) => {
+test.describe("AsyncArtifactRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
@@ -18,10 +19,11 @@ test.skip("AsyncArtifactRepository", (group) => {
     adapter: SqliteAsyncAdapter;
     artifactRepo: AsyncArtifactRepository;
     taskRepo: AsyncTaskRepository;
+    executionRepo: AsyncExecutionRepository;
     cleanup: () => void;
   };
 
-  group.beforeEach(async () => {
+  test.beforeEach(async () => {
     const workspace = createTempWorkspace("aa-async-artifact-repo-");
     const dbPath = join(workspace, "artifact-repo.db");
     const db = new SqliteDatabase(dbPath);
@@ -29,6 +31,7 @@ test.skip("AsyncArtifactRepository", (group) => {
     const adapter = new SqliteAsyncAdapter(db);
     const artifactRepo = new AsyncArtifactRepository(adapter.asyncConnection);
     const taskRepo = new AsyncTaskRepository(adapter.asyncConnection);
+    const executionRepo = new AsyncExecutionRepository(adapter.asyncConnection);
 
     harness = {
       workspace,
@@ -37,6 +40,7 @@ test.skip("AsyncArtifactRepository", (group) => {
       adapter,
       artifactRepo,
       taskRepo,
+      executionRepo,
       cleanup() {
         db.close();
         cleanupPath(workspace);
@@ -44,7 +48,7 @@ test.skip("AsyncArtifactRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
@@ -52,18 +56,18 @@ test.skip("AsyncArtifactRepository", (group) => {
     const task: TaskRecord = {
       id: taskId,
       parentId: null,
-      rootId: null,
-      divisionId: "div-001",
+      rootId: taskId,
+      divisionId: "general_ops",
       tenantId,
       title: "Test Task",
       status: "completed",
-      source: "test",
-      priority: "medium",
+      source: "user",
+      priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
       outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
       errorCode: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -72,8 +76,40 @@ test.skip("AsyncArtifactRepository", (group) => {
     await harness.taskRepo.insertTask(task);
   }
 
+  async function insertTestExecution(executionId: string, taskId: string, tenantId: string, attempt: number = 1): Promise<void> {
+    await insertTestTask(taskId, tenantId);
+    const execution: ExecutionRecord = {
+      id: executionId,
+      taskId,
+      workflowId: "single_agent_minimal",
+      parentExecutionId: null,
+      agentId: "agent-001",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "completed",
+      inputRef: null,
+      traceId: `trace-${executionId}`,
+      attempt,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: "2026-04-23T10:00:00.000Z",
+      finishedAt: "2026-04-23T12:00:00.000Z",
+      createdAt: "2026-04-23T10:00:00.000Z",
+      updatedAt: "2026-04-23T12:00:00.000Z",
+    };
+    await harness.executionRepo.insertExecution(execution);
+  }
+
   test("insertArtifact and getArtifact roundtrip", async () => {
-    await insertTestTask("task-artifact-001", "tenant-artifact");
+    await insertTestExecution("exec-artifact-001", "task-artifact-001", "tenant-artifact");
 
     const artifact: ArtifactRecord = {
       artifactId: "artifact-001",
@@ -106,7 +142,7 @@ test.skip("AsyncArtifactRepository", (group) => {
   });
 
   test("listArtifactsByTask returns all artifacts for a task", async () => {
-    await insertTestTask("task-artifact-list", "tenant-artifact-list");
+    await insertTestExecution("exec-list-001", "task-artifact-list", "tenant-artifact-list");
 
     const artifacts: ArtifactRecord[] = [
       {
@@ -148,7 +184,7 @@ test.skip("AsyncArtifactRepository", (group) => {
   });
 
   test("listArtifactsByTask with tenant scoping returns null when tenant mismatch", async () => {
-    await insertTestTask("task-artifact-tenant", "tenant-a");
+    await insertTestExecution("exec-tenant", "task-artifact-tenant", "tenant-a");
 
     const artifact: ArtifactRecord = {
       artifactId: "artifact-tenant-001",
@@ -172,7 +208,7 @@ test.skip("AsyncArtifactRepository", (group) => {
   });
 
   test("listArtifactsByTask orders by created_at asc", async () => {
-    await insertTestTask("task-artifact-order", "tenant-artifact-order");
+    await insertTestExecution("exec-order", "task-artifact-order", "tenant-artifact-order");
 
     const artifacts: ArtifactRecord[] = [
       {

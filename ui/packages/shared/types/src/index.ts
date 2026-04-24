@@ -34,14 +34,18 @@ export interface PlatformAdapter {
 export interface FeatureGuardContext {
   readonly authenticated: boolean;
   readonly tenantId: string | null;
+  readonly domainId: string | null;
   readonly permissions: readonly string[];
+  readonly roles: readonly string[];
   readonly featureFlags: Readonly<Record<string, boolean>>;
+  readonly featureVisibility: Readonly<Record<string, boolean>>;
   readonly mode: "solo" | "enterprise";
 }
 
 export interface RouteGuardResult {
   readonly allowed: boolean;
   readonly reason: string | null;
+  readonly evaluatedLayers?: readonly string[];
 }
 
 export interface RouteGuardChain {
@@ -224,6 +228,21 @@ export interface WebhookDTO {
   readonly targetUrl: string;
   readonly eventCount: number;
   readonly enabled: boolean;
+}
+
+export interface UserDTO {
+  readonly id: string;
+  readonly displayName: string;
+  readonly roleIds: readonly string[];
+  readonly tenantId: string;
+  readonly status: "active" | "invited" | "disabled";
+}
+
+export interface SystemConfigDTO {
+  readonly environment: "dev" | "staging" | "prod";
+  readonly cspMode: "report-only" | "enforced";
+  readonly csrfEnabled: boolean;
+  readonly telemetryEndpoint: string;
 }
 
 export interface TaskDTO {

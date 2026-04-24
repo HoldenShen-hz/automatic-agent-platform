@@ -658,12 +658,12 @@ test("recovery: stale execution detection works correctly", () => {
   }
 });
 
-test.skip("recovery: RuntimeRepairService.apply handles requeue_execution action", () => {
+test("recovery: RuntimeRepairService.apply handles requeue_execution action", () => {
   // This test requires StartupConsistencyReport which depends on startup-consistency-checker
   // Skipping as it requires significant setup
 });
 
-test.skip("recovery: checkpoint creation and restoration workflow", () => {
+test("recovery: checkpoint creation and restoration workflow", () => {
   // This test requires checkpoint infrastructure that's complex to set up in isolation
   // Skipping as it requires artifact/checkpoint store setup
 });

@@ -1,165 +1,186 @@
 /**
- * Performance Test: Workflow State Transition Operations
- * Measures workflow state transition validation and execution throughput
+ * Performance Test: Workflow State Operations
  *
- * Design targets:
- * - Transition validation: >10000 ops/sec
- * - Workflow status update: <5ms P99
- * - Step status update: <2ms P99
- *
- * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * These are performance smoke tests for the current workflow-state storage API.
+ * They intentionally use generous thresholds so they validate regressions
+ * without becoming flaky across different developer machines.
  */
 
-// @ts-nocheck - Uses WorkflowRecord/WorkflowStepRecord types that don't exist; should be WorkflowStateRecord
-// Also uses wrong method names (insertWorkflow vs insertWorkflowState, etc.)
-
 import assert from "node:assert/strict";
-import test from "node:test";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { rmSync } from "node:fs";
+import test from "node:test";
 
-import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStoreFacade } from "../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
 import { newId, nowIso } from "../../../src/platform/contracts/types/ids.js";
 import type {
+  StepOutputRecord,
   TaskRecord,
-  TaskSource,
-  TaskPriority,
-  WorkflowRecord,
-  WorkflowStepRecord,
+  WorkflowStateRecord,
 } from "../../../src/platform/contracts/types/domain.js";
+import { SqliteDatabase } from "../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStoreFacade } from "../../../src/platform/state-evidence/truth/sqlite/authoritative-task-store-facade.js";
 
 function createTempDb(): SqliteDatabase {
-  const dbPath = join(".tmp", `workflow-perf-${process.pid}-${Date.now()}.db`);
+  mkdirSync(".tmp", { recursive: true });
+  const dbPath = join(".tmp", `workflow-perf-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.db`);
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   return db;
 }
 
-function createTestTaskRecord(overrides?: Partial<TaskRecord>): TaskRecord {
-  const taskId = overrides?.id ?? newId("task");
+function cleanupDb(db: SqliteDatabase): void {
+  db.close();
+  rmSync(db.filePath, { force: true });
+  rmSync(`${db.filePath}-wal`, { force: true });
+  rmSync(`${db.filePath}-shm`, { force: true });
+}
+
+function createTestTaskRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
+  const taskId = overrides.id ?? newId("task");
+  const timestamp = nowIso();
   return {
     id: taskId,
     parentId: null,
     rootId: taskId,
-    divisionId: "div_default",
-    tenantId: "tenant_test",
-    title: `Test task ${taskId}`,
-    status: "queued",
-    source: "user" as TaskSource,
-    priority: "normal" as TaskPriority,
-    inputJson: JSON.stringify({ prompt: "Test task input" }),
-    normalizedInputJson: JSON.stringify({ prompt: "Test task input" }),
+    divisionId: "general_ops",
+    tenantId: "tenant_perf",
+    title: `Workflow perf task ${taskId}`,
+    status: "in_progress",
+    source: "user",
+    priority: "normal",
+    inputJson: JSON.stringify({ prompt: "workflow performance test" }),
+    normalizedInputJson: JSON.stringify({ prompt: "workflow performance test" }),
     outputJson: null,
-    estimatedCostUsd: 0.01,
+    estimatedCostUsd: 0,
     actualCostUsd: 0,
     errorCode: null,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
     completedAt: null,
     ...overrides,
   };
 }
 
-function createTestWorkflowRecord(overrides?: Partial<WorkflowRecord>): WorkflowRecord {
-  const workflowId = overrides?.id ?? newId("workflow");
+function createWorkflowStateRecord(taskId: string, overrides: Partial<WorkflowStateRecord> = {}): WorkflowStateRecord {
+  const timestamp = nowIso();
   return {
-    id: workflowId,
-    taskId: overrides?.taskId ?? newId("task"),
-    divisionId: "div_default",
-    tenantId: "tenant_test",
+    taskId,
+    divisionId: "general_ops",
+    workflowId: "single_division_multi_step_orchestration",
+    currentStepIndex: 0,
     status: "running",
-    currentStepId: null,
-    planJson: JSON.stringify({ steps: [] }),
-    contextJson: JSON.stringify({}),
-    estimatedCostUsd: 0.1,
-    actualCostUsd: 0,
-    errorCode: null,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-    completedAt: null,
+    outputsJson: "{}",
+    lastErrorCode: null,
+    retryCount: 0,
+    resumableFromStep: null,
+    startedAt: timestamp,
+    updatedAt: timestamp,
     ...overrides,
   };
 }
 
-function createTestWorkflowStepRecord(overrides?: Partial<WorkflowStepRecord>): WorkflowStepRecord {
-  const stepId = overrides?.id ?? newId("step");
+function createStepOutputRecord(taskId: string, stepIndex: number, overrides: Partial<StepOutputRecord> = {}): StepOutputRecord {
   return {
-    id: stepId,
-    workflowId: overrides?.workflowId ?? newId("workflow"),
-    stepIndex: 0,
-    stepType: "agent",
+    id: overrides.id ?? newId("step_output"),
+    taskId,
+    stepId: overrides.stepId ?? `step_${stepIndex}`,
     roleId: "general_executor",
-    name: `Step ${stepId}`,
-    status: "pending",
-    inputJson: JSON.stringify({ prompt: "Step input" }),
-    outputJson: null,
-    errorJson: null,
-    attempts: 0,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-    completedAt: null,
+    status: "succeeded",
+    dataJson: JSON.stringify({ stepIndex, ok: true }),
+    summary: `step ${stepIndex} completed`,
+    artifactsJson: "[]",
+    tokenCost: 0,
+    durationMs: 10,
+    validationJson: null,
+    producedAt: nowIso(),
     ...overrides,
   };
 }
 
-// ============================================================================
-// Workflow Status Update Benchmarks
-// ============================================================================
+function calculateP99(latencies: number[]): number {
+  const sorted = [...latencies].sort((left, right) => left - right);
+  return sorted[Math.floor(sorted.length * 0.99)] ?? 0;
+}
 
-test.skip("performance: workflow status update <5ms P99 - uses non-existent insertWorkflow/updateWorkflowStatus", (t) => {
+function assertP99Below(latencies: number[], maxMs: number): void {
+  const p99 = calculateP99(latencies);
+  assert.ok(
+    p99 < maxMs,
+    `P99 latency ${p99.toFixed(3)}ms exceeds ${maxMs}ms budget`,
+  );
+}
+
+function assertOpsAbove(iterations: number, elapsedMs: number, minOpsPerSec: number): void {
+  const opsPerSec = (iterations / elapsedMs) * 1000;
+  assert.ok(
+    opsPerSec > minOpsPerSec,
+    `Throughput ${opsPerSec.toFixed(2)} ops/sec must exceed ${minOpsPerSec} ops/sec`,
+  );
+}
+
+function seedWorkflowStates(
+  store: AuthoritativeTaskStoreFacade,
+  count: number,
+): string[] {
+  const taskIds: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const task = createTestTaskRecord();
+    taskIds.push(task.id);
+    store.insertTask(task);
+    store.insertWorkflowState(createWorkflowStateRecord(task.id));
+  }
+  return taskIds;
+}
+
+function listStepOutputsByTask(store: AuthoritativeTaskStoreFacade, taskId: string): StepOutputRecord[] {
+  return store.withConnection((connection) => connection
+    .prepare(
+      `SELECT
+        id,
+        task_id AS taskId,
+        step_id AS stepId,
+        role_id AS roleId,
+        status,
+        data_json AS dataJson,
+        summary,
+        artifacts_json AS artifactsJson,
+        token_cost AS tokenCost,
+        duration_ms AS durationMs,
+        validation_json AS validationJson,
+        produced_at AS producedAt
+       FROM workflow_step_outputs
+       WHERE task_id = ?
+       ORDER BY produced_at ASC`,
+    )
+    .all(taskId) as unknown as StepOutputRecord[]);
+}
+
+test("performance-smoke: workflow state updates stay responsive", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create test workflows
-    const workflowIds: string[] = [];
-    for (let i = 0; i < 50; i++) {
-      const task = createTestTaskRecord();
-      store.insertTask(task);
-      const workflow = createTestWorkflowRecord({ taskId: task.id });
-      workflowIds.push(workflow.id);
-      store.insertWorkflow(workflow);
-    }
-
+    const taskIds = seedWorkflowStates(store, 40);
     const latencies: number[] = [];
-    const iterations = 500;
-    const statuses = ["running", "paused", "completed", "failed"] as const;
+    const iterations = 400;
+    const statuses: WorkflowStateRecord["status"][] = ["running", "paused", "resuming", "completed"];
 
     for (let i = 0; i < iterations; i++) {
-      const workflowId = workflowIds[i % workflowIds.length]!;
+      const taskId = taskIds[i % taskIds.length]!;
       const status = statuses[i % statuses.length]!;
       const start = performance.now();
-      store.updateWorkflowStatus(workflowId, status, nowIso());
+      store.updateWorkflowState(taskId, status, i % 5, JSON.stringify({ iteration: i, status }), nowIso(), null);
       latencies.push(performance.now() - start);
     }
 
-    latencies.sort((a, b) => a - b);
-    const p99 = latencies[Math.floor(iterations * 0.99)]!;
-    const p50 = latencies[Math.floor(iterations * 0.5)]!;
-
-    try {
-      assert.ok(
-        p99 < 5,
-        `Workflow status update P99 latency ${p99.toFixed(3)}ms exceeds 5ms target. P50: ${p50.toFixed(3)}ms`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertP99Below(latencies, 50);
+    assert.ok(store.getWorkflowState(taskIds[0]!) != null);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-test.skip("performance: workflow creation throughput >500 ops/sec - uses non-existent insertWorkflow", (t) => {
+test("performance-smoke: workflow state creation sustains healthy throughput", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
@@ -168,404 +189,190 @@ test.skip("performance: workflow creation throughput >500 ops/sec - uses non-exi
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      const task = createTestTaskRecord({ id: newId("task") });
+      const task = createTestTaskRecord();
       store.insertTask(task);
-      const workflow = createTestWorkflowRecord({ taskId: task.id });
-      store.insertWorkflow(workflow);
+      store.insertWorkflowState(createWorkflowStateRecord(task.id));
     }
 
     const elapsed = performance.now() - start;
-    const opsPerSec = (iterations / elapsed) * 1000;
-
-    try {
-      assert.ok(
-        opsPerSec > 500,
-        `Workflow creation throughput ${opsPerSec.toFixed(2)} ops/sec must be >500 ops/sec`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertOpsAbove(iterations, elapsed, 200);
+    assert.equal(store.listWorkflowStates().length, iterations);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-// ============================================================================
-// Workflow Step Status Update Benchmarks
-// ============================================================================
-
-test.skip("performance: workflow step status update <2ms P99 - uses non-existent insertWorkflowStep/updateWorkflowStepStatus", (t) => {
+test("performance-smoke: step output inserts stay responsive", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create test workflows with steps
-    const stepIds: string[] = [];
-    for (let i = 0; i < 20; i++) {
-      const task = createTestTaskRecord();
-      store.insertTask(task);
-      const workflow = createTestWorkflowRecord({ taskId: task.id });
-      store.insertWorkflow(workflow);
-      const step = createTestWorkflowStepRecord({ workflowId: workflow.id, stepIndex: 0 });
-      store.insertWorkflowStep(step);
-      stepIds.push(step.id);
-    }
+    const task = createTestTaskRecord();
+    store.insertTask(task);
+    store.insertWorkflowState(createWorkflowStateRecord(task.id));
 
     const latencies: number[] = [];
-    const iterations = 500;
-    const statuses = ["pending", "in_progress", "completed", "failed"] as const;
-
+    const iterations = 300;
     for (let i = 0; i < iterations; i++) {
-      const stepId = stepIds[i % stepIds.length]!;
-      const status = statuses[i % statuses.length]!;
       const start = performance.now();
-      store.updateWorkflowStepStatus(stepId, status, nowIso());
+      store.insertStepOutput(createStepOutputRecord(task.id, i));
       latencies.push(performance.now() - start);
     }
 
-    latencies.sort((a, b) => a - b);
-    const p99 = latencies[Math.floor(iterations * 0.99)]!;
-    const p50 = latencies[Math.floor(iterations * 0.5)]!;
-
-    try {
-      assert.ok(
-        p99 < 2,
-        `Workflow step status update P99 latency ${p99.toFixed(3)}ms exceeds 2ms target. P50: ${p50.toFixed(3)}ms`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertP99Below(latencies, 20);
+    assert.equal(listStepOutputsByTask(store, task.id).length, iterations);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-test.skip("performance: workflow step creation throughput >800 ops/sec - uses non-existent insertWorkflowStep", (t) => {
+test("performance-smoke: step output creation sustains healthy throughput", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create parent workflow
     const task = createTestTaskRecord();
     store.insertTask(task);
-    const workflow = createTestWorkflowRecord({ taskId: task.id });
-    store.insertWorkflow(workflow);
+    store.insertWorkflowState(createWorkflowStateRecord(task.id));
 
-    const iterations = 200;
+    const iterations = 250;
     const start = performance.now();
-
     for (let i = 0; i < iterations; i++) {
-      const step = createTestWorkflowStepRecord({
-        workflowId: workflow.id,
-        stepIndex: i,
-      });
-      store.insertWorkflowStep(step);
+      store.insertStepOutput(createStepOutputRecord(task.id, i));
     }
 
     const elapsed = performance.now() - start;
-    const opsPerSec = (iterations / elapsed) * 1000;
-
-    try {
-      assert.ok(
-        opsPerSec > 800,
-        `Workflow step creation throughput ${opsPerSec.toFixed(2)} ops/sec must be >800 ops/sec`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertOpsAbove(iterations, elapsed, 300);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-// ============================================================================
-// Workflow Query Benchmarks
-// ============================================================================
-
-test.skip("performance: get workflow with steps <5ms P99 - uses non-existent getWorkflow", (t) => {
+test("performance-smoke: get workflow state remains responsive", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create workflows with steps
-    for (let i = 0; i < 20; i++) {
-      const task = createTestTaskRecord();
-      store.insertTask(task);
-      const workflow = createTestWorkflowRecord({ taskId: task.id });
-      store.insertWorkflow(workflow);
-
-      for (let j = 0; j < 5; j++) {
-        const step = createTestWorkflowStepRecord({
-          workflowId: workflow.id,
-          stepIndex: j,
-        });
-        store.insertWorkflowStep(step);
-      }
-    }
-
+    const taskIds = seedWorkflowStates(store, 30);
     const latencies: number[] = [];
-    const iterations = 200;
-    const workflowIds: string[] = [];
-    for (let i = 0; i < 20; i++) {
-      const wf = store.getWorkflow(newId("workflow"));
-      if (wf) workflowIds.push(wf.id);
-    }
+    const iterations = 300;
 
-    // Re-query existing workflows
     for (let i = 0; i < iterations; i++) {
-      const workflowId = workflowIds[i % workflowIds.length]!;
+      const taskId = taskIds[i % taskIds.length]!;
       const start = performance.now();
-      store.getWorkflow(workflowId);
+      const workflow = store.getWorkflowState(taskId);
       latencies.push(performance.now() - start);
+      assert.ok(workflow);
     }
 
-    latencies.sort((a, b) => a - b);
-    const p99 = latencies[Math.floor(iterations * 0.99)]!;
-    const p50 = latencies[Math.floor(iterations * 0.5)]!;
-
-    try {
-      assert.ok(
-        p99 < 5,
-        `Get workflow P99 latency ${p99.toFixed(3)}ms exceeds 5ms target. P50: ${p50.toFixed(3)}ms`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertP99Below(latencies, 20);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-test.skip("performance: list workflows <10ms P99 - uses non-existent listWorkflows", (t) => {
+test("performance-smoke: list workflow states remains responsive", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create 50 workflows
-    for (let i = 0; i < 50; i++) {
-      const task = createTestTaskRecord();
-      store.insertTask(task);
-      const workflow = createTestWorkflowRecord({ taskId: task.id });
-      store.insertWorkflow(workflow);
-    }
-
+    seedWorkflowStates(store, 60);
     const latencies: number[] = [];
     const iterations = 200;
 
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.listWorkflows(50);
+      const workflows = store.listWorkflowStates();
       latencies.push(performance.now() - start);
+      assert.equal(workflows.length, 60);
     }
 
-    latencies.sort((a, b) => a - b);
-    const p99 = latencies[Math.floor(iterations * 0.99)]!;
-    const p50 = latencies[Math.floor(iterations * 0.5)]!;
-
-    try {
-      assert.ok(
-        p99 < 10,
-        `List workflows P99 latency ${p99.toFixed(3)}ms exceeds 10ms target. P50: ${p50.toFixed(3)}ms`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertP99Below(latencies, 30);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-test.skip("performance: list workflow steps <5ms P99 - uses non-existent listWorkflowSteps", (t) => {
+test("performance-smoke: querying step outputs by task remains responsive", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create a workflow with steps
     const task = createTestTaskRecord();
     store.insertTask(task);
-    const workflow = createTestWorkflowRecord({ taskId: task.id });
-    store.insertWorkflow(workflow);
-
-    for (let j = 0; j < 20; j++) {
-      const step = createTestWorkflowStepRecord({
-        workflowId: workflow.id,
-        stepIndex: j,
-      });
-      store.insertWorkflowStep(step);
+    store.insertWorkflowState(createWorkflowStateRecord(task.id));
+    for (let i = 0; i < 20; i++) {
+      store.insertStepOutput(createStepOutputRecord(task.id, i));
     }
 
     const latencies: number[] = [];
     const iterations = 200;
-
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.listWorkflowSteps(workflow.id);
+      const outputs = listStepOutputsByTask(store, task.id);
       latencies.push(performance.now() - start);
+      assert.equal(outputs.length, 20);
     }
 
-    latencies.sort((a, b) => a - b);
-    const p99 = latencies[Math.floor(iterations * 0.99)]!;
-    const p50 = latencies[Math.floor(iterations * 0.5)]!;
-
-    try {
-      assert.ok(
-        p99 < 5,
-        `List workflow steps P99 latency ${p99.toFixed(3)}ms exceeds 5ms target. P50: ${p50.toFixed(3)}ms`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertP99Below(latencies, 20);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-// ============================================================================
-// Multi-Step Workflow Benchmarks
-// ============================================================================
-
-test.skip("performance: complete 5-step workflow <50ms total - uses non-existent insertWorkflow/insertWorkflowStep", (t) => {
+test("performance-smoke: complete 5-step workflow round-trip remains responsive", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    const iterations = 50;
-    const totalLatencies: number[] = [];
+    const iterations = 40;
+    const latencies: number[] = [];
 
     for (let iter = 0; iter < iterations; iter++) {
       const task = createTestTaskRecord();
       store.insertTask(task);
-      const workflow = createTestWorkflowRecord({ taskId: task.id });
-      store.insertWorkflow(workflow);
+      store.insertWorkflowState(createWorkflowStateRecord(task.id));
 
       const start = performance.now();
-
-      // Create 5 steps
-      for (let i = 0; i < 5; i++) {
-        const step = createTestWorkflowStepRecord({
-          workflowId: workflow.id,
-          stepIndex: i,
-        });
-        store.insertWorkflowStep(step);
+      for (let stepIndex = 0; stepIndex < 5; stepIndex++) {
+        store.insertStepOutput(createStepOutputRecord(task.id, stepIndex));
+        store.updateWorkflowState(
+          task.id,
+          stepIndex === 4 ? "completed" : "running",
+          stepIndex,
+          JSON.stringify({ lastCompletedStep: stepIndex }),
+          nowIso(),
+          stepIndex === 4 ? null : `step_${stepIndex + 1}`,
+        );
       }
-
-      // Update each step to completed
-      const steps = store.listWorkflowSteps(workflow.id);
-      for (const step of steps) {
-        store.updateWorkflowStepStatus(step.id, "completed", nowIso());
-      }
-
-      // Update workflow to completed
-      store.updateWorkflowStatus(workflow.id, "completed", nowIso());
-
-      totalLatencies.push(performance.now() - start);
+      latencies.push(performance.now() - start);
     }
 
-    totalLatencies.sort((a, b) => a - b);
-    const p99 = totalLatencies[Math.floor(iterations * 0.99)]!;
-    const p50 = totalLatencies[Math.floor(iterations * 0.5)]!;
-
-    try {
-      assert.ok(
-        p99 < 50,
-        `Complete 5-step workflow P99 latency ${p99.toFixed(3)}ms exceeds 50ms target. P50: ${p50.toFixed(3)}ms`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertP99Below(latencies, 100);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });
 
-test.skip("performance: workflow transition validation >10000 ops/sec - uses non-existent insertWorkflow/updateWorkflowStatus", (t) => {
+test("performance-smoke: workflow transition loop sustains healthy throughput", () => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStoreFacade(db);
 
   try {
-    // Create test workflow
     const task = createTestTaskRecord();
     store.insertTask(task);
-    const workflow = createTestWorkflowRecord({ taskId: task.id });
-    store.insertWorkflow(workflow);
+    store.insertWorkflowState(createWorkflowStateRecord(task.id));
 
     const iterations = 1000;
     const start = performance.now();
-
-    // Rapid status updates (validation happens on each update)
     for (let i = 0; i < iterations; i++) {
-      const status = i % 2 === 0 ? "running" : "paused";
-      store.updateWorkflowStatus(workflow.id, status, nowIso());
+      const status: WorkflowStateRecord["status"] = i % 2 === 0 ? "running" : "paused";
+      store.updateWorkflowState(task.id, status, i % 3, JSON.stringify({ iteration: i }), nowIso(), null);
     }
 
     const elapsed = performance.now() - start;
-    const opsPerSec = (iterations / elapsed) * 1000;
-
-    try {
-      assert.ok(
-        opsPerSec > 10000,
-        `Workflow transition validation throughput ${opsPerSec.toFixed(2)} ops/sec must be >10000 ops/sec`,
-      );
-    } catch (err) {
-      if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
-        return;
-      }
-      throw err;
-    }
+    assertOpsAbove(iterations, elapsed, 500);
   } finally {
-    db.close();
-    rmSync(db.filePath, { force: true });
-    rmSync(`${db.filePath}-wal`, { force: true });
-    rmSync(`${db.filePath}-shm`, { force: true });
+    cleanupDb(db);
   }
 });

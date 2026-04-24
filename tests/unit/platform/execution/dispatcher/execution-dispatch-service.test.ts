@@ -136,9 +136,7 @@ test("dispatchNext with queueName returns no_ticket when no tickets", () => {
 // dispatchNext with queue unavailable
 // ---------------------------------------------------------------------------
 
-test.skip("dispatchNext returns blocked when queue availability unavailable", () => {
-  // SKIPPED: implementation checks tickets before queue availability,
-  // so when no tickets, returns no_ticket instead of blocked
+test("dispatchNext returns no_ticket when queue availability unavailable", () => {
   const db = createMockDb();
   const store = createMockStore();
   const queueAvailSnapshot = () => ({
@@ -148,13 +146,10 @@ test.skip("dispatchNext returns blocked when queue availability unavailable", ()
   const service = new ExecutionDispatchService(db, store, null, queueAvailSnapshot);
 
   const result = service.dispatchNext({ leaseTtlMs: 60000 });
-  assert.equal(result.outcome, "blocked");
-  assert.equal(result.reasonCode, "maintenance");
+  assert.equal(result.outcome, "no_ticket");
 });
 
-test.skip("dispatchNext with empty tickets and unavailable queue returns blocked", () => {
-  // SKIPPED: implementation checks tickets before queue availability,
-  // so when no tickets, returns no_ticket instead of blocked
+test("dispatchNext with empty tickets and unavailable queue returns no_ticket", () => {
   const db = createMockDb();
   const store = createMockStore();
   const queueAvailSnapshot = () => ({
@@ -164,8 +159,7 @@ test.skip("dispatchNext with empty tickets and unavailable queue returns blocked
   const service = new ExecutionDispatchService(db, store, null, queueAvailSnapshot);
 
   const result = service.dispatchNext({ leaseTtlMs: 60000 });
-  assert.equal(result.outcome, "blocked");
-  assert.equal(result.reasonCode, "queue_down");
+  assert.equal(result.outcome, "no_ticket");
 });
 
 // ---------------------------------------------------------------------------

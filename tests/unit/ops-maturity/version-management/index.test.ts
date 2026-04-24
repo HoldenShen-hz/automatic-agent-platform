@@ -69,12 +69,12 @@ test("SemverValidator satisfies with greater than operator", () => {
   assert.equal(validator.satisfies("0.9.0", ">1.0.0"), false);
 });
 
-test.skip("SemverValidator satisfies caret with zero major edge case - ^0.0.3", () => {
+test("SemverValidator satisfies caret with zero major edge case - ^0.0.3", () => {
   const validator = new SemverValidator();
 
-  // ^0.0.3 in implementation: major must be 0, minor must be >= 0, patch >= 3
+  // Current implementation follows semver semantics: >=0.0.3 <0.0.4
   assert.equal(validator.satisfies("0.0.3", "^0.0.3"), true);
-  assert.equal(validator.satisfies("0.0.4", "^0.0.3"), true); // minor >= 0 is true, patch >= 3
+  assert.equal(validator.satisfies("0.0.4", "^0.0.3"), false);
 });
 
 test("SemverValidator satisfies caret with zero minor edge case - ^0.2.3", () => {
@@ -87,14 +87,14 @@ test("SemverValidator satisfies caret with zero minor edge case - ^0.2.3", () =>
   assert.equal(validator.satisfies("0.1.0", "^0.2.3"), false);
 });
 
-test.skip("SemverValidator satisfies tilde edge cases", () => {
+test("SemverValidator satisfies tilde edge cases", () => {
   const validator = new SemverValidator();
 
-  // ~1.2.3 means major must match, minor must be >= constraint, and if minor equals patch >= constraint
+  // Current implementation is strict within the same minor line: >=1.2.3 <1.3.0
   assert.equal(validator.satisfies("1.2.3", "~1.2.3"), true);
   assert.equal(validator.satisfies("1.2.9", "~1.2.3"), true);
-  assert.equal(validator.satisfies("1.3.0", "~1.2.3"), true); // minor 3 >= 2
-  assert.equal(validator.satisfies("1.1.0", "~1.2.3"), false); // minor 1 < 2
+  assert.equal(validator.satisfies("1.3.0", "~1.2.3"), false);
+  assert.equal(validator.satisfies("1.1.0", "~1.2.3"), false);
 });
 
 test("SemverValidator satisfies tilde with different major version", () => {
@@ -743,11 +743,10 @@ test("SemverValidator validateOrdering with single version", () => {
   assert.equal(result.errors.length, 0);
 });
 
-test.skip("SemverValidator validateOrdering with unsorted versions catches error", () => {
+test("SemverValidator validateOrdering with unsorted versions catches error", () => {
   const validator = new SemverValidator();
 
-  // 1.0.0 is less than 2.0.0, which should trigger an error (versions must be in descending order)
-  const result = validator.validateOrdering(["1.0.0", "2.0.0"]);
+  const result = validator.validateOrdering(["2.0.0", "1.0.0"]);
 
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((e) => e.includes("not in valid order")));
@@ -833,7 +832,7 @@ test("VersionCompatibilityMatrix makeKey is deterministic", () => {
   assert.equal(entries.length, 2);
 });
 
-test.skip("VersionCompatibilityMatrix checkCompatibility handles tilde range", () => {
+test("VersionCompatibilityMatrix checkCompatibility handles tilde range", () => {
   const matrix = new VersionCompatibilityMatrix();
 
   matrix.register({
@@ -852,12 +851,11 @@ test.skip("VersionCompatibilityMatrix checkCompatibility handles tilde range", (
   );
   assert.equal(result1.compatible, true);
 
-  // The tilde implementation allows minor >= constraint.minor
   const result2 = matrix.checkCompatibility(
     { packId: "pack-a", version: "1.0.0" },
     { packId: "pack-b", version: "1.3.0" },
   );
-  assert.equal(result2.compatible, true); // Implementation allows 1.3.0 with ~1.2.0
+  assert.equal(result2.compatible, false);
 
   // But 1.1.0 should not satisfy ~1.2.0 (minor 1 < 2)
   const result3 = matrix.checkCompatibility(

@@ -186,18 +186,17 @@ test("integration: DashboardProjectionService processes projection updates and g
   assert.ok(delta.timestamp);
 });
 
-test.skip("integration: DashboardProjectionService processes events and generates deltas", () => {
-  // Skipped: task:status_changed format not handled by deriveChangeType (expects task.updated format)
+test("integration: DashboardProjectionService processes events and generates deltas", () => {
   const service = new DashboardProjectionService({ emitDebounceMs: 10 });
 
   const delta = service.processEvent("task:status_changed", { taskId: "task-456", previousStatus: "pending", newStatus: "completed", changedAt: nowIso() } as any);
 
-  // deriveChangeType returns null for task:status_changed since it expects dotted format like task.updated
-  assert.equal(delta, null);
+  assert.ok(delta);
+  assert.equal(delta?.changes[0]?.changeType, "task_completed");
+  assert.equal(delta?.changes[0]?.entityId, "task-456");
 });
 
-test.skip("integration: DashboardProjectionService consumes pending deltas", () => {
-  // Skipped: task:status_changed format not handled by deriveChangeType
+test("integration: DashboardProjectionService consumes pending deltas", () => {
   const service = new DashboardProjectionService({ emitDebounceMs: 10 });
 
   service.processEvent("task:status_changed", { taskId: "task-789", previousStatus: "pending", newStatus: "in_progress", changedAt: nowIso() } as any);
@@ -210,8 +209,7 @@ test.skip("integration: DashboardProjectionService consumes pending deltas", () 
   assert.ok(!service.hasPendingDeltas());
 });
 
-test.skip("integration: DashboardProjectionService flushes pending deltas immediately", () => {
-  // Skipped: task:status_changed format not handled by deriveChangeType
+test("integration: DashboardProjectionService flushes pending deltas immediately", () => {
   const service = new DashboardProjectionService({ emitDebounceMs: 500 });
 
   service.processEvent("task:status_changed", { taskId: "task-flush", previousStatus: "pending", newStatus: "done", changedAt: nowIso() } as any);
@@ -246,11 +244,10 @@ test("integration: DashboardProjectionService builds state from projection recor
   assert.ok(state.lastUpdatedAt);
 });
 
-test.skip("integration: DashboardProjectionService clears pending deltas", () => {
-  // Skipped: task:status_changed format not handled by deriveChangeType
+test("integration: DashboardProjectionService clears pending deltas", () => {
   const service = new DashboardProjectionService({ emitDebounceMs: 1000 });
 
-  service.processEvent("task:status_changed", { taskId: "task-clear" } as any);
+  service.processEvent("task:status_changed", { taskId: "task-clear", newStatus: "in_progress" } as any);
   assert.ok(service.hasPendingDeltas());
 
   service.clearPendingDeltas();
@@ -411,26 +408,20 @@ test("integration: DashboardWebSocketServer getConnectedClients returns client l
 // Integration: Full Dashboard Pipeline
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("integration: Full dashboard pipeline - task events flow through projection to WebSocket", () => {
-  // Skipped: task:status_changed format not handled by deriveChangeType
-  // 1. Create services
+test("integration: Full dashboard pipeline - task events flow through projection to WebSocket", () => {
   const projectionService = new DashboardProjectionService({ emitDebounceMs: 10 });
   const wsServer = new DashboardWebSocketServer({ heartbeatIntervalMs: 60000 });
 
-  // 2. Register a client
   const { clientId } = wsServer.registerClient(["totalTasks", "incidentCount"]);
 
-  // 3. Simulate task events flowing through projection service
   projectionService.processEvent("task:status_changed", { taskId: "task-pipeline-1", previousStatus: "pending", newStatus: "in_progress", changedAt: nowIso() } as any);
   projectionService.processEvent("task:status_changed", { taskId: "task-pipeline-1", previousStatus: "in_progress", newStatus: "completed", changedAt: nowIso() } as any);
   projectionService.processEvent("task:status_changed", { taskId: "task-pipeline-2", previousStatus: "pending", newStatus: "failed", changedAt: nowIso() } as any);
 
-  // 4. Connect projection service to WebSocket server
   wsServer.setDeltaHandler((delta) => {
-    // Delta handler would push to clients in real implementation
+    void delta;
   });
 
-  // 5. Flush and push deltas to WebSocket
   const deltas = projectionService.flush();
   let totalPushed = 0;
 
@@ -441,7 +432,6 @@ test.skip("integration: Full dashboard pipeline - task events flow through proje
   assert.equal(deltas.length, 3);
   assert.ok(totalPushed > 0);
 
-  // Cleanup
   wsServer.unregisterClient(clientId);
   wsServer.stop();
 });

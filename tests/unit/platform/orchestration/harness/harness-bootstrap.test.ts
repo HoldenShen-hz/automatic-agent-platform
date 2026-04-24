@@ -10,6 +10,9 @@ import {
 } from "../../../../../src/platform/orchestration/harness/harness-bootstrap.js";
 import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
 
+type HarnessBootstrapReadonlyType = HarnessBootstrap;
+void (null as unknown as HarnessBootstrapReadonlyType);
+
 test("harness bootstrap exposes canonical harness services", () => {
   const bootstrap = buildHarnessBootstrap();
   assert.equal(bootstrap.capabilityGroupId, "harness");
@@ -112,7 +115,8 @@ test("registerHarnessBootstrap can be called multiple times safely", async () =>
   }
 });
 
-test.skip("HarnessBootstrap type has correct readonly properties - requires type-level testing", () => {
-  // This test documents that HarnessBootstrap has readonly arrays
-  // TypeScript type testing would require runtime type checking or separate type tests
+test("HarnessBootstrap type has correct readonly properties - requires type-level testing", () => {
+  const bootstrap = buildHarnessBootstrap();
+  assert.ok(Array.isArray(bootstrap.catalog));
+  assert.ok(Array.isArray(bootstrap.registeredServiceIds));
 });

@@ -7,10 +7,11 @@ import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/tr
 import { SqliteAsyncAdapter } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-async-adapter.js";
 import { AsyncApprovalRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/approval-repository.js";
 import { AsyncTaskRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/task-repository.js";
+import { AsyncExecutionRepository } from "../../../../../../src/platform/state-evidence/truth/async-repositories/execution-repository.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
-import type { ApprovalRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import type { ApprovalRecord, ExecutionRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncApprovalRepository", (group) => {
+test.describe("AsyncApprovalRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
@@ -18,10 +19,11 @@ test.skip("AsyncApprovalRepository", (group) => {
     adapter: SqliteAsyncAdapter;
     approvalRepo: AsyncApprovalRepository;
     taskRepo: AsyncTaskRepository;
+    executionRepo: AsyncExecutionRepository;
     cleanup: () => void;
   };
 
-  group.beforeEach(async () => {
+  test.beforeEach(async () => {
     const workspace = createTempWorkspace("aa-async-approval-repo-");
     const dbPath = join(workspace, "approval-repo.db");
     const db = new SqliteDatabase(dbPath);
@@ -29,6 +31,7 @@ test.skip("AsyncApprovalRepository", (group) => {
     const adapter = new SqliteAsyncAdapter(db);
     const approvalRepo = new AsyncApprovalRepository(adapter.asyncConnection);
     const taskRepo = new AsyncTaskRepository(adapter.asyncConnection);
+    const executionRepo = new AsyncExecutionRepository(adapter.asyncConnection);
 
     harness = {
       workspace,
@@ -37,6 +40,7 @@ test.skip("AsyncApprovalRepository", (group) => {
       adapter,
       approvalRepo,
       taskRepo,
+      executionRepo,
       cleanup() {
         db.close();
         cleanupPath(workspace);
@@ -44,7 +48,7 @@ test.skip("AsyncApprovalRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
@@ -52,18 +56,18 @@ test.skip("AsyncApprovalRepository", (group) => {
     const task: TaskRecord = {
       id: taskId,
       parentId: null,
-      rootId: null,
-      divisionId: "div-001",
+      rootId: taskId,
+      divisionId: "general_ops",
       tenantId,
       title: "Test Task",
       status: "pending_approval",
-      source: "test",
-      priority: "medium",
+      source: "user",
+      priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
       outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
       errorCode: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -72,8 +76,40 @@ test.skip("AsyncApprovalRepository", (group) => {
     await harness.taskRepo.insertTask(task);
   }
 
+  async function insertTestExecution(executionId: string, taskId: string, tenantId: string): Promise<void> {
+    await insertTestTask(taskId, tenantId);
+    const execution: ExecutionRecord = {
+      id: executionId,
+      taskId,
+      workflowId: "single_agent_minimal",
+      parentExecutionId: null,
+      agentId: "agent-001",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "pending",
+      inputRef: null,
+      traceId: `trace-${executionId}`,
+      attempt: 1,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: null,
+      finishedAt: null,
+      createdAt: "2026-04-23T10:00:00.000Z",
+      updatedAt: "2026-04-23T10:00:00.000Z",
+    };
+    await harness.executionRepo.insertExecution(execution);
+  }
+
   test("insertApproval and getApproval roundtrip", async () => {
-    await insertTestTask("task-approval-001", "tenant-approval");
+    await insertTestExecution("exec-approval-001", "task-approval-001", "tenant-approval");
 
     const approval: ApprovalRecord = {
       id: "approval-001",
@@ -102,7 +138,7 @@ test.skip("AsyncApprovalRepository", (group) => {
   });
 
   test("getApproval with tenant scoping returns null when tenant mismatch", async () => {
-    await insertTestTask("task-approval-tenant", "tenant-a");
+    await insertTestExecution("exec-tenant", "task-approval-tenant", "tenant-a");
 
     const approval: ApprovalRecord = {
       id: "approval-tenant-001",
@@ -122,7 +158,34 @@ test.skip("AsyncApprovalRepository", (group) => {
   });
 
   test("listApprovalsByTask returns all approvals for a task", async () => {
-    await insertTestTask("task-approval-list", "tenant-approval-list");
+    await insertTestExecution("exec-list-001", "task-approval-list", "tenant-approval-list");
+    await harness.executionRepo.insertExecution({
+      id: "exec-list-002",
+      taskId: "task-approval-list",
+      workflowId: "single_agent_minimal",
+      parentExecutionId: null,
+      agentId: "agent-002",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "pending",
+      inputRef: null,
+      traceId: "trace-exec-list-002",
+      attempt: 2,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: null,
+      finishedAt: null,
+      createdAt: "2026-04-23T10:01:00.000Z",
+      updatedAt: "2026-04-23T10:01:00.000Z",
+    });
 
     const approvals: ApprovalRecord[] = [
       {
@@ -158,7 +221,7 @@ test.skip("AsyncApprovalRepository", (group) => {
   });
 
   test("updateApprovalDecision updates status, response, and timestamp", async () => {
-    await insertTestTask("task-approval-update", "tenant-approval-update");
+    await insertTestExecution("exec-update-001", "task-approval-update", "tenant-approval-update");
 
     const approval: ApprovalRecord = {
       id: "approval-update-001",
@@ -188,7 +251,36 @@ test.skip("AsyncApprovalRepository", (group) => {
   });
 
   test("listApprovalsByStatus filters by status", async () => {
-    await insertTestTask("task-approval-status", "tenant-approval-status");
+    await insertTestExecution("exec-status-0", "task-approval-status", "tenant-approval-status");
+    for (let i = 1; i < 4; i++) {
+      await harness.executionRepo.insertExecution({
+        id: `exec-status-${i}`,
+        taskId: "task-approval-status",
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: `agent-${i}`,
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "pending",
+        inputRef: null,
+        traceId: `trace-exec-status-${i}`,
+        attempt: i + 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: null,
+        finishedAt: null,
+        createdAt: new Date(2026, 3, 23, 10, i).toISOString(),
+        updatedAt: new Date(2026, 3, 23, 10, i).toISOString(),
+      });
+    }
 
     const approvals: Array<ApprovalRecord["status"]> = ["pending", "approved", "pending", "rejected"];
     const approvalIds = ["approval-status-001", "approval-status-002", "approval-status-003", "approval-status-004"];
@@ -219,7 +311,7 @@ test.skip("AsyncApprovalRepository", (group) => {
   });
 
   test("insertTakeoverSession and getTakeoverSession roundtrip", async () => {
-    await insertTestTask("task-takeover-001", "tenant-takeover");
+    await insertTestExecution("exec-takeover-001", "task-takeover-001", "tenant-takeover");
 
     const session = {
       id: "takeover-001",
@@ -241,7 +333,7 @@ test.skip("AsyncApprovalRepository", (group) => {
   });
 
   test("closeTakeoverSession updates status and closed_at", async () => {
-    await insertTestTask("task-takeover-close", "tenant-takeover-close");
+    await insertTestExecution("exec-takeover-close", "task-takeover-close", "tenant-takeover-close");
 
     const session = {
       id: "takeover-close-001",

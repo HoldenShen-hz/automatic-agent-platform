@@ -220,14 +220,14 @@ test("execution repository records execution failure", () => {
 
     const failTime = new Date().toISOString();
     ctx.db.transaction(() => {
-      ctx.store.updateExecutionFailure(
+      ctx.store.updateExecutionFailure({
         executionId,
-        "failed",
-        failTime,
-        failTime,
-        "ERR_TIMEOUT",
-        "Execution timed out after 60 seconds"
-      );
+        status: "failed",
+        updatedAt: failTime,
+        finishedAt: failTime,
+        lastErrorCode: "ERR_TIMEOUT",
+        lastErrorMessage: "Execution timed out after 60 seconds",
+      });
     });
 
     const failed = ctx.store.getExecution(executionId);

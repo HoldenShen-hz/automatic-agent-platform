@@ -117,11 +117,7 @@ test("E2E: domain onboarding blocks advancement without evidence", () => {
   );
 });
 
-test.skip("E2E: domain onboarding can rollback to earlier phase", () => {
-  // TODO: Implementation issue - rollback sets both current phase AND target phase
-  // to "in_progress". The test expects only target phase (modeling) to be active,
-  // but activePhase returns the first in_progress phase which is security_certification.
-  // The rollback implementation needs to set only the target phase to in_progress.
+test("E2E: domain onboarding can rollback to earlier phase", () => {
   const registry = new DomainRegistryService();
   registerTestDomain(registry, "ml_ops");
 
@@ -139,6 +135,11 @@ test.skip("E2E: domain onboarding can rollback to earlier phase", () => {
   // Rollback to modeling phase
   session = service.rollback("ml_ops", "modeling", "artifact:checkpoint-1", "Quality issues found");
   assert.equal(session.activePhase, "modeling", "Should rollback to modeling");
+  assert.equal(
+    session.records.filter((record) => record.status === "in_progress").length,
+    1,
+    "Only the target phase should remain active after rollback",
+  );
 
   // Verify rollback history is recorded
   const history = session.rollbackHistory;
@@ -148,13 +149,14 @@ test.skip("E2E: domain onboarding can rollback to earlier phase", () => {
   // Restart and verify can still advance
   session = service.advance("ml_ops", ["artifact:modeling-v2"]);
   assert.equal(session.activePhase, "development_validation", "Should be able to re-advance");
+  assert.equal(
+    session.records.filter((record) => record.phase === "development_validation").length,
+    1,
+    "Rollback and re-advance should not duplicate the next phase record",
+  );
 });
 
-test.skip("E2E: domain onboarding blocks domain that fails smoke test", () => {
-  // TODO: Implementation issue - when all phases complete, advance() calls
-  // registry.activate() which throws if smoke test fails. The session.completed
-  // is never set to true because the activation fails. The test expects
-  // completed=true even when activation fails, but that's not what happens.
+test("E2E: domain onboarding records completion even when activation smoke test fails", () => {
   const registry = new DomainRegistryService();
   // Register domain without workflows (smoke test should catch this)
   registry.register({
@@ -186,27 +188,65 @@ test.skip("E2E: domain onboarding blocks domain that fails smoke test", () => {
   let session = service.advance("incomplete", ["artifact:1"]);
   session = service.advance("incomplete", ["artifact:2"]);
   session = service.advance("incomplete", ["artifact:3"]);
-  session = service.advance("incomplete", ["artifact:4"]);
+  assert.throws(
+    () => service.advance("incomplete", ["artifact:4"]),
+    (error: unknown) => (error as { code?: string }).code === "domain_registry.smoke_test_failed",
+    "Final activation should surface the smoke test failure",
+  );
 
-  // Domain activation happens - smoke test may fail but onboarding completes
-  // The key is that we track the activation attempt
+  // Even though activation fails, the onboarding session has completed all phases.
+  session = service.get("incomplete");
   assert.equal(session.completed, true, "Onboarding flow should complete");
+  assert.equal(session.activatedDomainStatus, "testing", "Domain should remain non-active when smoke test fails");
 });
 
-test.skip("E2E: domain onboarding preserves evidence across phases", () => {
-  // TODO: Implementation issue - advance() creates a new phase record for the
-  // next phase rather than accumulating evidence in the current phase.
-  // When advancing from modeling to dev_validation, a new dev_validation record
-  // is created (in_progress, empty evidence). The modeling record stays as
-  // "completed" with only "artifact:initial". "artifact:additional" is never
-  // added to modeling because advance() moves to a new phase, not the same phase.
+test("E2E: domain onboarding preserves evidence across phases", () => {
+  const registry = new DomainRegistryService();
+  registerTestDomain(registry, "evidence_flow");
+
+  const service = new DomainOnboardingService(registry);
+  service.start("evidence_flow");
+
+  let session = service.advance("evidence_flow", ["artifact:modeling", "artifact:modeling-rollback"]);
+  assert.equal(session.activePhase, "development_validation");
+
+  session = service.advance("evidence_flow", ["artifact:validation", "artifact:validation-checklist"]);
+  assert.equal(session.activePhase, "security_certification");
+
+  const modelingRecord = session.records.find((record) => record.phase === "modeling");
+  const validationRecord = session.records.find((record) => record.phase === "development_validation");
+
+  assert.deepEqual(
+    modelingRecord?.evidenceArtifactIds,
+    ["artifact:modeling", "artifact:modeling-rollback"],
+    "Modeling evidence should remain attached to the modeling phase",
+  );
+  assert.deepEqual(
+    validationRecord?.evidenceArtifactIds,
+    ["artifact:validation", "artifact:validation-checklist"],
+    "Validation evidence should remain attached to the validation phase",
+  );
 });
 
-test.skip("E2E: domain onboarding blocks and unblocks phase", () => {
-  // TODO: Implementation issue - after block(), the phase status is "blocked".
-  // But advance() looks for a phase with status "in_progress" and throws if none found.
-  // The test expects advance() to reopen a blocked phase, but the implementation
-  // doesn't support this - there's no "unblock" method to transition back to in_progress.
+test("E2E: domain onboarding blocks and resumes a phase via advance", () => {
+  const registry = new DomainRegistryService();
+  registerTestDomain(registry, "blocked_flow");
+
+  const service = new DomainOnboardingService(registry);
+  service.start("blocked_flow");
+
+  let session = service.block("blocked_flow", "artifact:blocked");
+  assert.equal(session.activePhase, null, "Blocked phase should leave no active phase");
+
+  session = service.advance("blocked_flow", ["artifact:modeling-retry"]);
+  assert.equal(session.activePhase, "development_validation", "Advance should reopen and complete the blocked phase");
+
+  const modelingRecord = session.records.find((record) => record.phase === "modeling");
+  assert.deepEqual(
+    modelingRecord?.evidenceArtifactIds,
+    ["artifact:blocked", "artifact:modeling-retry"],
+    "Blocked phase should keep its block evidence and merge resume evidence",
+  );
 });
 
 test("E2E: domain onboarding list returns all sessions", () => {

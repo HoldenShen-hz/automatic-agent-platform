@@ -45,7 +45,7 @@ test("security: basic ../ path traversal is blocked", () => {
 // %2f to / before calling realpath(). The path "/workspace/project/..%2f..%2fetc/passwd"
 // may not be recognized as a traversal because %2f is not decoded before the check.
 // Fix: ensure checkSandboxPath properly normalizes/decode %2f before realpath resolution.
-test.skip("security: double-encoded ../ (%2f) path traversal is blocked", () => {
+test("security: double-encoded ../ (%2f) path traversal is blocked", () => {
   const policy: SandboxPolicy = {
     policyId: "test-policy",
     mode: "workspace_write",

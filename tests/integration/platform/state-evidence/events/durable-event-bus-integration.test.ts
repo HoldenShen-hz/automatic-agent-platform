@@ -47,8 +47,7 @@ test("integration: durable event bus publishes events and creates ack records fo
   }
 });
 
-// SKIP: Missing event schema for execution:heartbeat
-test.skip("integration: durable event bus delivers events to subscribers and handles acknowledgments", async () => {
+test("integration: durable event bus delivers events to subscribers and handles acknowledgments", async () => {
   const workspace = createTempWorkspace("aa-event-bus-deliver-");
   try {
     const db = new SqliteDatabase(join(workspace, "event-bus-deliver.db"));
@@ -62,22 +61,22 @@ test.skip("integration: durable event bus delivers events to subscribers and han
     });
 
     let deliveredEvents: string[] = [];
-    bus.subscribe("test_consumer", (event) => {
+    bus.subscribe("inspect_projection", (event) => {
       deliveredEvents.push(event.id);
     });
 
-    bus.publish({
-      eventType: "execution:heartbeat",
+    const event = bus.publish({
+      eventType: "task:status_changed",
       taskId: "task-bus-deliver",
       executionId: "exec-bus-deliver",
       traceId: "trace-bus-deliver",
-      payload: { workerId: "worker-test", status: "idle" },
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    // Allow async delivery to complete
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    assert.ok(deliveredEvents.length > 0, "Subscriber should receive events");
+    assert.ok(deliveredEvents.includes(event.id), "Subscriber should receive and ack the tier-1 event");
+    assert.equal(bus.pendingForConsumer("inspect_projection").length, 0);
     bus.dispose();
     db.close();
   } finally {
@@ -85,8 +84,7 @@ test.skip("integration: durable event bus delivers events to subscribers and han
   }
 });
 
-// SKIP: Missing event schema for execution:heartbeat
-test.skip("integration: durable event bus publishes batch events and creates ack records", () => {
+test("integration: durable event bus publishes batch events and creates ack records", () => {
   const ctx = createIntegrationContext("aa-event-bus-batch-");
   try {
     const bus = new DurableEventBus(ctx.db, ctx.store);
@@ -105,11 +103,11 @@ test.skip("integration: durable event bus publishes batch events and creates ack
         payload: { fromStatus: "queued", toStatus: "in_progress" },
       },
       {
-        eventType: "execution:heartbeat",
+        eventType: "dispatch:ticket_created",
         taskId: "task-bus-batch",
         executionId: "exec-bus-batch",
         traceId: "trace-bus-batch-2",
-        payload: { workerId: "worker-batch", status: "busy" },
+        payload: { ticketId: "ticket-batch-1", queueId: "default" },
       },
       {
         eventType: "task:status_changed",
@@ -132,8 +130,7 @@ test.skip("integration: durable event bus publishes batch events and creates ack
   }
 });
 
-// SKIP: Missing event schema for execution:heartbeat
-test.skip("integration: durable event bus dispatches volatile tier-2 events to handlers", async () => {
+test("integration: durable event bus dispatches volatile tier-2 events to handlers", async () => {
   const workspace = createTempWorkspace("aa-event-bus-volatile-");
   try {
     const db = new SqliteDatabase(join(workspace, "event-bus-volatile.db"));
@@ -148,17 +145,17 @@ test.skip("integration: durable event bus dispatches volatile tier-2 events to h
 
     let handlerCalled = false;
     bus.subscribe("volatile_consumer", (event) => {
-      if (event.eventType === "execution:heartbeat") {
+      if (event.eventType === "dispatch:ticket_created") {
         handlerCalled = true;
       }
     });
 
     bus.publish({
-      eventType: "execution:heartbeat",
+      eventType: "dispatch:ticket_created",
       taskId: "task-bus-volatile",
       executionId: "exec-bus-volatile",
       traceId: "trace-bus-volatile",
-      payload: { workerId: "worker-volatile", status: "idle" },
+      payload: { ticketId: "ticket-volatile-1", queueId: "default" },
     });
 
     // Allow async delivery to complete
@@ -172,8 +169,7 @@ test.skip("integration: durable event bus dispatches volatile tier-2 events to h
   }
 });
 
-// SKIP: Missing event schema for execution:heartbeat
-test.skip("integration: durable event bus rejects oversized payloads", () => {
+test("integration: durable event bus rejects oversized payloads", () => {
   const ctx = createIntegrationContext("aa-event-bus-oversized-");
   try {
     const bus = new DurableEventBus(ctx.db, ctx.store);
@@ -188,13 +184,13 @@ test.skip("integration: durable event bus rejects oversized payloads", () => {
     assert.throws(
       () =>
         bus.publish({
-          eventType: "task:status_changed",
+          eventType: "dispatch:ticket_created",
           taskId: "task-bus-oversized",
           executionId: "exec-bus-oversized",
           traceId: "trace-bus-oversized",
           payload: largePayload,
         }),
-      (err: Error) => err.message.includes("payload_too_large"),
+      (err: Error) => /payload_too_large|exceeds maximum/i.test(err.message),
       "Should reject payloads exceeding 1MB",
     );
 
@@ -204,8 +200,7 @@ test.skip("integration: durable event bus rejects oversized payloads", () => {
   }
 });
 
-// SKIP: Missing event schema for execution:heartbeat
-test.skip("integration: durable event bus can unsubscribe and stop receiving events", async () => {
+test("integration: durable event bus can unsubscribe and stop receiving events", async () => {
   const workspace = createTempWorkspace("aa-event-bus-unsubscribe-");
   try {
     const db = new SqliteDatabase(join(workspace, "event-bus-unsubscribe.db"));
@@ -224,11 +219,11 @@ test.skip("integration: durable event bus can unsubscribe and stop receiving eve
     });
 
     bus.publish({
-      eventType: "execution:heartbeat",
+      eventType: "dispatch:ticket_created",
       taskId: "task-bus-unsub",
       executionId: "exec-bus-unsub",
       traceId: "trace-bus-unsub-1",
-      payload: { workerId: "worker-unsub-1", status: "idle" },
+      payload: { ticketId: "ticket-unsub-1", queueId: "default" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -237,11 +232,11 @@ test.skip("integration: durable event bus can unsubscribe and stop receiving eve
     bus.unsubscribe("unsub_consumer");
 
     bus.publish({
-      eventType: "execution:heartbeat",
+      eventType: "dispatch:ticket_created",
       taskId: "task-bus-unsub",
       executionId: "exec-bus-unsub",
       traceId: "trace-bus-unsub-2",
-      payload: { workerId: "worker-unsub-2", status: "idle" },
+      payload: { ticketId: "ticket-unsub-2", queueId: "default" },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));

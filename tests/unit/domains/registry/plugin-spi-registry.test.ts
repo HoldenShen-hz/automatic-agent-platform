@@ -584,15 +584,99 @@ test("PluginSpiRegistry rejects forked process isolation for non-builtin plugins
 });
 
 test("PluginSpiRegistry runs builtin plugins in a sandboxed process runtime with a dedicated sandbox root", async () => {
-  // Skipped: Requires Node.js --permission flag support and proper sandbox configuration
-  // The child process exits due to permission issues in the test environment
-  test.skip();
+  const plugin = createBuiltinPlugin("plugin.coding.presenter");
+  assert.ok(plugin);
+
+  const registry = new PluginSpiRegistry();
+  registry.register(plugin!, {
+    pluginId: "plugin.coding.presenter",
+    name: "coding presenter",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: ["present.output"],
+    spiTypes: ["presenter"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "src/plugins/presenters/coding-presenter",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      timeoutMs: 2000,
+      allowedKnowledgeNamespaces: [],
+      runtimeIsolation: "sandboxed_process",
+    }),
+  });
+
+  const output = await registry.invokePresenter("plugin.coding.presenter", {
+    domainId: "coding",
+    machineOutputs: [{ stepId: "step_1", outputRef: null, payload: { ok: true } }],
+    artifacts: [],
+    audience: "developer",
+  });
+
+  const record = registry.get("plugin.coding.presenter");
+  assert.equal(output.summary, "Completed 1 coding step(s): step_1");
+  assert.ok(record?.runtimeProcessId);
+  assert.ok(record?.runtimeSandboxRoot);
+  assert.notEqual(record?.runtimeProcessId, process.pid);
+  assert.equal(record?.manifest.sandbox.runtimeIsolation, "sandboxed_process");
+
+  await registry.unload("plugin.coding.presenter");
+  assert.equal(registry.get("plugin.coding.presenter")?.runtimeProcessId, null);
 });
 
 test("PluginSpiRegistry runs builtin plugins in a containerized process runtime via launcher command", async () => {
-  // Skipped: Requires container runtime and proper sandbox configuration
-  // The child process exits due to permission issues in the test environment
-  test.skip();
+  const launcherKey = "AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON";
+  const originalLauncher = process.env[launcherKey];
+  process.env[launcherKey] = JSON.stringify([process.execPath, "{childModulePath}"]);
+
+  try {
+    const plugin = createBuiltinPlugin("plugin.coding.presenter");
+    assert.ok(plugin);
+
+    const registry = new PluginSpiRegistry();
+    registry.register(plugin!, {
+      pluginId: "plugin.coding.presenter",
+      name: "coding presenter",
+      version: "1.0.0",
+      owner: "test",
+      domainIds: ["coding"],
+      capabilityIds: ["present.output"],
+      spiTypes: ["presenter"],
+      extensionKind: "domain_plugin",
+      trustLevel: "trusted",
+      publicSdkSurface: "src/plugins/presenters/coding-presenter",
+      settingsSchema: {},
+      sandbox: makeSandboxPolicy({
+        timeoutMs: 2000,
+        allowedKnowledgeNamespaces: [],
+        runtimeIsolation: "containerized_process",
+      }),
+    });
+
+    const output = await registry.invokePresenter("plugin.coding.presenter", {
+      domainId: "coding",
+      machineOutputs: [{ stepId: "step_1", outputRef: null, payload: { ok: true } }],
+      artifacts: [],
+      audience: "developer",
+    });
+
+    const record = registry.get("plugin.coding.presenter");
+    assert.equal(output.summary, "Completed 1 coding step(s): step_1");
+    assert.ok(record?.runtimeProcessId);
+    assert.ok(record?.runtimeSandboxRoot);
+    assert.notEqual(record?.runtimeProcessId, process.pid);
+    assert.equal(record?.manifest.sandbox.runtimeIsolation, "containerized_process");
+
+    await registry.unload("plugin.coding.presenter");
+    assert.equal(registry.get("plugin.coding.presenter")?.runtimeProcessId, null);
+  } finally {
+    if (originalLauncher == null) {
+      delete process.env[launcherKey];
+    } else {
+      process.env[launcherKey] = originalLauncher;
+    }
+  }
 });
 
 test("buildPluginRuntimeExecArgv enables node permissions for sandboxed runtimes", () => {

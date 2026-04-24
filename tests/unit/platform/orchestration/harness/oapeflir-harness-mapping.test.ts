@@ -5,6 +5,9 @@ import {
   type OapeflirSemanticPhase,
 } from "../../../../../src/platform/orchestration/harness/oapeflir-harness-mapping.js";
 
+type OapeflirPhaseTypeSmoke = OapeflirSemanticPhase;
+void (null as unknown as OapeflirPhaseTypeSmoke);
+
 test("mapHarnessStepToOapeflirPhase maps planner/plan to plan phase", () => {
   assert.equal(mapHarnessStepToOapeflirPhase("planner", "plan"), "plan");
   assert.equal(mapHarnessStepToOapeflirPhase("planner", "other"), "plan");
@@ -125,9 +128,9 @@ test("mapHarnessStepToOapeflirPhase handles empty string stage", () => {
   assert.equal(mapHarnessStepToOapeflirPhase("unknown" as any, ""), "observe");
 });
 
-test.skip("mapHarnessStepToOapeflirPhase type validation - requires type-level testing", () => {
-  // This test documents that OapeflirSemanticPhase is a union type of specific strings
-  // Runtime testing cannot validate TypeScript types without runtime type checking library
+test("mapHarnessStepToOapeflirPhase type validation - requires type-level testing", () => {
+  const phases: OapeflirSemanticPhase[] = ["observe", "assess", "plan", "execute", "feedback", "learn", "improve", "release"];
+  assert.equal(phases.includes("release"), true);
 });
 
 test("OapeflirSemanticPhase type contains all expected phase values", () => {

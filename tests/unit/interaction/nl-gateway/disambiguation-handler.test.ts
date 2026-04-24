@@ -499,18 +499,20 @@ test("DisambiguationHandler default config values", () => {
   assert.equal(handler.getConfidenceLevel(0.49), "very_low");
 });
 
-test.skip("detectAmbiguity with exact boundary values", () => {
+test("detectAmbiguity with exact boundary values", () => {
   // Message length exactly 6 should not trigger ambiguity
   assert.equal(detectAmbiguity("abcdef", 0.8, 1, 1), false);
 
-  // Message length 5 should trigger ambiguity
-  assert.equal(detectAmbiguity("abcde", 0.8, 1, 1), true);
+  // High confidence bypasses the short-message heuristic
+  assert.equal(detectAmbiguity("abcde", 0.8, 1, 1), false);
+  assert.equal(detectAmbiguity("abcde", 0.69, 1, 1), true);
 
   // Confidence exactly 0.7 should not trigger ambiguity
   assert.equal(detectAmbiguity("这是一个测试消息", 0.7, 1, 1), false);
 
-  // Confidence below 0.7 should trigger ambiguity
-  assert.equal(detectAmbiguity("这是一个测试消息", 0.69, 1, 1), true);
+  // Confidence below 0.7 still needs another ambiguity signal
+  assert.equal(detectAmbiguity("这是一个测试消息", 0.69, 1, 1), false);
+  assert.equal(detectAmbiguity("这是一个测试消息", 0.69, 1, 0), true);
 });
 
 test("detectAmbiguity with required but missing entities", () => {
@@ -626,27 +628,25 @@ test("DisambiguationHandler requiresClarification with disabled proactive clarif
   assert.equal(handler.requiresClarification(0.3, "短", 0), false);
 });
 
-test.skip("DisambiguationHandler requiresClarification with short message", () => {
+test("DisambiguationHandler requiresClarification does not force short high-confidence messages to clarify when one entity is present", () => {
   const handler = new DisambiguationHandler();
 
-  // Short message regardless of confidence
-  assert.equal(handler.requiresClarification(0.9, "你好", 1), true);
+  assert.equal(handler.requiresClarification(0.9, "你好", 1), false);
 });
 
-test.skip("DisambiguationHandler requiresClarification with low confidence", () => {
+test("DisambiguationHandler requiresClarification does not force long low-confidence messages to clarify when one entity is present", () => {
   const handler = new DisambiguationHandler();
 
-  // Low confidence regardless of message length
-  assert.equal(handler.requiresClarification(0.5, "这是一个比较长的消息", 1), true);
+  assert.equal(handler.requiresClarification(0.5, "这是一个比较长的消息", 1), false);
 });
 
-test.skip("DisambiguationHandler requiresClarification with missing entities", () => {
+test("DisambiguationHandler requiresClarification uses a single-entity heuristic", () => {
   const handler = new DisambiguationHandler();
 
-  // Short message regardless of other factors
-  assert.equal(handler.requiresClarification(0.9, "短", 2), true);
-  // Low confidence triggers
-  assert.equal(handler.requiresClarification(0.5, "这是一个比较长的消息", 2), true);
+  assert.equal(handler.requiresClarification(0.9, "短", 0), true);
+  assert.equal(handler.requiresClarification(0.9, "短", 2), false);
+  assert.equal(handler.requiresClarification(0.5, "这是一个比较长的消息", 0), true);
+  assert.equal(handler.requiresClarification(0.5, "这是一个比较长的消息", 2), false);
 });
 
 test("DisambiguationHandler requiresClarification happy path", () => {

@@ -1,34 +1,95 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { join } from "node:path";
 
 import { LongRunningWorkflowService } from "../../../../../src/platform/interface/scheduler/long-running-workflow-service.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { join } from "node:path";
-import { runSingleTaskExecution } from "../../../../../src/platform/execution/execution-engine/single-task-execution.js";
+import { nowIso, newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 function createWorkflowTestHarness() {
   const workspace = createTempWorkspace("aa-scheduler-integration-");
   const dbPath = join(workspace, "scheduler.db");
-
-  // Run a task to create workflow state
-  runSingleTaskExecution({
-    dbPath,
-    title: "Scheduler integration test",
-    request: "Test workflow scheduling",
-  });
-
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
   const service = new LongRunningWorkflowService(store);
+  const taskId = newId("task");
+  const executionId = newId("exec");
+  const workflowId = "scheduler_workflow";
+  const now = nowIso();
+
+  db.transaction(() => {
+    store.insertTask({
+      id: taskId,
+      parentId: null,
+      rootId: taskId,
+      divisionId: "general_ops",
+      title: "Scheduler integration test",
+      status: "in_progress",
+      source: "user",
+      priority: "normal",
+      inputJson: JSON.stringify({ request: "Test workflow scheduling" }),
+      normalizedInputJson: JSON.stringify({ request: "Test workflow scheduling" }),
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+
+    store.insertExecution({
+      id: executionId,
+      taskId,
+      workflowId,
+      parentExecutionId: null,
+      agentId: "agent-1",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "executing",
+      inputRef: null,
+      traceId: "trace-scheduler",
+      attempt: 1,
+      timeoutMs: 60000,
+      budgetUsdLimit: 1,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: now,
+      finishedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    store.insertWorkflowState({
+      taskId,
+      divisionId: "general_ops",
+      workflowId,
+      currentStepIndex: 0,
+      status: "running",
+      outputsJson: "{}",
+      lastErrorCode: null,
+      retryCount: 0,
+      resumableFromStep: null,
+      startedAt: now,
+      updatedAt: now,
+    });
+  });
 
   return {
     workspace,
     db,
     store,
     service,
+    taskId,
     cleanup() {
       db.close();
       cleanupPath(workspace);
@@ -36,34 +97,27 @@ function createWorkflowTestHarness() {
   };
 }
 
-// SKIP: Test harness creates terminal workflow, causing suspend to fail
-test.skip("LongRunningWorkflowService suspends and resumes a workflow", () => {
+test("LongRunningWorkflowService suspends and resumes a workflow", () => {
   const h = createWorkflowTestHarness();
   try {
-    const tasks = h.store.listTasks(10);
-    const task = tasks.find((t) => t.title === "Scheduler integration test");
-    assert.ok(task, "should find seeded task");
-
-    const taskId = task!.id;
-
     // Suspend the workflow
     const suspension = h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "waiting_for_input",
       waitKind: "human_input",
       resumableFromStep: "await_response",
       timeoutPolicy: "fail_workflow",
     });
 
-    assert.ok(suspension.suspensionId.startsWith("workflow_sleep:"));
-    assert.equal(suspension.taskId, taskId);
+    assert.ok(suspension.suspensionId.startsWith("workflow_sleep_"));
+    assert.equal(suspension.taskId, h.taskId);
     assert.equal(suspension.status, "active");
     assert.equal(suspension.reasonCode, "waiting_for_input");
 
     // Verify suspension is stored
     const retrieved = h.service.getSuspension(suspension.suspensionId);
     assert.ok(retrieved != null);
-    assert.equal(retrieved?.taskId, taskId);
+    assert.equal(retrieved?.taskId, h.taskId);
 
     // Resume the workflow
     const resumeDecision = h.service.resume(suspension.suspensionId);
@@ -74,20 +128,13 @@ test.skip("LongRunningWorkflowService suspends and resumes a workflow", () => {
   }
 });
 
-// SKIP: Test harness creates terminal workflow, causing suspend to fail
-test.skip("LongRunningWorkflowService marks suspensions due when resumeAfter is past", () => {
+test("LongRunningWorkflowService marks suspensions due when resumeAfter is past", () => {
   const h = createWorkflowTestHarness();
   try {
-    const tasks = h.store.listTasks(10);
-    const task = tasks.find((t) => t.title === "Scheduler integration test");
-    assert.ok(task, "should find seeded task");
-
-    const taskId = task!.id;
-
     // Suspend with a past resumeAfter time
     const pastTime = new Date(Date.now() - 1000).toISOString();
     const suspension = h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "timer_expired",
       waitKind: "timer",
       resumableFromStep: "check_status",
@@ -106,20 +153,13 @@ test.skip("LongRunningWorkflowService marks suspensions due when resumeAfter is 
   }
 });
 
-// SKIP: Test harness creates terminal workflow, causing suspend to fail
-test.skip("LongRunningWorkflowService expires suspensions when expiresAt is past", () => {
+test("LongRunningWorkflowService expires suspensions when expiresAt is past", () => {
   const h = createWorkflowTestHarness();
   try {
-    const tasks = h.store.listTasks(10);
-    const task = tasks.find((t) => t.title === "Scheduler integration test");
-    assert.ok(task, "should find seeded task");
-
-    const taskId = task!.id;
-
     // Suspend with a past expiry time
     const pastExpiry = new Date(Date.now() - 1000).toISOString();
     h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "approval_timeout",
       waitKind: "human_input",
       resumableFromStep: "pending_approval",
@@ -130,7 +170,7 @@ test.skip("LongRunningWorkflowService expires suspensions when expiresAt is past
     // Sweep expired - should expire the suspension
     const decisions = h.service.sweepExpired();
     assert.ok(decisions.length >= 1);
-    const ourDecision = decisions.find((d) => d.taskId === taskId);
+    const ourDecision = decisions.find((d) => d.taskId === h.taskId);
     assert.ok(ourDecision != null);
     assert.equal(ourDecision?.allowed, false);
     assert.equal(ourDecision?.reasonCode, "workflow_sleep.expired_failed");
@@ -140,18 +180,11 @@ test.skip("LongRunningWorkflowService expires suspensions when expiresAt is past
   }
 });
 
-// SKIP: Test harness creates terminal workflow, causing suspend to fail
-test.skip("LongRunningWorkflowService builds sleep lease correctly", () => {
+test("LongRunningWorkflowService builds sleep lease correctly", () => {
   const h = createWorkflowTestHarness();
   try {
-    const tasks = h.store.listTasks(10);
-    const task = tasks.find((t) => t.title === "Scheduler integration test");
-    assert.ok(task, "should find seeded task");
-
-    const taskId = task!.id;
-
     const suspension = h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "throttled",
       waitKind: "throttled",
       resumableFromStep: "process_queue",
@@ -161,7 +194,7 @@ test.skip("LongRunningWorkflowService builds sleep lease correctly", () => {
 
     const lease = h.service.buildSleepLease(suspension.suspensionId);
     assert.equal(lease.suspensionId, suspension.suspensionId);
-    assert.equal(lease.taskId, taskId);
+    assert.equal(lease.taskId, h.taskId);
     assert.equal(lease.waitKind, "throttled");
     assert.deepEqual(lease.metadata, { queueDepth: 100 });
   } finally {
@@ -169,21 +202,14 @@ test.skip("LongRunningWorkflowService builds sleep lease correctly", () => {
   }
 });
 
-// SKIP: Test harness creates terminal workflow, causing suspend to fail
-test.skip("LongRunningWorkflowService builds resume window correctly", () => {
+test("LongRunningWorkflowService builds resume window correctly", () => {
   const h = createWorkflowTestHarness();
   try {
-    const tasks = h.store.listTasks(10);
-    const task = tasks.find((t) => t.title === "Scheduler integration test");
-    assert.ok(task, "should find seeded task");
-
-    const taskId = task!.id;
-
     const futureResume = new Date(Date.now() + 60000).toISOString();
     const futureExpiry = new Date(Date.now() + 120000).toISOString();
 
     h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "awaiting_resource",
       waitKind: "external_event",
       resumableFromStep: "check_resource",
@@ -195,7 +221,7 @@ test.skip("LongRunningWorkflowService builds resume window correctly", () => {
     const windows = h.service.listResumeWindows();
     assert.ok(windows.length >= 1);
 
-    const ourWindow = windows.find((w) => w.taskId === taskId);
+    const ourWindow = windows.find((w) => w.taskId === h.taskId);
     assert.ok(ourWindow != null);
     assert.equal(ourWindow?.due, false); // resumeAfter is in the future
     assert.equal(ourWindow?.expired, false); // expiresAt is in the future
@@ -253,18 +279,11 @@ test("LongRunningWorkflowService rejects resume for non-existent suspension", ()
   }
 });
 
-// SKIP: Test harness creates terminal workflow, causing suspend to fail
-test.skip("LongRunningWorkflowService listSuspensions returns all suspensions", () => {
+test("LongRunningWorkflowService listSuspensions returns all suspensions", () => {
   const h = createWorkflowTestHarness();
   try {
-    const tasks = h.store.listTasks(10);
-    const task = tasks.find((t) => t.title === "Scheduler integration test");
-    assert.ok(task, "should find seeded task");
-
-    const taskId = task!.id;
-
     h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "reason_1",
       waitKind: "timer",
       resumableFromStep: "step_1",
@@ -272,7 +291,7 @@ test.skip("LongRunningWorkflowService listSuspensions returns all suspensions", 
     });
 
     h.service.suspend({
-      taskId,
+      taskId: h.taskId,
       reasonCode: "reason_2",
       waitKind: "human_input",
       resumableFromStep: "step_2",

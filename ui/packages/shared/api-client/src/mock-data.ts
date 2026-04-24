@@ -12,8 +12,10 @@ import type {
   ModelConfigDTO,
   QueueDTO,
   RoleDTO,
+  SystemConfigDTO,
   TaskDTO,
   TenantDTO,
+  UserDTO,
   UserPreferenceDTO,
   WebhookDTO,
   WorkerDTO,
@@ -39,6 +41,8 @@ export interface MockApiShape {
   readonly domainConfigs: readonly DomainConfigDTO[];
   readonly tenants: readonly TenantDTO[];
   readonly webhooks: readonly WebhookDTO[];
+  readonly users: readonly UserDTO[];
+  readonly systemConfig: SystemConfigDTO;
   readonly preferences: UserPreferenceDTO;
 }
 
@@ -144,6 +148,16 @@ export const defaultMockApiShape: MockApiShape = {
     { id: "wh-1", targetUrl: "https://ops.example.com/webhooks/incidents", eventCount: 6, enabled: true },
     { id: "wh-2", targetUrl: "https://audit.example.com/webhooks/config", eventCount: 3, enabled: true },
   ],
+  users: [
+    { id: "user-1", displayName: "Ops Lead", roleIds: ["role-l3"], tenantId: "tenant-default", status: "active" },
+    { id: "user-2", displayName: "Quant Reviewer", roleIds: ["role-l2"], tenantId: "tenant-default", status: "invited" },
+  ],
+  systemConfig: {
+    environment: "staging",
+    cspMode: "enforced",
+    csrfEnabled: true,
+    telemetryEndpoint: "https://telemetry.example.com/v1/logs",
+  },
   preferences: {
     locale: "zh-CN",
     theme: "dark",

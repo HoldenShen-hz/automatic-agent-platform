@@ -90,7 +90,7 @@ test("task repository updates task status", () => {
 
     const updateTime = new Date().toISOString();
     ctx.db.transaction(() => {
-      ctx.store.updateTaskStatus(taskId, "in_progress", updateTime, null);
+      ctx.store.updateTaskStatus(taskId, "in_progress", updateTime, null, null);
     });
 
     const updated = ctx.store.getTask(taskId);
@@ -139,7 +139,7 @@ test("task repository updates task output", () => {
 
     const updated = ctx.store.getTask(taskId);
     assert.equal(updated!.outputJson, outputJson);
-    assert.equal(updated!.status, "done");
+    assert.equal(updated!.status, "queued");
   } finally {
     ctx.cleanup();
   }

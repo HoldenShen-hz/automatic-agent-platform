@@ -12,30 +12,82 @@ export function createFeatureGuardContext(overrides: Partial<FeatureGuardContext
   return {
     authenticated: true,
     tenantId: "tenant-default",
+    domainId: "platform",
     permissions: ["authenticated"],
+    roles: ["operator"],
     featureFlags: {},
+    featureVisibility: {},
     mode: "enterprise",
     ...overrides,
   };
 }
 
-export function createRouteGuardChain(permission: string, featureFlag?: string): RouteGuardChain {
+export interface RouteGuardChainOptions {
+  readonly requiredRoles?: readonly string[];
+  readonly allowedDomains?: readonly string[];
+  readonly featureFlag?: string;
+  readonly featureId?: string;
+  readonly requireEnterpriseMode?: boolean;
+}
+
+function allowedResult(evaluatedLayers: readonly string[]): RouteGuardResult {
+  return { allowed: true, reason: null, evaluatedLayers };
+}
+
+function deniedResult(reason: string, evaluatedLayers: readonly string[]): RouteGuardResult {
+  return { allowed: false, reason, evaluatedLayers };
+}
+
+export function createRouteGuardChain(
+  permission: string,
+  featureFlag?: string,
+  options: RouteGuardChainOptions = {},
+): RouteGuardChain {
+  const resolvedFeatureFlag = options.featureFlag ?? featureFlag;
+  const requiredRoles = options.requiredRoles ?? [];
+  const allowedDomains = options.allowedDomains ?? [];
+  const featureId = options.featureId ?? resolvedFeatureFlag ?? permission;
+
   return {
-    id: `guard:${permission}${featureFlag ? `:${featureFlag}` : ""}`,
+    id: `guard:${permission}${resolvedFeatureFlag ? `:${resolvedFeatureFlag}` : ""}`,
     evaluate(context): RouteGuardResult {
+      const evaluatedLayers: string[] = [];
+
+      evaluatedLayers.push("auth");
       if (!context.authenticated) {
-        return { allowed: false, reason: "auth.required" };
+        return deniedResult("auth.required", evaluatedLayers);
       }
+
+      evaluatedLayers.push("role");
+      if (requiredRoles.length > 0 && !requiredRoles.some((role) => context.roles.includes(role))) {
+        return deniedResult(`role.missing:${requiredRoles.join("|")}`, evaluatedLayers);
+      }
+
+      evaluatedLayers.push("permission");
       if (context.tenantId == null) {
-        return { allowed: false, reason: "tenant.required" };
+        return deniedResult("tenant.required", evaluatedLayers);
       }
       if (!context.permissions.includes(permission)) {
-        return { allowed: false, reason: `permission.missing:${permission}` };
+        return deniedResult(`permission.missing:${permission}`, evaluatedLayers);
       }
-      if (featureFlag != null && context.featureFlags[featureFlag] === false) {
-        return { allowed: false, reason: `feature.disabled:${featureFlag}` };
+
+      evaluatedLayers.push("feature-flag");
+      if (resolvedFeatureFlag != null && context.featureFlags[resolvedFeatureFlag] === false) {
+        return deniedResult(`feature.disabled:${resolvedFeatureFlag}`, evaluatedLayers);
       }
-      return { allowed: true, reason: null };
+
+      evaluatedLayers.push("domain");
+      if (context.featureVisibility[featureId] === false) {
+        return deniedResult(`feature.hidden:${featureId}`, evaluatedLayers);
+      }
+      if (allowedDomains.length > 0 && (context.domainId == null || !allowedDomains.includes(context.domainId))) {
+        return deniedResult(`domain.unauthorized:${context.domainId ?? "none"}`, evaluatedLayers);
+      }
+      if (options.requireEnterpriseMode === true && context.mode !== "enterprise") {
+        return deniedResult("mode.enterprise_required", evaluatedLayers);
+      }
+
+      return allowedResult(evaluatedLayers);
     },
   };
 }

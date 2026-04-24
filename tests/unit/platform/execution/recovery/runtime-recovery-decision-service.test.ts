@@ -87,13 +87,13 @@ function createMockStore(overrides: {
       getTask: (id: string) => overrides.tasks?.find((t) => t.id === id) ?? null,
     },
     event: {
-      insertEvent: () => {},
+      insertEvent: overrides.event?.insertEvent ?? (() => {}),
       listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
     },
     execution: {
-      updateExecutionFailure: () => {},
-      insertDeadLetter: () => {},
-      getExecutionPrecheck: () => null,
+      updateExecutionFailure: overrides.execution?.updateExecutionFailure ?? (() => {}),
+      insertDeadLetter: overrides.execution?.insertDeadLetter ?? (() => {}),
+      getExecutionPrecheck: overrides.execution?.getExecutionPrecheck ?? (() => null),
     },
     approval: {
       listApprovalsByTask: overrides.approval?.listApprovalsByTask ?? (() => []),
@@ -103,6 +103,11 @@ function createMockStore(overrides: {
     },
     operations: {
       buildRuntimeRecoveryView: overrides.operations?.buildRuntimeRecoveryView ?? (() => overrides.candidates ?? []),
+    },
+    memory: {
+      findMemoryByContentHash: () => null,
+      recordMemoryAccess: () => {},
+      insertMemory: overrides.memory?.recordFailureMemory ?? (() => {}),
     },
   } as unknown as AuthoritativeTaskStore;
 }
@@ -165,8 +170,7 @@ test("RuntimeRecoveryDecisionService.apply throws when execution not found", () 
   );
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide throws when candidate not found", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask which needs tasks array
+test("RuntimeRecoveryDecisionService.decide throws when candidate not found", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -184,13 +188,21 @@ test.skip("RuntimeRecoveryDecisionService.decide throws when candidate not found
   );
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide returns decision record", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    reason: "execution_error:E1",
-    suggestedAction: "move_dead_letter",
+    latestErrorCode: null,
+    latestPrecheck: {
+      allowed: false,
+      reasonCode: "budget_exceeded",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "workspace",
+      resolvedTools: [],
+      resolvedPaths: [],
+      checkedAt: new Date().toISOString(),
+    },
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -206,18 +218,27 @@ test.skip("RuntimeRecoveryDecisionService.decide returns decision record", () =>
   assert.ok(decision.decisionId.length > 0);
   assert.equal(decision.executionId, "exec-1");
   assert.equal(decision.taskId, "task-1");
-  assert.equal(decision.reason, "execution_error:E1");
-  assert.equal(decision.action, "move_dead_letter");
+  assert.equal(decision.reason, "precheck_denied:budget_exceeded");
+  assert.equal(decision.action, "cancel");
   assert.ok(decision.decidedAt.length > 0);
   assert.equal(decision.decidedBy, "runtime_recovery_decision_service");
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    suggestedAction: "cancel",
+    latestErrorCode: null,
+    latestPrecheck: {
+      allowed: false,
+      reasonCode: "tool_not_found",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "workspace",
+      resolvedTools: [],
+      resolvedPaths: [],
+      checkedAt: new Date().toISOString(),
+    },
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -231,17 +252,26 @@ test.skip("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
   const decision = service.decide("exec-1", "custom_service");
 
   assert.equal(decision.decidedBy, "custom_service");
+  assert.equal(decision.action, "cancel");
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   const db = createMockDb();
   let failureUpdated = false;
   let eventInserted = false;
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    reason: "execution_error:E1",
-    suggestedAction: "cancel",
+    latestErrorCode: null,
+    latestPrecheck: {
+      allowed: false,
+      reasonCode: "budget_exceeded",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "workspace",
+      resolvedTools: [],
+      resolvedPaths: [],
+      checkedAt: new Date().toISOString(),
+    },
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
@@ -270,8 +300,7 @@ test.skip("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   assert.equal(eventInserted, true);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_denied reason", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_denied reason", () => {
   const db = createMockDb();
   let failureUpdated = false;
   const candidate = createMockCandidate({
@@ -314,14 +343,13 @@ test.skip("RuntimeRecoveryDecisionService.apply handles cancel action with prech
   assert.equal(failureUpdated, true);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () => {
   const db = createMockDb();
   let deadLetterInserted = false;
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    reason: "execution_error:E1",
-    suggestedAction: "move_dead_letter",
+    attempt: 2,
+    latestErrorCode: "E1",
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Execution failed", attempt: 2, agentId: "agent-1" }],
@@ -396,13 +424,22 @@ test("RecoveryDecisionApplyResult has correct structure", () => {
   assert.ok("applied" in result);
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide records decision event", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.decide records decision event", () => {
   const db = createMockDb();
   let eventInserted = false;
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    suggestedAction: "cancel",
+    latestErrorCode: null,
+    latestPrecheck: {
+      allowed: false,
+      reasonCode: "budget_exceeded",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "workspace",
+      resolvedTools: [],
+      resolvedPaths: [],
+      checkedAt: new Date().toISOString(),
+    },
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
@@ -422,13 +459,22 @@ test.skip("RuntimeRecoveryDecisionService.decide records decision event", () => 
   assert.equal(eventInserted, true);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply records decision and action events", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.apply records decision and action events", () => {
   const db = createMockDb();
   const events: string[] = [];
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    suggestedAction: "cancel",
+    latestErrorCode: null,
+    latestPrecheck: {
+      allowed: false,
+      reasonCode: "budget_exceeded",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "workspace",
+      resolvedTools: [],
+      resolvedPaths: [],
+      checkedAt: new Date().toISOString(),
+    },
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
@@ -454,13 +500,12 @@ test.skip("RuntimeRecoveryDecisionService.apply records decision and action even
   assert.ok(events.length >= 2);
 });
 
-test.skip("RuntimeRecoveryDecisionService handles move_dead_letter with precheck denial", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
     reason: "precheck_denied:tool_not_found",
-    suggestedAction: "move_dead_letter",
+    attempt: 2,
     latestErrorCode: null,
     latestPrecheck: {
       allowed: false,
@@ -497,18 +542,14 @@ test.skip("RuntimeRecoveryDecisionService handles move_dead_letter with precheck
   const result = service.apply("exec-1");
 
   assert.equal(result.applied, true);
-  assert.ok(result.deadLetter != null);
-  // Error code should come from precheck denial
-  assert.equal(result.deadLetter!.finalReasonCode, "tool_not_found");
+  assert.equal(result.deadLetter, null);
+  assert.equal(result.decision.action, "cancel");
 });
 
-test.skip("RuntimeRecoveryDecisionService handles move_dead_letter with default error code when no error info", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService leaves active execution unapplied when no terminal recovery action is inferred", () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    reason: "execution_error:E1",
-    suggestedAction: "move_dead_letter",
     latestErrorCode: null,
     latestPrecheck: null,
   });
@@ -535,14 +576,12 @@ test.skip("RuntimeRecoveryDecisionService handles move_dead_letter with default 
 
   const result = service.apply("exec-1");
 
-  assert.equal(result.applied, true);
-  assert.ok(result.deadLetter != null);
-  // Should use default error code when no other info available
-  assert.equal(result.deadLetter!.finalReasonCode, "runtime.recovery_required");
+  assert.equal(result.applied, false);
+  assert.equal(result.deadLetter, null);
+  assert.equal(result.decision.action, "resume_same_worker");
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply throws when candidate not found", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService.apply throws when candidate not found", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -559,16 +598,15 @@ test.skip("RuntimeRecoveryDecisionService.apply throws when candidate not found"
   );
 });
 
-test.skip("RuntimeRecoveryDecisionService handles cancel with execution_error reason using lastErrorMessage", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_error reason using lastErrorMessage", () => {
   const db = createMockDb();
   let failureUpdated = false;
   let lastErrorCode = "";
   let lastErrorMessage = "";
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    reason: "execution_error:E1",
-    suggestedAction: "cancel",
+    latestErrorCode: "E1",
+    attempt: 2,
     latestPrecheck: null,
   });
   const store = createMockStore({
@@ -599,16 +637,15 @@ test.skip("RuntimeRecoveryDecisionService handles cancel with execution_error re
   assert.equal(failureUpdated, true);
   assert.equal(lastErrorCode, "E1");
   assert.equal(lastErrorMessage, "Original error message");
+  assert.equal(result.decision.action, "move_dead_letter");
 });
 
-test.skip("RuntimeRecoveryDecisionService deadLetter contains retry count from execution", () => {
-  // Skipped because buildRuntimeRecoveryView calls task.getTask
+test("RuntimeRecoveryDecisionService deadLetter contains retry count from execution", () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
-    reason: "execution_error:E1",
-    suggestedAction: "move_dead_letter",
     attempt: 5,
+    latestErrorCode: "E1",
   });
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Error", attempt: 5, agentId: "agent-1" }],

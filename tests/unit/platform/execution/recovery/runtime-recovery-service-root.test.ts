@@ -345,15 +345,50 @@ test("RuntimeRecoveryService listRecoverableExecutingRuns uses active_execution 
   assert.equal(results[0]!.suggestedAction, "resume_same_worker");
 });
 
-test.skip("RuntimeRecoveryService suggests cancel for precheck denied - requires buildRuntimeRecoveryView", () => {
-  // Skipped: listRecoverableExecutingRuns doesn't do reason inference
-  // It always returns "active_execution". For proper reason inference,
-  // we need to use buildRuntimeRecoveryView which uses store.operations.buildRuntimeRecoveryView
+test("RuntimeRecoveryService suggests cancel for precheck denied", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-1",
+    latestPrecheck: {
+      allowed: 0,
+      reasonCode: "budget_exceeded",
+      resolvedBudgetUsd: 100,
+      resolvedTimeoutMs: 60000,
+      resolvedSandboxMode: "standard",
+      resolvedToolsJson: "[]",
+      resolvedPathsJson: "[]",
+      checkedAt: "2026-04-24T00:00:00.000Z",
+    },
+  });
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: null, status: "in_progress" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [record],
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const view = service.buildRuntimeRecoveryView("task-1");
+  assert.equal(view.candidates[0]!.reason, "precheck_denied:budget_exceeded");
+  assert.equal(view.candidates[0]!.suggestedAction, "cancel");
 });
 
-test.skip("RuntimeRecoveryService suggests escalate_takeover for blocked without approval - requires buildRuntimeRecoveryView", () => {
-  // Skipped: listRecoverableExecutingRuns doesn't do reason inference
-  // For proper reason inference, we need to use buildRuntimeRecoveryView
+test("RuntimeRecoveryService suggests escalate_takeover for blocked without approval", () => {
+  const record = makeRecoveryRecord({
+    executionId: "exec-1",
+    status: "blocked",
+    pendingApprovalId: null,
+  });
+  const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: null, status: "in_progress" }],
+    operations: {
+      buildRuntimeRecoveryView: () => [record],
+    },
+  });
+  const service = new RuntimeRecoveryService(store);
+
+  const view = service.buildRuntimeRecoveryView("task-1");
+  assert.equal(view.candidates[0]!.reason, "blocked_without_approval");
+  assert.equal(view.candidates[0]!.suggestedAction, "escalate_takeover");
 });
 
 test("RuntimeRecoveryService tracks unique taskIds per division", () => {

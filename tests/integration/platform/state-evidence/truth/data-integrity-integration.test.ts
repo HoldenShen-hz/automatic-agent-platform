@@ -462,9 +462,9 @@ test("data integrity: execution status transitions are atomic", () => {
       ctx.store.updateExecutionStatus(
         executionId,
         "completed",
+        completeTime,
         startTime,
         completeTime,
-        null,
         null
       );
     });

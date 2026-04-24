@@ -23,6 +23,7 @@ function createMinimalMockStore() {
   return {
     dispatch: {
       getExecution: () => null,
+      listDeadLettersByTask: () => [],
     },
     task: {
       getTask: () => null,
@@ -44,6 +45,72 @@ function createMinimalMockStore() {
     },
     operations: {
       buildRuntimeRecoveryView: () => [],
+    },
+    memory: {
+      findMemoryByContentHash: () => null,
+      recordMemoryAccess: () => {},
+      insertMemory: () => {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+}
+
+function createRecoveryRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    executionId: "exec-1",
+    taskId: "task-1",
+    divisionId: "division-1",
+    taskStatus: "in_progress",
+    status: "executing",
+    attempt: 1,
+    traceId: "trace-1",
+    workflowId: null,
+    latestErrorCode: null,
+    updatedAt: new Date().toISOString(),
+    lastHeartbeatAt: null,
+    pendingApprovalId: null,
+    latestPrecheck: null,
+    ...overrides,
+  };
+}
+
+function createFullMockStore(overrides: {
+  executions?: Array<Record<string, unknown>>;
+  tasks?: Array<Record<string, unknown>>;
+  recoveryRecords?: Array<Record<string, unknown>>;
+  insertEvent?: () => void;
+  updateExecutionFailure?: () => void;
+  insertDeadLetter?: () => void;
+} = {}) {
+  return {
+    dispatch: {
+      getExecution: (id: string) => overrides.executions?.find((item) => item.id === id) ?? null,
+      listDeadLettersByTask: () => [],
+    },
+    task: {
+      getTask: (id: string) => overrides.tasks?.find((item) => item.id === id) ?? null,
+    },
+    event: {
+      insertEvent: overrides.insertEvent ?? (() => {}),
+      listEventsForTask: () => [],
+    },
+    execution: {
+      updateExecutionFailure: overrides.updateExecutionFailure ?? (() => {}),
+      insertDeadLetter: overrides.insertDeadLetter ?? (() => {}),
+      getExecutionPrecheck: () => null,
+    },
+    approval: {
+      listApprovalsByTask: () => [],
+    },
+    artifact: {
+      listArtifactsByTask: () => [],
+    },
+    operations: {
+      buildRuntimeRecoveryView: () => overrides.recoveryRecords ?? [],
+    },
+    memory: {
+      findMemoryByContentHash: () => null,
+      recordMemoryAccess: () => {},
+      insertMemory: () => {},
     },
   } as unknown as AuthoritativeTaskStore;
 }
@@ -78,48 +145,223 @@ test("RuntimeRecoveryDecisionService.apply throws when execution not found", () 
   );
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide returns decision record - requires full store mock", () => {
-  // Skipped: buildRuntimeRecoveryView requires many store methods:
-  // - store.approval.listApprovalsByTask
-  // - store.dispatch.listDeadLettersByTask
-  // - store.artifact.listArtifactsByTask
-  // - store.event.listEventsForTask
-  // - store.operations.buildRuntimeRecoveryView
-  // These tests would need a full integration-style mock to work properly
+test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
+  const db = createMockDb();
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [
+      createRecoveryRecord({
+        latestPrecheck: {
+          allowed: false,
+          reasonCode: "budget_exceeded",
+          resolvedBudgetUsd: 100,
+          resolvedTimeoutMs: 60000,
+          resolvedSandboxMode: "workspace",
+          resolvedToolsJson: "[]",
+          resolvedPathsJson: "[]",
+          checkedAt: new Date().toISOString(),
+        },
+      }),
+    ],
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  const decision = service.decide("exec-1");
+
+  assert.equal(decision.executionId, "exec-1");
+  assert.equal(decision.taskId, "task-1");
+  assert.equal(decision.reason, "precheck_denied:budget_exceeded");
+  assert.equal(decision.action, "cancel");
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide uses custom decidedBy - requires full store mock", () => {
-  // Skipped: same reason as above
+test("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
+  const db = createMockDb();
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [
+      createRecoveryRecord({
+        latestPrecheck: {
+          allowed: false,
+          reasonCode: "tool_not_found",
+          resolvedBudgetUsd: 100,
+          resolvedTimeoutMs: 60000,
+          resolvedSandboxMode: "workspace",
+          resolvedToolsJson: "[]",
+          resolvedPathsJson: "[]",
+          checkedAt: new Date().toISOString(),
+        },
+      }),
+    ],
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  assert.equal(service.decide("exec-1", "custom_service").decidedBy, "custom_service");
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide throws when candidate not found - requires full store mock", () => {
-  // Skipped: same reason as above
+test("RuntimeRecoveryDecisionService.decide throws when candidate not found", () => {
+  const db = createMockDb();
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [],
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  assert.throws(() => service.decide("exec-1"), /Recovery candidate not found/);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply throws when candidate not found - requires full store mock", () => {
-  // Skipped: same reason as above
+test("RuntimeRecoveryDecisionService.apply throws when candidate not found", () => {
+  const db = createMockDb();
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [],
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  assert.throws(() => service.apply("exec-1"), /Recovery candidate not found/);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply handles cancel action - requires full store mock", () => {
-  // Skipped: requires full store mock with all the methods buildRuntimeRecoveryView needs
+test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
+  const db = createMockDb();
+  let updated = false;
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: null, lastErrorMessage: null }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [
+      createRecoveryRecord({
+        latestPrecheck: {
+          allowed: false,
+          reasonCode: "budget_exceeded",
+          resolvedBudgetUsd: 100,
+          resolvedTimeoutMs: 60000,
+          resolvedSandboxMode: "workspace",
+          resolvedToolsJson: "[]",
+          resolvedPathsJson: "[]",
+          checkedAt: new Date().toISOString(),
+        },
+      }),
+    ],
+    updateExecutionFailure: () => { updated = true; },
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  const result = service.apply("exec-1");
+  assert.equal(result.applied, true);
+  assert.equal(result.deadLetter, null);
+  assert.equal(result.decision.action, "cancel");
+  assert.equal(updated, true);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply handles move_dead_letter action - requires full store mock", () => {
-  // Skipped: requires full store mock with all the methods buildRuntimeRecoveryView needs
+test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () => {
+  const db = createMockDb();
+  let deadLetterInserted = false;
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Execution failed", attempt: 2, agentId: "agent-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [createRecoveryRecord({ latestErrorCode: "E1", attempt: 2 })],
+    insertDeadLetter: () => { deadLetterInserted = true; },
+    updateExecutionFailure: () => {},
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  const result = service.apply("exec-1");
+  assert.equal(result.applied, true);
+  assert.equal(result.decision.action, "move_dead_letter");
+  assert.ok(result.deadLetter);
+  assert.equal(deadLetterInserted, true);
 });
 
-test.skip("RecoveryDecisionRecord has correct structure - requires full store mock", () => {
-  // Skipped: requires full store mock
+test("RecoveryDecisionRecord has correct structure", () => {
+  const record: RecoveryDecisionRecord = {
+    decisionId: "rdec-1",
+    executionId: "exec-1",
+    taskId: "task-1",
+    reason: "execution_error:E1",
+    action: "cancel",
+    decidedAt: "2026-04-24T00:00:00.000Z",
+    decidedBy: "test",
+  };
+
+  assert.equal(record.executionId, "exec-1");
+  assert.equal(record.action, "cancel");
 });
 
-test.skip("RecoveryDecisionApplyResult has correct structure - requires full store mock", () => {
-  // Skipped: requires full store mock
+test("RecoveryDecisionApplyResult has correct structure", () => {
+  const record: RecoveryDecisionRecord = {
+    decisionId: "rdec-1",
+    executionId: "exec-1",
+    taskId: "task-1",
+    reason: "execution_error:E1",
+    action: "move_dead_letter",
+    decidedAt: "2026-04-24T00:00:00.000Z",
+    decidedBy: "test",
+  };
+  const result: RecoveryDecisionApplyResult = {
+    decision: record,
+    deadLetter: null,
+    applied: true,
+  };
+
+  assert.equal(result.applied, true);
+  assert.equal(result.decision.action, "move_dead_letter");
 });
 
-test.skip("RuntimeRecoveryDecisionService.decide records decision event - requires full store mock", () => {
-  // Skipped: requires full store mock
+test("RuntimeRecoveryDecisionService.decide records decision event", () => {
+  const db = createMockDb();
+  let inserted = 0;
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1" }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [
+      createRecoveryRecord({
+        latestPrecheck: {
+          allowed: false,
+          reasonCode: "budget_exceeded",
+          resolvedBudgetUsd: 100,
+          resolvedTimeoutMs: 60000,
+          resolvedSandboxMode: "workspace",
+          resolvedToolsJson: "[]",
+          resolvedPathsJson: "[]",
+          checkedAt: new Date().toISOString(),
+        },
+      }),
+    ],
+    insertEvent: () => { inserted += 1; },
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  service.decide("exec-1");
+  assert.equal(inserted, 1);
 });
 
-test.skip("RuntimeRecoveryDecisionService.apply records decision and action events - requires full store mock", () => {
-  // Skipped: requires full store mock
+test("RuntimeRecoveryDecisionService.apply records decision and action events", () => {
+  const db = createMockDb();
+  let inserted = 0;
+  const store = createFullMockStore({
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: null, lastErrorMessage: null }],
+    tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
+    recoveryRecords: [
+      createRecoveryRecord({
+        latestPrecheck: {
+          allowed: false,
+          reasonCode: "budget_exceeded",
+          resolvedBudgetUsd: 100,
+          resolvedTimeoutMs: 60000,
+          resolvedSandboxMode: "workspace",
+          resolvedToolsJson: "[]",
+          resolvedPathsJson: "[]",
+          checkedAt: new Date().toISOString(),
+        },
+      }),
+    ],
+    insertEvent: () => { inserted += 1; },
+    updateExecutionFailure: () => {},
+  });
+  const service = new RuntimeRecoveryDecisionService(db, store);
+
+  service.apply("exec-1");
+  assert.ok(inserted >= 2);
 });

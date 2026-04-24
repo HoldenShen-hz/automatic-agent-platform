@@ -460,6 +460,7 @@ test("runLoop aborts when max iterations reached", () => {
       generatorOutput: { artifact: "code.diff" },
       evaluatorOutput: { verdict: "pass" },
       evaluatorScore: 0.5, // Mid score that would replan
+      producedEvidenceRefs: ["risk_profile"],
     });
 
     assert.equal(run.status, "aborted");
@@ -539,7 +540,10 @@ test("Invariant checking: iteration_exceeds_budget violation", () => {
     // Manually create a run that violates iteration budget
     const violatingRun: HarnessRun = {
       ...run,
-      currentIteration: 10, // Exceeds maxSteps=5
+      loopMetrics: {
+        ...run.loopMetrics!,
+        iterationCount: 10, // Exceeds maxSteps=5
+      },
     };
 
     const { violations } = service.assertInvariants(violatingRun);

@@ -10,7 +10,7 @@ import { AsyncTaskRepository } from "../../../../../../src/platform/state-eviden
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
 import type { WorkflowStateRecord, StepOutputRecord, TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test.skip("AsyncWorkflowRepository", (group) => {
+test.describe("AsyncWorkflowRepository", () => {
   let harness: {
     workspace: string;
     dbPath: string;
@@ -21,7 +21,7 @@ test.skip("AsyncWorkflowRepository", (group) => {
     cleanup: () => void;
   };
 
-  group.beforeEach(async () => {
+  test.beforeEach(async () => {
     const workspace = createTempWorkspace("aa-async-workflow-repo-");
     const dbPath = join(workspace, "workflow-repo.db");
     const db = new SqliteDatabase(dbPath);
@@ -44,7 +44,7 @@ test.skip("AsyncWorkflowRepository", (group) => {
     };
   });
 
-  group.afterEach(() => {
+  test.afterEach(() => {
     harness.cleanup();
   });
 
@@ -52,18 +52,18 @@ test.skip("AsyncWorkflowRepository", (group) => {
     const task: TaskRecord = {
       id: taskId,
       parentId: null,
-      rootId: null,
-      divisionId: "div-001",
+      rootId: taskId,
+      divisionId: "general_ops",
       tenantId,
       title: "Test Task",
       status: "queued",
-      source: "test",
-      priority: "medium",
+      source: "user",
+      priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
       outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
       errorCode: null,
       createdAt: "2026-04-23T10:00:00.000Z",
       updatedAt: "2026-04-23T10:00:00.000Z",
@@ -182,6 +182,7 @@ test.skip("AsyncWorkflowRepository", (group) => {
       "task-wf-cas",
       0,
       "running",
+      "running",
       1,
       '{"step0":{"done":true}}',
       "2026-04-23T11:00:00.000Z",
@@ -193,6 +194,7 @@ test.skip("AsyncWorkflowRepository", (group) => {
     const affected2 = await harness.workflowRepo.updateWorkflowStateCas(
       "task-wf-cas",
       0, // expected step is still 0 but workflow is now at step 1
+      "running",
       "running",
       2,
       '{"step1":{"done":true}}',
@@ -261,7 +263,7 @@ test.skip("AsyncWorkflowRepository", (group) => {
       id: "step-output-001",
       taskId: "task-wf-step",
       stepId: "step-1",
-      roleId: null,
+      roleId: "general_executor",
       status: "completed",
       dataJson: '{"result":"success"}',
       summary: "Step 1 completed",

@@ -17,7 +17,7 @@ import {
   resetMultiStepToolRegistryForTests,
 } from "../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 
-test.skip("multi-step tool registry executes repo-map searches", async () => {
+test("multi-step tool registry executes repo-map searches", async () => {
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({
     query: "multi-step orchestration",
@@ -26,13 +26,13 @@ test.skip("multi-step tool registry executes repo-map searches", async () => {
   const result = JSON.parse(raw) as {
     success: boolean;
     files: Array<{ relativePath: string }>;
+    symbols?: Array<{ name: string }>;
   };
 
   assert.equal(result.success, true);
-  assert.ok(result.files.some((file) =>
-    file.relativePath.includes("multi-step") || file.relativePath.includes("orchestration/") ||
-    file.relativePath.endsWith("src/core/cache/cache-orchestration-service.ts")
-  ));
+  assert.ok(result.files.length > 0);
+  assert.ok(result.files.some((file) => file.relativePath.includes("orchestration")));
+  assert.ok((result.symbols ?? []).length > 0);
 });
 
 test("multi-step tool registry executes sandboxed git commands", {

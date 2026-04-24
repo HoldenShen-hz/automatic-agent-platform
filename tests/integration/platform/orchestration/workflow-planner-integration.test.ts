@@ -202,7 +202,7 @@ test("WorkflowPlanner stores output schema path when defined", () => {
   }
 });
 
-test.skip("WorkflowPlanner uses seeded database for task persistence", () => {
+test("WorkflowPlanner uses seeded database for task persistence", () => {
   const ctx = createSeededIntegrationContext("aa-planner-seeded-");
 
   try {
@@ -265,14 +265,12 @@ test.skip("WorkflowPlanner uses seeded database for task persistence", () => {
     assert.ok(execution, "Should retrieve execution from seeded store");
     assert.equal(execution!.workflowId, "single_agent_minimal");
     assert.equal(execution!.roleId, "general_executor");
-
-    ctx.db.close();
   } finally {
     ctx.cleanup();
   }
 });
 
-test.skip("WorkflowPlanner integration with seeded execution and task store", () => {
+test("WorkflowPlanner integration with seeded execution and task store", () => {
   const ctx = createSeededIntegrationContext("aa-planner-store-");
 
   try {
@@ -287,8 +285,6 @@ test.skip("WorkflowPlanner integration with seeded execution and task store", ()
 
     const task = ctx.store.getTask(ctx.store.listTasks()[0]!.id);
     assert.ok(task, "Should be able to retrieve task from store");
-
-    ctx.db.close();
   } finally {
     ctx.cleanup();
   }

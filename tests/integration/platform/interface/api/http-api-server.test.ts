@@ -19,7 +19,7 @@ function readJson<T>(response: InjectResponse): Envelope<T> {
 // This could be due to incomplete seeded data or endpoint returning different plugin set.
 // Need to verify the seeded API context creates the expected plugins and the /v1/plugins
 // endpoint returns them correctly.
-test.skip("http api server serves mission control snapshot, task inspect, approval queue, and decision writeback", async () => {
+test("http api server serves mission control snapshot, task inspect, approval queue, and decision writeback", async () => {
   const workspace = createTempWorkspace("aa-http-api-");
   const context = createSeededApiContext(workspace);
   const server = context.createServer();

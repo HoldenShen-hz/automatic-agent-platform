@@ -143,6 +143,15 @@ function normalizeRoot(path: string, canonicalize: boolean): string {
   return resolved.endsWith(sep) ? resolved : `${resolved}${sep}`;
 }
 
+function normalizeSandboxInputPath(inputPath: string): string {
+  const normalizedUnicode = inputPath.normalize("NFKC");
+  try {
+    return decodeURIComponent(normalizedUnicode);
+  } catch {
+    return normalizedUnicode;
+  }
+}
+
 /**
  * Checks if a path is at or within a root directory.
  * Compares the path against the root (with trailing separator removed for exact match).
@@ -268,7 +277,16 @@ export function resolveSandboxPath(inputPath: string, enforceRealpath: boolean):
  * @returns Result indicating if access is allowed and the normalized path
  */
 export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): SandboxPathCheckResult {
-  const resolvedInputPath = resolve(inputPath);
+  const normalizedInput = normalizeSandboxInputPath(inputPath);
+  if (normalizedInput.includes("\0")) {
+    return {
+      allowed: false,
+      normalizedPath: normalizedInput,
+      reasonCode: "sandbox.path_invalid_encoding",
+    };
+  }
+
+  const resolvedInputPath = resolve(normalizedInput);
   const rawDeniedRoots = policy.deniedRoots.map((root) => normalizeRoot(root, false));
   const rawAllowedRoots = policy.allowedRoots.map((root) => normalizeRoot(root, false));
   const canonicalDeniedRoots = policy.deniedRoots.map((root) => normalizeRoot(root, true));
@@ -308,7 +326,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
   let normalizedPath = resolvedInputPath;
   if (policy.realpathEnforced) {
     try {
-      normalizedPath = resolveSandboxPath(inputPath, true);
+      normalizedPath = resolveSandboxPath(normalizedInput, true);
     } catch (error) {
       return {
         allowed: false,

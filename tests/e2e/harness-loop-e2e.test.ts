@@ -532,7 +532,7 @@ test("E2E: full loop with checkpoint and restore preserves run state", (t) => {
 // regardless of the decision action (even if decision.action is "escalate_to_human").
 // This creates a conflict where an aborted run with max_risk_exceeded finding
 // violates the invariant before the test assertions can run.
-test.skip("E2E: guardrail assessment blocks tool and suggests abort when risk is too high", (t) => {
+test("E2E: guardrail assessment blocks tool and suggests abort when risk is too high", (t) => {
   const harness = createE2EHarness("aa-e2e-guardrail-");
   try {
     const service = new HarnessRuntimeService();

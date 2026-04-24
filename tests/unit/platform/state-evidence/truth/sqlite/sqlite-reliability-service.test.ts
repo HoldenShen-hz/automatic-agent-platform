@@ -56,11 +56,27 @@ test("SqliteReliabilityService.createBackup creates a valid backup with integrit
   }
 });
 
-test("SqliteReliabilityService.createBackup fails integrity if source is corrupted", () => {
-  // Skip: SQLite's integrity check is resilient to simple file corruption when
-  // the database handle is already open. Testing actual corruption detection would
-  // require closing and reopening the database, which is complex in this setup.
-  test.skip();
+test("SqliteReliabilityService.createBackup fails when source database is corrupted before reopen", () => {
+  const harness = createHarness("aa-reliability-backup-corrupt-");
+  try {
+    harness.db.close();
+    writeFileSync(harness.dbPath, "NOT A DATABASE");
+
+    assert.throws(
+      () => {
+        const reopenedDb = new SqliteDatabase(harness.dbPath);
+        try {
+          const service = new SqliteReliabilityService(reopenedDb);
+          service.createBackup(join(harness.workspace, "backup.db"));
+        } finally {
+          reopenedDb.close();
+        }
+      },
+      /file is not a database|database disk image is malformed|corrupt|invalid/i,
+    );
+  } finally {
+    cleanupPath(harness.workspace);
+  }
 });
 
 test("SqliteReliabilityService.createBackup creates backup directory if needed", () => {

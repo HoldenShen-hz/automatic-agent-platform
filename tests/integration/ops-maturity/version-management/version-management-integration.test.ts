@@ -345,7 +345,7 @@ test("VersionCompatibilityMatrix batch checks compatibility", () => {
   assert.equal(results.length, 3);
 });
 
-test.skip("VersionCompatibilityMatrix handles wildcard source versions", () => {
+test("VersionCompatibilityMatrix handles wildcard source versions", () => {
   const matrix = new VersionCompatibilityMatrix();
 
   matrix.register({
@@ -360,7 +360,7 @@ test.skip("VersionCompatibilityMatrix handles wildcard source versions", () => {
 
   const result = matrix.checkCompatibility(
     { packId: "pack-any", version: "5.0.0" },
-    { packId: "pack-target", version: "2.0.0" },
+    { packId: "pack-target", version: "1.2.0" },
   );
 
   assert.equal(result.compatible, true);

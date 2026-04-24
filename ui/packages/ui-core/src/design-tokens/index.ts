@@ -9,6 +9,10 @@ export interface CoreDesignTokens {
     readonly subtle: string;
     readonly planned: string;
     readonly danger: string;
+    readonly success: string;
+    readonly warning: string;
+    readonly info: string;
+    readonly focusRing: string;
   };
   readonly radius: {
     readonly sm: string;
@@ -20,12 +24,24 @@ export interface CoreDesignTokens {
     readonly sm: number;
     readonly md: number;
     readonly lg: number;
+    readonly xl: number;
+    readonly xxl: number;
   };
   readonly typography: {
     readonly fontFamily: string;
     readonly headingSize: string;
     readonly bodySize: string;
     readonly monoFamily: string;
+    readonly lineHeight: {
+      readonly compact: number;
+      readonly comfortable: number;
+      readonly spacious: number;
+    };
+    readonly fontWeight: {
+      readonly medium: number;
+      readonly semibold: number;
+      readonly bold: number;
+    };
   };
   readonly motion: {
     readonly fast: string;
@@ -40,6 +56,8 @@ export interface CoreDesignTokens {
   readonly shadows: {
     readonly card: string;
     readonly overlay: string;
+    readonly inset: string;
+    readonly focusRing: string;
   };
   readonly iconSizes: {
     readonly sm: number;
@@ -59,6 +77,10 @@ export const designTokens: CoreDesignTokens = {
     subtle: "#94a3b8",
     planned: "#f59e0b",
     danger: "#ef4444",
+    success: "#34d399",
+    warning: "#fbbf24",
+    info: "#38bdf8",
+    focusRing: "rgba(56, 189, 248, 0.45)",
   },
   radius: {
     sm: "8px",
@@ -70,12 +92,24 @@ export const designTokens: CoreDesignTokens = {
     sm: 10,
     md: 16,
     lg: 24,
+    xl: 32,
+    xxl: 48,
   },
   typography: {
     fontFamily: "\"IBM Plex Sans\", \"Segoe UI\", sans-serif",
     headingSize: "1.5rem",
     bodySize: "0.95rem",
     monoFamily: "\"IBM Plex Mono\", monospace",
+    lineHeight: {
+      compact: 1.2,
+      comfortable: 1.5,
+      spacious: 1.75,
+    },
+    fontWeight: {
+      medium: 500,
+      semibold: 600,
+      bold: 700,
+    },
   },
   motion: {
     fast: "120ms",
@@ -90,6 +124,8 @@ export const designTokens: CoreDesignTokens = {
   shadows: {
     card: "0 10px 30px rgba(0, 0, 0, 0.18)",
     overlay: "0 18px 42px rgba(0, 0, 0, 0.24)",
+    inset: "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+    focusRing: "0 0 0 3px rgba(56, 189, 248, 0.35)",
   },
   iconSizes: {
     sm: 14,

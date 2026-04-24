@@ -239,13 +239,13 @@ test("event store counts pending tier 1 acks", () => {
     const now = new Date().toISOString();
 
     ctx.db.transaction(() => {
-      // task.created is tier_1
+      // task:status_changed is tier_1
       ctx.store.insertEvent({
         id: "event-tier1-001",
         taskId: null,
         sessionId: null,
         executionId: null,
-        eventType: "task.created",
+        eventType: "task:status_changed",
         payloadJson: "{}",
         traceId: null,
         createdAt: now,

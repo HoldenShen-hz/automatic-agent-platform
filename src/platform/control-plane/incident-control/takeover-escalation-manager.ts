@@ -72,6 +72,13 @@ export class TakeoverEscalationManager {
    * Starts timeout and escalation tracking for a newly opened session.
    */
   public startSessionTracking(sessionId: string, taskId: string): void {
+    this.ackStatuses.set(sessionId, {
+      sessionId,
+      acknowledgedAt: null,
+      expiresAt: null,
+      status: "pending",
+      acknowledgedBy: null,
+    });
     this.startTimeoutTimer(sessionId, taskId, this.config.defaultTimeoutMs);
     this.initializeEscalationPolicy(sessionId, taskId);
   }

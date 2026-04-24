@@ -443,8 +443,19 @@ test("AnomalyDetectorOptions with signatures", () => {
   assert.equal(options.signatures[0]!.id, "sig_test");
 });
 
-test.skip("Anomaly detection algorithms require implementation", () => {
-  // Source directory only contains types and constants - no detection algorithms present.
-  // Algorithms (zscore, iqr, ewma, gradient) would need to be implemented in this module
-  // or imported from another location to enable actual anomaly detection tests.
+test("Anomaly detection config surface stays aligned with the documented category labels", () => {
+  const categories = Object.keys(ANOMALY_CATEGORY_LABELS).sort();
+
+  assert.deepEqual(categories, [
+    "dip",
+    "level_shift",
+    "pattern_break",
+    "rate_of_change",
+    "seasonal_violation",
+    "spike",
+    "static",
+    "trend_change",
+  ]);
+  assert.equal(DEFAULT_CONFIG.minDataPoints <= DEFAULT_CONFIG.windowSize, true);
+  assert.equal(new Set(Object.values(ANOMALY_CATEGORY_LABELS)).size, categories.length);
 });

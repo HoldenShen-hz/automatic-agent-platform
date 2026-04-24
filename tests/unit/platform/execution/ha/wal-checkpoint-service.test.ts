@@ -26,7 +26,17 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
           const table = sql.toLowerCase().includes("delete") ? extractTable(sql) : extractTable(sql);
           const tableData = storage.get(table) ?? [];
           if (sql.toLowerCase().includes("insert")) {
-            tableData.push({ id: args[0], seq: args[args.length - 1] });
+            if (table === "event_replay_positions") {
+              tableData.push({
+                id: args[0],
+                consumer_name: args[1],
+                last_processed_event_id: args[2],
+                last_processed_sequence: args[3],
+                last_checkpoint_id: args[4],
+              });
+            } else {
+              tableData.push({ id: args[0], seq: args[args.length - 1] });
+            }
             storage.set(table, tableData);
           }
           return { changes: 1 };
@@ -386,20 +396,14 @@ test("WalCheckpointService replayWal throws when eventReplayEnabled is false", a
 // replayEvents
 // ---------------------------------------------------------------------------
 
-test.skip("WalCheckpointService replayEvents does NOT throw when eventReplayEnabled is false (by design)", async () => {
-  // Note: replayEvents does not have an early guard for eventReplayEnabled
-  // like replayWal does. This test documents the actual behavior.
+test("WalCheckpointService replayEvents returns a Promise when eventReplayEnabled is false", async () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
     haLevel: "HA_1",
   });
 
-  // It should not throw synchronously
-  // (Note: the actual SQL operations may fail if DB isn't set up properly,
-  // but the service method itself doesn't guard for eventReplayEnabled)
   const result = service.replayEvents("consumer", async () => {});
-  // Just verify it returns a Promise
   assert.ok(result instanceof Promise);
   await result.catch(() => {}); // Suppress any errors
 });
@@ -530,7 +534,7 @@ test("WalCheckpointService getReplayPosition returns null when no position saved
   assert.equal(result, null);
 });
 
-test.skip("WalCheckpointService saveReplayPosition and getReplayPosition round-trip", () => {
+test("WalCheckpointService saveReplayPosition and getReplayPosition round-trip", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -544,7 +548,6 @@ test.skip("WalCheckpointService saveReplayPosition and getReplayPosition round-t
   const retrieved = service.getReplayPosition("testConsumer");
 
   assert.ok(retrieved != null);
-  // Just verify values were stored and retrieved
   assert.equal(retrieved!.lastProcessedEventId, "evt_123");
   assert.equal(retrieved!.lastProcessedSequence, 42);
   assert.equal(retrieved!.lastCheckpointId, "ckpt_456");

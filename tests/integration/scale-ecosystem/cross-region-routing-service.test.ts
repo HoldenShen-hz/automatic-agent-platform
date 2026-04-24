@@ -5,7 +5,7 @@ import { CrossRegionRoutingService, type CrossRegionRouteRequest } from "../../.
 import { resolveRegionFailover, type RegionFailoverInput } from "../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
 import { selectPreferredRegion, type RegionDescriptor } from "../../../src/scale-ecosystem/multi-region/region-router/index.js";
 
-test.skip("cross region routing selects preferred region when available and allowed", () => {
+test("cross region routing selects preferred region when available and allowed", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true },
@@ -35,10 +35,10 @@ test.skip("cross region routing selects preferred region when available and allo
   assert.ok(decision.candidateRegions.includes("eu-west-1"));
   assert.ok(!decision.blockedRegions.includes("eu-west-1"));
   assert.equal(decision.recoveryTopology.primaryRegionId, "us-east-1");
-  assert.equal(decision.recoveryTopology.failoverRegionId, "us-east-1");
+  assert.equal(decision.recoveryTopology.failoverRegionId, null);
 });
 
-test.skip("cross region routing falls back to lowest latency region when preferred is unavailable", () => {
+test("cross region routing falls back to lowest latency region when preferred is unavailable", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true },

@@ -227,7 +227,7 @@ const IRREVERSIBLE_KEYWORDS = [
 const DATE_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g;
 const PERCENT_PATTERN = /\b\d+(?:\.\d+)?%\b/g;
 const CURRENCY_PATTERN = /(?:¥|\$|￥)\s?\d+(?:\.\d+)?/g;
-const ENV_PATTERN = /\b(prod|production|staging|stage|dev|test|线上|生产环境|测试环境)\b/gi;
+const ENV_PATTERN = /\b(prod|production|staging|stage|dev|test)\b|线上|生产环境|测试环境/gi;
 const CHANNEL_PATTERN = /\b(slack|telegram|webhook|email|api)\b/gi;
 
 function detectInputLocale(message: string): string | null {

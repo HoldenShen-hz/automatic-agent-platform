@@ -69,11 +69,7 @@ test("integration: artifacts can be persisted and retrieved by task", () => {
   }
 });
 
-// TODO: fix - "NOT NULL constraint failed: artifacts.created_at" suggests the INSERT
-// statement at line 137 may not have all required columns. The artifacts table schema
-// may have been updated to require additional fields that the INSERT doesn't provide.
-// Need to check the current schema and ensure all NOT NULL columns have values.
-test.skip("integration: multiple artifacts can be queried by execution", () => {
+test("integration: multiple artifacts can be queried by execution", () => {
   const ctx = createIntegrationContext("aa-artifact-multi-exec-");
   try {
     const taskId = newId("task");
@@ -138,7 +134,20 @@ test.skip("integration: multiple artifacts can be queried by execution", () => {
           `INSERT INTO artifacts (artifact_id, task_id, execution_id, step_id, kind, storage_path, file_name, mime_type, size_bytes, checksum, lineage_json, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(artifactId, taskId, executionId, "file", `/workspace/file${i}.txt`, `file${i}.txt`, "text/plain", 256 * (i + 1), `sha256:hash${i}`, null, now);
+        .run(
+          artifactId,
+          taskId,
+          executionId,
+          null,
+          "file",
+          `/workspace/file${i}.txt`,
+          `file${i}.txt`,
+          "text/plain",
+          256 * (i + 1),
+          `sha256:hash${i}`,
+          null,
+          now,
+        );
     }
 
     const artifacts = ctx.db.connection
@@ -183,20 +192,19 @@ test("integration: checkpoint envelope wraps and unwraps data correctly", async 
   }
 });
 
-// TODO: fix - unpackCheckpointEnvelope does not throw when checksum doesn't match.
-// The function should reject corrupted envelopes by comparing the stored checksum
-// with the computed checksum of the payload, but it appears this validation is missing.
-// Fix: add checksum validation in unpackCheckpointEnvelope to detect corruption.
-test.skip("integration: checkpoint envelope detects corruption via checksum", async () => {
+test("integration: checkpoint envelope detects corruption via checksum", async () => {
   const workspace = createTempWorkspace("aa-checkpoint-corr-");
   try {
     const checkpointData = { stepId: "step_corr", status: "done" };
     const envelope = await createCheckpointEnvelope(checkpointData, "workflow_step_checkpoint.v1");
+    const tamperedEnvelope = await createCheckpointEnvelope(
+      { stepId: "step_corr", status: "tampered" },
+      "workflow_step_checkpoint.v1",
+    );
 
-    // Corrupt the envelope by modifying the payload
     const corruptedEnvelope: CheckpointEnvelope = {
       ...envelope,
-      payload: Buffer.from("corrupted data").toString("base64"),
+      payload: tamperedEnvelope.payload,
     };
 
     await assert.rejects(

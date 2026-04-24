@@ -26,15 +26,7 @@ function createOnboardingContext(prefix: string) {
   return { workspace, db, store };
 }
 
-// TODO: fix - DomainSmokeTestRunner.validateSandboxCompatibility fails because
-// restricted tools (bash) require securityLevel=restricted, not standard.
-// The test domain registers with securityLevel="standard" which causes the smoke
-// test to reject the domain during activation with "domain_registry.runtime_checks_failed".
-// Additionally, the onboarding service's advance() method attempts registry.activate()
-// when all phases complete, which fails if the domain's smoke test doesn't pass.
-// Fix: change securityLevel to "restricted" OR update validateSandboxCompatibility
-// to allow bash with securityLevel="standard" in testing mode.
-test.skip("Onboarding: advances through all phases and completes", () => {
+test("Onboarding: advances through all phases and completes", () => {
   const ctx = createOnboardingContext("aa-onboard-full-");
   try {
     const registry = new DomainRegistryService();
@@ -64,7 +56,7 @@ test.skip("Onboarding: advances through all phases and completes", () => {
         optionalTools: [],
         modelPreferences: {},
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
-        securityLevel: "standard",
+        securityLevel: "restricted",
       },
       status: "testing",
       externalAdapters: [],
@@ -90,11 +82,7 @@ test.skip("Onboarding: advances through all phases and completes", () => {
   }
 });
 
-// TODO: fix - Same issue as test "Onboarding: advances through all phases and completes":
-// DomainSmokeTestRunner.validateSandboxCompatibility rejects domains with
-// securityLevel="standard" when requiredTools includes bash (a restricted tool).
-// Fix: use securityLevel="restricted" or update the sandbox compatibility check.
-test.skip("Onboarding: smoke test runs and passes for active domain", () => {
+test("Onboarding: smoke test runs and passes for active domain", () => {
   const ctx = createOnboardingContext("aa-onboard-smoke-");
   try {
     const registry = new DomainRegistryService();
@@ -110,7 +98,8 @@ test.skip("Onboarding: smoke test runs and passes for active domain", () => {
           name: "Smoke Workflow",
           triggerConditions: {},
           steps: [
-            { stepName: "test", toolHints: ["bash"], modelHints: {}, outputSchema: null, retryPolicy: { maxRetries: 0, backoffMs: 0 }, requiresReview: false, timeoutMs: 60000, dependsOn: [] },
+            { stepName: "prepare", toolHints: ["bash"], modelHints: {}, outputSchema: null, retryPolicy: { maxRetries: 0, backoffMs: 0 }, requiresReview: false, timeoutMs: 60000, dependsOn: [] },
+            { stepName: "test", toolHints: ["bash"], modelHints: {}, outputSchema: null, retryPolicy: { maxRetries: 0, backoffMs: 0 }, requiresReview: false, timeoutMs: 60000, dependsOn: ["prepare"] },
           ],
         },
       ],
@@ -123,7 +112,7 @@ test.skip("Onboarding: smoke test runs and passes for active domain", () => {
         optionalTools: [],
         modelPreferences: {},
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
-        securityLevel: "standard",
+        securityLevel: "restricted",
       },
       status: "active",
       externalAdapters: [],
@@ -142,11 +131,7 @@ test.skip("Onboarding: smoke test runs and passes for active domain", () => {
   }
 });
 
-// TODO: fix - DomainTaskDesignService.design() returns null workflowId instead
-// of "design_test.primary". The service fails to create a design for the domain
-// with the provided parameters. This appears to be a service implementation issue
-// where the design() method cannot find or create a suitable workflow for the task type.
-test.skip("Onboarding: task design service creates workflow for domain", () => {
+test("Onboarding: task design service creates workflow for domain", () => {
   const ctx = createOnboardingContext("aa-onboard-design-");
   try {
     const registry = new DomainRegistryService();
@@ -184,8 +169,28 @@ test.skip("Onboarding: task design service creates workflow for domain", () => {
     });
 
     const taskDesignService = new DomainTaskDesignService({
-      recipes: [],
-      promptLibrary: { libraryId: "prompt_lib", domainId: "design_test", prompts: [] },
+      recipes: [
+        {
+          recipeId: "recipe_design",
+          domainId: "design_test",
+          triggerPhrases: ["design", "workflow"],
+          defaultWorkflowId: "design_test.primary",
+          defaultToolBundleIds: ["design_tools"],
+        },
+      ],
+      promptLibrary: {
+        libraryId: "prompt_lib",
+        domainId: "design_test",
+        prompts: [
+          {
+            promptId: "design_test.prompt",
+            stage: "plan",
+            version: "1.0",
+            template: "Design the workflow carefully",
+            guardrails: [],
+          },
+        ],
+      },
       riskProfile: { profileId: "risk_1", domainId: "design_test", defaultRiskLevel: "low", dimensions: [] },
       evalFramework: { frameworkId: "eval_1", domainId: "design_test", fewShotExamples: [], evaluators: [], onlineMetrics: [], releaseGates: { minFewShotCount: 0, minRegressionCaseCount: 0, requirePromptInjectionCoverage: false } },
       knowledgeSchema: { schemaId: "know_1", domainId: "design_test", namespaceIds: [], freshnessWindowHours: 24, conflictResolution: "trust_priority", retentionDays: 30, knowledgeSources: [], retrievalStrategy: { strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false }, freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true } },

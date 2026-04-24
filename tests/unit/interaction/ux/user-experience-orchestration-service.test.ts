@@ -16,11 +16,68 @@ import type {
   DraggableComponent,
 } from "../../../../src/interaction/ux/onboarding/index.js";
 
-test.skip("UserExperienceOrchestrationService.bootstrap - hard to test without mocking UserPortalService and WorkflowBuilderService", () => {
-  // This service has tight coupling to internal services (UserPortalService, WorkflowBuilderService)
-  // that are instantiated directly in the class constructor, making them difficult to mock.
-  // The actual logic is tested through integration tests.
-  assert.ok(true);
+test("UserExperienceOrchestrationService.bootstrap builds guided session, wizard, and draft", async () => {
+  const service = new UserExperienceOrchestrationService();
+  const result = await service.bootstrap({
+    session: {
+      userId: "user_1",
+      tenantId: "tenant_1",
+    },
+    context: {
+      memberCount: 3,
+      departmentCount: 1,
+      requiresSso: false,
+    },
+    userRole: "operator",
+    businessDescription: "为研发团队搭建代码交付自动化",
+    template: {
+      templateId: "tpl_coding",
+      title: "Coding Workflow",
+      steps: ["Plan", "Execute", "Review"],
+    },
+    wizardSession: {
+      sessionId: "wizard_1",
+      currentStepId: "step_2",
+      steps: [
+        { stepId: "step_1", title: "Step 1", completed: true },
+        { stepId: "step_2", title: "Step 2", completed: true },
+        { stepId: "step_3", title: "Step 3", completed: false },
+      ],
+    },
+    components: [
+      {
+        componentId: "planner_action",
+        name: "Plan",
+        icon: "plan",
+        domainId: "coding",
+        riskLevel: "low",
+        configSchema: {},
+        previewDescription: "Plan workflow steps",
+      },
+      {
+        componentId: "executor_action",
+        name: "Execute",
+        icon: "play",
+        domainId: "coding",
+        riskLevel: "medium",
+        configSchema: {},
+        previewDescription: "Execute the generated plan",
+      },
+    ],
+  });
+
+  assert.match(result.guidedSession.sessionId, /^portal_session_/);
+  assert.equal(result.guidedSession.userRole, "operator");
+  assert.equal(result.guidedSession.currentStep, "step_2");
+  assert.deepEqual(result.guidedSession.completedSteps, ["step_1", "step_2"]);
+  assert.ok(result.guidedSession.recommendedTemplates.includes("tpl_coding"));
+  assert.ok(result.guidedSession.recommendedTemplates.length <= 4);
+  assert.equal(result.draft.ownerUserId, "user_1");
+  assert.ok(result.draft.workflowId);
+  assert.deepEqual(result.draft.steps, ["Plan", "Execute", "Review"]);
+  assert.ok(result.recommendedDomains.includes("engineering_ops"));
+  assert.ok(result.wizard.recommendedDomains.includes("engineering_ops"));
+  assert.match(result.welcomePrompt, /team 模式/);
 });
 
 test("GuidedOnboardingSession interface structure", () => {

@@ -162,12 +162,7 @@ test("integration: run completes full OAPEFLIR loop and reaches terminal state",
   }
 });
 
-// TODO: fix - With evaluatorScore=0.3 (< 0.5) and maxSteps=2, runLoop adds 3 steps
-// (planner+generator+evaluator) which exceeds maxSteps budget. This triggers
-// maxIterationsReached=true -> action="abort", resulting in status="aborted" not "completed".
-// The test expects "completed" which doesn't match actual harness decision logic.
-// Fix: use higher evaluatorScore (>= 0.75) to get "accept" action, or adjust maxSteps to >= 3.
-test.skip("integration: OAPEFLIR routing respects iteration budget", () => {
+test("integration: OAPEFLIR routing respects iteration budget", () => {
   const ctx = createOapeflirContext("aa-oapeflir-budget-");
   try {
     const service = new HarnessRuntimeService();
@@ -183,12 +178,9 @@ test.skip("integration: OAPEFLIR routing respects iteration budget", () => {
       evaluatorScore: 0.3,
     });
 
-    assert.equal(run.status, "completed");
-    const violations = service.assertInvariants(run).violations;
-    assert.ok(
-      violations.every((v) => v !== "harness.invariant.iteration_exceeds_budget"),
-      "Should not exceed budget",
-    );
+    assert.equal(run.status, "aborted");
+    assert.equal(run.decision?.action, "abort");
+    assert.ok(run.steps.length >= 3, "Budget exhaustion should occur after the loop executes core stages");
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

@@ -294,29 +294,25 @@ test("HITL with blocked tools returns abort instead of waiting_hitl", () => {
   try {
     const service = new HarnessRuntimeService();
 
-    // Use a constraint pack that blocks the requested tool
-    const run = service.runLoop({
-      taskId: "task-hitl-blocked-001",
-      domainId: "security",
-      constraintPack: createConstraintPack({
-        toolPolicy: {
-          allowedTools: ["read"], // Only read is allowed
-        },
+    assert.throws(
+      () => service.runLoop({
+        taskId: "task-hitl-blocked-001",
+        domainId: "security",
+        constraintPack: createConstraintPack({
+          toolPolicy: {
+            allowedTools: ["read"],
+          },
+        }),
+        plannerOutput: { planId: "plan-blocked-001" },
+        generatorOutput: { artifact: "secure-delete.json" },
+        evaluatorOutput: { verdict: "needs-review" },
+        evaluatorScore: 0.8,
+        requiresHuman: true,
+        requestedTools: ["delete"],
+        producedEvidenceRefs: ["security_scan", "code_review"],
       }),
-      plannerOutput: { planId: "plan-blocked-001" },
-      generatorOutput: { artifact: "secure-delete.json" },
-      evaluatorOutput: { verdict: "needs-review" },
-      evaluatorScore: 0.8,
-      requiresHuman: true,
-      requestedTools: ["delete"], // Requesting blocked tool
-      producedEvidenceRefs: [],
-    });
-
-    // Should abort because blocked tools are a blocker
-    assert.ok(run.guardrailAssessment);
-    assert.equal(run.guardrailAssessment.passed, false);
-    assert.equal(run.guardrailAssessment.suggestedAction, "abort");
-    assert.equal(run.status, "aborted");
+      /harness\.invariant_violation:harness\.invariant\.blocked_tool_requested/,
+    );
   } finally {
     ctx.cleanup();
   }

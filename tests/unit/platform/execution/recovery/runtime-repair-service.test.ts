@@ -43,28 +43,28 @@ function createMockStore(overrides: {
 } = {}): AuthoritativeTaskStore {
   return {
     dispatch: {
-      getExecution: (id: string) => overrides.executions?.find((e) => e.id === id) ?? null,
-      getSession: (id: string) => overrides.sessions?.find((s) => s.id === id) ?? null,
+      getExecution: overrides.dispatch?.getExecution ?? ((id: string) => overrides.executions?.find((e) => e.id === id) ?? null),
+      getSession: overrides.dispatch?.getSession ?? ((id: string) => overrides.sessions?.find((s) => s.id === id) ?? null),
     },
     task: {
-      getTask: (id: string) => overrides.tasks?.find((t) => t.id === id) ?? null,
-      setTaskState: () => {},
+      getTask: overrides.task?.getTask ?? ((id: string) => overrides.tasks?.find((t) => t.id === id) ?? null),
+      setTaskState: overrides.task?.setTaskState ?? (() => {}),
     },
     event: {
-      insertEvent: () => {},
-      getEvent: (id: string) => overrides.events?.find((e) => e.id === id) ?? null,
-      countPendingTier1Acks: () => 0,
-      ensureEventConsumerAckPending: () => {},
+      insertEvent: overrides.event?.insertEvent ?? (() => {}),
+      getEvent: overrides.event?.getEvent ?? ((id: string) => overrides.events?.find((e) => e.id === id) ?? null),
+      countPendingTier1Acks: overrides.event?.countPendingTier1Acks ?? (() => 0),
+      ensureEventConsumerAckPending: overrides.event?.ensureEventConsumerAckPending ?? (() => {}),
       listPendingEventsForConsumer: overrides.event?.listPendingEventsForConsumer ?? (() => []),
       listFailedEventsForConsumer: overrides.event?.listFailedEventsForConsumer ?? (() => []),
     },
     execution: {
-      updateExecutionStatus: () => {},
-      updateExecutionFailure: () => {},
+      updateExecutionStatus: overrides.execution?.updateExecutionStatus ?? (() => {}),
+      updateExecutionFailure: overrides.execution?.updateExecutionFailure ?? (() => {}),
     },
     session: {
-      updateSessionStatus: () => {},
-      insertSession: () => {},
+      updateSessionStatus: overrides.session?.updateSessionStatus ?? (() => {}),
+      insertSession: overrides.session?.insertSession ?? (() => {}),
     },
     lock: {
       deleteFileLock: overrides.locks?.deleteFileLock ?? (() => {}),
@@ -189,9 +189,7 @@ test("RuntimeRepairService.apply handles release_stale_lock action", async () =>
   assert.equal(lockDeleted, true);
 });
 
-test.skip("RuntimeRepairService.apply handles close_orphan_session action", async () => {
-  // This test is skipped because the mock setup doesn't properly capture the session update call
-  // The issue is that dispatch.getSession returns a plain object that doesn't trigger the mock's updateSessionStatus
+test("RuntimeRepairService.apply handles close_orphan_session action", async () => {
   const db = createMockDb();
   let sessionUpdated = false;
   const store = createMockStore({
@@ -334,9 +332,7 @@ test("RuntimeRepairService.apply handles requeue_execution when execution missin
   assert.equal(results[0]!.detail, "execution missing");
 });
 
-test.skip("RuntimeRepairService.apply handles reconcile_dispatch_ticket when ticket missing", async () => {
-  // Skipped because ExecutionDispatchReconciliationService.repairTicket calls store.worker.getExecutionTicket
-  // which is not properly mocked
+test("RuntimeRepairService.apply handles reconcile_dispatch_ticket when ticket missing", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new RuntimeRepairService(db, store);

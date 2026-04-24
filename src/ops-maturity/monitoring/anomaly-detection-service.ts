@@ -88,8 +88,9 @@ export class AnomalyDetectionService {
     const window = this.getRecentWindow(buffer, threshold.windowSizeMinutes);
     if (window.length === 0) return [];
 
-    const stats = this.computeStats(window);
     const latest = window[window.length - 1]!;
+    const baseline = window.length > 1 ? window.slice(0, -1) : window;
+    const stats = this.computeStats(baseline);
     const alerts: AnomalyAlert[] = [];
 
     if (latest.value >= threshold.criticalThreshold) {

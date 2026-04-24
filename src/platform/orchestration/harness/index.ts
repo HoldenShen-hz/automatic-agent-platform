@@ -689,7 +689,7 @@ export class HarnessRuntimeService {
         action: decision.action,
         confidence: decision.confidence,
       });
-      if (baseRun.status === "waiting_hitl") {
+      if (baseRun.status === "waiting_hitl" && guardrailAssessment.suggestedAction !== "abort") {
         baseRun = this.openHitlReview(
           baseRun,
           decision.reasonCodes[0] ?? "harness.requires_human_review",

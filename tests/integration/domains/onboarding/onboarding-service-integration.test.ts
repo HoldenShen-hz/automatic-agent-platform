@@ -37,7 +37,12 @@ function registerMinimalDomain(registry: DomainRegistryService, domainId: string
         ],
       },
     ],
-    toolBundles: [],
+    toolBundles: [
+      {
+        bundleId: `${domainId}_tools`,
+        tools: [],
+      },
+    ],
     outputContracts: [],
     promptOverrides: {},
     capabilities: {
@@ -74,8 +79,7 @@ test("DomainOnboardingService: start creates session with modeling phase", () =>
   }
 });
 
-test.skip("DomainOnboardingService: advance progresses through all phases", () => {
-  // Skipped: Requires properly configured domain with tool bundles that pass smoke test
+test("DomainOnboardingService: advance progresses through all phases", () => {
   const ctx = createIntegrationContext("aa-onboarding-advance-");
   try {
     const registry = new DomainRegistryService();

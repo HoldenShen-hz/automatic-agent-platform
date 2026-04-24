@@ -87,7 +87,7 @@ export class DashboardProjectionService {
    * @returns Generated dashboard delta or null if no significant change
    */
   public processEvent(eventType: TypedEventType, payload: unknown): DashboardDelta | null {
-    const changeType = this.deriveChangeType(eventType);
+    const changeType = this.deriveChangeType(eventType, payload);
     if (!changeType) return null;
 
     const entityId = this.extractEntityId(payload, eventType);
@@ -251,7 +251,17 @@ export class DashboardProjectionService {
     }
   }
 
-  private deriveChangeType(eventType: TypedEventType): DashboardChange["changeType"] | null {
+  private deriveChangeType(eventType: TypedEventType, payload: unknown): DashboardChange["changeType"] | null {
+    if (eventType === "task:status_changed") {
+      const status = this.extractStatusValue(payload);
+      if (status === "done" || status === "completed") {
+        return "task_completed";
+      }
+      if (status === "failed") {
+        return "task_failed";
+      }
+      return "task_updated";
+    }
     if (eventType.startsWith("task.created")) return "task_created";
     if (eventType.startsWith("task.updated")) return "task_updated";
     if (eventType.startsWith("task.completed")) return "task_completed";
@@ -260,6 +270,15 @@ export class DashboardProjectionService {
     if (eventType.startsWith("incident.resolved")) return "incident_resolved";
     if (eventType.startsWith("system.health")) return "system_health_changed";
     return null;
+  }
+
+  private extractStatusValue(payload: unknown): string | null {
+    if (payload == null || typeof payload !== "object") {
+      return null;
+    }
+    const obj = payload as Record<string, unknown>;
+    const value = obj.toStatus ?? obj.newStatus ?? obj.status;
+    return typeof value === "string" ? value.toLowerCase() : null;
   }
 
   private extractEntityId(payload: unknown, eventType: TypedEventType): string {
