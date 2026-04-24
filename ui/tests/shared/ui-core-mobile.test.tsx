@@ -7,6 +7,7 @@ import {
   MiniTrendBars,
   SystemStatusBar,
   createSystemHealthSummary,
+  designTokens,
   darkTheme,
   highContrastTheme,
   lightTheme,
@@ -35,6 +36,7 @@ describe("ui-core split modules", () => {
     expect(screen.getByText("connected")).toBeInTheDocument();
     expect(createSystemHealthSummary({ wsStatus: "connected", offlineQueueSize: 2, syncStatus: "queued", panicActivated: false })).toHaveLength(4);
     expect(lightTheme.color.surface).not.toBe(darkTheme.color.surface);
+    expect(designTokens.color.background).toBe(lightTheme.color.background);
     expect(resolveTheme("high-contrast")).toEqual(highContrastTheme);
   });
 

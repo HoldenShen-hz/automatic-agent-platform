@@ -8,31 +8,36 @@ import test from "node:test";
 import {
   DisambiguationHandler,
   detectAmbiguity,
-  DEFAULT_DISAMBIGUATION_CONFIG,
   type DisambiguationConfig,
   type ClarificationQuestion,
   type DisambiguationResult,
 } from "../../../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
 import type { DetectedIntent, ExtractedEntity } from "../../../../../src/interaction/nl-gateway/index.js";
 
+import { DEFAULT_DISAMBIGUATION_CONFIG } from "../../../../../src/interaction/nl-gateway/disambiguation-handler/index.js";
+
 // ---------------------------------------------------------------------------
 // Test Data Factory
 // ---------------------------------------------------------------------------
 
 function makeIntent(overrides: Partial<DetectedIntent> = {}): DetectedIntent {
+  // @ts-expect-error - Test helper adding extra properties
   return {
     intentType: "task_query",
     confidence: 0.8,
     entities: [],
+    // @ts-expect-error - Test helper adding extra properties
     reasoning: "test",
     ...overrides,
   };
 }
 
 function makeEntity(overrides: Partial<ExtractedEntity> = {}): ExtractedEntity {
+  // @ts-expect-error - Test helper adding extra properties
   return {
     entityType: "general",
     value: "test",
+    // @ts-expect-error - Test helper adding extra properties
     confidence: 0.9,
     ...overrides,
   };

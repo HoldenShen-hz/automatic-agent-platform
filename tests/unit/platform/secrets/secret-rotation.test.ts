@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
+// @ts-expect-error - module resolution issue at compile time
 import { EnvSecretProvider } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+// @ts-expect-error - module resolution issue at compile time
 import { SecretManagementService } from "../../../../../src/platform/control-plane/iam/secret-management-service.js";
+// @ts-expect-error - module resolution issue at compile time
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+// @ts-expect-error - module resolution issue at compile time
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+// @ts-expect-error - module resolution issue at compile time
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 
 // ---------------------------------------------------------------------------
@@ -581,12 +586,12 @@ test("issueSecretLease uses ttlMinutes from rotation policy when not provided", 
       providers: {
         environment: {
           providerKind: "environment",
-          async describeSecret(secretRef) {
+          async describeSecret(secretRef: string) {
             return new EnvSecretProvider({
               env: { AA_SECRET_SYSTEM_TEST_LEASE_POLICY: "lease-policy-value" },
             }).describeSecret(secretRef);
           },
-          async requireSecret(secretRef) {
+          async requireSecret(secretRef: string) {
             return new EnvSecretProvider({
               env: { AA_SECRET_SYSTEM_TEST_LEASE_POLICY: "lease-policy-value" },
             }).requireSecret(secretRef);

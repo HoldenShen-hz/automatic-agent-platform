@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DefaultPlatformAdapter,
+  createPlatformAdapterCapabilityView,
   createDesktopPlatformAdapter,
   createMobilePlatformAdapter,
   createWebPlatformAdapter,
@@ -114,5 +115,18 @@ describe("shared platform adapter", () => {
     adapter.emitForeground();
 
     expect(events).toEqual(["background", "foreground"]);
+  });
+
+  it("provides a documented capability-view adapter facade", async () => {
+    const adapter = new DefaultPlatformAdapter("web");
+    const capabilities = createPlatformAdapterCapabilityView(adapter);
+
+    await capabilities.secureStorage.set("token", "abc");
+    await capabilities.offlineStore.set("/drafts/note.txt", "hello");
+    await capabilities.windowing.open("/mission-control/dashboard");
+
+    expect(await capabilities.secureStorage.get("token")).toBe("abc");
+    expect(await capabilities.offlineStore.get("/drafts/note.txt")).toBe("hello");
+    expect(adapter.getDebugState().windowPath).toBe("/mission-control/dashboard");
   });
 });

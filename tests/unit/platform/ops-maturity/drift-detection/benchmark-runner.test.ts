@@ -5,8 +5,8 @@ import {
   type BenchmarkCase,
   type EvaluationReport,
   type BenchmarkResult,
-} from "../../../../../../src/ops-maturity/drift-detection/benchmark-runner.js";
-import type { ImprovementProposal } from "../../../../../../src/ops-maturity/drift-detection/proposal-engine.js";
+} from "../../../../../../src/platform/ops-maturity/drift-detection/benchmark-runner.js";
+import type { ImprovementProposal } from "../../../../../../src/platform/ops-maturity/drift-detection/proposal-engine.js";
 
 const mockProposal = (overrides: Partial<ImprovementProposal> = {}): ImprovementProposal => ({
   id: "prop-1",

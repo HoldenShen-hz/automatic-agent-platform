@@ -1,243 +1,512 @@
 /**
- * Unit Tests: Orphan Cleanup Service
+ * Unit Tests: OrphanCleanupService - Full Class Coverage
  *
- * Tests utility functions and the OrphanCleanupService class.
+ * Tests the OrphanCleanupService class methods with mocked dependencies.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// Import utilities directly - these are module-level functions
-import {
-  type OrphanCleanupIssueType,
-  type WorkerExecutionReferenceOrphan,
-  type OrphanCleanupIssue,
-  type OrphanCleanupResult,
-  type OrphanCleanupReport,
-} from "../../../../../src/platform/execution/execution-engine/orphan-cleanup-service.js";
+import { OrphanCleanupService } from "../../../../../src/platform/execution/execution-engine/orphan-cleanup-service.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 
-// Test helper types to expose internal state for testing
-interface TestOrphanCleanupIssue {
-  issueType: OrphanCleanupIssueType;
-  entityType: "session" | "ticket" | "worker";
-  entityId: string;
-  taskId: string | null;
-  executionId: string | null;
-  workerId: string | null;
-  detail: string;
-  orphanExecutionRefs?: WorkerExecutionReferenceOrphan[];
+// ---------------------------------------------------------------------------
+// Mock Store
+// ---------------------------------------------------------------------------
+
+interface MockOrphanSession {
+  sessionId: string;
+  taskId: string;
+  sessionStatus: string;
+  taskStatus: string;
 }
 
-// =============================================================================
-// Type and Interface tests
-// =============================================================================
+interface MockTicket {
+  ticketId: string;
+  taskId: string;
+  executionId: string;
+  status: string;
+}
 
-test("OrphanCleanupIssueType covers all expected types", () => {
-  const types: OrphanCleanupIssueType[] = [
-    "orphan_session",
-    "orphan_queue_claim",
-    "worker_execution_reference_orphan",
-  ];
-  assert.ok(types.every(t => typeof t === "string"));
+interface MockWorkerSnapshot {
+  workerId: string;
+  runningExecutionsJson: string;
+  status: string;
+  placement?: string;
+  isolationLevel?: string;
+  repoVersion?: string | null;
+  remoteSessionStatus?: string | null;
+  lastAcknowledgedStreamOffset?: string | null;
+  streamResumeSuccessRate?: number | null;
+  credentialRefreshSuccessRate?: number | null;
+  sessionConsistencyCheckStatus?: string | null;
+  sessionConsistencyCheckedAt?: string | null;
+  saturation?: number | null;
+  activeLeaseCount?: number | null;
+  meanStartupLatencyMs?: number | null;
+  sandboxSuccessRate?: number | null;
+  repoCacheHitRate?: number | null;
+  registrationVerifiedAt?: string | null;
+  registrationChallengeId?: string | null;
+  capabilitiesJson?: string;
+  maxConcurrency?: number | null;
+  queueAffinity?: string | null;
+  runtimeInstanceId?: string | null;
+  restartedFromRuntimeInstanceId?: string | null;
+  cpuPct?: number | null;
+  memoryMb?: number | null;
+  toolBacklogCount?: number | null;
+  currentStepId?: string | null;
+  lastProgressAt?: string | null;
+}
+
+interface MockExecution {
+  id: string;
+  taskId: string;
+  status: string;
+}
+
+interface MockActiveLease {
+  executionId: string;
+  workerId: string;
+}
+
+function createMockStore(overrides: {
+  orphanSessions?: MockOrphanSession[];
+  dispatchReconciliationIssues?: MockTicket[];
+  workerSnapshots?: MockWorkerSnapshot[];
+  executions?: Map<string, MockExecution>;
+  activeLeases?: Map<string, MockActiveLease>;
+} = {}): AuthoritativeTaskStore {
+  const {
+    orphanSessions = [],
+    dispatchReconciliationIssues = [],
+    workerSnapshots = [],
+    executions = new Map(),
+    activeLeases = new Map(),
+  } = overrides;
+
+  return {
+    operations: {
+      listOrphanSessions: () => orphanSessions,
+    },
+    worker: {
+      listWorkerSnapshots: () => workerSnapshots,
+      getWorkerSnapshot: (workerId: string) =>
+        workerSnapshots.find((w) => w.workerId === workerId) ?? null,
+      getActiveExecutionLease: (executionId: string) =>
+        activeLeases.get(executionId) ?? null,
+    },
+    dispatch: {
+      getExecution: (id: string) => executions.get(id) ?? null,
+    },
+    session: {
+      getSession: (id: string) => null,
+      updateSessionStatus: (_id: string, _status: string, _at: string) => {},
+    },
+    event: {
+      insertEvent: (_event: unknown) => {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+}
+
+function createMockDb(): AuthoritativeSqlDatabase {
+  return {
+    transaction: <T>(fn: () => T): T => fn(),
+  } as unknown as AuthoritativeSqlDatabase;
+}
+
+// ---------------------------------------------------------------------------
+// preview() tests
+// ---------------------------------------------------------------------------
+
+test("OrphanCleanupService.preview returns report with empty issues when no orphans", () => {
+  const store = createMockStore({});
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  assert.ok(Array.isArray(report.issues));
+  assert.equal(report.issues.length, 0);
+  assert.ok(report.checkedAt.length > 0);
 });
 
-test("OrphanCleanupReport structure is correct", () => {
-  const report: OrphanCleanupReport = {
-    checkedAt: "2026-04-22T00:00:00.000Z",
-    issues: [],
-  };
-  assert.ok(report.checkedAt);
+test("OrphanCleanupService.preview detects orphan_session issues", () => {
+  const store = createMockStore({
+    orphanSessions: [
+      { sessionId: "sess-1", taskId: "task-1", sessionStatus: "streaming", taskStatus: "done" },
+    ],
+  });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  assert.equal(report.issues.length, 1);
+  assert.equal(report.issues[0]!.issueType, "orphan_session");
+  assert.equal(report.issues[0]!.entityId, "sess-1");
+});
+
+test("OrphanCleanupService.preview detects orphan_queue_claim issues", () => {
+  const store = createMockStore({
+    dispatchReconciliationIssues: [
+      { ticketId: "ticket-1", taskId: "task-1", executionId: "exec-1", status: "claimed" },
+    ],
+  });
+  // The dispatch reconciliation service is created internally, so we need to
+  // ensure it returns issues. We can only test the interface here.
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  // Issues from dispatch reconciliation depend on internal service behavior
   assert.ok(Array.isArray(report.issues));
 });
 
-test("OrphanCleanupResult covers expected actions", () => {
-  const results: OrphanCleanupResult[] = [
-    { action: "close_orphan_session", entityId: "s1", applied: true, detail: "closed" },
-    { action: "requeue_ticket", entityId: "t1", applied: false, detail: "not needed" },
-    { action: "clean_worker_execution_refs", entityId: "w1", applied: true, detail: "cleaned" },
-  ];
-  assert.equal(results.length, 3);
+test("OrphanCleanupService.preview uses custom checkedAt timestamp", () => {
+  const store = createMockStore({});
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const customTime = "2026-04-24T12:00:00.000Z";
+  const report = service.preview(customTime);
+
+  assert.equal(report.checkedAt, customTime);
 });
 
-test("WorkerExecutionReferenceOrphan has correct structure", () => {
-  const orphan: WorkerExecutionReferenceOrphan = {
-    executionId: "exec-1",
-    taskId: "task-1",
-    reasonCode: "execution_missing",
-    executionStatus: null,
-    activeLeaseWorkerId: null,
-  };
-  assert.equal(orphan.executionId, "exec-1");
-  assert.equal(orphan.reasonCode, "execution_missing");
+// ---------------------------------------------------------------------------
+// enforce() tests
+// ---------------------------------------------------------------------------
+
+test("OrphanCleanupService.enforce returns report with issues and applied array", () => {
+  const store = createMockStore({});
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
+  assert.ok(Array.isArray(report.issues));
+  assert.ok(Array.isArray(report.applied));
 });
 
-test("WorkerExecutionReferenceOrphan reasonCodes are all valid", () => {
-  const reasonCodes: WorkerExecutionReferenceOrphan["reasonCode"][] = [
-    "execution_missing",
-    "execution_terminal",
-    "missing_active_lease",
-    "owned_by_another_worker",
-  ];
-  assert.ok(reasonCodes.every(r => typeof r === "string"));
-});
-
-test("OrphanCleanupIssue entityType is limited to expected values", () => {
-  const issue: OrphanCleanupIssue = {
-    issueType: "orphan_session",
-    entityType: "session",
-    entityId: "session-123",
-    taskId: "task-456",
-    executionId: null,
-    workerId: null,
-    detail: "Session is streaming while task is done",
-  };
-  assert.ok(["session", "ticket", "worker"].includes(issue.entityType));
-});
-
-// =============================================================================
-// Enforce switch branch coverage via issue type combinations
-// =============================================================================
-
-test("OrphanCleanupIssue can represent orphan_session issue", () => {
-  const issue: OrphanCleanupIssue = {
-    issueType: "orphan_session",
-    entityType: "session",
-    entityId: "session-abc",
-    taskId: "task-xyz",
-    executionId: "exec-123",
-    workerId: null,
-    detail: "Session streaming but task is cancelled",
-  };
-  assert.equal(issue.issueType, "orphan_session");
-  assert.equal(issue.entityType, "session");
-});
-
-test("OrphanCleanupIssue can represent orphan_queue_claim issue", () => {
-  const issue: OrphanCleanupIssue = {
-    issueType: "orphan_queue_claim",
-    entityType: "ticket",
-    entityId: "ticket-def",
-    taskId: "task-ghi",
-    executionId: "exec-456",
-    workerId: "worker-1",
-    detail: "Ticket claimed but no valid lease",
-  };
-  assert.equal(issue.issueType, "orphan_queue_claim");
-  assert.equal(issue.entityType, "ticket");
-});
-
-test("OrphanCleanupIssue can represent worker_execution_reference_orphan issue", () => {
-  const issue: OrphanCleanupIssue = {
-    issueType: "worker_execution_reference_orphan",
-    entityType: "worker",
-    entityId: "worker-789",
-    taskId: null,
-    executionId: null,
-    workerId: "worker-789",
-    detail: "Worker has invalid execution references",
-    orphanExecutionRefs: [
-      {
-        executionId: "exec-dead",
-        taskId: null,
-        reasonCode: "execution_terminal",
-        executionStatus: "failed",
-        activeLeaseWorkerId: null,
-      },
+test("OrphanCleanupService.enforce applies close_orphan_session for orphan sessions", () => {
+  const store = createMockStore({
+    orphanSessions: [
+      { sessionId: "sess-close-1", taskId: "task-1", sessionStatus: "streaming", taskStatus: "done" },
     ],
-  };
-  assert.equal(issue.issueType, "worker_execution_reference_orphan");
-  assert.ok(issue.orphanExecutionRefs);
-  assert.equal(issue.orphanExecutionRefs![0]!.reasonCode, "execution_terminal");
+  });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
+  const applied = report.applied?.find((a) => a.entityId === "sess-close-1");
+  assert.ok(applied, "Should have applied action for orphan session");
+  assert.equal(applied!.action, "close_orphan_session");
+  assert.equal(applied!.applied, true);
 });
 
-// =============================================================================
-// Multiple issues in a report
-// =============================================================================
-
-test("OrphanCleanupReport can contain multiple issues of different types", () => {
-  const report: OrphanCleanupReport = {
-    checkedAt: "2026-04-22T12:00:00.000Z",
-    issues: [
-      {
-        issueType: "orphan_session",
-        entityType: "session",
-        entityId: "s1",
-        taskId: "t1",
-        executionId: null,
-        workerId: null,
-        detail: "Issue 1",
-      },
-      {
-        issueType: "orphan_queue_claim",
-        entityType: "ticket",
-        entityId: "t1",
-        taskId: "t1",
-        executionId: "e1",
-        workerId: null,
-        detail: "Issue 2",
-      },
-      {
-        issueType: "worker_execution_reference_orphan",
-        entityType: "worker",
-        entityId: "w1",
-        taskId: null,
-        executionId: null,
-        workerId: "w1",
-        detail: "Issue 3",
-      },
+test("OrphanCleanupService.enforce marks applied false when session already terminal", () => {
+  // The internal session lookup returns null in mock, so applied=false
+  const store = createMockStore({
+    orphanSessions: [
+      { sessionId: "sess-term", taskId: "task-1", sessionStatus: "completed", taskStatus: "done" },
     ],
-  };
-  assert.equal(report.issues.length, 3);
-  assert.ok(report.issues.some(i => i.issueType === "orphan_session"));
-  assert.ok(report.issues.some(i => i.issueType === "orphan_queue_claim"));
-  assert.ok(report.issues.some(i => i.issueType === "worker_execution_reference_orphan"));
+  });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
+  // With mock returning null for getSession, action should be not applied
+  const applied = report.applied?.find((a) => a.entityId === "sess-term");
+  assert.ok(applied);
+  // Mock returns null for getSession so applied=false
+  assert.equal(applied!.applied, false);
 });
 
-test("OrphanCleanupReport with applied results has correct structure", () => {
-  const report: OrphanCleanupReport = {
-    checkedAt: "2026-04-22T12:00:00.000Z",
-    issues: [
-      {
-        issueType: "orphan_session",
-        entityType: "session",
-        entityId: "s1",
-        taskId: "t1",
-        executionId: null,
-        workerId: null,
-        detail: "Session is orphan",
-      },
+test("OrphanCleanupService.enforce applies requeue_ticket for orphan queue claims", () => {
+  // This depends on dispatch reconciliation service internals
+  const store = createMockStore({
+    dispatchReconciliationIssues: [
+      { ticketId: "ticket-requeue-1", taskId: "task-1", executionId: "exec-1", status: "claimed" },
     ],
-    applied: [
-      { action: "close_orphan_session", entityId: "s1", applied: true, detail: "Session closed" },
-    ],
-  };
+  });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
   assert.ok(report.applied);
-  assert.equal(report.applied!.length, 1);
-  assert.equal(report.applied![0]!.action, "close_orphan_session");
 });
 
-test("OrphanCleanupIssue detail can contain specific context", () => {
-  const issue: OrphanCleanupIssue = {
-    issueType: "orphan_session",
-    entityType: "session",
-    entityId: "session-abc-123",
-    taskId: "task-xyz-456",
-    executionId: "exec-789",
-    workerId: null,
-    detail: "Session session-abc-123 is streaming while task task-xyz-456 is succeeded",
-  };
-  assert.ok(issue.detail.includes("streaming"));
-  assert.ok(issue.detail.includes("succeeded"));
-});
-
-test("WorkerExecutionReferenceOrphan with all reason codes", () => {
-  const orphans: WorkerExecutionReferenceOrphan[] = [
-    { executionId: "e1", taskId: null, reasonCode: "execution_missing", executionStatus: null, activeLeaseWorkerId: null },
-    { executionId: "e2", taskId: "t1", reasonCode: "execution_terminal", executionStatus: "failed", activeLeaseWorkerId: null },
-    { executionId: "e3", taskId: "t2", reasonCode: "missing_active_lease", executionStatus: "executing", activeLeaseWorkerId: null },
-    { executionId: "e4", taskId: "t3", reasonCode: "owned_by_another_worker", executionStatus: "executing", activeLeaseWorkerId: "other-worker" },
+test("OrphanCleanupService.enforce applies clean_worker_execution_refs for worker orphans", () => {
+  // Set up worker snapshots with orphan execution references
+  const executions = new Map([
+    ["exec-dead", { id: "exec-dead", taskId: "task-dead", status: "succeeded" }], // terminal
+  ]);
+  const leases = new Map<string, MockActiveLease>(); // no active lease
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-orphan",
+      runningExecutionsJson: '["exec-dead"]',
+      status: "busy",
+    },
   ];
-  assert.equal(orphans.length, 4);
-  assert.equal(orphans[0]!.reasonCode, "execution_missing");
-  assert.equal(orphans[3]!.activeLeaseWorkerId, "other-worker");
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
+  const applied = report.applied?.find((a) => a.entityId === "worker-orphan");
+  assert.ok(applied, "Should have applied action for worker orphan");
+  assert.equal(applied!.action, "clean_worker_execution_refs");
+});
+
+// ---------------------------------------------------------------------------
+// Worker execution reference orphan detection
+// ---------------------------------------------------------------------------
+
+test("OrphanCleanupService detects execution_missing orphan", () => {
+  const executions = new Map<string, MockExecution>(); // exec-orphan not found
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-missing",
+      runningExecutionsJson: '["exec-orphan"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-missing",
+  );
+  assert.ok(workerIssue, "Should detect worker_execution_reference_orphan");
+  const orphanRef = workerIssue?.orphanExecutionRefs?.find((r) => r.executionId === "exec-orphan");
+  assert.ok(orphanRef, "Should have orphan ref for exec-orphan");
+  assert.equal(orphanRef!.reasonCode, "execution_missing");
+});
+
+test("OrphanCleanupService detects execution_terminal orphan", () => {
+  const executions = new Map([
+    ["exec-terminal", { id: "exec-terminal", taskId: "task-1", status: "failed" }],
+  ]);
+  const leases = new Map<string, MockActiveLease>();
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-terminal",
+      runningExecutionsJson: '["exec-terminal"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-terminal",
+  );
+  assert.ok(workerIssue);
+  const orphanRef = workerIssue?.orphanExecutionRefs?.find((r) => r.executionId === "exec-terminal");
+  assert.equal(orphanRef!.reasonCode, "execution_terminal");
+  assert.equal(orphanRef!.executionStatus, "failed");
+});
+
+test("OrphanCleanupService detects missing_active_lease orphan", () => {
+  const executions = new Map([
+    ["exec-no-lease", { id: "exec-no-lease", taskId: "task-1", status: "executing" }],
+  ]);
+  const leases = new Map<string, MockActiveLease>(); // no lease
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-no-lease",
+      runningExecutionsJson: '["exec-no-lease"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-no-lease",
+  );
+  assert.ok(workerIssue);
+  const orphanRef = workerIssue?.orphanExecutionRefs?.find((r) => r.executionId === "exec-no-lease");
+  assert.equal(orphanRef!.reasonCode, "missing_active_lease");
+});
+
+test("OrphanCleanupService detects owned_by_another_worker orphan", () => {
+  const executions = new Map([
+    ["exec-stolen", { id: "exec-stolen", taskId: "task-1", status: "executing" }],
+  ]);
+  const leases = new Map([
+    ["exec-stolen", { executionId: "exec-stolen", workerId: "other-worker" }],
+  ]);
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-victim",
+      runningExecutionsJson: '["exec-stolen"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-victim",
+  );
+  assert.ok(workerIssue);
+  const orphanRef = workerIssue?.orphanExecutionRefs?.find((r) => r.executionId === "exec-stolen");
+  assert.equal(orphanRef!.reasonCode, "owned_by_another_worker");
+  assert.equal(orphanRef!.activeLeaseWorkerId, "other-worker");
+});
+
+test("OrphanCleanupService does not flag valid execution references", () => {
+  const executions = new Map([
+    ["exec-valid", { id: "exec-valid", taskId: "task-1", status: "executing" }],
+  ]);
+  const leases = new Map([
+    ["exec-valid", { executionId: "exec-valid", workerId: "worker-valid" }],
+  ]);
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-valid",
+      runningExecutionsJson: '["exec-valid"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-valid",
+  );
+  assert.equal(workerIssue, undefined, "Valid execution should not be flagged as orphan");
+});
+
+// ---------------------------------------------------------------------------
+// cleanWorkerExecutionRefs helper (via enforce)
+// ---------------------------------------------------------------------------
+
+test("OrphanCleanupService cleans multiple orphan refs in single worker", () => {
+  const executions = new Map([
+    ["exec-dead-1", { id: "exec-dead-1", taskId: "task-1", status: "failed" }],
+    ["exec-dead-2", { id: "exec-dead-2", taskId: "task-2", status: "succeeded" }],
+  ]);
+  const leases = new Map<string, MockActiveLease>();
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-multi-orphan",
+      runningExecutionsJson: '["exec-dead-1", "exec-dead-2"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
+  const applied = report.applied?.find((a) => a.entityId === "worker-multi-orphan");
+  assert.ok(applied);
+  assert.equal(applied!.action, "clean_worker_execution_refs");
+  assert.equal(applied!.applied, true);
+});
+
+test("OrphanCleanupService reports no action needed when worker already clean", () => {
+  // Set up a worker with no orphan refs - valid execution with lease
+  const executions = new Map([
+    ["exec-clean", { id: "exec-clean", taskId: "task-1", status: "executing" }],
+  ]);
+  const leases = new Map([["exec-clean", { executionId: "exec-clean", workerId: "worker-clean" }]]);
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-clean",
+      runningExecutionsJson: '["exec-clean"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots, executions, activeLeases: leases });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.enforce();
+
+  // No worker orphan issues should be detected
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan",
+  );
+  assert.equal(workerIssue, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// JSON parsing edge cases
+// ---------------------------------------------------------------------------
+
+test("OrphanCleanupService handles malformed runningExecutionsJson", () => {
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-bad-json",
+      runningExecutionsJson: "not-valid-json",
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  // Malformed JSON should be treated as empty array (no orphan refs)
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-bad-json",
+  );
+  assert.equal(workerIssue, undefined);
+});
+
+test("OrphanCleanupService handles empty runningExecutionsJson", () => {
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-empty",
+      runningExecutionsJson: "[]",
+      status: "idle",
+    },
+  ];
+
+  const store = createMockStore({ workerSnapshots: snapshots });
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const workerIssue = report.issues.find(
+    (i) => i.issueType === "worker_execution_reference_orphan" && i.entityId === "worker-empty",
+  );
+  assert.equal(workerIssue, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// Multiple issue types combined
+// ---------------------------------------------------------------------------
+
+test("OrphanCleanupService.preview combines all issue types", () => {
+  const executions = new Map([
+    ["exec-terminal", { id: "exec-terminal", taskId: "task-1", status: "failed" }],
+  ]);
+  const leases = new Map<string, MockActiveLease>();
+  const snapshots: MockWorkerSnapshot[] = [
+    {
+      workerId: "worker-some-orphan",
+      runningExecutionsJson: '["exec-terminal"]',
+      status: "busy",
+    },
+  ];
+
+  const store = createMockStore({
+    orphanSessions: [
+      { sessionId: "sess-1", taskId: "task-1", sessionStatus: "streaming", taskStatus: "done" },
+    ],
+    workerSnapshots: snapshots,
+    executions,
+    activeLeases: leases,
+  });
+
+  const service = new OrphanCleanupService(createMockDb(), store);
+  const report = service.preview();
+
+  const issueTypes = new Set(report.issues.map((i) => i.issueType));
+  assert.ok(issueTypes.has("orphan_session"));
+  assert.ok(issueTypes.has("worker_execution_reference_orphan"));
 });

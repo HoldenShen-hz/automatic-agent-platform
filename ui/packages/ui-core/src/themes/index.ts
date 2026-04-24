@@ -1,23 +1,23 @@
 import { designTokens, type CoreDesignTokens } from "../design-tokens";
 
-export const darkTheme: CoreDesignTokens = designTokens;
+export const lightTheme: CoreDesignTokens = designTokens;
 
-export const lightTheme: CoreDesignTokens = {
+export const darkTheme: CoreDesignTokens = {
   ...designTokens,
   color: {
     ...designTokens.color,
-    background: "#f8fafc",
-    surface: "#ffffff",
-    surfaceElevated: "#f1f5f9",
-    border: "#cbd5e1",
-    text: "#0f172a",
-    subtle: "#475569",
+    background: "#0f172a",
+    surface: "#111827",
+    surfaceElevated: "#162034",
+    border: "#334155",
+    text: "#e5e7eb",
+    subtle: "#94a3b8",
   },
   shadows: {
-    card: "0 10px 24px rgba(15, 23, 42, 0.08)",
-    overlay: "0 16px 40px rgba(15, 23, 42, 0.12)",
-    inset: "inset 0 1px 0 rgba(255,255,255,0.75)",
-    focusRing: "0 0 0 3px rgba(37, 99, 235, 0.24)",
+    card: "0 10px 30px rgba(0, 0, 0, 0.18)",
+    overlay: "0 18px 42px rgba(0, 0, 0, 0.24)",
+    inset: "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+    focusRing: "0 0 0 3px rgba(56, 189, 248, 0.35)",
   },
 };
 

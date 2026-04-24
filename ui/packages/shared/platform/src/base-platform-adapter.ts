@@ -1,4 +1,4 @@
-import type { PlatformAdapter, PlatformId } from "@aa/shared-types";
+import type { PlatformAdapter, PlatformAdapterCapabilityView, PlatformId } from "@aa/shared-types";
 
 interface StoredProcessHandle {
   readonly pid: number;
@@ -124,6 +124,10 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
     this.screenSecurityEnabled = enabled;
   }
 
+  public get capabilities(): PlatformAdapterCapabilityView {
+    return createPlatformAdapterCapabilityView(this);
+  }
+
   public emitForeground(): void {
     for (const listener of this.foregroundListeners) {
       listener();
@@ -163,4 +167,47 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
       screenSecurityEnabled: this.screenSecurityEnabled,
     };
   }
+}
+
+export function createPlatformAdapterCapabilityView(adapter: PlatformAdapter): PlatformAdapterCapabilityView {
+  return {
+    secureStorage: {
+      get: (key) => adapter.readSecureValue(key),
+      set: (key, value) => adapter.writeSecureValue(key, value),
+      delete: (key) => adapter.deleteSecureValue(key),
+    },
+    offlineStore: {
+      get: (path) => adapter.readFile(path),
+      set: (path, contents) => adapter.writeFile(path, contents),
+    },
+    clipboard: {
+      write: (text) => adapter.copyToClipboard(text),
+    },
+    deeplink: {
+      open: (url) => adapter.openDeepLink(url),
+    },
+    lifecycle: {
+      onForeground: (listener) => adapter.onForeground(listener),
+      onBackground: (listener) => adapter.onBackground(listener),
+    },
+    haptics: {
+      vibrate: (pattern) => adapter.vibrate(pattern),
+    },
+    windowing: {
+      open: (path) => adapter.openWindow(path),
+    },
+    shell: {
+      run: (command) => adapter.runShell(command),
+    },
+    process: {
+      spawn: (command, args) => adapter.spawnProcess(command, args),
+    },
+    analyticsConsent: {
+      get: () => adapter.getAnalyticsConsent(),
+      set: (enabled) => adapter.setAnalyticsConsent(enabled),
+    },
+    screenSecurity: {
+      setEnabled: (enabled) => adapter.enableScreenSecurity(enabled),
+    },
+  };
 }

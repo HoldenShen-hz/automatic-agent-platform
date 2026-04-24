@@ -1,6 +1,6 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { detectAmbiguity } from "../../../../../../src/interaction/nl-gateway/ambiguity-handler/index.js";
+import { detectAmbiguity } from "../../../../../src/interaction/nl-gateway/ambiguity-handler/index.js";
 
 test("detectAmbiguity returns true for short messages under 6 characters", () => {
   assert.strictEqual(detectAmbiguity("Hi", 0.9, 1, 1), true);

@@ -5,7 +5,7 @@ import { MobilePlatformAdapter } from "./mobile-platform-adapter";
 import { WebPlatformAdapter } from "./web-platform-adapter";
 
 export type { PlatformAdapterFactoryOptions } from "./base-platform-adapter";
-export { DefaultPlatformAdapter } from "./base-platform-adapter";
+export { DefaultPlatformAdapter, createPlatformAdapterCapabilityView } from "./base-platform-adapter";
 export type { ElectronBridge, MobileBridge, ShellResult, SpawnedProcessHandle, TauriBridge } from "./bridge-types";
 export { ElectronPlatformAdapter, DesktopPlatformAdapter, TauriPlatformAdapter } from "./desktop-platform-adapter";
 export { MobilePlatformAdapter } from "./mobile-platform-adapter";

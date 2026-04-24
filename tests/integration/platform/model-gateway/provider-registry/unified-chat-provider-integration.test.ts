@@ -81,3 +81,55 @@ test("UnifiedChatProvider: empty initialization is valid", () => {
 
   provider.dispose();
 });
+
+test("UnifiedChatProvider: chat compatibility wrapper delegates to createChatCompletion", async () => {
+  const provider = new UnifiedChatProvider({});
+  provider.createChatCompletion = async (request) => ({
+    id: "chat-1",
+    content: request.messages[0]?.content ?? "",
+    refusal: null,
+    reasoningContent: null,
+    finishReason: "stop",
+    stopSequence: null,
+    toolCalls: [],
+    usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+    model: request.model,
+    provider: "openai",
+  });
+
+  const result = await provider.chat({
+    model: "gpt-5.2",
+    messages: [{ role: "user", content: "hello" }],
+    maxTokens: 16,
+  });
+
+  assert.equal(result.content, "hello");
+});
+
+test("UnifiedChatProvider: streamChat compatibility wrapper delegates to streaming entry", async () => {
+  const provider = new UnifiedChatProvider({});
+  let observedChunk = "";
+  provider.createStreamingChatCompletion = async (_request, onChunk) => {
+    onChunk({
+      id: "stream-1",
+      content: "delta",
+      refusal: null,
+      reasoningContent: null,
+      finishReason: "stop",
+      stopSequence: null,
+      toolCalls: [],
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      model: "gpt-5.2",
+      provider: "openai",
+    }, true);
+  };
+
+  await provider.streamChat(
+    { model: "gpt-5.2", messages: [{ role: "user", content: "hello" }], maxTokens: 16 },
+    (chunk) => {
+      observedChunk = chunk.content;
+    },
+  );
+
+  assert.equal(observedChunk, "delta");
+});

@@ -1,7 +1,7 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { scoreSystemHealth } from "../../../../../../src/interaction/dashboard/health-scorer/index.js";
-import type { SystemSituation } from "../../../../../../src/platform/shared/observability/system-situation-model.js";
+import { scoreSystemHealth } from "../../../../../src/interaction/dashboard/health-scorer/index.js";
+import type { SystemSituation } from "../../../../../src/platform/shared/observability/system-situation-model.js";
 
 function mockSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {
   return {

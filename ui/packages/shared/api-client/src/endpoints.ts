@@ -8,8 +8,12 @@ import type {
   ExplanationDTO,
   FeatureFlagDTO,
   IncidentDTO,
+  KnowledgeItemDTO,
   MarketplacePackDTO,
   ModelConfigDTO,
+  PackVersionDTO,
+  PluginDTO,
+  PromptDTO,
   QueueDTO,
   RoleDTO,
   SystemConfigDTO,
@@ -19,6 +23,7 @@ import type {
   UserPreferenceDTO,
   WebhookDTO,
   WorkerDTO,
+  WorkflowRunStepDTO,
   WorkflowDTO,
 } from "@aa/shared-types";
 import type { RESTClient } from "./rest-client";
@@ -43,6 +48,7 @@ export const endpointCatalog = {
   workflowsResume: { id: "workflows.resume", path: "/workflows/:workflowId/resume", method: "POST", apiLayer: "C", planned: false },
   workflowsPublish: { id: "workflows.publish", path: "/workflows/:workflowId/publish", method: "POST", apiLayer: "C", planned: false },
   workflowsDelete: { id: "workflows.delete", path: "/workflows/:workflowId", method: "DELETE", apiLayer: "C", planned: false },
+  workflowRunSteps: { id: "workflow-runs.steps", path: "/workflow-runs/:workflowRunId/steps", method: "GET", apiLayer: "C", planned: false },
   approvals: { id: "approvals.list", path: "/approvals", method: "GET", apiLayer: "C", planned: false },
   approvalsApprove: { id: "approvals.approve", path: "/approvals/:approvalId/approve", method: "POST", apiLayer: "C", planned: false },
   approvalsReject: { id: "approvals.reject", path: "/approvals/:approvalId/reject", method: "POST", apiLayer: "C", planned: false },
@@ -54,6 +60,11 @@ export const endpointCatalog = {
   analytics: { id: "analytics.metrics", path: "/dashboard/metrics", method: "GET", apiLayer: "C", planned: false },
   costs: { id: "costs.report", path: "/cost-reports", method: "GET", apiLayer: "C", planned: false },
   marketplace: { id: "marketplace.list", path: "/marketplace", method: "GET", apiLayer: "C", planned: false },
+  knowledge: { id: "knowledge.list", path: "/knowledge", method: "GET", apiLayer: "C", planned: false },
+  packs: { id: "packs.list", path: "/packs", method: "GET", apiLayer: "C", planned: false },
+  packVersions: { id: "packs.versions", path: "/packs/:packId/versions", method: "GET", apiLayer: "C", planned: false },
+  plugins: { id: "plugins.list", path: "/plugins", method: "GET", apiLayer: "C", planned: false },
+  prompts: { id: "prompts.list", path: "/prompts", method: "GET", apiLayer: "C", planned: false },
   explanations: { id: "explanations.list", path: "/explanations", method: "GET", apiLayer: "C", planned: false },
   roles: { id: "admin.roles", path: "/admin/roles", method: "GET", apiLayer: "C", planned: false },
   featureFlags: { id: "admin.feature-flags", path: "/admin/feature-flags", method: "GET", apiLayer: "C", planned: false },
@@ -117,6 +128,10 @@ export async function deleteWorkflow(client: RESTClient, workflowId: string): Pr
   return client.delete<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsDelete.path, { workflowId }));
 }
 
+export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: string): Promise<readonly WorkflowRunStepDTO[]> {
+  return client.get<readonly WorkflowRunStepDTO[]>(resolvePath(endpointCatalog.workflowRunSteps.path, { workflowRunId }));
+}
+
 export async function fetchApprovals(client: RESTClient): Promise<readonly ApprovalDTO[]> {
   return client.get<readonly ApprovalDTO[]>(endpointCatalog.approvals.path);
 }
@@ -159,6 +174,26 @@ export async function fetchCosts(client: RESTClient): Promise<readonly CostRepor
 
 export async function fetchMarketplace(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
   return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.marketplace.path);
+}
+
+export async function fetchKnowledge(client: RESTClient): Promise<readonly KnowledgeItemDTO[]> {
+  return client.get<readonly KnowledgeItemDTO[]>(endpointCatalog.knowledge.path);
+}
+
+export async function fetchPacks(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
+  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.packs.path);
+}
+
+export async function fetchPackVersions(client: RESTClient, packId: string): Promise<readonly PackVersionDTO[]> {
+  return client.get<readonly PackVersionDTO[]>(resolvePath(endpointCatalog.packVersions.path, { packId }));
+}
+
+export async function fetchPlugins(client: RESTClient): Promise<readonly PluginDTO[]> {
+  return client.get<readonly PluginDTO[]>(endpointCatalog.plugins.path);
+}
+
+export async function fetchPrompts(client: RESTClient): Promise<readonly PromptDTO[]> {
+  return client.get<readonly PromptDTO[]>(endpointCatalog.prompts.path);
 }
 
 export async function fetchExplanations(client: RESTClient): Promise<readonly ExplanationDTO[]> {

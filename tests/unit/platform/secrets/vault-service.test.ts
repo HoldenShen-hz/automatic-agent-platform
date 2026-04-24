@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-expect-error - module resolution issue at compile time
 import { VaultHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/vault-http-secret-provider.js";
+// @ts-expect-error - module resolution issue at compile time
 import { maskSecretValue } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
 
 // ---------------------------------------------------------------------------

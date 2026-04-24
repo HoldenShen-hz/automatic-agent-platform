@@ -4,7 +4,7 @@ import {
   ConnectorManifestSchema,
   listEnabledConnectors,
   type ConnectorManifest,
-} from "../../../../../../src/scale-ecosystem/integration/connector-registry/index.js";
+} from "../../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 
 test("listEnabledConnectors returns only enabled connectors", () => {
   const connectors: ConnectorManifest[] = [
@@ -16,8 +16,8 @@ test("listEnabledConnectors returns only enabled connectors", () => {
   const result = listEnabledConnectors(connectors);
 
   assert.strictEqual(result.length, 2);
-  assert.strictEqual(result[0].connectorId, "conn-1");
-  assert.strictEqual(result[1].connectorId, "conn-3");
+  assert.strictEqual(result[0]!.connectorId, "conn-1");
+  assert.strictEqual(result[1]!.connectorId, "conn-3");
 });
 
 test("listEnabledConnectors returns empty array when none enabled", () => {

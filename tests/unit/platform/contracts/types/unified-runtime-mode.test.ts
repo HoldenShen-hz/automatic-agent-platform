@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  type DocumentedUnifiedRuntimeMode,
   type UnifiedRuntimeMode,
   type HealthDegradationMode,
   type PolicyRuntimeMode,
@@ -9,6 +10,8 @@ import {
   mapPolicyModeToUnifiedRuntimeMode,
   mapHealthDegradationModeToUnifiedRuntimeMode,
   mapAutonomyLevelToUnifiedRuntimeMode,
+  normalizeUnifiedRuntimeMode,
+  toDocumentedUnifiedRuntimeMode,
 } from "../../../../../src/platform/contracts/types/unified-runtime-mode.js";
 
 // ---------------------------------------------------------------------------
@@ -53,6 +56,11 @@ test("UnifiedRuntimeMode accepts manual_only", () => {
 test("UnifiedRuntimeMode accepts incident_mode", () => {
   const mode: UnifiedRuntimeMode = "incident_mode";
   assert.equal(mode, "incident_mode");
+});
+
+test("DocumentedUnifiedRuntimeMode accepts hyphenated values", () => {
+  const mode: DocumentedUnifiedRuntimeMode = "no-external-call";
+  assert.equal(mode, "no-external-call");
 });
 
 // ---------------------------------------------------------------------------
@@ -217,6 +225,16 @@ test("mapAutonomyLevelToUnifiedRuntimeMode maps semi_auto to supervised_auto", (
 test("mapAutonomyLevelToUnifiedRuntimeMode maps supervised to manual_only", () => {
   const result = mapAutonomyLevelToUnifiedRuntimeMode("supervised");
   assert.equal(result, "manual_only");
+});
+
+test("normalizeUnifiedRuntimeMode converts documented hyphenated values", () => {
+  assert.equal(normalizeUnifiedRuntimeMode("no-write"), "no_write");
+  assert.equal(normalizeUnifiedRuntimeMode("incident-mode"), "incident_mode");
+});
+
+test("toDocumentedUnifiedRuntimeMode converts internal underscore values", () => {
+  assert.equal(toDocumentedUnifiedRuntimeMode("no_external_call"), "no-external-call");
+  assert.equal(toDocumentedUnifiedRuntimeMode("manual_only"), "manual-only");
 });
 
 test("mapAutonomyLevelToUnifiedRuntimeMode maps suggestion to no_write", () => {

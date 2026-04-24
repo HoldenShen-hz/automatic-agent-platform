@@ -60,7 +60,7 @@ test("PerceptionService registers source with custom id", () => {
 
   const source = service.registerSource({
     sourceId: "custom_source_id",
-    type: "feed",
+    type: "rss",
     name: "Custom Source",
   });
 

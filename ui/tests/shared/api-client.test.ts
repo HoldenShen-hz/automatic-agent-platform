@@ -17,8 +17,13 @@ import {
   endpointCatalog,
   fetchAgents,
   fetchDashboardSnapshot,
+  fetchKnowledge,
+  fetchPackVersions,
+  fetchPlugins,
+  fetchPrompts,
   fetchSystemConfig,
   fetchTasks,
+  fetchWorkflowRunSteps,
   fetchWorkflows,
   mapEventToQuery,
   type RestClientRequest,
@@ -78,9 +83,12 @@ describe("shared api-client", () => {
 
   it("maps realtime events into query invalidation scopes", () => {
     expect(mapEventToQuery({ channel: "global", type: "incident.created", payload: {} }).queryKey).toEqual(["incidents"]);
+    expect(mapEventToQuery({ channel: "global", type: "progress", payload: {} }).queryKey).toEqual(["tasks"]);
+    expect(mapEventToQuery({ channel: "global", type: "message_delta", payload: {} }).queryKey).toEqual(["tasks"]);
+    expect(mapEventToQuery({ channel: "global", type: "artifact_ready", payload: {} }).queryKey).toEqual(["tasks"]);
     expect(mapEventToQuery({ channel: "global", type: "panic.activated", payload: {} }).scope).toBe("panic");
     expect(mapEventToQuery({ channel: "global", type: "config.feature-flags.updated", payload: {} }).queryKey).toEqual(["feature-flags"]);
-    expect(Object.values(endpointCatalog)).toHaveLength(35);
+    expect(Object.values(endpointCatalog)).toHaveLength(41);
   });
 
   it("routes websocket events through the query router", () => {
@@ -198,5 +206,10 @@ describe("shared api-client", () => {
     await expect(createUser(client, { displayName: "Ops" })).resolves.toMatchObject({ ok: true });
     await expect(updateUser(client, "user-1", { status: "active" })).resolves.toMatchObject({ ok: true });
     await expect(fetchSystemConfig(client)).resolves.toMatchObject({ csrfEnabled: true });
+    await expect(fetchWorkflowRunSteps(client, "workflow-run-1")).resolves.toBeDefined();
+    await expect(fetchKnowledge(client)).resolves.toBeDefined();
+    await expect(fetchPackVersions(client, "pack-1")).resolves.toBeDefined();
+    await expect(fetchPlugins(client)).resolves.toBeDefined();
+    await expect(fetchPrompts(client)).resolves.toBeDefined();
   });
 });

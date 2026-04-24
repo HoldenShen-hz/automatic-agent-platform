@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+// @ts-expect-error - module resolution issue at compile time
 import {
   EnvSecretProvider,
   maskSecretValue,

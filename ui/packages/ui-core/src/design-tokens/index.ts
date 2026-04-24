@@ -68,13 +68,13 @@ export interface CoreDesignTokens {
 
 export const designTokens: CoreDesignTokens = {
   color: {
-    background: "#0f172a",
-    surface: "#111827",
-    surfaceElevated: "#162034",
-    border: "#334155",
+    background: "#f8fafc",
+    surface: "#ffffff",
+    surfaceElevated: "#f1f5f9",
+    border: "#cbd5e1",
     accent: "#22c55e",
-    text: "#e5e7eb",
-    subtle: "#94a3b8",
+    text: "#0f172a",
+    subtle: "#475569",
     planned: "#f59e0b",
     danger: "#ef4444",
     success: "#34d399",
@@ -122,10 +122,10 @@ export const designTokens: CoreDesignTokens = {
     desktop: 1280,
   },
   shadows: {
-    card: "0 10px 30px rgba(0, 0, 0, 0.18)",
-    overlay: "0 18px 42px rgba(0, 0, 0, 0.24)",
-    inset: "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
-    focusRing: "0 0 0 3px rgba(56, 189, 248, 0.35)",
+    card: "0 10px 24px rgba(15, 23, 42, 0.08)",
+    overlay: "0 16px 40px rgba(15, 23, 42, 0.12)",
+    inset: "inset 0 1px 0 rgba(255,255,255,0.75)",
+    focusRing: "0 0 0 3px rgba(37, 99, 235, 0.24)",
   },
   iconSizes: {
     sm: 14,

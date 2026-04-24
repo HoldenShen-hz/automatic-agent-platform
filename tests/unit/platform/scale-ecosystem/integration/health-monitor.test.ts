@@ -4,7 +4,7 @@ import {
   ConnectorHealthReportSchema,
   summarizeConnectorHealth,
   type ConnectorHealthReport,
-} from "../../../../../../src/scale-ecosystem/integration/health-monitor/index.js";
+} from "../../../../../src/scale-ecosystem/integration/health-monitor/index.js";
 
 test("summarizeConnectorHealth returns healthy when all reports healthy", () => {
   const reports: ConnectorHealthReport[] = [

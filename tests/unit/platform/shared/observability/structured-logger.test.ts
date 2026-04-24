@@ -35,7 +35,9 @@ test("StructuredLogger.log adds entry with timestamp", () => {
   assert.equal(entry.level, "info");
   assert.equal(entry.message, "test message");
   assert.equal(entry.plane, "X1");
+  assert.equal(entry.service, "unknown_service");
   assert.equal(typeof entry.createdAt, "string");
+  assert.equal(entry.timestamp, entry.createdAt);
   assert.ok(entry.createdAt.includes("T"), "ISO timestamp should contain T");
 });
 
@@ -66,6 +68,24 @@ test("StructuredLogger.log includes optional fields when provided", () => {
   assert.equal(entry.sessionId, "sess_789");
   assert.equal(entry.traceId, "trace_abc");
   assert.deepEqual(entry.data, { errorCode: "E001" });
+  assert.deepEqual(entry.structuredPayload, { errorCode: "E001" });
+});
+
+test("StructuredLogger normalizes service name from source file and supports structuredPayload aliases", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+  });
+  const entry = logger.log({
+    level: "fatal",
+    message: "hard failure",
+    structuredPayload: { code: "F001" },
+  });
+
+  assert.equal(entry.service, "index");
+  assert.equal(entry.level, "fatal");
+  assert.deepEqual(entry.data, { code: "F001" });
+  assert.deepEqual(entry.structuredPayload, { code: "F001" });
 });
 
 test("StructuredLogger.debug creates debug level entry", () => {
@@ -100,6 +120,14 @@ test("StructuredLogger.error creates error level entry", () => {
 
   assert.equal(entry.level, "error");
   assert.equal(entry.message, "error message");
+});
+
+test("StructuredLogger.fatal creates fatal level entry", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.fatal("fatal message");
+
+  assert.equal(entry.level, "fatal");
+  assert.equal(entry.message, "fatal message");
 });
 
 test("StructuredLogger.recent returns entries in chronological order", () => {

@@ -50,6 +50,9 @@ export class WSEventRouter {
 export function mapEventToQuery(event: WSEventEnvelope): RoutedRealtimeEvent {
   const mappings: Record<string, RoutedRealtimeEvent> = {
     status_changed: { scope: "query", queryKey: ["tasks"] },
+    progress: { scope: "query", queryKey: ["tasks"] },
+    message_delta: { scope: "query", queryKey: ["tasks"] },
+    artifact_ready: { scope: "query", queryKey: ["tasks"] },
     completed: { scope: "query", queryKey: ["tasks"] },
     failed: { scope: "query", queryKey: ["tasks"] },
     "task.created": { scope: "query", queryKey: ["tasks"] },

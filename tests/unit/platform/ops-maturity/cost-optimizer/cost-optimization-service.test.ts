@@ -1,8 +1,8 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { CostOptimizationService, type CostAttributionRecord, type CostSimulationScenarioInput } from "../../../../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
-import { simulateCostOptimization, simulateScenarioSavings } from "../../../../../../src/ops-maturity/cost-optimizer/simulator/index.js";
-import { buildCostOptimizationRecommendation, prioritizeCostOptimizationRecommendations } from "../../../../../../src/ops-maturity/cost-optimizer/recommendation-engine/index.js";
+import { CostOptimizationService, type CostAttributionRecord, type CostSimulationScenarioInput } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/cost-optimization-service.js";
+import { simulateCostOptimization, simulateScenarioSavings } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/simulator/index.js";
+import { buildCostOptimizationRecommendation, prioritizeCostOptimizationRecommendations } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/recommendation-engine/index.js";
 
 test("CostOptimizationService.recordCost stores record and returns it", () => {
   const service = new CostOptimizationService();
