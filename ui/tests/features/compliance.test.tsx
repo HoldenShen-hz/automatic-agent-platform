@@ -7,8 +7,8 @@ describe("compliance feature", () => {
     render(<compliance.Component />);
 
     expect(screen.getByText("Compliance")).toBeInTheDocument();
-    expect(screen.getByText("Run Check")).toBeInTheDocument();
-    expect(screen.getByText("Export Report")).toBeInTheDocument();
+    expect(screen.getAllByText("Run Check").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Export Report").length).toBeGreaterThan(0);
     expect(compliance.route.path).toBe("/governance/compliance");
     expect(compliance.manifest.id).toBe("compliance");
   });

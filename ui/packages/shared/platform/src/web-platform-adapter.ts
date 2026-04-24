@@ -24,7 +24,19 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
     await super.copyToClipboard(text);
   }
 
+  public override async readFile(path: string): Promise<string> {
+    return globalThis.localStorage?.getItem(`aa.file.${path}`) ?? super.readFile(path);
+  }
+
+  public override async writeFile(path: string, contents: string): Promise<void> {
+    globalThis.localStorage?.setItem(`aa.file.${path}`, contents);
+    await super.writeFile(path, contents);
+  }
+
   public override async openDeepLink(url: string): Promise<void> {
+    if (typeof window !== "undefined") {
+      window.location.hash = url;
+    }
     this.setDebugValue("__deeplink__", url);
   }
 

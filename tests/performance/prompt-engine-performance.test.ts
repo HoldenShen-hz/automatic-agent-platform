@@ -3,11 +3,12 @@
  * Measures prompt rendering, registry operations, and template resolution throughput/latency
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 import { performance } from "node:perf_hooks";
 
 import { PromptRendererService } from "../../src/platform/prompt-engine/renderer/index.js";
@@ -109,7 +110,7 @@ test("performance: PromptRendererService.render() throughput >5000 ops/sec", (t)
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -154,7 +155,7 @@ test("performance: PromptRendererService.render() P99 latency <1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -185,7 +186,7 @@ test("performance: PromptTemplateRegistryService.registerTemplate() throughput >
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -233,7 +234,7 @@ test("performance: PromptTemplateRegistryService.getTemplate() P99 <0.5ms", (t) 
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -276,7 +277,7 @@ test("performance: PromptTemplateRegistryService.listVersions() P99 <1ms", (t) =
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -348,7 +349,7 @@ test("performance: large template rendering throughput >2000 ops/sec", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -433,7 +434,7 @@ test("performance: template rendering with 10 variables P99 <2ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;

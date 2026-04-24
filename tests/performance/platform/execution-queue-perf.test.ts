@@ -8,11 +8,12 @@
  * - P99 latency <5ms
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
@@ -66,7 +67,7 @@ test("performance: queue enqueue throughput >2000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -115,7 +116,7 @@ test("performance: queue enqueue P99 latency <1ms", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -164,7 +165,7 @@ test("performance: queue dequeue throughput >1000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -215,7 +216,7 @@ test("performance: queue dequeue P99 latency <5ms", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -269,7 +270,7 @@ test("performance: queue stats operation <3ms P99", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -317,7 +318,7 @@ test("performance: queue listJobs <5ms P99", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -358,7 +359,7 @@ test("performance: enqueue with idempotency key throughput >1500 ops/sec", (t) =
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;

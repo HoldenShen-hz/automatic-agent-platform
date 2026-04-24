@@ -10,6 +10,36 @@ describe("shared domain utilities", () => {
     expect(result.reason).toContain("permission.missing");
   });
 
+  it("evaluates five layers and blocks role or domain mismatches", () => {
+    const roleGuard = createRouteGuardChain("platform_sre", undefined, {
+      requiredRoles: ["admin"],
+      featureFlag: "governance",
+      featureId: "governance",
+      allowedDomains: ["legal"],
+    });
+    const roleResult = roleGuard.evaluate(createFeatureGuardContext({
+      permissions: ["authenticated", "platform_sre"],
+      roles: ["operator"],
+      featureFlags: { governance: true },
+      featureVisibility: { governance: true },
+      domainId: "legal",
+    }));
+    const domainResult = roleGuard.evaluate(createFeatureGuardContext({
+      permissions: ["authenticated", "platform_sre"],
+      roles: ["admin"],
+      featureFlags: { governance: true },
+      featureVisibility: { governance: true },
+      domainId: "finance",
+    }));
+
+    expect(roleResult.allowed).toBe(false);
+    expect(roleResult.reason).toContain("role.missing");
+    expect(roleResult.evaluatedLayers).toEqual(["auth", "role"]);
+    expect(domainResult.allowed).toBe(false);
+    expect(domainResult.reason).toContain("domain.unauthorized");
+    expect(domainResult.evaluatedLayers).toEqual(["auth", "role", "permission", "feature-flag", "domain"]);
+  });
+
   it("applies summary and hidden redaction rules", () => {
     const policy = {
       rules: [

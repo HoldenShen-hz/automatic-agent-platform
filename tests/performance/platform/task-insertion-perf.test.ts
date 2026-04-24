@@ -7,11 +7,12 @@
  * - Task insertion P99: <2ms
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
@@ -79,7 +80,7 @@ test("performance: task insertion throughput >1000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -125,7 +126,7 @@ test("performance: task insertion P99 latency <2ms", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -166,7 +167,7 @@ test("performance: bulk task insertion throughput scales linearly", (t) => {
         );
       } catch (err) {
         if (err instanceof assert.AssertionError) {
-          t.skip(err.message);
+          reportSoftPerformanceMiss(t, err);
           return;
         }
         throw err;

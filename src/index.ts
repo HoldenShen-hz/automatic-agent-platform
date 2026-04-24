@@ -20,25 +20,23 @@ import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
 export * as apps from "./apps/index.js";
 export * as domains from "./domains/index.js";
-export * from "./domains-runtime-catalog.js";
-export * from "./domains-runtime-orchestrator.js";
-export * from "./domains-startup-plan.js";
 export * as interaction from "./interaction/index.js";
-export * from "./interaction-governance-runtime-catalog.js";
-export * from "./interaction-governance-runtime-orchestrator.js";
-export * from "./interaction-governance-startup-plan.js";
 export * as opsMaturity from "./ops-maturity/index.js";
 export * as orgGovernance from "./org-governance/index.js";
-export * from "./platform-application-kernel.js";
-export * from "./platform-architecture-bootstrap.js";
-export * from "./platform-architecture-types.js";
 export * as platform from "./platform/index.js";
 export * as plugins from "./plugins/index.js";
 export * as scaleEcosystem from "./scale-ecosystem/index.js";
-export * from "./scale-ops-runtime-catalog.js";
-export * from "./scale-ops-runtime-orchestrator.js";
-export * from "./scale-ops-startup-plan.js";
 export * as sdk from "./sdk/index.js";
+
+export { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
+export { buildDomainsStartupPlan } from "./domains-startup-plan.js";
+export { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
+export { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
+export { getPlatformApplicationKernel } from "./platform-application-kernel.js";
+export { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
+export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
+export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
+export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
 export type PlatformRootEntryMode = "summary" | "demo" | PlatformAppKind;
 

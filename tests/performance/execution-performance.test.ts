@@ -9,11 +9,12 @@
  * - Admission controller (evaluate, snapshot)
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 import { performance } from "node:perf_hooks";
 
 import {
@@ -106,7 +107,7 @@ test("performance: computeWorkerLoadScore() P99 <0.05ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -144,7 +145,7 @@ test("performance: computeWorkerLoadScore() throughput >100000 ops/sec", (t) => 
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -195,7 +196,7 @@ test("performance: computeEffectiveActiveLeaseCount() P99 <0.01ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -239,7 +240,7 @@ test("performance: summarizeWorkerLoadSkew() with 5 workers P99 <0.5ms", (t) => 
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -287,7 +288,7 @@ test("performance: summarizeWorkerLoadSkew() with 10 workers P99 <1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -327,7 +328,7 @@ test("performance: routeComplexity() passthrough path P99 <0.1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -363,7 +364,7 @@ test("performance: routeComplexity() full path P99 <0.1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -399,7 +400,7 @@ test("performance: routeComplexity() fast path P99 <0.1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -425,7 +426,7 @@ test("performance: routeComplexity() throughput >50000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -471,7 +472,7 @@ test("performance: routeComplexity() with custom config P99 <0.2ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -511,7 +512,7 @@ test("performance: createKvCachePrefixConfig() P99 <0.05ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -539,7 +540,7 @@ test("performance: estimateTokens() throughput >200000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -580,7 +581,7 @@ test("performance: estimateTokens() with large text P99 <0.1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -619,7 +620,7 @@ test("performance: isWithinFixedPrefixBudget() P99 <0.05ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -658,7 +659,7 @@ test("performance: isWithinDomainBlockBudget() P99 <0.05ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -718,7 +719,7 @@ test("performance: AdmissionController.snapshot() P99 <0.1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -757,7 +758,7 @@ test("performance: AdmissionController.evaluate() P99 <0.2ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -786,7 +787,7 @@ test("performance: AdmissionController.evaluate() throughput >5000 ops/sec", (t)
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -836,7 +837,7 @@ test("performance: AdmissionController.evaluate() with budget check P99 <0.2ms",
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -889,7 +890,7 @@ test("performance: AdmissionController.evaluate() with backpressure P99 <0.3ms",
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -939,7 +940,7 @@ test("performance: bulk load balancing operations throughput >10000 ops/sec", (t
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -987,7 +988,7 @@ test("performance: bulk routing operations throughput >20000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;

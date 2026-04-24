@@ -16,6 +16,8 @@ export const lightTheme: CoreDesignTokens = {
   shadows: {
     card: "0 10px 24px rgba(15, 23, 42, 0.08)",
     overlay: "0 16px 40px rgba(15, 23, 42, 0.12)",
+    inset: "inset 0 1px 0 rgba(255,255,255,0.75)",
+    focusRing: "0 0 0 3px rgba(37, 99, 235, 0.24)",
   },
 };
 
@@ -36,6 +38,8 @@ export const highContrastTheme: CoreDesignTokens = {
   shadows: {
     card: "0 0 0 2px rgba(255,255,255,0.7)",
     overlay: "0 0 0 3px rgba(0,255,149,0.6)",
+    inset: "inset 0 0 0 1px rgba(255,255,255,0.65)",
+    focusRing: "0 0 0 4px rgba(0,255,149,0.7)",
   },
 };
 

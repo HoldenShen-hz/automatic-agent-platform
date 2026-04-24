@@ -36,7 +36,7 @@ import {
 import { createTasksQuery, createWorkflowsQuery } from "./queries/task-queries";
 import { createQueryClientFactory } from "./query-client";
 import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
-import { createRealtimeStore, type RealtimeStoreState } from "./stores/realtime-store";
+import { createRealtimeStore } from "./stores/realtime-store";
 import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
 import { createUiStore, type UiStoreState } from "./stores/ui-store";
 

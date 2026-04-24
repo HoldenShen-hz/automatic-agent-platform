@@ -10,11 +10,12 @@
  * - Fan-out throughput: scales linearly with subscribers
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
@@ -100,7 +101,7 @@ test("performance: event publish throughput >5000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -154,7 +155,7 @@ test("performance: event publish P99 latency <1ms", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -207,7 +208,7 @@ test("performance: event batch publish throughput >10000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -255,7 +256,7 @@ test("performance: event batch publish scales with batch size", (t) => {
         );
       } catch (err) {
         if (err instanceof assert.AssertionError) {
-          t.skip(err.message);
+          reportSoftPerformanceMiss(t, err);
           return;
         }
         throw err;
@@ -317,7 +318,7 @@ test("performance: event delivery latency <5ms P99", async (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -373,7 +374,7 @@ test("performance: event delivery throughput >2000 events/sec", async (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -433,7 +434,7 @@ test("performance: fan-out scales linearly with subscribers", (t) => {
         );
       } catch (err) {
         if (err instanceof assert.AssertionError) {
-          t.skip(err.message);
+          reportSoftPerformanceMiss(t, err);
           return;
         }
         throw err;
@@ -492,7 +493,7 @@ test("performance: concurrent publish from multiple producers", async (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -537,7 +538,7 @@ test("performance: handles 5000 events without backpressure", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -590,7 +591,7 @@ test("performance: bulk delivery of 1000 events <500ms", async (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -636,7 +637,7 @@ test("performance: subscribe/unsubscribe overhead <1ms", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;

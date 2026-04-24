@@ -209,13 +209,27 @@ function findDirectoryReport(report, directory) {
   return report.directories.find((entry) => entry.directory === directory) ?? null;
 }
 
+function readNumericBaseline(value, scope, key, failures) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    failures.push(`${scope} ${key} baseline is missing or invalid`);
+    return null;
+  }
+
+  return value;
+}
+
 export function compareAgainstBaseline(report, baseline) {
   const failures = [];
 
   for (const key of METRIC_KEYS) {
     const current = report.global[key].pct;
-    const minimum = baseline.minimums?.[key] ?? baseline.global?.[key];
-    if (typeof minimum === "number" && current + COMPARISON_EPSILON < minimum) {
+    const minimum = readNumericBaseline(
+      baseline.minimums?.[key] ?? baseline.global?.[key],
+      "global",
+      key,
+      failures,
+    );
+    if (minimum != null && current + COMPARISON_EPSILON < minimum) {
       failures.push(`global ${key} ${formatPct(current)} is below baseline ${formatPct(minimum)}`);
     }
   }
@@ -228,8 +242,8 @@ export function compareAgainstBaseline(report, baseline) {
 
     for (const key of METRIC_KEYS) {
       const currentPct = current.metrics[key].pct;
-      const expectedPct = expected.metrics?.[key];
-      if (typeof expectedPct === "number" && currentPct + COMPARISON_EPSILON < expectedPct) {
+      const expectedPct = readNumericBaseline(expected.metrics?.[key], directory, key, failures);
+      if (expectedPct != null && currentPct + COMPARISON_EPSILON < expectedPct) {
         failures.push(`${directory} ${key} ${formatPct(currentPct)} is below baseline ${formatPct(expectedPct)}`);
       }
     }

@@ -10,7 +10,15 @@ import { readFileSync } from "fs";
  * Stub files indicate incomplete implementation - this test prevents new stubs from being added.
  */
 
-const MAX_STUBS = 277; // Current stub count
+const MAX_STUBS = 111; // Current stub count excluding compatibility-only facades
+
+function isCompatibilityFacade(lines: string[]): boolean {
+  if (lines.length === 0) {
+    return false;
+  }
+
+  return lines.every((line) => line.startsWith("export ") || line.startsWith("import type "));
+}
 
 test("[SYS-QUAL-7.1] stub file count does not increase", () => {
   const allFiles = globSync("src/**/*.ts", {
@@ -34,6 +42,10 @@ test("[SYS-QUAL-7.1] stub file count does not increase", () => {
       if (trimmed === "*/") return false;
       return true;
     });
+
+    if (isCompatibilityFacade(lines)) {
+      continue;
+    }
 
     if (lines.length <= 20) {
       stubCount++;

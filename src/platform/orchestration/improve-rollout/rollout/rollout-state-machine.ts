@@ -1,0 +1,119 @@
+import { newId } from "../../../contracts/types/ids.js";
+import {
+  parseRolloutRecord,
+  type RolloutLevel,
+  type RolloutRecord,
+  type RolloutStatus,
+} from "../../oapeflir/types/rollout-record.js";
+import type { ImprovementCandidate } from "../improvement-candidate-registry.js";
+
+export interface RolloutTransitionOptions {
+  approvedBy?: string | undefined;
+  strategyVersionId?: string | null | undefined;
+  guardrailReasonCodes?: readonly string[] | undefined;
+  currentStatus?: RolloutStatus | undefined;
+  targetStatus?: RolloutStatus | undefined;
+}
+
+const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus[]>> = {
+  draft: ["pending_approval", "shadow", "rejected", "rolled_back", "paused"],
+  pending_approval: ["pending_approval", "shadow", "rejected", "paused"],
+  shadow: ["shadow", "canary_5", "rolled_back", "paused"],
+  canary_5: ["canary_5", "partial_25", "rolled_back", "paused"],
+  partial_25: ["partial_25", "partial_50", "rolled_back", "paused"],
+  partial_50: ["partial_50", "partial_75", "rolled_back", "paused"],
+  partial_75: ["partial_75", "stable", "rolled_back", "paused"],
+  stable: ["stable", "rolled_back", "paused"],
+  rejected: ["rejected"],
+  rolled_back: ["rolled_back"],
+  paused: ["pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "rolled_back", "paused"],
+};
+
+export class RolloutStateMachine {
+  public transition(
+    candidate: ImprovementCandidate,
+    nextLevel: RolloutLevel,
+    options: RolloutTransitionOptions = {},
+  ): RolloutRecord {
+    const currentStatus = options.currentStatus ?? inferCurrentStatus(candidate);
+    const targetStatus = options.targetStatus ?? inferStatusFromLevel(nextLevel);
+    const allowedTransitions = ROLLOUT_TRANSITIONS[currentStatus] ?? [];
+    if (!allowedTransitions.includes(targetStatus)) {
+      throw new Error(`Invalid rollout transition: ${currentStatus} -> ${targetStatus}`);
+    }
+    const previousLevel = inferLevelFromStatus(currentStatus);
+    return parseRolloutRecord({
+      recordId: newId("rollout"),
+      candidateId: candidate.candidateId,
+      level: nextLevel,
+      previousLevel,
+      strategyVersionId: options.strategyVersionId ?? null,
+      status: targetStatus,
+      transitionedAt: Date.now(),
+      approvedBy: options.approvedBy,
+      guardrailReasonCodes: options.guardrailReasonCodes ?? [],
+      evidence: [...candidate.sourceSignalRefs],
+    });
+  }
+}
+
+function inferCurrentStatus(candidate: ImprovementCandidate): RolloutStatus {
+  switch (candidate.status) {
+    case "approved":
+      return "pending_approval";
+    case "shadow_running":
+      return "shadow";
+    case "rejected":
+      return "rejected";
+    case "rolled_back":
+      return "rolled_back";
+    default:
+      return "draft";
+  }
+}
+
+function inferStatusFromLevel(level: RolloutLevel): RolloutStatus {
+  switch (level) {
+    case "off":
+      return "draft";
+    case "suggest":
+      return "pending_approval";
+    case "shadow":
+      return "shadow";
+    case "canary_5":
+      return "canary_5";
+    case "partial_25":
+      return "partial_25";
+    case "partial_50":
+      return "partial_50";
+    case "partial_75":
+      return "partial_75";
+    case "stable":
+      return "stable";
+  }
+}
+
+function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
+  switch (status) {
+    case "draft":
+    case "rejected":
+    case "rolled_back":
+      return "off";
+    case "pending_approval":
+      return "suggest";
+    case "shadow":
+      return "shadow";
+    case "canary_5":
+      return "canary_5";
+    case "partial_25":
+      return "partial_25";
+    case "partial_50":
+      return "partial_50";
+    case "partial_75":
+      return "partial_75";
+    case "stable":
+      return "stable";
+    case "paused":
+      return "suggest";
+  }
+}

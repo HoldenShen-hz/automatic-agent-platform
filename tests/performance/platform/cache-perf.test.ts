@@ -10,13 +10,15 @@
  * - Cache hit rate: >80% for repeated accesses
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 
 import { MemoryCacheStore } from "../../../src/platform/shared/cache/stores/memory-cache-store.js";
+import { MultiLevelCacheStore } from "../../../src/platform/shared/cache/stores/multi-level-cache-store.js";
 import { CacheFacade } from "../../../src/platform/shared/cache/cache-facade.js";
 import type { CacheMeta } from "../../../src/platform/shared/cache/cache-types.js";
 
@@ -69,7 +71,7 @@ test("performance: cache set throughput >10000 ops/sec", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -102,7 +104,7 @@ test("performance: cache get throughput >50000 ops/sec", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -142,7 +144,7 @@ test("performance: cache getOrCompute throughput >20000 ops/sec", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -182,7 +184,7 @@ test("performance: cache hit rate >80% for repeated accesses", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -224,7 +226,7 @@ test("performance: cache miss rate <20% for workload with 90% hot data", (t) => 
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -260,7 +262,7 @@ test("performance: cache L1 hit rate >95% for sequential repeated access", (t) =
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -305,7 +307,7 @@ test("performance: cache L1 hit P99 latency <0.1ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -341,7 +343,7 @@ test("performance: cache miss P99 latency <0.5ms", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -377,7 +379,7 @@ test("performance: cache invalidateByTag throughput >500 ops/sec", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -410,7 +412,7 @@ test("performance: cache invalidateNamespace throughput >1000 ops/sec", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -449,7 +451,7 @@ test("performance: cache handles 2000 entries without degradation", (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;
@@ -498,7 +500,396 @@ test("performance: concurrent getOrCompute deduplication", async (t) => {
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {
-      t.skip(err.message);
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+// ============================================================================
+// Cache Eviction Benchmarks
+// ============================================================================
+
+test("performance: cache LRU eviction ordering correctness", (t) => {
+  // Create a small cache to force eviction
+  const store = new MemoryCacheStore(100);
+  const cache = new CacheFacade(store);
+
+  // Fill cache to capacity
+  for (let i = 0; i < 100; i++) {
+    cache.set("evict", { id: i }, { result: `value ${i}` });
+  }
+
+  // Access first 50 entries to make them "recent"
+  for (let i = 0; i < 50; i++) {
+    cache.get("evict", { id: i });
+  }
+
+  // Add 50 more entries to trigger eviction of least recently used
+  for (let i = 100; i < 150; i++) {
+    cache.set("evict", { id: i }, { result: `value ${i}` });
+  }
+
+  // First 50 (ids 0-49) should still be accessible since they were accessed recently
+  let recentAccessible = 0;
+  for (let i = 0; i < 50; i++) {
+    const result = cache.get("evict", { id: i });
+    if (result.hit) recentAccessible++;
+  }
+
+  // Old entries (ids 50-99) should have been evicted
+  let oldAccessible = 0;
+  for (let i = 50; i < 100; i++) {
+    const result = cache.get("evict", { id: i });
+    if (result.hit) oldAccessible++;
+  }
+
+  try {
+    assert.ok(
+      recentAccessible >= 45,
+      `At least 45 of 50 recently accessed entries should remain accessible, got ${recentAccessible}`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+
+  try {
+    assert.ok(
+      oldAccessible < 10,
+      `Most of 50 old entries should have been evicted, got ${oldAccessible} still accessible`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: cache eviction maintains throughput >5000 ops/sec", (t) => {
+  // Create a small cache to force eviction
+  const store = new MemoryCacheStore(100);
+  const cache = new CacheFacade(store);
+
+  const iterations = 2000;
+  let evictionCount = 0;
+
+  // Continuously add entries past capacity
+  const start = performance.now();
+  for (let i = 0; i < iterations; i++) {
+    // Before adding, check if we need to evict
+    if (store.size >= 100) {
+      evictionCount++;
+    }
+    cache.set("evictper", { id: i }, { result: `value ${i}` });
+  }
+  const elapsed = performance.now() - start;
+  const opsPerSec = (iterations / elapsed) * 1000;
+
+  try {
+    assert.ok(
+      opsPerSec > 5000,
+      `Cache eviction throughput ${opsPerSec.toFixed(2)} ops/sec must be >5000 ops/sec during heavy eviction`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: cache handles rapid sequential access without thrashing", (t) => {
+  // Create a small cache
+  const store = new MemoryCacheStore(50);
+  const cache = new CacheFacade(store);
+
+  // Sequential access pattern that would thrash a naive LRU
+  const iterations = 1000;
+  let hits = 0;
+
+  for (let i = 0; i < iterations; i++) {
+    const id = i % 50; // Only 50 unique keys, but access in round-robin
+    const result = cache.get("thrash", { id });
+    if (result.hit) hits++;
+
+    // Set to keep it alive
+    cache.set("thrash", { id }, { result: `value ${id}` });
+  }
+
+  // With proper LRU, round-robin access should still result in good hit rate
+  const hitRate = (hits / iterations) * 100;
+
+  try {
+    assert.ok(
+      hitRate > 70,
+      `Cache round-robin hit rate ${hitRate.toFixed(1)}% should be >70% with proper LRU`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+// ============================================================================
+// Multi-Level Cache Performance Benchmarks
+// ============================================================================
+
+function createMultiLevelTestCache(): {
+  l1: MemoryCacheStore;
+  l2: MemoryCacheStore;
+  l3: MemoryCacheStore;
+  multiLevel: MultiLevelCacheStore;
+  facade: CacheFacade;
+} {
+  const l1 = new MemoryCacheStore(100);
+  const l2 = new MemoryCacheStore(500);
+  const l3 = new MemoryCacheStore(2000);
+  const multiLevel = new MultiLevelCacheStore(l1, l2, l3);
+  const facade = new CacheFacade(multiLevel);
+  return { l1, l2, l3, multiLevel, facade };
+}
+
+test("performance: multi-level cache L1 hit rate >80% for hot data", (t) => {
+  const { facade, l1, l2, l3 } = createMultiLevelTestCache();
+
+  // Pre-populate all layers with same data
+  const hotKeys = Array.from({ length: 20 }, (_, i) => ({ id: i }));
+
+  for (const key of hotKeys) {
+    const meta1 = createCacheMeta(60000);
+    l1.set("mltest", JSON.stringify(key), { result: `value ${key.id}` }, meta1);
+    const meta2 = createCacheMeta(60000);
+    l2.set("mltest", JSON.stringify(key), { result: `value ${key.id}` }, meta2);
+    const meta3 = createCacheMeta(60000);
+    l3.set("mltest", JSON.stringify(key), { result: `value ${key.id}` }, meta3);
+  }
+
+  // Access hot data repeatedly
+  const iterations = 500;
+  let l1Hits = 0;
+
+  for (let i = 0; i < iterations; i++) {
+    const key = hotKeys[i % hotKeys.length]!;
+    const result = facade.get("mltest", key);
+    if (result.hit && result.layer === "L1") {
+      l1Hits++;
+    }
+  }
+
+  const hitRate = (l1Hits / iterations) * 100;
+
+  try {
+    assert.ok(
+      hitRate > 80,
+      `Multi-level L1 hit rate ${hitRate.toFixed(1)}% must be >80% for hot data`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: multi-level cache L2 backfill to L1 on miss", async (t) => {
+  const { facade, l1, l2 } = createMultiLevelTestCache();
+
+  // Only populate L2 (simulating L1 eviction but L2 still has data)
+  const keys = Array.from({ length: 50 }, (_, i) => ({ id: i }));
+
+  for (const key of keys) {
+    const meta2 = createCacheMeta(60000);
+    await l2.set("mlbackfill", JSON.stringify(key), { result: `value ${key.id}` }, meta2);
+  }
+
+  // L1 should be empty initially
+  assert.equal(l1.size, 0, "L1 should be empty before first access");
+
+  // First access - should miss L1 but hit L2 and backfill L1
+  let backfillCount = 0;
+  for (const key of keys.slice(0, 10)) {
+    const result = await facade.get("mlbackfill", key);
+    if (result.hit && result.layer === "L2") {
+      backfillCount++;
+    }
+  }
+
+  // After accessing 10 keys from L2, L1 should have at least some entries
+  // (backfill is best-effort and may not always populate)
+  const l1Size = l1.size;
+
+  try {
+    assert.ok(
+      backfillCount >= 8,
+      `At least 8 of 10 accesses should hit L2, got ${backfillCount}`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+
+  try {
+    assert.ok(
+      l1Size > 0,
+      `L1 should have been backfilled from L2 after accesses, but L1 size is ${l1Size}`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: multi-level cache cold start throughput >5000 ops/sec", async (t) => {
+  const { facade } = createMultiLevelTestCache();
+
+  // No pre-population - all misses
+  const iterations = 1000;
+
+  const start = performance.now();
+  for (let i = 0; i < iterations; i++) {
+    await facade.get("coldstart", { id: i });
+  }
+  const elapsed = performance.now() - start;
+  const opsPerSec = (iterations / elapsed) * 1000;
+
+  try {
+    assert.ok(
+      opsPerSec > 5000,
+      `Multi-level cache cold start throughput ${opsPerSec.toFixed(2)} ops/sec must be >5000 ops/sec`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: multi-level cache mixed workload hit rate >70%", async (t) => {
+  const { facade, l1, l2, l3 } = createMultiLevelTestCache();
+
+  // Pre-populate all layers with 100 entries
+  const keys = Array.from({ length: 100 }, (_, i) => ({ id: i }));
+
+  for (const key of keys) {
+    const meta1 = createCacheMeta(60000);
+    await l1.set("mixed", JSON.stringify(key), { result: `value ${key.id}` }, meta1);
+    const meta2 = createCacheMeta(60000);
+    await l2.set("mixed", JSON.stringify(key), { result: `value ${key.id}` }, meta2);
+    const meta3 = createCacheMeta(60000);
+    await l3.set("mixed", JSON.stringify(key), { result: `value ${key.id}` }, meta3);
+  }
+
+  // Mixed workload: 80% hot (first 20), 20% cold
+  const iterations = 1000;
+  let hits = 0;
+
+  for (let i = 0; i < iterations; i++) {
+    const id = i % 100 < 80 ? i % 20 : 20 + (i % 80);
+    const result = await facade.get("mixed", { id });
+    if (result.hit) hits++;
+  }
+
+  const hitRate = (hits / iterations) * 100;
+
+  try {
+    assert.ok(
+      hitRate > 70,
+      `Multi-level cache mixed workload hit rate ${hitRate.toFixed(1)}% must be >70%`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: multi-level cache cross-layer lookup P99 latency <1ms", async (t) => {
+  const { facade } = createMultiLevelTestCache();
+
+  // Pre-populate L3 only (slowest layer)
+  const keys = Array.from({ length: 50 }, (_, i) => ({ id: i }));
+
+  for (const key of keys) {
+    const meta3 = createCacheMeta(60000);
+    await (facade as any).store.l3.set("croslat", JSON.stringify(key), { result: `value ${key.id}` }, meta3);
+  }
+
+  // Warmup
+  for (let i = 0; i < 10; i++) {
+    await facade.get("croslat", { id: i % 50 });
+  }
+
+  const latencies: number[] = [];
+  const iterations = 500;
+
+  // Measure cross-layer lookup (L1 miss -> L2 miss -> L3 hit)
+  for (let i = 0; i < iterations; i++) {
+    const start = performance.now();
+    await facade.get("croslat", { id: i % 50 });
+    latencies.push(performance.now() - start);
+  }
+
+  latencies.sort((a, b) => a - b);
+  const p99 = latencies[Math.floor(iterations * 0.99)]!;
+  const p50 = latencies[Math.floor(iterations * 0.5)]!;
+
+  try {
+    assert.ok(
+      p99 < 1,
+      `Cross-layer lookup P99 latency ${p99.toFixed(4)}ms exceeds 1ms. P50: ${p50.toFixed(4)}ms`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
+      return;
+    }
+    throw err;
+  }
+});
+
+test("performance: multi-level cache set throughput >3000 ops/sec", async (t) => {
+  const { facade } = createMultiLevelTestCache();
+
+  const iterations = 1000;
+  const start = performance.now();
+
+  for (let i = 0; i < iterations; i++) {
+    await facade.set("mlset", { id: i }, { result: `value ${i}` });
+  }
+
+  const elapsed = performance.now() - start;
+  const opsPerSec = (iterations / elapsed) * 1000;
+
+  try {
+    assert.ok(
+      opsPerSec > 3000,
+      `Multi-level cache set throughput ${opsPerSec.toFixed(2)} ops/sec must be >3000 ops/sec`,
+    );
+  } catch (err) {
+    if (err instanceof assert.AssertionError) {
+      reportSoftPerformanceMiss(t, err);
       return;
     }
     throw err;

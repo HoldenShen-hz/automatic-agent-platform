@@ -1,13 +1,10 @@
-import type { PropsWithChildren, ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId } from "@aa/shared-types";
 import { createRouteGuardChain } from "@aa/shared-domain";
-import { SystemStatusBar } from "./business";
-import { FeatureScaffold, KeyValueTable, ListCard, StatusPill } from "./components";
-import { MetricGrid } from "./charts";
+import { FeatureScaffold } from "./components";
 import { designTokens } from "./design-tokens";
-import { LayoutFrame, ThreePaneLayout } from "./layouts";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
-export { FeatureScaffold, KeyValueTable, ListCard, StatusPill } from "./components";
+export { FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
 export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";

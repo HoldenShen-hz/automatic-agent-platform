@@ -12,8 +12,10 @@ import type {
   ModelConfigDTO,
   QueueDTO,
   RoleDTO,
+  SystemConfigDTO,
   TaskDTO,
   TenantDTO,
+  UserDTO,
   UserPreferenceDTO,
   WebhookDTO,
   WorkerDTO,
@@ -74,6 +76,8 @@ export class MockTransport {
     | readonly DomainConfigDTO[]
     | readonly TenantDTO[]
     | readonly WebhookDTO[]
+    | readonly UserDTO[]
+    | SystemConfigDTO
     | UserPreferenceDTO
     | { ok: true; body?: unknown } {
     if (path.includes("/dashboard")) {
@@ -129,6 +133,12 @@ export class MockTransport {
     }
     if (path.includes("/webhooks")) {
       return this.data.webhooks;
+    }
+    if (path.includes("/users")) {
+      return this.data.users;
+    }
+    if (path.includes("/system-config")) {
+      return this.data.systemConfig;
     }
     if (path.includes("/preferences")) {
       return this.data.preferences;

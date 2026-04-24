@@ -7,13 +7,23 @@ import {
   InMemoryWSClient,
   MockTransport,
   WSEventRouter,
+  approveApproval,
+  createCsrfInterceptor,
+  createTask,
   createTraceInterceptor,
+  createUser,
+  createWorkflow,
+  deleteTask,
   endpointCatalog,
   fetchAgents,
   fetchDashboardSnapshot,
+  fetchSystemConfig,
   fetchTasks,
   fetchWorkflows,
   mapEventToQuery,
+  type RestClientRequest,
+  updateTask,
+  updateUser,
 } from "@aa/shared-api-client";
 
 describe("shared api-client", () => {
@@ -69,6 +79,8 @@ describe("shared api-client", () => {
   it("maps realtime events into query invalidation scopes", () => {
     expect(mapEventToQuery({ channel: "global", type: "incident.created", payload: {} }).queryKey).toEqual(["incidents"]);
     expect(mapEventToQuery({ channel: "global", type: "panic.activated", payload: {} }).scope).toBe("panic");
+    expect(mapEventToQuery({ channel: "global", type: "config.feature-flags.updated", payload: {} }).queryKey).toEqual(["feature-flags"]);
+    expect(Object.values(endpointCatalog)).toHaveLength(35);
   });
 
   it("routes websocket events through the query router", () => {
@@ -141,5 +153,50 @@ describe("shared api-client", () => {
     client.disconnect();
 
     expect(events).toEqual(["dashboard.metric_updated"]);
+  });
+
+  it("injects csrf tokens into write requests only", async () => {
+    document.head.innerHTML = '<meta name="aa-csrf-token" content="csrf-token-123" />';
+    let getToken = "";
+    let postToken = "";
+    const client = new DefaultRESTClient(
+      async (request) => {
+        if (request.method === "GET") {
+          getToken = request.headers.get("x-csrf-token") ?? "";
+        }
+        if (request.method === "POST") {
+          postToken = request.headers.get("x-csrf-token") ?? "";
+        }
+        return new MockTransport().send(request);
+      },
+      [createCsrfInterceptor()],
+    );
+
+    await client.get("/tasks");
+    await client.post("/tasks", { ok: true });
+
+    expect(getToken).toBe("");
+    expect(postToken).toBe("csrf-token-123");
+  });
+
+  it("exposes write endpoints and admin configuration helpers", async () => {
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      if (request.method === "GET") {
+        return new MockTransport().send(request);
+      }
+      return {
+        status: 200,
+        data: { ok: true, body: request.body } as T,
+      };
+    });
+
+    await expect(createTask(client, { title: "task" })).resolves.toMatchObject({ ok: true });
+    await expect(updateTask(client, "task-1", { status: "running" })).resolves.toMatchObject({ ok: true });
+    await expect(deleteTask(client, "task-1")).resolves.toMatchObject({ ok: true });
+    await expect(createWorkflow(client, { title: "workflow" })).resolves.toMatchObject({ ok: true });
+    await expect(approveApproval(client, "approval-1")).resolves.toMatchObject({ ok: true });
+    await expect(createUser(client, { displayName: "Ops" })).resolves.toMatchObject({ ok: true });
+    await expect(updateUser(client, "user-1", { status: "active" })).resolves.toMatchObject({ ok: true });
+    await expect(fetchSystemConfig(client)).resolves.toMatchObject({ csrfEnabled: true });
   });
 });

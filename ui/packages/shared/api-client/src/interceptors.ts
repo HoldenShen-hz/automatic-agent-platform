@@ -48,10 +48,21 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
   };
 }
 
+export function createCsrfInterceptor(token: string | null = readCsrfToken()): RestClientInterceptor {
+  return {
+    onRequest(request) {
+      if (request.method !== "GET" && token != null) {
+        request.headers.set("x-csrf-token", token);
+      }
+      return request;
+    },
+  };
+}
+
 export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientInterceptor {
   return {
     onRequest(request) {
-      if (request.method !== "GET" && navigator.onLine === false) {
+      if (request.method !== "GET" && typeof navigator !== "undefined" && navigator.onLine === false) {
         queue.enqueue({
           id: crypto.randomUUID(),
           endpoint: request.path,
@@ -63,4 +74,12 @@ export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientIn
       return request;
     },
   };
+}
+
+function readCsrfToken(): string | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="aa-csrf-token"]');
+  return meta?.content ?? null;
 }

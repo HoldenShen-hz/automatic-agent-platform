@@ -222,3 +222,275 @@ test("BudgetGuard evaluateExecutionChain reports warning scopes across task dail
   assert.deepEqual(result.warningScopes, ["task", "daily"]);
   assert.equal(result.projectedMonthlyCostUsd, 610);
 });
+
+test("BudgetGuard evaluateExecutionChain blocks task violation", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 50,
+    maxDailyCostUsd: 1000,
+    maxMonthlyCostUsd: 10000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 40,
+      currentDailyCostUsd: 100,
+      currentMonthlyCostUsd: 500,
+      nextEstimatedCostUsd: 20,
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.violatedScope, "task");
+  assert.equal(result.reasonCode, "budget.task_limit_exceeded");
+  assert.equal(result.remainingBudgetUsd, 0);
+});
+
+test("BudgetGuard evaluateExecutionChain blocks daily violation", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 200,
+    maxMonthlyCostUsd: 5000,
+    warnAtRatio: 0.8,
+    mode: "auto",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 10,
+      currentDailyCostUsd: 180,
+      currentMonthlyCostUsd: 1000,
+      nextEstimatedCostUsd: 30,
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.violatedScope, "daily");
+  assert.equal(result.reasonCode, "budget.daily_limit_exceeded");
+});
+
+test("BudgetGuard evaluateExecutionChain allows when all under budget", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 500,
+    maxMonthlyCostUsd: 5000,
+    warnAtRatio: 0.9,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 10,
+      currentDailyCostUsd: 100,
+      currentMonthlyCostUsd: 1000,
+      nextEstimatedCostUsd: 5,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.reasonCode, null);
+  assert.equal(result.violatedScope, null);
+  assert.deepEqual(result.warningScopes, []);
+});
+
+test("BudgetGuard evaluateExecutionChain handles zero spend", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 1000,
+    maxMonthlyCostUsd: 10000,
+    warnAtRatio: 0.8,
+    mode: "full-auto",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 0,
+      currentDailyCostUsd: 0,
+      currentMonthlyCostUsd: 0,
+      nextEstimatedCostUsd: 0,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.remainingBudgetUsd, 100);
+  assert.equal(result.projectedTaskCostUsd, 0);
+  assert.equal(result.projectedDailyCostUsd, 0);
+  assert.equal(result.projectedMonthlyCostUsd, 0);
+});
+
+test("BudgetGuard evaluateExecutionChain remainingBudgetUsd is minimum of all scopes", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 50,
+    maxMonthlyCostUsd: 500,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 10,
+      currentDailyCostUsd: 10,
+      currentMonthlyCostUsd: 10,
+      nextEstimatedCostUsd: 5,
+    },
+  });
+
+  // Daily is most constrained: 50 - 15 = 35
+  assert.equal(result.remainingBudgetUsd, 35);
+});
+
+test("BudgetGuard evaluateExecutionChain with warnAtRatio of 1.0 (no warnings)", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 500,
+    maxMonthlyCostUsd: 5000,
+    warnAtRatio: 1.0,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 80,
+      currentDailyCostUsd: 400,
+      currentMonthlyCostUsd: 4000,
+      nextEstimatedCostUsd: 10,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, false);
+  assert.deepEqual(result.warningScopes, []);
+});
+
+test("BudgetGuard evaluateExecutionChain with warnAtRatio of 0 (always warn when allowed)", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 500,
+    maxMonthlyCostUsd: 5000,
+    warnAtRatio: 0,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 10,
+      currentDailyCostUsd: 10,
+      currentMonthlyCostUsd: 10,
+      nextEstimatedCostUsd: 5,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.deepEqual(result.warningScopes, ["task", "daily", "monthly"]);
+});
+
+test("BudgetGuard evaluateExecutionChain projected values are correct", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 200,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.8,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 30,
+      currentDailyCostUsd: 100,
+      currentMonthlyCostUsd: 500,
+      nextEstimatedCostUsd: 15,
+    },
+  });
+
+  assert.equal(result.projectedTaskCostUsd, 45);
+  assert.equal(result.projectedDailyCostUsd, 115);
+  assert.equal(result.projectedMonthlyCostUsd, 515);
+});
+
+test("BudgetGuard evaluateExecutionChain all three warning scopes", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 200,
+    maxMonthlyCostUsd: 1000,
+    warnAtRatio: 0.5,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateExecutionChain({
+    policy,
+    spend: {
+      currentTaskCostUsd: 55,
+      currentDailyCostUsd: 110,
+      currentMonthlyCostUsd: 510,
+      nextEstimatedCostUsd: 10,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.deepEqual(result.warningScopes, ["task", "daily", "monthly"]);
+});
+
+test("BudgetGuard evaluateTaskSpend with warnAtRatio 1.0", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 1000,
+    maxMonthlyCostUsd: 10000,
+    warnAtRatio: 1.0,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateTaskSpend({
+    policy,
+    currentTaskCostUsd: 90,
+    nextEstimatedCostUsd: 5,
+  });
+
+  // At 95 USD (95% of limit), no warning when warnAtRatio is 1.0
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, false);
+});
+
+test("BudgetGuard evaluateTaskSpend with warnAtRatio 0", () => {
+  const guard = new BudgetGuard();
+  const policy: BudgetPolicy = {
+    maxTaskCostUsd: 100,
+    maxDailyCostUsd: 1000,
+    maxMonthlyCostUsd: 10000,
+    warnAtRatio: 0,
+    mode: "supervised",
+  };
+
+  const result = guard.evaluateTaskSpend({
+    policy,
+    currentTaskCostUsd: 1,
+    nextEstimatedCostUsd: 1,
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.requiresApproval, true);
+  assert.equal(result.reasonCode, "budget.approaching_limit");
+});

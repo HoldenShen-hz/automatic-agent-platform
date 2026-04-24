@@ -21,16 +21,30 @@ test("ServiceRegistry has expected services registered after bootstrap", async (
   const registry = ServiceRegistry.getInstance();
 
   // Check that key services are registered
-  // Note: The bootstrap registers these services:
+  // The bootstrap registers these services:
   // - network-egress-audit
   // - network-egress-policy (depends on network-egress-audit)
   // - output-continuation
   // - delegation-audit
   // - delegation-governance
 
-  // We can't easily test get() without triggering initialization
-  // which may have side effects, but we can verify registration exists
-  assert.ok(registry.isInitialized === undefined || typeof registry.isInitialized === "function");
+  // Verify each expected service is registered
+  const expectedServices = [
+    "network-egress-audit",
+    "network-egress-policy",
+    "output-continuation",
+    "delegation-audit",
+    "delegation-governance",
+  ];
+
+  for (const serviceName of expectedServices) {
+    // Verify the service exists in the registry (even if not yet initialized)
+    const sorted = registry.topologicalSort();
+    assert.ok(
+      sorted.includes(serviceName),
+      `Expected service "${serviceName}" should be registered after bootstrap`
+    );
+  }
 });
 
 test("ServiceRegistry is singleton", async () => {

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { generateEndpointBindingModule } from "@aa/codegen";
@@ -22,5 +22,19 @@ describe("ui tooling baselines", () => {
     const root = process.cwd();
     expect(existsSync(join(root, ".storybook/main.ts"))).toBe(true);
     expect(existsSync(join(root, ".storybook/preview.ts"))).toBe(true);
+  });
+
+  it("defines lint, coverage and bundle/perf quality gates", () => {
+    const root = process.cwd();
+    const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
+
+    expect(packageJson.scripts.lint).toContain("eslint");
+    expect(packageJson.scripts["test:coverage"]).toContain("--coverage");
+    expect(packageJson.scripts["bundle:analyze"]).toContain("bundle-analysis");
+    expect(packageJson.scripts["perf:budget"]).toContain("perf-budget");
+    expect(existsSync(join(root, "eslint.config.js"))).toBe(true);
+    expect(existsSync(join(root, "scripts/bundle-analysis.mjs"))).toBe(true);
+    expect(existsSync(join(root, "scripts/perf-budget.mjs"))).toBe(true);
+    expect(existsSync(join(root, "../.github/workflows/ui-quality.yml"))).toBe(true);
   });
 });

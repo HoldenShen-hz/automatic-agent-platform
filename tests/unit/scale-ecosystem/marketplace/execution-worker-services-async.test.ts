@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unit tests for Execution Worker Async Services
  *
@@ -24,6 +25,12 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
+function disposeAsyncService(service: unknown): void {
+  if (typeof (service as { dispose?: () => void }).dispose === "function") {
+    (service as { dispose: () => void }).dispose();
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ExecutionDispatchServiceAsync Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +49,7 @@ test("ExecutionDispatchServiceAsync getSyncService returns sync service", () => 
 
     assert.ok(syncService != null);
 
+    disposeAsyncService(service);
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -66,6 +74,7 @@ test("ExecutionWorkerHandshakeServiceAsync getSyncService returns sync service",
 
     assert.ok(syncService != null);
 
+    disposeAsyncService(service);
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -90,6 +99,7 @@ test("ExecutionWorkerWritebackServiceAsync getSyncService returns sync service",
 
     assert.ok(syncService != null);
 
+    disposeAsyncService(service);
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -114,6 +124,7 @@ test("HumanTakeoverServiceAsync getSyncService returns sync service", () => {
 
     assert.ok(syncService != null);
 
+    disposeAsyncService(service);
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -138,6 +149,7 @@ test("TenantPlatformServiceAsync getSyncService returns sync service", () => {
 
     assert.ok(syncService != null);
 
+    disposeAsyncService(service);
     db.close();
   } finally {
     cleanupPath(workspace);

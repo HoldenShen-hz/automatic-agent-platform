@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { request as httpRequest } from "node:http";
 import test from "node:test";
 import { brotliDecompressSync, gunzipSync } from "node:zlib";
+import { failOnListenSocketDenied } from "../../../../helpers/performance.js";
 
 import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
@@ -1461,11 +1462,7 @@ test("server starts and stops correctly", async (t) => {
     assert.ok(address.port > 0);
     assert.ok(address.baseUrl.startsWith("http://"));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      return;
-    }
-    throw error;
+    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }
@@ -1524,11 +1521,7 @@ test("network responses compress large JSON payloads with gzip and preserve head
     const decompressed = gunzipSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      return;
-    }
-    throw error;
+    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }
@@ -1554,11 +1547,7 @@ test("network responses reject oversized content-length before body read", async
     const body = JSON.parse(response.body.toString("utf8")) as { requestId: string; error: { code: string } };
     assert.equal(body.error.code, "api.payload_too_large");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      return;
-    }
-    throw error;
+    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }
@@ -1583,11 +1572,7 @@ test("network responses compress large JSON payloads with brotli when preferred"
     const decompressed = brotliDecompressSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      return;
-    }
-    throw error;
+    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }

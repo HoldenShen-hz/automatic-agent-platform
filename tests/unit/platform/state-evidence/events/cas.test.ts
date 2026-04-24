@@ -9,6 +9,19 @@ import {
   type FencingTokenValidation,
 } from "../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
 
+// Clear static fences before/after each FencingTokenService test to avoid state pollution
+test.beforeEach(() => {
+  // Clear any fences from previous tests
+  const service = new FencingTokenService();
+  service.clearAllFences();
+});
+
+test.afterEach(() => {
+  // Clean up after each test
+  const service = new FencingTokenService();
+  service.clearAllFences();
+});
+
 // ============================================================================
 // CasService Tests
 // ============================================================================

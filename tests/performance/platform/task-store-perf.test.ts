@@ -7,11 +7,12 @@
  * - Task query: <5ms P99
  *
  * Note: Performance thresholds are set for reference hardware. On slower machines,
- * tests that exceed thresholds are marked as skipped rather than failed.
+ * tests that miss the reference target are recorded as diagnostics rather than skipped.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reportSoftPerformanceMiss } from "../../helpers/performance.js";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 
@@ -79,7 +80,7 @@ test("performance: task insertion throughput >1000 ops/sec", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -125,7 +126,7 @@ test("performance: task insertion P99 latency <2ms", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -173,7 +174,7 @@ test("performance: task query by ID <5ms P99", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -217,7 +218,7 @@ test("performance: list tasks <10ms P99 for 100 tasks", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -267,7 +268,55 @@ test("performance: task update status <3ms P99", (t) => {
       );
     } catch (err) {
       if (err instanceof assert.AssertionError) {
-        t.skip(err.message);
+        reportSoftPerformanceMiss(t, err);
+        return;
+      }
+      throw err;
+    }
+  } finally {
+    db.close();
+    rmSync(db.filePath, { force: true });
+    rmSync(`${db.filePath}-wal`, { force: true });
+    rmSync(`${db.filePath}-shm`, { force: true });
+  }
+});
+
+test("performance: status transition throughput >2000 ops/sec", (t) => {
+  const db = createTempDb();
+  const store = new AuthoritativeTaskStoreFacade(db);
+
+  try {
+    // Insert test tasks
+    const testTaskIds: string[] = [];
+    for (let i = 0; i < 100; i++) {
+      const taskId = newId("task");
+      testTaskIds.push(taskId);
+      const task = createTestTaskRecord({ id: taskId });
+      store.insertTask(task);
+    }
+
+    const iterations = 1000;
+    const statuses = ["pending", "in_progress", "completed", "failed"] as const;
+    const start = performance.now();
+
+    for (let i = 0; i < iterations; i++) {
+      const taskId = testTaskIds[i % testTaskIds.length]!;
+      const status = statuses[i % statuses.length]!;
+      store.updateTaskStatus(taskId, status, nowIso(), null, status === "completed" || status === "failed" ? nowIso() : null);
+    }
+
+    const elapsed = performance.now() - start;
+    const opsPerSec = (iterations / elapsed) * 1000;
+    const avgLatencyMs = elapsed / iterations;
+
+    try {
+      assert.ok(
+        opsPerSec > 2000,
+        `Status transition throughput ${opsPerSec.toFixed(2)} ops/sec must be >2000 ops/sec. Avg latency: ${avgLatencyMs.toFixed(3)}ms`,
+      );
+    } catch (err) {
+      if (err instanceof assert.AssertionError) {
+        reportSoftPerformanceMiss(t, err);
         return;
       }
       throw err;
@@ -308,7 +357,7 @@ test("performance: bulk task insertion throughput scales linearly", (t) => {
         );
       } catch (err) {
         if (err instanceof assert.AssertionError) {
-          t.skip(err.message);
+          reportSoftPerformanceMiss(t, err);
           return;
         }
         throw err;

@@ -7,6 +7,7 @@ import test, { type TestContext } from "node:test";
 
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { failOnListenSocketDenied } from "../../../helpers/performance.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
@@ -215,13 +216,9 @@ test("billing CLI can create a Stripe checkout session through the configured ga
       server.listen(0, "127.0.0.1", () => resolve());
     });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      await closeMockServer(server);
-      cleanupPath(workspace);
-      return;
-    }
-    throw error;
+    await closeMockServer(server);
+    cleanupPath(workspace);
+    failOnListenSocketDenied(error);
   }
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
@@ -305,13 +302,9 @@ test("billing CLI can create a Paddle checkout session through the configured ga
       server.listen(0, "127.0.0.1", () => resolve());
     });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      await closeMockServer(server);
-      cleanupPath(workspace);
-      return;
-    }
-    throw error;
+    await closeMockServer(server);
+    cleanupPath(workspace);
+    failOnListenSocketDenied(error);
   }
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;
@@ -461,13 +454,9 @@ test("billing CLI auto-reconciles pending Stripe sessions within tenant scope", 
       server.listen(0, "127.0.0.1", () => resolve());
     });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("sandbox denies local listen sockets");
-      await closeMockServer(server);
-      cleanupPath(workspace);
-      return;
-    }
-    throw error;
+    await closeMockServer(server);
+    cleanupPath(workspace);
+    failOnListenSocketDenied(error);
   }
   const address = server.address();
   const port = typeof address === "object" && address ? address.port : 0;

@@ -46,8 +46,8 @@ export class OfflineQueue {
   }
 }
 
-export function createPersistentOfflineQueue(): OfflineQueue {
-  return new OfflineQueue(createIndexedDbOfflineMutationStore());
+export function createPersistentOfflineQueue(store: OfflineMutationStore = createIndexedDbOfflineMutationStore()): OfflineQueue {
+  return new OfflineQueue(store);
 }
 
 export function createMemoryOfflineMutationStore(initial: readonly OfflineMutation[] = []): OfflineMutationStore {

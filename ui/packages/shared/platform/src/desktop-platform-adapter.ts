@@ -139,6 +139,30 @@ export class TauriPlatformAdapter extends DesktopPlatformAdapter {
     await super.deleteSecureValue(key);
   }
 
+  public override async readFile(path: string): Promise<string> {
+    if (this.bridge != null) {
+      return this.bridge.invoke<string>("read_file", { path });
+    }
+    return super.readFile(path);
+  }
+
+  public override async writeFile(path: string, contents: string): Promise<void> {
+    if (this.bridge != null) {
+      await this.bridge.invoke("write_file", { path, contents });
+      return;
+    }
+    await super.writeFile(path, contents);
+  }
+
+  public override async copyToClipboard(text: string): Promise<void> {
+    if (this.bridge != null) {
+      await this.bridge.invoke("copy_to_clipboard", { text });
+      this.setDebugValue("__clipboard__", text);
+      return;
+    }
+    await super.copyToClipboard(text);
+  }
+
   public override async openDeepLink(url: string): Promise<void> {
     if (this.bridge != null) {
       await this.bridge.invoke("open_deep_link", { url });
@@ -170,6 +194,19 @@ export class TauriPlatformAdapter extends DesktopPlatformAdapter {
       return this.bridge.invoke("run_shell", { command });
     }
     return super.runShell(command);
+  }
+
+  public override async spawnProcess(command: string, args: readonly string[]): Promise<{ pid: number; kill(): Promise<void> }> {
+    if (this.bridge != null) {
+      const pid = await this.bridge.invoke<number>("spawn_process", { command, args });
+      return {
+        pid,
+        kill: async () => {
+          await this.bridge?.invoke("kill_process", { pid });
+        },
+      };
+    }
+    return super.spawnProcess(command, args);
   }
 
   public override async getAnalyticsConsent(): Promise<boolean> {

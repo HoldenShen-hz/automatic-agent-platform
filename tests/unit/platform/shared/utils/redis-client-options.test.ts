@@ -155,3 +155,119 @@ test("buildRedisClientOptions retryStrategy returns null after 8 attempts", () =
   assert.strictEqual(retryStrategy(2), 200);
   assert.strictEqual(retryStrategy(3), 400);
 });
+
+test("readRedisConnectionConfigFromEnv parses DB, LAZY_CONNECT, ENABLE_OFFLINE_QUEUE", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_HOST: "localhost",
+    R_PORT: "6379",
+    R_DB: "2",
+    R_LAZY_CONNECT: "true",
+    R_ENABLE_OFFLINE_QUEUE: "false",
+  });
+  assert.strictEqual(result?.db, 2);
+  assert.strictEqual(result?.lazyConnect, true);
+  assert.strictEqual(result?.enableOfflineQueue, false);
+});
+
+test("readRedisConnectionConfigFromEnv parses RETRY_BASE_DELAY_MS and RETRY_MAX_DELAY_MS", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_HOST: "localhost",
+    R_RETRY_BASE_DELAY_MS: "200",
+    R_RETRY_MAX_DELAY_MS: "5000",
+  });
+  assert.strictEqual(result?.retryBaseDelayMs, 200);
+  assert.strictEqual(result?.retryMaxDelayMs, 5000);
+});
+
+test("readRedisConnectionConfigFromEnv parses MAX_RETRIES_PER_REQUEST null string", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_HOST: "localhost",
+    R_MAX_RETRIES_PER_REQUEST: "null",
+  });
+  assert.strictEqual(result?.maxRetriesPerRequest, null);
+});
+
+test("readRedisConnectionConfigFromEnv handles empty string values as absent", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_HOST: "   ",
+    R_PORT: "",
+  });
+  assert.strictEqual(result, null);
+});
+
+test("readRedisConnectionConfigFromEnv sentinelPassword is parsed", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_SENTINELS: "s1:26379",
+    R_SENTINEL_NAME: "mymaster",
+    R_SENTINEL_PASSWORD: "sentinel-secret",
+  });
+  assert.strictEqual(result?.sentinelPassword, "sentinel-secret");
+});
+
+test("readRedisConnectionConfigFromEnv parseSentinelEndpoints throws on invalid endpoint format", () => {
+  assert.throws(
+    () => readRedisConnectionConfigFromEnv("R", { R_SENTINELS: "invalid-endpoint" }),
+    /redis.sentinel_endpoint_invalid/,
+  );
+});
+
+test("readRedisConnectionConfigFromEnv parseSentinelEndpoints throws on missing port", () => {
+  assert.throws(
+    () => readRedisConnectionConfigFromEnv("R", { R_SENTINELS: "host-without-port" }),
+    /redis.sentinel_endpoint_invalid/,
+  );
+});
+
+test("readRedisConnectionConfigFromEnv mode falls back to sentinel when sentinels present", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_SENTINELS: "s1:26379",
+    R_SENTINEL_NAME: "mymaster",
+  });
+  assert.strictEqual(result?.mode, "sentinel");
+});
+
+test("readRedisConnectionConfigFromEnv mode falls back to standalone when no mode or sentinels", () => {
+  const result = readRedisConnectionConfigFromEnv("R", {
+    R_HOST: "localhost",
+    R_PORT: "6379",
+  });
+  assert.strictEqual(result?.mode, undefined);
+});
+
+test("buildRedisClientOptions applies retry base and max delay via config", () => {
+  const config: RedisConnectionConfig = {
+    host: "localhost",
+    port: 6379,
+    retryBaseDelayMs: 50,
+    retryMaxDelayMs: 10_000,
+  };
+  const options = buildRedisClientOptions(config);
+  const retryStrategy = options.retryStrategy as (times: number) => number | null;
+  // With base 50ms, exponential backoff: 50, 100, 200, 400, 800, 1600, 3200, 6400
+  assert.strictEqual(retryStrategy(1), 50);
+  assert.strictEqual(retryStrategy(4), 400);
+  assert.strictEqual(retryStrategy(5), 800);
+});
+
+test("buildRedisClientOptions sentinelPassword is included in options", () => {
+  const config: RedisConnectionConfig = {
+    mode: "sentinel",
+    sentinelName: "mymaster",
+    sentinels: [{ host: "s1", port: 26379 }],
+    sentinelPassword: "secret",
+  };
+  const options = buildRedisClientOptions(config);
+  assert.strictEqual(options.sentinelPassword, "secret");
+});
+
+test("buildRedisClientOptions tls enabled produces empty object", () => {
+  const config: RedisConnectionConfig = { host: "localhost", port: 6379, tls: true };
+  const options = buildRedisClientOptions(config);
+  assert.deepStrictEqual(options.tls, {});
+});
+
+test("buildRedisClientOptions tls disabled produces undefined", () => {
+  const config: RedisConnectionConfig = { host: "localhost", port: 6379, tls: false };
+  const options = buildRedisClientOptions(config);
+  assert.strictEqual(options.tls, undefined);
+});

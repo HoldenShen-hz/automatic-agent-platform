@@ -724,6 +724,18 @@ Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemet
 | TD-8 | marketplace 失衡 | marketplace/ (11,972 行) 占 scale-ecosystem/ 77%，与其他 5 子模块体量失衡                                            | 低     | scale-ecosystem/ | —                   |
 | TD-9 | barrel 导出      | `src/index.ts` (272 行) 导出全部模块，无选择性 tree-shaking                                                          | 低     | 入口             | **新增**            |
 
+#### 10.1.1 状态更新（2026-04-24）
+
+- `TD-1` 状态：已解决核心缺口。新增 `src/scale-ecosystem/runtime-services/` 子模块，marketplace 根目录原先缺失 sync 对应的 5 个 async 入口已全部补齐兼容 sync/sync-shim，孤儿镜像数 `5 -> 0`。
+- `TD-2` 状态：已完成第一阶段拆边界。新增 `src/platform/orchestration/learn/` 与 `src/platform/orchestration/improve-rollout/` 顶层导出面，`learn/ + improve-rollout/` 不再只挂在 `oapeflir/` 内部路径下。
+- `TD-3` 状态：已加严守卫。`stub-count-ratchet` 现在剔除纯兼容 facade/re-export 模块，避免把兼容层误计为桩；当前 ratchet 基线收紧为 `111`。
+- `TD-4` 状态：本轮已消除文中列出的 4 个 `1000+` 文件。当前行数分别为 `DomainBaselineCatalog 599`、`WorkerRepository 711`、`SloAlerting 992`、`ApprovalFlow 885`。
+- `TD-5` 状态：已解决。`.coverage-baseline.json` 当前为数值阈值，且 `compareAgainstBaseline()` 现会对 `null/缺失/非法` baseline 直接报错，不再存在“阈值为空但 CI 放行”的漏洞。
+- `TD-6` 状态：原表数字已过期，风险已转为可观测。当前 `tests/e2e/` 为 `21` 文件、`190` 用例，并新增 `E2E` 规模 ratchet，防止端到端覆盖再次回退；更大规模业务流程扩容仍可继续追加。
+- `TD-7` 状态：已完成顶层拆分入口。新增 `src/platform/stability/index.ts` 与 package subpath export，`shared/stability/` 已具备独立顶层消费面，后续可继续做物理迁移。
+- `TD-8` 状态：已部分解决。`marketplace/` 中 5 个重型运行时 async 实现已迁出到 `runtime-services/`；`marketplace/` 当前约 `7,537` 行，对比表中 `11,972` 行已显著下降。
+- `TD-9` 状态：已解决。`package.json` 新增选择性 subpath exports，root `src/index.ts` 改为命名导出 + namespace 导出组合，避免继续只靠全量 barrel 暴露架构面。
+
 ### 10.2 重构优先级矩阵
 
 | 优先级 | 项目                                                  | 预估工作量 | 预期收益                             |

@@ -12,11 +12,15 @@ describe("ui review alignment", () => {
 
     expect(review).toContain("UIR0-UIR6");
     expect(review).toContain("TS/TSX 文件总数");
-    expect(review).toContain("200");
+    expect(review).toContain("206");
     expect(review).toContain("对外注册的 feature 路由");
     expect(review).toContain("27");
-    expect(review).toContain("npm run test");
-    expect(review).toContain("36/36");
-    expect(review).toContain("本文件现在是 UI review 的权威版本");
+    expect(review).toContain("npm test");
+    expect(review).toContain("8.1 GAP 整改状态回写");
+    expect(review).toContain("已完成闭环");
+    expect(review).toContain("本文件为 UI review 权威版本");
+    expect(review).toContain("GAP-01");
+    expect(review).toContain("已完成");
+    expect(review).toContain("FeatureWorkbenchPanel");
   });
 });

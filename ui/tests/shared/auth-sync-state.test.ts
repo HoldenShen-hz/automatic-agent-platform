@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AuthService, SessionGuard, TokenManager } from "@aa/shared-auth";
-import { SyncCoordinator } from "@aa/shared-sync";
+import { SyncCoordinator, createMemoryOfflineMutationStore, createPersistentOfflineQueue } from "@aa/shared-sync";
 import {
   UiRuntimeProvider,
   createQueryClientFactory,
@@ -42,6 +42,29 @@ describe("shared auth/sync/state split modules", () => {
     expect(coordinator.pendingCount()).toBe(0);
   });
 
+  it("persists offline mutations in the queue store and supports merge conflict resolution", async () => {
+    const store = createMemoryOfflineMutationStore([
+      { id: "m0", endpoint: "/api/v1/tasks", method: "POST", body: { title: "queued" }, createdAt: "2026-04-23T00:00:00.000Z" },
+    ]);
+    const queue = createPersistentOfflineQueue(store);
+    await queue.whenReady();
+
+    expect(queue.size()).toBe(1);
+    queue.enqueue({
+      id: "m1",
+      endpoint: "/api/v1/tasks/task-1",
+      method: "PUT",
+      body: { title: "local", tags: ["ops"] },
+      conflictKey: "task-1",
+      version: 2,
+      createdAt: "2026-04-23T00:00:01.000Z",
+    });
+
+    expect(queue.peek()).toHaveLength(2);
+    const coordinator = new SyncCoordinator(queue);
+    expect(coordinator.resolveConflict({ server: true }, { local: true }, "merge")).toEqual({ server: true, local: true });
+  });
+
   it("creates state stores and runtime provider with real bootstrap state", () => {
     const realtimeStore = createRealtimeStore();
     realtimeStore.getState().setOfflineQueueSize(3);
@@ -76,5 +99,25 @@ describe("shared auth/sync/state split modules", () => {
     render(createElement(UiRuntimeProvider, undefined, createElement(Harness)));
     fireEvent.click(screen.getByRole("button", { name: "dashboard" }));
     expect(screen.getByRole("button", { name: "analytics" })).toBeInTheDocument();
+  });
+
+  it("evaluates route access through the five-layer guard chain", () => {
+    const tokenManager = new TokenManager();
+    tokenManager.setSession({
+      accessToken: "a1",
+      refreshToken: "r1",
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const guard = new SessionGuard(tokenManager);
+    const result = guard.requireRouteAccess("platform_sre", {
+      requiredRoles: ["operator"],
+      allowedDomains: ["platform"],
+      featureFlag: "ops-panel",
+      featureId: "ops-panel",
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.evaluatedLayers).toEqual(["auth", "role", "permission", "feature-flag", "domain"]);
   });
 });

@@ -228,3 +228,98 @@ test("createExecutionReceipt allows accepted status without resultRef or errorCo
 
   assert.equal(receipt.status, "accepted");
 });
+
+test("createExecutionReceipt normalizes whitespace-only strings to null", () => {
+  const receipt = createExecutionReceipt({
+    planId: "plan-1",
+    taskId: "task-1",
+    status: "accepted",
+    stepId: "   ",
+    workerId: "\t",
+    tenantId: "\n",
+    resultRef: "  ",
+    errorCode: "\t  \n",
+  });
+
+  assert.equal(receipt.stepId, null);
+  assert.equal(receipt.workerId, null);
+  assert.equal(receipt.tenantId, null);
+  assert.equal(receipt.resultRef, null);
+  assert.equal(receipt.errorCode, null);
+});
+
+test("createExecutionReceipt preserves non-empty string values", () => {
+  const receipt = createExecutionReceipt({
+    planId: "plan-1",
+    taskId: "task-1",
+    status: "started",
+    stepId: " step-1 ",
+    workerId: " worker-1 ",
+    tenantId: " tenant-1 ",
+    resultRef: " result-1 ",
+    errorCode: " ERR_001 ",
+  });
+
+  assert.equal(receipt.stepId, " step-1 ");
+  assert.equal(receipt.workerId, " worker-1 ");
+  assert.equal(receipt.tenantId, " tenant-1 ");
+  assert.equal(receipt.resultRef, " result-1 ");
+  assert.equal(receipt.errorCode, " ERR_001 ");
+});
+
+test("createExecutionReceipt throws ValidationError with correct error code for missing task/plan", () => {
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "",
+        taskId: "",
+        status: "accepted",
+        stepId: null,
+        workerId: null,
+        tenantId: null,
+        resultRef: null,
+        errorCode: null,
+      }),
+    (err: any) => {
+      return err.code === "execution_receipt.task_and_plan_required";
+    },
+  );
+});
+
+test("createExecutionReceipt throws ValidationError with correct error code for missing resultRef on completed", () => {
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan-1",
+        taskId: "task-1",
+        status: "completed",
+        stepId: null,
+        workerId: null,
+        tenantId: null,
+        resultRef: null,
+        errorCode: null,
+      }),
+    (err: any) => {
+      return err.code === "execution_receipt.result_ref_required";
+    },
+  );
+});
+
+test("createExecutionReceipt throws ValidationError with correct error code for missing errorCode on failed", () => {
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan-1",
+        taskId: "task-1",
+        status: "failed",
+        stepId: null,
+        workerId: null,
+        tenantId: null,
+        resultRef: null,
+        errorCode: null,
+      }),
+    (err: any) => {
+      return err.code === "execution_receipt.error_code_required";
+    },
+  );
+});

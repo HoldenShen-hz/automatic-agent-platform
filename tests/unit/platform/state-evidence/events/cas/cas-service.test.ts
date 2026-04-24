@@ -7,6 +7,17 @@ import {
   type FenceMode,
 } from "../../../../../../src/platform/state-evidence/events/cas/fencing-token-service.js";
 
+// Clear static fences before/after each test to avoid state pollution
+test.beforeEach(() => {
+  const service = new FencingTokenService();
+  service.clearAllFences();
+});
+
+test.afterEach(() => {
+  const service = new FencingTokenService();
+  service.clearAllFences();
+});
+
 // =============================================================================
 // CAS Service Tests
 // =============================================================================

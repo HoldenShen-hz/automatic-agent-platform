@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   FeatureScaffold,
+  FeatureWorkbenchPanel,
   MetricGrid,
   MiniTrendBars,
   SystemStatusBar,
@@ -35,6 +36,26 @@ describe("ui-core split modules", () => {
     expect(createSystemHealthSummary({ wsStatus: "connected", offlineQueueSize: 2, syncStatus: "queued", panicActivated: false })).toHaveLength(4);
     expect(lightTheme.color.surface).not.toBe(darkTheme.color.surface);
     expect(resolveTheme("high-contrast")).toEqual(highContrastTheme);
+  });
+
+  it("renders the interactive workbench baseline for L1 features", () => {
+    render(
+      <FeatureWorkbenchPanel
+        metrics={[{ label: "Open", value: 3 }]}
+        items={[
+          { title: "Review Queue", description: "处理 backlog 并记录最新动作。" },
+          { title: "Export Summary", description: "导出当前治理摘要。" },
+        ]}
+        actions={[
+          { id: "run", label: "执行动作", tone: "accent" },
+          { id: "note", label: "记录批注", tone: "neutral" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("筛选当前工作台项")).toBeInTheDocument();
+    expect(screen.getAllByText("Review Queue").length).toBeGreaterThan(0);
+    expect(screen.getByText("操作日志")).toBeInTheDocument();
   });
 });
 

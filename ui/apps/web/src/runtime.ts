@@ -3,9 +3,15 @@ import {
   DefaultRESTClient,
   HttpTransport,
   InMemoryWSClient,
+  createAuthInterceptor,
+  createCsrfInterceptor,
+  createOfflineQueueInterceptor,
+  createTenantInterceptor,
+  createTraceInterceptor,
   type RESTClient,
   type WSClient,
 } from "@aa/shared-api-client";
+import { createPersistentOfflineQueue } from "@aa/shared-sync";
 
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;
@@ -23,14 +29,28 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
 }
 
 export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RESTClient; wsClient: WSClient } {
+  const offlineQueue = createPersistentOfflineQueue();
   const client = new DefaultRESTClient((request) => new HttpTransport({
     baseUrl: config.apiBaseUrl ?? "http://localhost:3000",
     fallbackToMock: true,
-  }).send(request));
+  }).send(request), [
+    createTraceInterceptor(),
+    createCsrfInterceptor(),
+    createAuthInterceptor("ui-runtime-access"),
+    createTenantInterceptor("tenant-default"),
+    createOfflineQueueInterceptor(offlineQueue),
+  ]);
 
   const wsClient = config.wsUrl == null
     ? new BrowserWSClient(WebSocket, new InMemoryWSClient())
     : new BrowserWSClient(WebSocket, new InMemoryWSClient());
 
   return { client, wsClient };
+}
+
+export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === "undefined" || "serviceWorker" in navigator === false) {
+    return null;
+  }
+  return navigator.serviceWorker.register(`${import.meta.env.BASE_URL}aa-sw.js`);
 }

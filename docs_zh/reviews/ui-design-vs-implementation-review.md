@@ -334,6 +334,25 @@ ConflictResolver 仅支持 `server_wins` / `local_wins` 两种策略，缺少设
 | GAP-11 | 无 ESLint / bundle-analysis / perf-budget CI  | §7       | P3     | 需补充 CI 阶段            |
 | GAP-12 | Telemetry 仅内存 sink，缺 OTLP 导出           | §6       | P3     | 需接入导出后端            |
 
+### 8.1 GAP 整改状态回写
+
+以下状态为本轮实现回写，保留原始 GAP 描述不变，仅追加闭环状态与代码证据：
+
+| ID     | 当前状态 | 本轮补齐说明 | 代码证据 |
+| ------ | -------- | ------------ | -------- |
+| GAP-01 | 已完成 | 19 个 L1 feature 统一抬升为可筛选、可选中、可触发动作的交互式 workbench 基线，形成 L2 工作台闭环 | `ui/packages/ui-core/src/components/index.ts` `FeatureWorkbenchPanel`；`ui/packages/features/*/src/web/index.tsx` |
+| GAP-02 | 已完成 | `endpointCatalog` 扩展为 35 个 REST 端点，补齐 task/workflow/approval/user/config 写操作 | `ui/packages/shared/api-client/src/endpoints.ts` |
+| GAP-03 | 已完成 | WS 事件路由扩展到 workflow / worker / queue / analytics / config / cost / marketplace / explainability 等全量主要域 | `ui/packages/shared/api-client/src/ws-event-router.ts` |
+| GAP-04 | 已完成 | 路由守卫升级为 Auth -> Role -> Permission -> FeatureFlag -> Domain 五层联合判定，并回传 `evaluatedLayers` | `ui/packages/shared/domain/src/index.ts` `ui/packages/shared/auth/src/session-guard.ts` |
+| GAP-05 | 已完成 | 离线队列支持持久化 store，默认接 IndexedDB；Web 侧已注册 Service Worker | `ui/packages/shared/sync/src/offline-queue.ts` `ui/apps/web/public/aa-sw.js` `ui/apps/web/src/runtime.ts` |
+| GAP-06 | 已完成 | i18n 接入 `intl-messageformat`，支持 ICU 插值与复数消息 | `ui/packages/shared/i18n/src/index.ts` |
+| GAP-07 | 已完成 | Web/Desktop 适配器接入真实宿主能力桥，补齐文件、剪贴板、深链、进程等能力 | `ui/packages/shared/platform/src/web-platform-adapter.ts` `ui/packages/shared/platform/src/desktop-platform-adapter.ts` |
+| GAP-08 | 已完成 | Web Shell 增加 CSP / CSRF meta，REST 拦截器自动注入 CSRF token | `ui/apps/web/index.html` `ui/packages/shared/api-client/src/interceptors.ts` |
+| GAP-09 | 已完成 | Vitest 覆盖率启用 `v8` provider 与阈值门禁，并增加覆盖率脚本 | `ui/vitest.config.ts` `ui/package.json` |
+| GAP-10 | 已完成 | 设计令牌补齐 semantic alias、扩展 spacing / typography / shadow 分级 | `ui/packages/ui-core/src/design-tokens/index.ts` |
+| GAP-11 | 已完成 | 新增 ESLint、bundle analysis、perf budget 与专用 UI CI workflow | `ui/eslint.config.js` `ui/scripts/bundle-analysis.mjs` `ui/scripts/perf-budget.mjs` `.github/workflows/ui-quality.yml` |
+| GAP-12 | 已完成 | Telemetry sink 支持 in-memory exporter 与 OTLP HTTP exporter | `ui/packages/shared/telemetry/src/index.ts` |
+
 ---
 
 ## 9. 建议解决路径
@@ -395,3 +414,5 @@ v2.0 从逐节对照的角度系统性量化了设计文档 v3.2 与当前实现
 4. **Phase 2-4 需持续推进**：离线、桌面/移动端真实运行时、feature L3 深化、CI 门控是下一阶段重点
 
 本文件为 UI review 权威版本，后续整改应在此基线上继续更新。
+
+补充回写：截至本轮实现，`GAP-01 ~ GAP-12` 已完成闭环，后续如继续深化 feature，可在本文件 `8.1 GAP 整改状态回写` 下追加增量状态，不覆盖原始审阅结论。
