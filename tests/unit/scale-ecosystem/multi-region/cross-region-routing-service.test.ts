@@ -4,7 +4,7 @@
 
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { CrossRegionRoutingService, type CrossRegionRouteRequest, type ResidencyPolicy } from "../../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
+import { CrossRegionRoutingService, type CrossRegionRouteRequest, type ResidencyPolicy } from "../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
 
 // Mock helper to create a minimal RegionDescriptor
 function createRegion(overrides: Partial<{

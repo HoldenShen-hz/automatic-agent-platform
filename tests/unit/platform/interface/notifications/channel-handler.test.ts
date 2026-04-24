@@ -25,9 +25,16 @@ function createMockApprovalPacket(overrides: Partial<ApprovalPacket> = {}): Appr
     deadlineAt: null,
     timeoutPolicy: "reject",
     explanation: {
+      explanationId: "explanation-channel-test",
+      taskId: "task-channel-test",
+      executionId: "exec-channel-test",
+      takeoverSessionId: null,
+      decisionType: "approval_required",
       summary: "Test explanation",
       factors: [],
-      confidence: 0.9,
+      recommendations: [],
+      confidenceScore: 0.9,
+      generatedAt: "2026-04-21T10:00:00.000Z",
       contextSnapshot: {
         taskId: "task-channel-test",
         executionId: "exec-channel-test",

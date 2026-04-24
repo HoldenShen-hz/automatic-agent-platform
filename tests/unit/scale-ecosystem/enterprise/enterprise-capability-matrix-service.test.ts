@@ -100,6 +100,18 @@ test("EnterpriseCapabilityMatrixService blocks enterprise features for community
 test("EnterpriseCapabilityMatrixService allows professional features for professional tier", () => {
   const mockStore = createMockStore();
   mockStore.billing.getBillingAccount = () => ({ planId: "pro" } as any);
+  mockStore.release.getActiveEnvironmentReadinessRecord = () => ({
+    readinessId: "read_123",
+    environment: "production",
+    componentType: "gateway",
+    componentId: "ops_gateway",
+    credentialReady: 1,
+    secondaryGatesJson: JSON.stringify({}),
+    owner: "team",
+    lastVerifiedAt: new Date().toISOString(),
+    isActive: 1,
+    notes: null,
+  }) as any;
 
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, mockStore as any);
 

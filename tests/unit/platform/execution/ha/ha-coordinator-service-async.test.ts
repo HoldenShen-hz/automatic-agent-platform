@@ -119,7 +119,12 @@ function createMockRepo(initialState: Partial<MockRepoState> = {}): HaRepository
     },
 
     async getActiveLeaseByNode(nodeId: string): Promise<LeaderLease | undefined> {
-      return this.getLeaseByNodeId(nodeId);
+      for (const lease of state.leases.values()) {
+        if (lease.nodeId === nodeId && lease.status === "active") {
+          return lease;
+        }
+      }
+      return undefined;
     },
 
     async insertEpoch(epoch: LeadershipEpoch): Promise<void> {

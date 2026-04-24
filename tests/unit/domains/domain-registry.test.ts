@@ -1,19 +1,30 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainRegistryService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist/src/domains/registry/domain-registry-service.js";
-import type { DomainDefinition } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist/src/domains/registry/domain-model.js";
+import { DomainRegistryService } from "../../../src/domains/registry/domain-registry-service.js";
+import type { DomainDefinition } from "../../../src/domains/registry/domain-model.js";
+import type { TypedEventPublisher } from "../../../src/platform/state-evidence/events/typed-event-publisher.js";
 
 // Manual mock event publisher
 function mockEventPublisher() {
-  const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
+  type DomainRegistryEvent = {
+    eventType: "domain:registered" | "domain:activated";
+    payload: {
+      domainId: string;
+      status: string;
+      capabilityCount: number;
+      pluginCount: number;
+      occurredAt: string;
+    };
+  };
+  const events: DomainRegistryEvent[] = [];
   return {
     events,
     publisher: {
       publish(input: { eventType: string; payload: Record<string, unknown> }) {
-        events.push(input);
+        events.push(input as DomainRegistryEvent);
       },
-    },
+    } as TypedEventPublisher,
   };
 }
 
@@ -186,8 +197,10 @@ test("register emits domain:registered event", () => {
   const service = new DomainRegistryService({ eventPublisher: publisher });
   service.register(minimalDomain("d1"));
   assert.equal(events.length, 1);
-  assert.equal(events[0].eventType, "domain:registered");
-  assert.equal(events[0].payload.domainId, "d1");
+  const firstEvent = events.at(0);
+  assert.ok(firstEvent);
+  assert.equal(firstEvent.eventType, "domain:registered");
+  assert.equal(firstEvent.payload.domainId, "d1");
 });
 
 test("register and get retrieves stored domain", () => {
@@ -218,7 +231,9 @@ test("listActive returns only active domains", () => {
   service.register(minimalDomain("draft_domain", "draft"));
   const active = service.listActive();
   assert.equal(active.length, 1);
-  assert.equal(active[0].domainId, "active_domain");
+  const firstActive = active.at(0);
+  assert.ok(firstActive);
+  assert.equal(firstActive.domainId, "active_domain");
 });
 
 test("deprecate changes domain status", () => {
@@ -355,7 +370,9 @@ test("getPluginBindings returns sorted enabled bindings", () => {
   service.register(domain);
   const all = service.getPluginBindings("plugin_test");
   assert.equal(all.length, 3);
-  assert.equal(all[0].pluginId, "p2"); // highest priority first
+  const firstBinding = all.at(0);
+  assert.ok(firstBinding);
+  assert.equal(firstBinding.pluginId, "p2"); // highest priority first
 });
 
 test("getPluginBindings filters by pluginType", () => {
@@ -373,7 +390,9 @@ test("getPluginBindings filters by pluginType", () => {
   service.register(domain);
   const presenters = service.getPluginBindings("pt_filter", "presenter");
   assert.equal(presenters.length, 1);
-  assert.equal(presenters[0].pluginType, "presenter");
+  const firstPresenter = presenters.at(0);
+  assert.ok(firstPresenter);
+  assert.equal(firstPresenter.pluginType, "presenter");
 });
 
 test("buildCapabilityEntry returns domain capability summary", () => {

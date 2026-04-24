@@ -85,9 +85,11 @@ test("diffObjects detects added fields", () => {
   const after = { a: 1, b: 2 };
   const result = diffObjects(before, after);
   assert.equal(result.length, 1);
-  assert.equal(result[0].path, "b");
-  assert.equal(result[0].changeType, "added");
-  assert.equal(result[0].afterValue, 2);
+  const firstDiff = result.at(0);
+  assert.ok(firstDiff);
+  assert.equal(firstDiff.path, "b");
+  assert.equal(firstDiff.changeType, "added");
+  assert.equal(firstDiff.afterValue, 2);
 });
 
 test("diffObjects detects removed fields", () => {
@@ -95,9 +97,11 @@ test("diffObjects detects removed fields", () => {
   const after = { a: 1 };
   const result = diffObjects(before, after);
   assert.equal(result.length, 1);
-  assert.equal(result[0].path, "b");
-  assert.equal(result[0].changeType, "removed");
-  assert.equal(result[0].beforeValue, 2);
+  const firstDiff = result.at(0);
+  assert.ok(firstDiff);
+  assert.equal(firstDiff.path, "b");
+  assert.equal(firstDiff.changeType, "removed");
+  assert.equal(firstDiff.beforeValue, 2);
 });
 
 test("diffObjects detects changed values", () => {
@@ -105,10 +109,12 @@ test("diffObjects detects changed values", () => {
   const after = { a: 1, b: 3 };
   const result = diffObjects(before, after);
   assert.equal(result.length, 1);
-  assert.equal(result[0].path, "b");
-  assert.equal(result[0].changeType, "changed");
-  assert.equal(result[0].beforeValue, 2);
-  assert.equal(result[0].afterValue, 3);
+  const firstDiff = result.at(0);
+  assert.ok(firstDiff);
+  assert.equal(firstDiff.path, "b");
+  assert.equal(firstDiff.changeType, "changed");
+  assert.equal(firstDiff.beforeValue, 2);
+  assert.equal(firstDiff.afterValue, 3);
 });
 
 test("diffObjects uses dot-notation for nested paths", () => {
@@ -116,8 +122,10 @@ test("diffObjects uses dot-notation for nested paths", () => {
   const after = { a: { b: { c: 2 } } };
   const result = diffObjects(before, after);
   assert.equal(result.length, 1);
-  assert.equal(result[0].path, "a.b.c");
-  assert.equal(result[0].changeType, "changed");
+  const firstDiff = result.at(0);
+  assert.ok(firstDiff);
+  assert.equal(firstDiff.path, "a.b.c");
+  assert.equal(firstDiff.changeType, "changed");
 });
 
 test("diffObjects handles array values as leaf comparisons", () => {
@@ -125,8 +133,10 @@ test("diffObjects handles array values as leaf comparisons", () => {
   const after = { items: [1, 2, 4] };
   const result = diffObjects(before, after);
   assert.equal(result.length, 1);
-  assert.equal(result[0].path, "items");
-  assert.equal(result[0].changeType, "changed");
+  const firstDiff = result.at(0);
+  assert.ok(firstDiff);
+  assert.equal(firstDiff.path, "items");
+  assert.equal(firstDiff.changeType, "changed");
 });
 
 // ---------------------------------------------------------------------------
@@ -192,7 +202,7 @@ test("mergeConfigObjects overlays top-level keys", () => {
 test("mergeConfigObjects deep-merges nested objects", () => {
   const base = { a: { b: 1, c: 2 } };
   const overlay = { a: { b: 3, d: 4 } };
-  const result = mergeConfigObjects(base, overlay);
+  const result = mergeConfigObjects(base, overlay) as { a: { b: number; c: number; d: number } };
   assert.equal(result.a.b, 3);
   assert.equal(result.a.c, 2);
   assert.equal(result.a.d, 4);

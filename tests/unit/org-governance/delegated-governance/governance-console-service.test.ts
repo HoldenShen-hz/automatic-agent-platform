@@ -4,8 +4,8 @@
 
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { SelfServiceGovernanceConsole } from "../../../../../src/org-governance/delegated-governance/governance-console-service.js";
-import { InMemoryDelegationStore, InMemoryAuditLogStore } from "../../../../../src/org-governance/delegated-governance/stores/index.js";
+import { SelfServiceGovernanceConsole } from "../../../../src/org-governance/delegated-governance/governance-console-service.js";
+import { InMemoryDelegationStore, InMemoryAuditLogStore } from "../../../../src/org-governance/delegated-governance/stores/index.js";
 
 test("SelfServiceGovernanceConsole.createDelegation creates a valid delegation", () => {
   const console = new SelfServiceGovernanceConsole({
@@ -224,7 +224,7 @@ test("SelfServiceGovernanceConsole.isActionAllowed division_admin has limited ac
   const allowedResult = console.isActionAllowed("user-1", "division_admin", "domain_onboarding");
   assert.strictEqual(allowedResult.allowed, true);
 
-  const deniedResult = console.isActionAllowed("user-1", "division_admin", "manage_billing");
+  const deniedResult = console.isActionAllowed("user-1", "division_admin", "cross_domain_strategy");
   assert.strictEqual(deniedResult.allowed, false);
 });
 

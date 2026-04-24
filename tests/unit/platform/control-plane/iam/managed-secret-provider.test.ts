@@ -7,9 +7,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type {
   ManagedSecretProvider,
-  SecretProviderMetadata,
 } from "../../../../../src/platform/control-plane/iam/managed-secret-provider.js";
-import type { SecretProviderIssuedLease } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+import type {
+  SecretProviderIssuedLease,
+  SecretProviderMetadata,
+} from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
 import type { SecretProviderKind } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Mock implementation to test interface conformance
@@ -240,7 +242,7 @@ test("ManagedSecretProvider works with different provider kinds", () => {
 test("describeSecret is called with secretRef parameter", async () => {
   let capturedRef: string | undefined;
   const provider: ManagedSecretProvider = {
-    providerKind: "test",
+    providerKind: "environment",
     async describeSecret(secretRef) {
       capturedRef = secretRef;
       return {
@@ -272,7 +274,7 @@ test("describeSecret is called with secretRef parameter", async () => {
 test("requireSecret is called with secretRef parameter", async () => {
   let capturedRef: string | undefined;
   const provider: ManagedSecretProvider = {
-    providerKind: "test",
+    providerKind: "environment",
     async describeSecret(secretRef) {
       return {
         secretRef,

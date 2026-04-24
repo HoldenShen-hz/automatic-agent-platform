@@ -238,13 +238,13 @@ test("E2E: platform operator exports execution-plane readiness with topology and
       environment: "prod",
       evidenceRootDir: evidenceRoot,
       packageOutputDir: packageOutput,
-      targetStatus: "stable",
+      targetStatus: "production_ready",
       generatedAt,
     });
     const markdown = readFileSync(exported.markdownArtifact.uri, "utf8");
 
     assert.equal(exported.report.environment, "prod");
-    assert.equal(exported.report.targetStatus, "stable");
+    assert.equal(exported.report.targetStatus, "production_ready");
     assert.equal(exported.report.executionPlane.topology.organizations, 1);
     assert.equal(exported.report.executionPlane.topology.workspaces, 1);
     assert.equal(exported.report.executionPlane.topology.tenants, 1);

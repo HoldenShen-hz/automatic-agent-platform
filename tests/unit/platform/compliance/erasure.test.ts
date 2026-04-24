@@ -127,8 +127,10 @@ test("createPlan marks legal hold targets with action 'hold'", () => {
     slaHours: 24,
   });
 
-  assert.equal(plan.steps[0].action, "hold");
-  assert.equal(plan.steps[0].reason, "legal_hold");
+  const firstStep = plan.steps.at(0);
+  assert.ok(firstStep);
+  assert.equal(firstStep.action, "hold");
+  assert.equal(firstStep.reason, "legal_hold");
 });
 
 test("createPlan marks backup copy targets with action 'redact'", () => {
@@ -142,8 +144,10 @@ test("createPlan marks backup copy targets with action 'redact'", () => {
     slaHours: 24,
   });
 
-  assert.equal(plan.steps[0].action, "redact");
-  assert.equal(plan.steps[0].reason, "backup_copy_redaction");
+  const firstStep = plan.steps.at(0);
+  assert.ok(firstStep);
+  assert.equal(firstStep.action, "redact");
+  assert.equal(firstStep.reason, "backup_copy_redaction");
 });
 
 test("createPlan marks PII targets with action 'erase'", () => {
@@ -157,8 +161,10 @@ test("createPlan marks PII targets with action 'erase'", () => {
     slaHours: 24,
   });
 
-  assert.equal(plan.steps[0].action, "erase");
-  assert.equal(plan.steps[0].reason, "pii_subject_request");
+  const firstStep = plan.steps.at(0);
+  assert.ok(firstStep);
+  assert.equal(firstStep.action, "erase");
+  assert.equal(firstStep.reason, "pii_subject_request");
 });
 
 test("createPlan marks non-PII targets without legal hold with action 'skip'", () => {
@@ -172,8 +178,10 @@ test("createPlan marks non-PII targets without legal hold with action 'skip'", (
     slaHours: 24,
   });
 
-  assert.equal(plan.steps[0].action, "skip");
-  assert.equal(plan.steps[0].reason, "no_pii");
+  const firstStep = plan.steps.at(0);
+  assert.ok(firstStep);
+  assert.equal(firstStep.action, "skip");
+  assert.equal(firstStep.reason, "no_pii");
 });
 
 test("createPlan sets status to blocked_by_legal_hold when any target has legal hold", () => {
@@ -245,8 +253,12 @@ test("createPlan preserves targetRef and targetKind in steps", () => {
     slaHours: 24,
   });
 
-  assert.equal(plan.steps[0].targetRef, "ref_1");
-  assert.equal(plan.steps[0].targetKind, "task");
-  assert.equal(plan.steps[1].targetRef, "ref_2");
-  assert.equal(plan.steps[1].targetKind, "message");
+  const firstStep = plan.steps.at(0);
+  const secondStep = plan.steps.at(1);
+  assert.ok(firstStep);
+  assert.ok(secondStep);
+  assert.equal(firstStep.targetRef, "ref_1");
+  assert.equal(firstStep.targetKind, "task");
+  assert.equal(secondStep.targetRef, "ref_2");
+  assert.equal(secondStep.targetKind, "message");
 });

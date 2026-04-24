@@ -11,19 +11,7 @@ import type { GatewaySessionTargetCandidate } from "../../../../../src/platform/
  * without requiring database or external dependencies.
  */
 
-interface MockGatewayTarget extends GatewayTargetRecord {
-  targetId: string;
-  channel: string;
-  targetKind: GatewayTargetKind;
-  externalTargetId: string;
-  displayName: string;
-  aliasesJson: string;
-  metadataJson: string | null;
-  source: string;
-  lastSeenAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
+type MockGatewayTarget = GatewayTargetRecord;
 
 function createMockStoragePort(targets: Map<string, MockGatewayTarget> = new Map(), sessionCandidates: GatewaySessionTargetCandidate[] = []): GatewayStoragePort {
   return {
@@ -447,11 +435,13 @@ test("GatewayTargetDirectoryService merges session history targets with director
     {
       channel: "slack",
       sessionId: "session123",
+      sessionStatus: "open",
       externalSessionId: "ext-session-123",
       taskId: "task456",
       taskTitle: "Test Task",
       lastSeenAt: "2024-01-02T00:00:00.000Z",
       latestMessage: "Hello from session",
+      latestMessageAt: "2024-01-02T00:00:00.000Z",
     },
   ];
 
@@ -486,11 +476,13 @@ test("GatewayTargetDirectoryService prioritizes directory targets over session h
     {
       channel: "slack",
       sessionId: "session123",
+      sessionStatus: "open",
       externalSessionId: "session123", // Same value ensures same targetId after normalization
       taskId: "task456",
       taskTitle: "Test Task",
       lastSeenAt: "2024-01-02T00:00:00.000Z",
       latestMessage: "Hello from session",
+      latestMessageAt: "2024-01-02T00:00:00.000Z",
     },
   ];
 

@@ -78,7 +78,7 @@ test("platform application kernel builds startup plans for app targets", () => {
       opsMaturity: apiPlan.scaleOpsRuntimeCatalog?.opsMaturity.length,
     },
     {
-      scaleEcosystem: 6,
+      scaleEcosystem: 11,
       opsMaturity: 12,
     },
   );

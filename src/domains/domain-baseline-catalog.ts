@@ -233,7 +233,7 @@ function buildWorkflow(seed: DomainSeed) {
       toolHints: index === 0
         ? [...seed.requiredTools.slice(0, Math.min(2, seed.requiredTools.length))]
         : [...seed.requiredTools.slice(Math.max(0, index - 1), Math.max(1, index + 1))],
-      modelHints: { preferredModel: "gpt-5.2", temperature: seed.riskLevel === "critical" ? 0.1 : 0.2 },
+      modelHints: { preferredModel: "MiniMax-M2.7", temperature: seed.riskLevel === "critical" ? 0.1 : 0.2 },
       outputSchema: { type: "object", stage: stageName, domainId: seed.domainId },
       retryPolicy: { maxRetries: seed.riskLevel === "critical" ? 0 : 1, backoffMs: 1_000 + (index * 250) },
       requiresReview: seed.riskLevel === "critical" || index === seed.workflowStages.length - 1,
@@ -432,7 +432,7 @@ function buildDefinition(seed: DomainSeed, workflowId: string, bundleId: string,
       supportedTaskTypes: [...seed.taskTypes],
       requiredTools: [...seed.requiredTools],
       optionalTools: [...seed.optionalTools],
-      modelPreferences: { primary: "gpt-5.2", fallback: "gpt-5.4-mini" },
+      modelPreferences: { primary: "MiniMax-M2.7", fallback: "MiniMax-Text-01" },
       budgetLimits: {
         maxTokensPerTask: seed.riskLevel === "critical" ? 8_000 : 5_000,
         maxCostPerTask: seed.riskLevel === "critical" ? 8 : seed.riskLevel === "high" ? 5 : 3,

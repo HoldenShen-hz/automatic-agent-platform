@@ -150,7 +150,7 @@ test("E2E: perception fail-closes when the billing plan does not include percept
       perception.registerSource({
         sourceId: "source-perception-denied",
         tenantId: "tenant-perception-denied",
-        type: "manual",
+        type: "custom",
         name: "Denied Signals",
         accountId: account.accountId,
       });

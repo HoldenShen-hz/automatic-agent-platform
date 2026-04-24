@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { WebhookIngressService } from "../../../../src/platform/interface/webhook/index.js";
+import { WebhookIngressService } from "../../../../../src/platform/interface/webhook/index.js";
 import { createHmac } from "node:crypto";
 
 function createHmacSignature(secret: string, body: string): string {
@@ -410,7 +410,7 @@ test("WebhookIngressService rollbackAcceptedEnvelope removes envelope", () => {
   service.rollbackAcceptedEnvelope("ep-rollback", "rollback-key", envelope.envelopeId);
 
   const remaining = service.listAcceptedEnvelopes();
-  assert.equal(remaining.some((e) => e.envelopeId === envelope.envelopeId), false);
+  assert.equal(remaining.some((e: { envelopeId: string }) => e.envelopeId === envelope.envelopeId), false);
 });
 
 test("WebhookIngressService rollbackAcceptedEnvelope does nothing for wrong envelope id", () => {
@@ -434,7 +434,7 @@ test("WebhookIngressService rollbackAcceptedEnvelope does nothing for wrong enve
   service.rollbackAcceptedEnvelope("ep-rollback2", "key2", "wrong-envelope-id");
 
   const remaining = service.listAcceptedEnvelopes();
-  assert.equal(remaining.some((e) => e.envelopeId === envelope.envelopeId), true);
+  assert.equal(remaining.some((e: { envelopeId: string }) => e.envelopeId === envelope.envelopeId), true);
 });
 
 test("WebhookIngressService getEndpoint returns endpoint registration", () => {

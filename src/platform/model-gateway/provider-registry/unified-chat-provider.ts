@@ -333,7 +333,7 @@ export class UnifiedChatProvider {
 
   public async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {
     const result = await this.createChatCompletion({
-      model: options.model ?? "gpt-5.2",
+      model: options.model ?? "MiniMax-M2.7",
       messages: [{ role: "user", content: prompt }],
       ...(options.system !== undefined ? { system: options.system } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),

@@ -89,7 +89,9 @@ test("VcrFixtureStore.loadFixture accepts array of interactions", () => {
   const result = VcrFixtureStore.loadFixture(interactions);
 
   assert.equal(result.length, 1);
-  assert.equal(result[0].interactionId, "int_1");
+  const firstInteraction = result.at(0);
+  assert.ok(firstInteraction);
+  assert.equal(firstInteraction.interactionId, "int_1");
 });
 
 test("VcrFixtureStore.loadFixture accepts object with interactions array", () => {
@@ -262,7 +264,15 @@ test("VcrFixtureStore.createInteraction accepts optional stream chunks", () => {
     interactionId: "int_1",
     request,
     responsePayload: { content: "Hi" },
-    streamChunks: [{ type: "chunk", content: "Hi" }],
+    streamChunks: [{
+      streamId: "stream-1",
+      taskId: "task-1",
+      channel: "updates",
+      eventType: "message_delta",
+      sequence: 1,
+      payload: { content: "Hi" },
+      createdAt: new Date().toISOString(),
+    }],
   });
 
   assert.ok(interaction.streamChunks);

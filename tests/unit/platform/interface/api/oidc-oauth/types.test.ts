@@ -10,7 +10,7 @@ import type {
   OidcOAuthConfig,
   ApiKeyRecord,
   FetchLike,
-} from "../../../../../src/platform/interface/api/oidc-oauth/types.js";
+} from "../../../../../../src/platform/interface/api/oidc-oauth/types.js";
 
 test("OidcProvider structure is correct", () => {
   const provider: OidcProvider = {

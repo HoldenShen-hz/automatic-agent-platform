@@ -24,13 +24,19 @@ test("protectRecord encrypts specified fields", () => {
     keyRef: "key_123",
   });
 
-  assert.notEqual(result.protectedRecord.secret, "my-password", "secret should be encrypted");
-  assert.ok(result.protectedRecord.secret.toString().startsWith("enc:"), "should have encryption prefix");
+  const protectedSecret = result.protectedRecord.secret;
+  assert.notEqual(protectedSecret, "my-password", "secret should be encrypted");
+  if (typeof protectedSecret !== "string") {
+    assert.fail("protected secret should be a string");
+  }
+  assert.ok(protectedSecret.startsWith("enc:"), "should have encryption prefix");
   assert.equal(result.protectedRecord.public, "data", "unprotected field should remain unchanged");
   assert.equal(result.protectedFields.length, 1);
-  assert.equal(result.protectedFields[0].fieldPath, "secret");
-  assert.equal(result.protectedFields[0].keyRef, "key_123");
-  assert.equal(result.protectedFields[0].classification, "confidential");
+  const firstProtectedField = result.protectedFields.at(0);
+  assert.ok(firstProtectedField);
+  assert.equal(firstProtectedField.fieldPath, "secret");
+  assert.equal(firstProtectedField.keyRef, "key_123");
+  assert.equal(firstProtectedField.classification, "confidential");
 });
 
 test("protectRecord handles nested field paths", () => {
@@ -152,7 +158,9 @@ test("revealField decrypts ciphertext encrypted with same key", () => {
     keyRef: "reveal_key",
   });
 
-  const ciphertext = protectedResult.protectedFields[0].ciphertext;
+  const protectedField = protectedResult.protectedFields.at(0);
+  assert.ok(protectedField);
+  const ciphertext = protectedField.ciphertext;
   const revealed = service.revealField({ ciphertext, keyRef: "reveal_key" });
 
   assert.equal(revealed, "my-password");
@@ -169,7 +177,9 @@ test("revealField throws for ciphertext with different key prefix", () => {
     keyRef: "key_1",
   });
 
-  const ciphertext = protectedResult.protectedFields[0].ciphertext;
+  const protectedField = protectedResult.protectedFields.at(0);
+  assert.ok(protectedField);
+  const ciphertext = protectedField.ciphertext;
 
   assert.throws(
     () => service.revealField({ ciphertext, keyRef: "key_2" }),
@@ -201,7 +211,11 @@ test("protectRecord and revealField roundtrip for all classifications", () => {
     });
 
     const revealed = service.revealField({
-      ciphertext: protectedResult.protectedFields[0].ciphertext,
+      ciphertext: (() => {
+        const protectedField = protectedResult.protectedFields.at(0);
+        assert.ok(protectedField);
+        return protectedField.ciphertext;
+      })(),
       keyRef: "roundtrip_key",
     });
 
@@ -219,8 +233,16 @@ test("protectRecord uses correct key fingerprint in ciphertext", () => {
 
   // Different keys should produce different ciphertext prefixes
   assert.notEqual(
-    result1.protectedFields[0].ciphertext,
-    result2.protectedFields[0].ciphertext,
+    (() => {
+      const protectedField = result1.protectedFields.at(0);
+      assert.ok(protectedField);
+      return protectedField.ciphertext;
+    })(),
+    (() => {
+      const protectedField = result2.protectedFields.at(0);
+      assert.ok(protectedField);
+      return protectedField.ciphertext;
+    })(),
     "different keys should produce different ciphertext",
   );
 });

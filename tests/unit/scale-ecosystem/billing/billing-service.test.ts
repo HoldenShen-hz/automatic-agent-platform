@@ -382,7 +382,7 @@ test("BillingService throws for non-existent account", () => {
 
   assert.throws(() => {
     service.evaluateEntitlement({ accountId: "nonexistent", featureKey: "feature_ai" });
-  }, /billing.account_not_found/);
+  }, /Billing account not found/);
 });
 
 test("BillingService throws for invalid plan", () => {
@@ -392,7 +392,7 @@ test("BillingService throws for invalid plan", () => {
 
   assert.throws(() => {
     service.createAccount({ ownerId: "owner_x", planId: "nonexistent_plan" });
-  }, /billing.plan_not_found/);
+  }, /Plan not found/);
 });
 
 test("BillingService throws for inactive account", () => {
@@ -409,10 +409,10 @@ test("BillingService throws for inactive account", () => {
 
   assert.throws(() => {
     service.recordUsage({ accountId: "acct_inactive", metricType: "task_execution", quantity: 1, source: "api" });
-  }, /billing.account_not_active/);
+  }, /Billing account is not active/);
 });
 
-test("BillingService reconcilePaymentSession handles paid status", () => {
+test("BillingService reconcilePaymentSession handles paid status", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -424,7 +424,7 @@ test("BillingService reconcilePaymentSession handles paid status", () => {
   service.createAccount({ accountId: "acct_recon", ownerId: "owner_recon", planId: "plan_basic" });
   const invoice = service.createInvoice({ accountId: "acct_recon" });
 
-  const session = service.createCheckoutSession({ invoiceId: invoice.invoiceId });
+  const session = await service.createCheckoutSession({ invoiceId: invoice.invoiceId });
   const result = service.reconcilePaymentSession({
     gatewayKind: "manual",
     gatewaySessionRef: session.gatewaySessionRef,
@@ -435,7 +435,7 @@ test("BillingService reconcilePaymentSession handles paid status", () => {
   assert.equal(result.invoice.status, "paid");
 });
 
-test("BillingService reconcilePaymentSession handles failed status", () => {
+test("BillingService reconcilePaymentSession handles failed status", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -446,7 +446,7 @@ test("BillingService reconcilePaymentSession handles failed status", () => {
 
   service.createAccount({ accountId: "acct_fail", ownerId: "owner_fail", planId: "plan_basic" });
   const invoice = service.createInvoice({ accountId: "acct_fail" });
-  const session = service.createCheckoutSession({ invoiceId: invoice.invoiceId });
+  const session = await service.createCheckoutSession({ invoiceId: invoice.invoiceId });
 
   const result = service.reconcilePaymentSession({
     gatewayKind: "manual",
@@ -473,7 +473,7 @@ test("BillingService listInvoices returns account invoices", () => {
   assert.equal(invoices.length, 2);
 });
 
-test("BillingService listPaymentSessions returns invoice sessions", () => {
+test("BillingService listPaymentSessions returns invoice sessions", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -484,7 +484,7 @@ test("BillingService listPaymentSessions returns invoice sessions", () => {
 
   service.createAccount({ accountId: "acct_sess", ownerId: "owner_sess", planId: "plan_basic" });
   const invoice = service.createInvoice({ accountId: "acct_sess" });
-  service.createCheckoutSession({ invoiceId: invoice.invoiceId });
+  await service.createCheckoutSession({ invoiceId: invoice.invoiceId });
 
   const sessions = service.listPaymentSessions(invoice.invoiceId);
 

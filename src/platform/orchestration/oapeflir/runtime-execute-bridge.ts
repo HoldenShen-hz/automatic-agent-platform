@@ -176,7 +176,7 @@ export function serialiseOapeflirPlan(steps: PlanStep[]): string {
 export class RuntimeExecuteBridge implements ExecuteBridge {
   constructor(
     private readonly dbPath: string,
-    private readonly defaultModelId: string = "claude-opus-4-6",
+    private readonly defaultModelId: string = "MiniMax-M2.7",
   ) {}
 
   /**

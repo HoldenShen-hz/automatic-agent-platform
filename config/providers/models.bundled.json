@@ -16,8 +16,8 @@
   },
   "profiles": {
     "reasoning-medium": {
-      "provider": "openai",
-      "modelId": "gpt-5.2",
+      "provider": "minimax",
+      "modelId": "MiniMax-M2.7",
       "tier": "reasoning",
       "capabilities": ["reasoning", "tool_use", "json_mode"],
       "contextWindowTokens": 204800,
@@ -29,8 +29,8 @@
       "metadataSource": "bundled_snapshot"
     },
     "coding-medium": {
-      "provider": "openai",
-      "modelId": "gpt-5.2",
+      "provider": "minimax",
+      "modelId": "MiniMax-M2.7",
       "tier": "coding",
       "capabilities": ["coding", "tool_use", "json_mode"],
       "contextWindowTokens": 204800,
@@ -42,8 +42,8 @@
       "metadataSource": "bundled_snapshot"
     },
     "balanced": {
-      "provider": "anthropic",
-      "modelId": "claude-3-7-sonnet",
+      "provider": "minimax",
+      "modelId": "MiniMax-M1",
       "tier": "balanced",
       "capabilities": ["reasoning", "writing", "tool_use"],
       "contextWindowTokens": 204800,
@@ -55,8 +55,8 @@
       "metadataSource": "bundled_snapshot"
     },
     "fast": {
-      "provider": "anthropic",
-      "modelId": "claude-3-5-haiku",
+      "provider": "minimax",
+      "modelId": "MiniMax-Text-01",
       "tier": "fast",
       "capabilities": ["classification", "summarization", "tool_use"],
       "contextWindowTokens": 204800,

@@ -197,7 +197,8 @@ test("DeploymentInventoryRecord type is correctly structured", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
-  const record: DeploymentInventoryRecord = deployments[0];
+  const record: DeploymentInventoryRecord | undefined = deployments.at(0);
+  assert.ok(record);
   assert.equal(typeof record.deploymentId, "string");
   assert.equal(typeof record.environment, "string");
   assert.equal(typeof record.rolloutStrategy, "string");

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainPromptGovernanceService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist/src/domains/prompt-library/domain-prompt-governance-service.js";
-import type { DomainPromptLibrary } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist/src/domains/prompt-library/index.js";
+import { DomainPromptGovernanceService } from "../../../src/domains/prompt-library/domain-prompt-governance-service.js";
+import type { DomainPromptLibrary } from "../../../src/domains/prompt-library/index.js";
 
 // Helper to build a minimal prompt library for testing
 function makeLibrary(domainId: string, prompts?: Array<{ id: string; version: string; guardrails?: string[]; stage?: string }>): DomainPromptLibrary {

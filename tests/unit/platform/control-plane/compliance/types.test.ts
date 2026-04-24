@@ -52,12 +52,21 @@ test("ErasureRequest can be used as a type", () => {
     erasureId: "erasure-1",
     tenantId: "tenant-1",
     traceId: "trace-1",
-    requestorId: "user-1",
-    requestedAt: "2026-01-01T00:00:00.000Z",
+    requestedBy: "user-1",
+    reason: "User requested deletion",
+    legalBasis: "gdpr_article_17_1",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    processedAt: null,
+    completedAt: null,
+    failedAt: null,
+    failureReason: null,
+    evidenceRefs: [],
+    notes: null,
+    metadataJson: null,
     status: "pending",
     subjectType: "user",
     subjectId: "subject-1",
-    retentionExpiresAt: "2026-02-01T00:00:00.000Z",
   };
 
   assert.equal(request.erasureId, "erasure-1");
@@ -70,16 +79,35 @@ test("ErasureReport can be used as a type", () => {
     reportId: "report-1",
     erasureId: "erasure-1",
     tenantId: "tenant-1",
-    completedAt: "2026-01-15T00:00:00.000Z",
-    status: "completed",
-    recordsErased: 42,
-    reportUrl: "https://example.com/report.pdf",
+    subjects: [
+      {
+        subjectType: "user",
+        subjectId: "subject-1",
+        dataCategories: ["profile"],
+        erased: true,
+      },
+    ],
+    evidenceRefs: [
+      {
+        evidenceType: "dek_destruction",
+        referenceId: "dek-1",
+        description: "Destroyed tenant key",
+        timestamp: "2026-01-15T00:00:00.000Z",
+      },
+    ],
+    traceId: "trace-1",
+    verificationStatus: "verified",
+    verifiedAt: "2026-01-15T00:00:00.000Z",
+    generatedAt: "2026-01-15T00:00:00.000Z",
+    updatedAt: "2026-01-15T00:00:00.000Z",
+    notes: null,
+    metadataJson: null,
   };
 
   assert.equal(report.reportId, "report-1");
   assert.equal(report.erasureId, "erasure-1");
-  assert.equal(report.recordsErased, 42);
-  assert.equal(report.status, "completed");
+  assert.equal(report.verificationStatus, "verified");
+  assert.equal(report.subjects.length, 1);
 });
 
 test("DataEncryptionKey can be used as a type", () => {
@@ -88,11 +116,17 @@ test("DataEncryptionKey can be used as a type", () => {
     tenantId: "tenant-1",
     version: 1,
     algorithm: "AES-256-GCM",
-    keyMaterial: "encrypted-key-data",
+    encryptedKeyMaterial: "encrypted-key-data",
     createdAt: "2026-01-01T00:00:00.000Z",
-    rotatedAt: null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    destroyedAt: null,
     status: "active",
     createdBy: "system",
+    externalKeyId: null,
+    destroyedBy: null,
+    destructionReason: null,
+    traceId: null,
+    metadataJson: null,
   };
 
   assert.equal(dek.keyId, "dek-1");
@@ -106,17 +140,18 @@ test("DataPlacement can be used as a type", () => {
   const placement: DataPlacement = {
     placementId: "placement-1",
     tenantId: "tenant-1",
-    dataType: "user_content",
-    region: "us-east-1",
-    storageClass: "standard",
-    retentionDays: 365,
-    createdAt: "2026-01-01T00:00:00.000Z",
+    category: "personal",
+    currentRegion: "us-east-1",
+    currentJurisdiction: "US",
+    isCompliant: true,
+    recordedAt: "2026-01-01T00:00:00.000Z",
+    metadataJson: null,
   };
 
   assert.equal(placement.placementId, "placement-1");
   assert.equal(placement.tenantId, "tenant-1");
-  assert.equal(placement.region, "us-east-1");
-  assert.equal(placement.dataType, "user_content");
+  assert.equal(placement.currentRegion, "us-east-1");
+  assert.equal(placement.category, "personal");
 });
 
 test("ResidencyViolation can be used as a type", () => {
@@ -124,18 +159,21 @@ test("ResidencyViolation can be used as a type", () => {
     violationId: "violation-1",
     tenantId: "tenant-1",
     detectedAt: "2026-01-15T00:00:00.000Z",
-    dataType: "user_content",
-    expectedRegion: "eu-west-1",
-    actualRegion: "us-east-1",
-    resolution: "pending",
-    notes: "Data found in wrong region",
+    category: "personal",
+    region: "us-east-1",
+    jurisdiction: "US",
+    violatedRuleId: "rule-eu-only",
+    description: "Data found in wrong region",
+    severity: "high",
+    resolvedAt: null,
+    resolutionNotes: null,
   };
 
   assert.equal(violation.violationId, "violation-1");
   assert.equal(violation.tenantId, "tenant-1");
-  assert.equal(violation.expectedRegion, "eu-west-1");
-  assert.equal(violation.actualRegion, "us-east-1");
-  assert.equal(violation.resolution, "pending");
+  assert.equal(violation.region, "us-east-1");
+  assert.equal(violation.jurisdiction, "US");
+  assert.equal(violation.severity, "high");
 });
 
 test("ComplianceStore type is actually an interface", () => {
@@ -154,26 +192,38 @@ test("ErasureRequest status can be various values", () => {
     erasureId: "erasure-1",
     tenantId: "tenant-1",
     traceId: "trace-1",
-    requestorId: "user-1",
-    requestedAt: "2026-01-01T00:00:00.000Z",
+    requestedBy: "user-1",
+    reason: "User requested deletion",
+    legalBasis: "gdpr_article_17_1",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    processedAt: null,
+    completedAt: null,
+    failedAt: null,
+    failureReason: null,
+    evidenceRefs: [],
+    notes: null,
+    metadataJson: null,
     status: "pending",
     subjectType: "user",
     subjectId: "subject-1",
-  } as ErasureRequest;
+  };
 
   const approved: ErasureRequest = {
     ...pending,
-    status: "approved",
-  } as ErasureRequest;
+    status: "processing",
+  };
 
   const rejected: ErasureRequest = {
     ...pending,
-    status: "rejected",
-  } as ErasureRequest;
+    status: "completed",
+    completedAt: "2026-01-02T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+  };
 
   assert.equal(pending.status, "pending");
-  assert.equal(approved.status, "approved");
-  assert.equal(rejected.status, "rejected");
+  assert.equal(approved.status, "processing");
+  assert.equal(rejected.status, "completed");
 });
 
 test("DataEncryptionKey status can be active or retired", () => {
@@ -182,11 +232,17 @@ test("DataEncryptionKey status can be active or retired", () => {
     tenantId: "tenant-1",
     version: 1,
     algorithm: "AES-256-GCM",
-    keyMaterial: "encrypted-key-data",
+    encryptedKeyMaterial: "encrypted-key-data",
     createdAt: "2026-01-01T00:00:00.000Z",
-    rotatedAt: null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    destroyedAt: null,
     status: "active",
     createdBy: "system",
+    externalKeyId: null,
+    destroyedBy: null,
+    destructionReason: null,
+    traceId: null,
+    metadataJson: null,
   };
 
   const retired: DataEncryptionKey = {
@@ -194,11 +250,17 @@ test("DataEncryptionKey status can be active or retired", () => {
     tenantId: "tenant-1",
     version: 2,
     algorithm: "AES-256-GCM",
-    keyMaterial: "retired-key-data",
+    encryptedKeyMaterial: null,
     createdAt: "2025-01-01T00:00:00.000Z",
-    rotatedAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    destroyedAt: "2026-01-01T00:00:00.000Z",
     status: "destroyed",
     createdBy: "system",
+    externalKeyId: null,
+    destroyedBy: "system",
+    destructionReason: "erasure_request",
+    traceId: null,
+    metadataJson: null,
   };
 
   assert.equal(active.status, "active");
@@ -210,23 +272,29 @@ test("ResidencyViolation resolution can be various values", () => {
     violationId: "violation-1",
     tenantId: "tenant-1",
     detectedAt: "2026-01-15T00:00:00.000Z",
-    dataType: "user_content",
-    expectedRegion: "eu-west-1",
-    actualRegion: "us-east-1",
-    resolution: "pending",
+    category: "personal",
+    region: "us-east-1",
+    jurisdiction: "US",
+    violatedRuleId: "rule-eu-only",
+    description: "Data found in wrong region",
+    severity: "high",
+    resolvedAt: null,
+    resolutionNotes: null,
   };
 
   const resolved: ResidencyViolation = {
     ...pending,
-    resolution: "data_migrated",
+    resolvedAt: "2026-01-16T00:00:00.000Z",
+    resolutionNotes: "Data migrated back to compliant region",
   };
 
   const acknowledged: ResidencyViolation = {
     ...pending,
-    resolution: "risk_accepted",
+    resolvedAt: "2026-01-16T00:00:00.000Z",
+    resolutionNotes: "Risk accepted by compliance team",
   };
 
-  assert.equal(pending.resolution, "pending");
-  assert.equal(resolved.resolution, "data_migrated");
-  assert.equal(acknowledged.resolution, "risk_accepted");
+  assert.equal(pending.resolvedAt, null);
+  assert.equal(resolved.resolutionNotes, "Data migrated back to compliant region");
+  assert.equal(acknowledged.resolutionNotes, "Risk accepted by compliance team");
 });

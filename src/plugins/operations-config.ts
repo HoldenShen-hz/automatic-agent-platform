@@ -40,7 +40,7 @@ export const operationsDomainDefinition: DomainDefinition = {
         {
           stepName: "assess_incident",
           toolHints: ["diagnose", "fetch_logs"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.3 },
+          modelHints: { preferredModel: "MiniMax-M2.7", temperature: 0.3 },
           outputSchema: {
             severity: "string",
             system: "string",
@@ -54,7 +54,7 @@ export const operationsDomainDefinition: DomainDefinition = {
         {
           stepName: "apply_remediation",
           toolHints: ["execute", "patch"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.1 },
+          modelHints: { preferredModel: "MiniMax-M2.7", temperature: 0.1 },
           outputSchema: { applied: "boolean", verified: "boolean" },
           retryPolicy: { maxRetries: 2, backoffMs: 5000 },
           requiresReview: true,
@@ -73,7 +73,7 @@ export const operationsDomainDefinition: DomainDefinition = {
         {
           stepName: "retrieve_runbook",
           toolHints: ["knowledge_retrieve"],
-          modelHints: { preferredModel: "claude-haiku", temperature: 0.2 },
+          modelHints: { preferredModel: "MiniMax-Text-01", temperature: 0.2 },
           outputSchema: { runbookId: "string", steps: "array" },
           retryPolicy: { maxRetries: 0, backoffMs: 0 },
           requiresReview: false,
@@ -83,7 +83,7 @@ export const operationsDomainDefinition: DomainDefinition = {
         {
           stepName: "execute_runbook",
           toolHints: ["execute"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.1 },
+          modelHints: { preferredModel: "MiniMax-M2.7", temperature: 0.1 },
           outputSchema: { completed: "boolean", verified: "boolean" },
           retryPolicy: { maxRetries: 2, backoffMs: 3000 },
           requiresReview: false,
@@ -102,7 +102,7 @@ export const operationsDomainDefinition: DomainDefinition = {
         {
           stepName: "fetch_metrics",
           toolHints: ["query_metrics"],
-          modelHints: { preferredModel: "claude-haiku", temperature: 0.0 },
+          modelHints: { preferredModel: "MiniMax-Text-01", temperature: 0.0 },
           outputSchema: { metrics: "array", anomalyDetected: "boolean" },
           retryPolicy: { maxRetries: 1, backoffMs: 2000 },
           requiresReview: false,
@@ -112,7 +112,7 @@ export const operationsDomainDefinition: DomainDefinition = {
         {
           stepName: "summarize_findings",
           toolHints: ["summarize"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.4 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.4 },
           outputSchema: { summary: "string", recommendations: "array" },
           retryPolicy: { maxRetries: 0, backoffMs: 0 },
           requiresReview: false,
@@ -166,8 +166,8 @@ export const operationsDomainDefinition: DomainDefinition = {
     requiredTools: ["diagnose", "fetch_logs", "knowledge_retrieve"],
     optionalTools: ["execute", "patch", "query_metrics"],
     modelPreferences: {
-      "incident_response": "claude-sonnet",
-      "runbook_execution": "claude-haiku",
+      "incident_response": "MiniMax-M2.7",
+      "runbook_execution": "MiniMax-Text-01",
     },
     budgetLimits: {
       maxTokensPerTask: 6000,

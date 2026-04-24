@@ -150,7 +150,8 @@ test("BenchmarkInventoryRecord type is correctly structured", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
-  const record: BenchmarkInventoryRecord = benchmarks[0];
+  const record: BenchmarkInventoryRecord | undefined = benchmarks.at(0);
+  assert.ok(record);
   assert.equal(typeof record.benchmarkId, "string");
   assert.equal(typeof record.architectureSection, "string");
   assert.equal(typeof record.category, "string");

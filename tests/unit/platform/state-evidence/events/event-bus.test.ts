@@ -110,7 +110,7 @@ test("TypedEventBus.subscribe filters events by type using deliverPending", asyn
       payload: {
         approvalId: "approval-match",
         reason: "test",
-        occurredAt: new Date().toISOString(),
+        requestedAt: new Date().toISOString(),
       },
     });
 
@@ -452,10 +452,10 @@ test("TypedEventBus rejects unknown event types", async () => {
 
     assert.throws(() => {
       bus.publish({
-        eventType: "nonexistent:event_type",
+        eventType: "nonexistent:event_type" as never,
         taskId: "task-unknown",
         executionId: "exec-unknown",
-        payload: { data: "test" },
+        payload: { data: "test" } as never,
       });
     }, (error: any) => {
       return error?.code === "event.schema_missing";

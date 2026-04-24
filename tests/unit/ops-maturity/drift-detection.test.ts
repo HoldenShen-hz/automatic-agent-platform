@@ -300,7 +300,7 @@ test("parsePolicyValue parses JSON value", () => {
   const policyRecord = {
     id: "policy_1",
     proposalId: "prop_1",
-    kind: "budget_adjustment",
+    kind: "budget_adjustment" as const,
     scopeType: "task_intent" as const,
     scopeRef: "test:v1",
     status: "active" as const,

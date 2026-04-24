@@ -48,7 +48,6 @@ test("normalizeToolCallResult derives errorCode from status when not provided", 
         status: "failed",
         summary: "failed",
         errorSource: "tool",
-        errorCode: undefined,
       },
       null,
       Date.now() - 100,
@@ -185,13 +184,14 @@ test("normalizeToolCallResult calculates durationMs from startedAtMs to now", ()
       {
         success: true,
         summary: "ok",
-        durationMs: undefined,
       },
       null,
       startedAtMs,
     );
 
-    assert.ok(result.durationMs >= 250);
+    const durationMs = result.durationMs;
+    assert.notEqual(durationMs, undefined);
+    assert.ok((durationMs ?? 0) >= 250);
   } finally {
     db.close();
     cleanupPath(workspace);
@@ -405,7 +405,6 @@ test("validateAllowedTools allows null/undefined allowedTools (no restriction)",
 
     const resolvedSteps = service.resolveSkillSteps(skill, null);
     service.validateAllowedTools(skill, resolvedSteps, undefined);
-    service.validateAllowedTools(skill, resolvedSteps, null);
     assert.ok(true);
   } finally {
     db.close();

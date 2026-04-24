@@ -15,7 +15,7 @@
               "stepName": "analyze",
               "toolHints": ["repo_map", "static_analysis"],
               "modelHints": {
-                "preferredModel": "gpt-5.2"
+                "preferredModel": "MiniMax-M2.7"
               },
               "outputSchema": null,
               "retryPolicy": {
@@ -87,7 +87,7 @@
         "requiredTools": ["repo_map", "patch_apply", "test_runner", "static_analysis", "file_read", "file_write", "shell_exec"],
         "optionalTools": ["git_log", "dependency_graph", "benchmark_runner"],
         "modelPreferences": {
-          "primary": "gpt-5.2"
+          "primary": "MiniMax-M2.7"
         },
         "budgetLimits": {
           "maxTokensPerTask": 12000,

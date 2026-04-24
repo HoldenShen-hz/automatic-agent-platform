@@ -10,6 +10,7 @@ import type {
   HitlQueueFilters,
   NotificationDispatchResult,
   HitlNotificationChannel,
+  HitlNotificationRoutingRule,
 } from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
 import type { ApprovalPacket } from "../../../../../src/platform/orchestration/hitl/hitl-approval-orchestration-service.js";
 
@@ -40,9 +41,16 @@ function createMockApprovalPacket(overrides: Partial<ApprovalPacket> = {}): Appr
     deadlineAt: null,
     timeoutPolicy: "reject",
     explanation: {
+      explanationId: "explanation-test-1",
+      taskId: "task-test-1",
+      executionId: "exec-test-1",
+      takeoverSessionId: null,
+      decisionType: "approval_required",
       summary: "Test explanation summary",
       factors: [],
-      confidence: 0.85,
+      recommendations: [],
+      confidenceScore: 0.85,
+      generatedAt: "2026-04-21T10:00:00.000Z",
       contextSnapshot: {
         taskId: "task-test-1",
         executionId: "exec-test-1",
@@ -103,10 +111,10 @@ class MockNotifier {
 
 class MockHitlOperatorConsoleService {
   public queue = new Map<string, HitlQueueItem>();
-  public routingRules: readonly import("../../../src/platform/orchestration/hitl/hitl-operator-console-service.js").HitlNotificationRoutingRule[] = [];
+  public routingRules: readonly HitlNotificationRoutingRule[] = [];
 
   public constructor(
-    routingRules: readonly import("../../../src/platform/orchestration/hitl/hitl-operator-console-service.js").HitlNotificationRoutingRule[] = [],
+    routingRules: readonly HitlNotificationRoutingRule[] = [],
     private notifier?: MockNotifier,
   ) {
     this.routingRules = routingRules;

@@ -43,7 +43,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "fetch_campaign_data",
           toolHints: ["crm_query", "analytics_fetch"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.3 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.3 },
           outputSchema: {
             campaignName: "string",
             reach: "string",
@@ -58,7 +58,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "analyze_variants",
           toolHints: ["abtest_query"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.2 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.2 },
           outputSchema: { variant: "string", lift: "string", confidence: "string" },
           retryPolicy: { maxRetries: 0, backoffMs: 0 },
           requiresReview: true,
@@ -68,7 +68,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "recommend_optimizations",
           toolHints: ["summarize"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.4 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.4 },
           outputSchema: { recommendations: "array", priority: "array" },
           retryPolicy: { maxRetries: 0, backoffMs: 0 },
           requiresReview: true,
@@ -87,7 +87,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "query_customer_segments",
           toolHints: ["crm_query"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.2 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.2 },
           outputSchema: { segments: "array", cohortData: "object" },
           retryPolicy: { maxRetries: 1, backoffMs: 2000 },
           requiresReview: false,
@@ -97,7 +97,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "analyze_funnel",
           toolHints: ["analytics_fetch"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.3 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.3 },
           outputSchema: { funnelStages: "array", dropoffRates: "array" },
           retryPolicy: { maxRetries: 0, backoffMs: 0 },
           requiresReview: false,
@@ -116,7 +116,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "research_playbooks",
           toolHints: ["knowledge_retrieve"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.4 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.4 },
           outputSchema: { relevantPlaybooks: "array", applicableContexts: "array" },
           retryPolicy: { maxRetries: 0, backoffMs: 0 },
           requiresReview: false,
@@ -126,7 +126,7 @@ export const growthDomainDefinition: DomainDefinition = {
         {
           stepName: "design_experiment",
           toolHints: ["plan"],
-          modelHints: { preferredModel: "claude-sonnet", temperature: 0.3 },
+          modelHints: { preferredModel: "MiniMax-M1", temperature: 0.3 },
           outputSchema: { hypothesis: "string", testDesign: "object", sampleSize: "number" },
           retryPolicy: { maxRetries: 1, backoffMs: 1000 },
           requiresReview: true,
@@ -188,9 +188,9 @@ export const growthDomainDefinition: DomainDefinition = {
     requiredTools: ["crm_query", "analytics_fetch", "knowledge_retrieve"],
     optionalTools: ["abtest_query", "summarize", "plan"],
     modelPreferences: {
-      "campaign_optimization": "claude-sonnet",
-      "customer_analytics": "claude-sonnet",
-      "growth_experiment": "claude-sonnet",
+      "campaign_optimization": "MiniMax-M1",
+      "customer_analytics": "MiniMax-M1",
+      "growth_experiment": "MiniMax-M1",
     },
     budgetLimits: {
       maxTokensPerTask: 8000,
