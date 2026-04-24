@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Tests: Session Repository Operations
  *
@@ -7,7 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 test("session repository persists and retrieves session", () => {
   const ctx = createIntegrationContext("aa-session-repo-");

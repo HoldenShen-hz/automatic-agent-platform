@@ -68,8 +68,8 @@ test("initializeMiddleware with default loop detection", () => {
 test("initializeMiddleware with explicit loop detection config", () => {
   const context = initializeMiddleware({
     loopDetection: {
-      maxRepeatCount: 5,
-      windowMs: 60000,
+      warnThreshold: 5,
+      escalateThreshold: 10,
     },
   });
   assert.ok(context.loopDetection, "Should have loopDetection object");
@@ -83,16 +83,16 @@ test("initializeMiddleware with null loop detection disables it", () => {
   assert.equal(context.loopDetection.state, null, "State should be null when loop detection is disabled");
 });
 
-test("initializeMiddleware with patterns", () => {
+test("initializeMiddleware with loop detection warn and escalate thresholds", () => {
   const context = initializeMiddleware({
     loopDetection: {
-      patterns: [
-        { pattern: "repeat", description: "Test pattern" },
-      ],
+      warnThreshold: 3,
+      escalateThreshold: 5,
+      askAtWarn: true,
+      terminateAtEscalate: true,
     },
   });
   assert.ok(context.loopDetection, "Should have loopDetection object");
-  assert.ok(typeof context.loopDetection.patterns === "function", "patterns should be a function");
 });
 
 test("initializeMiddleware loopDetection has getRepeatCount function", () => {
@@ -179,7 +179,7 @@ test("resetMiddleware clears the global chain hooks", () => {
 test("MiddlewareInitOptions accepts partial configuration", () => {
   const options: MiddlewareInitOptions = {
     loopDetection: {
-      maxRepeatCount: 10,
+      warnThreshold: 3,
     },
     failOpen: true,
   };
@@ -187,11 +187,11 @@ test("MiddlewareInitOptions accepts partial configuration", () => {
   assert.ok(context, "Should accept partial options");
 });
 
-test("MiddlewareInitOptions accepts undefined loopDetection", () => {
+test("MiddlewareInitOptions with explicit null loopDetection", () => {
   const context = initializeMiddleware({
-    loopDetection: undefined,
+    loopDetection: null,
   });
-  assert.ok(context, "Should accept undefined loopDetection");
+  assert.ok(context, "Should accept null loopDetection");
 });
 
 // ---------------------------------------------------------------------------

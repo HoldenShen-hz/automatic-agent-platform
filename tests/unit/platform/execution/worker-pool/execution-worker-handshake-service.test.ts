@@ -62,6 +62,7 @@ function createMockStore(): AuthoritativeTaskStore {
       getWorkflowState: () => null,
       updateWorkflowRecoveryState: () => {},
     },
+    listStaleWorkerSnapshots: () => [],
   } as unknown as AuthoritativeTaskStore;
 }
 
@@ -117,6 +118,43 @@ function makeWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): Work
     lastProgressAt: null,
     lastHeartbeatAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function makeExecutionLease(overrides: Partial<{
+  id: string;
+  executionId: string;
+  workerId: string;
+  fencingToken: number;
+  status: "active" | "expired" | "released" | "reclaimed" | "handed_over";
+}> = {}): {
+  id: string;
+  executionId: string;
+  workerId: string;
+  attempt: number;
+  fencingToken: number;
+  queueName: string | null;
+  status: "active" | "expired" | "released" | "reclaimed" | "handed_over";
+  leasedAt: string;
+  expiresAt: string;
+  lastHeartbeatAt: string | null;
+  releasedAt: string | null;
+  reasonCode: string | null;
+} {
+  return {
+    id: "lease-001",
+    executionId: "exec-001",
+    workerId: "worker-001",
+    attempt: 1,
+    fencingToken: 1,
+    queueName: null,
+    status: "active",
+    leasedAt: "2024-01-01T00:00:00.000Z",
+    expiresAt: "2024-01-02T00:00:00.000Z",
+    lastHeartbeatAt: null,
+    releasedAt: null,
+    reasonCode: null,
     ...overrides,
   };
 }
@@ -234,6 +272,8 @@ test("claimExecution returns execution_not_found when execution does not exist",
   const store = createMockStore();
   store.worker.getExecutionTicket = () => makeTicket();
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
+  store.worker.getLatestExecutionLease = () => makeExecutionLease();
+  store.worker.getActiveExecutionLease = () => makeExecutionLease();
   store.dispatch.getExecution = () => null;
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
@@ -254,6 +294,8 @@ test("claimExecution returns resource_limit_exceeded when resource ceiling guard
   const ticket = makeTicket();
   store.worker.getExecutionTicket = () => ticket;
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
+  store.worker.getLatestExecutionLease = () => makeExecutionLease();
+  store.worker.getActiveExecutionLease = () => makeExecutionLease();
   store.dispatch.getExecution = () => ({
     id: "exec-001",
     taskId: "task-001",
@@ -437,6 +479,8 @@ test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guar
     updatedAt: "2024-01-01T00:00:00.000Z",
   });
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
+  store.worker.getLatestExecutionLease = () => makeExecutionLease();
+  store.worker.getActiveExecutionLease = () => makeExecutionLease();
   store.worker.getAgentExecutionRecord = () => undefined;
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);

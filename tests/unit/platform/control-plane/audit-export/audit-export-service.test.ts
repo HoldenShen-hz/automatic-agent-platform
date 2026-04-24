@@ -115,14 +115,17 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
             if (sql.includes("FROM audit_exports WHERE status = ?")) {
               return Array.from(auditExports.values()).filter((r) => r.status === args[0]);
             } else if (sql.includes("FROM audit_exports ORDER BY")) {
-              return Array.from(auditExports.values());
+              const limit = (args[0] as number) ?? 50;
+              return Array.from(auditExports.values()).slice(0, limit);
             } else if (sql.includes("SELECT air.* FROM audit_integrity_records")) {
               const windowStart = args[0] as string;
               const windowEnd = args[1] as string;
-              return Array.from(integrityRecords.values()).filter((r) => {
-                return r.eventCreatedAt >= windowStart && r.eventCreatedAt <= windowEnd;
-              });
-            } else if (sql.includes("FROM events WHERE created_at >=")) {
+              return Array.from(integrityRecords.values())
+                .filter((r) => {
+                  return r.eventCreatedAt >= windowStart && r.eventCreatedAt <= windowEnd;
+                })
+                .sort((a, b) => a.chainPosition - b.chainPosition);
+            } else if (sql.includes("FROM events") && sql.includes("WHERE created_at >=")) {
               const windowStart = args[0] as string;
               const windowEnd = args[1] as string;
               const limit = (args[2] as number) ?? 10_000;
@@ -132,6 +135,35 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                   return createdAt >= windowStart && createdAt <= windowEnd;
                 })
                 .slice(0, limit);
+            } else if (sql.includes("GROUP BY event_tier")) {
+              const windowStart = args[0] as string;
+              const windowEnd = args[1] as string;
+              const rows = Array.from(events.values()).filter((e) => {
+                const createdAt = e.created_at as string;
+                return createdAt >= windowStart && createdAt <= windowEnd;
+              });
+              const tierCounts: Record<string, number> = {};
+              for (const row of rows) {
+                const tier = String(row.event_tier ?? "");
+                tierCounts[tier] = (tierCounts[tier] ?? 0) + 1;
+              }
+              return Object.entries(tierCounts).map(([event_tier, cnt]) => ({ event_tier, cnt }));
+            } else if (sql.includes("GROUP BY event_type")) {
+              const windowStart = args[0] as string;
+              const windowEnd = args[1] as string;
+              const rows = Array.from(events.values()).filter((e) => {
+                const createdAt = e.created_at as string;
+                return createdAt >= windowStart && createdAt <= windowEnd;
+              });
+              const typeCounts: Record<string, number> = {};
+              for (const row of rows) {
+                const type = String(row.event_type ?? "");
+                typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+              }
+              return Object.entries(typeCounts)
+                .map(([event_type, cnt]) => ({ event_type, cnt }))
+                .sort((a, b) => b.cnt - a.cnt)
+                .slice(0, 10);
             }
             return [];
           },
@@ -434,7 +466,14 @@ test("summarizeWindow correctly counts events by tier", () => {
     { id: "evt-4", event_type: "task:failed", event_tier: "tier_3", created_at: "2026-04-25T00:00:00.000Z" },
   ]);
 
+  // Debug: check what's in events
+  const eventsMap = (db as any)._events;
+  console.log("DEBUG events size:", eventsMap?.size);
+  console.log("DEBUG events:", Array.from(eventsMap?.values() ?? []));
+
   const summary = service.summarizeWindow("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
+
+  console.log("DEBUG summary:", summary);
 
   assert.equal(summary.totalEvents, 4);
   assert.equal(summary.tier1Count, 2);

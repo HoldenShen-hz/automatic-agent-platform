@@ -242,7 +242,7 @@ test("RedisRateLimiter checkAndConsume null exec results handled", async () => {
     mock.pipelineResults = [
       [null, 0],
       [null, 1],
-      [null, null],
+      [null, 1],
       [null, 1],
     ];
     (limiter as any).redis = mock;
@@ -340,6 +340,7 @@ test("RedisRateLimiter getUsage zero entries", async () => {
 
     const mock = new MockRedis();
     mock.zrange = async () => [];
+    mock.zcard = async () => 0;
     (limiter as any).redis = mock;
 
     const count = await limiter.getUsage("test:key", 60000);

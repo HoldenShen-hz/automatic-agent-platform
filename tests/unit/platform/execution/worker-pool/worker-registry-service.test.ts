@@ -64,6 +64,9 @@ function createMockStore(
         (s) => s.lastHeartbeatAt < heartbeatBefore
       ),
     },
+    listStaleWorkerSnapshots: (heartbeatBefore: string) => Array.from(workerSnapshots.values()).filter(
+      (s) => s.lastHeartbeatAt < heartbeatBefore
+    ),
   } as unknown as AuthoritativeTaskStore;
 }
 

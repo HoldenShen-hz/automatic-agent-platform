@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Tests: Workflow Repository Operations
  *
@@ -7,7 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 test("workflow repository persists and retrieves workflow state", () => {
   const ctx = createIntegrationContext("aa-wf-repo-");

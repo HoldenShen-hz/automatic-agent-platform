@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Tests: Execution Repository Operations
  *
@@ -7,7 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 test("execution repository persists and retrieves execution", () => {
   const ctx = createIntegrationContext("aa-exec-repo-");

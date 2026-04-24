@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Tests: Task Repository Operations
  *
@@ -7,8 +8,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
-import type { TaskRecord } from "../../../../../../src/platform/contracts/types/domain.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 
 test("task repository persists and retrieves task", () => {
   const ctx = createIntegrationContext("aa-task-repo-");

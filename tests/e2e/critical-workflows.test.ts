@@ -189,7 +189,6 @@ test("E2E Critical: task completes successfully through full lifecycle pipeline"
     assert.equal(exec?.status, "succeeded", "Execution should be succeeded");
     assert.ok(exec?.finishedAt, "Execution should have finishedAt");
 
-    harness.db.close();
   } finally {
     harness.cleanup();
   }
@@ -297,8 +296,7 @@ test("E2E Critical: task fails mid-execution and reaches failed terminal state",
     const exec = harness.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -460,8 +458,7 @@ test("E2E Critical: multi-step workflow executes all steps in dependency order",
     const task = harness.store.getTask(taskId);
     assert.equal(task?.status, "done", "Task should complete after all steps");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -623,8 +620,7 @@ test("E2E Critical: task with retry recovers from transient failure", async () =
     const workflow = harness.store.getWorkflowState(taskId);
     assert.equal(workflow?.status, "completed", "Workflow should be completed");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -745,8 +741,7 @@ test("E2E Critical: execution superseded by new attempt", async () => {
     assert.equal(exec2?.parentExecutionId, executionId1, "Second execution should reference parent");
     assert.equal(exec2?.attempt, 2, "Second execution should be attempt 2");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -816,8 +811,7 @@ test("E2E Critical: cancelled task cannot transition to any other state", async 
       "Should not allow cancelled to done",
     );
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -931,6 +925,17 @@ test("E2E Critical: execution blocked for approval and resumes after approval", 
     });
 
     // Session transitions to awaiting_user
+    ts.transitionSessionStatus({
+      entityKind: "session",
+      entityId: sessionId,
+      fromStatus: "streaming",
+      toStatus: "awaiting_user",
+      reasonCode: "approval.required",
+      traceId,
+      actorType: "system",
+      occurredAt: nowIso(),
+    });
+
     let task = harness.store.getTask(taskId);
     assert.equal(task?.status, "awaiting_decision", "Task should be awaiting_decision");
 
@@ -979,8 +984,7 @@ test("E2E Critical: execution blocked for approval and resumes after approval", 
     task = harness.store.getTask(taskId);
     assert.equal(task?.status, "done", "Task should complete after approval");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -1105,8 +1109,7 @@ test("E2E Critical: terminal state transition cascades to all entities", async (
     assert.equal(exec?.status, "failed", "Execution should be failed");
     assert.ok(exec?.finishedAt != null, "Execution should have finishedAt");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
@@ -1274,8 +1277,7 @@ test("E2E Critical: complete workflow with pause and resume", async () => {
     const task = harness.store.getTask(taskId);
     assert.equal(task?.status, "done", "Task should complete after resume");
 
-    harness.db.close();
-  } finally {
+    } finally {
     harness.cleanup();
   }
 });
