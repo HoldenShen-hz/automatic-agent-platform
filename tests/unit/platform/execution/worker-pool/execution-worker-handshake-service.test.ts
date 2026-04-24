@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ExecutionWorkerHandshakeService } from "../../../../../src/platform/execution/worker-pool/execution-worker-handshake-service.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 import type { ExecutionTicketRecord, WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
@@ -298,11 +299,11 @@ test("claimExecution returns execution_not_found when execution does not exist",
 
 test("claimExecution returns resource_limit_exceeded when resource ceiling guard fails", () => {
   const store = createMockStore({
-    getLatestExecutionLease: () => makeExecutionLease(),
-    getActiveExecutionLease: () => makeExecutionLease(),
-    getExecutionTicket: () => makeTicket(),
-    getWorkerSnapshot: () => makeWorkerSnapshot(),
-    dispatchGetExecution: () => ({
+    getLatestExecutionLease: (execId: string) => execId === "exec-001" ? makeExecutionLease() : null,
+    getActiveExecutionLease: (execId: string) => execId === "exec-001" ? makeExecutionLease() : null,
+    getExecutionTicket: (ticketId: string) => ticketId === "ticket-001" ? makeTicket() : null,
+    getWorkerSnapshot: (workerId: string) => workerId === "worker-001" ? makeWorkerSnapshot() : null,
+    dispatchGetExecution: (execId: string) => execId === "exec-001" ? ({
       id: "exec-001",
       taskId: "task-001",
       workflowId: "wf-001",
@@ -328,10 +329,12 @@ test("claimExecution returns resource_limit_exceeded when resource ceiling guard
       finishedAt: null,
       createdAt: "2024-01-01T00:00:00.000Z",
       updatedAt: "2024-01-01T00:00:00.000Z",
-    }),
+    }) : null,
   });
   const db = createMockDb();
-  const service = new ExecutionWorkerHandshakeService(db, store);
+  // Create a guard with explicit memory limit so the test triggers the resource limit
+  const resourceGuard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 2048 });
+  const service = new ExecutionWorkerHandshakeService(db, store, { resourceCeilingGuard: resourceGuard });
 
   const result = service.claimExecution({
     ticketId: "ticket-001",
@@ -458,11 +461,11 @@ test("recordHeartbeat returns worker_not_trusted for remote worker without regis
 
 test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guard fails", () => {
   const store = createMockStore({
-    getLatestExecutionLease: () => makeExecutionLease(),
-    getActiveExecutionLease: () => makeExecutionLease(),
-    getWorkerSnapshot: () => makeWorkerSnapshot(),
-    getAgentExecutionRecord: () => undefined,
-    dispatchGetExecution: () => ({
+    getLatestExecutionLease: (execId: string) => execId === "exec-001" ? makeExecutionLease() : null,
+    getActiveExecutionLease: (execId: string) => execId === "exec-001" ? makeExecutionLease() : null,
+    getWorkerSnapshot: (workerId: string) => workerId === "worker-001" ? makeWorkerSnapshot() : null,
+    getAgentExecutionRecord: (execId: string) => execId === "exec-001" ? undefined : null,
+    dispatchGetExecution: (execId: string) => execId === "exec-001" ? ({
       id: "exec-001",
       taskId: "task-001",
       workflowId: "wf-001",
@@ -488,10 +491,12 @@ test("recordHeartbeat returns resource_limit_exceeded when resource ceiling guar
       finishedAt: null,
       createdAt: "2024-01-01T00:00:00.000Z",
       updatedAt: "2024-01-01T00:00:00.000Z",
-    }),
+    }) : null,
   });
   const db = createMockDb();
-  const service = new ExecutionWorkerHandshakeService(db, store);
+  // Create a guard with explicit memory limit so the test triggers the resource limit
+  const resourceGuard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 2048 });
+  const service = new ExecutionWorkerHandshakeService(db, store, { resourceCeilingGuard: resourceGuard });
 
   const result = service.recordHeartbeat({
     executionId: "exec-001",

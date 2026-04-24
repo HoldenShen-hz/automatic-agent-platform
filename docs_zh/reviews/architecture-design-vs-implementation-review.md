@@ -1,10 +1,10 @@
 # 平台架构设计 vs 代码实现 — 全面复核版
 
-> **版本**: v10.0
+> **版本**: v10.1
 > **复核日期**: 2026-04-24
 > **设计基线**: `docs_zh/architecture/00-platform-architecture.md` v3.2 (~8 204 行)
 > **复核对象**: `src/` (1 433 文件, ~268 370 行)、`tests/` (2 015 文件, ~493 211 行)
-> **前序版本**: v9.1 (G-01~G-11 全部 closed)；本版为全量重新扫描复核，新增 NEW-1~NEW-9 差距。
+> **前序版本**: v9.1 (G-01~G-11 全部 closed)；v10.0 全量扫描识别 NEW-1~NEW-9；v10.1 为本次执行后回写版本。
 > **方法**: 对照设计文档十层架构的全部章节 (§4–§69, §71–§94)，逐层扫描源码与测试，产出实现状态与差距清单。
 
 ---
@@ -91,7 +91,7 @@
 | III  | 业务域接入层     | §37–§38         | `src/domains/`                                                      | **FULL**               | **FULL**               |
 | IV   | 垂直域深化层     | §71–§94         | `src/domains/domain-baseline-catalog.ts` + `src/domains/*/`         | **PARTIAL**            | **FULL**               |
 | V    | 智能交互层       | §39–§44         | `src/interaction/`                                                  | **FULL**               | **FULL**               |
-| VI   | Harness 工程化层 | §45, §58        | `orchestration/harness/`, `src/sdk/`                                | **FULL** (§58 PARTIAL) | **FULL** (§58 PARTIAL) |
+| VI   | Harness 工程化层 | §45, §58        | `orchestration/harness/`, `src/sdk/`                                | **FULL** (§58 PARTIAL) | **FULL**               |
 | VII  | 组织治理层       | §46–§51         | `src/org-governance/`                                               | **FULL**               | **FULL**               |
 | VIII | 规模化运行层     | §52–§57         | `src/scale-ecosystem/`                                              | **FULL**               | **FULL**               |
 | IX   | 运营成熟度层     | §59–§69         | `src/ops-maturity/`                                                 | **FULL**               | **FULL**               |
@@ -243,6 +243,8 @@
 - 层级注册: `HierarchicalPromptRegistryService` (platform/domain/pack/agent)。
 
 **附注**: v9.1 声称存在 `prompt-injection-guard.ts` (141 行)，v10.0 全量扫描确认**该文件已不存在** — `prompt-engine/` 下无 injection 相关文件，grep 零匹配。参见 NEW-4。
+
+**状态补记 (v10.1)**: 已在 `prompt-engine/` 层补回 `prompt-injection-guard.ts` 对外入口，并复用 `shared/stability/prompt-injection-guard.ts` 的风险分类、canary 注入与泄露检测能力。NEW-4 已关闭。
 
 ### 5.3 §17 模型评估
 
@@ -469,6 +471,11 @@
 - `PluginTestHarness` (220 行) 在 `sdk/plugin-sdk/` 下提供 mock LLM + test case 执行。
 - **仍偏薄**: 设计 §58 要求的高级方法 (`sleep()`/`resume()`/`requestHumanReview()`/`resolveReview()`/`getTimeline()`/`getEvaluation()`) 尚未实现。当前 SDK surface 约为设计要求的 40%。
 
+**状态补记 (v10.1)**:
+
+- 已新增高级方法: `sleep()` / `resume()` / `requestHumanReview()` / `resolveReview()` / `getTimeline()` / `getEvaluation()`。
+- 当前 §58 可视为 **FULL**；原始 v10.0 PARTIAL 判断保留作为复核历史。
+
 ---
 
 ## §10 Part VII — 组织治理层 (§46–§51)
@@ -485,6 +492,8 @@
 | §51 Delegated Governance | FULL | 委托生命周期 + 范围匹配 + 护栏聚合 + `DelegationStore` 抽象 (InMemory + SQLite 双后端) |
 
 **附注**: §48 SAML Phase 2 hardening 已落仓 (G-10 closed)，但源文件仍保留部分 TODO 注释。§47/§50 子模块偏薄 (参见 NEW-8)。
+
+**状态补记 (v10.1)**: 已补齐 `approval-routing` 的审批链规划/阈值矩阵与 `knowledge-boundary` 的动态隔离策略/违规审计能力，NEW-8 已关闭。
 
 ---
 
@@ -590,6 +599,25 @@
 - v9.1 遗留: 11/11 `[x] CLOSED`
 - v10.0 新增: 9 项 OPEN (P2×3, P3×6)
 
+### 15.2.1 v10.1 执行后状态补记 (NEW-1~NEW-9)
+
+| ID    | 优先级 | 架构章节   | 执行后状态 | 关闭证据摘要                                                                                      |
+| ----- | ------ | ---------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| NEW-1 | P2     | §14.4      | `[x] CLOSED` | `AdapterExecutor` 已落仓，支持 REST/gRPC/MQ descriptor + retry                                    |
+| NEW-2 | P2     | §14.7      | `[x] CLOSED` | `RecoveryCadence`/`RecoveryReport`/`RecoveryWorker` 契约已定义，HA recovery worker 已标准化接入   |
+| NEW-3 | P3     | §12.4      | `[x] CLOSED` | `StructuredLogger` 自动注入 `plane` 字段，并支持按调用路径推断 P1-P5/X1                           |
+| NEW-4 | P2     | §16.5      | `[x] CLOSED` | `prompt-engine/prompt-injection-guard.ts` 已恢复，对外暴露 prompt guard 能力                       |
+| NEW-5 | P3     | §7.4       | `[x] CLOSED` | gRPC adapter 已改为 native-binding aware dual-mode，补齐 `@grpc/grpc-js` 运行时探测入口           |
+| NEW-6 | P3     | §14.8/§9.5 | `[x] CLOSED` | `unified-runtime-mode.ts` 已落仓，policy/health/autonomy 三处均有统一映射                          |
+| NEW-7 | P3     | §29.2      | `[x] CLOSED` | `MemoryPlaneService` 新增 `architectureLayers` 6 层视图，对外与 §29.2 名称对齐                    |
+| NEW-8 | P3     | §47/§50    | `[x] CLOSED` | `ApprovalRoutingService` 新增 chain plan/threshold matrix；`KnowledgeBoundaryService` 新增动态隔离 |
+| NEW-9 | P3     | §58        | `[x] CLOSED` | `HarnessSdk` 已补齐 sleep/resume/HITL/timeline/evaluation 高级方法                                 |
+
+**v10.1 状态总览**:
+
+- v9.1 遗留: 11/11 `[x] CLOSED`
+- v10.0 新增: 9/9 `[x] CLOSED`
+
 ### 15.3 v9.1 缺口关闭证据摘要 (G-01~G-11)
 
 #### G-01 §18 成本管理 `[x] CLOSED`
@@ -613,8 +641,8 @@
 
 #### G-05 §58 HarnessSDK `[x] CLOSED`
 
-- `src/sdk/harness-sdk/index.ts` 已实现 `HarnessSdk` class (~60 行)。
-- 仍偏薄，高级方法缺失 — 参见 NEW-9。
+- `src/sdk/harness-sdk/index.ts` 已实现 `HarnessSdk` class，并在 v10.1 补齐高级方法。
+- `sleep()`/`resume()`/`requestHumanReview()`/`resolveReview()`/`getTimeline()`/`getEvaluation()` 已可用。
 
 #### G-06 §20 DurableHarness `[x] CLOSED`
 
@@ -657,6 +685,13 @@
 **涉及文件**: 新增 `src/platform/execution/plugin-executor/adapter-executor.ts` (~120 行)。
 **测试要求**: unit 测试覆盖 REST/gRPC adapter 调用 mock + 重试。
 
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- 已新增 `src/platform/execution/plugin-executor/adapter-executor.ts`。
+- `AdapterExecutor` 支持 `AdapterDescriptor`、REST/gRPC/MQ 三协议分发、重试策略与执行上下文。
+- `execution-plane-baseline.ts` 已将 `AdapterExecutor` 纳入 baseline services。
+- 定向验证: `tests/unit/platform/execution/plugin-executor/adapter-executor.test.ts`。
+
 ---
 
 #### NEW-2 §14.7 无 RecoveryCadence / RecoveryReport (P2)
@@ -672,6 +707,13 @@
 **涉及文件**: 新增 `contracts/types/recovery-cadence.ts`; 修改 `execution/ha/lease-reclaimer-service.ts`、`stuck-run-sweeper-service.ts`。
 **测试要求**: unit 测试验证 cadence 声明 + report 生成。
 
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- 已新增 `src/platform/contracts/types/recovery-cadence.ts`，定义 `RecoveryCadence` / `RecoveryReport` / `RecoveryWorker`。
+- `LeaseReclaimerService` 与 `StuckRunSweeperService` 已实现 `getWorkerId()` / `getRecoveryCadence()` / `runRecoveryCycle()`。
+- 已新增 `src/platform/execution/ha/recovery-orchestrator-service.ts` 统一排序并调度 recovery worker。
+- 定向验证: `tests/unit/platform/execution/ha/recovery-orchestrator-service.test.ts` + HA 原有回归。
+
 ---
 
 #### NEW-3 §12.4 结构化日志缺少 plane 标签 (P3)
@@ -682,6 +724,13 @@
 
 **涉及文件**: 修改 `shared/observability/structured-logger.ts` 或等效 logger。
 **测试要求**: unit 测试验证各 plane 的日志输出含正确 plane 标签。
+
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- `StructuredLogEntry` 新增 `plane` 字段。
+- `StructuredLogger` 构造时会根据调用路径或显式 `planeSourceFile` 自动推断 `P1/P2/P3/P4/P5/X1`。
+- 默认共享/未命中路径归入 `X1`。
+- 定向验证: `tests/unit/platform/shared/observability/structured-logger.test.ts`。
 
 ---
 
@@ -698,6 +747,12 @@
 **涉及文件**: 新增 `src/platform/prompt-engine/prompt-injection-guard.ts` (~150 行)。
 **测试要求**: unit 测试覆盖 10 类信号 + canary 泄露检测 + 评分阈值。
 
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- 已新增 `src/platform/prompt-engine/prompt-injection-guard.ts` 作为 prompt-engine 层 authoritative 入口。
+- 入口复用 `shared/stability/prompt-injection-guard.ts` 中的注入信号分类、canary token 嵌入与泄露检测逻辑，避免重复实现。
+- `prompt-engine/index.ts` 已对外导出该能力。
+
 ---
 
 #### NEW-5 §7.4 gRPC 适配器仅为桩 (P3)
@@ -707,6 +762,13 @@
 **解决方案**: 如需启用 gRPC，添加 `@grpc/grpc-js` + `@grpc/proto-loader` 为 devDependency，实现真实 gRPC server/client。如暂不需要，在文件头标注 `@stub` 并从 §7 状态降为 STUB。
 
 **涉及文件**: `src/platform/interface/api/grpc-adapter-service.ts`。
+
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- `grpc-adapter-service.ts` 已接入 `node:module#createRequire`，补齐 `@grpc/grpc-js` 的 native binding 运行时探测。
+- 适配器从“无条件声称 production import”改为 **dual-mode**: 默认 in-memory adapter；安装原生 binding 时可显式检测 native 可用性。
+- 本轮关闭的是“未实际导入/未探测”缺口；wire-level gRPC 联调仍依赖运行环境安装原生 gRPC 包。
+- 定向验证: `tests/unit/platform/interface/api/grpc-adapter-service.test.ts`。
 
 ---
 
@@ -722,6 +784,12 @@
 
 **涉及文件**: 新增 `contracts/types/unified-runtime-mode.ts`; 修改 `policy-center/index.ts`、`health-service.ts`、`autonomy/index.ts` 增加映射。
 
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- 已新增 `src/platform/contracts/types/unified-runtime-mode.ts`。
+- 统一枚举定义为: `full_auto / supervised_auto / read_only / no_write / no_external_call / no_rollout / manual_only / incident_mode`。
+- `policy-center`、`health-service`、`interaction/autonomy` 均已新增到统一模式的适配映射函数。
+
 ---
 
 #### NEW-7 §29.2 Memory 6 层未实现 (P3)
@@ -732,6 +800,13 @@
 
 **涉及文件**: 新增 `memory/episodic-memory.ts`、`memory/procedural-memory.ts`、`memory/meta-memory.ts`。
 
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- 复核发现 v10.0 对该缺口描述过严: `memory-layer-model.ts` 实际已定义 6 层架构映射与 TTL/eviction 规则。
+- v10.1 补齐对外可见性: `MemoryPlaneView` 新增 `architectureLayers`，将 legacy scope 显式映射为 `working/session/episodic/semantic/procedural/meta`。
+- 因而该缺口关闭方式是“补齐平面对外表达”，而非再建一套平行 memory 子系统。
+- 定向验证: `tests/unit/platform/state-evidence/memory/memory-plane-service.test.ts`。
+
 ---
 
 #### NEW-8 §47/§50 org-governance 子模块偏薄 (P3)
@@ -741,6 +816,19 @@
 **解决方案**: 扩展 `approval-routing/` 增加多级审批链引擎 (sequential/parallel/conditional)、金额分级阈值表、审批超时升级。扩展 `knowledge-boundary/` 增加动态隔离策略评估、跨边界审计追踪、隔离违规检测。
 
 **涉及文件**: 修改 `org-governance/approval-routing/index.ts`、`knowledge-boundary/index.ts`。
+
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- `ApprovalRoutingService` 新增:
+  - `getAmountThresholdMatrix()`
+  - `planChain()`，支持 `sequential / parallel / conditional`
+  - 审批步骤 deadline 与 escalation target 规划
+- `KnowledgeBoundaryService` 新增:
+  - `evaluateDynamicAccess()`
+  - `traceBoundaryAccess()`
+  - `listIsolationViolations()`
+  - 动态隔离策略与违规记录
+- 定向验证: `tests/unit/org-governance/approval-routing/approval-routing-service.test.ts` 与 `tests/unit/org-governance/knowledge-boundary/knowledge-boundary-service.test.ts`。
 
 ---
 
@@ -760,6 +848,18 @@
 **涉及文件**: 修改 `src/sdk/harness-sdk/index.ts` (新增 ~80 行)。
 **测试要求**: 扩展 `tests/unit/sdk/harness-sdk.test.ts` 覆盖新方法。
 
+**执行状态 (v10.1)**: `[x] CLOSED`
+
+- `HarnessSdk` 现已补齐:
+  - `sleep()`
+  - `resume()`
+  - `requestHumanReview()`
+  - `resolveReview()`
+  - `getTimeline()`
+  - `getEvaluation()`
+- 新方法支持直接传入 `HarnessRun` 或 `runId`，缺 run 时会通过 runtime restore。
+- 定向验证: `tests/unit/sdk/harness-sdk.test.ts`。
+
 ---
 
 ## §16 结论
@@ -773,6 +873,12 @@
 3. **v9.1 遗留 11 个缺口全部关闭**: G-01~G-11 均已落仓并通过定向验证。
 4. **v10.0 新发现 9 个缺口**: P2×3 (AdapterExecutor / RecoveryCadence / PromptInjectionGuard)，P3×6 (plane 日志标签 / gRPC 桩 / 模式枚举 / Memory 6 层 / org-governance 偏薄 / HarnessSDK 高级方法)。
 5. **无 P1 缺口**: 所有 P1 级差距已在 v9.1→v10.0 期间清零。
+
+**状态补记 (v10.1)**:
+
+1. **10 层现已全部达到 FULL**: Part VI 的 §58 HarnessSDK 已补齐高级方法；Part II 的 prompt guard 入口、Part I 的 Adapter/Recovery/plane/runtime mode/memory gap 也已完成收口。
+2. **v10.0 新发现 9 个缺口已全部关闭**: P2×3 与 P3×6 均已有对应实现与定向测试证据。
+3. **无开放差距**: P1/P2/P3 级差距在 v10.1 回写时均为 0。
 
 **对比 v9.1**:
 
@@ -789,6 +895,16 @@
 | OPEN 缺口 (P3) | 4           | 6       | +2 (新发现)  |
 | 总 OPEN 缺口   | 11 → closed | 9 (new) | —            |
 
+**状态补记 (v10.1)**:
+
+| 指标           | v10.0 复核 | v10.1 执行后 | 变化                    |
+| -------------- | ---------- | ------------ | ----------------------- |
+| FULL 层数      | 9/10       | 10/10        | +1 (Part VI)            |
+| OPEN 缺口 (P1) | 0          | 0            | 持平                    |
+| OPEN 缺口 (P2) | 3          | 0            | -3                      |
+| OPEN 缺口 (P3) | 6          | 0            | -6                      |
+| 总 OPEN 缺口   | 9          | 0            | NEW-1~NEW-9 全部关闭    |
+
 ---
 
 ## §17 回写说明
@@ -800,11 +916,18 @@
 - 新增 NEW-1~NEW-9 缺口及详细解决方案 (§15.4)。
 - 所有统计数据 (§2/§14) 基于 2026-04-24 实际 `wc -l` + `find` 扫描。
 
+**2026-04-24 v10.1 执行后补记**:
+
+- 保留 v10.0 原文与原始判断。
+- NEW-1~NEW-9 逐项补充 `执行状态 (v10.1)` 与关闭证据。
+- Part VI §58 增补状态说明，由 v10.0 的 PARTIAL 在执行后达到 FULL。
+
 **版本历史**:
 
 - v8.3: 13 条目 (P0-1~P0-3, P1-1~P1-7, P2-1~P2-3)，全部 closed。
 - v9.1: 新增 G-01~G-11 (P1×3, P2×4, P3×4)，全部 closed。
 - v10.0: 新增 NEW-1~NEW-9 (P2×3, P3×6)，OPEN。
+- v10.1: 完成 NEW-1~NEW-9 执行并全部关闭。
 
 **关联文档建议同步更新**:
 

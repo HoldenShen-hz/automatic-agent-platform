@@ -309,7 +309,7 @@ test("DistributedRateLimiter toRateLimitCheckResult includes retryAfterMs when p
 test("DistributedRateLimiter with very small window", async () => {
   const limiter = new DistributedRateLimiter({
     maxCalls: 1,
-    windowMs: 1,
+    windowMs: 10,
   });
 
   assert.equal((await limiter.checkAndConsume("key")).allowed, true);

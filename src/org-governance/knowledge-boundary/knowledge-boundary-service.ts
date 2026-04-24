@@ -60,7 +60,7 @@ export class KnowledgeBoundaryService {
       requesterOrgNodeId,
       purpose,
       grants,
-      ...(chineseWallPolicy != null ? { chineseWallPolicy } : {}),
+      ...(chineseWallPolicy !== undefined ? { chineseWallPolicy } : {}),
       occurredAt,
     });
   }
