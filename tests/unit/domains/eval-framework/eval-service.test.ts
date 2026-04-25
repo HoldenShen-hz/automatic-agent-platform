@@ -442,7 +442,20 @@ test("LlmEvalService.runCiGate reports regressions", () => {
     ],
   });
 
-  const result = service.runCiGate(suite.id, "model_v1", "v2.0.0");
+  const baseline = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
+    evaluator: () => ({ actualOutput: "baseline", score: 1, passed: true, latencyMs: 5 }),
+  });
+  assert.equal(baseline.passed, true);
+
+  const result = service.runCiGate(suite.id, "model_v1", "v2.0.0", {
+    baselinePromptVersion: "v1.0.0",
+    evaluator: ({ caseDefinition }) => ({
+      actualOutput: caseDefinition.id === "c1" ? "mismatch" : caseDefinition.expectedOutput,
+      score: caseDefinition.id === "c1" ? 0 : 1,
+      passed: caseDefinition.id !== "c1",
+      latencyMs: 5,
+    }),
+  });
 
   assert.equal(result.passed, false);
   assert.ok(result.regressions.length > 0);
@@ -478,12 +491,19 @@ test("LlmEvalService.runCiGate respects passingVerdicts option", () => {
       { id: "c1", input: "a", expectedOutput: "b" },
       { id: "c2", input: "c", expectedOutput: "d" },
       { id: "c3", input: "e", expectedOutput: "f" },
+      { id: "c4", input: "g", expectedOutput: "h" },
+      { id: "c5", input: "i", expectedOutput: "j" },
     ],
   });
 
-  // 2/3 pass = degraded verdict
   const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
     passingVerdicts: ["pass"],
+    evaluator: ({ caseDefinition }) => ({
+      actualOutput: caseDefinition.id === "c5" ? "mismatch" : caseDefinition.expectedOutput,
+      score: caseDefinition.id === "c5" ? 0 : 1,
+      passed: caseDefinition.id !== "c5",
+      latencyMs: 5,
+    }),
   });
 
   assert.equal(result.passed, false);

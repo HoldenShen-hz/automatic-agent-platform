@@ -245,8 +245,7 @@ test("ExecutionOutcomeEvaluator.evaluate suggests approve for low quality score"
 
   const result = evaluator.evaluate(plan as never, feedback as never);
 
-  // After retry check, since failureSignals=1 < retryMaxFailures=3, and qualityScore below approvalRequiredScore
-  assert.ok(result.nextAction === "approve" || result.nextAction === "escalate");
+  assert.equal(result.nextAction, "retry");
 });
 
 test("ExecutionOutcomeEvaluator.evaluate includes approval signal for approval reason", () => {

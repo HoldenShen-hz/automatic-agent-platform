@@ -281,7 +281,9 @@ test("HrRoleGovernanceService validateProposal warns for read-only role", () => 
 });
 
 test("HrRoleGovernanceService submitProposal returns null approvalRequest when validation fails", () => {
-  const registry = makeMockDivision([]);
+  const registry = makeMockDivision([
+    { id: "existing_role", name: "Existing Role", tools: ["read"] },
+  ]);
   const mockApprovalService = {
     createRequest: () => ({ id: "approval_1" } as any),
   };
@@ -347,7 +349,9 @@ test("HrRoleGovernanceService registerApprovedRole throws when not approved", ()
 });
 
 test("HrRoleGovernanceService registerApprovedRole throws when proposal invalid", () => {
-  const registry = makeMockDivision([]);
+  const registry = makeMockDivision([
+    { id: "existing_role", name: "Existing Role", tools: ["read"] },
+  ]);
   const service = new HrRoleGovernanceService(registry, null);
 
   assert.throws(

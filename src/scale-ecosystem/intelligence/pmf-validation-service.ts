@@ -200,6 +200,14 @@ export class PmfValidationService {
        FROM tasks
        ${taskFilters.whereClause}`,
       taskFilters.parameters,
+      {
+        taskCount: 0,
+        terminalTaskCount: 0,
+        successfulTaskCount: 0,
+        divisionCount: 0,
+        crossDivisionTaskCount: 0,
+        averageSuccessfulTaskCostUsd: null,
+      },
     );
 
     // Query session activation counts
@@ -214,6 +222,10 @@ export class PmfValidationService {
        INNER JOIN tasks t ON t.id = s.task_id
        ${sessionFilters.whereClause}`,
       sessionFilters.parameters,
+      {
+        sessionCount: 0,
+        activationSessionCount: 0,
+      },
     );
 
     // Query repeat usage (root workloads with multiple tasks)
@@ -231,6 +243,10 @@ export class PmfValidationService {
          GROUP BY root_id
        )`,
       taskFilters.parameters,
+      {
+        rootCount: 0,
+        repeatedRootCount: 0,
+      },
     );
 
     // Query approval resolution rates
@@ -244,6 +260,10 @@ export class PmfValidationService {
        FROM approvals a
        ${approvalFilters.whereClause}`,
       approvalFilters.parameters,
+      {
+        approvalCount: 0,
+        resolvedApprovalCount: 0,
+      },
     );
 
     // Query step durations for P95 calculation
@@ -572,7 +592,24 @@ export class PmfValidationService {
   }
 
   /** Executes a SELECT query and returns the first row as the specified type */
-  private selectRow<T>(sql: string, parameters: ReadonlyArray<string | number | null>): T {
-    return this.db.connection.prepare(sql).get(...parameters) as T;
+  private selectRow<T extends Record<string, unknown>>(
+    sql: string,
+    parameters: ReadonlyArray<string | number | null>,
+    defaults: T,
+  ): T {
+    const row = this.db.connection.prepare(sql).get(...parameters) as Record<string, unknown> | null;
+    if (row == null) {
+      return { ...defaults };
+    }
+
+    const normalized: Record<string, unknown> = { ...defaults };
+    for (const [key, value] of Object.entries(row)) {
+      normalized[key] = value == null
+        ? defaults[key]
+        : typeof value === "number" && !Number.isFinite(value)
+          ? defaults[key]
+          : value;
+    }
+    return normalized as T;
   }
 }

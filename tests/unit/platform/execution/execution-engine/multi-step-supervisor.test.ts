@@ -289,7 +289,7 @@ function createMockInput(overrides: Partial<MultiStepToolExecutionInput> = {}): 
 }
 
 function createMockPlannedWorkflow(): PlannedWorkflow {
-  return {
+  const workflow = {
     workflow: {
       workflowId: "workflow-1",
       divisionId: "division-1",
@@ -301,31 +301,30 @@ function createMockPlannedWorkflow(): PlannedWorkflow {
         agentId: "agent_1",
         roleId: "role_1",
         divisionId: "division_1",
-        inputKeys: [] as readonly string[],
+        inputKeys: [],
         outputKey: "output_1",
-        dependsOnStepIds: [] as readonly string[],
-        dependencyTypes: {} as Readonly<Record<string, "hard" | "soft">>,
+        dependsOnStepIds: [],
+        dependencyTypes: {},
         timeoutMs: 30000,
         maxAttempts: 1,
-        compensationModel: undefined,
       },
       {
         stepId: "step_2",
         agentId: "agent_2",
         roleId: "role_2",
         divisionId: "division_1",
-        inputKeys: ["output_1"] as readonly string[],
+        inputKeys: ["output_1"],
         outputKey: "output_2",
-        dependsOnStepIds: ["step_1"] as readonly string[],
-        dependencyTypes: { step_1: "hard" } as Readonly<Record<string, "hard" | "soft">>,
+        dependsOnStepIds: ["step_1"],
+        dependencyTypes: { step_1: "hard" },
         timeoutMs: 30000,
         maxAttempts: 1,
-        compensationModel: undefined,
       },
-    ],
+    ] satisfies PlannedExecutionStep[],
     dependencyEdges: [{ fromStepId: "step_1", toStepId: "step_2" }],
     planReason: "test workflow",
-  } as unknown as PlannedWorkflow;
+  } satisfies PlannedWorkflow;
+  return workflow;
 }
 
 // =============================================================================

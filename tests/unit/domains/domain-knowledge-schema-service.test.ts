@@ -11,7 +11,7 @@ import {
 } from "../../../src/domains/knowledge-schema/index.js";
 
 function createTestSchema(domainId: string): DomainKnowledgeSchema {
-  return {
+  const schema = {
     schemaId: `schema_${domainId}`,
     domainId,
     namespaceIds: ["ns_primary", "ns_secondary"],
@@ -38,7 +38,8 @@ function createTestSchema(domainId: string): DomainKnowledgeSchema {
     ],
     retrievalStrategy: { strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
     freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
-  };
+  } satisfies DomainKnowledgeSchema;
+  return schema;
 }
 
 test("DomainKnowledgeSchemaService registers and retrieves schema", () => {

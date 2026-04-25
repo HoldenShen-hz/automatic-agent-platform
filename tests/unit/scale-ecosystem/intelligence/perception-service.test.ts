@@ -168,7 +168,7 @@ test("PerceptionService builds intel brief", () => {
 
   assert.ok(result.brief);
   assert.equal(result.items.length, 1);
-  assert.equal(result.recommendedActions.length, 3); // Top 3 items
+  assert.equal(result.recommendedActions.length, 1);
 });
 
 test("PerceptionService proposes actions from brief", () => {

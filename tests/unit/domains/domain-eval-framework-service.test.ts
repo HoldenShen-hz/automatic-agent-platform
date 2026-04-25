@@ -15,7 +15,7 @@ import {
 } from "../../../src/domains/eval-framework/index.js";
 
 function createTestFramework(domainId: string): DomainEvalFramework {
-  return {
+  const framework = {
     frameworkId: `fw_${domainId}`,
     domainId,
     fewShotExamples: [],
@@ -25,7 +25,8 @@ function createTestFramework(domainId: string): DomainEvalFramework {
     ],
     onlineMetrics: ["p99_latency_ms", "accuracy", "throughput"],
     releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
-  };
+  } satisfies DomainEvalFramework;
+  return framework;
 }
 
 test("DomainEvalFrameworkService registers and retrieves framework", () => {

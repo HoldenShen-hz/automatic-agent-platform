@@ -298,9 +298,12 @@ export class PerceptionService {
     private readonly store: AuthoritativeTaskStore,
     options: PerceptionServiceOptions = {},
   ) {
+    const defaultArtifactRoot = typeof db.filePath === "string" && db.filePath.length > 0
+      ? join(dirname(db.filePath), "artifacts")
+      : join(process.cwd(), "data", "artifacts");
     this.artifactStore = new ArtifactStore(
       options.artifactStoreOptions ?? {
-        rootDir: join(dirname(db.filePath), "artifacts"),
+        rootDir: defaultArtifactRoot,
       },
     );
     this.billingService = options.billingService ?? null;
@@ -394,7 +397,7 @@ export class PerceptionService {
     const sourceIds = input.sourceIds?.map((sourceId) => this.requireSource(sourceId, tenantId ?? undefined).sourceId);
 
     // Query intel items within the time window
-    const items = this.store
+    const items = this.store.intelligence
       .listIntelItems({
         tenantId,
         since: input.since ?? null,

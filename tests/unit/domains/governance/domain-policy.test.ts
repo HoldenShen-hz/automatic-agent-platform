@@ -144,10 +144,9 @@ test("DomainGovernancePolicySchema rejects duplicate roles across arrays", () =>
     ownerRoles: ["role_a", "role_a"],
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
+    rollout: { strategy: "manual" },
   });
-  // Note: the schema does not explicitly forbid duplicates across arrays
-  // But within arrays it should validate
-  assert.equal(result.success, true); // duplicates within same array not caught by min(1)
+  assert.equal(result.success, true);
 });
 
 test("DomainGovernancePolicySchema accepts empty restrictedDataClasses", () => {
@@ -158,6 +157,7 @@ test("DomainGovernancePolicySchema accepts empty restrictedDataClasses", () => {
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
     restrictedDataClasses: [],
+    rollout: { strategy: "manual" },
   });
   assert.equal(result.success, true);
   assert.deepEqual(result.data?.restrictedDataClasses, []);
@@ -171,6 +171,7 @@ test("DomainGovernancePolicySchema accepts empty mandatoryEvidence", () => {
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
     mandatoryEvidence: [],
+    rollout: { strategy: "manual" },
   });
   assert.equal(result.success, true);
   assert.deepEqual(result.data?.mandatoryEvidence, []);

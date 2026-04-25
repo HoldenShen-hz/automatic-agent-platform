@@ -183,7 +183,7 @@ export class HealthService {
   }
 
   private buildQueueGovernanceSummary(nowMs: number): QueueGovernanceHealthSummary {
-    const tickets = this.store.worker.listExecutionTicketsByStatuses(["pending", "claimed"]);
+    const tickets = this.store.worker?.listExecutionTicketsByStatuses?.(["pending", "claimed"]) ?? [];
     const queueNames = Array.from(
       new Set(
         tickets
@@ -221,8 +221,8 @@ export class HealthService {
 
   private buildWorkerHealthSummary(nowMs: number): WorkerHealthSummary {
     const staleBefore = new Date(nowMs - this.options.staleWorkerThresholdMs).toISOString();
-    const workers = this.store.worker.listWorkerSnapshots();
-    const staleWorkers = this.store.worker.listStaleWorkerSnapshots(staleBefore);
+    const workers = this.store.worker?.listWorkerSnapshots?.() ?? [];
+    const staleWorkers = this.store.worker?.listStaleWorkerSnapshots?.(staleBefore) ?? [];
     const loadSkew = summarizeWorkerLoadSkew(
       workers.map((worker) => {
         const runningExecutionCount = parseRunningExecutionCount(worker.runningExecutionsJson);

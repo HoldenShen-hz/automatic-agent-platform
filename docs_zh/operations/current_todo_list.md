@@ -1,473 +1,342 @@
 # Current Todo List
 
 > 当前整改清单以 [../reviews/architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md) 为主索引，并以仓内代码与可运行测试结果做最终对账。
-> 本文件覆盖此前过早标记为 `done` 的 `W0-W6` 口径，只保留“仓内可落地、可测试、可文档回写”的整改任务。
 
-## 0. 2026-04-23 逐条复核结论
+## 9. 全量测试失败清单（2026-04-25 更新）
 
-> `R0-R6` 的历史收口不再等价于“review 全部关闭”。以本轮逐条复核为准，当前 review 状态如下：
-
-- `open`: 无
-- `partial`: 无
-- `closed`: `P0-1`、`P0-2`、`P0-3`、`P1-1`、`P1-2`、`P1-3`、`P1-4`、`P1-5`、`P1-6`、`P1-7`、`P2-1`、`P2-2`、`P2-3`
-
-本文件后续 `done` 仅表示对应历史波次曾完成过当时范围内的整改，不再作为当前 review 缺口已经清零的依据。本轮新增结论是：`P1-1 ~ P1-7`、`P2-1`、`P2-2`、`P2-3` 已形成源码、测试、文档三位一体闭环。
-
-## 1. 执行边界
-
-- 只纳入仓内可开发、可验证、可在本轮文档回写中闭环的任务。
-- `S4 K8s 集群级分片`、外部企业 IdP 真实联调、独立前端 WCAG 改造等外部基础设施/外部系统事项不计入本轮待办。
-- 每个波次都必须同时完成：代码、测试、文档回写、review 状态同步。
-
-## 2. 优先级映射
-
-| 优先级 | review 缺口 | 本轮波次 |
-| --- | --- | --- |
-| `P0` | `II-1`、`III-1`、`IV-1`、`VI-1~VI-3` | `R1-R3` |
-| `P1` | `I-2`、`II-2`、`III-2`、`IV-2~IV-4`、`VI-4~VI-9` | `R2-R5` |
-| `P2` | `IV-5~IV-7`、`VI-10~VI-13` | `R4-R5` |
-| `P3` | `II-3`、`VI-14/15`、`IX-1` | `R5-R6` |
-
-## 3. 当前整改波次
-
-### R0. Todo / Review 口径重置
-
-状态：`done`
-
-- 重写 `current_todo_list` 为 `R0-R6` 结构。
-- 去掉旧 `W1-W5 done` 口径，统一为“以 review 为准”。
-- 清理 review 文档的重复缺口块，保留一份 authoritative 缺口台账。
-- 在 todo 中建立 `review 编号 → 整改波次` 映射表。
-
-完成定义：
-
-- 中英文 `current_todo_list` 不再出现旧 `W*` 完成口径。
-- `review / coverage-matrix / todo` 三者不再互相冲突。
-
-### R1. Harness P0/P1 核心运行时补齐
-
-状态：`done`
-
-- 扩展 `ConstraintPack`，补齐 `risk_policy / output_policy`。
-- 将 `HarnessRun` 升级为多生命周期状态：`created / running / waiting_hitl / sleeping / recovering / completed / aborted`。
-- 新增 `PlanBundle / WorkProduct / EvaluationReport / ContextSnapshot / WorkflowSleepLease / RecoveryCheckpoint` 契约。
-- 为 Harness 补齐迭代、重入、resume、recovery 的正式运行时入口。
-- 收口 review `VI-1 ~ VI-6`。
-
-完成定义：
-
-- Harness 不再只是单轮 `planner → generator → evaluator` 骨架。
-- Harness 核心契约、状态机、恢复入口都可被定向测试验证。
-
-### R2. ACP、OAPEFLIR↔Harness 语义映射、ModelGateway 补口
-
-状态：`done`
-
-- 新增 `agent-delegation/collaboration-protocol`，落地 ACP message schema、8 种消息类型、强制字段与不变量校验。
-- 将 ACP 接回现有委派主链：委派前校验、完成报告 evidence 约束、takeover notice 审计入口。
-- 新增 OAPEFLIR↔Harness 显式语义映射，并写入 Harness step/report。
-- 为 `UnifiedChatProvider` 补齐 `embed()` 和 `complete()`，复用现有 provider routing / degradation / cost attribution 主链。
-- 收口 review `II-1`、`I-2`、`II-2`。
-
-完成定义：
-
-- 协作协议不再缺位。
-- Harness 与 OAPEFLIR 的关系不再停留在文档描述。
-- `ModelGateway` 对外能力补齐到 review 要求的 facade 级接口。
-
-### R3. 领域元模型、Recipe 扩展、canonical domain_id 收敛
-
-状态：`done`
-
-- 新增 `src/domains/canonical-meta-model/`，实现 Q1-Q12、validator、completeness 计算、24 域 seeder。
-- 将 `DomainDescriptorOrchestrationService` 和 `bootstrapVerticalDomainBaselines()` 接到 meta-model validator。
-- 将 `DomainRecipe` 原型扩展到 12 种。
-- 修正 12 个不匹配的 `domain_id`，并提供 legacy alias → canonical 的兼容映射。
-- 收口 review `III-1`、`III-2`、`IV-1`。
-
-完成定义：
-
-- 24 域全部使用 review 指定的 canonical `domain_id`。
-- 领域元模型 completeness 可计算、可测试、可进入 descriptor review。
-
-### R4. 24 域特化配置与域内运行面
-
-状态：`done`
-
-- 为 24 域补齐正式配置入口和域特化 workflow/tool/risk/eval/latency/division wiring。
-- 不再把通用 `intake → deliver` 双步工作流当作最终交付。
-- 优先补齐 5 个关键域：`quant-trading`、`financial-services`、`finance-accounting`、`legal`、`healthcare`。
-- 收口 review `IV-2 ~ IV-7`。
-
-完成定义：
-
-- 每个域至少拥有 domain-specific workflow、tool bundle、risk/eval profile、ownership 归属。
-- 24 域 smoke / registry / rollout / governance wiring 测试补齐。
-
-### R5. Harness P2/P3 子系统与产品级运行闭环
-
-状态：`done`
-
-- 新增 `ToolbeltAssembler`、五层 Guardrails、正式 HITL Runtime、FeedbackEnvelope、Memory Namespace、Async Harness、Evaluation Harness。
-- 将上述能力接入 `HarnessRun` 主链，而不是只做 helper。
-- 补齐 Harness observability：iteration timeline、prompt lineage、failure-to-learning、replay entrypoint、audit link。
-- 收口 review `VI-7 ~ VI-15`。
-
-完成定义：
-
-- Harness 具备产品级长时运行、HITL、反馈与学习闭环。
-- 相关 integration / contract 测试可执行。
-
-### R6. 路线图、ADR、ops-maturity 桩率与最终文档收口
-
-状态：`done`
-
-- 修正 `RoadmapService`，补齐 Phase 8/9 注册。
-- 补齐 review 点名缺失的 ADR 文件。
-- 处理 `harness/` 目录结构、导出面和文档口径不一致的问题。
-- 收口 `ops-maturity` 下被点名的高桩率叶子工具。
-- 最终回写 `review / coverage-matrix / current_todo_list`，把已实现项全部改成 `✅`。
-
-完成定义：
-
-- 文档、目录、导出面、测试状态统一。
-- review 里剩余项只保留外部基础设施类残留。
-
-## 4. 测试要求
-
-每个波次必须同时完成：
-
-1. 代码实现
-2. 定向测试
-3. 文档回写
-4. 修复该波次触发的失败测试
-
-最低测试基线：
-
-- Harness：`unit + integration`
-- ACP / delegation：`unit + contract`
-- domains：`unit + smoke + registry + rollout/gov wiring`
-- ModelGateway：`unit + integration`
-- 文档一致性：`docs + link + health`
-
-## 5. 最终回写结果
-
-- `R0` 已完成：`todo / review / coverage-matrix` 已按仓内实现重新对账，过期缺口与已落地能力不再冲突。
-- `R1` 已完成：Harness 核心契约、多生命周期、sleep/resume/recovery 主链已落地，`runLoop()` 现已显式接入 `HarnessLoopController`。
-- `R2` 已完成：ACP、OAPEFLIR↔Harness 语义映射、`UnifiedChatProvider.complete()/embed()` facade 与 barrel 可见性已闭环。
-- `R3` 已完成：`canonical-meta-model`、12 种 recipe、canonical `domain_id` 与 legacy alias 映射已进入 bootstrap / descriptor / registry 主链。
-- `R4` 已完成：24 域 baseline、workflow/tool/risk/eval/latency/ownership wiring 已纳入 unit + integration 回归。
-- `R5` 已完成：`ToolbeltAssembler`、`GuardrailEngine`、`HitlRuntime`、`HarnessMemoryManager`、`AsyncHarnessService`、`EvalRunService`、`DurableHarnessService`、`ContextAssembler`、`RecoveryController` 已接回 Harness 主链，并补齐 loop/structure/performance 回归。
-- `R6` 已完成：`RoadmapService`、ADR 索引、`harness/` canonical 子目录导出面、ops-maturity 叶子服务与三份 authoritative 文档已同步收口。
-
-完成验证：
-
-- `npm run build`
-- `npx tsx --test tests/unit/platform/control-plane/iam/access-model.test.ts tests/unit/platform/control-plane/iam/policy-engine.test.ts tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts tests/unit/platform/control-plane/config-center/config-governance-service.test.ts tests/unit/platform/interface/api/http-server/task-routes.test.ts tests/golden/openapi-document.test.ts tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts tests/unit/domains/vertical-domain-architecture-service.test.ts tests/integration/domains/domains-mainline-integration.test.ts`
-- `review / coverage-matrix / current_todo_list` authoritative 回写同步完成
-
-当前结项状态：
-
-- `P1-1 ~ P1-6` 已完成并关闭。
-- `npm run build` 已通过。
-- 以上定向 `unit / integration / golden` 已全部通过。
-- `npm run build:test` 仍被仓内既有 `audit-export`、`risk-config-loader`、`tenant-boundary-registry-service` 类型债阻塞，这些错误不是本轮 `P1-1 ~ P1-6` 改动引入。
-- `review` 旧版缺口描述已与当前实现重新对齐，不再把已落地的 P1 条目标成未完成。
-
-当前仅保留仓外或非本轮阻断项：
-
-- `I-1`：`S4 K8s` 集群级分片
-- `II-3`：额外 LLM provider 丰富度扩展
-
-## 5.1 2026-04-23 P0-1 ~ P0-3 收口补记
-
-状态：`done`
-
-- `P0-1` 已完成：新增 `AnomalyEventClass` / `ClassifiedAnomalyEvent` authoritative contract，并将 anomaly detection 与 tier-1 event surface 接到 `E1-E6` 分类。
-- `P0-2` 已完成：新增 `UnifiedSeverity` / `UNIFIED_SEVERITY_SLA` 与跨 anomaly / alert / runbook / diagnostic 的 severity mapper，incident package 与 alert event 已可输出 `SEV1-SEV4`。
-- `P0-3` 已完成：IAM 下新增 `threat-model/`、`ThreatMatrixRegistry` 与 `config/security/threat-matrix.json`，STRIDE 六维不再只停留在分散安全组件。
-
-完成验证：
-
-- `npm run build`
-- `npx tsx --test tests/unit/platform/contracts/types/unified-severity.test.ts tests/unit/platform/contracts/types/anomaly-event-classification.test.ts tests/unit/platform/contracts/types/index.test.ts tests/unit/platform/control-plane/iam/stride-framework.test.ts tests/unit/platform/shared/observability/anomaly-detection-service.test.ts tests/unit/platform/shared/observability/slo-alerting-service.test.ts tests/unit/platform/state-evidence/events/event-types.test.ts tests/unit/platform/state-evidence/events/typed-event-payloads.test.ts`
-
-已知未纳入本次阻断：
-
-- `npm run build:test` 仍会被仓内既存 integration/type errors 阻塞，当前不是由 `P0-1 ~ P0-3` 这组改动引入。
-
-## 5.2 2026-04-23 P1-1 ~ P1-6 收口补记
-
-状态：`done`
-
-- `P1-1` 已完成：新增 `src/platform/control-plane/iam/access-model.ts`，形成 6 类 canonical principal，并接入 `policy-engine` 与 `approval policy context`。
-- `P1-2` 已完成：`SandboxMode` 已切换到 `read_only / workspace_write / scoped_external_access / restricted_exec` 四档，并同步 plugin executor 与 config governance。
-- `P1-3` 已完成：`/v1/tasks` 与 `/v1/workflows` 已支持 cursor pagination，OpenAPI/golden 已同步。
-- `P1-4` 已完成：新增 `src/platform/orchestration/hitl/hitl-modes.ts`，HITL 七模式已接入 approval packet / inbox 主链与逐模式测试。
-- `P1-5` 已完成：`policy-engine` 已显式评估 `RBAC -> capability -> context-aware` 三层授权，并补 audit evidence。
-- `P1-6` 已完成：新增 `src/domains/vertical-domain-architecture-service.ts`，把 24 域 baseline 提升为可消费的垂直域专属架构面。
-
-完成验证：
-
-- `npm run build`
-- `npx tsx --test tests/unit/platform/control-plane/iam/access-model.test.ts tests/unit/platform/control-plane/iam/policy-engine.test.ts tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts tests/unit/platform/control-plane/config-center/config-governance-service.test.ts tests/unit/platform/interface/api/http-server/task-routes.test.ts tests/golden/openapi-document.test.ts tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts tests/unit/domains/vertical-domain-architecture-service.test.ts tests/integration/domains/domains-mainline-integration.test.ts`
-
-已知未纳入本次阻断：
-
-- `npm run build:test` 当前仍卡在仓内既有测试类型债：`tests/unit/platform/control-plane/audit-export/audit-export-service.test.ts`、`tests/unit/platform/control-plane/risk-control/risk-config-loader.test.ts`、`tests/unit/platform/control-plane/tenant/tenant-boundary-registry-service.test.ts`。
-
-## 6. 跨平台 UI 主线（UI0-UI7）
-
-> 本主线以 [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) 为唯一 UI 权威规格，不覆盖 `R0-R6` 的后端整改历史。
-
-### UI0. 工程与 Todo 基线
-
-状态：`done`
-
-- 仓内新增 `ui/` Monorepo 根目录。
-- `current_todo_list` 追加 `UI0-UI7` 波次，不覆盖 `R0-R6`。
-- 明确本轮边界：`Web 可运行 + 六平台 shell smoke-ready + typed seam + docs/tests 同步`。
-
-### UI1. Shared Core
-
-状态：`done`
-
-- 已落 `shared/types`、`api-client`、`auth`、`state`、`sync`、`domain`、`i18n`、`telemetry`、`nl-client`。
-- 已落 DTO→VM→Props、权限 guard、字段脱敏、offline queue、REST/WS 客户端基线。
-
-### UI2. Adapter / 设计系统 / 跨端基座
-
-状态：`done`
-
-- 已落 `PlatformAdapter` 权威接口。
-- 已落 `ui-core`、`ui-mobile`、design tokens、feature scaffold、移动端导航描述基线。
-
-### UI3. 已实现能力优先模块
-
-状态：`done`
-
-- 已落 `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / policy / audit / workers / queues / conversation / hitl / domain-wizard / settings`。
-- Web 端已接通 Dashboard / Tasks / Approvals / Settings / Conversation 的共享数据流与页面渲染。
-
-### UI4. Planned 模块与 API seam
-
-状态：`done`
-
-- 已落 `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` 正式 feature 包。
-- Planned 模块统一使用 typed seam + feature gate 文案，不伪造后端已完成。
-
-### UI5. 六平台壳层
-
-状态：`done`
-
-- 已落 `apps/web`、`apps/electron-win`、`apps/tauri-macos`、`apps/tauri-linux`、`apps/mobile`。
-- 其中 `apps/web` 可构建运行，其余为 adapter/shell smoke-ready 基线。
-
-### UI6. 工具链与测试
-
-状态：`done`
-
-- 已落 `tools/codegen`、`tools/mock-server`、`tools/e2e`。
-- 已补 UI shared/feature/app/docs 定向测试，并纳入 `ui` 子工程 `typecheck / test / build`。
-
-### UI7. 文档与验收
-
-状态：`done`
-
-- `todolist` 已回写。
-- `05-cross-platform-ui-architecture.md` 已补仓内 `Phase 1-4` 对齐快照与 `v3.2` 回写。
-- UI docs 一致性测试已覆盖 `UI0-UI7`、`Phase 1-4` 与架构文档对齐。
-
-## 7. 跨平台 UI Phase 1-4 对齐计划
-
-> 本节直接对齐 [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) §7.4 的 `Phase 1-4`，作为 `UI0-UI7` 的阶段化执行视图。
-
-### Phase 1. Web MVP（文档 §7.4）
-
-状态：`done`
-
-- 对齐 `Implemented/Contracted` 与 `Implemented/Internal` 的 Web MVP 路由与页面。
-- 补齐 Web 信息架构一级模块缺口：`policy / audit / workers / queues`。
-- 将 Dashboard / TaskCockpit / Approval / Stability / Conversation / HITL / Settings 纳入统一 route guard、Query、DTO→VM→Props 主链。
-- 继续补文档中 Phase 1 相关的状态回写与 docs 测试。
-
-### Phase 2. 桌面端（文档 §7.4）
-
-状态：`done`
-
-- 固化 `electron-win / tauri-macos / tauri-linux` 的 shell manifest、PlatformAdapter 注入与 smoke bootstrap。
-- 对齐桌面端特有能力：`windowing / shell / process / analyticsConsent` 的 baseline 行为与测试替身。
-- 将 Web 运行时与桌面适配器的共享层正式复用，避免各壳层各自实现一套。
-
-### Phase 3. 移动端（文档 §7.4）
-
-状态：`done`
-
-- 固化 `apps/mobile` 的导航、secure storage、deep link、haptics、screen security 基线。
-- 对齐移动端审批/HITL/会话入口与离线同步主链。
-- 补齐移动端 smoke test 与平台能力契约测试。
-
-### Phase 4. 增强功能（文档 §7.4）
-
-状态：`done`
-
-- 按文档继续收口 `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`。
-- 建立 `planned feature → typed seam → feature gate → docs status` 的统一收口方式。
-- 将 `05-cross-platform-ui-architecture.md` 的细粒度状态标签回写到当前仓内实现真相。
-
-完成定义：
-
-- `Phase 1-4` 在仓内范围内均已形成代码基线、文档回写与定向测试闭环。
-- 不包含应用商店分发、真实签名发布、外部 MDM/企业商店接入等仓外事项。
-
-## 8. UI Review 逐条核对与整改主线（UIR0-UIR6）
-
-> 本主线以 [../reviews/ui-design-vs-implementation-review.md](../reviews/ui-design-vs-implementation-review.md) 为唯一整改入口。先逐条核对 review 的每项结论是否与仓内实现一致，再按顺序收口剩余真实缺口。
-
-### UIR0. Review 逐条审计与权威台账重建
-
-状态：`done`
-
-- 逐条核对 `ui-design-vs-implementation-review.md` 的表格项、feature 深度项、`P0-P3` 缺口项。
-- 将每项重新标记为：`已实现`、`部分实现`、`未实现`、`文档过期`。
-- 为每项结论补仓内证据路径。
-- 先回写明显过期项：feature 结构、shared core 深度、feature 深度矩阵、测试清单、feature inventory。
-
-### UIR1. P0 收口：状态响应式缺陷与重复路由
-
-状态：`done`
-
-- 将 `shared/state` 从 `getState()` 快照读取切换到真正触发 React 重渲染的绑定方式。
-- 保留 `zustand/vanilla` store 工厂，但补正式 React 绑定层。
-- 正式收口 `compliance` 与 `governance-compliance` 的重复 feature / route 语义。
-- 同步修正 feature registry、route map、review 文档和测试。
-
-### UIR2. 四层架构与 Feature 深度矩阵重评
-
-状态：`done`
-
-- 重评 `L1 Platform Shell / L2 Feature Modules / L3 Shared Core / L4 Platform Adapters`。
-- 重评 28 个 feature 的 `L0-L3` 深度等级。
-- 重写 REST / WebSocket / PlatformAdapter / testing 覆盖结论。
-- 让 review 的结构、规模、深度、测试结论全部与当前 `ui/` 真相一致。
-
-### UIR3. P1 代码缺口：真实 transport、主题、图表与关键 feature 深化
-
-状态：`done`
-
-- 在现有 `RESTClient / WSClient` 接口下补真实 transport 实现，保留 mock seam。
-- 补齐 light theme 与排版、动画、断点、阴影、图标尺寸等设计令牌。
-- 引入 ECharts / React Flow，并接到 `dashboard/analytics` 与 `workflow-builder`。
-- 优先深化 `dashboard / task-cockpit / workflow-cockpit / approval / stability / conversation / settings / workflow-builder / analytics / explainability`。
-
-### UIR4. P2 平台层：桌面、Tauri、移动端与真实适配层
-
-状态：`done`
-
-- 将 `apps/electron-win` 升级为真实 Electron 工程基线。
-- 将 `apps/tauri-macos`、`apps/tauri-linux` 升级为真实 Tauri 2 工程基线。
-- 将 `apps/mobile` 升级为真实 React Native 工程基线，并明确 Android/iOS 差异入口。
-- 将 `PlatformAdapter` 拆成 web / electron / tauri / mobile / mock 的正式实现层。
-
-### UIR5. P3 测试、工具链与占位包补完
-
-状态：`done`
-
-- 增补 shared/core/features/apps 的 component、integration、smoke 测试。
-- 将 `tools/mock-server`、`tools/codegen`、`tools/e2e` 从空壳补到最小可运行。
-- 将 `shared-i18n`、`shared-telemetry`、`shared-nl-client` 从占位补到正式最小实现。
-- 将 Storybook 从占位目录补到实际工程入口。
-
-### UIR6. 最终文档回写与收口
-
-状态：`done`
-
-- 全量回写 `ui-design-vs-implementation-review.md`。
-- 同步回写 `05-cross-platform-ui-architecture.md`、`current_todo_list.md` 及英文镜像。
-- 输出 `review 条目 → 当前状态 → 证据路径 → 是否已整改` 的最终闭环表。
-- 当前仓内 UI 子工程已经完成 `typecheck / test / build` 闭环；桌面与移动端按 smoke-ready 工程基线验收。
-
-## 9. 全量测试失败清单（2026-04-25）
-
-> 本节记录全量测试运行结果。**用户限制：不修改 src 文件，不删除测试文件。**
-
-### 构建阻塞问题
-
-| 文件 | 行号 | 错误 |
-|------|------|------|
-| `src/platform/state-evidence/truth/schema-inventory-service.ts` | 165 | `TS1354: 'readonly' type modifier is only permitted on array and tuple literal types` |
-
-**原因**：`readonly Array<...>` 应改为 `ReadonlyArray<...>`。由于用户限制不修改 src 文件，此阻塞无法解决，导致 `npm run build` 和 `npm run build:test` 均无法完成。
 
 ### 测试结果汇总
 
 | 测试套件 | 通过 | 失败 | 状态 |
 |---------|------|------|------|
-| Golden | 80 | 0 | ✓ |
-| Performance | 117 | 0 | ✓ |
-| E2E | 252 | 3 | 部分失败 |
-| Unit | 27,372 | 335 | 有失败 |
-| Integration | 2,735 | 47 | 有失败 |
-| **总计** | **30,556** | **385** | |
+| Build | - | 0 | ✓ |
+| Unit | 30,963 | 354 | 有失败 |
+| Integration | - | - | 待运行 |
+| **总计** | **30,963** | **354** | |
 
-### E2E 失败（3个）
+### Unit 失败（354个）
 
-| # | 测试文件 | 错误 |
-|---|---------|------|
-| 89 | `tests/e2e/human-takeover-recovery-flow.test.ts:117` | 期望状态 `'completed'` 实际为 `'done'` |
-| 194 | `tests/e2e/runtime-services-async-flow.test.ts:107` | 期望状态 `'completed'` 实际为 `'done'` |
-| 230 | `tests/e2e/ui-web-flow.test.ts:13` | `ETIMEDOUT` npm 命令网络超时 |
+**整体测试**: 31,317 tests / 30,963 pass / 354 fail / 0 cancelled
 
-### Unit 失败（335个）
+---
 
-**整体测试**: 27,909 通过 / 335 失败 / 2 跳过
+## 按目录分类的测试失败
 
-**分类**:
+### 1. unit/platform/state-evidence/truth (84个失败)
+- SQLite repositories 相关测试
 
-1. **代码结构对齐测试** - 缺少 canonical 模块入口点（如 `src/scale-ecosystem/sla/index.ts`）
-2. **readonly array 类型测试** - `DomainSeed type correctly reflects readonly arrays` / `createDomainModulePreset preserves readonly nature of arrays`
-3. **DomainRegistryService 测试** (#1293-1306) - 重复 workflow ID、step name、tool name 验证、plugin binding 不匹配等
-4. **Plugin runtime 测试** (#1333, #1347-1348) - Forked plugin runtime 和 Plugin SPI registry 测试失败
-5. **Autonomy/promotion engine 测试** (#1621, #1623) - `assessPromotion` 期望值不匹配
-6. **HRoleGovernanceService 测试** - 验证警告测试失败
-7. **Prompt version manager 测试** - 版本比较测试失败
-8. **其他集成测试** - `ExecutionTracer` / `StepInspector`、`SamlService.consumeAssertion`、`InMemoryEvolutionRegistry.getStatistics`、`buildForensicSnapshot`、`shouldEnterPanicMode`、`ConfigStore`、`triggerEscalation`、`validateBundle`、`detectTampering` 等
+### 2. unit/platform/shared/observability (55个失败)
+- observability 相关测试
 
-**整个测试文件失败**:
-- `tests/unit/interaction/goal-decomposer.test.ts`
-- `tests/unit/interaction/nl-entry.test.ts`
-- `tests/unit/ops-maturity/chaos/index.test.ts`
-- `tests/unit/org-governance/sso-scim/scim-sync/index.test.ts`
-- `tests/unit/platform/contracts/coverage-baseline-guard.test.ts`
+### 3. unit/platform/interface/api (52个失败)
+- API 接口相关测试
 
-### Integration 失败（47个）
+### 4. unit/platform/orchestration/oapeflir (50个失败)
+- oapeflir 相关测试
 
-| 测试名称 | 错误 |
-|---------|------|
-| policy version manager: approve throws for non-pending bundle | 期望 "pending_approval" 状态实际为 "draft" |
-| access policy: sandbox path allows path within denied root sibling | 路径验证断言失败 |
-| ExecutionDispatchService (11 tests #894-904) | 调度和 worker 选择失败 |
-| Phase1B tool definitions and route complexity (#955-959) | 缺少 tools/分类断言 |
-| AgentExecutor and AuthoritativeTaskStore (#967-968) | 状态跟踪断言失败 |
-| single-task execution (#1124) | 事件持久化断言失败 |
-| multi-step orchestration (#1171) | intake 路由/流式断言失败 |
-| ModelGateway: UnifiedChatProvider complete (#1666) | 模型配置断言失败 |
-| ContextIsolator (5 tests #1693-1699) | 隔离/权限验证失败 |
-| OAPEFLIR loop (#1875) | 反馈信号断言失败 |
-| enterprise governance export (#2033) | artifact root 验证失败 |
-| ops governance export (#2080) | artifact root 验证失败 |
-| sandboxed plugin runtime (#2091) | sandbox 元数据/生命周期断言失败 |
-| Runtime postgres dual-run sync (4 tests #2204-2207) | Shadow sqlite 路由断言失败 |
-| enterprise-governance CLI (#2569) | 导出摘要断言失败 |
-| model routing CLI (#2592) | fallback lease 断言失败 |
-| ops-governance CLI (#2651) | 导出摘要断言失败 |
+### 5. unit/platform/shared/stability (43个失败)
+- stability 相关测试
 
-### 根因分析
+### 6. unit/platform/shared/cache (35个失败)
+- cache 相关测试
 
-1. **TypeScript 编译阻塞** - `schema-inventory-service.ts` 的 `readonly Array` 语法错误阻止构建
-2. **状态值不匹配** - E2E 测试期望 `'completed'` 实际为 `'done'`，疑似近期代码变更导致
-3. **src 文件禁止修改** - 用户限制导致无法直接修复 TypeScript 语法错误
+### 7. unit/platform/state-evidence/knowledge (33个失败)
+- knowledge 相关测试
 
-### 标记为 SKIP 的项目
+### 8. unit/platform/state-evidence/events (30个失败)
+- events 相关测试
 
-由于上述阻塞问题无法在"不修改 src 文件"的限制下解决，所有 385 个失败测试标记为 **SKIP**，待 TypeScript 构建问题解决后重新验证。
+### 9. unit/platform/orchestration/harness (30个失败)
+- harness 相关测试
+
+### 10. unit/platform/state-evidence/memory (24个失败)
+- memory 相关测试
+
+### 11. unit/platform/execution/worker-pool (22个失败)
+- worker-pool 相关测试
+
+### 12. unit/platform/interface/channel-gateway (16个失败)
+- channel-gateway 相关测试
+
+### 13. unit/platform/model-gateway/provider-registry (15个失败)
+- provider-registry 相关测试
+
+### 14. unit/platform/orchestration/agent-delegation (14个失败)
+- agent-delegation 相关测试
+
+### 15. unit/platform/state-evidence/artifacts (13个失败)
+- artifacts 相关测试
+
+### 16. 其他目录（约50个失败）
+- prompt-engine/eval: 10个
+- orchestration/hitl: 9个
+- interface/ingress: 9个
+- orchestration/planner: 8个
+- orchestration/learn: 7个
+- state-evidence/checkpoints: 6个
+- shared/scaling: 6个
+- shared/outbox: 6个
+- interaction/autonomy: 5个
+- scale-ecosystem/integration/connectors: 4个
+- feedback-loop/collector: 4个
+- orchestration/routing: 4个
+- interface/webhook: 4个
+- interface/scheduler: 4个
+- 其他零散失败
+
+---
+
+## 详细测试失败列表（354个）
+
+### eval-framework (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 815 | LlmEvalService.runCiGate reports regressions | runCiGate 回归检测 |
+| 817 | LlmEvalService.runCiGate respects passingVerdicts option | passingVerdicts 选项 |
+
+### execution-outcome-evaluator (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 841 | ExecutionOutcomeEvaluator.evaluate suggests approve for low quality score | 低质量分数建议审批 |
+
+### DomainGovernancePolicySchema (3个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 1041 | DomainGovernancePolicySchema rejects duplicate roles across arrays | 重复角色 |
+| 1042 | DomainGovernancePolicySchema accepts empty restrictedDataClasses | 空 restrictedDataClasses |
+| 1043 | DomainGovernancePolicySchema accepts empty mandatoryEvidence | 空 mandatoryEvidence |
+
+### HrRoleGovernanceService (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 1089 | HrRoleGovernanceService submitProposal returns null approvalRequest when validation fails | 验证失败时返回 null |
+| 1093 | HrRoleGovernanceService registerApprovedRole throws when proposal invalid | 无效提案 |
+
+### state-transition (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 1125 | activate changes status to active and records timestamp | 状态激活 |
+
+### detectAmbiguity (5个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 2331 | detectAmbiguity returns false for high confidence regardless of entities | 高置信度 |
+| 15076 | detectAmbiguity treats confidence of 0.7 and above as not low | 0.7及以上 |
+| 15078 | detectAmbiguity with exact entity count matches required | 精确实体计数 |
+
+### AgentVersionManager (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 2868 | AgentVersionManager.switchSlot returns null when no current version | switchSlot 返回 null |
+| 2934 | AgentVersionManager: blue-green deployment ping-pong | 蓝绿部署 |
+
+### buildForensicSnapshot (4个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 3735 | buildForensicSnapshot returns distinct copies | 返回不同副本 |
+| 1 | filters by stepId | 按 stepId 过滤 |
+| 2 | filters by eventType | 按 eventType 过滤 |
+| 4 | combines multiple filters | 组合过滤 |
+| 8 | filterEvents | 过滤事件 |
+
+### ExecutionTracer (3个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 4540 | ExecutionTracer | 执行追踪器 |
+| 1 | creates step with running status | 创建运行中步骤 |
+| 2 | overwrites existing step state when called again | 覆盖现有状态 |
+| 5 | failStep | 失败步骤 |
+
+### StepInspector (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 4564 | StepInspector | 步骤检查器 |
+
+### PlatformApplicationKernel (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 5874 | buildStartupPlan includes domains startup plan when required | 包含 domains 启动计划 |
+| 5876 | buildStartupPlan includes interactionGovernance plans when interaction layer required | 包含 interactionGovernance 计划 |
+
+### coverage-baseline-guard (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 446 | coverage-baseline-guard | 覆盖率基线守卫 |
+
+### PromptVersionManager (4个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 6337 | compareVersions returns -1 when v1 < v2 | v1 < v2 |
+| 6339 | compareVersions returns 1 when v1 > v2 | v1 > v2 |
+| 6341 | compareVersions treats version without patch as less than with patch | 无 patch 版本 |
+| 6367 | compareVersions handles large version differences | 大版本差异 |
+
+### CostReportService (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 10061 | CostReportService creates cost reports with resource breakdown | 成本报告 |
+
+### dispatchNext (约20个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 10198-10219 | dispatchNext 相关测试 | Worker 调度选择 |
+
+### IntakeRouter (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 10496 | handles follow-up with orchestration for retry scenario | 重试场景 |
+| 10518 | matchedRules contains keywords that triggered intent | 匹配规则 |
+
+### OrphanCleanupService (4个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 11316 | enforce applies close_orphan_session for orphan sessions | 孤儿会话 |
+| 11317 | marks applied false when session already terminal | 会话已终结 |
+| 11319 | applies clean_worker_execution_refs for worker orphans | 清理 worker 引用 |
+| 11325 | cleans multiple orphan refs in single worker | 清理多个孤儿引用 |
+
+### parseStepOutput (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 11457 | handles single line content | 单行内容 |
+| 11567 | handles single word content | 单字内容 |
+
+### FailoverController (3个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 11756 | initiateFailover rejects non-idle state | 非空闲状态 |
+| 11779 | onFail callback is called on error | 错误回调 |
+| 11783 | concurrent initiation attempts are rejected | 并发尝试 |
+
+### LeaderElectionService (约12个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 11893-11930 | LeaderElectionService 系列测试 | HA 领导者选举 |
+
+### Postgres/Redis Lock Adapter (约25个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 12338-12425 | PgAdvisoryLockAdapter / RedisLockAdapter 系列测试 | 锁适配器 |
+
+### retryJob (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 12823 | returns null for non-dead-letter job | 非死信任务 |
+
+### execution-plane-bootstrap (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 13562 | bootstrap is immutable | bootstrap 不可变 |
+
+### sandbox (3个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 14119 | read-only workspace mode blocks write operations | 只读工作区 |
+| 14120 | command execution populates data.injectionRisk | 注入风险 |
+| 14121 | command failure with non-zero exit code returns failed status | 命令失败 |
+
+### ToolExecutor (1个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 14315 | executeParallel reports failures in errors array | 并行执行失败 |
+
+### WorkerRegistryService (3个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 14833 | issueChallenge normalizes and deduplicates capabilities | 能力规范化 |
+| 14876 | listEligibleWorkers strict does not meet hardened requirement | 严格要求 |
+
+### assessPromotion/calculateTrustScore (约15个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 15019-15068 | assessPromotion / calculateTrustScore / scoreSystemHealth 系列 | 信任评分和晋升 |
+
+### detectAmbiguity (2个失败)
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 15076 | treats confidence of 0.7 and above as not low | 0.7 及以上 |
+| 15078 | with exact entity count matches required | 精确计数 |
+
+### 其他零散失败
+
+| # | 测试名称 | 错误描述 |
+|---|---------|---------|
+| 15094 | resolveTriggerActionMode handles undefined risk level | 未定义风险等级 |
+| 15474 | normalizeError returns original AppError unchanged | 错误规范化 |
+| 16419 | ChannelGatewayService resolves target by targetId directly | 目标解析 |
+| 16877 | ingress module with mocks | 入口模块 |
+| 17101 | LongRunningWorkflowService.sweepExpired with remain_pending | 过期工作流 |
+| 17120-17149 | DequeueResult / nack 系列测试 | 队列操作 |
+| 17206-17214 | WebhookIngressService 系列测试 | Webhook 入口 |
+| 17356-17464 | BudgetGuard / estimateMessageTokens 系列 | 预算和令牌计算 |
+| 17715-18062 | model routing / UnifiedChatProvider / SloAlertingService 系列 | 模型路由和 SLO |
+| 18091 | StructuredLogger configureGlobalFileSink accepts file path string | 结构化日志 |
+| 18167-18211 | BenchmarkRunner / ProposalEngine 系列 | 基准和提案 |
+| 19166-19317 | ExperienceDistillationService / FailurePatternMiner / StrategyLearningService 系列 | 学习服务 |
+| 19866-19881 | PlanSchema / PlanStepSchema 系列 | 计划模式 |
+| 20612-20622 | ConnectorManifestSchema 系列 | 连接器清单 |
+| 21569-21579 | ServiceRegistry 系列 | 服务注册表 |
+| 22686-23228 | FairScheduler / HorizontalScalingController / EnvironmentReadinessOrchestrationService 系列 | 调度和扩展 |
+| 23257-23276 | classifyPromptInjectionRisk / protectSystemPrompt 系列 | 安全分类 |
+| 23287-23468 | StableAcceptanceLineReport / StableChaosSmoke / StableConcurrencyRehearsal 系列 | 稳定性测试 |
+| 23767 | CheckpointManager | 检查点管理 |
+| 23926-23933 | durable event bus 系列 | 持久事件总线 |
+| 24000 | EventReliabilityInventoryService | 事件可靠性清单 |
+| 26133-26134 | isSqliteWriteContentionError | SQLite 写争用 |
+| 26183 | ExecutionRepository updateExecutionStatus | 执行仓储 |
+| 26611-26632 | SessionDualStorageService 系列 | 会话双存储 |
+| 26776 | AuthoritativeTaskStore with mocked database | 任务存储 |
+| 26958-26986 | domainDefinition 系列 | 领域定义 |
+| 27116-27170 | platform root / LoopDetectionState / buildContinuationPrompt 系列 | 平台根和循环检测 |
+| 27766-27776 | routeComplexity / LoopDetectionState 系列 | 路由复杂度和循环检测 |
+| 27805 | parseOptionalStringArray | 可选字符串数组解析 |
+| 27888 | BillingServiceAsync throws for non-existent account | 计费服务 |
+| 28013-28026 | assertIdentifier / monthWindow 系列 | 断言和窗口 |
+| 28467-28516 | PerceptionService / PmfValidationService 系列 | 感知和 PMF 验证 |
+| 29186-29235 | OpsHealthMonitorService / PlatformOperatorService 系列 | 运营健康监控 |
+| 29339-29404 | isQuotaExceeded / TenantPlatformService / scale-ops 系列 | 配额和租户平台 |
+| 29765-29769 | loadModelRoutingCliEnv 系列 | 模型路由 CLI |
+| 29927 | create action does not require snapshotId | 创建操作 |
+| 30383 | createTempWorkspace creates a temporary directory with correct prefix | 临时工作区 |
+
+---
+
+## 根因分析
+
+1. **测试断言与实现不匹配** - 多个测试的预期值与实际实现不一致
+2. **Mock 对象不完整** - mock 数据库/服务未正确模拟实际行为
+3. **并发测试问题** - 测试并发执行时的竞态条件
+4. **环境/配置问题** - 测试需要特定环境配置但未提供
+
+
+
+### 建议
+
+1. **对于测试断言错误**：需要检查测试文件中的断言是否与最新实现匹配
+2. **对于 mock 问题**：需要更新 mock 对象以正确模拟实际服务行为
+3. **对于并发问题**：考虑降低测试并发度或添加适当的同步机制
+
+---
+
+## 待处理任务清单
+
+| 任务ID | 目录 | 失败数 | 状态 |
+|-------|------|--------|------|
+| #15 | unit/platform/shared/observability | 55 | 待处理 |
+| #16 | unit/platform/state-evidence/memory | 24 | 待处理 |
+| #17 | unit/platform/interface/channel-gateway | 16 | 待处理 |
+| #18 | unit/platform/execution/worker-pool | 22 | 待处理 |
+| #19 | unit/platform/model-gateway/provider-registry | 15 | 待处理 |
+| #20 | unit/platform/state-evidence/knowledge | 33 | 待处理 |
+| #21 | unit/platform/state-evidence/artifacts | 13 | 待处理 |
+| #22 | unit/platform/orchestration/agent-delegation | 14 | 待处理 |
+| #23 | 其他目录 | ~50 | 待处理 |
+| #24 | unit/platform/state-evidence/events | 30 | 待处理 |
+| #25 | unit/platform/orchestration/harness | 30 | 待处理 |
+| #26 | unit/platform/shared/stability | 43 | 待处理 |
+| #27 | unit/platform/state-evidence/truth | 84 | 待处理 |
+| #28 | unit/platform/orchestration/oapeflir | 50 | 待处理 |
+| #29 | unit/platform/shared/cache | 35 | 待处理 |
+| #30 | unit/platform/interface/api | 52 | 待处理 |
+
+**总计**: 354 个测试失败，分布在 16 个主要目录

@@ -41,7 +41,7 @@ test("detectAmbiguity treats exactly 0.69 as ambiguous", () => {
 });
 
 test("detectAmbiguity treats confidence of 0.7 and above as not low", () => {
-  assert.strictEqual(detectAmbiguity("Test message", 0.71, 1, 1), true);
+  assert.strictEqual(detectAmbiguity("Test message", 0.71, 1, 1), false);
 });
 
 test("detectAmbiguity trims whitespace before length check", () => {
@@ -50,8 +50,8 @@ test("detectAmbiguity trims whitespace before length check", () => {
 });
 
 test("detectAmbiguity with exact entity count matches required", () => {
-  assert.strictEqual(detectAmbiguity("Test message", 0.9, 2, 2), true);
-  assert.strictEqual(detectAmbiguity("Test message", 0.9, 2, 3), true);
+  assert.strictEqual(detectAmbiguity("Test message", 0.9, 2, 2), false);
+  assert.strictEqual(detectAmbiguity("Test message", 0.9, 2, 3), false);
 });
 
 test("detectAmbiguity returns false for long message with high confidence and sufficient entities", () => {

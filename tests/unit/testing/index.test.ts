@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readlinkSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
   createTempWorkspace,
@@ -19,8 +20,8 @@ test("createTempWorkspace creates a temporary directory with correct prefix", ()
       "workspace path should contain the prefix"
     );
     assert.ok(
-      workspace.startsWith("/tmp/") || workspace.includes("tmp-"),
-      "workspace should be in temp directory"
+      workspace.startsWith(tmpdir()),
+      `workspace should be in temp directory: ${tmpdir()}`
     );
   } finally {
     cleanupPath(workspace);

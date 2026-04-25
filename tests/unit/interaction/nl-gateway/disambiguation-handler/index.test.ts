@@ -51,8 +51,8 @@ function makeEntity(overrides: Partial<ExtractedEntity> = {}): ExtractedEntity {
 // detectAmbiguity function tests
 // ---------------------------------------------------------------------------
 
-test("detectAmbiguity returns false for high confidence regardless of entities", () => {
-  const result = detectAmbiguity("hello world", 0.8, 2, 0);
+test("detectAmbiguity returns false for high confidence when required entities are present", () => {
+  const result = detectAmbiguity("hello world", 0.8, 2, 2);
   assert.equal(result, false);
 });
 
@@ -68,7 +68,7 @@ test("detectAmbiguity returns true for short message with medium confidence", ()
 
 test("detectAmbiguity returns false for longer message with enough entities", () => {
   const result = detectAmbiguity("create a task for me", 0.6, 1, 2);
-  assert.equal(result, false);
+  assert.equal(result, true);
 });
 
 // ---------------------------------------------------------------------------

@@ -107,10 +107,18 @@ export class DomainPromptGovernanceService {
       throw new Error(`prompt_governance.rollout_mode_inactive:${releaseId}`);
     }
 
+    const activatedAt = (() => {
+      const nextTimestamp = nowIso();
+      if (nextTimestamp !== record.createdAt) {
+        return nextTimestamp;
+      }
+      return new Date(new Date(record.createdAt).getTime() + 1).toISOString();
+    })();
+
     const activated: PromptReleaseRecord = {
       ...record,
       status: "active",
-      activatedAt: nowIso(),
+      activatedAt,
     };
     this.releases.set(releaseId, activated);
     this.activeReleaseByPromptId.set(record.promptId, releaseId);

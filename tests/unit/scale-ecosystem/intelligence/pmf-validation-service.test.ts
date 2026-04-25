@@ -7,13 +7,41 @@ import {
 } from "../../../../src/scale-ecosystem/intelligence/pmf-validation-service.js";
 import type { PmfValidationReportRecord } from "../../../../src/platform/contracts/types/domain.js";
 
-// Mock stores and db
-function createMockStore() {
+type PmfValidationDb = ConstructorParameters<typeof PmfValidationService>[0];
+type PmfValidationStore = ConstructorParameters<typeof PmfValidationService>[1];
+
+type MockStatement = {
+  get: (...params: unknown[]) => Record<string, unknown> | null;
+  all: (...params: unknown[]) => Array<Record<string, unknown>>;
+};
+
+type MockDb = {
+  connection: {
+    prepare: (sql: string) => MockStatement;
+  };
+};
+
+type MockStore = {
+  operations: {
+    insertPmfValidationReport: (record: PmfValidationReportRecord) => void;
+    listPmfValidationReports: (limit?: number) => PmfValidationReportRecord[];
+    getLatestPmfValidationReport: (profileName?: string | null) => PmfValidationReportRecord | null;
+  };
+  task: {
+    getTask: (taskId: string) => null;
+    insertTask: (task: Record<string, unknown>) => void;
+  };
+  artifact: {
+    insertArtifact: (artifact: Record<string, unknown>) => void;
+  };
+};
+
+function createMockStore(): MockStore {
   return {
     operations: {
-      insertPmfValidationReport: (() => {}) as (record: PmfValidationReportRecord) => void,
-      listPmfValidationReports: (() => []) as (limit?: number) => PmfValidationReportRecord[],
-      getLatestPmfValidationReport: (() => null) as (profileName?: string | null) => PmfValidationReportRecord | null,
+      insertPmfValidationReport: () => {},
+      listPmfValidationReports: () => [],
+      getLatestPmfValidationReport: () => null,
     },
     task: {
       getTask: () => null,
@@ -25,14 +53,39 @@ function createMockStore() {
   };
 }
 
-function createMockDb() {
+function createMockDb(): MockDb {
   return {
     connection: {
       prepare: () => ({
-        get: () => null as any,
-        all: () => [] as any[],
+        get: () => null,
+        all: () => [],
       }),
     },
+  };
+}
+
+function createService(
+  db: MockDb = createMockDb(),
+  store: MockStore = createMockStore(),
+): PmfValidationService {
+  return new PmfValidationService(
+    db as unknown as PmfValidationDb,
+    store as unknown as PmfValidationStore,
+  );
+}
+
+function makeReportRecord(overrides: Partial<PmfValidationReportRecord> = {}): PmfValidationReportRecord {
+  return {
+    id: "report_001",
+    profileName: "test",
+    windowStart: "2026-04-01T00:00:00.000Z",
+    windowEnd: "2026-04-15T00:00:00.000Z",
+    divisionId: null,
+    verdict: "pass",
+    summaryJson: "{}",
+    reportJson: "{}",
+    generatedAt: "2026-04-15T00:00:00.000Z",
+    ...overrides,
   };
 }
 
@@ -48,16 +101,13 @@ test("DEFAULT_PMF_THRESHOLDS has expected structure", () => {
 });
 
 test("PmfValidationService can be instantiated", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
+  const service = createService();
   assert.ok(service);
 });
 
 test("PmfValidationService runValidation returns report and record", () => {
   const mockStore = createMockStore();
-  mockStore.operations.insertPmfValidationReport = () => {};
-
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
+  const service = createService(createMockDb(), mockStore);
 
   const result = service.runValidation({});
 
@@ -70,7 +120,7 @@ test("PmfValidationService runValidation returns report and record", () => {
 });
 
 test("PmfValidationService buildReport returns valid report structure", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
+  const service = createService();
 
   const report = service.buildReport({});
 
@@ -88,51 +138,60 @@ test("PmfValidationService buildReport returns valid report structure", () => {
 });
 
 test("PmfValidationService buildReport accepts custom window days", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
+  const service = createService();
   const report = service.buildReport({ windowDays: 30 });
-
   assert.equal(report.window.days, 30);
 });
 
 test("PmfValidationService buildReport accepts custom profile name", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
+  const service = createService();
   const report = service.buildReport({ profileName: "custom_profile" });
-
   assert.equal(report.profileName, "custom_profile");
 });
 
 test("PmfValidationService buildReport accepts custom division id", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
+  const service = createService();
   const report = service.buildReport({ divisionId: "engineering" });
-
   assert.equal(report.divisionId, "engineering");
 });
 
 test("PmfValidationService buildReport calculates checks correctly for pass", () => {
   const mockDb = createMockDb();
-  mockDb.connection.prepare = () => ({
-    get: () => ({
-      taskCount: 100,
-      terminalTaskCount: 90,
-      successfulTaskCount: 81,
-      divisionCount: 1,
-      crossDivisionTaskCount: 50,
-      averageSuccessfulTaskCostUsd: 0.05,
-    }),
+  mockDb.connection.prepare = (sql) => ({
+    get: () => {
+      if (sql.includes("FROM sessions")) {
+        return {
+          sessionCount: 100,
+          activationSessionCount: 81,
+        };
+      }
+      if (sql.includes("FROM approvals")) {
+        return {
+          approvalCount: 20,
+          resolvedApprovalCount: 18,
+        };
+      }
+      if (sql.includes("FROM (")) {
+        return {
+          rootCount: 60,
+          repeatedRootCount: 30,
+        };
+      }
+      return {
+        taskCount: 100,
+        terminalTaskCount: 90,
+        successfulTaskCount: 81,
+        divisionCount: 1,
+        crossDivisionTaskCount: 50,
+        averageSuccessfulTaskCostUsd: 0.05,
+      };
+    },
     all: () => [],
   });
 
-  const mockStore = createMockStore();
+  const report = createService(mockDb, createMockStore()).buildReport({});
+  const sampleSizeCheck = report.checks.find((check) => check.checkId === "sample_size");
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
-
-  const report = service.buildReport({});
-
-  // With sufficient samples and good metrics, should pass
-  const sampleSizeCheck = report.checks.find(c => c.checkId === "sample_size");
   assert.ok(sampleSizeCheck);
   assert.equal(sampleSizeCheck.status, "pass");
 });
@@ -144,31 +203,21 @@ test("PmfValidationService buildReport handles null metrics gracefully", () => {
     all: () => [],
   });
 
-  const mockStore = createMockStore();
-
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
-
-  const report = service.buildReport({});
+  const report = createService(mockDb, createMockStore()).buildReport({});
 
   assert.ok(report);
-  assert.equal(report.verdict, "fail"); // Should fail due to insufficient samples
+  assert.equal(report.verdict, "fail");
 });
 
 test("PmfValidationService exportValidation returns artifacts", () => {
   const mockStore = createMockStore();
-  mockStore.operations.insertPmfValidationReport = () => {};
-  mockStore.task.getTask = () => null;
-  mockStore.task.insertTask = () => {};
-
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => ({
     get: () => null,
     all: () => [],
   });
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
-
-  const result = service.exportValidation({});
+  const result = createService(mockDb, mockStore).exportValidation({});
 
   assert.ok(result.jsonArtifact);
   assert.ok(result.markdownArtifact);
@@ -179,37 +228,29 @@ test("PmfValidationService exportValidation returns artifacts", () => {
 test("PmfValidationService listHistory returns reports", () => {
   const mockStore = createMockStore();
   mockStore.operations.listPmfValidationReports = () => [
-    { id: "report_1", profileName: "test", windowStart: "", windowEnd: "", divisionId: null, verdict: "pass", summaryJson: "{}", reportJson: "{}", generatedAt: "" } as PmfValidationReportRecord,
-    { id: "report_2", profileName: "test", windowStart: "", windowEnd: "", divisionId: null, verdict: "pass", summaryJson: "{}", reportJson: "{}", generatedAt: "" } as PmfValidationReportRecord,
+    makeReportRecord({ id: "report_1" }),
+    makeReportRecord({ id: "report_2" }),
   ];
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
-
-  const history = service.listHistory(10);
-
+  const history = createService(createMockDb(), mockStore).listHistory(10);
   assert.equal(history.length, 2);
 });
 
 test("PmfValidationService getLatest returns most recent report", () => {
   const mockStore = createMockStore();
-  mockStore.operations.getLatestPmfValidationReport = () => ({ id: "report_latest" } as any);
+  mockStore.operations.getLatestPmfValidationReport = () => makeReportRecord({ id: "report_latest" });
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
-
-  const latest = service.getLatest();
+  const latest = createService(createMockDb(), mockStore).getLatest();
 
   assert.ok(latest);
-  assert.equal((latest as any).id, "report_latest");
+  assert.equal(latest.id, "report_latest");
 });
 
 test("PmfValidationService getLatest with profile returns filtered report", () => {
   const mockStore = createMockStore();
-  mockStore.operations.getLatestPmfValidationReport = () => ({ id: "report_production" } as any);
+  mockStore.operations.getLatestPmfValidationReport = () => makeReportRecord({ id: "report_production" });
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
-
-  const latest = service.getLatest("production");
-
+  const latest = createService(createMockDb(), mockStore).getLatest("production");
   assert.ok(latest);
 });
 
@@ -217,24 +258,17 @@ test("PmfValidationService getLatest returns null when no reports", () => {
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => null;
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
-
-  const latest = service.getLatest();
-
+  const latest = createService(createMockDb(), mockStore).getLatest();
   assert.equal(latest, null);
 });
 
 test("PmfValidationService buildReport with custom thresholds", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
-  const customThresholds = {
-    ...DEFAULT_PMF_THRESHOLDS,
-    minTaskSuccessRatePct: 90,
-    maxAverageSuccessfulTaskCostUsd: 0.01,
-  };
-
-  const report = service.buildReport({
-    thresholds: customThresholds,
+  const report = createService().buildReport({
+    thresholds: {
+      ...DEFAULT_PMF_THRESHOLDS,
+      minTaskSuccessRatePct: 90,
+      maxAverageSuccessfulTaskCostUsd: 0.01,
+    },
   });
 
   assert.ok(report);
@@ -244,42 +278,32 @@ test("PmfValidationService verdict is fail when sample size insufficient", () =>
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => ({
     get: () => ({
-      taskCount: 5, // Very low
+      taskCount: 5,
       terminalTaskCount: 5,
       successfulTaskCount: 3,
       divisionCount: 1,
       crossDivisionTaskCount: 2,
-      averageSuccessfulTaskCostUsd: 0.10,
+      averageSuccessfulTaskCostUsd: 0.1,
     }),
     all: () => [],
   });
 
-  const mockStore = createMockStore();
+  const report = createService(mockDb, createMockStore()).buildReport({});
+  const sampleSizeCheck = report.checks.find((check) => check.checkId === "sample_size");
 
-  const service = new PmfValidationService(mockDb as any, mockStore as any);
-
-  const report = service.buildReport({});
-
-  const sampleSizeCheck = report.checks.find(c => c.checkId === "sample_size");
   assert.equal(sampleSizeCheck?.status, "fail");
   assert.equal(report.verdict, "fail");
 });
 
 test("PmfValidationService check IDs are unique", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
-  const report = service.buildReport({});
-
-  const checkIds = report.checks.map(c => c.checkId);
+  const report = createService().buildReport({});
+  const checkIds = report.checks.map((check) => check.checkId);
   const uniqueIds = new Set(checkIds);
   assert.equal(checkIds.length, uniqueIds.size);
 });
 
 test("PmfValidationService checks cover all expected metric types", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
-  const report = service.buildReport({});
-
+  const report = createService().buildReport({});
   const expectedChecks = [
     "sample_size",
     "task_success_rate",
@@ -291,14 +315,12 @@ test("PmfValidationService checks cover all expected metric types", () => {
   ];
 
   for (const expected of expectedChecks) {
-    assert.ok(report.checks.some(c => c.checkId === expected), `Missing check: ${expected}`);
+    assert.ok(report.checks.some((check) => check.checkId === expected), `Missing check: ${expected}`);
   }
 });
 
 test("PmfValidationService each check has required fields", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
-  const report = service.buildReport({});
+  const report = createService().buildReport({});
 
   for (const check of report.checks) {
     assert.ok(check.checkId);
@@ -311,10 +333,7 @@ test("PmfValidationService each check has required fields", () => {
 });
 
 test("PmfValidationService metrics are all numbers or null", () => {
-  const service = new PmfValidationService(createMockDb() as any, createMockStore() as any);
-
-  const report = service.buildReport({});
-
+  const report = createService().buildReport({});
   const numericMetrics = [
     report.metrics.taskCount,
     report.metrics.terminalTaskCount,
@@ -334,16 +353,14 @@ test("PmfValidationService metrics are all numbers or null", () => {
 
 test("PmfValidationService report can be converted to record", () => {
   const mockStore = createMockStore();
-  mockStore.operations.insertPmfValidationReport = (record: any) => {
+  mockStore.operations.insertPmfValidationReport = (record) => {
     assert.ok(record.id);
     assert.ok(record.profileName);
     assert.ok(record.windowStart);
     assert.ok(record.windowEnd);
   };
 
-  const service = new PmfValidationService(createMockDb() as any, mockStore as any);
-
-  const result = service.runValidation({});
+  const result = createService(createMockDb(), mockStore).runValidation({});
 
   assert.ok(result.record);
   assert.equal(result.record.id, result.report.reportId);

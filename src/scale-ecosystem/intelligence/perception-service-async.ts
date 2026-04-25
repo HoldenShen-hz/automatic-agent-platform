@@ -49,6 +49,12 @@ export class PerceptionServiceAsync extends SyncBackedAsyncService<PerceptionSer
     return this.asPromise((sync) => sync.registerSource(input));
   }
 
+  public async registerSource(
+    input: Parameters<import("./perception-service.js").PerceptionService["registerSource"]>[0],
+  ): Promise<ReturnType<import("./perception-service.js").PerceptionService["registerSource"]>> {
+    return this.registerSourceAsync(input);
+  }
+
   public async ingestIntel(
     input: Parameters<import("./perception-service.js").PerceptionService["ingestIntel"]>[0],
   ): Promise<ReturnType<import("./perception-service.js").PerceptionService["ingestIntel"]>> {
@@ -68,5 +74,17 @@ export class PerceptionServiceAsync extends SyncBackedAsyncService<PerceptionSer
     input: Parameters<import("./perception-service.js").PerceptionService["proposeActions"]>[0],
   ): Promise<ReturnType<import("./perception-service.js").PerceptionService["proposeActions"]>> {
     return this.asPromise((sync) => sync.proposeActions(input));
+  }
+
+  public async buildBrief(
+    input: Parameters<import("./perception-service.js").PerceptionService["buildBrief"]>[0],
+  ): Promise<ReturnType<import("./perception-service.js").PerceptionService["buildBrief"]>> {
+    return this.asPromise((sync) => sync.buildBrief(input));
+  }
+
+  public async proposeActions(
+    input: Parameters<import("./perception-service.js").PerceptionService["proposeActions"]>[0],
+  ): Promise<ReturnType<import("./perception-service.js").PerceptionService["proposeActions"]>> {
+    return this.proposeActionsAsync(input);
   }
 }
