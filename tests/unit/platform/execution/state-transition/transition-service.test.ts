@@ -224,19 +224,19 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     },
 
     updateTaskStatus(taskId, status, occurredAt, reasonCode, completedAt) {
-      mockState.taskStatuses.set(taskId, { status, updatedAt: occurredAt });
+      mockState.taskStatuses.set(taskId, { status: status as TaskStatus, updatedAt: occurredAt });
     },
 
     updateWorkflowState(taskId, status, currentStepIndex, outputsJson, occurredAt) {
-      mockState.workflowStates.set(taskId, { status, currentStepIndex, updatedAt: occurredAt });
+      mockState.workflowStates.set(taskId, { status: status as WorkflowStatus, currentStepIndex, updatedAt: occurredAt });
     },
 
     updateSessionStatus(sessionId, status, occurredAt) {
-      mockState.sessionStatuses.set(sessionId, { status, updatedAt: occurredAt });
+      mockState.sessionStatuses.set(sessionId, { status: status as SessionStatus, updatedAt: occurredAt });
     },
 
     updateExecutionStatus(executionId, status, occurredAt, reasonCode, finishedAt, lastErrorCode) {
-      mockState.executionStatuses.set(executionId, { status, startedAt: null, finishedAt, lastErrorCode, updatedAt: occurredAt });
+      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt, lastErrorCode, updatedAt: occurredAt });
     },
 
     insertApproval(approval) {

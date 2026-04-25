@@ -6,10 +6,11 @@
  */
 
 import * as assert from "node:assert/strict";
-import * as test from "node:test";
+import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
 import {
+  DEFAULT_CANARY_CONFIG,
   TrafficRoutingService,
   TRAFFIC_ROUTING_DDL,
 } from "../../../../../src/platform/control-plane/rollout-controller/traffic-routing-service.js";

@@ -29,6 +29,7 @@ import { HitlRuntime } from "../../../../../src/platform/orchestration/harness/h
 import {
   HarnessRuntimeService,
   type ConstraintPack,
+  type HarnessTimelineEvent,
 } from "../../../../../src/platform/orchestration/harness/index.js";
 import { HITL_MODES } from "../../../../../src/platform/orchestration/hitl/hitl-modes.js";
 
@@ -684,7 +685,7 @@ test("Harness openHitlReview transitions run to waiting_hitl status", () => {
     assert.equal(run.hitlRequest!.reason, "High risk operation requires human approval");
 
     const timeline = service.listTimeline(run);
-    const hitlEvents = timeline.filter((e) => e.type === "hitl_requested");
+    const hitlEvents = timeline.filter((e: HarnessTimelineEvent) => e.type === "hitl_requested");
     assert.equal(hitlEvents.length, 1);
   } finally {
     ctx.db.close();
@@ -718,7 +719,7 @@ test("Harness resolveHitlReview approves and resumes run", () => {
     assert.ok(run.completedAt === null, "Should not have completed timestamp on approval");
 
     const timeline = service.listTimeline(run);
-    const resolvedEvents = timeline.filter((e) => e.type === "hitl_resolved");
+    const resolvedEvents = timeline.filter((e: HarnessTimelineEvent) => e.type === "hitl_resolved");
     assert.equal(resolvedEvents.length, 1);
     const resolvedPayload = resolvedEvents[0]!.payload as { resolution: string; actorId: string };
     assert.equal(resolvedPayload.resolution, "approved");
