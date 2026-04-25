@@ -271,7 +271,7 @@ test("revokeSecretLease sets status to revoked with reason and revokedBy", async
   }
 });
 
-test("revokeSecretLease on already-revoked lease returns existing record unchanged", () => {
+test("revokeSecretLease on already-revoked lease returns existing record unchanged", async () => {
   const harness = createHarness("aa-int-lease-revoke-twice-");
   try {
     const service = createService(harness, {
@@ -289,7 +289,7 @@ test("revokeSecretLease on already-revoked lease returns existing record unchang
       currentVersion: "v1",
     });
 
-    const issued = service.issueSecretLeaseSync({
+    const issued = await service.issueSecretLease({
       secretRef: "secret://system/int/lease/revoke/twice",
       requestedBy: "ops.worker",
       grantedTo: "revoke-twice-runner",

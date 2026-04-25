@@ -437,8 +437,8 @@ test("decay integration: getDecayConfig returns correct config per layer", () =>
       evaluatedAt: "2026-04-10T08:00:00.000Z",
     });
 
-    const workingMem = memories.find((m) => m.scope === "working")!;
-    const semanticMem = memories.find((m) => m.scope === "project")!;
+    const workingMem = memories.find((m) => m.scope === "working");
+    const semanticMem = memories.find((m) => m.scope === "project");
 
     const workingConfig = decayService.getDecayConfig(workingMem);
     const semanticConfig = decayService.getDecayConfig(semanticMem);
