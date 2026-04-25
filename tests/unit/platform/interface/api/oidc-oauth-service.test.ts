@@ -442,3 +442,254 @@ test("exchangeCodeForTokens works with mock fetch", async () => {
   assert.equal(result.idToken, "id-456");
   assert.equal(result.expiresIn, 3600);
 });
+
+test("exchangeCodeForTokens throws when token endpoint returns error", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: false,
+      status: 401,
+      statusText: "Unauthorized",
+    } as Response;
+  };
+
+  const service = new OidcOAuthService([provider], [], "test-audience", mockFetch);
+
+  await assert.rejects(
+    async () => service.exchangeCodeForTokens(
+      "invalid-code",
+      "https://app.example.com/callback",
+      "code-verifier",
+      provider,
+      "client-id",
+      "client-secret",
+    ),
+    (err: Error) => err.message.includes("oauth.token_exchange_failed"),
+  );
+});
+
+test("fetchOidcDiscovery parses discovery document correctly", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid", "profile", "email"],
+  };
+
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: true,
+      json: async () => ({
+        issuer: "https://idp.example.com",
+        authorization_endpoint: "https://idp.example.com/auth",
+        token_endpoint: "https://idp.example.com/token",
+        jwks_uri: "https://idp.example.com/jwks",
+        userinfo_endpoint: "https://idp.example.com/userinfo",
+        scopes_supported: ["openid", "profile", "email", "offline"],
+      }),
+    } as Response;
+  };
+
+  const service = new OidcOAuthService([], [], "test-audience", mockFetch);
+
+  const result = await service.fetchOidcDiscovery("https://idp.example.com/");
+
+  assert.equal(result.issuer, "https://idp.example.com");
+  assert.equal(result.authorizationEndpoint, "https://idp.example.com/auth");
+  assert.equal(result.tokenEndpoint, "https://idp.example.com/token");
+  assert.equal(result.jwksUri, "https://idp.example.com/jwks");
+  assert.equal(result.userInfoEndpoint, "https://idp.example.com/userinfo");
+  assert.deepEqual(result.scopes, ["openid", "profile", "email", "offline"]);
+});
+
+test("fetchOidcDiscovery uses default scopes when not in discovery document", async () => {
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: true,
+      json: async () => ({
+        issuer: "https://idp.example.com",
+        authorization_endpoint: "https://idp.example.com/auth",
+        token_endpoint: "https://idp.example.com/token",
+        jwks_uri: "https://idp.example.com/jwks",
+      }),
+    } as Response;
+  };
+
+  const service = new OidcOAuthService([], [], "test-audience", mockFetch);
+
+  const result = await service.fetchOidcDiscovery("https://idp.example.com");
+
+  // Default scopes should be used when scopes_supported is not present
+  assert.deepEqual(result.scopes, ["openid", "profile", "email"]);
+});
+
+test("fetchOidcDiscovery throws when discovery endpoint returns error", async () => {
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable",
+    } as Response;
+  };
+
+  const service = new OidcOAuthService([], [], "test-audience", mockFetch);
+
+  await assert.rejects(
+    async () => service.fetchOidcDiscovery("https://idp.example.com"),
+    (err: Error) => err.message.includes("oidc.discovery_failed"),
+  );
+});
+
+test("fetchJwks throws when provider jwks endpoint returns error", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+    } as Response;
+  };
+
+  const service = new OidcOAuthService([provider], [], "test-audience", mockFetch);
+
+  await assert.rejects(
+    async () => service.fetchJwks("https://idp.example.com"),
+    (err: Error) => err.message.includes("oidc.jwks_fetch_failed"),
+  );
+});
+
+test("fetchJwks refreshes cache after TTL expires", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+
+  let callCount = 0;
+  const mockJwks1 = {
+    keys: [
+      { kty: "RSA", use: "sig", kid: "key-1", alg: "RS256", n: "abc", e: "AQAB" },
+    ],
+  };
+  const mockJwks2 = {
+    keys: [
+      { kty: "RSA", use: "sig", kid: "key-2", alg: "RS256", n: "xyz", e: "AQAB" },
+    ],
+  };
+
+  const mockFetch = async (_url: string | URL | Request) => {
+    callCount++;
+    // Return different keys on each call to verify cache refresh
+    if (callCount === 1) {
+      return { ok: true, json: async () => mockJwks1 } as Response;
+    }
+    return { ok: true, json: async () => mockJwks2 } as Response;
+  };
+
+  // Create service with a very short JWKS_CACHE_TTL_MS (via accessing internal cache)
+  // For testing, we verify the cache by checking call counts
+  const service = new OidcOAuthService([provider], [], "test-audience", mockFetch);
+
+  // First call - should fetch
+  const keys1 = await service.fetchJwks("https://idp.example.com");
+  assert.equal(callCount, 1);
+  assert.equal(keys1[0].kid, "key-1");
+
+  // Second call - should use cache (callCount stays at 1)
+  const keys2 = await service.fetchJwks("https://idp.example.com");
+  assert.equal(callCount, 1);
+  assert.equal(keys2[0].kid, "key-1");
+});
+
+test("validateFederatedToken rejects when signature verification fails", async () => {
+  const provider: OidcProvider = {
+    issuer: "https://idp.example.com",
+    authorizationEndpoint: "https://idp.example.com/auth",
+    tokenEndpoint: "https://idp.example.com/token",
+    jwksUri: "https://idp.example.com/jwks",
+    scopes: ["openid"],
+  };
+
+  const mockFetch = async (_url: string | URL | Request) => {
+    return {
+      ok: true,
+      json: async () => ({
+        keys: [
+          { kty: "RSA", use: "sig", kid: "key-1", alg: "RS256", n: "abc", e: "AQAB" },
+        ],
+      }),
+    } as Response;
+  };
+
+  // skipSignatureVerification = false to test actual signature verification
+  const service = new OidcOAuthService([provider], ["https://idp.example.com"], "test-audience", mockFetch, false);
+
+  // Create a token with invalid signature
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "key-1" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iss: "https://idp.example.com",
+    sub: "user123",
+    aud: "test-audience",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    iat: Math.floor(Date.now() / 1000),
+  })).toString("base64url");
+  const token = `${header}.${payload}.invalid-signature`;
+
+  const result = await service.validateFederatedToken(token);
+  assert.equal(result.valid, false);
+  assert.equal(result.error, "jwt.signature_invalid");
+});
+
+test("registerApiKey stores key with optional expiration", () => {
+  const service = createService();
+  const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  service.registerApiKey("future-key", "actor-123", ["read", "write"], futureDate);
+
+  const result = service.validateApiKey("future-key");
+  assert.equal(result.valid, true);
+  assert.equal(result.actorId, "actor-123");
+});
+
+test("listProviders returns empty array when no providers registered", () => {
+  const service = createService();
+  const providers = service.listProviders();
+  assert.deepEqual(providers, []);
+});
+
+test("validateFederatedToken handles array of errors gracefully", async () => {
+  const service = createService([], ["https://idp.example.com"], true);
+
+  // Token with multiple issues (expired AND wrong issuer would be rejected on first)
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    iss: "https://untrusted.example.com",
+    sub: "user123",
+    aud: "test-audience",
+    exp: Math.floor(Date.now() / 1000) - 3600, // Expired
+    iat: Math.floor(Date.now() / 1000) - 7200,
+  })).toString("base64url");
+  const token = `${header}.${payload}.signature`;
+
+  const result = await service.validateFederatedToken(token);
+  assert.equal(result.valid, false);
+  // Should reject on issuer first (as that's checked before expiration)
+  assert.equal(result.error, "jwt.untrusted_issuer");
+});

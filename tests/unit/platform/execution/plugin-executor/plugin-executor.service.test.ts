@@ -564,7 +564,7 @@ test("PluginExecutorService.activate() throws for disabled plugin", async () => 
 // Legacy PluginExecutionService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutionService registers plugins and exposes listPlugins", () => {
+test("PluginExecutionService registers plugins and exposes listPlugins", async () => {
   const { PluginExecutionService } = await import(
     "../../../../../src/platform/execution/plugin-executor/index.js"
   );

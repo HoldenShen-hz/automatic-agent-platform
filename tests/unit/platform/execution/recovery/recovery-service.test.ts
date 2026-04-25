@@ -21,8 +21,8 @@ function createMockStore(overrides: {
     listRecoverableExecutingRuns?: () => RuntimeRecoveryRecord[];
     listStaleRuns?: () => RuntimeRecoveryRecord[];
     buildRuntimeRecoveryView?: () => RuntimeRecoveryRecord[];
-    listBlockedRunsAwaitingApproval?: () => RuntimeRecoveryRecord[];
   };
+  listBlockedRunsAwaitingApproval?: () => RuntimeRecoveryRecord[];
   event?: {
     listEventsForTask?: () => Array<{
       id: string;
@@ -53,8 +53,8 @@ function createMockStore(overrides: {
       listRecoverableExecutingRuns: overrides.operations?.listRecoverableExecutingRuns ?? (() => []),
       listStaleRuns: overrides.operations?.listStaleRuns ?? (() => []),
       buildRuntimeRecoveryView: overrides.operations?.buildRuntimeRecoveryView ?? (() => []),
-      listBlockedRunsAwaitingApproval: overrides.operations?.listBlockedRunsAwaitingApproval ?? (() => []),
     },
+    listBlockedRunsAwaitingApproval: overrides.listBlockedRunsAwaitingApproval ?? (() => []),
     event: {
       listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
     },
@@ -163,9 +163,7 @@ test("RuntimeRecoveryService suggests escalate_takeover for approval_pending reg
     attempt: 10, // High attempt should still escalate
   });
   const store = createMockStore({
-    operations: {
-      listBlockedRunsAwaitingApproval: () => [record],
-    },
+    listBlockedRunsAwaitingApproval: () => [record],
   });
   const service = new RuntimeRecoveryService(store);
 
@@ -586,8 +584,8 @@ test("RuntimeRecoveryService calculates newestCandidateAt correctly", () => {
     operations: {
       listRecoverableExecutingRuns: () => records,
       listStaleRuns: () => [],
-      listBlockedRunsAwaitingApproval: () => [],
     },
+    listBlockedRunsAwaitingApproval: () => [],
   });
   const service = new RuntimeRecoveryService(store);
 
@@ -609,8 +607,8 @@ test("RuntimeRecoveryService handles unassigned division as unassigned", () => {
     operations: {
       listRecoverableExecutingRuns: () => records,
       listStaleRuns: () => [],
-      listBlockedRunsAwaitingApproval: () => [],
     },
+    listBlockedRunsAwaitingApproval: () => [],
   });
   const service = new RuntimeRecoveryService(store);
 

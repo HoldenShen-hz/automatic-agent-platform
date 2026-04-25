@@ -268,15 +268,15 @@ test("E2E Health Check: worker health summary populated", () => {
   try {
     const report = h.healthService.getReport();
 
-    assert.strictEqual(typeof report.workerHealth.totalWorkers, "number", "Total workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.healthyWorkers, "number", "Healthy workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.busyWorkers, "number", "Busy workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.drainingWorkers, "number", "Draining workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.degradedWorkers, "number", "Degraded workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.quarantinedWorkers, "number", "Quarantined workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.offlineWorkers, "number", "Offline workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.staleWorkers, "number", "Stale workers should be a number");
-    assert.strictEqual(typeof report.workerHealth.loadSkewDetected, "boolean", "Load skew detected should be a boolean");
+    assert.ok(typeof report.workerHealth.totalWorkers === "number", "Total workers should be a number");
+    assert.ok(typeof report.workerHealth.healthyWorkers === "number", "Healthy workers should be a number");
+    assert.ok(typeof report.workerHealth.busyWorkers === "number", "Busy workers should be a number");
+    assert.ok(typeof report.workerHealth.drainingWorkers === "number", "Draining workers should be a number");
+    assert.ok(typeof report.workerHealth.degradedWorkers === "number", "Degraded workers should be a number");
+    assert.ok(typeof report.workerHealth.quarantinedWorkers === "number", "Quarantined workers should be a number");
+    assert.ok(typeof report.workerHealth.offlineWorkers === "number", "Offline workers should be a number");
+    assert.ok(typeof report.workerHealth.staleWorkers === "number", "Stale workers should be a number");
+    assert.ok(typeof report.workerHealth.loadSkewDetected === "boolean", "Load skew detected should be a boolean");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -386,7 +386,7 @@ test("E2E Health Check: tier1 ack backlog tracked", () => {
   try {
     const report = h.healthService.getReport();
 
-    assert.equal(typeof report.tier1AckBacklog === "number", "Tier1 ack backlog should be a number");
+    assert.ok(typeof report.tier1AckBacklog === "number", "Tier1 ack backlog should be a number");
     // In empty database, should be 0
     if (report.tier1AckBacklog === 0) {
       assert.equal(report.status, "ok", "Status should be ok with 0 tier1 backlog");

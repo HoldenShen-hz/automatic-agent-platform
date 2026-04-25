@@ -301,32 +301,19 @@ test("PgAdvisoryLockAdapter: different lock keys can be acquired independently",
 });
 
 test("PgAdvisoryLockAdapter: same lock key cannot be acquired twice by different owners (advisory lock blocks)", async () => {
-  // First acquire succeeds
-  const mockDriver = createMockDriver({
-    queryFn: async (strings, ...values) => {
-      // Simulate pg_try_advisory_lock behavior:
-      // First call with a key returns true, subsequent calls return false
-      const key = values[0] as string;
-      if (!mockDriver._acquiredKeys) mockDriver._acquiredKeys = new Set<bigint>();
-      // This is a simplified simulation
-      return [{ acquired: true }];
-    },
-    endFn: async () => {},
-  });
-  (mockDriver as unknown as { _acquiredKeys: Set<bigint> })._acquiredKeys = new Set();
+  // This test verifies the contract: pg_try_advisory_lock returns false when lock is held.
+  // Since our mock cannot truly simulate PostgreSQL state, we verify the interface contract
+  // that acquireAsync returns { acquired: false } when the underlying pg_try_advisory_lock returns false.
 
+  const mockDriver = createMockDriver({
+    queryFn: async () => [{ acquired: false }], // Simulates lock already held
+  });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
-  // First acquire succeeds
-  const first = await adapter.acquireAsync({ lockKey: "exclusive-resource", owner: "owner-a" });
-  assert.equal(first.acquired, true);
+  const result = await adapter.acquireAsync({ lockKey: "exclusive-resource", owner: "owner-b" });
 
-  // Second acquire on same key should fail (simulating advisory lock held)
-  // Note: This is a structural test - the mock behavior determines outcome
-  const second = await adapter.acquireAsync({ lockKey: "exclusive-resource", owner: "owner-b" });
-  // The actual behavior depends on PostgreSQL - our mock returns true for simplicity
-  // In real usage, pg_try_advisory_lock would return false for second caller
-  assert.equal(second.acquired, true); // Mock always returns true
+  assert.equal(result.acquired, false);
+  assert.equal(result.lock, undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -422,7 +409,8 @@ test("PgAdvisoryLockAdapter: constructor accepts custom postgresFactory", () => 
 
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",
-    postgresFactory: customFactory,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    postgresFactory: customFactory as any,
   });
 
   assert.equal((adapter as unknown as { postgresFactory: unknown }).postgresFactory, customFactory);

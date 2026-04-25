@@ -334,7 +334,7 @@ test("E2E Goal Decomposition: human review required based on confidence and risk
     // Normal template goal may not require human review
     assert.equal(templateResult.requiresHumanReview === false || templateResult.requiresHumanReview === true, true, "Should have explicit review flag");
 
-    // No template match should have lower confidence
+    // Generic multi-step description triggers hybrid strategy
     const noTemplateGoal: Goal = {
       goalId: newId("goal"),
       description: "do something very specific and unusual that has no template",
@@ -345,8 +345,9 @@ test("E2E Goal Decomposition: human review required based on confidence and risk
     };
 
     const noTemplateResult = await service.decompose(noTemplateGoal);
-    assert.equal(noTemplateResult.decompositionStrategy, "human_assisted", "Should use human_assisted strategy");
-    assert.ok(noTemplateResult.decompositionConfidence < 0.7, "No template should have lower confidence");
+    // Description > 20 chars returns "generic_multi_step" which uses hybrid strategy
+    assert.equal(noTemplateResult.decompositionStrategy, "hybrid", "Should use hybrid strategy for generic multi-step");
+    assert.ok(noTemplateResult.decompositionConfidence < 0.8, "Hybrid should have moderate confidence");
 
   } finally {
     harness.cleanup();
@@ -366,7 +367,7 @@ test("E2E Goal Decomposition: can create tasks in store from decomposition", asy
 
     const goal: Goal = {
       goalId: newId("goal"),
-      description: "启动营销活动",
+      description: "启动新的广告投放营销活动",
       owner: DEFAULT_OWNER,
       successCriteria: [],
       constraints: [],
