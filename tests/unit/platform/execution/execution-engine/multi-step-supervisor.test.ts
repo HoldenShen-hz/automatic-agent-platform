@@ -18,6 +18,7 @@ import type {
   CostEventRecord,
   ExecutionPrecheckRecord,
   ExecutionRecord,
+  ExecutionStatusTransitionCommand,
   MessageRecord,
   SessionRecord,
   StepOutputRecord,
@@ -212,7 +213,7 @@ interface MockExecutionDeps {
   artifactStore: ArtifactStore;
   contextCompaction: ContextCompactionService;
   streamBridge: StreamBridge;
-  transitionExecutionStatus: (params: Record<string, unknown>) => void;
+  transitionExecutionStatus: (command: ExecutionStatusTransitionCommand) => void;
   createContext: (reasonCode: string) => TransitionAuditContext;
 }
 

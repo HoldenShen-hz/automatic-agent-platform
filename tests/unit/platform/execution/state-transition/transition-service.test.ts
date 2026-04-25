@@ -247,6 +247,37 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       });
     },
 
+    getApproval(approvalId) {
+      const decision = mockState.approvalDecisions.get(approvalId);
+      if (!decision) return null;
+      return {
+        id: approvalId,
+        taskId: "task-1",
+        requestJson: "{}",
+        status: decision.status,
+        responseJson: decision.responseJson,
+        respondedAt: decision.respondedAt,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    },
+
+    listApprovalsByTask(taskId) {
+      return [];
+    },
+
+    updateApprovalDecision(input) {
+      mockState.approvalDecisions.set(input.approvalId, {
+        status: input.status,
+        responseJson: input.responseJson,
+        respondedAt: input.respondedAt,
+      });
+    },
+
+    updateApprovalRequest(input) {
+      // Mock implementation
+    },
+
     insertEvent(event) {
       return {
         id: `event-${Date.now()}`,

@@ -56,9 +56,9 @@ test("CostEstimationService uses division-specific average when available", () =
 
 test("CostEstimationService falls back to global average when division has no data", () => {
   const mockDb = createMockDb();
-  mockDb.connection.prepare = (sql: string) => ({
+  mockDb.connection.prepare = (sql?: string) => ({
     get: () => {
-      if (sql.includes("division_id")) {
+      if (sql?.includes("division_id")) {
         return null; // No division data
       }
       return { avg_cost: 0.10, sample_count: 50 };
@@ -207,11 +207,11 @@ test("CostEstimationService estimate with null divisionId uses global", () => {
 test("CostEstimationService filters out zero-cost events", () => {
   const mockDb = createMockDb();
   let callCount = 0;
-  mockDb.connection.prepare = (sql: string) => ({
+  mockDb.connection.prepare = (sql?: string) => ({
     get: () => {
       callCount++;
       // Simulate division-specific query returning zero-cost data
-      if (sql.includes("division_id") && callCount === 1) {
+      if (sql?.includes("division_id") && callCount === 1) {
         return { avg_cost: 0, sample_count: 0 };
       }
       return { avg_cost: 0.12, sample_count: 15 };
