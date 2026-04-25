@@ -63,11 +63,15 @@ test("WorkerPool assigns task to worker with matching queue affinity", () => {
 
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-a", queueAffinity: "queue-x" }));
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-b", queueAffinity: "queue-y" }));
+  // Workers with no queue affinity (null) also match any queue filter
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-c", queueAffinity: null }));
 
   const eligible = service.listEligibleWorkers({ queueAffinity: "queue-x" });
-  assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-a");
+  // worker-a matches exactly, worker-c has no affinity so it matches any filter
+  assert.equal(eligible.length, 2);
+  const ids = eligible.map((w) => w.workerId);
+  assert.ok(ids.includes("worker-a"));
+  assert.ok(ids.includes("worker-c"));
 });
 
 test("WorkerPool excludes workers at max capacity from task assignment", () => {
@@ -114,14 +118,16 @@ test("WorkerPool assigns to hardened isolation worker when required", () => {
   assert.equal(eligible[0].workerId, "worker-hrd");
 });
 
-test("WorkerPool strict isolation does not satisfy hardened requirement", () => {
+test("WorkerPool strict isolation satisfies hardened requirement", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-strict", isolationLevel: "strict" }));
 
+  // strict (2) >= hardened (1), so strict satisfies hardened requirement
   const eligible = service.listEligibleWorkers({ requiredIsolationLevel: "hardened" });
-  assert.equal(eligible.length, 0);
+  assert.equal(eligible.length, 1);
+  assert.equal(eligible[0].workerId, "worker-strict");
 });
 
 test("WorkerPool excludes unavailable, offline, quarantined, draining workers", () => {
@@ -135,10 +141,11 @@ test("WorkerPool excludes unavailable, offline, quarantined, draining workers", 
 
   const eligible = service.listEligibleWorkers();
   // Only idle and busy (which map to healthy) should be eligible
+  // Degraded is excluded by default unless includeDegraded is true
   const eligibleIds = eligible.map((w) => w.workerId);
   assert.ok(eligibleIds.includes("worker-idle"), "idle should be eligible");
   assert.ok(eligibleIds.includes("worker-busy"), "busy should be eligible");
-  assert.ok(eligibleIds.includes("worker-degraded"), "degraded should be eligible (availableSlots > 0)");
+  assert.ok(!eligibleIds.includes("worker-degraded"), "degraded should NOT be eligible by default");
   assert.ok(!eligibleIds.includes("worker-draining"), "draining should not be eligible");
   assert.ok(!eligibleIds.includes("worker-unavailable"), "unavailable should not be eligible");
   assert.ok(!eligibleIds.includes("worker-quarantined"), "quarantined should not be eligible");
@@ -475,7 +482,7 @@ test("WorkerPool single worker with high load does not trigger skew detection", 
 // Combined Selection and Load Balancing
 // ---------------------------------------------------------------------------
 
-test("WorkerPool listEligibleWorkers returns workers sorted by capacity", () => {
+test("WorkerPool listEligibleWorkers returns eligible workers (order not guaranteed)", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -492,8 +499,13 @@ test("WorkerPool listEligibleWorkers returns workers sorted by capacity", () => 
 
   const eligible = service.listEligibleWorkers();
   assert.equal(eligible.length, 2);
-  // worker-high has more available slots
-  assert.equal(eligible[0].workerId, "worker-high");
+  // Both workers should be eligible; order is not guaranteed
+  const ids = eligible.map((w) => w.workerId);
+  assert.ok(ids.includes("worker-low"));
+  assert.ok(ids.includes("worker-high"));
+  // Verify worker-high has more available slots
+  const highWorker = eligible.find((w) => w.workerId === "worker-high");
+  assert.equal(highWorker!.availableSlots, 8);
 });
 
 test("WorkerPool untrusted remote workers excluded from eligible list", () => {

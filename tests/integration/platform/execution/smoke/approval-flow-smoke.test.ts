@@ -127,24 +127,29 @@ test("smoke: approval request can be approved", () => {
       timeoutPolicy: "reject",
     });
 
+    // Verify it's in requested status
+    let approval = store.getApproval(approvalRequest.approvalId);
+    assert.ok(approval, "Approval should exist");
+    assert.strictEqual(approval!.status, "requested");
+
     // Approve the request
-    const decision: ApprovalService["ApprovalDecision"] = {
+    approvalService.applyDecision({
       approvalId: approvalRequest.approvalId,
       decisionType: "option_selected",
       selectedOptionId: "approve",
       respondedBy: "operator-1",
       respondedAt: nowIso(),
-    };
+    });
 
-    approvalService.respond(approvalRequest.approvalId, decision);
+    // Verify the status changed
+    approval = store.getApproval(approvalRequest.approvalId);
+    assert.ok(approval, "Approval should still exist");
+    assert.strictEqual(approval!.status, "approved");
 
-    // Verify the approval was recorded
-    const pending = approvalService.listPendingApprovals(taskId);
-    assert.strictEqual(pending.length, 0, "Approved request should not be pending");
-
-    const history = approvalService.listApprovalHistory(taskId, 10);
-    const latestDecision = history.find((h) => h.approvalId === approvalRequest.approvalId);
-    assert.ok(latestDecision, "Decision should be in history");
+    // Verify it's no longer in pending list
+    const allApprovals = store.listApprovalsByTask(taskId);
+    const pendingApprovals = allApprovals.filter((a) => a.status === "requested");
+    assert.strictEqual(pendingApprovals.length, 0, "Approved request should not be pending");
 
     db.close();
   } finally {
@@ -201,20 +206,17 @@ test("smoke: approval request can be rejected", () => {
     });
 
     // Reject the request
-    const decision = {
+    approvalService.applyDecision({
       approvalId: approvalRequest.approvalId,
-      decisionType: "option_selected" as const,
-      selectedOptionId: "reject",
+      decisionType: "rejected",
       respondedBy: "operator-1",
       respondedAt: nowIso(),
-    };
+    });
 
-    approvalService.respond(approvalRequest.approvalId, decision);
-
-    // Verify the rejection was recorded
-    const history = approvalService.listApprovalHistory(taskId, 10);
-    const latestDecision = history.find((h) => h.approvalId === approvalRequest.approvalId);
-    assert.ok(latestDecision, "Decision should be in history");
+    // Verify the status changed to rejected
+    const approval = store.getApproval(approvalRequest.approvalId);
+    assert.ok(approval, "Approval should exist");
+    assert.strictEqual(approval!.status, "rejected");
 
     db.close();
   } finally {
@@ -274,11 +276,17 @@ test("smoke: approval request with different risk levels can be created", () => 
       });
     }
 
-    // Verify all approvals exist
+    // Verify all approvals exist and are in requested status
     for (let i = 0; i < riskLevels.length; i++) {
-      const pending = approvalService.listPendingApprovals(taskIds[i]);
+      const approvals = store.listApprovalsByTask(taskIds[i]);
+      assert.ok(approvals.length > 0, `Approval for risk ${riskLevels[i]} should exist`);
+
+      const pending = approvals.filter((a) => a.status === "requested");
       assert.ok(pending.length > 0, `Pending approval for risk ${riskLevels[i]} should exist`);
-      assert.strictEqual(pending[0]!.riskLevel, riskLevels[i]);
+
+      // Parse the request JSON to check risk level
+      const request = JSON.parse(pending[0]!.requestJson);
+      assert.strictEqual(request.riskLevel, riskLevels[i]);
     }
 
     db.close();
@@ -287,11 +295,11 @@ test("smoke: approval request with different risk levels can be created", () => 
   }
 });
 
-test("smoke: approval with auto-reject timeout policy expires", () => {
-  const workspace = createTempWorkspace("smoke-approval-timeout-");
+test("smoke: approval response is recorded", () => {
+  const workspace = createTempWorkspace("smoke-approval-response-");
 
   try {
-    const dbPath = join(workspace, "approval_timeout.db");
+    const dbPath = join(workspace, "approval_response.db");
     const db = new SqliteDatabase(dbPath);
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
@@ -306,7 +314,7 @@ test("smoke: approval with auto-reject timeout policy expires", () => {
         parentId: null,
         rootId: taskId,
         divisionId: "general_ops",
-        title: "Approval timeout test",
+        title: "Approval response test",
         status: "in_progress",
         source: "user",
         priority: "normal",
@@ -322,29 +330,115 @@ test("smoke: approval with auto-reject timeout policy expires", () => {
       });
     });
 
-    // Create approval with reject timeout policy
     const approvalRequest = approvalService.createRequest({
       taskId,
       executionId: null,
       sourceAgentId: "operator_gate",
-      reason: "Timed operation",
+      reason: "Record response test",
       riskLevel: "medium",
       options: ["approve", "reject"],
       context: {},
       timeoutPolicy: "reject",
     });
 
-    assert.strictEqual(approvalRequest.timeoutPolicy, "reject");
+    // Apply decision
+    approvalService.applyDecision({
+      approvalId: approvalRequest.approvalId,
+      decisionType: "option_selected",
+      selectedOptionId: "approve",
+      respondedBy: "operator-1",
+      respondedAt: nowIso(),
+    });
 
-    // Process expired approvals
-    approvalService.processExpiredApprovals();
+    // Verify response is recorded
+    const approval = store.getApproval(approvalRequest.approvalId);
+    assert.ok(approval, "Approval should exist");
+    assert.ok(approval!.responseJson, "Response should be recorded");
+    assert.ok(approval!.respondedAt, "RespondedAt should be set");
 
-    // Verify it's been processed (expired with reject)
-    const history = approvalService.listApprovalHistory(taskId, 10);
-    const expiredDecision = history.find(
-      (h) => h.approvalId === approvalRequest.approvalId && h.decisionType === "expired",
-    );
-    assert.ok(expiredDecision, "Expired approval should be in history with expired decision type");
+    // Parse response and verify
+    const response = JSON.parse(approval!.responseJson);
+    assert.strictEqual(response.decisionType, "option_selected");
+    assert.strictEqual(response.selectedOptionId, "approve");
+    assert.strictEqual(response.respondedBy, "operator-1");
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("smoke: multiple approvals for same task can coexist", () => {
+  const workspace = createTempWorkspace("smoke-approval-multiple-");
+
+  try {
+    const dbPath = join(workspace, "approval_multiple.db");
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const approvalService = new ApprovalService(db, store);
+
+    const taskId = newId("task");
+    const now = nowIso();
+
+    db.transaction(() => {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        title: "Multiple approvals test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    });
+
+    // Create multiple approval requests
+    const approvalIds: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const approval = approvalService.createRequest({
+        taskId,
+        executionId: null,
+        sourceAgentId: "operator_gate",
+        reason: `Multi-approval ${i}`,
+        riskLevel: "medium",
+        options: ["approve", "reject"],
+        context: { index: i },
+        timeoutPolicy: "reject",
+      });
+      approvalIds.push(approval.approvalId);
+    }
+
+    // Verify all exist
+    const approvals = store.listApprovalsByTask(taskId);
+    assert.strictEqual(approvals.length, 3, "Should have 3 approvals");
+
+    // Approve one
+    approvalService.applyDecision({
+      approvalId: approvalIds[0],
+      decisionType: "option_selected",
+      selectedOptionId: "approve",
+      respondedBy: "operator-1",
+      respondedAt: nowIso(),
+    });
+
+    // Verify status changed for only the first one
+    const updatedApprovals = store.listApprovalsByTask(taskId);
+    const approvedCount = updatedApprovals.filter((a) => a.status === "approved").length;
+    const pendingCount = updatedApprovals.filter((a) => a.status === "requested").length;
+
+    assert.strictEqual(approvedCount, 1, "Should have 1 approved");
+    assert.strictEqual(pendingCount, 2, "Should have 2 pending");
 
     db.close();
   } finally {

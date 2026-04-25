@@ -242,3 +242,148 @@ test("api auth service rejects token that is too old via maxTokenAgeMs option", 
     "JWT issued too long ago should be rejected",
   );
 });
+
+test("api auth service exchangeApiKey accepts custom issuedAt timestamp", () => {
+  const service = new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: "test-key",
+        actorId: "test-actor",
+        roles: ["viewer"],
+      },
+    ],
+    jwtSecret: "test-secret",
+    tokenTtlMs: 60 * 60 * 1000, // 1 hour
+  });
+
+  const customIssuedAt = "2024-01-15T10:00:00.000Z";
+  const result = service.exchangeApiKey("test-key", customIssuedAt);
+
+  // Verify the token was created with the custom timestamp
+  const decodedPayload = JSON.parse(Buffer.from(result.accessToken.split(".")[1]!, "base64url").toString("utf8"));
+  const expectedIat = Math.floor(new Date(customIssuedAt).getTime() / 1000);
+  const expectedExp = expectedIat + 3600;
+
+  assert.equal(decodedPayload.iat, expectedIat);
+  assert.equal(decodedPayload.exp, expectedExp);
+  assert.equal(result.expiresAt, new Date(expectedExp * 1000).toISOString());
+});
+
+test("api auth service exchangeApiKey includes tenantId in principal", () => {
+  const service = new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: "tenant-key",
+        actorId: "tenant-actor",
+        roles: ["operator"],
+        tenantId: "tenant-abc-123",
+      },
+    ],
+    jwtSecret: "test-secret",
+  });
+
+  const result = service.exchangeApiKey("tenant-key");
+
+  assert.equal(result.principal.tenantId, "tenant-abc-123");
+  assert.equal(result.principal.actorId, "tenant-actor");
+  assert.deepEqual(result.principal.roles, ["operator"]);
+
+  // Also verify via authenticate
+  const authenticated = service.authenticate({
+    authorization: `Bearer ${result.accessToken}`,
+  });
+  assert.equal(authenticated.tenantId, "tenant-abc-123");
+});
+
+test("api auth service exchangeApiKey rejects invalid api key", () => {
+  const service = new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: "valid-key",
+        actorId: "valid-actor",
+        roles: ["viewer"],
+      },
+    ],
+    jwtSecret: "test-secret",
+  });
+
+  assert.throws(
+    () => service.exchangeApiKey("invalid-key"),
+    (error: unknown) =>
+      (error as any)?.code === "api.invalid_api_key"
+      && (error as any)?.statusCode === 401,
+  );
+});
+
+test("api auth service authenticate rejects malformed bearer token", () => {
+  const service = new ApiAuthService({
+    apiKeys: [],
+    jwtSecret: "test-secret",
+  });
+
+  assert.throws(
+    () => service.authenticate({ authorization: "Bearer not.a.valid.jwt.token" }),
+    (error: unknown) =>
+      (error as any)?.code === "api.invalid_token"
+      && (error as any)?.statusCode === 401,
+  );
+
+  assert.throws(
+    () => service.authenticate({ authorization: "Bearer missing-dot" }),
+    (error: unknown) =>
+      (error as any)?.code === "api.invalid_token"
+      && (error as any)?.statusCode === 401,
+  );
+});
+
+test("api auth service requireRole rejects when principal lacks required role", () => {
+  const service = new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: "viewer-key",
+        actorId: "viewer-actor",
+        roles: ["viewer"],
+      },
+    ],
+    jwtSecret: "test-secret",
+  });
+
+  // Authenticate with viewer role, require operator role
+  assert.throws(
+    () => service.requireRole({ "x-api-key": "viewer-key" }, "operator"),
+    (error: unknown) =>
+      (error as any)?.code === "api.forbidden"
+      && (error as any)?.statusCode === 403,
+  );
+
+  // Authenticate with viewer role, require admin role
+  assert.throws(
+    () => service.requireRole({ "x-api-key": "viewer-key" }, "admin"),
+    (error: unknown) =>
+      (error as any)?.code === "api.forbidden"
+      && (error as any)?.statusCode === 403,
+  );
+});
+
+test("api auth service requireRole passes when principal has required role", () => {
+  const service = new ApiAuthService({
+    apiKeys: [
+      {
+        apiKey: "admin-key",
+        actorId: "admin-actor",
+        roles: ["admin", "operator", "viewer"],
+      },
+    ],
+    jwtSecret: "test-secret",
+  });
+
+  // Admin has all roles, should pass for any
+  const viewerResult = service.requireRole({ "x-api-key": "admin-key" }, "viewer");
+  assert.equal(viewerResult.actorId, "admin-actor");
+
+  const operatorResult = service.requireRole({ "x-api-key": "admin-key" }, "operator");
+  assert.equal(operatorResult.actorId, "admin-actor");
+
+  const adminResult = service.requireRole({ "x-api-key": "admin-key" }, "admin");
+  assert.equal(adminResult.actorId, "admin-actor");
+});

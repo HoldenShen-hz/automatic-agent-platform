@@ -559,3 +559,132 @@ test("PluginExecutorService.activate() throws for disabled plugin", async () => 
     },
   );
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy PluginExecutionService Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("PluginExecutionService registers plugins and exposes listPlugins", () => {
+  const { PluginExecutionService } = await import(
+    "../../../../../src/platform/execution/plugin-executor/index.js"
+  );
+
+  const service = new PluginExecutionService();
+
+  service.register({
+    pluginId: "legacy-plugin",
+    actions: ["fetch", "validate"],
+    execute: async () => ({ pluginId: "legacy-plugin", action: "fetch", status: "ok" as const, output: {} }),
+  });
+
+  const plugins = service.listPlugins();
+  assert.equal(plugins.length, 1);
+  assert.equal(plugins[0]!.pluginId, "legacy-plugin");
+});
+
+test("PluginExecutionService.execute() runs plugin action and returns result", async () => {
+  const { PluginExecutionService } = await import(
+    "../../../../../src/platform/execution/plugin-executor/index.js"
+  );
+
+  const service = new PluginExecutionService();
+
+  service.register({
+    pluginId: "legacy-plugin",
+    actions: ["fetch"],
+    execute: async (request) => ({
+      pluginId: request.pluginId,
+      action: request.action,
+      status: "ok" as const,
+      output: { received: request.payload },
+    }),
+  });
+
+  const result = await service.execute({
+    pluginId: "legacy-plugin",
+    action: "fetch",
+    tenantId: "tenant-1",
+    payload: { key: "value" },
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.pluginId, "legacy-plugin");
+  assert.equal(result.action, "fetch");
+});
+
+test("PluginExecutionService.execute() throws for unknown plugin", async () => {
+  const { PluginExecutionService } = await import(
+    "../../../../../src/platform/execution/plugin-executor/index.js"
+  );
+
+  const service = new PluginExecutionService();
+
+  await assert.rejects(
+    () =>
+      service.execute({
+        pluginId: "nonexistent",
+        action: "fetch",
+        tenantId: null,
+        payload: {},
+      }),
+    (err: Error) => {
+      return err.message.includes("not registered");
+    },
+  );
+});
+
+test("PluginExecutionService.execute() throws for unregistered action", async () => {
+  const { PluginExecutionService } = await import(
+    "../../../../../src/platform/execution/plugin-executor/index.js"
+  );
+
+  const service = new PluginExecutionService();
+
+  service.register({
+    pluginId: "legacy-plugin",
+    actions: ["fetch"], // Only 'fetch' is registered
+    execute: async () => ({ pluginId: "legacy-plugin", action: "fetch", status: "ok" as const, output: {} }),
+  });
+
+  await assert.rejects(
+    () =>
+      service.execute({
+        pluginId: "legacy-plugin",
+        action: "validate", // Not registered
+        tenantId: null,
+        payload: {},
+      }),
+    (err: Error) => {
+      return err.message.includes("not registered");
+    },
+  );
+});
+
+test("PluginExecutionService.execute() supports sync execute function", async () => {
+  const { PluginExecutionService } = await import(
+    "../../../../../src/platform/execution/plugin-executor/index.js"
+  );
+
+  const service = new PluginExecutionService();
+
+  service.register({
+    pluginId: "sync-plugin",
+    actions: ["process"],
+    execute: (request) => ({
+      pluginId: request.pluginId,
+      action: request.action,
+      status: "ok" as const,
+      output: { sync: true },
+    }),
+  });
+
+  const result = await service.execute({
+    pluginId: "sync-plugin",
+    action: "process",
+    tenantId: null,
+    payload: {},
+  });
+
+  assert.equal(result.status, "ok");
+  assert.deepStrictEqual(result.output, { sync: true });
+});

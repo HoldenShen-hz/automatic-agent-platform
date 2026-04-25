@@ -1,5 +1,5 @@
-import * as assert from "node:assert/strict";
-import * as test from "node:test";
+import assert from "node:assert/strict";
+import test from "node:test";
 
 import { createDelegationManager } from "../../../../src/platform/agent-delegation/index.js";
 import { DelegationDepthExceededError, DelegationFanoutExceededError } from "../../../../src/platform/agent-delegation/index.js";
@@ -471,19 +471,22 @@ test("createDelegationManager getActiveDelegations excludes completed", async ()
   const parent = createParentContext();
 
   const handle1 = await service.delegate(parent, createDelegationSpec({
-    targetAgentId: "child-1",
-    targetPackId: "pack-1",
+    targetAgentId: "child-exclude-1",
+    targetPackId: "pack-exclude-1",
   }));
-  await service.delegate(parent, createDelegationSpec({
-    targetAgentId: "child-2",
-    targetPackId: "pack-2",
+  const handle2 = await service.delegate(parent, createDelegationSpec({
+    targetAgentId: "child-exclude-2",
+    targetPackId: "pack-exclude-2",
   }));
 
   await service.complete(handle1.delegationId);
 
   const active = service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 1);
-  assert.equal(active[0]?.delegationId, handle1.delegationId);
+  // handle2 should be the remaining active delegation
+  const activeIds = active.map(d => d.delegationId);
+  assert.ok(activeIds.includes(handle2.delegationId), "handle2 should be active");
+  assert.ok(!activeIds.includes(handle1.delegationId), "handle1 should not be active");
 });
 
 test("createDelegationManager getActiveDelegations excludes failed", async () => {

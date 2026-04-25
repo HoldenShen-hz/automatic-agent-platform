@@ -237,32 +237,6 @@ automatic_agent/automatic-agent-platform-main/docs_zh/reviews/architecture-code-
 
 ---
 
-## 三、docs_zh 与 docs_en 文档一致性问题
-
-### 3.1 UI 架构文档仅存在于 docs_zh，docs_en 缺失
-
-**问题**：`docs_zh/architecture/05-cross-platform-ui-architecture.md` 是一份 3000+ 行的核心架构文档，但 `docs_en/architecture/` 中 **不存在对应翻译**。docs_en 在同一位置有 `v3.0-domain-research.md`（不同文档）。
-
-**影响**：非中文用户无法获取 UI 架构设计信息。作为适用对象包含"前端架构师、UI/UX 工程师"的文档，缺少英文版对国际化团队是重大障碍。
-
----
-
-### 3.2 UI 设计评审文档仅存在于 docs_zh
-
-**问题**：`docs_zh/reviews/ui-design-vs-implementation-review.md` 在 `docs_en/reviews/` 中不存在。docs_en/reviews/ 仅有 2 个文件（architecture-design-vs-implementation-review.md、architecture-remaining-plan.md），比 docs_zh/reviews/ 少 1 个。
-
-**影响**：UI 实现与设计的差距评审记录仅中文可访问。
-
----
-
-### 3.3 术语双语对照表仅存在于 docs_zh
-
-**问题**：`docs_zh/governance/terminology-bilingual.md` 在 `docs_en/governance/` 中不存在（docs_en 有 7 个文件，docs_zh 有 8 个）。
-
-**影响**：英文文档缺少术语对照参考。
-
----
-
 ## 四、测试覆盖 vs 架构声明的偏差
 
 ### 4.1 e2e 测试缺少对 UI 层的端到端覆盖
@@ -329,7 +303,6 @@ automatic_agent/automatic-agent-platform-main/docs_zh/reviews/architecture-code-
 | ------------------------- | --------- | ------------------------------------------------------------------- |
 | 后端代码 vs 平台架构文档  | 9 项      | 3 高（1.1, 1.3, 1.4）、4 中（1.2, 1.5, 1.6, 1.9）、2 低（1.7, 1.8） |
 | UI 代码 vs UI 架构文档    | 7 项      | 2 高（2.1, 2.3）、3 中（2.2, 2.4, 2.5）、2 低（2.6, 2.7）           |
-| docs_zh vs docs_en 一致性 | 3 项      | 1 高（3.1）、2 低（3.2, 3.3）                                       |
 | 测试覆盖                  | 1 项      | 1 高（4.1）                                                         |
 | 系统级交叉问题            | 4 项      | 1 中（5.2）、3 低（5.1, 5.3, 5.4）                                  |
 | **合计**                  | **24 项** | **7 高、8 中、9 低**                                                |

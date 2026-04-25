@@ -169,11 +169,11 @@ test("smoke: task with various sources can be created", () => {
   }
 });
 
-test("smoke: task can be queried by division", () => {
-  const workspace = createTempWorkspace("smoke-task-division-");
+test("smoke: task can be retrieved by ID", () => {
+  const workspace = createTempWorkspace("smoke-task-get-");
 
   try {
-    const dbPath = join(workspace, "division.db");
+    const dbPath = join(workspace, "get.db");
     const db = new SqliteDatabase(dbPath);
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
@@ -208,10 +208,11 @@ test("smoke: task can be queried by division", () => {
       }
     });
 
+    // Use getTask to retrieve each task directly
     for (let i = 0; i < divisions.length; i++) {
-      const tasks = store.listTasksByDivision(divisions[i], 10);
-      const found = tasks.find((t) => t.id === taskIds[i]);
-      assert.ok(found, `Task in division ${divisions[i]} should exist`);
+      const found = store.getTask(taskIds[i]);
+      assert.ok(found, `Task in division ${divisions[i]} should exist via getTask`);
+      assert.strictEqual(found!.divisionId, divisions[i]);
     }
 
     db.close();

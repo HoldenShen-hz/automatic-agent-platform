@@ -48,7 +48,7 @@ test("smoke: workflow state can be created alongside task", () => {
         completedAt: null,
       });
 
-      store.upsertWorkflowState({
+      store.insertWorkflowState({
         taskId,
         divisionId: "general_ops",
         workflowId,
@@ -113,7 +113,7 @@ test("smoke: workflow status transitions are recorded", () => {
         completedAt: null,
       });
 
-      store.upsertWorkflowState({
+      store.insertWorkflowState({
         taskId,
         divisionId: "general_ops",
         workflowId,
@@ -131,7 +131,7 @@ test("smoke: workflow status transitions are recorded", () => {
     // Transition to paused
     const pausedAt = nowIso();
     db.transaction(() => {
-      store.updateWorkflowStatus(taskId, "paused", pausedAt);
+      store.updateWorkflowState(taskId, "paused", 0, "{}", pausedAt);
     });
 
     let workflow = store.getWorkflowState(taskId);
@@ -140,7 +140,7 @@ test("smoke: workflow status transitions are recorded", () => {
     // Transition back to running
     const resumedAt = nowIso();
     db.transaction(() => {
-      store.updateWorkflowStatus(taskId, "running", resumedAt);
+      store.updateWorkflowState(taskId, "running", 0, "{}", resumedAt);
     });
 
     workflow = store.getWorkflowState(taskId);
@@ -149,7 +149,7 @@ test("smoke: workflow status transitions are recorded", () => {
     // Transition to completed
     const completedAt = nowIso();
     db.transaction(() => {
-      store.updateWorkflowStatus(taskId, "completed", completedAt);
+      store.updateWorkflowState(taskId, "completed", 2, '{"final":"done"}', completedAt);
     });
 
     workflow = store.getWorkflowState(taskId);
@@ -195,7 +195,7 @@ test("smoke: workflow step index advances correctly", () => {
         completedAt: null,
       });
 
-      store.upsertWorkflowState({
+      store.insertWorkflowState({
         taskId,
         divisionId: "general_ops",
         workflowId,
@@ -213,8 +213,9 @@ test("smoke: workflow step index advances correctly", () => {
     // Advance through steps
     for (let stepIndex = 1; stepIndex <= 3; stepIndex++) {
       const updatedAt = nowIso();
+      const outputs = JSON.stringify({ step: stepIndex });
       db.transaction(() => {
-        store.advanceWorkflowStep(taskId, stepIndex, updatedAt);
+        store.updateWorkflowState(taskId, "running", stepIndex, outputs, updatedAt);
       });
 
       const workflow = store.getWorkflowState(taskId);
@@ -267,7 +268,7 @@ test("smoke: workflow outputs are captured", () => {
         completedAt: null,
       });
 
-      store.upsertWorkflowState({
+      store.insertWorkflowState({
         taskId,
         divisionId: "general_ops",
         workflowId,
@@ -294,7 +295,7 @@ test("smoke: workflow outputs are captured", () => {
   }
 });
 
-test("smoke: workflow retry count is tracked", () => {
+test("smoke: workflow retry count is tracked via recovery state", () => {
   const workspace = createTempWorkspace("smoke-workflow-retry-");
 
   try {
@@ -328,7 +329,7 @@ test("smoke: workflow retry count is tracked", () => {
         completedAt: null,
       });
 
-      store.upsertWorkflowState({
+      store.insertWorkflowState({
         taskId,
         divisionId: "general_ops",
         workflowId,
@@ -343,11 +344,20 @@ test("smoke: workflow retry count is tracked", () => {
       });
     });
 
-    // Increment retry count
+    // Use updateWorkflowRecoveryState to update retry count
     for (let retryCount = 1; retryCount <= 3; retryCount++) {
       const updatedAt = nowIso();
       db.transaction(() => {
-        store.updateWorkflowRetry(taskId, retryCount, updatedAt);
+        store.updateWorkflowRecoveryState({
+          taskId,
+          status: "running",
+          currentStepIndex: 0,
+          outputsJson: "{}",
+          updatedAt,
+          resumableFromStep: null,
+          retryCount,
+          lastErrorCode: null,
+        });
       });
 
       const workflow = store.getWorkflowState(taskId);
