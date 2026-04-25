@@ -133,7 +133,7 @@ test("consolidation integration: fails when scopes have mixed scope values", () 
         taskId: "task-mixed-scope",
         scopes: ["project", "session"], // Mixed scopes should fail
       });
-    }, (err: any) => {
+    }, (err) => {
       return err.code === "E8memory_consolidation_single_scope_required";
     });
 

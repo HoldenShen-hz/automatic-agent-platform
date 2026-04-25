@@ -180,6 +180,8 @@ test("AgentDefinitionSchema parses minimal valid agent", () => {
       promptBundle: { bundleId: "bundle-1", version: "1.0.0" },
       modelBinding: { provider: "openai", model: "gpt-4" },
       trustProfile: {},
+      triggerSet: [],
+      autonomyConfig: {},
     },
     createdAt: "2024-01-01T00:00:00Z",
     updatedAt: "2024-01-01T00:00:00Z",
