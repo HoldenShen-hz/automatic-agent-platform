@@ -56,12 +56,12 @@ test("shouldRunScheduleTrigger still returns false just before second boundary",
   assert.equal(result, false);
 });
 
-test("shouldRunScheduleTrigger returns false for unparseable cooldown string", () => {
+test("shouldRunScheduleTrigger fires immediately for unparseable cooldown string (0ms cooldown)", () => {
   const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:10:00.000Z", "invalid");
-  assert.equal(result, false);
+  assert.equal(result, true);
 });
 
-test("shouldRunScheduleTrigger returns false for empty cooldown string", () => {
+test("shouldRunScheduleTrigger fires immediately for empty cooldown string (0ms cooldown)", () => {
   const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:10:00.000Z", "");
-  assert.equal(result, false);
+  assert.equal(result, true);
 });
