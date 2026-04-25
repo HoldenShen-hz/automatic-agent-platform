@@ -317,7 +317,7 @@ test("decay integration: evaluateCompressionCandidates prioritizes low-quality m
     // Low quality memory should be first (highest compression priority)
     const lowestQuality = result.candidates.find((c) => c.memory.qualityScore === 0.3);
     assert.ok(lowestQuality !== undefined, "Low quality memory should be a compression candidate");
-    assert.equal(result.candidates.indexOf(lowestQuality!), 0, "Low quality memory should be highest priority");
+    assert.equal(result.candidates.indexOf(lowestQuality), 0, "Low quality memory should be highest priority");
 
     db.close();
   } finally {
@@ -358,7 +358,7 @@ test("decay integration: evaluateCompressionCandidates with freshness below mini
 
     const workingCandidate = result.candidates.find((c) => c.memory.scope === "working");
     assert.ok(workingCandidate !== undefined);
-    assert.ok(workingCandidate!.reason.includes("Freshness"), "Reason should mention freshness below minimum");
+    assert.ok(workingCandidate.reason.includes("Freshness"), "Reason should mention freshness below minimum");
 
     db.close();
   } finally {
