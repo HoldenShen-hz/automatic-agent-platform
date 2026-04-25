@@ -228,8 +228,8 @@ test("MultiRegionReplicationCoordinator setup uses defaults", () => {
 
   const replications = coordinator.getRegionReplications("us-east");
   assert.equal(replications.length, 1);
-  assert.equal(replications[0].batchSize, 100); // Default
-  assert.equal(replications[0].replicationIntervalMs, 5000); // Default
+  assert.equal(replications[0]!.batchSize, 100); // Default
+  assert.equal(replications[0]!.replicationIntervalMs, 5000); // Default
 });
 
 test("MultiRegionReplicationCoordinator getRegionReplications returns empty for unknown region", () => {
@@ -303,8 +303,8 @@ test("CDCReplicationService getRegisteredRegionPairs returns correct format", ()
 
   const pairs = service.getRegisteredRegionPairs();
   assert.equal(pairs.length, 1);
-  assert.equal(pairs[0].sourceRegionId, "us-east");
-  assert.equal(pairs[0].targetRegionId, "eu-west");
+  assert.equal(pairs[0]!.sourceRegionId, "us-east");
+  assert.equal(pairs[0]!.targetRegionId, "eu-west");
 });
 
 test("CDCReplicationService confirmBatch with empty events handles null lastEvent", () => {

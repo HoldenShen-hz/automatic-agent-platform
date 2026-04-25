@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { StrategyLearningService } from "../../../../../../src/platform/orchestration/learn/strategy-learning-service.js";
-import type { LearningSignal } from "../../../../../../src/platform/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { LearningObject } from "../../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import { StrategyLearningService } from "../../../../../src/platform/orchestration/learn/strategy-learning-service.js";
+import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
 
 function makeLearningObject(overrides: Partial<LearningObject> = {}): LearningObject {
   return {
@@ -26,12 +26,14 @@ function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {
     learningSignalId: "sig-" + Math.random().toString(36).slice(2),
     taskId: "task-1",
+    sourceFeedbackId: `feedback-sig-${Math.random().toString(36).slice(2)}`,
     learningType: "failure_pattern",
     valueSummary: "Step failed validation",
     confidence: 0.8,
     evidence: { stepId: "step-1" },
     evidenceRefs: [],
     sourceSignalIds: [],
+    relatedSignalIds: [],
     generatedAt: Date.now(),
     ...overrides,
   };

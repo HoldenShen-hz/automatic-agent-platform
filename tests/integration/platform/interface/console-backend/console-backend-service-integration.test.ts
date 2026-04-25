@@ -336,11 +336,11 @@ test("OperatorConsoleBackendService handles concurrent snapshot building", () =>
     const snapshots = operators.map((op) => service.buildSnapshot(op));
 
     // Verify each snapshot is correct
-    assert.equal(snapshots[0].taskBoard.length, 100);
-    assert.equal(snapshots[1].taskBoard.length, 50);
-    assert.equal(snapshots[2].taskBoard.length, 50);
-    assert.equal(snapshots[1].approvalQueue.length, 25);
-    assert.equal(snapshots[2].approvalQueue.length, 25);
+    assert.equal(snapshots[0]!.taskBoard.length, 100);
+    assert.equal(snapshots[1]!.taskBoard.length, 50);
+    assert.equal(snapshots[2]!.taskBoard.length, 50);
+    assert.equal(snapshots[1]!.approvalQueue.length, 25);
+    assert.equal(snapshots[2]!.approvalQueue.length, 25);
   } finally {
     ctx.cleanup();
   }
@@ -364,8 +364,8 @@ test("OperatorConsoleBackendService incident timeline with mixed severity", () =
     // Should generate finding for critical incidents
     assert.ok(snap.findings.some((f) => f.includes("critical incident")));
     // Timeline sorted by recency (newest first)
-    assert.equal(snap.incidentTimeline[0].incidentId, "i-critical-2");
-    assert.equal(snap.incidentTimeline[1].incidentId, "i-info-2");
+    assert.equal(snap.incidentTimeline[0]!.incidentId, "i-critical-2");
+    assert.equal(snap.incidentTimeline[1]!.incidentId, "i-info-2");
   } finally {
     ctx.cleanup();
   }

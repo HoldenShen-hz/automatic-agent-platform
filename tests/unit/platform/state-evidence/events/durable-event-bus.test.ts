@@ -503,8 +503,8 @@ test("durable event bus publishBatch inserts multiple events in transaction", as
     ]);
 
     assert.equal(events.length, 3);
-    assert.notEqual(events[0].id, events[1].id);
-    assert.notEqual(events[1].id, events[2].id);
+    assert.notEqual(events[0]!.id, events[1]!.id);
+    assert.notEqual(events[1]!.id, events[2]!.id);
 
     const allEvents = store.listEventsForTask("task-batch");
     assert.equal(allEvents.length, 3);
@@ -623,8 +623,8 @@ test("durable event bus publishBatch fanning out to subscribers", async () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     assert.equal(seen.length, 2);
-    assert.ok(seen.includes(events[0].id));
-    assert.ok(seen.includes(events[1].id));
+    assert.ok(seen.includes(events[0]!.id));
+    assert.ok(seen.includes(events[1]!.id));
 
     db.close();
   } finally {
@@ -804,7 +804,7 @@ test("durable event bus publish with traceContext injects trace fields into payl
 
     const events = store.listEventsForTask("task-trace");
     assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0].payloadJson) as Record<string, unknown>;
+    const payload = JSON.parse(events[0]!.payloadJson) as Record<string, unknown>;
     assert.equal(payload.traceContext, undefined); // traceContext not included in payload itself
 
     db.close();

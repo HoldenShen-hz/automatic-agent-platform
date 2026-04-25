@@ -167,8 +167,8 @@ test("EventReliabilityInventoryService.listNamespaceInventory sorted by namespac
 
   for (let i = 1; i < namespaces.length; i++) {
     assert.ok(
-      namespaces[i - 1].namespace < namespaces[i].namespace,
-      `Namespace ${namespaces[i - 1].namespace} should be before ${namespaces[i].namespace}`,
+      namespaces[i - 1]!.namespace < namespaces[i]!.namespace,
+      `Namespace ${namespaces[i - 1]!.namespace} should be before ${namespaces[i]!.namespace}`,
     );
   }
 });

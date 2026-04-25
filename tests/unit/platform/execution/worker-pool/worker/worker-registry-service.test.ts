@@ -283,7 +283,7 @@ test("WorkerRegistryService listEligibleWorkers filters unavailable workers", ()
   const eligible = service.listEligibleWorkers();
 
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-1");
+  assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
 test("WorkerRegistryService listEligibleWorkers filters offline workers", () => {
@@ -328,7 +328,7 @@ test("WorkerRegistryService listEligibleWorkers filters degraded workers by defa
   const eligible = service.listEligibleWorkers();
 
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-1");
+  assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
 test("WorkerRegistryService listEligibleWorkers includes degraded when requested", () => {
@@ -365,7 +365,7 @@ test("WorkerRegistryService listEligibleWorkers filters by required capabilities
   const eligible = service.listEligibleWorkers({ requiredCapabilities: ["bash", "edit"] });
 
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-2");
+  assert.equal(eligible[0]!.workerId, "worker-2");
 });
 
 test("WorkerRegistryService listEligibleWorkers filters by queue affinity", () => {
@@ -377,7 +377,7 @@ test("WorkerRegistryService listEligibleWorkers filters by queue affinity", () =
   const eligible = service.listEligibleWorkers({ queueAffinity: "queue-a" });
 
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-1");
+  assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
 test("WorkerRegistryService listEligibleWorkers filters by isolation level", () => {
@@ -389,7 +389,7 @@ test("WorkerRegistryService listEligibleWorkers filters by isolation level", () 
   const eligible = service.listEligibleWorkers({ requiredIsolationLevel: "hardened" });
 
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-2");
+  assert.equal(eligible[0]!.workerId, "worker-2");
 });
 
 test("WorkerRegistryService listEligibleWorkers hardened workers meet standard requirement", () => {
@@ -459,5 +459,5 @@ test("WorkerRegistryService listStaleWorkers returns stale workers", () => {
   const stale = service.listStaleWorkers("2026-04-02T00:00:00.000Z", 86400000);
 
   assert.equal(stale.length, 1);
-  assert.equal(stale[0].workerId, "worker-1");
+  assert.equal(stale[0]!.workerId, "worker-1");
 });

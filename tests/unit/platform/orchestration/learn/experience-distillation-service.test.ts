@@ -1,20 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { LearningSignal } from "../../../../../../src/platform/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import { ExperienceDistillationService } from "../../../../../../src/platform/orchestration/learn/experience-distillation-service.js";
-import type { LearningObject } from "../../../../../../src/platform/orchestration/learn/learning-object-model.js";
+import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import { ExperienceDistillationService } from "../../../../../src/platform/orchestration/learn/experience-distillation-service.js";
+import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
 
 function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {
     learningSignalId: "sig-1",
     taskId: "task-1",
+    sourceFeedbackId: "feedback-1",
     learningType: "failure_pattern",
     valueSummary: "Step failed validation with schema mismatch",
     confidence: 0.8,
     evidence: { stepId: "step-1" },
     evidenceRefs: ["evidence-1"],
     sourceSignalIds: ["source-1"],
+    relatedSignalIds: [],
     generatedAt: Date.now(),
     ...overrides,
   };
@@ -181,12 +183,14 @@ test("ExperienceDistillationService.distill preserves all fields from signal", (
   const signal: LearningSignal = {
     learningSignalId: "sig-preserve-test",
     taskId: "task-preserve",
+    sourceFeedbackId: "feedback-preserve",
     learningType: "model_retraining",
     valueSummary: "Model underperformed on edge cases",
     confidence: 0.75,
     evidence: { accuracy: 0.65 },
     evidenceRefs: ["ref-a", "ref-b"],
     sourceSignalIds: ["src-x"],
+    relatedSignalIds: [],
     generatedAt: 1700000000000,
   };
 

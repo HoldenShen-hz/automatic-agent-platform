@@ -102,11 +102,11 @@ test("state-evidence step depends on execution", () => {
 test("each step has correct bootstrapServiceId", () => {
   const plan = buildFivePlaneStartupPlan();
 
-  assert.equal(plan.steps[0].bootstrapServiceId, "plane.interface.bootstrap");
-  assert.equal(plan.steps[1].bootstrapServiceId, "plane.control.bootstrap");
-  assert.equal(plan.steps[2].bootstrapServiceId, "plane.orchestration.bootstrap");
-  assert.equal(plan.steps[3].bootstrapServiceId, "plane.execution.bootstrap");
-  assert.equal(plan.steps[4].bootstrapServiceId, "plane.state-evidence.bootstrap");
+  assert.equal(plan.steps[0]!.bootstrapServiceId, "plane.interface.bootstrap");
+  assert.equal(plan.steps[1]!.bootstrapServiceId, "plane.control.bootstrap");
+  assert.equal(plan.steps[2]!.bootstrapServiceId, "plane.orchestration.bootstrap");
+  assert.equal(plan.steps[3]!.bootstrapServiceId, "plane.execution.bootstrap");
+  assert.equal(plan.steps[4]!.bootstrapServiceId, "plane.state-evidence.bootstrap");
 });
 
 test("totalCapabilityCount equals sum of all step capabilityCounts", () => {

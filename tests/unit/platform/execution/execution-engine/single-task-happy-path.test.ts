@@ -144,8 +144,8 @@ test("runSingleTaskExecution sets workflow and execution records", async () => {
     const snapshot = await runSingleTaskExecution(input);
 
     assert.ok(snapshot.workflow, "Should have workflow record");
-    assert.ok(snapshot.executions, "Should have executions");
-    assert.ok(snapshot.executions.length > 0, "Should have at least one execution");
+    assert.ok(snapshot.execution, "Should have execution");
+    assert.ok(snapshot.execution !== null, "Should have an execution record");
     assert.equal(snapshot.workflow.workflowId, "single_agent_minimal");
     assert.equal(snapshot.workflow.status, "completed");
   } finally {
@@ -201,9 +201,8 @@ test("runSingleTaskExecution creates session record", async () => {
 
     const snapshot = await runSingleTaskExecution(input);
 
-    assert.ok(snapshot.sessions, "Should have sessions");
-    assert.ok(snapshot.sessions.length > 0, "Should have at least one session");
-    assert.equal(snapshot.sessions[0]!.channel, "cli");
+    assert.ok(snapshot.session, "Should have session");
+    assert.equal(snapshot.session!.channel, "cli");
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -221,7 +220,6 @@ test("HappyPathInput type accepts all required fields", () => {
       maxTier1AckBacklog: 200,
       urgentQueueHeadroom: 10,
     },
-    crashInjection: undefined,
     stepOutputOverride: { summary: "test" },
   };
 

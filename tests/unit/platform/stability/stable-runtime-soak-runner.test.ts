@@ -4,8 +4,8 @@ import {
   mergeStableSoakReports,
   type StableSoakReport,
   type StableSoakCycle,
-  type StableValidationReport,
 } from "../../../../src/platform/stability/stable-runtime-soak-runner.js";
+import type { StableValidationReport } from "../../../../src/platform/stability/stable-runtime-validator.js";
 
 describe("stable-runtime-soak-runner", () => {
   describe("mergeStableSoakReports", () => {
@@ -90,8 +90,8 @@ describe("stable-runtime-soak-runner", () => {
       ];
       const result = mergeStableSoakReports(reports);
       assert.equal(result.cycles.length, 2);
-      assert.equal(result.cycles[0].cycle, 1);
-      assert.equal(result.cycles[1].cycle, 2);
+      assert.equal(result.cycles[0]!.cycle, 1);
+      assert.equal(result.cycles[1]!.cycle, 2);
     });
 
     test("uses first report's intervalMs and iterationsPerCycle", () => {
@@ -116,8 +116,9 @@ describe("stable-runtime-soak-runner", () => {
     });
 
     test("does not include memory fields when initialHeapUsedBytes is undefined", () => {
+      const { initialHeapUsedBytes: _ie, peakHeapUsedBytes: _pe, ...memorylessReport } = createMockSoakReport({});
       const reports: StableSoakReport[] = [
-        createMockSoakReport({ initialHeapUsedBytes: undefined, peakHeapUsedBytes: undefined }),
+        { ...memorylessReport },
       ];
       const result = mergeStableSoakReports(reports);
       assert.equal(result.initialHeapUsedBytes, undefined);

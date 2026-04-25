@@ -5,14 +5,15 @@ import {
   PmfValidationService,
   DEFAULT_PMF_THRESHOLDS,
 } from "../../../../src/scale-ecosystem/intelligence/pmf-validation-service.js";
+import type { PmfValidationReportRecord } from "../../../../src/platform/contracts/types/domain.js";
 
 // Mock stores and db
 function createMockStore() {
   return {
     operations: {
-      insertPmfValidationReport: () => {},
-      listPmfValidationReports: () => [],
-      getLatestPmfValidationReport: () => null,
+      insertPmfValidationReport: (() => {}) as (record: PmfValidationReportRecord) => void,
+      listPmfValidationReports: (() => []) as (limit?: number) => PmfValidationReportRecord[],
+      getLatestPmfValidationReport: (() => null) as (profileName?: string | null) => PmfValidationReportRecord | null,
     },
     task: {
       getTask: () => null,
@@ -28,8 +29,8 @@ function createMockDb() {
   return {
     connection: {
       prepare: () => ({
-        get: () => null,
-        all: () => [],
+        get: () => null as any,
+        all: () => [] as any[],
       }),
     },
   };
@@ -178,8 +179,8 @@ test("PmfValidationService exportValidation returns artifacts", () => {
 test("PmfValidationService listHistory returns reports", () => {
   const mockStore = createMockStore();
   mockStore.operations.listPmfValidationReports = () => [
-    { id: "report_1" } as any,
-    { id: "report_2" } as any,
+    { id: "report_1", profileName: "test", windowStart: "", windowEnd: "", divisionId: null, verdict: "pass", summaryJson: "{}", reportJson: "{}", generatedAt: "" } as PmfValidationReportRecord,
+    { id: "report_2", profileName: "test", windowStart: "", windowEnd: "", divisionId: null, verdict: "pass", summaryJson: "{}", reportJson: "{}", generatedAt: "" } as PmfValidationReportRecord,
   ];
 
   const service = new PmfValidationService(createMockDb() as any, mockStore as any);

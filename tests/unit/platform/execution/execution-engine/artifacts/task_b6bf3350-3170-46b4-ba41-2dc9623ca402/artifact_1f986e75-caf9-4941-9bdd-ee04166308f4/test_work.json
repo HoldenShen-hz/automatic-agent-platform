@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "workflow_step_checkpoint.v1",
+  "taskId": "task_b6bf3350-3170-46b4-ba41-2dc9623ca402",
+  "executionId": "exec_193cb801-9c19-4304-b94b-971823387915",
+  "workflowId": "qa_single_step",
+  "divisionId": "qa",
+  "stepId": "test_work",
+  "roleId": "qa_engineer",
+  "outputKey": "test_result",
+  "status": "succeeded",
+  "producedAt": "2026-04-25T02:30:35.044Z",
+  "output": {
+    "summary": "Step test_work completed.",
+    "result": "Role qa_engineer completed request: Test custom admission policy"
+  },
+  "decisionContext": {
+    "source": "multi_step_orchestration",
+    "request": "Test custom admission policy",
+    "routeReason": "route.simple_request",
+    "priorStepSummaries": [],
+    "dependsOnStepIds": []
+  },
+  "resumeContext": {
+    "completedStepIds": [
+      "test_work"
+    ],
+    "nextStepId": null,
+    "outputKeys": [
+      "test_result"
+    ]
+  },
+  "fileDiffSummary": {
+    "summary": null,
+    "createdPaths": [],
+    "updatedPaths": [],
+    "deletedPaths": []
+  },
+  "upstreamArtifactRefs": [],
+  "compensationModel": null
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "workflow_step_checkpoint.v1",
+  "taskId": "task_2fcc6989-e827-4dc7-97ee-7605c028fb7c",
+  "executionId": "exec_79ea8d7d-cf6f-48e1-9232-2231ee75adfa",
+  "workflowId": "qa_single_step",
+  "divisionId": "qa",
+  "stepId": "test_work",
+  "roleId": "qa_engineer",
+  "outputKey": "test_result",
+  "status": "succeeded",
+  "producedAt": "2026-04-25T02:30:17.928Z",
+  "output": {
+    "summary": "Step test_work completed.",
+    "result": "Role qa_engineer completed request: Test backpressure"
+  },
+  "decisionContext": {
+    "source": "multi_step_orchestration",
+    "request": "Test backpressure",
+    "routeReason": "route.simple_request",
+    "priorStepSummaries": [],
+    "dependsOnStepIds": []
+  },
+  "resumeContext": {
+    "completedStepIds": [
+      "test_work"
+    ],
+    "nextStepId": null,
+    "outputKeys": [
+      "test_result"
+    ]
+  },
+  "fileDiffSummary": {
+    "summary": null,
+    "createdPaths": [],
+    "updatedPaths": [],
+    "deletedPaths": []
+  },
+  "upstreamArtifactRefs": [],
+  "compensationModel": null
+}

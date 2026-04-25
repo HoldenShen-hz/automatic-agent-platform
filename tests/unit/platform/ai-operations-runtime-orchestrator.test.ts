@@ -260,7 +260,7 @@ test("AiOperationsStartupExecutionStep interface fields are correct", async () =
     const orchestrator = registerAiOperationsRuntimeOrchestrator(registry);
     const result = orchestrator.startup();
 
-    const step = result.steps[0];
+    const step = result.steps[0]!;
     assert.ok(typeof step.stepId === "string");
     assert.ok(typeof step.bootstrapServiceId === "string");
     assert.ok(typeof step.capabilityCount === "number");

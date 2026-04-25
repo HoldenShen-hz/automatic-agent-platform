@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { CostAlertConfig, BudgetPolicy } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
+import type { CostAlertConfig, BudgetPolicy, BudgetScope } from "../../../../../src/platform/control-plane/cost-alert/cost-alert-types.js";
 
 const mockDb = {
   transaction: <T>(fn: () => T): T => fn(),
@@ -24,10 +24,10 @@ function createPolicy(scope: BudgetScope, scopeId: string, limit: number): Budge
     scopeId,
     period: "monthly",
     limitCostUsd: limit,
-    limitTokens: null,
+    limitTokens: undefined,
     warningThreshold: 0.8,
-    actionsOnWarning: ["notify"],
-    actionsOnBreach: ["block"],
+    actionsOnWarning: ["sev3_alert"],
+    actionsOnBreach: ["step_abort"],
   };
 }
 
@@ -251,7 +251,7 @@ test("CostAlertService handles infinity limit", () => {
     scopeId: "tenant-1",
     period: "per_run",
     limitCostUsd: null as any, // infinity
-    limitTokens: null,
+    limitTokens: undefined,
     warningThreshold: 0.9,
     actionsOnWarning: [],
     actionsOnBreach: [],
@@ -464,7 +464,7 @@ test("CostAlertService handles zero limit gracefully", () => {
     scopeId: "tenant-1",
     period: "monthly",
     limitCostUsd: 0,
-    limitTokens: null,
+    limitTokens: undefined,
     warningThreshold: 0.8,
     actionsOnWarning: [],
     actionsOnBreach: [],

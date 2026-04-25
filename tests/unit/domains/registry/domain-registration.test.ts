@@ -86,9 +86,9 @@ test("register emits domain:registered event", () => {
   service.register(makeMinimalDefinition({ domainId: "evt_test", status: "testing" }));
 
   assert.equal(events.length, 1);
-  assert.equal(events[0].eventType, "domain:registered");
-  assert.equal(events[0].payload.domainId, "evt_test");
-  assert.equal(events[0].payload.status, "testing");
+  assert.equal(events[0]!.eventType, "domain:registered");
+  assert.equal(events[0]!.payload.domainId, "evt_test");
+  assert.equal(events[0]!.payload.status, "testing");
 });
 
 // --- duplicate workflow IDs ---
@@ -383,9 +383,9 @@ test("activate emits domain:activated event on success", () => {
   service.activate("activate_event");
 
   assert.equal(events.length, 2);
-  assert.equal(events[1].eventType, "domain:activated");
-  assert.equal(events[1].payload.domainId, "activate_event");
-  assert.equal(events[1].payload.status, "active");
+  assert.equal(events[1]!.eventType, "domain:activated");
+  assert.equal(events[1]!.payload.domainId, "activate_event");
+  assert.equal(events[1]!.payload.status, "active");
 });
 
 // --- invalid schema parsing ---

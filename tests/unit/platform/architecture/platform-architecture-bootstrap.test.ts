@@ -9,8 +9,8 @@ import {
   registerPlatformArchitectureServices,
   getPlatformArchitectureServices,
   type PlatformArchitectureServices,
-} from "../../../../../../src/platform-architecture-bootstrap.js";
-import { ServiceRegistry } from "../../../../../../src/platform/shared/lifecycle/service-registry.js";
+} from "../../../../src/platform-architecture-bootstrap.js";
+import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("listPlatformLayerManifests returns all 9 layer manifests", async () => {
   const manifests = listPlatformLayerManifests();

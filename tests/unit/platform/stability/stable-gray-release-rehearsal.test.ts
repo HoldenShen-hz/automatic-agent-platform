@@ -56,7 +56,7 @@ test("buildStableGrayReleasePlaybook includes cohorts", () => {
   assert.ok(Array.isArray(playbook.cohorts));
   assert.ok(playbook.cohorts.length > 0);
 
-  const cohort = playbook.cohorts[0];
+  const cohort = playbook.cohorts[0]!;
   assert.ok(cohort.cohortId.length > 0);
   assert.ok(["division", "tenant_group"].includes(cohort.cohortKind));
   assert.strictEqual(typeof cohort.targetRef, "string");

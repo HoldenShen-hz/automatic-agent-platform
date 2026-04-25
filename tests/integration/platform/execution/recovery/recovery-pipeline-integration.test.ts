@@ -17,7 +17,7 @@ import { RuntimeRecoveryService } from "../../../../../src/platform/execution/re
 import { RepairPipeline } from "../../../../../src/platform/execution/recovery/repair-pipeline.js";
 import { createTaskCard, type TaskCard, type TaskRiskLevel } from "../../../../../src/platform/execution/recovery/task-card.js";
 import { createPatchBundle, type PatchBundle } from "../../../../../src/platform/execution/recovery/patch-bundle.js";
-import { createValidationReport, type ValidationReport } from "../../../../../src/platform/execution/recovery/validation-report.js";
+import { createValidationReport, type ValidationReport, type CheckResult } from "../../../../../src/platform/execution/recovery/validation-report.js";
 import { createReviewReport } from "../../../../../src/platform/execution/recovery/review-report.js";
 import { classifyFailure, shouldEscalate } from "../../../../../src/platform/execution/recovery/failure-classification.js";
 
@@ -61,7 +61,7 @@ function createTestValidationReport(
   passedChecks: number = 1,
   failedChecks: number = 0
 ): ValidationReport {
-  const checks = [];
+  const checks: CheckResult[] = [];
 
   if (passedChecks > 0) {
     checks.push({
@@ -123,7 +123,7 @@ test("recovery pipeline: transitions through stages in order", () => {
   pipeline.transitionTo("validate");
   assert.strictEqual(pipeline.getState().currentStage, "validate");
 
-  pipeline.transitionTo("complete");
+  pipeline.transitionTo("completed");
   assert.strictEqual(pipeline.getState().currentStage, "complete");
 });
 
@@ -181,7 +181,15 @@ test("recovery pipeline: handles review failure and triggers repair", () => {
   const bundle = createTestPatchBundle(taskCard.taskId);
   pipeline.setPatchBundle(bundle);
 
-  const reviewReport = createReviewReport(taskCard.taskId, bundle.bundleId, "request_changes", 1);
+  const reviewReport = createReviewReport({
+  reportId: newId("report"),
+  taskId: taskCard.taskId,
+  bundleId: bundle.bundleId,
+  reviewerAgentId: newId("agent"),
+  verdict: "request_changes",
+  issues: [],
+  durationMs: 1,
+});
   const result = pipeline.handleReviewFailure("simple_logic_bug", reviewReport);
 
   assert.strictEqual(result.action, "repair");
@@ -281,7 +289,7 @@ test("runtime recovery service: lists recoverable executions from store", () => 
     });
 
     // Verify recovery service can access the store
-    const recoverable = recoveryService.listRecoverableExecutions();
+    const recoverable = recoveryService.listRecoverableExecutingRuns(now);
     assert.ok(Array.isArray(recoverable));
 
     db.close();
@@ -355,7 +363,7 @@ test("runtime recovery service: handles executions with retryable error codes", 
       });
     });
 
-    const recoverable = recoveryService.listRecoverableExecutions();
+    const recoverable = recoveryService.listRecoverableExecutingRuns(now);
     assert.ok(Array.isArray(recoverable));
 
     db.close();
@@ -386,7 +394,7 @@ test("runtime recovery service: excludes permanently failed executions", () => {
         rootId: taskId,
         divisionId: "general_ops",
         title: "Permanent failure test",
-        status: "completed",
+        status: "done",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -429,7 +437,7 @@ test("runtime recovery service: excludes permanently failed executions", () => {
       });
     });
 
-    const recoverable = recoveryService.listRecoverableExecutions();
+    const recoverable = recoveryService.listRecoverableExecutingRuns(now);
     assert.ok(Array.isArray(recoverable));
 
     db.close();

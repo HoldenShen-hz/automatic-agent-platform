@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "workflow_step_checkpoint.v1",
+  "taskId": "task_7bbc3b7a-f326-4d3d-ab7d-d6e0734e2c61",
+  "executionId": "exec_a26ab7a1-6eac-4a0b-b3f0-a337fe59b689",
+  "workflowId": "qa_single_step",
+  "divisionId": "qa",
+  "stepId": "test_work",
+  "roleId": "qa_engineer",
+  "outputKey": "test_result",
+  "status": "succeeded",
+  "producedAt": "2026-04-25T02:30:19.418Z",
+  "output": {
+    "summary": "Step test_work completed.",
+    "result": "Role qa_engineer completed request: Test priority handling"
+  },
+  "decisionContext": {
+    "source": "multi_step_orchestration",
+    "request": "Test priority handling",
+    "routeReason": "route.simple_request",
+    "priorStepSummaries": [],
+    "dependsOnStepIds": []
+  },
+  "resumeContext": {
+    "completedStepIds": [
+      "test_work"
+    ],
+    "nextStepId": null,
+    "outputKeys": [
+      "test_result"
+    ]
+  },
+  "fileDiffSummary": {
+    "summary": null,
+    "createdPaths": [],
+    "updatedPaths": [],
+    "deletedPaths": []
+  },
+  "upstreamArtifactRefs": [],
+  "compensationModel": null
+}

@@ -268,7 +268,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
         sessionId: null,
         executionId: input.executionId,
         eventType: input.eventType,
-        eventTier: "tier1",
+        eventTier: "tier_1",
         payloadJson: JSON.stringify(input.payload),
         traceId: input.traceId,
         createdAt: new Date().toISOString(),
@@ -312,7 +312,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       finishedAt?: string | null,
       lastErrorCode?: string | null,
     ): void {
-      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt, lastErrorCode, updatedAt: occurredAt });
+      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt: finishedAt ?? null, lastErrorCode: lastErrorCode ?? null, updatedAt: occurredAt });
     },
 
     insertApproval(approval: ApprovalRecord): void {
@@ -336,7 +336,6 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
         timeoutPolicy: "{}",
         createdAt: new Date().toISOString(),
         respondedAt: decision.respondedAt,
-        updatedAt: new Date().toISOString(),
       };
     },
 
@@ -366,7 +365,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       sessionId?: string | null;
       executionId?: string | null;
       eventType?: string;
-      eventTier?: "tier1" | "tier2";
+      eventTier?: "tier_1" | "tier_2";
       payloadJson?: string;
       traceId?: string | null;
       createdAt?: string;
@@ -377,7 +376,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
         sessionId: event.sessionId ?? null,
         executionId: null,
         eventType: event.eventType ?? "unknown",
-        eventTier: event.eventTier ?? "tier1",
+        eventTier: event.eventTier ?? "tier_1",
         payloadJson: "{}",
         traceId: event.traceId ?? null,
         createdAt: new Date().toISOString(),
@@ -403,7 +402,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     updateSessionStatusCasCalls,
     updateExecutionStatusCasCalls,
     updateApprovalDecisionCasCalls,
-  } as MockRepository;
+  } as unknown as MockRepository;
 
   // Initialize with provided statuses if given
   const now = new Date().toISOString();
@@ -451,11 +450,11 @@ test("TaskTransitionService - successful status transition emits tier1 event", (
   });
 
   assert.equal(repository.updateTaskStatusCasCalls.length, 1);
-  assert.equal(repository.updateTaskStatusCasCalls[0].entityId, "task-1");
-  assert.equal(repository.updateTaskStatusCasCalls[0].fromStatus, "queued");
-  assert.equal(repository.updateTaskStatusCasCalls[0].toStatus, "pending");
+  assert.equal(repository.updateTaskStatusCasCalls[0]!.entityId, "task-1");
+  assert.equal(repository.updateTaskStatusCasCalls[0]!.fromStatus, "queued");
+  assert.equal(repository.updateTaskStatusCasCalls[0]!.toStatus, "pending");
   assert.equal(repository.mockState.tier1Events.length, 1);
-  assert.equal(repository.mockState.tier1Events[0].eventType, "task:status_changed");
+  assert.equal(repository.mockState.tier1Events[0]!.eventType, "task:status_changed");
 });
 
 test("TaskTransitionService - CAS failure throws error on concurrent modification", () => {
@@ -529,7 +528,6 @@ test("TaskTransitionService - failed status sets reasonCode", () => {
     fromStatus: "in_progress",
     toStatus: "failed",
     executionId: "exec-1",
-    reasonCode: "ERR_OOM",
     ...makeContext({ reasonCode: "ERR_OOM" }),
   });
 
@@ -572,6 +570,7 @@ test("TaskTransitionService - event payload contains correct transition details"
   });
 
   const event = repository.mockState.tier1Events[0];
+  assert.ok(event);
   assert.equal(event.taskId, "task-1");
   assert.equal(event.executionId, "exec-1");
   assert.equal(event.eventType, "task:status_changed");
@@ -795,14 +794,7 @@ test("ExecutionTransitionService - transition to executing sets startedAt timest
     entityId: "exec-1",
     fromStatus: "created",
     toStatus: "executing",
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "test",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "executing");
@@ -821,14 +813,7 @@ test("ExecutionTransitionService - transition to succeeded sets finishedAt times
     entityId: "exec-1",
     fromStatus: "executing",
     toStatus: "succeeded",
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "test",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "succeeded");
@@ -847,14 +832,7 @@ test("ExecutionTransitionService - transition to failed sets lastErrorCode", () 
     entityId: "exec-1",
     fromStatus: "executing",
     toStatus: "failed",
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "ERR_TIMEOUT",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "failed");
@@ -876,14 +854,7 @@ test("ExecutionTransitionService - CAS failure throws error on concurrent modifi
         entityId: "exec-1",
         fromStatus: "executing",
         toStatus: "succeeded",
-        occurredAt: context.occurredAt,
-        traceId: context.traceId,
-        reasonCode: "test",
-        reasonDetail: undefined,
-        actorType: context.actorType,
-        actorId: context.actorId,
-        idempotencyKey: undefined,
-        metadataJson: undefined,
+        ...context,
       }),
     /execution.transition_cas_failed/,
   );
@@ -903,14 +874,7 @@ test("ExecutionTransitionService - validates allowed execution transitions", () 
     entityId: "exec-1",
     fromStatus: "created",
     toStatus: "prechecking",
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "test",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "prechecking");
@@ -933,19 +897,12 @@ test("ApprovalTransitionService - successful transition to approved", () => {
     fromStatus: "requested",
     toStatus: "approved",
     responseJson: '{"decision": "approved"}',
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "test",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.updateApprovalDecisionCasCalls.length, 1);
-  assert.equal(repository.updateApprovalDecisionCasCalls[0].approvalId, "approval-1");
-  assert.equal(repository.updateApprovalDecisionCasCalls[0].expectedStatus, "requested");
+  assert.equal(repository.updateApprovalDecisionCasCalls[0]?.approvalId, "approval-1");
+  assert.equal(repository.updateApprovalDecisionCasCalls[0]?.expectedStatus, "requested");
 });
 
 test("ApprovalTransitionService - CAS failure throws error on concurrent modification", () => {
@@ -964,14 +921,7 @@ test("ApprovalTransitionService - CAS failure throws error on concurrent modific
         fromStatus: "requested",
         toStatus: "approved",
         responseJson: '{"decision": "approved"}',
-        occurredAt: context.occurredAt,
-        traceId: context.traceId,
-        reasonCode: "test",
-        reasonDetail: undefined,
-        actorType: context.actorType,
-        actorId: context.actorId,
-        idempotencyKey: undefined,
-        metadataJson: undefined,
+        ...context,
       }),
     /approval.transition_cas_failed/,
   );
@@ -992,14 +942,7 @@ test("ApprovalTransitionService - invalid transition throws error", () => {
         fromStatus: "approved",
         toStatus: "rejected",
         responseJson: '{"decision": "rejected"}',
-        occurredAt: context.occurredAt,
-        traceId: context.traceId,
-        reasonCode: "test",
-        reasonDetail: undefined,
-        actorType: context.actorType,
-        actorId: context.actorId,
-        idempotencyKey: undefined,
-        metadataJson: undefined,
+        ...context,
       }),
     /invalid_transition/,
   );
@@ -1025,14 +968,7 @@ test("ApprovalTransitionService - validates all approval status transitions", ()
       fromStatus: "requested",
       toStatus,
       responseJson: `{"decision": "${toStatus}"}`,
-      occurredAt: context.occurredAt,
-      traceId: context.traceId,
-      reasonCode: "test",
-      reasonDetail: undefined,
-      actorType: context.actorType,
-      actorId: context.actorId,
-      idempotencyKey: undefined,
-      metadataJson: undefined,
+      ...context,
     });
 
     assert.equal(repository.updateApprovalDecisionCasCalls.length, 1);
@@ -1116,14 +1052,7 @@ test("TransitionService - transitions execution status via facade", () => {
     entityId: "exec-1",
     fromStatus: "created",
     toStatus: "prechecking",
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "test",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "prechecking");
@@ -1144,14 +1073,7 @@ test("TransitionService - transitions approval status via facade", () => {
     fromStatus: "requested",
     toStatus: "approved",
     responseJson: '{"decision": "approved"}',
-    occurredAt: context.occurredAt,
-    traceId: context.traceId,
-    reasonCode: "test",
-    reasonDetail: undefined,
-    actorType: context.actorType,
-    actorId: context.actorId,
-    idempotencyKey: undefined,
-    metadataJson: undefined,
+    ...context,
   });
 
   assert.equal(repository.mockState.approvalDecisions.get("approval-1")?.status, "approved");
@@ -1175,8 +1097,8 @@ test("TransitionService - emits tier1 event on task transition", () => {
   });
 
   assert.equal(repository.mockState.tier1Events.length, 1);
-  assert.equal(repository.mockState.tier1Events[0].taskId, "task-1");
-  assert.equal(repository.mockState.tier1Events[0].eventType, "task:status_changed");
+  assert.equal(repository.mockState.tier1Events[0]?.taskId, "task-1");
+  assert.equal(repository.mockState.tier1Events[0]?.eventType, "task:status_changed");
 });
 
 test("TransitionService - task event contains transition payload with from/to status", () => {
@@ -1198,6 +1120,7 @@ test("TransitionService - task event contains transition payload with from/to st
   });
 
   const event = repository.mockState.tier1Events[0];
+  assert.ok(event);
   assert.equal(event.payload.fromStatus, "queued");
   assert.equal(event.payload.toStatus, "pending");
   assert.equal(event.payload.reasonCode, "USER_REQUEST");

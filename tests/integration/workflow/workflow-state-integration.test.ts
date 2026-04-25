@@ -304,6 +304,7 @@ test("workflow state: workflow cancelling transitions to cancelled", () => {
       reasonCode: "user_cancelled",
       traceId: newId("trace"),
       occurredAt: now,
+      actorType: "user",
     });
 
     const cancellingState = h.store.getWorkflowState(h.taskId);
@@ -320,6 +321,7 @@ test("workflow state: workflow cancelling transitions to cancelled", () => {
       reasonCode: "user_cancelled",
       traceId: newId("trace"),
       occurredAt: now,
+      actorType: "user",
     });
 
     const cancelledState = h.store.getWorkflowState(h.taskId);
@@ -347,6 +349,7 @@ test("workflow state: failed workflow transitions to failed status", () => {
       reasonCode: "workflow.step_failed",
       traceId: newId("trace"),
       occurredAt: now,
+      actorType: "system",
     });
 
     const state = h.store.getWorkflowState(h.taskId);
@@ -404,6 +407,7 @@ test("workflow state: completed workflow is terminal", () => {
       reasonCode: "task.completed",
       traceId: newId("trace"),
       occurredAt: now,
+      actorType: "system",
     });
 
     const state = h.store.getWorkflowState(h.taskId);
@@ -422,6 +426,7 @@ test("workflow state: completed workflow is terminal", () => {
         reasonCode: "invalid",
         traceId: newId("trace"),
         occurredAt: now,
+        actorType: "system",
       });
     }, /invalid_transition/);
 
@@ -454,7 +459,7 @@ test("workflow state: outputs JSON accumulates step results", () => {
     });
 
     const state = h.store.getWorkflowState(h.taskId);
-    const retrievedOutputs = JSON.parse(state?.outputsJson);
+    const retrievedOutputs = JSON.parse(state?.outputsJson ?? "{}");
 
     assert.equal(retrievedOutputs.step0.status, "completed");
     assert.equal(retrievedOutputs.step0.result, "data_123");

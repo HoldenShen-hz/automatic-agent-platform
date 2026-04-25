@@ -53,7 +53,7 @@ test("WorkerPool selects worker with highest availableSlots when load is equal",
   const eligible = service.listEligibleWorkers();
   assert.equal(eligible.length, 2);
   // worker-b has more available slots (4 vs 3)
-  const selected = eligible.sort((a, b) => b.availableSlots - a.availableSlots)[0];
+  const selected = eligible.sort((a, b) => b.availableSlots - a.availableSlots)[0]!;
   assert.equal(selected.workerId, "worker-b");
 });
 
@@ -91,7 +91,7 @@ test("WorkerPool excludes workers at max capacity from task assignment", () => {
 
   const eligible = service.listEligibleWorkers();
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-available");
+  assert.equal(eligible[0]!.workerId, "worker-available");
 });
 
 test("WorkerPool assigns task based on required capabilities", () => {
@@ -103,7 +103,7 @@ test("WorkerPool assigns task based on required capabilities", () => {
 
   const eligible = service.listEligibleWorkers({ requiredCapabilities: ["bash", "edit"] });
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-2");
+  assert.equal(eligible[0]!.workerId, "worker-2");
 });
 
 test("WorkerPool assigns to hardened isolation worker when required", () => {
@@ -115,7 +115,7 @@ test("WorkerPool assigns to hardened isolation worker when required", () => {
 
   const eligible = service.listEligibleWorkers({ requiredIsolationLevel: "hardened" });
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-hrd");
+  assert.equal(eligible[0]!.workerId, "worker-hrd");
 });
 
 test("WorkerPool strict isolation satisfies hardened requirement", () => {
@@ -127,7 +127,7 @@ test("WorkerPool strict isolation satisfies hardened requirement", () => {
   // strict (2) >= hardened (1), so strict satisfies hardened requirement
   const eligible = service.listEligibleWorkers({ requiredIsolationLevel: "hardened" });
   assert.equal(eligible.length, 1);
-  assert.equal(eligible[0].workerId, "worker-strict");
+  assert.equal(eligible[0]!.workerId, "worker-strict");
 });
 
 test("WorkerPool excludes unavailable, offline, quarantined, draining workers", () => {

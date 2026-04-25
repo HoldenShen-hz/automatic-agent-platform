@@ -209,7 +209,7 @@ test("active domains appear in listActive", () => {
 
   const active = service.listActive();
   assert.equal(active.length, 1);
-  assert.equal(active[0].domainId, "active_one");
+  assert.equal(active[0]!.domainId, "active_one");
 });
 
 test("deprecated domains do not appear in listActive", () => {
@@ -319,9 +319,9 @@ test("getPluginBindings returns bindings sorted by priority descending", () => {
   }));
 
   const bindings = service.getPluginBindings("priority_sort");
-  assert.equal(bindings[0].pluginId, "p_high");
-  assert.equal(bindings[1].pluginId, "p_medium");
-  assert.equal(bindings[2].pluginId, "p_low");
+  assert.equal(bindings[0]!.pluginId, "p_high");
+  assert.equal(bindings[1]!.pluginId, "p_medium");
+  assert.equal(bindings[2]!.pluginId, "p_low");
 });
 
 test("getPluginBindings excludes disabled bindings", () => {
@@ -339,7 +339,7 @@ test("getPluginBindings excludes disabled bindings", () => {
 
   const bindings = service.getPluginBindings("enabled_filter");
   assert.equal(bindings.length, 1);
-  assert.equal(bindings[0].pluginId, "p_enabled");
+  assert.equal(bindings[0]!.pluginId, "p_enabled");
 });
 
 // --- resolvePlugins ---
@@ -380,7 +380,7 @@ test("resolvePlugins returns resolved plugin instances", async () => {
 
   const resolved = service.resolvePlugins("resolve_test", "presenter");
   assert.equal(resolved.length, 1);
-  assert.equal(resolved[0].pluginId, "resolver_plugin");
+  assert.equal(resolved[0]!.pluginId, "resolver_plugin");
 });
 
 test("resolvePlugins returns empty array when no plugin registry", () => {

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "workflow_step_checkpoint.v1",
+  "taskId": "task_295b932f-da62-42eb-92f9-fad0c6d4145f",
+  "executionId": "exec_306dd172-c0cd-43de-bae6-98b375432b9b",
+  "workflowId": "qa_single_step",
+  "divisionId": "qa",
+  "stepId": "test_work",
+  "roleId": "qa_engineer",
+  "outputKey": "test_result",
+  "status": "succeeded",
+  "producedAt": "2026-04-25T02:30:19.573Z",
+  "output": {
+    "summary": "Step test_work completed.",
+    "result": "Role qa_engineer completed request: Test event emission"
+  },
+  "decisionContext": {
+    "source": "multi_step_orchestration",
+    "request": "Test event emission",
+    "routeReason": "route.simple_request",
+    "priorStepSummaries": [],
+    "dependsOnStepIds": []
+  },
+  "resumeContext": {
+    "completedStepIds": [
+      "test_work"
+    ],
+    "nextStepId": null,
+    "outputKeys": [
+      "test_result"
+    ]
+  },
+  "fileDiffSummary": {
+    "summary": null,
+    "createdPaths": [],
+    "updatedPaths": [],
+    "deletedPaths": []
+  },
+  "upstreamArtifactRefs": [],
+  "compensationModel": null
+}

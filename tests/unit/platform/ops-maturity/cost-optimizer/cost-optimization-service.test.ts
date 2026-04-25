@@ -1,8 +1,8 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { CostOptimizationService, type CostAttributionRecord, type CostSimulationScenarioInput } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/cost-optimization-service.js";
-import { simulateCostOptimization, simulateScenarioSavings } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/simulator/index.js";
-import { buildCostOptimizationRecommendation, prioritizeCostOptimizationRecommendations } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/recommendation-engine/index.js";
+import { CostOptimizationService, type CostAttributionRecord, type CostSimulationScenarioInput } from "../../../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
+import { simulateCostOptimization, simulateScenarioSavings } from "../../../../../src/ops-maturity/cost-optimizer/simulator/index.js";
+import { buildCostOptimizationRecommendation, prioritizeCostOptimizationRecommendations } from "../../../../../src/ops-maturity/cost-optimizer/recommendation-engine/index.js";
 
 test("CostOptimizationService.recordCost stores record and returns it", () => {
   const service = new CostOptimizationService();
@@ -108,9 +108,9 @@ test("CostOptimizationService.simulate returns correct simulation results", () =
 
   const results = service.simulate(scenarios);
 
-  assert.strictEqual(results[0].scenarioId, "s1");
-  assert.strictEqual(results[0].currentCostUsd, 100);
-  assert.strictEqual(results[0].simulatedCostUsd, 90);
+  assert.strictEqual(results[0]!.scenarioId, "s1");
+  assert.strictEqual(results[0]!.currentCostUsd, 100);
+  assert.strictEqual(results[0]!.simulatedCostUsd, 90);
 });
 
 test("CostOptimizationService.buildDashboardSlice returns complete slice", () => {
@@ -193,9 +193,9 @@ test("prioritizeCostOptimizationRecommendations sorts by estimated savings desce
 
   const sorted = prioritizeCostOptimizationRecommendations(recommendations);
 
-  assert.strictEqual(sorted[0].subjectId, "high-savings");
-  assert.strictEqual(sorted[1].subjectId, "medium-savings");
-  assert.strictEqual(sorted[2].subjectId, "low-savings");
+  assert.strictEqual(sorted[0]!.subjectId, "high-savings");
+  assert.strictEqual(sorted[1]!.subjectId, "medium-savings");
+  assert.strictEqual(sorted[2]!.subjectId, "low-savings");
 });
 
 test("simulateScenarioSavings returns savings per scenario", () => {
@@ -221,15 +221,18 @@ test("CostOptimizationService handles multiple cost types for same subject", () 
 });
 
 function makeRecord(subjectType: "task" | "agent" | "model" | "workflow" | "domain", subjectId: string, amountUsd: number, modelRef?: string): CostAttributionRecord {
-  return {
+  const record: CostAttributionRecord = {
     subjectType,
     subjectId,
     costType: "model",
     amountUsd,
     decisionRef: "test-decision",
-    modelRef,
     capturedAt: new Date().toISOString(),
   };
+  if (modelRef !== undefined) {
+    return { ...record, modelRef };
+  }
+  return record;
 }
 
 function makeRecordWithCostType(subjectType: "task" | "agent" | "model" | "workflow" | "domain", subjectId: string, amountUsd: number, costType: "model" | "tool" | "storage" | "runtime" | "network"): CostAttributionRecord {

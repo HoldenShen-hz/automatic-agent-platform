@@ -9,8 +9,8 @@ import type {
   SlackAlertChannelOptions,
   PagerDutyAlertChannelOptions,
   OpsGenieAlertChannelOptions,
-} from "../../../../../src/platform/shared/observability/slo-alerting/channels.js";
-import { PAGERDUTY_DEFAULT_ENDPOINT } from "../../../../../src/platform/shared/observability/slo-alerting/channels.js";
+} from "../../../../../../src/platform/shared/observability/slo-alerting/channels.js";
+import { PAGERDUTY_DEFAULT_ENDPOINT } from "../../../../../../src/platform/shared/observability/slo-alerting/channels.js";
 
 test("AlertDeliveryResult structure is correct", () => {
   const result: AlertDeliveryResult = {
@@ -87,7 +87,7 @@ test("WebhookAlertChannelOptions has optional fetchImpl", () => {
     timeoutMs: 5000,
   };
   assert.equal(options.fetchImpl, globalThis.fetch);
-  assert.equal(options.defaultHeaders["Content-Type"], "application/json");
+  assert.equal(options.defaultHeaders!["Content-Type"], "application/json");
   assert.equal(options.timeoutMs, 5000);
 });
 

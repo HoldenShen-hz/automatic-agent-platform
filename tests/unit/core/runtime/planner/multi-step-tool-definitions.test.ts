@@ -97,13 +97,15 @@ test("MultiStepToolDefinition interface is usable as a type", () => {
   };
   assert.equal(tool.name, "test_tool");
   assert.equal(tool.description, "A test tool");
-  assert.deepEqual(tool.inputSchema.properties?.arg1, { type: "string" });
+  const schema = tool.inputSchema as { properties?: { arg1?: { type: string } } };
+  assert.deepEqual(schema.properties?.arg1, { type: "string" });
 });
 
 test("getMultiStepToolDefinitions returns tools with full structure", () => {
   const result = getMultiStepToolDefinitions(["todo_write"]);
   assert.equal(result.length, 1);
   const tool = result[0];
+  assert.ok(tool, "tool should exist");
   assert.equal(tool.name, "todo_write");
   assert.ok(tool.description.length > 0);
   assert.ok(typeof tool.inputSchema === "object");

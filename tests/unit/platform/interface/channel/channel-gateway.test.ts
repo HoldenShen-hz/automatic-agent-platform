@@ -65,15 +65,15 @@ interface CapturedRequest {
   body: unknown;
 }
 
-function createMockFetch(_responses?: Map<string, { ok: boolean; status: number; body: unknown }>): (input: string | URL, init?: RequestInit) => Promise<Response> {
-  return async (input: string | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : input.toString();
+function createMockFetch(_responses?: Map<string, { ok: boolean; status: number; body: unknown }>): import("../../../../../src/platform/interface/channel-gateway/types.js").FetchLike {
+  return async (input: Request | URL | string, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof Request ? input.url : input.toString();
     const response = { ok: true, status: 200, body: {} };
     return {
       ok: response.ok,
       status: response.status,
       json: async () => response.body,
-    };
+    } as Response;
   };
 }
 
