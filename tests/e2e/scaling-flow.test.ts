@@ -565,7 +565,7 @@ test("E2E Scaling: high task volume handled correctly", (t) => {
       seedTask(h.store, h.db, `task-vol-${i}`, "queued", "tenant-001", now);
     }
 
-    const allTasks = h.store.listTasks({});
+    const allTasks = h.store.listTasks();
     assert.equal(allTasks.length, 50);
 
     const queuedTasks = allTasks.filter(t => t.status === "queued");
@@ -589,7 +589,7 @@ test("E2E Scaling: execution state consistent under load", (t) => {
       seedExecution(h.store, h.db, execId, taskId, "executing", 1);
     }
 
-    const allTasks = h.store.listTasks({});
+    const allTasks = h.store.listTasks();
     const allExecutions = h.store.dispatch.listExecutionsByStatuses(["executing"]);
 
     assert.equal(allTasks.length, 20);
@@ -616,7 +616,7 @@ test("E2E Scaling: mixed task statuses tracked correctly", (t) => {
       seedTask(h.store, h.db, `task-mixed-${i}`, statuses[i], "tenant-001", now);
     }
 
-    const allTasks = h.store.listTasks({});
+    const allTasks = h.store.listTasks();
     assert.equal(allTasks.length, statuses.length);
 
     const queuedCount = allTasks.filter(t => t.status === "queued").length;
@@ -768,7 +768,7 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
     }
 
     // Phase 2: Start executions
-    const startedTasks = h.store.listTasks({}).slice(0, 10);
+    const startedTasks = h.store.listTasks().slice(0, 10);
     for (const task of startedTasks) {
       h.db.transaction(() => {
         h.store.updateTaskStatus(task.id, "in_progress");
@@ -785,7 +785,7 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
     });
 
     // Verify final state
-    const allTasks = h.store.listTasks({});
+    const allTasks = h.store.listTasks();
     const queuedCount = allTasks.filter(t => t.status === "queued").length;
     const inProgressCount = allTasks.filter(t => t.status === "in_progress").length;
     const doneCount = allTasks.filter(t => t.status === "done").length;
