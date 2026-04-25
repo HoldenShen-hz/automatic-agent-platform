@@ -698,6 +698,8 @@ test("Planner ReplanningService decides replan for repairable feedback", () => {
     const feedback = {
       feedbackId: "fb_001",
       taskId: plan.taskId,
+      executionId: null,
+      planId: plan.planId,
       signals: [
         {
           signalId: "sig_1",
@@ -711,7 +713,7 @@ test("Planner ReplanningService decides replan for repairable feedback", () => {
         },
       ],
       outcome: "repairable" as const,
-      collectedAt: Date.now(),
+      emittedAt: Date.now(),
     };
 
     const replanning = new ReplanningService();
@@ -750,6 +752,8 @@ test("Planner ReplanningService decides no replan for successful feedback", () =
     const feedback = {
       feedbackId: "fb_ok_001",
       taskId: plan.taskId,
+      executionId: null,
+      planId: plan.planId,
       signals: [
         {
           signalId: "sig_ok_1",
@@ -762,8 +766,8 @@ test("Planner ReplanningService decides no replan for successful feedback", () =
           timestamp: Date.now(),
         },
       ],
-      outcome: "success" as const,
-      collectedAt: Date.now(),
+      outcome: "completed" as const,
+      emittedAt: Date.now(),
     };
 
     const replanning = new ReplanningService();

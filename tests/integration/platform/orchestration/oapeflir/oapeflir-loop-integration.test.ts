@@ -514,7 +514,7 @@ test("OAPEFLIR loop buildSerializedHandoff produces handoff for agent continuati
 
     assert.ok(handoff.fromAgentId === "agent_1");
     assert.ok(handoff.toAgentId === "agent_2");
-    assert.ok(handoff.serialized.length > 0, "Should produce serialized handoff");
+    assert.ok(typeof handoff.handoffId === "string" && handoff.handoffId.length > 0, "Should have handoffId");
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

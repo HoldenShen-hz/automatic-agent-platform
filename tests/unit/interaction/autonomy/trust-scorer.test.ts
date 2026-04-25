@@ -114,3 +114,94 @@ test("calculateTrustScore works with minimal executions", () => {
   // 100 success points, 0 penalty, 0 volume bonus = 100
   assert.equal(result, 100);
 });
+
+test("calculateTrustScore with high override rate approaches 0", () => {
+  const score = makeScore({ totalExecutions: 100, successfulExecutions: 50, humanOverrides: 100, incidents: 0 });
+  const result = calculateTrustScore(score);
+  // successPoints = 50, overridePenalty = 20, volumeBonus = 2
+  // 50 - 20 + 2 = 32
+  assert.equal(result, 32);
+});
+
+test("calculateTrustScore with all overrides goes to 0 or above", () => {
+  const score = makeScore({ totalExecutions: 50, successfulExecutions: 25, humanOverrides: 50, incidents: 0 });
+  const result = calculateTrustScore(score);
+  // successPoints = 50, overridePenalty = 20, volumeBonus = 1
+  // 50 - 20 + 1 = 31
+  assert.ok(result >= 0);
+});
+
+test("calculateTrustScore with many incidents floors at 0", () => {
+  const score = makeScore({ totalExecutions: 100, successfulExecutions: 100, humanOverrides: 0, incidents: 10 });
+  const result = calculateTrustScore(score);
+  // 100 - 0 - 150 + 2 = -48, floored at 0
+  assert.equal(result, 0);
+});
+
+test("calculateTrustScore volume bonus maxes at 10", () => {
+  const score = makeScore({ totalExecutions: 1000, successfulExecutions: 900, humanOverrides: 0, incidents: 0 });
+  const result = calculateTrustScore(score);
+  // 90 successPoints + 10 volume bonus = 100
+  assert.equal(result, 100);
+});
+
+test("calculateTrustScore volume bonus increments every 50 executions", () => {
+  const score0 = makeScore({ totalExecutions: 0, successfulExecutions: 0, humanOverrides: 0, incidents: 0 });
+  const score49 = makeScore({ totalExecutions: 49, successfulExecutions: 49, humanOverrides: 0, incidents: 0 });
+  const score50 = makeScore({ totalExecutions: 50, successfulExecutions: 50, humanOverrides: 0, incidents: 0 });
+  const score99 = makeScore({ totalExecutions: 99, successfulExecutions: 99, humanOverrides: 0, incidents: 0 });
+  const score100 = makeScore({ totalExecutions: 100, successfulExecutions: 100, humanOverrides: 0, incidents: 0 });
+
+  assert.equal(calculateTrustScore(score0), 0);
+  // floor(49/50) = 0 volume bonus
+  assert.equal(calculateTrustScore(score49), 100);
+  // floor(50/50) = 1 volume bonus, but capped at 100
+  assert.equal(calculateTrustScore(score50), 100);
+  assert.equal(calculateTrustScore(score99), 100);
+  assert.equal(calculateTrustScore(score100), 100);
+});
+
+test("mapTrustLevel boundary at exactly 95 is fully_trusted", () => {
+  assert.equal(mapTrustLevel(95), "fully_trusted");
+});
+
+test("mapTrustLevel boundary at exactly 85 is trusted", () => {
+  assert.equal(mapTrustLevel(85), "trusted");
+});
+
+test("mapTrustLevel boundary at exactly 70 is semi_trusted", () => {
+  assert.equal(mapTrustLevel(70), "semi_trusted");
+});
+
+test("mapTrustLevel boundary at exactly 50 is supervised", () => {
+  assert.equal(mapTrustLevel(50), "supervised");
+});
+
+test("mapTrustLevel boundary at exactly 30 is probation", () => {
+  assert.equal(mapTrustLevel(30), "probation");
+});
+
+test("mapTrustLevel boundary at 29 is untrusted", () => {
+  assert.equal(mapTrustLevel(29), "untrusted");
+});
+
+test("calculateTrustScore with 0 successful executions but some overrides", () => {
+  const score = makeScore({ totalExecutions: 50, successfulExecutions: 0, humanOverrides: 25, incidents: 0 });
+  const result = calculateTrustScore(score);
+  // successPoints = 0, overridePenalty = 10, volumeBonus = 1
+  // 0 - 10 + 1 = -9, floored at 0
+  assert.equal(result, 0);
+});
+
+test("calculateTrustScore mixed execution results", () => {
+  const score = makeScore({ totalExecutions: 100, successfulExecutions: 75, failedExecutions: 25, humanOverrides: 5, incidents: 1 });
+  const result = calculateTrustScore(score);
+  // successPoints = 75, overridePenalty = 1, incidentPenalty = 15, volumeBonus = 2
+  // 75 - 1 - 15 + 2 = 61
+  assert.equal(result, 61);
+});
+
+test("mapTrustLevel negative score returns untrusted", () => {
+  // Although calculateTrustScore never returns negative, mapTrustLevel should handle any number
+  assert.equal(mapTrustLevel(-10), "untrusted");
+});

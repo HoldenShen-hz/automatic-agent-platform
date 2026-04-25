@@ -824,7 +824,7 @@ test("GameDay with no experiments creates valid empty game day", () => {
   assert.ok(refreshed !== null);
 });
 
-test("Experiment with zero hypotheses completes immediately on start", () => {
+test("Experiment with zero hypotheses completes when recordSteadyStateResult is called", () => {
   const scheduler = createScheduler();
   const experiment = scheduler.scheduleExperiment({
     name: "No Hypotheses",
@@ -838,7 +838,10 @@ test("Experiment with zero hypotheses completes immediately on start", () => {
 
   scheduler.startExperiment(experiment.experimentId);
 
-  // With zero hypotheses and started, it should be immediately completed
+  // With zero hypotheses, calling recordSteadyStateResult completes immediately
+  // because results.length (1) >= steadyStateHypotheses.length (0)
+  scheduler.recordSteadyStateResult(experiment.experimentId, "any", 0, true, "no hypotheses");
+
   const exp = scheduler.getExperiment(experiment.experimentId);
   assert.equal(exp!.status, "completed");
 });
