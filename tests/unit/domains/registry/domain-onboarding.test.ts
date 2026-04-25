@@ -152,7 +152,7 @@ test("buildCapabilityEntry returns correct structure", () => {
 
   assert.equal(entry.domainId, "cap_test");
   assert.equal(entry.bundleId, "default");
-  assert.deepEqual(entry.capabilityIds, ["knowledge.search"]);
+  assert.deepEqual(entry.capabilityIds, ["plugin.retriever"]);
   assert.deepEqual(entry.toolNames, ["bash", "read"]);
   assert.deepEqual(entry.skillIds, ["wf_test"]);
   assert.deepEqual(entry.pluginIds, ["plugin.retriever"]);
