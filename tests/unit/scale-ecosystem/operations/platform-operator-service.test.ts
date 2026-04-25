@@ -93,7 +93,7 @@ test("PlatformOperatorService buildReport with custom target status", () => {
     evidenceRootDir: "/tmp/evidence",
     packageOutputDir: "/tmp/output",
     targetStatus: "stable",
-  } as any;
+  };
 
   const report = service.buildReport(input);
 
@@ -145,7 +145,7 @@ test("PlatformOperatorService buildReport throws on invalid generatedAt", () => 
     evidenceRootDir: "/tmp/evidence",
     packageOutputDir: "/tmp/output",
     generatedAt: "invalid-date",
-  } as any;
+  };
 
   assert.throws(() => {
     service.buildReport(input);
@@ -273,7 +273,7 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
     if (statuses.includes("active")) return 4;
     if (statuses.includes("expired")) return 2;
     return 0;
-  } as any;
+  };
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
   mockStore.organization.listWorkspaceRecords = () => [];

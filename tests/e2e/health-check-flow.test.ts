@@ -23,7 +23,7 @@ import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/s
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { HealthService } from "../../src/platform/shared/observability/health-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
-import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 
 function createHealthHarness(prefix: string, options?: ConstructorParameters<typeof HealthService>[2]) {
@@ -118,15 +118,15 @@ test("E2E Health Check: returns valid status report", () => {
     assert.ok(report, "Report should exist");
     assert.ok(["ok", "degraded", "overloaded", "unhealthy"].includes(report.status),
       `Status should be valid, got: ${report.status}`);
-    assert.equal(typeof report.uptimeSeconds, "number", "Uptime should be a number");
-    assert.equal(typeof report.dbWritable, "boolean", "dbWritable should be a boolean");
+    assert.ok(typeof report.uptimeSeconds === "number", "Uptime should be a number");
+    assert.ok(typeof report.dbWritable === "boolean", "dbWritable should be a boolean");
     assert.ok(["healthy", "degraded", "failed"].includes(report.providerHealth),
       "Provider health should be valid");
-    assert.equal(typeof report.providerSuccessRate, "number", "Provider success rate should be a number");
-    assert.equal(typeof report.activeExecutions, "number", "Active executions should be a number");
-    assert.equal(typeof report.queuedTasks, "number", "Queued tasks should be a number");
-    assert.equal(typeof report.memoryRssMb, "number", "Memory RSS should be a number");
-    assert.equal(typeof report.tier1AckBacklog, "number", "Tier1 ack backlog should be a number");
+    assert.ok(typeof report.providerSuccessRate === "number", "Provider success rate should be a number");
+    assert.ok(typeof report.activeExecutions === "number", "Active executions should be a number");
+    assert.ok(typeof report.queuedTasks === "number", "Queued tasks should be a number");
+    assert.ok(typeof report.memoryRssMb === "number", "Memory RSS should be a number");
+    assert.ok(typeof report.tier1AckBacklog === "number", "Tier1 ack backlog should be a number");
     assert.ok(["none", "queue_only", "fast_only", "pause_non_critical", "read_only_operations_only"].includes(
       report.degradationMode), "Degradation mode should be valid");
     assert.ok(Array.isArray(report.findings), "Findings should be an array");
@@ -230,15 +230,14 @@ test("E2E Health Check: database writability check fails gracefully", () => {
   }
 });
 
-test("E2E Health Check: async report matches sync report", () => {
+test("E2E Health Check: async report matches sync report", async () => {
   const h = createHealthHarness("e2e-health-async-");
   try {
     const syncReport = h.healthService.getReport();
-    h.healthService.getReportAsync().then((asyncReport) => {
-      assert.equal(asyncReport.status, syncReport.status, "Async status should match sync status");
-      assert.equal(asyncReport.dbWritable, syncReport.dbWritable, "Async dbWritable should match sync");
-      assert.equal(asyncReport.uptimeSeconds, syncReport.uptimeSeconds, "Async uptime should match sync");
-    });
+    const asyncReport = await h.healthService.getReportAsync();
+    assert.equal(asyncReport.status, syncReport.status, "Async status should match sync status");
+    assert.equal(asyncReport.dbWritable, syncReport.dbWritable, "Async dbWritable should match sync");
+    assert.equal(asyncReport.uptimeSeconds, syncReport.uptimeSeconds, "Async uptime should match sync");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -286,7 +285,8 @@ test("E2E Health Check: worker health summary populated", () => {
 test("E2E Health Check: event loop lag affects status", () => {
   const h = createHealthHarness("e2e-health-lag-", {
     eventLoopLagThresholdMs: 50,
-  }, () => 100); // Simulate 100ms lag
+    eventLoopLagSampler: () => 100,
+  });
   try {
     const report = h.healthService.getReport();
 
@@ -399,7 +399,6 @@ test("E2E Health Check: tier1 ack backlog tracked", () => {
 
 test("E2E Health Check: uptime increases over time", () => {
   const h = createHealthHarness("e2e-health-uptime-");
-  const start = Date.now();
 
   try {
     const report1 = h.healthService.getReport();

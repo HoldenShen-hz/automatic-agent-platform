@@ -236,7 +236,6 @@ test("AdapterExecutor includes duration and attempt count in result", async () =
 
   assert.equal(result.attempts, 1);
   assert.ok(result.durationMs >= 0);
-  assert.ok(result.durationMs >= 0);
 });
 
 test("AdapterExecutor passes correlationId and tenantId in context", async () => {

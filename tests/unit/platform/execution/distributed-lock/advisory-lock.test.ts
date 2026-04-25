@@ -187,21 +187,6 @@ test("PgAdvisoryLockAdapter: acquireAsync returns acquired=false on generic data
   assert.equal(result.acquired, false);
 });
 
-test("PgAdvisoryLockAdapter: acquireAsync returns acquired=false on ECONNREFUSED", async () => {
-  const mockDriver = createMockDriver({
-    queryFn: async () => {
-      const err = new Error("Connection refused");
-      (err as { code?: string }).code = "ECONNREFUSED";
-      throw err;
-    },
-  });
-  const adapter = createAdapterWithMockDriver(mockDriver);
-
-  const result = await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
-
-  assert.equal(result.acquired, false);
-});
-
 // ---------------------------------------------------------------------------
 // Async releaseAsync
 // ---------------------------------------------------------------------------

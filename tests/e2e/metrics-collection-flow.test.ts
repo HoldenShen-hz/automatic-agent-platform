@@ -28,7 +28,7 @@ import { MetricsService } from "../../src/platform/shared/observability/metrics-
 import { HealthService } from "../../src/platform/shared/observability/health-service.js";
 import { runtimeMetricsRegistry, RuntimeMetricsRegistry } from "../../src/platform/shared/observability/runtime-metrics-registry.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
-import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
+import { nowIso } from "../../src/platform/contracts/types/ids.js";
 import type { TaskStatus, ExecutionStatus, WorkflowStatus } from "../../src/platform/contracts/types/status.js";
 
 function createMetricsHarness(prefix: string) {
@@ -371,12 +371,12 @@ test("E2E Metrics Collection: metrics include health status", () => {
       summary.runtimeMetrics.degradationMode), "Degradation mode should be valid");
 
     // Verify activeExecutions and queuedTasks are numbers
-    assert.equal(typeof summary.runtimeMetrics.activeExecutions, "number");
-    assert.equal(typeof summary.runtimeMetrics.queuedTasks, "number");
+    assert.ok(typeof summary.runtimeMetrics.activeExecutions === "number");
+    assert.ok(typeof summary.runtimeMetrics.queuedTasks === "number");
 
     // Verify worker health is present
     assert.ok(typeof summary.runtimeMetrics.workerHealth === "object");
-    assert.equal(typeof summary.runtimeMetrics.workerHealth.totalWorkers, "number");
+    assert.ok(typeof summary.runtimeMetrics.workerHealth.totalWorkers === "number");
 
     // Verify queue governance is present
     assert.ok(typeof summary.runtimeMetrics.queueGovernance === "object");
