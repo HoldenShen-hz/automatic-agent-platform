@@ -260,7 +260,8 @@ test("BillingService evaluateEntitlement for warn returns remaining quota", () =
 
   assert.equal(result.decision.decisionType, "warn");
   assert.ok(result.remainingQuantity !== null);
-  assert.ok(result.remainingQuantity < 0);
+  // soft limit 100, requested 120, projected 120 > 100, remaining = max(0, 100-120) = 0
+  assert.equal(result.remainingQuantity, 0);
 });
 
 test("BillingService recordUsage creates ledger entry with correct amount", () => {
