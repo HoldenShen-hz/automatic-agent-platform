@@ -9,8 +9,6 @@
  */
 
 // @ts-nocheck
-// RecipeExecutor module does not exist in src/domains/recipes/ - all tests are skipped
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -55,16 +53,14 @@ interface ExecutionContext {
 // Construction & Basic Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-// TODO: RecipeExecutor class not yet implemented in src/domains/recipes/
-// Skipping all tests that require the non-existent module
-test.skip("RecipeExecutor is constructed without errors", async () => {
+test("RecipeExecutor is constructed without errors", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
 
   assert.ok(executor !== null);
 });
 
-test.skip("RecipeExecutor.execute runs a recipe and returns execution result", async () => {
+test("RecipeExecutor.execute runs a recipe and returns execution result", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -91,7 +87,7 @@ test.skip("RecipeExecutor.execute runs a recipe and returns execution result", a
   assert.ok(result.executionId !== undefined);
 });
 
-test.skip("RecipeExecutor.execute includes all tool bundle ids from recipe", async () => {
+test("RecipeExecutor.execute includes all tool bundle ids from recipe", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -117,7 +113,7 @@ test.skip("RecipeExecutor.execute includes all tool bundle ids from recipe", asy
   assert.ok(result.toolBundleIds.includes("bundle_c"));
 });
 
-test.skip("RecipeExecutor.execute with empty tool bundle ids", async () => {
+test("RecipeExecutor.execute with empty tool bundle ids", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -145,7 +141,7 @@ test.skip("RecipeExecutor.execute with empty tool bundle ids", async () => {
 // Execution Context Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeExecutor.execute passes execution context correctly", async () => {
+test("RecipeExecutor.execute passes execution context correctly", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -168,7 +164,7 @@ test.skip("RecipeExecutor.execute passes execution context correctly", async () 
   assert.equal(result.executionId, context.executionId);
 });
 
-test.skip("RecipeExecutor.execute uses recipe's defaultWorkflowId", async () => {
+test("RecipeExecutor.execute uses recipe's defaultWorkflowId", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -194,7 +190,7 @@ test.skip("RecipeExecutor.execute uses recipe's defaultWorkflowId", async () => 
 // Error Handling Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeExecutor.execute returns failure result on workflow error", async () => {
+test("RecipeExecutor.execute returns failure result on workflow error", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -218,7 +214,7 @@ test.skip("RecipeExecutor.execute returns failure result on workflow error", asy
   assert.ok(result.error!.length > 0);
 });
 
-test.skip("RecipeExecutor.execute returns failure when recipe is invalid", async () => {
+test("RecipeExecutor.execute returns failure when recipe is invalid", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
 
@@ -247,7 +243,7 @@ test.skip("RecipeExecutor.execute returns failure when recipe is invalid", async
 // Execution Result Structure Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeExecutor.execute returns result with all required fields", async () => {
+test("RecipeExecutor.execute returns result with all required fields", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -274,7 +270,7 @@ test.skip("RecipeExecutor.execute returns result with all required fields", asyn
   assert.ok(Array.isArray(result.toolBundleIds));
 });
 
-test.skip("RecipeExecutor.execute output contains execution artifacts", async () => {
+test("RecipeExecutor.execute output contains execution artifacts", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -302,7 +298,7 @@ test.skip("RecipeExecutor.execute output contains execution artifacts", async ()
 // Multiple Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeExecutor.execute can run same recipe multiple times", async () => {
+test("RecipeExecutor.execute can run same recipe multiple times", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -335,7 +331,7 @@ test.skip("RecipeExecutor.execute can run same recipe multiple times", async () 
   assert.notEqual(result1.executionId, result2.executionId);
 });
 
-test.skip("RecipeExecutor.execute handles concurrent executions", async () => {
+test("RecipeExecutor.execute handles concurrent executions", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -365,7 +361,7 @@ test.skip("RecipeExecutor.execute handles concurrent executions", async () => {
 // Executor Metadata Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeExecutor.execute preserves recipe metadata in result", async () => {
+test("RecipeExecutor.execute preserves recipe metadata in result", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({
@@ -390,7 +386,7 @@ test.skip("RecipeExecutor.execute preserves recipe metadata in result", async ()
   assert.equal(result.recipeId, "recipe_meta");
 });
 
-test.skip("RecipeExecutor returns ExecutionResult type with correct structure", async () => {
+test("RecipeExecutor returns ExecutionResult type with correct structure", async () => {
   const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
   const recipe = makeRecipe({

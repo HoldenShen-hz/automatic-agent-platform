@@ -16,3 +16,6 @@ export function matchDomainRecipe(recipes: readonly DomainRecipe[], input: strin
   const normalized = input.toLowerCase();
   return recipes.find((item) => item.triggerPhrases.some((phrase) => normalized.includes(phrase.toLowerCase()))) ?? null;
 }
+
+export { RecipeRegistry } from "./recipe-registry.js";
+export { RecipeExecutor, type RecipeExecutionContext, type RecipeExecutionResult } from "./recipe-executor.js";

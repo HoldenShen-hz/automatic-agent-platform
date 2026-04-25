@@ -9,8 +9,6 @@
  */
 
 // @ts-nocheck
-// RecipeRegistry module does not exist in src/domains/recipes/ - all tests are skipped
-
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -37,14 +35,13 @@ function makeRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; domai
 // Construction & Basic Operations Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeRegistry is constructed without errors", async () => {
-  // RecipeRegistry module does not exist in src/domains/recipes/
+test("RecipeRegistry is constructed without errors", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   assert.ok(registry !== null);
 });
 
-test.skip("RecipeRegistry.register adds a recipe to the registry", async () => {
+test("RecipeRegistry.register adds a recipe to the registry", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   const recipe = makeRecipe({
@@ -62,7 +59,7 @@ test.skip("RecipeRegistry.register adds a recipe to the registry", async () => {
   assert.equal(result!.defaultWorkflowId, recipe.defaultWorkflowId);
 });
 
-test.skip("RecipeRegistry.registerAll adds multiple recipes", async () => {
+test("RecipeRegistry.registerAll adds multiple recipes", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   const recipes = [
@@ -77,7 +74,7 @@ test.skip("RecipeRegistry.registerAll adds multiple recipes", async () => {
   assert.equal(list.length, 3);
 });
 
-test.skip("RecipeRegistry.get returns recipe by id", async () => {
+test("RecipeRegistry.get returns recipe by id", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   const recipe = makeRecipe({
@@ -93,7 +90,7 @@ test.skip("RecipeRegistry.get returns recipe by id", async () => {
   assert.equal(result!.recipeId, "recipe_get");
 });
 
-test.skip("RecipeRegistry.get returns null for unknown id", async () => {
+test("RecipeRegistry.get returns null for unknown id", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
 
@@ -102,7 +99,7 @@ test.skip("RecipeRegistry.get returns null for unknown id", async () => {
   assert.equal(result, null);
 });
 
-test.skip("RecipeRegistry.list returns all registered recipes", async () => {
+test("RecipeRegistry.list returns all registered recipes", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.registerAll([
@@ -115,7 +112,7 @@ test.skip("RecipeRegistry.list returns all registered recipes", async () => {
   assert.equal(result.length, 2);
 });
 
-test.skip("RecipeRegistry.list returns a copy (immutability)", async () => {
+test("RecipeRegistry.list returns a copy (immutability)", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.register(makeRecipe({
@@ -135,7 +132,7 @@ test.skip("RecipeRegistry.list returns a copy (immutability)", async () => {
 // Registration Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeRegistry.registerAll overwrites existing recipe with same id", async () => {
+test("RecipeRegistry.registerAll overwrites existing recipe with same id", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   const recipe1 = makeRecipe({
@@ -157,7 +154,7 @@ test.skip("RecipeRegistry.registerAll overwrites existing recipe with same id", 
   assert.equal(registry.list().length, 1);
 });
 
-test.skip("RecipeRegistry.register rejects invalid recipe schema", async () => {
+test("RecipeRegistry.register rejects invalid recipe schema", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
 
@@ -170,7 +167,7 @@ test.skip("RecipeRegistry.register rejects invalid recipe schema", async () => {
   });
 });
 
-test.skip("RecipeRegistry.clear removes all recipes", async () => {
+test("RecipeRegistry.clear removes all recipes", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.registerAll([
@@ -183,7 +180,7 @@ test.skip("RecipeRegistry.clear removes all recipes", async () => {
   assert.equal(registry.list().length, 0);
 });
 
-test.skip("RecipeRegistry.has returns true for existing recipe", async () => {
+test("RecipeRegistry.has returns true for existing recipe", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.register(makeRecipe({
@@ -195,7 +192,7 @@ test.skip("RecipeRegistry.has returns true for existing recipe", async () => {
   assert.equal(registry.has("recipe_has"), true);
 });
 
-test.skip("RecipeRegistry.has returns false for unknown recipe", async () => {
+test("RecipeRegistry.has returns false for unknown recipe", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
 
@@ -206,7 +203,7 @@ test.skip("RecipeRegistry.has returns false for unknown recipe", async () => {
 // Filtering & Query Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeRegistry.listByDomain returns recipes for specific domain", async () => {
+test("RecipeRegistry.listByDomain returns recipes for specific domain", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.registerAll([
@@ -221,7 +218,7 @@ test.skip("RecipeRegistry.listByDomain returns recipes for specific domain", asy
   assert.ok(result.every((r: DomainRecipe) => r.domainId === "coding"));
 });
 
-test.skip("RecipeRegistry.listByDomain returns empty array when no recipes for domain", async () => {
+test("RecipeRegistry.listByDomain returns empty array when no recipes for domain", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.register(makeRecipe({
@@ -235,7 +232,7 @@ test.skip("RecipeRegistry.listByDomain returns empty array when no recipes for d
   assert.equal(result.length, 0);
 });
 
-test.skip("RecipeRegistry.findByTriggerPhrase matches recipes by trigger phrase", async () => {
+test("RecipeRegistry.findByTriggerPhrase matches recipes by trigger phrase", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.registerAll([
@@ -259,7 +256,7 @@ test.skip("RecipeRegistry.findByTriggerPhrase matches recipes by trigger phrase"
   assert.equal(result!.recipeId, "recipe_trigger_1");
 });
 
-test.skip("RecipeRegistry.findByTriggerPhrase is case insensitive", async () => {
+test("RecipeRegistry.findByTriggerPhrase is case insensitive", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.register(makeRecipe({
@@ -275,7 +272,7 @@ test.skip("RecipeRegistry.findByTriggerPhrase is case insensitive", async () => 
   assert.equal(result!.recipeId, "recipe_case");
 });
 
-test.skip("RecipeRegistry.findByTriggerPhrase returns null when no match", async () => {
+test("RecipeRegistry.findByTriggerPhrase returns null when no match", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.register(makeRecipe({
@@ -290,7 +287,7 @@ test.skip("RecipeRegistry.findByTriggerPhrase returns null when no match", async
   assert.equal(result, null);
 });
 
-test.skip("RecipeRegistry.findByTriggerPhrase returns first matching recipe", async () => {
+test("RecipeRegistry.findByTriggerPhrase returns first matching recipe", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.registerAll([
@@ -314,7 +311,7 @@ test.skip("RecipeRegistry.findByTriggerPhrase returns first matching recipe", as
   assert.equal(result!.recipeId, "recipe_first_1");
 });
 
-test.skip("RecipeRegistry.findByTriggerPhrase delegates to matchDomainRecipe", async () => {
+test("RecipeRegistry.findByTriggerPhrase delegates to matchDomainRecipe", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   registry.register(makeRecipe({
@@ -337,7 +334,7 @@ test.skip("RecipeRegistry.findByTriggerPhrase delegates to matchDomainRecipe", a
 // Empty State Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.skip("RecipeRegistry.list on empty registry returns empty array", async () => {
+test("RecipeRegistry.list on empty registry returns empty array", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
 
@@ -347,7 +344,7 @@ test.skip("RecipeRegistry.list on empty registry returns empty array", async () 
   assert.equal(result.length, 0);
 });
 
-test.skip("RecipeRegistry.listByDomain on empty registry returns empty array", async () => {
+test("RecipeRegistry.listByDomain on empty registry returns empty array", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
 
@@ -357,7 +354,7 @@ test.skip("RecipeRegistry.listByDomain on empty registry returns empty array", a
   assert.equal(result.length, 0);
 });
 
-test.skip("RecipeRegistry.findByTriggerPhrase on empty registry returns null", async () => {
+test("RecipeRegistry.findByTriggerPhrase on empty registry returns null", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
 
