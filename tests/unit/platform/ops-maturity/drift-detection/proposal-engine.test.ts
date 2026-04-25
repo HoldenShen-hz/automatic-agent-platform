@@ -1,15 +1,15 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { SimpleProposalEngine, type ProposalKind } from "../../../../../../src/ops-maturity/drift-detection/proposal-engine.js";
-import type { ReflectionRecord } from "../../../../../../src/ops-maturity/drift-detection/reflection-engine.js";
+import { SimpleProposalEngine, type ProposalKind } from "../../../../../src/ops-maturity/drift-detection/proposal-engine.js";
+import type { ReflectionRecord } from "../../../../../src/ops-maturity/drift-detection/reflection-engine.js";
 
 const mockReflection = (overrides: Partial<ReflectionRecord> = {}): ReflectionRecord => ({
   id: "ref-1",
-  agentId: "agent-1",
-  trigger: "test_trigger",
-  outcome: "failed",
-  rootCause: "type_error",
   evidenceIds: ["evidence-1"],
+  taskType: "test_task",
+  rootCause: "type_error",
+  recommendation: "Add explicit type annotations",
+  confidence: 0.8,
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -43,7 +43,7 @@ test("SimpleProposalEngine.proposeFromReflection generates tool routing proposal
   const proposals = await engine.proposeFromReflection(reflection);
 
   assert.ok(proposals.length > 0);
-  const toolProposal = proposals.find((p) => p.kind === "tool_routing_rule");
+  const toolProposal = proposals.find((p: ImprovementProposal) => p.kind === "tool_routing_rule");
   assert.ok(toolProposal !== undefined);
   assert.strictEqual(toolProposal?.target, "type_validation");
 });
@@ -54,7 +54,7 @@ test("SimpleProposalEngine.proposeFromReflection generates skill doc proposal fo
 
   const proposals = await engine.proposeFromReflection(reflection);
 
-  const skillProposal = proposals.find((p) => p.kind === "skill_doc");
+  const skillProposal = proposals.find((p: ImprovementProposal) => p.kind === "skill_doc");
   assert.ok(skillProposal !== undefined);
   assert.strictEqual(skillProposal?.target, "testing_guidelines");
 });
@@ -65,7 +65,7 @@ test("SimpleProposalEngine.proposeFromReflection generates workflow template for
 
   const proposals = await engine.proposeFromReflection(reflection);
 
-  const workflowProposal = proposals.find((p) => p.kind === "workflow_template");
+  const workflowProposal = proposals.find((p: ImprovementProposal) => p.kind === "workflow_template");
   assert.ok(workflowProposal !== undefined);
   assert.strictEqual(workflowProposal?.target, "complex_task_template");
   assert.strictEqual(workflowProposal?.risk, "medium");
@@ -77,7 +77,7 @@ test("SimpleProposalEngine.proposeFromReflection generates prompt patch for secu
 
   const proposals = await engine.proposeFromReflection(reflection);
 
-  const promptProposal = proposals.find((p) => p.kind === "prompt_patch");
+  const promptProposal = proposals.find((p: ImprovementProposal) => p.kind === "prompt_patch");
   assert.ok(promptProposal !== undefined);
   assert.strictEqual(promptProposal?.risk, "high");
 });
@@ -132,7 +132,7 @@ test("SimpleProposalEngine.submitForApproval updates proposal status to testing"
   await engine.submitForApproval(proposal.id);
 
   const active = await engine.listActive();
-  assert.ok(active.some((p) => p.id === proposal.id));
+  assert.ok(active.some((p: ImprovementProposal) => p.id === proposal.id));
 });
 
 test("SimpleProposalEngine.listPending returns only proposed proposals", async () => {
@@ -150,7 +150,7 @@ test("SimpleProposalEngine.listPending returns only proposed proposals", async (
 
   const pending = await engine.listPending();
 
-  assert.ok(pending.every((p) => p.status === "proposed"));
+  assert.ok(pending.every((p: ImprovementProposal) => p.status === "proposed"));
 });
 
 test("SimpleProposalEngine.listActive returns proposals in testing, canary, or active status", async () => {
@@ -169,7 +169,7 @@ test("SimpleProposalEngine.listActive returns proposals in testing, canary, or a
 
   const active = await engine.listActive();
 
-  assert.ok(active.some((p) => p.status === "testing"));
+  assert.ok(active.some((p: ImprovementProposal) => p.status === "testing"));
 });
 
 test("SimpleProposalEngine.proposeFromReflection returns multiple proposals for complex reflection", async () => {
@@ -196,7 +196,7 @@ test("SimpleProposalEngine assigns expectedBenefit to proposals", async () => {
 
   const proposals = await engine.proposeFromReflection(reflection);
 
-  const proposal = proposals.find((p) => p.kind === "tool_routing_rule");
+  const proposal = proposals.find((p: ImprovementProposal) => p.kind === "tool_routing_rule");
   assert.ok(proposal?.expectedBenefit !== undefined);
   assert.ok(typeof proposal?.expectedBenefit?.stability === "number");
 });
@@ -271,7 +271,7 @@ test("SimpleProposalEngine submits to approval updates updatedAt", async () => {
 
   await engine.submitForApproval(proposal.id);
 
-  const updated = (await engine.listActive()).find((p) => p.id === proposal.id);
+  const updated = (await engine.listActive()).find((p: ImprovementProposal) => p.id === proposal.id);
   assert.ok(updated);
   assert.notStrictEqual(updated?.updatedAt, originalUpdatedAt);
 });

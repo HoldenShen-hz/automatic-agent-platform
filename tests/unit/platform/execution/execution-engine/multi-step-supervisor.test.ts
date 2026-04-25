@@ -21,10 +21,13 @@ import type {
   ExecutionStatusTransitionCommand,
   MessageRecord,
   SessionRecord,
+  SessionStatusTransitionCommand,
   StepOutputRecord,
   TaskRecord,
+  TaskStatusTransitionCommand,
   TransitionAuditContext,
   WorkflowStateRecord,
+  WorkflowStatusTransitionCommand,
 } from "../../../../../src/platform/contracts/types/domain.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 import type { ArtifactStore } from "../../../../../src/platform/state-evidence/artifacts/artifact-store.js";
@@ -129,10 +132,10 @@ function createMockDb(): AuthoritativeSqlDatabase {
 
 function createMockTransitionService(): TransitionService {
   return {
-    transitionTaskStatus: (_params: Record<string, unknown>) => {},
-    transitionWorkflowStatus: (_params: Record<string, unknown>) => {},
-    transitionSessionStatus: (_params: Record<string, unknown>) => {},
-    transitionExecutionStatus: (_params: Record<string, unknown>) => {},
+    transitionTaskStatus: (_command: TaskStatusTransitionCommand) => {},
+    transitionWorkflowStatus: (_command: WorkflowStatusTransitionCommand) => {},
+    transitionSessionStatus: (_command: SessionStatusTransitionCommand) => {},
+    transitionExecutionStatus: (_command: ExecutionStatusTransitionCommand) => {},
   };
 }
 

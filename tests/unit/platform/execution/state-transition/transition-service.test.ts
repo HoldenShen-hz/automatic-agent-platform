@@ -253,11 +253,13 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       return {
         id: approvalId,
         taskId: "task-1",
-        requestJson: "{}",
+        executionId: null,
         status: decision.status,
+        requestJson: "{}",
         responseJson: decision.responseJson,
-        respondedAt: decision.respondedAt,
+        timeoutPolicy: "{}",
         createdAt: new Date().toISOString(),
+        respondedAt: decision.respondedAt,
         updatedAt: new Date().toISOString(),
       };
     },
