@@ -152,7 +152,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       updateTaskStatusCasCalls.push({ entityId, fromStatus, toStatus });
       const current = mockState.taskStatuses.get(entityId);
       if (current && current.status === fromStatus) {
-        mockState.taskStatuses.set(entityId, { status: toStatus, updatedAt: occurredAt });
+        mockState.taskStatuses.set(entityId, { status: toStatus as TaskStatus, updatedAt: occurredAt });
         return 1;
       }
       return 0;
@@ -162,7 +162,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       updateWorkflowStateCasCalls.push(entityId);
       const current = mockState.workflowStates.get(entityId);
       if (current && current.status === expectedStatus && current.currentStepIndex === expectedStepIndex) {
-        mockState.workflowStates.set(entityId, { status: toStatus, currentStepIndex, updatedAt: occurredAt });
+        mockState.workflowStates.set(entityId, { status: toStatus as WorkflowStatus, currentStepIndex, updatedAt: occurredAt });
         return 1;
       }
       return 0;
@@ -172,7 +172,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       updateSessionStatusCasCalls.push(entityId);
       const current = mockState.sessionStatuses.get(entityId);
       if (current && current.status === fromStatus) {
-        mockState.sessionStatuses.set(entityId, { status: toStatus, updatedAt: occurredAt });
+        mockState.sessionStatuses.set(entityId, { status: toStatus as SessionStatus, updatedAt: occurredAt });
         return 1;
       }
       return 0;
@@ -183,7 +183,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       const current = mockState.executionStatuses.get(entityId);
       if (current && current.status === fromStatus) {
         mockState.executionStatuses.set(entityId, {
-          status: toStatus,
+          status: toStatus as ExecutionStatus,
           startedAt: startedAt ?? current.startedAt,
           finishedAt: finishedAt ?? current.finishedAt,
           lastErrorCode: lastErrorCode ?? current.lastErrorCode,
