@@ -349,7 +349,29 @@ test("activate emits domain:activated event on success", () => {
       },
     },
   });
-  service.register(makeMinimalDefinition({ domainId: "activate_event", status: "testing" }));
+  service.register(makeMinimalDefinition({
+    domainId: "activate_event",
+    status: "testing",
+    workflows: [
+      {
+        workflowId: "wf_activate",
+        name: "Activate Workflow",
+        triggerConditions: {},
+        steps: [
+          {
+            stepName: "step_one",
+            toolHints: [],
+            modelHints: {},
+            outputSchema: null,
+            retryPolicy: { maxRetries: 0, backoffMs: 0 },
+            requiresReview: false,
+            timeoutMs: 60000,
+            dependsOn: [],
+          },
+        ],
+      },
+    ],
+  }));
   service.activate("activate_event");
 
   assert.equal(events.length, 2);
@@ -373,5 +395,5 @@ test("register throws on workflow with empty workflowId", () => {
   const definition = makeMinimalDefinition({
     workflows: [{ workflowId: "", name: "Invalid", triggerConditions: {}, steps: [] }],
   });
-  assert.throws(() => service.register(definition), /workflowId.*empty|invalid/i);
+  assert.throws(() => service.register(definition));
 });

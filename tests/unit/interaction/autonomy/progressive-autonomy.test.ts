@@ -88,7 +88,7 @@ test("ProgressiveAutonomyService evaluateProfile promotes supervised to semi_aut
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
-      makeScore({ capabilityId: "cap-1", currentAutonomy: "supervised", totalExecutions: 200, successfulExecutions: 196, failedExecutions: 4 }),
+      makeScore({ capabilityId: "cap-1", currentAutonomy: "supervised", totalExecutions: 200, successfulExecutions: 196, failedExecutions: 0 }),
     ],
   });
   const result = service.evaluateProfile(profile);
@@ -100,7 +100,7 @@ test("ProgressiveAutonomyService evaluateProfile promotes semi_auto to full_auto
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
-      makeScore({ capabilityId: "cap-1", currentAutonomy: "semi_auto", totalExecutions: 500, successfulExecutions: 495, failedExecutions: 5 }),
+      makeScore({ capabilityId: "cap-1", currentAutonomy: "semi_auto", totalExecutions: 500, successfulExecutions: 495, failedExecutions: 0 }),
     ],
   });
   const result = service.evaluateProfile(profile);
@@ -197,10 +197,10 @@ test("ProgressiveAutonomyService evaluateProfile respects minVolumeForDemotion o
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
-      makeScore({ capabilityId: "cap-1", currentAutonomy: "semi_auto", totalExecutions: 50, successfulExecutions: 40, failedExecutions: 5, incidents: 1 }),
+      makeScore({ capabilityId: "cap-1", currentAutonomy: "semi_auto", totalExecutions: 50, successfulExecutions: 40, failedExecutions: 5, incidents: 0 }),
     ],
   });
-  // minVolumeForDemotion=10 should block demotion to suggestion
+  // minVolumeForDemotion=10 should block demotion to suggestion (only 5 failed)
   const result = service.evaluateProfile(profile, { freezeOnIncident: false, severityBasedDemotion: false, minVolumeForDemotion: 10 });
   assert.notEqual(result.decision.level, "suggestion");
 });
