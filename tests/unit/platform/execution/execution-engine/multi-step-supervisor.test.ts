@@ -111,10 +111,11 @@ function createMockTaskStore(): AuthoritativeTaskStore {
 }
 
 function createMockDb(): AuthoritativeSqlDatabase {
+  const mockStatement = { run: () => ({}), get: () => undefined, all: () => [] };
   return {
     filePath: "/tmp/test.db",
     backendType: "sqlite",
-    connection: { exec: () => {}, prepare: () => ({ run: () => {}, get: () => undefined, all: () => [] }) },
+    connection: { exec: () => {}, prepare: () => mockStatement },
     migrate: () => {},
     getSchemaStatus: () => ({ currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: false }),
     assertSchemaCurrent: () => {},

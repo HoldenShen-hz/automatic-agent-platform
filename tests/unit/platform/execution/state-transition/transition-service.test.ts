@@ -120,18 +120,32 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
   };
 
   const getWorkflowStateCalls: string[] = [];
-  const updateTaskStatusCasCalls: Array<{ entityId: string; fromStatus: TaskStatus; toStatus: TaskStatus }> = [];
+  const updateTaskStatusCasCalls: Array<{ entityId: string; fromStatus: string; toStatus: string }> = [];
   const updateWorkflowStateCasCalls: string[] = [];
   const updateSessionStatusCasCalls: string[] = [];
   const updateExecutionStatusCasCalls: string[] = [];
-  const updateApprovalDecisionCasCalls: Array<{ approvalId: string; expectedStatus: ApprovalStatus }> = [];
+  const updateApprovalDecisionCasCalls: Array<{ approvalId: string; expectedStatus: string }> = [];
 
   const repo: MockRepository = {
     mockState,
 
     getWorkflowState(entityId: string) {
       getWorkflowStateCalls.push(entityId);
-      return mockState.workflowStates.get(entityId) ?? null;
+      const state = mockState.workflowStates.get(entityId);
+      if (!state) return null;
+      return {
+        taskId: entityId,
+        divisionId: "division-1",
+        workflowId: "workflow-1",
+        currentStepIndex: state.currentStepIndex,
+        status: state.status,
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: state.updatedAt,
+        updatedAt: state.updatedAt,
+      };
     },
 
     updateTaskStatusCas(entityId, fromStatus, toStatus, occurredAt, reasonCode, completedAt) {
@@ -192,6 +206,17 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
 
     createTier1StatusEvent(event) {
       mockState.tier1Events.push(event);
+      return {
+        id: `event-${mockState.tier1Events.length}`,
+        taskId: event.taskId,
+        sessionId: null,
+        executionId: event.executionId,
+        eventType: event.eventType,
+        eventTier: "tier1" as const,
+        payloadJson: JSON.stringify(event.payload),
+        traceId: event.traceId,
+        createdAt: new Date().toISOString(),
+      };
     },
 
     updateTaskOutput(taskId, outputJson, occurredAt) {
@@ -223,7 +248,17 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     },
 
     insertEvent(event) {
-      // Mock event insertion
+      return {
+        id: `event-${Date.now()}`,
+        taskId: event.taskId ?? null,
+        sessionId: event.sessionId ?? null,
+        executionId: null,
+        eventType: event.eventType ?? "unknown",
+        eventTier: event.eventTier ?? "tier1",
+        payloadJson: "{}",
+        traceId: event.traceId ?? null,
+        createdAt: new Date().toISOString(),
+      };
     },
 
     getTaskStatus(taskId) {

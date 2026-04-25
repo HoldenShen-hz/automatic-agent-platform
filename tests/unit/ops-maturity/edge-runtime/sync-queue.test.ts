@@ -16,9 +16,9 @@ test("orderEdgeSyncQueue sorts by priority descending", () => {
 
   const ordered = orderEdgeSyncQueue(items);
 
-  assert.equal(ordered[0].envelopeId, "b");
-  assert.equal(ordered[1].envelopeId, "c");
-  assert.equal(ordered[2].envelopeId, "a");
+  assert.equal(ordered[0]!.envelopeId, "b");
+  assert.equal(ordered[1]!.envelopeId, "c");
+  assert.equal(ordered[2]!.envelopeId, "a");
 });
 
 test("orderEdgeSyncQueue sorts by createdAt ascending when priority is equal", () => {
@@ -30,9 +30,9 @@ test("orderEdgeSyncQueue sorts by createdAt ascending when priority is equal", (
 
   const ordered = orderEdgeSyncQueue(items);
 
-  assert.equal(ordered[0].envelopeId, "b");
-  assert.equal(ordered[1].envelopeId, "c");
-  assert.equal(ordered[2].envelopeId, "a");
+  assert.equal(ordered[0]!.envelopeId, "b");
+  assert.equal(ordered[1]!.envelopeId, "c");
+  assert.equal(ordered[2]!.envelopeId, "a");
 });
 
 test("orderEdgeSyncQueue does not mutate original array", () => {
@@ -43,8 +43,8 @@ test("orderEdgeSyncQueue does not mutate original array", () => {
 
   orderEdgeSyncQueue(items);
 
-  assert.equal(items[0].envelopeId, "a");
-  assert.equal(items[1].envelopeId, "b");
+  assert.equal(items[0]!.envelopeId, "a");
+  assert.equal(items[1]!.envelopeId, "b");
 });
 
 test("orderEdgeSyncQueue handles empty array", () => {
@@ -57,7 +57,7 @@ test("orderEdgeSyncQueue handles single item", () => {
   const ordered = orderEdgeSyncQueue(items);
 
   assert.equal(ordered.length, 1);
-  assert.equal(ordered[0].envelopeId, "only");
+  assert.equal(ordered[0]!.envelopeId, "only");
 });
 
 test("orderEdgeSyncQueue treats undefined createdAt as empty string which sorts first", () => {
@@ -69,8 +69,8 @@ test("orderEdgeSyncQueue treats undefined createdAt as empty string which sorts 
   const ordered = orderEdgeSyncQueue(items);
 
   // empty string sorts before actual date strings
-  assert.equal(ordered[0].envelopeId, "a");
-  assert.equal(ordered[1].envelopeId, "b");
+  assert.equal(ordered[0]!.envelopeId, "a");
+  assert.equal(ordered[1]!.envelopeId, "b");
 });
 
 test("dedupeEdgeSyncQueue removes duplicate envelopeIds", () => {
@@ -99,7 +99,7 @@ test("dedupeEdgeSyncQueue keeps last occurrence of duplicate envelopeId", () => 
 
   // Map.set replaces, keeping the last occurrence
   assert.equal(deduped.length, 1);
-  assert.equal(deduped[0].priority, 2);
+  assert.equal(deduped[0]!.priority, 2);
 });
 
 test("dedupeEdgeSyncQueue returns sorted results", () => {
@@ -111,9 +111,9 @@ test("dedupeEdgeSyncQueue returns sorted results", () => {
 
   const deduped = dedupeEdgeSyncQueue(items);
 
-  assert.equal(deduped[0].envelopeId, "a");
-  assert.equal(deduped[1].envelopeId, "b");
-  assert.equal(deduped[2].envelopeId, "c");
+  assert.equal(deduped[0]!.envelopeId, "a");
+  assert.equal(deduped[1]!.envelopeId, "b");
+  assert.equal(deduped[2]!.envelopeId, "c");
 });
 
 test("dedupeEdgeSyncQueue does not mutate original array", () => {

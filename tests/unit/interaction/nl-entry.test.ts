@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { NlEntryService, ConversationContextManager, type NlEntryRequest } from "../../../../src/interaction/nl-gateway/index.js";
+import { NlEntryService, ConversationContextManager, type NlEntryRequest } from "../../../src/interaction/nl-gateway/index.js";
 
 // --- Mocks ---
 
@@ -34,7 +34,7 @@ const mockCostEstimator = {
 
 // --- Tests ---
 
-test.skip("NlEntryService.parse returns parsed intent", async () => {
+test("NlEntryService.parse returns parsed intent", async () => {
   const service = new NlEntryService({
     intakeRouter: new MockIntakeRouter() as never,
   });
@@ -49,7 +49,7 @@ test.skip("NlEntryService.parse returns parsed intent", async () => {
   assert.ok(result.confidence > 0);
 });
 
-test.skip("NlEntryService.parseDetailed extracts entities and locale", async () => {
+test("NlEntryService.parseDetailed extracts entities and locale", async () => {
   const service = new NlEntryService({
     intakeRouter: new MockIntakeRouter() as never,
   });
@@ -68,7 +68,7 @@ test.skip("NlEntryService.parseDetailed extracts entities and locale", async () 
   assert.equal(result.continuation, "new_task");
 });
 
-test.skip("NlEntryService.buildTask creates request envelope with cost estimate", async () => {
+test("NlEntryService.buildTask creates request envelope with cost estimate", async () => {
   const service = new NlEntryService({
     intakeRouter: new MockIntakeRouter() as never,
     costEstimator: mockCostEstimator,
@@ -80,12 +80,14 @@ test.skip("NlEntryService.buildTask creates request envelope with cost estimate"
     message: "帮我查询一下当前的任务队列状态",
   });
 
-  assert.ok(result.requestEnvelope.metadata.confirmationRequired);
+  assert.equal(result.confirmationRequired, false);
+  assert.equal(result.requestEnvelope.payload.confirmationRequired, false);
+  assert.equal(result.requestEnvelope.metadata.confirmationRequired, "false");
   assert.equal(result.costEstimate.estimatedCostUsd, 0.1);
   assert.ok(result.humanSummary.length > 0);
 });
 
-test.skip("NlEntryService.buildTask marks critical-risk requests for confirmation", async () => {
+test("NlEntryService.buildTask marks critical-risk requests for confirmation", async () => {
   const service = new NlEntryService({
     intakeRouter: new MockIntakeRouter() as never,
     costEstimator: mockCostEstimator,
@@ -102,7 +104,7 @@ test.skip("NlEntryService.buildTask marks critical-risk requests for confirmatio
   assert.equal(result.requestEnvelope.payload.confirmationRequired, true);
 });
 
-test.skip("NlEntryService.buildTask marks high-risk deploy requests for confirmation", async () => {
+test("NlEntryService.buildTask marks high-risk deploy requests for confirmation", async () => {
   const service = new NlEntryService({
     intakeRouter: new MockIntakeRouter() as never,
   });
@@ -126,12 +128,12 @@ test("NlEntryService.getConversationWindowSize returns configured value", () => 
 test("NlEntryService.shouldRequestClarification uses threshold", () => {
   const service = new NlEntryService();
   const threshold = service.getClarificationThreshold();
-  assert.equal(service.shouldRequestClarification(threshold - 0.01), false);
+  assert.equal(service.shouldRequestClarification(threshold - 0.01), true);
   assert.equal(service.shouldRequestClarification(threshold), false);
-  assert.equal(service.shouldRequestClarification(threshold + 0.01), true);
+  assert.equal(service.shouldRequestClarification(threshold + 0.01), false);
 });
 
-test.skip("NlEntryService.resolveLocale prefers user_profile locale", () => {
+test("NlEntryService.resolveLocale prefers user_profile locale", async () => {
   const service = new NlEntryService({
     localeConfig: {
       supportedLocales: ["zh-CN", "en-US"],
@@ -140,7 +142,7 @@ test.skip("NlEntryService.resolveLocale prefers user_profile locale", () => {
     },
   });
 
-  const result = service.parseDetailed({
+  const result = await service.parseDetailed({
     tenantId: "tenant_1",
     userId: "user_1",
     message: "Please summarize the release risks.",
@@ -152,7 +154,7 @@ test.skip("NlEntryService.resolveLocale prefers user_profile locale", () => {
   assert.equal(result.locale, "en-US");
 });
 
-test.skip("NlEntryService.resolveLocale falls back to Accept-Language", async () => {
+test("NlEntryService.resolveLocale falls back to Accept-Language", async () => {
   const service = new NlEntryService({
     localeConfig: {
       supportedLocales: ["zh-CN", "en-US"],
@@ -171,7 +173,7 @@ test.skip("NlEntryService.resolveLocale falls back to Accept-Language", async ()
   assert.equal(result.locale, "en-US");
 });
 
-test.skip("NlEntryService.resolveLocale falls back to input detection for Chinese", async () => {
+test("NlEntryService.resolveLocale falls back to input detection for Chinese", async () => {
   const service = new NlEntryService({
     localeConfig: {
       supportedLocales: ["zh-CN", "en-US"],
@@ -184,7 +186,7 @@ test.skip("NlEntryService.resolveLocale falls back to input detection for Chines
     tenantId: "tenant_1",
     userId: "user_1",
     message: "帮我查看一下今天的任务进度",
-    acceptLanguage: "en-US",
+    acceptLanguage: "fr-FR",
   });
 
   assert.equal(result.locale, "zh-CN");

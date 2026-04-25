@@ -26,11 +26,26 @@ function createIntegrationContext(prefix: string) {
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  return { workspace, dbPath, db, store, cleanup: () => { db.close(); cleanupPath(workspace); } };
+  return {
+    workspace,
+    dbPath,
+    db,
+    store,
+    cleanup: () => {
+      try {
+        db.close();
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("database is not open")) {
+          throw error;
+        }
+      }
+      cleanupPath(workspace);
+    },
+  };
 }
 
 test("getMultiStepToolDefinitions returns non-empty tool array", () => {
-  const tools = getMultiStepToolDefinitions(["bash", "edit", "read"]);
+  const tools = getMultiStepToolDefinitions(["git", "edit_replace", "read"]);
   assert.ok(Array.isArray(tools));
   assert.ok(tools.length > 0);
 });
@@ -43,18 +58,19 @@ test("getMultiStepToolDefinitions returns empty array for unknown tools", () => 
 
 test("PHASE1B_TOOL_DEFINITIONS contains expected tools", () => {
   const toolNames = PHASE1B_TOOL_DEFINITIONS.map((t: { name: string }) => t.name);
-  assert.ok(toolNames.includes("bash"));
-  assert.ok(toolNames.includes("edit"));
+  assert.ok(toolNames.includes("git"));
+  assert.ok(toolNames.includes("edit_replace"));
   assert.ok(toolNames.includes("read"));
   assert.ok(toolNames.includes("glob"));
-  assert.ok(toolNames.includes("greptest"));
+  assert.ok(toolNames.includes("grep"));
   assert.ok(toolNames.includes("todo_write"));
 });
 
 test("getPhase1BToolDefinitions returns all Phase1B tools", () => {
-  const tools = getPhase1BToolDefinitions(["bash", "edit", "read", "glob", "greptest", "todo_write"]);
+  const toolNames = ["git", "edit_replace", "read", "glob", "grep", "todo_write"];
+  const tools = getPhase1BToolDefinitions(toolNames);
   assert.ok(Array.isArray(tools));
-  assert.equal(tools.length, PHASE1B_TOOL_DEFINITIONS.length);
+  assert.equal(tools.length, toolNames.length);
 });
 
 test("AgentExecutor can be instantiated with required dependencies", () => {
@@ -62,17 +78,17 @@ test("AgentExecutor can be instantiated with required dependencies", () => {
   assert.ok(executor);
 });
 
-test("routeComplexity categorizes simple requests as fast", () => {
+test("routeComplexity categorizes simple requests as passthrough", () => {
   const result = routeComplexity("What is the status?");
-  assert.equal(result.path, "fast");
+  assert.equal(result.path, "passthrough");
 });
 
-test("routeComplexity categorizes multi-step requests as full", () => {
+test("routeComplexity categorizes multi-step requests as standard", () => {
   const result = routeComplexity(
     "Read the file, analyze it, fix any bugs, and then test the changes",
     { stepCount: 4 },
   );
-  assert.equal(result.path, "full");
+  assert.equal(result.path, "standard");
 });
 
 test("routeComplexity categorizes QA mode requests as full", () => {
@@ -204,8 +220,6 @@ test("AgentExecutor creates execution record with correct initial state", () => 
     const record = ctx.store.getAgentExecutionRecord(executionId);
     // Record may or may not exist depending on implementation
     // Just verify store operations work
-
-    ctx.db.close();
   } finally {
     ctx.cleanup();
   }
@@ -287,15 +301,13 @@ test("AuthoritativeTaskStore tracks workflow state for execution", () => {
     assert.equal(workflowState?.workflowId, "single_agent_minimal");
     assert.equal(workflowState?.status, "running");
     assert.equal(workflowState?.currentStepIndex, 0);
-
-    ctx.db.close();
   } finally {
     ctx.cleanup();
   }
 });
 
 test("Phase1B tool definitions have valid input schemas", () => {
-  const tools = getPhase1BToolDefinitions(["bash", "edit", "read", "glob", "greptest", "todo_write"]);
+  const tools = getPhase1BToolDefinitions(["git", "edit_replace", "read", "glob", "grep", "todo_write"]);
 
   for (const tool of tools) {
     assert.ok(tool.name);

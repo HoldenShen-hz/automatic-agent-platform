@@ -1,11 +1,8 @@
 /**
  * Integration Test: Traffic Routing Service
  *
- * Tests traffic routing for rollout controller including
- * weight distribution, region targeting, and canary routing.
- *
- * NOTE: TrafficRoutingService doesn't have allocateTraffic, validateWeights,
- * or computeShiftDelta methods. These tests are skipped.
+ * Tests rollout-controller traffic routing using the current
+ * canary/rollback API rather than removed placeholder methods.
  */
 
 import * as assert from "node:assert/strict";
@@ -46,12 +43,113 @@ function createTestDb(): AuthoritativeSqlDatabase {
   };
 }
 
-test.skip("traffic routing: allocates traffic weight across regions - allocateTraffic not implemented");
-test.skip("traffic routing: handles canary routing with small percentage - allocateTraffic not implemented");
-test.skip("traffic routing: blue-green deployment routing - allocateTraffic not implemented");
-test.skip("traffic routing: progressive rollout stages - allocateTraffic not implemented");
-test.skip("traffic routing: rollback routing redirects traffic - allocateTraffic not implemented");
-test.skip("traffic routing: multi-region distribution - allocateTraffic not implemented");
-test.skip("traffic routing: validates weight constraints - validateWeights not implemented");
-test.skip("traffic routing: validates correct weight sum - validateWeights not implemented");
-test.skip("traffic routing: computes traffic shift delta - computeShiftDelta not implemented");
+function listSlotsByName(service: TrafficRoutingService): Record<string, ReturnType<TrafficRoutingService["listSlots"]>[number]> {
+  return Object.fromEntries(service.listSlots().map((slot) => [slot.slot, slot]));
+}
+
+test("traffic routing: starts canary shift and applies initial traffic weights", () => {
+  const service = new TrafficRoutingService(createTestDb());
+  service.registerSlot("blue", "1.0.0");
+  service.registerSlot("green", "1.1.0");
+
+  const shift = service.startCanaryShift("blue", "green", {
+    ...DEFAULT_CANARY_CONFIG,
+    initialWeightPct: 10,
+    stepIncrementPct: 45,
+  });
+  const slots = listSlotsByName(service);
+
+  assert.equal(shift.status, "in_progress");
+  assert.equal(shift.toWeight, 10);
+  assert.equal(slots.blue?.trafficWeight, 90);
+  assert.equal(slots.green?.trafficWeight, 10);
+});
+
+test("traffic routing: advances progressive rollout stages until completion", () => {
+  const service = new TrafficRoutingService(createTestDb());
+  service.registerSlot("blue", "1.0.0");
+  service.registerSlot("green", "1.1.0");
+
+  const shift = service.startCanaryShift("blue", "green", {
+    ...DEFAULT_CANARY_CONFIG,
+    initialWeightPct: 50,
+    stepIncrementPct: 50,
+  });
+
+  const stage1 = service.advanceShift(shift.id);
+  const finalStage = service.advanceShift(shift.id);
+  const slots = listSlotsByName(service);
+
+  assert.equal(stage1?.toWeight, 100);
+  assert.equal(finalStage?.status, "completed");
+  assert.equal(finalStage?.completedAt != null, true);
+  assert.equal(slots.blue?.status, "draining");
+  assert.equal(slots.blue?.trafficWeight, 0);
+  assert.equal(slots.green?.status, "active");
+  assert.equal(slots.green?.trafficWeight, 100);
+});
+
+test("traffic routing: rollback restores original slot traffic and records audit entry", () => {
+  const service = new TrafficRoutingService(createTestDb());
+  service.registerSlot("blue", "1.0.0");
+  service.registerSlot("green", "1.1.0");
+
+  const shift = service.startCanaryShift("blue", "green", {
+    ...DEFAULT_CANARY_CONFIG,
+    initialWeightPct: 25,
+    stepIncrementPct: 25,
+  });
+
+  const rollback = service.rollbackShift(shift.id, "health_check_failed", "canary unhealthy");
+  const slots = listSlotsByName(service);
+  const persistedShift = service.getShift(shift.id);
+
+  assert.equal(rollback.success, true);
+  assert.equal(rollback.fromVersion, "1.1.0");
+  assert.equal(rollback.toVersion, "1.0.0");
+  assert.equal(persistedShift?.status, "rolled_back");
+  assert.equal(persistedShift?.rollbackReason, "canary unhealthy");
+  assert.equal(slots.blue?.trafficWeight, 100);
+  assert.equal(slots.green?.trafficWeight, 0);
+});
+
+test("traffic routing: checkCanaryHealth reports missing health and healthy threshold crossings", () => {
+  const service = new TrafficRoutingService(createTestDb());
+  service.registerSlot("blue", "1.0.0");
+  const green = service.registerSlot("green", "1.1.0");
+
+  const shift = service.startCanaryShift("blue", "green", {
+    ...DEFAULT_CANARY_CONFIG,
+    initialWeightPct: 5,
+    stepIncrementPct: 95,
+  });
+
+  assert.deepEqual(service.checkCanaryHealth(shift.id), {
+    healthy: false,
+    reason: "no_health_data",
+  });
+
+  service.updateHealth(green.id, 0.98);
+
+  assert.deepEqual(service.checkCanaryHealth(shift.id), {
+    healthy: true,
+    reason: "canary_healthy",
+  });
+});
+
+test("traffic routing: lists recent shifts and rollbacks", () => {
+  const service = new TrafficRoutingService(createTestDb());
+  service.registerSlot("blue", "1.0.0");
+  service.registerSlot("green", "1.1.0");
+
+  const shift = service.startCanaryShift("blue", "green");
+  const rollback = service.rollbackShift(shift.id, "manual", "operator requested rollback");
+
+  const shifts = service.listShifts();
+  const rollbacks = service.listRollbacks();
+
+  assert.equal(shifts.length, 1);
+  assert.equal(shifts[0]?.id, shift.id);
+  assert.equal(rollbacks.length, 1);
+  assert.equal(rollbacks[0]?.id, rollback.id);
+});

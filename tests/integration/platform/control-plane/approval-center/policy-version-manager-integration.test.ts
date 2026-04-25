@@ -119,7 +119,7 @@ test("policy version manager: approve throws for non-pending bundle", () => {
   };
   assert.throws(
     () => manager.approve(fakeBundle, "approver-1", "approval-123"),
-    /pending_approval/,
+    /status: draft/,
   );
 });
 

@@ -62,11 +62,8 @@ test("buildStableAcceptanceLineReport returns report with pass status when all c
     },
     doctorReport: {
       status: "ok",
-      checkedAt: "2026-04-01T00:00:00.000Z",
-      checks: [],
-      findings: [],
-      lockSummary: { totalLocks: 0, expiredLockCount: 0, oldestLockAgeMs: null },
-      eventBacklogSummary: { backlogSize: 0, claimedBacklogSize: 0 },
+      lockSummary: { totalLocks: 0, expiredLockCount: 0, exclusiveLocks: 0, sharedLocks: 0, taskIds: [], executionIds: [], ownerIds: [], resourcePaths: [], checked: false },
+      eventBacklogSummary: { queueBacklogSize: 0, claimedBacklogSize: 0, pendingTier1Acks: 0, failedTier1Acks: 0, dispatchableBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, starvationDetected: false },
     },
     repairReport: {
       before: { status: "pass", findings: [], repairActions: [] },
@@ -132,11 +129,8 @@ test("buildStableAcceptanceLineReport returns fail when soak has failed runs", (
     },
     doctorReport: {
       status: "ok",
-      checkedAt: "2026-04-01T00:00:00.000Z",
-      checks: [],
-      findings: [],
-      lockSummary: { totalLocks: 0, expiredLockCount: 0, oldestLockAgeMs: null },
-      eventBacklogSummary: { backlogSize: 0, claimedBacklogSize: 0 },
+      lockSummary: { totalLocks: 0, expiredLockCount: 0, exclusiveLocks: 0, sharedLocks: 0, taskIds: [], executionIds: [], ownerIds: [], resourcePaths: [], checked: false },
+      eventBacklogSummary: { queueBacklogSize: 0, claimedBacklogSize: 0, pendingTier1Acks: 0, failedTier1Acks: 0, dispatchableBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, starvationDetected: false },
     },
     repairReport: {
       before: { status: "pass", findings: [], repairActions: [] },
@@ -197,11 +191,8 @@ test("buildStableAcceptanceLineReport returns partial when soak duration is belo
     },
     doctorReport: {
       status: "ok",
-      checkedAt: "2026-04-01T00:00:00.000Z",
-      checks: [],
-      findings: [],
-      lockSummary: { totalLocks: 0, expiredLockCount: 0, oldestLockAgeMs: null },
-      eventBacklogSummary: { backlogSize: 0, claimedBacklogSize: 0 },
+      lockSummary: { totalLocks: 0, expiredLockCount: 0, exclusiveLocks: 0, sharedLocks: 0, taskIds: [], executionIds: [], ownerIds: [], resourcePaths: [], checked: false },
+      eventBacklogSummary: { queueBacklogSize: 0, claimedBacklogSize: 0, pendingTier1Acks: 0, failedTier1Acks: 0, dispatchableBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, starvationDetected: false },
     },
     repairReport: {
       before: { status: "pass", findings: [], repairActions: [] },
@@ -264,11 +255,8 @@ test("buildStableAcceptanceLineReport includes truth notes for smoke profile", (
     },
     doctorReport: {
       status: "ok",
-      checkedAt: "2026-04-01T00:00:00.000Z",
-      checks: [],
-      findings: [],
-      lockSummary: { totalLocks: 0, expiredLockCount: 0, oldestLockAgeMs: null },
-      eventBacklogSummary: { backlogSize: 0, claimedBacklogSize: 0 },
+      lockSummary: { totalLocks: 0, expiredLockCount: 0, exclusiveLocks: 0, sharedLocks: 0, taskIds: [], executionIds: [], ownerIds: [], resourcePaths: [], checked: false },
+      eventBacklogSummary: { queueBacklogSize: 0, claimedBacklogSize: 0, pendingTier1Acks: 0, failedTier1Acks: 0, dispatchableBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, starvationDetected: false },
     },
     repairReport: {
       before: { status: "pass", findings: [], repairActions: [] },
@@ -329,11 +317,8 @@ test("buildStableAcceptanceLineReport includes all six criteria", () => {
     },
     doctorReport: {
       status: "ok",
-      checkedAt: "2026-04-01T00:00:00.000Z",
-      checks: [],
-      findings: [],
-      lockSummary: { totalLocks: 0, expiredLockCount: 0, oldestLockAgeMs: null },
-      eventBacklogSummary: { backlogSize: 0, claimedBacklogSize: 0 },
+      lockSummary: { totalLocks: 0, expiredLockCount: 0, exclusiveLocks: 0, sharedLocks: 0, taskIds: [], executionIds: [], ownerIds: [], resourcePaths: [], checked: false },
+      eventBacklogSummary: { queueBacklogSize: 0, claimedBacklogSize: 0, pendingTier1Acks: 0, failedTier1Acks: 0, dispatchableBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, starvationDetected: false },
     },
     repairReport: {
       before: { status: "pass", findings: [], repairActions: [] },
@@ -399,11 +384,8 @@ test("buildStableAcceptanceLineReport includes latency budget for both bands", (
     },
     doctorReport: {
       status: "ok",
-      checkedAt: "2026-04-01T00:00:00.000Z",
-      checks: [],
-      findings: [],
-      lockSummary: { totalLocks: 0, expiredLockCount: 0, oldestLockAgeMs: null },
-      eventBacklogSummary: { backlogSize: 0, claimedBacklogSize: 0 },
+      lockSummary: { totalLocks: 0, expiredLockCount: 0, exclusiveLocks: 0, sharedLocks: 0, taskIds: [], executionIds: [], ownerIds: [], resourcePaths: [], checked: false },
+      eventBacklogSummary: { queueBacklogSize: 0, claimedBacklogSize: 0, pendingTier1Acks: 0, failedTier1Acks: 0, dispatchableBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, starvationDetected: false },
     },
     repairReport: {
       before: { status: "pass", findings: [], repairActions: [] },

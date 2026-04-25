@@ -14,7 +14,7 @@ import {
   type GameDayScheduleInput,
   type ChaosExperiment,
   type ChaosGameDay,
-} from "../../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
+} from "../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

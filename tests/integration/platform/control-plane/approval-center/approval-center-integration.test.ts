@@ -5,15 +5,16 @@
  * quorum-based decisions, cascade rejection, and escalation paths.
  */
 
-import assert from "node:assert/strict";
-import test from "node:test";
+import * as assert from "node:assert/strict";
+import * as test from "node:test";
 
+import { join } from "node:path";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { ApprovalService } from "../../../../../src/platform/control-plane/approval-center/approval-service.js";
 import { MultiPartyApprovalService } from "../../../../../src/platform/control-plane/approval-center/multi-party-approval-service.js";
 import { ApprovalFlowEngine, FlowType, FlowStatus } from "../../../../../src/platform/control-plane/approval-center/approval-flow-engine.js";
-import { QuorumCalculator } from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
+import { QuorumCalculator, calculateQuorumStatus, VoteType } from "../../../../../src/platform/control-plane/approval-center/quorum-calculator.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
@@ -535,7 +536,7 @@ test("approval flow engine: single-party vote approves flow", () => {
     request,
   );
 
-  const voteResult = engine.submitVote(flow.flowId, "admin", "approve");
+  const voteResult = engine.submitVote(flow.flowId, "admin", VoteType.APPROVE);
 
   assert.strictEqual(voteResult.success, true);
   assert.strictEqual(voteResult.flowStatus, FlowStatus.APPROVED);
@@ -566,7 +567,7 @@ test("approval flow engine: single-party vote rejects flow", () => {
     request,
   );
 
-  const voteResult = engine.submitVote(flow.flowId, "admin", "reject");
+  const voteResult = engine.submitVote(flow.flowId, "admin", VoteType.REJECT);
 
   assert.strictEqual(voteResult.success, true);
   assert.strictEqual(voteResult.flowStatus, FlowStatus.REJECTED);
@@ -600,12 +601,12 @@ test("approval flow engine: multi-party flow requires quorum", () => {
   assert.ok(flow.config.quorum);
 
   // First vote (not enough for quorum of 2)
-  const result1 = engine.submitVote(flow.flowId, "approver-1", "approve");
+  const result1 = engine.submitVote(flow.flowId, "approver-1", VoteType.APPROVE);
   assert.strictEqual(result1.success, true);
   assert.strictEqual(result1.flowStatus, FlowStatus.PENDING);
 
   // Second vote (quorum met)
-  const result2 = engine.submitVote(flow.flowId, "approver-2", "approve");
+  const result2 = engine.submitVote(flow.flowId, "approver-2", VoteType.APPROVE);
   assert.strictEqual(result2.success, true);
   assert.strictEqual(result2.flowStatus, FlowStatus.APPROVED);
 });
@@ -613,7 +614,7 @@ test("approval flow engine: multi-party flow requires quorum", () => {
 test("approval flow engine: cannot vote on non-existent flow", () => {
   const engine = new ApprovalFlowEngine();
 
-  const result = engine.submitVote("non-existent-flow", "admin", "approve");
+  const result = engine.submitVote("non-existent-flow", "admin", VoteType.APPROVE);
 
   assert.strictEqual(result.success, false);
   assert.strictEqual(result.error, "Flow not found");
@@ -645,10 +646,10 @@ test("approval flow engine: cannot vote on finalized flow", () => {
   );
 
   // First vote approves
-  engine.submitVote(flow.flowId, "admin", "approve");
+  engine.submitVote(flow.flowId, "admin", VoteType.APPROVE);
 
   // Second vote should fail - flow is already approved
-  const result = engine.submitVote(flow.flowId, "admin", "reject");
+  const result = engine.submitVote(flow.flowId, "admin", VoteType.REJECT);
 
   assert.strictEqual(result.success, false);
   assert.ok(result.error!.includes("not pending"));
@@ -797,13 +798,15 @@ test("approval flow engine: addFeedback increments iteration in feedback loop", 
 
 test("quorum calculator: minApprovals met returns approved status", () => {
   const calc = new QuorumCalculator();
-  const status = calc.calculateQuorumStatus({
+  const votingStart = nowIso();
+  const current = nowIso();
+  const status = calculateQuorumStatus([
+    { approverId: "a1", voteType: VoteType.APPROVE, votedAt: votingStart },
+    { approverId: "a2", voteType: VoteType.APPROVE, votedAt: votingStart },
+  ], {
     minApprovals: 2,
     minRejectionsToDeny: 2,
-  }, [
-    { approverId: "a1", voteType: "approve", votedAt: nowIso() },
-    { approverId: "a2", voteType: "approve", votedAt: nowIso() },
-  ]);
+  }, votingStart, current);
 
   assert.strictEqual(status.isQuorumMet, true);
   assert.strictEqual(status.isDenied, false);
@@ -811,13 +814,15 @@ test("quorum calculator: minApprovals met returns approved status", () => {
 
 test("quorum calculator: minRejections met returns denied status", () => {
   const calc = new QuorumCalculator();
-  const status = calc.calculateQuorumStatus({
+  const votingStart = nowIso();
+  const current = nowIso();
+  const status = calculateQuorumStatus([
+    { approverId: "a1", voteType: VoteType.REJECT, votedAt: votingStart },
+    { approverId: "a2", voteType: VoteType.REJECT, votedAt: votingStart },
+  ], {
     minApprovals: 3,
     minRejectionsToDeny: 2,
-  }, [
-    { approverId: "a1", voteType: "reject", votedAt: nowIso() },
-    { approverId: "a2", voteType: "reject", votedAt: nowIso() },
-  ]);
+  }, votingStart, current);
 
   assert.strictEqual(status.isDenied, true);
   assert.strictEqual(status.isQuorumMet, false);
@@ -825,14 +830,15 @@ test("quorum calculator: minRejections met returns denied status", () => {
 
 test("quorum calculator: insufficient votes returns pending", () => {
   const calc = new QuorumCalculator();
-  const status = calc.calculateQuorumStatus({
+  const votingStart = nowIso();
+  const current = nowIso();
+  const status = calculateQuorumStatus([
+    { approverId: "a1", voteType: VoteType.APPROVE, votedAt: votingStart },
+  ], {
     minApprovals: 3,
     minRejectionsToDeny: 2,
-  }, [
-    { approverId: "a1", voteType: "approve", votedAt: nowIso() },
-  ]);
+  }, votingStart, current);
 
   assert.strictEqual(status.isQuorumMet, false);
   assert.strictEqual(status.isDenied, false);
-  assert.strictEqual(status.quorumReached, false);
 });

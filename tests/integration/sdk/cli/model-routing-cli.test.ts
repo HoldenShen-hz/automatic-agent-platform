@@ -96,7 +96,7 @@ test("model routing CLI emits and reuses turn-scoped fallback leases", () => {
             provider: "anthropic",
             modelId: "claude-sonnet",
             tier: "balanced",
-            capabilities: ["reasoning", "writing", "tool_use"],
+            capabilities: ["reasoning", "writing", "tool_use", "json_mode"],
             contextWindowTokens: 200000,
             maxOutputTokens: 64000,
             pricing: { inputPer1kUsd: 0.003, outputPer1kUsd: 0.015 },
@@ -123,6 +123,7 @@ test("model routing CLI emits and reuses turn-scoped fallback leases", () => {
     }>({
       AA_CONFIG_ROOT: configRoot,
       AA_MODEL_ROUTE_PREFERRED_PROFILE: "balanced",
+      AA_MODEL_ROUTE_REQUIRED_CAPABILITIES: "json_mode",
       AA_MODEL_ROUTE_TURN_ID: "turn-1",
       AA_MODEL_HEALTH_JSON: JSON.stringify({
         anthropic: "failed",
@@ -142,6 +143,7 @@ test("model routing CLI emits and reuses turn-scoped fallback leases", () => {
     }>({
       AA_CONFIG_ROOT: configRoot,
       AA_MODEL_ROUTE_PREFERRED_PROFILE: "balanced",
+      AA_MODEL_ROUTE_REQUIRED_CAPABILITIES: "json_mode",
       AA_MODEL_ROUTE_TURN_ID: "turn-1",
       AA_MODEL_ROUTE_FALLBACK_LEASE_JSON: JSON.stringify(firstTurn.fallbackLease),
       AA_MODEL_HEALTH_JSON: JSON.stringify({
@@ -161,6 +163,7 @@ test("model routing CLI emits and reuses turn-scoped fallback leases", () => {
     }>({
       AA_CONFIG_ROOT: configRoot,
       AA_MODEL_ROUTE_PREFERRED_PROFILE: "balanced",
+      AA_MODEL_ROUTE_REQUIRED_CAPABILITIES: "json_mode",
       AA_MODEL_ROUTE_TURN_ID: "turn-2",
       AA_MODEL_ROUTE_FALLBACK_LEASE_JSON: JSON.stringify(firstTurn.fallbackLease),
       AA_MODEL_HEALTH_JSON: JSON.stringify({

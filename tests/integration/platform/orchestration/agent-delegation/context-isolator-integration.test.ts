@@ -128,6 +128,7 @@ test("ContextIsolator uses partial isolation for moderate permission ratio", () 
     const isolator = createContextIsolator();
 
     const parent = createTestAgentContext({
+      sandboxTier: "process",
       permissions: {
         resources: ["/workspace", "/code"],
         actions: ["read", "write", "execute"],
@@ -156,6 +157,7 @@ test("ContextIsolator uses full isolation when permission ratio is high", () => 
     const isolator = createContextIsolator();
 
     const parent = createTestAgentContext({
+      sandboxTier: "process",
       permissions: {
         resources: ["/workspace"],
         actions: ["read", "write"],
@@ -200,6 +202,7 @@ test("ContextIsolator uses minimal isolation for low permission ratio", () => {
     const isolator = createContextIsolator();
 
     const parent = createTestAgentContext({
+      sandboxTier: "process",
       permissions: {
         resources: ["/workspace", "/code", "/secrets", "/data"],
         actions: ["read", "write", "execute", "bash", "admin"],
@@ -249,7 +252,7 @@ test("ContextIsolator validatePermissionRequest returns false for unauthorized r
 
     const parent = createTestAgentContext();
     const requested = {
-      resources: ["/secrets"], // Parent doesn't allow this for child
+      resources: ["/production-secrets"],
       actions: ["read"],
       constraints: {},
     };
@@ -270,7 +273,7 @@ test("ContextIsolator validatePermissionRequest returns false for unauthorized a
     const parent = createTestAgentContext();
     const requested = {
       resources: ["/workspace"],
-      actions: ["admin"], // Parent doesn't allow admin action
+      actions: ["delete_users"],
       constraints: {},
     };
 

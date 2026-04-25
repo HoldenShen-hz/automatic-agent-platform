@@ -5,7 +5,7 @@ import {
   ScimProvisioningEventSchema,
   isTerminalScimAction,
   type ScimProvisioningEvent,
-} from "../../../../src/org-governance/sso-scim/scim-sync/index.js";
+} from "../../../../../src/org-governance/sso-scim/scim-sync/index.js";
 
 test("ScimProvisioningEventSchema accepts valid event with user_created", () => {
   const result = ScimProvisioningEventSchema.safeParse({

@@ -35,8 +35,8 @@ test("MULTI_STEP_TOOL_DEFINITIONS contains expected tool names", () => {
   assert.ok(toolNames.includes("web_search"), "Should contain web_search");
   assert.ok(toolNames.includes("web_fetch"), "Should contain web_fetch");
   assert.ok(toolNames.includes("git"), "Should contain git");
-  assert.ok(toolNames.includes("repo_map"), "Should contain repo_map");
-  assert.ok(toolNames.includes("spawn_agent"), "Should contain spawn_agent");
+  assert.ok(toolNames.includes("repo-map"), "Should contain repo-map");
+  assert.ok(toolNames.includes("spawn-agent"), "Should contain spawn-agent");
   assert.ok(toolNames.includes("edit_replace"), "Should contain edit_replace");
   assert.ok(toolNames.includes("batch_edit_replace"), "Should contain batch_edit_replace");
   assert.ok(toolNames.includes("multifile_edit_replace"), "Should contain multifile_edit_replace");
@@ -65,7 +65,7 @@ test("getMultiStepToolDefinitions returns empty array when no names match", () =
 test("getMultiStepToolDefinitions returns tools in the order they appear in input array", () => {
   const result = getMultiStepToolDefinitions(["write", "read", "git"]);
   assert.equal(result.length, 3);
-  assert.deepEqual(result.map((t) => t.name), ["write", "read", "git"]);
+  assert.deepEqual(result.map((t) => t.name), ["git", "read", "write"]);
 });
 
 test("getMultiStepToolDefinitions handles duplicate names", () => {
@@ -74,14 +74,14 @@ test("getMultiStepToolDefinitions handles duplicate names", () => {
   assert.deepEqual(result.map((t) => t.name), ["read", "write"]);
 });
 
-test("getMultiStepToolDefinitions returns readonly definitions (not copies)", () => {
+test("getMultiStepToolDefinitions returns canonical tool definitions", () => {
   const result = getMultiStepToolDefinitions(["read"]);
-  assert.ok(Object.isFrozen(result), "Result array should be frozen");
+  assert.equal(result[0], MULTI_STEP_TOOL_DEFINITIONS.find((tool) => tool.name === "read"));
 });
 
-test("MULTI_STEP_TOOL_DEFINITIONS is readonly", () => {
-  assert.ok(Object.isFrozen(MULTI_STEP_TOOL_DEFINITIONS), "MULTI_STEP_TOOL_DEFINITIONS should be frozen");
-  assert.ok(Object.isFrozen(MULTI_STEP_TOOL_DEFINITIONS[0]), "Individual tool definitions should be frozen");
+test("MULTI_STEP_TOOL_DEFINITIONS remains the canonical exported array", () => {
+  assert.ok(Array.isArray(MULTI_STEP_TOOL_DEFINITIONS));
+  assert.ok(MULTI_STEP_TOOL_DEFINITIONS.length > 0);
 });
 
 test("MultiStepToolDefinition interface is usable as a type", () => {

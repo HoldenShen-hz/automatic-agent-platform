@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-ignore - coverage-lib.mjs does not have type declarations
-import { compareAgainstBaseline } from "../../../../../scripts/ci/coverage-lib.mjs";
+import { compareAgainstBaseline } from "../../../../scripts/ci/coverage-lib.mjs";
 
 function createMetric(pct: number) {
   return { pct };

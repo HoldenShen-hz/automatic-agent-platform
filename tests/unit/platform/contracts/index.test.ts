@@ -42,6 +42,16 @@ test("contracts barrel exposes aliased core contract factories without colliding
   assert.equal(typeof mod.createPlaneStateCommand, "function");
 });
 
+test("contracts barrel exports core contract factories directly", async () => {
+  const mod = await import("../../../../src/platform/contracts/index.js");
+
+  assert.equal(typeof mod.createRequestEnvelope, "function");
+  assert.equal(typeof mod.createControlDirective, "function");
+  assert.equal(typeof mod.createExecutionPlan, "function");
+  assert.equal(typeof mod.createExecutionReceipt, "function");
+  assert.equal(typeof mod.createStateCommand, "function");
+});
+
 test("contracts barrel exports constants module", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
   // Time constants should be available from constants sub-module

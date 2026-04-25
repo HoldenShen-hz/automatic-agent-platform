@@ -20,7 +20,7 @@ test("ui e2e smoke exercises web routes and multi-shell baselines", () => {
     timeout: 120_000,
   });
 
-  assert.match(output, /web app route smoke/);
-  assert.match(output, /web route catalog smoke/);
-  assert.match(output, /platform shells/);
+  assert.match(output, /tests\/apps\/web-e2e-smoke\.test\.tsx/);
+  assert.match(output, /tests\/apps\/web-route-catalog\.test\.tsx/);
+  assert.match(output, /tests\/apps\/shells\.test\.ts/);
 });

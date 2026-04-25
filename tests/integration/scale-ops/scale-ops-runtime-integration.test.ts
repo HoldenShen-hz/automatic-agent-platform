@@ -50,7 +50,8 @@ test("scale-ops runtime: buildScaleOpsStartupPlan returns plan with two steps in
   assert.equal(plan.steps.length, 2);
   assert.deepEqual(plan.startupOrder, ["scale-ecosystem", "ops-maturity"]);
 
-  const [scaleStep, opsStep] = plan.steps;
+  const scaleStep = plan.steps[0]!;
+  const opsStep = plan.steps[1]!;
   assert.equal(scaleStep.stepId, "scale-ecosystem");
   assert.equal(scaleStep.dependsOnStepIds.length, 0);
   assert.ok(scaleStep.capabilityCount > 0);
@@ -91,7 +92,8 @@ test("scale-ops runtime: ScaleOpsRuntimeOrchestrator.startup returns successful 
   assert.ok(result.initializedServiceIds.length >= 2);
   assert.ok(result.steps.length === 2);
 
-  const [scaleStep, opsStep] = result.steps;
+  const scaleStep = result.steps[0]!;
+  const opsStep = result.steps[1]!;
   assert.equal(scaleStep.stepId, "scale-ecosystem");
   assert.equal(scaleStep.initialized, true);
   assert.ok(scaleStep.capabilityCount > 0);

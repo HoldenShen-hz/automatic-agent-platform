@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import * as assert from "node:assert/strict";
+import * as test from "node:test";
 
 import {
   CostEstimationService,
@@ -11,7 +11,7 @@ import {
 function createMockDb() {
   return {
     connection: {
-      prepare: () => ({
+      prepare: (_sql?: string) => ({
         get: () => null,
       }),
     },

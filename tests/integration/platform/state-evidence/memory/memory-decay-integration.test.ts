@@ -592,14 +592,15 @@ test("decay integration: episodic layer has moderate decay rate", () => {
     });
 
     assert.ok(memories.length > 0);
+    const memory0 = memories[0]!;
 
     // Episodic half-life is 1 day
-    const freshness1day = decayService.calculateFreshness(memories[0], "2026-04-11T08:00:00.000Z");
+    const freshness1day = decayService.calculateFreshness(memory0, "2026-04-11T08:00:00.000Z");
     assert.ok(freshness1day < 0.6, "Episodic memory should decay significantly after 1 day");
     assert.ok(freshness1day > 0.3, "Episodic memory should not decay below minimum");
 
     // After 2 days, should be around 0.25
-    const freshness2days = decayService.calculateFreshness(memories[0], "2026-04-12T08:00:00.000Z");
+    const freshness2days = decayService.calculateFreshness(memory0, "2026-04-12T08:00:00.000Z");
     assert.ok(freshness2days < 0.4, "Episodic memory should be significantly decayed after 2 days");
 
     db.close();
