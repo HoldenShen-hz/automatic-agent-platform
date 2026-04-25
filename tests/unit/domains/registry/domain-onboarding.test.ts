@@ -235,7 +235,18 @@ test("deprecate preserves domain data after deprecation", () => {
 
 test("activating already active domain succeeds (idempotent)", () => {
   const service = new DomainRegistryService();
-  service.register(makeMinimalDefinition({ domainId: "double_active", status: "active" }));
+  service.register(makeMinimalDefinition({
+    domainId: "double_active",
+    status: "active",
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+      securityLevel: "standard",
+    },
+  }));
 
   // should not throw
   const result = service.activate("double_active");

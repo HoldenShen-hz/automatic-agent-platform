@@ -198,8 +198,15 @@ test("ExecutionOutcomeEvaluator.evaluate suggests replan for repairable outcome"
   assert.equal(result.nextAction, "replan");
 });
 
+const TEST_CONFIG: QualityGateConfig = {
+  qualityGate: { defaultPassThreshold: 0.5, criticalPassThreshold: 0.8, enforcement: "blocking" },
+  qualityScoreWeights: { successSignal: 0.35, completionOutcome: 0.45, failureSignal: 0.3, partialSignal: 0.1 },
+  actionThresholds: { completeMinScore: 0.5, approvalRequiredScore: 0.3, retryMaxFailures: 3 },
+  evidence: { enabled: false, artifactKind: "test", retentionDays: 30 },
+};
+
 test("ExecutionOutcomeEvaluator.evaluate suggests retry for few failures", () => {
-  const evaluator = new ExecutionOutcomeEvaluator({ config: { qualityGate: { defaultPassThreshold: 0.5, criticalPassThreshold: 0.8, enforcement: "blocking" as const }, qualityScoreWeights: { successSignal: 0.35, completionOutcome: 0.45, failureSignal: 0.3, partialSignal: 0.1 }, actionThresholds: { completeMinScore: 0.5, approvalRequiredScore: 0.3, retryMaxFailures: 3 }, evidence: { enabled: false, artifactKind: "test", retentionDays: 30 } });
+  const evaluator = new ExecutionOutcomeEvaluator({ config: TEST_CONFIG });
 
   const plan = createMockPlan("task_retry");
   const feedback = createMockFeedback("failed", [
