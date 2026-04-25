@@ -183,7 +183,7 @@ function createMockStreamBridge(): StreamBridge {
 }
 
 function createMockTransitionExecutionStatus() {
-  return (_params: Record<string, unknown>) => {};
+  return (_command: ExecutionStatusTransitionCommand) => {};
 }
 
 function createMockRoleToolExposureService(): RoleToolExposureService {
