@@ -358,3 +358,301 @@ test("ChaosExperimentScheduler schedules and completes a multi-experiment game d
   const refreshed = scheduler.refreshGameDayStatus(gameDay.gameDayId);
   assert.equal(refreshed?.status, "completed");
 });
+
+test("ChaosExperimentScheduler records all fault injection types correctly", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const faultTypes: FaultInjection["faultType"][] = ["latency", "error", "timeout", "packet_loss", "cpu_load", "memory_pressure"];
+
+  for (const faultType of faultTypes) {
+    const experiment = scheduler.scheduleExperiment({
+      name: `${faultType}-test`,
+      description: `test ${faultType}`,
+      target: { targetKind: "service", targetId: "svc", labels: {} },
+      fault: { faultType, intensity: 0.8, durationMs: 5000, parameters: { extra: "param" } },
+      steadyStateHypotheses: [],
+      scheduledAt: "2026-04-20T00:00:00.000Z",
+      maxDurationMs: 60000,
+    });
+
+    scheduler.startExperiment(experiment.experimentId);
+    const injected = scheduler.injectFault(experiment.experimentId);
+
+    assert.ok(injected !== null, `Fault type ${faultType} should be injected`);
+    assert.equal(injected!.faultType, faultType);
+    assert.equal(injected!.intensity, 0.8);
+  }
+});
+
+test("ChaosExperimentScheduler handles multiple steady state hypotheses with mixed results", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const hypotheses: SteadyStateHypothesis[] = [
+    { name: "latency_ok", metricName: "latency_p99", tolerance: 200, operator: "lt" },
+    { name: "error_ok", metricName: "error_rate", tolerance: 0.01, operator: "lt" },
+    { name: "availability_ok", metricName: "availability", tolerance: 0.99, operator: "gte" },
+  ];
+  const experiment = scheduler.scheduleExperiment({
+    name: "Multi-Hypothesis Test",
+    description: "test",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: hypotheses,
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  // First hypothesis passes
+  scheduler.recordSteadyStateResult(experiment.experimentId, "latency_ok", 150, true, "latency within range");
+  // Second hypothesis passes
+  scheduler.recordSteadyStateResult(experiment.experimentId, "error_ok", 0.005, true, "error rate low");
+  // Third hypothesis fails
+  scheduler.recordSteadyStateResult(experiment.experimentId, "availability_ok", 0.95, false, "availability degraded");
+
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(retrieved!.status, "violated");
+  assert.equal(retrieved!.results.length, 3);
+  assert.equal(retrieved!.results.filter((r) => r.passed).length, 2);
+  assert.equal(retrieved!.results.filter((r) => !r.passed).length, 1);
+});
+
+test("ChaosExperimentScheduler autoTerminateIfNeeded does not terminate within duration", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Long Running Test",
+    description: "test",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 60000,
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  const result = scheduler.autoTerminateIfNeeded(experiment.experimentId);
+
+  assert.equal(result, false);
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(retrieved!.status, "running");
+});
+
+test("ChaosExperimentScheduler recordSteadyStateResult completes experiment with zero hypotheses", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "No Hypotheses Test",
+    description: "test",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  // With zero hypotheses, the condition results.length >= steadyStateHypotheses.length is immediately true
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(retrieved!.status, "completed");
+});
+
+test("ChaosExperimentScheduler game day does not start experiments twice", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const gameDay = scheduler.scheduleGameDay({
+    name: "Test GameDay",
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    experiments: [
+      {
+        name: "Exp1",
+        description: "desc",
+        target: { targetKind: "service", targetId: "svc", labels: {} },
+        fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+        steadyStateHypotheses: [],
+        scheduledAt: "2026-04-20T00:00:00.000Z",
+        maxDurationMs: 5000,
+      },
+    ],
+  });
+
+  scheduler.startGameDay(gameDay.gameDayId);
+  const experimentId = gameDay.experimentIds[0]!;
+
+  // Try to start the experiment again via startExperiment
+  const result = scheduler.startExperiment(experimentId);
+  assert.equal(result, false);
+
+  const retrieved = scheduler.getExperiment(experimentId);
+  assert.equal(retrieved!.status, "running");
+});
+
+test("ChaosExperimentScheduler game day refresh does not change status mid-execution", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const gameDay = scheduler.scheduleGameDay({
+    name: "Test GameDay",
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    experiments: [
+      {
+        name: "Exp1",
+        description: "desc",
+        target: { targetKind: "service", targetId: "svc", labels: {} },
+        fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+        steadyStateHypotheses: [{ name: "h1", metricName: "m", tolerance: 1, operator: "lt" }],
+        scheduledAt: "2026-04-20T00:00:00.000Z",
+        maxDurationMs: 5000,
+      },
+    ],
+  });
+
+  scheduler.startGameDay(gameDay.gameDayId);
+
+  const refreshed = scheduler.refreshGameDayStatus(gameDay.gameDayId);
+  assert.equal(refreshed!.status, "running");
+  assert.equal(refreshed!.completedAt, null);
+});
+
+test("ChaosExperimentScheduler validateSteadyState boundary conditions", () => {
+  const scheduler = new ChaosExperimentScheduler();
+
+  // Test lt: value just below and at tolerance
+  const ltHyp: SteadyStateHypothesis = { name: "t", metricName: "m", tolerance: 1.0, operator: "lt" };
+  assert.equal(scheduler.validateSteadyState("m", 0.999, ltHyp), true);
+  assert.equal(scheduler.validateSteadyState("m", 1.0, ltHyp), false);
+
+  // Test gt: value just above and at tolerance
+  const gtHyp: SteadyStateHypothesis = { name: "t", metricName: "m", tolerance: 1.0, operator: "gt" };
+  assert.equal(scheduler.validateSteadyState("m", 1.001, gtHyp), true);
+  assert.equal(scheduler.validateSteadyState("m", 1.0, gtHyp), false);
+
+  // Test eq with floating point
+  const eqHyp: SteadyStateHypothesis = { name: "t", metricName: "m", tolerance: 0.1, operator: "eq" };
+  assert.equal(scheduler.validateSteadyState("m", 0.1, eqHyp), true);
+
+  // Test ne with zero tolerance
+  const neHyp: SteadyStateHypothesis = { name: "t", metricName: "m", tolerance: 0, operator: "ne" };
+  assert.equal(scheduler.validateSteadyState("m", 1, neHyp), true);
+  assert.equal(scheduler.validateSteadyState("m", 0, neHyp), false);
+});
+
+test("ChaosExperimentScheduler listExperiments returns correct counts after lifecycle", () => {
+  const scheduler = new ChaosExperimentScheduler();
+
+  const exp1 = scheduler.scheduleExperiment({
+    name: "Exp1",
+    description: "desc",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+
+  const exp2 = scheduler.scheduleExperiment({
+    name: "Exp2",
+    description: "desc",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "error", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+
+  scheduler.startExperiment(exp1.experimentId);
+  scheduler.recordSteadyStateResult(exp1.experimentId, "fake_hypothesis", 0, true, "OK");
+
+  assert.equal(scheduler.listExperiments().length, 2);
+  assert.equal(scheduler.listExperiments("scheduled").length, 1);
+  assert.equal(scheduler.listExperiments("running").length, 0);
+  assert.equal(scheduler.listExperiments("completed").length, 1);
+  assert.equal(scheduler.listExperiments("cancelled").length, 0);
+  assert.equal(scheduler.listExperiments("violated").length, 0);
+});
+
+test("ChaosExperimentScheduler cancelExperiment sets completedAt", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Test",
+    description: "desc",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+
+  scheduler.cancelExperiment(experiment.experimentId);
+
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  assert.ok(retrieved!.completedAt !== null);
+});
+
+test("ChaosExperimentScheduler gameDay schedule preserves experiment order", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const gameDay = scheduler.scheduleGameDay({
+    name: "Ordered GameDay",
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    experiments: [
+      { name: "First", description: "d", target: { targetKind: "service", targetId: "s", labels: {} }, fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} }, steadyStateHypotheses: [], scheduledAt: "2026-04-20T00:00:00.000Z", maxDurationMs: 5000 },
+      { name: "Second", description: "d", target: { targetKind: "service", targetId: "s", labels: {} }, fault: { faultType: "error", intensity: 1, durationMs: 1000, parameters: {} }, steadyStateHypotheses: [], scheduledAt: "2026-04-20T00:00:00.000Z", maxDurationMs: 5000 },
+      { name: "Third", description: "d", target: { targetKind: "service", targetId: "s", labels: {} }, fault: { faultType: "timeout", intensity: 1, durationMs: 1000, parameters: {} }, steadyStateHypotheses: [], scheduledAt: "2026-04-20T00:00:00.000Z", maxDurationMs: 5000 },
+    ],
+  });
+
+  const experiments = gameDay.experimentIds.map((id) => scheduler.getExperiment(id)!);
+  assert.equal(experiments[0]!.name, "First");
+  assert.equal(experiments[1]!.name, "Second");
+  assert.equal(experiments[2]!.name, "Third");
+});
+
+test("ChaosExperimentScheduler injectFault preserves fault parameters", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Test",
+    description: "desc",
+    target: { targetKind: "node", targetId: "node-1", labels: { zone: "a" } },
+    fault: { faultType: "packet_loss", intensity: 0.5, durationMs: 30000, parameters: { interface: "eth0", targetPort: 8080 } },
+    steadyStateHypotheses: [],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 60000,
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  const fault = scheduler.injectFault(experiment.experimentId);
+
+  assert.equal(fault!.parameters.interface, "eth0");
+  assert.equal(fault!.parameters.targetPort, 8080);
+});
+
+test("ChaosExperimentScheduler recordSteadyStateResult with null measuredValue", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const hypotheses: SteadyStateHypothesis[] = [
+    { name: "metric_available", metricName: "metric", tolerance: 1, operator: "gt" },
+  ];
+  const experiment = scheduler.scheduleExperiment({
+    name: "Test",
+    description: "desc",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: hypotheses,
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  scheduler.recordSteadyStateResult(experiment.experimentId, "metric_available", null, false, "metric unavailable");
+
+  const retrieved = scheduler.getExperiment(experiment.experimentId);
+  assert.equal(retrieved!.results[0]!.measuredValue, null);
+  assert.equal(retrieved!.results[0]!.passed, false);
+});
+
+test("ChaosExperimentScheduler game day refresh returns gameDay with correct experimentIds", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const gameDay = scheduler.scheduleGameDay({
+    name: "Test GameDay",
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    experiments: [
+      { name: "Exp1", description: "d", target: { targetKind: "service", targetId: "s", labels: {} }, fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} }, steadyStateHypotheses: [], scheduledAt: "2026-04-20T00:00:00.000Z", maxDurationMs: 5000 },
+      { name: "Exp2", description: "d", target: { targetKind: "service", targetId: "s", labels: {} }, fault: { faultType: "error", intensity: 1, durationMs: 1000, parameters: {} }, steadyStateHypotheses: [], scheduledAt: "2026-04-20T00:00:00.000Z", maxDurationMs: 5000 },
+    ],
+  });
+
+  const refreshed = scheduler.refreshGameDayStatus(gameDay.gameDayId);
+  assert.deepEqual(refreshed!.experimentIds, gameDay.experimentIds);
+});
