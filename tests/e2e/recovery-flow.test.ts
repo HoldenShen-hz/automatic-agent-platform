@@ -125,13 +125,40 @@ test("E2E Recovery: active execution at low attempt suggests resume_same_worker"
     assert.equal(exec?.attempt, 1, "Attempt should be 1");
     assert.equal(exec?.lastErrorCode, null, "No error code should be set");
 
-    // Simulate worker failure and recovery by transitioning to failed then retry
+    // Worker failed - insert new execution in failed state for recovery scenario
+    const failedExecId = newId("exec-failed");
     h.db.transaction(() => {
-      h.store.updateExecution(executionId, "failed", "E7DEADLOCK", "Lock acquisition failed", now, now);
+      h.store.insertExecution({
+        id: failedExecId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId,
+        agentId: "agent-1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: newId("trace-fail"),
+        attempt: 2,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 1,
+        retryBackoff: "none",
+        lastErrorCode: "E7DEADLOCK",
+        lastErrorMessage: "Lock acquisition failed",
+        startedAt: now,
+        finishedAt: nowIso(),
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
     });
 
-    const failedExec = h.store.getExecution(executionId);
-    assert.equal(failedExec?.status, "failed", "Execution should be failed");
+    const failedExec = h.store.getExecution(failedExecId);
+    assert.equal(failedExec?.status, "failed", "New execution should be failed");
     assert.equal(failedExec?.lastErrorCode, "E7DEADLOCK", "Error code should be E7DEADLOCK");
 
   } finally {
@@ -546,13 +573,40 @@ test("E2E Recovery: stale execution is detected and can be recovered", () => {
     assert.equal(exec?.status, "executing", "Execution still shows executing");
     assert.ok(exec?.updatedAt < nowIso(), "Execution should have stale updatedAt");
 
-    // Recovery: transition to failed and create new execution
+    // Recovery: insert new execution in failed state with stale reference
+    const staleRecoveryExecId = newId("exec-stale-recovery");
     h.db.transaction(() => {
-      h.store.updateExecution(executionId, "failed", "STALE_EXECUTION", "Execution became stale", now, now);
+      h.store.insertExecution({
+        id: staleRecoveryExecId,
+        taskId,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: executionId,
+        agentId: "agent-1",
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "failed",
+        inputRef: null,
+        traceId: newId("trace-stale"),
+        attempt: 2,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: "STALE_EXECUTION",
+        lastErrorMessage: "Execution became stale",
+        startedAt: now,
+        finishedAt: nowIso(),
+        createdAt: now,
+        updatedAt: now,
+      });
     });
 
-    const staleExec = h.store.getExecution(executionId);
-    assert.equal(staleExec?.status, "failed", "Stale execution should be marked failed");
+    const staleExec = h.store.getExecution(staleRecoveryExecId);
+    assert.equal(staleExec?.status, "failed", "Stale recovery execution should be failed");
     assert.equal(staleExec?.lastErrorCode, "STALE_EXECUTION", "Should have stale error code");
 
   } finally {
