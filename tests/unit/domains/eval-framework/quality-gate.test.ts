@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PostExecutionQualityGate } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
-import { ExecutionOutcomeEvaluator } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
-import { QualityGateEvidenceService } from "../../../../../src/platform/prompt-engine/eval/quality-gate-evidence-service.js";
-import type { ExecutionOutcomeEvaluation } from "../../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
-import type { PostExecutionQualityGateDecision } from "../../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
-import type { QualityGateConfig, QualityEvaluationEvidence } from "../../../../../src/platform/prompt-engine/eval/types.js";
+import { PostExecutionQualityGate } from "../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
+import { ExecutionOutcomeEvaluator } from "../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
+import { QualityGateEvidenceService } from "../../../../src/platform/prompt-engine/eval/quality-gate-evidence-service.js";
+import type { ExecutionOutcomeEvaluation } from "../../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
+import type { PostExecutionQualityGateDecision } from "../../../../src/platform/prompt-engine/eval/post-execution-quality-gate.js";
+import type { QualityGateConfig, QualityEvaluationEvidence } from "../../../../src/platform/prompt-engine/eval/types.js";
 
 // ── Mock Artifact Store ────────────────────────────────────────────────────────
 

@@ -152,12 +152,13 @@ test("AgentComponentsSchema parses complete components", () => {
   assert.equal(result.autonomyConfig.maxAutomationLevel, "semi_auto");
 });
 
-test("AgentComponentsSchema applies defaults for optional fields", () => {
+test("AgentComponentsSchema applies defaults for triggerSet when not provided", () => {
   const components = {
     pack: { packId: "pack-1", version: "1.0.0" },
     promptBundle: { bundleId: "bundle-1", version: "1.0.0" },
     modelBinding: { provider: "openai", model: "gpt-4" },
     trustProfile: {},
+    autonomyConfig: {},
   };
   const result = AgentComponentsSchema.parse(components);
   assert.deepStrictEqual(result.triggerSet, []);

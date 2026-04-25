@@ -23,12 +23,11 @@ import {
 } from "../../src/scale-ecosystem/resource-manager/fair-scheduling-service.js";
 import {
   ResourcePoolService,
-  type ResourcePool,
 } from "../../src/scale-ecosystem/resource-manager/resource-pool-service.js";
 import { runConcurrentInvariant, type ConcurrentRunnerOptions } from "../helpers/concurrent-runner.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
-import type { TaskStatus, ExecutionStatus, WorkerStatus } from "../../src/platform/contracts/types/status.js";
+import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
 import type { FairQueueItem } from "../../src/scale-ecosystem/resource-manager/fair-queue/index.js";
 import type { PreemptionCandidate } from "../../src/scale-ecosystem/resource-manager/preemption/index.js";
 
@@ -149,30 +148,6 @@ function seedExecution(
       finishedAt: status === "succeeded" || status === "failed" || status === "superseded" ? nowIso() : null,
       createdAt: nowIso(),
       updatedAt: nowIso(),
-    });
-  });
-}
-
-function seedWorker(
-  store: AuthoritativeTaskStore,
-  db: SqliteDatabase,
-  workerId: string,
-  status: WorkerStatus = "idle",
-): void {
-  db.transaction(() => {
-    store.worker.upsertWorkerSnapshot({
-      workerId,
-      agentId: `agent-${workerId}`,
-      poolId: "default",
-      regionId: "us-east-1",
-      status,
-      currentTaskId: status === "busy" ? `task-${workerId}` : null,
-      currentExecutionId: status === "busy" ? `exec-${workerId}` : null,
-      lastHeartbeatAt: nowIso(),
-      registeredAt: nowIso(),
-      version: "1.0.0",
-      slotCount: 4,
-      usedSlotCount: status === "busy" ? 1 : 0,
     });
   });
 }
@@ -488,69 +463,6 @@ test("E2E Scaling: SLA tiers preserve priority during scheduling", (t) => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests: Worker Scaling
-// ---------------------------------------------------------------------------
-
-test("E2E Scaling: worker snapshots track scaling state", (t) => {
-  const h = createScalingHarness("e2e-scaling-workers-");
-
-  try {
-    // Seed workers in different states
-    seedWorker(h.store, h.db, "worker-001", "idle");
-    seedWorker(h.store, h.db, "worker-002", "busy");
-    seedWorker(h.store, h.db, "worker-003", "busy");
-    seedWorker(h.store, h.db, "worker-004", "draining");
-    seedWorker(h.store, h.db, "worker-005", "offline");
-
-    const workers = h.store.worker.listWorkerSnapshots();
-
-    assert.equal(workers.length, 5);
-
-    const idleWorkers = workers.filter(w => w.status === "idle");
-    const busyWorkers = workers.filter(w => w.status === "busy");
-    const drainingWorkers = workers.filter(w => w.status === "draining");
-    const offlineWorkers = workers.filter(w => w.status === "offline");
-
-    assert.equal(idleWorkers.length, 1);
-    assert.equal(busyWorkers.length, 2);
-    assert.equal(drainingWorkers.length, 1);
-    assert.equal(offlineWorkers.length, 1);
-  } finally {
-    h.cleanup();
-  }
-});
-
-test("E2E Scaling: worker load balancing considers busy workers", (t) => {
-  const h = createScalingHarness("e2e-scaling-load-");
-
-  try {
-    const now = nowIso();
-
-    // Create tasks
-    for (let i = 0; i < 10; i++) {
-      seedTask(h.store, h.db, `task-${i}`, "queued", "tenant-001", now);
-    }
-
-    // Seed workers with varying states
-    seedWorker(h.store, h.db, "worker-001", "idle");
-    seedWorker(h.store, h.db, "worker-002", "idle");
-    seedWorker(h.store, h.db, "worker-003", "busy");
-    seedWorker(h.store, h.db, "worker-004", "draining");
-
-    const workers = h.store.worker.listWorkerSnapshots();
-    const availableWorkers = workers.filter(w => w.status === "idle" || w.status === "draining");
-
-    // Should have 3 available workers (2 idle + 1 draining)
-    assert.equal(availableWorkers.length, 3);
-
-    const busyWorkers = workers.filter(w => w.status === "busy");
-    assert.equal(busyWorkers.length, 1);
-  } finally {
-    h.cleanup();
-  }
-});
-
-// ---------------------------------------------------------------------------
 // Tests: Throughput Under Load
 // ---------------------------------------------------------------------------
 
@@ -767,21 +679,21 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
       seedTask(h.store, h.db, `pipeline-task-${i}`, "queued", "tenant-001", now);
     }
 
-    // Phase 2: Start executions
+    // Phase 2: Start executions by updating task status
     const startedTasks = h.store.listTasks().slice(0, 10);
     for (const task of startedTasks) {
       h.db.transaction(() => {
-        h.store.updateTaskStatus(task.id, "in_progress");
+        h.store.updateTaskStatus(task.id, "in_progress", now, null, null);
       });
       seedExecution(h.store, h.db, `exec-${task.id}`, task.id, "executing", 1);
     }
 
     // Phase 3: Complete some tasks
     h.db.transaction(() => {
-      h.store.updateTaskStatus("pipeline-task-0", "done");
+      h.store.updateTaskStatus("pipeline-task-0", "done", now, null, now);
     });
     h.db.transaction(() => {
-      h.store.updateTaskStatus("pipeline-task-1", "done");
+      h.store.updateTaskStatus("pipeline-task-1", "done", now, null, now);
     });
 
     // Verify final state

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { LlmEvalService, type EvalSuiteKind, type QualityVerdict, type EvalCaseDefinition } from "../../../../../src/platform/prompt-engine/eval/llm-eval-service.js";
+import { LlmEvalService, type EvalSuiteKind, type QualityVerdict, type EvalCaseDefinition } from "../../../../src/platform/prompt-engine/eval/llm-eval-service.js";
 
 // ── Mock Database ─────────────────────────────────────────────────────────────
 

@@ -693,7 +693,7 @@ test("BillingService settlePaymentSession creates credit ledger entry", async ()
   assert.equal(credits[credits.length - 1].amountUsd, -result.invoice.totalUsd);
 });
 
-test("BillingService reconcilePaymentSession handles cancelled status", () => {
+test("BillingService reconcilePaymentSession handles cancelled status", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -734,7 +734,7 @@ test("BillingService reconcilePaymentSession throws for unknown gateway ref", ()
   }, /not found/);
 });
 
-test("BillingService reconcilePaymentSession with paid status settles session", () => {
+test("BillingService reconcilePaymentSession with paid status settles session", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
