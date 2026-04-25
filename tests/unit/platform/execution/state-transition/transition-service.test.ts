@@ -137,7 +137,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
   const repo: MockRepository = {
     mockState,
 
-    getWorkflowState(entityId: string) {
+    getWorkflowState(entityId: string): WorkflowStateRecord | null {
       getWorkflowStateInvocations.push(entityId);
       const state = mockState.workflowStates.get(entityId);
       if (!state) return null;
@@ -156,7 +156,14 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       };
     },
 
-    updateTaskStatusCas(entityId, fromStatus, toStatus, occurredAt, reasonCode, completedAt) {
+    updateTaskStatusCas(
+      entityId: string,
+      fromStatus: string,
+      toStatus: string,
+      occurredAt: string,
+      _reasonCode?: string | null,
+      _completedAt?: string | null,
+    ): number {
       updateTaskStatusCasCalls.push({ entityId, fromStatus, toStatus });
       const current = mockState.taskStatuses.get(entityId);
       if (current && current.status === fromStatus) {
@@ -166,17 +173,31 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       return 0;
     },
 
-    updateWorkflowStateCas(entityId, expectedStepIndex, expectedStatus, toStatus, currentStepIndex, outputsJson, occurredAt) {
+    updateWorkflowStateCas(
+      entityId: string,
+      expectedVersion: number,
+      expectedStatus: string,
+      toStatus: string,
+      currentStepIndex: number,
+      outputsJson: string,
+      occurredAt: string,
+      _resumableFromStep?: string | null,
+    ): number {
       updateWorkflowStateCasCalls.push(entityId);
       const current = mockState.workflowStates.get(entityId);
-      if (current && current.status === expectedStatus && current.currentStepIndex === expectedStepIndex) {
+      if (current && current.status === expectedStatus && current.currentStepIndex === expectedVersion) {
         mockState.workflowStates.set(entityId, { status: toStatus as WorkflowStatus, currentStepIndex, updatedAt: occurredAt });
         return 1;
       }
       return 0;
     },
 
-    updateSessionStatusCas(entityId, fromStatus, toStatus, occurredAt) {
+    updateSessionStatusCas(
+      entityId: string,
+      fromStatus: string,
+      toStatus: string,
+      occurredAt: string,
+    ): number {
       updateSessionStatusCasCalls.push(entityId);
       const current = mockState.sessionStatuses.get(entityId);
       if (current && current.status === fromStatus) {
@@ -186,7 +207,15 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       return 0;
     },
 
-    updateExecutionStatusCas(entityId, fromStatus, toStatus, occurredAt, startedAt, finishedAt, lastErrorCode) {
+    updateExecutionStatusCas(
+      entityId: string,
+      fromStatus: string,
+      toStatus: string,
+      occurredAt: string,
+      startedAt?: string | null,
+      finishedAt?: string | null,
+      lastErrorCode?: string | null,
+    ): number {
       updateExecutionStatusCasCalls.push(entityId);
       const current = mockState.executionStatuses.get(entityId);
       if (current && current.status === fromStatus) {
@@ -202,52 +231,91 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       return 0;
     },
 
-    updateApprovalDecisionCas({ approvalId, expectedStatus, status, responseJson, respondedAt }) {
-      updateApprovalDecisionCasCalls.push({ approvalId, expectedStatus });
-      const current = mockState.approvalDecisions.get(approvalId);
-      if (current && current.status === expectedStatus) {
-        mockState.approvalDecisions.set(approvalId, { status, responseJson, respondedAt });
+    updateApprovalDecisionCas(input: {
+      approvalId: string;
+      expectedStatus: ApprovalStatus;
+      status: ApprovalStatus;
+      responseJson: string;
+      respondedAt: string;
+    }): number {
+      updateApprovalDecisionCasCalls.push({ approvalId: input.approvalId, expectedStatus: input.expectedStatus });
+      const current = mockState.approvalDecisions.get(input.approvalId);
+      if (current && current.status === input.expectedStatus) {
+        mockState.approvalDecisions.set(input.approvalId, { status: input.status, responseJson: input.responseJson, respondedAt: input.respondedAt });
         return 1;
       }
       return 0;
     },
 
-    createTier1StatusEvent(event) {
+    createTier1StatusEvent(input: {
+      taskId: string;
+      executionId: string | null;
+      eventType: string;
+      traceId: string;
+      payload: Record<string, unknown>;
+    }): EventRecord {
+      const event: Tier1Event = {
+        taskId: input.taskId,
+        executionId: input.executionId,
+        eventType: input.eventType,
+        traceId: input.traceId,
+        payload: input.payload,
+      };
       mockState.tier1Events.push(event);
       return {
         id: `event-${mockState.tier1Events.length}`,
-        taskId: event.taskId,
+        taskId: input.taskId,
         sessionId: null,
-        executionId: event.executionId ?? null,
-        eventType: event.eventType,
-        eventTier: "tier1" as const,
-        payloadJson: JSON.stringify(event.payload),
-        traceId: event.traceId,
+        executionId: input.executionId,
+        eventType: input.eventType,
+        eventTier: "tier1",
+        payloadJson: JSON.stringify(input.payload),
+        traceId: input.traceId,
         createdAt: new Date().toISOString(),
-      } as unknown as EventRecord;
+      };
     },
 
-    updateTaskOutput(taskId, outputJson, occurredAt) {
+    updateTaskOutput(taskId: string, outputJson: string, _occurredAt: string): void {
       mockState.taskOutputs.set(taskId, outputJson);
     },
 
-    updateTaskStatus(taskId, status, occurredAt, reasonCode, completedAt) {
+    updateTaskStatus(
+      taskId: string,
+      status: string,
+      occurredAt: string,
+      _errorCode?: string | null,
+      _completedAt?: string | null,
+    ): void {
       mockState.taskStatuses.set(taskId, { status: status as TaskStatus, updatedAt: occurredAt });
     },
 
-    updateWorkflowState(taskId, status, currentStepIndex, outputsJson, occurredAt) {
+    updateWorkflowState(
+      taskId: string,
+      status: string,
+      currentStepIndex: number,
+      outputsJson: string,
+      occurredAt: string,
+      _resumableFromStep?: string | null,
+    ): void {
       mockState.workflowStates.set(taskId, { status: status as WorkflowStatus, currentStepIndex, updatedAt: occurredAt });
     },
 
-    updateSessionStatus(sessionId, status, occurredAt) {
+    updateSessionStatus(sessionId: string, status: string, occurredAt: string): void {
       mockState.sessionStatuses.set(sessionId, { status: status as SessionStatus, updatedAt: occurredAt });
     },
 
-    updateExecutionStatus(executionId, status, occurredAt, reasonCode, finishedAt, lastErrorCode) {
-      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt: finishedAt ?? null, lastErrorCode: lastErrorCode ?? null, updatedAt: occurredAt });
+    updateExecutionStatus(
+      executionId: string,
+      status: string,
+      occurredAt: string,
+      _startedAt?: string | null,
+      finishedAt?: string | null,
+      lastErrorCode?: string | null,
+    ): void {
+      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt, lastErrorCode, updatedAt: occurredAt });
     },
 
-    insertApproval(approval) {
+    insertApproval(approval: ApprovalRecord): void {
       mockState.approvalDecisions.set(approval.id, {
         status: approval.status,
         responseJson: approval.responseJson,
@@ -255,7 +323,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       });
     },
 
-    getApproval(approvalId) {
+    getApproval(approvalId: string): ApprovalRecord | null {
       const decision = mockState.approvalDecisions.get(approvalId);
       if (!decision) return null;
       return {
@@ -272,11 +340,16 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       };
     },
 
-    listApprovalsByTask(taskId) {
+    listApprovalsByTask(_taskId: string): ApprovalRecord[] {
       return [];
     },
 
-    updateApprovalDecision(input) {
+    updateApprovalDecision(input: {
+      approvalId: string;
+      status: ApprovalStatus;
+      responseJson: string;
+      respondedAt: string;
+    }): void {
       mockState.approvalDecisions.set(input.approvalId, {
         status: input.status,
         responseJson: input.responseJson,
@@ -284,11 +357,20 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       });
     },
 
-    updateApprovalRequest(input) {
+    updateApprovalRequest(_input: { id: string; requestJson: string }): void {
       // Mock implementation
     },
 
-    insertEvent(event) {
+    insertEvent(event: {
+      taskId?: string | null;
+      sessionId?: string | null;
+      executionId?: string | null;
+      eventType?: string;
+      eventTier?: "tier1" | "tier2";
+      payloadJson?: string;
+      traceId?: string | null;
+      createdAt?: string;
+    }): EventRecord {
       return {
         id: `event-${Date.now()}`,
         taskId: event.taskId ?? null,
@@ -299,18 +381,18 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
         payloadJson: "{}",
         traceId: event.traceId ?? null,
         createdAt: new Date().toISOString(),
-      } as unknown as EventRecord;
+      };
     },
 
-    getTaskStatus(taskId) {
+    getTaskStatus(taskId: string): { status: TaskStatus; updatedAt: string } | null {
       return mockState.taskStatuses.get(taskId) ?? null;
     },
 
-    getSessionStatus(sessionId) {
+    getSessionStatus(sessionId: string): { status: SessionStatus; updatedAt: string } | null {
       return mockState.sessionStatuses.get(sessionId) ?? null;
     },
 
-    getExecutionStatus(executionId) {
+    getExecutionStatus(executionId: string): { status: ExecutionStatus; startedAt: string | null; finishedAt: string | null; lastErrorCode: string | null; updatedAt: string } | null {
       return mockState.executionStatuses.get(executionId) ?? null;
     },
 
@@ -321,7 +403,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     updateSessionStatusCasCalls,
     updateExecutionStatusCasCalls,
     updateApprovalDecisionCasCalls,
-  };
+  } as MockRepository;
 
   // Initialize with provided statuses if given
   const now = new Date().toISOString();
