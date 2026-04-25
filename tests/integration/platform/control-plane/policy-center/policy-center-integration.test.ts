@@ -14,8 +14,8 @@ import {
   type PolicyRiskCategory,
   type PolicyAction,
   type PolicyMode,
-} from "../../../../src/platform/control-plane/policy-center/index.js";
-import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+} from "../../../../../src/platform/control-plane/policy-center/index.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 function makeRequest(overrides: Partial<PolicyDecisionRequest> = {}): PolicyDecisionRequest {
   return {
@@ -65,7 +65,7 @@ test("policy center: frozen actions are denied regardless of role", () => {
 test("policy center: role-based action restriction blocks unauthorized actions", () => {
   const policy = new PolicyCenterService({
     subjectRoles: { "user-1": ["viewer"] },
-    allowedActionsByRole: { viewer: ["invoke_model", "read_file"] },
+    allowedActionsByRole: { viewer: ["invoke_model", "invoke_tool"] },
   });
 
   const result = policy.evaluate(makeRequest({ action: "write_file", subjectId: "user-1" }));

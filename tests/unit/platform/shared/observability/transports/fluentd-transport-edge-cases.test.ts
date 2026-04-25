@@ -9,6 +9,8 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
     level: "info",
     message: "test message",
     createdAt: new Date().toISOString(),
+    service: "test-service",
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
 }

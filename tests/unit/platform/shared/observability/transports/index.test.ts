@@ -16,7 +16,9 @@ test("StdoutTransport.write writes JSON to stdout", () => {
   transport.write({
     level: "info",
     message: "test message",
+    service: "test-service",
     createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
   });
   // If we get here without throwing, the test passes
   assert.ok(true);
@@ -30,7 +32,9 @@ test("StdoutTransport.write handles all log levels", () => {
     transport.write({
       level,
       message: `test ${level}`,
+      service: "test-service",
       createdAt: "2026-04-22T00:00:00.000Z",
+      timestamp: "2026-04-22T00:00:00.000Z",
     });
   }
   assert.ok(true);
@@ -41,7 +45,9 @@ test("StdoutTransport.write handles entry with data", () => {
   transport.write({
     level: "info",
     message: "test with data",
+    service: "test-service",
     createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
     data: { key: "value", count: 42 },
     taskId: "task_123",
     traceId: "trace_abc",
@@ -103,7 +109,9 @@ test("DatadogTransport.write adds entry to batch", () => {
   transport.write({
     level: "info",
     message: "test message",
+    service: "test-service",
     createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
   });
   // If we get here without throwing, the test passes
   assert.ok(true);

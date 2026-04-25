@@ -119,7 +119,7 @@ test("WorkflowBuilderDraft with single validation finding", () => {
   };
 
   assert.equal(draft.validationFindings.length, 1);
-  assert.ok(draft.validationFindings[0].includes("Risk level is high"));
+  assert.ok(draft.validationFindings[0]!.includes("Risk level is high"));
 });
 
 test("UserExperienceBootstrapRequest requires all fields", () => {
@@ -257,7 +257,7 @@ test("UserExperienceBootstrapRequest with SSO context", () => {
   assert.equal(request.context.memberCount, 500);
   assert.equal(request.userRole, "fleet_admin");
   assert.equal(request.components.length, 1);
-  assert.equal(request.components[0].riskLevel, "critical");
+  assert.equal(request.components[0]!.riskLevel, "critical");
 });
 
 test("UserExperienceBootstrapResult structure", () => {
@@ -467,8 +467,8 @@ test("DomainOnboardingWizard step types", () => {
   };
 
   assert.equal(wizard.steps.length, 4);
-  assert.equal(wizard.steps[0].stepId, "business_type");
-  assert.equal(wizard.steps[3].stepId, "activation");
+  assert.equal(wizard.steps[0]!.stepId, "business_type");
+  assert.equal(wizard.steps[3]!.stepId, "activation");
 });
 
 test("DraggableComponent risk levels", () => {

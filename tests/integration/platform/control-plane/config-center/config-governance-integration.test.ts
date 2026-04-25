@@ -10,9 +10,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 
-import { ConfigGovernanceService } from "../../../../src/platform/control-plane/config-center/config-governance-service.js";
-import { HierarchicalConfigLoader } from "../../../../src/platform/control-plane/config-center/hierarchical-config-loader.js";
-import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { ConfigGovernanceService } from "../../../../../src/platform/control-plane/config-center/config-governance-service.js";
+import { HierarchicalConfigLoader } from "../../../../../src/platform/control-plane/config-center/hierarchical-config-loader.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function seedFullConfigTree(root: string): void {
@@ -120,9 +120,9 @@ test("config governance: dev override merges on top of default runtime values", 
     const bundle = service.loadBundle("dev");
 
     // Override should take effect: maxConcurrentTasks=5 (dev) instead of 2 (default)
-    assert.strictEqual(bundle.layers.runtime.maxConcurrentTasks, 5);
+    assert.strictEqual(bundle.layers.runtime!.maxConcurrentTasks, 5);
     // Non-overridden: defaultStepTimeoutMs=120000 should remain from default.json
-    assert.strictEqual(bundle.layers.runtime.defaultStepTimeoutMs, 120000);
+    assert.strictEqual(bundle.layers.runtime!.defaultStepTimeoutMs, 120000);
   } finally {
     cleanupPath(workspace);
   }
@@ -138,7 +138,7 @@ test("config governance: bundle validation catches missing required layers", () 
     const service = new ConfigGovernanceService({ configRoot: workspace });
     const bundle = service.loadBundle("dev");
 
-    const missingIssues = bundle.issues.filter(i => i.startsWith("config.missing_layer:"));
+    const missingIssues = bundle.issues.filter((i: string) => i.startsWith("config.missing_layer:"));
     assert.ok(missingIssues.length >= 5, `Should have at least 5 missing layer issues, got: ${missingIssues.join(", ")}`);
   } finally {
     cleanupPath(workspace);
@@ -167,7 +167,7 @@ test("config governance: bundle validation catches invalid provider registry ref
     const service = new ConfigGovernanceService({ configRoot: workspace });
     const bundle = service.loadBundle("dev");
 
-    const providerIssues = bundle.issues.filter(i =>
+    const providerIssues = bundle.issues.filter((i: string) =>
       i.includes("defaultProviderRegistryRef") || i.includes("defaultModelProfileRegistryRef")
     );
     assert.ok(providerIssues.length >= 1, `Should have invalid provider issues, got: ${bundle.issues.join(", ")}`);
@@ -278,7 +278,7 @@ test("config governance: loads bundle with JSONC comments without widening acces
     const service = new ConfigGovernanceService({ configRoot: workspace });
     const bundle = service.loadBundle("dev");
 
-    assert.strictEqual(bundle.layers.runtime.maxConcurrentTasks, 3);
+    assert.strictEqual(bundle.layers.runtime!.maxConcurrentTasks, 3);
     assert.equal(bundle.issues.length, 0);
   } finally {
     cleanupPath(workspace);
@@ -362,7 +362,7 @@ test("hierarchical config loader: deep merges nested objects", () => {
   );
 
   // auth.provider should survive from base (deep merge), auth.timeout overridden
-  assert.strictEqual(result.merged.auth.provider, "oidc");
-  assert.strictEqual(result.merged.auth.timeout, 10000);
-  assert.strictEqual(result.merged.network.maxConnections, 200);
+  assert.strictEqual((result.merged.auth as { provider: string; timeout: number }).provider, "oidc");
+  assert.strictEqual((result.merged.auth as { provider: string; timeout: number }).timeout, 10000);
+  assert.strictEqual((result.merged.network as { maxConnections: number }).maxConnections, 200);
 });

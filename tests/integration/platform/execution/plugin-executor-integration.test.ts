@@ -53,15 +53,18 @@ const createTestManifest = (overrides: Partial<PluginManifest> = {}): PluginMani
 
 const createTestHooks = (
   overrides: Partial<PluginLifecycleHooks> & Record<string, unknown> = {},
-): PluginLifecycleHooks & Record<string, unknown> => ({
-  initialize: async () => {},
-  onLoad: async () => {},
-  onActivate: async () => {},
-  onDeactivate: async () => {},
-  onUnload: async () => {},
-  healthCheck: () => true,
-  ...overrides,
-});
+): PluginLifecycleHooks & Record<string, unknown> => {
+  const { healthCheck: _healthCheck, ...rest } = overrides;
+  return {
+    initialize: async () => {},
+    onLoad: async () => {},
+    onActivate: async () => {},
+    onDeactivate: async () => {},
+    onUnload: async () => {},
+    ...(overrides.healthCheck === undefined ? {} : { healthCheck: overrides.healthCheck }),
+    ...rest,
+  };
+};
 
 const createActionHooks = (
   action: string,
@@ -614,7 +617,7 @@ test("plugin executor: healthCheck falls back to error count threshold", async (
 
     const service = new PluginExecutorService();
     const manifest = createTestManifest({ pluginId: "threshold-plugin" });
-    const hooks = createTestHooks({ healthCheck: undefined }); // No healthCheck hook
+    const hooks = createTestHooks({});
 
     service.register(manifest, hooks);
     await service.load("threshold-plugin");

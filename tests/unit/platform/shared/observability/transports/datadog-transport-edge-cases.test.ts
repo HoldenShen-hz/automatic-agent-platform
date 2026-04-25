@@ -5,11 +5,17 @@ import { DatadogTransport } from "../../../../../../src/platform/shared/observab
 import type { StructuredLogEntry } from "../../../../../../src/platform/shared/observability/structured-logger.js";
 
 function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): StructuredLogEntry {
+  // Filter out undefined values to satisfy exactOptionalPropertyTypes
+  const definedOverrides = Object.fromEntries(
+    Object.entries(overrides).filter(([, v]) => v !== undefined)
+  ) as Partial<StructuredLogEntry>;
   return {
     level: "info",
     message: "test message",
+    service: "test-service",
+    timestamp: new Date().toISOString(),
     createdAt: new Date().toISOString(),
-    ...overrides,
+    ...definedOverrides,
   };
 }
 
@@ -269,6 +275,8 @@ test("DatadogTransport handles entries with all optional fields", async () => {
   transport.write({
     level: "error",
     message: "full entry",
+    service: "test-service",
+    timestamp: "2026-04-23T12:00:00.000Z",
     createdAt: "2026-04-23T12:00:00.000Z",
     taskId: "task-full",
     agentId: "agent-full",

@@ -502,7 +502,7 @@ test("integration: knowledge retrieval filters unauthorized hits", () => {
 });
 
 test("integration: KnowledgePlaneService.ingest publishes events when eventPublisher is set", () => {
-  let publishedEvent: { eventType: string; payload: Record<string, unknown> } | null = null;
+  let publishedEvent: any = null;
 
   const service = new KnowledgePlaneService({
     eventPublisher: {
@@ -536,8 +536,8 @@ test("integration: KnowledgePlaneService.ingest publishes events when eventPubli
   });
 
   assert.ok(publishedEvent, "Should publish an event on ingestion");
-  assert.equal(publishedEvent!.eventType, "knowledge:chunk_indexed");
-  assert.ok("payload" in publishedEvent!);
+  assert.equal(publishedEvent.eventType, "knowledge:chunk_indexed");
+  assert.ok("payload" in publishedEvent);
 });
 
 test("integration: knowledge retrieval handles empty query gracefully", () => {

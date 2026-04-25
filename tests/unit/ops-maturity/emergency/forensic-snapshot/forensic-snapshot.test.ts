@@ -267,10 +267,10 @@ test("summarizeForensicSnapshot output format", () => {
   const parts = result.split(",");
 
   assert.equal(parts.length, 4);
-  assert.ok(parts[0].startsWith("scope="));
-  assert.ok(parts[1].startsWith("artifacts="));
-  assert.ok(parts[2].startsWith("configs="));
-  assert.ok(parts[3].startsWith("logs="));
+  assert.ok(parts[0]!.startsWith("scope="));
+  assert.ok(parts[1]!.startsWith("artifacts="));
+  assert.ok(parts[2]!.startsWith("configs="));
+  assert.ok(parts[3]!.startsWith("logs="));
 });
 
 test("ForensicSnapshot snapshotId is string", () => {

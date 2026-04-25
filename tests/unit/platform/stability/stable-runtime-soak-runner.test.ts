@@ -5,7 +5,12 @@ import {
   type StableSoakReport,
   type StableSoakCycle,
 } from "../../../../src/platform/stability/stable-runtime-soak-runner.js";
-import type { StableValidationReport } from "../../../../src/platform/stability/stable-runtime-validator.js";
+import type {
+  StableValidationReport,
+  StableValidationRun,
+  StableValidationCaseSummary,
+  StableValidationBaselineComparison,
+} from "../../../../src/platform/stability/stable-runtime-validator.js";
 
 describe("stable-runtime-soak-runner", () => {
   describe("mergeStableSoakReports", () => {
@@ -146,6 +151,22 @@ describe("stable-runtime-soak-runner", () => {
 });
 
 function createMockValidationReport(overrides: Partial<StableValidationReport> = {}): StableValidationReport {
+  const mockRuns: StableValidationRun[] = [];
+  const mockCaseSummaries: StableValidationCaseSummary[] = [];
+  const mockBaselineComparison: StableValidationBaselineComparison = {
+    baselinePath: "/tmp/baseline",
+    baselineCreated: false,
+    status: "match",
+    regressionDetected: false,
+    failedRunsDelta: 0,
+    integrityFailuresDelta: 0,
+    backupFailuresDelta: 0,
+    averageDurationDeltaMs: 0,
+    averageDurationDeltaPct: 0,
+    maxDurationDeltaMs: 0,
+    maxDurationDeltaPct: 0,
+    caseDrifts: [],
+  };
   return {
     startedAt: "2024-01-01T00:00:00Z",
     finishedAt: "2024-01-01T00:10:00Z",
@@ -155,7 +176,16 @@ function createMockValidationReport(overrides: Partial<StableValidationReport> =
     failedRuns: 1,
     integrityFailures: 0,
     backupFailures: 0,
-    runs: [],
+    averageDurationMs: 100,
+    maxDurationMs: 200,
+    caseSummaries: mockCaseSummaries,
+    artifacts: {
+      reportPath: "/tmp/report",
+      baselinePath: "/tmp/baseline",
+      inventoryPath: "/tmp/inventory",
+    },
+    baselineComparison: mockBaselineComparison,
+    runs: mockRuns,
     ...overrides,
   };
 }

@@ -64,6 +64,7 @@ test("StableEvidenceCampaignState has correct structure", () => {
     campaignId: "stable_evidence_campaign_2026-04-01",
     profile: {
       name: "24h",
+      validationIterations: 5,
       soakDurationMs: 86400000,
       soakIntervalMs: 300000,
       soakIterationsPerCycle: 5,
@@ -98,6 +99,7 @@ test("StableEvidenceCampaignReport structure", () => {
     campaignId: "stable_evidence_campaign_2026-04-01",
     profile: {
       name: "24h",
+      validationIterations: 5,
       soakDurationMs: 86400000,
       soakIntervalMs: 300000,
       soakIterationsPerCycle: 5,

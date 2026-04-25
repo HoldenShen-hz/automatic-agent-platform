@@ -14,7 +14,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { HotUpgradeService, HOT_UPGRADE_DDL, type UpgradeTarget, type UpgradePolicy, type HealthCheckResult } from "../../../../src/platform/execution/hot-upgrade/index.js";
+import { HotUpgradeService, HOT_UPGRADE_DDL, type UpgradeTarget, type UpgradePolicy } from "../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+import { type HealthCheckResult } from "../../../../src/platform/execution/hot-upgrade/index.js";
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";

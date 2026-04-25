@@ -9,6 +9,8 @@ import {
 import { createTempWorkspace, cleanupPath } from "../../helpers/fs.js";
 import { createFile } from "../../helpers/fs.js";
 
+type EnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod";
+
 // Mock store factory for PlatformOperatorService tests
 function createMockStore() {
   return {
@@ -90,7 +92,7 @@ test("operations: PlatformOperatorService buildReport with canary target status"
   const service = new PlatformOperatorService(createMockDb() as any, mockStore as any);
 
   const report = service.buildReport({
-    environment: "canary",
+    environment: "staging" as EnvironmentName,
     evidenceRootDir: "/tmp/evidence",
     packageOutputDir: "/tmp/output",
     targetStatus: "canary",

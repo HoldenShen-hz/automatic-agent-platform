@@ -38,7 +38,7 @@ test("InMemoryPromptBundleRepository.create returns record with generated bundle
 
   const record = await repo.create(input);
 
-  assert.ok(record.bundleId.startsWith("prompt_bundle-"));
+  assert.ok(record.bundleId.startsWith("prompt_bundle_"));
   assert.equal(record.name, "Test Bundle");
   assert.equal(record.version, "1.0.0");
   assert.equal(record.domain, "assistant");
@@ -328,7 +328,7 @@ test("InMemoryPromptVersionRepository.create generates versionId and stores reco
     trafficWeight: 100,
   });
 
-  assert.ok(version.versionId.startsWith("prompt_version-"));
+  assert.ok(version.versionId.startsWith("prompt_version_"));
   assert.equal(version.bundleId, bundleRecord.bundleId);
   assert.equal(version.version, "1.0.0");
   assert.equal(version.isCurrent, true);
@@ -479,7 +479,7 @@ test("InMemoryPromptAbTestRepository.create returns record with generated testId
     metrics: { conversionRate: 0.05 },
   });
 
-  assert.ok(test.testId.startsWith("prompt_ab_test-"));
+  assert.ok(test.testId.startsWith("prompt_ab_test_"));
   assert.equal(test.bundleId, bundle.bundleId);
   assert.equal(test.testName, "Control vs Treatment");
   assert.equal(test.controlVersion, "1.0.0");

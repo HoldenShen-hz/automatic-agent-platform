@@ -38,12 +38,11 @@ function makeIntent(overrides: Partial<DetectedIntent> = {}): DetectedIntent {
 }
 
 function makeEntity(overrides: Partial<ExtractedEntity> = {}): ExtractedEntity {
-  // @ts-expect-error - confidence not in ExtractedEntity but used in tests
   return {
     entityType: "general",
     value: "test",
-    // @ts-expect-error - confidence not in ExtractedEntity but used in tests
-    confidence: 0.9,
+    normalized: "test" as unknown,
+    sourceSpan: [0, 4] as const,
     ...overrides,
   };
 }

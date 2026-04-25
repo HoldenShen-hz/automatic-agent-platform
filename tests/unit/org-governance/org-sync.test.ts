@@ -11,9 +11,8 @@ import {
   mergeOrgNodes,
   buildOrgChart,
   diffOrgCharts,
-  type OrgNode,
-  type OrgChart,
 } from "../../../src/org-governance/org-model/sync/index.js";
+import type { OrgNode, OrgChart } from "../../../src/org-governance/org-model/org-node/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock OrgNode factory

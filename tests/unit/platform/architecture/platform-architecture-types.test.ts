@@ -7,7 +7,7 @@ import type {
   PlatformAppManifest,
   PlatformStartupTargetKind,
   PlatformStartupTarget,
-} from "../../../../../../src/platform-architecture-types.js";
+} from "../../../../src/platform-architecture-types.js";
 
 test("PlatformArchitectureLayer is a union of 9 string literals", async () => {
   const layers: PlatformArchitectureLayer[] = [

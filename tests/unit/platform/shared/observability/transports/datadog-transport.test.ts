@@ -8,7 +8,9 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
   return {
     level: "info",
     message: "test message",
+    service: "test-service",
     createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -316,6 +318,7 @@ test("DatadogTransport handles write with all fields", () => {
   transport.write({
     level: "info",
     message: "full entry",
+    service: "test-service",
     taskId: "task-123",
     agentId: "agent-456",
     sessionId: "session-789",
@@ -324,6 +327,7 @@ test("DatadogTransport handles write with all fields", () => {
     correlationId: "corr-xyz",
     data: { key: "value" },
     createdAt: "2026-04-23T00:00:00.000Z",
+    timestamp: "2026-04-23T00:00:00.000Z",
   });
 
   assert.ok(true);

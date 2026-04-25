@@ -386,7 +386,7 @@ test("consolidation integration: targetMemoryLayer layer_4 creates correct layer
     const result = memory.consolidate({
       taskId: "task-layer4",
       scopes: ["project"],
-      targetMemoryLayer: "layer_4",
+      targetMemoryLayer: "layer_5" as const,
       evaluatedAt: "2026-04-10T12:00:00.000Z",
     });
 

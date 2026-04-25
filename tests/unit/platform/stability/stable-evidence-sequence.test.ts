@@ -31,12 +31,10 @@ test("StableEvidenceSequenceOptions accepts per-profile options", () => {
     profileNames: ["24h", "72h"],
     profileOptions: {
       "24h": {
-        outputDir: "/tmp/evidence/24h",
         targetDurationMs: 86400000,
         segmentDurationMs: 3600000,
       },
       "72h": {
-        outputDir: "/tmp/evidence/72h",
         targetDurationMs: 259200000,
         segmentDurationMs: 7200000,
       },

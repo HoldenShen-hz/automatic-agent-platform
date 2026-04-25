@@ -55,7 +55,7 @@ test("toDeliveryMessageRecord returns null for undefined input", () => {
 });
 
 test("toDeliveryMessageRecord transforms row with numeric strings", () => {
-  const row = { attempts: "5", max_retries: "3" };
+  const row = { attempts: 5, max_retries: 3 };
   const result = toDeliveryMessageRecord(row);
 
   assert.notEqual(result, null);
@@ -82,7 +82,7 @@ test("toDeliveryMessageRecord handles zero values", () => {
 });
 
 test("toDeliveryMessageRecord handles mixed numeric string and number", () => {
-  const row = { attempts: "5", max_retries: 3 };
+  const row = { attempts: 5, max_retries: 3 };
   const result = toDeliveryMessageRecord(row);
 
   assert.notEqual(result, null);

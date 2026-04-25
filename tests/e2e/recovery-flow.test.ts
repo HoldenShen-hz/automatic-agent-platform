@@ -698,7 +698,7 @@ test("E2E Recovery: precheck denial leads to task cancellation", () => {
         agentId: "agent-1",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "precheck_denied" as const,
+        status: "precheck_denied" as any,
         inputRef: null,
         traceId: newId("trace-denied"),
         attempt: 2, // Different attempt to avoid constraint

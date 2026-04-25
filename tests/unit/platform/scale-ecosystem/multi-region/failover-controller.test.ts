@@ -84,8 +84,6 @@ test("resolveRegionFailover returns no failover when no candidates", () => {
 test("resolveRegionFailover handles missing optional parameters", () => {
   const input = mockFailoverInput({
     primaryHealthy: false,
-    primaryLatencyMs: undefined,
-    maxAcceptableLatencyMs: undefined,
   });
 
   const result = resolveRegionFailover(input);
@@ -97,7 +95,6 @@ test("resolveRegionFailover latency check requires both values", () => {
   const input = mockFailoverInput({
     primaryHealthy: true,
     primaryLatencyMs: 200,
-    maxAcceptableLatencyMs: undefined,
   });
 
   const result = resolveRegionFailover(input);
@@ -109,7 +106,6 @@ test("resolveRegionFailover error rate check requires both values", () => {
   const input = mockFailoverInput({
     primaryHealthy: true,
     primaryErrorRate: 0.1,
-    maxAcceptableErrorRate: undefined,
   });
 
   const result = resolveRegionFailover(input);

@@ -32,6 +32,12 @@ function createMockDb() {
             } else if (sql.includes("INSERT INTO eval_case_results")) {
               const [id, runId, caseId, input, expectedOutput, actualOutput, score, passed, latencyMs, metadata] = args as [string, string, string, string, string, string, number, number, number, string | null];
               tables.eval_case_results.push({ id, run_id: runId, case_id: caseId, input, expected_output: expectedOutput, actual_output: actualOutput, score, passed: Boolean(passed), latency_ms: latencyMs, metadata });
+            } else if (sql.includes("UPDATE eval_runs")) {
+              const [status, passedCases, failedCases, averageScore, verdict, completedAt, id] = args as [string, number, number, number | null, string, string | null, string];
+              const runIndex = tables.eval_runs.findIndex(r => r.id === id);
+              if (runIndex !== -1) {
+                tables.eval_runs[runIndex] = { ...tables.eval_runs[runIndex], status, passed_cases: passedCases, failed_cases: failedCases, average_score: averageScore, verdict, completed_at: completedAt };
+              }
             }
           },
           get(...params: unknown[]) {
@@ -46,12 +52,15 @@ function createMockDb() {
             return undefined;
           },
           all(...params: unknown[]) {
-            if (sql.includes("WHERE suite_id = ?")) {
-              const suiteId = params[0] as string;
-              return tables.eval_case_results.filter(r => r.run_id === suiteId);
+            if (sql.includes("eval_case_results")) {
+              return tables.eval_case_results.filter(r => r.run_id === params[0]);
             }
-            if (sql.includes("eval_case_results")) return tables.eval_case_results.filter(r => r.run_id === params[0]);
             if (isRunQuery) {
+              if (params.length >= 3 && sql.includes("model_id") && sql.includes("prompt_version")) {
+                // detectRegression style query: suite_id, model_id, prompt_version
+                const [suiteId, modelId, promptVersion] = params as [string, string, string];
+                return tables.eval_runs.filter(r => r.suite_id === suiteId && r.model_id === modelId && r.prompt_version === promptVersion);
+              }
               if (params.length > 0 && typeof params[0] === "string") return tables.eval_runs.filter(r => r.suite_id === params[0]);
               return tables.eval_runs.slice(0, params[0] as number ?? 50);
             }

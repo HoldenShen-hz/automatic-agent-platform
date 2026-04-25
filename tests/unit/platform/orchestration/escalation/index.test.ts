@@ -203,10 +203,11 @@ test("EscalationService requiresOperatorAction matches decision severity", () =>
 
 test("EscalationService handles exact boundary: estimatedCostUsd = 9.99", () => {
   const service = new EscalationService();
-  const decision = service.decide(createEscalationRequest({ estimatedCostUsd: 9.99 }));
+  const request = createEscalationRequest({ estimatedCostUsd: 9.99 });
+  const decision = service.decide(request);
 
   // Should not trigger approval by cost (threshold is >= 10)
-  if (!decision.affectsProduction && decision.riskLevel !== "high") {
+  if (!request.affectsProduction && request.riskLevel !== "high") {
     assert.equal(decision.decision, "none");
   }
 });

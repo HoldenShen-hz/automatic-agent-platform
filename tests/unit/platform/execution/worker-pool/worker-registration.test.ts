@@ -502,7 +502,7 @@ test("WorkerStale listStaleWorkers returns workers with old heartbeats", () => {
   const stale = service.listStaleWorkers(staleTime, 86400000); // 24 hour TTL
 
   assert.equal(stale.length, 1);
-  assert.equal(stale[0].workerId, "worker-stale");
+  assert.equal(stale[0]!.workerId, "worker-stale");
 });
 
 test("WorkerStale threshold determines staleness", () => {

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ServiceRegistry } from "../../../../../../src/platform/shared/lifecycle/service-registry.js";
+import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 import {
   PlatformApplicationKernel,
   registerPlatformApplicationKernel,
   getPlatformApplicationKernel,
-} from "../../../../../../src/platform-application-kernel.js";
+} from "../../../../src/platform-application-kernel.js";
 
 test("PlatformApplicationKernel.listLayers returns 9 layers", async () => {
   const kernel = new PlatformApplicationKernel();

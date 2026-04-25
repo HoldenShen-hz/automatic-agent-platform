@@ -267,7 +267,7 @@ test("api server returns proper json content type", async () => {
   try {
     const health = await server.inject({ url: "/healthz" });
     assert.equal(health.statusCode, 200);
-    assert.ok(health.headers["content-type"].includes("application/json"));
+    assert.ok((health.headers["content-type"] ?? "").includes("application/json"));
   } finally {
     context.db.close();
     cleanupPath(workspace);

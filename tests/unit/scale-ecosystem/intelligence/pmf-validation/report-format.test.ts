@@ -55,7 +55,19 @@ function createReport(overrides: Partial<PmfValidationReport> = {}): PmfValidati
         unit: "pct",
       },
     ],
-    runtimeSummary: {},
+    runtimeSummary: {
+      generatedAt: "2026-04-01T00:00:00.000Z",
+      window: { firstTaskCreatedAt: null, lastTaskUpdatedAt: null },
+      taskMetrics: { total: 0, terminalCount: 0, successCount: 0, failedCount: 0, cancelledCount: 0, activeCount: 0, successRate: 0, completionRate: 0 },
+      workflowMetrics: { total: 0, completedCount: 0, failedCount: 0, cancelledCount: 0, retriedCount: 0, retryRate: 0 },
+      executionMetrics: { total: 0, activeCount: 0, retryAttemptCount: 0, retryRate: 0, supersededCount: 0 },
+      recoveryMetrics: { taskCount: 0, successfulTaskCount: 0, successRate: 0, decisionCount: 0, repairEventCount: 0, deadLetterCount: 0, cancelledCount: 0 },
+      stepMetrics: { total: 0, averageDurationMs: null, p95DurationMs: null, averageTokenCost: null, totalTokenCost: 0 },
+      costMetrics: { totalActualCostUsd: 0, averageActualCostUsdPerTask: null, averageActualCostUsdPerSuccessfulTask: null },
+      approvalMetrics: { total: 0, pendingCount: 0, resolvedCount: 0, taskTriggerCount: 0, taskTriggerRate: 0 },
+      eventMetrics: { total: 0, tier1Count: 0, tier2Count: 0, tier3Count: 0, pendingTier1AckCount: 0, failedTier1AckCount: 0 },
+      runtimeMetrics: { status: "ok" as const, degradationMode: "none" as const, providerSuccessRate: 1, activeExecutions: 0, queuedTasks: 0, eventLoopLagMs: null, memoryRssMb: 0, tier1AckBacklog: 0, queueGovernance: { backlogSize: 0, dispatchableBacklogSize: 0, claimedBacklogSize: 0, oldestWaitSeconds: null, oldestClaimAgeSeconds: null, queueNames: [], starvationDetected: false }, workerHealth: { totalWorkers: 0, healthyWorkers: 0, busyWorkers: 0, drainingWorkers: 0, degradedWorkers: 0, quarantinedWorkers: 0, offlineWorkers: 0, remoteWorkers: 0, remoteConnectedWorkers: 0, remoteReconnectingWorkers: 0, remoteDegradedSessions: 0, remoteFailedSessions: 0, remoteViewerOnlyWorkers: 0, remoteConsistencyMismatchWorkers: 0, quarantinedReason: null } as any, findings: [] },
+    },
   };
   return { ...base, ...overrides };
 }

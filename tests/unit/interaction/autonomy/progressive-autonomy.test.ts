@@ -81,7 +81,7 @@ test("ProgressiveAutonomyService evaluateProfile promotes suggestion to supervis
   assert.equal(result.decision.level, "supervised");
   assert.equal(result.capabilityLevels["cap-1"], "supervised");
   assert.equal(result.changeEvents.length, 1);
-  assert.equal(result.changeEvents[0].eventType, "agent.autonomy.promoted");
+  assert.equal(result.changeEvents[0]!.eventType, "agent.autonomy.promoted");
 });
 
 test("ProgressiveAutonomyService evaluateProfile promotes supervised to semi_auto at 98% with 200+ executions", (t) => {
@@ -118,7 +118,7 @@ test("ProgressiveAutonomyService evaluateProfile freezes on P0 incident", (t) =>
   const result = service.evaluateProfile(profile);
   assert.equal(result.decision.level, "frozen");
   assert.equal(result.capabilityLevels["cap-1"], "frozen");
-  assert.equal(result.changeEvents[0].eventType, "agent.autonomy.frozen");
+  assert.equal(result.changeEvents[0]!.eventType, "agent.autonomy.frozen");
 });
 
 test("ProgressiveAutonomyService evaluateProfile P1 incident demotes one level when severityBasedDemotion enabled", (t) => {
@@ -155,7 +155,7 @@ test("ProgressiveAutonomyService onAutonomyChange fires callback on level change
   });
   service.evaluateProfile(profile);
   assert.equal(events.length, 1);
-  assert.equal(events[0].eventType, "agent.autonomy.promoted");
+  assert.equal(events[0]!.eventType, "agent.autonomy.promoted");
 });
 
 test("ProgressiveAutonomyService evaluateProfile uses lowest level across capabilities", (t) => {

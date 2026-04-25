@@ -7,15 +7,25 @@ import {
   type NlGatewayConfig,
 } from "../../../../src/interaction/nl-gateway/index.js";
 
-function createMockCostEstimator(divisionId?: string | null) {
+function createMockCostEstimator(divisionId?: string | null): CostEstimatorPort {
   return {
     estimate: (_divId?: string | null) => ({
       estimatedCostUsd: 0.15,
-      confidence: "mock" as const,
+      confidence: "default" as const,
       sampleCount: 1,
       divisionId: divisionId ?? null,
       basedOn: "mock",
     }),
+  };
+}
+
+interface CostEstimatorPort {
+  estimate(divisionId?: string | null): {
+    estimatedCostUsd: number;
+    confidence: "high" | "medium" | "low" | "default";
+    sampleCount: number;
+    divisionId: string | null;
+    basedOn: string;
   };
 }
 
@@ -186,7 +196,7 @@ test("NlEntryService.parseDetailed requires clarification for low confidence", a
 
 test("NlEntryService.buildTask includes cost estimate from estimator", async () => {
   const service = new NlEntryService({
-    costEstimator: createMockCostEstimator("devops"),
+    costEstimator: createMockCostEstimator("devops") as any,
   });
 
   const result = await service.buildTask({

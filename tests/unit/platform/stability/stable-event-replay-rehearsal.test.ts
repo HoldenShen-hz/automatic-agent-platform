@@ -38,7 +38,7 @@ test("runStableEventReplayRehearsal scenario has details object", async () => {
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableEventReplayRehearsal({ outputDir });
-  const scenario = report.scenarios[0];
+  const scenario = report.scenarios[0]!;
 
   assert.ok(scenario.details);
   assert.ok(scenario.details.firstAttempt);

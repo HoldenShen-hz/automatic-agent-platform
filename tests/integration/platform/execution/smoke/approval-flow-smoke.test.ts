@@ -278,7 +278,7 @@ test("smoke: approval request with different risk levels can be created", () => 
 
     // Verify all approvals exist and are in requested status
     for (let i = 0; i < riskLevels.length; i++) {
-      const approvals = store.listApprovalsByTask(taskIds[i]);
+      const approvals = store.listApprovalsByTask(taskIds[i]!);
       assert.ok(approvals.length > 0, `Approval for risk ${riskLevels[i]} should exist`);
 
       const pending = approvals.filter((a) => a.status === "requested");
@@ -425,7 +425,7 @@ test("smoke: multiple approvals for same task can coexist", () => {
 
     // Approve one
     approvalService.applyDecision({
-      approvalId: approvalIds[0],
+      approvalId: approvalIds[0]!,
       decisionType: "option_selected",
       selectedOptionId: "approve",
       respondedBy: "operator-1",

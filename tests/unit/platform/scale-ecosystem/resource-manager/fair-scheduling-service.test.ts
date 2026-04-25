@@ -6,13 +6,10 @@ import {
   type SchedulingClass,
   type ResourceClaim,
   type FairSchedulingRequest,
-  type FairQueueItem,
-  type PreemptionCandidate,
-  type QuotaPolicy,
-} from "../../../../../../src/scale-ecosystem/resource-manager/fair-scheduling-service.js";
-import { orderFairQueue } from "../../../../../../src/scale-ecosystem/resource-manager/fair-queue/index.js";
-import { choosePreemptionVictim } from "../../../../../../src/scale-ecosystem/resource-manager/preemption/index.js";
-import { isQuotaExceeded, evaluateQuota } from "../../../../../../src/scale-ecosystem/resource-manager/quota-enforcer/index.js";
+} from "../../../../../src/scale-ecosystem/resource-manager/fair-scheduling-service.js";
+import { orderFairQueue, type FairQueueItem } from "../../../../../src/scale-ecosystem/resource-manager/fair-queue/index.js";
+import { choosePreemptionVictim, type PreemptionCandidate } from "../../../../../src/scale-ecosystem/resource-manager/preemption/index.js";
+import { isQuotaExceeded, evaluateQuota, type QuotaPolicy } from "../../../../../src/scale-ecosystem/resource-manager/quota-enforcer/index.js";
 
 test("FairSchedulingService schedules request with no preemption needed", () => {
   const service = new FairSchedulingService();
@@ -155,9 +152,9 @@ test("orderFairQueue sorts items by priority and age score", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.strictEqual(ordered[0].itemId, "high-priority");
-  assert.strictEqual(ordered[1].itemId, "medium-priority");
-  assert.strictEqual(ordered[2].itemId, "low-priority");
+  assert.strictEqual(ordered[0]!.itemId, "high-priority");
+  assert.strictEqual(ordered[1]!.itemId, "medium-priority");
+  assert.strictEqual(ordered[2]!.itemId, "low-priority");
 });
 
 test("orderFairQueue prioritizes older items within same priority", () => {
@@ -168,8 +165,8 @@ test("orderFairQueue prioritizes older items within same priority", () => {
 
   const ordered = orderFairQueue(items);
 
-  assert.strictEqual(ordered[0].itemId, "older");
-  assert.strictEqual(ordered[1].itemId, "newer");
+  assert.strictEqual(ordered[0]!.itemId, "older");
+  assert.strictEqual(ordered[1]!.itemId, "newer");
 });
 
 test("orderFairQueue caps age score at 9 to prevent overflow", () => {

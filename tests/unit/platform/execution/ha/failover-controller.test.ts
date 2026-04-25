@@ -342,8 +342,11 @@ test("FailoverController - initiateFailover triggers onDecision callback", () =>
 
   controller.initiateFailover("node-1", candidates, "node_unhealthy");
 
-  assert.ok(capturedDecision !== null);
-  assert.equal(capturedDecision!.cause, "node_unhealthy");
+  if (capturedDecision === null) {
+    throw new Error("capturedDecision is null");
+  }
+  const decision = capturedDecision as any;
+  assert.equal(decision.cause, "node_unhealthy");
 
   controller.dispose();
 });
@@ -369,8 +372,11 @@ test("FailoverController - initiateFailover triggers onComplete callback for suc
 
   controller.initiateFailover("node-1", candidates, "voluntary");
 
-  assert.ok(completeDecision !== null);
-  assert.equal(completeDecision!.outcome, "leader_changed");
+  if (completeDecision === null) {
+    throw new Error("completeDecision is null");
+  }
+  const completed = completeDecision as any;
+  assert.equal(completed.outcome, "leader_changed");
 
   controller.dispose();
 });

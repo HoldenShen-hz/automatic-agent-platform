@@ -281,8 +281,8 @@ test("integration: typed event bus provides type-safe payload parsing on deliver
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.ok(receivedPayload !== null, "Payload should be received");
-    assert.equal(receivedPayload?.fromStatus, "queued", "From status should match");
-    assert.equal(receivedPayload?.toStatus, "in_progress", "To status should match");
+    assert.equal((receivedPayload as any)?.fromStatus, "queued", "From status should match");
+    assert.equal((receivedPayload as any)?.toStatus, "in_progress", "To status should match");
 
     durableBus.dispose();
     db.close();

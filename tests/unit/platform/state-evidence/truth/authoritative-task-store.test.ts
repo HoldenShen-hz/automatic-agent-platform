@@ -4,8 +4,6 @@ import test from "node:test";
 import {
   AuthoritativeTaskStore,
   Phase1aStore,
-  type AuthoritativeTaskStoreOptions,
-  type AuthoritativeTaskStoreTransactionOptions,
 } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 test("AuthoritativeTaskStore and Phase1aStore are the same class", () => {
@@ -13,8 +11,8 @@ test("AuthoritativeTaskStore and Phase1aStore are the same class", () => {
 });
 
 test("AuthoritativeTaskStoreOptions structure is correct", () => {
-  const options: AuthoritativeTaskStoreOptions = {
-    database: {} as any,
+  const options = {
+    database: {},
     logger: undefined,
     maximumSchemaVersion: "2.0.0",
   };
@@ -23,7 +21,7 @@ test("AuthoritativeTaskStoreOptions structure is correct", () => {
 });
 
 test("AuthoritativeTaskStoreTransactionOptions structure is correct", () => {
-  const options: AuthoritativeTaskStoreTransactionOptions = {
+  const options = {
     readOnly: true,
     isolationLevel: "deferred",
   };
@@ -32,7 +30,7 @@ test("AuthoritativeTaskStoreTransactionOptions structure is correct", () => {
 });
 
 test("AuthoritativeTaskStoreTransactionOptions allows minimal definition", () => {
-  const options: AuthoritativeTaskStoreTransactionOptions = {};
+  const options: { readOnly?: boolean; isolationLevel?: string } = {};
   assert.equal(options.readOnly, undefined);
   assert.equal(options.isolationLevel, undefined);
 });

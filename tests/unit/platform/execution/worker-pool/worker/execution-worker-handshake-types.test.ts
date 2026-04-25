@@ -9,7 +9,7 @@ import type {
   ExecutionWorkerHandshakeServiceOptions,
 } from "../../../../../../src/platform/execution/worker-pool/worker/execution-worker-handshake-types.js";
 import type { WorkerSnapshotRecord } from "../../../../../../src/platform/contracts/types/domain.js";
-import type { ExecutionResourceCeilingGuard } from "../../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
+import { ExecutionResourceCeilingGuard } from "../../../../../../src/platform/execution/dispatcher/execution-resource-ceiling-guard.js";
 
 // ---------------------------------------------------------------------------
 // WorkerClaimExecutionInput
@@ -134,7 +134,7 @@ test("WorkerExecutionHeartbeatInput with all optional fields", () => {
   };
   assert.equal(input.saturation, 0.85);
   assert.equal(input.toolBacklogCount, 10);
-  assert.equal(input.remoteLogs[0]?.level, "warn");
+  assert.equal(input.remoteLogs?.[0]?.level, "warn");
 });
 
 // ---------------------------------------------------------------------------
@@ -410,7 +410,7 @@ test("WorkerHandshakeDecision all reasonCode values are unique", () => {
     "resource_limit_exceeded",
     null,
   ];
-  const uniqueCount = new Set(reasonCodes.filter((r): r is string => r !== null)).size;
+  const uniqueCount = new Set(reasonCodes.filter((r) => r !== null) as string[]).size;
   assert.equal(uniqueCount, 17); // 17 non-null reason codes
 });
 
@@ -433,8 +433,6 @@ test("ExecutionWorkerHandshakeServiceOptions with resourceCeilingGuard", () => {
 });
 
 test("ExecutionWorkerHandshakeServiceOptions resourceCeilingGuard is optional", () => {
-  const options: ExecutionWorkerHandshakeServiceOptions = {
-    resourceCeilingGuard: undefined,
-  };
+  const options: ExecutionWorkerHandshakeServiceOptions = {};
   assert.equal(options.resourceCeilingGuard, undefined);
 });

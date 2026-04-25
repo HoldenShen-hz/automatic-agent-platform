@@ -11,17 +11,16 @@ import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../../../
 function createMockDivision(overrides: Partial<LoadedDivisionDefinition> & { id: string }): LoadedDivisionDefinition {
   return {
     id: overrides.id,
+    version: "1.0",
     name: overrides.name ?? overrides.id,
     priority: overrides.priority ?? 0,
     triggers: overrides.triggers ?? [],
     defaultWorkflowId: overrides.defaultWorkflowId ?? "single_agent_minimal",
     orchestrationWorkflowId: overrides.orchestrationWorkflowId ?? "single_division_multi_step_orchestration",
-    iconName: "test-icon",
-    description: "Test division",
-    enabled: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    metadata: {},
+    description: overrides.description ?? "Test division",
+    roles: overrides.roles ?? [],
+    workflows: overrides.workflows ?? [],
+    rootPath: overrides.rootPath ?? "/tmp/test",
   };
 }
 
@@ -30,7 +29,7 @@ function createMockRegistry(divisions: LoadedDivisionDefinition[]): DivisionRegi
   for (const div of divisions) {
     divisionMap.set(div.id, div);
   }
-  return { divisions: divisionMap };
+  return { divisions: divisionMap, workflows: new Map() };
 }
 
 function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRouteInput {

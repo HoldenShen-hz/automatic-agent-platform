@@ -15,8 +15,8 @@ import {
   resolveApprovalRoute,
   type ApprovalRouteRequest,
   type AmountThresholdRule,
-  type OrgNode,
 } from "../../../src/org-governance/approval-routing/route-engine/index.js";
+import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
 
 import {
   resolveDelegatedApprover,

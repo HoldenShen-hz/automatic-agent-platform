@@ -25,7 +25,6 @@ test("RedisLockAdapter accept config with all options", () => {
     port: 6380,
     password: "secret",
     db: 1,
-    prefix: "lock:",
     tls: true,
     connectTimeout: 5000,
     maxRetriesPerRequest: 3,

@@ -11,8 +11,8 @@ import {
   type PlanStep,
   type Plan,
   parsePlan,
-} from "../../../../../../../src/platform/orchestration/oapeflir/types/plan.js";
-import { RetryPolicySchema } from "../../../../../../../src/platform/orchestration/oapeflir/types/shared.js";
+} from "../../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import { RetryPolicySchema } from "../../../../../../src/platform/orchestration/oapeflir/types/shared.js";
 
 test("PlanStrategySchema accepts all valid values", () => {
   const strategies: PlanStrategy[] = [
@@ -233,7 +233,7 @@ test("Plan with multiple steps", () => {
     createdAt: Date.now(),
   });
   assert.equal(plan.steps.length, 4);
-  assert.equal(plan.steps[3].dependencies.length, 2);
+  assert.equal(plan.steps[3]!.dependencies.length, 2);
 });
 
 test("PlanVersion must be positive integer", () => {

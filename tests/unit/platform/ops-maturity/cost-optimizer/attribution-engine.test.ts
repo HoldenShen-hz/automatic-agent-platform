@@ -1,7 +1,7 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { aggregateCostAttribution, type CostAttributionEntry } from "../../../../../../../src/platform/ops-maturity/cost-optimizer/attribution-engine/index.js";
-import { putExplanationCacheEntry, type ExplanationCacheEntry } from "../../../../../../../src/platform/ops-maturity/explainability/explanation-cache/index.js";
+import { aggregateCostAttribution, type CostAttributionEntry } from "../../../../../src/ops-maturity/cost-optimizer/attribution-engine/index.js";
+import { putExplanationCacheEntry, type ExplanationCacheEntry } from "../../../../../src/ops-maturity/explainability/explanation-cache/index.js";
 
 test("aggregateCostAttribution sums amounts for same subjectId", () => {
   const entries: CostAttributionEntry[] = [

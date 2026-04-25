@@ -66,7 +66,6 @@ test("OfflineExecutionRecord type shape is correct", () => {
     createdAt: "2026-04-25T10:00:00Z",
     syncRequired: true,
     status: "running",
-    completedAt: undefined,
   };
 
   assert.equal(record.edgeNodeId, "node_x");

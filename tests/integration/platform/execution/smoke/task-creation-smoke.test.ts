@@ -72,7 +72,7 @@ test("smoke: task with different priority levels can be created", () => {
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
 
-    const priorities = ["low", "normal", "high", "critical"] as const;
+    const priorities = ["low", "normal", "high", "urgent"] as const;
     const taskIds: string[] = [];
     const now = nowIso();
 
@@ -125,7 +125,7 @@ test("smoke: task with various sources can be created", () => {
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
 
-    const sources = ["user", "api", "scheduler", "webhook"] as const;
+    const sources = ["user", "perception", "system"] as const;
     const taskIds: string[] = [];
     const now = nowIso();
 
@@ -210,7 +210,8 @@ test("smoke: task can be retrieved by ID", () => {
 
     // Use getTask to retrieve each task directly
     for (let i = 0; i < divisions.length; i++) {
-      const found = store.getTask(taskIds[i]);
+      const taskId = taskIds[i]!;
+      const found = store.getTask(taskId);
       assert.ok(found, `Task in division ${divisions[i]} should exist via getTask`);
       assert.strictEqual(found!.divisionId, divisions[i]);
     }

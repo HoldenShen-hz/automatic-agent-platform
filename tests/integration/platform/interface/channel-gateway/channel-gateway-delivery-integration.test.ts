@@ -132,7 +132,7 @@ test("ChannelGatewayDeliveryService tracks message through full lifecycle", () =
     const success = h.deliveryService.recordDeliverySuccess(message.messageId, 202, "provider-msg-123");
     assert.ok(success != null);
     assert.equal(success.status, "success");
-    assert.equal(success.providerMessageId, "provider-msg-123");
+    assert.equal((success as any).providerMessageId, "provider-msg-123");
 
     // Get receipt
     const receipt = h.deliveryService.getDeliveryReceipt(message.messageId);
@@ -406,7 +406,7 @@ test("ChannelGatewayService delivers telegram message with tracking", async () =
     const trackedMessages = h.deliveryService.getPendingDeliveries();
     // Message should have been delivered, not pending
     const receipt2 = h.deliveryService.getDeliveryReceipt(trackedMessages[0]?.messageId ?? "");
-    assert.ok(receipt2 == null || receipt2.finalStatus !== "pending_retry");
+    assert.ok(receipt2 == null || (receipt2.finalStatus as string) !== "pending_retry");
   } finally {
     h.cleanup();
   }

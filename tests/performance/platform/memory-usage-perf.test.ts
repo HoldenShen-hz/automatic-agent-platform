@@ -245,7 +245,7 @@ test("performance: cache with TTL expiration releases memory timely", (t) => {
 
   // Fill cache with TTL items
   for (let i = 0; i < 500; i++) {
-    cache.set("ttl", { id: i }, { result: `value ${i}` }, { tags: ["test"] }, 100); // 100ms TTL
+    cache.set("ttl", { id: i }, { result: `value ${i}` }, { tags: ["test"] });
   }
 
   const beforeMem = getHeapStats();

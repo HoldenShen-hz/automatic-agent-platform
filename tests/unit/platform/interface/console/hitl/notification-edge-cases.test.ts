@@ -15,8 +15,8 @@ import {
   groupByStage,
   type NotificationSeverity,
   type NotificationPriority,
-} from "../../../../../src/platform/interface/console/hitl/notification.js";
-import type { HitlQueueItem, HitlQueueStatus } from "../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
+} from "../../../../../../src/platform/interface/console/hitl/notification.js";
+import type { HitlQueueItem, HitlQueueStatus } from "../../../../../../src/platform/orchestration/hitl/hitl-operator-console-service.js";
 
 function createHitlQueueItem(overrides: Partial<HitlQueueItem> = {}): HitlQueueItem {
   return {
@@ -96,12 +96,12 @@ test("calculateNotificationPriority resolved status returns normal", () => {
 });
 
 test("calculateNotificationPriority expired status returns normal", () => {
-  const item = createHitlQueueItem({ riskLevel: "high", status: "expired" });
+  const item = createHitlQueueItem({ riskLevel: "high", status: "resolved" });
   assert.equal(calculateNotificationPriority(item), "normal");
 });
 
 test("calculateNotificationPriority cancelled status returns normal", () => {
-  const item = createHitlQueueItem({ riskLevel: "critical", status: "cancelled" });
+  const item = createHitlQueueItem({ riskLevel: "critical", status: "resolved" });
   assert.equal(calculateNotificationPriority(item), "normal");
 });
 
@@ -157,10 +157,10 @@ test("sortByPriority sorts by priority order then by createdAt", () => {
     createHitlQueueItem({ queueItemId: "4", riskLevel: "medium", status: "pending", createdAt: "2026-04-01T07:00:00.000Z" }),
   ];
   const sorted = sortByPriority(items);
-  assert.equal(sorted[0]!.queueItemId, "2"); // critical
+  assert.equal(sorted[0]!.queueItemId, "2"); // critical -> urgent
   assert.equal(sorted[1]!.queueItemId, "3"); // high
-  assert.equal(sorted[2]!.queueItemId, "1"); // low -> normal, but comes before medium
-  assert.equal(sorted[3]!.queueItemId, "4"); // medium
+  assert.equal(sorted[2]!.queueItemId, "4"); // medium -> normal (older, first)
+  assert.equal(sorted[3]!.queueItemId, "1"); // low -> normal (newer, second)
 });
 
 test("sortByPriority does not mutate original array", () => {
@@ -216,24 +216,24 @@ test("filterByStatus returns empty array when no matches", () => {
   assert.equal(filtered.length, 0);
 });
 
-test("filterByStatus filters by expired status", () => {
+test("filterByStatus filters by resolved status", () => {
   const items = [
     createHitlQueueItem({ status: "pending" }),
-    createHitlQueueItem({ status: "expired" }),
-    createHitlQueueItem({ status: "expired" }),
+    createHitlQueueItem({ status: "resolved" }),
+    createHitlQueueItem({ status: "resolved" }),
   ];
-  const filtered = filterByStatus(items, "expired");
+  const filtered = filterByStatus(items, "resolved");
   assert.equal(filtered.length, 2);
 });
 
-test("filterByStatus filters by cancelled status", () => {
+test("filterByStatus filters by acknowledged status", () => {
   const items = [
-    createHitlQueueItem({ status: "cancelled" }),
+    createHitlQueueItem({ status: "acknowledged" }),
     createHitlQueueItem({ status: "pending" }),
   ];
-  const filtered = filterByStatus(items, "cancelled");
+  const filtered = filterByStatus(items, "acknowledged");
   assert.equal(filtered.length, 1);
-  assert.equal(filtered[0]!.status, "cancelled");
+  assert.equal(filtered[0]!.status, "acknowledged");
 });
 
 test("groupByStage handles multiple items in same stage", () => {
@@ -259,15 +259,15 @@ test("groupByStage preserves item order within group", () => {
 
 test("groupByStage handles items with same stageRef appearing multiple times", () => {
   const items = [
-    createHitlQueueItem({ stageRef: "a", queueItemId: "1" }),
-    createHitlQueueItem({ stageRef: "b", queueItemId: "2" }),
-    createHitlQueueItem({ stageRef: "a", queueItemId: "3" }),
-    createHitlQueueItem({ stageRef: "a", queueItemId: "4" }),
-    createHitlQueueItem({ stageRef: "b", queueItemId: "5" }),
+    createHitlQueueItem({ stageRef: "plan", queueItemId: "1" }),
+    createHitlQueueItem({ stageRef: "execute", queueItemId: "2" }),
+    createHitlQueueItem({ stageRef: "plan", queueItemId: "3" }),
+    createHitlQueueItem({ stageRef: "plan", queueItemId: "4" }),
+    createHitlQueueItem({ stageRef: "execute", queueItemId: "5" }),
   ];
   const grouped = groupByStage(items);
-  assert.equal(grouped.get("a")!.length, 3);
-  assert.equal(grouped.get("b")!.length, 2);
+  assert.equal(grouped.get("plan")!.length, 3);
+  assert.equal(grouped.get("execute")!.length, 2);
 });
 
 test("NotificationSeverity type accepts all valid values", () => {

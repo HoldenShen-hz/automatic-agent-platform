@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-expect-error - module resolution issue at compile time
 import {
   assertNonEmpty,
   assertEnum,
@@ -10,7 +9,7 @@ import {
   computeNextRotationDueAt,
   computeLeaseExpiry,
   normalizeLeaseStatus,
-} from "../../../../../src/platform/control-plane/iam/secret-management-support.js";
+} from "../../../../src/platform/control-plane/iam/secret-management-support.js";
 
 // ---------------------------------------------------------------------------
 // assertNonEmpty

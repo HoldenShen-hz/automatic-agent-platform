@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-// @ts-expect-error - module resolution issue at compile time
 import {
   EnvSecretProvider,
   maskSecretValue,
   validateSecretRef,
   deriveSecretScope,
   deriveSecretEnvName,
-} from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+} from "../../../../src/platform/control-plane/iam/env-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

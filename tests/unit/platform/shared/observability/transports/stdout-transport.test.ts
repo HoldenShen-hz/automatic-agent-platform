@@ -9,7 +9,9 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
   return {
     level: "info",
     message: "test message",
+    service: "test-service",
     createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -54,7 +56,9 @@ test("StdoutTransport.write handles entry with data", () => {
   transport.write({
     level: "info",
     message: "test with data",
+    service: "test-service",
     createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
     data: { key: "value", count: 42 },
     taskId: "task_123",
     traceId: "trace_abc",
@@ -67,7 +71,9 @@ test("StdoutTransport.write handles entry with all optional fields", () => {
   transport.write({
     level: "error",
     message: "full entry",
+    service: "test-service",
     createdAt: "2026-04-22T00:00:00.000Z",
+    timestamp: "2026-04-22T00:00:00.000Z",
     taskId: "task-1",
     agentId: "agent-1",
     sessionId: "session-1",

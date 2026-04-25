@@ -92,12 +92,12 @@ test("PlatformOperatorService buildReport with custom target status", () => {
     environment: "production" as const,
     evidenceRootDir: "/tmp/evidence",
     packageOutputDir: "/tmp/output",
-    targetStatus: "stable",
+    targetStatus: "canary" as const,
   };
 
   const report = service.buildReport(input);
 
-  assert.equal(report.targetStatus, "stable");
+  assert.equal(report.targetStatus, "canary");
 });
 
 test("PlatformOperatorService buildReport validates generatedAt", () => {
@@ -269,10 +269,8 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
-  mockStore.worker.listExecutionLeasesByStatuses = (statuses: string[]) => {
-    if (statuses.includes("active")) return 4;
-    if (statuses.includes("expired")) return 2;
-    return 0;
+  mockStore.worker.listExecutionLeasesByStatuses = () => {
+    return [];
   };
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];

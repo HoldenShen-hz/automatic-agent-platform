@@ -36,7 +36,7 @@ test("evaluateSqliteMigrationCompatibility checks all required rule IDs", () => 
 
   for (const ruleId of expectedRuleIds) {
     assert.ok(
-      report.checkedRuleIds.includes(ruleId),
+      (report.checkedRuleIds as string[]).includes(ruleId),
       `report should check rule: ${ruleId}`,
     );
   }

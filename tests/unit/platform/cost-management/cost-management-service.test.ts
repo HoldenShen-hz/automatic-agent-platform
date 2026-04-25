@@ -95,31 +95,59 @@ function createTestDb(): AuthoritativeSqlDatabase {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createMockTaskStore(): AuthoritativeTaskStore {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockEvent: any = {
+    conn: {},
+    insertEvent: () => ({ success: true }),
+    insertEventDeadLetter: () => ({}),
+    listEventDeadLetters: () => [],
+    listEventsByType: () => [],
+    listEventsForTask: () => [],
+    getEvent: () => null,
+    insertEventConsumerAck: () => ({}),
+    markEventAck: () => ({}),
+    markEventDeadLettered: () => ({}),
+    getEventConsumerAck: () => null,
+    getRequiredConsumerIds: () => [],
+    ackAllConsumersForEvent: () => ({}),
+    ensureEventConsumerAckPending: () => ({}),
+    listPendingEventsForConsumer: () => [],
+    listFailedEventsForConsumer: () => [],
+    resetConsumerReplayState: () => 0,
+    listDispatchDecisionTracesByTask: () => [],
+    listDispatchDecisionTracesByExecution: () => [],
+    listTier1EventRegistryCoverage: () => [],
+    getTier1AuditIntegrityReport: () => ({}),
+    bootstrapTier1AuditIntegrityRecords: () => ({}),
+    listPendingTier1Acks: () => [],
+    countPendingTier1Acks: () => 0,
+    countFailedTier1Acks: () => 0,
+    createTier1StatusEvent: () => ({}),
+    listAllEvents: () => [],
+  };
+
   return {
     task: {
-      insertTask: async () => ({ success: true } as any),
-      getTask: async () => null,
-      updateTask: async () => ({ success: true, updated: 1 } as any),
-      listTasks: async () => [] as any,
+      insertTask: async () => ({ success: true }),
+      getTask: () => undefined,
+      listTasks: () => [],
+      updateTaskStatus: async () => ({ success: true, updated: 1 }),
     },
     artifact: {
-      insertArtifact: () => ({ success: true } as any),
-      getArtifact: async () => null,
-      listArtifacts: async () => [] as any,
+      insertArtifact: () => ({ success: true }),
+      getArtifact: () => null,
+      listArtifactsByTask: async () => [],
     },
     checkpoint: {
-      insertCheckpoint: async () => ({ success: true } as any),
+      insertCheckpoint: async () => ({ success: true }),
       getCheckpoint: async () => null,
     },
-    event: {
-      insertEvent: () => ({ success: true } as any),
-      getEventsByTask: async () => [] as any,
-    },
+    event: mockEvent,
     auditLog: {
-      insertAuditLog: async () => ({ success: true } as any),
-      getAuditLogs: async () => [] as any,
+      insertAuditLog: async () => ({ success: true }),
+      getAuditLogs: async () => [],
     },
-  };
+  } as any;
 }
 
 // ---------------------------------------------------------------------------

@@ -5,19 +5,21 @@ import { detectLlmTruncation } from "../../../../../../src/platform/orchestratio
 import { detectSchemaValidationLoop } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/schema-loop-detector.js";
 import { detectToolPermissionDenial } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/permission-detector.js";
 import { detectModelHallucination } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/hallucination-detector.js";
-import type { LearningSignal } from "../../../../../../src/platform/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { FailurePattern } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/failure-pattern-model.js";
+import type { LearningSignal } from "../../../../../../src/scale-ecosystem/feedback-loop/collector/index.js";
+import type { FailurePattern } from "../../../../../../src/platform/orchestration/learn/pattern-detectors/index.js";
 
 function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {
     learningSignalId: "sig-1",
     taskId: "task-1",
+    sourceFeedbackId: "fb-1",
     learningType: "failure_pattern",
     valueSummary: "Test failure signal",
     confidence: 0.8,
     evidence: {},
     evidenceRefs: [],
     sourceSignalIds: [],
+    relatedSignalIds: [],
     generatedAt: Date.now(),
     ...overrides,
   };
@@ -89,7 +91,7 @@ test("detectLlmTruncation does not detect when tokens < 95% of maxTokens", () =>
 test("detectLlmTruncation does not detect when tokensUsed is 0", () => {
   const signal = makeSignal({
     evidence: {
-      finishReason: "length",
+      finishReason: "stop",
       maxTokens: 1000,
       tokensUsed: 0,
     },

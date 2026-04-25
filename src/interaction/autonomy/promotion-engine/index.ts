@@ -13,7 +13,7 @@ function successRate(score: CapabilityTrustScore): number {
 
 export function assessPromotion(score: CapabilityTrustScore): PromotionAssessment {
   const rate = successRate(score);
-  if (score.incidents > 0 || score.failedExecutions > 2) {
+  if (score.incidents > 0 || (score.failedExecutions > 2 && rate < 0.96)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

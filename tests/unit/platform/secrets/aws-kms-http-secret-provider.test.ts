@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error - module resolution issue at compile time
-import { AwsKmsHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
+import { AwsKmsHttpSecretProvider } from "../../../../../dist/src/platform/control-plane/iam/aws-kms-http-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

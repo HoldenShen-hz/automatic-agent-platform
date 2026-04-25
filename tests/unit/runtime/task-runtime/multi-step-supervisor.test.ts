@@ -110,7 +110,7 @@ test("normalizeStepErrorCode handles non-Error inputs", () => {
 });
 
 test("buildStepFailureSummary for retry action", () => {
-  const decision = { action: "retry" as const, errorCode: "E100", retryDelayMs: 1000, failureClass: "transient" };
+  const decision = { action: "retry" as const, errorCode: "E100", retryDelayMs: 1000, failureClass: "transient" as const, retryable: true, backoff: "exponential" as const };
   const summary = buildStepFailureSummary("step_1", decision);
   assert.ok(summary.includes("step_1"));
   assert.ok(summary.includes("E100"));
@@ -118,16 +118,16 @@ test("buildStepFailureSummary for retry action", () => {
 });
 
 test("buildStepFailureSummary for escalate action", () => {
-  const decision = { action: "escalate" as const, errorCode: "E200", retryDelayMs: 0, failureClass: "permanent" };
-  const summary = buildStepFailureSummary("step_2", decision);
+  const decision = { action: "escalate" as const, errorCode: "E200", retryDelayMs: 0, failureClass: "permanent" as const, retryable: false, backoff: "none" as const };
+  const summary = buildStepFailureSummary("step_2", decision as any);
   assert.ok(summary.includes("step_2"));
   assert.ok(summary.includes("E200"));
   assert.ok(summary.includes("escalation"));
 });
 
-test("buildStepFailureSummary for fallback action", () => {
-  const decision = { action: "fallback" as const, errorCode: "E300", retryDelayMs: 0, failureClass: "unknown" };
-  const summary = buildStepFailureSummary("step_3", decision);
+test("buildStepFailureSummary for fail action", () => {
+  const decision = { action: "fail" as const, errorCode: "E300", retryDelayMs: 0, failureClass: "unknown" as const, retryable: false, backoff: "none" as const };
+  const summary = buildStepFailureSummary("step_3", decision as any);
   assert.ok(summary.includes("step_3"));
   assert.ok(summary.includes("E300"));
 });

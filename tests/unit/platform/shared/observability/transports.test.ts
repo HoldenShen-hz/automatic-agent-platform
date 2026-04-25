@@ -25,6 +25,8 @@ function createMockLogEntry(overrides: Partial<StructuredLogEntry> = {}): Struct
     level: "info",
     message: "test log message",
     createdAt: new Date().toISOString(),
+    service: "test-service",
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -996,6 +998,8 @@ test("StdoutTransport.write outputs valid JSON with all fields", () => {
       taskId: "task-abc",
       traceId: "trace-xyz",
       spanId: "span-123",
+      service: "test-service",
+      timestamp: "2026-04-23T12:00:00.000Z",
     };
 
     transport.write(entry);
@@ -1028,6 +1032,8 @@ test("StdoutTransport.write handles debug level", () => {
       level: "debug",
       message: "debug message",
       createdAt: "2026-04-23T00:00:00.000Z",
+      service: "test-service",
+      timestamp: "2026-04-23T00:00:00.000Z",
     });
 
     const parsed = JSON.parse(writtenData.trim());
@@ -1052,6 +1058,8 @@ test("StdoutTransport.write adds newline after JSON", () => {
       level: "info",
       message: "test",
       createdAt: "2026-04-23T00:00:00.000Z",
+      service: "test-service",
+      timestamp: "2026-04-23T00:00:00.000Z",
     });
 
     // Should end with newline

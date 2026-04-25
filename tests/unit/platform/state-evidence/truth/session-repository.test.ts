@@ -29,11 +29,27 @@ function createMockConnection(options: {
   let queryOneIndex = 0;
   let executeIndex = 0;
 
-  const mockPrepare = () => ({
-    run: (..._params: unknown[]) => ({ changes: options.executeResults?.[executeIndex++] ?? 1 }),
-    get: (..._params: unknown[]) => options.queryOneRows?.[queryOneIndex++],
-    all: (..._params: unknown[]) => options.queryRows?.[queryIndex++] ?? [],
-  });
+  const mockPrepare = (sql: string) => {
+    const callRecord: SqlCall = { method: "query", sql, params: [] };
+    calls.push(callRecord);
+    return {
+      run: (...params: unknown[]) => {
+        callRecord.method = "execute";
+        callRecord.params = params;
+        return { changes: options.executeResults?.[executeIndex++] ?? 1 };
+      },
+      get: (...params: unknown[]) => {
+        callRecord.method = "queryOne";
+        callRecord.params = params;
+        return options.queryOneRows?.[queryOneIndex++];
+      },
+      all: (...params: unknown[]) => {
+        callRecord.method = "query";
+        callRecord.params = params;
+        return options.queryRows?.[queryIndex++] ?? [];
+      },
+    };
+  };
 
   const connection: SqliteConnection = {
     exec: () => {},
@@ -152,30 +168,30 @@ test("SessionRepository listSessionsByTask returns sessions for task", () => {
 });
 
 test("SessionRepository updateSessionStatus updates session status", () => {
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
-  repo.updateSessionStatus("sess-1", "completed", now);
+  repo.updateSessionStatus("sess-1", "open", now);
 
   assert.equal(calls.length, 1);
   assert.match(calls[0]!.sql, /UPDATE sessions SET status = \?/);
 });
 
 test("SessionRepository updateSessionStatusCas performs compare-and-swap", () => {
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
   const result = repo.updateSessionStatusCas("sess-1", "open", "completed", now);
 
   assert.equal(result, 1);
-  assert.match(calls[0]!.sql, /UPDATE sessions SET status = \? WHERE id = \? AND status = \?/);
+  assert.match(calls[0]!.sql, /UPDATE sessions SET status = \?, updated_at = \? WHERE id = \? AND status = \?/);
 });
 
 // === Message Tests ===
 
 test("SessionRepository insertMessage inserts message record", () => {
   const message = messageRecord();
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
   repo.insertMessage(message);
@@ -186,7 +202,7 @@ test("SessionRepository insertMessage inserts message record", () => {
 
 test("SessionRepository listMessagesBySession returns messages without limit", () => {
   const message = messageRecord();
-  const { connection } = createMockConnection({ queryRows: [[message]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[message]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listMessagesBySession("sess-1");
@@ -199,7 +215,7 @@ test("SessionRepository listMessagesBySession returns messages without limit", (
 
 test("SessionRepository listMessagesBySession returns messages with limit", () => {
   const message = messageRecord();
-  const { connection } = createMockConnection({ queryRows: [[message]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[message]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listMessagesBySession("sess-1", 10);
@@ -223,7 +239,7 @@ test("SessionRepository insertSessionSummary inserts summary record", () => {
     tokenCount: 500,
     createdAt: now,
   };
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
   repo.insertSessionSummary(summary);
@@ -245,7 +261,7 @@ test("SessionRepository getLatestSessionSummary returns summary when found", () 
     tokenCount: 500,
     createdAt: now,
   };
-  const { connection } = createMockConnection({ queryOneRows: [summary] });
+  const { connection, calls } = createMockConnection({ queryOneRows: [summary] });
   const repo = new SessionRepository(connection);
 
   const result = repo.getLatestSessionSummary("sess-1");
@@ -275,7 +291,7 @@ test("SessionRepository insertSessionEvent inserts event record", () => {
     payloadJson: '{"id":"msg-1"}',
     createdAt: now,
   };
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
   repo.insertSessionEvent(event);
@@ -292,7 +308,7 @@ test("SessionRepository listSessionEvents returns events for session", () => {
     payloadJson: '{"id":"msg-1"}',
     createdAt: now,
   };
-  const { connection } = createMockConnection({ queryRows: [[event]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[event]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listSessionEvents("sess-1");
@@ -300,6 +316,7 @@ test("SessionRepository listSessionEvents returns events for session", () => {
   assert.deepEqual(result, [event]);
   assert.match(calls[0]!.sql, /FROM session_events WHERE session_id = \?/);
   assert.match(calls[0]!.sql, /ORDER BY created_at ASC/);
+  assert.match(calls[0]!.sql, /LIMIT \?/);
 });
 
 test("SessionRepository listSessionEvents respects limit parameter", () => {
@@ -310,7 +327,7 @@ test("SessionRepository listSessionEvents respects limit parameter", () => {
     payloadJson: '{"id":"msg-1"}',
     createdAt: now,
   };
-  const { connection } = createMockConnection({ queryRows: [[event]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[event]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listSessionEvents("sess-1", 50);
@@ -323,7 +340,7 @@ test("SessionRepository listSessionEvents respects limit parameter", () => {
 
 test("SessionRepository insertCompactionRecord inserts compaction record", () => {
   const compaction = compactionRecord();
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
   repo.insertCompactionRecord(compaction);
@@ -334,7 +351,7 @@ test("SessionRepository insertCompactionRecord inserts compaction record", () =>
 
 test("SessionRepository listCompactionRecordsBySession returns records without tenant", () => {
   const compaction = compactionRecord();
-  const { connection } = createMockConnection({ queryRows: [[compaction]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[compaction]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listCompactionRecordsBySession("sess-1");
@@ -346,7 +363,7 @@ test("SessionRepository listCompactionRecordsBySession returns records without t
 
 test("SessionRepository listCompactionRecordsBySession returns records with tenant scope", () => {
   const compaction = compactionRecord();
-  const { connection } = createMockConnection({ queryRows: [[compaction]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[compaction]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listCompactionRecordsBySession("sess-1", "tenant-a");
@@ -360,7 +377,7 @@ test("SessionRepository listCompactionRecordsBySession returns records with tena
 
 test("SessionRepository upsertGatewayTarget inserts new target", () => {
   const target = gatewayTargetRecord();
-  const { connection } = createMockConnection({ executeResults: [1] });
+  const { connection, calls } = createMockConnection({ executeResults: [1] });
   const repo = new SessionRepository(connection);
 
   repo.upsertGatewayTarget(target);
@@ -372,7 +389,7 @@ test("SessionRepository upsertGatewayTarget inserts new target", () => {
 
 test("SessionRepository getGatewayTarget returns target when found", () => {
   const target = gatewayTargetRecord();
-  const { connection } = createMockConnection({ queryOneRows: [target] });
+  const { connection, calls } = createMockConnection({ queryOneRows: [target] });
   const repo = new SessionRepository(connection);
 
   const result = repo.getGatewayTarget("target-1");
@@ -392,7 +409,7 @@ test("SessionRepository getGatewayTarget returns undefined when not found", () =
 
 test("SessionRepository listGatewayTargetsByChannel returns targets for channel", () => {
   const target = gatewayTargetRecord();
-  const { connection } = createMockConnection({ queryRows: [[target]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[target]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listGatewayTargetsByChannel("slack");
@@ -416,7 +433,7 @@ test("SessionRepository listGatewaySessionTargetCandidates returns candidates", 
     latestMessageAt: now,
     lastSeenAt: now,
   };
-  const { connection } = createMockConnection({ queryRows: [[candidate]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[candidate]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listGatewaySessionTargetCandidates(10, "slack");
@@ -439,7 +456,7 @@ test("SessionRepository listGatewaySessionTargetCandidates filters by channel", 
     latestMessageAt: null,
     lastSeenAt: now,
   };
-  const { connection } = createMockConnection({ queryRows: [[candidate]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[candidate]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listGatewaySessionTargetCandidates(10, "cli");
@@ -460,7 +477,7 @@ test("SessionRepository listGatewaySessionTargetCandidates applies tenant scope"
     latestMessageAt: null,
     lastSeenAt: now,
   };
-  const { connection } = createMockConnection({ queryRows: [[candidate]] });
+  const { connection, calls } = createMockConnection({ queryRows: [[candidate]] });
   const repo = new SessionRepository(connection);
 
   const result = repo.listGatewaySessionTargetCandidates(10, "slack", "tenant-a");

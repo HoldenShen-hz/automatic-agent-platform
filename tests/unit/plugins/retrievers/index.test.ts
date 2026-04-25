@@ -120,7 +120,7 @@ test("RetrieversIndex retriever plugins have capabilityIds", () => {
   ];
 
   assert.ok(plugins.every(p => Array.isArray(p.capabilityIds)));
-  assert.ok(plugins.every(p => p.capabilityIds.length > 0));
+  assert.ok(plugins.every(p => (p.capabilityIds?.length ?? 0) > 0));
 });
 
 test("RetrieversIndex retriever plugins have knowledge.retrieve capability", () => {

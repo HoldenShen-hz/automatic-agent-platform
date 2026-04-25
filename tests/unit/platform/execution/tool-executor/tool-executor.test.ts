@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ToolExecutor } from "../../../../../src/platform/execution/tool-executor/tool-executor.js";
+import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { READ_TOOL_METADATA } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
 
 test("ToolExecutor delegates command execution to the command executor", async () => {
   let observedCommand = "";
@@ -25,11 +27,15 @@ test("ToolExecutor delegates command execution to the command executor", async (
   } as never);
 
   const result = await executor.executeCommand({
+    callId: "call-1",
+    taskId: "task-1",
+    agentId: "agent-1",
+    traceId: "trace-1",
     toolName: "shell.exec",
     command: "echo",
     args: ["ok"],
     cwd: process.cwd(),
-    sandboxPolicy: "workspace_write",
+    sandboxPolicy: createWorkspaceWritePolicy(process.cwd()),
   });
 
   assert.equal(observedCommand, "echo");
@@ -40,23 +46,11 @@ test("ToolExecutor executes concurrent-safe tool items in parallel groups", asyn
   const executor = new ToolExecutor({ execute: async () => { throw new Error("unused"); } } as never);
   const result = await executor.executeParallel([
     {
-      metadata: {
-        toolName: "read.a",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-      },
+      metadata: { ...READ_TOOL_METADATA, toolName: "read.a" },
       execute: async () => "a",
     },
     {
-      metadata: {
-        toolName: "read.b",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-      },
+      metadata: { ...READ_TOOL_METADATA, toolName: "read.b" },
       execute: async () => "b",
     },
   ]);

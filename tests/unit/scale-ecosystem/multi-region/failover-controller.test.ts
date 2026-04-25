@@ -116,10 +116,6 @@ test("resolveRegionFailover handles null latency and error inputs", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
-    primaryLatencyMs: undefined,
-    maxAcceptableLatencyMs: undefined,
-    primaryErrorRate: undefined,
-    maxAcceptableErrorRate: undefined,
   };
   const decision = resolveRegionFailover(input);
   assert.equal(decision.shouldFailover, false);
@@ -132,8 +128,6 @@ test("resolveRegionFailover handles partial threshold inputs - only latency", ()
     candidateRegionIds: ["eu-west"],
     primaryLatencyMs: 50,
     maxAcceptableLatencyMs: 100,
-    primaryErrorRate: undefined,
-    maxAcceptableErrorRate: undefined,
   };
   const decision = resolveRegionFailover(input);
   assert.equal(decision.shouldFailover, false);
@@ -144,8 +138,6 @@ test("resolveRegionFailover handles partial threshold inputs - only error rate",
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
-    primaryLatencyMs: undefined,
-    maxAcceptableLatencyMs: undefined,
     primaryErrorRate: 0.005,
     maxAcceptableErrorRate: 0.01,
   };

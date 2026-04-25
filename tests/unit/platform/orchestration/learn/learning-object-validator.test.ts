@@ -4,18 +4,20 @@ import test from "node:test";
 import { ExperienceDistillationService } from "../../../../../src/platform/orchestration/learn/experience-distillation-service.js";
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
-function makeSignal(overrides: Partial<LearningSignal> & { learningSignalId: string; taskId: string; learningType: string }): LearningSignal {
+function makeSignal(overrides: Partial<LearningSignal> = {}): LearningSignal {
   return {
-    learningSignalId: overrides.learningSignalId,
-    taskId: overrides.taskId,
-    agentId: overrides.agentId ?? "agent-1",
-    learningType: overrides.learningType as LearningSignal["learningType"],
-    valueSummary: overrides.valueSummary ?? "test summary",
-    confidence: overrides.confidence ?? 0.8,
-    generatedAt: overrides.generatedAt ?? Date.now(),
-    evidence: overrides.evidence ?? {},
-    evidenceRefs: overrides.evidenceRefs ?? [],
-    sourceTaskId: overrides.sourceTaskId ?? overrides.taskId,
+    learningSignalId: "sig-1",
+    taskId: "task-1",
+    sourceFeedbackId: "feedback-1",
+    learningType: "failure_pattern",
+    valueSummary: "test summary",
+    confidence: 0.8,
+    evidence: {},
+    evidenceRefs: [],
+    sourceSignalIds: [],
+    relatedSignalIds: [],
+    generatedAt: Date.now(),
+    ...overrides,
   };
 }
 

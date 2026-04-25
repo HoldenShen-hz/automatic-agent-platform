@@ -199,7 +199,7 @@ function createMockCoordinator(): HaCoordinatorService & {
     },
 
     triggerFailover(cause: string, forceNodeId?: string) {
-      triggerFailoverCalls.push({ cause, forceNodeId });
+      triggerFailoverCalls.push(forceNodeId !== undefined ? { cause, forceNodeId } : { cause });
       const oldLeader = mockState.leaderNodeId;
       const oldLeaderNode = oldLeader ? mockState.nodes.get(oldLeader) : null;
 
@@ -758,8 +758,7 @@ test("createLeaderElectionService factory with nodeMetadata", () => {
     coordinator,
     "node-factory",
     "us-east-1",
-    undefined,
-    { version: "2.0" },
+    { haLevel: "HA_2", nodeMetadata: { version: "2.0" } },
   );
 
   assert.ok(service instanceof LeaderElectionService);

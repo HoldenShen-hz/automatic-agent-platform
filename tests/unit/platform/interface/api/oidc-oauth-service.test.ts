@@ -610,12 +610,12 @@ test("fetchJwks refreshes cache after TTL expires", async () => {
   // First call - should fetch
   const keys1 = await service.fetchJwks("https://idp.example.com");
   assert.equal(callCount, 1);
-  assert.equal(keys1[0].kid, "key-1");
+  assert.equal(keys1[0]!.kid, "key-1");
 
   // Second call - should use cache (callCount stays at 1)
   const keys2 = await service.fetchJwks("https://idp.example.com");
   assert.equal(callCount, 1);
-  assert.equal(keys2[0].kid, "key-1");
+  assert.equal(keys2[0]!.kid, "key-1");
 });
 
 test("validateFederatedToken rejects when signature verification fails", async () => {

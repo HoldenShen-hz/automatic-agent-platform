@@ -62,7 +62,7 @@ test("ProviderFallback: excludes unhealthy candidates", () => {
     candidates,
   });
 
-  assert.equal(decision.selectedProfileName, "model-c");
+  assert.equal(decision.selectedProfileName as string, "model-c");
   // model-b is unhealthy so excluded
   assert.ok(!decision.attemptedProfiles.includes("model-b") || decision.selectedProfileName !== "model-b");
 });

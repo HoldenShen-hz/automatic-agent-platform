@@ -232,11 +232,11 @@ test("EnvironmentReadinessOrchestrationService.listReadiness filters by environm
 
   const devRecords = service.listReadiness("dev");
   assert.equal(devRecords.length, 1);
-  assert.equal(devRecords[0].environment, "dev");
+  assert.equal(devRecords[0]!.environment, "dev");
 
   const prodRecords = service.listReadiness("prod");
   assert.equal(prodRecords.length, 1);
-  assert.equal(prodRecords[0].environment, "prod");
+  assert.equal(prodRecords[0]!.environment, "prod");
 });
 
 test("EnvironmentReadinessOrchestrationService.summarizeEnvironment returns per-component-type summaries", () => {

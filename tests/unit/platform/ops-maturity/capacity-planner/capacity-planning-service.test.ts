@@ -1,9 +1,9 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { CapacityPlanningService, type CapacitySignal } from "../../../../../../../src/platform/ops-maturity/capacity-planner/capacity-planning-service.js";
-import { forecastCapacityUsage, forecastCapacityPeak, CapacityForecasterService } from "../../../../../../../src/platform/ops-maturity/capacity-planner/forecaster/index.js";
-import { simulateCapacityScenario, CapacityScenarioSimulatorService } from "../../../../../../../src/platform/ops-maturity/capacity-planner/simulator/index.js";
-import { analyzeCapacityTrend, estimateCapacityVolatility, CapacityTrendAnalyzerService } from "../../../../../../../src/platform/ops-maturity/capacity-planner/trend-analyzer/index.js";
+import { CapacityPlanningService, type CapacitySignal } from "../../../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
+import { forecastCapacityUsage, forecastCapacityPeak, CapacityForecasterService } from "../../../../../src/ops-maturity/capacity-planner/forecaster/index.js";
+import { simulateCapacityScenario, CapacityScenarioSimulatorService } from "../../../../../src/ops-maturity/capacity-planner/simulator/index.js";
+import { analyzeCapacityTrend, estimateCapacityVolatility, CapacityTrendAnalyzerService } from "../../../../../src/ops-maturity/capacity-planner/trend-analyzer/index.js";
 
 test("CapacityPlanningService.recordSignal stores signal and returns it", () => {
   const service = new CapacityPlanningService();
@@ -81,6 +81,8 @@ test("CapacityPlanningService.compareScenarios sorts by projected units", () => 
   ]);
 
   assert.ok(Array.isArray(results));
+  assert.ok(results.length > 0);
+  assert.ok(results[0] != null);
   assert.strictEqual(results[0].scenarioId, "s2");
 });
 

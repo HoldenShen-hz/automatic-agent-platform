@@ -24,6 +24,8 @@ function createLogEntry(
   return {
     level,
     message,
+    service: "test-service",
+    timestamp: "2026-04-23T00:00:00.000Z",
     ...(data == null ? {} : { data }),
     createdAt: "2026-04-23T00:00:00.000Z",
   };
