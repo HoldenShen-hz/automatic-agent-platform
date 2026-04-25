@@ -665,7 +665,7 @@ test("E2E Multi-Region Failover: tasks remain accessible after region failover s
     assert.equal(task3!.status, "done");
 
     // Verify task counts by status
-    const allTasks = h.store.listTasks({});
+    const allTasks = h.store.listTasks();
     assert.equal(allTasks.length, 3);
   } finally {
     h.cleanup();
@@ -719,7 +719,7 @@ test("E2E Multi-Region Failover: health summary reflects task state", (t) => {
     seedTaskWithRegion(h.store, h.db, "task-005", "queued", "us-east-1", now);
 
     // Get all tasks to verify state
-    const allTasks = h.store.listTasks({});
+    const allTasks = h.store.listTasks();
     const queuedTasks = allTasks.filter(t => t.status === "queued");
     const activeTasks = allTasks.filter(t => t.status === "in_progress");
 
