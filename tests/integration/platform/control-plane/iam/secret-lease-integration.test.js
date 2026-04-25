@@ -605,7 +605,7 @@ test("buildAuditSummary includes leases for secret with rotation events", () => 
       nextRotationDueAt: "2026-04-01T00:00:00.000Z",
     });
 
-    service.issueSecretLeaseSync({
+    await service.issueSecretLease({
       secretRef: "secret://system/int/lease/audit",
       requestedBy: "ops.worker",
       grantedTo: "audit-runner",
