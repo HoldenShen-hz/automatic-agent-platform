@@ -424,7 +424,7 @@ test("QualityGateEvidenceService.persistEvaluation writes artifact when enabled"
 
   assert.ok(artifactId.length > 0);
   assert.equal(store.artifacts.length, 1);
-  assert.ok(store.artifacts[0].input.content.includes("qualityScore"));
+  assert.ok((store.artifacts[0]!.input as { content: string }).content.includes("qualityScore"));
 });
 
 test("QualityGateEvidenceService.persistEvaluation computes fail verdict when blocked", () => {
@@ -457,7 +457,7 @@ test("QualityGateEvidenceService.persistEvaluation computes fail verdict when bl
 
   service.persistEvaluation(evaluation, decision);
 
-  const stored = JSON.parse((store.artifacts[0].input as { content: string }).content);
+  const stored = JSON.parse((store.artifacts[0]!.input as { content: string }).content);
   assert.equal(stored.verdict, "fail");
   assert.equal(stored.releaseStage, "blocked");
 });
@@ -492,7 +492,7 @@ test("QualityGateEvidenceService.persistEvaluation computes degraded verdict for
 
   service.persistEvaluation(evaluation, decision);
 
-  const stored = JSON.parse((store.artifacts[0].input as { content: string }).content);
+  const stored = JSON.parse((store.artifacts[0]!.input as { content: string }).content);
   assert.equal(stored.verdict, "degraded");
   assert.equal(stored.releaseStage, "approval");
 });
@@ -527,7 +527,7 @@ test("QualityGateEvidenceService.persistEvaluation computes pass verdict for hig
 
   service.persistEvaluation(evaluation, decision);
 
-  const stored = JSON.parse((store.artifacts[0].input as { content: string }).content);
+  const stored = JSON.parse((store.artifacts[0]!.input as { content: string }).content);
   assert.equal(stored.verdict, "pass");
   assert.equal(stored.passed, true);
   assert.ok(stored.qualityScore >= 0.8);
@@ -563,7 +563,7 @@ test("QualityGateEvidenceService.persistEvaluation merges reason codes", () => {
 
   service.persistEvaluation(evaluation, decision);
 
-  const stored = JSON.parse((store.artifacts[0].input as { content: string }).content);
+  const stored = JSON.parse((store.artifacts[0]!.input as { content: string }).content);
   assert.ok(stored.reasonCodes.includes("failure:error_1"));
   assert.ok(stored.reasonCodes.includes("failure:error_2"));
   assert.ok(stored.reasonCodes.includes("quality.repair_required"));
@@ -600,7 +600,7 @@ test("QualityGateEvidenceService.persistEvaluation includes executionId when pro
 
   service.persistEvaluation(evaluation, decision, "exec_123");
 
-  const stored = JSON.parse((store.artifacts[0].input as { content: string }).content);
+  const stored = JSON.parse((store.artifacts[0]!.input as { content: string }).content);
   assert.equal(stored.executionId, "exec_123");
 });
 
@@ -634,7 +634,7 @@ test("QualityGateEvidenceService.persistEvaluation includes config snapshot", ()
 
   service.persistEvaluation(evaluation, decision);
 
-  const stored = JSON.parse((store.artifacts[0].input as { content: string }).content);
+  const stored = JSON.parse((store.artifacts[0]!.input as { content: string }).content);
   assert.equal(stored.configSnapshot.passThreshold, 0.5);
   assert.ok(stored.configSnapshot.weights);
   assert.equal(stored.configSnapshot.weights.successSignal, 0.35);

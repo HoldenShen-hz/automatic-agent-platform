@@ -6,7 +6,11 @@ import { LlmEvalService, type EvalSuiteKind, type QualityVerdict, type EvalCaseD
 // ── Mock Database ─────────────────────────────────────────────────────────────
 
 function createMockDb() {
-  const tables: Record<string, Record<string, unknown>[]> = {
+  const tables: {
+    eval_suites: Record<string, unknown>[];
+    eval_runs: Record<string, unknown>[];
+    eval_case_results: Record<string, unknown>[];
+  } = {
     eval_suites: [],
     eval_runs: [],
     eval_case_results: [],
@@ -14,41 +18,48 @@ function createMockDb() {
 
   return {
     connection: {
-      prepare: (sql: string) => ({
-        run(...args: unknown[]) {
-          if (sql.includes("INSERT INTO eval_suites")) {
-            const [id, name, kind, description, cases, createdAt, updatedAt] = args as [string, string, EvalSuiteKind, string, string, string, string];
-            tables.eval_suites.push({ id, name, kind, description, cases, created_at: createdAt, updated_at: updatedAt });
-          } else if (sql.includes("INSERT INTO eval_runs")) {
-            const [id, suiteId, modelId, promptVersion, status, totalCases, passedCases, failedCases, averageScore, verdict, startedAt, completedAt, triggeredBy, metadata] = args as [string, string, string, string, string, number, number, number, number | null, string, string, string | null, string, string | null];
-            tables.eval_runs.push({ id, suite_id: suiteId, model_id: modelId, prompt_version: promptVersion, status, total_cases: totalCases, passed_cases: passedCases, failed_cases: failedCases, average_score: averageScore, verdict, started_at: startedAt, completed_at: completedAt, triggered_by: triggeredBy, metadata });
-          } else if (sql.includes("INSERT INTO eval_case_results")) {
-            const [id, runId, caseId, input, expectedOutput, actualOutput, score, passed, latencyMs, metadata] = args as [string, string, string, string, string, string, number, number, number, string | null];
-            tables.eval_case_results.push({ id, run_id: runId, case_id: caseId, input, expected_output: expectedOutput, actual_output: actualOutput, score, passed: Boolean(passed), latency_ms: latencyMs, metadata });
-          }
-        },
-        get(sql: string, ...args: unknown[]) {
-          if (sql.includes("WHERE id = ?")) {
-            const id = args[0] as string;
-            if (sql.includes("eval_suites")) return tables.eval_suites.find(r => r.id === id);
-            if (sql.includes("eval_runs")) return tables.eval_runs.find(r => r.id === id);
-          }
-          return undefined;
-        },
-        all(sql: string, ...args: unknown[]) {
-          if (sql.includes("WHERE suite_id = ?")) {
-            const suiteId = args[0] as string;
-            return tables.eval_case_results.filter(r => (r as Record<string, unknown>).run_id === suiteId);
-          }
-          if (sql.includes("eval_case_results")) return tables.eval_case_results.filter(r => (r as Record<string, unknown>).run_id === args[0]);
-          if (sql.includes("eval_runs")) {
-            if (args.length > 0 && typeof args[0] === "string") return tables.eval_runs.filter(r => (r as Record<string, unknown>).suite_id === args[0]);
-            return tables.eval_runs.slice(0, args[0] as number ?? 50);
-          }
-          if (sql.includes("eval_suites")) return tables.eval_suites;
-          return [];
-        },
-      }),
+      prepare: (sql: string) => {
+        const isSuiteQuery = sql.includes("eval_suites");
+        const isRunQuery = sql.includes("eval_runs");
+        return {
+          run(...args: unknown[]) {
+            if (sql.includes("INSERT INTO eval_suites")) {
+              const [id, name, kind, description, cases, createdAt, updatedAt] = args as [string, string, EvalSuiteKind, string, string, string, string];
+              tables.eval_suites.push({ id, name, kind, description, cases, created_at: createdAt, updated_at: updatedAt });
+            } else if (sql.includes("INSERT INTO eval_runs")) {
+              const [id, suiteId, modelId, promptVersion, status, totalCases, passedCases, failedCases, averageScore, verdict, startedAt, completedAt, triggeredBy, metadata] = args as [string, string, string, string, string, number, number, number, number | null, string, string, string | null, string, string | null];
+              tables.eval_runs.push({ id, suite_id: suiteId, model_id: modelId, prompt_version: promptVersion, status, total_cases: totalCases, passed_cases: passedCases, failed_cases: failedCases, average_score: averageScore, verdict, started_at: startedAt, completed_at: completedAt, triggered_by: triggeredBy, metadata });
+            } else if (sql.includes("INSERT INTO eval_case_results")) {
+              const [id, runId, caseId, input, expectedOutput, actualOutput, score, passed, latencyMs, metadata] = args as [string, string, string, string, string, string, number, number, number, string | null];
+              tables.eval_case_results.push({ id, run_id: runId, case_id: caseId, input, expected_output: expectedOutput, actual_output: actualOutput, score, passed: Boolean(passed), latency_ms: latencyMs, metadata });
+            }
+          },
+          get(...params: unknown[]) {
+            // params[0] is the bind parameter (e.g., suiteId or runId)
+            const id = params[0] as string;
+            if (isSuiteQuery) {
+              return tables.eval_suites.find(r => r.id === id);
+            }
+            if (isRunQuery) {
+              return tables.eval_runs.find(r => r.id === id);
+            }
+            return undefined;
+          },
+          all(...params: unknown[]) {
+            if (sql.includes("WHERE suite_id = ?")) {
+              const suiteId = params[0] as string;
+              return tables.eval_case_results.filter(r => r.run_id === suiteId);
+            }
+            if (sql.includes("eval_case_results")) return tables.eval_case_results.filter(r => r.run_id === params[0]);
+            if (isRunQuery) {
+              if (params.length > 0 && typeof params[0] === "string") return tables.eval_runs.filter(r => r.suite_id === params[0]);
+              return tables.eval_runs.slice(0, params[0] as number ?? 50);
+            }
+            if (isSuiteQuery) return tables.eval_suites;
+            return [];
+          },
+        };
+      },
     },
   };
 }

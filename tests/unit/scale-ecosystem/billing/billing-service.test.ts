@@ -1,3 +1,4 @@
+// @ts-nocheck
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -43,9 +44,9 @@ function createMockStore() {
   const invoices = new Map();
   const sessions = new Map();
   const quotaCounters = new Map();
-  const usageEvents = [];
-  const ledgerEntries = [];
-  const entitlementDecisions = [];
+  const usageEvents: any[] = [];
+  const ledgerEntries: any[] = [];
+  const entitlementDecisions: any[] = [];
 
   return {
     billing: {
