@@ -150,8 +150,8 @@ test("decay integration: access boost slows decay for frequently accessed memori
     store.memory.recordMemoryAccess(mem2.id, "2026-04-10T08:02:00.000Z");
     store.memory.recordMemoryAccess(mem2.id, "2026-04-10T08:03:00.000Z");
 
-    const mem1Record = store.getMemory(mem1.id)!;
-    const mem2Record = store.getMemory(mem2.id)!;
+    const mem1Record = store.getMemory(mem1.id);
+    const mem2Record = store.getMemory(mem2.id);
 
     // After 5 minutes
     const freshness1 = decayService.calculateFreshness(mem1Record, "2026-04-10T08:05:00.000Z");
