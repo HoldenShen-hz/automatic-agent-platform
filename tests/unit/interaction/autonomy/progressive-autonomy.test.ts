@@ -247,13 +247,13 @@ test("ProgressiveAutonomyService evaluateProfile incident_response trigger when 
 
 test("ProgressiveAutonomyService evaluateProfile handles frozen to full_auto recovery path", (t) => {
   const service = new ProgressiveAutonomyService();
+  // When frozen agent has 500+ executions at 99%+ success, it becomes full_auto via threshold
   const profile = makeProfile({
     capabilityScores: [
-      makeScore({ capabilityId: "cap-1", currentAutonomy: "frozen", totalExecutions: 500, successfulExecutions: 490, failedExecutions: 5, incidents: 0 }),
+      makeScore({ capabilityId: "cap-1", currentAutonomy: "frozen", totalExecutions: 500, successfulExecutions: 495, failedExecutions: 0, incidents: 0 }),
     ],
   });
   const result = service.evaluateProfile(profile);
-  // With no incidents, demoteOneLevel("frozen") returns "full_auto"
   assert.equal(result.capabilityLevels["cap-1"], "full_auto");
 });
 

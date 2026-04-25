@@ -52,7 +52,7 @@ test("integration: typed event bus delivers events to subscribers and handles ac
     const db = new SqliteDatabase(join(workspace, "typed-bus-deliver.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
+    const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, {
       taskId: "task-typed-deliver",
       executionId: "exec-typed-deliver",
@@ -60,8 +60,8 @@ test("integration: typed event bus delivers events to subscribers and handles ac
     });
 
     let deliveredEvents: string[] = [];
-    bus.subscribe("typed_consumer", (envelope) => {
-      deliveredEvents.push(envelope.event.id);
+    bus.subscribe("typed_consumer", (event) => {
+      deliveredEvents.push(event.id);
     });
 
     const event = bus.publish({
@@ -257,7 +257,8 @@ test("integration: typed event bus provides type-safe payload parsing on deliver
     const db = new SqliteDatabase(join(workspace, "typed-payload.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
+    const typedBus = new TypedEventBus(db, store);
+    const durableBus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, {
       taskId: "task-typed-payload",
       executionId: "exec-typed-payload",
@@ -265,13 +266,11 @@ test("integration: typed event bus provides type-safe payload parsing on deliver
     });
 
     let receivedPayload: { fromStatus: string; toStatus: string } | null = null;
-    bus.subscribe("typed_payload_consumer", (envelope) => {
-      if (envelope.event.eventType === "task:status_changed") {
-        receivedPayload = envelope.payload;
-      }
+    typedBus.subscribe("typed_payload_consumer", ["task:status_changed"] as const, (envelope) => {
+      receivedPayload = envelope.payload;
     });
 
-    bus.publish({
+    durableBus.publish({
       eventType: "task:status_changed",
       taskId: "task-typed-payload",
       executionId: "exec-typed-payload",
@@ -285,7 +284,7 @@ test("integration: typed event bus provides type-safe payload parsing on deliver
     assert.equal(receivedPayload?.fromStatus, "queued", "From status should match");
     assert.equal(receivedPayload?.toStatus, "in_progress", "To status should match");
 
-    bus.dispose();
+    durableBus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -362,6 +361,83 @@ test("integration: event bus dispose prevents further operations", () => {
       (err: Error) => /disposed/i.test(err.message),
       "Should throw when subscribing after dispose",
     );
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("integration: event bus pendingForConsumer returns correct pending events", () => {
+  const ctx = createIntegrationContext("aa-bus-pending-");
+  try {
+    const bus = new DurableEventBus(ctx.db, ctx.store);
+    seedTaskAndExecution(ctx.db, ctx.store, {
+      taskId: "task-pending",
+      executionId: "exec-pending",
+      traceId: "trace-pending",
+    });
+
+    bus.subscribe("pending_consumer", () => {});
+
+    bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-pending",
+      executionId: "exec-pending",
+      traceId: "trace-pending-1",
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
+
+    bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-pending",
+      executionId: "exec-pending",
+      traceId: "trace-pending-2",
+      payload: { fromStatus: "in_progress", toStatus: "completed" },
+    });
+
+    const pending = bus.pendingForConsumer("pending_consumer");
+    assert.equal(pending.length, 2, "Consumer should have 2 pending events");
+
+    bus.dispose();
+  } finally {
+    ctx.cleanup();
+  }
+});
+
+test("integration: event bus deliverPending acknowledges events and clears pending", async () => {
+  const ctx = createIntegrationContext("aa-bus-ack-");
+  try {
+    const bus = new DurableEventBus(ctx.db, ctx.store);
+    seedTaskAndExecution(ctx.db, ctx.store, {
+      taskId: "task-ack",
+      executionId: "exec-ack",
+      traceId: "trace-ack",
+    });
+
+    let handlerCalled = false;
+    bus.subscribe("ack_consumer", (event) => {
+      handlerCalled = true;
+    });
+
+    bus.publish({
+      eventType: "task:status_changed",
+      taskId: "task-ack",
+      executionId: "exec-ack",
+      traceId: "trace-ack",
+      payload: { fromStatus: "queued", toStatus: "in_progress" },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const pendingBefore = bus.pendingForConsumer("ack_consumer").length;
+
+    const delivered = await bus.deliverPending("ack_consumer");
+    const pendingAfter = bus.pendingForConsumer("ack_consumer").length;
+
+    assert.ok(handlerCalled, "Handler should have been called");
+    assert.ok(pendingBefore > 0, "Should have pending events before deliverPending");
+    assert.equal(pendingAfter, 0, "Should have no pending events after deliverPending");
+    assert.equal(delivered, pendingBefore, "Delivered count should match pending count");
+
+    bus.dispose();
   } finally {
     ctx.cleanup();
   }
