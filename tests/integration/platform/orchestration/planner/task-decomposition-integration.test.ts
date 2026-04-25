@@ -5,8 +5,8 @@
  * into executable steps with proper dependency tracking.
  */
 
-import assert from "node:assert/strict";
 import test from "node:test";
+import assert from "node:assert/strict";
 import { join } from "node:path";
 
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
@@ -14,145 +14,322 @@ import { AuthoritativeTaskStore } from "../../../../../src/platform/state-eviden
 import { TaskDecompositionService } from "../../../../../src/platform/orchestration/planner/task-decomposition-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
+import type { PlannedWorkflow, PlannedExecutionStep } from "../../../../../src/platform/orchestration/routing/workflow-planner.js";
+import type { MinimalWorkflowDefinition } from "../../../../../src/platform/orchestration/oapeflir/workflow/minimal-workflow.js";
 
-test("task decomposition: decomposes complex task into steps", () => {
-  const workspace = createTempWorkspace("aa-decompose-");
+function createMockExecutionStep(overrides: Partial<PlannedExecutionStep> = {}): PlannedExecutionStep {
+  return {
+    stepId: "step_1",
+    divisionId: "div_alpha",
+    roleId: "planner",
+    inputKeys: [],
+    agentId: "agent_planner",
+    outputKey: "result_1",
+    outputSchemaPath: null,
+    dependsOnStepIds: [],
+    dependencyTypes: {},
+    timeoutMs: 30000,
+    maxAttempts: 3,
+    ...overrides,
+  };
+}
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "decompose.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new TaskDecompositionService(store);
+function createMockWorkflow(overrides: Partial<PlannedWorkflow> & { executionSteps?: PlannedExecutionStep[] } = {}): PlannedWorkflow {
+  return {
+    workflow: {
+      workflowId: "wf_test",
+      divisionId: "div_test",
+      steps: [],
+    } as MinimalWorkflowDefinition,
+    executionSteps: [createMockExecutionStep()],
+    planReason: "Test plan",
+    dependencyEdges: [],
+    ...overrides,
+  };
+}
 
-    const result = service.decompose({
-      taskId: newId("task"),
-      userRequest: "Implement a user authentication system with login, logout, and session management",
-      context: { domain: "coding", priority: "high" },
-    });
+test("task decomposition: decomposes complex workflow into executable tasks", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_plan",
+        roleId: "planner",
+        outputKey: "plan",
+      }),
+      createMockExecutionStep({
+        stepId: "step_execute",
+        roleId: "executor",
+        outputKey: "result",
+        dependsOnStepIds: ["step_plan"],
+      }),
+      createMockExecutionStep({
+        stepId: "step_review",
+        roleId: "reviewer",
+        outputKey: "review",
+        dependsOnStepIds: ["step_execute"],
+      }),
+    ],
+  });
 
-    assert.ok(result.subtasks.length >= 2);
-    assert.ok(result.subtasks.every((s) => s.name.length > 0));
-    assert.ok(result.dependencies.size >= 0);
-  } finally {
-    db.close();
-    cleanupPath(workspace);
-  }
+  const result = service.decompose(workflow);
+
+  assert.equal(result.length, 3);
+  assert.deepEqual(
+    result.map((item) => item.title),
+    ["step_plan:plan", "step_execute:result", "step_review:review"],
+  );
 });
 
-test("task decomposition: handles simple single-step task", () => {
-  const workspace = createTempWorkspace("aa-decompose-simple-");
+test("task decomposition: handles simple single-step workflow", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_only",
+        roleId: "operator",
+        outputKey: "done",
+      }),
+    ],
+  });
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "decompose-simple.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new TaskDecompositionService(store);
+  const result = service.decompose(workflow);
 
-    const result = service.decompose({
-      taskId: newId("task"),
-      userRequest: "List files in current directory",
-      context: { domain: "ops" },
-    });
-
-    assert.ok(result.subtasks.length >= 1);
-  } finally {
-    db.close();
-    cleanupPath(workspace);
-  }
+  assert.equal(result.length, 1);
+  assert.deepEqual(result[0], {
+    title: "step_only:done",
+    dependsOn: [],
+    ownerRoleId: "operator",
+    toolNames: ["read"],
+  });
 });
 
-test("task decomposition: preserves dependencies between subtasks", () => {
-  const workspace = createTempWorkspace("aa-decompose-deps-");
+test("task decomposition: preserves fan-in dependencies between subtasks", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "collect_a",
+        outputKey: "a",
+      }),
+      createMockExecutionStep({
+        stepId: "collect_b",
+        outputKey: "b",
+      }),
+      createMockExecutionStep({
+        stepId: "merge",
+        outputKey: "merged",
+        dependsOnStepIds: ["collect_a", "collect_b"],
+      }),
+    ],
+  });
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "decompose-deps.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new TaskDecompositionService(store);
+  const result = service.decompose(workflow);
 
-    const result = service.decompose({
-      taskId: newId("task"),
-      userRequest: "Build and test a new feature, then deploy it",
-      context: { domain: "coding" },
-    });
-
-    assert.ok(result.dependencies.size >= 0);
-  } finally {
-    db.close();
-    cleanupPath(workspace);
-  }
+  assert.deepEqual(result[2]?.dependsOn, ["collect_a", "collect_b"]);
 });
 
-test("task decomposition: estimates complexity correctly", () => {
-  const workspace = createTempWorkspace("aa-decompose-complex-");
+test("task decomposition: exposes tool hints for compensating and schema-validated steps", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "mutate_and_validate",
+        compensationModel: "idempotent_replay",
+        outputSchemaPath: "/schemas/output.json",
+      }),
+    ],
+  });
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "decompose-complex.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new TaskDecompositionService(store);
+  const result = service.decompose(workflow);
 
-    const simpleResult = service.decompose({
-      taskId: newId("task"),
-      userRequest: "Echo hello",
-      context: {},
-    });
-
-    const complexResult = service.decompose({
-      taskId: newId("task"),
-      userRequest: "Implement a distributed transaction system with consensus, replication, and failure recovery",
-      context: {},
-    });
-
-    assert.ok(complexResult.subtasks.length >= simpleResult.subtasks.length);
-  } finally {
-    db.close();
-    cleanupPath(workspace);
-  }
+  assert.deepEqual(result[0]?.toolNames, ["read", "apply_patch", "validate_output"]);
 });
 
-test("task decomposition: validates subtask outputs", () => {
-  const workspace = createTempWorkspace("aa-decompose-validate-");
+// Tests using the actual TaskDecompositionService API (PlannedWorkflow-based)
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "decompose-validate.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new TaskDecompositionService(store);
+test("task decomposition: decompose maps step to title format stepId:outputKey", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow();
 
-    const result = service.decompose({
-      taskId: newId("task"),
-      userRequest: "Create and configure a new database",
-      context: {},
-    });
+  const result = service.decompose(workflow);
 
-    const validation = service.validateSubtasks(result.subtasks);
-    assert.strictEqual(validation.valid, true);
-  } finally {
-    db.close();
-    cleanupPath(workspace);
-  }
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.title, "step_1:result_1");
 });
 
-test("task decomposition: detects missing required fields", () => {
-  const workspace = createTempWorkspace("aa-decompose-missing-");
+test("task decomposition: decompose preserves dependsOnStepIds", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        dependsOnStepIds: ["step_x", "step_y"],
+      }),
+    ],
+  });
 
-  try {
-    const db = new SqliteDatabase(join(workspace, "decompose-missing.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new TaskDecompositionService(store);
+  const result = service.decompose(workflow);
 
-    const result = service.decompose({
-      taskId: newId("task"),
-      userRequest: "Do something important",
-      context: {},
-    });
+  assert.equal(result.length, 1);
+  assert.deepEqual(result[0]?.dependsOn, ["step_x", "step_y"]);
+});
 
-    const validation = service.validateSubtasks(result.subtasks);
-    assert.ok(validation.errors.length >= 0);
-  } finally {
-    db.close();
-    cleanupPath(workspace);
-  }
+test("task decomposition: decompose handles multiple steps", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        roleId: "planner",
+        outputKey: "output_a",
+        dependsOnStepIds: [],
+      }),
+      createMockExecutionStep({
+        stepId: "step_b",
+        roleId: "executor",
+        outputKey: "output_b",
+        dependsOnStepIds: ["step_a"],
+      }),
+      createMockExecutionStep({
+        stepId: "step_c",
+        roleId: "reviewer",
+        outputKey: "output_c",
+        dependsOnStepIds: ["step_b"],
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.equal(result.length, 3);
+  assert.equal(result[0]?.title, "step_a:output_a");
+  assert.equal(result[1]?.title, "step_b:output_b");
+  assert.equal(result[2]?.title, "step_c:output_c");
+  assert.deepEqual(result[0]?.dependsOn, []);
+  assert.deepEqual(result[1]?.dependsOn, ["step_a"]);
+  assert.deepEqual(result[2]?.dependsOn, ["step_b"]);
+});
+
+test("task decomposition: decompose returns empty array for workflow with no steps", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.equal(result.length, 0);
+});
+
+test("task decomposition: decompose sets ownerRoleId from step.roleId", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({ stepId: "step_a", roleId: "executor" }),
+      createMockExecutionStep({ stepId: "step_b", roleId: "reviewer" }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.equal(result[0]?.ownerRoleId, "executor");
+  assert.equal(result[1]?.ownerRoleId, "reviewer");
+});
+
+test("task decomposition: decompose always includes read tool", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(result[0]?.toolNames.includes("read"));
+});
+
+test("task decomposition: decompose adds apply_patch when compensationModel is present", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        compensationModel: "compensating_action",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(result[0]?.toolNames.includes("apply_patch"));
+});
+
+test("task decomposition: decompose does not add apply_patch when compensationModel is absent", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(!result[0]?.toolNames.includes("apply_patch"));
+});
+
+test("task decomposition: decompose adds validate_output when outputSchemaPath is present", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        outputSchemaPath: "/schemas/step-output.json",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(result[0]?.toolNames.includes("validate_output"));
+});
+
+test("task decomposition: decompose does not add validate_output when outputSchemaPath is null", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        outputSchemaPath: null,
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(!result[0]?.toolNames.includes("validate_output"));
+});
+
+test("task decomposition: decompose handles both compensationModel and outputSchemaPath", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        compensationModel: "idempotent_replay",
+        outputSchemaPath: "/schemas/step-output.json",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(result[0]?.toolNames.includes("read"));
+  assert.ok(result[0]?.toolNames.includes("apply_patch"));
+  assert.ok(result[0]?.toolNames.includes("validate_output"));
 });

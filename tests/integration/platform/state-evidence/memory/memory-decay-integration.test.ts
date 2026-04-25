@@ -34,11 +34,12 @@ test("decay integration: calculateFreshness for working layer decays rapidly", (
     });
 
     assert.ok(memories.length > 0);
-    const freshness = decayService.calculateFreshness(memories[0], "2026-04-10T08:00:00.000Z");
+    const memory0 = memories[0]!;
+    const freshness = decayService.calculateFreshness(memory0, "2026-04-10T08:00:00.000Z");
     assert.equal(freshness, 1.0);
 
     // After 5 minutes (half-life), freshness should be ~0.5
-    const freshness5min = decayService.calculateFreshness(memories[0], "2026-04-10T08:05:00.000Z");
+    const freshness5min = decayService.calculateFreshness(memory0, "2026-04-10T08:05:00.000Z");
     assert.ok(freshness5min < 1.0, "Working memory should decay within 5 minutes");
     assert.ok(freshness5min > 0.4, "Freshness should not be below minimum");
 
@@ -74,13 +75,14 @@ test("decay integration: calculateFreshness for session layer decays slower", ()
     });
 
     assert.ok(memories.length > 0);
+    const memory0 = memories[0]!;
 
     // Session half-life is 1 hour
-    const freshness5min = decayService.calculateFreshness(memories[0], "2026-04-10T08:05:00.000Z");
+    const freshness5min = decayService.calculateFreshness(memory0, "2026-04-10T08:05:00.000Z");
     assert.ok(freshness5min > 0.9, "Session memory should not decay significantly in 5 minutes");
 
     // After 1 hour, should be close to 0.5
-    const freshness1hr = decayService.calculateFreshness(memories[0], "2026-04-10T09:00:00.000Z");
+    const freshness1hr = decayService.calculateFreshness(memory0, "2026-04-10T09:00:00.000Z");
     assert.ok(freshness1hr < 0.6, "Session memory should decay significantly after 1 hour");
 
     db.close();
@@ -123,6 +125,9 @@ test("decay integration: access boost slows decay for frequently accessed memori
 
     const mem1Record = store.getMemory(mem1.id);
     const mem2Record = store.getMemory(mem2.id);
+
+    assert.ok(mem1Record !== null, "mem1Record should exist");
+    assert.ok(mem2Record !== null, "mem2Record should exist");
 
     // After 5 minutes
     const freshness1 = decayService.calculateFreshness(mem1Record, "2026-04-10T08:05:00.000Z");
@@ -363,9 +368,12 @@ test("decay integration: calculateDecay returns full decay calculation", () => {
       evaluatedAt: "2026-04-10T08:00:00.000Z",
     });
 
-    const calc = decayService.calculateDecay(memories[0], 1.0, "2026-04-10T09:00:00.000Z");
+    assert.ok(memories.length > 0);
+    const memory0 = memories[0]!;
 
-    assert.equal(calc.memoryId, memories[0].id);
+    const calc = decayService.calculateDecay(memory0, 1.0, "2026-04-10T09:00:00.000Z");
+
+    assert.equal(calc.memoryId, memory0.id);
     assert.ok(calc.currentFreshness < 1.0, "Freshness should have decayed");
     assert.equal(calc.previousFreshness, 1.0);
     assert.ok(calc.decayAmount > 0, "Decay amount should be positive");
@@ -397,7 +405,7 @@ test("decay integration: getDecayConfig returns correct config per layer", () =>
       createdAt: "2026-04-10T08:00:00.000Z",
     });
     memoryService.remember({
-      scope: "project",
+      scope: "semantic",
       sessionId: "session-config-test",
       content: { note: "semantic memory" },
       createdAt: "2026-04-10T08:00:00.000Z",
@@ -410,7 +418,10 @@ test("decay integration: getDecayConfig returns correct config per layer", () =>
     });
 
     const workingMem = memories.find((m) => m.scope === "working");
-    const semanticMem = memories.find((m) => m.scope === "project");
+    const semanticMem = memories.find((m) => m.scope === "semantic");
+
+    assert.ok(workingMem !== undefined, "workingMem should exist");
+    assert.ok(semanticMem !== undefined, "semanticMem should exist");
 
     const workingConfig = decayService.getDecayConfig(workingMem);
     const semanticConfig = decayService.getDecayConfig(semanticMem);
@@ -462,7 +473,8 @@ test("decay integration: decay persists across service restart", () => {
       });
 
       assert.ok(memories.length > 0);
-      const freshness = decayService.calculateFreshness(memories[0], "2026-04-10T09:00:00.000Z");
+      const memory0 = memories[0]!;
+      const freshness = decayService.calculateFreshness(memory0, "2026-04-10T09:00:00.000Z");
       assert.ok(freshness < 1.0, "Freshness should be decayed after 1 hour");
 
       db.close();
@@ -497,13 +509,14 @@ test("decay integration: meta layer does not decay", () => {
     });
 
     assert.ok(memories.length > 0);
+    const memory0 = memories[0]!;
 
     // Even after very long time, meta layer should not decay
-    const freshness = decayService.calculateFreshness(memories[0], "2026-04-11T08:00:00.000Z"); // 1 day later
+    const freshness = decayService.calculateFreshness(memory0, "2026-04-11T08:00:00.000Z"); // 1 day later
     assert.equal(freshness, 1.0, "Meta layer should not decay");
 
     // Also verify via decay calculation
-    const calc = decayService.calculateDecay(memories[0], 1.0, "2026-04-11T08:00:00.000Z");
+    const calc = decayService.calculateDecay(memory0, 1.0, "2026-04-11T08:00:00.000Z");
     assert.equal(calc.currentFreshness, 1.0, "Meta layer should show no decay");
     assert.equal(calc.effectiveDecayRate, 0, "Meta layer should have 0 effective decay rate");
 
@@ -538,13 +551,14 @@ test("decay integration: procedural layer has slow decay", () => {
     });
 
     assert.ok(memories.length > 0);
+    const memory0 = memories[0]!;
 
     // After 1 day, procedural should still be highly fresh (half-life 30 days)
-    const freshness1day = decayService.calculateFreshness(memories[0], "2026-04-11T08:00:00.000Z");
+    const freshness1day = decayService.calculateFreshness(memory0, "2026-04-11T08:00:00.000Z");
     assert.ok(freshness1day > 0.95, "Procedural memory should remain highly fresh after 1 day");
 
     // After 7 days, still should be above 0.8
-    const freshness7days = decayService.calculateFreshness(memories[0], "2026-04-17T08:00:00.000Z");
+    const freshness7days = decayService.calculateFreshness(memory0, "2026-04-17T08:00:00.000Z");
     assert.ok(freshness7days > 0.8, "Procedural memory should still be fresh after 7 days");
 
     db.close();

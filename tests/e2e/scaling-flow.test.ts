@@ -525,7 +525,9 @@ test("E2E Scaling: mixed task statuses tracked correctly", (t) => {
     const statuses: TaskStatus[] = ["queued", "in_progress", "in_progress", "done", "failed", "cancelled"];
 
     for (let i = 0; i < statuses.length; i++) {
-      seedTask(h.store, h.db, `task-mixed-${i}`, statuses[i], "tenant-001", now);
+      const status = statuses[i];
+      assert.ok(status != null, `Status at index ${i} should exist`);
+      seedTask(h.store, h.db, `task-mixed-${i}`, status, "tenant-001", now);
     }
 
     const allTasks = h.store.listTasks();

@@ -136,6 +136,7 @@ test("workflow orchestration: workflow state transitions follow valid path", () 
       reasonCode: "workflow.pause",
       traceId: newId("trace"),
       occurredAt: now,
+      actorType: "system",
     });
 
     const pausedState = store.getWorkflowState(taskId);
@@ -153,6 +154,7 @@ test("workflow orchestration: workflow state transitions follow valid path", () 
       reasonCode: "workflow.resume",
       traceId: newId("trace"),
       occurredAt: now,
+      actorType: "system",
     });
 
     const resumingState = store.getWorkflowState(taskId);
@@ -225,6 +227,7 @@ test("workflow orchestration: invalid workflow transition throws", () => {
         reasonCode: "invalid",
         traceId: newId("trace"),
         occurredAt: now,
+        actorType: "system",
       });
     }, /invalid_transition/);
 

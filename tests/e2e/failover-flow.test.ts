@@ -211,8 +211,10 @@ test("E2E HA Failover: leader lease expiration detected", () => {
 
     // Verify old timestamps indicate potential lease issues
     const exec = h.store.getExecution(executionId);
-    assert.ok(exec?.startedAt < nowIso(), "Execution should have old start time");
-    assert.ok(exec?.updatedAt < nowIso(), "Execution should have old update time");
+    assert.ok(exec != null, "Execution should exist");
+    assert.ok(exec.startedAt != null, "Execution startedAt should not be null");
+    assert.ok(exec.startedAt < nowIso(), "Execution should have old start time");
+    assert.ok(exec.updatedAt < nowIso(), "Execution should have old update time");
 
     // Detect lease expiration - insert failed execution with lease expired error
     const failedExecId = insertFailedExecutionForFailover(
@@ -507,7 +509,8 @@ test("E2E HA Failover: heartbeat missing triggers failover decision", () => {
 
     // Verify stale timestamps indicate heartbeat problem
     const exec = h.store.getExecution(executionId);
-    assert.ok(exec?.updatedAt < nowIso(), "Last update is very old");
+    assert.ok(exec != null, "Execution should exist");
+    assert.ok(exec.updatedAt < nowIso(), "Last update is very old");
 
     // Heartbeat missing leads to leader failure detection
     const failedExecId = insertFailedExecutionForFailover(

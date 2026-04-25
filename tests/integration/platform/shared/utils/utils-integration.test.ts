@@ -55,8 +55,9 @@ test("Utils integration: full sentinel connection config flow", () => {
   assert.strictEqual(config.sentinelName, "mymaster");
   assert.strictEqual(config.sentinelPassword, "sentinel-pass");
   assert.strictEqual(config.sentinels?.length, 3);
-  assert.strictEqual(config.sentinels?.[0].host, "sentinel-1");
-  assert.strictEqual(config.sentinels?.[0].port, 26379);
+  assert.ok(config.sentinels?.[0]);
+  assert.strictEqual(config.sentinels[0].host, "sentinel-1");
+  assert.strictEqual(config.sentinels[0].port, 26379);
 
   const options = buildRedisClientOptions(config);
 
@@ -159,6 +160,7 @@ test("Utils integration: sentinel with tls enabled", () => {
   };
 
   const config = readRedisConnectionConfigFromEnv("CACHE", env);
+  assert.ok(config !== null);
   const options = buildRedisClientOptions(config);
 
   assert.deepStrictEqual(options.tls, {});

@@ -6,30 +6,31 @@ import {
   type IngestIntelCandidate,
   type RegisterPerceptionSourceInput,
 } from "../../../../src/scale-ecosystem/intelligence/perception-service.js";
+import type { IntelItemRecord, IntelBriefRecord, ActionProposalRecord } from "../../../../src/platform/contracts/types/domain.js";
 
 // Mock stores and db
 function createMockStore() {
   return {
     intelligence: {
-      upsertPerceptionSource: () => {},
-      getPerceptionSource: () => null,
-      insertIntelItem: () => {},
-      getIntelItemBySourceAndDedupeKey: () => null,
-      insertIntelBrief: () => {},
-      listIntelItems: () => [],
-      listIntelItemsByIds: () => [],
-      getIntelBrief: () => null,
-      listPerceptionSources: () => [],
-      listIntelBriefs: () => [],
-      listActionProposalsByBrief: () => [],
-      insertActionProposal: () => {},
+      upsertPerceptionSource: (() => {}) as any,
+      getPerceptionSource: (() => null) as any,
+      insertIntelItem: (() => {}) as any,
+      getIntelItemBySourceAndDedupeKey: (() => null) as any,
+      insertIntelBrief: (() => {}) as any,
+      listIntelItems: ((() => []) as any) as (options: { sourceIds?: readonly string[]; tenantId?: string | null; since?: string | null; until?: string | null; limit?: number }) => IntelItemRecord[],
+      listIntelItemsByIds: (() => []) as any,
+      getIntelBrief: (() => null) as any,
+      listPerceptionSources: ((() => []) as any) as (enabledOnly?: boolean, tenantId?: string | null) => any[],
+      listIntelBriefs: (() => []) as any,
+      listActionProposalsByBrief: (() => []) as any,
+      insertActionProposal: (() => {}) as any,
     },
     task: {
-      getTask: () => null,
-      insertTask: () => {},
+      getTask: (() => null) as any,
+      insertTask: (() => {}) as any,
     },
     artifact: {
-      insertArtifact: () => {},
+      insertArtifact: (() => {}) as any,
     },
   };
 }
@@ -112,7 +113,7 @@ test("PerceptionService ingests intel items", () => {
   });
 
   assert.equal(result.insertedItems.length, 1);
-  assert.equal(result.insertedItems[0].title, "Important Update");
+  assert.equal(result.insertedItems[0]!.title, "Important Update");
   assert.equal(result.skippedDuplicateCount, 0);
 });
 
@@ -192,8 +193,8 @@ test("PerceptionService proposes actions from brief", () => {
   const proposals = service.proposeActions({ briefId: "brief_1" });
 
   assert.equal(proposals.length, 1);
-  assert.equal(proposals[0].title, "Action 1");
-  assert.equal(proposals[0].status, "proposed");
+  assert.equal(proposals[0]!.title, "Action 1");
+  assert.equal(proposals[0]!.status, "proposed");
 });
 
 test("PerceptionService returns existing proposals idempotently", () => {
@@ -272,7 +273,7 @@ test("PerceptionService normalizes tags", () => {
     items: [candidate],
   });
 
-  const tags = JSON.parse(result.insertedItems[0].tagsJson);
+  const tags = JSON.parse(result.insertedItems[0]!.tagsJson);
   assert.ok(tags.includes("important"));
   assert.ok(tags.includes("update"));
   assert.ok(tags.includes("security"));
@@ -472,5 +473,5 @@ test("PerceptionService filters expired items", () => {
   const result = service.buildBrief({ generatedAt: now.toISOString() });
 
   assert.equal(result.items.length, 1);
-  assert.equal(result.items[0].intelId, "current");
+  assert.equal(result.items[0]!.intelId, "current");
 });

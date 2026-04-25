@@ -69,25 +69,25 @@ test("startup returns correct initialized status for each step", async () => {
     const result = orchestrator.startup();
 
     assert.equal(result.steps.length, 5);
-    assert.equal(result.steps[0].stepId, "interface");
-    assert.equal(result.steps[0].initialized, true);
-    assert.equal(result.steps[0].capabilityCount, 6);
+    assert.equal(result.steps[0]!.stepId, "interface");
+    assert.equal(result.steps[0]!.initialized, true);
+    assert.equal(result.steps[0]!.capabilityCount, 6);
 
-    assert.equal(result.steps[1].stepId, "control-plane");
-    assert.equal(result.steps[1].initialized, true);
-    assert.equal(result.steps[1].capabilityCount, 12);
+    assert.equal(result.steps[1]!.stepId, "control-plane");
+    assert.equal(result.steps[1]!.initialized, true);
+    assert.equal(result.steps[1]!.capabilityCount, 12);
 
-    assert.equal(result.steps[2].stepId, "orchestration");
-    assert.equal(result.steps[2].initialized, true);
-    assert.equal(result.steps[2].capabilityCount, 8);
+    assert.equal(result.steps[2]!.stepId, "orchestration");
+    assert.equal(result.steps[2]!.initialized, true);
+    assert.equal(result.steps[2]!.capabilityCount, 8);
 
-    assert.equal(result.steps[3].stepId, "execution");
-    assert.equal(result.steps[3].initialized, true);
-    assert.equal(result.steps[3].capabilityCount, 14);
+    assert.equal(result.steps[3]!.stepId, "execution");
+    assert.equal(result.steps[3]!.initialized, true);
+    assert.equal(result.steps[3]!.capabilityCount, 14);
 
-    assert.equal(result.steps[4].stepId, "state-evidence");
-    assert.equal(result.steps[4].initialized, true);
-    assert.equal(result.steps[4].capabilityCount, 10);
+    assert.equal(result.steps[4]!.stepId, "state-evidence");
+    assert.equal(result.steps[4]!.initialized, true);
+    assert.equal(result.steps[4]!.capabilityCount, 10);
   } finally {
     await registry.reset();
   }

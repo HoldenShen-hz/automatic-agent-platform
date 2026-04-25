@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { ConfigGovernanceService } from "../../../../src/platform/control-plane/config-center/config-governance-service.js";
 import { HierarchicalConfigLoader } from "../../../../src/platform/control-plane/config-center/hierarchical-config-loader.js";
 import { createWorkspaceWritePolicy } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
-import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 function seedFullConfigTree(root: string): void {
   mkdirSync(join(root, "bootstrap"), { recursive: true });

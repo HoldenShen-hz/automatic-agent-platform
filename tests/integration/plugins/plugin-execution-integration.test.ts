@@ -125,6 +125,9 @@ test("plugin execution integration: github adapter authenticates and executes", 
       maxQueuedInvocations: 8,
       runtimeIsolation: "serialized_in_process",
       cooldownMs: 0,
+      allowedExternalDomains: [],
+      maxResponseSizeBytes: 5 * 1024 * 1024,
+      rateLimitPerMinute: 60,
     },
   });
 
@@ -278,7 +281,7 @@ test("plugin execution integration: growth retriever and presenter work together
 test("plugin execution integration: plugin invocations track lifecycle state", async () => {
   const registry = new PluginSpiRegistry();
 
-  const retriever = createBuiltinPlugin("plugin.coding.retriever");
+  const retriever = createBuiltinPlugin("plugin.coding.retriever")!;
   registry.register(retriever);
 
   // Initial state should be registered
@@ -316,10 +319,10 @@ test("plugin execution integration: plugin invocations track lifecycle state", a
 test("plugin execution integration: multiple plugins can be activated concurrently", async () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createBuiltinPlugin("plugin.coding.retriever"));
-  registry.register(createBuiltinPlugin("plugin.coding.presenter"));
-  registry.register(createBuiltinPlugin("plugin.core.basic-planner"));
-  registry.register(createBuiltinPlugin("plugin.core.basic-evaluator"));
+  registry.register(createBuiltinPlugin("plugin.coding.retriever")!);
+  registry.register(createBuiltinPlugin("plugin.coding.presenter")!);
+  registry.register(createBuiltinPlugin("plugin.core.basic-planner")!);
+  registry.register(createBuiltinPlugin("plugin.core.basic-evaluator")!);
 
   // Activate all concurrently
   const results = await Promise.all([

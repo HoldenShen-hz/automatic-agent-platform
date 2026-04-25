@@ -1,6 +1,6 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { shouldEnterPanicMode, type PanicDirectiveInput } from "../../../../../../../src/platform/ops-maturity/emergency/panic-controller/index.js";
+import { shouldEnterPanicMode, type PanicDirectiveInput } from "../../../../../src/ops-maturity/emergency/panic-controller/index.js";
 
 test("shouldEnterPanicMode returns true when activeIncidents > 0", () => {
   const input: PanicDirectiveInput = {

@@ -61,8 +61,9 @@ test("createSeededApiContext creates approval request", () => {
     assert.ok(context.approvalId, "approvalId should be set");
     const approval = context.store.getApproval(context.approvalId);
     assert.ok(approval, "approval should exist in store");
-    assert.equal(approval?.sourceAgentId, "operator_gate");
-    assert.equal(approval?.riskLevel, "medium");
+    const request = JSON.parse(approval?.requestJson ?? "{}");
+    assert.equal(request.sourceAgentId, "operator_gate");
+    assert.equal(request.riskLevel, "medium");
     cleanupPath(workspace);
   } catch (err) {
     cleanupPath(workspace);
@@ -118,7 +119,7 @@ test("createSeededApiContext creates plugin registry with coding domain", () => 
   const workspace = createTempWorkspace("test-seeded-plugin-");
   try {
     const context = createSeededApiContext(workspace);
-    const plugins = context.pluginRegistry.listPlugins();
+    const plugins = context.pluginRegistry.list();
     assert.ok(plugins.length > 0, "should have registered plugins");
     cleanupPath(workspace);
   } catch (err) {
@@ -131,8 +132,8 @@ test("createSeededApiContext registers domain with workflows and tool bundles", 
   const workspace = createTempWorkspace("test-seeded-domain-");
   try {
     const context = createSeededApiContext(workspace);
-    const domains = context.domainRegistryService.listDomains();
-    const codingDomain = domains.find((d) => d.domainId === "coding");
+    const domains = context.domainRegistryService.list();
+    const codingDomain = domains.find((d: { domainId: string }) => d.domainId === "coding");
     assert.ok(codingDomain, "coding domain should be registered");
     assert.ok(codingDomain?.workflows.length > 0, "should have workflows");
     assert.ok(codingDomain?.toolBundles.length > 0, "should have tool bundles");

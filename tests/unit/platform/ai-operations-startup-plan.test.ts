@@ -45,8 +45,9 @@ test("buildAiOperationsStartupPlan totalCapabilityCount is sum of all capabiliti
 
 test("buildAiOperationsStartupPlan first step is model-gateway with no dependencies", () => {
   const plan = buildAiOperationsStartupPlan();
-  const firstStep = plan.steps[0];
 
+  const firstStep = plan.steps[0];
+  assert.ok(firstStep != null);
   assert.equal(firstStep.stepId, "model-gateway");
   assert.deepEqual(firstStep.dependsOnStepIds, []);
   assert.equal(firstStep.capabilityId, "model-gateway");
@@ -56,7 +57,7 @@ test("buildAiOperationsStartupPlan first step is model-gateway with no dependenc
 test("buildAiOperationsStartupPlan second step is prompt-engine depending on model-gateway", () => {
   const plan = buildAiOperationsStartupPlan();
   const secondStep = plan.steps[1];
-
+  assert.ok(secondStep != null);
   assert.equal(secondStep.stepId, "prompt-engine");
   assert.deepEqual(secondStep.dependsOnStepIds, ["model-gateway"]);
   assert.equal(secondStep.capabilityId, "prompt-engine");
@@ -66,7 +67,7 @@ test("buildAiOperationsStartupPlan second step is prompt-engine depending on mod
 test("buildAiOperationsStartupPlan third step is compliance depending on prompt-engine", () => {
   const plan = buildAiOperationsStartupPlan();
   const thirdStep = plan.steps[2];
-
+  assert.ok(thirdStep != null);
   assert.equal(thirdStep.stepId, "compliance");
   assert.deepEqual(thirdStep.dependsOnStepIds, ["prompt-engine"]);
   assert.equal(thirdStep.capabilityId, "compliance");
@@ -76,7 +77,7 @@ test("buildAiOperationsStartupPlan third step is compliance depending on prompt-
 test("buildAiOperationsStartupPlan fourth step is harness depending on compliance", () => {
   const plan = buildAiOperationsStartupPlan();
   const fourthStep = plan.steps[3];
-
+  assert.ok(fourthStep != null);
   assert.equal(fourthStep.stepId, "harness");
   assert.deepEqual(fourthStep.dependsOnStepIds, ["compliance"]);
   assert.equal(fourthStep.capabilityId, "orchestration");
@@ -86,6 +87,7 @@ test("buildAiOperationsStartupPlan fourth step is harness depending on complianc
 test("AiOperationsStartupStep interface fields are correct", () => {
   const plan = buildAiOperationsStartupPlan();
   const step = plan.steps[0];
+  assert.ok(step != null);
 
   assert.ok(typeof step.stepId === "string");
   assert.ok(typeof step.capabilityId === "string");
@@ -134,10 +136,18 @@ test("AiOperationsStartupPlan interface fields are correct", () => {
 test("AiOperationsStartupPlan steps match startupOrder", () => {
   const plan = buildAiOperationsStartupPlan();
 
-  assert.equal(plan.steps[0].stepId, plan.startupOrder[0]);
-  assert.equal(plan.steps[1].stepId, plan.startupOrder[1]);
-  assert.equal(plan.steps[2].stepId, plan.startupOrder[2]);
-  assert.equal(plan.steps[3].stepId, plan.startupOrder[3]);
+  const step0 = plan.steps[0];
+  const step1 = plan.steps[1];
+  const step2 = plan.steps[2];
+  const step3 = plan.steps[3];
+  assert.ok(step0 != null);
+  assert.ok(step1 != null);
+  assert.ok(step2 != null);
+  assert.ok(step3 != null);
+  assert.equal(step0.stepId, plan.startupOrder[0]);
+  assert.equal(step1.stepId, plan.startupOrder[1]);
+  assert.equal(step2.stepId, plan.startupOrder[2]);
+  assert.equal(step3.stepId, plan.startupOrder[3]);
 });
 
 test("AiOperationsStartupPlan totalCapabilityCount matches sum of step capabilityCounts", () => {
@@ -189,7 +199,9 @@ test("registerAiOperationsStartupPlan first step has correct entryModule", async
     registerHarnessBootstrap(registry);
     const plan = registerAiOperationsStartupPlan(registry);
 
-    assert.equal(plan.steps[0].entryModule, "src/platform/model-gateway/index.ts");
+    const step0 = plan.steps[0];
+    assert.ok(step0 != null);
+    assert.equal(step0.entryModule, "src/platform/model-gateway/index.ts");
   } finally {
     await registry.reset();
   }
@@ -204,7 +216,9 @@ test("registerAiOperationsStartupPlan fourth step depends on compliance", async 
     registerHarnessBootstrap(registry);
     const plan = registerAiOperationsStartupPlan(registry);
 
-    assert.ok(plan.steps[3].dependsOnStepIds.includes("compliance"));
+    const step3 = plan.steps[3];
+    assert.ok(step3 != null);
+    assert.ok(step3.dependsOnStepIds.includes("compliance"));
   } finally {
     await registry.reset();
   }

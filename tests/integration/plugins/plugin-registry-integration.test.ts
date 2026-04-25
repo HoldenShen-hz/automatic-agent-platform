@@ -43,8 +43,8 @@ test("plugin registry integration: registers and resolves builtin plugins", () =
 test("plugin registry integration: list shows all registered plugins", () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createBuiltinPlugin("plugin.coding.retriever"));
-  registry.register(createBuiltinPlugin("plugin.core.basic-planner"));
+  registry.register(createBuiltinPlugin("plugin.coding.retriever")!);
+  registry.register(createBuiltinPlugin("plugin.core.basic-planner")!);
 
   const allPlugins = registry.list();
   assert.ok(allPlugins.length >= 2, "should list registered plugins");
@@ -57,9 +57,9 @@ test("plugin registry integration: list shows all registered plugins", () => {
 test("plugin registry integration: listByDomain filters correctly", () => {
   const registry = new PluginSpiRegistry();
 
-  registry.register(createBuiltinPlugin("plugin.coding.retriever"));
-  registry.register(createBuiltinPlugin("plugin.coding.presenter"));
-  registry.register(createBuiltinPlugin("plugin.core.basic-planner"));
+  registry.register(createBuiltinPlugin("plugin.coding.retriever")!);
+  registry.register(createBuiltinPlugin("plugin.coding.presenter")!);
+  registry.register(createBuiltinPlugin("plugin.core.basic-planner")!);
 
   const codingPlugins = registry.listByDomain("coding");
   assert.ok(codingPlugins.length >= 2, "should find coding domain plugins");
@@ -89,7 +89,7 @@ test("plugin registry integration: ensureActive activates inactive plugin", asyn
 test("plugin registry integration: deactivated plugin can be reactivated", async () => {
   const registry = new PluginSpiRegistry();
 
-  const planner = createBuiltinPlugin("plugin.core.basic-planner");
+  const planner = createBuiltinPlugin("plugin.core.basic-planner")!;
   registry.register(planner);
 
   // Activate first
@@ -118,7 +118,7 @@ test("plugin registry integration: unknown plugin throws on ensureActive", async
 test("plugin registry integration: unload removes plugin from active state", async () => {
   const registry = new PluginSpiRegistry();
 
-  const evaluator = createBuiltinPlugin("plugin.core.basic-evaluator");
+  const evaluator = createBuiltinPlugin("plugin.core.basic-evaluator")!;
   registry.register(evaluator);
 
   await registry.ensureActive("plugin.core.basic-evaluator");

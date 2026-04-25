@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { HrRoleGovernanceService, type HrGapAnalysisRequest, type HrGapAnalysisResult } from "../../../../src/domains/governance/hr-role-governance-service.js";
+import type { DivisionRegistry } from "../../../../src/domains/governance/division-loader.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
@@ -22,7 +23,7 @@ test("hr role governance: performs gap analysis for missing capability", () => {
     const db = new SqliteDatabase(join(workspace, "hr-gap.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const taskId = "task-gap-test";
     const now = nowIso();
@@ -77,7 +78,7 @@ test("hr role governance: gap analysis identifies missing capabilities", () => {
     const db = new SqliteDatabase(join(workspace, "hr-gap-missing.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const request: HrGapAnalysisRequest = {
       taskId: "task-gap-missing",
@@ -104,7 +105,7 @@ test("hr role governance: suggests tools based on gap analysis", () => {
     const db = new SqliteDatabase(join(workspace, "hr-gap-tools.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const request: HrGapAnalysisRequest = {
       taskId: "task-gap-tools",
@@ -132,7 +133,7 @@ test("hr role governance: recommends model based on task type", () => {
     const db = new SqliteDatabase(join(workspace, "hr-gap-model.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const codingRequest: HrGapAnalysisRequest = {
       taskId: "task-coding",
@@ -158,7 +159,7 @@ test("hr role governance: handles division without existing roles", () => {
     const db = new SqliteDatabase(join(workspace, "hr-gap-empty.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const request: HrGapAnalysisRequest = {
       taskId: "task-new-division",
@@ -186,13 +187,21 @@ test("hr role governance: validates role proposal before submission", () => {
     const db = new SqliteDatabase(join(workspace, "hr-validate.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const validProposal = hrService.validateProposal({
       roleId: "role_proposal_1",
       name: "Deployment Engineer",
       divisionId: "engineering",
-      permissions: ["deploy", "release", "read"],
+      promptText: "Deploys code to production",
+      model: "coding",
+      tools: ["deploy", "release", "read"],
+      scope: {
+        responsibilities: ["deploy code", "release packages"],
+        boundaries: ["no production database writes"],
+      },
+      inputSchema: { required: ["deploymentId"] },
+      outputSchema: { required: ["status"] },
       preconditions: [{ check: "has_deploy_cert", description: "Requires deployment certification" }],
     });
 
@@ -211,13 +220,21 @@ test("hr role governance: rejects invalid role proposal", () => {
     const db = new SqliteDatabase(join(workspace, "hr-invalid.db"));
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
-    const hrService = new HrRoleGovernanceService(store);
+    const hrService = new HrRoleGovernanceService(store as unknown as DivisionRegistry);
 
     const invalidProposal = hrService.validateProposal({
       roleId: "",
       name: "",
       divisionId: "",
-      permissions: [],
+      promptText: "",
+      model: "fast",
+      tools: [],
+      scope: {
+        responsibilities: [],
+        boundaries: [],
+      },
+      inputSchema: { required: [] },
+      outputSchema: { required: [] },
       preconditions: [],
     });
 

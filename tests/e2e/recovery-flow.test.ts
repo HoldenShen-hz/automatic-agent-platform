@@ -698,7 +698,7 @@ test("E2E Recovery: precheck denial leads to task cancellation", () => {
         agentId: "agent-1",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "precheck_denied",
+        status: "precheck_denied" as const,
         inputRef: null,
         traceId: newId("trace-denied"),
         attempt: 2, // Different attempt to avoid constraint
@@ -903,7 +903,7 @@ test("E2E Recovery: execution with checkpoint can be resumed from checkpoint", (
         outputsJson: JSON.stringify({ step0: "done", step1: "done" }),
         lastErrorCode: null,
         retryCount: 1,
-        resumableFromStep: 2, // Can resume from step 2
+        resumableFromStep: "2", // Can resume from step 2
         startedAt: now,
         updatedAt: now,
       });

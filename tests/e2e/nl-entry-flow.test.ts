@@ -201,7 +201,7 @@ test("E2E NL Entry: extracts entities from natural language request", async () =
     const parseResult = await nlService.parseDetailed(request);
 
     assert.ok(parseResult.detectedIntents.length > 0, "Should detect intent");
-    const primaryIntent = parseResult.detectedIntents[0];
+    const primaryIntent = parseResult.detectedIntents[0]!;
     assert.ok(primaryIntent.entities.length > 0, "Should extract entities");
 
     // Check for date entity
@@ -385,8 +385,6 @@ test("E2E NL Entry: locale resolution from multiple sources", async () => {
       tenantId: DEFAULT_TENANT,
       userId: DEFAULT_USER,
       message: "analyze the data",
-      locale: undefined,
-      preferredLocale: undefined,
       acceptLanguage: "en-US,zh-CN;q=0.9",
     };
 
@@ -399,8 +397,6 @@ test("E2E NL Entry: locale resolution from multiple sources", async () => {
       userId: DEFAULT_USER,
       message: "some message",
       locale: "ja-JP",
-      preferredLocale: undefined,
-      acceptLanguage: undefined,
     };
 
     const localeResult = await nlService.parseDetailed(localeRequest);
@@ -411,9 +407,6 @@ test("E2E NL Entry: locale resolution from multiple sources", async () => {
       tenantId: DEFAULT_TENANT,
       userId: DEFAULT_USER,
       message: "!!!***???",
-      locale: undefined,
-      preferredLocale: undefined,
-      acceptLanguage: undefined,
     };
 
     const defaultResult = await nlService.parseDetailed(defaultRequest);
@@ -471,8 +464,9 @@ test("E2E NL Entry: task modification intent detected", async () => {
     const parseResult = await nlService.parseDetailed(modifyRequest);
     const primaryIntent = parseResult.detectedIntents[0];
 
-    assert.equal(primaryIntent?.intentType, "task_modify", "Should detect task_modify intent");
-    assert.equal(primaryIntent?.urgency, "low", "Should detect low urgency for cancel request");
+    assert.ok(primaryIntent, "Should detect an intent");
+    assert.equal(primaryIntent.intentType, "task_modify", "Should detect task_modify intent");
+    assert.equal(primaryIntent.urgency, "low", "Should detect low urgency for cancel request");
 
     // High urgency modify
     const urgentModifyRequest = {
@@ -485,7 +479,8 @@ test("E2E NL Entry: task modification intent detected", async () => {
     const urgentParseResult = await nlService.parseDetailed(urgentModifyRequest);
     const urgentIntent = urgentParseResult.detectedIntents[0];
 
-    assert.equal(urgentIntent?.urgency, "high", "Should detect high urgency for immediate request");
+    assert.ok(urgentIntent, "Should detect an intent");
+    assert.equal(urgentIntent.urgency, "high", "Should detect high urgency for immediate request");
 
   } finally {
     harness.cleanup();
@@ -511,7 +506,8 @@ test("E2E NL Entry: approval action detected with audit requirements", async () 
     const parseResult = await nlService.parseDetailed(approvalRequest);
     const primaryIntent = parseResult.detectedIntents[0];
 
-    assert.equal(primaryIntent?.intentType, "approval_action", "Should detect approval_action intent");
+    assert.ok(primaryIntent, "Should detect an intent");
+    assert.equal(primaryIntent.intentType, "approval_action", "Should detect approval_action intent");
 
     const taskResult = await nlService.buildTask(approvalRequest);
     assert.ok(taskResult.riskPreview.riskFactors.some((f) => f.includes("审批") || f.includes("approval")), "Should list approval risk factor");

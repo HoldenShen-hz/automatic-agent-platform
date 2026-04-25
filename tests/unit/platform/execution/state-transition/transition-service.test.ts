@@ -1,5 +1,5 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import * as assert from "node:assert/strict";
+import * as test from "node:test";
 
 import {
   TransitionService,
@@ -8,16 +8,16 @@ import {
   SessionTransitionService,
   ExecutionTransitionService,
   ApprovalTransitionService,
-} from "../../../../src/platform/execution/state-transition/transition-service.js";
+} from "../../../../../src/platform/execution/state-transition/transition-service.js";
 import type {
   AuthoritativeSqlDatabase,
-} from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+} from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 import type {
   AuthoritativeTaskStore,
-} from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+} from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import type {
   RuntimeLifecycleRepository,
-} from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+} from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 import type {
   TaskStatusTransitionCommand,
   WorkflowStatusTransitionCommand,
@@ -25,14 +25,14 @@ import type {
   ExecutionStatusTransitionCommand,
   ApprovalStatusTransitionCommand,
   TransitionAuditContext,
-} from "../../../../src/platform/contracts/types/domain.js";
+} from "../../../../../src/platform/contracts/types/domain.js";
 import type {
   TaskStatus,
   WorkflowStatus,
   SessionStatus,
   ExecutionStatus,
   ApprovalStatus,
-} from "../../../../src/platform/contracts/types/status.js";
+} from "../../../../../src/platform/contracts/types/status.js";
 
 // ---------------------------------------------------------------------------
 // Mock Database
@@ -43,20 +43,37 @@ interface MockDatabase extends AuthoritativeSqlDatabase {
   transactionResults: unknown[];
 }
 
-function createMockDatabase(): MockDatabase {
+function createMockDatabase(): AuthoritativeSqlDatabase {
   const transactionCalls: Array<() => void> = [];
   const transactionResults: unknown[] = [];
 
   return {
-    transaction(fn) {
+    filePath: ":memory:",
+    backendType: "sqlite",
+    connection: {} as AuthoritativeSqlDatabase["connection"],
+    migrate() {},
+    getSchemaStatus() {
+      return { currentVersion: 1, expectedVersion: 1, upToDate: true, pendingVersions: [], checksumMismatches: [] };
+    },
+    assertSchemaCurrent() {},
+    integrityCheck() {
+      return [];
+    },
+    healthCheck() {
+      return Promise.resolve(true);
+    },
+    transaction<T>(fn: () => T): T {
       transactionCalls.push(fn);
       const result = fn();
       transactionResults.push(result);
       return result;
     },
+    readTransaction<T>(fn: () => T): T {
+      return fn();
+    },
     transactionCalls,
     transactionResults,
-  };
+  } as AuthoritativeSqlDatabase;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,11 +101,11 @@ interface MockRepositoryState {
 interface MockRepository extends RuntimeLifecycleRepository {
   mockState: MockRepositoryState;
   getWorkflowStateCalls: string[];
-  updateTaskStatusCasCalls: Array<{ entityId: string; fromStatus: TaskStatus; toStatus: TaskStatus }>;
+  updateTaskStatusCasCalls: Array<{ entityId: string; fromStatus: string; toStatus: string }>;
   updateWorkflowStateCasCalls: string[];
   updateSessionStatusCasCalls: string[];
   updateExecutionStatusCasCalls: string[];
-  updateApprovalDecisionCasCalls: Array<{ approvalId: string; expectedStatus: ApprovalStatus }>;
+  updateApprovalDecisionCasCalls: Array<{ approvalId: string; expectedStatus: string }>;
 }
 
 function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowStatus?: WorkflowStatus): MockRepository {
@@ -621,12 +638,12 @@ test("ExecutionTransitionService - transition to executing sets startedAt timest
     toStatus: "executing",
     occurredAt: context.occurredAt,
     traceId: context.traceId,
-    reasonCode: null,
-    reasonDetail: null,
+    reasonCode: "test",
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "executing");
@@ -647,12 +664,12 @@ test("ExecutionTransitionService - transition to succeeded sets finishedAt times
     toStatus: "succeeded",
     occurredAt: context.occurredAt,
     traceId: context.traceId,
-    reasonCode: null,
-    reasonDetail: null,
+    reasonCode: "test",
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "succeeded");
@@ -674,11 +691,11 @@ test("ExecutionTransitionService - transition to failed sets lastErrorCode", () 
     occurredAt: context.occurredAt,
     traceId: context.traceId,
     reasonCode: "ERR_TIMEOUT",
-    reasonDetail: null,
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "failed");
@@ -702,12 +719,12 @@ test("ExecutionTransitionService - CAS failure throws error on concurrent modifi
         toStatus: "succeeded",
         occurredAt: context.occurredAt,
         traceId: context.traceId,
-        reasonCode: null,
-        reasonDetail: null,
+        reasonCode: "test",
+        reasonDetail: undefined,
         actorType: context.actorType,
         actorId: context.actorId,
-        idempotencyKey: null,
-        metadataJson: null,
+        idempotencyKey: undefined,
+        metadataJson: undefined,
       }),
     /execution.transition_cas_failed/,
   );
@@ -729,12 +746,12 @@ test("ExecutionTransitionService - validates allowed execution transitions", () 
     toStatus: "prechecking",
     occurredAt: context.occurredAt,
     traceId: context.traceId,
-    reasonCode: null,
-    reasonDetail: null,
+    reasonCode: "test",
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "prechecking");
@@ -759,12 +776,12 @@ test("ApprovalTransitionService - successful transition to approved", () => {
     responseJson: '{"decision": "approved"}',
     occurredAt: context.occurredAt,
     traceId: context.traceId,
-    reasonCode: null,
-    reasonDetail: null,
+    reasonCode: "test",
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.updateApprovalDecisionCasCalls.length, 1);
@@ -790,12 +807,12 @@ test("ApprovalTransitionService - CAS failure throws error on concurrent modific
         responseJson: '{"decision": "approved"}',
         occurredAt: context.occurredAt,
         traceId: context.traceId,
-        reasonCode: null,
-        reasonDetail: null,
+        reasonCode: "test",
+        reasonDetail: undefined,
         actorType: context.actorType,
         actorId: context.actorId,
-        idempotencyKey: null,
-        metadataJson: null,
+        idempotencyKey: undefined,
+        metadataJson: undefined,
       }),
     /approval.transition_cas_failed/,
   );
@@ -818,12 +835,12 @@ test("ApprovalTransitionService - invalid transition throws error", () => {
         responseJson: '{"decision": "rejected"}',
         occurredAt: context.occurredAt,
         traceId: context.traceId,
-        reasonCode: null,
-        reasonDetail: null,
+        reasonCode: "test",
+        reasonDetail: undefined,
         actorType: context.actorType,
         actorId: context.actorId,
-        idempotencyKey: null,
-        metadataJson: null,
+        idempotencyKey: undefined,
+        metadataJson: undefined,
       }),
     /invalid_transition/,
   );
@@ -851,12 +868,12 @@ test("ApprovalTransitionService - validates all approval status transitions", ()
       responseJson: `{"decision": "${toStatus}"}`,
       occurredAt: context.occurredAt,
       traceId: context.traceId,
-      reasonCode: null,
-      reasonDetail: null,
+      reasonCode: "test",
+      reasonDetail: undefined,
       actorType: context.actorType,
       actorId: context.actorId,
-      idempotencyKey: null,
-      metadataJson: null,
+      idempotencyKey: undefined,
+      metadataJson: undefined,
     });
 
     assert.equal(repository.updateApprovalDecisionCasCalls.length, 1);
@@ -942,12 +959,12 @@ test("TransitionService - transitions execution status via facade", () => {
     toStatus: "prechecking",
     occurredAt: context.occurredAt,
     traceId: context.traceId,
-    reasonCode: null,
-    reasonDetail: null,
+    reasonCode: "test",
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "prechecking");
@@ -970,12 +987,12 @@ test("TransitionService - transitions approval status via facade", () => {
     responseJson: '{"decision": "approved"}',
     occurredAt: context.occurredAt,
     traceId: context.traceId,
-    reasonCode: null,
-    reasonDetail: null,
+    reasonCode: "test",
+    reasonDetail: undefined,
     actorType: context.actorType,
     actorId: context.actorId,
-    idempotencyKey: null,
-    metadataJson: null,
+    idempotencyKey: undefined,
+    metadataJson: undefined,
   });
 
   assert.equal(repository.mockState.approvalDecisions.get("approval-1")?.status, "approved");

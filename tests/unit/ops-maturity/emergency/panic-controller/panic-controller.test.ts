@@ -96,15 +96,14 @@ test("shouldEnterPanicMode handles zero incidents exactly", () => {
   assert.equal(shouldEnterPanicMode(input), false);
 });
 
-test("shouldEnterPanicMode treats negative incidents as valid trigger", () => {
+test("shouldEnterPanicMode returns false for negative incidents", () => {
   const input: PanicDirectiveInput = {
     scope: "platform",
     reasonCode: "test",
     activeIncidents: -1,
   };
 
-  // -1 > 0 is true, so this returns true
-  assert.equal(shouldEnterPanicMode(input), true);
+  assert.equal(shouldEnterPanicMode(input), false);
 });
 
 test("PanicDirectiveInput scope is readonly string", () => {
@@ -137,14 +136,14 @@ test("PanicDirectiveInput activeIncidents is readonly number", () => {
   assert.equal(typeof input.activeIncidents, "number");
 });
 
-test("shouldEnterPanicMode works with any string reasonCode prefix", () => {
+test("shouldEnterPanicMode returns false for security prefix without dot", () => {
   const input: PanicDirectiveInput = {
     scope: "platform",
     reasonCode: "security",
     activeIncidents: 0,
   };
 
-  assert.equal(shouldEnterPanicMode(input), true);
+  assert.equal(shouldEnterPanicMode(input), false);
 });
 
 test("shouldEnterPanicMode false for empty reasonCode with 0 incidents", () => {

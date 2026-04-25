@@ -128,7 +128,7 @@ test("integration: DLQ service markResolved creates operator action log", () => 
 
     const actionLog = resolved.operatorActionLog;
     assert.ok(actionLog.length > 0, "Operator action log should have entries");
-    const lastAction = actionLog[actionLog.length - 1];
+    const lastAction = actionLog[actionLog.length - 1]!;
     assert.equal(lastAction.operatorId, operatorId, "Operator ID should be recorded");
     assert.equal(lastAction.action, "manual_resolve", "Action type should be manual_resolve");
     assert.equal(lastAction.previousStatus, "pending", "Previous status should be pending");
@@ -157,7 +157,7 @@ test("integration: DLQ service discard updates status and logs operator action",
     assert.equal(discarded.errorCode, discardReason, "Error code should be updated to discard reason");
     assert.equal(discarded.nextRetryAt, null, "Next retry should be null after discard");
 
-    const lastAction = discarded.operatorActionLog[discarded.operatorActionLog.length - 1];
+    const lastAction = discarded.operatorActionLog[discarded.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "manual_discard", "Action should be manual_discard");
     assert.equal(lastAction.details?.discardReason, discardReason, "Discard reason should be in details");
   } finally {
@@ -191,7 +191,7 @@ test("integration: DLQ service markRetryExhausted updates status and records tim
     assert.equal(exhausted.retryCount, 5, "Retry count should be preserved at 5");
     assert.equal(exhausted.nextRetryAt, null, "Next retry should be null");
 
-    const lastAction = exhausted.operatorActionLog[exhausted.operatorActionLog.length - 1];
+    const lastAction = exhausted.operatorActionLog[exhausted.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "retry_exhausted", "Action should be retry_exhausted");
     assert.deepEqual(lastAction.details, { retryCount: 5, maxRetries: 5 }, "Details should include retry counts");
   } finally {
@@ -216,7 +216,7 @@ test("integration: DLQ service setFailureCategory updates category and logs acti
     assert.equal(categorized.failureCategory, "configuration", "Failure category should be updated");
     assert.ok(categorized.updatedAt > categorized.createdAt, "Updated timestamp should be newer than created");
 
-    const lastAction = categorized.operatorActionLog[categorized.operatorActionLog.length - 1];
+    const lastAction = categorized.operatorActionLog[categorized.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "category_changed", "Action should be category_changed");
     assert.deepEqual(lastAction.details, {
       previousCategory: null,
@@ -268,7 +268,7 @@ test("integration: DLQ service logOperatorAction adds custom operator action to 
       { ticketId: "INC-001", severity: "high" },
     );
 
-    const lastAction = logged.operatorActionLog[logged.operatorActionLog.length - 1];
+    const lastAction = logged.operatorActionLog[logged.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "investigation_started", "Action should match");
     assert.equal(lastAction.operatorId, "operator-investigate", "Operator ID should match");
     assert.deepEqual(lastAction.details, { ticketId: "INC-001", severity: "high" }, "Details should match");
@@ -428,7 +428,7 @@ test("integration: DLQ service cancelRetry clears nextRetryAt and status", () =>
     assert.equal(cancelled.status, "pending", "Status should return to pending");
     assert.equal(cancelled.nextRetryAt, null, "Next retry should be null");
 
-    const lastAction = cancelled.operatorActionLog[cancelled.operatorActionLog.length - 1];
+    const lastAction = cancelled.operatorActionLog[cancelled.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "retry_cancelled", "Action should be retry_cancelled");
     assert.deepEqual(lastAction.details, { retryCount: 1 }, "Details should include retry count at cancel time");
   } finally {

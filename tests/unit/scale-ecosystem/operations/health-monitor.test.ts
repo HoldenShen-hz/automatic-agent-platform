@@ -14,12 +14,14 @@ import {
 import type { OpsHealthProbe } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
 
 function makeProbe(overrides: Partial<OpsHealthProbe> = {}): OpsHealthProbe {
-  return {
-    component: "test-component",
-    status: "healthy",
-    timestamp: "2026-04-25T00:00:00.000Z",
-    ...overrides,
+  const result: OpsHealthProbe = {
+    component: overrides.component ?? "test-component",
+    status: overrides.status ?? "healthy",
+    timestamp: overrides.timestamp ?? "2026-04-25T00:00:00.000Z",
+    ...(overrides.latencyMs !== undefined ? { latencyMs: overrides.latencyMs } : {}),
+    ...(overrides.metadata !== undefined ? { metadata: overrides.metadata } : {}),
   };
+  return result;
 }
 
 test("OpsHealthMonitorService.evaluate returns snapshot with status degraded when any probe degraded", () => {
@@ -33,8 +35,8 @@ test("OpsHealthMonitorService.evaluate returns snapshot with status degraded whe
 
   assert.equal(snapshot.status, "degraded");
   assert.equal(snapshot.alerts.length, 1);
-  assert.equal(snapshot.alerts[0].severity, "warning");
-  assert.equal(snapshot.alerts[0].reasonCode, "ops.health.component_degraded");
+  assert.equal(snapshot.alerts[0]!.severity, "warning");
+  assert.equal(snapshot.alerts[0]!.reasonCode, "ops.health.component_degraded");
 });
 
 test("OpsHealthMonitorService.evaluate returns snapshot with status failed when any probe failed", () => {
@@ -195,8 +197,8 @@ test("calculateHealthMetrics returns 100 for empty probes", () => {
 
 test("calculateHealthMetrics averageLatencyMs is null when no latencies", () => {
   const probes: OpsHealthProbe[] = [
-    makeProbe({ latencyMs: undefined }),
-    makeProbe({ latencyMs: undefined }),
+    makeProbe({}),
+    makeProbe({}),
   ];
 
   const metrics = calculateHealthMetrics(probes);
@@ -234,21 +236,22 @@ test("analyzeLatencyTrends returns sorted by latency descending", () => {
 
   const trends = analyzeLatencyTrends(probes);
 
-  assert.equal(trends[0].component, "slow");
-  assert.equal(trends[1].component, "medium");
-  assert.equal(trends[2].component, "fast");
+  assert.equal(trends.length, 3);
+  assert.equal(trends[0]!.component, "slow");
+  assert.equal(trends[1]!.component, "medium");
+  assert.equal(trends[2]!.component, "fast");
 });
 
 test("analyzeLatencyTrends ignores probes without latency", () => {
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "with-latency", latencyMs: 100 }),
-    makeProbe({ component: "no-latency", latencyMs: undefined }),
+    makeProbe({ component: "no-latency" }),
   ];
 
   const trends = analyzeLatencyTrends(probes);
 
   assert.equal(trends.length, 1);
-  assert.equal(trends[0].component, "with-latency");
+  assert.equal(trends[0]!.component, "with-latency");
 });
 
 test("hasLatencyAnomalies returns true when any probe exceeds threshold", () => {

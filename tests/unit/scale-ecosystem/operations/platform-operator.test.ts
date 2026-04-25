@@ -11,29 +11,29 @@ import type { WorkerSnapshotRecord } from "../../../../src/platform/contracts/ty
 // Helper types and builders
 // ---------------------------------------------------------------------------
 
-interface MockWorkerMethods {
+function createMockStore(workerOverrides: Partial<{
   listWorkerSnapshots: () => WorkerSnapshotRecord[];
   listExecutionTicketsByStatuses: (statuses: string[]) => number;
   listExecutionLeasesByStatuses: (statuses: string[]) => number;
-}
-
-function createMockStore(overrides: Partial<MockWorkerMethods> = {}): MockWorkerMethods & ReturnType<typeof createBaseStore> {
-  const base = createBaseStore();
+}> = {}, releaseOverrides: Partial<{
+  listEnvironmentReadinessRecords: () => any[];
+}> = {}, orgOverrides: Partial<{
+  listOrganizationRecords: () => any[];
+  listWorkspaceRecords: () => any[];
+  listTenantRecords: () => any[];
+  listDeploymentBindings: () => any[];
+  listDataNamespaces: () => any[];
+}> = {}) {
   return {
-    ...base,
     worker: {
       listWorkerSnapshots: () => [],
       listExecutionTicketsByStatuses: () => 0,
       listExecutionLeasesByStatuses: () => 0,
-      ...overrides.worker,
+      ...workerOverrides,
     },
-  };
-}
-
-function createBaseStore() {
-  return {
     release: {
       listEnvironmentReadinessRecords: () => [],
+      ...releaseOverrides,
     },
     organization: {
       listOrganizationRecords: () => [],
@@ -41,6 +41,7 @@ function createBaseStore() {
       listTenantRecords: () => [],
       listDeploymentBindings: () => [],
       listDataNamespaces: () => [],
+      ...orgOverrides,
     },
     task: {
       getTask: () => null,
@@ -92,10 +93,10 @@ test("PlatformOperatorService buildReport accepts custom targetStatus", () => {
     environment: "production",
     evidenceRootDir: "/tmp/evidence",
     packageOutputDir: "/tmp/output",
-    targetStatus: "stable",
+    targetStatus: "production_ready",
   });
 
-  assert.equal(report.targetStatus, "stable");
+  assert.equal(report.targetStatus, "production_ready");
 });
 
 test("PlatformOperatorService buildReport uses provided generatedAt", () => {
@@ -125,14 +126,14 @@ test("PlatformOperatorService buildReport throws on invalid generatedAt", () => 
 });
 
 test("PlatformOperatorService buildReport counts workers by scheduling status", () => {
+  // WorkerStatus: idle | busy | draining | degraded | unavailable | quarantined | offline
+  // toWorkerSchedulingStatus maps: idle->healthy, busy->degraded, etc.
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" } as WorkerSnapshotRecord,
-        { workerId: "w2", status: "degraded", maxConcurrency: 3, runningExecutionsJson: "[1]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch2" } as WorkerSnapshotRecord,
-        { workerId: "w3", status: "draining", maxConcurrency: 4, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch3" } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+      { workerId: "w2", status: "busy", maxConcurrency: 3, runningExecutionsJson: "[1]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch2", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r2", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+      { workerId: "w3", status: "draining", maxConcurrency: 4, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch3", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r3", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -144,8 +145,8 @@ test("PlatformOperatorService buildReport counts workers by scheduling status", 
   });
 
   assert.equal(report.executionPlane.workerCounts.total, 3);
-  assert.equal(report.executionPlane.workerCounts.healthy, 1);
-  assert.equal(report.executionPlane.workerCounts.degraded, 1);
+  assert.equal(report.executionPlane.workerCounts.healthy, 1); // idle -> healthy
+  assert.equal(report.executionPlane.workerCounts.degraded, 1); // busy -> degraded
   assert.equal(report.executionPlane.workerCounts.draining, 1);
 });
 
@@ -153,11 +154,9 @@ test("PlatformOperatorService buildReport identifies stale workers", () => {
   const oldHeartbeat = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 minutes ago
 
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: oldHeartbeat, placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: oldHeartbeat, placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any, {
@@ -177,11 +176,9 @@ test("PlatformOperatorService buildReport identifies stale workers", () => {
 
 test("PlatformOperatorService buildReport identifies untrusted remote workers", () => {
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null, capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -198,11 +195,9 @@ test("PlatformOperatorService buildReport identifies untrusted remote workers", 
 
 test("PlatformOperatorService buildReport local workers are always trusted", () => {
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: null, registrationChallengeId: null } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: null, registrationChallengeId: null, capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -219,15 +214,13 @@ test("PlatformOperatorService buildReport local workers are always trusted", () 
 
 test("PlatformOperatorService buildReport counts tickets by status", () => {
   const store = createMockStore({
-    worker: {
-      listExecutionTicketsByStatuses: (statuses: string[]) => {
-        if (statuses.includes("pending")) return 5;
-        if (statuses.includes("claimed")) return 3;
-        if (statuses.includes("consumed")) return 10;
-        if (statuses.includes("cancelled")) return 2;
-        if (statuses.includes("expired")) return 1;
-        return 0;
-      },
+    listExecutionTicketsByStatuses: (statuses: string[]) => {
+      if (statuses.includes("pending")) return 5;
+      if (statuses.includes("claimed")) return 3;
+      if (statuses.includes("consumed")) return 10;
+      if (statuses.includes("cancelled")) return 2;
+      if (statuses.includes("expired")) return 1;
+      return 0;
     },
   });
 
@@ -248,15 +241,13 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
 
 test("PlatformOperatorService buildReport counts leases by status", () => {
   const store = createMockStore({
-    worker: {
-      listExecutionLeasesByStatuses: (statuses: string[]) => {
-        if (statuses.includes("active")) return 4;
-        if (statuses.includes("expired")) return 2;
-        if (statuses.includes("released")) return 1;
-        if (statuses.includes("reclaimed")) return 0;
-        if (statuses.includes("handed_over")) return 0;
-        return 0;
-      },
+    listExecutionLeasesByStatuses: (statuses: string[]) => {
+      if (statuses.includes("active")) return 4;
+      if (statuses.includes("expired")) return 2;
+      if (statuses.includes("released")) return 1;
+      if (statuses.includes("reclaimed")) return 0;
+      if (statuses.includes("handed_over")) return 0;
+      return 0;
     },
   });
 
@@ -274,15 +265,12 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
 });
 
 test("PlatformOperatorService buildReport builds readiness summary per component type", () => {
-  const store = createMockStore({
-    worker: {},
-    release: {
-      listEnvironmentReadinessRecords: () => [
-        { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() } as any,
-        { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() } as any,
-        { componentType: "sandbox", credentialReady: 0, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() } as any,
-      ],
-    },
+  const store = createMockStore({}, {
+    listEnvironmentReadinessRecords: () => [
+      { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
+      { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
+      { componentType: "sandbox", credentialReady: 0, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -309,12 +297,10 @@ test("PlatformOperatorService buildReport builds readiness summary per component
 test("PlatformOperatorService buildReport marks readiness stale when lastVerifiedAt is old", () => {
   const oldTimestamp = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(); // 48 hours ago
 
-  const store = createMockStore({
-    release: {
-      listEnvironmentReadinessRecords: () => [
-        { componentType: "provider", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: oldTimestamp } as any,
-      ],
-    },
+  const store = createMockStore({}, {
+    listEnvironmentReadinessRecords: () => [
+      { componentType: "provider", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: oldTimestamp },
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any, {
@@ -334,14 +320,12 @@ test("PlatformOperatorService buildReport marks readiness stale when lastVerifie
 });
 
 test("PlatformOperatorService buildReport collects topology counts", () => {
-  const store = createMockStore({
-    organization: {
-      listOrganizationRecords: () => [1, 2] as any,
-      listWorkspaceRecords: () => [10, 11, 12] as any,
-      listTenantRecords: () => [100, 101] as any,
-      listDeploymentBindings: () => [200, 201, 202, 203] as any,
-      listDataNamespaces: () => [300, 301] as any,
-    },
+  const store = createMockStore({}, {}, {
+    listOrganizationRecords: () => [1, 2],
+    listWorkspaceRecords: () => [10, 11, 12],
+    listTenantRecords: () => [100, 101],
+    listDeploymentBindings: () => [200, 201, 202, 203],
+    listDataNamespaces: () => [300, 301],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -361,12 +345,10 @@ test("PlatformOperatorService buildReport collects topology counts", () => {
 
 test("PlatformOperatorService buildReport calculates totalAvailableSlots from worker concurrency", () => {
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[1,2,3]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" } as WorkerSnapshotRecord,
-        { workerId: "w2", status: "healthy", maxConcurrency: 10, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch2" } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[1,2,3]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+      { workerId: "w2", status: "idle", maxConcurrency: 10, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch2", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r2", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -383,11 +365,9 @@ test("PlatformOperatorService buildReport calculates totalAvailableSlots from wo
 
 test("PlatformOperatorService buildReport handles malformed runningExecutionsJson gracefully", () => {
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "not valid json", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "not valid json", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -404,14 +384,12 @@ test("PlatformOperatorService buildReport handles malformed runningExecutionsJso
 
 test("PlatformOperatorService buildReport flags promotion risk when active leases exceed workers", () => {
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" } as WorkerSnapshotRecord,
-      ],
-      listExecutionLeasesByStatuses: (statuses: string[]) => {
-        if (statuses.includes("active")) return 5; // 5 leases but only 1 worker
-        return 0;
-      },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
+    listExecutionLeasesByStatuses: (statuses: string[]) => {
+      if (statuses.includes("active")) return 5; // 5 leases but only 1 worker
+      return 0;
     },
   });
 
@@ -427,11 +405,9 @@ test("PlatformOperatorService buildReport flags promotion risk when active lease
 });
 
 test("PlatformOperatorService buildReport flags promotion risk when deployment bindings exceed tenants", () => {
-  const store = createMockStore({
-    organization: {
-      listTenantRecords: () => [100] as any,
-      listDeploymentBindings: () => [200, 201] as any, // 2 bindings, 1 tenant is suspicious
-    },
+  const store = createMockStore({}, {}, {
+    listTenantRecords: () => [100],
+    listDeploymentBindings: () => [200, 201], // 2 bindings, 1 tenant is suspicious
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -446,11 +422,9 @@ test("PlatformOperatorService buildReport flags promotion risk when deployment b
 });
 
 test("PlatformOperatorService buildReport flags promotion risk when data namespaces are fewer than tenants", () => {
-  const store = createMockStore({
-    organization: {
-      listTenantRecords: () => [100, 101, 102] as any,
-      listDataNamespaces: () => [1] as any, // only 1 namespace for 3 tenants
-    },
+  const store = createMockStore({}, {}, {
+    listTenantRecords: () => [100, 101, 102],
+    listDataNamespaces: () => [1], // only 1 namespace for 3 tenants
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -466,11 +440,9 @@ test("PlatformOperatorService buildReport flags promotion risk when data namespa
 
 test("PlatformOperatorService buildReport marks promoteEligible false when risks exist", () => {
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null, capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -487,12 +459,7 @@ test("PlatformOperatorService buildReport marks promoteEligible false when risks
 });
 
 test("PlatformOperatorService exportReport returns report and artifact refs", () => {
-  const store = createMockStore({
-    task: {
-      getTask: () => null,
-      insertTask: () => {},
-    },
-  });
+  const store = createMockStore();
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
 
@@ -513,11 +480,9 @@ test("PlatformOperatorService buildReport adds stale worker to promotion risks",
   const oldHeartbeat = new Date(Date.now() - 20 * 60 * 1000).toISOString();
 
   const store = createMockStore({
-    worker: {
-      listWorkerSnapshots: () => [
-        { workerId: "stale-worker", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: oldHeartbeat, placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" } as WorkerSnapshotRecord,
-      ],
-    },
+    listWorkerSnapshots: () => [
+      { workerId: "stale-worker", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: oldHeartbeat, placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any, {
@@ -535,12 +500,10 @@ test("PlatformOperatorService buildReport adds stale worker to promotion risks",
 });
 
 test("PlatformOperatorService buildReport readiness allReady is true when no issues", () => {
-  const store = createMockStore({
-    release: {
-      listEnvironmentReadinessRecords: () => [
-        { componentType: "worker_fleet", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() } as any,
-      ],
-    },
+  const store = createMockStore({}, {
+    listEnvironmentReadinessRecords: () => [
+      { componentType: "worker_fleet", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
+    ],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -558,10 +521,8 @@ test("PlatformOperatorService buildReport readiness allReady is true when no iss
 
 test("PlatformOperatorService buildReport missing readiness records add promotion risk", () => {
   // No readiness records at all for a component type
-  const store = createMockStore({
-    release: {
-      listEnvironmentReadinessRecords: () => [],
-    },
+  const store = createMockStore({}, {
+    listEnvironmentReadinessRecords: () => [],
   });
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);

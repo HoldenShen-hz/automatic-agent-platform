@@ -510,7 +510,7 @@ test("Steady state validation captures all operator results correctly", () => {
   const scheduler = createScheduler();
 
   const operators: SteadyStateHypothesis["operator"][] = ["lt", "gt", "eq", "ne", "lte", "gte"];
-  const results: Array<{ op: string; result: boolean }> = [];
+  const results: Array<{ op: string; belowResult: boolean; atResult: boolean; aboveResult: boolean }> = [];
 
   for (const op of operators) {
     const hyp: SteadyStateHypothesis = { name: "test", metricName: "m", tolerance: 10, operator: op };
@@ -526,34 +526,34 @@ test("Steady state validation captures all operator results correctly", () => {
   }
 
   // Verify lt: below=true, at=false, above=false
-  assert.equal(results[0].belowResult, true);
-  assert.equal(results[0].atResult, false);
-  assert.equal(results[0].aboveResult, false);
+  assert.equal(results[0]!.belowResult, true);
+  assert.equal(results[0]!.atResult, false);
+  assert.equal(results[0]!.aboveResult, false);
 
   // Verify gt: below=false, at=false, above=true
-  assert.equal(results[1].belowResult, false);
-  assert.equal(results[1].atResult, false);
-  assert.equal(results[1].aboveResult, true);
+  assert.equal(results[1]!.belowResult, false);
+  assert.equal(results[1]!.atResult, false);
+  assert.equal(results[1]!.aboveResult, true);
 
   // Verify eq: below=false, at=true, above=false
-  assert.equal(results[2].belowResult, false);
-  assert.equal(results[2].atResult, true);
-  assert.equal(results[2].aboveResult, false);
+  assert.equal(results[2]!.belowResult, false);
+  assert.equal(results[2]!.atResult, true);
+  assert.equal(results[2]!.aboveResult, false);
 
   // Verify ne: below=true, at=false, above=true
-  assert.equal(results[3].belowResult, true);
-  assert.equal(results[3].atResult, false);
-  assert.equal(results[3].aboveResult, true);
+  assert.equal(results[3]!.belowResult, true);
+  assert.equal(results[3]!.atResult, false);
+  assert.equal(results[3]!.aboveResult, true);
 
   // Verify lte: below=true, at=true, above=false
-  assert.equal(results[4].belowResult, true);
-  assert.equal(results[4].atResult, true);
-  assert.equal(results[4].aboveResult, false);
+  assert.equal(results[4]!.belowResult, true);
+  assert.equal(results[4]!.atResult, true);
+  assert.equal(results[4]!.aboveResult, false);
 
   // Verify gte: below=false, at=true, above=true
-  assert.equal(results[5].belowResult, false);
-  assert.equal(results[5].atResult, true);
-  assert.equal(results[5].aboveResult, true);
+  assert.equal(results[5]!.belowResult, false);
+  assert.equal(results[5]!.atResult, true);
+  assert.equal(results[5]!.aboveResult, true);
 });
 
 // ---------------------------------------------------------------------------

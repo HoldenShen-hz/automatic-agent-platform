@@ -9,7 +9,8 @@ import test from "node:test";
 
 // ValidationError from src platform/contracts/errors
 class ValidationError extends Error {
-  constructor(code, message) {
+  code: string;
+  constructor(code: string, message: string) {
     super(message);
     this.name = "ValidationError";
     this.code = code;

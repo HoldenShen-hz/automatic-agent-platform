@@ -6,7 +6,7 @@ import {
   CapacityScenarioSimulatorService,
   type CapacityScenarioInput,
   type SimulatedScenarioResult,
-} from new URL("../../../../../src/ops-maturity/capacity-planner/simulator/index.js", import.meta.url).href;
+} from "../../../../src/ops-maturity/capacity-planner/simulator/index.js";
 
 test("simulateCapacityScenario calculates projected units with growth and optimization", () => {
   const result = simulateCapacityScenario({

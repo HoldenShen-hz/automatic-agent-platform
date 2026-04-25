@@ -154,7 +154,7 @@ test("parseArguments returns undefined channel when not provided", () => {
 });
 
 test("parseArguments accepts explicit undefined channel", () => {
-  const result = parseArguments({ action: "list", queue: "gateway", channel: undefined });
+  const result = parseArguments({ action: "list", queue: "gateway" });
   assert.equal(result.channel, undefined);
 });
 

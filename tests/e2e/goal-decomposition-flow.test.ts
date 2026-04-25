@@ -192,6 +192,7 @@ test("E2E Goal Decomposition: dependency graph produces valid topological sort",
 
     // Level 0 tasks should have no dependencies
     const level0Tasks = result.parallelTaskGroups![0];
+    assert.ok(level0Tasks != null, "Level 0 tasks group should exist");
     assert.ok(level0Tasks.length > 0, "Should have at least one level 0 task");
 
   } finally {

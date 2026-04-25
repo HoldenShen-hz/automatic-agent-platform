@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SyncBackedAsyncService } from "../../../../../../src/platform/shared/async/sync-backed-async-service.js";
+import { SyncBackedAsyncService } from "../../../../../src/platform/shared/async/sync-backed-async-service.js";
 
 // Concrete implementation for testing
 class TestSyncService {
@@ -23,6 +23,10 @@ class TestAsyncService extends SyncBackedAsyncService<TestSyncService> {
   public getCounterSync(): number {
     return this.sync.counter;
   }
+
+  public callAsPromise<TResult>(operation: (sync: TestSyncService) => TResult): Promise<TResult> {
+    return this.asPromise(operation);
+  }
 }
 
 test("SyncBackedAsyncService initializes sync object via factory", () => {
@@ -38,7 +42,7 @@ test("SyncBackedAsyncService.asPromise wraps sync operation in Promise", async (
 
 test("SyncBackedAsyncService.asPromise resolves immediately with sync result", async () => {
   const service = new TestAsyncService();
-  const promise = service.asPromise((sync) => sync.counter * 10);
+  const promise = service.callAsPromise((sync) => sync.counter * 10);
   const result = await promise;
   assert.equal(result, 0); // counter is 0 at this point
 });
@@ -78,13 +82,13 @@ test("SyncBackedAsyncService.sync is shared across all operations", async () => 
 
 test("SyncBackedAsyncService preserves sync state between asPromise calls", async () => {
   const service = new TestAsyncService();
-  await service.asPromise((sync) => {
+  await service.callAsPromise((sync) => {
     sync.increment();
     sync.increment();
   });
   assert.equal(service.getSyncService().counter, 2);
 
-  await service.asPromise((sync) => {
+  await service.callAsPromise((sync) => {
     sync.increment();
   });
   assert.equal(service.getSyncService().counter, 3);
