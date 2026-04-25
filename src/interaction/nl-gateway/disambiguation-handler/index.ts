@@ -60,15 +60,19 @@ export function detectAmbiguity(
   requiredEntityCount: number,
   extractedEntityCount: number,
 ): boolean {
-  // High confidence means not ambiguous, regardless of length
-  if (confidence >= 0.7) {
+  const normalized = message.trim();
+
+  // High confidence (above threshold) means not ambiguous
+  if (confidence > 0.7) {
     return extractedEntityCount < requiredEntityCount;
   }
-  // Medium confidence with short message is ambiguous
-  const normalized = message.trim();
+
+  // Short message is ambiguous regardless of entities
   if (normalized.length < 6) {
     return true;
   }
+
+  // Check entity count for remaining cases
   return extractedEntityCount < requiredEntityCount;
 }
 

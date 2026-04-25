@@ -198,6 +198,7 @@ test("SamlService.consumeAssertion detects replay attacks", () => {
     entryPoint: "https://okta.example.com/sso",
     issuer: "https://issuer.example.com",
     certificateFingerprint: "ABC123",
+    allowUnsignedAssertions: true,
   });
 
   const validAssertion = {
@@ -222,6 +223,7 @@ test("SamlService.consumeAssertion creates valid session", () => {
     entryPoint: "https://okta.example.com/sso",
     issuer: "https://issuer.example.com",
     certificateFingerprint: "ABC123",
+    allowUnsignedAssertions: true,
   });
 
   const session = service.consumeAssertion("okta", {

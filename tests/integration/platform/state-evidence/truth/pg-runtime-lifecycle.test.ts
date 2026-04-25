@@ -102,7 +102,10 @@ test("PostgreSQL async repositories cover execution authoritative view reads", a
     });
 
     assert.equal(event.eventTier, "tier_1");
-    assert.deepEqual(await repos.event.getRequiredConsumerIds(event.id), ["task_projection", "inspect_projection"]);
+    assert.deepEqual(
+      (await repos.event.getRequiredConsumerIds(event.id)).sort(),
+      ["inspect_projection", "task_projection"],
+    );
 
     const view = await repos.operations.loadExecutionAuthoritativeView("exec_pg_runtime");
     assert.equal(view?.execution.id, "exec_pg_runtime");

@@ -360,9 +360,11 @@ export class PgDatabase implements AsyncSqlDatabase {
         idle_timeout: 20000,
         connect_timeout: 10000,
       };
-
       if (this.schema !== "public") {
-        sqlOptions.search_path = this.schema;
+        const escapedSchema = this.schema.replace(/"/g, "\"\"");
+        sqlOptions["connection"] = {
+          search_path: `"${escapedSchema}", public`,
+        };
       }
 
       this.sql = postgres(this.dsn, sqlOptions);
@@ -370,6 +372,10 @@ export class PgDatabase implements AsyncSqlDatabase {
 
       // Test the connection
       await this.sql`SELECT 1`;
+      if (this.schema !== "public") {
+        const escapedSchema = this.schema.replace(/"/g, "\"\"");
+        await this.sql.unsafe(`SET search_path TO "${escapedSchema}", public`);
+      }
 
       this._connected = true;
       this._connecting = false;
@@ -487,6 +493,10 @@ export class PgDatabase implements AsyncSqlDatabase {
     this.ensureConnected();
     const sql = this.getSql();
     return await sql.begin(async (transactionSql) => {
+      if (this.schema !== "public") {
+        const escapedSchema = this.schema.replace(/"/g, "\"\"");
+        await transactionSql.unsafe(`SET search_path TO "${escapedSchema}", public`);
+      }
       const txConn: AsyncSqlConnection = {
         query: async <R>(sqlStr: string, ...p: unknown[]): Promise<{ rows: R[]; rowCount: number }> => {
           const result = await transactionSql.unsafe<R>(sqlStr, p);
@@ -501,7 +511,7 @@ export class PgDatabase implements AsyncSqlDatabase {
           return 0; // DML row count not available from unsafe
         },
       };
-      return work(txConn);
+      return this.transactionScope.run(transactionSql, () => work(txConn));
     });
   }
 

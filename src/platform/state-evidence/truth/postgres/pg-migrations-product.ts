@@ -710,6 +710,57 @@ DROP TABLE IF EXISTS knowledge_semantic_vectors;
 `,
 });
 
+const MIGRATION_14_TASK_TENANT_PARITY = defineMigration(14, "task_tenant_parity", `
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(255) NULL;
+CREATE INDEX IF NOT EXISTS idx_tasks_tenant_status_created_at
+  ON tasks(tenant_id, status, created_at DESC);
+`);
+
+/**
+ * Migration 15: Backfills PostgreSQL runtime schema gaps required by async repositories.
+ */
+const MIGRATION_15_RUNTIME_ASYNC_PARITY_GAPS = defineMigration(15, "runtime_async_parity_gaps", `
+ALTER TABLE events
+  ADD COLUMN IF NOT EXISTS session_id VARCHAR(255) NULL;
+CREATE INDEX IF NOT EXISTS idx_events_session_created_at
+  ON events(session_id, created_at);
+
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS placement TEXT NOT NULL DEFAULT 'local';
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS isolation_level TEXT NOT NULL DEFAULT 'standard';
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS registration_verified_at TIMESTAMPTZ NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS registration_challenge_id TEXT NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS runtime_instance_id VARCHAR(255) NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS restarted_from_runtime_instance_id VARCHAR(255) NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS restart_generation INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS cpu_pct DOUBLE PRECISION NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS memory_mb DOUBLE PRECISION NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS tool_backlog_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS current_step_id VARCHAR(255) NULL;
+ALTER TABLE worker_snapshots
+  ADD COLUMN IF NOT EXISTS last_progress_at TIMESTAMPTZ NULL;
+
+ALTER TABLE heartbeat_snapshots
+  ADD COLUMN IF NOT EXISTS runtime_instance_id VARCHAR(255) NULL;
+ALTER TABLE heartbeat_snapshots
+  ADD COLUMN IF NOT EXISTS restart_generation INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE execution_tickets
+  ADD COLUMN IF NOT EXISTS dispatch_target TEXT NOT NULL DEFAULT 'any';
+ALTER TABLE execution_tickets
+  ADD COLUMN IF NOT EXISTS required_isolation_level TEXT NOT NULL DEFAULT 'standard';
+`);
+
 export {
   MIGRATION_07_BILLING,
   MIGRATION_08_INTELLIGENCE,
@@ -718,4 +769,6 @@ export {
   MIGRATION_11_PRODUCT_GOVERNANCE_TENANT_SCOPE,
   MIGRATION_12_AUTHORITATIVE_ASYNC_PARITY,
   MIGRATION_13_KNOWLEDGE_SEMANTIC_VECTORS,
+  MIGRATION_14_TASK_TENANT_PARITY,
+  MIGRATION_15_RUNTIME_ASYNC_PARITY_GAPS,
 };

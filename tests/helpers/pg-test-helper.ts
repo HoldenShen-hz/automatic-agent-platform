@@ -34,6 +34,15 @@ export async function createTestPgDatabase(): Promise<PgDatabase> {
 
   const schema = `aa_test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const bootstrap = postgres(dsn, { max: 1, min: 1, idle_timeout: 1, connect_timeout: 10 });
+  await bootstrap.unsafe("SELECT pg_advisory_lock(968421)");
+  try {
+    await bootstrap.unsafe("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public");
+    await bootstrap.unsafe("ALTER EXTENSION vector SET SCHEMA public");
+  } catch {
+    // pgvector is optional in some environments; migration logic handles absence.
+  } finally {
+    await bootstrap.unsafe("SELECT pg_advisory_unlock(968421)");
+  }
   await bootstrap.unsafe(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
   await bootstrap.end({ timeout: 1 });
 

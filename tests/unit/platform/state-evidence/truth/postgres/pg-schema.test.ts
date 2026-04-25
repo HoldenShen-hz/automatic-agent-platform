@@ -149,8 +149,8 @@ test("all PostgreSQL migrations cover all SQLite schema tables and marketplace g
   assert.equal(expectedTables.length, 56, "Should have 56 tables total");
 });
 
-test("POSTGRES_MIGRATIONS has 13 migrations", () => {
-  assert.equal(POSTGRES_MIGRATIONS.length, 13, "Should have 13 migrations covering all SQLite tables and PG parity gaps");
+test("POSTGRES_MIGRATIONS has 15 migrations", () => {
+  assert.equal(POSTGRES_MIGRATIONS.length, 15, "Should have 15 migrations covering all SQLite tables and PG parity gaps");
 });
 
 test("each migration DDL uses PostgreSQL types correctly", () => {

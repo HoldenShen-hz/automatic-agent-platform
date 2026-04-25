@@ -107,7 +107,6 @@ export class AgentVersionManager {
   public switchSlot(agentId: string, targetSlot: DeploymentSlot): AgentVersionDetail | null {
     const currentSlot = targetSlot === "blue" ? "green" : "blue";
     const currentVersion = this.getActiveSlot(agentId, currentSlot);
-    if (!currentVersion) return null;
 
     const allVersions = this.versions.get(agentId) ?? [];
     const latestForSlot = newestFirst(allVersions).find((v) => v.deploymentSlot === null && v.stage !== "alpha");
