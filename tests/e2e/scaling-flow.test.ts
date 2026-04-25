@@ -28,7 +28,9 @@ import {
 import { runConcurrentInvariant, type ConcurrentRunnerOptions } from "../helpers/concurrent-runner.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
-import type { TaskStatus, ExecutionStatus } from "../../src/platform/contracts/types/status.js";
+import type { TaskStatus, ExecutionStatus, WorkerStatus } from "../../src/platform/contracts/types/status.js";
+import type { FairQueueItem } from "../../src/scale-ecosystem/resource-manager/fair-queue/index.js";
+import type { PreemptionCandidate } from "../../src/scale-ecosystem/resource-manager/preemption/index.js";
 
 // ---------------------------------------------------------------------------
 // Test Harness
@@ -71,13 +73,12 @@ function createResourceClaim(overrides: Partial<ResourceClaim> = {}): ResourceCl
   };
 }
 
-function createFairQueueItem(itemId: string, ageMs: number, priority: number, executionId?: string) {
+function createFairQueueItem(itemId: string, tenantId: string, ageMs: number, priority: number): FairQueueItem {
   return {
     itemId,
-    schedulingClass: createSchedulingClass({ priority }),
+    tenantId,
+    priority,
     ageMs,
-    requestedUnits: 1,
-    executionId: executionId ?? `exec-${itemId}`,
   };
 }
 
@@ -156,10 +157,10 @@ function seedWorker(
   store: AuthoritativeTaskStore,
   db: SqliteDatabase,
   workerId: string,
-  status: "online" | "busy" | "draining" | "offline" = "online",
+  status: WorkerStatus = "idle",
 ): void {
   db.transaction(() => {
-    store.worker.insertWorkerSnapshot({
+    store.worker.upsertWorkerSnapshot({
       workerId,
       agentId: `agent-${workerId}`,
       poolId: "default",
@@ -299,16 +300,16 @@ test("E2E Scaling: concurrent allocations are handled correctly", async (t) => {
 test("E2E Scaling: fair scheduling orders by priority and age", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("item-1", 60_000, 30),  // Younger, lower priority
-    createFairQueueItem("item-2", 120_000, 50), // Older, medium priority
-    createFairQueueItem("item-3", 30_000, 80),  // Younger, higher priority
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("item-1", "tenant-001", 60_000, 30),  // Younger, lower priority
+    createFairQueueItem("item-2", "tenant-001", 120_000, 50), // Older, medium priority
+    createFairQueueItem("item-3", "tenant-001", 30_000, 80),  // Younger, higher priority
   ];
 
   const claim = createResourceClaim({ requestedUnits: 1 });
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 10, usedUnits: 0, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -324,16 +325,16 @@ test("E2E Scaling: fair scheduling orders by priority and age", (t) => {
 test("E2E Scaling: fair scheduling identifies starved items", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("item-1", 10_000, 50),   // Not starved (< 15 min)
-    createFairQueueItem("item-2", 900_000, 50),  // Starved (> 15 min)
-    createFairQueueItem("item-3", 1_200_000, 30), // Starved (> 15 min)
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("item-1", "tenant-001", 10_000, 50),   // Not starved (< 15 min)
+    createFairQueueItem("item-2", "tenant-001", 900_000, 50),  // Starved (> 15 min)
+    createFairQueueItem("item-3", "tenant-001", 1_200_000, 30), // Starved (> 15 min)
   ];
 
   const claim = createResourceClaim();
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 10, usedUnits: 0, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -349,24 +350,23 @@ test("E2E Scaling: fair scheduling identifies starved items", (t) => {
 test("E2E Scaling: fair scheduling triggers preemption when quota exceeded", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("victim", 900_000, 20, "exec-victim"), // Low priority, old
-    createFairQueueItem("winner", 30_000, 80, "exec-winner"),   // High priority, new
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("victim", "tenant-001", 900_000, 20),
+    createFairQueueItem("winner", "tenant-001", 30_000, 80),
   ];
 
   const claim = createResourceClaim({ requestedUnits: 5 });
 
-  const preemptionCandidates = [
+  const preemptionCandidates: PreemptionCandidate[] = [
     {
       executionId: "exec-victim",
-      schedulingClass: createSchedulingClass({ priority: 20 }),
-      ageMs: 900_000,
-      claimedUnits: 1,
+      priority: 20,
+      progressPercent: 50,
     },
   ];
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 3, usedUnits: 3, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 3, currentUsage: 3 },
     claim,
     queueItems,
     preemptionCandidates,
@@ -383,12 +383,12 @@ test("E2E Scaling: fair scheduling triggers preemption when quota exceeded", (t)
 test("E2E Scaling: fair scheduling does not preempt when quota not exceeded", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [createFairQueueItem("item-1", 30_000, 50)];
+  const queueItems: FairQueueItem[] = [createFairQueueItem("item-1", "tenant-001", 30_000, 50)];
 
   const claim = createResourceClaim({ requestedUnits: 1 });
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 10, usedUnits: 5, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 5 },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -404,17 +404,17 @@ test("E2E Scaling: fair scheduling does not preempt when quota not exceeded", (t
 test("E2E Scaling: fair scheduling handles multiple priority tiers", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("low-pri", 60_000, 10),
-    createFairQueueItem("med-pri", 60_000, 50),
-    createFairQueueItem("high-pri", 60_000, 90),
-    createFairQueueItem("critical-pri", 60_000, 100),
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("low-pri", "tenant-001", 60_000, 10),
+    createFairQueueItem("med-pri", "tenant-001", 60_000, 50),
+    createFairQueueItem("high-pri", "tenant-001", 60_000, 90),
+    createFairQueueItem("critical-pri", "tenant-001", 60_000, 100),
   ];
 
   const claim = createResourceClaim();
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 10, usedUnits: 0, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -464,9 +464,9 @@ test("E2E Scaling: different tenants get fair share", (t) => {
 test("E2E Scaling: SLA tiers preserve priority during scheduling", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("standard-task", 30_000, 50, "exec-standard"),
-    createFairQueueItem("premium-task", 30_000, 80, "exec-premium"),
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("standard-task", "tenant-001", 30_000, 50),
+    createFairQueueItem("premium-task", "tenant-001", 30_000, 80),
   ];
 
   // Premium claim
@@ -475,7 +475,7 @@ test("E2E Scaling: SLA tiers preserve priority during scheduling", (t) => {
   });
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 10, usedUnits: 0, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
     claim: premiumClaim,
     queueItems,
     preemptionCandidates: [],
@@ -496,7 +496,7 @@ test("E2E Scaling: worker snapshots track scaling state", (t) => {
 
   try {
     // Seed workers in different states
-    seedWorker(h.store, h.db, "worker-001", "online");
+    seedWorker(h.store, h.db, "worker-001", "idle");
     seedWorker(h.store, h.db, "worker-002", "busy");
     seedWorker(h.store, h.db, "worker-003", "busy");
     seedWorker(h.store, h.db, "worker-004", "draining");
@@ -506,12 +506,12 @@ test("E2E Scaling: worker snapshots track scaling state", (t) => {
 
     assert.equal(workers.length, 5);
 
-    const onlineWorkers = workers.filter(w => w.status === "online");
+    const idleWorkers = workers.filter(w => w.status === "idle");
     const busyWorkers = workers.filter(w => w.status === "busy");
     const drainingWorkers = workers.filter(w => w.status === "draining");
     const offlineWorkers = workers.filter(w => w.status === "offline");
 
-    assert.equal(onlineWorkers.length, 1);
+    assert.equal(idleWorkers.length, 1);
     assert.equal(busyWorkers.length, 2);
     assert.equal(drainingWorkers.length, 1);
     assert.equal(offlineWorkers.length, 1);
@@ -532,15 +532,15 @@ test("E2E Scaling: worker load balancing considers busy workers", (t) => {
     }
 
     // Seed workers with varying states
-    seedWorker(h.store, h.db, "worker-001", "online");
-    seedWorker(h.store, h.db, "worker-002", "online");
+    seedWorker(h.store, h.db, "worker-001", "idle");
+    seedWorker(h.store, h.db, "worker-002", "idle");
     seedWorker(h.store, h.db, "worker-003", "busy");
     seedWorker(h.store, h.db, "worker-004", "draining");
 
     const workers = h.store.worker.listWorkerSnapshots();
-    const availableWorkers = workers.filter(w => w.status === "online" || w.status === "draining");
+    const availableWorkers = workers.filter(w => w.status === "idle" || w.status === "draining");
 
-    // Should have 3 available workers (2 online + 1 draining)
+    // Should have 3 available workers (2 idle + 1 draining)
     assert.equal(availableWorkers.length, 3);
 
     const busyWorkers = workers.filter(w => w.status === "busy");
@@ -590,7 +590,7 @@ test("E2E Scaling: execution state consistent under load", (t) => {
     }
 
     const allTasks = h.store.listTasks({});
-    const allExecutions = h.store.listExecutions({});
+    const allExecutions = h.store.dispatch.listExecutionsByStatuses(["executing"]);
 
     assert.equal(allTasks.length, 20);
     assert.equal(allExecutions.length, 20);
@@ -699,22 +699,22 @@ test("E2E Scaling: concurrent releases maintain consistency", async (t) => {
 test("E2E Scaling: preemption selects lowest priority victim", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("low", 900_000, 10, "exec-low"),
-    createFairQueueItem("med", 600_000, 50, "exec-med"),
-    createFairQueueItem("high", 300_000, 90, "exec-high"),
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("low", "tenant-001", 900_000, 10),
+    createFairQueueItem("med", "tenant-001", 600_000, 50),
+    createFairQueueItem("high", "tenant-001", 300_000, 90),
   ];
 
   const claim = createResourceClaim({ requestedUnits: 5 });
 
-  const preemptionCandidates = [
-    { executionId: "exec-low", schedulingClass: createSchedulingClass({ priority: 10 }), ageMs: 900_000, claimedUnits: 1 },
-    { executionId: "exec-med", schedulingClass: createSchedulingClass({ priority: 50 }), ageMs: 600_000, claimedUnits: 1 },
-    { executionId: "exec-high", schedulingClass: createSchedulingClass({ priority: 90 }), ageMs: 300_000, claimedUnits: 1 },
+  const preemptionCandidates: PreemptionCandidate[] = [
+    { executionId: "exec-low", priority: 10, progressPercent: 50 },
+    { executionId: "exec-med", priority: 50, progressPercent: 50 },
+    { executionId: "exec-high", priority: 90, progressPercent: 50 },
   ];
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 2, usedUnits: 2, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 2, currentUsage: 2 },
     claim,
     queueItems,
     preemptionCandidates,
@@ -729,16 +729,16 @@ test("E2E Scaling: preemption selects lowest priority victim", (t) => {
 test("E2E Scaling: starvation detection works correctly", (t) => {
   const service = new FairSchedulingService();
 
-  const queueItems = [
-    createFairQueueItem("not-starved", 5 * 60_000, 50),  // 5 minutes - not starved
-    createFairQueueItem("starved-1", 16 * 60 * 1000, 50), // 16 minutes - starved
-    createFairQueueItem("starved-2", 20 * 60 * 1000, 30), // 20 minutes - starved (lower priority)
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("not-starved", "tenant-001", 5 * 60_000, 50),  // 5 minutes - not starved
+    createFairQueueItem("starved-1", "tenant-001", 16 * 60 * 1000, 50), // 16 minutes - starved
+    createFairQueueItem("starved-2", "tenant-001", 20 * 60 * 1000, 30), // 20 minutes - starved (lower priority)
   ];
 
   const claim = createResourceClaim();
 
   const request: FairSchedulingRequest = {
-    quotaPolicy: { tenantId: "tenant-001", maxUnits: 10, usedUnits: 0, windowMs: 60_000 },
+    quotaPolicy: { scopeId: "tenant-001", hardLimit: 10, currentUsage: 0 },
     claim,
     queueItems,
     preemptionCandidates: [],
@@ -771,17 +771,17 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
     const startedTasks = h.store.listTasks({}).slice(0, 10);
     for (const task of startedTasks) {
       h.db.transaction(() => {
-        store.updateTaskStatus(task.id, "in_progress");
+        h.store.updateTaskStatus(task.id, "in_progress");
       });
       seedExecution(h.store, h.db, `exec-${task.id}`, task.id, "executing", 1);
     }
 
     // Phase 3: Complete some tasks
     h.db.transaction(() => {
-      store.updateTaskStatus("pipeline-task-0", "done");
+      h.store.updateTaskStatus("pipeline-task-0", "done");
     });
     h.db.transaction(() => {
-      store.updateTaskStatus("pipeline-task-1", "done");
+      h.store.updateTaskStatus("pipeline-task-1", "done");
     });
 
     // Verify final state
@@ -795,7 +795,7 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
     assert.equal(inProgressCount, 8);
     assert.equal(doneCount, 2);
 
-    const allExecutions = h.store.listExecutions({});
+    const allExecutions = h.store.dispatch.listExecutionsByStatuses(["executing"]);
     assert.equal(allExecutions.length, 10);
   } finally {
     h.cleanup();
@@ -815,32 +815,32 @@ test("E2E Scaling: resource pool and scheduling integration", (t) => {
   });
 
   // Simulate scheduling requests
-  const queueItems = [
-    createFairQueueItem("req-1", 30_000, 70),
-    createFairQueueItem("req-2", 30_000, 50),
-    createFairQueueItem("req-3", 30_000, 30),
+  const queueItems: FairQueueItem[] = [
+    createFairQueueItem("req-1", "tenant-001", 30_000, 70),
+    createFairQueueItem("req-2", "tenant-001", 30_000, 50),
+    createFairQueueItem("req-3", "tenant-001", 30_000, 30),
   ];
 
   let scheduled = 0;
   for (const item of queueItems) {
     const claim = createResourceClaim({
       claimId: item.itemId,
-      schedulingClass: item.schedulingClass,
-      requestedUnits: item.requestedUnits,
+      schedulingClass: createSchedulingClass({ tenantId: item.tenantId, priority: item.priority }),
+      requestedUnits: 1,
     });
 
     const request: FairSchedulingRequest = {
-      quotaPolicy: { tenantId: "tenant-001", maxUnits: 20, usedUnits: scheduled, windowMs: 60_000 },
+      quotaPolicy: { scopeId: "tenant-001", hardLimit: 20, currentUsage: scheduled },
       claim,
       queueItems,
       preemptionCandidates: [],
     };
 
     const decision = schedulingService.schedule(request);
-    const allocResult = poolService.allocate("integration-pool", item.itemId, item.requestedUnits);
+    const allocResult = poolService.allocate("integration-pool", item.itemId, 1);
 
     if (allocResult.granted) {
-      scheduled += item.requestedUnits;
+      scheduled += 1;
     }
   }
 
