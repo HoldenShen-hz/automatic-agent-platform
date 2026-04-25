@@ -289,17 +289,16 @@ test("buildReportingChain returns empty when member has no managers", () => {
   assert.deepEqual(chain, []);
 });
 
-test("validateOrgHierarchy detects duplicate node IDs", () => {
+test("validateOrgHierarchy handles multiple root nodes", () => {
   const nodes: OrgNode[] = [
-    createNode({ orgNodeId: "company", nodeType: "company" }),
-    createNode({ orgNodeId: "company", nodeType: "division", parentOrgNodeId: "company" }),
+    createNode({ orgNodeId: "company-a", nodeType: "company" }),
+    createNode({ orgNodeId: "company-b", nodeType: "company" }),
   ];
 
-  // Note: validateOrgHierarchy does not check duplicates per se,
-  // but duplicate IDs will not cause errors in the existing logic
+  // Multiple roots should not cause recursion issues
   const findings = validateOrgHierarchy(nodes);
 
-  assert.equal(findings.length, 0); // no structural errors
+  assert.equal(findings.length, 0);
 });
 
 test("getNodesAtLevel returns empty array for invalid level", () => {

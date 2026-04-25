@@ -621,7 +621,7 @@ test("BillingService listInvoices respects limit parameter", () => {
   assert.equal(invoices.length, 2);
 });
 
-test("BillingService settlePaymentSession updates session to paid", () => {
+test("BillingService settlePaymentSession updates session to paid", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -644,7 +644,7 @@ test("BillingService settlePaymentSession updates session to paid", () => {
   assert.equal(result.session.status, "paid");
 });
 
-test("BillingService settlePaymentSession updates invoice to paid", () => {
+test("BillingService settlePaymentSession updates invoice to paid", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -667,7 +667,7 @@ test("BillingService settlePaymentSession updates invoice to paid", () => {
   assert.equal(invoice.status, "paid");
 });
 
-test("BillingService settlePaymentSession creates credit ledger entry", () => {
+test("BillingService settlePaymentSession creates credit ledger entry", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
