@@ -21,3 +21,24 @@ test("resolveTriggerActionMode returns auto_execute for low/medium/high risk wit
   assert.equal(resolveTriggerActionMode(false, "medium"), "auto_execute");
   assert.equal(resolveTriggerActionMode(false, "high"), "auto_execute");
 });
+
+test("resolveTriggerActionMode suggest for critical risk when confirmation required", () => {
+  const mode = resolveTriggerActionMode(true, "critical");
+  assert.equal(mode, "suggest");
+});
+
+test("resolveTriggerActionMode suggest for medium risk when confirmation required", () => {
+  const mode = resolveTriggerActionMode(true, "medium");
+  assert.equal(mode, "suggest");
+});
+
+test("resolveTriggerActionMode suggest for high risk when confirmation required", () => {
+  const mode = resolveTriggerActionMode(true, "high");
+  assert.equal(mode, "suggest");
+});
+
+test("resolveTriggerActionMode silent_record for low risk when no confirmation and critical risk", () => {
+  // critical alone triggers silent_record; low risk does not override
+  const mode = resolveTriggerActionMode(false, "critical");
+  assert.equal(mode, "silent_record");
+});

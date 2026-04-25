@@ -35,3 +35,33 @@ test("shouldRunScheduleTrigger handles day duration", () => {
   const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-20T01:00:01.000Z", "1d");
   assert.equal(result, true);
 });
+
+test("shouldRunScheduleTrigger returns false when cooldown not yet met", () => {
+  const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:59:00.000Z", "1h");
+  assert.equal(result, false);
+});
+
+test("shouldRunScheduleTrigger returns false when cooldown not yet met for 1d", () => {
+  const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T23:00:00.000Z", "1d");
+  assert.equal(result, false);
+});
+
+test("shouldRunScheduleTrigger exact boundary for second duration", () => {
+  const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:00:03.000Z", "3s");
+  assert.equal(result, true);
+});
+
+test("shouldRunScheduleTrigger still returns false just before second boundary", () => {
+  const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:00:02.999Z", "3s");
+  assert.equal(result, false);
+});
+
+test("shouldRunScheduleTrigger returns false for unparseable cooldown string", () => {
+  const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:10:00.000Z", "invalid");
+  assert.equal(result, false);
+});
+
+test("shouldRunScheduleTrigger returns false for empty cooldown string", () => {
+  const result = shouldRunScheduleTrigger("2026-04-19T01:00:00.000Z", "2026-04-19T01:10:00.000Z", "");
+  assert.equal(result, false);
+});

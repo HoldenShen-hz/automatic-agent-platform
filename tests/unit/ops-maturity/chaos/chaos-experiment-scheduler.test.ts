@@ -448,7 +448,10 @@ test("ChaosExperimentScheduler recordSteadyStateResult completes experiment with
   });
   scheduler.startExperiment(experiment.experimentId);
 
-  // With zero hypotheses, the condition results.length >= steadyStateHypotheses.length is immediately true
+  // With zero hypotheses, calling recordSteadyStateResult completes immediately
+  // because results.length (1) >= steadyStateHypotheses.length (0)
+  scheduler.recordSteadyStateResult(experiment.experimentId, "fake_hypothesis", 0, true, "No hypotheses to validate");
+
   const retrieved = scheduler.getExperiment(experiment.experimentId);
   assert.equal(retrieved!.status, "completed");
 });
