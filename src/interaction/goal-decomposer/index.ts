@@ -85,6 +85,34 @@ const DEFAULT_COST_ESTIMATE: CostEstimate = {
 /** Default maximum decomposition depth to prevent infinite recursion */
 const DEFAULT_MAX_DEPTH = 5;
 const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
+const HIGH_RISK_KEYWORDS = [
+  "deploy",
+  "release",
+  "publish",
+  "price",
+  "budget",
+  "approval",
+  "production",
+  "prod",
+  "上线",
+  "发布",
+  "审批",
+  "投放",
+  "预算",
+  "价格",
+  "生产环境",
+  "线上",
+] as const;
+const CRITICAL_RISK_KEYWORDS = [
+  "delete production",
+  "drop table",
+  "mass delete",
+  "delete all",
+  "删除全部",
+  "删除生产",
+  "清空",
+  "生产数据",
+] as const;
 
 function normalizeGoal(goal: Goal | string): Goal {
   if (typeof goal !== "string") {
@@ -102,8 +130,8 @@ function normalizeGoal(goal: Goal | string): Goal {
 
 function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPreview {
   const normalized = goal.description.toLowerCase();
-  const critical = goal.priority === "critical";
-  const high = critical || /(deploy|release|publish|price|budget|审批|上线|投放)/i.test(goal.description);
+  const critical = goal.priority === "critical" || CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const high = critical || HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
 
   return {
     overallRisk: critical ? "critical" : high ? "high" : matchedTemplate == null ? "medium" : "low",

@@ -336,8 +336,11 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
     }
   }
 
+  const effectiveDeniedRoots = policy.realpathEnforced ? canonicalDeniedRoots : rawDeniedRoots;
+  const effectiveAllowedRoots = policy.realpathEnforced ? canonicalAllowedRoots : rawAllowedRoots;
+
   // Fifth check: Is resolved path within denied roots?
-  if (canonicalDeniedRoots.some((root) => isWithinRoot(normalizedPath, root))) {
+  if (effectiveDeniedRoots.some((root) => isWithinRoot(normalizedPath, root))) {
     return {
       allowed: false,
       normalizedPath,
@@ -348,7 +351,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
   // Sixth check: Is resolved path outside allowed roots?
   if (
     policy.mode !== "restricted_exec" &&
-    containsPathTraversalOutside(normalizedPath, canonicalAllowedRoots)
+    containsPathTraversalOutside(normalizedPath, effectiveAllowedRoots)
   ) {
     return {
       allowed: false,

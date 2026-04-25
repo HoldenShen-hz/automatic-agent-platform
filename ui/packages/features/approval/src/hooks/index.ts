@@ -29,14 +29,22 @@ export function mapApprovalsToVm(approvals: readonly ApprovalDTO[]): Pick<Approv
 
 export function useApprovalCenterVm(): ApprovalCenterVm {
   const queryApprovals = useApprovalsQuery().data ?? [];
+  const approvalFeedVersion = queryApprovals
+    .map((approval) => `${approval.approvalId}:${approval.taskId}:${approval.riskLevel}:${approval.reasonSummary}`)
+    .join("|");
   const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>(queryApprovals);
   const [selectedId, setSelectedId] = useState<string | null>(queryApprovals[0]?.approvalId ?? null);
   const [actionHistory, setActionHistory] = useState<readonly { title: string; description: string }[]>([]);
 
   useEffect(() => {
     setApprovals(queryApprovals);
-    setSelectedId((current) => current ?? queryApprovals[0]?.approvalId ?? null);
-  }, [queryApprovals]);
+    setSelectedId((current) => {
+      if (current != null && queryApprovals.some((approval) => approval.approvalId === current)) {
+        return current;
+      }
+      return queryApprovals[0]?.approvalId ?? null;
+    });
+  }, [approvalFeedVersion]);
 
   const baseVm = useMemo(() => mapApprovalsToVm(approvals), [approvals]);
   const selectedApproval = approvals.find((approval) => approval.approvalId === selectedId) ?? approvals[0] ?? null;

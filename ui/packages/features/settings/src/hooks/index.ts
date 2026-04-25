@@ -36,13 +36,15 @@ export function useSettingsVm(): SettingsVm {
   const [draftLocale, setDraftLocale] = useState("zh-CN");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [activityItems, setActivityItems] = useState<readonly { title: string; description: string }[]>([]);
+  const preferenceTheme = preferences?.theme;
+  const preferenceLocale = preferences?.locale;
 
   useEffect(() => {
     if (preferences != null) {
       setDraftTheme(preferences.theme);
       setDraftLocale(preferences.locale);
     }
-  }, [preferences]);
+  }, [preferenceLocale, preferenceTheme]);
 
   const centerRows = useMemo(() => preferences == null ? [] : [
     { key: "Locale", value: draftLocale },
