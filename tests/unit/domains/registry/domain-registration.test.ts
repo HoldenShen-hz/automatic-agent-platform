@@ -352,6 +352,14 @@ test("activate emits domain:activated event on success", () => {
   service.register(makeMinimalDefinition({
     domainId: "activate_event",
     status: "testing",
+    capabilities: {
+      supportedTaskTypes: ["test"],
+      requiredTools: [],
+      optionalTools: ["bash"],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+      securityLevel: "standard",
+    },
     workflows: [
       {
         workflowId: "wf_activate",
