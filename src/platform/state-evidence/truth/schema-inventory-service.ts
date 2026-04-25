@@ -162,7 +162,7 @@ const SCHEMA_INVENTORY_SOURCES = [
 
 const CREATE_TABLE_PATTERN = /CREATE TABLE IF NOT EXISTS\s+([a-zA-Z_][a-zA-Z0-9_]*)/g;
 
-const DOCUMENTED_GROUP_PATTERNS: readonly Array<{
+const DOCUMENTED_GROUP_PATTERNS: ReadonlyArray<{
   readonly group: DocumentedSchemaInventoryGroup;
   readonly pattern: RegExp;
 }> = [

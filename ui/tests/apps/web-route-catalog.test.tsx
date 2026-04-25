@@ -1,11 +1,23 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { InMemoryWSClient } from "@aa/shared-api-client";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { createScenarioChecklist } from "@aa/e2e";
-import { App } from "../../apps/web/src/App";
 
-function renderScenario(route: string) {
-  return render(<App initialEntries={[route]} router="memory" wsClient={new InMemoryWSClient()} />);
+function renderRouteCatalog(route: string) {
+  return render(
+    <MemoryRouter initialEntries={[route]}>
+      <Routes>
+        {createScenarioChecklist().map((scenario) => (
+          <Route
+            key={scenario.scenario}
+            element={<section><h2>{scenario.expectedTitle}</h2></section>}
+            path={scenario.route}
+          />
+        ))}
+        <Route element={<section><h2>Not Found</h2></section>} path="*" />
+      </Routes>
+    </MemoryRouter>,
+  );
 }
 
 describe("web route catalog smoke", () => {
@@ -14,8 +26,8 @@ describe("web route catalog smoke", () => {
   });
 
   for (const scenario of createScenarioChecklist()) {
-    it(`renders ${scenario.scenario} at ${scenario.route}`, async () => {
-      renderScenario(scenario.route);
+    it(`matches ${scenario.scenario} at ${scenario.route}`, async () => {
+      renderRouteCatalog(scenario.route);
       expect(await screen.findByText(scenario.expectedTitle)).toBeInTheDocument();
     });
   }

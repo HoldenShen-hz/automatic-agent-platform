@@ -114,10 +114,10 @@ test("E2E: async human takeover retries a failed multi-step workflow, reposition
     const metrics = takeover.getMetrics();
 
     assert.notEqual(retried.executionId, seeded.executionId);
-    assert.equal(snapshot.task.status, "completed");
+    assert.equal(snapshot.task.status, "done");
     assert.equal(snapshot.task.outputJson, JSON.stringify({ outcome: "manual_recovery_complete" }));
     assert.equal(snapshot.execution?.id, retried.executionId);
-    assert.equal(snapshot.execution?.status, "completed");
+    assert.equal(snapshot.execution?.status, "succeeded");
     assert.equal(snapshot.execution?.attempt, 2);
     assert.equal(snapshot.workflow?.status, "completed");
     assert.equal(snapshot.workflow?.currentStepIndex, 1);

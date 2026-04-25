@@ -31,6 +31,47 @@ export interface PlatformAdapter {
   enableScreenSecurity(enabled: boolean): Promise<void>;
 }
 
+export interface PlatformAdapterCapabilityView {
+  readonly secureStorage: {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string): Promise<void>;
+    delete(key: string): Promise<void>;
+  };
+  readonly offlineStore: {
+    get(path: string): Promise<string>;
+    set(path: string, contents: string): Promise<void>;
+  };
+  readonly clipboard: {
+    write(text: string): Promise<void>;
+  };
+  readonly deeplink: {
+    open(url: string): Promise<void>;
+  };
+  readonly lifecycle: {
+    onForeground(listener: () => void): () => void;
+    onBackground(listener: () => void): () => void;
+  };
+  readonly haptics: {
+    vibrate(pattern: readonly number[]): Promise<void>;
+  };
+  readonly windowing: {
+    open(path: string): Promise<void>;
+  };
+  readonly shell: {
+    run(command: string): Promise<{ code: number; stdout: string; stderr: string }>;
+  };
+  readonly process: {
+    spawn(command: string, args: readonly string[]): Promise<{ pid: number; kill(): Promise<void> }>;
+  };
+  readonly analyticsConsent: {
+    get(): Promise<boolean>;
+    set(enabled: boolean): Promise<void>;
+  };
+  readonly screenSecurity: {
+    setEnabled(enabled: boolean): Promise<void>;
+  };
+}
+
 export interface FeatureGuardContext {
   readonly authenticated: boolean;
   readonly tenantId: string | null;
@@ -126,6 +167,15 @@ export interface WorkflowDTO {
   readonly steps: readonly WorkflowStepDTO[];
 }
 
+export interface WorkflowRunStepDTO {
+  readonly id: string;
+  readonly title: string;
+  readonly status: "pending" | "running" | "completed" | "failed";
+  readonly executor: string;
+  readonly startedAt?: string;
+  readonly completedAt?: string;
+}
+
 export interface IncidentDTO {
   readonly id: string;
   readonly severity: "low" | "medium" | "high" | "critical";
@@ -176,6 +226,34 @@ export interface MarketplacePackDTO {
   readonly name: string;
   readonly category: string;
   readonly version: string;
+}
+
+export interface PackVersionDTO {
+  readonly id: string;
+  readonly version: string;
+  readonly createdAt: string;
+  readonly status: "draft" | "published" | "deprecated";
+}
+
+export interface PluginDTO {
+  readonly id: string;
+  readonly name: string;
+  readonly provider: string;
+  readonly enabled: boolean;
+}
+
+export interface PromptDTO {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly updatedAt: string;
+}
+
+export interface KnowledgeItemDTO {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: "document" | "note" | "playbook" | "artifact";
+  readonly updatedAt: string;
 }
 
 export interface ExplanationDTO {

@@ -130,3 +130,72 @@ test("TaskSituationReportService.renderMarkdown shows none when no blockers", ()
   assert.ok(markdown.includes("## Blockers"));
   assert.ok(markdown.includes("- none"));
 });
+
+test("TaskSituationReportService.renderMarkdown shows none when no fileRefs", () => {
+  const service = new TaskSituationReportService();
+  const situation: TaskSituation = {
+    taskId: "task-report-6",
+    timestamp: Date.now(),
+    objective: "Background task",
+    currentPhase: "executing",
+    userIntent: { raw: "background", normalized: "background task", confidence: 0.7 },
+    blockers: [],
+    codebaseSnapshot: { rootPath: "/workspace", fileCount: 0, relevantFiles: [], gitRef: "main" },
+    environmentContext: { nodeVersion: "20.0.0", platform: "darwin", workingDirectory: "/workspace", availableTools: ["read"] },
+    historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
+    relevantMemory: [],
+    fileRefs: [],
+    metrics: {},
+  };
+
+  const markdown = service.renderMarkdown(situation);
+
+  assert.ok(markdown.includes("## File Refs"));
+  assert.ok(markdown.includes("- none"));
+});
+
+test("TaskSituationReportService.renderMarkdown shows none when no metrics", () => {
+  const service = new TaskSituationReportService();
+  const situation: TaskSituation = {
+    taskId: "task-report-7",
+    timestamp: Date.now(),
+    objective: "No metrics task",
+    currentPhase: "executing",
+    userIntent: { raw: "nometrics", normalized: "no metrics task", confidence: 0.85 },
+    blockers: [],
+    codebaseSnapshot: { rootPath: "/workspace", fileCount: 0, relevantFiles: [], gitRef: "main" },
+    environmentContext: { nodeVersion: "20.0.0", platform: "darwin", workingDirectory: "/workspace", availableTools: ["read"] },
+    historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
+    relevantMemory: [],
+    fileRefs: [],
+    metrics: {},
+  };
+
+  const markdown = service.renderMarkdown(situation);
+
+  assert.ok(markdown.includes("## Metrics"));
+  assert.ok(markdown.includes("- none"));
+});
+
+test("TaskSituationReportService.renderMarkdown includes userIntent details", () => {
+  const service = new TaskSituationReportService();
+  const situation: TaskSituation = {
+    taskId: "task-report-8",
+    timestamp: Date.now(),
+    objective: "Intent verification",
+    currentPhase: "planning",
+    userIntent: { raw: "run tests", normalized: "run unit tests", confidence: 0.99 },
+    blockers: [],
+    codebaseSnapshot: { rootPath: "/workspace", fileCount: 0, relevantFiles: [], gitRef: "main" },
+    environmentContext: { nodeVersion: "20.0.0", platform: "darwin", workingDirectory: "/workspace", availableTools: ["read"] },
+    historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
+    relevantMemory: [],
+    fileRefs: [],
+    metrics: {},
+  };
+
+  const markdown = service.renderMarkdown(situation);
+
+  assert.ok(markdown.includes("- intent: run unit tests"));
+  assert.ok(markdown.includes("- confidence: 0.99"));
+});

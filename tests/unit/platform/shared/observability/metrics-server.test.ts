@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { renderMetricsPayload } from "../../../../../src/platform/shared/observability/metrics-server.js";
+import { renderMetricsPayload, createMetricsServer } from "../../../../../src/platform/shared/observability/metrics-server.js";
 import type { PrometheusMetricsExporter } from "../../../../../src/platform/shared/observability/prometheus-metrics-exporter.js";
 
 test("renderMetricsPayload returns exporter output for GET /metrics", () => {
@@ -24,4 +24,36 @@ test("renderMetricsPayload rejects unsupported methods", () => {
 test("renderMetricsPayload returns 404 outside metrics path", () => {
   const payload = renderMetricsPayload(null, "GET", "/healthz");
   assert.equal(payload.statusCode, 404);
+});
+
+test("renderMetricsPayload returns 503 when exporter is null on GET /metrics", () => {
+  const payload = renderMetricsPayload(null, "GET", "/metrics");
+  assert.equal(payload.statusCode, 503);
+  assert.equal(payload.body, "metrics exporter unavailable");
+});
+
+test("renderMetricsPayload defaults method to GET when undefined", () => {
+  const payload = renderMetricsPayload(
+    { export: () => "metric 1" } as unknown as PrometheusMetricsExporter,
+    undefined,
+    "/metrics",
+  );
+  assert.equal(payload.statusCode, 200);
+  assert.equal(payload.body, "metric 1");
+});
+
+test("renderMetricsPayload treats undefined path as not /metrics", () => {
+  const payload = renderMetricsPayload(
+    { export: () => "metric 1" } as unknown as PrometheusMetricsExporter,
+    "GET",
+    undefined,
+  );
+  assert.equal(payload.statusCode, 404);
+});
+
+test("createMetricsServer returns a Server instance", () => {
+  const server = createMetricsServer(null);
+  assert.ok(server != null);
+  assert.ok(typeof server.close === "function");
+  server.close();
 });
