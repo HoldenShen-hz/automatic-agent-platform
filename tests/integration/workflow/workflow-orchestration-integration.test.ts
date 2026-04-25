@@ -51,6 +51,20 @@ test("workflow orchestration: IntakeRouter classifies request intent", () => {
   assert.ok(routing.classification.confidence >= 0.45);
 });
 
+test("workflow orchestration: WorkflowPlanner creates single-step plan", () => {
+  const planner = new WorkflowPlanner();
+
+  const planned = planner.plan({
+    workflowId: "single_agent_minimal",
+    request: "analyze this request",
+  });
+
+  assert.ok(planned.workflow.workflowId.length > 0);
+  assert.ok(planned.executionSteps.length >= 1);
+  assert.ok(planned.planReason.length > 0);
+  assert.equal(planned.executionSteps[0]?.roleId, "general_executor");
+});
+
 test("workflow orchestration: workflow state transitions follow valid path", () => {
   const workspace = createTempWorkspace("aa-orchestration-transition-");
 
