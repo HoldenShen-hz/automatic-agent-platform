@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Identify human intervention conditions and evidence
+- **Observe**: Identify human intervention triggers and evidence
 - **Assess**: Select approve / reject / continue / abort
-- **Plan**: Form review requests and resume boundaries
-- **Execute**: Pause the run and wait for human input
-- **Feedback**: Record human decision and accountability
+- **Plan**: Form HITL request and resume boundary
+- **Execute**: Pause run and wait for human input
+- **Feedback**: Record human decisions and accountability chain
 - **Learn**: Aggregate high-frequency HITL triggers
-- **Improve**: Refine autonomy boundaries
-- **Release**: HITL is a runtime primitive, not a side path
+- **Improve**: Optimize automation boundary
+- **Release**: HITL is a runtime primitive, not a bypass mechanism
 
 ---
 
@@ -20,14 +20,14 @@
 
 ## Context
 
-The architecture requires HITL to be a native Harness step type.
+The architecture document requires HITL to become a native Harness step type, not just a temporary escalation in exception scenarios.
 
 ## Decision
 
 - HITL is a native Harness runtime step
-- Any run in `waiting_hitl` must have a formal request and evidence refs
-- Any human resolution must be written to audit and timeline
+- When a run enters `waiting_hitl`, it must have a formal request and evidence refs
+- Any human resolution must write to audit and timeline
 
 ## Consequences
 
-- Human collaboration becomes part of the main runtime path
+- Human collaboration upgrades from peripheral approval to main-chain capability

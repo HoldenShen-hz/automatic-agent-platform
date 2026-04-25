@@ -5,71 +5,74 @@
 
 ## Context
 
-The platform needs to integrate with external systems (CRMs, ERPs, databases) to provide comprehensive automation capabilities.
+The platform needs to integrate with external systems (CRM, ERP, project management tools, etc.), requiring a unified integration framework.
 
 ## Decision
 
-### Connector Framework
-
-```
-src/scale-ecosystem/integration/
-```
-
-### Connector Types
-
-| Type | Description | Examples |
-|------|-------------|----------|
-| REST | HTTP-based APIs | REST services |
-| GraphQL | GraphQL APIs | GraphQL endpoints |
-| Database | SQL/NoSQL connectors | PostgreSQL, MongoDB |
-| MessageQueue | Queue systems | RabbitMQ, Kafka |
-| FileTransfer | SFTP, blob storage | S3, GCS |
-
-### Connector Lifecycle
-
-| State | Description |
-|-------|-------------|
-| draft | Connector definition |
-| testing | Under integration testing |
-| active | Production ready |
-| deprecated | Being replaced |
-| disabled | No longer available |
-
-### ConnectorRegistry
-
-- `connector-framework-service.ts`
-- Version management
-- Configuration validation
-- Health monitoring
-
 ### Integration Patterns
 
-| Pattern | Use Case |
-|---------|----------|
-| Request-Reply | Synchronous data retrieval |
-| Event-Driven | Real-time updates |
-| Batch | Bulk data synchronization |
-| Polling | Periodic data check |
+| Pattern | Description | Use Case |
+|---------|-------------|----------|
+| webhook | Event push | High real-time requirements |
+| polling | Polling pull | No webhook on external system |
+| api_proxy | API proxy | Requires authentication and transformation |
+| file_transfer | File transfer | Bulk data exchange |
+
+### Adapter Framework
+
+```typescript
+interface ExternalAdapter {
+  adapter_id: string;
+  system_type: string;
+  auth_config: AuthConfig;
+  endpoints: Endpoint[];
+  transform_rules: TransformRule[];
+  error_handling: ErrorStrategy;
+}
+```
+
+### Authentication Types
+
+| Type | Description |
+|------|-------------|
+| api_key | API Key |
+| oauth2 | OAuth 2.0 |
+| basic_auth | Username/password |
+| jwt | JWT Token |
+
+### Error Handling
+
+| Strategy | Description |
+|----------|-------------|
+| retry | Retry |
+| circuit_break | Circuit breaker |
+| fallback | Degradation |
+| dead_letter | Dead letter queue |
+
+### Integration Governance
+
+- Connector registration and discovery
+- Authentication credential management
+- Traffic control
+- Audit logs
 
 ## Consequences
 
 Positive:
-- Extensible framework supports diverse integrations
-- Standardized lifecycle ensures quality
-- Health monitoring prevents cascading failures
+
+- Unified framework reduces integration costs
+- Standardized error processing
+- Governance capabilities ensure security
 
 Negative:
-- Integration complexity grows with connectors
-- Testing all connector combinations is challenging
 
-Trade-offs:
-- Flexibility vs. complexity
-- Extensibility vs. maintenance
+- Adapter development takes time
+- Maintaining multiple integrations increases complexity
 
 ## Cross-References
 
-- [ADR-066 Plugin SPI Framework](./066-plugin-spi-framework.md)
-- [ADR-086 Scale Ecosystem and Cross-Region Runtime](./086-scale-ecosystem-and-cross-region-runtime.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
 
 ## Source Sections
 

@@ -62,22 +62,22 @@ interface AgentComponent {
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Unified management improves maintainability
 - Versioning supports rollback
 - Dependency management prevents conflicts
 
-Cons:
+Negative:
 
 - Component version coordination is complex
 - Lifecycle state machine maintenance cost
 
-## Cross References
+## Cross-References
 
-- [ADR-075 Six-Level Controlled Release & Rollout State Machine](./075-controlled-rollout-release.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
 
-## Source Section
+## Source Sections
 
 - `§61` Agent Unified Lifecycle Management Architecture

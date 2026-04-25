@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Gather customer facts, rules, and evidence
-- **Assess**: Produce the financial decision and denial rationale
-- **Plan**: Build explanation payloads
-- **Execute**: Return explainable outputs
+- **Observe**: Gather customers, rules, characteristics, and evidence
+- **Assess**: Form financial decisions and denial reasons
+- **Plan**: Generate explanation payloads
+- **Execute**: Output explainable results
 - **Feedback**: Receive fairness and compliance feedback
 - **Learn**: Identify problematic decision patterns
-- **Improve**: Refine scoring and explanation templates
-- **Release**: Explanation duty is part of financial-domain acceptance
+- **Improve**: Adjust scoring and explanation templates
+- **Release**: Explanation obligation is part of financial domain acceptance gate
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Automated decisions in financial services require structured explanations and traceability.
+Automated decisions in financial services domains must meet explainability and fair lending requirements.
 
 ## Decision
 
-- Any adverse decision must include a structured explanation
-- The explanation must trace back to evidence and rule application
+- Adverse decisions must include structured explanations
+- Explanations must be traceable to evidence and rules
 
 ## Consequences
 
-- `financial-services` outputs must include reasons, not only outcomes
+- `financial-services` domain output is no longer just results, but must also include reasons

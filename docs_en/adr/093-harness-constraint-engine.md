@@ -20,14 +20,16 @@
 
 ## Context
 
-Without a single constraint engine, risk, budget, and output policy drift into calling code.
+Without a unified constraint engine, risk, budget, and output policy drift into calling code.
 
 ## Decision
 
 - Every HarnessRun carries an explicit `ConstraintPack`
 - `ConstraintPack` must include `risk_policy` and `output_policy`
 - Constraints are merged in platform -> tenant -> domain -> task order
+- When constraints are not satisfied, fail-close and write to audit and timeline
 
 ## Consequences
 
 - High-risk actions cannot bypass Harness constraints
+- Runtime behavior aligns with documented success criteria

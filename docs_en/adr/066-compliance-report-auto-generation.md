@@ -67,22 +67,22 @@ type EvidenceType =
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Automation improves efficiency
 - Reduces human error
 - Meets regulatory requirements
 
-Cons:
+Negative:
 
 - Evidence collection adds system overhead
 - Report templates require maintenance
 
-## Cross References
+## Cross-References
 
 - [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
-- [Platform Architecture §23 Compliance & Data Governance](../architecture/00-platform-architecture.md)
+- [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§66` Compliance Report Auto-Generation Engine

@@ -12,7 +12,7 @@ This ADR summarizes the key decisions and design principles of the platform's ov
 ### Five Planes + One Cross-Cutting
 
 ```
-P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execution Plane → P5 State & Evidence Plane
+P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execution Plane → P5 State and Evidence Plane
                         ↑
                    X1 Cross-Cutting Control Mesh
 ```
@@ -59,6 +59,6 @@ This ADR series covers the complete architecture from infrastructure to operatio
 - Supplement missing scenarios
 - Optimize decisions based on implementation experience
 
-## Source Section
+## Source Sections
 
 - `§70` Conclusion

@@ -5,70 +5,72 @@
 
 ## Context
 
-Multiple tenants and workloads compete for shared resources (compute, memory, network), requiring fair scheduling and quota management.
+When multiple business lines run concurrently, resource competition occurs, requiring fair and effective resource allocation mechanisms.
 
 ## Decision
 
-### ResourceQuota Model
+### Resource Pool Model
 
 ```typescript
-interface ResourceQuota {
-  tenant_id: string;
-  compute_limit: number;      // CPU units
-  memory_limit: number;       // GB
-  storage_limit: number;      // GB
-  request_rate_limit: number; // requests per second
+interface ResourcePool {
+  pool_id: string;
+  resource_type: ResourceType;
+  capacity: number;
+  allocation: ResourceAllocation[];
 }
 
-interface QuotaAllocation {
-  quota_id: string;
+interface ResourceAllocation {
   tenant_id: string;
-  resources: ResourceQuota;
-  priority: number;           // 1-10, higher = more priority
+  reserved: number;
+  used: number;
+  priority: number;
 }
 ```
 
-### Fair Scheduling Algorithm
+### Resource Types
 
-- `scale-ecosystem/resource-manager/fair-scheduling-service.ts`
-- Weighted fair queuing based on priority and quota
-- Preemption for high-priority workloads
-- Starvation prevention for low-priority workloads
+| Type | Description |
+|------|-------------|
+| compute | Compute resources |
+| memory | Memory resources |
+| storage | Storage resources |
+| api_quota | API call quota |
+| llm_token | LLM Token quota |
 
-### Preemption Rules
+### Scheduling Policies
 
-| Condition | Action |
-|-----------|--------|
-| High-priority request arrives | Preempt low-priority if over quota |
-| Resource exhaustion | Preempt lowest priority running task |
-| Quota breach | Queue new requests, don't preempt |
+| Policy | Description |
+|--------|-------------|
+| priority | Priority first |
+| fair_share | Fair sharing |
+| fifo | First in, first out |
+| weighted_fair | Weighted fair queue |
 
-### Quota Monitoring
+### Resource Quotas
 
-- Real-time quota usage tracking
-- Alerts on approaching limits
-- Auto-scaling triggers
+- Platform-level quotas
+- Tenant-level quotas
+- Business domain-level quotas
+- Dynamic adjustment
 
 ## Consequences
 
 Positive:
-- Fair resource allocation across tenants
-- Preemption ensures high-priority tasks complete
-- Quota monitoring prevents resource exhaustion
+
+- Fair resource allocation prevents resource starvation
+- Priority mechanism ensures critical business
+- Dynamic adjustment adapts to load changes
 
 Negative:
-- Preemption may cause task restarts
-- Fair scheduling adds scheduling latency
 
-Trade-offs:
-- Fairness vs. efficiency
-- Preemption vs. stability
+- Scheduling algorithm complexity
+- Quota calculation overhead
 
 ## Cross-References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
-- [ADR-052 Multi-Region Deployment](./052-multi-region-deployment-architecture.md)
+- [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)
 
 ## Source Sections
 
-- `§53` Scaled Resource Competition Management
+- `§53` Scaling Resource Competition Management

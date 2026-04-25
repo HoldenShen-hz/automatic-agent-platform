@@ -5,61 +5,73 @@
 
 ## Context
 
-Platform governance requires clear delegation mechanisms at multiple levels, from platform operators to department administrators to individual users.
+Platform administrators cannot manage all affairs and need to delegate governance authority to subordinate organizations.
 
 ## Decision
 
-### Delegation Scope
+### Delegation Model
 
 ```typescript
-interface DelegationScope {
-  scope_type: 'platform' | 'tenant' | 'department' | 'team' | 'user';
-  scope_id: string;
+interface GovernanceDelegation {
+  delegation_id: string;
+  delegator_id: string;       // Delegator
+  delegate_id: string;         // Delegatee
+  scope: DelegationScope;
   permissions: Permission[];
-  expires_at?: string;
+  constraints: DelegationConstraint[];
+  valid_from: string;
+  valid_until?: string;
+  revocable: boolean;
+}
+
+interface DelegationScope {
+  organization_level: OrgLevel;
+  resource_types: ResourceType[];
+  max_actions_per_day?: number;
 }
 ```
 
-### Delegation Chain
+### Delegation Levels
 
-| Level | Delegator | Delegatee | Scope |
-|-------|-----------|-----------|-------|
-| Platform | Platform admin | Tenant admin | Platform-level |
-| Tenant | Tenant admin | Dept admin | Tenant-level |
-| Department | Dept admin | Team lead | Department-level |
-| Team | Team lead | User | Team-level |
+| Level | Delegatable Permissions |
+|-------|-------------------------|
+| Platform | All permissions |
+| Business Group | Within business group |
+| Department | Within department |
+| Team | Limited permissions |
 
-### Delegation Depth Limit
+### Constraints
 
-- Maximum delegation depth: 3 levels
-- Prevents excessive delegation chains
-- Depth limit enforced by GovernanceService
+| Constraint Type | Description |
+|-----------------|-------------|
+| budget_limit | Budget cap |
+| risk_threshold | Risk cap |
+| approval_required | Requires upper-level approval |
+| time_window | Valid time window |
 
-### Override Rules
+### Delegation Audit
 
-- Platform-level policies cannot be overridden
-- Tenant-level policies can be overridden by platform
-- Department-level policies can be overridden by tenant
+- All delegation operations recorded in audit logs
+- Delegation relationship changes notify both parties
+- Periodic review of delegation validity
 
 ## Consequences
 
 Positive:
-- Clear delegation chain improves governance
-- Depth limit prevents delegation abuse
-- Override rules ensure policy consistency
+
+- Distributed governance improves efficiency
+- Constraint mechanism prevents permission abuse
+- Audit trail ensures compliance
 
 Negative:
-- Delegation management complexity
-- Depth limit may restrict legitimate use cases
 
-Trade-offs:
-- Governance vs. flexibility
-- Control vs. simplicity
+- Delegation relationships are complex
+- Permission revocation requires full process
 
 ## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-085 Organization Governance and Knowledge Boundary](./085-organization-governance-and-knowledge-boundary.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
 
 ## Source Sections
 

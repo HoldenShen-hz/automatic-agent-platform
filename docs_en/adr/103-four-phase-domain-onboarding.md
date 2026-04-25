@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Gather domain modeling and dependency inputs
-- **Assess**: Check readiness and certification needs
-- **Plan**: Sequence modeling, development, certification, and canary stages
-- **Execute**: Advance onboarding stage by stage
-- **Feedback**: Produce structured evidence per stage
+- **Observe**: Collect domain modeling and dependency inputs
+- **Assess**: Check readiness and certification requirements
+- **Plan**: Plan modeling, development, certification, and canary four phases
+- **Execute**: Advance onboarding phase by phase
+- **Feedback**: Deposit structured evidence at each phase
 - **Learn**: Review onboarding patterns
-- **Improve**: Refine onboarding gates
-- **Release**: Only gray/canary success reaches active status
+- **Improve**: Optimize onboarding gates
+- **Release**: Only after canary passes can active status be reached
 
 ---
 
@@ -20,17 +20,18 @@
 
 ## Context
 
-Without a fixed phase model, onboarding can skip governance, testing, or rollout evidence.
+Without fixed phases, domain onboarding can skip governance, testing, or canary verification.
 
 ## Decision
 
-Domain onboarding is fixed to:
+Domain onboarding is fixed to four phases:
 
 1. Modeling
 2. Development
 3. Certification
-4. Gray / Canary rollout
+4. Canary
 
 ## Consequences
 
-- Onboarding no longer depends on informal process
+- Onboarding no longer depends on informal processes
+- Domain readiness and rollout share consistent gates

@@ -55,7 +55,7 @@ Rules:
 
 ## 3A. Configuration Governance Bundle
 
-The configuration governance layer uniformly loads and validates all configuration layers through `ConfigBundle`. The current phase must contain the following 6 layers:
+The configuration governance layer uniformly loads and validates all configuration layers through `ConfigBundle`. The current phase must contain the following 10 layers:
 
 | Layer Name | File Path | Responsibilities |
 | --- | --- | --- |
@@ -83,7 +83,7 @@ The configuration governance layer uniformly loads and validates all configurati
 | `runtime` | `defaultTaskTimeoutMs` | Must be a positive number |
 | `runtime` | `defaultStepTimeoutMs` | Must be a positive number |
 | `runtime` | `maxConcurrentTasks` | Must be a positive integer |
-| `security` | `sandboxMode` | Must be one of `read_only \| workspace_write \| danger_full_access` |
+| `security` | `sandboxMode` | Must be one of `read_only \| workspace_write \| scoped_external_access \| restricted_exec` |
 | `security` | `remoteWorkerRegistration.challengeTtlMs` | Must be a positive number |
 | `security` | `remoteWorkerRegistration.allowedCapabilities` | Must be a non-empty string array |
 | `providers` | provider / profile references | Must have matching entries in model metadata registry |

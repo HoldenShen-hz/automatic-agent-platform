@@ -20,14 +20,14 @@
 
 ## Context
 
-Context assembly must be centralized to support auditability, compression, and replay.
+Without a unified context assembler, Harness repeats context assembly across different call paths, making it unauditable, uncompressible, and unreplayable.
 
 ## Decision
 
-- `ContextAssembler` is the authoritative context entrypoint
-- It must support task / domain / shared source sets
+- `ContextAssembler` is the authoritative Harness context assembly entrypoint
+- Must support task / domain / shared source sets
 - Each loop produces a `ContextSnapshot`
 
 ## Consequences
 
-- Context assembly becomes testable, recoverable, and governable
+- Context assembly becomes a testable, recoverable, and governable first-class capability

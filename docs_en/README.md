@@ -1,6 +1,6 @@
 # Automatic Agent Platform Documentation Portal
 
-`docs_zh/` is now organized by "purpose" rather than "historical source"; top-level directories only retain entry points, and scattered top-level overview documents are no longer accumulated.
+`docs_en/` is now organized by "purpose" rather than "historical source"; top-level directories only retain entry points, and scattered top-level overview documents are no longer accumulated.
 
 ## Recommended Reading Order
 

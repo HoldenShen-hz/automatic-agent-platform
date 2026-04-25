@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Aggregate workflow patterns across 24 domains
-- **Assess**: Normalize them into archetypes
+- **Observe**: Aggregate 24 domain workflow patterns
+- **Assess**: Normalize into archetypes
 - **Plan**: Generate baseline recipes per archetype
-- **Execute**: Bootstrap domains through archetypes
-- **Feedback**: Validate fit rate
-- **Learn**: Refine archetype taxonomy
-- **Improve**: Lower specialization cost
-- **Release**: Archetypes become domain onboarding assets
+- **Execute**: Drive domain baseline creation
+- **Feedback**: Verify archetype fit rate
+- **Learn**: Update archetype taxonomy
+- **Improve**: Reduce specialization cost
+- **Release**: Archetype becomes domain onboarding baseline asset
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Context
 
-The original recipe set was too small to cover all 24 vertical domains.
+The original recipe prototype set was too small to cover 24 vertical business domains.
 
 ## Decision
 
@@ -28,4 +28,4 @@ The original recipe set was too small to cover all 24 vertical domains.
 
 ## Consequences
 
-- The 24 domain baselines have a unified but extensible recipe model
+- 24 domain baselines have a unified yet extensible recipe model

@@ -1,291 +1,388 @@
 # Current Todo List
 
-> This remediation list is now driven exclusively by [architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md).
-> It replaces the earlier `W0-W6` status language and only keeps repository-actionable work that can be implemented, tested, and written back to documentation.
+> The current remediation list uses [../reviews/architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md) as the primary index, with repository code and runnable test results serving as the final reconciliation.
+> This file covers previously prematurely marked-as-done `W0-W6`口径, retaining only remediation tasks that can be landed in-repository, tested, and documented.
+
+## 0. 2026-04-23 Item-by-Item Review Conclusions
+
+> `R0-R6` historical closure no longer equates to "all reviews closed". Based on this round's item-by-item review, current review status is:
+
+- `open`: none
+- `partial`: none
+- `closed`: `P0-1`, `P0-2`, `P0-3`, `P1-1`, `P1-2`, `P1-3`, `P1-4`, `P1-5`, `P1-6`, `P1-7`, `P2-1`, `P2-2`, `P2-3`
+
+Subsequent `done` in this file only indicates the corresponding historical wave completed remediation within its scope at that time, and no longer serves as evidence that current review gaps have been cleared. New conclusions from this round: `P1-1 ~ P1-7`, `P2-1`, `P2-2`, `P2-3` have formed a three-way closed loop of source code, tests, and documentation.
 
 ## 1. Execution Boundary
 
-- Only include gaps that can be closed inside this repository.
-- External infrastructure and external-system work such as `S4` clustered K8s sharding, real enterprise IdP wiring, and standalone WCAG frontend rework are tracked as follow-up notes, not active todo items.
-- Every wave must close code, tests, documentation, and review status together.
+- Only include tasks that can be developed in-repository, verified, and closed in this round's documentation write-back.
+- External infrastructure/external system items such as `S4 K8s cluster-level sharding`, real enterprise IdP integration, and standalone frontend WCAG rework are not counted in this round's todo.
+- Each wave must simultaneously complete: code, tests, documentation write-back, and review status sync.
 
 ## 2. Priority Mapping
 
-| Priority | Review gaps | Remediation wave |
+| Priority | Review gaps | This round's wave |
 | --- | --- | --- |
 | `P0` | `II-1`, `III-1`, `IV-1`, `VI-1~VI-3` | `R1-R3` |
 | `P1` | `I-2`, `II-2`, `III-2`, `IV-2~IV-4`, `VI-4~VI-9` | `R2-R5` |
 | `P2` | `IV-5~IV-7`, `VI-10~VI-13` | `R4-R5` |
 | `P3` | `II-3`, `VI-14/15`, `IX-1` | `R5-R6` |
 
-## 3. Active Remediation Waves
+## 3. Current Remediation Waves
 
-### R0. Reset todo/review language
-
-Status: `in_progress`
-
-- Rewrite `current_todo_list` into an `R0-R6` review-driven structure.
-- Remove the earlier `W1-W5 done` language.
-- Deduplicate repeated review blocks and keep one authoritative gap ledger.
-- Add a stable `review id -> remediation wave` mapping.
-
-### R1. Harness P0/P1 runtime closure
-
-Status: `in_progress`
-
-- Extend `ConstraintPack` with `risk_policy` and `output_policy`.
-- Upgrade `HarnessRun` to multi-state lifecycle semantics.
-- Add `PlanBundle`, `WorkProduct`, `EvaluationReport`, `ContextSnapshot`, `WorkflowSleepLease`, and `RecoveryCheckpoint`.
-- Add iteration/re-entry/resume/recovery runtime entrypoints.
-- Close review `VI-1 ~ VI-6`.
-
-### R2. ACP, OAPEFLIR↔Harness mapping, ModelGateway closure
-
-Status: `in_progress`
-
-- Add formal `collaboration-protocol` support under `agent-delegation`.
-- Wire ACP into delegation validation, completion evidence, and takeover audit paths.
-- Add explicit OAPEFLIR↔Harness semantic mapping recorded in Harness steps/reports.
-- Add `embed()` and `complete()` to `UnifiedChatProvider`.
-- Close review `II-1`, `I-2`, `II-2`.
-
-### R3. Domain meta-model, recipe expansion, canonical domain IDs
-
-Status: `in_progress`
-
-- Add `src/domains/canonical-meta-model/` with Q1-Q12, validator, completeness scoring, and 24-domain seeders.
-- Connect descriptor review and baseline bootstrap to meta-model validation.
-- Expand recipe prototypes from 4 to 12.
-- Normalize the 12 mismatched `domain_id` values and add legacy alias compatibility.
-- Close review `III-1`, `III-2`, `IV-1`.
-
-### R4. 24-domain specialized config and runtime surface
-
-Status: `in_progress`
-
-- Add formal per-domain config, workflow, tool, risk, eval, latency, and ownership wiring.
-- Replace the generic `intake -> deliver` workflow as the final baseline.
-- Prioritize `quant-trading`, `financial-services`, `finance-accounting`, `legal`, and `healthcare`.
-- Close review `IV-2 ~ IV-7`.
-
-### R5. Harness P2/P3 subsystems and product closure
-
-Status: `in_progress`
-
-- Add `ToolbeltAssembler`, five-layer guardrails, formal HITL runtime, `FeedbackEnvelope`, memory namespace support, async harness, and evaluation harness.
-- Attach these capabilities to the main `HarnessRun` chain.
-- Add Harness observability, replay, and audit linkage.
-- Close review `VI-7 ~ VI-15`.
-
-### R6. Roadmap, ADRs, ops-maturity stub reduction, final document closure
-
-Status: `in_progress`
-
-- Fix `RoadmapService` to include Phase 8/9 registration.
-- Add the missing ADR set called out by the review.
-- Align `harness/` directory structure, exports, todo, and review language.
-- Reduce high-stub leaf tools in `ops-maturity`.
-- Write back `review / coverage-matrix / current_todo_list` so all implemented items show `✅`.
-
-## 4. Test Rules
-
-Each wave must include:
-
-1. code
-2. targeted tests
-3. documentation updates
-4. fixes for failures triggered by that wave
-
-Minimum coverage:
-
-- Harness: `unit + integration`
-- ACP / delegation: `unit + contract`
-- domains: `unit + smoke + registry + rollout/governance wiring`
-- ModelGateway: `unit + integration`
-- documentation consistency: `docs + links + health`
-
-## 5. Current Progress Snapshot
-
-- `R0` is underway: the todo language has been reset to review-driven remediation.
-- `R0` now includes the key deduplication step: `architecture-design-vs-implementation-review.md` has been trimmed down to a single authoritative review block, and documentation health tests still pass.
-- `R1` now has its mainline closure in place: the extended ConstraintPack, Harness multi-lifecycle state machine, PlanBundle/WorkProduct/EvaluationReport/ContextSnapshot/WorkflowSleepLease/RecoveryCheckpoint, and resume/recovery/sleep runtime paths are landed with targeted tests.
-- `R3` now has its mainline implementation in place: Q1-Q12 meta-model support, 12 recipe prototypes, 12 canonical domain IDs, legacy alias compatibility, descriptor/bootstrap wiring, and targeted tests are landed.
-- `R4` now has its first mainline implementation in place: all 24 domains expose formal config entrypoints plus domain-specific workflow/tool/eval/latency/ownership metadata, with unit and integration coverage.
-- `R5` now has its third subsystem implementation in place: `ToolbeltAssembler`, `GuardrailEngine`, `HitlRuntime`, `HarnessMemoryManager`, `AsyncHarnessService`, `EvalRunService`, `DurableHarnessService`, `ContextAssembler`, `RecoveryController`, plus timeline/invariant enforcement are wired into the Harness mainline and protected by unit/integration coverage.
-- `R6` now has its second implementation slice in place: `RoadmapService` seeds phases `8a/8b/8c/9a-9f`, `docs_zh/adr` and `docs_en/adr` now include the missing `091-108` Harness/domain ADR set, and the `harness/` directory now exposes canonical subdirectory entrypoints validated by structure tests.
-- `R6` now has its third implementation slice in place: the `platform-ops-agent`, `capacity-planner`, and `compliance-reporter` leaf toolsets have been promoted into formal services (capacity predictor / config optimizer / developer assistant / health monitor / incident diagnoser / forecaster / simulator / trend analyzer / evidence mapper / template registry / renderer) and are covered by `build:test` plus targeted `ops-maturity` regressions.
-- `R6` now has its fourth stabilization slice in place: `FluentdTransport` now uses lazy connect with non-blocking reconnect/socket handles, `DatadogTransport` now exposes an injectable requestFactory, and observability transport regressions no longer depend on real outbound network timeouts. `build:test` plus targeted `shared/observability` regressions are green again.
-- `R6` now has its fifth test-closure slice in place: `clean-dist.mjs` now prunes stale compiled tests even when `dist` is preserved, preventing orphaned artifacts from re-entering full runs under `AA_PRESERVE_DIST=1`; a fresh full regression regenerated coverage and the baseline-aligned `coverage:gate` is green again.
-- `R1-R6` remain governed by the review gap ledger rather than the older `W* done` status.
-- Future `done` states require code, tests, and documentation to land together.
-
-## 6. Cross-Platform UI Track (UI0-UI7)
-
-> This track uses [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) as the single UI source of truth and does not replace the historical `R0-R6` backend remediation record.
-
-### UI0. Workspace and Todo Baseline
+### R0. Todo / Review口径 Reset
 
 Status: `done`
 
-- Added in-repo `ui/` monorepo baseline.
-- Extended `current_todo_list` with `UI0-UI7` without overwriting `R0-R6`.
-- Locked the delivery boundary to `runnable Web + six-platform shell baseline + typed seams + docs/tests sync`.
+- Rewrote `current_todo_list` into `R0-R6` structure.
+- Removed old `W1-W5 done`口径, unified to "review as source of truth".
+- Cleaned up duplicate review gap blocks, keeping one authoritative gap ledger.
+- Established `review id → remediation wave` mapping in todo.
+
+Completion definition:
+
+- Chinese and English `current_todo_list` no longer show old `W*` completion口径.
+- `review / coverage-matrix / todo` no longer conflict with each other.
+
+### R1. Harness P0/P1 Core Runtime Closure
+
+Status: `done`
+
+- Extended `ConstraintPack`, added `risk_policy / output_policy`.
+- Upgraded `HarnessRun` to multi-lifecycle state: `created / running / waiting_hitl / sleeping / recovering / completed / aborted`.
+- Added `PlanBundle / WorkProduct / EvaluationReport / ContextSnapshot / WorkflowSleepLease / RecoveryCheckpoint` contracts.
+- Added formal runtime entrypoints for iteration, re-entry, resume, and recovery to Harness.
+- Closed review `VI-1 ~ VI-6`.
+
+Completion definition:
+
+- Harness is no longer just a single-turn `planner → generator → evaluator` skeleton.
+- Harness core contracts, state machine, and recovery entrypoints can all be verified by targeted tests.
+
+### R2. ACP, OAPEFLIR↔Harness Semantic Mapping, ModelGateway Gap Filling
+
+Status: `done`
+
+- Added `agent-delegation/collaboration-protocol`, landed ACP message schema, 8 message types, required fields and invariant validation.
+- Wired ACP back to existing delegation main chain: pre-delegation validation, completion report evidence constraints, takeover notice audit entry.
+- Added explicit OAPEFLIR↔Harness semantic mapping, written into Harness step/report.
+- Added `embed()` and `complete()` to `UnifiedChatProvider`, reusing existing provider routing / degradation / cost attribution main chain.
+- Closed review `II-1`, `I-2`, `II-2`.
+
+Completion definition:
+
+- Collaboration protocol is no longer missing.
+- Relationship between Harness and OAPEFLIR no longer stays at documentation description.
+- `ModelGateway` external capabilities filled to facade-level interface as required by review.
+
+### R3. Domain Meta-Model, Recipe Extension, Canonical domain_id Consolidation
+
+Status: `done`
+
+- Added `src/domains/canonical-meta-model/`, implementing Q1-Q12, validator, completeness calculation, 24-domain seeder.
+- Connected `DomainDescriptorOrchestrationService` and `bootstrapVerticalDomainBaselines()` to meta-model validator.
+- Extended `DomainRecipe` prototype to 12 types.
+- Fixed 12 mismatched `domain_id` values, with legacy alias → canonical compatibility mapping.
+- Closed review `III-1`, `III-2`, `IV-1`.
+
+Completion definition:
+
+- All 24 domains use canonical `domain_id` as specified by review.
+- Domain meta-model completeness is calculable, testable, and can enter descriptor review.
+
+### R4. 24-Domain Specialized Config and In-Domain Runtime Surface
+
+Status: `done`
+
+- Added formal config entrypoints for 24 domains and domain-specialized workflow/tool/risk/eval/latency/division wiring.
+- No longer treating generic `intake → deliver` dual-step workflow as final delivery.
+- Prioritized filling 5 key domains: `quant-trading`, `financial-services`, `finance-accounting`, `legal`, `healthcare`.
+- Closed review `IV-2 ~ IV-7`.
+
+Completion definition:
+
+- Each domain has at least domain-specific workflow, tool bundle, risk/eval profile, and ownership assignment.
+- 24-domain smoke / registry / rollout / governance wiring tests filled.
+
+### R5. Harness P2/P3 Subsystems and Product-Level Runtime Closure
+
+Status: `done`
+
+- Added `ToolbeltAssembler`, five-layer Guardrails, formal HITL Runtime, `FeedbackEnvelope`, Memory Namespace, Async Harness, Evaluation Harness.
+- Wired these capabilities into `HarnessRun` main chain, not just as helpers.
+- Filled Harness observability: iteration timeline, prompt lineage, failure-to-learning, replay entrypoint, audit link.
+- Closed review `VI-7 ~ VI-15`.
+
+Completion definition:
+
+- Harness has product-level long-running, HITL, feedback and learning loop closure.
+- Related integration / contract tests are executable.
+
+### R6. Roadmap, ADRs, ops-maturity Stub Reduction and Final Documentation Closure
+
+Status: `done`
+
+- Fixed `RoadmapService`, filled Phase 8/9 registration.
+- Filled ADR files called out as missing by review.
+- Handled `harness/` directory structure, export surface, and documentation口径 inconsistency.
+- Reduced high-stub-count leaf tools under `ops-maturity`.
+- Final write-back `review / coverage-matrix / current_todo_list`, changing all implemented items to `✅`.
+
+Completion definition:
+
+- Documentation, directory, export surface, and test status are unified.
+- Remaining review items only retain external infrastructure type remnants.
+
+## 4. Test Requirements
+
+Each wave must simultaneously complete:
+
+1. Code implementation
+2. Targeted tests
+3. Documentation write-back
+4. Fix failing tests triggered by that wave
+
+Minimum test baseline:
+
+- Harness: `unit + integration`
+- ACP / delegation: `unit + contract`
+- domains: `unit + smoke + registry + rollout/gov wiring`
+- ModelGateway: `unit + integration`
+- Documentation consistency: `docs + link + health`
+
+## 5. Final Write-Back Results
+
+- `R0` completed: `todo / review / coverage-matrix` reconciled against repository implementation, expired gaps and landed capabilities no longer conflict.
+- `R1` completed: Harness core contracts, multi-lifecycle, sleep/resume/recovery main chain landed, `runLoop()` now explicitly wired to `HarnessLoopController`.
+- `R2` completed: ACP, OAPEFLIR↔Harness semantic mapping, `UnifiedChatProvider.complete()/embed()` facade and barrel visibility closed.
+- `R3` completed: `canonical-meta-model`, 12 recipe types, canonical `domain_id` and legacy alias mapping entered bootstrap / descriptor / registry main chain.
+- `R4` completed: 24-domain baseline, workflow/tool/risk/eval/latency/ownership wiring entered unit + integration regression.
+- `R5` completed: `ToolbeltAssembler`, `GuardrailEngine`, `HitlRuntime`, `HarnessMemoryManager`, `AsyncHarnessService`, `EvalRunService`, `DurableHarnessService`, `ContextAssembler`, `RecoveryController` wired back to Harness main chain, loop/structure/performance regression filled.
+- `R6` completed: `RoadmapService`, ADR index, `harness/` canonical subdirectory export surface, ops-maturity leaf services, and three authoritative documents synchronized for closure.
+
+Completion verification:
+
+- `npm run build`
+- `npx tsx --test tests/unit/platform/control-plane/iam/access-model.test.ts tests/unit/platform/control-plane/iam/policy-engine.test.ts tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts tests/unit/platform/control-plane/config-center/config-governance-service.test.ts tests/unit/platform/interface/api/http-server/task-routes.test.ts tests/golden/openapi-document.test.ts tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts tests/unit/domains/vertical-domain-architecture-service.test.ts tests/integration/domains/domains-mainline-integration.test.ts`
+- `review / coverage-matrix / current_todo_list` authoritative write-back sync completed
+
+Current closeout status:
+
+- `P1-1 ~ P1-6` completed and closed.
+- `npm run build` passed.
+- Above targeted `unit / integration / golden` all passed.
+- `npm run build:test` still blocked by existing in-repository `audit-export`, `risk-config-loader`, `tenant-boundary-registry-service` type debt; these errors were not introduced by this round's `P1-1 ~ P1-6` changes.
+- `review` old gap descriptions have been realigned with current implementation, no longer marking landed P1 items as incomplete.
+
+Currently retained out-of-repository or non-blocking items:
+
+- `I-1`: `S4 K8s` cluster-level sharding
+- `II-3`: Additional LLM provider richness expansion
+
+## 5.1 2026-04-23 P0-1 ~ P0-3 Closure Notes
+
+Status: `done`
+
+- `P0-1` completed: Added `AnomalyEventClass` / `ClassifiedAnomalyEvent` authoritative contract, wired anomaly detection and tier-1 event surface to `E1-E6` classification.
+- `P0-2` completed: Added `UnifiedSeverity` / `UNIFIED_SEVERITY_SLA` and cross anomaly / alert / runbook / diagnostic severity mapper, incident package and alert event can now output `SEV1-SEV4`.
+- `P0-3` completed: Added `threat-model/`, `ThreatMatrixRegistry` and `config/security/threat-matrix.json` under IAM, STRIDE six-dimensional no longer just scattered across security components.
+
+Completion verification:
+
+- `npm run build`
+- `npx tsx --test tests/unit/platform/contracts/types/unified-severity.test.ts tests/unit/platform/contracts/types/anomaly-event-classification.test.ts tests/unit/platform/contracts/types/index.test.ts tests/unit/platform/control-plane/iam/stride-framework.test.ts tests/unit/platform/shared/observability/anomaly-detection-service.test.ts tests/unit/platform/shared/observability/slo-alerting-service.test.ts tests/unit/platform/state-evidence/events/event-types.test.ts tests/unit/platform/state-evidence/events/typed-event-payloads.test.ts`
+
+Known not included in this blocking:
+
+- `npm run build:test` still blocked by existing integration/type errors in-repository, currently not introduced by `P0-1 ~ P0-3` changes.
+
+## 5.2 2026-04-23 P1-1 ~ P1-6 Closure Notes
+
+Status: `done`
+
+- `P1-1` completed: Added `src/platform/control-plane/iam/access-model.ts`, formed 6 canonical principal types, wired to `policy-engine` and `approval policy context`.
+- `P1-2` completed: `SandboxMode` switched to `read_only / workspace_write / scoped_external_access / restricted_exec` four tiers, synchronized plugin executor and config governance.
+- `P1-3` completed: `/v1/tasks` and `/v1/workflows` now support cursor pagination, OpenAPI/golden synchronized.
+- `P1-4` completed: Added `src/platform/orchestration/hitl/hitl-modes.ts`, HITL seven modes wired to approval packet / inbox main chain and per-mode tests.
+- `P1-5` completed: `policy-engine` now explicitly evaluates `RBAC -> capability -> context-aware` three-layer authorization, with audit evidence supplemented.
+- `P1-6` completed: Added `src/domains/vertical-domain-architecture-service.ts`, elevating 24-domain baseline to consumable vertical domain-specific architecture surface.
+
+Completion verification:
+
+- `npm run build`
+- `npx tsx --test tests/unit/platform/control-plane/iam/access-model.test.ts tests/unit/platform/control-plane/iam/policy-engine.test.ts tests/unit/platform/control-plane/iam/sandbox-policy-modes.test.ts tests/unit/platform/control-plane/config-center/config-governance-service.test.ts tests/unit/platform/interface/api/http-server/task-routes.test.ts tests/golden/openapi-document.test.ts tests/unit/platform/orchestration/hitl/hitl-approval-orchestration-service.test.ts tests/unit/platform/orchestration/hitl/hitl-inbox-service.test.ts tests/unit/domains/vertical-domain-architecture-service.test.ts tests/integration/domains/domains-mainline-integration.test.ts`
+
+Known not included in this blocking:
+
+- `npm run build:test` currently blocked by existing in-repository test type debt: `tests/unit/platform/control-plane/audit-export/audit-export-service.test.ts`, `tests/unit/platform/control-plane/risk-control/risk-config-loader.test.ts`, `tests/unit/platform/control-plane/tenant/tenant-boundary-registry-service.test.ts`.
+
+## 6. Cross-Platform UI Main Track (UI0-UI7)
+
+> This track uses [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) as the sole UI authoritative specification, and does not cover `R0-R6` backend remediation history.
+
+### UI0. Engineering and Todo Baseline
+
+Status: `done`
+
+- Added in-repository `ui/` monorepo root directory.
+- Appended `UI0-UI7` waves to `current_todo_list`, not covering `R0-R6`.
+- Clarified this round's boundary: `Web runnable + six-platform shell smoke-ready + typed seam + docs/tests sync`.
 
 ### UI1. Shared Core
 
 Status: `done`
 
-- Added `shared/types`, `api-client`, `auth`, `state`, `sync`, `domain`, `i18n`, `telemetry`, and `nl-client`.
-- Added DTO→VM→Props mapping, permission guards, field redaction, offline queue, and REST/WS client baseline.
+- Landed `shared/types`, `api-client`, `auth`, `state`, `sync`, `domain`, `i18n`, `telemetry`, `nl-client`.
+- Landed DTO→VM→Props, permission guards, field redaction, offline queue, REST/WS client baseline.
 
 ### UI2. Adapter / Design System / Cross-Platform Base
 
 Status: `done`
 
-- Added the authoritative `PlatformAdapter` contract.
-- Added `ui-core`, `ui-mobile`, design tokens, feature scaffold, and mobile navigation baseline.
+- Landed authoritative `PlatformAdapter` interface.
+- Landed `ui-core`, `ui-mobile`, design tokens, feature scaffold, mobile navigation baseline.
 
 ### UI3. Implemented-First Feature Modules
 
 Status: `done`
 
-- Added `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / policy / audit / workers / queues / conversation / hitl / domain-wizard / settings`.
-- Web now renders shared-data-backed pages for Dashboard / Tasks / Approvals / Settings / Conversation.
+- Landed `dashboard / task-cockpit / workflow-cockpit / approval / stability / takeover / alerts / dispatch / inspect / health / incidents / policy / audit / workers / queues / conversation / hitl / domain-wizard / settings`.
+- Web now connects shared data flow and page rendering for Dashboard / Tasks / Approvals / Settings / Conversation.
 
-### UI4. Planned Modules and API Seams
+### UI4. Planned Modules and API Seam
 
 Status: `done`
 
-- Added formal feature packages for `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`.
-- Planned modules use typed seams and explicit planned-state UX instead of pretending the backend already exists.
+- Landed formal feature packages for `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`.
+- Planned modules uniformly use typed seam + feature gate copy, without fabricating backend completion.
 
 ### UI5. Six-Platform Shells
 
 Status: `done`
 
-- Added `apps/web`, `apps/electron-win`, `apps/tauri-macos`, `apps/tauri-linux`, and `apps/mobile`.
-- `apps/web` is buildable; the other shells are smoke-ready adapter baselines.
+- Landed `apps/web`, `apps/electron-win`, `apps/tauri-macos`, `apps/tauri-linux`, `apps/mobile`.
+- Among these, `apps/web` is buildable and runnable; others are adapter/shell smoke-ready baseline.
 
 ### UI6. Tooling and Tests
 
 Status: `done`
 
-- Added `tools/codegen`, `tools/mock-server`, and `tools/e2e`.
-- Added UI shared/feature/app/docs targeted tests and wired them into the `ui` workspace `typecheck / test / build`.
+- Landed `tools/codegen`, `tools/mock-server`, `tools/e2e`.
+- Filled UI shared/feature/app/docs targeted tests, incorporated into `ui` sub-project `typecheck / test / build`.
 
-### UI7. Docs and Acceptance
+### UI7. Documentation and Acceptance
 
 Status: `done`
 
-- `todolist` is updated.
-- `05-cross-platform-ui-architecture.md` now includes the repo-side `Phase 1-4` alignment snapshot and `v3.2` write-back.
-- UI docs consistency tests now cover `UI0-UI7`, `Phase 1-4`, and the architecture doc alignment.
+- `todolist` written back.
+- `05-cross-platform-ui-architecture.md` supplemented with in-repository `Phase 1-4` alignment snapshot and `v3.2` write-back.
+- UI docs consistency tests now cover `UI0-UI7`, `Phase 1-4`, and architecture doc alignment.
 
 ## 7. Cross-Platform UI Phase 1-4 Alignment Plan
 
-> This section mirrors `Phase 1-4` in `/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/architecture/05-cross-platform-ui-architecture.md` §7.4 and serves as the stage-oriented execution view for `UI0-UI7`.
+> This section directly aligns with `Phase 1-4` in [../architecture/05-cross-platform-ui-architecture.md](../architecture/05-cross-platform-ui-architecture.md) §7.4, serving as the phased execution view for `UI0-UI7`.
 
-### Phase 1. Web MVP
-
-Status: `done`
-
-- Align the Web MVP routes and pages for `Implemented/Contracted` and `Implemented/Internal`.
-- Fill the first-level IA gaps: `policy / audit / workers / queues`.
-- Keep Dashboard / TaskCockpit / Approval / Stability / Conversation / HITL / Settings on the shared route-guard, Query, and DTO→VM→Props path.
-- Continue the Phase 1 documentation rewrite and docs tests.
-
-### Phase 2. Desktop
+### Phase 1. Web MVP (Doc §7.4)
 
 Status: `done`
 
-- Harden `electron-win / tauri-macos / tauri-linux` shell manifests, PlatformAdapter injection, and smoke bootstrap.
-- Cover desktop-specific baseline behavior and test doubles for `windowing / shell / process / analyticsConsent`.
-- Reuse the shared runtime between Web and desktop shells instead of forking logic.
+- Aligned Web MVP routes and pages for `Implemented/Contracted` and `Implemented/Internal`.
+- Filled first-level IA gaps for Web: `policy / audit / workers / queues`.
+- Put Dashboard / TaskCockpit / Approval / Stability / Conversation / HITL / Settings onto unified route guard, Query, DTO→VM→Props main chain.
+- Continued documentation write-back and docs tests for Phase 1 status.
 
-### Phase 3. Mobile
-
-Status: `done`
-
-- Harden `apps/mobile` navigation, secure storage, deep link, haptics, and screen-security baselines.
-- Keep approvals / HITL / conversation entry flows on the mobile path together with offline sync.
-- Add mobile smoke and platform capability contract tests.
-
-### Phase 4. Enhanced Capabilities
+### Phase 2. Desktop (Doc §7.4)
 
 Status: `done`
 
-- Continue closing `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance`.
-- Keep a single closure path of `planned feature → typed seam → feature gate → docs status`.
-- Rewrite the fine-grained implementation labels in `05-cross-platform-ui-architecture.md` to match the repository truth.
+- Hardened `electron-win / tauri-macos / tauri-linux` shell manifest, PlatformAdapter injection, and smoke bootstrap.
+- Aligned desktop-specific capabilities: `windowing / shell / process / analyticsConsent` baseline behavior and test doubles.
+- Officially reused shared layer between Web runtime and desktop adapter, avoiding each shell implementing its own version.
 
-Definition of done:
-
-- `Phase 1-4` each have a repository-level code baseline, docs write-back, and targeted tests.
-- App-store distribution, real signing/release, and external MDM or enterprise-store integration remain out of scope.
-
-## 8. UI Review Verification and Remediation Track (UIR0-UIR6)
-
-> This track uses [../reviews/ui-design-vs-implementation-review.md](../reviews/ui-design-vs-implementation-review.md) as the single remediation entrypoint. It first verifies every review statement against repository truth, then closes the remaining real gaps in order.
-
-### UIR0. Re-audit the review and rebuild the authoritative ledger
+### Phase 3. Mobile (Doc §7.4)
 
 Status: `done`
 
-- Re-check every table row, feature-depth row, and `P0-P3` gap in `ui-design-vs-implementation-review.md`.
-- Reclassify each item as `implemented`, `partial`, `missing`, or `stale documentation`.
-- Attach repository evidence paths for every conclusion.
-- Rewrite obviously stale sections first: feature structure, shared-core depth, feature-depth matrix, test inventory, and feature inventory.
+- Hardened `apps/mobile` navigation, secure storage, deep link, haptics, screen security baseline.
+- Aligned mobile approval/HITL/conversation entry and offline sync main chain.
+- Filled mobile smoke test and platform capability contract tests.
 
-### UIR1. Close P0: reactive state binding and duplicate route cleanup
-
-Status: `done`
-
-- Replace `getState()` snapshot reads in `shared/state` with bindings that actually trigger React re-renders.
-- Keep `zustand/vanilla` store factories, but add a formal React binding layer.
-- Formally resolve the duplicate `compliance` / `governance-compliance` feature and route semantics.
-- Update feature registry, route map, tests, and review wording together.
-
-### UIR2. Re-rate the four-layer architecture and feature-depth matrix
+### Phase 4. Enhanced Capabilities (Doc §7.4)
 
 Status: `done`
 
-- Re-evaluate `L1 Platform Shell / L2 Feature Modules / L3 Shared Core / L4 Platform Adapters`.
-- Re-score all 28 features with fresh `L0-L3` depth ratings.
-- Rewrite the REST / WebSocket / PlatformAdapter / testing conclusions.
-- Make the review’s architecture, scale, depth, and testing statements match the current `ui/` repository exactly.
+- Continued closing `workflow-builder / workflow-debugger / agent-manager / explainability / cost-center / marketplace / analytics / governance-compliance` per doc.
+- Established unified closure method: `planned feature → typed seam → feature gate → docs status`.
+- Wrote back `05-cross-platform-ui-architecture.md` fine-grained status labels to match in-repository implementation truth.
 
-### UIR3. Close P1 code gaps: real transport, themes, charts, and key feature deepening
+Completion definition:
 
-Status: `done`
+- `Phase 1-4` have all formed code baseline, documentation write-back, and targeted test closure within repository scope.
+- Does not include app-store distribution, real signing release, external MDM/enterprise store integration, etc., which are out-of-repository items.
 
-- Add real transport implementations under the existing `RESTClient / WSClient` contracts while keeping mock seams.
-- Add the real light theme and the missing design tokens: typography, motion, breakpoints, shadows, and icon sizes.
-- Introduce ECharts / React Flow and connect them to `dashboard/analytics` and `workflow-builder`.
-- Deepen `dashboard / task-cockpit / workflow-cockpit / approval / stability / conversation / settings / workflow-builder / analytics / explainability` first.
+## 8. UI Review Item-by-Item Verification and Remediation Main Track (UIR0-UIR6)
 
-### UIR4. Close P2 platform gaps: desktop, Tauri, mobile, and real adapters
+> This track uses [../reviews/ui-design-vs-implementation-review.md](../reviews/ui-design-vs-implementation-review.md) as the sole remediation entrypoint. First verify each review conclusion item-by-item against repository implementation, then close remaining real gaps in order.
 
-Status: `done`
-
-- Promote `apps/electron-win` into a real Electron project baseline.
-- Promote `apps/tauri-macos` and `apps/tauri-linux` into real Tauri 2 project baselines.
-- Promote `apps/mobile` into a real React Native project baseline and make Android/iOS differences explicit.
-- Split `PlatformAdapter` into formal web / electron / tauri / mobile / mock implementations.
-
-### UIR5. Close P3 testing, tooling, and placeholder-package gaps
+### UIR0. Review Item-by-Item Audit and Authoritative Ledger Reconstruction
 
 Status: `done`
 
-- Add component, integration, and smoke coverage across shared/core/features/apps.
-- Promote `tools/mock-server`, `tools/codegen`, and `tools/e2e` from placeholders to minimum runnable tools.
-- Promote `shared-i18n`, `shared-telemetry`, and `shared-nl-client` from placeholders to minimum formal implementations.
-- Promote Storybook from placeholder docs to an actual project entrypoint.
+- Verified each table row, feature depth row, and `P0-P3` gap item in `ui-design-vs-implementation-review.md`.
+- Reclassified each as: `implemented`, `partial implementation`, `not implemented`, `documentation expired`.
+- Attached in-repository evidence paths for each conclusion.
+- First wrote back obviously expired items: feature structure, shared core depth, feature depth matrix, test inventory, feature inventory.
 
-### UIR6. Final documentation write-back and closure
+### UIR1. P0 Closure: Reactive State Binding and Duplicate Route Cleanup
 
 Status: `done`
 
-- Rewrite `ui-design-vs-implementation-review.md` end to end.
-- Write back `05-cross-platform-ui-architecture.md`, `current_todo_list.md`, and the English mirrors.
-- Produce the final closed-loop table of `review item -> current status -> evidence path -> remediated?`.
-- The repository UI baseline now closes `typecheck / test / build`; desktop and mobile are accepted as smoke-ready project baselines.
+- Switched `shared/state` from `getState()` snapshot reads to bindings that genuinely trigger React re-renders.
+- Kept `zustand/vanilla` store factories, but added formal React binding layer.
+- Formally closed duplicate `compliance` and `governance-compliance` feature / route semantics.
+- Synchronized feature registry, route map, review documentation, and tests.
+
+### UIR2. Four-Layer Architecture and Feature Depth Matrix Re-rating
+
+Status: `done`
+
+- Re-evaluated `L1 Platform Shell / L2 Feature Modules / L3 Shared Core / L4 Platform Adapters`.
+- Re-evaluated 28 features' `L0-L3` depth levels.
+- Rewrote REST / WebSocket / PlatformAdapter / testing coverage conclusions.
+- Made review structure, scale, depth, and testing conclusions exactly match current `ui/` truth.
+
+### UIR3. P1 Code Gaps: Real Transport, Themes, Charts, and Key Feature Deepening
+
+Status: `done`
+
+- Filled real transport implementations under existing `RESTClient / WSClient` interfaces, keeping mock seam.
+- Filled light theme and typography, motion, breakpoints, shadows, icon sizes and other design tokens.
+- Introduced ECharts / React Flow, wired to `dashboard/analytics` and `workflow-builder`.
+- Prioritized deepening `dashboard / task-cockpit / workflow-cockpit / approval / stability / conversation / settings / workflow-builder / analytics / explainability`.
+
+### UIR4. P2 Platform Layer: Desktop, Tauri, Mobile, and Real Adapter Layer
+
+Status: `done`
+
+- Upgraded `apps/electron-win` to real Electron project baseline.
+- Upgraded `apps/tauri-macos`, `apps/tauri-linux` to real Tauri 2 project baseline.
+- Upgraded `apps/mobile` to real React Native project baseline, with explicit Android/iOS difference entry.
+- Split `PlatformAdapter` into formal web / electron / tauri / mobile / mock implementation layers.
+
+### UIR5. P3 Testing, Tooling, and Placeholder Package Completion
+
+Status: `done`
+
+- Added component, integration, smoke tests across shared/core/features/apps.
+- Upgraded `tools/mock-server`, `tools/codegen`, `tools/e2e` from empty shells to minimum runnable.
+- Upgraded `shared-i18n`, `shared-telemetry`, `shared-nl-client` from placeholders to formal minimum implementation.
+- Upgraded Storybook from placeholder directory to actual project entrypoint.
+
+### UIR6. Final Documentation Write-Back and Closure
+
+Status: `done`
+
+- Fully rewrote `ui-design-vs-implementation-review.md`.
+- Synchronously wrote back `05-cross-platform-ui-architecture.md`, `current_todo_list.md` and English mirror.
+- Output final closed-loop table: `review item → current status → evidence path → remediated?`.
+- Current in-repository UI sub-project has completed `typecheck / test / build` closure; desktop and mobile accepted as smoke-ready project baselines.

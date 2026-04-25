@@ -1,79 +1,76 @@
-# ADR-058 Emergency Stop and Global Circuit Breaker
+# ADR-058 Emergency Stop and Global Circuit Breaker Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-Platform must have emergency stop mechanisms to prevent cascading failures and allow rapid shutdown when critical issues occur.
+When security incidents occur, the platform needs to instantly stop all Agent operations, and a global circuit breaker prevents failure propagation.
 
 ## Decision
 
-### EmergencyBrake Levels
+### Emergency Stop Levels
 
-| Level | Scope | Trigger Condition |
-|-------|-------|-------------------|
-| L1 | Single task | Execution timeout, resource exhaustion |
-| L2 | Single workflow | Multiple task failures, dependency failure |
-| L3 | Single tenant | Tenant-wide anomalies, quota breach |
-| L4 | Single region | Region-wide failures, cascade failure |
-| L5 | Platform-wide | Global outage, security breach |
+| Level | Name | Scope of Impact |
+|-------|------|-----------------|
+| L0 | none | Normal operation |
+| L1 | pause_new | Pause new task creation |
+| L2 | pause_all | Pause all execution |
+| L3 | kill_all | Terminate all running tasks |
+| L4 | lockdown | Lock platform, read-only operations only |
 
-### GlobalCircuitBreaker
+### Trigger Conditions
+
+| Condition | Level |
+|-----------|-------|
+| Manual trigger | L1-L4 |
+| SEV1 event | L2 |
+| Continuous failure > 90% | L3 |
+| Security attack detected | L4 |
+
+### Global Circuit Breaker
 
 ```typescript
 interface GlobalCircuitBreaker {
   state: 'closed' | 'open' | 'half_open';
-  threshold: number;
-  timeout_ms: number;
-  half_open_success_threshold: number;
+  threshold: number;       // Failure rate threshold
+  window_ms: number;      // Statistical window
+  open_duration_ms: number; // Duration of circuit break
 }
 ```
 
-### Trigger Conditions
+### Recovery Process
 
-| Condition | Threshold | Window |
-|-----------|-----------|--------|
-| Platform error rate | > 20% | 1 minute |
-| P99 latency | > 10x baseline | 5 minutes |
-| Resource exhaustion | > 95% | Immediate |
-| Security breach | Any | Immediate |
+1. Event resolved
+2. Manual confirmation
+3. Degraded observation (half_open)
+4. Gradually restore traffic
+5. Full recovery
 
-### Recovery Protocol
+### Access Control
 
-1. Identify root cause
-2. Isolate affected scope
-3. Execute recovery steps
-4. Verify recovery success
-5. Gradual traffic restoration
-
-### Panic Mode
-
-- `ops-maturity/emergency/platform-panic-service.ts`
-- Freezes all new task creation
-- Preserves execution state for recovery
-- Enables forensic snapshot capture
+- Emergency stop requires specific permissions
+- Operations require double confirmation
+- All operations recorded in audit logs
 
 ## Consequences
 
 Positive:
--分级控制 prevents cascade failure
-- Clear recovery protocol enables fast response
-- Panic mode preserves evidence for RCA
+
+- Fast response to security incidents
+- Prevent failure propagation
+- Graduated recovery reduces impact
 
 Negative:
-- Emergency stops interrupt business operations
-- False positives may cause unnecessary disruption
 
-Trade-offs:
-- Safety vs. availability
-- Speed vs. accuracy
+- Emergency stop affects business continuity
+- Recovery process requires careful design
 
 ## Cross-References
 
-- [ADR-025 Stability Architecture Seven Layers](./025-stability-architecture-seven-layers.md)
-- [ADR-087 Ops Maturity Runtime](./087-ops-maturity-runtime.md)
+- [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
+- [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
 
 ## Source Sections
 
-- `§58` Emergency Brake and Global Circuit Breaker
+- `§60` Emergency Stop and Global Circuit Breaker Architecture

@@ -41,8 +41,8 @@ interface CostDimension {
 
 ### Optimization Recommendations
 
-| Recommendation | Description | Expected Savings |
-|---------------|-------------|-----------------|
+| Recommendation Type | Description | Expected Savings |
+|---------------------|-------------|------------------|
 | prompt_compression | Reduce Token consumption | 20-40% |
 | model_downgrade | Use cheaper model | 30-60% |
 | cache_reuse | Cache similar requests | 50-80% |
@@ -64,22 +64,22 @@ interface CostDimension {
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Precise attribution guides optimization
 - Budget control prevents overruns
 - Reports facilitate management decisions
 
-Cons:
+Negative:
 
 - Metering adds overhead
-- Optimization recommendations
+- Optimization accuracy depends on data quality
 
-## Cross References
+## Cross-References
 
 - [ADR-008 Cost Model](./008-cost-model.md)
 - [Platform Architecture §14 Cost Management](../architecture/00-platform-architecture.md)
 
-## Source Section
+## Source Sections
 
 - `§64` Cost Attribution and Optimization Engine

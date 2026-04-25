@@ -5,74 +5,72 @@
 
 ## Context
 
-Users and operators need to understand why agents make certain decisions, requiring transparent reasoning and clear explanation mechanisms.
+Regulations like the EU AI Act require AI decisions to be explainable, and the platform needs to provide decision transparency mechanisms.
 
 ## Decision
 
-### Explanation Types
-
-| Type | Audience | Content |
-|------|----------|---------|
-| Decision Rationale | End users | Why this decision was made |
-| Execution Trace | Operators | How the decision was reached |
-| Confidence Signal | Analysts | How certain the agent is |
-| Alternative Options | Reviewers | What alternatives were considered |
-
-### StageRationale
+### Decision Tracing
 
 ```typescript
-interface StageRationale {
-  stage: OapeflirStage;
-  rationale: string;
-  timestamp: string;
-  inputs: unknown;
-  outputs: unknown;
+interface DecisionRecord {
+  decision_id: string;
+  agent_id: string;
+  context: DecisionContext;
+  reasoning: string;
+  evidence: Evidence[];
   confidence: number;
+  timestamp: string;
 }
 ```
 
-### Explainability Pipeline
+### Explainability Levels
 
-- `ops-maturity/explainability/`
-- Captures reasoning at each stage
-- Aggregates into human-readable explanations
-- Supports audit and compliance requirements
+| Level | Description | Audience |
+|-------|-------------|----------|
+| what | What was done | Operator |
+| why | Why it was done | Analyst |
+| how | How it was done | Developer |
+| full | Complete reasoning chain | Auditor |
 
-### Caching Strategy
+### Explanation Generation
 
-| Cache Type | TTL | Use Case |
-|------------|-----|----------|
-| Short-term | 1 hour | Recent execution rationale |
-| Medium-term | 24 hours | Investigation context |
-| Long-term | 30 days | Compliance records |
+| Technique | Description |
+|-----------|-------------|
+| Decision tree extraction | Extract rules from neural networks |
+| Attention visualization | Show key inputs |
+| Counterfactual analysis | "What if..." |
+| Case-based reasoning | Similar decision reference |
 
-### Visualization
+### Audit Logs
 
-- Timeline view of execution stages
-- Decision tree for branching logic
-- Confidence indicators for predictions
-- Alternative comparison charts
+- All high-risk decisions recorded
+- Tamper-proof storage
+- Support queries and export
+
+### Compliance Reports
+
+- Automatically generate compliance reports
+- Support regulatory agency review
+- Publish transparency reports periodically
 
 ## Consequences
 
 Positive:
-- Transparent reasoning builds user trust
-- Audit trail supports compliance
-- Debugging enables faster issue resolution
+
+- Meet EU AI Act and other regulatory requirements
+- Increase user trust
+- Facilitate problem diagnosis and repair
 
 Negative:
-- Explanation capture adds latency
-- Storage requirements for rationale data
 
-Trade-offs:
-- Transparency vs. performance
-- Detail vs. clarity
+- Explanation generation adds latency
+- Storage costs increase
 
 ## Cross-References
 
-- [ADR-016 OAPEFLIR Eight-Phase Cognitive Loop](./016-oapeflir-loop-model.md)
-- [ADR-087 Ops Maturity Runtime](./087-ops-maturity-runtime.md)
+- [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
+- [ADR-066 Compliance Report Auto-Generation Engine](./066-compliance-report-auto-generation.md)
 
 ## Source Sections
 
-- `§59` Agent Explainability
+- `§59` Agent Explainability and Decision Transparency Architecture

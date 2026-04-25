@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Gather domain signals, terminology, risk, and knowledge boundaries
-- **Assess**: Validate descriptor completeness and consistency
-- **Plan**: Drive workflow, prompt, and eval from descriptor semantics
-- **Execute**: Expose domain capabilities through the descriptor
-- **Feedback**: Collect domain performance and governance feedback
-- **Learn**: Evolve the domain meta-model
-- **Improve**: Improve descriptor completeness
-- **Release**: Descriptor is a domain launch gate
+- **Observe**: Domain signals, terminology, risk, and knowledge boundary inputs
+- **Assess**: Domain descriptor completeness and consistency validation
+- **Plan**: Drive workflow, prompt, and eval from descriptor
+- **Execute**: Expose domain capabilities through descriptor
+- **Feedback**: Aggregate domain performance and governance feedback
+- **Learn**: Iterate domain meta-model
+- **Improve**: Optimize descriptor completeness
+- **Release**: Descriptor becomes domain launch gate
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Business domains cannot rely on directory names or pack names as their semantic model.
+Business domains cannot rely on directory names or pack names to express semantics; they need a formal semantic layer.
 
 ## Decision
 
-- `DomainDescriptor` is the authoritative semantic layer for each domain
-- Workflows, tool bundles, prompts, and risk/eval all anchor back to it
+- `DomainDescriptor` is the authoritative semantic layer for business domains
+- All workflows, tool bundles, prompt libraries, and risk/eval must anchor back to the descriptor
 
 ## Consequences
 
-- Domain meta-model and registry share one root object
+- Domain meta-model and domain registry main chain share a unified root object

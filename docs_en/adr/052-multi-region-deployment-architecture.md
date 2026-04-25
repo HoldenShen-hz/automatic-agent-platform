@@ -5,70 +5,65 @@
 
 ## Context
 
-Global enterprises need multi-region deployment to meet data residency requirements, reduce latency, and ensure business continuity.
+Enterprise cross-regional operations require multi-region deployment to ensure low latency and high availability.
 
 ## Decision
 
-### Region Model
+### Multi-Region Model
 
 ```typescript
 interface Region {
   region_id: string;
   name: string;
   location: GeoLocation;
-  role: 'primary' | 'replica' | 'failover';
-  capacity: RegionCapacity;
+  role: RegionRole;
+  endpoints: RegionEndpoints;
 }
 
-interface GeoLocation {
-  continent: string;
-  country: string;
-  city: string;
-  coordinates: [number, number];
-}
+type RegionRole = 'primary' | 'replica' | 'hot_standby';
 ```
 
-### Cross-Region Routing
+### Traffic Routing
 
-- `scale-ecosystem/multi-region/cross-region-routing-service.ts`
-- Based on user location, data residency, load
-- Automatic failover on region failure
+| Strategy | Description |
+|----------|-------------|
+| latency_based | Latency-based routing |
+| geo_based | Geographic-based routing |
+| load_balanced | Load balancing |
+| failover | Failover |
 
-### Data Residency
+### Data Synchronization
 
-| Region Type | Data Storage | Computation |
-|--------------|---------------|-------------|
-| Primary | Full data | Full capability |
-| Replica | Replicated data | Read-only |
-| Failover | Cached data | Limited capability |
+| Sync Mode | Description | RPO |
+|-----------|-------------|-----|
+| sync | Synchronous replication | 0 |
+| async | Asynchronous replication | < 1s |
+| eventual | Eventual consistency | < 1min |
 
-### Region Failover
+### Failover
 
-1. Health check detects region failure
-2. Traffic rerouted to healthy region
-3. Data consistency verified post-failover
-4. Operations resumed in new region
+- Automatic detection of region failures
+- Automatic traffic switching to backup region
+- Data synchronization after region repair
 
 ## Consequences
 
 Positive:
-- Data residency compliance
-- Reduced latency for local users
-- Business continuity on region failure
+
+- Geographic proximity reduces latency
+- Region-level failures do not affect the whole system
+- Compliance requirements (data residency) are met
 
 Negative:
-- Cross-region data sync complexity
-- Higher infrastructure costs
 
-Trade-offs:
-- Global reach vs. complexity
-- Data residency vs. performance
+- Multi-region operational complexity
+- Cross-region data consistency challenges
 
 ## Cross-References
 
-- [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-031 Disaster Recovery and High Availability](./031-disaster-recovery-and-high-availability.md)
+- [ADR-053 Scaling Resource Competition Management](./053-scaling-resource-competition-management.md)
 
 ## Source Sections
 
-- `§52` Multi-Region Deployment
+- `§52` Multi-Region Deployment Architecture

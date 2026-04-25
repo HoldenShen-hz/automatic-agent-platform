@@ -61,29 +61,29 @@ interface WorkflowDAGView {
 
 ### Trace Integration
 
-- Full链路 trace
+- Full链路 trace (Full trace)
 - Span details
 - Performance profiling
 - Error chain
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Visual debugging improves efficiency
 - Complete state aids problem location
 - Breakpoint supports fine-grained debugging
 
-Cons:
+Negative:
 
 - Debugger development cost
 - Runtime overhead
 
-## Cross References
+## Cross-References
 
-- [ADR-004 Workflow & Routing](./004-workflow-routing.md)
-- [ADR-090 Runtime Data Reliability & Operations](./090-runtime-data-reliability-and-operations.md)
+- [ADR-004 Workflow and Routing](./004-workflow-routing.md)
+- [ADR-090 Runtime Data Reliability and Operations](./090-runtime-data-reliability-and-operations.md)
 
-## Source Section
+## Source Sections
 
 - `§65` Workflow Visual Debugger Architecture

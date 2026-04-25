@@ -58,22 +58,22 @@ interface SelfOpsAgent {
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Reduces SRE dependency
 - Improves availability
 - Fast fault response
 
-Cons:
+Negative:
 
 - Self-ops logic is complex
 - Permission boundaries require careful design
 
-## Cross References
+## Cross-References
 
 - [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
-- [ADR-058 Emergency Stop & Global Circuit Breaker](./058-emergency-stop-and-global-circuit-breaker.md)
+- [ADR-058 Emergency Stop and Global Circuit Breaker](./058-emergency-stop-and-global-circuit-breaker.md)
 
-## Source Section
+## Source Sections
 
 - `§69` Platform Self-Operating Agent Architecture

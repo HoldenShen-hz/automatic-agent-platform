@@ -73,22 +73,22 @@ interface MetricPrediction {
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Proactive planning avoids emergency scaling
 - Cost prediction supports budget planning
 - Optimization recommendations reduce cost
 
-Cons:
+Negative:
 
 - Prediction models require data accumulation
 - Prediction accuracy depends on model quality
 
-## Cross References
+## Cross-References
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-064 Cost Attribution and Optimization Engine](./064-cost-attribution-and-optimization-engine.md)
 
-## Source Section
+## Source Sections
 
 - `§67` Capacity Planning and Cost Prediction Engine

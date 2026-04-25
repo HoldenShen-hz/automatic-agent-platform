@@ -57,22 +57,22 @@ interface EdgeRuntime {
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Supports offline scenarios
 - Reduces network dependency
 - Expands applicable scope
 
-Cons:
+Negative:
 
 - Sync complexity
 - Conflict resolution complexity
 
-## Cross References
+## Cross-References
 
 - [ADR-052 Multi-Region Deployment Architecture](./052-multi-region-deployment-architecture.md)
-- [ADR-031 Disaster Recovery and High Availability Architecture](./031-disaster-recovery-and-high-availability.md)
+- [ADR-031 Disaster Recovery and High Availability](./031-disaster-recovery-and-high-availability.md)
 
-## Source Section
+## Source Sections
 
 - `§62` Offline and Edge Deployment Architecture

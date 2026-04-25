@@ -1,7 +1,7 @@
 # Contracts
 
 > `contracts/` is the platform's authoritative specification layer.
-> This defines canonical objects, minimum fields, state machines, protocol boundaries, and test requirements; current coverage analysis is recorded in `docs_zh/analysis/`, not in the contract body.
+> This defines canonical objects, minimum fields, state machines, protocol boundaries, and test requirements; current coverage analysis is recorded in `../analysis/`, not in the contract body.
 
 ## 1. Usage Order
 

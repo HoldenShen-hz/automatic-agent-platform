@@ -5,77 +5,75 @@
 
 ## Context
 
-A thriving ecosystem requires a marketplace where agents, plugins, and packs can be published, discovered, and consumed.
+The platform needs an open Agent marketplace where partners and the community can contribute and share Agent Packs.
 
 ## Decision
 
-### Marketplace Architecture
-
-```
-src/scale-ecosystem/marketplace/
-```
-
-### CatalogEntry
+### Marketplace Structure
 
 ```typescript
-interface CatalogEntry {
-  entry_id: string;
-  type: 'agent' | 'plugin' | 'pack';
-  name: string;
-  description: string;
-  version: string;
-  publisher: string;
-  category: string[];
-  tags: string[];
-  rating: number;
-  install_count: number;
-  price: PriceModel;
-  compatibility: CompatibilityInfo;
+interface MarketplaceListing {
+  listing_id: string;
+  pack_id: string;
+  publisher: PublisherInfo;
+  category: ListingCategory;
+  pricing: PricingModel;
+  rating: Rating;
+  reviews: Review[];
+  download_count: number;
 }
+
+type ListingCategory =
+  | 'code_development'
+  | 'content_creation'
+  | 'customer_service'
+  | 'data_analytics'
+  | 'hr'
+  | 'finance'
+  | 'custom';
 ```
 
-### Lifecycle States
+### Publishing Process
 
-| State | Description |
+1. Developer creates Pack
+2. Local testing (coverage >= 80%)
+3. Submit for review
+4. Certification evaluation (Prompt Injection check)
+5. List on marketplace
+
+### Pricing Models
+
+| Model | Description |
 |-------|-------------|
-| draft | Initial creation |
-| certifying | Under review/certification |
-| published | Available in marketplace |
-| deprecated | No longer supported |
-| archived | Removed from marketplace |
+| free | Free |
+| one_time | One-time purchase |
+| subscription | Subscription |
+| usage_based | Usage-based billing |
 
-### Certification Pipeline
+### Ratings and Rankings
 
-1. Code review and security scan
-2. Functional testing
-3. Compatibility verification
-4. Manual review and approval
-
-### Revenue Model
-
-- Free tier for community contributions
-- Revenue share for commercial entries
-- Subscription model for enterprise packs
+- User ratings (1-5 stars)
+- Download rankings
+- Trending charts
+- Editor's picks
 
 ## Consequences
 
 Positive:
-- Centralized discovery increases adoption
-- Certification ensures quality and security
-- Revenue model incentivizes development
+
+- Open ecosystem attracts partners
+- Market mechanism incentivizes high-quality Packs
+- Certification process ensures quality
 
 Negative:
-- Marketplace maintenance overhead
-- Certification may slow down publishing
 
-Trade-offs:
-- Quality vs. velocity
-- Openness vs. control
+- Platform governance complexity
+- Quality inconsistency risk
 
 ## Cross-References
 
-- [ADR-015 Unified Extension Marketplace](./015-unified-extension-marketplace.md)
-- [ADR-066 Plugin SPI Framework](./066-plugin-spi-framework.md)
+- [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
+- [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)
 
 ## Source Sections
 

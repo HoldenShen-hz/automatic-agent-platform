@@ -6,12 +6,12 @@
 
 - **Observe**: Receive failure types, checkpoints, and last decisions
 - **Assess**: Decide recover / retry / abort / escalate
-- **Plan**: Build the recovery path
+- **Plan**: Build recovery path and repair boundary
 - **Execute**: Apply recovery actions
 - **Feedback**: Record recovery evidence and residual risk
-- **Learn**: Build a failure pattern corpus
-- **Improve**: Evolve recovery strategy
-- **Release**: Recovery control is a phase 8b gate
+- **Learn**: Deposit failure patterns into learning pipeline
+- **Improve**: Enhance recovery strategy
+- **Release**: Recovery control as phase 8b gate
 
 ---
 
@@ -20,14 +20,15 @@
 
 ## Context
 
-Harness failure handling cannot be delegated to arbitrary callers.
+Harness failure recovery cannot be left to arbitrary caller decisions, or it will break consistency and auditability.
 
 ## Decision
 
-- `RecoveryController` owns Harness failure handling
-- Recovery actions must be based on checkpoints, durable runs, and decisions
-- Recovery flow must write timeline and recovery evidence
+- `RecoveryController` owns unified Harness failure handling
+- Recovery actions must be based on checkpoint / durable run / decision state
+- Recovery flow must write to timeline and recovery evidence
 
 ## Consequences
 
-- Failure handling is centralized
+- Failure handling is no longer scattered
+- Replay, repair, and resume share the same recovery model

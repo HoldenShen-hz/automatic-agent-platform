@@ -5,65 +5,63 @@
 
 ## Context
 
-Different customers have different SLA requirements based on their business criticality, and the platform must guarantee committed service levels.
+Different businesses have different SLA requirements, and the platform needs to support tiered SLA guarantees.
 
 ## Decision
 
-### SLATier Levels
+### SLA Tiers
 
-| Tier | Name | Availability | Max Latency | Support |
-|------|------|--------------|-------------|---------|
-| Basic | Basic | 99.0% | 5000ms | Community |
-| Standard | Standard | 99.5% | 2000ms | Email |
-| Premium | Premium | 99.9% | 500ms | 24/7 Phone |
-| Enterprise | Enterprise | 99.99% | 100ms | Dedicated |
+| Tier | Name | Availability | Response Time | Concurrency |
+|------|------|--------------|---------------|-------------|
+| platinum | Platinum | 99.99% | < 100ms | 1000+ |
+| gold | Gold | 99.9% | < 500ms | 500 |
+| silver | Silver | 99.5% | < 1s | 100 |
+| bronze | Bronze | 99% | < 5s | 50 |
 
 ### SLA Metrics
 
 ```typescript
-interface SLAMetrics {
-  availability: number;        // Percentage uptime
-  latency_p99: number;         // P99 latency in ms
-  error_rate: number;          // Percentage of failed requests
-  throughput: number;          // Requests per second
+interface SLARequirement {
+  tier: SLATier;
+  availability: number;      // Percentage
+  latency_p99_ms: number;
+  throughput_rpm: number;
+  error_rate_max: number;
 }
 ```
 
 ### SLA Monitoring
 
-- `scale-ecosystem/sla-engine/sla-operations-service.ts`
 - Real-time SLA metric collection
-- Breach alerts and automatic remediation
-- SLA credit compensation for breaches
+- SLA violation alerts
+- SLA report generation
 
-### SLA Breach Handling
+### SLA Compensation
 
-| Breach Type | Automatic Action |
-|-------------|------------------|
-| Availability < 99.9% | Create incident, notify SRE |
-| Latency > threshold | Auto-scaling trigger |
-| Error rate > 1% | Circuit breaker activation |
+| Violation Type | Compensation |
+|----------------|--------------|
+| Availability below target | Service extension |
+| Latency exceeded | Partial refund |
+| Error rate exceeded | Credit compensation |
 
 ## Consequences
 
 Positive:
-- Differentiated service levels match business needs
-- Automatic remediation maintains SLA
-- SLA credits ensure accountability
+
+- Tiered service meets different business needs
+- SLA compensation enhances user trust
+- Monitoring metrics facilitate problem diagnosis
 
 Negative:
-- SLA guarantees increase operational complexity
-- Compensation tracking overhead
 
-Trade-offs:
-- Premium vs. cost
-- Guarantees vs. flexibility
+- Multi-tier SLA increases operational complexity
+- Compensation calculation requires precision
 
 ## Cross-References
 
-- [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
-- [ADR-052 Multi-Region Deployment](./052-multi-region-deployment-architecture.md)
+- [ADR-053 Scaling Resource Competition Management](./053-scaling-resource-competition-management.md)
+- [Platform Architecture §27 Performance Architecture and SLO](../architecture/00-platform-architecture.md)
 
 ## Source Sections
 
-- `§54` SLA Tier Guarantee
+- `§54` SLA Tiered Guarantees

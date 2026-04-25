@@ -5,13 +5,13 @@
 ## OAPEFLIR Association
 
 - **Observe**: Read orders, positions, and risk thresholds
-- **Assess**: Perform pre-trade risk checks
-- **Plan**: Decide whether execution is allowed
-- **Execute**: Permit order flow only after risk approval
-- **Feedback**: Record blocked actions and evidence
-- **Learn**: Review abnormal trading patterns
-- **Improve**: Refine risk parameters
-- **Release**: Trading domain must pass its own risk gate
+- **Assess**: Perform pre-trade risk assessment
+- **Plan**: Decide whether to allow order placement
+- **Execute**: Only enter execution chain after risk approval
+- **Feedback**: Record block reasons and risk evidence
+- **Learn**: Review abnormal order patterns
+- **Improve**: Adjust risk parameters
+- **Release**: trading domain must pass its own risk gate
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Quant trading requires a hard front-loaded risk boundary beyond the generic platform model.
+The cost of erroneous execution in quant trading domains is extremely high, requiring an independent pre-trade risk boundary separate from the platform's generic risk model.
 
 ## Decision
 
-- Every trading action must pass pre-trade risk
-- Position and loss hard limits cannot be overridden by the agent
+- All trading actions must first pass pre-trade risk
+- Hard position and loss limits cannot be overridden by the Agent
 
 ## Consequences
 
-- `quant-trading` gains a non-bypassable pre-trade risk boundary
+- `quant-trading` domain has a non-bypassable pre-trade risk boundary

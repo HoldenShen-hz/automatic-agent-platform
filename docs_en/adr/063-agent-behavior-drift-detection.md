@@ -54,22 +54,22 @@ type DriftMethod =
 
 ## Consequences
 
-Pros:
+Positive:
 
 - Early problem detection
 - Prevent quality degradation
 - Automated response
 
-Cons:
+Negative:
 
 - False positives may disrupt business
 - Detection algorithm requires tuning
 
-## Cross References
+## Cross-References
 
-- [Platform Architecture §17 Model Evaluation & Quality Gate](../architecture/00-platform-architecture.md)
-- [ADR-080 Learn Hub & Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
+- [Platform Architecture §17 Model Evaluation and Quality Gate](../architecture/00-platform-architecture.md)
+- [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
 
-## Source Section
+## Source Sections
 
 - `§63` Agent Behavior Drift Detection Architecture

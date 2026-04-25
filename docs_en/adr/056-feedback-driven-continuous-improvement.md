@@ -1,79 +1,71 @@
-# ADR-056 Feedback-Driven Continuous Improvement
+# ADR-056 Feedback-Driven Continuous Improvement Pipeline
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-Platform improvement should be driven by real usage feedback, not just internal intuition. Systematic feedback collection and analysis enables continuous improvement.
+The platform needs to continuously learn and improve from user feedback, forming a closed-loop improvement mechanism.
 
 ## Decision
 
-### FeedbackPipeline
-
-```
-src/scale-ecosystem/feedback-loop/
-```
-
 ### Feedback Types
 
-| Type | Source | Use |
-|------|--------|-----|
-| explicit | User ratings, reviews | Quality signals |
-| implicit | Usage patterns, success rates | Behavioral signals |
-| automated | Tests, monitors | Quality gates |
+| Type | Source | Processing |
+|------|--------|------------|
+| explicit | User ratings/reviews | Manual review |
+| implicit | Usage behavior analysis | Automatic learning |
+| corrective | User corrections | Pattern extraction |
+| failure | Execution failures | Root cause analysis |
 
-### Feedback Collection
+### Feedback Processing Pipeline
+
+```
+Feedback Collection → Preprocessing → Classification → Pattern Recognition → Learning Object Generation → Improvement Candidate Evaluation → Rollout
+```
+
+### FeedbackHub
+
+- `FeedbackHub` collects 7 types of signals
+- `FeedbackCollector` preprocesses
+- `StrategyLearningService` detects patterns
+
+### Learning Objects
 
 ```typescript
-interface FeedbackSignal {
-  signal_id: string;
-  type: FeedbackType;
-  source: 'user' | 'system' | 'automated';
-  timestamp: string;
-  payload: unknown;
-  quality_score?: number;
+interface LearningObject {
+  object_id: string;
+  learning_type: LearningType;
+  pattern: string;
+  evidence: FeedbackEvidence[];
+  confidence: number;
 }
 ```
 
-### Improvement Workflow
+### Improvement Pipeline
 
-1. Collect feedback signals
-2. Analyze patterns and trends
-3. Generate improvement candidates
-4. Evaluate feasibility and impact
-5. Prioritize and implement
-6. Validate and deploy
-
-### Feedback Metrics
-
-| Metric | Description |
-|--------|-------------|
-| NPS | Net Promoter Score |
-| Task Success Rate | Percentage of successful tasks |
-| User Retention | Return user percentage |
-| Feature Adoption | Usage of new features |
+- LearnHub generates LearningObject
+- ImproveHub evaluates ImprovementCandidate
+- Release six-tier rollout
 
 ## Consequences
 
 Positive:
-- Data-driven improvement decisions
-- Systematic feedback closes the loop
-- Continuous iteration maintains relevance
+
+- Closed-loop improvement mechanism
+- Data-driven optimization
+- User participation enhances experience
 
 Negative:
-- Feedback collection may impact performance
-- Analysis requires dedicated tooling
 
-Trade-offs:
-- Insight vs. overhead
-- Automation vs. human judgment
+- Feedback processing requires resources
+- Pattern recognition accuracy depends on data volume
 
 ## Cross-References
 
-- [ADR-079 Feedback Hub Signals](./079-feedback-hub-signals.md)
-- [ADR-080 Learn Hub Pattern Detection](./080-learn-hub-pattern-detection.md)
+- [ADR-079 Feedback Hub and Seven Signal Preprocessing](./079-feedback-hub-signals.md)
+- [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
 
 ## Source Sections
 
-- `§56` Feedback-Driven Continuous Improvement
+- `§56` Feedback-Driven Continuous Improvement Pipeline

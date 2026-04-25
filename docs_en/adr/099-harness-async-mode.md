@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Receive async queue, sleep leases, and external events
+- **Observe**: Receive async queue, sleep lease, and external events
 - **Assess**: Decide whether execution can continue
-- **Plan**: Build resume and redispatch plans
-- **Execute**: Run long-lived work through async harness
-- **Feedback**: Record delays, timeouts, and recovery outcomes
+- **Plan**: Plan async resume and rescheduling
+- **Execute**: Handle long-running tasks through async harness
+- **Feedback**: Record async delay, timeout, and recovery results
 - **Learn**: Aggregate async failure patterns
-- **Improve**: Refine async strategy and backlog handling
-- **Release**: Async Harness is part of phase 8c acceptance
+- **Improve**: Optimize async strategy and backlog
+- **Release**: Async Harness as phase 8c acceptance item
 
 ---
 
@@ -20,14 +20,14 @@
 
 ## Context
 
-Long-running tasks and external waits require a formal async mode.
+Long-running tasks, external waits, and human approvals all require Harness to have a formal async mode.
 
 ## Decision
 
 - `AsyncHarnessService` is a first-class Harness subsystem
-- Async runs require queue, checkpoint, and resume support
-- Sleep / wake / timeout share one lifecycle model
+- Async run needs queue / checkpoint / resume capability
+- Sleep / wake / timeout must be part of the same lifecycle model
 
 ## Consequences
 
-- Harness can support genuine asynchronous workflows
+- Harness can carry genuine async workflows

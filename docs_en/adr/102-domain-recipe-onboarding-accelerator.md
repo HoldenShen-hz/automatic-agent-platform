@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Gather domain patterns and onboarding requirements
-- **Assess**: Choose the best fitting recipe archetype
-- **Plan**: Initialize domain workflow and prompt baselines from recipe
-- **Execute**: Bootstrap a domain baseline quickly
-- **Feedback**: Measure recipe fit
-- **Learn**: Evolve archetype templates
-- **Improve**: Reduce onboarding time
-- **Release**: Recipe is the onboarding baseline
+- **Observe**: Collect domain patterns and onboarding requirements
+- **Assess**: Select the most suitable recipe archetype
+- **Plan**: Initialize domain workflow and prompt baseline from recipe
+- **Execute**: Quickly generate baseline implementation
+- **Feedback**: Collect recipe fit results
+- **Learn**: Iterate archetype templates
+- **Improve**: Shorten new domain onboarding cycle
+- **Release**: Recipe becomes onboarding baseline
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Blank-slate onboarding leads to repeated reinvention of workflows, prompts, and governance.
+Blank-slate onboarding causes new domains to reinvent workflows, prompts, and governance structures repeatedly.
 
 ## Decision
 
-- New domains must start from a standard `DomainRecipe`
-- Recipe acts as the baseline generator for workflow, tools, prompts, and eval
+- New domains must start from a standard `DomainRecipe` prototype
+- Recipe acts as the workflow/tool/prompt/eval baseline generator
 
 ## Consequences
 
-- The 24 domain baselines can be created through a shared model
+- 24 domain baselines can be quickly established through a unified model
