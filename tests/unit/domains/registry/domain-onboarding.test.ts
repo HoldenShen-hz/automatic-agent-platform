@@ -182,7 +182,18 @@ test("buildCapabilityEntry throws for unknown domain", () => {
 
 test("domain transitions from draft to active after activation", () => {
   const service = new DomainRegistryService();
-  service.register(makeMinimalDefinition({ domainId: "lifecycle", status: "draft" }));
+  service.register(makeMinimalDefinition({
+    domainId: "lifecycle",
+    status: "draft",
+    capabilities: {
+      supportedTaskTypes: [],
+      requiredTools: [],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+      securityLevel: "standard",
+    },
+  }));
 
   const activated = service.activate("lifecycle");
   assert.equal(activated.status, "active");
@@ -190,9 +201,9 @@ test("domain transitions from draft to active after activation", () => {
 
 test("active domains appear in listActive", () => {
   const service = new DomainRegistryService();
-  service.register(makeMinimalDefinition({ domainId: "active_one", status: "draft" }));
-  service.register(makeMinimalDefinition({ domainId: "active_two", status: "testing" }));
-  service.register(makeMinimalDefinition({ domainId: "still_draft", status: "draft" }));
+  service.register(makeMinimalDefinition({ domainId: "active_one", status: "draft", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
+  service.register(makeMinimalDefinition({ domainId: "active_two", status: "testing", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
+  service.register(makeMinimalDefinition({ domainId: "still_draft", status: "draft", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
 
   service.activate("active_one");
 
