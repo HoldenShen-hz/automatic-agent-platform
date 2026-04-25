@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OpsHealthMonitorService } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
+import {
+  OpsHealthMonitorService,
+  summarizeOpsHealth,
+  findUnhealthyComponents,
+  calculateHealthMetrics,
+  groupProbesByStatus,
+  analyzeLatencyTrends,
+  hasLatencyAnomalies,
+  generateHealthSummary,
+} from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
 import type { OpsHealthProbe } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
 
 function makeProbe(overrides: Partial<OpsHealthProbe> = {}): OpsHealthProbe {
@@ -117,7 +126,6 @@ test("OpsHealthMonitorService.evaluate handles empty probe array", () => {
 });
 
 test("summarizeOpsHealth returns healthy for all-healthy probes", () => {
-  const { summarizeOpsHealth } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ status: "healthy" }),
     makeProbe({ status: "healthy" }),
@@ -129,7 +137,6 @@ test("summarizeOpsHealth returns healthy for all-healthy probes", () => {
 });
 
 test("summarizeOpsHealth returns failed if any probe failed", () => {
-  const { summarizeOpsHealth } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ status: "healthy" }),
     makeProbe({ status: "failed" }),
@@ -142,7 +149,6 @@ test("summarizeOpsHealth returns failed if any probe failed", () => {
 });
 
 test("summarizeOpsHealth returns degraded when no failures but some degraded", () => {
-  const { summarizeOpsHealth } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ status: "degraded" }),
     makeProbe({ status: "healthy" }),
@@ -154,7 +160,6 @@ test("summarizeOpsHealth returns degraded when no failures but some degraded", (
 });
 
 test("findUnhealthyComponents returns non-healthy component names", () => {
-  const { findUnhealthyComponents } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "comp-a", status: "healthy" }),
     makeProbe({ component: "comp-b", status: "degraded" }),
@@ -170,7 +175,6 @@ test("findUnhealthyComponents returns non-healthy component names", () => {
 });
 
 test("calculateHealthMetrics returns correct health score", () => {
-  const { calculateHealthMetrics } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ status: "healthy", latencyMs: 100 }),
     makeProbe({ status: "healthy", latencyMs: 200 }),
@@ -184,14 +188,12 @@ test("calculateHealthMetrics returns correct health score", () => {
 });
 
 test("calculateHealthMetrics returns 100 for empty probes", () => {
-  const { calculateHealthMetrics } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const metrics = calculateHealthMetrics([]);
 
   assert.equal(metrics.healthScore, 100);
 });
 
 test("calculateHealthMetrics averageLatencyMs is null when no latencies", () => {
-  const { calculateHealthMetrics } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ latencyMs: undefined }),
     makeProbe({ latencyMs: undefined }),
@@ -203,14 +205,12 @@ test("calculateHealthMetrics averageLatencyMs is null when no latencies", () => 
 });
 
 test("calculateHealthMetrics slowestComponent is null for empty probes", () => {
-  const { calculateHealthMetrics } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const metrics = calculateHealthMetrics([]);
 
   assert.equal(metrics.slowestComponent, null);
 });
 
 test("groupProbesByStatus separates probes correctly", () => {
-  const { groupProbesByStatus } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "healthy-1", status: "healthy" }),
     makeProbe({ component: "healthy-2", status: "healthy" }),
@@ -226,7 +226,6 @@ test("groupProbesByStatus separates probes correctly", () => {
 });
 
 test("analyzeLatencyTrends returns sorted by latency descending", () => {
-  const { analyzeLatencyTrends } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "fast", latencyMs: 50 }),
     makeProbe({ component: "slow", latencyMs: 500 }),
@@ -241,7 +240,6 @@ test("analyzeLatencyTrends returns sorted by latency descending", () => {
 });
 
 test("analyzeLatencyTrends ignores probes without latency", () => {
-  const { analyzeLatencyTrends } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "with-latency", latencyMs: 100 }),
     makeProbe({ component: "no-latency", latencyMs: undefined }),
@@ -254,7 +252,6 @@ test("analyzeLatencyTrends ignores probes without latency", () => {
 });
 
 test("hasLatencyAnomalies returns true when any probe exceeds threshold", () => {
-  const { hasLatencyAnomalies } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "normal", latencyMs: 50 }),
     makeProbe({ component: "anomaly", latencyMs: 2000 }),
@@ -266,7 +263,6 @@ test("hasLatencyAnomalies returns true when any probe exceeds threshold", () => 
 });
 
 test("hasLatencyAnomalies returns false when all probes under threshold", () => {
-  const { hasLatencyAnomalies } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "fast-1", latencyMs: 50 }),
     makeProbe({ component: "fast-2", latencyMs: 100 }),
@@ -278,7 +274,6 @@ test("hasLatencyAnomalies returns false when all probes under threshold", () => 
 });
 
 test("generateHealthSummary formats string correctly", () => {
-  const { generateHealthSummary } = await import("../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js");
   const probes: OpsHealthProbe[] = [
     makeProbe({ component: "comp-a", status: "healthy", latencyMs: 100 }),
     makeProbe({ component: "comp-b", status: "degraded", latencyMs: 300 }),

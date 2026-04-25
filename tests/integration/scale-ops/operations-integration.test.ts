@@ -194,12 +194,12 @@ test("operations: PlatformOperatorService counts execution tickets by status", (
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = ((statuses: string[]) => {
-    if (statuses.includes("pending")) return 5;
-    if (statuses.includes("claimed")) return 3;
-    if (statuses.includes("consumed")) return 10;
-    if (statuses.includes("cancelled")) return 2;
-    if (statuses.includes("expired")) return 1;
-    return 0;
+    if (statuses.includes("pending")) return { length: 5 };
+    if (statuses.includes("claimed")) return { length: 3 };
+    if (statuses.includes("consumed")) return { length: 10 };
+    if (statuses.includes("cancelled")) return { length: 2 };
+    if (statuses.includes("expired")) return { length: 1 };
+    return { length: 0 };
   }) as any;
   mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
@@ -228,12 +228,12 @@ test("operations: PlatformOperatorService counts execution leases by status", ()
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
   mockStore.worker.listExecutionLeasesByStatuses = ((statuses: string[]) => {
-    if (statuses.includes("active")) return 4;
-    if (statuses.includes("expired")) return 2;
-    if (statuses.includes("released")) return 1;
-    if (statuses.includes("reclaimed")) return 0;
-    if (statuses.includes("handed_over")) return 0;
-    return 0;
+    if (statuses.includes("active")) return { length: 4 };
+    if (statuses.includes("expired")) return { length: 2 };
+    if (statuses.includes("released")) return { length: 1 };
+    if (statuses.includes("reclaimed")) return { length: 0 };
+    if (statuses.includes("handed_over")) return { length: 0 };
+    return { length: 0 };
   }) as any;
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
@@ -457,8 +457,8 @@ test("operations: PlatformOperatorService lease count exceeding worker count is 
   ] as any;
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
   mockStore.worker.listExecutionLeasesByStatuses = ((statuses: string[]) => {
-    if (statuses.includes("active")) return 10; // More active leases than workers
-    return 0;
+    if (statuses.includes("active")) return { length: 10 }; // More active leases than workers
+    return { length: 0 };
   }) as any;
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
