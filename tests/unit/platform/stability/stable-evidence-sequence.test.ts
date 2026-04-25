@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
+  runStableEvidenceSequence,
+  runStableEvidenceSequenceUntilComplete,
   type StableEvidenceSequenceOptions,
   type StableEvidenceSequenceProfileState,
   type StableEvidenceSequenceState,
@@ -163,19 +168,54 @@ test("StableEvidenceSequenceState blocked state includes blockReason", () => {
   assert.ok(state.blockReason!.length > 0);
 });
 
-// runStableEvidenceSequence and runStableEvidenceSequenceUntilComplete require
-// runStableEvidenceCampaign which has complex orchestration dependencies.
-test.skip("runStableEvidenceSequence requires campaign orchestration infrastructure", () => {
-  // This test is skipped because runStableEvidenceSequence depends on:
-  // - runStableEvidenceCampaign from stable-evidence-campaign.ts
-  // - createStableEvidenceBundle from stable-evidence-bundle.ts
-  // - runStableValidation from stable-runtime-validator.ts
-  // - runStableSoak from stable-runtime-soak-runner.ts
-  // These are integration-level tests that require the full runtime stack.
+test("runStableEvidenceSequence advances through a minimal smoke profile", async () => {
+  const evidenceRootDir = mkdtempSync(join(tmpdir(), "stable-evidence-sequence-"));
+  try {
+    const report = await runStableEvidenceSequence({
+      evidenceRootDir,
+      profileNames: ["smoke"],
+      profileOptions: {
+        smoke: {
+          targetDurationMs: 0,
+          segmentDurationMs: 0,
+          intervalMs: 0,
+          iterationsPerCycle: 1,
+          validationIterations: 1,
+        },
+      },
+    });
+
+    assert.equal(report.state.completed, true);
+    assert.equal(report.state.blocked, false);
+    assert.deepEqual(report.advancedProfiles, ["smoke"]);
+  } finally {
+    rmSync(evidenceRootDir, { recursive: true, force: true });
+  }
 });
 
-test.skip("runStableEvidenceSequenceUntilComplete requires full orchestration infrastructure", () => {
-  // This test is skipped because runStableEvidenceSequenceUntilComplete depends on:
-  // - runStableEvidenceSequence which depends on runStableEvidenceCampaign
-  // This is an integration-level test requiring the full runtime stack.
+test("runStableEvidenceSequenceUntilComplete finishes a minimal smoke sequence", async () => {
+  const evidenceRootDir = mkdtempSync(join(tmpdir(), "stable-evidence-sequence-until-complete-"));
+  try {
+    const report = await runStableEvidenceSequenceUntilComplete({
+      evidenceRootDir,
+      profileNames: ["smoke"],
+      profileOptions: {
+        smoke: {
+          targetDurationMs: 0,
+          segmentDurationMs: 0,
+          intervalMs: 0,
+          iterationsPerCycle: 1,
+          validationIterations: 1,
+        },
+      },
+      sleepMs: 0,
+      maxPasses: 2,
+    });
+
+    assert.equal(report.state.completed, true);
+    assert.equal(report.state.blocked, false);
+    assert.deepEqual(report.advancedProfiles, ["smoke"]);
+  } finally {
+    rmSync(evidenceRootDir, { recursive: true, force: true });
+  }
 });

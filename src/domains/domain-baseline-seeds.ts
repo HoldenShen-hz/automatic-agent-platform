@@ -30,6 +30,25 @@ export interface DomainSeed {
   readonly restrictedDataClasses: readonly string[];
 }
 
+/**
+ * Freezes the array properties of a DomainSeed to ensure they are truly readonly at runtime.
+ */
+function freezeSeedArrays(seed: DomainSeed): DomainSeed {
+  return Object.freeze({
+    ...seed,
+    legacyDomainIds: Object.freeze([...seed.legacyDomainIds]),
+    taskTypes: Object.freeze([...seed.taskTypes]),
+    tags: Object.freeze([...seed.tags]),
+    workflowStages: Object.freeze([...seed.workflowStages]),
+    requiredTools: Object.freeze([...seed.requiredTools]),
+    optionalTools: Object.freeze([...seed.optionalTools]),
+    externalAdapters: Object.freeze([...seed.externalAdapters]),
+    blockingMetrics: Object.freeze([...seed.blockingMetrics]),
+    advisoryMetrics: Object.freeze([...seed.advisoryMetrics]),
+    restrictedDataClasses: Object.freeze([...seed.restrictedDataClasses]),
+  });
+}
+
 export const DOMAIN_SEEDS: readonly DomainSeed[] = [
   {
     phase: "9a",
@@ -682,4 +701,4 @@ export const DOMAIN_SEEDS: readonly DomainSeed[] = [
     rolloutStrategy: "supervised_auto",
     restrictedDataClasses: [],
   },
-] as const satisfies readonly DomainSeed[];
+].map((seed) => freezeSeedArrays(seed as DomainSeed));

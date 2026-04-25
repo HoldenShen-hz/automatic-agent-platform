@@ -43,19 +43,25 @@ function createMockDb() {
           get(...params: unknown[]) {
             // params[0] is the bind parameter (e.g., suiteId or runId)
             const id = params[0] as string;
-            if (isSuiteQuery) {
+            // Re-evaluate table type based on actual SQL at call time
+            const isSuite = sql.includes("eval_suites");
+            const isRun = sql.includes("eval_runs");
+            if (isSuite) {
               return tables.eval_suites.find(r => r.id === id);
             }
-            if (isRunQuery) {
+            if (isRun) {
               return tables.eval_runs.find(r => r.id === id);
             }
             return undefined;
           },
           all(...params: unknown[]) {
+            // Re-evaluate table type based on actual SQL at call time
+            const isSuite = sql.includes("eval_suites");
+            const isRun = sql.includes("eval_runs");
             if (sql.includes("eval_case_results")) {
               return tables.eval_case_results.filter(r => r.run_id === params[0]);
             }
-            if (isRunQuery) {
+            if (isRun) {
               if (params.length >= 3 && sql.includes("model_id") && sql.includes("prompt_version")) {
                 // detectRegression style query: suite_id, model_id, prompt_version
                 const [suiteId, modelId, promptVersion] = params as [string, string, string];
@@ -64,7 +70,7 @@ function createMockDb() {
               if (params.length > 0 && typeof params[0] === "string") return tables.eval_runs.filter(r => r.suite_id === params[0]);
               return tables.eval_runs.slice(0, params[0] as number ?? 50);
             }
-            if (isSuiteQuery) return tables.eval_suites;
+            if (isSuite) return tables.eval_suites;
             return [];
           },
         };

@@ -27,7 +27,7 @@ test("ConfigStore.getRequired throws for missing key", () => {
 
   assert.throws(
     () => store.getRequired("missing"),
-    { message: /config_key_not_found:missing/ },
+    { code: /config_key_not_found:missing/ },
   );
 });
 
@@ -103,7 +103,7 @@ test("ConfigStore.restore throws on invalid snapshot", () => {
 
   assert.throws(
     () => store.restore({ entries: {}, version: 0, createdAt: "" } as any),
-    { message: /invalid_snapshot/ },
+    { code: /invalid_snapshot/ },
   );
 });
 

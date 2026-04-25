@@ -167,10 +167,12 @@ test("ThreatMatrixRegistry listByCategory is case sensitive", () => {
   assert.equal(lowercaseEntries.length, 0);
 });
 
-test("ThreatMatrixRegistry validate returns array of errors", () => {
+test("ThreatMatrixRegistry validate returns validation result object", () => {
   const registry = new ThreatMatrixRegistry();
   const result = registry.validate();
-  assert.ok(Array.isArray(result));
+  assert.ok(typeof result === "object");
+  assert.ok("valid" in result);
+  assert.ok("missingCategories" in result);
 });
 
 test("ThreatMatrixRegistry custom matrix can have zero entries", () => {

@@ -287,7 +287,7 @@ test("IncidentResolver options are applied correctly", () => {
     escalationThresholdSeconds: 900,
   });
 
-  const incident = createMockIncident();
+  const incident = createMockIncident({ category: "performance" });
   const resolution = resolver.createResolution(incident);
 
   assert.equal(resolution.strategy, "self_heal");

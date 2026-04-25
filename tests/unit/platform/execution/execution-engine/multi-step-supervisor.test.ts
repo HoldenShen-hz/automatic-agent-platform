@@ -350,7 +350,7 @@ test("executeStepLoop returns empty result with no steps", async () => {
   assert.equal(result.outputs, ctx.outputs, "outputs should be preserved");
 });
 
-test.skip("executeStepLoop skips step when hard dependency failed", async () => {
+test("executeStepLoop skips step when hard dependency failed", async () => {
   const ctx = createMockStepSupervisorContext({
     failedStepIds: new Set(["step_1"]),
     plannedWorkflow: {
@@ -393,7 +393,7 @@ test.skip("executeStepLoop skips step when hard dependency failed", async () => 
   assert.equal(result.stepOutputs.some(o => o.stepId === "step_2" && o.status === "skipped"), true, "step_2 output should be skipped");
 });
 
-test.skip("executeStepLoop skips step when soft dependency skipped", async () => {
+test("executeStepLoop skips step when hard dependency was skipped", async () => {
   const ctx = createMockStepSupervisorContext({
     skippedStepIds: new Set(["step_1"]),
     plannedWorkflow: {
@@ -433,26 +433,12 @@ test.skip("executeStepLoop skips step when soft dependency skipped", async () =>
   const result = await executeStepLoop(ctx, deps);
 
   assert.equal(result.skippedStepIds.has("step_2"), true, "step_2 should be skipped due to upstream skip");
+  assert.equal(result.stepOutputs.some(o => o.stepId === "step_2" && o.status === "skipped"), true, "step_2 output should be skipped");
 });
 
-test.skip("executeStepLoop proceeds when dependency succeeded", async () => {
+test("executeStepLoop proceeds when soft dependency was skipped", async () => {
   const ctx = createMockStepSupervisorContext({
-    stepOutputs: [
-      {
-        id: newId("step"),
-        taskId: newId("task"),
-        stepId: "step_1",
-        roleId: "role_1",
-        status: "succeeded",
-        dataJson: JSON.stringify({ summary: "Step 1 done" }),
-        summary: "Step 1 done",
-        artifactsJson: null,
-        tokenCost: 10,
-        durationMs: 100,
-        validationJson: null,
-        producedAt: nowIso(),
-      },
-    ],
+    skippedStepIds: new Set(["step_1"]),
     plannedWorkflow: {
       workflow: { workflowId: "wf-1", divisionId: "div-1", steps: [] },
       executionSteps: [
@@ -477,7 +463,7 @@ test.skip("executeStepLoop proceeds when dependency succeeded", async () => {
 
   const result = await executeStepLoop(ctx, deps);
 
-  assert.equal(result.skippedStepIds.has("step_2"), false, "step_2 should not be skipped when dependency succeeded");
+  assert.equal(result.skippedStepIds.has("step_2"), false, "step_2 should not be skipped for a soft dependency");
   assert.equal(result.failedStepIds.has("step_2"), true, "step_2 should proceed into execution even if later validation fails");
   assert.equal(result.workflowLastErrorCode, "internal.unexpected_error");
 });

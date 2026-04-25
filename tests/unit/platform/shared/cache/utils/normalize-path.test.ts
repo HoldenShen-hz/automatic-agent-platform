@@ -13,11 +13,12 @@ import {
 const isWindows = platform() === "win32";
 const TEST_WORKSPACE = join(tmpdir(), "test-workspace");
 
-test("normalizePath replaces backslashes on Windows", {
-  skip: !isWindows,
-}, () => {
-  const result = normalizePath("C:\\Users\\test\\file.ts", "C:\\Users\\test");
+test("normalizePath normalizes path separators", () => {
+  const result = isWindows
+    ? normalizePath("C:\\Users\\test\\file.ts", "C:\\Users\\test")
+    : normalizePath("src\\\\feature\\\\file.ts", "/workspace");
   assert.ok(result.includes("/"));
+  assert.equal(result.includes("\\"), false);
 });
 
 test("normalizePath resolves relative paths", () => {

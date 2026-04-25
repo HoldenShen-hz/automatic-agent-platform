@@ -540,7 +540,7 @@ test("InMemoryEvolutionRegistry save and retrieve rollout", async () => {
 
 test("InMemoryEvolutionRegistry getStatistics calculates correct aggregates", async () => {
   const registry = new InMemoryEvolutionRegistry();
-  await registry.saveProposal({ id: "p1", title: "", description: "", kind: "tool_routing_rule" as const, target: "", patch: "", rationale: "", risk: "low" as const, evidenceIds: [], status: "active" as const, createdAt: "", updatedAt: "" });
+  await registry.saveProposal({ id: "p1", title: "", description: "", kind: "tool_routing_rule" as const, target: "", patch: "", rationale: "", risk: "low" as const, evidenceIds: [], status: "canary" as const, createdAt: "", updatedAt: "" });
   await registry.saveProposal({ id: "p2", title: "", description: "", kind: "tool_routing_rule" as const, target: "", patch: "", rationale: "", risk: "low" as const, evidenceIds: [], status: "rejected" as const, createdAt: "", updatedAt: "" });
   await registry.saveEvaluation({
     proposalId: "p1",

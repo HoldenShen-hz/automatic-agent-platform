@@ -90,7 +90,7 @@ test("CostAlertService evaluates critical threshold correctly", () => {
   const result = service.evaluateCost({
     scope: "tenant",
     scopeId: "tenant-1",
-    projectedCostUsd: 5,
+    projectedCostUsd: 3, // 96 + 3 = 99, which is 99% of limit
     tenantId: "tenant-1",
   });
 

@@ -187,7 +187,7 @@ export class DomainRegistryService {
   private getOrThrow(domainId: string): DomainDefinition {
     const domain = this.get(domainId);
     if (!domain) {
-      throw new ValidationError("domain_registry.domain_not_found", `Domain ${domainId} not found.`, {
+      throw new ValidationError("domain_registry.domain_not_found", `domain_registry.domain_not_found: Domain ${domainId} not found.`, {
         category: "validation",
         source: "internal",
       });
@@ -243,7 +243,7 @@ export class DomainRegistryService {
   }
 
   private validationError(code: string, message: string): ValidationError {
-    return new ValidationError(code, message, {
+    return new ValidationError(code, `${code}: ${message}`, {
       category: "validation",
       source: "internal",
     });

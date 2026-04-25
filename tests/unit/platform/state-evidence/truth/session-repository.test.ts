@@ -314,9 +314,10 @@ test("SessionRepository listSessionEvents returns events for session", () => {
   const result = repo.listSessionEvents("sess-1");
 
   assert.deepEqual(result, [event]);
-  assert.match(calls[0]!.sql, /FROM session_events WHERE session_id = \?/);
-  assert.match(calls[0]!.sql, /ORDER BY created_at ASC/);
-  assert.match(calls[0]!.sql, /LIMIT \?/);
+  assert.ok(calls[0]!.sql.includes("FROM session_events"));
+  assert.ok(calls[0]!.sql.includes("WHERE session_id = ?"));
+  assert.ok(calls[0]!.sql.includes("ORDER BY created_at ASC"));
+  assert.ok(calls[0]!.sql.includes("LIMIT ?"));
 });
 
 test("SessionRepository listSessionEvents respects limit parameter", () => {

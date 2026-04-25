@@ -3,15 +3,14 @@ import { join } from "node:path";
 import test from "node:test";
 
 // @ts-expect-error - module resolution issue at compile time
-import { EnvSecretProvider } from "../../../../../src/platform/control-plane/iam/env-secret-provider.js";
+import { EnvSecretProvider } from "../../../../../dist/src/platform/control-plane/iam/env-secret-provider.js";
 // @ts-expect-error - module resolution issue at compile time
-import { SecretManagementService } from "../../../../../src/platform/control-plane/iam/secret-management-service.js";
+import { SecretManagementService } from "../../../../../dist/src/platform/control-plane/iam/secret-management-service.js";
 // @ts-expect-error - module resolution issue at compile time
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { AuthoritativeTaskStore } from "../../../../../dist/src/platform/state-evidence/truth/authoritative-task-store.js";
 // @ts-expect-error - module resolution issue at compile time
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
-// @ts-expect-error - module resolution issue at compile time
-import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
+import { SqliteDatabase } from "../../../../../dist/src/platform/state-evidence/truth/sqlite-database.js";
+import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 
 // ---------------------------------------------------------------------------
 // Harness

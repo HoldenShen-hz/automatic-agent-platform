@@ -1,10 +1,17 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import {
   STABLE_EVIDENCE_PROFILES,
+  buildTakeoverEvidenceSample,
   resolveStableEvidenceProfile,
+  seedTakeoverEvidenceScenario,
   type StableEvidenceProfileName,
 } from "../../../../src/platform/stability/stable-evidence-bundle-support.js";
+import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
+import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 describe("stable-evidence-bundle-support", () => {
   describe("STABLE_EVIDENCE_PROFILES", () => {
@@ -90,11 +97,47 @@ describe("stable-evidence-bundle-support", () => {
     });
   });
 
-  test.skip("seedTakeoverEvidenceScenario requires database and store", () => {
-    // Requires SqliteDatabase and AuthoritativeTaskStore instances
+  test("seedTakeoverEvidenceScenario creates task, execution, and session records", () => {
+    const workspace = createTempWorkspace("aa-stable-evidence-seed-");
+    const dbPath = join(workspace, "stable-evidence-seed.db");
+
+    try {
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+
+      const scenario = seedTakeoverEvidenceScenario(db, store);
+      const task = store.task.getTask(scenario.taskId);
+      const execution = store.execution.getExecution(scenario.executionId);
+      const session = store.session.getSession(scenario.sessionId);
+
+      assert.equal(task?.status, "in_progress");
+      assert.equal(execution?.status, "executing");
+      assert.equal(session?.status, "open");
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
   });
 
-  test.skip("buildTakeoverEvidenceSample requires database and store", () => {
-    // Requires SqliteDatabase, AuthoritativeTaskStore, and StructuredLogger
+  test("buildTakeoverEvidenceSample completes a full human takeover flow", () => {
+    const workspace = createTempWorkspace("aa-stable-evidence-sample-");
+    const dbPath = join(workspace, "stable-evidence-sample.db");
+
+    try {
+      const db = new SqliteDatabase(dbPath);
+      db.migrate();
+      const store = new AuthoritativeTaskStore(db);
+      const logger = new StructuredLogger({ retentionLimit: 20 });
+
+      const sample = buildTakeoverEvidenceSample(db, store, logger);
+
+      assert.equal(sample.finalTaskStatus, "done");
+      assert.equal(sample.finalSessionStatus, "completed");
+      assert.equal(sample.operatorActionCount >= 4, true);
+      db.close();
+    } finally {
+      cleanupPath(workspace);
+    }
   });
 });

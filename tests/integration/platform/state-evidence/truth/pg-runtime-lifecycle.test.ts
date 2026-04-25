@@ -6,7 +6,8 @@ import { createTestPgDatabase, resetPgTables, shouldRunPgIntegration } from "../
 
 const pgSupport = shouldRunPgIntegration();
 
-test("PostgreSQL async repositories cover execution authoritative view reads", { skip: !pgSupport.enabled }, async () => {
+test("PostgreSQL async repositories cover execution authoritative view reads", async () => {
+  assert.equal(pgSupport.enabled, true, pgSupport.reason ?? "PostgreSQL support should be available");
   const db = await createTestPgDatabase();
   try {
     await resetPgTables(db, [
@@ -113,7 +114,8 @@ test("PostgreSQL async repositories cover execution authoritative view reads", {
   }
 });
 
-test("PostgreSQL async repositories cover worker lease and ticket lifecycle", { skip: !pgSupport.enabled }, async () => {
+test("PostgreSQL async repositories cover worker lease and ticket lifecycle", async () => {
+  assert.equal(pgSupport.enabled, true, pgSupport.reason ?? "PostgreSQL support should be available");
   const db = await createTestPgDatabase();
   try {
     await resetPgTables(db, [

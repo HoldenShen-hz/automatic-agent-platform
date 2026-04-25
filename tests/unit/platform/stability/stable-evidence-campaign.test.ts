@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
+  runStableEvidenceCampaign,
   type StableEvidenceCampaignOptions,
   type StableEvidenceCampaignSegment,
   type StableEvidenceCampaignState,
@@ -128,19 +132,55 @@ test("StableEvidenceCampaignReport structure", () => {
   assert.strictEqual(report.state.finalEvidencePassed, true);
 });
 
-// runStableEvidenceCampaign and runStableEvidenceSequence require complex orchestration
-// including runStableValidation, runStableSoak, and createStableEvidenceBundle functions
-// which depend on runtime infrastructure. These are integration-level tests.
-test.skip("runStableEvidenceCampaign requires runtime infrastructure (validation/soak runners)", () => {
-  // This test is skipped because runStableEvidenceCampaign depends on:
-  // - runStableValidation from stable-runtime-validator
-  // - runStableSoak from stable-runtime-soak-runner
-  // - createStableEvidenceBundle from stable-evidence-bundle
-  // These are orchestration functions that require the full runtime stack.
+test("runStableEvidenceCampaign completes a minimal smoke campaign", async () => {
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-evidence-campaign-"));
+  try {
+    const report = await runStableEvidenceCampaign({
+      outputDir,
+      profileName: "smoke",
+      targetDurationMs: 0,
+      segmentDurationMs: 0,
+      intervalMs: 0,
+      iterationsPerCycle: 1,
+      validationIterations: 1,
+    });
+
+    assert.equal(report.state.completed, true);
+    assert.equal(report.state.segments.length, 1);
+    assert.equal(report.state.finalEvidencePassed, true);
+    assert.equal(report.finalEvidenceReport?.summary.passed, true);
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
 });
 
-test.skip("runStableEvidenceSequence requires campaign orchestration infrastructure", () => {
-  // This test is skipped because runStableEvidenceSequence depends on:
-  // - runStableEvidenceCampaign which has the dependencies listed above
-  // This is an integration-level orchestration test.
+test("runStableEvidenceCampaign resumes a completed campaign from disk", async () => {
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-evidence-campaign-resume-"));
+  try {
+    const first = await runStableEvidenceCampaign({
+      outputDir,
+      profileName: "smoke",
+      targetDurationMs: 0,
+      segmentDurationMs: 0,
+      intervalMs: 0,
+      iterationsPerCycle: 1,
+      validationIterations: 1,
+    });
+    const resumed = await runStableEvidenceCampaign({
+      outputDir,
+      profileName: "smoke",
+      targetDurationMs: 0,
+      segmentDurationMs: 0,
+      intervalMs: 0,
+      iterationsPerCycle: 1,
+      validationIterations: 1,
+    });
+
+    assert.equal(first.state.completed, true);
+    assert.equal(resumed.state.completed, true);
+    assert.equal(resumed.state.segments.length, 1);
+    assert.equal(resumed.finalEvidenceReport?.summary.passed, true);
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
 });

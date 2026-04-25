@@ -181,7 +181,7 @@ function collectProfiles(evidenceRootDir: string): StableReleasePackageProfileSu
 }
 
 /** Builds next action items based on gate and profile status */
-function buildNextActions(
+export function buildNextActions(
   gate: StableReleaseGateReport,
   profiles: StableReleasePackageProfileSummary[],
 ): string[] {
@@ -269,7 +269,7 @@ function buildNextActions(
 }
 
 /** Builds recommended commands for evidence generation */
-function buildRecommendedCommands(targetStatus: StableGateTargetStatus): string[] {
+export function buildRecommendedCommands(targetStatus: StableGateTargetStatus): string[] {
   const commands = [
     "AA_STABLE_EVIDENCE_PROFILE=smoke npm run evidence:stable",
     "AA_STABLE_SEQUENCE_EVIDENCE_ROOT=data/stable-evidence AA_STABLE_SEQUENCE_RUN_UNTIL_COMPLETE=1 npm run sequence:stable",
@@ -294,7 +294,7 @@ function buildRecommendedCommands(targetStatus: StableGateTargetStatus): string[
 }
 
 /** Summarizes criteria status for checklist items */
-function summarizeCriteria(criteria: StableGateCriterion[]): {
+export function summarizeCriteria(criteria: StableGateCriterion[]): {
   status: "pass" | "partial" | "fail";
   detail: string;
   evidenceRefs: string[];

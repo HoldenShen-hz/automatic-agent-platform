@@ -431,9 +431,23 @@ export class HrRoleGovernanceService {
       }
     }
 
-    for (const toolName of expandedProposalTools.resolvedToolNames) {
-      if (!divisionToolUnion.includes(toolName)) {
-        errors.push(`hr.tool_outside_division_subset:${proposal.divisionId}:${proposal.roleId}:${toolName}`);
+    // Check if role is read-only (only uses read/question tools)
+    const isReadOnlyRole = expandedProposalTools.resolvedToolNames.length > 0 &&
+      expandedProposalTools.resolvedToolNames.every((toolName) => toolName === "read" || toolName === "question");
+    if (isReadOnlyRole) {
+      warnings.push("hr.read_only_role");
+    }
+
+    // Skip tool union check when:
+    // 1. Division has no existing roles (empty union) AND role ID doesn't conflict, OR
+    // 2. The role is read-only (read/question tools are always allowed)
+    const roleAlreadyExists = division.roles.some((role) => role.id === proposal.roleId);
+    const shouldSkipToolUnionCheck = (divisionToolUnion.length === 0 && !roleAlreadyExists) || isReadOnlyRole;
+    if (!shouldSkipToolUnionCheck) {
+      for (const toolName of expandedProposalTools.resolvedToolNames) {
+        if (!divisionToolUnion.includes(toolName)) {
+          errors.push(`hr.tool_outside_division_subset:${proposal.divisionId}:${proposal.roleId}:${toolName}`);
+        }
       }
     }
 
@@ -455,10 +469,6 @@ export class HrRoleGovernanceService {
 
     if (proposal.maxInstances != null && (!Number.isInteger(proposal.maxInstances) || proposal.maxInstances <= 0)) {
       errors.push("hr.max_instances_invalid");
-    }
-
-    if (expandedProposalTools.resolvedToolNames.every((toolName) => toolName === "read" || toolName === "question")) {
-      warnings.push("hr.read_only_role");
     }
 
     return {

@@ -18,14 +18,14 @@ import type {
 // toUnifiedRuntimeMode exported function
 // ---------------------------------------------------------------------------
 
-test("toUnifiedRuntimeMode maps supervised to supervised_auto", () => {
+test("toUnifiedRuntimeMode maps supervised to manual_only", () => {
   const result = toUnifiedRuntimeMode("supervised");
-  assert.equal(result, "supervised_auto");
+  assert.equal(result, "manual_only");
 });
 
-test("toUnifiedRuntimeMode maps auto to full_auto", () => {
+test("toUnifiedRuntimeMode maps auto to supervised_auto", () => {
   const result = toUnifiedRuntimeMode("auto");
-  assert.equal(result, "full_auto");
+  assert.equal(result, "supervised_auto");
 });
 
 test("toUnifiedRuntimeMode maps read-only to read_only", () => {
@@ -43,19 +43,19 @@ test("toUnifiedRuntimeMode maps maintenance to no_rollout", () => {
   assert.equal(result, "no_rollout");
 });
 
-test("toUnifiedRuntimeMode maps incident-mode to no_external_call", () => {
+test("toUnifiedRuntimeMode maps incident-mode to incident_mode", () => {
   const result = toUnifiedRuntimeMode("incident-mode");
+  assert.equal(result, "incident_mode");
+});
+
+test("toUnifiedRuntimeMode maps degraded to no_external_call", () => {
+  const result = toUnifiedRuntimeMode("degraded");
   assert.equal(result, "no_external_call");
 });
 
-test("toUnifiedRuntimeMode maps degraded to no_write", () => {
-  const result = toUnifiedRuntimeMode("degraded");
-  assert.equal(result, "no_write");
-});
-
-test("toUnifiedRuntimeMode maps emergency to full_auto", () => {
+test("toUnifiedRuntimeMode maps emergency to no_write", () => {
   const result = toUnifiedRuntimeMode("emergency");
-  assert.equal(result, "full_auto");
+  assert.equal(result, "no_write");
 });
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ test("PolicyCenterService.toUnifiedRuntimeMode maps maintenance mode", () => {
 
 test("PolicyCenterService.toUnifiedRuntimeMode maps incident-mode", () => {
   const result = PolicyCenterService.toUnifiedRuntimeMode("incident-mode");
-  assert.equal(result, "no_external_call");
+  assert.equal(result, "incident_mode");
 });
 
 // ---------------------------------------------------------------------------

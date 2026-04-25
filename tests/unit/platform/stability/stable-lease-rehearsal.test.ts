@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
+  runStableLeaseRehearsal,
   type StableLeaseRehearsalOptions,
   type StableLeaseScenarioResult,
   type StableLeaseRehearsalReport,
@@ -119,13 +123,16 @@ test("writeStableLeaseRehearsalReport writes valid JSON", () => {
   writeStableLeaseRehearsalReport("/tmp/test-lease-report-output.json", report);
 });
 
-// runStableLeaseRehearsal requires SQLite database, ExecutionLeaseService,
-// WorkerRegistryService, and AuthoritativeTaskStore - these are integration tests
-test.skip("runStableLeaseRehearsal requires SQLite and execution services infrastructure", () => {
-  // This test is skipped because runStableLeaseRehearsal depends on:
-  // - SqliteDatabase for database operations
-  // - ExecutionLeaseService for lease management
-  // - WorkerRegistryService for worker registration/heartbeat
-  // - AuthoritativeTaskStore for task/execution persistence
-  // These are integration-level tests that require the full runtime stack.
+test("runStableLeaseRehearsal executes all lease scenarios successfully", async () => {
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-lease-rehearsal-"));
+  try {
+    const report = await runStableLeaseRehearsal({ outputDir });
+
+    assert.equal(report.totalScenarios, 4);
+    assert.equal(report.failedScenarios, 0);
+    assert.equal(report.passedScenarios, 4);
+    assert.equal(report.scenarios.every((scenario) => scenario.passed), true);
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
 });

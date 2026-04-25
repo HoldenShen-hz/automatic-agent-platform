@@ -675,14 +675,14 @@ export class ApprovalFlowEngine {
    * @returns Escalation result
    */
   public async triggerEscalation(flowId: string): Promise<{ success: boolean; error?: string }> {
-    const context = this.checkEscalation(flowId);
-    if (!context) {
-      return { success: false, error: "Escalation not needed" };
-    }
-
     const flow = this.flows.get(flowId);
     if (!flow) {
       return { success: false, error: "Flow not found" };
+    }
+
+    const context = this.checkEscalation(flowId);
+    if (!context) {
+      return { success: false, error: "Escalation not needed" };
     }
 
     const result = await this.escalationManager.escalate(context, flow.config.escalation);

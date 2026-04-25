@@ -126,16 +126,42 @@ function normalizeRoot(path: string, canonicalize: boolean): string {
       // through (new paths under an allowed root), while permission errors
       // (EACCES/EPERM) and any other unexpected failure throw.
       const errorCode = (err as NodeJS.ErrnoException).code;
-      sandboxLogger.log({
-        level: errorCode === "ENOENT" ? "warn" : "error",
-        message: "realpathSync failed in sandbox path normalization",
-        data: {
-          path: resolved,
-          error: err instanceof Error ? err.message : String(err),
-          errorCode,
-        },
-      });
-      if (errorCode !== "ENOENT") {
+      if (errorCode === "ENOENT") {
+        // Walk up the directory tree to find the nearest existing parent
+        const remainder: string[] = [];
+        let current = resolved;
+        while (!existsSync(current)) {
+          const parent = dirname(current);
+          if (parent === current) {
+            // Reached filesystem root, can't go higher
+            break;
+          }
+          remainder.unshift(relative(parent, current));
+          current = parent;
+        }
+        if (existsSync(current)) {
+          resolved = resolve(realpathSync(current), ...remainder);
+        }
+        sandboxLogger.log({
+          level: "warn",
+          message: "realpathSync failed in sandbox path normalization, used nearest existing parent",
+          data: {
+            originalPath: path,
+            resolvedPath: resolved,
+            error: err instanceof Error ? err.message : String(err),
+            errorCode,
+          },
+        });
+      } else {
+        sandboxLogger.log({
+          level: "error",
+          message: "realpathSync failed in sandbox path normalization",
+          data: {
+            path: resolved,
+            error: err instanceof Error ? err.message : String(err),
+            errorCode,
+          },
+        });
         throw new Error(`sandbox.path_canonicalization_failed:${resolved}`);
       }
     }

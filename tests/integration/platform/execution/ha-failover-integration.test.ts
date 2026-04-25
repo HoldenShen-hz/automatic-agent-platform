@@ -494,19 +494,18 @@ test("ha failover: authorizeLeaderAction allows any node when authority is any",
 });
 
 test("ha failover: authorizeLeaderAction with strictLeaderAuthority=false relaxes restrictions", () => {
-  test.skip(); // queryLeadership() does not accept nodeId parameter - API mismatch
   const db = createInMemoryDb();
 
-  // strictLeaderAuthority = false
   const service = new HaCoordinatorService(db, { strictLeaderAuthority: false });
 
   service.registerNode("node-1", "us-east-1");
   service.registerNode("node-2", "us-east-1");
   service.acquireLeadership({ nodeId: "node-1" });
 
-  // With strict=false, even leader_only might be relaxed
-  const query = service.queryLeadership();
-  assert.ok(query !== null);
+  const auth = service.authorizeAction("node-2", "write_status", "leader_only");
+  assert.equal(auth.authorized, true);
+  assert.equal(auth.reasonCode, "strict_leader_authority_disabled");
+  assert.equal(auth.leaderNodeId, "node-1");
 
   db.connection.close();
 });

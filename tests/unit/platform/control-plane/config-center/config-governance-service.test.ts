@@ -55,7 +55,7 @@ function makeBundle(overrides: Partial<ConfigBundle> = {}): ConfigBundle {
     layers: {
       bootstrap: { appName: "aa", phase: "phase_2a", stableCoreEnabled: true },
       gateways: { defaultGateway: "cli", sseEnabled: true },
-      providers: { defaultProvider: "openai", defaultModelProfile: "reasoning-medium" },
+      providers: { defaultProvider: "minimax", defaultModelProfile: "reasoning-medium" },
       runtime: { maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 },
       security: {
         approvalMode: "supervised",
@@ -453,7 +453,7 @@ test("validateBundle prod allows destructiveActions explicitly false", () => {
 function seedMinimalConfig(root: string, env: string = "dev"): void {
   createFile(join(root, "bootstrap/default.json"), JSON.stringify({ appName: "aa", phase: "test", stableCoreEnabled: true }));
   createFile(join(root, "gateways/default.json"), JSON.stringify({ defaultGateway: "cli", sseEnabled: true }));
-  createFile(join(root, "providers/default.json"), JSON.stringify({ defaultProvider: "openai", defaultModelProfile: "reasoning-medium" }));
+  createFile(join(root, "providers/default.json"), JSON.stringify({ defaultProvider: "minimax", defaultModelProfile: "reasoning-medium" }));
   createFile(join(root, "runtime/default.json"), JSON.stringify({ maxConcurrentTasks: 2, defaultTaskTimeoutMs: 300000, defaultStepTimeoutMs: 120000 }));
   createFile(
     join(root, "security/default.json"),

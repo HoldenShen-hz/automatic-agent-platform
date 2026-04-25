@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
+  runStableQueueDeliveryRehearsal,
   type StableQueueDeliveryRehearsalOptions,
   type StableQueueDeliveryScenarioResult,
   type StableQueueDeliveryRehearsalReport,
@@ -155,18 +159,16 @@ test("StableQueueDeliveryScenarioResult queue replay scenario structure", () => 
   assert.ok(result.details);
 });
 
-// runStableQueueDeliveryRehearsal requires SQLite database and multiple services:
-// ExecutionDispatchService, ExecutionLeaseService, WorkerRegistryService,
-// ExecutionDispatchReconciliationService, ExecutionWorkerHandshakeService,
-// ExecutionWorkerWritebackService - these are integration tests
-test.skip("runStableQueueDeliveryRehearsal requires SQLite and dispatch services infrastructure", () => {
-  // This test is skipped because runStableQueueDeliveryRehearsal depends on:
-  // - SqliteDatabase for database operations
-  // - ExecutionDispatchService for dispatch operations
-  // - ExecutionLeaseService for lease management
-  // - ExecutionDispatchReconciliationService for reconciliation
-  // - ExecutionWorkerHandshakeService for worker handshake
-  // - ExecutionWorkerWritebackService for writeback operations
-  // - WorkerRegistryService for worker registration
-  // These are integration-level tests that require the full runtime stack.
+test("runStableQueueDeliveryRehearsal executes both queue delivery scenarios successfully", async () => {
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-queue-delivery-rehearsal-"));
+  try {
+    const report = await runStableQueueDeliveryRehearsal({ outputDir });
+
+    assert.equal(report.totalScenarios, 2);
+    assert.equal(report.failedScenarios, 0);
+    assert.equal(report.passedScenarios, 2);
+    assert.equal(report.scenarios.every((scenario) => scenario.passed), true);
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
 });

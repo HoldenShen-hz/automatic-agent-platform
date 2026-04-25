@@ -145,7 +145,7 @@ test("TenantBoundaryRegistryService addOrganizationMembership throws for invalid
       role: "member",
       joinedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_user_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.user_not_found",
   );
 });
 
@@ -166,7 +166,7 @@ test("TenantBoundaryRegistryService addOrganizationMembership throws for invalid
       role: "member",
       joinedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_organization_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.organization_not_found",
   );
 });
 
@@ -187,7 +187,7 @@ test("TenantBoundaryRegistryService addWorkspaceMembership throws for invalid us
       role: "editor",
       joinedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_user_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.user_not_found",
   );
 });
 
@@ -208,7 +208,7 @@ test("TenantBoundaryRegistryService addWorkspaceMembership throws for invalid wo
       role: "editor",
       joinedAt: "2026-04-01T00:00:00.000Z",
     }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_workspace_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.workspace_not_found",
   );
 });
 
@@ -221,7 +221,7 @@ test("TenantBoundaryRegistryService resolveTenantForWorkspace throws for invalid
 
   assert.throws(
     () => service.resolveTenantForWorkspace("nonexistent_ws"),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_workspace_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.workspace_not_found",
   );
 });
 
@@ -252,7 +252,7 @@ test("TenantBoundaryRegistryService listDeploymentBindingsForTenant throws for i
 
   assert.throws(
     () => service.listDeploymentBindingsForTenant("nonexistent_tenant"),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_tenant_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.not_found",
   );
 });
 
@@ -296,7 +296,7 @@ test("TenantBoundaryRegistryService listTenantsForUser throws for invalid userId
 
   assert.throws(
     () => service.listTenantsForUser("nonexistent_user"),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_user_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.user_not_found",
   );
 });
 
@@ -312,7 +312,7 @@ test("TenantBoundaryRegistryService authorizeTenantAccess throws for invalid use
 
   assert.throws(
     () => service.authorizeTenantAccess({ userId: "invalid_user", tenantId: "tenant_1" }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_user_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.user_not_found",
   );
 });
 
@@ -328,7 +328,7 @@ test("TenantBoundaryRegistryService authorizeTenantAccess throws for invalid ten
 
   assert.throws(
     () => service.authorizeTenantAccess({ userId: "user_1", tenantId: "invalid_tenant" }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_tenant_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.not_found",
   );
 });
 
@@ -347,6 +347,6 @@ test("TenantBoundaryRegistryService authorizeTenantAccess throws for invalid wor
 
   assert.throws(
     () => service.authorizeTenantAccess({ userId: "user_1", tenantId: "tenant_1", workspaceId: "invalid_ws" }),
-    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.invalid_workspace_id",
+    (error: unknown) => error instanceof Error && (error as unknown as Record<string, unknown>).code === "tenant.workspace_not_found",
   );
 });

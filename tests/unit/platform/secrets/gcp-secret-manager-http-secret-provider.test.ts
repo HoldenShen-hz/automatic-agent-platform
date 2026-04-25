@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error - module resolution issue at compile time
-import { GcpSecretManagerHttpSecretProvider } from "../../../../../src/platform/control-plane/iam/gcp-secret-manager-http-secret-provider.js";
+import { GcpSecretManagerHttpSecretProvider } from "../../../../../dist/src/platform/control-plane/iam/gcp-secret-manager-http-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -137,7 +137,11 @@ export class ConfigStore {
    * @returns True if the key was deleted
    */
   public delete(key: string): boolean {
-    return this.entries.delete(key);
+    const result = this.entries.delete(key);
+    if (result) {
+      this.version++;
+    }
+    return result;
   }
 
   /**
@@ -177,7 +181,7 @@ export class ConfigStore {
    * @throws ValidationError if snapshot is invalid
    */
   public restore(snapshot: ConfigStoreSnapshot): void {
-    if (!snapshot || !snapshot.entries) {
+    if (!snapshot || !snapshot.entries || !snapshot.createdAt) {
       throw new ValidationError("invalid_snapshot", "Snapshot is invalid or empty");
     }
 

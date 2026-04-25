@@ -59,6 +59,8 @@ function buildDependencyServiceIds(
 }
 
 export class DomainsRuntimeOrchestrator {
+  private startupPlan: DomainsStartupPlan | undefined;
+
   public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
 
   public prepare(): DomainsStartupPlan {
@@ -69,6 +71,19 @@ export class DomainsRuntimeOrchestrator {
 
   public startup(): DomainsRuntimeStartupResult {
     const startupPlan = this.prepare();
+    this.startupPlan = startupPlan;
+
+    // Register and initialize the orchestrator service
+    this.registry.register<DomainsRuntimeOrchestrator>(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID, {
+      init: () => this,
+      dependsOn: [
+        DOMAINS_BOOTSTRAP_SERVICE_ID,
+        ...Object.values(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS),
+        DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
+        DOMAINS_STARTUP_PLAN_SERVICE_ID,
+      ],
+    });
+    this.registry.get(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID);
     const steps = startupPlan.steps.map((step) => {
       const initializedDependencyServiceIds = buildDependencyServiceIds(step, startupPlan).filter((serviceId) =>
         this.registry.isInitialized(serviceId),
@@ -94,7 +109,7 @@ export class DomainsRuntimeOrchestrator {
   }
 
   public snapshotReadiness(): DomainsReadinessSnapshot {
-    const startupPlan = buildDomainsStartupPlan();
+    const startupPlan = this.startupPlan ?? buildDomainsStartupPlan();
     return {
       runtimeCatalogInitialized: this.registry.isInitialized(DOMAINS_RUNTIME_CATALOG_SERVICE_ID),
       startupPlanInitialized: this.registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID),

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // @ts-expect-error - module resolution issue at compile time
-import { ExternalSecretProvider, ExternalSecretProviderAdapter } from "../../../../../src/platform/control-plane/iam/external-secret-provider.js";
+import { ExternalSecretProvider, ExternalSecretProviderAdapter } from "../../../../../dist/src/platform/control-plane/iam/external-secret-provider.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

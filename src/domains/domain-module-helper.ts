@@ -16,14 +16,14 @@ export function createDomainModulePreset<TTaskType extends string>(
   reviewRequiredTaskTypes: readonly TTaskType[],
 ): DomainModulePreset<TTaskType> {
   const baseline = getVerticalDomainBaseline(domainId);
-  return {
+  return Object.freeze({
     domainId,
     displayName: baseline.displayName,
-    defaultWorkflowIds: baseline.definition.workflows.map((workflow) => workflow.workflowId),
-    defaultToolBundleIds: baseline.definition.toolBundles.map((bundle) => bundle.bundleId),
-    requiredCapabilities: [...taskTypes],
-    reviewRequiredTaskTypes: [...reviewRequiredTaskTypes],
-  };
+    defaultWorkflowIds: Object.freeze(baseline.definition.workflows.map((workflow) => workflow.workflowId)),
+    defaultToolBundleIds: Object.freeze(baseline.definition.toolBundles.map((bundle) => bundle.bundleId)),
+    requiredCapabilities: Object.freeze([...taskTypes]),
+    reviewRequiredTaskTypes: Object.freeze([...reviewRequiredTaskTypes]),
+  });
 }
 
 export function requiresPresetReview<TTaskType extends string>(

@@ -157,7 +157,10 @@ export class CostAlertService extends EventEmitter {
     let alertLevel: CostAlertLevel = "ok";
     let reasonCode: CostAlertReasonCode = "cost.ok";
 
-    if (thresholdRatio >= 1.0) {
+    if (limitCost === 0 && projectedCost > 0) {
+      alertLevel = "exceeded";
+      reasonCode = this.getExceededReasonCode(input.scope, policy);
+    } else if (thresholdRatio >= 1.0) {
       alertLevel = "exceeded";
       reasonCode = this.getExceededReasonCode(input.scope, policy);
     } else if (thresholdRatio >= DEFAULT_CRITICAL_THRESHOLD) {

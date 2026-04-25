@@ -1,11 +1,12 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
   buildStableReleaseGateReport,
+  writeStableReleaseGateReport,
   type StableGateTargetStatus,
   type StableGateVerdict,
   type StableGateCriterion,
@@ -346,12 +347,40 @@ describe("stable-release-gate", () => {
     });
   });
 
-  test.skip("buildStableReleaseGateReport requires filesystem access", () => {
-    // Requires reading stable-evidence-report.json files from evidence root directory
-    // Cannot be unit tested without mocking fs operations
+  test("buildStableReleaseGateReport reads evidence bundles from disk", () => {
+    const dir = createTempEvidenceDir();
+    try {
+      const smokeDir = createProfileDir(dir, "smoke");
+      writeFileSync(join(smokeDir, "stable-evidence-report.json"), JSON.stringify(createMockEvidenceReport()));
+
+      const report = buildStableReleaseGateReport({
+        evidenceRootDir: dir,
+        targetStatus: "canary",
+      });
+
+      assert.equal(report.availableProfiles.includes("smoke"), true);
+      assert.equal(report.requiredProfiles.includes("smoke"), true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
-  test.skip("writeStableReleaseGateReport requires filesystem access", () => {
-    // Writes JSON report to filesystem
+  test("writeStableReleaseGateReport writes JSON output", () => {
+    const dir = createTempEvidenceDir();
+    const outputPath = join(dir, "reports", "stable-release-gate-report.json");
+    try {
+      const report = buildStableReleaseGateReport({
+        evidenceRootDir: dir,
+        targetStatus: "canary",
+      });
+
+      writeStableReleaseGateReport(outputPath, report);
+      const written = JSON.parse(readFileSync(outputPath, "utf8")) as ReturnType<typeof buildStableReleaseGateReport>;
+
+      assert.equal(written.targetStatus, "canary");
+      assert.equal(written.overallVerdict, report.overallVerdict);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

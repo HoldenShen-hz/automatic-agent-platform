@@ -72,10 +72,7 @@ test("AgentVersionManager: full lifecycle - register, deploy, switch, deprecate"
   assert.ok(deprecatedVersion?.deprecatedAt !== null);
 });
 
-// NOTE: This test is skipped because the createdAt timestamps are too close when
-// versions are registered in quick succession, making the ordering unpredictable.
-// The core functionality is tested by the existing test suite.
-test("AgentVersionManager: blue-green deployment ping-pong", { skip: "Timing-dependent ordering" }, () => {
+test("AgentVersionManager: blue-green deployment ping-pong", () => {
   const mgr = new AgentVersionManager();
 
   // Register multiple versions
@@ -117,22 +114,19 @@ test("AgentVersionManager: blue-green deployment ping-pong", { skip: "Timing-dep
 
   // Switch blue -> green: promotes the latest eligible version
   const greenSwitch = mgr.switchSlot("agent-pingpong", "green");
-  // v3 is the latest registered with deploymentSlot=null and non-alpha stage
   assert.equal(greenSwitch?.versionId, v3.versionId);
   assert.equal(greenSwitch?.deploymentSlot, "green");
+  assert.equal(mgr.getActiveSlot("agent-pingpong", "blue"), null);
 
-  // Verify v1 was evicted from blue (evicted when v3 was assigned to green)
+  // Verify v1 was evicted from blue when v3 was assigned to green
   const versionsAfterSwitch = mgr.listVersions("agent-pingpong");
   const v1AfterSwitch = versionsAfterSwitch.find((v) => v.versionId === v1.versionId);
-  assert.equal(v1AfterSwitch?.deploymentSlot, null); // v1 was evicted
+  assert.equal(v1AfterSwitch?.deploymentSlot, null);
 
-  // Switch green -> blue: the behavior depends on the current implementation
-  // This verifies the switch happens and v2 is moved to blue
   const blueSwitch = mgr.switchSlot("agent-pingpong", "blue");
-  // The implementation selects the latest eligible version, which should be v2
-  // (v1 was evicted to null, v2 is null, v3 is on green)
-  assert.ok(blueSwitch != null); // should get a version
+  assert.equal(blueSwitch?.versionId, v2.versionId);
   assert.equal(blueSwitch?.deploymentSlot, "blue");
+  assert.equal(mgr.getActiveSlot("agent-pingpong", "green"), null);
 });
 
 test("AgentVersionManager: multiple agents independent", () => {

@@ -35,9 +35,7 @@ test("multi-step tool registry executes repo-map searches", async () => {
   assert.ok((result.symbols ?? []).length > 0);
 });
 
-test("multi-step tool registry executes sandboxed git commands", {
-  skip: !isInsideGitRepo() && "not inside a git repo",
-}, async () => {
+test("multi-step tool registry executes sandboxed git commands", async () => {
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("git", JSON.stringify({
     args: ["rev-parse", "--is-inside-work-tree"],
@@ -45,10 +43,17 @@ test("multi-step tool registry executes sandboxed git commands", {
   const result = JSON.parse(raw) as {
     success: boolean;
     output?: { sanitizedText?: string };
+    error?: { message?: string };
   };
 
-  assert.equal(result.success, true);
-  assert.match(result.output?.sanitizedText ?? "", /true/);
+  if (isInsideGitRepo()) {
+    assert.equal(result.success, true);
+    assert.match(result.output?.sanitizedText ?? "", /true/);
+    return;
+  }
+
+  assert.equal(result.success, false);
+  assert.match(result.error?.message ?? "", /git/i);
 });
 
 test("multi-step tool registry can batch parallel read-only tools", async () => {

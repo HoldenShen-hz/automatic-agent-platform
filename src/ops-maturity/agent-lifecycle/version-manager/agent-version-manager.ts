@@ -44,6 +44,16 @@ export interface AgentVersionConflict {
   reason: string;
 }
 
+function newestFirst(versions: readonly AgentVersionDetail[]): AgentVersionDetail[] {
+  return versions
+    .map((version, index) => ({ version, index }))
+    .sort((left, right) => {
+      const createdAtOrder = right.version.createdAt.localeCompare(left.version.createdAt);
+      return createdAtOrder !== 0 ? createdAtOrder : right.index - left.index;
+    })
+    .map((entry) => entry.version);
+}
+
 export class AgentVersionManager {
   private readonly versions = new Map<string, AgentVersionDetail[]>();
   private readonly slotAssignments = new Map<string, string>();
@@ -75,10 +85,12 @@ export class AgentVersionManager {
       versions.forEach((v) => {
         if (v.deploymentSlot === "green") v.deploymentSlot = null;
       });
+      this.slotAssignments.delete(`${agentId}:green` as const);
     } else {
       versions.forEach((v) => {
         if (v.deploymentSlot === "blue") v.deploymentSlot = null;
       });
+      this.slotAssignments.delete(`${agentId}:blue` as const);
     }
 
     this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
@@ -98,12 +110,13 @@ export class AgentVersionManager {
     if (!currentVersion) return null;
 
     const allVersions = this.versions.get(agentId) ?? [];
-    const latestForSlot = allVersions
-      .filter((v) => v.deploymentSlot === null && v.stage !== "alpha")
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const latestForSlot = newestFirst(allVersions).find((v) => v.deploymentSlot === null && v.stage !== "alpha");
 
     if (latestForSlot) {
-      this.assignDeploymentSlot(agentId, latestForSlot.versionId, targetSlot);
+      // Directly assign to target slot without revoking the opposite slot
+      // (blue-green deployment keeps both slots active with different versions)
+      latestForSlot.deploymentSlot = targetSlot;
+      this.slotAssignments.set(`${agentId}:${targetSlot}` as const, latestForSlot.versionId);
       return this.getActiveSlot(agentId, targetSlot);
     }
 
@@ -111,9 +124,7 @@ export class AgentVersionManager {
   }
 
   public listVersions(agentId: string): AgentVersionDetail[] {
-    return [...(this.versions.get(agentId) ?? [])].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt)
-    );
+    return newestFirst(this.versions.get(agentId) ?? []);
   }
 
   public getStableVersions(agentId: string): AgentVersionDetail[] {

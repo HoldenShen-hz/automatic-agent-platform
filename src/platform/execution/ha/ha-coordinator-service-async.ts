@@ -335,6 +335,18 @@ export class HaCoordinatorServiceAsync {
     }
 
     if (requiredAuthority === "leader_only") {
+      if (!this.strictLeaderAuthority) {
+        await this.recordActionAudit(actionType, requestingNodeId, leader?.nodeId ?? null, latestEpoch.epoch, latestEpoch.fencingToken, true, "strict_leader_authority_disabled");
+        return {
+          authorized: true,
+          authority: requiredAuthority,
+          reasonCode: "strict_leader_authority_disabled",
+          leaderNodeId: leader?.nodeId ?? null,
+          epoch: latestEpoch.epoch,
+          fencingToken: latestEpoch.fencingToken,
+        };
+      }
+
       if (!leader) {
         await this.recordActionAudit(actionType, requestingNodeId, null, latestEpoch.epoch, latestEpoch.fencingToken, false, "no_active_leader");
         return {

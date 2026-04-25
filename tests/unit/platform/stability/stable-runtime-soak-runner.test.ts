@@ -1,7 +1,12 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   mergeStableSoakReports,
+  runStableSoak,
+  writeStableSoakReport,
   type StableSoakReport,
   type StableSoakCycle,
 } from "../../../../src/platform/stability/stable-runtime-soak-runner.js";
@@ -48,9 +53,9 @@ describe("stable-runtime-soak-runner", () => {
 
     test("sums total runs across multiple reports", () => {
       const reports: StableSoakReport[] = [
-        createMockSoakReport({ totalRuns: 10, failedRuns: 1 }),
-        createMockSoakReport({ totalRuns: 20, failedRuns: 2 }),
-        createMockSoakReport({ totalRuns: 15, failedRuns: 0 }),
+        createMockSoakReport({ totalRuns: 10, failedRuns: 1, passedRuns: 9 }),
+        createMockSoakReport({ totalRuns: 20, failedRuns: 2, passedRuns: 18 }),
+        createMockSoakReport({ totalRuns: 15, failedRuns: 0, passedRuns: 15 }),
       ];
       const result = mergeStableSoakReports(reports);
       assert.equal(result.totalRuns, 45);
@@ -140,12 +145,39 @@ describe("stable-runtime-soak-runner", () => {
       assert.equal(result.finishedAt, "2024-01-02T12:00:00Z");
     });
 
-    test.skip("runStableSoak requires async runtime and validation", () => {
-      // Requires runStableValidation which needs database and complex runtime
+    test("runStableSoak produces at least one validation cycle", async () => {
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-soak-runner-"));
+      try {
+        const report = await runStableSoak({
+          outputDir,
+          durationMs: 0,
+          intervalMs: 0,
+          iterationsPerCycle: 1,
+        });
+
+        assert.equal(report.durationMs, 0);
+        assert.equal(report.cycles.length > 0, true);
+        assert.equal(report.totalRuns >= 1, true);
+        assert.equal(report.passedRuns + report.failedRuns, report.totalRuns);
+      } finally {
+        rmSync(outputDir, { recursive: true, force: true });
+      }
     });
 
-    test.skip("writeStableSoakReport requires filesystem access", () => {
-      // Writes JSON to filesystem
+    test("writeStableSoakReport writes JSON to disk", () => {
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-soak-report-"));
+      const reportPath = join(outputDir, "stable-soak-report.json");
+      const report = createMockSoakReport({});
+
+      try {
+        writeStableSoakReport(reportPath, report);
+
+        const written = JSON.parse(readFileSync(reportPath, "utf8")) as StableSoakReport;
+        assert.equal(written.totalRuns, report.totalRuns);
+        assert.equal(written.failedRuns, report.failedRuns);
+      } finally {
+        rmSync(outputDir, { recursive: true, force: true });
+      }
     });
   });
 });
