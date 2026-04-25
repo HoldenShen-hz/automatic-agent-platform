@@ -1,6 +1,6 @@
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { SimpleProposalEngine, type ProposalKind } from "../../../../../src/ops-maturity/drift-detection/proposal-engine.js";
+import { SimpleProposalEngine, type ProposalKind, type ImprovementProposal } from "../../../../../src/ops-maturity/drift-detection/proposal-engine.js";
 import type { ReflectionRecord } from "../../../../../src/ops-maturity/drift-detection/reflection-engine.js";
 
 const mockReflection = (overrides: Partial<ReflectionRecord> = {}): ReflectionRecord => ({

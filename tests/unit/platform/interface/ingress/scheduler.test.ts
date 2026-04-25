@@ -146,7 +146,7 @@ test("LongRunningWorkflowService markDue returns due suspensions", () => {
 
     const due = service.markDue("2026-04-25T10:30:00.000Z");
     assert.equal(due.length, 1);
-    assert.equal(due[0].status, "resumable");
+    assert.equal(due[0]!.status, "resumable");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -315,8 +315,8 @@ test("LongRunningWorkflowService sweepExpired expires past suspensions", () => {
     const decisions = service.sweepExpired("2026-04-25T10:30:00.000Z");
 
     assert.equal(decisions.length, 1);
-    assert.equal(decisions[0].reasonCode, "workflow_sleep.expired_failed");
-    assert.equal(decisions[0].nextWorkflowStatus, "failed");
+    assert.equal(decisions[0]!.reasonCode, "workflow_sleep.expired_failed");
+    assert.equal(decisions[0]!.nextWorkflowStatus, "failed");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -587,7 +587,7 @@ test("LongRunningWorkflowService listResumeWindows returns all windows", () => {
     assert.equal(windows.length, 2);
     const dueWindows = windows.filter((w) => w.due);
     assert.equal(dueWindows.length, 1);
-    assert.equal(dueWindows[0].taskId, "task_lw1");
+    assert.equal(dueWindows[0]!.taskId, "task_lw1");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -640,7 +640,7 @@ test("LongRunningWorkflowService suspend with fail_workflow timeout", () => {
 
     const decisions = service.sweepExpired("2026-04-25T10:30:00.000Z");
     assert.equal(decisions.length, 1);
-    assert.equal(decisions[0].nextWorkflowStatus, "failed");
+    assert.equal(decisions[0]!.nextWorkflowStatus, "failed");
     assert.equal(h.store.getWorkflowState("task_failtimeout")?.status, "failed");
   } finally {
     h.db.close();
@@ -665,8 +665,8 @@ test("LongRunningWorkflowService suspend with remain_pending timeout", () => {
 
     const decisions = service.sweepExpired("2026-04-25T10:30:00.000Z");
     assert.equal(decisions.length, 1);
-    assert.equal(decisions[0].nextWorkflowStatus, null);
-    assert.equal(decisions[0].reasonCode, "workflow_sleep.expired_remain_pending");
+    assert.equal(decisions[0]!.nextWorkflowStatus, null);
+    assert.equal(decisions[0]!.reasonCode, "workflow_sleep.expired_remain_pending");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
@@ -717,7 +717,7 @@ test("LongRunningWorkflowService all waitKind types", () => {
       const suspension = service.suspend({
         taskId: `task_wk_${i}`,
         reasonCode: `reason_${waitKinds[i]}`,
-        waitKind: waitKinds[i],
+        waitKind: waitKinds[i]!,
         resumableFromStep: "step_1",
         timeoutPolicy: "remain_pending",
       });

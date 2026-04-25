@@ -1,5 +1,5 @@
-import * as assert from "node:assert/strict";
-import * as test from "node:test";
+import assert from "node:assert/strict";
+import test from "node:test";
 
 import {
   TransitionService,
@@ -25,6 +25,9 @@ import type {
   ExecutionStatusTransitionCommand,
   ApprovalStatusTransitionCommand,
   TransitionAuditContext,
+  EventRecord,
+  WorkflowStateRecord,
+  ApprovalRecord,
 } from "../../../../../src/platform/contracts/types/domain.js";
 import type {
   TaskStatus,
@@ -82,7 +85,7 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
 
 interface Tier1Event {
   taskId: string;
-  executionId: string;
+  executionId: string | null;
   eventType: string;
   traceId: string;
   payload: Record<string, unknown>;
@@ -98,15 +101,20 @@ interface MockRepositoryState {
   taskOutputs: Map<string, string>;
 }
 
-interface MockRepository extends RuntimeLifecycleRepository {
+// MockRepository type that intersects RuntimeLifecycleRepository with tracking properties
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockRepository = RuntimeLifecycleRepository & {
   mockState: MockRepositoryState;
-  getWorkflowStateCalls: string[];
+  getWorkflowStateInvocations: string[];
   updateTaskStatusCasCalls: Array<{ entityId: string; fromStatus: string; toStatus: string }>;
   updateWorkflowStateCasCalls: string[];
   updateSessionStatusCasCalls: string[];
   updateExecutionStatusCasCalls: string[];
   updateApprovalDecisionCasCalls: Array<{ approvalId: string; expectedStatus: string }>;
-}
+  getTaskStatus(taskId: string): { status: TaskStatus; updatedAt: string } | null;
+  getSessionStatus(sessionId: string): { status: SessionStatus; updatedAt: string } | null;
+  getExecutionStatus(executionId: string): { status: ExecutionStatus; startedAt: string | null; finishedAt: string | null; lastErrorCode: string | null; updatedAt: string } | null;
+};
 
 function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowStatus?: WorkflowStatus): MockRepository {
   const mockState: MockRepositoryState = {
@@ -119,7 +127,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     taskOutputs: new Map(),
   };
 
-  const getWorkflowStateCalls: string[] = [];
+  const getWorkflowStateInvocations: string[] = [];
   const updateTaskStatusCasCalls: Array<{ entityId: string; fromStatus: string; toStatus: string }> = [];
   const updateWorkflowStateCasCalls: string[] = [];
   const updateSessionStatusCasCalls: string[] = [];
@@ -130,7 +138,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     mockState,
 
     getWorkflowState(entityId: string) {
-      getWorkflowStateCalls.push(entityId);
+      getWorkflowStateInvocations.push(entityId);
       const state = mockState.workflowStates.get(entityId);
       if (!state) return null;
       return {
@@ -210,13 +218,13 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
         id: `event-${mockState.tier1Events.length}`,
         taskId: event.taskId,
         sessionId: null,
-        executionId: event.executionId,
+        executionId: event.executionId ?? null,
         eventType: event.eventType,
         eventTier: "tier1" as const,
         payloadJson: JSON.stringify(event.payload),
         traceId: event.traceId,
         createdAt: new Date().toISOString(),
-      };
+      } as unknown as EventRecord;
     },
 
     updateTaskOutput(taskId, outputJson, occurredAt) {
@@ -236,7 +244,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     },
 
     updateExecutionStatus(executionId, status, occurredAt, reasonCode, finishedAt, lastErrorCode) {
-      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt, lastErrorCode, updatedAt: occurredAt });
+      mockState.executionStatuses.set(executionId, { status: status as ExecutionStatus, startedAt: null, finishedAt: finishedAt ?? null, lastErrorCode: lastErrorCode ?? null, updatedAt: occurredAt });
     },
 
     insertApproval(approval) {
@@ -291,7 +299,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
         payloadJson: "{}",
         traceId: event.traceId ?? null,
         createdAt: new Date().toISOString(),
-      };
+      } as unknown as EventRecord;
     },
 
     getTaskStatus(taskId) {
@@ -307,7 +315,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     },
 
     // Track calls
-    getWorkflowStateCalls,
+    getWorkflowStateInvocations,
     updateTaskStatusCasCalls,
     updateWorkflowStateCasCalls,
     updateSessionStatusCasCalls,
@@ -461,7 +469,8 @@ test("TaskTransitionService - wraps in database transaction for atomicity", () =
     ...makeContext(),
   });
 
-  assert.equal(db.transactionCalls.length, 1);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assert.equal((db as any).transactionCalls?.length ?? (db as any).transactionCalls?.size ?? 0, 1);
 });
 
 test("TaskTransitionService - event payload contains correct transition details", () => {

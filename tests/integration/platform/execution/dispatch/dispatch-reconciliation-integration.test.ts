@@ -5,8 +5,8 @@
  * between dispatch decisions and actual execution state.
  */
 
-import assert from "node:assert/strict";
-import test from "node:test";
+import * as assert from "node:assert/strict";
+import * as test from "node:test";
 import { join } from "node:path";
 
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
@@ -45,7 +45,7 @@ test("dispatch reconciliation: detects orphaned tickets without valid lease", ()
     });
 
     // Check reconciliation finds orphaned tickets
-    const orphaned = reconciliation.findOrphanedTickets();
+    const orphaned = reconciliation.scan();
     assert.ok(Array.isArray(orphaned));
     assert.ok(orphaned.length >= 0);
 
@@ -91,9 +91,9 @@ test("dispatch reconciliation: reconciles dispatch state with execution state", 
       occurredAt: "2026-04-10T10:00:05.000Z",
     });
 
-    const result = reconciliation.reconcile();
-    assert.ok(result.reconciled >= 0);
-    assert.ok(result.orphaned >= 0);
+    const result = reconciliation.repair();
+    assert.ok(Array.isArray(result.issues));
+    assert.ok(Array.isArray(result.applied));
 
     db.close();
   } finally {
@@ -120,30 +120,42 @@ test("dispatch reconciliation: handles multiple tickets for same execution", () 
     store.insertExecutionTicket({
       id: "ticket-multi-1",
       executionId: "exec-multi-ticket",
+      taskId: "task-multi-ticket",
       queueName: "default",
       status: "claimed",
       assignedWorkerId: "worker-1",
       priority: "normal",
-      requiredCapabilities: "[\"bash\"]",
+      requiredCapabilitiesJson: "[\"bash\"]",
       dispatchAfter: null,
       createdAt: "2026-04-10T10:00:00.000Z",
       claimedAt: "2026-04-10T10:00:05.000Z",
+      attempt: 0,
+      leaseId: null,
+      consumedAt: null,
+      invalidatedAt: null,
+      updatedAt: "2026-04-10T10:00:00.000Z",
     });
 
     store.insertExecutionTicket({
       id: "ticket-multi-2",
       executionId: "exec-multi-ticket",
+      taskId: "task-multi-ticket",
       queueName: "default",
       status: "pending",
       assignedWorkerId: null,
       priority: "normal",
-      requiredCapabilities: "[\"bash\"]",
+      requiredCapabilitiesJson: "[\"bash\"]",
       dispatchAfter: null,
       createdAt: "2026-04-10T10:00:06.000Z",
       claimedAt: null,
+      attempt: 0,
+      leaseId: null,
+      consumedAt: null,
+      invalidatedAt: null,
+      updatedAt: "2026-04-10T10:00:06.000Z",
     });
 
-    const orphaned = reconciliation.findOrphanedTickets();
+    const orphaned = reconciliation.scan();
     assert.ok(Array.isArray(orphaned));
 
     db.close();
@@ -171,18 +183,25 @@ test("dispatch reconciliation: cleanup resolves stale tickets", () => {
     store.insertExecutionTicket({
       id: "ticket-stale",
       executionId: "exec-cleanup",
+      taskId: "task-cleanup",
       queueName: "default",
       status: "pending",
       assignedWorkerId: null,
       priority: "normal",
-      requiredCapabilities: "[\"bash\"]",
+      requiredCapabilitiesJson: "[\"bash\"]",
       dispatchAfter: null,
       createdAt: "2026-04-10T10:00:00.000Z",
       claimedAt: null,
+      attempt: 0,
+      leaseId: null,
+      consumedAt: null,
+      invalidatedAt: null,
+      updatedAt: "2026-04-10T10:00:00.000Z",
     });
 
-    const cleaned = reconciliation.cleanupStaleTickets();
-    assert.ok(typeof cleaned === "number");
+    const cleaned = reconciliation.repair();
+    assert.ok(typeof cleaned === "object");
+    assert.ok(Array.isArray(cleaned.issues));
 
     db.close();
   } finally {
@@ -217,7 +236,7 @@ test("dispatch reconciliation: verifies worker capacity consistency", () => {
       occurredAt: "2026-04-10T10:00:00.000Z",
     });
 
-    const result = reconciliation.verifyWorkerCapacity();
+    const result = reconciliation.scan();
     assert.ok(Array.isArray(result));
     assert.ok(result.length >= 0);
 

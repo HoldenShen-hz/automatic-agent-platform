@@ -112,7 +112,7 @@ test("execution-plane-startup - createDefaultStartupConsistencyCheckerOptions re
 
 test("execution-plane-startup - configValidator returns result with expected shape", () => {
   const options = createDefaultStartupConsistencyCheckerOptions();
-  const result = options.configValidator();
+  const result = options.configValidator!();
 
   assert.ok(result !== null);
   assert.ok("ok" in result);
@@ -124,14 +124,14 @@ test("execution-plane-startup - configValidator returns result with expected sha
 
 test("execution-plane-startup - providerReadinessProbe returns array", () => {
   const options = createDefaultStartupConsistencyCheckerOptions();
-  const result = options.providerReadinessProbe(null);
+  const result = options.providerReadinessProbe!(null);
 
   assert.ok(Array.isArray(result));
 });
 
 test("execution-plane-startup - providerReadinessProbe with null configValidation returns empty array", () => {
   const options = createDefaultStartupConsistencyCheckerOptions();
-  const result = options.providerReadinessProbe(null);
+  const result = options.providerReadinessProbe!(null);
 
   assert.deepEqual(result, []);
 });
@@ -145,7 +145,7 @@ test("execution-plane-startup - providerReadinessProbe with ok:false configValid
     issues: ["test issue"],
     bundle: null,
   };
-  const result = options.providerReadinessProbe(invalidConfig);
+  const result = options.providerReadinessProbe!(invalidConfig);
 
   assert.deepEqual(result, []);
 });

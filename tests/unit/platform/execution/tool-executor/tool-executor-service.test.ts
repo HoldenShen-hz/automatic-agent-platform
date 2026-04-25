@@ -2,13 +2,41 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ToolExecutor } from "../../../../../src/platform/execution/tool-executor/tool-executor.js";
-import type { CommandExecutor } from "../../../../../src/platform/execution/tool-executor/command-executor.js";
+import type { CommandExecutor, CommandExecutionResult } from "../../../../../src/platform/execution/tool-executor/command-executor.js";
 import type { CommandToolRequest } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
+import type { ToolSideEffectScope, ToolRiskLevel, ToolPathScopeMode, ToolOutputKind, ToolApprovalMode, ToolNeedsFileLock, ToolRecoveryStrategy, ToolExecutionMetadata } from "../../../../../src/platform/execution/tool-executor/tool-metadata.js";
 
 function mockCommandExecutor(
-  execute: (request: CommandToolRequest) => Promise<ReturnType<CommandExecutor["execute"]>>,
+  execute: (request: CommandToolRequest) => Promise<CommandExecutionResult>,
 ): CommandExecutor {
   return { execute } as unknown as CommandExecutor;
+}
+
+function createMetadata(overrides: Partial<ToolExecutionMetadata> = {}): ToolExecutionMetadata {
+  return {
+    toolName: "read.test",
+    readOnly: true,
+    idempotent: true,
+    needsFileLock: "read",
+    sideEffectScope: "none",
+    recoveryStrategy: "retry_safe",
+    requiresConfirmation: false,
+    riskLevel: "low",
+    pathScopeMode: "none",
+    producesArtifact: false,
+    outputKind: "text",
+    supportsStreamingOutput: false,
+    providerDependency: "none",
+    defaultTimeoutMs: 15000,
+    retryableErrorCodes: [],
+    approvalMode: "never",
+    supportsCancellation: false,
+    cleanupGuarantee: "none",
+    requiresExecutionReceipt: false,
+    highRiskPatterns: [],
+    isConcurrencySafe: true,
+    ...overrides,
+  } as ToolExecutionMetadata;
 }
 
 test("ToolExecutor executeCommand returns CommandExecutionResult with correct envelope", async () => {
@@ -214,55 +242,11 @@ test("ToolExecutor executeParallel respects concurrency-safe grouping", async ()
 
   const result = await executor.executeParallel([
     {
-      metadata: {
-        toolName: "read.a",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-        recoveryStrategy: "retry_safe",
-        requiresConfirmation: false,
-        riskLevel: "low",
-        pathScopeMode: "none",
-        producesArtifact: false,
-        outputKind: "text",
-        supportsStreamingOutput: false,
-        providerDependency: "none",
-        defaultTimeoutMs: 15000,
-        retryableErrorCodes: [],
-        approvalMode: "never",
-        supportsCancellation: false,
-        cleanupGuarantee: "none",
-        requiresExecutionReceipt: false,
-        highRiskPatterns: [],
-        isConcurrencySafe: true,
-      },
+      metadata: createMetadata({ toolName: "read.a" }),
       execute: async () => { callOrder.push(1); return "result-a"; },
     },
     {
-      metadata: {
-        toolName: "read.b",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-        recoveryStrategy: "retry_safe",
-        requiresConfirmation: false,
-        riskLevel: "low",
-        pathScopeMode: "none",
-        producesArtifact: false,
-        outputKind: "text",
-        supportsStreamingOutput: false,
-        providerDependency: "none",
-        defaultTimeoutMs: 15000,
-        retryableErrorCodes: [],
-        approvalMode: "never",
-        supportsCancellation: false,
-        cleanupGuarantee: "none",
-        requiresExecutionReceipt: false,
-        highRiskPatterns: [],
-        isConcurrencySafe: true,
-      },
+      metadata: createMetadata({ toolName: "read.b" }),
       execute: async () => { callOrder.push(2); return "result-b"; },
     },
   ]);
@@ -291,55 +275,11 @@ test("ToolExecutor executeParallel reports failures in errors array", async () =
 
   const result = await executor.executeParallel([
     {
-      metadata: {
-        toolName: "read.ok",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-        recoveryStrategy: "retry_safe",
-        requiresConfirmation: false,
-        riskLevel: "low",
-        pathScopeMode: "none",
-        producesArtifact: false,
-        outputKind: "text",
-        supportsStreamingOutput: false,
-        providerDependency: "none",
-        defaultTimeoutMs: 15000,
-        retryableErrorCodes: [],
-        approvalMode: "never",
-        supportsCancellation: false,
-        cleanupGuarantee: "none",
-        requiresExecutionReceipt: false,
-        highRiskPatterns: [],
-        isConcurrencySafe: true,
-      },
+      metadata: createMetadata({ toolName: "read.ok" }),
       execute: async () => "ok",
     },
     {
-      metadata: {
-        toolName: "read.fail",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-        recoveryStrategy: "retry_safe",
-        requiresConfirmation: false,
-        riskLevel: "low",
-        pathScopeMode: "none",
-        producesArtifact: false,
-        outputKind: "text",
-        supportsStreamingOutput: false,
-        providerDependency: "none",
-        defaultTimeoutMs: 15000,
-        retryableErrorCodes: [],
-        approvalMode: "never",
-        supportsCancellation: false,
-        cleanupGuarantee: "none",
-        requiresExecutionReceipt: false,
-        highRiskPatterns: [],
-        isConcurrencySafe: true,
-      },
+      metadata: createMetadata({ toolName: "read.fail" }),
       execute: async () => { throw new Error("intentional failure"); },
     },
   ]);
@@ -349,6 +289,7 @@ test("ToolExecutor executeParallel reports failures in errors array", async () =
   assert.equal(result.results.length, 1);
   assert.equal(result.results[0], "ok");
   assert.equal(result.errors.length, 1);
+  assert.ok(result.errors[0] !== undefined);
   assert.equal(result.errors[0].toolName, "read.fail");
 });
 
@@ -372,29 +313,7 @@ test("ToolExecutor executeParallel uses maxParallelism option", async () => {
   );
 
   const items = Array.from({ length: 4 }, (_, i) => ({
-    metadata: {
-      toolName: `read.${i}`,
-      readOnly: true,
-      idempotent: true,
-      needsFileLock: "read",
-      sideEffectScope: "none",
-      recoveryStrategy: "retry_safe",
-      requiresConfirmation: false,
-      riskLevel: "low",
-      pathScopeMode: "none",
-      producesArtifact: false,
-      outputKind: "text",
-      supportsStreamingOutput: false,
-      providerDependency: "none",
-      defaultTimeoutMs: 15000,
-      retryableErrorCodes: [],
-      approvalMode: "never",
-      supportsCancellation: false,
-      cleanupGuarantee: "none",
-      requiresExecutionReceipt: false,
-      highRiskPatterns: [],
-      isConcurrencySafe: true,
-    },
+    metadata: createMetadata({ toolName: `read.${i}` }),
     execute: async () => {
       concurrentCount++;
       if (concurrentCount > maxSeen) maxSeen = concurrentCount;
@@ -429,29 +348,7 @@ test("ToolExecutor defaults parallelOptions to empty object when not provided", 
 
   const result = await executor.executeParallel([
     {
-      metadata: {
-        toolName: "read.one",
-        readOnly: true,
-        idempotent: true,
-        needsFileLock: "read",
-        sideEffectScope: "none",
-        recoveryStrategy: "retry_safe",
-        requiresConfirmation: false,
-        riskLevel: "low",
-        pathScopeMode: "none",
-        producesArtifact: false,
-        outputKind: "text",
-        supportsStreamingOutput: false,
-        providerDependency: "none",
-        defaultTimeoutMs: 15000,
-        retryableErrorCodes: [],
-        approvalMode: "never",
-        supportsCancellation: false,
-        cleanupGuarantee: "none",
-        requiresExecutionReceipt: false,
-        highRiskPatterns: [],
-        isConcurrencySafe: true,
-      },
+      metadata: createMetadata({ toolName: "read.one" }),
       execute: async () => "one",
     },
   ]);

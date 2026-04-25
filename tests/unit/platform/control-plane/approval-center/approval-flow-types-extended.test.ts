@@ -21,8 +21,8 @@ import {
   type FlowEscalationLevel,
   type VoteResult,
   type FeedbackResult,
-  type ApprovalFlowConfig,
 } from "../../../../../src/platform/control-plane/approval-center/approval-flow-types.js";
+import { EscalationReason, DelegationStatus } from "../../../../../src/platform/control-plane/approval-center/escalation-manager.js";
 
 test("ApprovalTimeoutConfig interface structure", () => {
   const config: ApprovalTimeoutConfig = {
@@ -153,7 +153,7 @@ test("FlowEscalationLevel interface structure", () => {
     escalateTo: { type: "role", identifier: "senior-admin", can_delegate: true },
     escalatedAt: "2026-04-24T10:00:00.000Z",
     escalatedBy: "system",
-    reason: "timeout",
+    reason: EscalationReason.TIMEOUT,
     sourceApprovalId: "approval-123",
   };
 
@@ -179,7 +179,7 @@ test("VoteResult interface structure", () => {
       isVotingWindowExpired: false,
       uniqueApprovers: new Set(["user1", "user2"]),
     },
-    flowStatus: "approved",
+    flowStatus: FlowStatus.APPROVED,
   };
 
   assert.equal(result.success, true);
@@ -202,7 +202,7 @@ test("VoteResult with error", () => {
       isVotingWindowExpired: false,
       uniqueApprovers: new Set(),
     },
-    flowStatus: "pending",
+    flowStatus: FlowStatus.PENDING,
     error: "Flow not found",
   };
 
@@ -215,7 +215,7 @@ test("FeedbackResult interface structure", () => {
   const result: FeedbackResult = {
     success: true,
     newIteration: 3,
-    flowStatus: "pending",
+    flowStatus: FlowStatus.PENDING,
     shouldReplan: true,
   };
 
@@ -229,7 +229,7 @@ test("FeedbackResult without replan", () => {
   const result: FeedbackResult = {
     success: true,
     newIteration: 1,
-    flowStatus: "pending",
+    flowStatus: FlowStatus.PENDING,
     shouldReplan: false,
   };
 
@@ -432,7 +432,7 @@ test("ApprovalFlowState with delegation", () => {
       originalApprovalId: "approval-123",
       ttlResetCount: 0,
       maxTtlResets: 3,
-      status: "active" as const,
+      status: DelegationStatus.ACTIVE,
     },
     feedbackLoop: null,
     createdAt: "2026-04-24T10:00:00.000Z",
@@ -593,7 +593,7 @@ test("ApprovalFlowState with escalationHistory", () => {
         escalateTo: { type: "role", identifier: "senior-admin", can_delegate: true },
         escalatedAt: "2026-04-24T10:30:00.000Z",
         escalatedBy: "system",
-        reason: "timeout",
+        reason: EscalationReason.TIMEOUT,
         sourceApprovalId: "approval-123",
       },
     ],

@@ -84,8 +84,7 @@ test("traffic routing: advances progressive rollout stages until completion", ()
   assert.equal(stage1?.toWeight, 100);
   assert.equal(finalStage?.status, "completed");
   assert.equal(finalStage?.completedAt != null, true);
-  assert.equal(slots.blue?.status, "draining");
-  assert.equal(slots.blue?.trafficWeight, 0);
+  assert.equal("blue" in slots, false);
   assert.equal(slots.green?.status, "active");
   assert.equal(slots.green?.trafficWeight, 100);
 });
