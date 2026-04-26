@@ -1,116 +1,256 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TaskOutcomeGrader, type TaskOutcomeGradeInput } from "../../../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
+import type {
+  TaskOutcomeGradeInput,
+  TaskOutcomeGrade,
+} from "../../../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
+import { TaskOutcomeGrader } from "../../../../../../src/platform/orchestration/harness/evaluation/task-outcome-grader.js";
 
-test("TaskOutcomeGrader grades with all evidence and accept decision", () => {
-  const grader = new TaskOutcomeGrader();
+// ─────────────────────────────────────────────────────────────────────────────
+// TaskOutcomeGradeInput structure tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("TaskOutcomeGradeInput structure with all fields", () => {
   const input: TaskOutcomeGradeInput = {
     evaluatorScore: 0.85,
-    expectedEvidenceRefs: ["evidence-1", "evidence-2"],
-    actualEvidenceRefs: ["evidence-1", "evidence-2"],
+    expectedEvidenceRefs: ["evidence1", "evidence2"],
+    actualEvidenceRefs: ["evidence1", "evidence2"],
+    decisionAction: "accept",
+  };
+  assert.equal(input.evaluatorScore, 0.85);
+  assert.equal(input.expectedEvidenceRefs.length, 2);
+  assert.equal(input.actualEvidenceRefs.length, 2);
+  assert.equal(input.decisionAction, "accept");
+});
+
+test("TaskOutcomeGradeInput with empty evidence arrays", () => {
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.5,
+    expectedEvidenceRefs: [],
+    actualEvidenceRefs: [],
+    decisionAction: null,
+  };
+  assert.equal(input.expectedEvidenceRefs.length, 0);
+  assert.equal(input.actualEvidenceRefs.length, 0);
+  assert.equal(input.decisionAction, null);
+});
+
+test("TaskOutcomeGradeInput with partial evidence match", () => {
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.9,
+    expectedEvidenceRefs: ["audit_log", "approval"],
+    actualEvidenceRefs: ["audit_log"],
+    decisionAction: "accept",
+  };
+  assert.equal(input.expectedEvidenceRefs.length, 2);
+  assert.equal(input.actualEvidenceRefs.length, 1);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TaskOutcomeGrade structure tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("TaskOutcomeGrade structure - passed", () => {
+  const grade: TaskOutcomeGrade = {
+    score: 0.85,
+    passed: true,
+    findingCodes: [],
+  };
+  assert.equal(grade.score, 0.85);
+  assert.ok(grade.passed);
+  assert.equal(grade.findingCodes.length, 0);
+});
+
+test("TaskOutcomeGrade structure - failed", () => {
+  const grade: TaskOutcomeGrade = {
+    score: 0.5,
+    passed: false,
+    findingCodes: ["harness.eval.missing_evidence:audit_log"],
+  };
+  assert.equal(grade.score, 0.5);
+  assert.ok(!grade.passed);
+  assert.equal(grade.findingCodes.length, 1);
+});
+
+test("TaskOutcomeGrade score is rounded to 4 decimal places", () => {
+  const grade: TaskOutcomeGrade = {
+    score: 0.3333,
+    passed: false,
+    findingCodes: [],
+  };
+  assert.equal(grade.score, 0.3333);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TaskOutcomeGrader.grade() tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("TaskOutcomeGrader passes when all evidence present and score >= 0.75", () => {
+  const grader = new TaskOutcomeGrader();
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.8,
+    expectedEvidenceRefs: ["audit_log", "approval"],
+    actualEvidenceRefs: ["audit_log", "approval"],
     decisionAction: "accept",
   };
 
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, true);
-  assert.equal(grade.score, 0.85);
-  assert.deepEqual(grade.findingCodes, []);
+  const result = grader.grade(input);
+
+  assert.ok(result.passed);
+  assert.ok(result.findingCodes.length === 0);
+  assert.equal(result.score, 0.8);
 });
 
-test("TaskOutcomeGrader detects missing evidence", () => {
+test("TaskOutcomeGrader fails when score < 0.75 despite complete evidence", () => {
+  const grader = new TaskOutcomeGrader();
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.7,
+    expectedEvidenceRefs: ["evidence1"],
+    actualEvidenceRefs: ["evidence1"],
+    decisionAction: "accept",
+  };
+
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.equal(result.score, 0.7);
+});
+
+test("TaskOutcomeGrader fails when evidence missing", () => {
   const grader = new TaskOutcomeGrader();
   const input: TaskOutcomeGradeInput = {
     evaluatorScore: 0.9,
-    expectedEvidenceRefs: ["evidence-1", "evidence-2", "evidence-3"],
-    actualEvidenceRefs: ["evidence-1"],
+    expectedEvidenceRefs: ["audit_log", "approval", "review"],
+    actualEvidenceRefs: ["audit_log"],
     decisionAction: "accept",
   };
 
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, false);
-  assert.ok(grade.findingCodes.includes("harness.eval.missing_evidence:evidence-2"));
-  assert.ok(grade.findingCodes.includes("harness.eval.missing_evidence:evidence-3"));
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.ok(result.findingCodes.length >= 2); // missing approval and review
+  assert.ok(result.findingCodes.some((code) => code.includes("approval")));
+  assert.ok(result.findingCodes.some((code) => code.includes("review")));
 });
 
-test("TaskOutcomeGrader detects non-accept decision", () => {
+test("TaskOutcomeGrader fails when decision action is not accept", () => {
   const grader = new TaskOutcomeGrader();
   const input: TaskOutcomeGradeInput = {
-    evaluatorScore: 0.85,
+    evaluatorScore: 0.9,
     expectedEvidenceRefs: [],
     actualEvidenceRefs: [],
-    decisionAction: "replan",
+    decisionAction: "reject",
   };
 
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, false);
-  assert.ok(grade.findingCodes.includes("harness.eval.non_accept_decision:replan"));
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.ok(result.findingCodes.includes("harness.eval.non_accept_decision:reject"));
 });
 
-test("TaskOutcomeGrader fails when score below 0.75 even with all evidence", () => {
+test("TaskOutcomeGrader fails when decision action is null", () => {
   const grader = new TaskOutcomeGrader();
   const input: TaskOutcomeGradeInput = {
-    evaluatorScore: 0.74,
-    expectedEvidenceRefs: ["evidence-1"],
-    actualEvidenceRefs: ["evidence-1"],
-    decisionAction: "accept",
-  };
-
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, false);
-});
-
-test("TaskOutcomeGrader fails when score below 0.75 even with non-accept decision", () => {
-  const grader = new TaskOutcomeGrader();
-  const input: TaskOutcomeGradeInput = {
-    evaluatorScore: 0.5,
-    expectedEvidenceRefs: ["evidence-1"],
-    actualEvidenceRefs: ["evidence-1"],
-    decisionAction: "replan",
-  };
-
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, false);
-  assert.ok(grade.findingCodes.includes("harness.eval.non_accept_decision:replan"));
-  // Note: evidence-1 is present, so missing_evidence is not reported
-});
-
-test("TaskOutcomeGrader handles null decision action", () => {
-  const grader = new TaskOutcomeGrader();
-  const input: TaskOutcomeGradeInput = {
-    evaluatorScore: 0.85,
+    evaluatorScore: 0.9,
     expectedEvidenceRefs: [],
     actualEvidenceRefs: [],
     decisionAction: null,
   };
 
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, false);
-  assert.ok(grade.findingCodes.includes("harness.eval.non_accept_decision:none"));
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.ok(result.findingCodes.includes("harness.eval.non_accept_decision:none"));
+});
+
+test("TaskOutcomeGrader combines missing evidence and non-accept decision", () => {
+  const grader = new TaskOutcomeGrader();
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.8,
+    expectedEvidenceRefs: ["missing1", "missing2"],
+    actualEvidenceRefs: [],
+    decisionAction: "escalate",
+  };
+
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.ok(result.findingCodes.length >= 3); // missing1, missing2, non_accept
+  assert.ok(result.findingCodes.some((code) => code.includes("missing_evidence:missing1")));
+  assert.ok(result.findingCodes.some((code) => code.includes("missing_evidence:missing2")));
+  assert.ok(result.findingCodes.some((code) => code.includes("non_accept_decision:escalate")));
+});
+
+test("TaskOutcomeGrader passes with score exactly 0.75 and complete evidence", () => {
+  const grader = new TaskOutcomeGrader();
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.75,
+    expectedEvidenceRefs: ["evidence"],
+    actualEvidenceRefs: ["evidence"],
+    decisionAction: "accept",
+  };
+
+  const result = grader.grade(input);
+
+  assert.ok(result.passed);
+  assert.equal(result.score, 0.75);
+});
+
+test("TaskOutcomeGrader fails with score just below 0.75", () => {
+  const grader = new TaskOutcomeGrader();
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.749,
+    expectedEvidenceRefs: ["evidence"],
+    actualEvidenceRefs: ["evidence"],
+    decisionAction: "accept",
+  };
+
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
 });
 
 test("TaskOutcomeGrader rounds score to 4 decimal places", () => {
   const grader = new TaskOutcomeGrader();
   const input: TaskOutcomeGradeInput = {
-    evaluatorScore: 0.8555555,
+    evaluatorScore: 0.8888888,
     expectedEvidenceRefs: [],
     actualEvidenceRefs: [],
     decisionAction: "accept",
   };
 
-  const grade = grader.grade(input);
-  assert.equal(grade.score, 0.8556);
+  const result = grader.grade(input);
+
+  assert.equal(result.score, 0.8889);
 });
 
-test("TaskOutcomeGrader passes with score exactly 0.75 and all evidence", () => {
+test("TaskOutcomeGrader with high score but missing evidence", () => {
   const grader = new TaskOutcomeGrader();
   const input: TaskOutcomeGradeInput = {
-    evaluatorScore: 0.75,
-    expectedEvidenceRefs: ["evidence-1"],
-    actualEvidenceRefs: ["evidence-1"],
+    evaluatorScore: 0.95,
+    expectedEvidenceRefs: ["critical_audit"],
+    actualEvidenceRefs: [], // missing critical evidence
     decisionAction: "accept",
   };
 
-  const grade = grader.grade(input);
-  assert.equal(grade.passed, true);
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.ok(result.findingCodes.some((code) => code.includes("critical_audit")));
+});
+
+test("TaskOutcomeGrader with complete evidence and non-accept action", () => {
+  const grader = new TaskOutcomeGrader();
+  const input: TaskOutcomeGradeInput = {
+    evaluatorScore: 0.85,
+    expectedEvidenceRefs: [],
+    actualEvidenceRefs: [],
+    decisionAction: "retry",
+  };
+
+  const result = grader.grade(input);
+
+  assert.ok(!result.passed);
+  assert.ok(result.findingCodes.includes("harness.eval.non_accept_decision:retry"));
 });

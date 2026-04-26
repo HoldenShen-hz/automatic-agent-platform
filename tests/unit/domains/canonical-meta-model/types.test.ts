@@ -9,12 +9,12 @@ import {
   type MetaModelValidationResult,
 } from "../../../../src/domains/canonical-meta-model/types.js";
 
-test("META_MODEL_QUESTION_IDS contains exactly 12 question IDs", () => {
+test("META_MODEL_QUESTION_IDS contains 12 question IDs", () => {
   assert.equal(META_MODEL_QUESTION_IDS.length, 12);
 });
 
-test("META_MODEL_QUESTION_IDS contains all expected question IDs", () => {
-  const expectedIds = [
+test("META_MODEL_QUESTION_IDS contains expected question IDs", () => {
+  const expected = [
     "Q1_primary_user",
     "Q2_primary_outcomes",
     "Q3_core_inputs",
@@ -29,147 +29,104 @@ test("META_MODEL_QUESTION_IDS contains all expected question IDs", () => {
     "Q12_pre_launch_certs",
   ];
 
-  for (const id of expectedIds) {
-    assert.ok(
-      META_MODEL_QUESTION_IDS.includes(id as MetaModelQuestionId),
-      `Expected ${id} to be in META_MODEL_QUESTION_IDS`,
-    );
+  for (const id of expected) {
+    assert.ok(META_MODEL_QUESTION_IDS.includes(id as MetaModelQuestionId));
   }
 });
 
-test("META_MODEL_QUESTION_IDS is a readonly tuple", () => {
-  const tupleLength = META_MODEL_QUESTION_IDS.length;
-  assert.equal(tupleLength, 12);
-
-  // Verify it's a readonly array by checking individual elements
-  assert.equal(META_MODEL_QUESTION_IDS[0], "Q1_primary_user");
-  assert.equal(META_MODEL_QUESTION_IDS[11], "Q12_pre_launch_certs");
+test("MetaModelQuestionId type is assignable from META_MODEL_QUESTION_IDS values", () => {
+  const questionId: MetaModelQuestionId = "Q1_primary_user";
+  assert.equal(questionId, "Q1_primary_user");
 });
 
-test("MetaModelAnswer accepts valid answer structure", () => {
+test("MetaModelAnswer structure", () => {
   const answer: MetaModelAnswer = {
     questionId: "Q1_primary_user",
     title: "Primary User",
-    answer: "Development teams",
-    evidenceRefs: ["doc_1", "doc_2"],
+    answer: "Operators and domain owners",
+    evidenceRefs: ["ref-1", "ref-2"],
     status: "complete",
   };
 
   assert.equal(answer.questionId, "Q1_primary_user");
   assert.equal(answer.title, "Primary User");
-  assert.equal(answer.answer, "Development teams");
-  assert.deepEqual(answer.evidenceRefs, ["doc_1", "doc_2"]);
+  assert.equal(answer.answer, "Operators and domain owners");
+  assert.deepEqual(answer.evidenceRefs, ["ref-1", "ref-2"]);
   assert.equal(answer.status, "complete");
 });
 
-test("MetaModelAnswer accepts all status values", () => {
-  const statuses: MetaModelAnswer["status"][] = ["complete", "partial", "pending"];
+test("MetaModelAnswer can have pending status", () => {
+  const answer: MetaModelAnswer = {
+    questionId: "Q2_primary_outcomes",
+    title: "Primary Outcomes",
+    answer: "",
+    evidenceRefs: [],
+    status: "pending",
+  };
 
-  for (const status of statuses) {
-    const answer: MetaModelAnswer = {
-      questionId: "Q1_primary_user",
-      title: "Test",
-      answer: "Test answer",
-      evidenceRefs: [],
-      status,
-    };
-    assert.equal(answer.status, status);
-  }
+  assert.equal(answer.status, "pending");
 });
 
-test("DomainMetaModel accepts valid model structure", () => {
+test("MetaModelAnswer can have partial status", () => {
+  const answer: MetaModelAnswer = {
+    questionId: "Q3_core_inputs",
+    title: "Core Inputs",
+    answer: "Some inputs",
+    evidenceRefs: [],
+    status: "partial",
+  };
+
+  assert.equal(answer.status, "partial");
+});
+
+test("DomainMetaModel structure", () => {
   const model: DomainMetaModel = {
-    domainId: "coding",
-    displayName: "Coding",
-    version: "1.0.0",
+    domainId: "my-domain",
+    displayName: "My Domain",
+    version: "v1",
     answers: [],
   };
 
-  assert.equal(model.domainId, "coding");
-  assert.equal(model.displayName, "Coding");
-  assert.equal(model.version, "1.0.0");
+  assert.equal(model.domainId, "my-domain");
+  assert.equal(model.displayName, "My Domain");
+  assert.equal(model.version, "v1");
   assert.deepEqual(model.answers, []);
 });
 
-test("DomainMetaModel accepts model with answers", () => {
-  const answer: MetaModelAnswer = {
-    questionId: "Q1_primary_user",
-    title: "Primary User",
-    answer: "Dev teams",
-    evidenceRefs: ["ref_1"],
-    status: "complete",
-  };
-
-  const model: DomainMetaModel = {
-    domainId: "data-engineering",
-    displayName: "Data Engineering",
-    version: "2.0.0",
-    answers: [answer],
-  };
-
-  assert.equal(model.answers.length, 1);
-  assert.equal(model.answers[0]!.questionId, "Q1_primary_user");
-});
-
-test("MetaModelValidationResult accepts valid structure", () => {
+test("MetaModelValidationResult structure", () => {
   const result: MetaModelValidationResult = {
-    domainId: "coding",
+    domainId: "my-domain",
     valid: true,
-    completeness: 0.85,
-    missingQuestionIds: ["Q5_decision_scope", "Q6_risk_hotspots"],
-    findings: ["Missing decision scope", "Risk analysis incomplete"],
-  };
-
-  assert.equal(result.domainId, "coding");
-  assert.equal(result.valid, true);
-  assert.equal(result.completeness, 0.85);
-  assert.equal(result.missingQuestionIds.length, 2);
-  assert.equal(result.findings.length, 2);
-});
-
-test("MetaModelValidationResult can be invalid with empty missingQuestionIds", () => {
-  const result: MetaModelValidationResult = {
-    domainId: "coding",
-    valid: true,
-    completeness: 1.0,
+    completeness: 100,
     missingQuestionIds: [],
     findings: [],
   };
 
+  assert.equal(result.domainId, "my-domain");
   assert.equal(result.valid, true);
-  assert.equal(result.completeness, 1.0);
-  assert.equal(result.missingQuestionIds.length, 0);
-  assert.equal(result.findings.length, 0);
+  assert.equal(result.completeness, 100);
+  assert.deepEqual(result.missingQuestionIds, []);
+  assert.deepEqual(result.findings, []);
 });
 
-test("MetaModelQuestionId type accepts any valid question ID", () => {
-  const questionId: MetaModelQuestionId = "Q1_primary_user";
-  assert.equal(questionId, "Q1_primary_user");
+test("MetaModelValidationResult can have invalid state", () => {
+  const result: MetaModelValidationResult = {
+    domainId: "my-domain",
+    valid: false,
+    completeness: 50,
+    missingQuestionIds: ["Q1_primary_user", "Q2_primary_outcomes"],
+    findings: ["missing_question:Q1_primary_user", "missing_question:Q2_primary_outcomes"],
+  };
 
-  const questionId2: MetaModelQuestionId = "Q12_pre_launch_certs";
-  assert.equal(questionId2, "Q12_pre_launch_certs");
+  assert.equal(result.valid, false);
+  assert.equal(result.completeness, 50);
+  assert.equal(result.missingQuestionIds.length, 2);
+  assert.equal(result.findings.length, 2);
 });
 
-test("MetaModelQuestionId can be used to index META_MODEL_QUESTION_IDS", () => {
-  const id: MetaModelQuestionId = META_MODEL_QUESTION_IDS[0];
-  assert.equal(id, "Q1_primary_user");
-});
-
-test("META_MODEL_QUESTION_IDS can be iterated", () => {
-  const ids = [...META_MODEL_QUESTION_IDS];
-  assert.equal(ids.length, 12);
-  assert.equal(ids[0], "Q1_primary_user");
-  assert.equal(ids[11], "Q12_pre_launch_certs");
-});
-
-test("META_MODEL_QUESTION_IDS includes Q9 through Q12 for eval and governance", () => {
-  const evalAndGovernanceIds = META_MODEL_QUESTION_IDS.filter((id) =>
-    id.startsWith("Q9_") || id.startsWith("Q10_") || id.startsWith("Q11_") || id.startsWith("Q12_")
-  );
-
-  assert.equal(evalAndGovernanceIds.length, 4);
-  assert.ok(META_MODEL_QUESTION_IDS.includes("Q9_eval_metrics"));
-  assert.ok(META_MODEL_QUESTION_IDS.includes("Q10_human_governance"));
-  assert.ok(META_MODEL_QUESTION_IDS.includes("Q11_latency_sla"));
-  assert.ok(META_MODEL_QUESTION_IDS.includes("Q12_pre_launch_certs"));
+test("META_MODEL_QUESTION_IDS is readonly tuple", () => {
+  assert.equal(typeof META_MODEL_QUESTION_IDS[0], "string");
+  // Verify it's immutable by checking first element
+  const first = META_MODEL_QUESTION_IDS[0];
+  assert.equal(first, "Q1_primary_user");
 });

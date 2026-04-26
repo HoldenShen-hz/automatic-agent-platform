@@ -31,7 +31,7 @@ test("QUANT_TRADING_DOMAIN_PRESET has requiredCapabilities", () => {
 });
 
 test("QUANT_TRADING_DOMAIN_PRESET has reviewRequiredTaskTypes", () => {
-  assert.deepEqual(QUANT_TRADING_DOMAIN_PRESET.reviewRequiredTaskTypes, ["trade"]);
+  assert.deepEqual(QUANT_TRADING_DOMAIN_PRESET.reviewRequiredTaskTypes, ["simulate", "trade"]);
 });
 
 test("QUANT_TRADING_DOMAIN_PRESET has defaultWorkflowIds", () => {
@@ -44,16 +44,16 @@ test("QUANT_TRADING_DOMAIN_PRESET has defaultToolBundleIds", () => {
   assert.ok(QUANT_TRADING_DOMAIN_PRESET.defaultToolBundleIds.length > 0);
 });
 
+test("requiresQuantTradingReview returns true for simulate task type", () => {
+  assert.equal(requiresQuantTradingReview("simulate"), true);
+});
+
 test("requiresQuantTradingReview returns true for trade task type", () => {
   assert.equal(requiresQuantTradingReview("trade"), true);
 });
 
 test("requiresQuantTradingReview returns false for research task type", () => {
   assert.equal(requiresQuantTradingReview("research"), false);
-});
-
-test("requiresQuantTradingReview returns false for simulate task type", () => {
-  assert.equal(requiresQuantTradingReview("simulate"), false);
 });
 
 test("QUANT_TRADING_DOMAIN_PRESET is frozen and immutable", () => {

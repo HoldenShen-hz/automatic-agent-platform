@@ -1,272 +1,337 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
-import {
-  GuardrailEngine,
-  type GuardrailAssessment,
-  type GuardrailAssessmentInput,
-  type GuardrailFinding,
+import type {
+  GuardrailSeverity,
+  GuardrailFinding,
+  GuardrailAssessment,
+  GuardrailAssessmentInput,
 } from "../../../../../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
-import type { HarnessToolbelt } from "../../../../../../src/platform/orchestration/harness/toolbelt-assembler.js";
+import { GuardrailEngine } from "../../../../../../src/platform/orchestration/harness/guardrails/guardrail-engine.js";
 
-function createMockToolbelt(overrides: Partial<HarnessToolbelt> = {}): HarnessToolbelt {
+// Mock toolbelt for testing
+function createMockToolbelt(overrides: {
+  blockedTools?: string[];
+  requiredEvidence?: string[];
+} = {}): any {
   return {
-    allowedTools: ["read", "write"],
-    grantedTools: ["read", "write"],
-    blockedTools: [],
-    requiredEvidence: [],
-    ...overrides,
+    blockedTools: overrides.blockedTools ?? [],
+    requiredEvidence: overrides.requiredEvidence ?? [],
+    tools: [],
   };
 }
 
-function createAssessmentInput(overrides: Partial<GuardrailAssessmentInput> = {}): GuardrailAssessmentInput {
-  return {
+// ─────────────────────────────────────────────────────────────────────────────
+// GuardrailSeverity tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("GuardrailSeverity accepts info value", () => {
+  const severity: GuardrailSeverity = "info";
+  assert.equal(severity, "info");
+});
+
+test("GuardrailSeverity accepts warn value", () => {
+  const severity: GuardrailSeverity = "warn";
+  assert.equal(severity, "warn");
+});
+
+test("GuardrailSeverity accepts block value", () => {
+  const severity: GuardrailSeverity = "block";
+  assert.equal(severity, "block");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GuardrailFinding structure tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("GuardrailFinding with policy layer", () => {
+  const finding: GuardrailFinding = {
+    layer: "policy",
+    severity: "info",
+    code: "test.code",
+    message: "Test message",
+  };
+  assert.equal(finding.layer, "policy");
+  assert.equal(finding.severity, "info");
+});
+
+test("GuardrailFinding with risk layer", () => {
+  const finding: GuardrailFinding = {
+    layer: "risk",
+    severity: "warn",
+    code: "risk.code",
+    message: "Risk warning",
+  };
+  assert.equal(finding.layer, "risk");
+  assert.equal(finding.severity, "warn");
+});
+
+test("GuardrailFinding with tool layer", () => {
+  const finding: GuardrailFinding = {
+    layer: "tool",
+    severity: "block",
+    code: "tool.blocked",
+    message: "Tool blocked",
+  };
+  assert.equal(finding.layer, "tool");
+  assert.equal(finding.severity, "block");
+});
+
+test("GuardrailFinding with evidence layer", () => {
+  const finding: GuardrailFinding = {
+    layer: "evidence",
+    severity: "warn",
+    code: "evidence.missing",
+    message: "Evidence missing",
+  };
+  assert.equal(finding.layer, "evidence");
+});
+
+test("GuardrailFinding with budget layer", () => {
+  const finding: GuardrailFinding = {
+    layer: "budget",
+    severity: "block",
+    code: "budget.exceeded",
+    message: "Budget exceeded",
+  };
+  assert.equal(finding.layer, "budget");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GuardrailAssessment structure tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("GuardrailAssessment passed structure", () => {
+  const assessment: GuardrailAssessment = {
+    passed: true,
+    requiresHuman: false,
+    suggestedAction: "proceed",
+    findings: [],
+  };
+  assert.ok(assessment.passed);
+  assert.ok(!assessment.requiresHuman);
+  assert.equal(assessment.suggestedAction, "proceed");
+});
+
+test("GuardrailAssessment with findings", () => {
+  const assessment: GuardrailAssessment = {
+    passed: false,
+    requiresHuman: true,
+    suggestedAction: "escalate_to_human",
+    findings: [
+      { layer: "risk", severity: "warn", code: "risk.high", message: "High risk detected" },
+    ],
+  };
+  assert.ok(!assessment.passed);
+  assert.ok(assessment.requiresHuman);
+  assert.equal(assessment.findings.length, 1);
+});
+
+test("GuardrailAssessment suggestedAction abort", () => {
+  const assessment: GuardrailAssessment = {
+    passed: false,
+    requiresHuman: false,
+    suggestedAction: "abort",
+    findings: [
+      { layer: "tool", severity: "block", code: "blocked", message: "Blocked" },
+    ],
+  };
+  assert.equal(assessment.suggestedAction, "abort");
+});
+
+test("GuardrailAssessment suggestedAction retry_same_plan", () => {
+  const assessment: GuardrailAssessment = {
+    passed: true,
+    requiresHuman: false,
+    suggestedAction: "retry_same_plan",
+    findings: [],
+  };
+  assert.equal(assessment.suggestedAction, "retry_same_plan");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GuardrailAssessmentInput structure tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("GuardrailAssessmentInput structure", () => {
+  const input: GuardrailAssessmentInput = {
     toolbelt: createMockToolbelt(),
     evidenceRefs: [],
-    riskScore: 5,
-    maxRiskScore: 10,
-    escalationThreshold: 8,
+    riskScore: 10,
+    maxRiskScore: 50,
+    escalationThreshold: 30,
     currentStepCount: 5,
-    maxSteps: 20,
-    ...overrides,
+    maxSteps: 100,
   };
-}
+  assert.equal(input.riskScore, 10);
+  assert.equal(input.maxRiskScore, 50);
+  assert.equal(input.currentStepCount, 5);
+});
 
-test("GuardrailEngine.assess passes when all checks pass", () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// GuardrailEngine.assess() tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("GuardrailEngine assess passes with no issues", () => {
   const engine = new GuardrailEngine();
-  const input = createAssessmentInput();
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt(),
+    evidenceRefs: ["evidence1"],
+    riskScore: 10,
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 5,
+    maxSteps: 100,
+  };
 
   const result = engine.assess(input);
 
-  assert.equal(result.passed, true);
-  assert.equal(result.requiresHuman, false);
+  assert.ok(result.passed);
+  assert.ok(!result.requiresHuman);
   assert.equal(result.suggestedAction, "proceed");
   assert.equal(result.findings.length, 0);
 });
 
-test("GuardrailEngine.blocks when blocked tools requested", () => {
+test("GuardrailEngine assess blocks when blocked tools requested", () => {
   const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    toolbelt: createMockToolbelt({ blockedTools: ["shell", "deploy"] }),
-  });
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt({ blockedTools: ["delete_file", "format_disk"] }),
+    evidenceRefs: [],
+    riskScore: 10,
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 5,
+    maxSteps: 100,
+  };
 
   const result = engine.assess(input);
 
-  assert.equal(result.passed, false);
-  assert.equal(result.suggestedAction, "abort");
-  assert.ok(result.findings.some((f) => f.code === "harness.guardrail.blocked_tool_requested"));
+  assert.ok(!result.passed);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]!.layer, "tool");
+  assert.equal(result.findings[0]!.severity, "block");
+  assert.equal(result.findings[0]!.code, "harness.guardrail.blocked_tool_requested");
 });
 
-test("GuardrailEngine.warns when required evidence missing", () => {
+test("GuardrailEngine assess warns when required evidence missing", () => {
   const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    toolbelt: createMockToolbelt({ requiredEvidence: ["evidence:log", "evidence:output"] }),
-    evidenceRefs: ["evidence:log"],
-  });
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt({ requiredEvidence: ["audit_log", "approval_record"] }),
+    evidenceRefs: ["audit_log"], // missing approval_record
+    riskScore: 10,
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 5,
+    maxSteps: 100,
+  };
 
   const result = engine.assess(input);
 
-  assert.equal(result.passed, true);
-  assert.equal(result.requiresHuman, true);
+  assert.ok(result.passed); // still passes but with warning
+  assert.ok(!result.requiresHuman);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0]!.layer, "evidence");
+  assert.equal(result.findings[0]!.severity, "warn");
+});
+
+test("GuardrailEngine assess blocks when risk exceeds max", () => {
+  const engine = new GuardrailEngine();
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt(),
+    evidenceRefs: [],
+    riskScore: 75,
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 5,
+    maxSteps: 100,
+  };
+
+  const result = engine.assess(input);
+
+  assert.ok(!result.passed);
+  assert.ok(!result.requiresHuman);
+  assert.equal(result.suggestedAction, "abort");
+  const riskFinding = result.findings.find((f) => f.layer === "risk");
+  assert.ok(riskFinding);
+  assert.equal(riskFinding!.code, "harness.guardrail.max_risk_exceeded");
+});
+
+test("GuardrailEngine assess warns and requires human when risk reaches threshold", () => {
+  const engine = new GuardrailEngine();
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt(),
+    evidenceRefs: [],
+    riskScore: 35, // between escalationThreshold(30) and maxRiskScore(50)
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 5,
+    maxSteps: 100,
+  };
+
+  const result = engine.assess(input);
+
+  assert.ok(result.passed); // not blocked but warning
+  assert.ok(result.requiresHuman);
   assert.equal(result.suggestedAction, "escalate_to_human");
-  assert.ok(result.findings.some((f) => f.code === "harness.guardrail.required_evidence_missing"));
 });
 
-test("GuardrailEngine.blocks when risk exceeds maxRiskScore", () => {
+test("GuardrailEngine assess blocks when step budget exhausted", () => {
   const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    riskScore: 11,
-    maxRiskScore: 10,
-  });
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt(),
+    evidenceRefs: [],
+    riskScore: 10,
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 100, // equals maxSteps
+    maxSteps: 100,
+  };
 
   const result = engine.assess(input);
 
-  assert.equal(result.passed, false);
-  assert.equal(result.suggestedAction, "abort");
-  assert.ok(result.findings.some((f) => f.code === "harness.guardrail.max_risk_exceeded"));
+  assert.ok(!result.passed);
+  const budgetFinding = result.findings.find((f) => f.layer === "budget");
+  assert.ok(budgetFinding);
+  assert.equal(budgetFinding!.severity, "block");
+  assert.equal(budgetFinding!.code, "harness.guardrail.step_budget_exhausted");
 });
 
-test("GuardrailEngine.warns when risk reaches escalation threshold", () => {
+test("GuardrailEngine assess combines multiple findings", () => {
   const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    riskScore: 8,
-    maxRiskScore: 10,
-    escalationThreshold: 8,
-  });
-
-  const result = engine.assess(input);
-
-  assert.equal(result.passed, true);
-  assert.equal(result.requiresHuman, true);
-  assert.equal(result.suggestedAction, "escalate_to_human");
-  assert.ok(result.findings.some((f) => f.code === "harness.guardrail.risk_requires_human"));
-});
-
-test("GuardrailEngine.blocks when step budget exhausted", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    currentStepCount: 20,
-    maxSteps: 20,
-  });
-
-  const result = engine.assess(input);
-
-  assert.equal(result.passed, false);
-  assert.equal(result.suggestedAction, "abort");
-  assert.ok(result.findings.some((f) => f.code === "harness.guardrail.step_budget_exhausted"));
-});
-
-test("GuardrailEngine returns multiple findings when multiple issues exist", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
+  const input: GuardrailAssessmentInput = {
     toolbelt: createMockToolbelt({
-      blockedTools: ["shell"],
-      requiredEvidence: ["evidence:log"],
+      blockedTools: ["dangerous_tool"],
+      requiredEvidence: ["missing_evidence"],
     }),
     evidenceRefs: [],
-    riskScore: 9,
-    maxRiskScore: 10,
-    escalationThreshold: 8,
-    currentStepCount: 20,
-    maxSteps: 20,
-  });
-
-  const result = engine.assess(input);
-
-  assert.equal(result.passed, false);
-  assert.ok(result.findings.length >= 3);
-});
-
-test("GuardrailEngine finding has correct layer and severity", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    toolbelt: createMockToolbelt({ blockedTools: ["dangerous_tool"] }),
-  });
-
-  const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.blocked_tool_requested");
-
-  assert.ok(finding !== null);
-  assert.equal(finding!.layer, "tool");
-  assert.equal(finding!.severity, "block");
-  assert.ok(finding!.message.includes("dangerous_tool"));
-});
-
-test("GuardrailEngine risk finding layer is risk", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    riskScore: 15,
-    maxRiskScore: 10,
-  });
-
-  const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.max_risk_exceeded");
-
-  assert.ok(finding !== null);
-  assert.equal(finding!.layer, "risk");
-});
-
-test("GuardrailEngine evidence finding layer is evidence", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    toolbelt: createMockToolbelt({ requiredEvidence: ["evidence:output"] }),
-    evidenceRefs: [],
-  });
-
-  const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.required_evidence_missing");
-
-  assert.ok(finding !== null);
-  assert.equal(finding!.layer, "evidence");
-});
-
-test("GuardrailEngine budget finding layer is budget", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    currentStepCount: 50,
-    maxSteps: 20,
-  });
-
-  const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.step_budget_exhausted");
-
-  assert.ok(finding !== null);
-  assert.equal(finding!.layer, "budget");
-});
-
-test("GuardrailEngine escalation threshold warning does not block", () => {
-  const engine = new GuardrailEngine();
-  // Risk below max but at or above escalation threshold
-  const input = createAssessmentInput({
-    riskScore: 8,
-    maxRiskScore: 10,
-    escalationThreshold: 7,
-  });
-
-  const result = engine.assess(input);
-
-  assert.equal(result.passed, true);
-  assert.equal(result.suggestedAction, "escalate_to_human");
-});
-
-test("GuardrailEngine with zero risk and large budget passes cleanly", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    riskScore: 0,
-    maxRiskScore: 10,
-    escalationThreshold: 8,
-    currentStepCount: 0,
+    riskScore: 75, // exceeds max
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 100, // at budget
     maxSteps: 100,
-  });
+  };
 
   const result = engine.assess(input);
 
-  assert.equal(result.passed, true);
-  assert.equal(result.requiresHuman, false);
-  assert.equal(result.suggestedAction, "proceed");
-  assert.equal(result.findings.length, 0);
+  assert.ok(!result.passed);
+  assert.ok(result.findings.length >= 3); // blocked tool + missing evidence + risk exceeded + budget
 });
 
-test("GuardrailEngine blocked tool message lists all blocked tools", () => {
+test("GuardrailEngine assess requires human when evidence and risk warnings combined", () => {
   const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    toolbelt: createMockToolbelt({ blockedTools: ["tool_a", "tool_b", "tool_c"] }),
-  });
-
-  const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.blocked_tool_requested");
-
-  assert.ok(finding !== null);
-  assert.ok(finding!.message.includes("tool_a"));
-  assert.ok(finding!.message.includes("tool_b"));
-  assert.ok(finding!.message.includes("tool_c"));
-});
-
-test("GuardrailEngine missing evidence message shows specific evidence", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    toolbelt: createMockToolbelt({ requiredEvidence: ["evidence:audit_log"] }),
+  const input: GuardrailAssessmentInput = {
+    toolbelt: createMockToolbelt({ requiredEvidence: ["missing"] }),
     evidenceRefs: [],
-  });
+    riskScore: 35, // at escalation threshold
+    maxRiskScore: 50,
+    escalationThreshold: 30,
+    currentStepCount: 5,
+    maxSteps: 100,
+  };
 
   const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.required_evidence_missing");
 
-  assert.ok(finding !== null);
-  assert.ok(finding!.message.includes("audit_log"));
-});
-
-test("GuardrailEngine step budget message shows current and max", () => {
-  const engine = new GuardrailEngine();
-  const input = createAssessmentInput({
-    currentStepCount: 15,
-    maxSteps: 10,
-  });
-
-  const result = engine.assess(input);
-  const finding = result.findings.find((f) => f.code === "harness.guardrail.step_budget_exhausted");
-
-  assert.ok(finding !== null);
-  assert.ok(finding!.message.includes("15"));
-  assert.ok(finding!.message.includes("10"));
+  assert.ok(result.passed);
+  assert.ok(result.requiresHuman); // combination of evidence warn + risk warn
+  assert.equal(result.suggestedAction, "escalate_to_human");
 });

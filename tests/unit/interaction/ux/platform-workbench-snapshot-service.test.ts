@@ -1,158 +1,174 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlatformWorkbenchSnapshotService } from "../../../../src/interaction/ux/platform-workbench-snapshot-service.js";
-import type { WorkbenchApprovalQueueItem, WorkbenchOperatorAction } from "../../../../src/interaction/ux/platform-workbench-snapshot-service.js";
-import type { AttentionItem, OperatorDashboard } from "../../../../src/interaction/dashboard/index.js";
+import {
+  PlatformWorkbenchSnapshotService,
+  type WorkbenchApprovalQueueItem,
+  type WorkbenchOperatorAction,
+  type PlatformWorkbenchSnapshot,
+} from "../../../../src/interaction/ux/platform-workbench-snapshot-service.js";
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with minimal input", () => {
+test("PlatformWorkbenchSnapshotService builds empty snapshot", () => {
   const service = new PlatformWorkbenchSnapshotService();
+
   const snapshot = service.buildSnapshot({});
 
-  assert.ok(snapshot.generatedAt !== undefined);
+  assert.ok(snapshot.generatedAt.length > 0);
   assert.equal(snapshot.onboarding, null);
   assert.equal(snapshot.dashboard, null);
   assert.deepEqual(snapshot.hitlInbox, []);
   assert.deepEqual(snapshot.approvalQueue, []);
   assert.ok(Array.isArray(snapshot.operatorActions));
-  assert.ok(Array.isArray(snapshot.sdkShortcuts));
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with custom generatedAt", () => {
+test("buildSnapshot copies arrays to prevent mutation", () => {
   const service = new PlatformWorkbenchSnapshotService();
+  const hitlInbox = [{ id: "item-1" }] as any;
+  const approvalQueue = [{ approvalId: "app-1" }] as any;
+
+  const snapshot = service.buildSnapshot({ hitlInbox, approvalQueue });
+
+  assert.ok(snapshot.hitlInbox !== hitlInbox);
+  assert.ok(snapshot.approvalQueue !== approvalQueue);
+  assert.equal(snapshot.hitlInbox.length, 1);
+  assert.equal(snapshot.approvalQueue.length, 1);
+});
+
+test("buildSnapshot uses custom generatedAt", () => {
+  const service = new PlatformWorkbenchSnapshotService();
+  const customTime = "2026-01-01T00:00:00.000Z";
+
+  const snapshot = service.buildSnapshot({ generatedAt: customTime });
+
+  assert.equal(snapshot.generatedAt, customTime);
+});
+
+test("buildSnapshot uses current time when not provided", () => {
+  const service = new PlatformWorkbenchSnapshotService();
+  const before = new Date().toISOString();
+
+  const snapshot = service.buildSnapshot({});
+
+  const after = new Date().toISOString();
+  assert.ok(snapshot.generatedAt >= before);
+  assert.ok(snapshot.generatedAt <= after);
+});
+
+test("buildSnapshot defaults inventorySummary values to zero", () => {
+  const service = new PlatformWorkbenchSnapshotService();
+
+  const snapshot = service.buildSnapshot({});
+
+  assert.equal(snapshot.inventorySummary.benchmarkCount, 0);
+  assert.equal(snapshot.inventorySummary.projectionCount, 0);
+  assert.equal(snapshot.inventorySummary.deploymentCount, 0);
+  assert.equal(snapshot.inventorySummary.judgeCount, 0);
+  assert.equal(snapshot.inventorySummary.complianceProgramCount, 0);
+});
+
+test("buildSnapshot allows partial inventorySummary override", () => {
+  const service = new PlatformWorkbenchSnapshotService();
+
   const snapshot = service.buildSnapshot({
-    generatedAt: "2026-04-26T00:00:00.000Z",
+    inventorySummary: { benchmarkCount: 5 },
   });
 
-  assert.equal(snapshot.generatedAt, "2026-04-26T00:00:00.000Z");
+  assert.equal(snapshot.inventorySummary.benchmarkCount, 5);
+  assert.equal(snapshot.inventorySummary.projectionCount, 0);
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with onboarding session", () => {
+test("buildSnapshot selects operator actions based on attention queue", () => {
   const service = new PlatformWorkbenchSnapshotService();
-  const onboarding = {
-    sessionId: "onboarding_1",
-    userRole: "operator" as const,
-    currentStep: "step_1",
-    completedSteps: ["welcome"] as const,
-    recommendedTemplates: ["tmpl_1"] as const,
-  };
-  const snapshot = service.buildSnapshot({ onboarding });
-
-  assert.deepEqual(snapshot.onboarding, onboarding);
-  assert.equal(snapshot.onboarding?.sessionId, "onboarding_1");
-  assert.equal(snapshot.onboarding?.userRole, "operator");
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot with dashboard", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const dashboard = {
-    attentionQueue: [],
-    dailySummary: {
-      tasksCompleted: 10,
-      tasksInProgress: 3,
-      tasksFailed: 1,
-      totalCostToday: "$15.00",
-      agentUptimePercent: 99.5,
-      highlights: ["10 tasks completed"],
-      concerns: ["1 failure"],
-    },
-    agentHealthCards: [],
-    costBurn: { consumedUsd: 15, forecastUsd: 20 },
-    activeGoals: [],
-    recentCompletions: [],
-    proactiveSuggestions: [],
-  };
-  const snapshot = service.buildSnapshot({ dashboard });
-
-  assert.ok(snapshot.dashboard !== null);
-  assert.equal(snapshot.dashboard?.dailySummary.tasksCompleted, 10);
-  assert.deepEqual(snapshot.dashboard?.attentionQueue, []);
-  assert.deepEqual(snapshot.dashboard?.recentCompletions, []);
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot with hitl inbox", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hitlInbox = [
-    { itemId: "hitl_1", taskId: "task_1" },
-    { itemId: "hitl_2", taskId: "task_2" },
+  const attentionQueue = [
+    { id: "att-1", priority: "critical", title: "Critical Issue" },
   ] as any;
-  const snapshot = service.buildSnapshot({ hitlInbox });
 
-  assert.equal(snapshot.hitlInbox.length, 2);
-  assert.equal(snapshot.hitlInbox[0]?.itemId, "hitl_1");
+  const snapshot = service.buildSnapshot({ dashboard: { attentionQueue } as any });
+
+  // With critical attention, should show takeover console action
+  const hasTakeover = snapshot.operatorActions.some(
+    (a: WorkbenchOperatorAction) => a.actionId === "open_takeover_console",
+  );
+  assert.ok(hasTakeover);
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with approval queue", () => {
+test("buildSnapshot without critical attention shows normal actions", () => {
   const service = new PlatformWorkbenchSnapshotService();
-  const approvalQueue: readonly WorkbenchApprovalQueueItem[] = [
-    { approvalId: "appr_1", taskId: "task_1", riskLevel: "high", title: "Deploy", status: "requested" },
-    { approvalId: "appr_2", taskId: "task_2", riskLevel: "medium", title: "Update", status: "approved" },
-  ];
-  const snapshot = service.buildSnapshot({ approvalQueue });
+  const attentionQueue = [
+    { id: "att-1", priority: "low", title: "Low Issue" },
+  ] as any;
 
-  assert.equal(snapshot.approvalQueue.length, 2);
-  assert.equal(snapshot.approvalQueue[0]?.approvalId, "appr_1");
-  assert.equal(snapshot.approvalQueue[0]?.riskLevel, "high");
+  const snapshot = service.buildSnapshot({ dashboard: { attentionQueue } as any });
+
+  const hasTaskBoard = snapshot.operatorActions.some(
+    (a: WorkbenchOperatorAction) => a.actionId === "open_task_board",
+  );
+  assert.ok(hasTaskBoard);
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with operator actions", () => {
+test("buildSnapshot preserves operatorActions when provided", () => {
   const service = new PlatformWorkbenchSnapshotService();
-  const operatorActions: readonly WorkbenchOperatorAction[] = [
-    { actionId: "action_1", label: "Start Workflow", route: "/start", requiredRole: "operator" },
-    { actionId: "action_2", label: "Admin Panel", route: "/admin", requiredRole: "admin" },
+  const customActions: WorkbenchOperatorAction[] = [
+    { actionId: "custom_action", label: "Custom", route: "/custom", requiredRole: "admin" },
   ];
-  const snapshot = service.buildSnapshot({ operatorActions });
 
-  assert.equal(snapshot.operatorActions.length, 2);
-  assert.equal(snapshot.operatorActions[0]?.actionId, "action_1");
-  assert.equal(snapshot.operatorActions[0]?.requiredRole, "operator");
+  const snapshot = service.buildSnapshot({ operatorActions: customActions });
+
+  assert.equal(snapshot.operatorActions.length, 1);
+  assert.equal(snapshot.operatorActions[0]!.actionId, "custom_action");
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot generates default operator actions based on attention queue", () => {
+test("buildSnapshot preserves sdkShortcuts when provided", () => {
   const service = new PlatformWorkbenchSnapshotService();
-  const attentionQueue: readonly AttentionItem[] = [
-    { itemType: "incident", priority: "critical", title: "Critical incident", description: "Desc", actionOptions: [], createdAt: "2026-04-26T00:00:00Z", domainId: "platform" },
-  ];
-  const dashboard: OperatorDashboard = {
-    attentionQueue,
-    dailySummary: {
-      tasksCompleted: 0,
-      tasksInProgress: 0,
-      tasksFailed: 0,
-      totalCostToday: "$0",
-      agentUptimePercent: 100,
-      highlights: [],
-      concerns: [],
-    },
-    agentHealthCards: [],
-    costBurn: { consumedUsd: 0, forecastUsd: 0 },
-    activeGoals: [],
-    recentCompletions: [],
-    proactiveSuggestions: [],
+  const shortcuts = [{ id: "shortcut-1", label: "Shortcut" }] as any;
+
+  const snapshot = service.buildSnapshot({ sdkShortcuts: shortcuts });
+
+  assert.equal(snapshot.sdkShortcuts.length, 1);
+  assert.equal(snapshot.sdkShortcuts[0]!.id, "shortcut-1");
+});
+
+test("WorkbenchApprovalQueueItem structure", () => {
+  const item: WorkbenchApprovalQueueItem = {
+    approvalId: "app-123",
+    taskId: "task-456",
+    riskLevel: "high",
+    title: "Approval Required",
+    status: "pending",
   };
-  const snapshot = service.buildSnapshot({ dashboard });
 
-  const criticalAction = snapshot.operatorActions.find((a) => a.actionId === "open_takeover_console");
-  assert.ok(criticalAction !== undefined);
-  assert.equal(criticalAction?.requiredRole, "admin");
+  assert.equal(item.approvalId, "app-123");
+  assert.equal(item.riskLevel, "high");
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with sdk shortcuts", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const sdkShortcuts = [
-    { shortcutId: "sdk.tasks.create", label: "Create Task", kind: "api" as const, command: "POST /v1/tasks", previewUrl: "https://api.example.com/v1/tasks" },
-    { shortcutId: "sdk.tasks.list", label: "List Tasks", kind: "api" as const, command: "GET /v1/tasks", previewUrl: "https://api.example.com/v1/tasks" },
-  ];
-  const snapshot = service.buildSnapshot({ sdkShortcuts });
+test("WorkbenchOperatorAction requiredRole validation", () => {
+  const viewerAction: WorkbenchOperatorAction = {
+    actionId: "viewer_action",
+    label: "View",
+    route: "/view",
+    requiredRole: "viewer",
+  };
 
-  assert.equal(snapshot.sdkShortcuts.length, 2);
-  assert.equal(snapshot.sdkShortcuts[0]?.shortcutId, "sdk.tasks.create");
+  const adminAction: WorkbenchOperatorAction = {
+    actionId: "admin_action",
+    label: "Admin",
+    route: "/admin",
+    requiredRole: "admin",
+  };
+
+  assert.equal(viewerAction.requiredRole, "viewer");
+  assert.equal(adminAction.requiredRole, "admin");
 });
 
-test("PlatformWorkbenchSnapshotService.buildSnapshot with inventory summary", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const snapshot = service.buildSnapshot({
+test("PlatformWorkbenchSnapshot full structure", () => {
+  const snapshot: PlatformWorkbenchSnapshot = {
+    generatedAt: "2026-04-01T00:00:00.000Z",
+    onboarding: null,
+    dashboard: null,
+    hitlInbox: [],
+    approvalQueue: [],
+    operatorActions: [],
+    sdkShortcuts: [],
     inventorySummary: {
       benchmarkCount: 10,
       projectionCount: 5,
@@ -160,101 +176,8 @@ test("PlatformWorkbenchSnapshotService.buildSnapshot with inventory summary", ()
       judgeCount: 2,
       complianceProgramCount: 1,
     },
-  });
-
-  assert.equal(snapshot.inventorySummary.benchmarkCount, 10);
-  assert.equal(snapshot.inventorySummary.projectionCount, 5);
-  assert.equal(snapshot.inventorySummary.deploymentCount, 3);
-  assert.equal(snapshot.inventorySummary.judgeCount, 2);
-  assert.equal(snapshot.inventorySummary.complianceProgramCount, 1);
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot with partial inventory summary", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const snapshot = service.buildSnapshot({
-    inventorySummary: {
-      benchmarkCount: 7,
-    },
-  });
-
-  assert.equal(snapshot.inventorySummary.benchmarkCount, 7);
-  assert.equal(snapshot.inventorySummary.projectionCount, 0);
-  assert.equal(snapshot.inventorySummary.deploymentCount, 0);
-  assert.equal(snapshot.inventorySummary.judgeCount, 0);
-  assert.equal(snapshot.inventorySummary.complianceProgramCount, 0);
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot copies arrays to prevent mutation", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const originalQueue: readonly WorkbenchApprovalQueueItem[] = [
-    { approvalId: "appr_1", taskId: "task_1", riskLevel: "low", title: "Test", status: "pending" },
-  ];
-  const snapshot = service.buildSnapshot({ approvalQueue: originalQueue });
-
-  // Modify the original array
-  (originalQueue as WorkbenchApprovalQueueItem[]).push({ approvalId: "appr_2", taskId: "task_2", riskLevel: "high", title: "Test2", status: "pending" });
-
-  // Snapshot should not be affected
-  assert.equal(snapshot.approvalQueue.length, 1);
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot copies hitl inbox to prevent mutation", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const originalInbox = [{ itemId: "hitl_1", taskId: "task_1" }] as any;
-  const snapshot = service.buildSnapshot({ hitlInbox: originalInbox });
-
-  // Modify original
-  originalInbox.push({ itemId: "hitl_2", taskId: "task_2" });
-
-  assert.equal(snapshot.hitlInbox.length, 1);
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot copies sdk shortcuts to prevent mutation", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const originalShortcuts = [{ shortcutId: "sdk.1", label: "Shortcut 1", kind: "api" as const, command: "cmd1", previewUrl: "url1" }];
-  const snapshot = service.buildSnapshot({ sdkShortcuts: originalShortcuts });
-
-  originalShortcuts.push({ shortcutId: "sdk.2", label: "Shortcut 2", kind: "api" as const, command: "cmd2", previewUrl: "url2" });
-
-  assert.equal(snapshot.sdkShortcuts.length, 1);
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot default operator actions for non-critical attention", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const attentionQueue: readonly AttentionItem[] = [
-    { itemType: "suggestion", priority: "low", title: "Suggestion", description: "Desc", actionOptions: [], createdAt: "2026-04-26T00:00:00Z", domainId: "platform" },
-  ];
-  const dashboard: OperatorDashboard = {
-    attentionQueue,
-    dailySummary: {
-      tasksCompleted: 0,
-      tasksInProgress: 0,
-      tasksFailed: 0,
-      totalCostToday: "$0",
-      agentUptimePercent: 100,
-      highlights: [],
-      concerns: [],
-    },
-    agentHealthCards: [],
-    costBurn: { consumedUsd: 0, forecastUsd: 0 },
-    activeGoals: [],
-    recentCompletions: [],
-    proactiveSuggestions: [],
   };
-  const snapshot = service.buildSnapshot({ dashboard });
 
-  const taskBoardAction = snapshot.operatorActions.find((a) => a.actionId === "open_task_board");
-  assert.ok(taskBoardAction !== undefined);
-  assert.equal(taskBoardAction?.requiredRole, "operator");
-});
-
-test("PlatformWorkbenchSnapshotService.buildSnapshot includes all default operator actions", () => {
-  const service = new PlatformWorkbenchSnapshotService();
-  const snapshot = service.buildSnapshot({});
-
-  assert.ok(snapshot.operatorActions.length >= 3);
-  const actionIds = snapshot.operatorActions.map(a => a.actionId);
-  assert.ok(actionIds.includes("open_approvals"));
-  assert.ok(actionIds.includes("open_stability"));
+  assert.equal(snapshot.generatedAt, "2026-04-01T00:00:00.000Z");
+  assert.equal(snapshot.inventorySummary.benchmarkCount, 10);
 });

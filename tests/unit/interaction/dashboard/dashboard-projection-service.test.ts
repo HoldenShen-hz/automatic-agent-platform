@@ -1,216 +1,188 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DashboardProjectionService, createDashboardProjectionService } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
-import type { ProjectionRecord } from "../../../../src/platform/state-evidence/projections/index.js";
+import {
+  DashboardProjectionService,
+  createDashboardProjectionService,
+  type DashboardDelta,
+  type DashboardChange,
+  type DashboardProjectionState,
+} from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 
-function createProjectionRecord(overrides: Partial<ProjectionRecord> = {}): ProjectionRecord {
+function createMockProjectionRecord(name: string, entityRef: string, state: Record<string, unknown>) {
   return {
-    projectionId: "proj-1",
-    sourceEventId: "event-1",
-    projectionName: "task_summary",
-    entityRef: "task-1",
-    state: { taskStatus: "pending" },
-    updatedAt: new Date().toISOString(),
-    ...overrides,
+    projectionName: name,
+    entityRef,
+    state,
+    lastUpdatedAt: "2026-04-01T00:00:00.000Z",
   };
 }
 
-test("DashboardProjectionService registers and returns pending deltas", () => {
+test("DashboardProjectionService creates with default config", () => {
   const service = new DashboardProjectionService();
-
-  service.processEvent("task.created" as any, { taskId: "task-1" });
-
-  const pending = service.getPendingDeltas();
-  assert.equal(pending.length, 1);
-  assert.ok(pending[0]);
-  assert.equal(pending[0]!.changes.length, 1);
+  assert.ok(service instanceof DashboardProjectionService);
 });
 
-test("DashboardProjectionService consumes pending deltas", () => {
-  const service = new DashboardProjectionService();
-
-  service.processEvent("task.created" as any, { taskId: "task-1" });
-
-  const consumed = service.consumePendingDeltas();
-  assert.equal(consumed.length, 1);
-
-  const pending = service.getPendingDeltas();
-  assert.equal(pending.length, 0);
+test("DashboardProjectionService creates with custom config", () => {
+  const service = new DashboardProjectionService({
+    projectionNames: ["custom_projection"],
+    emitDebounceMs: 200,
+  });
+  assert.ok(service instanceof DashboardProjectionService);
 });
 
-test("DashboardProjectionService clears pending deltas", () => {
+test("processProjectionUpdate derives task change", () => {
   const service = new DashboardProjectionService();
+  const record = createMockProjectionRecord("task_summary", "task-123", { taskStatus: "done" });
 
-  service.processEvent("task.created" as any, { taskId: "task-1" });
-  service.clearPendingDeltas();
+  const delta = service.processProjectionUpdate(record);
 
-  const pending = service.getPendingDeltas();
-  assert.equal(pending.length, 0);
+  assert.ok(delta !== null);
+  assert.equal(delta.changes.length, 1);
+  assert.equal(delta.changes[0]!.changeType, "task_completed");
+  assert.equal(delta.changes[0]!.entityId, "task-123");
 });
 
-test("DashboardProjectionService flush forces immediate emission", () => {
-  const service = new DashboardProjectionService({ emitDebounceMs: 1000 });
+test("processProjectionUpdate derives incident change", () => {
+  const service = new DashboardProjectionService();
+  const record = createMockProjectionRecord("incident_summary", "incident-456", { resolved: true });
 
-  service.processEvent("task.created" as any, { taskId: "task-1" });
-  assert.ok(service.hasPendingDeltas());
+  const delta = service.processProjectionUpdate(record);
 
-  const flushed = service.flush();
-  assert.equal(flushed.length, 1);
-  assert.ok(!service.hasPendingDeltas());
+  assert.ok(delta !== null);
+  assert.equal(delta.changes[0]!.changeType, "incident_resolved");
 });
 
-test("DashboardProjectionService processes task.created event", () => {
+test("processProjectionUpdate returns null when no change", () => {
   const service = new DashboardProjectionService();
+  const record = createMockProjectionRecord("unknown_projection", "entity-1", {});
 
-  const delta = service.processEvent("task.created" as any, { taskId: "task-1" });
-
-  assert.ok(delta);
-  assert.ok(delta!.changes[0]);
-  assert.equal(delta!.changes[0]!.changeType, "task_created");
-  assert.equal(delta!.affectedMetrics.includes("totalTasks"), true);
-});
-
-test("DashboardProjectionService processes task.completed event", () => {
-  const service = new DashboardProjectionService();
-
-  const delta = service.processEvent("task.completed" as any, { taskId: "task-1" });
-
-  assert.ok(delta);
-  assert.ok(delta!.changes[0]);
-  assert.equal(delta!.changes[0]!.changeType, "task_completed");
-  assert.ok(delta!.affectedMetrics.includes("totalTasks"));
-});
-
-test("DashboardProjectionService processes task.failed event", () => {
-  const service = new DashboardProjectionService();
-
-  const delta = service.processEvent("task.failed" as any, { taskId: "task-1" });
-
-  assert.ok(delta);
-  assert.ok(delta!.changes[0]);
-  assert.equal(delta!.changes[0]!.changeType, "task_failed");
-  assert.ok(delta!.affectedMetrics.includes("incidentCount"));
-});
-
-test("DashboardProjectionService processes incident.opened event", () => {
-  const service = new DashboardProjectionService();
-
-  const delta = service.processEvent("incident.opened" as any, { incidentId: "inc-1" });
-
-  assert.ok(delta);
-  assert.ok(delta!.changes[0]);
-  assert.equal(delta!.changes[0]!.changeType, "incident_opened");
-  assert.ok(delta!.affectedMetrics.includes("incidentCount"));
-});
-
-test("DashboardProjectionService processes incident.resolved event", () => {
-  const service = new DashboardProjectionService();
-
-  const delta = service.processEvent("incident.resolved" as any, { incidentId: "inc-1" });
-
-  assert.ok(delta);
-  assert.ok(delta!.changes[0]);
-  assert.equal(delta!.changes[0]!.changeType, "incident_resolved");
-});
-
-test("DashboardProjectionService ignores unknown event types", () => {
-  const service = new DashboardProjectionService();
-
-  const delta = service.processEvent("unknown.event" as any, { data: "test" });
+  const delta = service.processProjectionUpdate(record);
 
   assert.equal(delta, null);
 });
 
-test("DashboardProjectionService processes projection record updates", () => {
+test("processEvent derives task status change", () => {
   const service = new DashboardProjectionService();
-  const record = createProjectionRecord({ projectionName: "task_summary", entityRef: "task-1", state: { taskStatus: "done" } });
+  const payload = { taskId: "task-789", status: "done" };
 
-  const delta = service.processProjectionUpdate(record);
+  const delta = service.processEvent("task:status_changed", payload);
 
-  assert.ok(delta);
-  assert.ok(delta!.changes[0]);
-  assert.equal(delta!.changes[0]!.changeType, "task_completed");
+  assert.ok(delta !== null);
+  assert.equal(delta.changes[0]!.changeType, "task_completed");
+  assert.equal(delta.changes[0]!.entityId, "task-789");
 });
 
-test("DashboardProjectionService derives task change type from state", () => {
+test("processEvent returns null for unknown event type", () => {
   const service = new DashboardProjectionService();
 
-  const doneDelta = service.processProjectionUpdate(createProjectionRecord({ projectionName: "task_summary", state: { taskStatus: "done" } }));
-  assert.ok(doneDelta!.changes[0]);
-  assert.equal(doneDelta!.changes[0]!.changeType, "task_completed");
+  const delta = service.processEvent("unknown:event", {});
 
-  const failedDelta = service.processProjectionUpdate(createProjectionRecord({ projectionName: "task_summary", state: { taskStatus: "failed" } }));
-  assert.ok(failedDelta!.changes[0]);
-  assert.equal(failedDelta!.changes[0]!.changeType, "task_failed");
-
-  const pendingDelta = service.processProjectionUpdate(createProjectionRecord({ projectionName: "task_summary", state: { taskStatus: "pending" } }));
-  assert.ok(pendingDelta!.changes[0]);
-  assert.equal(pendingDelta!.changes[0]!.changeType, "task_updated");
+  assert.equal(delta, null);
 });
 
-test("DashboardProjectionService derives incident change type from resolved state", () => {
+test("getPendingDeltas returns all pending deltas", () => {
   const service = new DashboardProjectionService();
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-2", { taskStatus: "failed" }));
 
-  const openedDelta = service.processProjectionUpdate(createProjectionRecord({ projectionName: "incident_summary", state: { resolved: false } }));
-  assert.ok(openedDelta!.changes[0]);
-  assert.equal(openedDelta!.changes[0]!.changeType, "incident_opened");
+  const pending = service.getPendingDeltas();
 
-  const resolvedDelta = service.processProjectionUpdate(createProjectionRecord({ projectionName: "incident_summary", state: { resolved: true } }));
-  assert.ok(resolvedDelta!.changes[0]);
-  assert.equal(resolvedDelta!.changes[0]!.changeType, "incident_resolved");
+  assert.equal(pending.length, 2);
 });
 
-test("DashboardProjectionService builds state from projections", () => {
+test("consumePendingDeltas clears and returns deltas", () => {
   const service = new DashboardProjectionService();
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
 
-  const projections: ProjectionRecord[] = [
-    createProjectionRecord({ projectionName: "task_summary", entityRef: "task-1", state: { taskStatus: "done" } }),
-    createProjectionRecord({ projectionName: "task_summary", entityRef: "task-2", state: { taskStatus: "pending" } }),
-    createProjectionRecord({ projectionName: "incident_summary", entityRef: "inc-1", state: { priority: "high" } }),
-    createProjectionRecord({ projectionName: "workflow_summary", entityRef: "wf-1", state: {} }),
+  const consumed = service.consumePendingDeltas();
+
+  assert.equal(consumed.length, 1);
+  assert.equal(service.getPendingDeltas().length, 0);
+});
+
+test("hasPendingDeltas returns true when pending", () => {
+  const service = new DashboardProjectionService();
+  assert.equal(service.hasPendingDeltas(), false);
+
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
+
+  assert.equal(service.hasPendingDeltas(), true);
+});
+
+test("flush returns and clears pending deltas", () => {
+  const service = new DashboardProjectionService();
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
+
+  const flushed = service.flush();
+
+  assert.equal(flushed.length, 1);
+  assert.equal(service.hasPendingDeltas(), false);
+});
+
+test("clearPendingDeltas clears without emitting", () => {
+  const service = new DashboardProjectionService();
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
+
+  service.clearPendingDeltas();
+
+  assert.equal(service.getPendingDeltas().length, 0);
+  assert.equal(service.hasPendingDeltas(), false);
+});
+
+test("buildStateFromProjections aggregates task counts", () => {
+  const service = new DashboardProjectionService();
+  const projections = [
+    createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }),
+    createMockProjectionRecord("task_summary", "task-2", { taskStatus: "done" }),
+    createMockProjectionRecord("task_summary", "task-3", { taskStatus: "failed" }),
   ];
 
   const state = service.buildStateFromProjections(projections);
 
-  assert.equal(state.totalTasks, 2);
-  assert.equal(state.tasksByStatus["done"], 1);
-  assert.equal(state.tasksByStatus["pending"], 1);
-  assert.equal(state.totalIncidents, 1);
-  assert.equal(state.totalWorkflows, 1);
+  assert.equal(state.totalTasks, 3);
+  assert.deepEqual(state.tasksByStatus, { done: 2, failed: 1 });
 });
 
-test("DashboardProjectionService extracts entityId from various payload fields", () => {
+test("buildStateFromProjections aggregates incident counts", () => {
   const service = new DashboardProjectionService();
+  const projections = [
+    createMockProjectionRecord("incident_summary", "inc-1", { priority: "high", resolved: false }),
+    createMockProjectionRecord("incident_summary", "inc-2", { priority: "low", resolved: true }),
+  ];
 
-  const taskDelta = service.processEvent("task.created" as any, { taskId: "task-123" });
-  assert.ok(taskDelta!.changes[0]);
-  assert.equal(taskDelta!.changes[0]!.entityId, "task-123");
+  const state = service.buildStateFromProjections(projections);
 
-  const incidentDelta = service.processEvent("incident.opened" as any, { incidentId: "inc-456" });
-  assert.ok(incidentDelta!.changes[0]);
-  assert.equal(incidentDelta!.changes[0]!.entityId, "inc-456");
-
-  const workflowDelta = service.processEvent("task.updated" as any, { workflowId: "wf-789" });
-  assert.ok(workflowDelta!.changes[0]);
-  assert.equal(workflowDelta!.changes[0]!.entityId, "wf-789");
+  assert.equal(state.totalIncidents, 2);
+  assert.deepEqual(state.incidentsByPriority, { high: 1, low: 1 });
 });
 
-test("DashboardProjectionService createDashboardProjectionService factory works", () => {
+test("createDashboardProjectionService factory creates service", () => {
   const service = createDashboardProjectionService({ emitDebounceMs: 500 });
-
-  service.processEvent("task.created" as any, { taskId: "task-1" });
-  const pending = service.getPendingDeltas();
-
-  assert.equal(pending.length, 1);
+  assert.ok(service instanceof DashboardProjectionService);
 });
 
-test("DashboardProjectionService lastEmittedAt is updated after consume", () => {
+test("DashboardDelta contains timestamp and changes", () => {
   const service = new DashboardProjectionService();
+  service.processProjectionUpdate(createMockProjectionRecord("task_summary", "task-1", { taskStatus: "done" }));
 
-  service.processEvent("task.created" as any, { taskId: "task-1" });
-  assert.equal(service.hasPendingDeltas(), true);
+  const delta = service.consumePendingDeltas()[0]!;
 
-  service.consumePendingDeltas();
-  assert.equal(service.hasPendingDeltas(), false);
+  assert.ok(delta.deltaId.startsWith("delta_"));
+  assert.ok(delta.timestamp.length > 0);
+  assert.ok(Array.isArray(delta.changes));
+  assert.ok(Array.isArray(delta.affectedMetrics));
+});
+
+test("affectsMetrics includes correct metric names for task_created", () => {
+  const service = new DashboardProjectionService();
+  const change: DashboardChange = {
+    changeType: "task_created",
+    entityId: "task-new",
+    newValue: {},
+  };
+  const metrics = (service as any).deriveAffectedMetrics([change]);
+
+  assert.ok(metrics.includes("totalTasks"));
+  assert.ok(metrics.includes("tasksByStatus.pending"));
 });

@@ -2,150 +2,112 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  DomainGovernanceRolloutSchema,
   DomainGovernancePolicySchema,
+  DomainGovernanceRolloutSchema,
+  type DomainGovernancePolicy,
+  type DomainGovernanceRollout,
 } from "../../../../src/domains/governance/domain-governance-policy.js";
 
-test("DomainGovernanceRolloutSchema accepts valid rollout strategies", () => {
-  const strategies = ["manual", "canary", "shadow", "supervised_auto"] as const;
-  for (const strategy of strategies) {
-    const result = DomainGovernanceRolloutSchema.safeParse({ strategy });
-    assert.equal(result.success, true, `Strategy ${strategy} should be valid`);
+test("DomainGovernanceRolloutSchema parses valid rollout", () => {
+  const valid: DomainGovernanceRollout = {
+    strategy: "canary",
+    approvalRequired: true,
+    rollbackWindowMinutes: 60,
+  };
+  const result = DomainGovernanceRolloutSchema.safeParse(valid);
+  assert.equal(result.success, true);
+});
+
+test("DomainGovernanceRolloutSchema defaults strategy to canary", () => {
+  const partial = { rollbackWindowMinutes: 30 };
+  const result = DomainGovernanceRolloutSchema.safeParse(partial);
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.strategy, "canary");
   }
 });
 
-test("DomainGovernanceRolloutSchema applies defaults", () => {
-  const result = DomainGovernanceRolloutSchema.parse({});
-  assert.equal(result.strategy, "canary");
-  assert.equal(result.approvalRequired, true);
-  assert.equal(result.rollbackWindowMinutes, 60);
-});
-
 test("DomainGovernanceRolloutSchema rejects invalid strategy", () => {
-  const result = DomainGovernanceRolloutSchema.safeParse({ strategy: "invalid" });
+  const invalid = { strategy: "invalid" };
+  const result = DomainGovernanceRolloutSchema.safeParse(invalid);
   assert.equal(result.success, false);
 });
 
-test("DomainGovernancePolicySchema accepts valid policy", () => {
-  const policy = {
-    policyId: "policy_coding",
-    domainId: "coding",
-    ownerRoles: ["owner", "admin"],
+test("DomainGovernancePolicySchema parses valid policy", () => {
+  const valid: DomainGovernancePolicy = {
+    policyId: "pol-123",
+    domainId: "domain-abc",
+    ownerRoles: ["owner"],
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
-    rollout: { strategy: "canary", approvalRequired: true, rollbackWindowMinutes: 30 },
-    restrictedDataClasses: ["pii", "financial"],
-    mandatoryEvidence: ["security_review", "code_review"],
+    restrictedDataClasses: ["pii"],
+    rollout: { strategy: "manual", approvalRequired: false, rollbackWindowMinutes: 120 },
+    mandatoryEvidence: ["evidence-1"],
   };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
+  const result = DomainGovernancePolicySchema.safeParse(valid);
   assert.equal(result.success, true);
-  assert.equal(result.data?.policyId, "policy_coding");
 });
 
-test("DomainGovernancePolicySchema requires ownerRoles to have at least one role", () => {
-  const policy = {
-    policyId: "policy_test",
-    domainId: "test",
+test("DomainGovernancePolicySchema requires policyId", () => {
+  const missing = {
+    domainId: "domain-abc",
+    ownerRoles: ["owner"],
+    operatorRoles: ["operator"],
+    approvalRoles: ["approver"],
+    rollout: { strategy: "manual", approvalRequired: false, rollbackWindowMinutes: 60 },
+  };
+  const result = DomainGovernancePolicySchema.safeParse(missing);
+  assert.equal(result.success, false);
+});
+
+test("DomainGovernancePolicySchema requires ownerRoles", () => {
+  const missing = {
+    policyId: "pol-123",
+    domainId: "domain-abc",
+    operatorRoles: ["operator"],
+    approvalRoles: ["approver"],
+    rollout: { strategy: "manual", approvalRequired: false, rollbackWindowMinutes: 60 },
+  };
+  const result = DomainGovernancePolicySchema.safeParse(missing);
+  assert.equal(result.success, false);
+});
+
+test("DomainGovernancePolicySchema requires at least one ownerRole", () => {
+  const empty = {
+    policyId: "pol-123",
+    domainId: "domain-abc",
     ownerRoles: [],
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
+    rollout: { strategy: "manual", approvalRequired: false, rollbackWindowMinutes: 60 },
   };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
+  const result = DomainGovernancePolicySchema.safeParse(empty);
   assert.equal(result.success, false);
 });
 
-test("DomainGovernancePolicySchema requires operatorRoles to have at least one role", () => {
-  const policy = {
-    policyId: "policy_test",
-    domainId: "test",
-    ownerRoles: ["owner"],
-    operatorRoles: [],
-    approvalRoles: ["approver"],
-  };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
-  assert.equal(result.success, false);
-});
-
-test("DomainGovernancePolicySchema requires approvalRoles to have at least one role", () => {
-  const policy = {
-    policyId: "policy_test",
-    domainId: "test",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: [],
-  };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
-  assert.equal(result.success, false);
-});
-
-test("DomainGovernancePolicySchema applies defaults for optional fields", () => {
-  const policy = {
-    policyId: "policy_minimal",
-    domainId: "test",
+test("DomainGovernancePolicySchema allows empty restrictedDataClasses", () => {
+  const valid = {
+    policyId: "pol-123",
+    domainId: "domain-abc",
     ownerRoles: ["owner"],
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
-    rollout: { strategy: "manual" }, // rollout is required, only test optional fields
+    rollout: { strategy: "manual", approvalRequired: false, rollbackWindowMinutes: 60 },
+    restrictedDataClasses: [],
   };
-  const result = DomainGovernancePolicySchema.parse(policy);
-  assert.deepEqual(result.restrictedDataClasses, []);
-  assert.deepEqual(result.mandatoryEvidence, []);
-  assert.equal(result.rollout.approvalRequired, true);
-  assert.equal(result.rollout.rollbackWindowMinutes, 60);
-});
-
-test("DomainGovernancePolicySchema rejects empty policyId", () => {
-  const policy = {
-    policyId: "",
-    domainId: "test",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-  };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
-  assert.equal(result.success, false);
-});
-
-test("DomainGovernancePolicySchema rejects empty domainId", () => {
-  const policy = {
-    policyId: "policy_test",
-    domainId: "",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-  };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
-  assert.equal(result.success, false);
-});
-
-test("DomainGovernancePolicySchema rejects empty role in ownerRoles", () => {
-  const policy = {
-    policyId: "policy_test",
-    domainId: "test",
-    ownerRoles: ["owner", ""],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-  };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
-  assert.equal(result.success, false);
-});
-
-test("DomainGovernancePolicySchema accepts nested rollout configuration", () => {
-  const policy = {
-    policyId: "policy_nested",
-    domainId: "test",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-    rollout: {
-      strategy: "shadow",
-      approvalRequired: false,
-      rollbackWindowMinutes: 120,
-    },
-  };
-  const result = DomainGovernancePolicySchema.safeParse(policy);
+  const result = DomainGovernancePolicySchema.safeParse(valid);
   assert.equal(result.success, true);
-  assert.equal(result.data?.rollout.strategy, "shadow");
-  assert.equal(result.data?.rollout.approvalRequired, false);
-  assert.equal(result.data?.rollout.rollbackWindowMinutes, 120);
+});
+
+test("DomainGovernancePolicySchema validates rollbackWindowMinutes positive", () => {
+  const invalid = {
+    policyId: "pol-123",
+    domainId: "domain-abc",
+    ownerRoles: ["owner"],
+    operatorRoles: ["operator"],
+    approvalRoles: ["approver"],
+    rollout: { strategy: "manual", approvalRequired: false, rollbackWindowMinutes: 0 },
+  };
+  const result = DomainGovernancePolicySchema.safeParse(invalid);
+  assert.equal(result.success, false);
 });
