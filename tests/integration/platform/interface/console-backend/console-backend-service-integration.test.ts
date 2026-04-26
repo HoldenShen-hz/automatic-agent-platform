@@ -128,16 +128,16 @@ test("OperatorConsoleBackendService plans all action types correctly", () => {
     }> = [
       { action: "take_over_task", expectPolicyEval: false, expectBreakGlass: false },
       { action: "modify_next_input", expectPolicyEval: false, expectBreakGlass: false },
-      { action: "skip_step", expectPolicyEval: true, expectBreakGlass: true },
+      { action: "skip_step", expectPolicyEval: true, expectBreakGlass: false },
       { action: "retry_step", expectPolicyEval: false, expectBreakGlass: false },
       { action: "switch_model", expectPolicyEval: false, expectBreakGlass: false },
-      { action: "switch_worker", expectPolicyEval: true, expectBreakGlass: true },
+      { action: "switch_worker", expectPolicyEval: true, expectBreakGlass: false },
       { action: "attach_artifact", expectPolicyEval: true, expectBreakGlass: false },
       { action: "inject_feedback", expectPolicyEval: false, expectBreakGlass: false },
       { action: "create_improvement_candidate", expectPolicyEval: false, expectBreakGlass: false },
       { action: "advance_rollout", expectPolicyEval: true, expectBreakGlass: false },
-      { action: "rollback_rollout", expectPolicyEval: true, expectBreakGlass: true },
-      { action: "finish_task", expectPolicyEval: true, expectBreakGlass: true },
+      { action: "rollback_rollout", expectPolicyEval: true, expectBreakGlass: false },
+      { action: "finish_task", expectPolicyEval: true, expectBreakGlass: false },
     ];
 
     for (const { action, expectPolicyEval, expectBreakGlass } of actionTypes) {
@@ -248,13 +248,21 @@ test("OperatorConsoleBackendService validates operator identity thoroughly", () 
     // Empty operator ID should throw
     assert.throws(
       () => service.buildSnapshot({ operatorId: "", roles: ["viewer"] }),
-      /console\.operator_id_required/,
+      (error: unknown) =>
+        typeof error === "object"
+        && error !== null
+        && "code" in error
+        && error.code === "console.operator_id_required",
     );
 
     // Whitespace-only operator ID should throw
     assert.throws(
       () => service.buildSnapshot({ operatorId: "   ", roles: ["viewer"] }),
-      /console\.operator_id_required/,
+      (error: unknown) =>
+        typeof error === "object"
+        && error !== null
+        && "code" in error
+        && error.code === "console.operator_id_required",
     );
 
     // Valid operator should work

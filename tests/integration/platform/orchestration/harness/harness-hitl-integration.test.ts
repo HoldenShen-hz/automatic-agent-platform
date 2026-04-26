@@ -190,21 +190,20 @@ test("Harness with guardrail assessment triggers escalation", () => {
       budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
     };
 
-    const run = service.runLoop({
-      taskId: "task_guardrail_001",
-      domainId: "security",
-      constraintPack,
-      plannerOutput: { planId: "plan_guardrail_001" },
-      generatorOutput: { stepOutputs: [{ tool: "bash", command: "rm -rf /important" }] },
-      evaluatorOutput: { score: 0.65 },
-      evaluatorScore: 0.65,
-      riskScore: 75,
-      producedEvidenceRefs: ["audit_log"],
-    });
-
-    assert.ok(run.guardrailAssessment);
-    assert.equal(run.guardrailAssessment.suggestedAction, "abort");
-    assert.equal(run.status, "aborted");
+    assert.throws(
+      () => service.runLoop({
+        taskId: "task_guardrail_001",
+        domainId: "security",
+        constraintPack,
+        plannerOutput: { planId: "plan_guardrail_001" },
+        generatorOutput: { stepOutputs: [{ tool: "bash", command: "rm -rf /important" }] },
+        evaluatorOutput: { score: 0.65 },
+        evaluatorScore: 0.65,
+        riskScore: 75,
+        producedEvidenceRefs: ["audit_log"],
+      }),
+      /harness\.invariant_violation:harness\.invariant\.max_risk_exceeded/,
+    );
   } finally {
     ctx.db.close();
     cleanupPath(ctx.workspace);

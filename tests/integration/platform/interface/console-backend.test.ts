@@ -17,7 +17,7 @@ import {
   type ConsoleApprovalSummary,
   type ConsoleWorkerSummary,
   type ConsoleIncidentSummary,
-} from "../../../src/platform/interface/console-backend/index.js";
+} from "../../../../src/platform/interface/console-backend/index.js";
 
 test("OperatorConsoleBackendService builds snapshot with empty data sources", () => {
   const ctx = createIntegrationContext("aa-console-empty-");

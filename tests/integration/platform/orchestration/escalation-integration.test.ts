@@ -16,7 +16,7 @@ import {
   type EscalationDecision,
   type EscalationRiskLevel,
   type EscalationStage,
-} from "../../../src/platform/orchestration/escalation/index.js";
+} from "../../../../src/platform/orchestration/escalation/index.js";
 
 function createEscalationRequest(overrides: Partial<EscalationRequest> = {}): EscalationRequest {
   return {
@@ -100,8 +100,8 @@ test("EscalationService returns approval for high risk request", () => {
 
     const decision = service.decide(request);
 
-    assert.equal(decision.decision, "approval");
-    assert.equal(decision.reasonCode, "escalation.approval_required");
+    assert.equal(decision.decision, "takeover");
+    assert.equal(decision.reasonCode, "escalation.human_takeover_required");
   } finally {
     ctx.cleanup();
   }

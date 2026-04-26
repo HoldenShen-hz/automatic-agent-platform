@@ -158,8 +158,8 @@ export class OperatorConsoleBackendService {
       actionId: input.actionId,
       actionType: input.actionType,
       taskId: input.taskId,
-      tenantId: input.tenantId ?? null,
-      workspaceId: input.workspaceId ?? null,
+      tenantId: input.tenantId ?? input.operator.tenantId ?? null,
+      workspaceId: input.workspaceId ?? input.operator.workspaceId ?? null,
       operatorId: input.operator.operatorId,
       requiresPolicyEvaluation,
       requiresBreakGlass,
@@ -178,6 +178,7 @@ export class OperatorConsoleBackendService {
 }
 
 const HIGH_RISK_ACTIONS = new Set<OperatorControlActionType>([
+  "skip_step",
   "switch_worker",
   "attach_artifact",
   "advance_rollout",
