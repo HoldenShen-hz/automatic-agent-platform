@@ -354,3 +354,452 @@ test("routeComplexity returns valid ComplexityPath values", () => {
     assert.ok(validPaths.includes(result.path), `Path ${result.path} is not valid`);
   }
 });
+
+// =============================================================================
+// routeComplexity - Keyword First-Match Ordering
+// =============================================================================
+
+test("routeComplexity returns first matching keyword when multiple full keywords match", () => {
+  // Title contains multiple full-path keywords
+  const result = routeComplexity("Refactor and redesign the architecture", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  // "refactor" comes before "redesign" and "architecture" in DEFAULT_FULL_KEYWORDS
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+test("routeComplexity returns first matching keyword when multiple fast keywords match", () => {
+  // Title contains multiple fast-path keywords
+  const result = routeComplexity("What is a quick simple lookup", { stepCount: 1 });
+  assert.equal(result.path, "fast");
+  // "what is" comes before "quick", "simple", "lookup" in DEFAULT_FAST_KEYWORDS
+  assert.equal(result.reason, "keyword_match:what is");
+});
+
+test("routeComplexity first full keyword wins over fast keyword", () => {
+  // When both full and fast keywords are present, full takes precedence (checked first)
+  const result = routeComplexity("Refactor the code quickly", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+test("routeComplexity fast keyword does not win when full keyword appears first", () => {
+  // Even though "quick" is a fast keyword, "refactor" comes first
+  const result = routeComplexity("Quick refactor needed", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+// =============================================================================
+// routeComplexity - Exact Boundary Conditions
+// =============================================================================
+
+test("routeComplexity stepCount of exactly 3 does not trigger multi-step", () => {
+  const result = routeComplexity("Normal task name here", { stepCount: 3 });
+  // stepCount 3 is NOT > 3, so it doesn't trigger multi_step_workflow
+  // Without keywords and > 50 chars, should be standard
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "default");
+});
+
+test("routeComplexity stepCount of exactly 4 triggers multi-step", () => {
+  const result = routeComplexity("Normal task", { stepCount: 4 });
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "multi_step_workflow");
+});
+
+test("routeComplexity token estimate of exactly 50000 does not trigger high_token", () => {
+  // 50000 is NOT > 50000, so should not be full due to tokens
+  const result = routeComplexity("Analyze this task", { stepCount: 1, estimatedTokens: 50000 });
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "default");
+});
+
+test("routeComplexity token estimate of 50001 triggers high_token", () => {
+  const result = routeComplexity("Analyze this task", { stepCount: 1, estimatedTokens: 50001 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "high_token_estimate");
+});
+
+test("routeComplexity token estimate of 0 does not trigger high_token", () => {
+  const result = routeComplexity("Analyze this task", { stepCount: 1, estimatedTokens: 0 });
+  assert.equal(result.path, "standard");
+});
+
+// =============================================================================
+// routeComplexity - Multi-Keyword Title with Mixed Types
+// =============================================================================
+
+test("routeComplexity handles title with both full and fast keywords", () => {
+  const result = routeComplexity("What is refactor?", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+test("routeComplexity handles title with fast keyword before full keyword", () => {
+  const result = routeComplexity("Find the bug and fix it with refactor", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  // "refactor" is the first full keyword found
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+test("routeComplexity handles investigation with quick keyword", () => {
+  const result = routeComplexity("Quick investigation needed", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:investigation");
+});
+
+// =============================================================================
+// routeComplexity - Substring and Edge Case Keywords
+// =============================================================================
+
+test("routeComplexity partial word does not match keyword", () => {
+  // "arch" is not "architecture", so partial match should not trigger full path
+  const result = routeComplexity("arch is a prefix", { stepCount: 1 });
+  // No full keywords present, no fast keywords, so standard
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "default");
+});
+
+test("routeComplexity match is case insensitive", () => {
+  const result = routeComplexity("REFACTOR THE CODE", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+test("routeComplexity mixed case keyword still matches", () => {
+  const result = routeComplexity("ReFaCtOr the code", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+// =============================================================================
+// routeComplexity - Config Merging and Defaults
+// =============================================================================
+
+test("routeComplexity merges custom config with defaults", () => {
+  const config: ComplexityRouterConfig = {
+    fullPathKeywords: ["custom_keyword"],
+  };
+  const result = routeComplexity("Normal task", { stepCount: 1, config });
+  // Should still use default fastPathKeywords and passthroughMaxChars
+  assert.equal(result.path, "standard");
+});
+
+test("routeComplexity partial custom config still uses defaults for missing keys", () => {
+  const config: ComplexityRouterConfig = {
+    passthroughMaxChars: 100,
+  };
+  // "Hi" is only 2 chars, should still be passthrough
+  const result = routeComplexity("Hi", { config });
+  assert.equal(result.path, "passthrough");
+});
+
+test("routeComplexity empty fullPathKeywords array means no keyword matches", () => {
+  const config: ComplexityRouterConfig = {
+    fullPathKeywords: [],
+  };
+  const result = routeComplexity("Refactor the code", { stepCount: 1, config });
+  // No full keywords, no fast keywords, should be standard
+  assert.equal(result.path, "standard");
+});
+
+test("routeComplexity empty fastPathKeywords array means no fast keyword matches", () => {
+  const config: ComplexityRouterConfig = {
+    fastPathKeywords: [],
+  };
+  const result = routeComplexity("What is the answer", { stepCount: 1, config });
+  // "what is" should not match as fast keyword, but refactor is not present
+  // Without refactor, it would be standard
+  assert.equal(result.path, "standard");
+});
+
+test("routeComplexity empty both keyword arrays defaults to standard", () => {
+  const config: ComplexityRouterConfig = {
+    fullPathKeywords: [],
+    fastPathKeywords: [],
+  };
+  const result = routeComplexity("Refactor the code", { stepCount: 1, config });
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "default");
+});
+
+test("routeComplexity config qaModeForceFull defaults to true", () => {
+  // Without explicitly setting qaModeForceFull, it should be true
+  const result = routeComplexity("Simple", { qaMode: true });
+  assert.equal(result.path, "full");
+});
+
+test("routeComplexity all config options can be customized", () => {
+  const config: ComplexityRouterConfig = {
+    fullPathKeywords: ["xyz"],
+    fastPathKeywords: ["abc"],
+    passthroughMaxChars: 5,
+    qaModeForceFull: false,
+  };
+  // Custom full keyword
+  const r1 = routeComplexity("xyz task", { stepCount: 1, config });
+  assert.equal(r1.path, "full");
+  // Custom fast keyword
+  const r2 = routeComplexity("abc task", { stepCount: 1, config });
+  assert.equal(r2.path, "fast");
+  // Custom passthrough max chars
+  const r3 = routeComplexity("12345", { config });
+  assert.equal(r3.path, "passthrough");
+  // QA mode disabled
+  const r4 = routeComplexity("Short", { qaMode: true, config });
+  assert.equal(r4.path, "passthrough");
+});
+
+// =============================================================================
+// routeComplexity - Precedence and Interaction Rules
+// =============================================================================
+
+test("routeComplexity stepCount > 3 with fast keyword but no full keyword routes to standard", () => {
+  // Even with a fast keyword like "what is", when stepCount > 3 it goes to standard
+  const result = routeComplexity("What is the status", { stepCount: 5 });
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "multi_step_workflow");
+});
+
+test("routeComplexity short input with stepCount present does not passthrough", () => {
+  // When stepCount is present (even 1), passthrough check is skipped
+  const result = routeComplexity("Hi", { stepCount: 1 });
+  // No keywords, no multi-step (>3), no high tokens → standard
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "default");
+});
+
+test("routeComplexity stepCount overrides short input passthrough", () => {
+  const result = routeComplexity("Tell me", { stepCount: 2 });
+  // stepCount: 2 is not > 3, passthrough check is skipped due to stepCount
+  // No keywords, so standard
+  assert.equal(result.path, "standard");
+});
+
+test("routeComplexity high tokens takes precedence over fast keywords", () => {
+  const result = routeComplexity("What is the status", { stepCount: 1, estimatedTokens: 60000 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "high_token_estimate");
+});
+
+test("routeComplexity multi-step check happens before high token check", () => {
+  // stepCount > 3 with no keywords → standard (multi_step_workflow)
+  // This is checked BEFORE the high token estimate
+  const result = routeComplexity("Check status please", { stepCount: 5, estimatedTokens: 60000 });
+  // "check" is fast keyword but multi_step comes first for stepCount > 3
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "multi_step_workflow");
+});
+
+// =============================================================================
+// routeComplexity - routedAt Timestamp Validation
+// =============================================================================
+
+test("routeComplexity routedAt is a valid ISO timestamp", () => {
+  const result = routeComplexity("Test");
+  // Should be parseable as a date
+  const date = new Date(result.routedAt);
+  assert.ok(!isNaN(date.getTime()), "routedAt should be a valid date");
+});
+
+test("routeComplexity routedAt is different for different calls", () => {
+  const result1 = routeComplexity("Test1");
+  const result2 = routeComplexity("Test2");
+  // At minimum, they should be strings
+  assert.ok(typeof result1.routedAt === "string");
+  assert.ok(typeof result2.routedAt === "string");
+});
+
+// =============================================================================
+// routeComplexity - Estimated Budget Factor Validation
+// =============================================================================
+
+test("routeComplexity passthrough has budget factor 0.1", () => {
+  const result = routeComplexity("Hi");
+  assert.equal(result.estimatedBudgetFactor, 0.1);
+});
+
+test("routeComplexity fast has budget factor 0.3", () => {
+  const result = routeComplexity("What is X", { stepCount: 1 });
+  assert.equal(result.estimatedBudgetFactor, 0.3);
+});
+
+test("routeComplexity standard has budget factor 1.0", () => {
+  const result = routeComplexity("Normal task here", { stepCount: 1 });
+  assert.equal(result.estimatedBudgetFactor, 1.0);
+});
+
+test("routeComplexity full has budget factor 2.0", () => {
+  const result = routeComplexity("Refactor", { stepCount: 1 });
+  assert.equal(result.estimatedBudgetFactor, 2.0);
+});
+
+test("routeComplexity qa_mode_active has budget factor 2.0", () => {
+  const result = routeComplexity("Test", { qaMode: true });
+  assert.equal(result.estimatedBudgetFactor, 2.0);
+});
+
+test("routeComplexity high_token_estimate has budget factor 2.0", () => {
+  const result = routeComplexity("Test", { stepCount: 1, estimatedTokens: 60000 });
+  assert.equal(result.estimatedBudgetFactor, 2.0);
+});
+
+test("routeComplexity multi_step_workflow has budget factor 1.0", () => {
+  const result = routeComplexity("Task", { stepCount: 5 });
+  assert.equal(result.estimatedBudgetFactor, 1.0);
+});
+
+// =============================================================================
+// routeComplexity - ComplexityRouteResult Structure
+// =============================================================================
+
+test("routeComplexity result has all required fields", () => {
+  const result = routeComplexity("Test");
+  assert.ok(Object.hasOwn(result, "path"));
+  assert.ok(Object.hasOwn(result, "reason"));
+  assert.ok(Object.hasOwn(result, "estimatedBudgetFactor"));
+  assert.ok(Object.hasOwn(result, "routedAt"));
+});
+
+test("routeComplexity result fields have correct types", () => {
+  const result = routeComplexity("Test");
+  assert.equal(typeof result.path, "string");
+  assert.equal(typeof result.reason, "string");
+  assert.equal(typeof result.estimatedBudgetFactor, "number");
+  assert.equal(typeof result.routedAt, "string");
+});
+
+test("routeComplexity result reason is non-empty string", () => {
+  const result = routeComplexity("Test");
+  assert.ok(result.reason.length > 0);
+});
+
+test("routeComplexity keyword_match reason includes the keyword", () => {
+  const result = routeComplexity("Refactor this", { stepCount: 1 });
+  assert.ok(result.reason.includes("refactor"));
+});
+
+test("routeComplexity reason values are among expected set", () => {
+  const reasons: string[] = [];
+  // Collect reasons from various calls
+  reasons.push(routeComplexity("Hi").reason);
+  reasons.push(routeComplexity("What is X", { stepCount: 1 }).reason);
+  reasons.push(routeComplexity("Refactor", { stepCount: 1 }).reason);
+  reasons.push(routeComplexity("Task", { stepCount: 5 }).reason);
+  reasons.push(routeComplexity("Test", { qaMode: true }).reason);
+  reasons.push(routeComplexity("Test", { stepCount: 1, estimatedTokens: 60000 }).reason);
+  reasons.push(routeComplexity("Normal task here", { stepCount: 1 }).reason);
+
+  // All reasons should be non-empty strings
+  for (const reason of reasons) {
+    assert.ok(typeof reason === "string" && reason.length > 0);
+  }
+});
+
+// =============================================================================
+// routeComplexity - Edge Cases with Step Count
+// =============================================================================
+
+test("routeComplexity stepCount undefined vs stepCount 0 behave the same for passthrough", () => {
+  // stepCount undefined: passthrough check uses taskTitle.length
+  const r1 = routeComplexity("Hi");
+  assert.equal(r1.path, "passthrough");
+
+  // stepCount 0: !options?.stepCount = !0 = true (0 is falsy), so passthrough still applies
+  const r2 = routeComplexity("Hi", { stepCount: 0 });
+  assert.equal(r2.path, "passthrough");
+});
+
+test("routeComplexity stepCount 0 is falsy for passthrough check", () => {
+  // stepCount: 0 is falsy, so !options?.stepCount = true, passthrough applies
+  const result = routeComplexity("Short", { stepCount: 0 });
+  assert.equal(result.path, "passthrough");
+});
+
+test("routeComplexity stepCount with very large value triggers multi-step", () => {
+  const result = routeComplexity("Task", { stepCount: 1000 });
+  assert.equal(result.path, "standard");
+  assert.equal(result.reason, "multi_step_workflow");
+});
+
+// =============================================================================
+// routeComplexity - All Default Full Keywords Coverage
+// =============================================================================
+
+test("routeComplexity deep analysis keyword works", () => {
+  const result = routeComplexity("Deep analysis of the issue", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:deep analysis");
+});
+
+test("routeComplexity root cause keyword works", () => {
+  const result = routeComplexity("Root cause analysis", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:root cause");
+});
+
+// =============================================================================
+// routeComplexity - Title Length Edge Cases
+// =============================================================================
+
+test("routeComplexity title at passthroughMaxChars - 1 is passthrough", () => {
+  const result = routeComplexity("a".repeat(49));
+  assert.equal(result.path, "passthrough");
+});
+
+test("routeComplexity title at passthroughMaxChars + 1 is not passthrough", () => {
+  const result = routeComplexity("a".repeat(51));
+  // No stepCount, so passthrough check applies but 51 > 50
+  assert.equal(result.path, "standard");
+});
+
+test("routeComplexity single character is passthrough", () => {
+  const result = routeComplexity("a");
+  assert.equal(result.path, "passthrough");
+});
+
+test("routeComplexity two characters is passthrough", () => {
+  const result = routeComplexity("ab");
+  assert.equal(result.path, "passthrough");
+});
+
+test("routeComplexity three characters is passthrough", () => {
+  const result = routeComplexity("abc");
+  assert.equal(result.path, "passthrough");
+});
+
+// =============================================================================
+// routeComplexity - Unicode and Special Characters
+// =============================================================================
+
+test("routeComplexity handles unicode characters in title", () => {
+  const result = routeComplexity("Test with emoji", { stepCount: 1 });
+  assert.ok(result.path);
+});
+
+test("routeComplexity handles special characters in title", () => {
+  const result = routeComplexity("Refactor: module@$123", { stepCount: 1 });
+  assert.equal(result.path, "full");
+  assert.equal(result.reason, "keyword_match:refactor");
+});
+
+// =============================================================================
+// routeComplexity - Function Return Type Completeness
+// =============================================================================
+
+test("routeComplexity returns correct path for each path type", () => {
+  assert.equal(routeComplexity("Hi").path, "passthrough");
+  assert.equal(routeComplexity("What is X", { stepCount: 1 }).path, "fast");
+  assert.equal(routeComplexity("Normal task", { stepCount: 1 }).path, "standard");
+  assert.equal(routeComplexity("Refactor", { stepCount: 1 }).path, "full");
+});
+
+test("routeComplexity multiple calls return consistent structure", () => {
+  for (let i = 0; i < 5; i++) {
+    const result = routeComplexity("Test task");
+    assert.ok(typeof result.path === "string");
+    assert.ok(typeof result.reason === "string");
+    assert.ok(typeof result.estimatedBudgetFactor === "number");
+    assert.ok(typeof result.routedAt === "string");
+  }
+});

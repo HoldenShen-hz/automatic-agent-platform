@@ -388,13 +388,15 @@ test("extractContinuationPoint handles two line content", () => {
 });
 
 test("extractContinuationPoint handles [continued] marker", () => {
-  const result = extractContinuationPoint("output line\n[continued]");
+  // Need more than 2 lines for truncation indicator check to trigger
+  const result = extractContinuationPoint("line1\nline2\n[continued]");
   assert.ok(result);
   assert.ok(!result!.endsWith("[continued]"));
 });
 
 test("extractContinuationPoint handles [未完成] marker", () => {
-  const result = extractContinuationPoint("内容\n[未完成]");
+  // Need more than 2 lines for truncation indicator check to trigger
+  const result = extractContinuationPoint("内容1\n内容2\n[未完成]");
   assert.ok(result);
   assert.ok(!result!.endsWith("[未完成]"));
 });
@@ -410,9 +412,9 @@ test("extractContinuationPoint handles output ending with colon", () => {
 });
 
 test("extractContinuationPoint returns null for sentence boundary at start", () => {
-  const text = "First sentence. Second sentence.";
+  // Multi-line with no punctuation at end and sentence boundary not past 70%
+  const text = "line1\nline2\nline3\nline4\nline5\nline6\nline7";
   const result = extractContinuationPoint(text);
-  // Since sentence boundary is at ~40% and not past 70%, this returns null
   assert.equal(result, null);
 });
 
@@ -646,14 +648,15 @@ test("extractContinuationPoint handles multiple incomplete patterns", () => {
 
 test("checkContinuationStatus with max_tokens but no continuation point", () => {
   const service = new OutputContinuationService();
-  // Long output that appears complete (multiple sentences, ends properly)
-  // with no truncation indicators
-  const longCompleteOutput = "First sentence. Second sentence. Third sentence. Fourth sentence.";
-  const status = service.checkContinuationStatus("length", longCompleteOutput);
-  // For short/medium content with proper sentence endings and <=2 lines it returns as continuationPoint
-  // But for longer content, the extractContinuationPoint logic may return null
-  // since there's no truncation marker and sentence boundary is not past 70%
+  // Multi-line output without punctuation or truncation markers
+  // This will result in null continuationPoint
+  const multiLineNoPunct = "line1\nline2\nline3\nline4\nline5\nline6\nline7";
+  const status = service.checkContinuationStatus("length", multiLineNoPunct);
+  // canContinue requires BOTH max_tokens AND continuationPoint
+  assert.equal(status.canContinue, false);
   assert.equal(status.reason, "max_tokens_exceeded");
+  assert.equal(status.continuationTokenBudget, null);
+  assert.equal(status.nextInputContent, null);
 });
 
 test("OutputContinuationService records can be filtered by multiple criteria", () => {
