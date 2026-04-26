@@ -152,19 +152,34 @@ export class HaCoordinatorService {
   }
 
   removeNode(nodeId: string): boolean {
-    // If this node is leader, we need to handle failover
-    const node = this.getNode(nodeId);
-    if (node?.isLeader) {
-      // Demote before removal
-      this.db.connection
-        .prepare(`UPDATE coordinator_nodes SET is_leader = 0, status = 'offline' WHERE node_id = ?`)
-        .run(nodeId);
-    }
+    return this.db.transaction(() => {
+      const node = this.getNode(nodeId);
+      if (!node) {
+        return false;
+      }
 
-    this.db.connection
-      .prepare(`DELETE FROM coordinator_nodes WHERE node_id = ?`)
-      .run(nodeId);
-    return true;
+      if (node.isLeader) {
+        const now = nowIso();
+        this.db.connection
+          .prepare(`UPDATE coordinator_nodes SET is_leader = 0, status = 'offline' WHERE node_id = ?`)
+          .run(nodeId);
+        this.db.connection
+          .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE node_id = ? AND status = 'active'`)
+          .run(nodeId);
+        this.db.connection
+          .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'expired' WHERE leader_node_id = ? AND ended_at IS NULL`)
+          .run(now, nodeId);
+      }
+
+      this.db.connection
+        .prepare(`DELETE FROM leadership_leases WHERE node_id = ?`)
+        .run(nodeId);
+
+      const result = this.db.connection
+        .prepare(`DELETE FROM coordinator_nodes WHERE node_id = ?`)
+        .run(nodeId);
+      return Number(result.changes) > 0;
+    });
   }
 
   // ── Leadership Election ────────────────────────────────────────────
@@ -195,14 +210,24 @@ export class HaCoordinatorService {
       // Check existing leadership
       const currentLeader = this.getCurrentLeader();
       const currentEpoch = this.getLatestEpoch();
+      const currentLeaderLease = currentLeader == null ? null : this.getLeaseByNodeId(currentLeader.nodeId);
 
       if (currentLeader && !forceAcquire) {
-        // Check if current lease is still valid
-        const existingLease = this.getActiveLease();
-        if (existingLease && existingLease.nodeId !== nodeId) {
-          const isExpired = new Date(existingLease.expiresAt) <= new Date(now);
+        if (currentLeader.status !== "active") {
+          this.db.connection
+            .prepare(`UPDATE coordinator_nodes SET is_leader = 0 WHERE node_id = ?`)
+            .run(currentLeader.nodeId);
+          if (currentLeaderLease) {
+            this.db.connection
+              .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE lease_id = ?`)
+              .run(currentLeaderLease.leaseId);
+          }
+          this.db.connection
+            .prepare(`UPDATE leadership_epochs SET ended_at = ?, cause = 'expired' WHERE leader_node_id = ? AND ended_at IS NULL`)
+            .run(now, currentLeader.nodeId);
+        } else if (currentLeaderLease && currentLeaderLease.nodeId !== nodeId) {
+          const isExpired = new Date(currentLeaderLease.expiresAt) <= new Date(now);
           if (!isExpired) {
-            // Another node holds valid leadership
             return {
               acquired: false,
               lease: null,
@@ -371,6 +396,13 @@ export class HaCoordinatorService {
     const row = this.db.connection
       .prepare(`SELECT * FROM leadership_leases WHERE status = 'active' AND expires_at > ? ORDER BY acquired_at DESC LIMIT 1`)
       .get(now) as RawRow | undefined;
+    return row ? mapLease(row) : null;
+  }
+
+  private getLeaseByNodeId(nodeId: string): LeaderLease | null {
+    const row = this.db.connection
+      .prepare(`SELECT * FROM leadership_leases WHERE node_id = ? AND status = 'active' ORDER BY acquired_at DESC LIMIT 1`)
+      .get(nodeId) as RawRow | undefined;
     return row ? mapLease(row) : null;
   }
 

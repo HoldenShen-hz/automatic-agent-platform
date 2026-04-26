@@ -26,7 +26,22 @@ function createMockStore(overrides: {
   events?: Array<{ id: string; eventType: string; eventTier?: string; payloadJson?: string }>;
   locks?: { deleteFileLock?: () => void };
   workflow?: { updateWorkflowRecoveryState?: () => void; loadTaskSnapshot?: (taskId: string) => { task: { id: string; status: string; errorCode?: string | null }; execution: { id: string; status: string } | null; workflow: { id: string; status: string; currentStepIndex?: number; outputsJson?: string; resumableFromStep?: number; retryCount?: number; lastErrorCode?: string | null } | null; session: { id: string; status: string; channel: string; externalSessionId: string } | null } };
-  workers?: { getActiveExecutionTicket?: () => { id: string; status: string; attempt?: number } | null; listExecutionTicketsByExecution?: () => Array<{ id: string; attempt: number; priority?: string; queueName?: string | null; dispatchTarget?: string; requiredCapabilitiesJson?: string; requiredIsolationLevel?: string; requiredRepoVersion?: string | null }>; getExecutionTicket?: (ticketId: string) => { id: string; status: string; attempt?: number } | null };
+  workers?: {
+    getActiveExecutionTicket?: () => { id: string; status: string; attempt?: number } | null;
+    listExecutionTicketsByExecution?: () => Array<{ id: string; attempt: number; priority?: string; queueName?: string | null; dispatchTarget?: string; requiredCapabilitiesJson?: string; requiredIsolationLevel?: string; requiredRepoVersion?: string | null }>;
+    getExecutionTicket?: (ticketId: string) => { id: string; status: string; attempt?: number } | null;
+    getActiveExecutionLease?: () => { id: string; executionId: string; workerId: string; expiresAt: string; fencingToken: number } | null;
+    getLatestFencingToken?: () => number;
+    insertExecutionLease?: () => void;
+    getExecutionLease?: () => { id: string; executionId: string; workerId: string; expiresAt: string; fencingToken: number } | null;
+    closeExecutionLease?: () => void;
+    insertLeaseAudit?: () => void;
+    getWorkerSnapshot?: () => null;
+    insertExecutionTicket?: () => void;
+    upsertAgentExecutionRecord?: () => void;
+    invalidateExecutionTicket?: () => void;
+    listExecutionTicketsByStatuses?: () => Array<{ id: string; status: string; executionId: string }>;
+  };
   execution?: { updateExecutionStatus?: () => void; updateExecutionFailure?: () => void };
   task?: { setTaskState?: () => void; getTask?: (id: string) => { id: string; status: string; priority?: string; errorCode?: string | null } | null };
   session?: { updateSessionStatus?: () => void; insertSession?: () => void };
@@ -38,7 +53,13 @@ function createMockStore(overrides: {
     listPendingEventsForConsumer?: (consumerId: string) => Array<{ event: { id: string; eventType: string; eventTier: string }; ack: { status: string } }>;
     listFailedEventsForConsumer?: (consumerId: string) => Array<{ event: { id: string; eventType: string; eventTier: string }; ack: { status: string } }>;
   };
-  operations?: { loadTaskSnapshot?: (taskId: string) => { task: { id: string; status: string; errorCode?: string | null }; execution: { id: string; status: string } | null; workflow: { id: string; status: string; currentStepIndex?: number; outputsJson?: string; resumableFromStep?: number; retryCount?: number; lastErrorCode?: string | null } | null; session: { id: string; status: string; channel: string; externalSessionId: string } | null } };
+  operations?: {
+    loadTaskSnapshot?: (taskId: string) => { task: { id: string; status: string; errorCode?: string | null }; execution: { id: string; status: string } | null; workflow: { id: string; status: string; currentStepIndex?: number; outputsJson?: string; resumableFromStep?: number; retryCount?: number; lastErrorCode?: string | null } | null; session: { id: string; status: string; channel: string; externalSessionId: string } | null };
+    loadExecutionAuthoritativeView?: (executionId: string) => {
+      execution: { id: string; taskId: string; status: string; attempt?: number; traceId?: string; lastErrorCode?: string | null; lastErrorMessage?: string | null; agentId?: string };
+      task: { id: string; status: string; priority?: string; errorCode?: string | null } | null;
+    } | null;
+  };
   dispatch?: { getExecution?: (id: string) => { id: string; taskId: string; status: string; attempt?: number; traceId?: string; lastErrorCode?: string | null; lastErrorMessage?: string | null; agentId?: string } | null; getSession?: (id: string) => { id: string; taskId: string; status: string; channel?: string; externalSessionId?: string } | null };
 } = {}): AuthoritativeTaskStore {
   return {
@@ -73,18 +94,40 @@ function createMockStore(overrides: {
       updateWorkflowRecoveryState: overrides.workflow?.updateWorkflowRecoveryState ?? (() => {}),
     },
     operations: {
-      loadTaskSnapshot: overrides.workflow?.loadTaskSnapshot ?? ((_taskId: string) => ({
+      loadTaskSnapshot: overrides.operations?.loadTaskSnapshot ?? overrides.workflow?.loadTaskSnapshot ?? ((_taskId: string) => ({
         task: { id: "task-1", status: "pending" },
         execution: null,
         workflow: null,
         session: null,
       })),
+      loadExecutionAuthoritativeView: overrides.operations?.loadExecutionAuthoritativeView ?? ((executionId: string) => {
+        const execution = overrides.executions?.find((item) => item.id === executionId) ?? null;
+        if (!execution) {
+          return null;
+        }
+        return {
+          execution,
+          task: overrides.tasks?.find((item) => item.id === execution.taskId) ?? null,
+        };
+      }),
     },
     worker: {
       getActiveExecutionTicket: overrides.workers?.getActiveExecutionTicket ?? (() => null),
       listExecutionTicketsByExecution: overrides.workers?.listExecutionTicketsByExecution ?? (() => []),
       getExecutionTicket: overrides.workers?.getExecutionTicket ?? ((_id: string) => null),
+      getActiveExecutionLease: overrides.workers?.getActiveExecutionLease ?? (() => null),
+      getLatestFencingToken: overrides.workers?.getLatestFencingToken ?? (() => 0),
+      insertExecutionLease: overrides.workers?.insertExecutionLease ?? (() => {}),
+      getExecutionLease: overrides.workers?.getExecutionLease ?? (() => null),
+      closeExecutionLease: overrides.workers?.closeExecutionLease ?? (() => {}),
+      insertLeaseAudit: overrides.workers?.insertLeaseAudit ?? (() => {}),
+      getWorkerSnapshot: overrides.workers?.getWorkerSnapshot ?? (() => null),
+      insertExecutionTicket: overrides.workers?.insertExecutionTicket ?? (() => {}),
+      upsertAgentExecutionRecord: overrides.workers?.upsertAgentExecutionRecord ?? (() => {}),
+      invalidateExecutionTicket: overrides.workers?.invalidateExecutionTicket ?? (() => {}),
+      listExecutionTicketsByStatuses: overrides.workers?.listExecutionTicketsByStatuses ?? (() => []),
     },
+    listExecutionTicketsByExecution: overrides.workers?.listExecutionTicketsByExecution ?? (() => []),
   } as unknown as AuthoritativeTaskStore;
 }
 
@@ -743,6 +786,13 @@ test("RuntimeRepairService.apply handles requeue_execution with terminal session
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["leases"] = {
+    reclaimActiveLease: () => { leaseReclaimed = true; },
+  };
+  internals["dispatch"] = {
+    createTicket: () => ({ ticket: { id: "ticket-1" } }),
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -818,6 +868,13 @@ test("RuntimeRepairService.apply handles requeue_execution with non-terminal ses
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["leases"] = {
+    reclaimActiveLease: () => {},
+  };
+  internals["dispatch"] = {
+    createTicket: () => ({ ticket: { id: "ticket-1" } }),
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -888,6 +945,13 @@ test("RuntimeRepairService.apply handles requeue_execution with open session (no
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["leases"] = {
+    reclaimActiveLease: () => {},
+  };
+  internals["dispatch"] = {
+    createTicket: () => ({ ticket: { id: "ticket-1" } }),
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1255,15 +1319,14 @@ test("RuntimeRepairService.apply rebuild_ack with tier-1 event and registered co
     },
   });
 
-  // Mock the eventOps.drainDefaultConsumers to reduce pending count
-  const originalStore = store as Record<string, unknown>;
-  originalStore.eventOps = {
+  const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["eventOps"] = {
     drainDefaultConsumers: async () => {
       beforePending = afterPending;
+      return [];
     },
   };
-
-  const service = new RuntimeRepairService(db, store);
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1322,6 +1385,19 @@ test("RuntimeRepairService.apply rebuild_ack does not apply when no drainage occ
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["dispatchReconciliation"] = {
+    repairTicket: (ticketId: string) => {
+      if (ticketId === "ticket-1") {
+        return {
+          applied: true,
+          resolutionAction: "requeue_ticket",
+          replacementTicketId: "new-ticket-1",
+        };
+      }
+      return null;
+    },
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1377,6 +1453,19 @@ test("RuntimeRepairService.apply rebuild_ack ignores non-tier-1 events", async (
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["dispatchReconciliation"] = {
+    repairTicket: (ticketId: string) => {
+      if (ticketId === "ticket-1") {
+        return {
+          applied: true,
+          resolutionAction: "invalidate_ticket",
+          replacementTicketId: null,
+        };
+      }
+      return null;
+    },
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1419,6 +1508,19 @@ test("RuntimeRepairService.apply handles reconcile_dispatch_ticket with requeue 
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["dispatchReconciliation"] = {
+    repairTicket: (ticketId: string) => {
+      if (ticketId === "ticket-1") {
+        return {
+          applied: true,
+          resolutionAction: "requeue_ticket",
+          replacementTicketId: "new-ticket-1",
+        };
+      }
+      return null;
+    },
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1462,6 +1564,19 @@ test("RuntimeRepairService.apply handles reconcile_dispatch_ticket with invalida
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["dispatchReconciliation"] = {
+    repairTicket: (ticketId: string) => {
+      if (ticketId === "ticket-1") {
+        return {
+          applied: true,
+          resolutionAction: "invalidate_ticket",
+          replacementTicketId: null,
+        };
+      }
+      return null;
+    },
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1567,6 +1682,16 @@ test("RuntimeRepairService.ensurePendingDispatchTicket creates ticket when none 
   };
 
   const service = new RuntimeRepairService(db, store);
+  const internals = service as unknown as Record<string, unknown>;
+  internals["leases"] = {
+    reclaimActiveLease: () => {},
+  };
+  internals["dispatch"] = {
+    createTicket: () => {
+      ticketCreated = true;
+      return { ticket: { id: "ticket-1" } };
+    },
+  };
 
   const report: StartupConsistencyReport = {
     checkedAt: new Date().toISOString(),
@@ -1585,6 +1710,7 @@ test("RuntimeRepairService.ensurePendingDispatchTicket creates ticket when none 
   const results = await service.apply(report);
 
   assert.equal(results[0]!.applied, true);
+  assert.equal(ticketCreated, true);
 });
 
 test("RuntimeRepairService.apply handles reconcile_terminal_state with no session", async () => {

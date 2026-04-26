@@ -209,7 +209,7 @@ test("ha failover: acquireLeadership throws for unregistered node", () => {
 
   assert.throws(
     () => service.acquireLeadership({ nodeId: "non-existent" }),
-    (err: Error) => err.message.includes("node_not_found"),
+    (err: Error) => err.message.includes("register node before acquiring leadership"),
   );
 
   db.connection.close();
@@ -393,9 +393,11 @@ test("ha failover: queryLeadership detects expired lease", () => {
   const service = new HaCoordinatorService(db);
 
   service.registerNode("node-1", "us-east-1");
-  service.acquireLeadership({ nodeId: "node-1", ttlMs: 1 }); // 1ms TTL
+  service.acquireLeadership({ nodeId: "node-1", ttlMs: 5_000 });
+  db.connection
+    .prepare(`UPDATE leadership_leases SET expires_at = ? WHERE node_id = ? AND status = 'active'`)
+    .run(new Date(Date.now() - 10_000).toISOString(), "node-1");
 
-  // Wait for expiration
   const query = service.queryLeadership();
   assert.equal(query.isExpired, true);
 
@@ -416,9 +418,9 @@ test("ha failover: getLeadershipHistory returns epoch transitions", () => {
   const history = service.listEpochs();
 
   assert.ok(history.length >= 2);
-  assert.equal(history[0]!.leaderNodeId, "node-1");
-  assert.equal(history[1]!.leaderNodeId, "node-2");
-  assert.ok(history[0]!.epoch < history[1]!.epoch);
+  assert.equal(history[0]!.leaderNodeId, "node-2");
+  assert.equal(history[1]!.leaderNodeId, "node-1");
+  assert.ok(history[0]!.epoch > history[1]!.epoch);
 
   db.connection.close();
 });
@@ -456,7 +458,7 @@ test("ha failover: authorizeLeaderAction rejects follower actions when leader_on
   const auth = service.authorizeAction("node-2", "dispatch_task", "leader_only");
 
   assert.equal(auth.authorized, false);
-  assert.equal(auth.reasonCode, "not_leader");
+  assert.equal(auth.reasonCode, "not_current_leader");
 
   db.connection.close();
 });
@@ -626,11 +628,10 @@ test("ha failover: expired lease allows new leadership acquisition", async () =>
   service.registerNode("node-1", "us-east-1");
   service.registerNode("node-2", "us-east-1");
 
-  // Acquire with very short TTL
-  service.acquireLeadership({ nodeId: "node-1", ttlMs: 1 });
-
-  // Wait for expiration
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  service.acquireLeadership({ nodeId: "node-1", ttlMs: 5_000 });
+  db.connection
+    .prepare(`UPDATE leadership_leases SET expires_at = ? WHERE node_id = ? AND status = 'active'`)
+    .run(new Date(Date.now() - 10_000).toISOString(), "node-1");
 
   // Node-2 should now be able to acquire
   const result = service.acquireLeadership({ nodeId: "node-2" });

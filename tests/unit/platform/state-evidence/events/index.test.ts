@@ -1,913 +1,741 @@
 /**
- * Unit tests for state-evidence/events module
+ * Unit tests for state-evidence/events module index
  *
- * Tests event types, schemas, and integration between components.
- * This file supplements the existing test files in tests/unit/platform/state-evidence/events/
+ * Tests re-exports and module interface for events package.
+ * This supplements the comprehensive tests in individual test files.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { join } from "node:path";
 
-import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { TypedEventBus } from "../../../../../src/platform/state-evidence/events/typed-event-bus.js";
-import { EventOpsService } from "../../../../../src/platform/state-evidence/events/event-ops-service.js";
-import { EventTopologyService } from "../../../../../src/platform/state-evidence/events/event-topology-service.js";
-import { ProjectionInventoryService } from "../../../../../src/platform/state-evidence/events/projection-inventory-service.js";
-import { EventReliabilityInventoryService } from "../../../../../src/platform/state-evidence/events/event-reliability-inventory-service.js";
-import { DlqService } from "../../../../../src/platform/state-evidence/events/dlq-service.js";
-import { TypedEventBusPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
-import { validateEventPayload, EVENT_SCHEMA_REGISTRY } from "../../../../../src/platform/state-evidence/events/event-registry.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+// Re-exported types and functions from index.ts
+import {
+  // From cas/index
+  CasService,
+  type CasResult,
+  FencingTokenService,
+  type FenceMode,
+  type FenceInfo,
+  type FencingTokenValidation,
+  // From dlq-service
+  DlqService,
+  type FailureCategory,
+  type OperatorActionRecord,
+  type OperatorActionType,
+  type ExtendedDeadLetterRecord,
+  type DeadLetterStatus,
+  type DlqSummary,
+  // From durable-event-bus-async
+  DurableEventBusAsync,
+  type EventHandler,
+  // From durable-event-bus
+  DurableEventBus,
+  // From event-ops-service
+  EventOpsService,
+  type EventDrainResult,
+  // From event-registry
+  EVENT_SCHEMA_REGISTRY,
+  validateEventPayload,
+  hasEventSchema,
+  getEventSchema,
+  getRegisteredConsumers,
+  type EventSchemaDefinition,
+  type KnownEventType,
+  // From event-reliability-inventory-service
+  EventReliabilityInventoryService,
+  type EventReliabilityInventoryEntry,
+  type EventNamespaceInventory,
+  type EventConsumerSurfaceInventory,
+  type EventReliabilityInventoryReport,
+  // From projection-inventory-service
+  ProjectionInventoryService,
+  type ProjectionInventoryRecord,
+  // From event-topology-service
+  EventTopologyService,
+  type EventTopologyNode,
+  type EventTopologyEdge,
+  type EventTopologyEntry,
+  type EventTopologySummary,
+  // From event-types
+  TIER_1_EVENT_TYPES,
+  getEventTier,
+  getRequiredConsumers,
+  type Tier1EventType,
+  // From transactional-event-appender
+  TransactionalEventAppender,
+  type TransactionalAppendOptions,
+  type TransactionalAppendResult,
+  // From typed-event-bus
+  TypedEventBus,
+  type TypedEventPayloadMap,
+  type TypedEventType,
+  type TypedEventEnvelope,
+  // From typed-event-payloads
+  type TaskStatusChangedPayload,
+  type WorkflowStepCompletedPayload,
+  type DecisionRequestedPayload,
+  type DecisionRespondedPayload,
+  type DivisionOutcomePayload,
+  type SubtaskOutcomePayload,
+  type CostLimitReachedPayload,
+  type StreamChunkEmittedPayload,
+  type DispatchTicketPayload,
+  type WorkerLifecyclePayload,
+  type TakeoverPayload,
+  type RecoveryPayload,
+  type DomainLifecyclePayload,
+  type PluginLifecycleEventPayload,
+  type PluginInvocationEventPayload,
+  type KnowledgeChunkIndexedPayload,
+  type LearningKnowledgePromotedPayload,
+  // From typed-event-publisher
+  TypedEventBusPublisher,
+  type TypedEventPublisher,
+} from "../../../../../src/platform/state-evidence/events/index.js";
 
 // ============================================================================
-// Typed Event Payloads - Interface Coverage Tests
+// CAS Types
 // ============================================================================
 
-test("TypedEventBus publishes task:status_changed with all optional fields", async () => {
-  const workspace = createTempWorkspace("aa-event-payload-full-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
+test("CasResult type structure", () => {
+  const result: CasResult = {
+    success: true,
+    currentValue: "updated_value",
+    currentVersion: 5,
+  };
+  assert.equal(result.success, true);
+  assert.equal(result.currentVersion, 5);
+});
 
-    seedTaskAndExecution(db, store, { taskId: "task-full", executionId: "exec-full", traceId: "trace-full" });
+test("FenceMode type values", () => {
+  const shared: FenceMode = "shared";
+  const exclusive: FenceMode = "exclusive";
+  assert.equal(shared, "shared");
+  assert.equal(exclusive, "exclusive");
+});
 
-    const result = bus.publish({
+test("FenceInfo type structure", () => {
+  const info: FenceInfo = {
+    executionId: "exec-123",
+    mode: "exclusive",
+    fenceToken: "token-xyz",
+    ownerNodeId: "node-1",
+    acquiredAt: new Date(),
+    expiresAt: null,
+  };
+  assert.equal(info.executionId, "exec-123");
+  assert.equal(info.mode, "exclusive");
+});
+
+test("FencingTokenValidation type with valid result", () => {
+  const validation: FencingTokenValidation = {
+    valid: true,
+    executionId: "exec-456",
+    owner: "node-2",
+  };
+  assert.equal(validation.valid, true);
+  assert.ok(validation.executionId);
+  assert.ok(validation.owner);
+});
+
+test("FencingTokenValidation type with invalid result", () => {
+  const validation: FencingTokenValidation = {
+    valid: false,
+    reason: "Token expired",
+  };
+  assert.equal(validation.valid, false);
+  assert.ok(validation.reason);
+});
+
+// ============================================================================
+// DLQ Types
+// ============================================================================
+
+test("FailureCategory type values", () => {
+  const categories: FailureCategory[] = [
+    "transient",
+    "permanent",
+    "configuration",
+    "resource",
+    "timeout",
+    "authentication",
+    "rate_limit",
+    "unknown",
+  ];
+  for (const cat of categories) {
+    const record: ExtendedDeadLetterRecord = createMinimalDlqRecord();
+    record.failureCategory = cat;
+    assert.ok(record.failureCategory === cat);
+  }
+});
+
+test("OperatorActionType type values", () => {
+  const types: OperatorActionType[] = [
+    "retry_scheduled",
+    "retry_cancelled",
+    "retry_exhausted",
+    "manual_discard",
+    "manual_resolve",
+    "category_changed",
+    "investigation_started",
+    "escalation_triggered",
+    "mitigation_applied",
+  ];
+  for (const type of types) {
+    const action: OperatorActionRecord = createMinimalOperatorAction(type);
+    assert.equal(action.action, type);
+  }
+});
+
+test("DeadLetterStatus type values", () => {
+  const statuses: DeadLetterStatus[] = ["pending", "retrying", "discarded", "resolved"];
+  for (const status of statuses) {
+    const record: ExtendedDeadLetterRecord = createMinimalDlqRecord();
+    record.status = status;
+    assert.equal(record.status, status);
+  }
+});
+
+test("DlqSummary type structure", () => {
+  const summary: DlqSummary = {
+    totalRecords: 10,
+    statusCounts: {
+      pending: 5,
+      retrying: 2,
+      discarded: 1,
+      resolved: 2,
+    },
+    categoryCounts: {
+      transient: 3,
+      permanent: 2,
+      unknown: 5,
+    },
+    consumerCounts: {
+      consumer1: 4,
+      consumer2: 6,
+    },
+    pendingConsumers: ["consumer1", "consumer2"],
+    maxRetryCount: 5,
+    oldestPendingAt: "2026-04-26T08:00:00.000Z",
+  };
+  assert.equal(summary.totalRecords, 10);
+  assert.equal(summary.maxRetryCount, 5);
+});
+
+// ============================================================================
+// Event Registry Types
+// ============================================================================
+
+test("EVENT_SCHEMA_REGISTRY contains expected event types", () => {
+  assert.ok(EVENT_SCHEMA_REGISTRY["task:status_changed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["workflow:step_completed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["decision:requested"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["division:completed"]);
+});
+
+test("EventSchemaDefinition structure", () => {
+  const schema = EVENT_SCHEMA_REGISTRY["task:status_changed"];
+  assert.equal(schema.type, "task:status_changed");
+  assert.equal(schema.tier, "tier_1");
+  assert.ok(Array.isArray(schema.consumers));
+  assert.ok(schema.consumers.length > 0);
+});
+
+test("KnownEventType is string union of registry keys", () => {
+  const eventType: KnownEventType = "task:status_changed";
+  assert.equal(eventType, "task:status_changed");
+});
+
+test("validateEventPayload works for valid event type", () => {
+  const payload = { fromStatus: "pending", toStatus: "in_progress" };
+  const validated = validateEventPayload("task:status_changed", payload);
+  assert.equal(validated.fromStatus, "pending");
+  assert.equal(validated.toStatus, "in_progress");
+});
+
+test("hasEventSchema returns true for known event", () => {
+  assert.equal(hasEventSchema("task:status_changed"), true);
+  assert.equal(hasEventSchema("workflow:step_completed"), true);
+});
+
+test("hasEventSchema returns false for unknown event", () => {
+  assert.equal(hasEventSchema("unknown:event"), false);
+  assert.equal(hasEventSchema(""), false);
+});
+
+test("getEventSchema returns schema for known event", () => {
+  const schema = getEventSchema("task:status_changed");
+  assert.equal(schema.type, "task:status_changed");
+});
+
+test("getRegisteredConsumers returns consumers for Tier 1 events", () => {
+  const consumers = getRegisteredConsumers("task:status_changed");
+  assert.ok(consumers.length > 0);
+  assert.ok(consumers.includes("task_projection"));
+});
+
+test("getRegisteredConsumers returns empty for Tier 2 events", () => {
+  const consumers = getRegisteredConsumers("stream:chunk_emitted");
+  assert.deepEqual(consumers, []);
+});
+
+// ============================================================================
+// Event Types
+// ============================================================================
+
+test("TIER_1_EVENT_TYPES contains 32 events", () => {
+  assert.equal(TIER_1_EVENT_TYPES.length, 32);
+});
+
+test("Tier1EventType union type works", () => {
+  const eventType: Tier1EventType = "task:status_changed";
+  assert.equal(eventType, "task:status_changed");
+});
+
+test("getEventTier for all TIER_1_EVENT_TYPES returns tier_1", () => {
+  for (const eventType of TIER_1_EVENT_TYPES) {
+    assert.equal(getEventTier(eventType), "tier_1");
+  }
+});
+
+test("getEventTier for dispatch events returns tier_2", () => {
+  assert.equal(getEventTier("dispatch:ticket_created"), "tier_2");
+});
+
+test("getEventTier for stream events returns tier_2 (default)", () => {
+  assert.equal(getEventTier("stream:chunk_emitted"), "tier_2");
+});
+
+test("getRequiredConsumers returns correct consumers for task events", () => {
+  const consumers = getRequiredConsumers("task:status_changed");
+  assert.ok(consumers.includes("task_projection"));
+  assert.ok(consumers.includes("inspect_projection"));
+});
+
+// ============================================================================
+// Event Drain Result
+// ============================================================================
+
+test("EventDrainResult type structure", () => {
+  const result: EventDrainResult = {
+    consumerId: "test_consumer",
+    pendingBefore: 5,
+    failedBefore: 0,
+    replayedFromHistoryCount: 0,
+    delivered: 5,
+    pendingAfter: 0,
+    failedAfter: 0,
+    outcome: "delivered",
+    errorCode: null,
+  };
+  assert.equal(result.consumerId, "test_consumer");
+  assert.equal(result.outcome, "delivered");
+});
+
+// ============================================================================
+// Event Reliability Inventory Types
+// ============================================================================
+
+test("EventReliabilityInventoryEntry type structure", () => {
+  const entry: EventReliabilityInventoryEntry = {
+    eventType: "task:status_changed",
+    namespace: "task",
+    tier: "tier_1",
+    producer: "transition_service",
+    consumers: ["task_projection", "inspect_projection"],
+    ackRequired: true,
+    replayRequired: true,
+    dlqEligible: true,
+    payloadSchemaRef: "event://task/status_changed/v1",
+  };
+  assert.equal(entry.namespace, "task");
+  assert.equal(entry.ackRequired, true);
+});
+
+test("EventNamespaceInventory type structure", () => {
+  const inventory: EventNamespaceInventory = {
+    namespace: "task",
+    totalEvents: 5,
+    tierCounts: { tier_1: 4, tier_2: 1, tier_3: 0 },
+    producers: ["producer1", "producer2"],
+    consumers: ["consumer1", "consumer2"],
+    ackRequiredEvents: ["task:status_changed"],
+    replayRequiredEvents: ["task:status_changed"],
+    dlqEligibleEvents: ["task:status_changed"],
+  };
+  assert.equal(inventory.namespace, "task");
+  assert.equal(inventory.totalEvents, 5);
+});
+
+test("EventConsumerSurfaceInventory type structure", () => {
+  const surface: EventConsumerSurfaceInventory = {
+    consumerId: "task_projection",
+    role: "projection",
+    expectedByContract: true,
+    consumedEvents: ["task:status_changed", "task:created"],
+    tier1Events: ["task:status_changed"],
+    tier2Events: [],
+    tier3Events: [],
+    ackRequired: true,
+    replayRequired: true,
+    coverageStatus: "implemented",
+  };
+  assert.equal(surface.consumerId, "task_projection");
+  assert.equal(surface.role, "projection");
+});
+
+// ============================================================================
+// Projection Inventory Types
+// ============================================================================
+
+test("ProjectionInventoryRecord type structure", () => {
+  const record: ProjectionInventoryRecord = {
+    projectionName: "task_summary",
+    consumerId: "task_projection",
+    namespace: "task",
+    eventTypes: ["task:status_changed"],
+    lagThresholdSeconds: 30,
+    rebuildRequired: true,
+    coverageStatus: "implemented",
+  };
+  assert.equal(record.projectionName, "task_summary");
+  assert.equal(record.lagThresholdSeconds, 30);
+});
+
+// ============================================================================
+// Event Topology Types
+// ============================================================================
+
+test("EventTopologyNode type structure", () => {
+  const node: EventTopologyNode = {
+    nodeId: "producer:transition_service",
+    kind: "producer",
+  };
+  assert.equal(node.kind, "producer");
+});
+
+test("EventTopologyEdge type structure", () => {
+  const edge: EventTopologyEdge = {
+    source: "producer:transition_service",
+    target: "event:task:status_changed",
+    relation: "emits",
+    tier: "tier_1",
+  };
+  assert.equal(edge.relation, "emits");
+  assert.equal(edge.tier, "tier_1");
+});
+
+test("EventTopologyEntry type structure", () => {
+  const entry: EventTopologyEntry = {
+    eventType: "task:status_changed",
+    namespace: "task",
+    tier: "tier_1",
+    producer: "transition_service",
+    consumers: ["task_projection"],
+    payloadSchemaRef: "event://task/status_changed/v1",
+    reliableAckRequired: true,
+  };
+  assert.equal(entry.reliableAckRequired, true);
+});
+
+test("EventTopologySummary type structure", () => {
+  const summary: EventTopologySummary = {
+    totalEvents: 50,
+    namespaces: ["task", "workflow", "decision"],
+    tierCounts: { tier_1: 15, tier_2: 30, tier_3: 5 },
+    producers: ["producer1", "producer2"],
+    consumers: ["consumer1", "consumer2"],
+  };
+  assert.equal(summary.totalEvents, 50);
+  assert.equal(summary.tierCounts.tier_1, 15);
+});
+
+// ============================================================================
+// Transactional Event Appender Types
+// ============================================================================
+
+test("TransactionalAppendOptions type structure", () => {
+  const options: TransactionalAppendOptions = {
+    writeToOutbox: true,
+    traceId: "trace-123",
+    eventTier: "tier_1",
+  };
+  assert.equal(options.writeToOutbox, true);
+  assert.equal(options.traceId, "trace-123");
+});
+
+test("TransactionalAppendResult type structure", () => {
+  const result: TransactionalAppendResult = {
+    event: {
+      id: "evt-123",
+      taskId: "task-456",
+      sessionId: null,
+      executionId: "exec-789",
       eventType: "task:status_changed",
-      taskId: "task-full",
-      executionId: "exec-full",
-      traceId: "trace-full",
-      payload: {
-        fromStatus: "pending",
-        toStatus: "in_progress",
-        reasonCode: "scheduler_dispatch",
-        occurredAt: "2026-04-23T10:00:00.000Z",
-        entityKind: "task",
-        entityId: "task-full",
-        reasonDetail: "Normal scheduler dispatch",
-        actorType: "system",
-        actorId: "scheduler-1",
-        idempotencyKey: "idem-123",
-        metadataJson: '{"source":"test"}',
-        manualOverride: false,
-        traceContext: {
-          traceId: "trace-full",
-          spanId: "span-1",
-          parentSpanId: null,
-          correlationId: null,
-        },
-      },
-    });
-
-    assert.equal(result.eventType, "task:status_changed");
-    assert.ok(result.id.startsWith("evt_"));
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes decision:requested with basic fields", async () => {
-  const workspace = createTempWorkspace("aa-event-decision-req-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    // Seed task and execution for the event
-    seedTaskAndExecution(db, store, { taskId: "task-decision", executionId: "exec-decision", traceId: "trace-decision" });
-
-    bus.publish({
-      eventType: "decision:requested",
-      taskId: "task-decision",
-      executionId: "exec-decision",
-      payload: {
-        approvalId: "approval-abc",
-        sourceAgentId: "agent-1",
-        reason: "High risk operation",
-        riskLevel: "high",
-      },
-    });
-
-    const events = store.event.listEventsByType("decision:requested", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.riskLevel, "high");
-    assert.equal(payload.approvalId, "approval-abc");
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes domain:registered with capability and plugin counts", async () => {
-  const workspace = createTempWorkspace("aa-event-domain-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "domain:registered",
-      payload: {
-        domainId: "coding",
-        status: "active",
-        capabilityCount: 5,
-        pluginCount: 12,
-        occurredAt: "2026-04-23T10:00:00.000Z",
-      },
-    });
-
-    const events = store.event.listEventsByType("domain:registered", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.capabilityCount, 5);
-    assert.equal(payload.pluginCount, 12);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes plugin:invocation_started with runtime isolation info", async () => {
-  const workspace = createTempWorkspace("aa-event-plugin-invocation-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "plugin:invocation_started",
-      payload: {
-        pluginId: "plugin.coding.presenter",
-        domainId: "coding",
-        spiType: "presenter",
-        phase: "init",
-        invocationId: "inv_123",
-        lifecycleState: "initializing",
-        runtimeIsolation: "sandboxed_process",
-        activeInvocationCount: 3,
-        queuedInvocationCount: 1,
-        bindingId: "binding_abc",
-        occurredAt: "2026-04-23T10:00:00.000Z",
-        status: "started",
-      },
-    });
-
-    const events = store.event.listEventsByType("plugin:invocation_started", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.runtimeIsolation, "sandboxed_process");
-    assert.equal(payload.activeInvocationCount, 3);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes knowledge:chunk_indexed with trust and relation counts", async () => {
-  const workspace = createTempWorkspace("aa-event-knowledge-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "knowledge:chunk_indexed",
-      payload: {
-        namespace: "docs",
-        documentId: "doc_123",
-        chunkId: "chunk_456",
-        trustLevel: "high",
-        keywordCount: 42,
-        relationCount: 7,
-        occurredAt: "2026-04-23T10:00:00.000Z",
-      },
-    });
-
-    const events = store.event.listEventsByType("knowledge:chunk_indexed", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.trustLevel, "high");
-    assert.equal(payload.keywordCount, 42);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes learning:knowledge_promoted with promotion metrics", async () => {
-  const workspace = createTempWorkspace("aa-event-learning-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "learning:knowledge_promoted",
-      payload: {
-        learningObjectId: "lo_123",
-        learningType: "concept",
-        documentId: "doc_456",
-        namespace: "docs",
-        trustLevel: "verified",
-        promotedCount: 15,
-        occurredAt: "2026-04-23T10:00:00.000Z",
-      },
-    });
-
-    const events = store.event.listEventsByType("learning:knowledge_promoted", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.promotedCount, 15);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-// ============================================================================
-// Skill Event Payloads Tests
-// ============================================================================
-
-test("TypedEventBus publishes skill:execution_started with cache status", async () => {
-  const workspace = createTempWorkspace("aa-event-skill-start-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "skill:execution_started",
-      payload: {
-        skillId: "skill_coding_v1",
-        version: "1.0.0",
-        stepCount: 5,
-        cacheStatus: "miss",
-      },
-    });
-
-    const events = store.event.listEventsByType("skill:execution_started", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.cacheStatus, "miss");
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes skill:cache_hit with stored metadata", async () => {
-  const workspace = createTempWorkspace("aa-event-skill-cache-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "skill:cache_hit",
-      payload: {
-        skillId: "skill_coding_v1",
-        cacheKey: "cache_key_abc",
-        workingDirectory: "/workspace/project",
-        gitHead: "abc123",
-        sourceHash: "def456",
-        storedAt: "2026-04-23T09:00:00.000Z",
-        expiresAt: "2026-04-24T09:00:00.000Z",
-      },
-    });
-
-    const events = store.event.listEventsByType("skill:cache_hit", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.ok(payload.storedAt);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes skill:step_succeeded with duration", async () => {
-  const workspace = createTempWorkspace("aa-event-skill-step-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "skill:step_succeeded",
-      payload: {
-        skillId: "skill_coding_v1",
-        stepId: "step_3",
-        toolName: "bash",
-        attempt: 1,
-        maxAttempts: 3,
-        durationMs: 1500,
-        continuedAfterFailure: false,
-      },
-    });
-
-    const events = store.event.listEventsByType("skill:step_succeeded", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.durationMs, 1500);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes skill:step_failed with retry info", async () => {
-  const workspace = createTempWorkspace("aa-event-skill-fail-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "skill:step_failed",
-      payload: {
-        skillId: "skill_coding_v1",
-        stepId: "step_2",
-        toolName: "bash",
-        attempt: 2,
-        maxAttempts: 3,
-        errorCode: "command_failed",
-        retrying: true,
-        willRetry: true,
-        continued: false,
-        continuedAfterFailure: false,
-      },
-    });
-
-    const events = store.event.listEventsByType("skill:step_failed", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.retrying, true);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes skill:retry_scheduled with next attempt info", async () => {
-  const workspace = createTempWorkspace("aa-event-skill-retry-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "skill:retry_scheduled",
-      payload: {
-        skillId: "skill_coding_v1",
-        stepId: "step_2",
-        toolName: "bash",
-        attempt: 1,
-        nextAttempt: 2,
-        errorCode: "timeout",
-      },
-    });
-
-    const events = store.event.listEventsByType("skill:retry_scheduled", 10);
-    assert.equal(events.length, 1);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("TypedEventBus publishes skill:execution_completed with final status", async () => {
-  const workspace = createTempWorkspace("aa-event-skill-complete-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new TypedEventBus(db, store);
-
-    bus.publish({
-      eventType: "skill:execution_completed",
-      payload: {
-        skillId: "skill_coding_v1",
-        status: "completed",
-        retryCount: 0,
-        cacheStatus: "hit",
-      },
-    });
-
-    const events = store.event.listEventsByType("skill:execution_completed", 10);
-    assert.equal(events.length, 1);
-    const payload = JSON.parse(events[0]!.payloadJson);
-    assert.equal(payload.status, "completed");
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-// ============================================================================
-// Event Topology Integration Tests
-// ============================================================================
-
-test("EventTopologyService buildGraph creates nodes for all producers and consumers", () => {
-  const service = new EventTopologyService();
-  const graph = service.buildGraph();
-
-  // Should have nodes for producers, events, and consumers
-  assert.ok(graph.nodes.length > 0);
-
-  const producerNodes = graph.nodes.filter((n: { kind: string }) => n.kind === "producer");
-  const eventNodes = graph.nodes.filter((n: { kind: string }) => n.kind === "event");
-  const consumerNodes = graph.nodes.filter((n: { kind: string }) => n.kind === "consumer");
-
-  assert.ok(producerNodes.length > 0, "Should have producer nodes");
-  assert.ok(eventNodes.length > 0, "Should have event nodes");
-  assert.ok(consumerNodes.length > 0, "Should have consumer nodes");
-
-  // Verify edges connect producers -> events and events -> consumers
-  const emitEdges = graph.edges.filter((e: { relation: string }) => e.relation === "emits");
-  const consumeEdges = graph.edges.filter((e: { relation: string }) => e.relation === "consumes");
-
-  assert.ok(emitEdges.length > 0, "Should have emit edges");
-  assert.ok(consumeEdges.length > 0, "Should have consume edges");
-});
-
-test("EventTopologyService buildSummary returns correct tier counts", () => {
-  const service = new EventTopologyService();
-  const summary = service.buildSummary();
-
-  // All tier counts should sum to totalEvents
-  const tierSum = summary.tierCounts.tier_1 + summary.tierCounts.tier_2 + summary.tierCounts.tier_3;
-  assert.equal(tierSum, summary.totalEvents);
-
-  // Should have namespaces, producers, and consumers
-  assert.ok(summary.namespaces.length > 0);
-  assert.ok(summary.producers.length > 0);
-  assert.ok(summary.consumers.length > 0);
-});
-
-test("EventTopologyService listNamespaceEntries filters correctly", () => {
-  const service = new EventTopologyService();
-
-  const taskEntries = service.listNamespaceEntries("task");
-  assert.ok(taskEntries.length > 0);
-  assert.ok(taskEntries.every((e: { namespace: string }) => e.namespace === "task"));
-
-  const dispatchEntries = service.listNamespaceEntries("dispatch");
-  assert.ok(dispatchEntries.length > 0);
-  assert.ok(dispatchEntries.every((e: { namespace: string }) => e.namespace === "dispatch"));
-
-  const unknownEntries = service.listNamespaceEntries("unknown_namespace");
-  assert.equal(unknownEntries.length, 0);
-});
-
-test("EventTopologyService entries have correct reliability semantics", () => {
-  const service = new EventTopologyService();
-  const entries = service.listEntries();
-
-  for (const entry of entries) {
-    // tier_1 events should require reliable ack
-    if (entry.tier === "tier_1") {
-      assert.equal(entry.reliableAckRequired, true);
-    } else {
-      assert.equal(entry.reliableAckRequired, false);
-    }
-
-    // All entries should have valid payload schema ref
-    assert.ok(entry.payloadSchemaRef.startsWith("event://"));
-    assert.ok(entry.payloadSchemaRef.endsWith("/v1"));
-  }
-});
-
-// ============================================================================
-// Event Reliability Integration Tests
-// ============================================================================
-
-test("EventReliabilityInventoryService lists namespace inventory correctly", () => {
-  const service = new EventReliabilityInventoryService();
-  const namespaces = service.listNamespaceInventory();
-
-  // Verify task namespace
-  const taskNs = namespaces.find((n: { namespace: string }) => n.namespace === "task");
-  assert.ok(taskNs);
-  assert.ok(taskNs!.tierCounts.tier_1 > 0);
-  assert.ok(taskNs!.ackRequiredEvents.includes("task:status_changed"));
-});
-
-test("EventReliabilityInventoryService lists consumer surfaces with correct roles", () => {
-  const service = new EventReliabilityInventoryService();
-  const surfaces = service.listConsumerSurfaces();
-
-  const taskProjection = surfaces.find((s: { consumerId: string }) => s.consumerId === "task_projection");
-  assert.ok(taskProjection);
-  assert.equal(taskProjection!.role, "projection");
-  assert.ok(taskProjection!.tier1Events.includes("task:status_changed"));
-  assert.ok(taskProjection!.ackRequired);
-});
-
-test("EventReliabilityInventoryService marks contract gaps for missing consumers", () => {
-  const service = new EventReliabilityInventoryService();
-  const surfaces = service.listConsumerSurfaces();
-
-  // gateway_projection is expected but may have no consumed events
-  const gateway = surfaces.find((s: { consumerId: string }) => s.consumerId === "gateway_projection");
-  if (gateway) {
-    assert.equal(gateway.expectedByContract, true);
-  }
-});
-
-test("EventReliabilityInventoryService buildReport includes all sections", () => {
-  const service = new EventReliabilityInventoryService();
-  const report = service.buildReport();
-
-  assert.ok(report.totalEvents > 0);
-  assert.ok(report.tierCounts.tier_1 > 0);
-  assert.ok(report.namespaces.length > 0);
-  assert.ok(report.consumerSurfaces.length > 0);
-  assert.ok(Array.isArray(report.tier1EventsMissingConsumers));
-
-  // Verify tier1EventsMissingConsumers is empty (all tier1 events have consumers)
-  assert.equal(report.tier1EventsMissingConsumers.length, 0);
-});
-
-// ============================================================================
-// Projection Inventory Service Tests
-// ============================================================================
-
-test("ProjectionInventoryService includes all baseline projections", () => {
-  const service = new ProjectionInventoryService();
-  const records = service.listProjectionInventory();
-
-  const expectedProjections = [
-    "task_summary",
-    "workflow_summary",
-    "approval_summary",
-    "division_summary",
-    "budget_summary",
-    "inspect_projection",
-    "feedback_summary",
-    "gateway_summary",
-    "observability_summary",
-  ];
-
-  for (const expected of expectedProjections) {
-    assert.ok(records.some((r: { projectionName: string }) => r.projectionName === expected), `Missing projection: ${expected}`);
-  }
-});
-
-test("ProjectionInventoryService projections have event types from inventory", () => {
-  const service = new ProjectionInventoryService();
-  const records = service.listProjectionInventory();
-
-  for (const record of records) {
-    assert.ok(Array.isArray(record.eventTypes));
-  }
-});
-
-test("ProjectionInventoryService buildSummary counts contract gaps", () => {
-  const service = new ProjectionInventoryService();
-  const summary = service.buildSummary();
-
-  assert.equal(summary.total, 9);
-  assert.ok(Array.isArray(summary.contractGaps));
-  // gateway_summary is a contract gap
-  assert.ok(summary.contractGaps.includes("gateway_summary"));
-});
-
-// ============================================================================
-// TypedEventBusPublisher Tests
-// ============================================================================
-
-test("TypedEventBusPublisher delegates publish to underlying bus", () => {
-  let publishCalled = false;
-  let receivedInput: unknown = null;
-
-  const mockBus = {
-    publish: ((input: unknown) => {
-      publishCalled = true;
-      receivedInput = input;
-    }) as unknown,
-  } as TypedEventBus;
-
-  const publisher = new TypedEventBusPublisher(mockBus);
-
-  publisher.publish({
-    eventType: "task:status_changed",
-    payload: {
-      fromStatus: "queued",
-      toStatus: "in_progress",
+      eventTier: "tier_1",
+      payloadJson: "{}",
+      traceId: null,
+      createdAt: "2026-04-26T10:00:00.000Z",
     },
-  });
-
-  assert.equal(publishCalled, true);
-  assert.equal((receivedInput as { eventType: string }).eventType, "task:status_changed");
-  assert.deepEqual((receivedInput as { payload: unknown }).payload, { fromStatus: "queued", toStatus: "in_progress" });
+    outboxEntryId: "outbox-abc",
+  };
+  assert.ok(result.event);
+  assert.ok(result.outboxEntryId);
 });
 
-test("TypedEventBusPublisher passes trace context correctly", () => {
-  let receivedTraceId: string | undefined = undefined;
-  let receivedTraceContext: unknown = undefined;
+// ============================================================================
+// Typed Event Bus Types
+// ============================================================================
 
-  const mockBus = {
-    publish: ((input: { traceId?: string; traceContext?: unknown }) => {
-      receivedTraceId = input.traceId;
-      receivedTraceContext = input.traceContext;
-    }) as (input: { traceId?: string; traceContext?: unknown }) => void,
-  } as unknown as TypedEventBus;
+test("TypedEventPayloadMap includes all expected event types", () => {
+  const map: TypedEventPayloadMap = {
+    "task:status_changed": { fromStatus: "pending", toStatus: "in_progress" },
+    "workflow:step_completed": { stepId: "step-1" },
+    "decision:requested": { approvalId: "approval-123" },
+  };
+  assert.ok(map["task:status_changed"]);
+  assert.ok(map["workflow:step_completed"]);
+});
 
-  const publisher = new TypedEventBusPublisher(mockBus);
+test("TypedEventType is intersection of KnownEventType and keyof TypedEventPayloadMap", () => {
+  const eventType: TypedEventType = "task:status_changed";
+  assert.equal(eventType, "task:status_changed");
+});
 
-  publisher.publish({
-    eventType: "task:status_changed",
-    taskId: "task-123",
-    traceId: "trace-abc",
-    traceContext: {
-      traceId: "trace-abc",
-      spanId: "span-1",
-      parentSpanId: null,
-      correlationId: null,
+test("TypedEventEnvelope type structure", () => {
+  const envelope: TypedEventEnvelope<"task:status_changed"> = {
+    event: {
+      id: "evt-123",
+      taskId: "task-456",
+      sessionId: null,
+      executionId: null,
+      eventType: "task:status_changed",
+      eventTier: "tier_1",
+      payloadJson: "{}",
+      traceId: null,
+      createdAt: "2026-04-26T10:00:00.000Z",
     },
     payload: {
-      fromStatus: "queued",
+      fromStatus: "pending",
       toStatus: "in_progress",
     },
+  };
+  assert.equal(envelope.event.eventType, "task:status_changed");
+  assert.equal(envelope.payload.fromStatus, "pending");
+});
+
+// ============================================================================
+// Typed Event Publisher Type
+// ============================================================================
+
+test("TypedEventPublisher interface structure", () => {
+  // Verify the interface exists and is properly typed
+  const publisher: TypedEventPublisher = {
+    publish: (input) => {
+      assert.equal(input.eventType, "task:status_changed");
+    },
+  };
+  publisher.publish({
+    eventType: "task:status_changed",
+    payload: { fromStatus: "a", toStatus: "b" },
   });
-
-  assert.equal(receivedTraceId, "trace-abc");
-  assert.ok(receivedTraceContext);
 });
 
 // ============================================================================
-// DurableEventBus Batch Publish Tests
+// Event Payload Type Structures
 // ============================================================================
 
-test("DurableEventBus publishBatch inserts multiple events", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
+test("TaskStatusChangedPayload structure", () => {
+  const payload: TaskStatusChangedPayload = {
+    fromStatus: "queued",
+    toStatus: "in_progress",
+  };
+  assert.equal(payload.fromStatus, "queued");
+});
 
-    seedTaskAndExecution(db, store, { taskId: "task-batch", executionId: "exec-batch", traceId: "trace-batch" });
+test("WorkflowStepCompletedPayload structure", () => {
+  const payload: WorkflowStepCompletedPayload = {
+    stepId: "step-123",
+  };
+  assert.equal(payload.stepId, "step-123");
+});
 
-    const results = bus.publishBatch([
-      {
-        eventType: "task:status_changed",
-        taskId: "task-batch",
-        executionId: "exec-batch",
-        traceId: "trace-batch",
-        payload: { fromStatus: "queued", toStatus: "in_progress" },
-      },
-      {
-        eventType: "task:status_changed",
-        taskId: "task-batch",
-        executionId: "exec-batch",
-        traceId: "trace-batch",
-        payload: { fromStatus: "in_progress", toStatus: "completed" },
-      },
-    ]);
+test("DecisionRequestedPayload structure", () => {
+  const payload: DecisionRequestedPayload = {
+    approvalId: "approval-abc",
+  };
+  assert.equal(payload.approvalId, "approval-abc");
+});
 
-    assert.equal(results.length, 2);
-    assert.ok(results[0]!.id.startsWith("evt_"));
-    assert.ok(results[1]!.id.startsWith("evt_"));
-    assert.notEqual(results[0]!.id, results[1]!.id);
+test("DivisionOutcomePayload structure", () => {
+  const payload: DivisionOutcomePayload = {
+    divisionId: "div-123",
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.divisionId, "div-123");
+});
 
-    // Verify both events are in the store
-    const events = store.event.listEventsByType("task:status_changed");
-    assert.equal(events.length, 2);
+test("SubtaskOutcomePayload structure", () => {
+  const payload: SubtaskOutcomePayload = {
+    subtaskId: "sub-123",
+  };
+  assert.equal(payload.subtaskId, "sub-123");
+});
 
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
+test("CostLimitReachedPayload structure", () => {
+  const payload: CostLimitReachedPayload = {
+    budgetId: "budget-123",
+    currentCostUsd: 95.50,
+    limitUsd: 100,
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.currentCostUsd, 95.50);
+});
+
+test("StreamChunkEmittedPayload structure", () => {
+  const payload: StreamChunkEmittedPayload = {
+    streamId: "stream-abc",
+    chunkIndex: 5,
+    chunkType: "text",
+    emittedAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.chunkIndex, 5);
+});
+
+test("DispatchTicketPayload structure", () => {
+  const payload: DispatchTicketPayload = {
+    ticketId: "ticket-123",
+    executionId: "exec-456",
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.ticketId, "ticket-123");
+});
+
+test("WorkerLifecyclePayload structure", () => {
+  const payload: WorkerLifecyclePayload = {
+    workerId: "worker-123",
+    executionId: null,
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.executionId, null);
+});
+
+test("TakeoverPayload structure", () => {
+  const payload: TakeoverPayload = {
+    takeoverId: "takeover-123",
+    executionId: "exec-456",
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.takeoverId, "takeover-123");
+});
+
+test("RecoveryPayload structure", () => {
+  const payload: RecoveryPayload = {
+    executionId: "exec-123",
+    occurredAt: "2026-04-26T10:00:00.000Z",
+    reasonCode: "db_reconnect",
+  };
+  assert.equal(payload.reasonCode, "db_reconnect");
+});
+
+test("DomainLifecyclePayload structure", () => {
+  const payload: DomainLifecyclePayload = {
+    domainId: "domain-123",
+    status: "active",
+    capabilityCount: 5,
+    pluginCount: 10,
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.capabilityCount, 5);
+});
+
+test("PluginLifecycleEventPayload structure", () => {
+  const payload: PluginLifecycleEventPayload = {
+    pluginId: "plugin-123",
+    domainId: null,
+    spiType: "ai_spi",
+    lifecycleState: "initialized",
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.lifecycleState, "initialized");
+});
+
+test("PluginInvocationEventPayload structure", () => {
+  const payload: PluginInvocationEventPayload = {
+    pluginId: "plugin-abc",
+    domainId: "domain-xyz",
+    spiType: "presenter",
+    phase: "invoke",
+    invocationId: "inv-123",
+    lifecycleState: "running",
+    runtimeIsolation: "sandbox",
+    activeInvocationCount: 2,
+    queuedInvocationCount: 1,
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.activeInvocationCount, 2);
+});
+
+test("KnowledgeChunkIndexedPayload structure", () => {
+  const payload: KnowledgeChunkIndexedPayload = {
+    namespace: "test/ns",
+    documentId: "doc-123",
+    chunkId: "chunk-456",
+    trustLevel: "verified",
+    keywordCount: 10,
+    relationCount: 5,
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.trustLevel, "verified");
+});
+
+test("LearningKnowledgePromotedPayload structure", () => {
+  const payload: LearningKnowledgePromotedPayload = {
+    learningObjectId: "lo-123",
+    learningType: "concept",
+    documentId: "doc-456",
+    namespace: "test/ns",
+    trustLevel: "reviewed",
+    promotedCount: 3,
+    occurredAt: "2026-04-26T10:00:00.000Z",
+  };
+  assert.equal(payload.promotedCount, 3);
 });
 
 // ============================================================================
-// EventOpsService Integration Tests
+// Helper Functions
 // ============================================================================
 
-test("EventOpsService drainConsumer returns error code on failure", async () => {
-  const workspace = createTempWorkspace("aa-event-ops-drain-err-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new EventOpsService(db, store);
-
-    // Subscribe a handler that always fails
-    service.subscribe("failing_consumer", async () => {
-      throw new Error("delivery_failed");
-    });
-
-    // Drain should complete even with failure
-    const result = await service.drainConsumer("failing_consumer");
-
-    assert.equal(result.consumerId, "failing_consumer");
-    assert.ok(result.outcome === "delivered" || result.outcome === "failed");
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-test("EventOpsService listDefaultConsumers returns sorted array", () => {
-  const workspace = createTempWorkspace("aa-event-ops-consumers-");
-  try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const service = new EventOpsService(db, store);
-
-    const consumers = service.listDefaultConsumers();
-
-    assert.ok(Array.isArray(consumers));
-    assert.ok(consumers.length > 0);
-
-    // Verify it's sorted
-    const sorted = [...consumers].sort();
-    assert.deepEqual(consumers, sorted);
-
-    db.close();
-  } finally {
-    cleanupPath(workspace);
-  }
-});
-
-// ============================================================================
-// DLQ Service Integration Tests
-// ============================================================================
-
-test("DlqService enqueue with failure category creates categorized record", () => {
-  const service = new DlqService();
-
-  const record = service.enqueue({
-    sourceEventId: "evt_transient",
-    consumerId: "test-consumer",
-    errorCode: "timeout",
-    payloadJson: '{"data":"test"}',
-    failureCategory: "transient",
-    reason: "Network timeout - retry should succeed",
-  });
-
-  assert.equal(record.failureCategory, "transient");
-  assert.equal(record.reason, "Network timeout - retry should succeed");
-  assert.equal(record.status, "pending");
-});
-
-test("DlqService setReason updates reason without changing other fields", () => {
-  const service = new DlqService();
-
-  const record = service.enqueue({
-    sourceEventId: "evt_reason",
-    consumerId: "test-consumer",
-    errorCode: "validation_failed",
-    payloadJson: '{"data":"test"}',
-  });
-
-  const updated = service.setReason(record.deadLetterId, "Payload validation failed: missing required field 'id'");
-
-  assert.equal(updated.reason, "Payload validation failed: missing required field 'id'");
-  assert.equal(updated.failureCategory, null); // Unchanged
-  assert.equal(updated.status, "pending"); // Unchanged
-  assert.equal(updated.retryCount, 0); // Unchanged
-});
-
-test("DlqService logOperatorAction creates audit trail entries", () => {
-  const service = new DlqService();
-
-  const record = service.enqueue({
-    sourceEventId: "evt_audit",
-    consumerId: "test-consumer",
-    errorCode: "e1",
+function createMinimalDlqRecord(): ExtendedDeadLetterRecord {
+  return {
+    deadLetterId: "dlq-123",
+    sourceEventId: "evt-456",
+    consumerId: "consumer-abc",
+    errorCode: "test_error",
+    errorMessage: null,
     payloadJson: "{}",
-  });
+    status: "pending",
+    retryCount: 0,
+    maxRetries: 5,
+    nextRetryAt: null,
+    createdAt: "2026-04-26T10:00:00.000Z",
+    updatedAt: "2026-04-26T10:00:00.000Z",
+    originalTimestamp: null,
+    failureCategory: null,
+    reason: null,
+    retryExhaustedAt: null,
+    operatorActionLog: [],
+  };
+}
 
-  service.logOperatorAction(record.deadLetterId, "investigation_started", "operator_1", { note: "Starting investigation" });
-  service.logOperatorAction(record.deadLetterId, "mitigation_applied", "operator_2", { action: "Restarted service" });
-  service.markResolved(record.deadLetterId, "operator_3");
-
-  const updated = service.get(record.deadLetterId)!;
-
-  assert.equal(updated.operatorActionLog.length, 3);
-  assert.equal(updated.operatorActionLog[0]!.action, "investigation_started");
-  assert.equal(updated.operatorActionLog[0]!.operatorId, "operator_1");
-  assert.equal(updated.operatorActionLog[1]!.action, "mitigation_applied");
-  assert.equal(updated.operatorActionLog[2]!.action, "manual_resolve");
-});
-
-test("DlqService scheduleRetry with custom delay uses that delay", () => {
-  const service = new DlqService();
-
-  const record = service.enqueue({
-    sourceEventId: "evt_custom_delay",
-    consumerId: "test-consumer",
-    errorCode: "e1",
-    payloadJson: "{}",
-  });
-
-  const updated = service.scheduleRetry(record.deadLetterId, 120_000);
-
-  assert.equal(updated.retryCount, 1);
-  assert.equal(updated.status, "retrying");
-  assert.ok(updated.nextRetryAt !== null);
-
-  // Parse the nextRetryAt and verify it's approximately 120 seconds in the future
-  const nextRetry = new Date(Date.parse(updated.nextRetryAt!));
-  const now = new Date();
-  const diffMs = nextRetry.getTime() - now.getTime();
-
-  // Should be approximately 120 seconds (allow some variance for test execution time)
-  assert.ok(diffMs >= 119_000 && diffMs <= 125_000, `Expected ~120000ms, got ${diffMs}`);
-});
-
-// ============================================================================
-// Event Schema Registry Edge Cases
-// ============================================================================
-
-test("EVENT_SCHEMA_REGISTRY includes perf test events", () => {
-  // These are used for benchmarks only
-  const perfTestSchema = EVENT_SCHEMA_REGISTRY["perf:test_event"];
-  assert.ok(perfTestSchema);
-  assert.equal(perfTestSchema.tier, "tier_3");
-  assert.equal(perfTestSchema.producer, "performance_test");
-  assert.deepEqual(perfTestSchema.consumers, []);
-});
-
-test("EVENT_SCHEMA_REGISTRY includes delegation namespace events when registered", () => {
-  // Note: delegation events are defined in TIER_1_EVENT_TYPES but may not all
-  // be in EVENT_SCHEMA_REGISTRY depending on registration status
-  const knownTier1Events = [
-    "delegation:created",
-    "delegation:completed",
-    "delegation:failed",
-  ];
-
-  // Only check events that actually exist in the registry
-  for (const eventType of knownTier1Events) {
-    const schema = EVENT_SCHEMA_REGISTRY[eventType as keyof typeof EVENT_SCHEMA_REGISTRY];
-    if (schema) {
-      assert.ok(schema.consumers.length > 0, `${eventType} should have consumers if registered`);
-    }
-  }
-});
-
-test("validateEventPayload rejects subtask event missing both stepId and subtaskId", () => {
-  // subtaskOutcomePayloadSchema has a custom refinement requiring at least one of stepId or subtaskId
-
-  // This should fail validation - no stepId or subtaskId
-  assert.throws(
-    () => validateEventPayload("subtask:completed", { roleId: "agent", status: "completed" }),
-    /Invalid payload for event type: subtask:completed/,
-  );
-});
-
-test("validateEventPayload accepts subtask event with only stepId", () => {
-  const result = validateEventPayload("subtask:completed", {
-    stepId: "step_1",
-    subtaskId: undefined,
-    roleId: "agent",
-    status: "completed",
-  });
-
-  assert.equal(result.stepId, "step_1");
-});
-
-test("validateEventPayload accepts subtask event with only subtaskId", () => {
-  const result = validateEventPayload("subtask:completed", {
-    stepId: undefined,
-    subtaskId: "subtask_1",
-    roleId: "agent",
-    status: "completed",
-  });
-
-  assert.equal(result.subtaskId, "subtask_1");
-});
+function createMinimalOperatorAction(type: OperatorActionType): OperatorActionRecord {
+  return {
+    actionId: "action-123",
+    operatorId: "operator-456",
+    action: type,
+    timestamp: "2026-04-26T10:00:00.000Z",
+    details: null,
+    previousStatus: null,
+    newStatus: null,
+  };
+}

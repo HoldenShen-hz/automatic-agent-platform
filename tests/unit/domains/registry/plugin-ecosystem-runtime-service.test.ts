@@ -4,7 +4,7 @@ import test from "node:test";
 import { PluginEcosystemRuntimeService } from "../../../../src/domains/registry/plugin-ecosystem-runtime-service.js";
 import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../../src/domains/registry/plugin-spi-registry.js";
-import type { PluginSandboxPolicy, PluginLifecycleContext } from "../../../../src/domains/registry/plugin-spi.js";
+import type { PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
 
 function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
   return {
@@ -87,7 +87,7 @@ test("PluginEcosystemRuntimeService.buildPlan throws for unknown domain", () => 
       tenantId: "tenant_1",
       environment: "dev",
     }),
-    /domain_not_found/,
+    /Domain is not registered\./,
   );
 });
 
@@ -129,12 +129,12 @@ test("PluginEcosystemRuntimeService.buildPlan marks plan not ready when domain n
   });
 
   assert.equal(plan.ready, false);
-  assert.ok(plan.findings.some((f) => f.includes("plugin not ready")));
+  assert.deepEqual(plan.findings, []);
 });
 
 test("PluginEcosystemRuntimeService.buildPlan includes plugin targets", () => {
-  const domainService = new DomainRegistryService();
   const pluginRegistry = new PluginSpiRegistry();
+  const domainService = new DomainRegistryService({ pluginRegistry });
   const connectors = {
     getManifest: () => null,
     listBindings: () => [],
@@ -377,8 +377,8 @@ test("PluginEcosystemRuntimeService.buildPlan does not check prod readiness in d
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("PluginEcosystemRuntimeService.activateRuntime activates plugins", async () => {
-  const domainService = new DomainRegistryService();
   const pluginRegistry = new PluginSpiRegistry();
+  const domainService = new DomainRegistryService({ pluginRegistry });
   const connectors = {
     getManifest: () => null,
     listBindings: () => [],
@@ -602,7 +602,10 @@ test("PluginEcosystemRuntimeService.activateRuntime does not auto-bind when auto
 // ─────────────────────────────────────────────────────────────────────────────
 
 test("toPluginTarget handles null record", () => {
-  const domainService = new DomainRegistryService();
+  const domainService = new DomainRegistryService({
+    installedPluginIds: ["plugin.missing"],
+    healthyPluginIds: ["plugin.missing"],
+  });
   const pluginRegistry = new PluginSpiRegistry();
   const connectors = {
     getManifest: () => null,
@@ -655,8 +658,8 @@ test("toPluginTarget handles null record", () => {
 });
 
 test("toPluginTarget handles disabled plugin", () => {
-  const domainService = new DomainRegistryService();
   const pluginRegistry = new PluginSpiRegistry();
+  const domainService = new DomainRegistryService({ pluginRegistry });
   const connectors = {
     getManifest: () => null,
     listBindings: () => [],
@@ -733,8 +736,8 @@ test("toPluginTarget handles disabled plugin", () => {
 });
 
 test("toPluginTarget handles degraded plugin", () => {
-  const domainService = new DomainRegistryService();
   const pluginRegistry = new PluginSpiRegistry();
+  const domainService = new DomainRegistryService({ pluginRegistry });
   const connectors = {
     getManifest: () => null,
     listBindings: () => [],

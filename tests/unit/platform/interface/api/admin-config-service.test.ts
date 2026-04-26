@@ -100,14 +100,18 @@ test("AdminConfigService listUpdates handles complex value objects", () => {
   assert.deepStrictEqual(list[0]!.value, complexValue);
 });
 
-test("AdminConfigService listUpdates filters null tenantId correctly", () => {
+test("AdminConfigService listUpdates filters by tenantId when provided", () => {
   const service = new AdminConfigService();
-  service.applyUpdate({ key: "global1", value: "v1", tenantId: null, updatedBy: "a" });
-  service.applyUpdate({ key: "global2", value: "v2", tenantId: null, updatedBy: "a" });
-  service.applyUpdate({ key: "tenant1", value: "v3", tenantId: "tenant-A", updatedBy: "a" });
+  service.applyUpdate({ key: "global1", value: "v1", tenantId: "tenant-A", updatedBy: "a" });
+  service.applyUpdate({ key: "global2", value: "v2", tenantId: "tenant-A", updatedBy: "a" });
+  service.applyUpdate({ key: "tenant1", value: "v3", tenantId: "tenant-B", updatedBy: "a" });
 
-  const listNull = service.listUpdates(50, null);
-  assert.ok(listNull.every((r) => r.tenantId === null));
+  const listA = service.listUpdates(50, "tenant-A");
+  assert.equal(listA.length, 2);
+  assert.ok(listA.every((r) => r.tenantId === "tenant-A"));
+
+  const listB = service.listUpdates(50, "tenant-B");
+  assert.equal(listB.length, 1);
 });
 
 test("AdminConfigService applyUpdate uses provided submittedAt", () => {

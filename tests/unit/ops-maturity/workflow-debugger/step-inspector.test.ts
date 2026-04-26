@@ -24,7 +24,7 @@ test.describe("StepInspector", () => {
       assert.ok(state !== null);
       assert.equal(state.stepId, "step-1");
       assert.equal(state.status, "running");
-      assert.equal(state.input, "test");
+      assert.deepEqual(state.input, { input: "test" });
       assert.ok(state.startedAt !== null);
       assert.equal(state.completedAt, null);
     });
@@ -36,7 +36,7 @@ test.describe("StepInspector", () => {
 
       const state = inspector.getStepState("step-1");
       assert.ok(state !== null);
-      assert.equal(state.input, "second");
+      assert.deepEqual(state.input, { input: "second" });
     });
   });
 
@@ -195,7 +195,7 @@ test.describe("StepInspector", () => {
       const state = inspector.getStepState("step-1");
       assert.ok(state !== null);
       assert.equal(state.status, "failed");
-      assert.equal(state.output, "Something went Wrong");
+      assert.equal(state.output, "Something went wrong");
     });
   });
 
