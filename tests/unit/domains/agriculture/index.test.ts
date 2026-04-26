@@ -4,37 +4,44 @@ import test from "node:test";
 import {
   AgricultureTaskTypeSchema,
   AGRICULTURE_DOMAIN_PRESET,
-  AgricultureDomainPreset,
   requiresAgricultureReview,
+  type AgricultureTaskType,
 } from "../../../../src/domains/agriculture/index.js";
 
 test("AgricultureTaskTypeSchema accepts valid task types", () => {
-  const types = ["plan", "monitor", "recommend"] as const;
-  for (const type of types) {
-    const result = AgricultureTaskTypeSchema.safeParse(type);
-    assert.equal(result.success, true, `Expected ${type} to be valid`);
-  }
+  assert.equal(AgricultureTaskTypeSchema.parse("plan"), "plan");
+  assert.equal(AgricultureTaskTypeSchema.parse("monitor"), "monitor");
+  assert.equal(AgricultureTaskTypeSchema.parse("recommend"), "recommend");
 });
 
 test("AgricultureTaskTypeSchema rejects invalid task types", () => {
-  const result = AgricultureTaskTypeSchema.safeParse("invalid");
-  assert.equal(result.success, false);
+  assert.throws(() => AgricultureTaskTypeSchema.parse("invalid"));
 });
 
-test("AGRICULTURE_DOMAIN_PRESET has correct structure", () => {
+test("AGRICULTURE_DOMAIN_PRESET has correct domainId", () => {
   assert.equal(AGRICULTURE_DOMAIN_PRESET.domainId, "agriculture");
-  assert.ok(Array.isArray(AGRICULTURE_DOMAIN_PRESET.defaultWorkflowIds));
-  assert.ok(Array.isArray(AGRICULTURE_DOMAIN_PRESET.defaultToolBundleIds));
-  assert.ok(Array.isArray(AGRICULTURE_DOMAIN_PRESET.requiredCapabilities));
-  assert.ok(Array.isArray(AGRICULTURE_DOMAIN_PRESET.reviewRequiredTaskTypes));
 });
 
-test("AGRICULTURE_DOMAIN_PRESET has correct required capabilities", () => {
+test("AGRICULTURE_DOMAIN_PRESET has correct displayName", () => {
+  assert.equal(AGRICULTURE_DOMAIN_PRESET.displayName, "Agriculture");
+});
+
+test("AGRICULTURE_DOMAIN_PRESET has requiredCapabilities", () => {
   assert.deepEqual(AGRICULTURE_DOMAIN_PRESET.requiredCapabilities, ["plan", "monitor", "recommend"]);
 });
 
-test("AGRICULTURE_DOMAIN_PRESET has correct review required task types", () => {
+test("AGRICULTURE_DOMAIN_PRESET has reviewRequiredTaskTypes", () => {
   assert.deepEqual(AGRICULTURE_DOMAIN_PRESET.reviewRequiredTaskTypes, ["monitor", "recommend"]);
+});
+
+test("AGRICULTURE_DOMAIN_PRESET has defaultWorkflowIds", () => {
+  assert.ok(Array.isArray(AGRICULTURE_DOMAIN_PRESET.defaultWorkflowIds));
+  assert.ok(AGRICULTURE_DOMAIN_PRESET.defaultWorkflowIds.length > 0);
+});
+
+test("AGRICULTURE_DOMAIN_PRESET has defaultToolBundleIds", () => {
+  assert.ok(Array.isArray(AGRICULTURE_DOMAIN_PRESET.defaultToolBundleIds));
+  assert.ok(AGRICULTURE_DOMAIN_PRESET.defaultToolBundleIds.length > 0);
 });
 
 test("requiresAgricultureReview returns true for monitor task type", () => {
@@ -47,4 +54,10 @@ test("requiresAgricultureReview returns true for recommend task type", () => {
 
 test("requiresAgricultureReview returns false for plan task type", () => {
   assert.equal(requiresAgricultureReview("plan"), false);
+});
+
+test("AGRICULTURE_DOMAIN_PRESET is frozen and immutable", () => {
+  assert.ok(Object.isFrozen(AGRICULTURE_DOMAIN_PRESET));
+  assert.ok(Object.isFrozen(AGRICULTURE_DOMAIN_PRESET.requiredCapabilities));
+  assert.ok(Object.isFrozen(AGRICULTURE_DOMAIN_PRESET.reviewRequiredTaskTypes));
 });
