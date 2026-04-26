@@ -302,8 +302,8 @@ test("getEventTier for dispatch events returns tier_2", () => {
   assert.equal(getEventTier("dispatch:ticket_created"), "tier_2");
 });
 
-test("getEventTier for stream events returns tier_2 (default)", () => {
-  assert.equal(getEventTier("stream:chunk_emitted"), "tier_2");
+test("getEventTier for stream events returns tier_3", () => {
+  assert.equal(getEventTier("stream:chunk_emitted"), "tier_3");
 });
 
 test("getRequiredConsumers returns correct consumers for task events", () => {

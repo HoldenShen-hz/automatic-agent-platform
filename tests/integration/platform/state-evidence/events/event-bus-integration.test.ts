@@ -414,10 +414,6 @@ test("integration: event bus deliverPending acknowledges events and clears pendi
     });
 
     let handlerCalled = false;
-    bus.subscribe("ack_consumer", (event) => {
-      handlerCalled = true;
-    });
-
     bus.publish({
       eventType: "task:status_changed",
       taskId: "task-ack",
@@ -426,11 +422,14 @@ test("integration: event bus deliverPending acknowledges events and clears pendi
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const pendingBefore = bus.pendingForConsumer("ack_consumer").length;
+    bus.subscribe("task_projection", () => {
+      handlerCalled = true;
+    });
 
-    const delivered = await bus.deliverPending("ack_consumer");
-    const pendingAfter = bus.pendingForConsumer("ack_consumer").length;
+    const pendingBefore = bus.pendingForConsumer("task_projection").length;
+
+    const delivered = await bus.deliverPending("task_projection");
+    const pendingAfter = bus.pendingForConsumer("task_projection").length;
 
     assert.ok(handlerCalled, "Handler should have been called");
     assert.ok(pendingBefore > 0, "Should have pending events before deliverPending");

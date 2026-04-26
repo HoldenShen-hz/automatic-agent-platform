@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createIntegrationContext } from "../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import {
   OperatorConsoleBackendService,
   type OperatorIdentity,

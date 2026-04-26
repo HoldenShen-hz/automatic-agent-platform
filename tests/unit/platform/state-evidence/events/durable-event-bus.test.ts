@@ -578,7 +578,11 @@ test("durable event bus publishBatch rejects oversized payload", async () => {
             },
           },
         ]),
-      /event\.payload_too_large/,
+      (error: unknown) =>
+        typeof error === "object"
+        && error !== null
+        && "code" in error
+        && error.code === "event.payload_too_large",
     );
 
     db.close();
@@ -741,8 +745,6 @@ test("durable event bus deliverPending returns count of delivered events", async
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-deliver-count", executionId: "exec-deliver-count", traceId: "trace-deliver-count" });
 
-    bus.subscribe("task_projection", async () => {});
-
     bus.publish({
       eventType: "task:status_changed",
       taskId: "task-deliver-count",
@@ -750,6 +752,8 @@ test("durable event bus deliverPending returns count of delivered events", async
       traceId: "trace-deliver-count",
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
+
+    bus.subscribe("task_projection", async () => {});
 
     const delivered = await bus.deliverPending("task_projection");
     assert.equal(delivered, 1);
@@ -805,7 +809,12 @@ test("durable event bus publish with traceContext injects trace fields into payl
     const events = store.listEventsForTask("task-trace");
     assert.equal(events.length, 1);
     const payload = JSON.parse(events[0]!.payloadJson) as Record<string, unknown>;
-    assert.equal(payload.traceContext, undefined); // traceContext not included in payload itself
+    assert.deepEqual(payload.traceContext, {
+      traceId: "trace-trace",
+      spanId: "span-abc",
+      parentSpanId: "span-root",
+      correlationId: "corr-123",
+    });
 
     db.close();
   } finally {

@@ -131,6 +131,16 @@ export function getEventTier(eventType: string): EventTier {
     return "tier_1";
   }
 
+  if (
+    eventType === "stream:chunk_emitted"
+    || eventType === "perf:test_event"
+    || eventType === "perf:burst_event"
+    || eventType === "test:capacity"
+    || eventType === "test:many_events"
+  ) {
+    return "tier_3";
+  }
+
   return "tier_2";
 }
 
