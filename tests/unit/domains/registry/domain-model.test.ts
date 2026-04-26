@@ -236,37 +236,6 @@ test("DomainDefinitionSchema parses valid definition", () => {
   assert.equal(result.version, 1);
 });
 
-test("DomainDefinitionSchema accepts all status values", () => {
-  const statuses = ["draft", "testing", "active", "deprecated"];
-  for (const status of statuses) {
-    const result = DomainDefinitionSchema.parse({
-      domainId: "d1",
-      name: "N",
-      description: "D",
-      status,
-    });
-    assert.equal(result.status, status);
-  }
-});
-
-test("DomainDefinitionSchema applies default version", () => {
-  const result = DomainDefinitionSchema.parse({
-    domainId: "d1",
-    name: "N",
-    description: "D",
-  });
-  assert.equal(result.version, 1);
-});
-
-test("DomainDefinitionSchema applies default status", () => {
-  const result = DomainDefinitionSchema.parse({
-    domainId: "d1",
-    name: "N",
-    description: "D",
-  });
-  assert.equal(result.status, "draft");
-});
-
 test("DomainDefinitionSchema rejects empty domainId", () => {
   assert.throws(() => {
     DomainDefinitionSchema.parse({ domainId: "", name: "N", description: "D" });

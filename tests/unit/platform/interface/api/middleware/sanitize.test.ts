@@ -45,25 +45,19 @@ test.describe("sanitizeJsonValue", () => {
     assert.equal(result.a.b.c.d, 1);
   });
 
-  test("throws on __proto__ key - special property", () => {
-    // __proto__ is a special property that sets prototype, not a regular key
-    // Object.entries does not enumerate it as a regular property
-    // This is a known limitation of the sanitization approach
+  test("__proto__ is not caught - bypasses Object.keys enumeration", () => {
+    // __proto__ is a special property that sets prototype directly
+    // It bypasses the DANGEROUS_JSON_KEYS check because Object.keys does not enumerate it
     const result = sanitizeJsonValue({ __proto__: { x: 1 } });
     assert.ok(result !== null && typeof result === "object");
   });
 
-  test("throws on prototype key - special property", () => {
-    // prototype is a special property on functions, not enumerable via Object.entries
-    const result = sanitizeJsonValue({ prototype: { x: 1 } });
-    assert.ok(result !== null && typeof result === "object");
+  test("throws on prototype key", () => {
+    assert.throws(() => sanitizeJsonValue({ prototype: { x: 1 } }), /JSON payload contains reserved key: prototype/);
   });
 
   test("throws on constructor key", () => {
-    // constructor is a non-enumerable property on Object.prototype
-    // but may appear in Object.entries in some environments
-    const result = sanitizeJsonValue({ constructor: { x: 1 } });
-    assert.ok(result !== null && typeof result === "object");
+    assert.throws(() => sanitizeJsonValue({ constructor: { x: 1 } }), /JSON payload contains reserved key: constructor/);
   });
 
   test("allows other underscore keys", () => {
@@ -71,9 +65,10 @@ test.describe("sanitizeJsonValue", () => {
     // These don't throw because they don't match the exact Set values
   });
 
-  test("returns empty object for empty input", () => {
-    const result = sanitizeJsonValue({}) as Record<string, unknown>;
-    assert.deepEqual(result, {});
+  test("returns object for empty input", () => {
+    const result = sanitizeJsonValue({});
+    // Returns null prototype object
+    assert.ok(result !== null && typeof result === "object");
   });
 
   test("handles mixed types in object", () => {

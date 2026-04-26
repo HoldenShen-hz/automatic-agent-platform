@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { readValidatedJsonBody } from "../../../../../src/platform/interface/api/middleware/input-validation.js";
+import { readValidatedJsonBody } from "../../../../../../src/platform/interface/api/middleware/input-validation.js";
 
 test("readValidatedJsonBody parses valid JSON and validates with parser", () => {
   const result = readValidatedJsonBody('{"id": 123, "name": "test"}', (data) => {
@@ -12,8 +12,10 @@ test("readValidatedJsonBody parses valid JSON and validates with parser", () => 
 });
 
 test("readValidatedJsonBody applies sanitize before validation", () => {
-  const result = readValidatedJsonBody('{"__proto__": {"admin": true}}', (data) => data);
-  assert.fail("Should have thrown on dangerous key");
+  assert.throws(
+    () => readValidatedJsonBody('{"__proto__": {"admin": true}}', (data) => data),
+    (err: unknown) => (err as { code?: string }).code === "api.invalid_json_key",
+  );
 });
 
 test("readValidatedJsonBody handles nested objects", () => {
@@ -36,12 +38,24 @@ test("readValidatedJsonBody returns parser result directly", () => {
   assert.equal(result, "just-a-string");
 });
 
-test("readValidatedJsonBody with null body returns null", () => {
-  const result = readValidatedJsonBody(null, (data) => data);
-  assert.equal(result, null);
+test("readValidatedJsonBody with empty object body", () => {
+  const result = readValidatedJsonBody('{}', (data) => data);
+  assert.equal(Object.getPrototypeOf(result), null);
 });
 
-test("readValidatedJsonBody with undefined body returns undefined", () => {
-  const result = readValidatedJsonBody(undefined, (data) => data);
-  assert.equal(result, undefined);
+test("readValidatedJsonBody rejects nested dangerous key", () => {
+  assert.throws(
+    () => readValidatedJsonBody('{"user":{"constructor":{"admin":true}}}', (data) => data),
+    (err: unknown) => (err as { code?: string }).code === "api.invalid_json_key",
+  );
+});
+
+test("readValidatedJsonBody passes number through parser", () => {
+  const result = readValidatedJsonBody('42', (data) => data);
+  assert.equal(result, 42);
+});
+
+test("readValidatedJsonBody passes boolean through parser", () => {
+  const result = readValidatedJsonBody('true', (data) => data);
+  assert.equal(result, true);
 });
