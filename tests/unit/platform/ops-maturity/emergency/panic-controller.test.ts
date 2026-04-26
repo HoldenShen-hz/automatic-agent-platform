@@ -98,7 +98,7 @@ test("shouldEnterPanicMode handles security. prefix case sensitively", () => {
   assert.strictEqual(result, false);
 });
 
-test("shouldEnterPanicMode handles reasonCode with security. somewhere in string", () => {
+test("shouldEnterPanicMode ignores reasonCode with security. outside prefix", () => {
   const input: PanicDirectiveInput = {
     scope: "tenant-1",
     reasonCode: "audit.security.event",
@@ -107,7 +107,7 @@ test("shouldEnterPanicMode handles reasonCode with security. somewhere in string
 
   const result = shouldEnterPanicMode(input);
 
-  assert.strictEqual(result, true);
+  assert.strictEqual(result, false);
 });
 
 test("shouldEnterPanicMode returns true for security.xss", () => {

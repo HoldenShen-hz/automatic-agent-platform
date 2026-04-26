@@ -239,10 +239,12 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = ((statuses: string[]) => {
-    if (statuses.includes("pending")) return 5;
-    if (statuses.includes("claimed")) return 3;
-    if (statuses.includes("consumed")) return 10;
-    return 0;
+    if (statuses.includes("pending")) return new Array(5).fill("ticket");
+    if (statuses.includes("claimed")) return new Array(3).fill("ticket");
+    if (statuses.includes("consumed")) return new Array(10).fill("ticket");
+    if (statuses.includes("cancelled")) return new Array(2).fill("ticket");
+    if (statuses.includes("expired")) return new Array(1).fill("ticket");
+    return [];
   }) as any;
   mockStore.worker.listExecutionLeasesByStatuses = () => [];
   mockStore.release.listEnvironmentReadinessRecords = () => [];
@@ -263,15 +265,22 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
   assert.equal(report.executionPlane.ticketCounts.pending, 5);
   assert.equal(report.executionPlane.ticketCounts.claimed, 3);
   assert.equal(report.executionPlane.ticketCounts.consumed, 10);
+  assert.equal(report.executionPlane.ticketCounts.cancelled, 2);
+  assert.equal(report.executionPlane.ticketCounts.expired, 1);
 });
 
 test("PlatformOperatorService buildReport counts leases by status", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
-  mockStore.worker.listExecutionLeasesByStatuses = () => {
+  mockStore.worker.listExecutionLeasesByStatuses = ((statuses: string[]) => {
+    if (statuses.includes("active")) return new Array(4).fill("lease");
+    if (statuses.includes("expired")) return new Array(2).fill("lease");
+    if (statuses.includes("released")) return new Array(1).fill("lease");
+    if (statuses.includes("reclaimed")) return [];
+    if (statuses.includes("handed_over")) return [];
     return [];
-  };
+  }) as any;
   mockStore.release.listEnvironmentReadinessRecords = () => [];
   mockStore.organization.listOrganizationRecords = () => [];
   mockStore.organization.listWorkspaceRecords = () => [];
@@ -289,6 +298,7 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
 
   assert.equal(report.executionPlane.leaseCounts.active, 4);
   assert.equal(report.executionPlane.leaseCounts.expired, 2);
+  assert.equal(report.executionPlane.leaseCounts.released, 1);
 });
 
 test("PlatformOperatorService buildReport readiness summary", () => {

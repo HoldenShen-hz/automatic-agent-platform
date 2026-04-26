@@ -76,7 +76,7 @@ test("WebhookIngressService registerEndpoint throws for empty endpoint id", () =
 
   assert.throws(
     () => service.registerEndpoint(registration),
-    (err: any) => err.message.includes("endpoint id"),
+    (err: any) => err.code === "webhook.invalid_endpoint_id",
   );
 });
 
@@ -94,7 +94,7 @@ test("WebhookIngressService registerEndpoint throws for empty source", () => {
 
   assert.throws(
     () => service.registerEndpoint(registration),
-    (err: any) => err.message.includes("source"),
+    (err: any) => err.code === "webhook.invalid_source",
   );
 });
 
@@ -176,7 +176,7 @@ test("WebhookIngressService receive throws for unknown endpoint", () => {
       headers: {},
       body: JSON.stringify({ eventType: "task.completed", eventId: "evt-001" }),
     }),
-    (err: any) => err.message.includes("not found"),
+    (err: any) => err.code === "webhook.endpoint_not_found",
   );
 });
 
@@ -242,7 +242,7 @@ test("WebhookIngressService receive throws when no event type in payload", () =>
       headers: {},
       body: JSON.stringify({ eventId: "evt-001", data: {} }),
     }),
-    (err: any) => err.message.includes("event type"),
+    (err: any) => err.code === "webhook.event_type_required",
   );
 });
 

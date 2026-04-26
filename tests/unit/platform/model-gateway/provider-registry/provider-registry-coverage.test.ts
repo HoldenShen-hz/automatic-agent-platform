@@ -171,10 +171,10 @@ test("UnifiedChatProvider complete method behavior", async () => {
   // Use a provider WITHOUT API key so it throws "not configured"
   const provider = new UnifiedChatProvider({});
 
-  // complete() defaults to gpt-5.2 model
+  // complete() defaults to the bundled MiniMax model.
   await assert.rejects(
     () => provider.complete("hello"),
-    /OpenAI provider is not configured/,
+    /MiniMax provider is not configured/,
   );
 });
 

@@ -104,8 +104,8 @@ test("BudgetGuard evaluates execution chain with cascade", () => {
     policy,
     spend: {
       currentTaskCostUsd: 2,
-      nextEstimatedCostUsd: 50,
-      currentDailyCostUsd: 50,
+      nextEstimatedCostUsd: 8,
+      currentDailyCostUsd: 93,
       currentMonthlyCostUsd: 500,
     },
   });
@@ -262,12 +262,12 @@ test("buildModelGatewayBootstrap creates valid bootstrap object", () => {
 });
 
 test("estimateMessageTokens calculates token count", () => {
-  // estimateMessageTokens is a function that estimates tokens in messages
-  const messages = [
-    { role: "user", content: "Hello, how are you?" },
-  ];
+  const message = {
+    role: "user" as const,
+    content: "Hello, how are you?",
+  };
 
-  const tokens = estimateMessageTokens(messages);
+  const tokens = estimateMessageTokens(message);
   assert.ok(typeof tokens === "number");
   assert.ok(tokens > 0);
 });

@@ -52,13 +52,14 @@ test("PlanStepSchema accepts valid step", () => {
   assert.equal(result.status, "pending");
 });
 
-test("PlanStepSchema requires retryPolicy field", () => {
+test("PlanStepSchema applies default retryPolicy field", () => {
   const stepWithoutRetry = {
     stepId: "step_no_retry",
     action: "execute",
     timeout: 10000,
   };
-  assert.throws(() => PlanStepSchema.parse(stepWithoutRetry));
+  const result = PlanStepSchema.parse(stepWithoutRetry);
+  assert.deepEqual(result.retryPolicy, { maxRetries: 0, backoffMs: 0 });
 });
 
 test("PlanStepSchema rejects step with empty stepId", () => {

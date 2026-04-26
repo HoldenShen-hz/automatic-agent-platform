@@ -116,15 +116,15 @@ test("UnifiedChatProvider complete method uses default model when not specified"
     openai: { apiKey: "test-key" },
   });
 
-  // The complete method should default to gpt-5.2 model
+  // The complete method should default to the bundled MiniMax default model.
   // We can only verify the provider is configured, actual call would need API
   assert.equal(provider.hasProvider("openai"), true);
 
-  // Verify complete rejects without API credentials for default model
+  // Verify complete rejects without API credentials for the default provider
   const emptyProvider = new UnifiedChatProvider({});
   await assert.rejects(
     () => emptyProvider.complete("hello"),
-    /OpenAI provider is not configured/,
+    /MiniMax provider is not configured/,
   );
 });
 

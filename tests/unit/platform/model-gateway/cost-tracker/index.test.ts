@@ -249,8 +249,8 @@ test("BudgetGuard.evaluateExecutionChain blocks on daily limit exceeded", () => 
     policy,
     spend: {
       currentTaskCostUsd: 2,
-      nextEstimatedCostUsd: 51,
-      currentDailyCostUsd: 50,
+      nextEstimatedCostUsd: 8,
+      currentDailyCostUsd: 93,
       currentMonthlyCostUsd: 500,
     },
   });
@@ -274,9 +274,9 @@ test("BudgetGuard.evaluateExecutionChain blocks on monthly limit exceeded", () =
     policy,
     spend: {
       currentTaskCostUsd: 2,
-      nextEstimatedCostUsd: 501,
+      nextEstimatedCostUsd: 8,
       currentDailyCostUsd: 50,
-      currentMonthlyCostUsd: 500,
+      currentMonthlyCostUsd: 995,
     },
   });
 

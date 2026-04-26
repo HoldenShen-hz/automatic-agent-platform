@@ -145,8 +145,8 @@ test("PlatformOperatorService buildReport counts workers by scheduling status", 
   });
 
   assert.equal(report.executionPlane.workerCounts.total, 3);
-  assert.equal(report.executionPlane.workerCounts.healthy, 1); // idle -> healthy
-  assert.equal(report.executionPlane.workerCounts.degraded, 1); // busy -> degraded
+  assert.equal(report.executionPlane.workerCounts.healthy, 2); // idle + busy -> healthy
+  assert.equal(report.executionPlane.workerCounts.degraded, 0);
   assert.equal(report.executionPlane.workerCounts.draining, 1);
 });
 
@@ -215,12 +215,12 @@ test("PlatformOperatorService buildReport local workers are always trusted", () 
 test("PlatformOperatorService buildReport counts tickets by status", () => {
   const store = createMockStore({
     listExecutionTicketsByStatuses: (statuses: string[]) => {
-      if (statuses.includes("pending")) return 5;
-      if (statuses.includes("claimed")) return 3;
-      if (statuses.includes("consumed")) return 10;
-      if (statuses.includes("cancelled")) return 2;
-      if (statuses.includes("expired")) return 1;
-      return 0;
+      if (statuses.includes("pending")) return new Array(5).fill("ticket") as any;
+      if (statuses.includes("claimed")) return new Array(3).fill("ticket") as any;
+      if (statuses.includes("consumed")) return new Array(10).fill("ticket") as any;
+      if (statuses.includes("cancelled")) return new Array(2).fill("ticket") as any;
+      if (statuses.includes("expired")) return new Array(1).fill("ticket") as any;
+      return [] as any;
     },
   });
 
@@ -242,12 +242,12 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
 test("PlatformOperatorService buildReport counts leases by status", () => {
   const store = createMockStore({
     listExecutionLeasesByStatuses: (statuses: string[]) => {
-      if (statuses.includes("active")) return 4;
-      if (statuses.includes("expired")) return 2;
-      if (statuses.includes("released")) return 1;
-      if (statuses.includes("reclaimed")) return 0;
-      if (statuses.includes("handed_over")) return 0;
-      return 0;
+      if (statuses.includes("active")) return new Array(4).fill("lease") as any;
+      if (statuses.includes("expired")) return new Array(2).fill("lease") as any;
+      if (statuses.includes("released")) return new Array(1).fill("lease") as any;
+      if (statuses.includes("reclaimed")) return [] as any;
+      if (statuses.includes("handed_over")) return [] as any;
+      return [] as any;
     },
   });
 
@@ -388,8 +388,8 @@ test("PlatformOperatorService buildReport flags promotion risk when active lease
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
     ],
     listExecutionLeasesByStatuses: (statuses: string[]) => {
-      if (statuses.includes("active")) return 5; // 5 leases but only 1 worker
-      return 0;
+      if (statuses.includes("active")) return new Array(5).fill("lease") as any; // 5 leases but only 1 worker
+      return [] as any;
     },
   });
 

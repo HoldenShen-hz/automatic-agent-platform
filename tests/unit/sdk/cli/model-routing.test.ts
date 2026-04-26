@@ -99,7 +99,7 @@ test("loadModelRoutingCliEnv parses provider health JSON", () => {
     },
     openai: {
       status: "degraded",
-      successRate: 0.75,
+      successRate: 1,
       totalCalls: 0,
       failedCalls: 0,
       fallbackCount: 0,
@@ -134,7 +134,7 @@ test("loadModelRoutingCliEnv parses config root", () => {
 
 test("loadModelRoutingCliEnv parses all route parameters together", () => {
   const config = loadModelRoutingCliEnv({
-    AA_MODEL_ROUTE_CLASS: "balanced",
+    AA_MODEL_ROUTE_CLASS: "coding",
     AA_MODEL_ROUTE_RISK_LEVEL: "medium",
     AA_MODEL_ROUTE_PREFERRED_PROFILE: "claude-sonnet",
     AA_MODEL_ROUTE_PINNED_PROFILE: "claude-opus",
@@ -145,7 +145,7 @@ test("loadModelRoutingCliEnv parses all route parameters together", () => {
     AA_MODEL_ROUTE_REQUIRED_CAPABILITIES: "vision,tools",
   });
 
-  assert.equal(config.routeClass, "balanced");
+  assert.equal(config.routeClass, "coding");
   assert.equal(config.riskLevel, "medium");
   assert.equal(config.preferredProfileName, "claude-sonnet");
   assert.equal(config.pinnedProfileName, "claude-opus");

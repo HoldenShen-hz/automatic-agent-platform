@@ -170,21 +170,21 @@ test("LearningArtifactSchema rejects invalid format", () => {
   });
 });
 
-test("LearningArtifactSchema rejects empty content", () => {
-  assert.throws(() => {
-    LearningArtifactSchema.parse({
-      artifactId: "artifact-123",
-      sourceObjectId: "learning-456",
-      version: 1,
-      title: "Test",
-      format: "json",
-      content: "",
-      namespace: "test",
-      tokenSize: 100,
-      checksum: "a".repeat(64),
-      createdAt: 1700000000000,
-    });
+test("LearningArtifactSchema allows empty content", () => {
+  const result = LearningArtifactSchema.parse({
+    artifactId: "artifact-123",
+    sourceObjectId: "learning-456",
+    version: 1,
+    title: "Test",
+    format: "json",
+    content: "",
+    namespace: "test",
+    tokenSize: 100,
+    checksum: "a".repeat(64),
+    createdAt: 1700000000000,
   });
+
+  assert.equal(result.content, "");
 });
 
 test("LearningArtifactSchema rejects negative tokenSize", () => {

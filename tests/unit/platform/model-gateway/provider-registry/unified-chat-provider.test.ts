@@ -166,7 +166,7 @@ test("UnifiedChatProvider.complete uses chat completion facade", async () => {
 
   await assert.rejects(
     () => provider.complete("hello"),
-    /OpenAI provider is not configured/,
+    /MiniMax provider is not configured/,
   );
 });
 

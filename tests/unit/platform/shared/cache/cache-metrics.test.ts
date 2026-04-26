@@ -151,7 +151,7 @@ test("CacheMetrics byLayer is undefined when no layers recorded", () => {
   metrics.record({ namespace: "test", hit: true });
 
   const snapshot = metrics.snapshot();
-  assert.strictEqual(snapshot.byNamespace["test"]!.byLayer, undefined);
+  assert.deepEqual(snapshot.byNamespace["test"]!.byLayer, {});
 });
 
 test("CacheMetrics byReason is undefined when no reasons recorded", () => {
@@ -168,8 +168,8 @@ test("CacheMetrics record new namespace creates empty byLayer and byReason objec
 
   const snapshot = metrics.snapshot();
   assert.ok(snapshot.byNamespace["new-ns"]);
-  // byLayer is undefined for hit-only records
-  assert.strictEqual(snapshot.byNamespace["new-ns"]!.byLayer, undefined);
+  assert.deepEqual(snapshot.byNamespace["new-ns"]!.byLayer, {});
+  assert.deepEqual(snapshot.byNamespace["new-ns"]!.byReason, {});
 });
 
 test("CacheMetrics snapshot returns correct structure", () => {

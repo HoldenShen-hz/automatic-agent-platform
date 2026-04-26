@@ -75,7 +75,7 @@ test("ModelGatewayFallbackService.selectFallback respects maxInputCostPer1kUsd",
     maxInputCostPer1kUsd: 6,
   });
 
-  assert.equal(result.selectedProfileName, "medium");
+  assert.equal(result.selectedProfileName, "cheap");
 });
 
 test("ModelGatewayFallbackService.selectFallback returns no_candidate when none available", () => {

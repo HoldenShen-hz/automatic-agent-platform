@@ -59,6 +59,7 @@ test("ConnectorManifestSchema applies default values", () => {
   const minimalManifest = {
     connectorId: "conn-1",
     provider: "aws",
+    lifecycleState: "registered",
   };
 
   const result = ConnectorManifestSchema.safeParse(minimalManifest);
@@ -69,6 +70,7 @@ test("ConnectorManifestSchema applies default values", () => {
     assert.strictEqual(result.data.authMode, "oauth2");
     assert.deepStrictEqual(result.data.rateLimits, {});
     assert.deepStrictEqual(result.data.supportedEvents, []);
+    assert.strictEqual(result.data.lifecycleState, "registered");
   }
 });
 
@@ -183,6 +185,7 @@ test("ConnectorManifestSchema allows zero rate limit values", () => {
     connectorId: "conn-1",
     provider: "aws",
     rateLimits: { read: 0 },
+    lifecycleState: "registered",
   };
 
   const result = ConnectorManifestSchema.safeParse(manifest);

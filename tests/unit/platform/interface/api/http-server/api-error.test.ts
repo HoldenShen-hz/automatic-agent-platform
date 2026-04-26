@@ -92,8 +92,8 @@ test("inferApiErrorSource returns runtime for other codes", () => {
   assert.equal(inferApiErrorSource("storage.error"), "runtime");
 });
 
-test("normalizeError returns original AppError unchanged", () => {
-  const original = new AppError("storage.task_not_found", "Task not found", {});
+test("normalizeError returns unmapped AppError unchanged", () => {
+  const original = new AppError("storage.custom_error", "Task not found", {});
   const result = normalizeError(original);
   assert.equal(result, original);
 });

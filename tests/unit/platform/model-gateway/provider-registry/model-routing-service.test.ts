@@ -11,6 +11,15 @@ function buildRegistry(): ModelMetadataRegistry {
   return JSON.parse(JSON.stringify(DEFAULT_MODEL_METADATA_REGISTRY)) as ModelMetadataRegistry;
 }
 
+function buildCrossProviderRegistry(): ModelMetadataRegistry {
+  const registry = buildRegistry();
+  registry.profiles.balanced.provider = "anthropic";
+  registry.profiles.fast.provider = "anthropic";
+  registry.profiles["coding-medium"].provider = "anthropic";
+  registry.profiles["reasoning-medium"].provider = "openai";
+  return registry;
+}
+
 test("model routing chooses cheap fast profile for low-risk classification traffic", () => {
   const service = new ModelRoutingService({ registry: buildRegistry() });
 
@@ -75,7 +84,7 @@ test("model routing reuses healthy sticky profile before recomputing route", () 
 
 test("model routing fails over away from failed cheap provider conservatively", () => {
   const service = new ModelRoutingService({
-    registry: buildRegistry(),
+    registry: buildCrossProviderRegistry(),
     providerHealth: {
       anthropic: {
         status: "failed",
@@ -84,6 +93,14 @@ test("model routing fails over away from failed cheap provider conservatively", 
         failedCalls: 18,
         fallbackCount: 5,
         latestFailureCodes: ["provider.http_429"],
+      },
+      openai: {
+        status: "healthy",
+        successRate: 0.99,
+        totalCalls: 20,
+        failedCalls: 0,
+        fallbackCount: 0,
+        latestFailureCodes: [],
       },
     },
   });
@@ -117,7 +134,7 @@ test("model routing respects explicit pin and fails closed for unavailable profi
 
 test("model routing issues a turn-scoped fallback lease when preferred profile is unavailable for the current turn", () => {
   const service = new ModelRoutingService({
-    registry: buildRegistry(),
+    registry: buildCrossProviderRegistry(),
     providerHealth: {
       anthropic: {
         status: "failed",
@@ -126,6 +143,14 @@ test("model routing issues a turn-scoped fallback lease when preferred profile i
         failedCalls: 18,
         fallbackCount: 5,
         latestFailureCodes: ["provider.http_429"],
+      },
+      openai: {
+        status: "healthy",
+        successRate: 0.99,
+        totalCalls: 20,
+        failedCalls: 0,
+        fallbackCount: 0,
+        latestFailureCodes: [],
       },
     },
   });
@@ -149,7 +174,7 @@ test("model routing issues a turn-scoped fallback lease when preferred profile i
 
 test("model routing reuses a turn-scoped fallback lease only within the same turn and auto-recovers on the next turn", () => {
   const degradedService = new ModelRoutingService({
-    registry: buildRegistry(),
+    registry: buildCrossProviderRegistry(),
     providerHealth: {
       anthropic: {
         status: "failed",
@@ -158,6 +183,14 @@ test("model routing reuses a turn-scoped fallback lease only within the same tur
         failedCalls: 18,
         fallbackCount: 5,
         latestFailureCodes: ["provider.http_429"],
+      },
+      openai: {
+        status: "healthy",
+        successRate: 0.99,
+        totalCalls: 20,
+        failedCalls: 0,
+        fallbackCount: 0,
+        latestFailureCodes: [],
       },
     },
   });
@@ -170,7 +203,7 @@ test("model routing reuses a turn-scoped fallback lease only within the same tur
   });
 
   const sameTurn = new ModelRoutingService({
-    registry: buildRegistry(),
+    registry: buildCrossProviderRegistry(),
     providerHealth: {
       anthropic: {
         status: "healthy",
@@ -195,7 +228,7 @@ test("model routing reuses a turn-scoped fallback lease only within the same tur
   assert.equal(sameTurn.trace.turnScopedFallbackAutoRecoveryNextTurn, true);
 
   const nextTurn = new ModelRoutingService({
-    registry: buildRegistry(),
+    registry: buildCrossProviderRegistry(),
     providerHealth: {
       anthropic: {
         status: "healthy",
