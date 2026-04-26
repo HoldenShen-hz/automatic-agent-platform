@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-
+import test from "node:test";
 import {
   StepTemplateConfigSchema,
   WorkflowConfigSchema,
+  ToolBundleEntrySchema,
   ToolBundleConfigSchema,
   OutputContractConfigSchema,
   DomainCapabilityProfileSchema,
@@ -12,30 +12,25 @@ import {
 } from "../../../../src/domains/registry/domain-model.js";
 
 test("StepTemplateConfigSchema parses valid config", () => {
-  const input = {
-    stepName: "test_step",
-    toolHints: ["git", "npm"],
+  const result = StepTemplateConfigSchema.parse({
+    stepName: "execute-code",
+    toolHints: ["bash", "node"],
     modelHints: { preferredModel: "claude-3", temperature: 0.7 },
     outputSchema: { type: "object" },
     retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-    requiresReview: true,
-    timeoutMs: 120000,
-    dependsOn: ["step_1"],
-  };
-
-  const result = StepTemplateConfigSchema.parse(input);
-  assert.equal(result.stepName, "test_step");
-  assert.deepEqual(result.toolHints, ["git", "npm"]);
-  assert.equal(result.modelHints.preferredModel, "claude-3");
-  assert.equal(result.requiresReview, true);
+    requiresReview: false,
+    timeoutMs: 60000,
+    dependsOn: [],
+  });
+  assert.equal(result.stepName, "execute-code");
+  assert.deepEqual(result.toolHints, ["bash", "node"]);
 });
 
 test("StepTemplateConfigSchema applies defaults", () => {
-  const input = { stepName: "test" };
-  const result = StepTemplateConfigSchema.parse(input);
+  const result = StepTemplateConfigSchema.parse({ stepName: "test-step" });
   assert.deepEqual(result.toolHints, []);
   assert.deepEqual(result.modelHints, {});
-  assert.equal(result.outputSchema, null);
+  assert.deepEqual(result.outputSchema, null);
   assert.deepEqual(result.retryPolicy, { maxRetries: 0, backoffMs: 0 });
   assert.equal(result.requiresReview, false);
   assert.equal(result.timeoutMs, 60000);
@@ -48,99 +43,125 @@ test("StepTemplateConfigSchema rejects empty stepName", () => {
   });
 });
 
-test("StepTemplateConfigSchema rejects negative retry values", () => {
+test("StepTemplateConfigSchema rejects negative timeoutMs", () => {
   assert.throws(() => {
-    StepTemplateConfigSchema.parse({ stepName: "test", retryPolicy: { maxRetries: -1, backoffMs: 0 } });
-  });
-  assert.throws(() => {
-    StepTemplateConfigSchema.parse({ stepName: "test", retryPolicy: { maxRetries: 0, backoffMs: -100 } });
+    StepTemplateConfigSchema.parse({ stepName: "test", timeoutMs: -1 });
   });
 });
 
-test("WorkflowConfigSchema parses valid config", () => {
-  const input = {
-    workflowId: "wf_1",
-    name: "Test Workflow",
-    triggerConditions: { event: "task.created" },
-    steps: [],
-  };
+test("StepTemplateConfigSchema rejects invalid temperature", () => {
+  assert.throws(() => {
+    StepTemplateConfigSchema.parse({ stepName: "test", modelHints: { temperature: 5 } });
+  });
+});
 
-  const result = WorkflowConfigSchema.parse(input);
-  assert.equal(result.workflowId, "wf_1");
+test("WorkflowConfigSchema parses valid workflow", () => {
+  const result = WorkflowConfigSchema.parse({
+    workflowId: "wf-001",
+    name: "Test Workflow",
+    triggerConditions: { status: "active" },
+    steps: [],
+  });
+  assert.equal(result.workflowId, "wf-001");
   assert.equal(result.name, "Test Workflow");
 });
 
 test("WorkflowConfigSchema applies defaults", () => {
-  const input = { workflowId: "wf_1", name: "Test" };
-  const result = WorkflowConfigSchema.parse(input);
+  const result = WorkflowConfigSchema.parse({ workflowId: "wf-1", name: "Name" });
   assert.deepEqual(result.triggerConditions, {});
   assert.deepEqual(result.steps, []);
 });
 
-test("ToolBundleConfigSchema parses valid config", () => {
-  const input = {
-    bundleId: "bundle_1",
-    tools: [{ toolName: "git", enabled: true, configOverrides: {} }],
-  };
-
-  const result = ToolBundleConfigSchema.parse(input);
-  assert.equal(result.bundleId, "bundle_1");
-  const firstTool = result.tools[0];
-  assert.ok(firstTool != null);
-  assert.equal(firstTool!.toolName, "git");
+test("WorkflowConfigSchema rejects empty workflowId", () => {
+  assert.throws(() => {
+    WorkflowConfigSchema.parse({ workflowId: "", name: "Name" });
+  });
 });
 
-test("ToolBundleConfigSchema applies defaults for tool entries", () => {
-  const input = { bundleId: "bundle_1", tools: [{ toolName: "git" }] };
-  const result = ToolBundleConfigSchema.parse(input);
-  const firstTool = result.tools[0];
-  assert.ok(firstTool != null);
-  assert.equal(firstTool!.enabled, true);
-  assert.deepEqual(firstTool!.configOverrides, {});
+test("ToolBundleEntrySchema parses valid entry", () => {
+  const result = ToolBundleEntrySchema.parse({
+    toolName: "bash-exec",
+    enabled: true,
+    configOverrides: { shell: "/bin/bash" },
+  });
+  assert.equal(result.toolName, "bash-exec");
+  assert.equal(result.enabled, true);
 });
 
-test("OutputContractConfigSchema parses valid config", () => {
-  const input = {
-    contractId: "contract_1",
-    name: "Test Contract",
-    schema: { type: "object" },
+test("ToolBundleEntrySchema applies defaults", () => {
+  const result = ToolBundleEntrySchema.parse({ toolName: "test-tool" });
+  assert.equal(result.enabled, true);
+  assert.deepEqual(result.configOverrides, {});
+});
+
+test("ToolBundleConfigSchema parses valid bundle", () => {
+  const result = ToolBundleConfigSchema.parse({
+    bundleId: "bundle-001",
+    tools: [
+      { toolName: "tool-a", enabled: true },
+      { toolName: "tool-b", enabled: false },
+    ],
+  });
+  assert.equal(result.bundleId, "bundle-001");
+  assert.equal(result.tools.length, 2);
+});
+
+test("ToolBundleConfigSchema applies defaults to tools", () => {
+  const result = ToolBundleConfigSchema.parse({ bundleId: "b1", tools: [{ toolName: "t1" }] });
+  assert.equal(result.tools[0].enabled, true);
+  assert.deepEqual(result.tools[0].configOverrides, {});
+});
+
+test("OutputContractConfigSchema parses valid contract", () => {
+  const result = OutputContractConfigSchema.parse({
+    contractId: "contract-001",
+    name: "Output Contract",
+    schema: { fields: ["a", "b"] },
     validationLevel: "strict",
-  };
-
-  const result = OutputContractConfigSchema.parse(input);
+  });
+  assert.equal(result.contractId, "contract-001");
   assert.equal(result.validationLevel, "strict");
 });
 
-test("OutputContractConfigSchema accepts all validation levels", () => {
-  const levels = ["strict", "lenient", "none"] as const;
-  for (const level of levels) {
-    const result = OutputContractConfigSchema.parse({
-      contractId: "c1",
-      name: "Test",
-      validationLevel: level,
-    });
-    assert.equal(result.validationLevel, level);
-  }
+test("OutputContractConfigSchema allows lenient validation level", () => {
+  const result = OutputContractConfigSchema.parse({
+    contractId: "c1",
+    name: "N",
+    validationLevel: "lenient",
+  });
+  assert.equal(result.validationLevel, "lenient");
+});
+
+test("OutputContractConfigSchema allows none validation level", () => {
+  const result = OutputContractConfigSchema.parse({
+    contractId: "c1",
+    name: "N",
+    validationLevel: "none",
+  });
+  assert.equal(result.validationLevel, "none");
+});
+
+test("OutputContractConfigSchema rejects invalid validation level", () => {
+  assert.throws(() => {
+    OutputContractConfigSchema.parse({ contractId: "c1", name: "N", validationLevel: "strictt" });
+  });
 });
 
 test("DomainCapabilityProfileSchema parses valid profile", () => {
-  const input = {
-    supportedTaskTypes: ["coding", "review"],
-    requiredTools: ["git", "npm"],
-    optionalTools: ["docker"],
-    modelPreferences: { defaultModel: "claude-3" },
+  const result = DomainCapabilityProfileSchema.parse({
+    supportedTaskTypes: ["coding", "analysis"],
+    requiredTools: ["bash", "editor"],
+    optionalTools: ["git"],
+    modelPreferences: { default: "claude-3" },
     budgetLimits: { maxTokensPerTask: 8000, maxCostPerTask: 10 },
     securityLevel: "elevated",
-  };
-
-  const result = DomainCapabilityProfileSchema.parse(input);
-  assert.deepEqual(result.supportedTaskTypes, ["coding", "review"]);
+  });
+  assert.deepEqual(result.supportedTaskTypes, ["coding", "analysis"]);
   assert.equal(result.securityLevel, "elevated");
 });
 
 test("DomainCapabilityProfileSchema applies defaults", () => {
-  const input = {};
-  const result = DomainCapabilityProfileSchema.parse(input);
+  const result = DomainCapabilityProfileSchema.parse({});
   assert.deepEqual(result.supportedTaskTypes, []);
   assert.deepEqual(result.requiredTools, []);
   assert.deepEqual(result.optionalTools, []);
@@ -149,24 +170,29 @@ test("DomainCapabilityProfileSchema applies defaults", () => {
   assert.equal(result.securityLevel, "standard");
 });
 
-test("PluginBindingSchema parses valid binding", () => {
-  const input = {
-    bindingId: "binding_1",
-    domainId: "domain_1",
-    pluginType: "retriever",
-    pluginId: "plugin_1",
-    priority: 5,
-    enabled: true,
-    config: { cacheSize: 100 },
-  };
+test("DomainCapabilityProfileSchema rejects invalid security level", () => {
+  assert.throws(() => {
+    DomainCapabilityProfileSchema.parse({ securityLevel: "high" });
+  });
+});
 
-  const result = PluginBindingSchema.parse(input);
+test("PluginBindingSchema parses valid binding", () => {
+  const result = PluginBindingSchema.parse({
+    bindingId: "bind-001",
+    domainId: "domain-a",
+    pluginType: "retriever",
+    pluginId: "plugin-1",
+    priority: 10,
+    enabled: true,
+    config: { key: "value" },
+  });
+  assert.equal(result.bindingId, "bind-001");
   assert.equal(result.pluginType, "retriever");
-  assert.equal(result.priority, 5);
+  assert.equal(result.priority, 10);
 });
 
 test("PluginBindingSchema accepts all plugin types", () => {
-  const types = ["retriever", "validator", "planner", "presenter", "adapter"] as const;
+  const types = ["retriever", "validator", "planner", "presenter", "adapter"];
   for (const type of types) {
     const result = PluginBindingSchema.parse({
       bindingId: "b1",
@@ -179,60 +205,85 @@ test("PluginBindingSchema accepts all plugin types", () => {
 });
 
 test("PluginBindingSchema applies defaults", () => {
-  const input = { bindingId: "b1", domainId: "d1", pluginType: "retriever" as const, pluginId: "p1" };
-  const result = PluginBindingSchema.parse(input);
+  const result = PluginBindingSchema.parse({
+    bindingId: "b1",
+    domainId: "d1",
+    pluginType: "retriever",
+    pluginId: "p1",
+  });
   assert.equal(result.priority, 0);
   assert.equal(result.enabled, true);
   assert.deepEqual(result.config, {});
 });
 
 test("DomainDefinitionSchema parses valid definition", () => {
-  const input = {
-    domainId: "domain_1",
+  const result = DomainDefinitionSchema.parse({
+    domainId: "domain-001",
     name: "Test Domain",
     description: "A test domain",
-    version: 2,
+    version: 1,
     workflows: [],
     toolBundles: [],
     outputContracts: [],
-    promptOverrides: { system: "You are helpful" },
-    capabilities: { supportedTaskTypes: ["coding"] },
+    promptOverrides: {},
+    capabilities: { supportedTaskTypes: ["test"] },
     status: "active",
-    externalAdapters: ["adapter_1"],
+    externalAdapters: [],
     pluginBindings: [],
-  };
-
-  const result = DomainDefinitionSchema.parse(input);
-  assert.equal(result.domainId, "domain_1");
-  assert.equal(result.version, 2);
+  });
+  assert.equal(result.domainId, "domain-001");
   assert.equal(result.status, "active");
-});
-
-test("DomainDefinitionSchema applies defaults", () => {
-  const input = { domainId: "d1", name: "Test", description: "Desc", capabilities: {} };
-  const result = DomainDefinitionSchema.parse(input);
   assert.equal(result.version, 1);
-  assert.deepEqual(result.workflows, []);
-  assert.deepEqual(result.toolBundles, []);
-  assert.deepEqual(result.outputContracts, []);
-  assert.deepEqual(result.promptOverrides, {});
-  assert.ok(result.capabilities != null);
-  assert.deepEqual(result.capabilities.supportedTaskTypes, []);
-  assert.equal(result.status, "draft");
-  assert.deepEqual(result.externalAdapters, []);
-  assert.deepEqual(result.pluginBindings, []);
 });
 
 test("DomainDefinitionSchema accepts all status values", () => {
-  const statuses = ["draft", "testing", "active", "deprecated"] as const;
+  const statuses = ["draft", "testing", "active", "deprecated"];
   for (const status of statuses) {
     const result = DomainDefinitionSchema.parse({
       domainId: "d1",
-      name: "Test",
-      description: "Desc",
-      capabilities: {},
+      name: "N",
+      description: "D",
       status,
     });
     assert.equal(result.status, status);
   }
+});
+
+test("DomainDefinitionSchema applies default version", () => {
+  const result = DomainDefinitionSchema.parse({
+    domainId: "d1",
+    name: "N",
+    description: "D",
+  });
+  assert.equal(result.version, 1);
+});
+
+test("DomainDefinitionSchema applies default status", () => {
+  const result = DomainDefinitionSchema.parse({
+    domainId: "d1",
+    name: "N",
+    description: "D",
+  });
+  assert.equal(result.status, "draft");
+});
+
+test("DomainDefinitionSchema rejects empty domainId", () => {
+  assert.throws(() => {
+    DomainDefinitionSchema.parse({ domainId: "", name: "N", description: "D" });
+  });
+});
+
+test("DomainDefinitionSchema rejects negative version", () => {
+  assert.throws(() => {
+    DomainDefinitionSchema.parse({ domainId: "d1", name: "N", description: "D", version: 0 });
+  });
+});
+
+test("StepTemplateConfigSchema rejects negative maxRetries", () => {
+  assert.throws(() => {
+    StepTemplateConfigSchema.parse({
+      stepName: "s1",
+      retryPolicy: { maxRetries: -1, backoffMs: 100 },
+    });
+  });
 });

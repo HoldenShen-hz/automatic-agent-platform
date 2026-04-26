@@ -1,54 +1,170 @@
-import test from "node:test";
 import assert from "node:assert/strict";
-import { rsaAlgToNode, ecAlgToNode, hmacAlgToNode } from "../../../../../../src/platform/interface/api/oidc-oauth/crypto-utils.js";
+import test from "node:test";
 
-test("rsaAlgToNode maps RS256 to RSA-SHA256", () => {
-  assert.equal(rsaAlgToNode("RS256"), "RSA-SHA256");
+import { decodeJwtJsonSegment, parseJwtHeader, parseFederatedTokenClaims } from "../../../../src/platform/interface/api/oidc-oauth/crypto-utils.js";
+import { AuthError } from "../../../../src/platform/contracts/errors.js";
+import type { FederatedTokenClaims } from "../../../../src/platform/interface/api/oidc-oauth/types.js";
+
+test("decodeJwtJsonSegment decodes base64url encoded JSON", () => {
+  const encoded = btoa(JSON.stringify({ alg: "RS256", kid: "key-123" }));
+  const decoded = decodeJwtJsonSegment(encoded, "header");
+  assert.deepEqual(decoded, { alg: "RS256", kid: "key-123" });
 });
 
-test("rsaAlgToNode maps RS384 to RSA-SHA384", () => {
-  assert.equal(rsaAlgToNode("RS384"), "RSA-SHA384");
+test("decodeJwtJsonSegment throws AuthError for invalid base64", () => {
+  assert.throws(
+    () => decodeJwtJsonSegment("not-valid-base64!!!", "header"),
+    AuthError,
+  );
 });
 
-test("rsaAlgToNode maps RS512 to RSA-SHA512", () => {
-  assert.equal(rsaAlgToNode("RS512"), "RSA-SHA512");
+test("decodeJwtJsonSegment throws AuthError for invalid JSON", () => {
+  const invalidJson = Buffer.from("this is not json").toString("base64url");
+  assert.throws(
+    () => decodeJwtJsonSegment(invalidJson, "payload"),
+    AuthError,
+  );
 });
 
-test("rsaAlgToNode defaults to RSA-SHA256 for unknown algorithms", () => {
-  assert.equal(rsaAlgToNode("RS999"), "RSA-SHA256");
-  assert.equal(rsaAlgToNode(""), "RSA-SHA256");
+test("parseJwtHeader extracts kid and alg from valid header", () => {
+  const result = parseJwtHeader({ alg: "RS256", kid: "my-key" });
+  assert.equal(result.alg, "RS256");
+  assert.equal(result.kid, "my-key");
 });
 
-test("ecAlgToNode maps ES256 to SHA256", () => {
-  assert.equal(ecAlgToNode("ES256"), "SHA256");
+test("parseJwtHeader returns empty object for header without kid or alg", () => {
+  const result = parseJwtHeader({});
+  assert.deepEqual(result, {});
 });
 
-test("ecAlgToNode maps ES384 to SHA384", () => {
-  assert.equal(ecAlgToNode("ES384"), "SHA384");
+test("parseJwtHeader throws for non-object header", () => {
+  assert.throws(() => parseJwtHeader(null), /jwt.header_invalid/);
+  assert.throws(() => parseJwtHeader("string"), /jwt.header_invalid/);
+  assert.throws(() => parseJwtHeader(123), /jwt.header_invalid/);
 });
 
-test("ecAlgToNode maps ES512 to SHA512", () => {
-  assert.equal(ecAlgToNode("ES512"), "SHA512");
+test("parseJwtHeader throws for invalid kid type", () => {
+  assert.throws(() => parseJwtHeader({ kid: 123 }), /jwt.header_invalid/);
+  assert.throws(() => parseJwtHeader({ kid: {} }), /jwt.header_invalid/);
 });
 
-test("ecAlgToNode defaults to SHA256 for unknown algorithms", () => {
-  assert.equal(ecAlgToNode("ES999"), "SHA256");
-  assert.equal(ecAlgToNode(""), "SHA256");
+test("parseJwtHeader throws for invalid alg type", () => {
+  assert.throws(() => parseJwtHeader({ alg: 456 }), /jwt.header_invalid/);
+  assert.throws(() => parseJwtHeader({ alg: [] }), /jwt.header_invalid/);
 });
 
-test("hmacAlgToNode maps HS256 to sha256", () => {
-  assert.equal(hmacAlgToNode("HS256"), "sha256");
+test("parseFederatedTokenClaims parses valid claims", () => {
+  const claims: FederatedTokenClaims = {
+    sub: "user-123",
+    iss: "https://issuer.example.com",
+    aud: "client-id",
+    exp: 1735689600,
+    iat: 1735686000,
+    email: "user@example.com",
+    name: "Test User",
+    roles: ["admin", "user"],
+  };
+  const result = parseFederatedTokenClaims(claims);
+  assert.equal(result.sub, "user-123");
+  assert.equal(result.iss, "https://issuer.example.com");
+  assert.equal(result.aud, "client-id");
+  assert.equal(result.exp, 1735689600);
+  assert.equal(result.iat, 1735686000);
+  assert.equal(result.email, "user@example.com");
+  assert.equal(result.name, "Test User");
+  assert.deepEqual(result.roles, ["admin", "user"]);
 });
 
-test("hmacAlgToNode maps HS384 to sha384", () => {
-  assert.equal(hmacAlgToNode("HS384"), "sha384");
+test("parseFederatedTokenClaims accepts string array aud", () => {
+  const claims = {
+    sub: "user-123",
+    iss: "https://issuer.example.com",
+    aud: ["client-1", "client-2"],
+    exp: 1735689600,
+    iat: 1735686000,
+  };
+  const result = parseFederatedTokenClaims(claims);
+  assert.deepEqual(result.aud, ["client-1", "client-2"]);
 });
 
-test("hmacAlgToNode maps HS512 to sha512", () => {
-  assert.equal(hmacAlgToNode("HS512"), "sha512");
+test("parseFederatedTokenClaims throws for missing sub", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: 123, iss: "issuer", aud: "aud", exp: 1, iat: 1 }),
+    /jwt.payload_invalid/,
+  );
 });
 
-test("hmacAlgToNode defaults to sha256 for unknown algorithms", () => {
-  assert.equal(hmacAlgToNode("HS999"), "sha256");
-  assert.equal(hmacAlgToNode(""), "sha256");
+test("parseFederatedTokenClaims throws for missing iss", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: 123, aud: "aud", exp: 1, iat: 1 }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims throws for invalid exp", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: "invalid", iat: 1 }),
+    /jwt.payload_invalid/,
+  );
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: Infinity, iat: 1 }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims throws for invalid iat", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: 1, iat: "invalid" }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims throws for invalid aud", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: 123, exp: 1, iat: 1 }),
+    /jwt.payload_invalid/,
+  );
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: ["a", 123], exp: 1, iat: 1 }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims throws for invalid email type", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: 1, iat: 1, email: 123 }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims throws for invalid name type", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: 1, iat: 1, name: {} }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims throws for invalid roles type", () => {
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: 1, iat: 1, roles: "admin" }),
+    /jwt.payload_invalid/,
+  );
+  assert.throws(
+    () => parseFederatedTokenClaims({ sub: "user", iss: "issuer", aud: "aud", exp: 1, iat: 1, roles: [1, 2, 3] }),
+    /jwt.payload_invalid/,
+  );
+});
+
+test("parseFederatedTokenClaims omits optional fields when not present", () => {
+  const claims = {
+    sub: "user-123",
+    iss: "https://issuer.example.com",
+    aud: "client-id",
+    exp: 1735689600,
+    iat: 1735686000,
+  };
+  const result = parseFederatedTokenClaims(claims);
+  assert.equal(result.email, undefined);
+  assert.equal(result.name, undefined);
+  assert.equal(result.roles, undefined);
 });

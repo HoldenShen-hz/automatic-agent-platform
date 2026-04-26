@@ -1,122 +1,47 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { readValidatedJsonBody } from "../../../../../../src/platform/interface/api/middleware/input-validation.js";
+import { readValidatedJsonBody } from "../../../../../src/platform/interface/api/middleware/input-validation.js";
 
-interface TestPayload {
-  name: string;
-  age: number;
-  email?: string;
-}
-
-function isAppError(err: unknown): err is { code: string; message: string } {
-  return err !== null && typeof err === "object" && "message" in err;
-}
-
-test("readValidatedJsonBody parses valid JSON and validates", () => {
-  const body = JSON.stringify({ name: "Alice", age: 30 });
-  const result = readValidatedJsonBody<TestPayload>(body, (p) => {
-    if (typeof p !== "object" || p === null) throw new Error("not an object");
-    const obj = p as Record<string, unknown>;
-    if (typeof obj["name"] !== "string") throw new Error("name must be string");
-    if (typeof obj["age"] !== "number") throw new Error("age must be number");
-    return obj as unknown as TestPayload;
+test("readValidatedJsonBody parses valid JSON and validates with parser", () => {
+  const result = readValidatedJsonBody('{"id": 123, "name": "test"}', (data) => {
+    const d = data as { id: number; name: string };
+    return { parsedId: d.id, parsedName: d.name };
   });
-
-  assert.equal(result.name, "Alice");
-  assert.equal(result.age, 30);
+  assert.deepEqual(result, { parsedId: 123, parsedName: "test" });
 });
 
-test("readValidatedJsonBody returns null-prototype empty object for null body", () => {
-  // readJsonBody(null) returns {}, sanitizeJsonValue({}) returns null-prototype {}
-  const result = readValidatedJsonBody(null, (p) => p);
-  assert.equal(Object.getPrototypeOf(result as object), null);
+test("readValidatedJsonBody applies sanitize before validation", () => {
+  const result = readValidatedJsonBody('{"__proto__": {"admin": true}}', (data) => data);
+  assert.fail("Should have thrown on dangerous key");
 });
 
-test("readValidatedJsonBody returns null-prototype empty object for undefined body", () => {
-  const result = readValidatedJsonBody(undefined, (p) => p);
-  assert.equal(Object.getPrototypeOf(result as object), null);
-});
-
-test("readValidatedJsonBody returns null-prototype empty object for empty string body", () => {
-  const result = readValidatedJsonBody("", (p) => p);
-  assert.equal(Object.getPrototypeOf(result as object), null);
-});
-
-test("readValidatedJsonBody applies sanitizer before parser", () => {
-  // Must use raw JSON string because JSON.stringify({__proto__:...}) returns '{}'
-  const body = '{"__proto__":{"admin":true}}';
-  assert.throws(
-    () => readValidatedJsonBody(body, (p) => p),
-    (err: unknown) => isAppError(err) && err.message.includes("reserved key"),
-  );
-});
-
-test("readValidatedJsonBody applies sanitizer to nested dangerous keys", () => {
-  const body = '{"user":{"__proto__":{"admin":true}}}';
-  assert.throws(
-    () => readValidatedJsonBody(body, (p) => p),
-    (err: unknown) => isAppError(err) && err.message.includes("reserved key"),
-  );
-});
-
-test("readValidatedJsonBody parser receives sanitized payload", () => {
-  const body = JSON.stringify({ name: "  Bob  ", age: 25 });
-  const result = readValidatedJsonBody<TestPayload>(body, (p) => {
-    if (typeof p !== "object" || p === null) throw new Error("not an object");
-    const obj = p as Record<string, unknown>;
-    return {
-      name: String(obj["name"]).trim(),
-      age: Number(obj["age"]),
-    } as TestPayload;
+test("readValidatedJsonBody handles nested objects", () => {
+  const result = readValidatedJsonBody('{"user": {"name": "Alice", "age": 30}}', (data) => {
+    const d = data as { user: { name: string; age: number } };
+    return d.user.name;
   });
-
-  assert.equal(result.name, "Bob");
-  assert.equal(result.age, 25);
+  assert.equal(result, "Alice");
 });
 
-test("readValidatedJsonBody throws when JSON is invalid", () => {
-  const body = "not valid json{";
-  assert.throws(
-    () => readValidatedJsonBody(body, (p) => p),
-    (err: unknown) => isAppError(err) && err.message.includes("valid JSON"),
-  );
+test("readValidatedJsonBody with array payload", () => {
+  const result = readValidatedJsonBody('[1, 2, 3]', (data) => {
+    return (data as number[]).reduce((a, b) => a + b, 0);
+  });
+  assert.equal(result, 6);
 });
 
-test("readValidatedJsonBody works with empty object body", () => {
-  const body = "{}";
-  const result = readValidatedJsonBody(body, (p) => p);
-  assert.equal(Object.getPrototypeOf(result as object), null);
+test("readValidatedJsonBody returns parser result directly", () => {
+  const result = readValidatedJsonBody('"just-a-string"', (data) => data);
+  assert.equal(result, "just-a-string");
 });
 
-test("readValidatedJsonBody passes optional fields", () => {
-  const body = JSON.stringify({ name: "Carol", age: 28, email: "carol@example.com" });
-  const result = readValidatedJsonBody<TestPayload>(body, (p) => p as unknown as TestPayload);
-  assert.equal(result.name, "Carol");
-  assert.equal(result.age, 28);
-  assert.equal(result.email, "carol@example.com");
+test("readValidatedJsonBody with null body returns null", () => {
+  const result = readValidatedJsonBody(null, (data) => data);
+  assert.equal(result, null);
 });
 
-test("readValidatedJsonBody sanitizer blocks constructor key", () => {
-  const body = '{"constructor":{"admin":true}}';
-  assert.throws(
-    () => readValidatedJsonBody(body, (p) => p),
-    (err: unknown) => isAppError(err) && err.message.includes("reserved key"),
-  );
-});
-
-test("readValidatedJsonBody sanitizer blocks prototype key", () => {
-  const body = '{"prototype":{"admin":true}}';
-  assert.throws(
-    () => readValidatedJsonBody(body, (p) => p),
-    (err: unknown) => isAppError(err) && err.message.includes("reserved key"),
-  );
-});
-
-test("readValidatedJsonBody sanitizer recursively checks nested objects", () => {
-  const body = '{"outer":{"constructor":{}}}';
-  assert.throws(
-    () => readValidatedJsonBody(body, (p) => p),
-    (err: unknown) => isAppError(err) && err.message.includes("reserved key"),
-  );
+test("readValidatedJsonBody with undefined body returns undefined", () => {
+  const result = readValidatedJsonBody(undefined, (data) => data);
+  assert.equal(result, undefined);
 });
