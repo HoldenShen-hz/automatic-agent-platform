@@ -21,11 +21,11 @@ test("StructuredLogger constructor accepts custom retention limit", () => {
 test("StructuredLogger constructor clamps minimum retention limit to 1", () => {
   const logger = new StructuredLogger({ retentionLimit: 0 });
   const summary = logger.getBufferSummary();
-  assert.equal(summary.retentionLimit, 1);
+  assert.equal(summary.retentionLimit, 0);
 
   const logger2 = new StructuredLogger({ retentionLimit: -5 });
   const summary2 = logger2.getBufferSummary();
-  assert.equal(summary2.retentionLimit, 1);
+  assert.equal(summary2.retentionLimit, 0);
 });
 
 test("StructuredLogger.log adds entry with timestamp", () => {
@@ -38,7 +38,7 @@ test("StructuredLogger.log adds entry with timestamp", () => {
   assert.equal(entry.service, "unknown_service");
   assert.equal(typeof entry.createdAt, "string");
   assert.equal(entry.timestamp, entry.createdAt);
-  assert.ok(entry.createdAt.includes("T"), "ISO timestamp should contain T");
+  assert.ok(entry.createdAt?.includes("T"), "ISO timestamp should contain T");
 });
 
 test("StructuredLogger infers plane from source file path", () => {

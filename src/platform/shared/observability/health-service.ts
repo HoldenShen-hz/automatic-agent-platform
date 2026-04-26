@@ -177,6 +177,13 @@ export class HealthService {
     return this.buildReport(nowMs, this.checkDbWritableSync());
   }
 
+  /**
+   * Backward-compatible alias retained for older tests and call sites.
+   */
+  public checkHealth(): HealthStatusReport {
+    return this.getReport();
+  }
+
   public async getReportAsync(): Promise<HealthStatusReport> {
     const nowMs = this.options.nowMsSupplier();
     return this.buildReport(nowMs, await this.checkDbWritableAsync());

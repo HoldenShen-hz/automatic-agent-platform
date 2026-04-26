@@ -408,10 +408,11 @@ export function compactionToIncidentTimelineEntry(record: CompactionRecord, task
 }
 
 export function logToIncidentTimelineEntry(entry: StructuredLogEntry, taskId: string): IncidentTimelineEntry {
+  const occurredAt = entry.createdAt ?? entry.timestamp;
   return {
-    id: [entry.createdAt, entry.level, entry.message].join(":"),
+    id: [occurredAt, entry.level, entry.message].join(":"),
     source: "log",
-    occurredAt: entry.createdAt,
+    occurredAt,
     title: `log:${entry.level}`,
     summary: previewText(entry.message, 160),
     severity: entry.level === "error" ? "critical" : entry.level === "warn" ? "warning" : "info",

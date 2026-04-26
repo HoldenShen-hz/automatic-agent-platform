@@ -371,6 +371,10 @@ export class DiagnosticsService {
       deduped.set(key, entry);
     }
 
-    return [...deduped.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return [...deduped.values()].sort((left, right) => {
+      const leftOccurredAt = left.createdAt ?? left.timestamp;
+      const rightOccurredAt = right.createdAt ?? right.timestamp;
+      return leftOccurredAt.localeCompare(rightOccurredAt);
+    });
   }
 }

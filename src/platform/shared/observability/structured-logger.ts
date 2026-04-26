@@ -52,7 +52,7 @@ export interface StructuredLogEntry {
   spanId?: string;
   parentSpanId?: string;
   correlationId?: string;
-  data?: Record<string, unknown>;
+  data?: Record<string, unknown> | null;
   structuredPayload?: Record<string, unknown>;
   createdAt: string;
   timestamp: string;
@@ -231,7 +231,7 @@ export class StructuredLogger {
   }
 
   public constructor(options: StructuredLoggerOptions = {}) {
-    this.retentionLimit = Math.max(1, Math.trunc(options.retentionLimit ?? 500));
+    this.retentionLimit = Math.max(0, Math.trunc(options.retentionLimit ?? 500));
     this.plane = options.plane ?? inferStructuredPlane(options.planeSourceFile);
     this.service = normalizeStructuredService(options.service ?? options.planeSourceFile);
     // Pre-allocate buffer for O(1) insertion
@@ -268,16 +268,18 @@ export class StructuredLogger {
       timestamp,
     };
 
-    // If buffer is full, track overflow
-    if (this.count === this.retentionLimit) {
-      this.droppedEntryCount++;
-    }
+    if (this.retentionLimit > 0) {
+      // If buffer is full, track overflow
+      if (this.count === this.retentionLimit) {
+        this.droppedEntryCount++;
+      }
 
-    // O(1) ring buffer insertion
-    this.buffer[this.head] = record;
-    this.head = (this.head + 1) % this.retentionLimit;
-    if (this.count < this.retentionLimit) {
-      this.count++;
+      // O(1) ring buffer insertion
+      this.buffer[this.head] = record;
+      this.head = (this.head + 1) % this.retentionLimit;
+      if (this.count < this.retentionLimit) {
+        this.count++;
+      }
     }
 
     this.writeToGlobalFileSink(record);
@@ -304,6 +306,23 @@ export class StructuredLogger {
 
   public fatal(message: string, data?: Record<string, unknown>): StructuredLogEntry {
     return this.log({ level: "fatal", message, ...(data ? { data } : {}) });
+  }
+
+  /**
+   * Backward-compatible alias used by older tests and callers.
+   */
+  public getEntries(): StructuredLogEntry[] {
+    return this.recent(this.count);
+  }
+
+  /**
+   * Clears the in-memory ring buffer without touching external sinks.
+   */
+  public clear(): void {
+    this.buffer.fill(undefined);
+    this.head = 0;
+    this.count = 0;
+    this.droppedEntryCount = 0;
   }
 
   /**

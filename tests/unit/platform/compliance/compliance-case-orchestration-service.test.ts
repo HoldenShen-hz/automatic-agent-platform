@@ -135,3 +135,252 @@ test("ComplianceCaseOrchestrationService plans erasure and records execution lin
   assert.equal(result.plan.steps[1]?.action, "redact");
   assert.equal(result.lineageEdges.length, 2);
 });
+
+test("ComplianceCaseOrchestrationService handles restricted artifact with summarize action", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: true }),
+    governance: createGovernance(true),
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "risk_lead",
+    orgNodeId: "dept_risk",
+    action: "artifact.export",
+    tenantId: "tenant-risk",
+    sourceRegion: "cn-shanghai",
+    targetRegion: "eu-frankfurt",
+    policy: {
+      tenantId: "tenant-risk",
+      allowedRegions: ["eu-frankfurt"],
+      restrictedClassifications: ["confidential", "restricted"],
+      allowRedactedTransfer: true,
+    },
+    content: "This content contains secret key 12345 and highly confidential data",
+    artifactRef: "artifact:source-1",
+    exportRef: "artifact:export-1",
+    record: { data: "secret content" },
+    encryptionRules: [],
+    keyRef: "kms://tenant-risk/key-1",
+  });
+
+  // Content with "secret key" should be classified as restricted
+  // For artifact dimension with restricted, action is "summarize"
+  // So the status will depend on other factors
+  assert.ok(result.artifactDecision);
+  assert.equal(result.artifactDecision.action, "summarize");
+});
+
+test("ComplianceCaseOrchestrationService with no governance defaults to allowed", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false }),
+    governance: null,
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "user:alice",
+    orgNodeId: "org:engineering",
+    action: "artifact.export",
+    tenantId: "tenant-a",
+    sourceRegion: "us-east-1",
+    targetRegion: "us-west-2",
+    policy: {
+      tenantId: "tenant-a",
+      allowedRegions: ["us-east-1", "us-west-2"],
+      restrictedClassifications: ["confidential", "restricted"],
+      allowRedactedTransfer: false,
+    },
+    content: "public content",
+    artifactRef: "artifact:123",
+    exportRef: "artifact:456",
+    record: { id: 1 },
+    encryptionRules: [],
+    keyRef: "kms://key-1",
+  });
+
+  assert.equal(result.status, "approved");
+  assert.equal(result.governance, null);
+});
+
+test("ComplianceCaseOrchestrationService planSubjectErasureRequest with governance blocking", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: true }),
+    governance: createGovernance(false),
+  });
+
+  const result = service.planSubjectErasureRequest({
+    actorId: "privacy_officer",
+    orgNodeId: "dept_risk",
+    action: "subject.erase",
+    subjectRef: "user:alice",
+    requestedBy: "privacy@example.com",
+    slaHours: 24,
+    requiredPolicyKeys: ["approvalRequired", "retentionDays"],
+    targets: [
+      { targetRef: "memory:1", targetKind: "memory", containsPii: true },
+    ],
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.ok(result.blockingReasons.some((r) => r.includes("governance_missing")));
+});
+
+test("ComplianceCaseOrchestrationService preserves non-encrypted fields in record", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false }),
+    governance: null,
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "user:alice",
+    orgNodeId: "org:engineering",
+    action: "artifact.export",
+    tenantId: "tenant-a",
+    sourceRegion: "us-east-1",
+    targetRegion: "us-west-2",
+    policy: {
+      tenantId: "tenant-a",
+      allowedRegions: ["us-east-1", "us-west-2"],
+      restrictedClassifications: [],
+      allowRedactedTransfer: false,
+    },
+    content: "public content",
+    artifactRef: "artifact:123",
+    exportRef: "artifact:456",
+    record: { id: 1, name: "test", timestamp: 1704067200000 },
+    encryptionRules: [],
+    keyRef: "kms://key-1",
+  });
+
+  const protectedRecord = result.protectedRecord.protectedRecord as Record<string, unknown>;
+  assert.strictEqual(protectedRecord.id, 1);
+  assert.strictEqual(protectedRecord.timestamp, 1704067200000);
+});
+
+test("ComplianceCaseOrchestrationService includes transfer decision in result", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false }),
+    governance: null,
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "user:alice",
+    orgNodeId: "org:engineering",
+    action: "artifact.export",
+    tenantId: "tenant-a",
+    sourceRegion: "us-east-1",
+    targetRegion: "us-west-2",
+    policy: {
+      tenantId: "tenant-a",
+      allowedRegions: ["us-east-1", "us-west-2"],
+      restrictedClassifications: [],
+      allowRedactedTransfer: false,
+    },
+    content: "public content",
+    artifactRef: "artifact:123",
+    exportRef: "artifact:456",
+    record: { id: 1 },
+    encryptionRules: [],
+    keyRef: "kms://key-1",
+  });
+
+  assert.ok(result.transferDecision);
+  assert.ok(result.artifactDecision);
+  assert.equal(result.transferDecision.action, "allow");
+});
+
+test("ComplianceCaseOrchestrationService includes PII annotations when detected", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false, autoDetectPii: true }),
+    governance: null,
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "user:alice",
+    orgNodeId: "org:engineering",
+    action: "artifact.export",
+    tenantId: "tenant-a",
+    sourceRegion: "us-east-1",
+    targetRegion: "us-west-2",
+    policy: {
+      tenantId: "tenant-a",
+      allowedRegions: ["us-east-1", "us-west-2"],
+      restrictedClassifications: [],
+      allowRedactedTransfer: false,
+    },
+    content: "Contact user at alice@example.com for details",
+    artifactRef: "artifact:123",
+    exportRef: "artifact:456",
+    record: { id: 1 },
+    encryptionRules: [],
+    keyRef: "kms://key-1",
+  });
+
+  assert.ok(result.annotations.length > 0);
+  assert.equal(result.annotations[0]?.type, "email");
+});
+
+test("ComplianceCaseOrchestrationService handles audit action for confidential artifact", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: true }),
+    governance: createGovernance(true),
+  });
+
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "risk_lead",
+    orgNodeId: "dept_risk",
+    action: "artifact.export",
+    tenantId: "tenant-risk",
+    sourceRegion: "cn-shanghai",
+    targetRegion: "eu-frankfurt",
+    policy: {
+      tenantId: "tenant-risk",
+      allowedRegions: ["eu-frankfurt"],
+      restrictedClassifications: [],
+      allowRedactedTransfer: false,
+    },
+    content: "confidential proprietary trade secret information",
+    artifactRef: "artifact:source-1",
+    exportRef: "artifact:export-1",
+    record: { data: "test" },
+    encryptionRules: [],
+    keyRef: "kms://tenant-risk/key-1",
+  });
+
+  // Confidential classification leads to audit action on artifact dimension
+  // audit action causes redaction
+  assert.equal(result.artifactDecision.action, "audit");
+  // With audit action and no PII detected, the content is not redacted but kept as-is for audit
+  assert.equal(result.exportContent, "confidential proprietary trade secret information");
+});
+
+test("ComplianceCaseOrchestrationService exports content unchanged when allowed", () => {
+  const service = new ComplianceCaseOrchestrationService({
+    classification: new DataClassificationService({ strictMode: false }),
+    governance: null,
+  });
+
+  const content = "public information here";
+  const result = service.prepareCrossRegionArtifactTransfer({
+    actorId: "user:alice",
+    orgNodeId: "org:engineering",
+    action: "artifact.export",
+    tenantId: "tenant-a",
+    sourceRegion: "us-east-1",
+    targetRegion: "us-west-2",
+    policy: {
+      tenantId: "tenant-a",
+      allowedRegions: ["us-east-1", "us-west-2"],
+      restrictedClassifications: [],
+      allowRedactedTransfer: false,
+    },
+    content,
+    artifactRef: "artifact:123",
+    exportRef: "artifact:456",
+    record: { id: 1 },
+    encryptionRules: [],
+    keyRef: "kms://key-1",
+  });
+
+  assert.equal(result.exportContent, content);
+  assert.equal(result.redactionApplied, false);
+});

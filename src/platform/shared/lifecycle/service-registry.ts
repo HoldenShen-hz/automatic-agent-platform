@@ -69,7 +69,7 @@ export class ServiceRegistry {
   private readonly services = new Map<string, ServiceRegistration<unknown>>();
   private readonly instances = new Map<string, unknown>();
 
-  private constructor() {}
+  public constructor() {}
 
   /**
    * Gets the singleton registry instance.

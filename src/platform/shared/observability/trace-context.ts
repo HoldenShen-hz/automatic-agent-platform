@@ -17,8 +17,8 @@ import { generateSpanId, generateTraceId, getActiveTelemetryContext, isValidSpan
  * Used when initiating a new trace that is not a child of an existing trace.
  */
 export function createRootTraceContext(input: {
-  traceId?: string;
-  spanId?: string;
+  traceId?: string | null;
+  spanId?: string | null;
   correlationId?: string | null;
 } = {}): TraceContext {
   const activeContext = getActiveTelemetryContext();

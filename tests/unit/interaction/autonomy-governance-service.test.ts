@@ -238,13 +238,15 @@ test("compareAutonomyLevels handles all autonomy levels", () => {
   const levels: AutonomyLevel[] = ["suggestion", "supervised", "semi_auto", "full_auto", "frozen"];
   for (let i = 0; i < levels.length; i++) {
     for (let j = 0; j < levels.length; j++) {
-      const result = compareAutonomyLevels(levels[i], levels[j]);
+      const left = levels[i]!;
+      const right = levels[j]!;
+      const result = compareAutonomyLevels(left, right);
       if (i < j) {
-        assert.ok(result < 0, `${levels[i]} should be less than ${levels[j]}`);
+        assert.ok(result < 0, `${left} should be less than ${right}`);
       } else if (i > j) {
-        assert.ok(result > 0, `${levels[i]} should be greater than ${levels[j]}`);
+        assert.ok(result > 0, `${left} should be greater than ${right}`);
       } else {
-        assert.equal(result, 0, `${levels[i]} should equal itself`);
+        assert.equal(result, 0, `${left} should equal itself`);
       }
     }
   }

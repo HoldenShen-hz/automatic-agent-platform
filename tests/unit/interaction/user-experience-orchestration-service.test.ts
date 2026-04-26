@@ -27,7 +27,7 @@ test("UserExperienceOrchestrationService bootstrap creates guided session with o
 
   assert.equal(result.guidedSession.userRole, "operator");
   assert.ok(result.guidedSession.sessionId !== undefined);
-  assert.equal(result.wizard !== undefined);
+  assert.equal(result.wizard.steps.length > 0, true);
 });
 
 test("UserExperienceOrchestrationService bootstrap creates guided session with platform_ops role", async () => {

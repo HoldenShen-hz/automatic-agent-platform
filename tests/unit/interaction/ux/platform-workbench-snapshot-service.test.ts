@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlatformWorkbenchSnapshotService } from "../../../src/interaction/ux/platform-workbench-snapshot-service.js";
-import type { PlatformWorkbenchSnapshot, WorkbenchApprovalQueueItem, WorkbenchOperatorAction, AttentionItem } from "../../../src/interaction/ux/platform-workbench-snapshot-service.js";
+import { PlatformWorkbenchSnapshotService } from "../../../../src/interaction/ux/platform-workbench-snapshot-service.js";
+import type { WorkbenchApprovalQueueItem, WorkbenchOperatorAction } from "../../../../src/interaction/ux/platform-workbench-snapshot-service.js";
+import type { AttentionItem, OperatorDashboard } from "../../../../src/interaction/dashboard/index.js";
 
 test("PlatformWorkbenchSnapshotService.buildSnapshot with minimal input", () => {
   const service = new PlatformWorkbenchSnapshotService();
@@ -55,7 +56,11 @@ test("PlatformWorkbenchSnapshotService.buildSnapshot with dashboard", () => {
       highlights: ["10 tasks completed"],
       concerns: ["1 failure"],
     },
+    agentHealthCards: [],
+    costBurn: { consumedUsd: 15, forecastUsd: 20 },
+    activeGoals: [],
     recentCompletions: [],
+    proactiveSuggestions: [],
   };
   const snapshot = service.buildSnapshot({ dashboard });
 
@@ -67,10 +72,11 @@ test("PlatformWorkbenchSnapshotService.buildSnapshot with dashboard", () => {
 
 test("PlatformWorkbenchSnapshotService.buildSnapshot with hitl inbox", () => {
   const service = new PlatformWorkbenchSnapshotService();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hitlInbox = [
-    { itemId: "hitl_1", taskId: "task_1", status: "pending", createdAt: "2026-04-25T00:00:00Z" },
-    { itemId: "hitl_2", taskId: "task_2", status: "pending", createdAt: "2026-04-25T01:00:00Z" },
-  ];
+    { itemId: "hitl_1", taskId: "task_1" },
+    { itemId: "hitl_2", taskId: "task_2" },
+  ] as any;
   const snapshot = service.buildSnapshot({ hitlInbox });
 
   assert.equal(snapshot.hitlInbox.length, 2);
@@ -108,10 +114,26 @@ test("PlatformWorkbenchSnapshotService.buildSnapshot generates default operator 
   const attentionQueue: readonly AttentionItem[] = [
     { itemType: "incident", priority: "critical", title: "Critical incident", description: "Desc", actionOptions: [], createdAt: "2026-04-26T00:00:00Z", domainId: "platform" },
   ];
-  const snapshot = service.buildSnapshot({ dashboard: { attentionQueue, dailySummary: { tasksCompleted: 0, tasksInProgress: 0, tasksFailed: 0, totalCostToday: "$0", agentUptimePercent: 100, highlights: [], concerns: [] }, recentCompletions: [] } });
+  const dashboard: OperatorDashboard = {
+    attentionQueue,
+    dailySummary: {
+      tasksCompleted: 0,
+      tasksInProgress: 0,
+      tasksFailed: 0,
+      totalCostToday: "$0",
+      agentUptimePercent: 100,
+      highlights: [],
+      concerns: [],
+    },
+    agentHealthCards: [],
+    costBurn: { consumedUsd: 0, forecastUsd: 0 },
+    activeGoals: [],
+    recentCompletions: [],
+    proactiveSuggestions: [],
+  };
+  const snapshot = service.buildSnapshot({ dashboard });
 
-  // Should have critical attention items, so third action should be open_takeover_console
-  const criticalAction = snapshot.operatorActions.find(a => a.actionId === "open_takeover_console");
+  const criticalAction = snapshot.operatorActions.find((a) => a.actionId === "open_takeover_console");
   assert.ok(criticalAction !== undefined);
   assert.equal(criticalAction?.requiredRole, "admin");
 });
@@ -178,11 +200,12 @@ test("PlatformWorkbenchSnapshotService.buildSnapshot copies arrays to prevent mu
 
 test("PlatformWorkbenchSnapshotService.buildSnapshot copies hitl inbox to prevent mutation", () => {
   const service = new PlatformWorkbenchSnapshotService();
-  const originalInbox = [{ itemId: "hitl_1", taskId: "task_1", status: "pending", createdAt: "2026-04-25T00:00:00Z" }];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const originalInbox = [{ itemId: "hitl_1", taskId: "task_1" }] as any;
   const snapshot = service.buildSnapshot({ hitlInbox: originalInbox });
 
   // Modify original
-  originalInbox.push({ itemId: "hitl_2", taskId: "task_2", status: "pending", createdAt: "2026-04-25T01:00:00Z" });
+  originalInbox.push({ itemId: "hitl_2", taskId: "task_2" });
 
   assert.equal(snapshot.hitlInbox.length, 1);
 });
@@ -202,21 +225,24 @@ test("PlatformWorkbenchSnapshotService.buildSnapshot default operator actions fo
   const attentionQueue: readonly AttentionItem[] = [
     { itemType: "suggestion", priority: "low", title: "Suggestion", description: "Desc", actionOptions: [], createdAt: "2026-04-26T00:00:00Z", domainId: "platform" },
   ];
-  const snapshot = service.buildSnapshot({
-    dashboard: {
-      attentionQueue,
-      dailySummary: {
-        tasksCompleted: 0,
-        tasksInProgress: 0,
-        tasksFailed: 0,
-        totalCostToday: "$0",
-        agentUptimePercent: 100,
-        highlights: [],
-        concerns: [],
-      },
-      recentCompletions: [],
+  const dashboard: OperatorDashboard = {
+    attentionQueue,
+    dailySummary: {
+      tasksCompleted: 0,
+      tasksInProgress: 0,
+      tasksFailed: 0,
+      totalCostToday: "$0",
+      agentUptimePercent: 100,
+      highlights: [],
+      concerns: [],
     },
-  });
+    agentHealthCards: [],
+    costBurn: { consumedUsd: 0, forecastUsd: 0 },
+    activeGoals: [],
+    recentCompletions: [],
+    proactiveSuggestions: [],
+  };
+  const snapshot = service.buildSnapshot({ dashboard });
 
   const taskBoardAction = snapshot.operatorActions.find((a) => a.actionId === "open_task_board");
   assert.ok(taskBoardAction !== undefined);
