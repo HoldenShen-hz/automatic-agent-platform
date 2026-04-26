@@ -78,7 +78,8 @@ test("buildStableAcceptanceLineReport returns partial status when short-run evid
   assert.ok(Array.isArray(report.criteria));
   assert.ok(report.criteria.length > 0);
   assert.ok(Array.isArray(report.truthNotes));
-  assert.ok(Array.isArray(report.observed));
+  assert.equal(typeof report.observed, "object");
+  assert.notEqual(report.observed, null);
 });
 
 test("buildStableAcceptanceLineReport returns fail when soak has failed runs", () => {

@@ -1,20 +1,26 @@
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
-import { createServer, type Server } from "node:http";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import test, { type TestContext } from "node:test";
+import test from "node:test";
 
 import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite-database.js";
-import { failOnListenSocketDenied } from "../../../helpers/performance.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
-import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { cleanupPath, createFile, createTempWorkspace } from "../../../helpers/fs.js";
 
 const execFileAsync = promisify(execFile);
 
-function runCli<T>(env: NodeJS.ProcessEnv): T {
-  const stdout = execFileSync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "billing.js")], {
+function buildCliArgs(imports: string[] = []): string[] {
+  return [
+    ...imports.flatMap((modulePath) => ["--import", modulePath]),
+    join(process.cwd(), "dist", "src", "sdk", "cli", "billing.js"),
+  ];
+}
+
+function runCli<T>(env: NodeJS.ProcessEnv, options: { imports?: string[] } = {}): T {
+  const stdout = execFileSync(process.execPath, buildCliArgs(options.imports), {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -26,8 +32,8 @@ function runCli<T>(env: NodeJS.ProcessEnv): T {
   return JSON.parse(stdout) as T;
 }
 
-async function runCliAsync<T>(env: NodeJS.ProcessEnv): Promise<T> {
-  const { stdout } = await execFileAsync(process.execPath, [join(process.cwd(), "dist", "src", "sdk", "cli", "billing.js")], {
+async function runCliAsync<T>(env: NodeJS.ProcessEnv, options: { imports?: string[] } = {}): Promise<T> {
+  const { stdout } = await execFileAsync(process.execPath, buildCliArgs(options.imports), {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -39,30 +45,85 @@ async function runCliAsync<T>(env: NodeJS.ProcessEnv): Promise<T> {
   return JSON.parse(stdout) as T;
 }
 
-async function closeMockServer(server: Server): Promise<void> {
-  server.closeIdleConnections();
-  server.closeAllConnections();
-  await new Promise<void>((resolve, reject) => {
-    server.close((error) => {
-      if (error) {
-        if ((error as NodeJS.ErrnoException).code === "ERR_SERVER_NOT_RUNNING") {
-          resolve();
-          return;
-        }
-        reject(error);
-        return;
-      }
-      resolve();
-    });
-  });
+function createFetchMockModule(workspace: string): { modulePath: string; logPath: string } {
+  const modulePath = join(workspace, "billing-fetch-mock.mjs");
+  const logPath = join(workspace, "billing-fetch.log");
+  createFile(modulePath, [
+    "import { appendFileSync } from \"node:fs\";",
+    "",
+    "const scenario = process.env[\"AA_TEST_FETCH_SCENARIO\"] ?? \"\";",
+    "const logPath = process.env[\"AA_TEST_FETCH_LOG_PATH\"] ?? \"\";",
+    "",
+    "function record(entry) {",
+    "  if (logPath.length > 0) {",
+    "    appendFileSync(logPath, `${entry}\\n`, \"utf8\");",
+    "  }",
+    "}",
+    "",
+    "function json(payload) {",
+    "  return new Response(JSON.stringify(payload), {",
+    "    status: 200,",
+    "    headers: { \"content-type\": \"application/json\" },",
+    "  });",
+    "}",
+    "",
+    "globalThis.fetch = async (input, init = {}) => {",
+    "  const request = input instanceof Request ? input : null;",
+    "  const url = typeof input === \"string\"",
+    "    ? input",
+    "    : input instanceof URL",
+    "      ? input.href",
+    "      : (request?.url ?? \"\");",
+    "  const method = String(init.method ?? request?.method ?? \"GET\").toUpperCase();",
+    "  const body = typeof init.body === \"string\" ? init.body : \"\";",
+    "  record(body.length > 0 ? body : `${method} ${new URL(url).pathname}`);",
+    "  switch (scenario) {",
+    "    case \"stripe_checkout\":",
+    "      return json({",
+    "        id: \"cs_live_test_123\",",
+    "        url: \"https://checkout.stripe.test/session/cs_live_test_123\",",
+    "        expires_at: 1770000000,",
+    "      });",
+    "    case \"stripe_auto_reconcile\":",
+    "      if (url.includes(\"/checkout/sessions/\")) {",
+    "        return json({",
+    "          id: \"cs_auto_cli_123\",",
+    "          status: \"complete\",",
+    "          payment_status: \"paid\",",
+    "        });",
+    "      }",
+    "      return json({",
+    "        id: \"cs_auto_cli_123\",",
+    "        url: \"https://checkout.stripe.test/session/cs_auto_cli_123\",",
+    "        expires_at: 1770000000,",
+    "      });",
+    "    case \"paddle_checkout\":",
+    "      return json({",
+    "        data: {",
+    "          id: \"txn_live_test_123\",",
+    "          checkout: {",
+    "            url: \"https://checkout.paddle.test/txn_live_test_123\",",
+    "          },",
+    "        },",
+    "      });",
+    "    default:",
+    "      throw new Error(`Unexpected fetch scenario: ${scenario} ${method} ${url}`);",
+    "  }",
+    "};",
+    "",
+  ].join("\n"));
+  return { modulePath, logPath };
 }
 
-function configureMockServer(server: Server): Server {
-  server.keepAliveTimeout = 1;
-  server.requestTimeout = 1_000;
-  server.headersTimeout = 2_000;
-  server.unref();
-  return server;
+function readRequestLog(logPath: string): string[] {
+  try {
+    return readFileSync(logPath, "utf8")
+      .split("\n")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  } catch {
+    return [];
+  }
 }
 
 test("billing CLI can create accounts, evaluate entitlements, record usage, and export summaries", () => {
@@ -195,41 +256,10 @@ test("billing CLI can create invoices, checkout sessions, and settle payment ses
   }
 });
 
-test("billing CLI can create a Stripe checkout session through the configured gateway", async (t: TestContext) => {
+test("billing CLI can create a Stripe checkout session through the configured gateway", async () => {
   const workspace = createTempWorkspace("aa-billing-cli-stripe-");
   const dbPath = join(workspace, "billing-cli-stripe.db");
-  const requests: string[] = [];
-  const server = configureMockServer(createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += String(chunk);
-    });
-    req.on("end", () => {
-      requests.push(body);
-      res.writeHead(200, { "Content-Type": "application/json", Connection: "close" });
-      res.end(JSON.stringify({
-        id: "cs_live_test_123",
-        url: "https://checkout.stripe.test/session/cs_live_test_123",
-        expires_at: 1770000000,
-      }));
-    });
-  }));
-  try {
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", () => resolve());
-    });
-  } catch (error) {
-    await closeMockServer(server);
-    cleanupPath(workspace);
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
-  }
-  const address = server.address();
-  const port = typeof address === "object" && address ? address.port : 0;
+  const { modulePath, logPath } = createFetchMockModule(workspace);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -267,59 +297,27 @@ test("billing CLI can create a Stripe checkout session through the configured ga
       AA_STRIPE_SECRET_KEY: "sk_test_123",
       AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
       AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
-      AA_STRIPE_API_BASE_URL: `http://127.0.0.1:${port}/v1`,
-    });
+      AA_STRIPE_API_BASE_URL: "https://billing-mock.example/v1",
+      AA_TEST_FETCH_SCENARIO: "stripe_checkout",
+      AA_TEST_FETCH_LOG_PATH: logPath,
+    }, { imports: [modulePath] });
 
     assert.equal(checkout.gatewayKind, "stripe");
     assert.equal(checkout.gatewaySessionRef, "cs_live_test_123");
     assert.equal(checkout.checkoutUrl, "https://checkout.stripe.test/session/cs_live_test_123");
+    const requests = readRequestLog(logPath);
     assert.equal(requests.length, 1);
     assert.match(requests[0] ?? "", /client_reference_id=invoice_/);
     assert.match(requests[0] ?? "", /metadata%5Baccount_id%5D=acct-cli-stripe-1/);
   } finally {
-    await closeMockServer(server);
     cleanupPath(workspace);
   }
 });
 
-test("billing CLI can create a Paddle checkout session through the configured gateway", async (t: TestContext) => {
+test("billing CLI can create a Paddle checkout session through the configured gateway", async () => {
   const workspace = createTempWorkspace("aa-billing-cli-paddle-");
   const dbPath = join(workspace, "billing-cli-paddle.db");
-  const requests: string[] = [];
-  const server = configureMockServer(createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += String(chunk);
-    });
-    req.on("end", () => {
-      requests.push(body);
-      res.writeHead(200, { "Content-Type": "application/json", Connection: "close" });
-      res.end(JSON.stringify({
-        data: {
-          id: "txn_live_test_123",
-          checkout: {
-            url: "https://checkout.paddle.test/txn_live_test_123",
-          },
-        },
-      }));
-    });
-  }));
-  try {
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", () => resolve());
-    });
-  } catch (error) {
-    await closeMockServer(server);
-    cleanupPath(workspace);
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
-  }
-  const address = server.address();
-  const port = typeof address === "object" && address ? address.port : 0;
+  const { modulePath, logPath } = createFetchMockModule(workspace);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -359,16 +357,18 @@ test("billing CLI can create a Paddle checkout session through the configured ga
       AA_PADDLE_API_KEY: "pdl_test_123",
       AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
       AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
-      AA_PADDLE_API_BASE_URL: `http://127.0.0.1:${port}`,
-    });
+      AA_PADDLE_API_BASE_URL: "https://billing-mock.example",
+      AA_TEST_FETCH_SCENARIO: "paddle_checkout",
+      AA_TEST_FETCH_LOG_PATH: logPath,
+    }, { imports: [modulePath] });
 
     assert.equal(checkout.gatewayKind, "paddle");
     assert.equal(checkout.gatewaySessionRef, "txn_live_test_123");
     assert.equal(checkout.checkoutUrl, "https://checkout.paddle.test/txn_live_test_123");
+    const requests = readRequestLog(logPath);
     assert.equal(requests.length, 1);
     assert.match(requests[0] ?? "", /invoice_id/);
   } finally {
-    await closeMockServer(server);
     cleanupPath(workspace);
   }
 });
@@ -439,43 +439,10 @@ test("billing CLI reconciles a payment session by gateway reference", async () =
   }
 });
 
-test("billing CLI auto-reconciles pending Stripe sessions within tenant scope", async (t: TestContext) => {
+test("billing CLI auto-reconciles pending Stripe sessions within tenant scope", async () => {
   const workspace = createTempWorkspace("aa-billing-cli-auto-reconcile-");
   const dbPath = join(workspace, "billing-cli-auto-reconcile.db");
-  const requests: string[] = [];
-  const server = configureMockServer(createServer((req, res) => {
-    requests.push(`${req.method ?? "GET"} ${req.url ?? "/"}`);
-    res.writeHead(200, { "Content-Type": "application/json", Connection: "close" });
-    if ((req.url ?? "").includes("/v1/checkout/sessions/cs_auto_cli_123")) {
-      res.end(JSON.stringify({
-        id: "cs_auto_cli_123",
-        status: "complete",
-        payment_status: "paid",
-      }));
-      return;
-    }
-    res.end(JSON.stringify({
-      id: "cs_auto_cli_123",
-      url: "https://checkout.stripe.test/session/cs_auto_cli_123",
-      expires_at: 1770000000,
-    }));
-  }));
-  try {
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", () => resolve());
-    });
-  } catch (error) {
-    await closeMockServer(server);
-    cleanupPath(workspace);
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
-  }
-  const address = server.address();
-  const port = typeof address === "object" && address ? address.port : 0;
+  const { modulePath, logPath } = createFetchMockModule(workspace);
 
   try {
     const db = new SqliteDatabase(dbPath);
@@ -514,8 +481,10 @@ test("billing CLI auto-reconciles pending Stripe sessions within tenant scope", 
       AA_STRIPE_SECRET_KEY: "sk_test_123",
       AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
       AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
-      AA_STRIPE_API_BASE_URL: `http://127.0.0.1:${port}/v1`,
-    });
+      AA_STRIPE_API_BASE_URL: "https://billing-mock.example/v1",
+      AA_TEST_FETCH_SCENARIO: "stripe_auto_reconcile",
+      AA_TEST_FETCH_LOG_PATH: logPath,
+    }, { imports: [modulePath] });
 
     const reconciled = await runCliAsync<{
       scannedCount: number;
@@ -529,16 +498,18 @@ test("billing CLI auto-reconciles pending Stripe sessions within tenant scope", 
       AA_STRIPE_SECRET_KEY: "sk_test_123",
       AA_BILLING_SUCCESS_URL: "https://app.example.com/billing/success",
       AA_BILLING_CANCEL_URL: "https://app.example.com/billing/cancel",
-      AA_STRIPE_API_BASE_URL: `http://127.0.0.1:${port}/v1`,
-    });
+      AA_STRIPE_API_BASE_URL: "https://billing-mock.example/v1",
+      AA_TEST_FETCH_SCENARIO: "stripe_auto_reconcile",
+      AA_TEST_FETCH_LOG_PATH: logPath,
+    }, { imports: [modulePath] });
 
     assert.equal(reconciled.scannedCount, 1);
     assert.equal(reconciled.reconciledCount, 1);
     assert.equal(reconciled.results[0]?.reason, "reconciled");
     assert.equal(reconciled.results[0]?.nextStatus, "paid");
+    const requests = readRequestLog(logPath);
     assert.ok(requests.some((entry) => entry.includes("/v1/checkout/sessions/cs_auto_cli_123")));
   } finally {
-    await closeMockServer(server);
     cleanupPath(workspace);
   }
 });

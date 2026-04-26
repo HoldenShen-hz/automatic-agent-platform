@@ -60,18 +60,21 @@ test("classifyPromptInjectionRisk confidence is high when blocked", () => {
 });
 
 test("classifyPromptInjectionRisk confidence is medium when near threshold", () => {
-  // Use a custom config with a lower threshold to test medium confidence
+  // Create input that scores between threshold * 0.7 and threshold
+  // threshold = 0.8, so medium is score >= 0.56 and < 0.8
   const customConfig = {
     signals: [
-      { signal: "test", pattern: /test/i, weight: 0.5 },
+      { signal: "signal1", pattern: /hello/i, weight: 0.3 },
+      { signal: "signal2", pattern: /world/i, weight: 0.3 },
     ],
-    threshold: 0.9,
+    threshold: 0.8,
     highConfidenceThreshold: 0.95,
     mediumConfidenceThreshold: 0.7,
   };
-  const result = classifyPromptInjectionRisk("this is a test", 0.9, customConfig);
-  assert.ok(result.score < 0.9); // Not high
-  assert.ok(result.score >= 0.9 * 0.7); // But at least medium
+  const result = classifyPromptInjectionRisk("hello world", 0.8, customConfig);
+  assert.ok(result.score < 0.8, `Score ${result.score} should be less than 0.8`);
+  assert.ok(result.score >= 0.8 * 0.7, `Score ${result.score} should be at least 0.56`);
+  assert.equal(result.confidence, "medium");
 });
 
 test("classifyPromptInjectionRisk with custom config", () => {

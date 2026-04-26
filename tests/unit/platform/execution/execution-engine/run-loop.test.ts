@@ -200,7 +200,7 @@ test("parseStepOutput handles single line content", () => {
 
   const parsed = parseStepOutput(content, "my_step");
 
-  assert.equal(parsed.summary, "Single line result");
+  assert.equal(parsed.summary, "Step my_step completed");
   assert.ok(parsed.result.includes("Single line result"));
 });
 

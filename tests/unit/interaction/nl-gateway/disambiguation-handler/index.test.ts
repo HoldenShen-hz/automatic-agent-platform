@@ -68,7 +68,7 @@ test("detectAmbiguity returns true for short message with medium confidence", ()
 
 test("detectAmbiguity returns false for longer message with enough entities", () => {
   const result = detectAmbiguity("create a task for me", 0.6, 1, 2);
-  assert.equal(result, true);
+  assert.equal(result, false);
 });
 
 // ---------------------------------------------------------------------------

@@ -49,7 +49,6 @@ test("runSingleTaskExecution with stepOutputOverride bypasses LLM call", async (
       stepOutputOverride: {
         summary: "Custom summary",
         result: "Custom result",
-        customField: "test-value",
       },
     };
 
@@ -58,6 +57,9 @@ test("runSingleTaskExecution with stepOutputOverride bypasses LLM call", async (
     assert.ok(snapshot, "Should return task snapshot");
     assert.ok(snapshot.task, "Snapshot should have task");
     assert.equal(snapshot.task.title, "Test with override");
+    const output = JSON.parse(snapshot.task.outputJson ?? "{}") as { summary?: string; result?: string };
+    assert.equal(output.summary, "Custom summary");
+    assert.equal(output.result, "Custom result");
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -230,7 +232,7 @@ test("HappyPathInput type accepts all required fields", () => {
   assert.ok(input.stepOutputOverride !== undefined);
 });
 
-test("runSingleTaskExecution stepOutputOverride preserves additional fields", async () => {
+test("runSingleTaskExecution stepOutputOverride rejects additional fields outside schema", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-override-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -249,13 +251,10 @@ test("runSingleTaskExecution stepOutputOverride preserves additional fields", as
       stepOutputOverride: customData,
     };
 
-    const snapshot = await runSingleTaskExecution(input);
-
-    assert.ok(snapshot.task, "Should have task");
-    assert.ok(snapshot.task.outputJson, "Should have output");
-    const output = JSON.parse(snapshot.task.outputJson!);
-    assert.equal(output.summary, "Custom summary");
-    assert.equal(output.result, "Custom result");
+    await assert.rejects(
+      async () => runSingleTaskExecution(input),
+      (error: Error & { code?: string }) => error.code === "workflow.output_schema_invalid",
+    );
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

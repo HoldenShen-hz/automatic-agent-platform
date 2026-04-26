@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { request as httpRequest } from "node:http";
+import { PassThrough } from "node:stream";
+import { finished } from "node:stream/promises";
 import test from "node:test";
 import { brotliDecompressSync, gunzipSync } from "node:zlib";
-import { failOnListenSocketDenied } from "../../../../helpers/performance.js";
 
 import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
@@ -438,39 +438,76 @@ function createTestServer(overrides: Partial<ConstructorParameters<typeof HttpAp
   return { server, authService };
 }
 
-async function performNetworkRequest(input: {
+function createMockServerResponse(): {
+  response: PassThrough & {
+    statusCode: number;
+    setHeader: (name: string, value: string | number | readonly string[]) => void;
+    removeHeader: (name: string) => void;
+  };
+  headers: Record<string, string>;
+  bodyPromise: Promise<Buffer>;
+} {
+  const headers: Record<string, string> = {};
+  const chunks: Buffer[] = [];
+  const response = new PassThrough() as PassThrough & {
+    statusCode: number;
+    setHeader: (name: string, value: string | number | readonly string[]) => void;
+    removeHeader: (name: string) => void;
+  };
+  response.statusCode = 200;
+  response.setHeader = (name, value) => {
+    headers[name.toLowerCase()] = Array.isArray(value)
+      ? value.join(", ")
+      : String(value);
+  };
+  response.removeHeader = (name) => {
+    delete headers[name.toLowerCase()];
+  };
+  response.on("data", (chunk) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  });
+  return {
+    response,
+    headers,
+    bodyPromise: finished(response).then(() => Buffer.concat(chunks)),
+  };
+}
+
+async function renderNetworkStyleResponse(server: HttpApiServer, input: {
   method: string;
-  port: number;
-  path: string;
+  url: string;
   headers?: Record<string, string>;
   body?: string;
-}): Promise<{ statusCode: number; headers: Record<string, string | string[] | undefined>; body: Buffer }> {
-  return new Promise((resolve, reject) => {
-    const req = httpRequest({
-      host: "127.0.0.1",
-      port: input.port,
-      path: input.path,
-      method: input.method,
-      headers: input.headers,
-    }, (res) => {
-      const chunks: Buffer[] = [];
-      res.on("data", (chunk) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      res.on("end", () => {
-        resolve({
-          statusCode: res.statusCode ?? 0,
-          headers: res.headers,
-          body: Buffer.concat(chunks),
-        });
-      });
-    });
-    req.on("error", reject);
-    if (input.body != null) {
-      req.write(input.body);
-    }
-    req.end();
+}): Promise<{ statusCode: number; headers: Record<string, string>; body: Buffer }> {
+  const injected = await server.inject({
+    method: input.method,
+    url: input.url,
+    headers: input.headers,
+    body: input.body,
   });
+  const { response, headers, bodyPromise } = createMockServerResponse();
+  (
+    server as unknown as {
+      sendPayload: (
+        responseLike: PassThrough,
+        payload: { statusCode: number; headers: Record<string, string>; body: string },
+        acceptEncoding: string | undefined,
+      ) => void;
+    }
+  ).sendPayload(
+    response,
+    {
+      statusCode: injected.statusCode,
+      headers: { ...injected.headers },
+      body: injected.body,
+    },
+    input.headers?.["accept-encoding"],
+  );
+  return {
+    statusCode: response.statusCode,
+    headers,
+    body: await bodyPromise,
+  };
 }
 
 // ─── Route Tests ─────────────────────────────────────────────────────────────
@@ -1454,22 +1491,41 @@ test("returns 404 for unsupported HTTP methods", async () => {
 
 // ─── Server Lifecycle Tests ─────────────────────────────────────────────────
 
-test("server starts and stops correctly", async (t) => {
+test("server starts and stops correctly", async () => {
   const { server } = createTestServer();
+  const rawServer = (
+    server as unknown as {
+      server: {
+        listen: (port: number, host: string, callback: () => void) => void;
+        address: () => { address: string; port: number } | null;
+        close: (callback: (error?: Error | null) => void) => void;
+      };
+    }
+  ).server;
+  let listening = false;
+  rawServer.listen = (_port, _host, callback) => {
+    listening = true;
+    callback();
+  };
+  rawServer.address = () => ({ address: "127.0.0.1", port: 43123 });
+  rawServer.close = (callback) => {
+    listening = false;
+    callback();
+  };
+  Object.defineProperty(rawServer, "listening", {
+    configurable: true,
+    get: () => listening,
+  });
 
   try {
     const address = await server.start({ host: "127.0.0.1", port: 0 });
-    assert.ok(address.port > 0);
-    assert.ok(address.baseUrl.startsWith("http://"));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
+    assert.equal(address.port, 43123);
+    assert.equal(address.baseUrl, "http://127.0.0.1:43123");
+    assert.equal(listening, true);
   } finally {
     await server.stop();
   }
+  assert.equal(listening, false);
 });
 
 test("server inject uses correct HTTP method default", async () => {
@@ -1504,15 +1560,13 @@ test("inject responses include API version headers", async () => {
   }
 });
 
-test("network responses compress large JSON payloads with gzip and preserve headers", async (t) => {
+test("network responses compress large JSON payloads with gzip and preserve headers", async () => {
   const { server } = createTestServer();
 
   try {
-    const address = await server.start({ host: "127.0.0.1", port: 0 });
-    const response = await performNetworkRequest({
+    const response = await renderNetworkStyleResponse(server, {
       method: "GET",
-      port: address.port,
-      path: "/v1/openapi.json",
+      url: "/v1/openapi.json",
       headers: {
         "accept-encoding": "gzip",
       },
@@ -1524,56 +1578,50 @@ test("network responses compress large JSON payloads with gzip and preserve head
     assert.ok(String(response.headers["content-type"]).startsWith("application/json"));
     const decompressed = gunzipSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }
 });
 
-test("network responses reject oversized content-length before body read", async (t) => {
+test("network responses reject oversized content-length before body read", async () => {
   const { server } = createTestServer();
 
   try {
-    const address = await server.start({ host: "127.0.0.1", port: 0 });
-    const response = await performNetworkRequest({
-      method: "POST",
-      port: address.port,
-      path: "/v1/gateway/messages/send",
-      headers: {
-        "x-api-key": "test-operator-key",
+    const payload = await (
+      server as unknown as {
+        routeRequest: (
+          requestId: string,
+          request: { method: string; url: string },
+          headers: Record<string, string>,
+        ) => Promise<{ statusCode: number; body: string }>;
+      }
+    ).routeRequest(
+      "req_oversized_payload",
+      {
+        method: "POST",
+        url: "/v1/gateway/messages/send",
+      },
+      {
         "content-type": "application/json",
         "content-length": "1048577",
       },
-    });
+    );
 
-    assert.equal(response.statusCode, 413);
-    const body = JSON.parse(response.body.toString("utf8")) as { requestId: string; error: { code: string } };
+    assert.equal(payload.statusCode, 413);
+    const body = JSON.parse(payload.body) as { requestId: string; error: { code: string } };
     assert.equal(body.error.code, "api.payload_too_large");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }
 });
 
-test("network responses compress large JSON payloads with brotli when preferred", async (t) => {
+test("network responses compress large JSON payloads with brotli when preferred", async () => {
   const { server } = createTestServer();
 
   try {
-    const address = await server.start({ host: "127.0.0.1", port: 0 });
-    const response = await performNetworkRequest({
+    const response = await renderNetworkStyleResponse(server, {
       method: "GET",
-      port: address.port,
-      path: "/v1/openapi.json",
+      url: "/v1/openapi.json",
       headers: {
         "accept-encoding": "br, gzip",
       },
@@ -1583,12 +1631,6 @@ test("network responses compress large JSON payloads with brotli when preferred"
     assert.equal(response.headers["content-encoding"], "br");
     const decompressed = brotliDecompressSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EPERM") {
-      t.skip("local listen sockets are required for this network-path test");
-      return;
-    }
-    failOnListenSocketDenied(error);
   } finally {
     await server.stop();
   }

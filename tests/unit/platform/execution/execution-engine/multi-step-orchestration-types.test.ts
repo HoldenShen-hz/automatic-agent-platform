@@ -3,6 +3,11 @@ import test from "node:test";
 
 import type { StepFailurePlan, MultiStepToolExecutionInput, MultiStepOrchestrationResult } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
 import type { ContextCompactionResult } from "../../../../../src/platform/execution/execution-engine/context-compaction-service.js";
+import type {
+  Phase1BOrchestrationInput,
+  Phase1BOrchestrationResult,
+} from "../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js";
+import type { Phase1BToolDefinition } from "../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js";
 
 // =============================================================================
 // Phase1B Re-Export Verification Tests
@@ -29,14 +34,18 @@ test("phase1b-orchestration exports resetPhase1BToolRegistryForTests alias", asy
   assert.equal(resetPhase1BToolRegistryForTests, resetMultiStepToolRegistryForTests, "resetPhase1BToolRegistryForTests should be an alias for resetMultiStepToolRegistryForTests");
 });
 
-test("phase1b-orchestration exports Phase1BOrchestrationResult type alias", async () => {
-  const phase1b = await import("../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js");
-  assert.ok("Phase1BOrchestrationResult" in phase1b, "Phase1B should export Phase1BOrchestrationResult type alias");
+test("phase1b-orchestration exports Phase1BOrchestrationResult type alias", () => {
+  const result: Phase1BOrchestrationResult | null = null;
+  assert.equal(result, null);
 });
 
-test("phase1b-orchestration exports Phase1BOrchestrationInput type alias", async () => {
-  const phase1b = await import("../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js");
-  assert.ok("Phase1BOrchestrationInput" in phase1b, "Phase1B should export Phase1BOrchestrationInput type alias");
+test("phase1b-orchestration exports Phase1BOrchestrationInput type alias", () => {
+  const input = {
+    dbPath: "/tmp/phase1b.db",
+    title: "Phase1B Test",
+    request: "Verify type alias compilation",
+  } satisfies Phase1BOrchestrationInput;
+  assert.equal(input.title, "Phase1B Test");
 });
 
 test("phase1b-tool-definitions exports PHASE1B_TOOL_DEFINITIONS alias", async () => {
@@ -53,9 +62,13 @@ test("phase1b-tool-definitions exports getPhase1BToolDefinitions alias", async (
   assert.equal(getPhase1BToolDefinitions, getMultiStepToolDefinitions, "getPhase1BToolDefinitions should be an alias for getMultiStepToolDefinitions");
 });
 
-test("phase1b-tool-definitions exports Phase1BToolDefinition type alias", async () => {
-  const phase1b = await import("../../../../../src/platform/execution/execution-engine/phase1b-tool-definitions.js");
-  assert.ok("Phase1BToolDefinition" in phase1b, "Phase1B should export Phase1BToolDefinition type alias");
+test("phase1b-tool-definitions exports Phase1BToolDefinition type alias", () => {
+  const definition = {
+    name: "test-tool",
+    description: "Phase1B type alias coverage",
+    inputSchema: { type: "object" },
+  } satisfies Phase1BToolDefinition;
+  assert.equal(definition.name, "test-tool");
 });
 
 test("phase1b-utils exports resolvePhase1BToolPath alias", async () => {

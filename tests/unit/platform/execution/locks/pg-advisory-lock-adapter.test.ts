@@ -16,7 +16,8 @@ test("PgAdvisoryLockAdapter acquire throws sync not supported error", () => {
     () => adapter.acquire({ lockKey: "test", owner: "owner" }),
     (error: unknown) => {
       const err = error as LockingError;
-      return err.code === "lock.pg_async_required";
+      return err.code === "E7lock.pg_async_required"
+        && err.message.includes("acquire() requires async acquireAsync()");
     },
   );
 });
@@ -27,7 +28,8 @@ test("PgAdvisoryLockAdapter release throws sync not supported error", () => {
     () => adapter.release("test", "owner"),
     (error: unknown) => {
       const err = error as LockingError;
-      return err.code === "lock.pg_async_required";
+      return err.code === "E7lock.pg_async_required"
+        && err.message.includes("release() requires async releaseAsync()");
     },
   );
 });
@@ -38,7 +40,8 @@ test("PgAdvisoryLockAdapter forceSteal throws advisory cannot force steal error"
     () => adapter.forceSteal("test", "newOwner", "reason"),
     (error: unknown) => {
       const err = error as LockingError;
-      return err.code === "lock.advisory_cannot_force_steal";
+      return err.code === "E7lock.advisory_cannot_force_steal"
+        && err.message.includes("forceSteal is not supported");
     },
   );
 });

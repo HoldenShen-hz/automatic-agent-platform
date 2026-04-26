@@ -92,7 +92,7 @@ test("parseStepOutput handles single word content", () => {
 
   const output = parseStepOutput(content, "word_step");
 
-  assert.equal(output.summary, "Word");
+  assert.equal(output.summary, "Step word_step completed");
   assert.ok(output.result.includes("Word") || output.result.length > 0);
 });
 

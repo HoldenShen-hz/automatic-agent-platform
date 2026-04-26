@@ -232,11 +232,8 @@ test("resolveMultiStepToolPath rejects path with encoded traversal", () => {
   );
 });
 
-test("resolveMultiStepToolPath rejects absolute path at workspace boundary", () => {
-  assert.throws(
-    () => resolveMultiStepToolPath("/workspace", "/workspace"),
-    ToolExecutionError,
-  );
+test("resolveMultiStepToolPath allows absolute path at workspace boundary", () => {
+  assert.equal(resolveMultiStepToolPath("/workspace", "/workspace"), "/workspace");
 });
 
 test("resolveMultiStepToolPath handles relative paths with current directory", () => {

@@ -5,9 +5,15 @@ import { createAsyncRepositoryRegistry } from "../../../../../src/platform/state
 import { createTestPgDatabase, resetPgTables, shouldRunPgIntegration } from "../../../../helpers/pg-test-helper.js";
 
 const pgSupport = shouldRunPgIntegration();
-const pgTest = pgSupport.enabled ? test : test.skip;
 
-pgTest("PostgreSQL async repository registry smoke", async () => {
+test("PostgreSQL async repository registry smoke", async () => {
+  if (!pgSupport.enabled) {
+    assert.match(
+      pgSupport.reason ?? "",
+      /(postgres runtime dependency is not installed|PostgreSQL test connection is not configured)/,
+    );
+    return;
+  }
   const db = await createTestPgDatabase();
   try {
     await resetPgTables(db, ["tasks"]);

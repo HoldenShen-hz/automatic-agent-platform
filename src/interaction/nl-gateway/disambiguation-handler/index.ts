@@ -61,19 +61,29 @@ export function detectAmbiguity(
   extractedEntityCount: number,
 ): boolean {
   const normalized = message.trim();
+  const hasRequiredEntities = extractedEntityCount >= requiredEntityCount;
+  const isShortMessage = normalized.length < 6;
+  const isLowConfidence = confidence < 0.7;
 
-  // Short message is ambiguous regardless of entities
-  if (normalized.length < 6) {
+  // A satisfied single-entity intent should not be forced into clarification
+  // purely because the message is terse or the model confidence is conservative.
+  // If both signals fire at once, still require clarification.
+  if (requiredEntityCount <= 1 && extractedEntityCount >= 1) {
+    return isShortMessage && isLowConfidence;
+  }
+
+  // Short message is ambiguous when entity extraction did not already anchor intent.
+  if (isShortMessage) {
     return true;
   }
 
-  // Low confidence requires clarification even when entity extraction succeeded.
-  if (confidence < 0.7) {
-    return true;
+  // Low confidence only requires clarification when extraction also failed to anchor intent.
+  if (isLowConfidence) {
+    return !hasRequiredEntities;
   }
 
   // Otherwise rely on required entity coverage.
-  return extractedEntityCount < requiredEntityCount;
+  return !hasRequiredEntities;
 }
 
 /**

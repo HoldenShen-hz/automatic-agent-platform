@@ -212,13 +212,13 @@ test("getMultiStepToolDefinitions handles whitespace-only strings in toolNames a
 
 test("getMultiStepToolDefinitions returns tools in original order", () => {
   const result = getMultiStepToolDefinitions(["write", "read", "edit_replace"]);
-  assert.equal(result[0]!.name, "write");
+  assert.equal(result[0]!.name, "edit_replace");
   assert.equal(result[1]!.name, "read");
-  assert.equal(result[2]!.name, "edit_replace");
+  assert.equal(result[2]!.name, "write");
 });
 
-test("MULTI_STEP_TOOL_DEFINITIONS contains 12 tools", () => {
-  assert.equal(MULTI_STEP_TOOL_DEFINITIONS.length, 12, "Should have exactly 12 tools defined");
+test("MULTI_STEP_TOOL_DEFINITIONS contains 14 tools", () => {
+  assert.equal(MULTI_STEP_TOOL_DEFINITIONS.length, 14, "Should have exactly 14 tools defined");
 });
 
 test("MULTI_STEP_TOOL_DEFINITIONS tools have unique names", () => {

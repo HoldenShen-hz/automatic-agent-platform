@@ -448,11 +448,11 @@ test("ModelGateway: UnifiedChatProvider complete uses configured model", async (
     anthropic: { apiKey: "test-key" },
   });
 
-  // complete() with no model specified uses default "gpt-5.2"
-  // Since openai is not configured, it should throw provider not configured
+  // complete() with no model specified uses the bundled MiniMax default model.
+  // Since minimax is not configured, it should throw provider not configured.
   await assert.rejects(
     () => provider.complete("test prompt"),
-    /OpenAI provider is not configured/,
+    /MiniMax provider is not configured/,
   );
 });
 

@@ -18,15 +18,34 @@ export function parseOptionalStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return value.flatMap((item) => {
+    if (typeof item !== "string") {
+      return [];
+    }
+    const normalized = item.trim();
+    return normalized.length > 0 ? [normalized] : [];
+  });
 }
 
 export function resolveMultiStepToolPath(rootPath: string, inputPath: string | null | undefined): string {
-  const resolved = resolve(rootPath, inputPath ?? ".");
-  if (resolved !== rootPath && !resolved.startsWith(`${rootPath}${sep}`)) {
+  const normalizedRoot = resolve(rootPath);
+  const rawInputPath = inputPath ?? ".";
+  const decodedInputPath = decodeURIComponent(rawInputPath);
+  const pathSegments = decodedInputPath.split(/[\\/]+/u).filter((segment) => segment.length > 0);
+  if (pathSegments.includes("..")) {
     throw new ToolExecutionError(
-      `tool.path_outside_workspace:${inputPath ?? "."}`,
-      `tool.path_outside_workspace:${inputPath ?? "."}`,
+      `tool.path_outside_workspace:${rawInputPath}`,
+      `tool.path_outside_workspace:${rawInputPath}`,
+    );
+  }
+
+  const resolved = resolve(normalizedRoot, rawInputPath);
+  const rootIsFilesystemRoot = normalizedRoot === sep;
+
+  if (!rootIsFilesystemRoot && resolved !== normalizedRoot && !resolved.startsWith(`${normalizedRoot}${sep}`)) {
+    throw new ToolExecutionError(
+      `tool.path_outside_workspace:${rawInputPath}`,
+      `tool.path_outside_workspace:${rawInputPath}`,
     );
   }
   return resolved;

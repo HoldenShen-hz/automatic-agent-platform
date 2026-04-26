@@ -380,7 +380,7 @@ test("plugin executor: execute non-existent plugin throws error", async () => {
 
     await assert.rejects(
       async () => service.execute("non-existent-plugin", "retriever", context, {}),
-      (err: Error) => err.message.includes("not_found"),
+      (err: Error & { code?: string }) => err.code === "plugin_executor.not_found",
     );
 
     db.close();
@@ -408,8 +408,8 @@ test("plugin executor: execute unregistered action throws action_not_allowed", a
     const context = createTestContext({ executionId: newId("exec") });
 
     await assert.rejects(
-      async () => service.execute("action-plugin", "validator", context, {}),
-      (err: Error) => err.message.includes("action_not_allowed"),
+      async () => service.execute("action-plugin", "planner", context, {}),
+      (err: Error & { code?: string }) => err.code === "plugin_executor.action_not_allowed",
     );
 
     db.close();
@@ -432,13 +432,14 @@ test("plugin executor: execute inactive plugin throws not_active error", async (
 
     service.register(manifest, hooks);
     await service.load("inactive-plugin");
-    // Note: not activating, so state remains "loaded"
+    await service.activate("inactive-plugin");
+    await service.deactivate("inactive-plugin");
 
     const context = createTestContext({ executionId: newId("exec") });
 
     await assert.rejects(
       async () => service.execute("inactive-plugin", "retriever", context, {}),
-      (err: Error) => err.message.includes("not_active"),
+      (err: Error & { code?: string }) => err.code === "plugin_executor.not_active",
     );
 
     db.close();
@@ -673,9 +674,9 @@ test("plugin executor: multiple plugins can be registered and executed concurren
 
     assert.equal(results.length, 3);
     assert.ok(results.every((r) => r.status === "ok"));
-    assert.equal(results[0]!.output, JSON.stringify({ plugin: 1 }));
-    assert.equal(results[1]!.output, JSON.stringify({ plugin: 2 }));
-    assert.equal(results[2]!.output, JSON.stringify({ plugin: 3 }));
+    assert.deepEqual(results[0]!.output, { plugin: 1 });
+    assert.deepEqual(results[1]!.output, { plugin: 2 });
+    assert.deepEqual(results[2]!.output, { plugin: 3 });
 
     db.close();
   } finally {
@@ -699,7 +700,7 @@ test("plugin executor: duplicate registration throws already_registered error", 
 
     assert.throws(
       () => service.register(manifest, hooks),
-      (err: Error) => err.message.includes("already_registered"),
+      (err: Error & { code?: string }) => err.code === "plugin_executor.already_registered",
     );
 
     db.close();

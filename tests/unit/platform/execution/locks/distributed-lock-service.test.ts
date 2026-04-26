@@ -79,7 +79,7 @@ test("defaultPostgresFactory returns a driver when called with valid DSN", () =>
   assert.ok(driver !== undefined);
   assert.equal(typeof driver, "function");
   assert.equal(typeof driver.end, "function");
-  assert.equal(typeof driver.transaction, "function");
+  assert.equal(typeof driver.begin, "function");
 });
 
 test("defaultPostgresFactory returns driver with unsafe method", () => {
@@ -89,7 +89,9 @@ test("defaultPostgresFactory returns driver with unsafe method", () => {
 
 test("defaultPostgresFactory driver template tag works", () => {
   const driver = defaultPostgresFactory("postgresql://invalid:invalid@localhost:9999/db", {});
-  // The template tag should return an array
+  // The tagged template returns a thenable query object before connection resolution.
   const result = driver`SELECT 1 as value`;
-  assert.ok(Array.isArray(result));
+  assert.equal(typeof result, "object");
+  assert.equal(typeof result.then, "function");
+  void driver.end({ timeout: 0 });
 });
