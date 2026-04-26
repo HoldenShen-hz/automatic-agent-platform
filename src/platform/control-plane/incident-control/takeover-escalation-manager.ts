@@ -114,6 +114,7 @@ export class TakeoverEscalationManager {
     const timeout = setTimeout(() => {
       this.handleSessionTimeout(sessionId, taskId);
     }, durationMs);
+    timeout.unref?.();
 
     this.activeTimeouts.set(sessionId, timeout);
 
@@ -182,6 +183,7 @@ export class TakeoverEscalationManager {
     const timer = setTimeout(async () => {
       await this.checkEscalation(sessionId, taskId);
     }, this.config.escalationCheckIntervalMs);
+    timer.unref?.();
 
     this.escalationTimers.set(sessionId, timer);
   }

@@ -1,306 +1,405 @@
 /**
- * Unit tests for Incident Drill Service Types
+ * Unit tests for IncidentDrillService - business logic
+ * Tests drill lifecycle, observation recording, and report generation
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type {
-  IncidentDrillType,
-  IncidentDrillStatus,
-  IncidentDrillScenario,
-  IncidentInjection,
-  DrillSuccessCriterion,
-  IncidentDrillResult,
-  DrillObservation,
-  DrillCriteriaResult,
-  IncidentDrillConfig,
+import {
+  IncidentDrillService,
+  PREDEFINED_SCENARIOS,
+  DEFAULT_INCIDENT_DRILL_CONFIG,
+  type IncidentDrillScenario,
 } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/incident-drill-service.js";
+import type { RunbookExecutionResult } from "../../../../../../src/platform/control-plane/incident-control/runbook-executor/types.js";
 
-test("IncidentDrillType is a string union type", () => {
-  const tabletop: IncidentDrillType = "tabletop";
-  const functional: IncidentDrillType = "functional";
-  const fullSimulation: IncidentDrillType = "full_simulation";
-
-  assert.equal(tabletop, "tabletop");
-  assert.equal(functional, "functional");
-  assert.equal(fullSimulation, "full_simulation");
+// Mock runbook executor
+const createMockExecutor = () => ({
+  execute: async () => ({ success: true } as RunbookExecutionResult),
 });
 
-test("IncidentDrillStatus is a string union type", () => {
-  const statuses: IncidentDrillStatus[] = [
-    "initialized",
-    "in_progress",
-    "paused",
-    "completed",
-    "cancelled",
-  ];
-
-  assert.equal(statuses.length, 5);
-  assert.ok(statuses.includes("initialized"));
-  assert.ok(statuses.includes("in_progress"));
-  assert.ok(statuses.includes("completed"));
+test("IncidentDrillService initializes with default config", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  assert.ok(service);
 });
 
-test("IncidentInjection injectionType is a string union type", () => {
-  const types: IncidentInjection["injectionType"][] = [
-    "metric_spike",
-    "service_failure",
-    "latency_injection",
-    "error_rate_increase",
-    "resource_exhaustion",
-  ];
-
-  assert.equal(types.length, 5);
-  assert.ok(types.includes("metric_spike"));
-  assert.ok(types.includes("service_failure"));
+test("IncidentDrillService initializes with custom config", () => {
+  const config = {
+    recordActions: false,
+    autoInject: false,
+    targetEnvironment: "staging" as const,
+  };
+  const service = new IncidentDrillService(createMockExecutor() as any, config);
+  assert.ok(service);
 });
 
-test("DrillObservation category is a string union type", () => {
-  const categories: DrillObservation["category"][] = [
-    "timeline",
-    "communication",
+test("IncidentDrillService.getScenarios returns all predefined scenarios", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenarios = service.getScenarios();
+
+  assert.ok(Array.isArray(scenarios));
+  assert.equal(scenarios.length, 3);
+  assert.ok(scenarios.some((s) => s.scenarioId === "worker_mass_disconnect_drill"));
+  assert.ok(scenarios.some((s) => s.scenarioId === "approval_channel_outage_drill"));
+  assert.ok(scenarios.some((s) => s.scenarioId === "cost_spike_drill"));
+});
+
+test("IncidentDrillService.getScenario finds scenario by ID", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+
+  const scenario = service.getScenario("worker_mass_disconnect_drill");
+
+  assert.ok(scenario);
+  assert.equal(scenario!.name, "Worker Mass Disconnect");
+});
+
+test("IncidentDrillService.getScenario returns undefined for unknown ID", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+
+  const scenario = service.getScenario("nonexistent-scenario");
+
+  assert.equal(scenario, undefined);
+});
+
+test("IncidentDrillService.initializeDrill creates new drill with correct structure", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  const drill = service.initializeDrill(scenario, ["operator-1", "operator-2"], "admin");
+
+  assert.ok(drill.drillId.startsWith("incident_drill_"));
+  assert.equal(drill.scenario.scenarioId, scenario.scenarioId);
+  assert.equal(drill.status, "initialized");
+  assert.deepEqual(drill.participants, ["operator-1", "operator-2"]);
+  assert.equal(drill.completedAt, null);
+  assert.equal(drill.durationMs, null);
+  assert.equal(drill.overallScore, null);
+});
+
+test("IncidentDrillService.startDrill transitions initialized drill to in_progress", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  const result = service.startDrill();
+
+  assert.ok(result);
+  assert.equal(result!.status, "in_progress");
+});
+
+test("IncidentDrillService.startDrill returns null when no drill initialized", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+
+  const result = service.startDrill();
+
+  assert.equal(result, null);
+});
+
+test("IncidentDrillService.startDrill returns null when drill not in initialized state", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill(); // Now in_progress
+
+  const result = service.startDrill();
+
+  assert.equal(result, null);
+});
+
+test("IncidentDrillService.recordObservation adds observation to in_progress drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  const observation = service.recordObservation(
+    "operator-1",
     "decision",
-    "action",
-    "escalation",
-    "other",
-  ];
+    "Correct root cause identified",
+    "good",
+  );
 
-  assert.equal(categories.length, 6);
-  assert.ok(categories.includes("timeline"));
-  assert.ok(categories.includes("decision"));
-  assert.ok(categories.includes("escalation"));
-});
-
-test("DrillObservation severity is optional string union", () => {
-  const good: DrillObservation["severity"] = "good";
-  const concern: DrillObservation["severity"] = "concern";
-  const critical: DrillObservation["severity"] = "critical";
-
-  assert.equal(good, "good");
-  assert.equal(concern, "concern");
-  assert.equal(critical, "critical");
-});
-
-test("IncidentDrillScenario can be used as a type", () => {
-  const scenario: IncidentDrillScenario = {
-    scenarioId: "test-scenario",
-    name: "Test Scenario",
-    description: "A test scenario for unit testing",
-    drillType: "functional",
-    severity: "P2",
-    injections: [],
-    expectedResponseSteps: ["Step 1", "Step 2"],
-    successCriteria: [],
-    timeLimitSeconds: 300,
-  };
-
-  assert.equal(scenario.scenarioId, "test-scenario");
-  assert.equal(scenario.severity, "P2");
-  assert.equal(scenario.drillType, "functional");
-});
-
-test("IncidentDrillScenario severity accepts P0-P3", () => {
-  const p0: IncidentDrillScenario["severity"] = "P0";
-  const p1: IncidentDrillScenario["severity"] = "P1";
-  const p2: IncidentDrillScenario["severity"] = "P2";
-  const p3: IncidentDrillScenario["severity"] = "P3";
-
-  assert.equal(p0, "P0");
-  assert.equal(p1, "P1");
-  assert.equal(p2, "P2");
-  assert.equal(p3, "P3");
-});
-
-test("IncidentInjection can be used as a type", () => {
-  const injection: IncidentInjection = {
-    injectionType: "service_failure",
-    target: "worker_coordinator",
-    parameters: { reason: "test" },
-    injectAtSeconds: 30,
-    durationSeconds: 60,
-  };
-
-  assert.equal(injection.injectionType, "service_failure");
-  assert.equal(injection.target, "worker_coordinator");
-  assert.deepEqual(injection.parameters, { reason: "test" });
-  assert.equal(injection.injectAtSeconds, 30);
-  assert.equal(injection.durationSeconds, 60);
-});
-
-test("DrillSuccessCriterion can be used as a type", () => {
-  const criterion: DrillSuccessCriterion = {
-    description: "Time to detect incident",
-    evaluationMethod: "drill.observation.timeline.detect_time",
-    passThreshold: 60,
-  };
-
-  assert.equal(criterion.description, "Time to detect incident");
-  assert.equal(criterion.passThreshold, 60);
-});
-
-test("DrillSuccessCriterion passThreshold is optional", () => {
-  const criterion: DrillSuccessCriterion = {
-    description: "Correct path used",
-    evaluationMethod: "drill.escalation.correct_path_used",
-    // No passThreshold - it's optional
-  };
-
-  assert.ok(criterion.passThreshold === undefined);
-});
-
-test("IncidentDrillResult can be used as a type", () => {
-  const result: IncidentDrillResult = {
-    drillId: "drill-123",
-    scenario: {
-      scenarioId: "test-scenario",
-      name: "Test",
-      description: "Test scenario",
-      drillType: "functional",
-      severity: "P2",
-      injections: [],
-      expectedResponseSteps: [],
-      successCriteria: [],
-      timeLimitSeconds: 300,
-    },
-    status: "completed",
-    startedAt: "2026-01-01T00:00:00.000Z",
-    completedAt: "2026-01-01T00:10:00.000Z",
-    durationMs: 600000,
-    participants: ["operator-1", "operator-2"],
-    observations: [],
-    runbookExecutions: [],
-    criteriaResults: [],
-    overallScore: 85,
-    summary: "Drill completed successfully",
-    issuesFound: [],
-    recommendations: ["Consider faster escalation"],
-  };
-
-  assert.equal(result.drillId, "drill-123");
-  assert.equal(result.status, "completed");
-  assert.equal(result.overallScore, 85);
-  assert.equal(result.participants.length, 2);
-});
-
-test("DrillObservation can be used as a type", () => {
-  const observation: DrillObservation = {
-    observationId: "obs-123",
-    timestamp: "2026-01-01T00:05:00.000Z",
-    observedBy: "operator-1",
-    category: "decision",
-    description: "Correct root cause identified",
-    severity: "good",
-  };
-
-  assert.equal(observation.observationId, "obs-123");
+  assert.ok(observation);
+  assert.ok(observation.observationId.startsWith("drill_obs_"));
+  assert.equal(observation.observedBy, "operator-1");
   assert.equal(observation.category, "decision");
   assert.equal(observation.severity, "good");
 });
 
-test("DrillCriteriaResult can be used as a type", () => {
-  const result: DrillCriteriaResult = {
-    criterion: "Time to detect incident",
-    passed: true,
-    actualValue: 45,
-    threshold: 60,
-    notes: "Detected within threshold",
-  };
+test("IncidentDrillService.recordObservation returns null when no active drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
 
-  assert.equal(result.passed, true);
-  assert.equal(result.actualValue, 45);
-  assert.equal(result.threshold, 60);
+  const observation = service.recordObservation(
+    "operator-1",
+    "decision",
+    "Should not be recorded",
+  );
+
+  assert.equal(observation, null);
 });
 
-test("IncidentDrillConfig targetEnvironment is a string union", () => {
-  const configs: IncidentDrillConfig["targetEnvironment"][] = [
-    "test",
-    "staging",
-    "production_simulation",
+test("IncidentDrillService.recordObservation returns null for non-in_progress drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  // Not started - still initialized
+
+  const observation = service.recordObservation(
+    "operator-1",
+    "decision",
+    "Should not be recorded",
+  );
+
+  assert.equal(observation, null);
+});
+
+test("IncidentDrillService.completeDrill finalizes drill with results", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  service.recordObservation("operator-1", "timeline", "Detection time recorded", "good");
+
+  const criteriaResults = [
+    { criterion: "Time to detect incident", passed: true, actualValue: 45, threshold: 60, notes: "Within threshold" },
+    { criterion: "Correct path used", passed: true, notes: "Proper escalation" },
   ];
 
-  assert.equal(configs.length, 3);
-  assert.ok(configs.includes("test"));
-  assert.ok(configs.includes("staging"));
-  assert.ok(configs.includes("production_simulation"));
+  const result = service.completeDrill(
+    ["Minor communication delay"],
+    ["Consider faster escalation"],
+    criteriaResults,
+  );
+
+  assert.ok(result);
+  assert.equal(result!.status, "completed");
+  assert.ok(result!.completedAt !== null);
+  assert.ok(result!.durationMs !== null);
+  assert.equal(result!.issuesFound.length, 1);
+  assert.equal(result!.recommendations.length, 1);
+  assert.equal(result!.criteriaResults.length, 2);
+  assert.equal(result!.overallScore, 100); // Both passed = 100%
 });
 
-test("IncidentDrillResult overallScore can be null", () => {
-  const result: IncidentDrillResult = {
-    drillId: "drill-123",
-    scenario: {
-      scenarioId: "test",
-      name: "Test",
-      description: "Test",
-      drillType: "functional",
-      severity: "P3",
-      injections: [],
-      expectedResponseSteps: [],
-      successCriteria: [],
-      timeLimitSeconds: 300,
-    },
-    status: "in_progress",
-    startedAt: "2026-01-01T00:00:00.000Z",
-    completedAt: null,
-    durationMs: null,
-    participants: [],
-    observations: [],
-    runbookExecutions: [],
-    criteriaResults: [],
-    overallScore: null, // Not yet calculated
-    summary: "Drill in progress",
-    issuesFound: [],
-    recommendations: [],
-  };
+test("IncidentDrillService.completeDrill calculates score correctly with partial pass", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
 
-  assert.equal(result.overallScore, null);
-  assert.equal(result.status, "in_progress");
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  const criteriaResults = [
+    { criterion: "Criterion 1", passed: true, notes: "Passed" },
+    { criterion: "Criterion 2", passed: false, notes: "Failed" },
+    { criterion: "Criterion 3", passed: true, notes: "Passed" },
+    { criterion: "Criterion 4", passed: false, notes: "Failed" },
+  ];
+
+  const result = service.completeDrill([], [], criteriaResults);
+
+  assert.equal(result!.overallScore, 50); // 2 of 4 passed = 50%
 });
 
-test("IncidentDrillResult completedAt can be null", () => {
-  const result: IncidentDrillResult = {
-    drillId: "drill-123",
-    scenario: {
-      scenarioId: "test",
-      name: "Test",
-      description: "Test",
-      drillType: "functional",
-      severity: "P3",
-      injections: [],
-      expectedResponseSteps: [],
-      successCriteria: [],
-      timeLimitSeconds: 300,
-    },
-    status: "in_progress",
-    startedAt: "2026-01-01T00:00:00.000Z",
-    completedAt: null,
-    durationMs: null,
-    participants: [],
-    observations: [],
-    runbookExecutions: [],
-    criteriaResults: [],
-    overallScore: null,
-    summary: "Drill in progress",
-    issuesFound: [],
-    recommendations: [],
-  };
+test("IncidentDrillService.completeDrill returns 0 score for no criteria", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
 
-  assert.equal(result.completedAt, null);
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  const result = service.completeDrill([], [], []);
+
+  assert.equal(result!.overallScore, 0);
 });
 
-test("IncidentInjection parameters can contain arbitrary data", () => {
-  const injection: IncidentInjection = {
-    injectionType: "metric_spike",
-    target: "cost_tracking",
-    parameters: {
-      spikePercent: 200,
-      affectedTasks: ["task-1", "task-2"],
-      nested: { value: 42 },
+test("IncidentDrillService.completeDrill returns null when no active drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+
+  const result = service.completeDrill([], [], []);
+
+  assert.equal(result, null);
+});
+
+test("IncidentDrillService.cancelDrill cancels and clears drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  const result = service.cancelDrill();
+
+  assert.ok(result);
+  assert.equal(result!.status, "cancelled");
+  assert.ok(result!.completedAt !== null);
+  assert.ok(result!.durationMs !== null);
+  assert.ok(result!.summary.includes("cancelled"));
+  assert.equal(service.getCurrentDrill(), null);
+});
+
+test("IncidentDrillService.cancelDrill returns null when no active drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+
+  const result = service.cancelDrill();
+
+  assert.equal(result, null);
+});
+
+test("IncidentDrillService.getCurrentDrill returns current drill state", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  assert.equal(service.getCurrentDrill(), null);
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+
+  const current = service.getCurrentDrill();
+  assert.ok(current);
+  assert.equal(current!.scenario.scenarioId, scenario.scenarioId);
+
+  service.cancelDrill();
+
+  assert.equal(service.getCurrentDrill(), null);
+});
+
+test("IncidentDrillService.addRunbookExecution adds execution to current drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  const execution: RunbookExecutionResult = {
+    executionId: "exec-123",
+    runbook: {
+      runbookId: "runbook-1",
+      title: "Test Runbook",
+      severity: "P2",
+      sections: [],
+      rawMarkdown: "# Test",
+      parsedAt: new Date().toISOString(),
     },
-    injectAtSeconds: 10,
-    durationSeconds: 0,
+    status: "completed",
+    sectionResults: [],
+    outcome: "success",
+    summary: "Completed",
+    startedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    totalDurationMs: 30000,
+    executedBy: "operator-1",
   };
 
-  assert.equal(injection.parameters.spikePercent, 200);
-  assert.deepEqual(injection.parameters.affectedTasks, ["task-1", "task-2"]);
-  assert.deepEqual(injection.parameters.nested, { value: 42 });
+  service.addRunbookExecution(execution);
+
+  const current = service.getCurrentDrill();
+  assert.equal(current!.runbookExecutions.length, 1);
+  assert.equal(current!.runbookExecutions[0]!.executionId, "exec-123");
+});
+
+test("IncidentDrillService.addRunbookExecution does nothing when no active drill", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+
+  const execution: RunbookExecutionResult = {
+    executionId: "exec-123",
+    runbook: {
+      runbookId: "runbook-1",
+      title: "Test",
+      severity: "P2",
+      sections: [],
+      rawMarkdown: "# Test",
+      parsedAt: new Date().toISOString(),
+    },
+    status: "completed",
+    sectionResults: [],
+    outcome: "success",
+    summary: "Test",
+    startedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    totalDurationMs: 1000,
+    executedBy: "operator-1",
+  };
+
+  // Should not throw
+  service.addRunbookExecution(execution);
+});
+
+test("IncidentDrillService.generateDrillReport creates formatted markdown report", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1", "operator-2"], "admin");
+  service.startDrill();
+
+  service.recordObservation("operator-1", "decision", "Correct root cause identified", "good");
+  service.recordObservation("operator-2", "action", "Escalation triggered properly", "concern");
+
+  const criteriaResults = [
+    { criterion: "Time to detect", passed: true, actualValue: 45, threshold: 60, notes: "Within threshold" },
+  ];
+
+  const result = service.completeDrill(["Communication delay"], ["Faster escalation"], criteriaResults);
+
+  const report = service.generateDrillReport(result!);
+
+  assert.ok(report.includes("# Incident Drill Report"));
+  assert.ok(report.includes(scenario.name));
+  assert.ok(report.includes("operator-1, operator-2"));
+  assert.ok(report.includes("100%")); // Overall score
+  assert.ok(report.includes("Time to detect"));
+});
+
+test("IncidentDrillService generates summary correctly", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[1]!; // P1 drill
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  const criteriaResults = [
+    { criterion: "Test 1", passed: true, notes: "Pass" },
+    { criterion: "Test 2", passed: false, notes: "Fail" },
+  ];
+
+  const result = service.completeDrill([], [], criteriaResults);
+
+  // Summary should contain drill name, severity, score, and metrics
+  assert.ok(result!.summary.includes(scenario.name));
+  assert.ok(result!.summary.includes("P1"));
+  assert.ok(result!.summary.includes("50%")); // 1 of 2 passed
+});
+
+test("PREDEFINED_SCENARIOS have correct structure for all drill types", () => {
+  for (const scenario of PREDEFINED_SCENARIOS) {
+    assert.ok(scenario.scenarioId);
+    assert.ok(scenario.name);
+    assert.ok(scenario.description);
+    assert.ok(scenario.injections.length >= 0);
+    assert.ok(scenario.expectedResponseSteps.length > 0);
+    assert.ok(scenario.successCriteria.length >= 0);
+    assert.ok(scenario.timeLimitSeconds > 0);
+  }
+});
+
+test("DEFAULT_INCIDENT_DRILL_CONFIG has correct values", () => {
+  assert.equal(DEFAULT_INCIDENT_DRILL_CONFIG.recordActions, true);
+  assert.equal(DEFAULT_INCIDENT_DRILL_CONFIG.autoInject, true);
+  assert.equal(DEFAULT_INCIDENT_DRILL_CONFIG.targetEnvironment, "test");
+});
+
+test("IncidentDrillService calculates duration correctly", () => {
+  const service = new IncidentDrillService(createMockExecutor() as any);
+  const scenario = PREDEFINED_SCENARIOS[0]!;
+
+  service.initializeDrill(scenario, ["operator-1"], "admin");
+  service.startDrill();
+
+  // Simulate some time passing
+  const result = service.completeDrill([], [], []);
+
+  assert.ok(result!.durationMs! >= 0);
 });
