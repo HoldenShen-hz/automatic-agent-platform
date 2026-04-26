@@ -118,8 +118,9 @@ export class LeaderElectionService {
     this.config = {
       ...baseConfig,
       ...options.haConfig,
-      leaseTtlMs: options.leaseTtlMs ?? baseConfig.leaseTtlMs,
-      leaseRenewalIntervalMs: options.renewalIntervalMs ?? baseConfig.leaseRenewalIntervalMs,
+      leaseTtlMs: options.leaseTtlMs ?? options.haConfig?.leaseTtlMs ?? baseConfig.leaseTtlMs,
+      leaseRenewalIntervalMs:
+        options.renewalIntervalMs ?? options.haConfig?.leaseRenewalIntervalMs ?? baseConfig.leaseRenewalIntervalMs,
     };
 
     this.maxElectionAttempts = options.maxElectionAttempts ?? 5;
@@ -173,6 +174,18 @@ export class LeaderElectionService {
 
       // For HA-1, skip leader election (single-node mode)
       if (this.config.haLevel === "HA_1") {
+        const acquiredAt = nowIso();
+        this.currentEpoch = Math.max(this.currentEpoch, 1);
+        this.currentFencingToken = Math.max(this.currentFencingToken, 1);
+        this.currentLease = {
+          leaseId: `single-node-${this.effectiveNodeId}`,
+          nodeId: this.effectiveNodeId,
+          epoch: this.currentEpoch,
+          acquiredAt,
+          expiresAt: new Date(Date.now() + this.config.leaseTtlMs).toISOString(),
+          status: "active",
+          ttlMs: this.config.leaseTtlMs,
+        };
         this.state = "leader";
         this.emitEvent("leadership_acquired", {
           nodeId: this.effectiveNodeId,
@@ -265,6 +278,9 @@ export class LeaderElectionService {
    * Returns the current leader node ID, or null if no leader.
    */
   public getLeaderNodeId(): string | null {
+    if (this.config.haLevel === "HA_1") {
+      return this.state === "leader" ? this.effectiveNodeId : null;
+    }
     const leader = this.coordinator.getCurrentLeader();
     return leader?.nodeId ?? null;
   }
@@ -273,6 +289,9 @@ export class LeaderElectionService {
    * Returns whether this node is the current leader.
    */
   public isCurrentLeader(): boolean {
+    if (this.config.haLevel === "HA_1") {
+      return this.state === "leader";
+    }
     return this.state === "leader" && this.coordinator.queryLeadership().isLeader;
   }
 
@@ -287,6 +306,16 @@ export class LeaderElectionService {
    * Returns the current leadership query result.
    */
   public queryLeadership(): LeadershipQueryResult {
+    if (this.config.haLevel === "HA_1") {
+      return {
+        isLeader: this.state === "leader",
+        leaderNodeId: this.state === "leader" ? this.effectiveNodeId : null,
+        epoch: this.currentEpoch,
+        fencingToken: this.currentFencingToken,
+        expiresAt: this.currentLease?.expiresAt ?? null,
+        isExpired: this.state !== "leader",
+      };
+    }
     return this.coordinator.queryLeadership();
   }
 

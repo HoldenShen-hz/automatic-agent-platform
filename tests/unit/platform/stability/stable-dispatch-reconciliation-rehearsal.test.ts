@@ -6,7 +6,7 @@ import { runStableDispatchReconciliationRehearsal, writeStableDispatchReconcilia
 
 test("runStableDispatchReconciliationRehearsal runs all two scenarios", async () => {
   const outputDir = "/tmp/stable-dispatch-reconciliation-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -24,7 +24,7 @@ test("runStableDispatchReconciliationRehearsal runs all two scenarios", async ()
 
 test("runStableDispatchReconciliationRehearsal orphan_claim_requeued scenario passes", async () => {
   const outputDir = "/tmp/stable-dispatch-reconciliation-test-orphan";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -38,7 +38,7 @@ test("runStableDispatchReconciliationRehearsal orphan_claim_requeued scenario pa
 
 test("runStableDispatchReconciliationRehearsal terminal_execution_ticket_cancelled scenario passes", async () => {
   const outputDir = "/tmp/stable-dispatch-reconciliation-test-terminal";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -50,7 +50,7 @@ test("runStableDispatchReconciliationRehearsal terminal_execution_ticket_cancell
 
 test("runStableDispatchReconciliationRehearsal pass/fail counts are correct", async () => {
   const outputDir = "/tmp/stable-dispatch-reconciliation-test-counts";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchReconciliationRehearsal({ outputDir });

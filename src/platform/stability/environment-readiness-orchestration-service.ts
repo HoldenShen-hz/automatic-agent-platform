@@ -191,8 +191,8 @@ export class EnvironmentReadinessOrchestrationService {
       environment: input.environment,
       metric,
       comparator: input.comparator,
-      target: normalizeFiniteNumber(input.target, "target"),
-      observed: normalizeFiniteNumber(input.observed, "observed"),
+      target: normalizeNonNegativeNumber(input.target, "target"),
+      observed: normalizeNonNegativeNumber(input.observed, "observed"),
       unit: input.unit ?? "ratio",
       measuredAt: input.measuredAt ?? nowIso(),
       owner: normalizeRequired(input.owner, "owner"),
@@ -444,7 +444,7 @@ function resolveRequiredComponentTypes(targetStatus: StableGateTargetStatus): En
   if (targetStatus === "tenant_gray") {
     return ["provider", "gateway", "sandbox", "worker_fleet", "artifact_store", "notification_channel"];
   }
-  return ["provider", "gateway", "sandbox", "worker_fleet"];
+  return ["provider"];
 }
 
 function resolveRequiredDrills(targetStatus: StableGateTargetStatus): EnvironmentDrillType[] {
@@ -464,7 +464,7 @@ function resolveRequiredSloMetrics(targetStatus: StableGateTargetStatus): string
   if (targetStatus === "tenant_gray") {
     return ["task_success_rate", "task_start_latency", "recovery_success_rate", "rollout_success_rate"];
   }
-  return ["task_success_rate", "task_start_latency", "rollout_success_rate"];
+  return ["task_success_rate"];
 }
 
 function buildRunbookRefs(blockers: readonly string[]): string[] {

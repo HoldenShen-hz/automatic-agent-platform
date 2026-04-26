@@ -6,7 +6,7 @@ import { runStableDbWritabilityRehearsal, writeStableDbWritabilityRehearsalRepor
 
 test("runStableDbWritabilityRehearsal runs all three scenarios", async () => {
   const outputDir = "/tmp/stable-db-writability-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -25,7 +25,7 @@ test("runStableDbWritabilityRehearsal runs all three scenarios", async () => {
 
 test("runStableDbWritabilityRehearsal reports pass/fail counts correctly", async () => {
   const outputDir = "/tmp/stable-db-writability-test-counts";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -35,7 +35,7 @@ test("runStableDbWritabilityRehearsal reports pass/fail counts correctly", async
 
 test("runStableDbWritabilityRehearsal each scenario has required fields", async () => {
   const outputDir = "/tmp/stable-db-writability-test-fields";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDbWritabilityRehearsal({ outputDir });

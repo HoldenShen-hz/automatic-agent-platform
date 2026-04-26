@@ -6,7 +6,7 @@ import { runStableRollbackRehearsal, writeStableRollbackRehearsalReport, buildSt
 
 test("runStableRollbackRehearsal runs both scenarios", async () => {
   const outputDir = "/tmp/stable-rollback-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollbackRehearsal({ outputDir });
@@ -23,7 +23,7 @@ test("runStableRollbackRehearsal runs both scenarios", async () => {
 
 test("runStableRollbackRehearsal runtime_repair_rehearsal scenario passes", async () => {
   const outputDir = "/tmp/stable-rollback-test-repair";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollbackRehearsal({ outputDir });
@@ -35,7 +35,7 @@ test("runStableRollbackRehearsal runtime_repair_rehearsal scenario passes", asyn
 
 test("runStableRollbackRehearsal manual_takeover_rehearsal scenario passes", async () => {
   const outputDir = "/tmp/stable-rollback-test-takeover";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollbackRehearsal({ outputDir });
@@ -47,7 +47,7 @@ test("runStableRollbackRehearsal manual_takeover_rehearsal scenario passes", asy
 
 test("runStableRollbackRehearsal playbook has rollback targets", async () => {
   const outputDir = "/tmp/stable-rollback-test-playbook";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollbackRehearsal({ outputDir });
@@ -60,7 +60,7 @@ test("runStableRollbackRehearsal playbook has rollback targets", async () => {
 
 test("buildStableRollbackPlaybook returns valid structure", () => {
   const outputDir = "/tmp/stable-rollback-playbook-build-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const playbook = buildStableRollbackPlaybook({

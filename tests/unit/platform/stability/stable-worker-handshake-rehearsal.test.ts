@@ -6,7 +6,7 @@ import { runStableWorkerHandshakeRehearsal, writeStableWorkerHandshakeRehearsalR
 
 test("runStableWorkerHandshakeRehearsal runs all three scenarios", async () => {
   const outputDir = "/tmp/stable-worker-handshake-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -25,7 +25,7 @@ test("runStableWorkerHandshakeRehearsal runs all three scenarios", async () => {
 
 test("runStableWorkerHandshakeRehearsal worker_claim_consumes_ticket scenario passes", async () => {
   const outputDir = "/tmp/stable-worker-handshake-test-claim";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -37,7 +37,7 @@ test("runStableWorkerHandshakeRehearsal worker_claim_consumes_ticket scenario pa
 
 test("runStableWorkerHandshakeRehearsal worker_heartbeat_renews_lease scenario passes", async () => {
   const outputDir = "/tmp/stable-worker-handshake-test-heartbeat";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -49,7 +49,7 @@ test("runStableWorkerHandshakeRehearsal worker_heartbeat_renews_lease scenario p
 
 test("runStableWorkerHandshakeRehearsal stale_fencing_handshake_rejected scenario passes", async () => {
   const outputDir = "/tmp/stable-worker-handshake-test-stale";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerHandshakeRehearsal({ outputDir });

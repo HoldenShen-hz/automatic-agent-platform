@@ -6,7 +6,7 @@ import { runStableCrossDivisionRecoveryDrill, writeStableCrossDivisionRecoveryDr
 
 test("runStableCrossDivisionRecoveryDrill runs both scenarios", async () => {
   const outputDir = "/tmp/stable-cross-division-recovery-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -24,7 +24,7 @@ test("runStableCrossDivisionRecoveryDrill runs both scenarios", async () => {
 
 test("runStableCrossDivisionRecoveryDrill cross_division_overview scenario passes", async () => {
   const outputDir = "/tmp/stable-cross-division-recovery-test-overview";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -39,7 +39,7 @@ test("runStableCrossDivisionRecoveryDrill cross_division_overview scenario passe
 
 test("runStableCrossDivisionRecoveryDrill cross_division_replay_matrix scenario passes", async () => {
   const outputDir = "/tmp/stable-cross-division-recovery-test-replay";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -51,7 +51,7 @@ test("runStableCrossDivisionRecoveryDrill cross_division_replay_matrix scenario 
 
 test("runStableCrossDivisionRecoveryDrill passedScenarios count is correct", async () => {
   const outputDir = "/tmp/stable-cross-division-recovery-test-count";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableCrossDivisionRecoveryDrill({ outputDir });

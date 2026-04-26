@@ -6,7 +6,7 @@ import { runStableEventReplayRehearsal, writeStableEventReplayRehearsalReport } 
 
 test("runStableEventReplayRehearsal runs the failed_consumer_ack_replay scenario", async () => {
   const outputDir = "/tmp/stable-event-replay-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableEventReplayRehearsal({ outputDir });
@@ -20,7 +20,7 @@ test("runStableEventReplayRehearsal runs the failed_consumer_ack_replay scenario
 
 test("runStableEventReplayRehearsal failed_consumer_ack_replay scenario passes", async () => {
   const outputDir = "/tmp/stable-event-replay-test-scenario";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableEventReplayRehearsal({ outputDir });
@@ -34,7 +34,7 @@ test("runStableEventReplayRehearsal failed_consumer_ack_replay scenario passes",
 
 test("runStableEventReplayRehearsal scenario has details object", async () => {
   const outputDir = "/tmp/stable-event-replay-test-details";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableEventReplayRehearsal({ outputDir });

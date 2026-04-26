@@ -54,13 +54,16 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   }
 
   private async ensureConnected(): Promise<void> {
-    if (this.redis.status === "wait") {
-      await this.redis.connect();
+    if (this.redis.status !== "wait" && this.redis.status !== "end") {
       return;
     }
-    if (this.redis.status === "end") {
-      await this.redis.connect().catch(() => {
-        throw new LockingError("lock.redis_connection_closed", "lock.redis_connection_closed");
+
+    try {
+      await this.redis.connect();
+    } catch (error) {
+      throw new LockingError("lock.redis_connection_closed", "lock.redis_connection_closed", {
+        status: this.redis.status,
+        cause: error instanceof Error ? error.message : String(error),
       });
     }
   }

@@ -6,7 +6,7 @@ import { runStableChaosSmoke, writeStableChaosSmokeReport } from "../../../../sr
 
 test("runStableChaosSmoke runs all five scenarios", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableChaosSmoke({ outputDir });
@@ -27,7 +27,7 @@ test("runStableChaosSmoke runs all five scenarios", async () => {
 
 test("runStableChaosSmoke stale_execution_repair scenario passes", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test-stale";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableChaosSmoke({ outputDir });
@@ -39,7 +39,7 @@ test("runStableChaosSmoke stale_execution_repair scenario passes", async () => {
 
 test("runStableChaosSmoke orphan_session_cleanup scenario passes", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test-session";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableChaosSmoke({ outputDir });
@@ -51,7 +51,7 @@ test("runStableChaosSmoke orphan_session_cleanup scenario passes", async () => {
 
 test("runStableChaosSmoke orphan_queue_claim_reconciled_via_runtime_repair scenario passes", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test-orphan-queue";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableChaosSmoke({ outputDir });
@@ -63,7 +63,7 @@ test("runStableChaosSmoke orphan_queue_claim_reconciled_via_runtime_repair scena
 
 test("runStableChaosSmoke duplicate_approval_response_idempotent scenario passes", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test-approval";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableChaosSmoke({ outputDir });
@@ -75,7 +75,7 @@ test("runStableChaosSmoke duplicate_approval_response_idempotent scenario passes
 
 test("runStableChaosSmoke missing_ack_rebuild_and_replay scenario passes", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test-ack";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableChaosSmoke({ outputDir });

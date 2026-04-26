@@ -6,7 +6,7 @@ import { runStableBackupRestoreRehearsal, writeStableBackupRestoreRehearsalRepor
 
 test("runStableBackupRestoreRehearsal runs the sqlite backup restore roundtrip scenario", async () => {
   const outputDir = "/tmp/stable-backup-restore-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableBackupRestoreRehearsal({ outputDir });
@@ -23,7 +23,7 @@ test("runStableBackupRestoreRehearsal runs the sqlite backup restore roundtrip s
 
 test("runStableBackupRestoreRehearsal sqlite_backup_restore_roundtrip scenario passes", async () => {
   const outputDir = "/tmp/stable-backup-restore-test-roundtrip";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableBackupRestoreRehearsal({ outputDir });
@@ -36,7 +36,7 @@ test("runStableBackupRestoreRehearsal sqlite_backup_restore_roundtrip scenario p
 
 test("runStableBackupRestoreRehearsal playbook is built correctly", async () => {
   const outputDir = "/tmp/stable-backup-restore-test-playbook";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableBackupRestoreRehearsal({ outputDir });
@@ -51,7 +51,7 @@ test("runStableBackupRestoreRehearsal playbook is built correctly", async () => 
 
 test("buildStableDisasterRecoveryPlaybook returns valid playbook structure", () => {
   const outputDir = "/tmp/stable-backup-restore-playbook-build-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const playbook = buildStableDisasterRecoveryPlaybook({

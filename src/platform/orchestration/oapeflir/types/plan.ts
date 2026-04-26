@@ -23,7 +23,10 @@ export const PlanStepSchema = z.object({
   dependencies: z.array(z.string()).default([]),
   status: PlanStepStatusSchema.default("pending"),
   timeout: z.number().int().positive(),
-  retryPolicy: RetryPolicySchema,
+  retryPolicy: RetryPolicySchema.default({
+    maxRetries: 0,
+    backoffMs: 0,
+  }),
 });
 
 export const PlanSchema = z.object({

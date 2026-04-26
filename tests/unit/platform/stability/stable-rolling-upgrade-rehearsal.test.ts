@@ -6,7 +6,7 @@ import { runStableRollingUpgradeRehearsal, writeStableRollingUpgradeRehearsalRep
 
 test("runStableRollingUpgradeRehearsal runs both scenarios", async () => {
   const outputDir = "/tmp/stable-rolling-upgrade-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollingUpgradeRehearsal({ outputDir });
@@ -23,7 +23,7 @@ test("runStableRollingUpgradeRehearsal runs both scenarios", async () => {
 
 test("runStableRollingUpgradeRehearsal repo_version_canary_routes_to_upgraded_worker scenario passes", async () => {
   const outputDir = "/tmp/stable-rolling-upgrade-test-canary";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollingUpgradeRehearsal({ outputDir });
@@ -35,7 +35,7 @@ test("runStableRollingUpgradeRehearsal repo_version_canary_routes_to_upgraded_wo
 
 test("runStableRollingUpgradeRehearsal lease_handover_supports_step_boundary_upgrade scenario passes", async () => {
   const outputDir = "/tmp/stable-rolling-upgrade-test-handover";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollingUpgradeRehearsal({ outputDir });
@@ -47,7 +47,7 @@ test("runStableRollingUpgradeRehearsal lease_handover_supports_step_boundary_upg
 
 test("runStableRollingUpgradeRehearsal playbook has upgrade targets", async () => {
   const outputDir = "/tmp/stable-rolling-upgrade-test-playbook";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableRollingUpgradeRehearsal({ outputDir });
@@ -60,7 +60,7 @@ test("runStableRollingUpgradeRehearsal playbook has upgrade targets", async () =
 
 test("buildStableRollingUpgradePlaybook returns valid structure", () => {
   const outputDir = "/tmp/stable-rolling-upgrade-playbook-build-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const playbook = buildStableRollingUpgradePlaybook({

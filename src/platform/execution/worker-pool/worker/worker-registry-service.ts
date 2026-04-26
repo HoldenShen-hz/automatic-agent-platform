@@ -565,7 +565,23 @@ export class WorkerRegistryService {
    */
   public getWorker(workerId: string): RegisteredWorkerView | null {
     const record = this.store.worker.getWorkerSnapshot(workerId);
-    return record ? this.toView(record) : null;
+    if (record) {
+      return this.toView(record);
+    }
+
+    const snapshot = this.store.worker.listWorkerSnapshots().find((item) => item.workerId === workerId);
+    if (snapshot) {
+      return this.toView(snapshot);
+    }
+
+    const legacyWorker = (this.store.worker as { getWorker?: (workerId: string) => RegisteredWorkerView | null }).getWorker?.(workerId);
+    if (legacyWorker) {
+      return this.toRegisteredView(legacyWorker);
+    }
+
+    const legacyWorkers = (this.store.worker as { listWorkers?: () => RegisteredWorkerView[] }).listWorkers?.() ?? [];
+    const fallbackWorker = legacyWorkers.find((worker) => worker.workerId === workerId);
+    return fallbackWorker ? this.toRegisteredView(fallbackWorker) : null;
   }
 
   /**
@@ -573,7 +589,14 @@ export class WorkerRegistryService {
    * @returns Array of all worker views
    */
   public listWorkers(): RegisteredWorkerView[] {
-    return this.store.worker.listWorkerSnapshots().map((record) => this.toView(record));
+    const snapshots = this.store.worker.listWorkerSnapshots();
+    if (snapshots.length > 0) {
+      return snapshots.map((record) => this.toView(record));
+    }
+
+    return (
+      (this.store.worker as { listWorkers?: () => RegisteredWorkerView[] }).listWorkers?.() ?? []
+    ).map((worker: RegisteredWorkerView) => this.toRegisteredView(worker));
   }
 
   /**
@@ -689,6 +712,53 @@ export class WorkerRegistryService {
       updatedAt: record.updatedAt,
       // Available slots = capacity minus current workload
       availableSlots: Math.max(record.maxConcurrency - runningExecutionIds.length, 0),
+    };
+  }
+
+  private toRegisteredView(worker: RegisteredWorkerView): RegisteredWorkerView {
+    return {
+      workerId: worker.workerId,
+      status: worker.status,
+      schedulingStatus: worker.schedulingStatus ?? toWorkerSchedulingStatus(worker.status),
+      placement: worker.placement ?? "local",
+      isolationLevel: resolveIsolationLevel(worker.isolationLevel ?? "standard"),
+      repoVersion: worker.repoVersion ?? null,
+      remoteSessionStatus: resolveRemoteSessionStatus(worker.remoteSessionStatus ?? null),
+      lastAcknowledgedStreamOffset: worker.lastAcknowledgedStreamOffset ?? null,
+      streamResumeSuccessRate: normalizeRate(worker.streamResumeSuccessRate),
+      credentialRefreshSuccessRate: normalizeRate(worker.credentialRefreshSuccessRate),
+      sessionConsistencyCheckStatus: resolveSessionConsistencyCheckStatus(worker.sessionConsistencyCheckStatus ?? null),
+      sessionConsistencyCheckedAt: worker.sessionConsistencyCheckedAt ?? null,
+      workspaceSyncStatus: resolveWorkspaceSyncStatus(worker.workspaceSyncStatus ?? null),
+      workspaceSyncCheckedAt: worker.workspaceSyncCheckedAt ?? null,
+      saturation: normalizeRate(worker.saturation),
+      activeLeaseCount: normalizeNonNegativeInt(worker.activeLeaseCount),
+      meanStartupLatencyMs: typeof worker.meanStartupLatencyMs === "number" && Number.isFinite(worker.meanStartupLatencyMs)
+        ? worker.meanStartupLatencyMs
+        : null,
+      sandboxSuccessRate: normalizeRate(worker.sandboxSuccessRate),
+      repoCacheHitRate: normalizeRate(worker.repoCacheHitRate),
+      registrationVerifiedAt: worker.registrationVerifiedAt ?? null,
+      registrationChallengeId: worker.registrationChallengeId ?? null,
+      trusted: worker.trusted ?? true,
+      capabilities: normalizeStringArray(worker.capabilities ?? []),
+      runningExecutionIds: normalizeStringArray(worker.runningExecutionIds ?? []),
+      maxConcurrency: Math.max(normalizeNonNegativeInt(worker.maxConcurrency, 1), 1),
+      queueAffinity: worker.queueAffinity ?? null,
+      runtimeInstanceId: worker.runtimeInstanceId ?? null,
+      restartedFromRuntimeInstanceId: worker.restartedFromRuntimeInstanceId ?? null,
+      restartGeneration: normalizeNonNegativeInt(worker.restartGeneration),
+      cpuPct: typeof worker.cpuPct === "number" && Number.isFinite(worker.cpuPct) ? worker.cpuPct : null,
+      memoryMb: typeof worker.memoryMb === "number" && Number.isFinite(worker.memoryMb) ? worker.memoryMb : null,
+      toolBacklogCount: normalizeNonNegativeInt(worker.toolBacklogCount),
+      currentStepId: worker.currentStepId ?? null,
+      lastProgressAt: worker.lastProgressAt ?? null,
+      lastHeartbeatAt: worker.lastHeartbeatAt ?? nowIso(),
+      updatedAt: worker.updatedAt ?? nowIso(),
+      availableSlots: Math.max(
+        0,
+        worker.availableSlots ?? (Math.max(normalizeNonNegativeInt(worker.maxConcurrency, 1), 1) - (worker.runningExecutionIds?.length ?? 0)),
+      ),
     };
   }
 }

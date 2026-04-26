@@ -6,7 +6,7 @@ import { runStableDbQueueDisconnectRehearsal, writeStableDbQueueDisconnectRehear
 
 test("runStableDbQueueDisconnectRehearsal runs all three scenarios", async () => {
   const outputDir = "/tmp/stable-db-queue-disconnect-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -25,7 +25,7 @@ test("runStableDbQueueDisconnectRehearsal runs all three scenarios", async () =>
 
 test("runStableDbQueueDisconnectRehearsal all scenarios pass", async () => {
   const outputDir = "/tmp/stable-db-queue-disconnect-test-pass";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -38,7 +38,7 @@ test("runStableDbQueueDisconnectRehearsal all scenarios pass", async () => {
 
 test("runStableDbQueueDisconnectRehearsal scenario has duration and details", async () => {
   const outputDir = "/tmp/stable-db-queue-disconnect-test-duration";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDbQueueDisconnectRehearsal({ outputDir });

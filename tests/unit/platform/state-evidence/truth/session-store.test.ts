@@ -1,5 +1,6 @@
 // @ts-nocheck
 import assert from "node:assert/strict";
+import { rmSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -17,6 +18,7 @@ let mockFdatasyncSyncCalls: number[] = [];
 let mockCloseSyncCalls: number[] = [];
 let mockReadFileSyncContent: Map<string, string> = new Map();
 let mockExistsSyncResults: Map<string, boolean> = new Map();
+const TEST_JSONL_ROOT = "/tmp/test-session-storage";
 
 function resetMocks(): void {
   mockFileSystem.clear();
@@ -26,6 +28,7 @@ function resetMocks(): void {
   mockCloseSyncCalls = [];
   mockReadFileSyncContent.clear();
   mockExistsSyncResults.clear();
+  rmSync(TEST_JSONL_ROOT, { recursive: true, force: true });
 }
 
 // Helper to create test events

@@ -6,7 +6,7 @@ import { runStableDispatchRehearsal, writeStableDispatchRehearsalReport } from "
 
 test("runStableDispatchRehearsal runs all four scenarios", async () => {
   const outputDir = "/tmp/stable-dispatch-rehearsal-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchRehearsal({ outputDir });
@@ -26,7 +26,7 @@ test("runStableDispatchRehearsal runs all four scenarios", async () => {
 
 test("runStableDispatchRehearsal scenarios have required fields", async () => {
   const outputDir = "/tmp/stable-dispatch-rehearsal-test-fields";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchRehearsal({ outputDir });
@@ -42,7 +42,7 @@ test("runStableDispatchRehearsal scenarios have required fields", async () => {
 
 test("runStableDispatchRehearsal dispatch_claims_capable_worker scenario passes", async () => {
   const outputDir = "/tmp/stable-dispatch-rehearsal-test-capable";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableDispatchRehearsal({ outputDir });

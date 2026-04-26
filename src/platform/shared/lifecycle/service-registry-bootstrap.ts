@@ -23,31 +23,31 @@ import { OutputContinuationService } from "../../execution/execution-engine/outp
 import { DelegationAuditService } from "../../orchestration/agent-delegation/delegation-audit-service.js";
 import { DelegationGovernanceService } from "../../orchestration/agent-delegation/delegation-governance-service.js";
 
-const registry = ServiceRegistry.getInstance();
+ServiceRegistry.registerBootstrap("service-registry-bootstrap.core-services", (registry) => {
+  // Register network egress audit service
+  registry.register("network-egress-audit", {
+    init: () => new NetworkEgressAuditService(),
+  });
 
-// Register network egress audit service
-registry.register("network-egress-audit", {
-  init: () => new NetworkEgressAuditService(),
-});
+  // Register network egress policy service (depends on audit service)
+  registry.register("network-egress-policy", {
+    init: () => new NetworkEgressPolicyService(loadNetworkEgressPolicyConfigFromEnv()),
+    dependsOn: ["network-egress-audit"],
+  });
 
-// Register network egress policy service (depends on audit service)
-registry.register("network-egress-policy", {
-  init: () => new NetworkEgressPolicyService(loadNetworkEgressPolicyConfigFromEnv()),
-  dependsOn: ["network-egress-audit"],
-});
+  // Register output continuation service
+  registry.register("output-continuation", {
+    init: () => new OutputContinuationService(),
+    teardown: (instance) => instance.clearRecords(),
+  });
 
-// Register output continuation service
-registry.register("output-continuation", {
-  init: () => new OutputContinuationService(),
-  teardown: (instance) => instance.clearRecords(),
-});
+  // Register delegation audit service
+  registry.register("delegation-audit", {
+    init: () => new DelegationAuditService(),
+  });
 
-// Register delegation audit service
-registry.register("delegation-audit", {
-  init: () => new DelegationAuditService(),
-});
-
-// Register delegation governance service
-registry.register("delegation-governance", {
-  init: () => new DelegationGovernanceService(),
+  // Register delegation governance service
+  registry.register("delegation-governance", {
+    init: () => new DelegationGovernanceService(),
+  });
 });

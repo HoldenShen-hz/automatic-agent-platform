@@ -10,7 +10,7 @@ import {
 test("EnvironmentReadinessOrchestrationService.upsertReadiness inserts a new record", () => {
   const service = new EnvironmentReadinessOrchestrationService();
   const outputDir = "/tmp/env-readiness-test-insert";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const record = service.upsertReadiness({

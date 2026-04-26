@@ -401,14 +401,14 @@ test("LeaderElectionService - stop() is idempotent", async () => {
   service.dispose();
 });
 
-test("LeaderElectionService - dispose() clears state", () => {
+test("LeaderElectionService - dispose() clears state", async () => {
   const coordinator = createMockCoordinator();
   const service = createService(coordinator);
 
   service.dispose();
 
-  assert.throws(
-    () => service.start(),
+  await assert.rejects(
+    async () => service.start(),
     /disposed/i,
   );
 });
@@ -421,8 +421,8 @@ test("LeaderElectionService - dispose() after stop is safe", async () => {
   await service.stop();
   service.dispose(); // Should not throw
 
-  assert.throws(
-    () => service.start(),
+  await assert.rejects(
+    async () => service.start(),
     /disposed/i,
   );
 });
@@ -853,15 +853,15 @@ test("LeaderElectionService - maxElectionAttempts limits retry count", async () 
   service.dispose();
 });
 
-test("LeaderElectionService - dispose stops heartbeat interval", () => {
+test("LeaderElectionService - dispose stops heartbeat interval", async () => {
   const coordinator = createMockCoordinator();
   const service = createService(coordinator);
 
-  service.start();
+  await service.start();
   service.dispose(); // Should not leave intervals running
 
-  assert.throws(
-    () => service.start(),
+  await assert.rejects(
+    async () => service.start(),
     /disposed/i,
   );
 });

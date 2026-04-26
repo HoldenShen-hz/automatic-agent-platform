@@ -6,7 +6,7 @@ import { runStableWorkerWritebackRehearsal, writeStableWorkerWritebackRehearsalR
 
 test("runStableWorkerWritebackRehearsal runs all three scenarios", async () => {
   const outputDir = "/tmp/stable-worker-writeback-test";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -25,7 +25,7 @@ test("runStableWorkerWritebackRehearsal runs all three scenarios", async () => {
 
 test("runStableWorkerWritebackRehearsal worker_writeback_completes_execution scenario passes", async () => {
   const outputDir = "/tmp/stable-worker-writeback-test-complete";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -37,7 +37,7 @@ test("runStableWorkerWritebackRehearsal worker_writeback_completes_execution sce
 
 test("runStableWorkerWritebackRehearsal duplicate_writeback_rejected scenario passes", async () => {
   const outputDir = "/tmp/stable-worker-writeback-test-duplicate";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -49,7 +49,7 @@ test("runStableWorkerWritebackRehearsal duplicate_writeback_rejected scenario pa
 
 test("runStableWorkerWritebackRehearsal stale_fencing_writeback_rejected scenario passes", async () => {
   const outputDir = "/tmp/stable-worker-writeback-test-stale";
-  rmSync(outputDir, { force: true });
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
   const report = await runStableWorkerWritebackRehearsal({ outputDir });

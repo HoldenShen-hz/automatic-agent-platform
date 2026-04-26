@@ -4,7 +4,15 @@ import test from "node:test";
 import { ExecutionDispatchService } from "../../../../../src/platform/execution/dispatcher/execution-dispatch-service.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
-import type { ExecutionTicketRecord, TaskPriority, ExecutionRecord, TaskRecord, WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
+import type {
+  ExecutionLeaseRecord,
+  ExecutionTicketRecord,
+  LeaseAuditRecord,
+  TaskPriority,
+  ExecutionRecord,
+  TaskRecord,
+  WorkerSnapshotRecord,
+} from "../../../../../src/platform/contracts/types/domain.js";
 import type { RegisteredWorkerView } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
 
 // ---------------------------------------------------------------------------
@@ -12,6 +20,113 @@ import type { RegisteredWorkerView } from "../../../../../src/platform/execution
 // ---------------------------------------------------------------------------
 
 function createMockStore(): AuthoritativeTaskStore {
+  const tickets = new Map<string, ExecutionTicketRecord>();
+  const leases = new Map<string, ExecutionLeaseRecord>();
+  const leaseAudits: LeaseAuditRecord[] = [];
+  const snapshots = new Map<string, WorkerSnapshotRecord>();
+
+  const workerRepo: Record<string, unknown> = {
+    getActiveExecutionTicket: () => null,
+    insertExecutionTicket: (ticket: ExecutionTicketRecord) => {
+      tickets.set(ticket.id, structuredClone(ticket));
+    },
+    listDispatchableExecutionTickets: () => Array.from(tickets.values()),
+    claimExecutionTicket: (input: {
+      ticketId: string;
+      assignedWorkerId: string;
+      leaseId: string;
+      claimedAt: string;
+    }) => {
+      const ticket = tickets.get(input.ticketId);
+      if (!ticket) {
+        return;
+      }
+      tickets.set(input.ticketId, {
+        ...ticket,
+        status: "claimed",
+        assignedWorkerId: input.assignedWorkerId,
+        leaseId: input.leaseId,
+        claimedAt: input.claimedAt,
+        updatedAt: input.claimedAt,
+      });
+    },
+    getExecutionTicket: (ticketId: string) => tickets.get(ticketId) ?? null,
+    getAgentExecutionRecord: () => null,
+    upsertAgentExecutionRecord: () => {},
+    getActiveExecutionLease: (executionId: string) =>
+      Array.from(leases.values()).find((lease) => lease.executionId === executionId && lease.status === "active") ?? null,
+    getExecutionLease: (leaseId: string) => leases.get(leaseId) ?? null,
+    insertExecutionLease: (lease: ExecutionLeaseRecord) => {
+      leases.set(lease.id, structuredClone(lease));
+    },
+    renewExecutionLease: (leaseId: string, expiresAt: string, lastHeartbeatAt?: string) => {
+      const lease = leases.get(leaseId);
+      if (!lease) {
+        return;
+      }
+      leases.set(leaseId, {
+        ...lease,
+        expiresAt,
+        lastHeartbeatAt: lastHeartbeatAt ?? lease.lastHeartbeatAt,
+      });
+    },
+    closeExecutionLease: (
+      leaseIdOrInput:
+        | string
+        | {
+            leaseId: string;
+            status?: ExecutionLeaseRecord["status"];
+            releasedAt: string;
+            reasonCode?: string | null;
+          },
+      releasedAt?: string,
+    ) => {
+      const closeInput =
+        typeof leaseIdOrInput === "string"
+          ? {
+              leaseId: leaseIdOrInput,
+              status: "released" as const,
+              releasedAt: releasedAt ?? new Date().toISOString(),
+              reasonCode: null,
+            }
+          : {
+              leaseId: leaseIdOrInput.leaseId,
+              status: leaseIdOrInput.status ?? "released",
+              releasedAt: leaseIdOrInput.releasedAt,
+              reasonCode: leaseIdOrInput.reasonCode ?? null,
+            };
+      const lease = leases.get(closeInput.leaseId);
+      if (!lease) {
+        return;
+      }
+      leases.set(closeInput.leaseId, {
+        ...lease,
+        status: closeInput.status,
+        releasedAt: closeInput.releasedAt,
+        reasonCode: closeInput.reasonCode,
+      });
+    },
+    insertLeaseAudit: (audit: LeaseAuditRecord) => {
+      leaseAudits.push(structuredClone(audit));
+    },
+    getLatestFencingToken: (executionId: string) =>
+      Math.max(
+        0,
+        ...Array.from(leases.values())
+          .filter((lease) => lease.executionId === executionId)
+          .map((lease) => lease.fencingToken),
+      ),
+    listExecutionTicketsByStatuses: () => [],
+    listWorkers: () => [],
+    getWorker: () => null,
+    getWorkerSnapshot: (workerId: string) => snapshots.get(workerId) ?? null,
+    listExecutionTicketsByExecution: () => [],
+    listWorkerSnapshots: () => Array.from(snapshots.values()),
+    upsertWorkerSnapshot: (snapshot: WorkerSnapshotRecord) => {
+      snapshots.set(snapshot.workerId, structuredClone(snapshot));
+    },
+  };
+
   return {
     operations: {
       loadExecutionAuthoritativeView: () => null,
@@ -30,23 +145,32 @@ function createMockStore(): AuthoritativeTaskStore {
       countPendingTier1Acks: () => 0,
       insertEvent: () => {},
     },
-    worker: {
-      getActiveExecutionTicket: () => null,
-      insertExecutionTicket: () => {},
-      listDispatchableExecutionTickets: () => [],
-      claimExecutionTicket: () => {},
-      getExecutionTicket: () => null,
-      getAgentExecutionRecord: () => null,
-      upsertAgentExecutionRecord: () => {},
-      getActiveExecutionLease: () => null,
-      listExecutionTicketsByStatuses: () => [],
-      listWorkers: () => [],
-      getWorker: () => null,
-      getWorkerSnapshot: () => null,
-      listExecutionTicketsByExecution: () => [],
-      listWorkerSnapshots: () => [],
-      upsertWorkerSnapshot: () => {},
-    },
+    worker: new Proxy(workerRepo, {
+      set(target, property, value) {
+        if (property === "listDispatchableExecutionTickets" && typeof value === "function") {
+          target[property as keyof typeof target] = ((...args: unknown[]) => {
+            const listed = (value as (...callArgs: unknown[]) => ExecutionTicketRecord[])(...args);
+            for (const ticket of listed) {
+              tickets.set(ticket.id, structuredClone(ticket));
+            }
+            return listed;
+          }) as typeof value;
+          return true;
+        }
+        if (property === "listWorkerSnapshots" && typeof value === "function") {
+          target[property as keyof typeof target] = ((...args: unknown[]) => {
+            const listed = (value as (...callArgs: unknown[]) => WorkerSnapshotRecord[])(...args);
+            for (const snapshot of listed) {
+              snapshots.set(snapshot.workerId, structuredClone(snapshot));
+            }
+            return listed;
+          }) as typeof value;
+          return true;
+        }
+        target[property as keyof typeof target] = value;
+        return true;
+      },
+    }),
     dispatch: {
       getExecution: () => null,
     },
@@ -145,7 +269,7 @@ function createMockTicket(
 }
 
 function createMockWorker(workerId: string, overrides: Partial<RegisteredWorkerView> = {}): RegisteredWorkerView {
-  return {
+  const worker: RegisteredWorkerView = {
     workerId,
     status: "idle",
     schedulingStatus: "healthy",
@@ -185,9 +309,29 @@ function createMockWorker(workerId: string, overrides: Partial<RegisteredWorkerV
     availableSlots: 10,
     ...overrides,
   };
+
+  if (worker.placement === "remote") {
+    worker.remoteSessionStatus ??= "connected";
+    worker.lastAcknowledgedStreamOffset ??= "offset-1";
+    worker.registrationVerifiedAt ??= new Date().toISOString();
+    worker.sessionConsistencyCheckStatus ??= "passed";
+    worker.workspaceSyncStatus ??= "aligned";
+  }
+
+  return worker;
 }
 
 function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
+  const runningExecutionIds =
+    worker.runningExecutionIds.length > 0
+      ? worker.runningExecutionIds
+      : Array.from(
+          {
+            length: Math.max(worker.maxConcurrency - Math.max(worker.availableSlots, 0), 0),
+          },
+          (_, index) => `${worker.workerId}-running-${index + 1}`,
+        );
+
   return {
     workerId: worker.workerId,
     status: worker.status,
@@ -210,7 +354,7 @@ function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
     registrationVerifiedAt: worker.registrationVerifiedAt,
     registrationChallengeId: worker.registrationChallengeId,
     capabilitiesJson: JSON.stringify(worker.capabilities),
-    runningExecutionsJson: JSON.stringify(worker.runningExecutionIds),
+    runningExecutionsJson: JSON.stringify(runningExecutionIds),
     maxConcurrency: worker.maxConcurrency,
     queueAffinity: worker.queueAffinity,
     runtimeInstanceId: worker.runtimeInstanceId,

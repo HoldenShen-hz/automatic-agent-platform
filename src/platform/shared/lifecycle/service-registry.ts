@@ -65,6 +65,7 @@ interface ServiceRegistration<T> {
  */
 export class ServiceRegistry {
   private static _instance: ServiceRegistry | null = null;
+  private static readonly bootstrapRegistrars = new Map<string, (registry: ServiceRegistry) => void>();
   private readonly services = new Map<string, ServiceRegistration<unknown>>();
   private readonly instances = new Map<string, unknown>();
 
@@ -76,8 +77,19 @@ export class ServiceRegistry {
   public static getInstance(): ServiceRegistry {
     if (!ServiceRegistry._instance) {
       ServiceRegistry._instance = new ServiceRegistry();
+      for (const registrar of ServiceRegistry.bootstrapRegistrars.values()) {
+        registrar(ServiceRegistry._instance);
+      }
     }
     return ServiceRegistry._instance;
+  }
+
+  /**
+   * Registers bootstrap wiring that should be replayed for every fresh registry instance.
+   */
+  public static registerBootstrap(name: string, registrar: (registry: ServiceRegistry) => void): void {
+    ServiceRegistry.bootstrapRegistrars.set(name, registrar);
+    registrar(ServiceRegistry.getInstance());
   }
 
   /**
