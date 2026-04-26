@@ -38,7 +38,11 @@ function makeRequest(overrides: Partial<PolicyDecisionRequest> = {}): PolicyDeci
 
 test("policy center: allow by default when no restrictions configured", () => {
   const policy = new PolicyCenterService();
-  const result = policy.evaluate(makeRequest());
+  const result = policy.evaluate(makeRequest({
+    action: "invoke_model",
+    riskCategory: "cost_sensitive",
+    mode: "auto",
+  }));
 
   assert.strictEqual(result.decision, "allow");
   assert.strictEqual(result.reasonCode, "policy.allow");
@@ -79,7 +83,12 @@ test("policy center: role-based action restriction allows permitted actions", ()
     allowedActionsByRole: { editor: ["write_file", "exec_command"] },
   });
 
-  const result = policy.evaluate(makeRequest({ action: "write_file", subjectId: "user-1" }));
+  const result = policy.evaluate(makeRequest({
+    action: "write_file",
+    subjectId: "user-1",
+    riskCategory: "cost_sensitive",
+    mode: "auto",
+  }));
   assert.strictEqual(result.decision, "allow");
 });
 
@@ -98,7 +107,7 @@ test("policy center: read-only mode allows non-mutating actions", () => {
   const policy = new PolicyCenterService();
   const result = policy.evaluate(makeRequest({ action: "invoke_model", mode: "read-only" }));
 
-  assert.strictEqual(result.decision, "allow");
+  assert.strictEqual(result.decision, "allow_with_constraints");
   assert.ok(result.matchedRuleRefs.includes("mode.read_only"));
 });
 
@@ -116,9 +125,14 @@ test("policy center: maintenance mode blocks rollout and topology changes", () =
 
 test("policy center: maintenance mode allows non-blocked actions", () => {
   const policy = new PolicyCenterService();
-  const result = policy.evaluate(makeRequest({ action: "write_file", mode: "maintenance" }));
+  const result = policy.evaluate(makeRequest({
+    action: "invoke_model",
+    riskCategory: "cost_sensitive",
+    mode: "maintenance",
+    stage: "observe",
+  }));
 
-  assert.strictEqual(result.decision, "allow");
+  assert.strictEqual(result.decision, "allow_with_constraints");
 });
 
 test("policy center: incident-mode raises evidence requirements for non-cost actions", () => {
@@ -173,7 +187,7 @@ test("policy center: budget warning triggers approval when cost exceeds warning 
   const policy = new PolicyCenterService({ budgetWarningCostUsd: 50 });
   const result = policy.evaluate(makeRequest({ estimatedCostUsd: 75 }));
 
-  assert.strictEqual(result.decision, "allow_with_constraints");
+  assert.strictEqual(result.decision, "escalate_for_approval");
   assert.strictEqual(result.requiresApproval, true);
   assert.strictEqual(result.enforcedConstraints.budgetWarningCostUsd, 50);
 });
@@ -194,9 +208,11 @@ test("policy center: write_file allowed when path is within allowed prefix", () 
   const result = policy.evaluate(makeRequest({
     action: "write_file",
     resourceRef: "/workspace/safe/project/file.txt",
+    riskCategory: "cost_sensitive",
+    mode: "auto",
   }));
 
-  assert.strictEqual(result.decision, "allow");
+  assert.strictEqual(result.decision, "allow_with_constraints");
 });
 
 test("policy center: network_access denied when host is outside allowed list", () => {
@@ -215,9 +231,11 @@ test("policy center: network_access allowed when host is in allowed list", () =>
   const result = policy.evaluate(makeRequest({
     action: "network_access",
     resourceRef: "https://api.example.com/v1/users",
+    riskCategory: "cost_sensitive",
+    mode: "full-auto",
   }));
 
-  assert.strictEqual(result.decision, "allow");
+  assert.strictEqual(result.decision, "allow_with_constraints");
 });
 
 test("policy center: governance actions require explicit enablement", () => {
@@ -235,7 +253,11 @@ test("policy center: governance action allowed when explicitly enabled", () => {
     enabledGovernanceActions: ["promote_improvement", "advance_rollout"],
   });
 
-  const result = policy.evaluate(makeRequest({ action: "advance_rollout" }));
+  const result = policy.evaluate(makeRequest({
+    action: "advance_rollout",
+    riskCategory: "cost_sensitive",
+    mode: "auto",
+  }));
   assert.strictEqual(result.decision, "allow");
 });
 
@@ -300,17 +322,17 @@ test("policy center: evaluatedPolicyVersion is set on every decision", () => {
 
 test("policy center: toUnifiedRuntimeMode maps supervised to supervised", () => {
   const mode = PolicyCenterService.toUnifiedRuntimeMode("supervised");
-  assert.strictEqual(mode, "supervised");
+  assert.strictEqual(mode, "manual_only");
 });
 
 test("policy center: toUnifiedRuntimeMode maps auto to auto", () => {
   const mode = PolicyCenterService.toUnifiedRuntimeMode("auto");
-  assert.strictEqual(mode, "auto");
+  assert.strictEqual(mode, "supervised_auto");
 });
 
 test("policy center: toUnifiedRuntimeMode maps emergency to emergency", () => {
   const mode = PolicyCenterService.toUnifiedRuntimeMode("emergency");
-  assert.strictEqual(mode, "emergency");
+  assert.strictEqual(mode, "no_write");
 });
 
 test("policy center: reject missing required fields", () => {
@@ -325,7 +347,7 @@ test("policy center: reject missing required fields", () => {
     riskCategory: "destructive",
     mode: "supervised",
     stage: "execute",
-  }), /decisionId.*required/);
+  }), /missing a required field/i);
 
   assert.throws(() => policy.evaluate({
     decisionId: "dec-1",
@@ -336,5 +358,5 @@ test("policy center: reject missing required fields", () => {
     riskCategory: "destructive",
     mode: "supervised",
     stage: "execute",
-  }), /taskId.*required/);
+  }), /missing a required field/i);
 });

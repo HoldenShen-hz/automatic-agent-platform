@@ -460,16 +460,18 @@ test("E2E Workflow Timeout: retry execution preserves workflow position", async 
     assert.equal(exec2?.parentExecutionId, executionId1, "Should reference parent execution");
     assert.equal(exec2?.attempt, 2, "Should be attempt 2");
 
-    // Workflow state updated for retry
+    // Workflow recovery state updated for retry
     harness.db.transaction(() => {
-      harness.store.updateWorkflowState(
+      harness.store.updateWorkflowRecoveryState({
         taskId,
-        "running",
-        2,
-        JSON.stringify({ step0: "done", step1: "done" }),
-        nowIso(),
-        "step2",
-      );
+        status: "running",
+        currentStepIndex: 2,
+        outputsJson: JSON.stringify({ step0: "done", step1: "done" }),
+        updatedAt: nowIso(),
+        resumableFromStep: "step2",
+        retryCount: 1,
+        lastErrorCode: "execution.timeout",
+      });
     });
 
     workflow = harness.store.getWorkflowState(taskId);

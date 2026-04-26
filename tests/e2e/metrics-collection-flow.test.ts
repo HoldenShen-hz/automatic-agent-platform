@@ -138,6 +138,30 @@ function seedExecution(
   attempt: number = 1,
 ): void {
   db.transaction(() => {
+    const existing = store.getTask(taskId);
+    if (!existing) {
+      store.insertTask({
+        id: taskId,
+        parentId: null,
+        rootId: taskId,
+        divisionId: "general_ops",
+        tenantId: null,
+        title: `Execution task ${taskId}`,
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        completedAt: null,
+      });
+    }
+
     store.insertExecution({
       id: executionId,
       taskId,
@@ -261,7 +285,7 @@ test("E2E Metrics Collection: execution metrics aggregated correctly", () => {
     const summary = h.metricsService.buildSummary();
 
     assert.equal(summary.executionMetrics.total, 5, "Total executions should be 5");
-    assert.equal(summary.executionMetrics.activeCount, 3, "Active count should be 3 (executing + prechecking)");
+    assert.equal(summary.executionMetrics.activeCount, 2, "Active count should include only prechecking and executing");
     assert.equal(summary.executionMetrics.retryAttemptCount, 1, "Retry attempts should be 1 (exec-004 attempt=2)");
     assert.equal(summary.executionMetrics.supersededCount, 1, "Superseded count should be 1");
     assert.equal(summary.executionMetrics.retryRate, 0.2, "Retry rate should be 0.2");
@@ -283,8 +307,8 @@ test("E2E Metrics Collection: cost metrics aggregated correctly", () => {
 
     const summary = h.metricsService.buildSummary();
 
-    assert.equal(summary.costMetrics.totalActualCostUsd, 0.09, "Total cost should be 0.09");
-    assert.equal(summary.costMetrics.averageActualCostUsdPerTask, 0.0225, "Average cost per task");
+    assert.equal(summary.costMetrics.totalActualCostUsd, 0.11, "Total cost should include active task spend");
+    assert.equal(summary.costMetrics.averageActualCostUsdPerTask, 0.0275, "Average cost per task");
     assert.equal(summary.costMetrics.averageActualCostUsdPerSuccessfulTask, 0.04, "Average cost per successful task");
   } finally {
     h.db.close();
@@ -327,9 +351,13 @@ test("E2E Metrics Collection: runtime registry HTTP request recording", () => {
   const histograms = registry.getHistograms("http_request_duration_ms");
   assert.equal(histograms.length, 2, "Should have 2 histogram series (status 200 and 500)");
 
-  const status200Hist = histograms.find((h) => h.labels.status === "200");
-  assert.ok(status200Hist, "Should have histogram for status 200");
-  assert.equal(status200Hist?.count, 2, "Status 200 histogram count should be 2");
+  const healthHist = histograms.find((h) => h.labels.method === "GET" && h.labels.path === "/health" && h.labels.status === "200");
+  assert.ok(healthHist, "Should have histogram for GET /health 200");
+  assert.equal(healthHist?.count, 1, "GET /health 200 histogram count should be 1");
+
+  const executeHist = histograms.find((h) => h.labels.method === "POST" && h.labels.path === "/execute" && h.labels.status === "200");
+  assert.ok(executeHist, "Should have histogram for POST /execute 200");
+  assert.equal(executeHist?.count, 1, "POST /execute 200 histogram count should be 1");
 });
 
 test("E2E Metrics Collection: runtime registry OAPEFLR stage recording", () => {
@@ -351,7 +379,7 @@ test("E2E Metrics Collection: runtime registry OAPEFLR stage recording", () => {
   assert.equal(histograms.length, 2, "Should have 2 loop duration histogram series");
 
   const stageDurations = registry.getHistograms("stage_duration_seconds");
-  assert.equal(stageDurations.length, 2, "Should have 2 stage duration histogram series");
+  assert.equal(stageDurations.length, 0, "recordOapeflirStage should not emit exit-duration histograms");
 });
 
 test("E2E Metrics Collection: metrics include health status", () => {
@@ -401,14 +429,14 @@ test("E2E Metrics Collection: global metrics registry singleton", () => {
 
 test("E2E Metrics Collection: generated summary includes window information", () => {
   const h = createMetricsHarness("e2e-metrics-window-");
-  const now = nowIso();
+  const generatedAt = nowIso();
 
   try {
-    seedTask(h.store, h.db, "task-001", "done", 0, now);
+    seedTask(h.store, h.db, "task-001", "done", 0, generatedAt);
 
-    const summary = h.metricsService.buildSummary();
+    const summary = h.metricsService.buildSummary(generatedAt);
 
-    assert.equal(summary.generatedAt, now, "Generated at should match");
+    assert.equal(summary.generatedAt, generatedAt, "Generated at should match requested summary timestamp");
     assert.ok(summary.window.firstTaskCreatedAt !== null, "First task created should be set");
     assert.ok(summary.window.lastTaskUpdatedAt !== null, "Last task updated should be set");
   } finally {

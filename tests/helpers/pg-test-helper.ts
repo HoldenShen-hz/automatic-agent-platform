@@ -15,6 +15,15 @@ export function shouldRunPgIntegration(): { enabled: boolean; reason: string | n
   } catch {
     return { enabled: false, reason: "postgres runtime dependency is not installed" };
   }
+  if (
+    !process.env["AA_TEST_PG_DSN"]
+    && !process.env["PGHOST"]
+    && !process.env["PGDATABASE"]
+    && !process.env["PGUSER"]
+    && !process.env["PGPORT"]
+  ) {
+    return { enabled: false, reason: "PostgreSQL test connection is not configured" };
+  }
   return { enabled: true, reason: null };
 }
 

@@ -478,7 +478,7 @@ test("Path validation requires alphanumeric with dots", () => {
   );
 
   assert.throws(
-    () => store.register(createNamespace({ path: "has-special.chars" })),
+    () => store.register(createNamespace({ path: "-invalid.chars" })),
     /Invalid namespace path format/,
   );
 });

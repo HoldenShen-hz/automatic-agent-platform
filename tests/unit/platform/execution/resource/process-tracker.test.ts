@@ -31,6 +31,12 @@ function createMockChildProcess(pid: number, pgid?: number): ChildProcess {
   }) as unknown as ChildProcess;
 }
 
+async function flushMicrotasks(rounds: number = 10): Promise<void> {
+  for (let i = 0; i < rounds; i += 1) {
+    await Promise.resolve();
+  }
+}
+
 test("ProcessTracker constructor creates empty tracker", () => {
   const tracker = new ProcessTracker();
   assert.equal(tracker.getActiveCount(), 0);
@@ -644,13 +650,18 @@ test("ProcessTracker.killAll sends SIGTERM then waits then SIGKILL", async () =>
     }) as typeof process.kill;
 
     try {
-      await tracker.killAll("SIGTERM", 100);
+      const killAllPromise = tracker.killAll("SIGTERM", 100);
+      await flushMicrotasks();
 
       // First pass: SIGTERM to all
       assert.ok(signalsSent.filter(s => s === "SIGTERM").length >= 2);
 
-      // Tick past the force kill delay
-      mock.timers.tick(150);
+      // Advance in phases so timers created by async continuations are also run.
+      mock.timers.tick(100);
+      await flushMicrotasks();
+      mock.timers.tick(1000);
+      await flushMicrotasks();
+      await killAllPromise;
 
       // Should have SIGKILL for remaining
       assert.ok(signalsSent.includes("SIGKILL"));
@@ -686,8 +697,13 @@ test("ProcessTracker.killAll handles mixed termination", async () => {
     }) as typeof process.kill;
 
     try {
-      await tracker.killAll("SIGTERM", 100);
-      mock.timers.tick(150);
+      const killAllPromise = tracker.killAll("SIGTERM", 100);
+      await flushMicrotasks();
+      mock.timers.tick(100);
+      await flushMicrotasks();
+      mock.timers.tick(1000);
+      await flushMicrotasks();
+      await killAllPromise;
 
       // All should be cleaned up despite ESRCH on some
       assert.equal(tracker.getActiveCount(), 0);
@@ -798,8 +814,13 @@ test("ProcessTracker.killAll logs warning when killing orphans", async () => {
     process.kill = (() => true) as typeof process.kill;
 
     try {
-      await tracker.killAll("SIGTERM", 50);
-      mock.timers.tick(100);
+      const killAllPromise = tracker.killAll("SIGTERM", 50);
+      await flushMicrotasks();
+      mock.timers.tick(50);
+      await flushMicrotasks();
+      mock.timers.tick(1000);
+      await flushMicrotasks();
+      await killAllPromise;
 
       // If we get here without throwing, test passes
       assert.equal(tracker.getActiveCount(), 0);
@@ -962,8 +983,13 @@ test("ProcessTracker.killAll with single process", async () => {
     process.kill = (() => true) as typeof process.kill;
 
     try {
-      await tracker.killAll("SIGTERM", 50);
-      mock.timers.tick(100);
+      const killAllPromise = tracker.killAll("SIGTERM", 50);
+      await flushMicrotasks();
+      mock.timers.tick(50);
+      await flushMicrotasks();
+      mock.timers.tick(1000);
+      await flushMicrotasks();
+      await killAllPromise;
 
       assert.equal(tracker.getActiveCount(), 0);
     } finally {

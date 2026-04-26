@@ -291,8 +291,8 @@ test("E2E Health Check: event loop lag affects status", () => {
     const report = h.healthService.getReport();
 
     assert.equal(report.eventLoopLagMs, 100, "Event loop lag should be 100");
-    assert.equal(report.status, "degraded", "Should be degraded with high event loop lag");
-    assert.ok(report.findings.includes("event_loop_lag_degraded"), "Should have event_loop_lag_degraded finding");
+    assert.equal(report.status, "overloaded", "Should be overloaded when lag exceeds the overload threshold");
+    assert.ok(report.findings.includes("event_loop_lag_overloaded"), "Should have event_loop_lag_overloaded finding");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

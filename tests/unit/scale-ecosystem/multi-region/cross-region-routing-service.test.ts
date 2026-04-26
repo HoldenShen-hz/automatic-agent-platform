@@ -193,6 +193,25 @@ test("CrossRegionRoutingService.route includes failover region in recovery topol
   assert.ok(decision.recoveryTopology.failoverRegionId !== null);
 });
 
+test("CrossRegionRoutingService.route excludes an unhealthy primary region from selection", () => {
+  const service = new CrossRegionRoutingService();
+  const request = createRouteRequest({
+    primaryRegionId: "us-east-1",
+    primaryRegionHealthy: false,
+    regions: [
+      createRegion({ regionId: "us-east-1", latencyScore: 10 }),
+      createRegion({ regionId: "us-west-1", latencyScore: 30 }),
+      createRegion({ regionId: "eu-west-1", latencyScore: 50 }),
+    ],
+  });
+
+  const decision = service.route(request);
+
+  assert.strictEqual(decision.selectedRegionId, "us-west-1");
+  assert.ok(!decision.candidateRegions.includes("us-east-1"));
+  assert.ok(decision.blockedRegions.includes("us-east-1"));
+});
+
 test("CrossRegionRoutingService.route sets residencyDecision to allowed when region selected", () => {
   const service = new CrossRegionRoutingService();
   const request = createRouteRequest();

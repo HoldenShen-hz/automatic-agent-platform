@@ -191,7 +191,7 @@ export class ProcessTracker {
     try {
       tracked.lastSignal = signal;
       tracked.killRequestedAt = Date.now();
-      tracked.state = 'terminating';
+      tracked.state = signal === 'SIGKILL' ? 'killed' : 'terminating';
 
       // Prefer process group kill if available
       if (tracked.pgid && tracked.pgid !== pid) {
@@ -209,6 +209,9 @@ export class ProcessTracker {
           signal,
           owner: tracked.owner,
         });
+      }
+      if (signal === 'SIGKILL') {
+        this.processes.delete(pid);
       }
       return true;
     } catch (err) {
@@ -259,7 +262,6 @@ export class ProcessTracker {
       await Promise.all(
         stillActive.map(p => this.kill(p.pid, 'SIGKILL'))
       );
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     // Check final state

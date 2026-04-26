@@ -654,7 +654,7 @@ test("integration: semantic knowledge graph inspect returns nodes and edges", ()
   assert.ok(nodeTypes.includes("chunk"), "Should have chunk nodes");
 });
 
-test("integration: knowledge plane service queryForDomain with domain registry", () => {
+test("integration: knowledge plane service queryForDomain with domain registry", async () => {
   const service = new KnowledgePlaneService();
   service.registerNamespace({
     namespaceId: "domain-query",
@@ -679,7 +679,7 @@ test("integration: knowledge plane service queryForDomain with domain registry",
     namespace: "domain-query",
   });
 
-  const hits = service.queryForDomain("domain", {
+  const hits = await service.queryForDomain("domain", {
     domainId: "test-domain",
     namespace: "domain-query",
   });

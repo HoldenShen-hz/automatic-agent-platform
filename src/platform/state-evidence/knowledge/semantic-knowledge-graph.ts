@@ -217,14 +217,27 @@ export class SemanticKnowledgeGraph {
   }
 
   private collectAdjacent(rootNodeId: string, collected: Set<string>, limit: number): void {
-    for (const edge of this.edges.values()) {
-      if (collected.size >= limit) {
-        return;
-      }
-      if (edge.fromNodeId === rootNodeId) {
-        collected.add(edge.toNodeId);
-      } else if (edge.toNodeId === rootNodeId) {
-        collected.add(edge.fromNodeId);
+    const queue: string[] = [rootNodeId];
+    const visited = new Set<string>(queue);
+
+    while (queue.length > 0 && collected.size < limit) {
+      const currentNodeId = queue.shift()!;
+      for (const edge of this.edges.values()) {
+        if (collected.size >= limit) {
+          return;
+        }
+        let adjacentNodeId: string | null = null;
+        if (edge.fromNodeId === currentNodeId) {
+          adjacentNodeId = edge.toNodeId;
+        } else if (edge.toNodeId === currentNodeId) {
+          adjacentNodeId = edge.fromNodeId;
+        }
+        if (adjacentNodeId == null || visited.has(adjacentNodeId)) {
+          continue;
+        }
+        visited.add(adjacentNodeId);
+        collected.add(adjacentNodeId);
+        queue.push(adjacentNodeId);
       }
     }
   }

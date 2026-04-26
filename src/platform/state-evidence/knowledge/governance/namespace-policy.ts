@@ -165,8 +165,11 @@ export class NamespacePolicyStore {
    * Segment names may contain hyphens (e.g., "test/file-default" is valid).
    */
   private isValidNamespacePath(path: string): boolean {
-    // Valid path format: domain.subdomain.name or domain/subdomain/name (e.g., "finance.payments.reports" or "test/file-default")
-    const pathPattern = /^[a-z][a-z0-9]*([./][a-z][a-z0-9-]*)*$/;
+    // Valid path format: domain.subdomain.name or domain/subdomain/name.
+    // Each segment must start with a lowercase letter and may include digits
+    // or hyphens after the first character (e.g. "finance.payments-reports",
+    // "test/file-default", or a flat name like "limit-test").
+    const pathPattern = /^[a-z][a-z0-9-]*(?:[./][a-z][a-z0-9-]*)*$/;
     return pathPattern.test(path);
   }
 

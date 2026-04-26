@@ -135,11 +135,11 @@ export class MetricsService {
     }>(
       `SELECT
          COUNT(*) AS total,
-         SUM(CASE WHEN status IN ('done', 'failed', 'cancelled') THEN 1 ELSE 0 END) AS terminalCount,
-         SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) AS successCount,
-         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failedCount,
-         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelledCount,
-         SUM(CASE WHEN status NOT IN ('done', 'failed', 'cancelled') THEN 1 ELSE 0 END) AS activeCount
+         COALESCE(SUM(CASE WHEN status IN ('done', 'failed', 'cancelled') THEN 1 ELSE 0 END), 0) AS terminalCount,
+         COALESCE(SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END), 0) AS successCount,
+         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedCount,
+         COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount,
+         COALESCE(SUM(CASE WHEN status NOT IN ('done', 'failed', 'cancelled') THEN 1 ELSE 0 END), 0) AS activeCount
        FROM tasks`,
     );
 
@@ -153,10 +153,10 @@ export class MetricsService {
     }>(
       `SELECT
          COUNT(*) AS total,
-         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completedCount,
-         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failedCount,
-         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelledCount,
-         SUM(CASE WHEN retry_count > 0 THEN 1 ELSE 0 END) AS retriedCount
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
+         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedCount,
+         COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount,
+         COALESCE(SUM(CASE WHEN retry_count > 0 THEN 1 ELSE 0 END), 0) AS retriedCount
        FROM workflow_state`,
     );
 
@@ -169,9 +169,9 @@ export class MetricsService {
     }>(
       `SELECT
          COUNT(*) AS total,
-         SUM(CASE WHEN status IN ('created', 'prechecking', 'executing', 'blocked') THEN 1 ELSE 0 END) AS activeCount,
-         SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END) AS retryAttemptCount,
-         SUM(CASE WHEN status = 'superseded' THEN 1 ELSE 0 END) AS supersededCount
+         COALESCE(SUM(CASE WHEN status IN ('created', 'prechecking', 'executing', 'blocked') THEN 1 ELSE 0 END), 0) AS activeCount,
+         COALESCE(SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END), 0) AS retryAttemptCount,
+         COALESCE(SUM(CASE WHEN status = 'superseded' THEN 1 ELSE 0 END), 0) AS supersededCount
        FROM executions`,
     );
 
@@ -187,10 +187,10 @@ export class MetricsService {
       `SELECT
          COUNT(DISTINCT e.task_id) AS taskCount,
          COUNT(DISTINCT CASE WHEN t.status = 'done' THEN e.task_id END) AS successfulTaskCount,
-         SUM(CASE WHEN e.event_type = 'recovery:decision_recorded' THEN 1 ELSE 0 END) AS decisionCount,
-         SUM(CASE WHEN e.event_type = 'recovery:repair_applied' THEN 1 ELSE 0 END) AS repairEventCount,
-         SUM(CASE WHEN e.event_type = 'recovery:dead_lettered' THEN 1 ELSE 0 END) AS deadLetterCount,
-         SUM(CASE WHEN e.event_type = 'recovery:cancelled' THEN 1 ELSE 0 END) AS cancelledCount
+         COALESCE(SUM(CASE WHEN e.event_type = 'recovery:decision_recorded' THEN 1 ELSE 0 END), 0) AS decisionCount,
+         COALESCE(SUM(CASE WHEN e.event_type = 'recovery:repair_applied' THEN 1 ELSE 0 END), 0) AS repairEventCount,
+         COALESCE(SUM(CASE WHEN e.event_type = 'recovery:dead_lettered' THEN 1 ELSE 0 END), 0) AS deadLetterCount,
+         COALESCE(SUM(CASE WHEN e.event_type = 'recovery:cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount
        FROM events e
        LEFT JOIN tasks t ON t.id = e.task_id
        WHERE e.task_id IS NOT NULL
@@ -206,8 +206,8 @@ export class MetricsService {
     }>(
       `SELECT
          COUNT(*) AS total,
-         SUM(CASE WHEN status = 'requested' THEN 1 ELSE 0 END) AS pendingCount,
-         SUM(CASE WHEN status != 'requested' THEN 1 ELSE 0 END) AS resolvedCount,
+         COALESCE(SUM(CASE WHEN status = 'requested' THEN 1 ELSE 0 END), 0) AS pendingCount,
+         COALESCE(SUM(CASE WHEN status != 'requested' THEN 1 ELSE 0 END), 0) AS resolvedCount,
          COUNT(DISTINCT task_id) AS taskTriggerCount
        FROM approvals`,
     );
@@ -221,9 +221,9 @@ export class MetricsService {
     }>(
       `SELECT
          COUNT(*) AS total,
-         SUM(CASE WHEN event_tier = 'tier_1' THEN 1 ELSE 0 END) AS tier1Count,
-         SUM(CASE WHEN event_tier = 'tier_2' THEN 1 ELSE 0 END) AS tier2Count,
-         SUM(CASE WHEN event_tier = 'tier_3' THEN 1 ELSE 0 END) AS tier3Count
+         COALESCE(SUM(CASE WHEN event_tier = 'tier_1' THEN 1 ELSE 0 END), 0) AS tier1Count,
+         COALESCE(SUM(CASE WHEN event_tier = 'tier_2' THEN 1 ELSE 0 END), 0) AS tier2Count,
+         COALESCE(SUM(CASE WHEN event_tier = 'tier_3' THEN 1 ELSE 0 END), 0) AS tier3Count
        FROM events`,
     );
 

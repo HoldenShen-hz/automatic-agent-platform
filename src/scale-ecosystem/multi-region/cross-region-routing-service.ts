@@ -40,11 +40,13 @@ function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities:
 export class CrossRegionRoutingService {
   public route(request: CrossRegionRouteRequest): CrossRegionRouteDecision {
     const blockedRegionIds = new Set(request.policy.blockedRegionIds ?? []);
+    const unhealthyPrimaryRegionId = !request.primaryRegionHealthy ? request.primaryRegionId ?? null : null;
     const allowedJurisdictions = new Set(request.policy.allowedJurisdictions);
     const requiredCapabilities = request.policy.requiredCapabilities ?? [];
     const blockedRegions = request.regions
       .filter((region) =>
         blockedRegionIds.has(region.regionId)
+        || region.regionId === unhealthyPrimaryRegionId
         || region.status === "disabled"
         || !region.residencyAllowed
         || !allowedJurisdictions.has(region.jurisdiction)

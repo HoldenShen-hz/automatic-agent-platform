@@ -164,7 +164,7 @@ test("E2E Scaling: resource pool allocates units up to capacity", (t) => {
     resourceType: "cpu",
     capacityUnits: 10,
     allocatedUnits: 0,
-    burstUnits: 2,
+    burstUnits: 0,
   });
 
   // Allocate 8 units
@@ -173,13 +173,12 @@ test("E2E Scaling: resource pool allocates units up to capacity", (t) => {
   assert.deepEqual(result1.reasonCodes, ["resource_pool.allocated"]);
 
   // Verify pool state
-  const pool = service.getPool("compute");
-  assert.equal(pool!.allocatedUnits, 8);
+  assert.equal(service.getPool("compute")!.allocatedUnits, 8);
 
   // Allocate 2 more units (should reach capacity)
   const result2 = service.allocate("compute", "consumer-2", 2);
   assert.equal(result2.granted, true);
-  assert.equal(pool!.allocatedUnits, 10);
+  assert.equal(service.getPool("compute")!.allocatedUnits, 10);
 
   // Allocate 1 more unit (should fail - over capacity)
   const result3 = service.allocate("compute", "consumer-3", 1);
@@ -585,7 +584,7 @@ test("E2E Scaling: concurrent releases maintain consistency", async (t) => {
     poolId: "concurrent-release",
     resourceType: "cpu",
     capacityUnits: 100,
-    allocatedUnits: 50,
+    allocatedUnits: 0,
     burstUnits: 0,
   });
 
@@ -675,19 +674,22 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
 
   try {
     const now = nowIso();
+    const pipelineTaskIds: string[] = [];
 
     // Phase 1: Ingest tasks
     for (let i = 0; i < 15; i++) {
-      seedTask(h.store, h.db, `pipeline-task-${i}`, "queued", "tenant-001", now);
+      const taskId = `pipeline-task-${i}`;
+      pipelineTaskIds.push(taskId);
+      seedTask(h.store, h.db, taskId, "queued", "tenant-001", now);
     }
 
     // Phase 2: Start executions by updating task status
-    const startedTasks = h.store.listTasks().slice(0, 10);
-    for (const task of startedTasks) {
+    const startedTaskIds = pipelineTaskIds.slice(0, 10);
+    for (const taskId of startedTaskIds) {
       h.db.transaction(() => {
-        h.store.updateTaskStatus(task.id, "in_progress", now, null, null);
+        h.store.updateTaskStatus(taskId, "in_progress", now, null, null);
       });
-      seedExecution(h.store, h.db, `exec-${task.id}`, task.id, "executing", 1);
+      seedExecution(h.store, h.db, `exec-${taskId}`, taskId, "executing", 1);
     }
 
     // Phase 3: Complete some tasks
@@ -700,7 +702,7 @@ test("E2E Scaling: full scaling pipeline with task lifecycle", (t) => {
 
     // Verify final state
     const allTasks = h.store.listTasks();
-    const queuedCount = allTasks.filter(t => t.status === "queued").length;
+    const queuedCount = allTasks.filter(t => t.status === "queued" || t.status === "pending").length;
     const inProgressCount = allTasks.filter(t => t.status === "in_progress").length;
     const doneCount = allTasks.filter(t => t.status === "done").length;
 

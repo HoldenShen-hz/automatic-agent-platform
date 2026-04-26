@@ -30,6 +30,17 @@ function extractKeywords(body: string): string[] {
   ).slice(0, 12);
 }
 
+function mergeKeywords(content: string, tags: readonly string[] = []): string[] {
+  return Array.from(
+    new Set([
+      ...extractKeywords(content),
+      ...tags
+        .map((tag) => tag.trim().toLowerCase())
+        .filter((tag) => tag.length >= 2),
+    ]),
+  ).slice(0, 12);
+}
+
 function estimateTokenCount(content: string): number {
   return Math.max(1, Math.ceil(content.length / 4));
 }
@@ -165,7 +176,10 @@ export class KnowledgeIngestionPipeline {
     };
     const chunkDefinitions = this.createChunks(input.body, input.chunking);
     const chunks: KnowledgeChunk[] = chunkDefinitions
-      .map(({ content, section }, index) => ({
+      .map(({ content, section }, index) => {
+        const keywords = mergeKeywords(content, input.tags ?? []);
+        const embeddingInput = `${input.title}\n${content}\n${(input.tags ?? []).join(" ")}`;
+        return {
         chunkId: newId("knowledge_chunk"),
         documentId: document.documentId,
         content,
@@ -174,15 +188,16 @@ export class KnowledgeIngestionPipeline {
           language: input.language ?? undefined,
           relevantFiles: [],
         },
-        embedding: buildSemanticEmbedding(`${input.title}\n${content}`, extractKeywords(content)),
+        embedding: buildSemanticEmbedding(embeddingInput, keywords),
         tokenCount: estimateTokenCount(content),
         namespace: input.namespace,
         ordinal: index,
         summary: summarize(content),
-        keywords: extractKeywords(content),
-        embeddingId: semanticEmbeddingId(`${input.title}\n${content}`, extractKeywords(content)),
+        keywords,
+        embeddingId: semanticEmbeddingId(embeddingInput, keywords),
         locator: section ? { section } : {},
-      }));
+      };
+      });
     const archived = this.archive.upsert({ source, document, chunks });
     for (const chunk of archived.chunks) {
       this.index.upsert(chunk);

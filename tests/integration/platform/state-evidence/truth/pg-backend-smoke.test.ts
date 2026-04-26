@@ -5,9 +5,9 @@ import { createAsyncRepositoryRegistry } from "../../../../../src/platform/state
 import { createTestPgDatabase, resetPgTables, shouldRunPgIntegration } from "../../../../helpers/pg-test-helper.js";
 
 const pgSupport = shouldRunPgIntegration();
+const pgTest = pgSupport.enabled ? test : test.skip;
 
-test("PostgreSQL async repository registry smoke", async () => {
-  assert.equal(pgSupport.enabled, true, pgSupport.reason ?? "PostgreSQL support should be available");
+pgTest("PostgreSQL async repository registry smoke", async () => {
   const db = await createTestPgDatabase();
   try {
     await resetPgTables(db, ["tasks"]);
