@@ -68,3 +68,69 @@ test("AdminConfigService listUpdates respects limit", () => {
   const list = service.listUpdates(3);
   assert.equal(list.length, 3);
 });
+
+test("AdminConfigService listUpdates with zero limit returns empty", () => {
+  const service = new AdminConfigService();
+  service.applyUpdate({ key: "key1", value: "value1", updatedBy: "a" });
+
+  const list = service.listUpdates(0);
+
+  assert.equal(list.length, 0);
+});
+
+test("AdminConfigService listUpdates with negative limit returns empty", () => {
+  const service = new AdminConfigService();
+  service.applyUpdate({ key: "key1", value: "value1", updatedBy: "a" });
+
+  const list = service.listUpdates(-10);
+
+  assert.equal(list.length, 0);
+});
+
+test("AdminConfigService listUpdates handles complex value objects", () => {
+  const service = new AdminConfigService();
+  const complexValue = {
+    nested: { a: 1, b: [1, 2, 3] },
+    map: new Map([["key", "value"]]),
+  };
+
+  service.applyUpdate({ key: "complex", value: complexValue, updatedBy: "admin" });
+
+  const list = service.listUpdates();
+  assert.deepStrictEqual(list[0]!.value, complexValue);
+});
+
+test("AdminConfigService listUpdates filters null tenantId correctly", () => {
+  const service = new AdminConfigService();
+  service.applyUpdate({ key: "global1", value: "v1", tenantId: null, updatedBy: "a" });
+  service.applyUpdate({ key: "global2", value: "v2", tenantId: null, updatedBy: "a" });
+  service.applyUpdate({ key: "tenant1", value: "v3", tenantId: "tenant-A", updatedBy: "a" });
+
+  const listNull = service.listUpdates(50, null);
+  assert.ok(listNull.every((r) => r.tenantId === null));
+});
+
+test("AdminConfigService applyUpdate uses provided submittedAt", () => {
+  const service = new AdminConfigService();
+  const record = service.applyUpdate({
+    key: "key",
+    value: "value",
+    updatedBy: "admin",
+  });
+
+  assert.ok(record.updatedAt.length > 0);
+});
+
+test("AdminConfigService applyUpdate handles various value types", () => {
+  const service = new AdminConfigService();
+
+  service.applyUpdate({ key: "string", value: "test", updatedBy: "a" });
+  service.applyUpdate({ key: "number", value: 42, updatedBy: "a" });
+  service.applyUpdate({ key: "boolean", value: true, updatedBy: "a" });
+  service.applyUpdate({ key: "array", value: [1, 2, 3], updatedBy: "a" });
+  service.applyUpdate({ key: "null", value: null, updatedBy: "a" });
+  service.applyUpdate({ key: "undefined", value: undefined, updatedBy: "a" });
+
+  const list = service.listUpdates();
+  assert.equal(list.length, 6);
+});

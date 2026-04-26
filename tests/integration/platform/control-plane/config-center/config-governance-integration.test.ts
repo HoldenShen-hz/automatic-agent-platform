@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 
 import { ConfigGovernanceService } from "../../../../../src/platform/control-plane/config-center/config-governance-service.js";
 import { HierarchicalConfigLoader } from "../../../../../src/platform/control-plane/config-center/hierarchical-config-loader.js";
@@ -96,7 +96,7 @@ test("config governance: loads complete bundle with all required layers", () => 
     assert.ok(bundle.version.versionId, "Bundle should have versionId");
     assert.ok(bundle.version.bundleHash, "Bundle should have bundleHash");
     assert.strictEqual(bundle.environment, "dev");
-    assert.strictEqual(bundle.configRoot, workspace);
+    assert.strictEqual(realpathSync(bundle.configRoot), realpathSync(workspace));
 
     assert.ok(bundle.layers.bootstrap, "Should have bootstrap layer");
     assert.ok(bundle.layers.gateways, "Should have gateways layer");
@@ -160,7 +160,16 @@ test("config governance: bundle validation catches invalid provider registry ref
       version: "test-registry",
       providers: { openai: { status: "active", authMethods: ["api_key"] } },
       profiles: {
-        "reasoning-medium": { provider: "openai", modelId: "gpt-5.2" },
+        "reasoning-medium": {
+          provider: "openai",
+          modelId: "gpt-5.2",
+          tier: "reasoning",
+          capabilities: ["reasoning"],
+          contextWindowTokens: 400000,
+          maxOutputTokens: 128000,
+          pricing: { inputPer1kUsd: 0.012, outputPer1kUsd: 0.036 },
+          metadataSource: "local_override",
+        },
       },
     }));
 

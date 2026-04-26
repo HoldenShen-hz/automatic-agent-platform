@@ -43,7 +43,7 @@ export class ConfigGovernanceService {
    */
   public constructor(options: ConfigGovernanceServiceOptions = {}) {
     this.configRoot = options.configRoot ?? join(process.cwd(), "config");
-    this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
+    this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(this.configRoot);
   }
 
   /**

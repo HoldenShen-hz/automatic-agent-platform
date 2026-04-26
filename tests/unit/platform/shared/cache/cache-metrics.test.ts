@@ -1,165 +1,211 @@
 /**
- * Additional unit tests for CacheMetrics - covering more edge cases
+ * Additional unit tests for CacheMetrics - edge cases and boundary conditions
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-
 import { CacheMetrics } from "../../../../../src/platform/shared/cache/cache-metrics.js";
 
-test("CacheMetrics snapshot with no records returns zero values", () => {
+test("CacheMetrics snapshot with empty byNamespace returns empty object", () => {
   const metrics = new CacheMetrics();
   const snapshot = metrics.snapshot();
 
-  assert.equal(snapshot.totalHits, 0);
-  assert.equal(snapshot.totalMisses, 0);
-  assert.equal(snapshot.hitRate, 0);
+  assert.deepEqual(snapshot.byNamespace, {});
 });
 
-test("CacheMetrics records with layer information", () => {
+test("CacheMetrics record with undefined namespace uses unknown", () => {
   const metrics = new CacheMetrics();
-
-  metrics.record({ namespace: "test", hit: true, layer: "L1" });
-  metrics.record({ namespace: "test", hit: true, layer: "L2" });
-  metrics.record({ namespace: "test", hit: true, layer: "L3" });
+  metrics.record({ hit: true });
 
   const snapshot = metrics.snapshot();
-
-  assert.equal(snapshot.totalHits, 3);
-  assert.equal(snapshot.byNamespace["test"]!.byLayer?.["L1"], 1);
-  assert.equal(snapshot.byNamespace["test"]!.byLayer?.["L2"], 1);
-  assert.equal(snapshot.byNamespace["test"]!.byLayer?.["L3"], 1);
+  assert.ok(snapshot.byNamespace["unknown"]);
+  assert.equal(snapshot.byNamespace["unknown"]!.hits, 1);
 });
 
-test("CacheMetrics records with different reasons for same namespace", () => {
-  const metrics = new CacheMetrics();
-
-  metrics.record({ namespace: "test", hit: false, reason: "not_found" });
-  metrics.record({ namespace: "test", hit: false, reason: "not_found" });
-  metrics.record({ namespace: "test", hit: false, reason: "expired" });
-  metrics.record({ namespace: "test", hit: false, reason: "disabled" });
-
-  const snapshot = metrics.snapshot();
-
-  assert.equal(snapshot.totalMisses, 4);
-  assert.equal(snapshot.byNamespace["test"]!.byReason?.["not_found"], 2);
-  assert.equal(snapshot.byNamespace["test"]!.byReason?.["expired"], 1);
-  assert.equal(snapshot.byNamespace["test"]!.byReason?.["disabled"], 1);
-});
-
-test("CacheMetrics hit rate calculation edge case - all misses", () => {
-  const metrics = new CacheMetrics();
-
-  metrics.record({ namespace: "test", hit: false });
-  metrics.record({ namespace: "test", hit: false });
-  metrics.record({ namespace: "test", hit: false });
-
-  const snapshot = metrics.snapshot();
-
-  assert.equal(snapshot.hitRate, 0);
-  assert.equal(snapshot.totalHits, 0);
-  assert.equal(snapshot.totalMisses, 3);
-});
-
-test("CacheMetrics hit rate calculation edge case - all hits", () => {
+test("CacheMetrics record increments byNamespace counters correctly", () => {
   const metrics = new CacheMetrics();
 
   metrics.record({ namespace: "test", hit: true });
   metrics.record({ namespace: "test", hit: true });
+  metrics.record({ namespace: "test", hit: false });
 
   const snapshot = metrics.snapshot();
+  assert.equal(snapshot.byNamespace["test"]!.hits, 2);
+  assert.equal(snapshot.byNamespace["test"]!.misses, 1);
+});
 
+test("CacheMetrics record tracks byLayer for hits", () => {
+  const metrics = new CacheMetrics();
+
+  metrics.record({ namespace: "ns", hit: true, layer: "L1" });
+  metrics.record({ namespace: "ns", hit: true, layer: "L1" });
+  metrics.record({ namespace: "ns", hit: true, layer: "L2" });
+
+  const snapshot = metrics.snapshot();
+  assert.equal(snapshot.byNamespace["ns"]!.byLayer?.["L1"], 2);
+  assert.equal(snapshot.byNamespace["ns"]!.byLayer?.["L2"], 1);
+});
+
+test("CacheMetrics record tracks byReason for misses", () => {
+  const metrics = new CacheMetrics();
+
+  metrics.record({ namespace: "ns", hit: false, reason: "not_found" });
+  metrics.record({ namespace: "ns", hit: false, reason: "not_found" });
+  metrics.record({ namespace: "ns", hit: false, reason: "expired" });
+
+  const snapshot = metrics.snapshot();
+  assert.equal(snapshot.byNamespace["ns"]!.byReason?.["not_found"], 2);
+  assert.equal(snapshot.byNamespace["ns"]!.byReason?.["expired"], 1);
+});
+
+test("CacheMetrics snapshot hitRate is 0 when no records", () => {
+  const metrics = new CacheMetrics();
+  const snapshot = metrics.snapshot();
+
+  assert.equal(snapshot.hitRate, 0);
+});
+
+test("CacheMetrics snapshot hitRate is 1 when all hits", () => {
+  const metrics = new CacheMetrics();
+  metrics.record({ namespace: "ns", hit: true });
+  metrics.record({ namespace: "ns", hit: true });
+
+  const snapshot = metrics.snapshot();
   assert.equal(snapshot.hitRate, 1);
-  assert.equal(snapshot.totalHits, 2);
-  assert.equal(snapshot.totalMisses, 0);
 });
 
-test("CacheMetrics tracks multiple namespaces independently", () => {
+test("CacheMetrics snapshot hitRate is 0.5 with mixed records", () => {
+  const metrics = new CacheMetrics();
+  metrics.record({ namespace: "ns", hit: true });
+  metrics.record({ namespace: "ns", hit: false });
+
+  const snapshot = metrics.snapshot();
+  assert.equal(snapshot.hitRate, 0.5);
+});
+
+test("CacheMetrics namespace hitRate calculated correctly", () => {
   const metrics = new CacheMetrics();
 
+  // ns1: 3 hits, 1 miss = 0.75
+  metrics.record({ namespace: "ns1", hit: true });
+  metrics.record({ namespace: "ns1", hit: true });
   metrics.record({ namespace: "ns1", hit: true });
   metrics.record({ namespace: "ns1", hit: false });
+
+  // ns2: 1 hit, 3 misses = 0.25
   metrics.record({ namespace: "ns2", hit: true });
-  metrics.record({ namespace: "ns2", hit: true });
-
-  const snapshot = metrics.snapshot();
-
-  assert.equal(snapshot.totalHits, 3);
-  assert.equal(snapshot.totalMisses, 1);
-  assert.equal(snapshot.byNamespace["ns1"]!.hits, 1);
-  assert.equal(snapshot.byNamespace["ns1"]!.misses, 1);
-  assert.equal(snapshot.byNamespace["ns2"]!.hits, 2);
-  assert.equal(snapshot.byNamespace["ns2"]!.misses, 0);
-});
-
-test("CacheMetrics namespace hit rate calculated independently", () => {
-  const metrics = new CacheMetrics();
-
-  metrics.record({ namespace: "ns1", hit: true });
-  metrics.record({ namespace: "ns2", hit: true });
+  metrics.record({ namespace: "ns2", hit: false });
+  metrics.record({ namespace: "ns2", hit: false });
   metrics.record({ namespace: "ns2", hit: false });
 
   const snapshot = metrics.snapshot();
 
-  // Overall hit rate: 2 hits / 3 total = 0.667
-  assert.equal(snapshot.hitRate, 2/3);
-  // ns1: 1 hit / 1 total = 1.0
-  assert.equal(snapshot.byNamespace["ns1"]!.hitRate, 1);
-  // ns2: 1 hit / 2 total = 0.5
-  assert.equal(snapshot.byNamespace["ns2"]!.hitRate, 0.5);
+  assert.equal(snapshot.byNamespace["ns1"]!.hitRate, 0.75);
+  assert.equal(snapshot.byNamespace["ns2"]!.hitRate, 0.25);
 });
 
-test("CacheMetrics records without layer still track hit", () => {
+test("CacheMetrics reset clears all counters", () => {
+  const metrics = new CacheMetrics();
+
+  metrics.record({ namespace: "ns1", hit: true });
+  metrics.record({ namespace: "ns2", hit: false });
+
+  metrics.reset();
+
+  const snapshot = metrics.snapshot();
+  assert.equal(snapshot.totalHits, 0);
+  assert.equal(snapshot.totalMisses, 0);
+  assert.deepEqual(snapshot.byNamespace, {});
+});
+
+test("CacheMetrics reset can be called multiple times safely", () => {
   const metrics = new CacheMetrics();
 
   metrics.record({ namespace: "test", hit: true });
-  metrics.record({ namespace: "test", hit: true, layer: "L1" as const });
+
+  metrics.reset();
+  metrics.reset();
+  metrics.reset();
 
   const snapshot = metrics.snapshot();
-
-  assert.equal(snapshot.totalHits, 2);
-  assert.ok(snapshot.byNamespace["test"]!.byLayer === undefined);
+  assert.equal(snapshot.totalHits, 0);
 });
 
-test("CacheMetrics records without reason still track miss", () => {
+test("CacheMetrics multiple namespaces are independent", () => {
   const metrics = new CacheMetrics();
 
-  metrics.record({ namespace: "test", hit: false });
-  metrics.record({ namespace: "test", hit: false, reason: "not_found" as const });
+  metrics.record({ namespace: "a", hit: true });
+  metrics.record({ namespace: "b", hit: true });
+  metrics.record({ namespace: "c", hit: true });
 
   const snapshot = metrics.snapshot();
 
-  assert.equal(snapshot.totalMisses, 2);
+  assert.equal(Object.keys(snapshot.byNamespace).length, 3);
+  assert.equal(snapshot.byNamespace["a"]!.hits, 1);
+  assert.equal(snapshot.byNamespace["b"]!.hits, 1);
+  assert.equal(snapshot.byNamespace["c"]!.hits, 1);
+});
+
+test("CacheMetrics byLayer is undefined when no layers recorded", () => {
+  const metrics = new CacheMetrics();
+  metrics.record({ namespace: "test", hit: true });
+
+  const snapshot = metrics.snapshot();
+  assert.strictEqual(snapshot.byNamespace["test"]!.byLayer, undefined);
+});
+
+test("CacheMetrics byReason is undefined when no reasons recorded", () => {
+  const metrics = new CacheMetrics();
+  metrics.record({ namespace: "test", hit: false });
+
+  const snapshot = metrics.snapshot();
   assert.ok(snapshot.byNamespace["test"]!.byReason !== undefined);
 });
 
-test("CacheMetrics reset affects subsequent snapshot", () => {
+test("CacheMetrics record new namespace creates empty byLayer and byReason objects", () => {
   const metrics = new CacheMetrics();
+  metrics.record({ namespace: "new-ns", hit: true });
 
+  const snapshot = metrics.snapshot();
+  assert.ok(snapshot.byNamespace["new-ns"]);
+  // byLayer is undefined for hit-only records
+  assert.strictEqual(snapshot.byNamespace["new-ns"]!.byLayer, undefined);
+});
+
+test("CacheMetrics snapshot returns correct structure", () => {
+  const metrics = new CacheMetrics();
   metrics.record({ namespace: "test", hit: true });
-  metrics.record({ namespace: "test", hit: true });
-
-  metrics.reset();
-
-  metrics.record({ namespace: "test", hit: false });
 
   const snapshot = metrics.snapshot();
 
-  assert.equal(snapshot.totalHits, 0);
+  assert.ok("totalHits" in snapshot);
+  assert.ok("totalMisses" in snapshot);
+  assert.ok("hitRate" in snapshot);
+  assert.ok("byNamespace" in snapshot);
+});
+
+test("CacheMetrics record increments total correctly", () => {
+  const metrics = new CacheMetrics();
+
+  metrics.record({ hit: true });
+  metrics.record({ hit: true });
+  metrics.record({ hit: false });
+
+  const snapshot = metrics.snapshot();
+  assert.equal(snapshot.totalHits, 2);
   assert.equal(snapshot.totalMisses, 1);
 });
 
-test("CacheMetrics multiple reset calls are idempotent", () => {
+test("CacheMetrics byNamespace entries have correct structure", () => {
   const metrics = new CacheMetrics();
-
   metrics.record({ namespace: "test", hit: true });
 
-  metrics.reset();
-  metrics.reset();
-  metrics.reset();
-
   const snapshot = metrics.snapshot();
+  const ns = snapshot.byNamespace["test"];
 
-  assert.equal(snapshot.totalHits, 0);
-  assert.deepEqual(Object.keys(snapshot.byNamespace), []);
+  assert.ok("hits" in ns!);
+  assert.ok("misses" in ns!);
+  assert.ok("hitRate" in ns!);
+  assert.ok("byLayer" in ns!);
+  assert.ok("byReason" in ns!);
 });

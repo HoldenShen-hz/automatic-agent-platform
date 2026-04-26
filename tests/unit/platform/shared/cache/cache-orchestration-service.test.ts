@@ -149,3 +149,257 @@ test("CacheOrchestrationService handles different models separately", async () =
   // Second call for same model should hit cache
   assert.equal(resultGpt2.staticPrefixFromCache, true);
 });
+
+test("CacheOrchestrationService with custom cache facade uses it", () => {
+  resetCache();
+  // This test verifies the constructor works with custom options
+  const customCache = {
+    getOrCompute: async <T>(
+      _namespace: string,
+      _normalizedInput: unknown,
+      compute: () => Promise<T>,
+      _options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      return { fromCache: false, value: await compute() };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  const service = new CacheOrchestrationService({ cache: customCache as any });
+  assert.ok(service instanceof CacheOrchestrationService);
+});
+
+test("CacheOrchestrationService getOrComputeToolResult uses tool namespace", async () => {
+  resetCache();
+  const service = new CacheOrchestrationService();
+
+  let receivedNamespace = "";
+  const testCache = {
+    getOrCompute: async <T>(
+      namespace: string,
+      _normalizedInput: unknown,
+      _compute: () => Promise<T>,
+      _options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      receivedNamespace = namespace;
+      return { fromCache: false, value: {} as T };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  // Create service with test cache
+  const testService = new (class extends CacheOrchestrationService {
+    constructor() {
+      super({ cache: testCache as any });
+    }
+  })();
+
+  await testService.getOrComputeToolResult("read", { path: "/file.ts" }, async () => ({}));
+  assert.equal(receivedNamespace, "tool.read");
+});
+
+test("CacheOrchestrationService getOrComputeToolResult passes tags", async () => {
+  resetCache();
+  let receivedTags: readonly string[] = [];
+
+  const testCache = {
+    getOrCompute: async <T>(
+      _namespace: string,
+      _normalizedInput: unknown,
+      _compute: () => Promise<T>,
+      options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      receivedTags = options?.tags ?? [];
+      return { fromCache: false, value: {} as T };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  const testService = new (class extends CacheOrchestrationService {
+    constructor() {
+      super({ cache: testCache as any });
+    }
+  })();
+
+  await testService.getOrComputeToolResult("read", { path: "/file.ts" }, async () => ({}), ["custom:tag"]);
+
+  assert.ok(receivedTags.includes("custom:tag"));
+});
+
+test("CacheOrchestrationService getOrComputePlannerPlan uses planner namespace", async () => {
+  resetCache();
+  let receivedNamespace = "";
+
+  const testCache = {
+    getOrCompute: async <T>(
+      namespace: string,
+      _normalizedInput: unknown,
+      _compute: () => Promise<T>,
+      _options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      receivedNamespace = namespace;
+      return { fromCache: false, value: {} as T };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  const testService = new (class extends CacheOrchestrationService {
+    constructor() {
+      super({ cache: testCache as any });
+    }
+  })();
+
+  await testService.getOrComputePlannerPlan({ workflowId: "wf1" }, async () => ({}));
+  assert.equal(receivedNamespace, "planner.plan");
+});
+
+test("CacheOrchestrationService getOrComputeMemoryRetrieval uses memory namespace", async () => {
+  resetCache();
+  let receivedNamespace = "";
+
+  const testCache = {
+    getOrCompute: async <T>(
+      namespace: string,
+      _normalizedInput: unknown,
+      _compute: () => Promise<T>,
+      _options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      receivedNamespace = namespace;
+      return { fromCache: false, value: {} as T };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  const testService = new (class extends CacheOrchestrationService {
+    constructor() {
+      super({ cache: testCache as any });
+    }
+  })();
+
+  await testService.getOrComputeMemoryRetrieval({ query: "test" }, async () => ({}));
+  assert.equal(receivedNamespace, "memory.retrieval");
+});
+
+test("CacheOrchestrationService recordPromptPartition returns partition result", async () => {
+  resetCache();
+  const service = new CacheOrchestrationService();
+
+  const input = {
+    model: "gpt-4",
+    profileId: "standard",
+    messages: [
+      { role: "system", content: "You are a helpful assistant." },
+      { role: "user", content: "Hello" },
+    ],
+  };
+
+  const result = await service.recordPromptPartition(input);
+
+  assert.ok(result.partition);
+  assert.ok(result.partition.staticDigest.length > 0);
+  assert.ok(result.partition.dynamicDigest.length > 0);
+  assert.equal(result.partition.model, "gpt-4");
+  assert.equal(result.partition.profileId, "standard");
+});
+
+test("CacheOrchestrationService getMetricsSummary returns zeros for sets invalidations evictions", () => {
+  resetCache();
+  const service = new CacheOrchestrationService();
+
+  const summary = service.getMetricsSummary();
+
+  assert.equal(summary.sets, 0);
+  assert.equal(summary.invalidations, 0);
+  assert.equal(summary.evictions, 0);
+});
+
+test("CacheOrchestrationService getMetricsSummary reflects actual cache hits and misses", async () => {
+  resetCache();
+  const service = new CacheOrchestrationService();
+
+  // Trigger a miss
+  await service.recordPromptPartition({
+    model: "gpt-cache-test",
+    profileId: "standard",
+    messages: [{ role: "user", content: "test message" }],
+  });
+
+  // Trigger a hit by calling again with same input
+  await service.recordPromptPartition({
+    model: "gpt-cache-test",
+    profileId: "standard",
+    messages: [{ role: "user", content: "test message" }],
+  });
+
+  const summary = service.getMetricsSummary();
+  assert.ok(summary.hits >= 1);
+  assert.ok(summary.misses >= 1);
+});
+
+test("CacheOrchestrationService getOrComputeMemoryRetrieval passes custom tags", async () => {
+  resetCache();
+  let receivedTags: readonly string[] = [];
+
+  const testCache = {
+    getOrCompute: async <T>(
+      _namespace: string,
+      _normalizedInput: unknown,
+      _compute: () => Promise<T>,
+      options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      receivedTags = options?.tags ?? [];
+      return { fromCache: false, value: {} as T };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  const testService = new (class extends CacheOrchestrationService {
+    constructor() {
+      super({ cache: testCache as any });
+    }
+  })();
+
+  await testService.getOrComputeMemoryRetrieval({ query: "test" }, async () => ({}), ["memory:session-123"]);
+  assert.ok(receivedTags.includes("memory:session-123"));
+});
+
+test("CacheOrchestrationService getOrComputePlannerPlan passes custom tags", async () => {
+  resetCache();
+  let receivedTags: readonly string[] = [];
+
+  const testCache = {
+    getOrCompute: async <T>(
+      _namespace: string,
+      _normalizedInput: unknown,
+      _compute: () => Promise<T>,
+      options?: { tags?: string[] }
+    ): Promise<{ fromCache: boolean; value: T }> => {
+      receivedTags = options?.tags ?? [];
+      return { fromCache: false, value: {} as T };
+    },
+    invalidateByTag: async () => 0,
+    invalidateNamespace: async () => 0,
+    getMetricsSnapshot: () => ({ totalHits: 0, totalMisses: 0, hitRate: 0, byNamespace: {} }),
+  };
+
+  const testService = new (class extends CacheOrchestrationService {
+    constructor() {
+      super({ cache: testCache as any });
+    }
+  })();
+
+  await testService.getOrComputePlannerPlan({ workflowId: "wf1" }, async () => ({}), ["planner:workflow-wf1"]);
+  assert.ok(receivedTags.includes("planner:workflow-wf1"));
+});

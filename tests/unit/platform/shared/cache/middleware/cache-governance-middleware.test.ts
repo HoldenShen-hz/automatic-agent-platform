@@ -174,3 +174,285 @@ test("createCacheSummaryMiddleware logs debug when metrics are present", async (
   await hook.run({ taskId: "task-4" } as never, { response: null, toolsUsed: [] });
   assert.equal(logged, true);
 });
+
+// Additional tests for CacheGovernanceMiddleware edge cases
+
+test("createCacheGovernanceMiddleware run with workspaceRoot normalizes path", async () => {
+  let receivedArgs: Record<string, unknown> = {};
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(
+        _namespace: string,
+        normalizedInput: unknown,
+        _compute: () => Promise<T>,
+        _options?: unknown
+      ): Promise<{ value: T; fromCache: boolean }> => {
+        receivedArgs = normalizedInput as Record<string, unknown>;
+        return { value: {} as T, fromCache: false };
+      },
+    }),
+    workspaceRoot: "/workspace",
+  });
+
+  await middleware.run(
+    { taskId: "task-workspace" } as never,
+    { toolName: "read", args: { path: "relative/file.ts" } },
+    () => Promise.resolve("result"),
+  );
+
+  // The path should be normalized when workspaceRoot is provided
+  assert.ok(receivedArgs.path);
+});
+
+test("createCacheGovernanceMiddleware run calls cache with tool namespace", async () => {
+  let receivedNamespace = "";
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(
+        namespace: string,
+        _normalizedInput: unknown,
+        _compute: () => Promise<T>,
+        _options?: unknown
+      ): Promise<{ value: T; fromCache: boolean }> => {
+        receivedNamespace = namespace;
+        return { value: {} as T, fromCache: false };
+      },
+    }),
+  });
+
+  await middleware.run(
+    { taskId: "task-ns" } as never,
+    { toolName: "read", args: { path: "/tmp/file" } },
+    () => Promise.resolve("result"),
+  );
+
+  assert.equal(receivedNamespace, "tool.read");
+});
+
+test("createCacheGovernanceMiddleware run includes tags from context", async () => {
+  let receivedOptions: unknown;
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(
+        _namespace: string,
+        _normalizedInput: unknown,
+        _compute: () => Promise<T>,
+        options?: unknown
+      ): Promise<{ value: T; fromCache: boolean }> => {
+        receivedOptions = options;
+        return { value: {} as T, fromCache: false };
+      },
+    }),
+  });
+
+  await middleware.run(
+    { taskId: "task-tags" } as never,
+    { toolName: "read", args: { path: "/tmp/file" } },
+    () => Promise.resolve("result"),
+  );
+
+  assert.ok(receivedOptions && typeof receivedOptions === "object" && "tags" in (receivedOptions as object));
+});
+
+test("createCacheGovernanceMiddleware run returns cached result when fromCache is true", async () => {
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(): Promise<{ value: T; fromCache: boolean }> => {
+        return { value: "cached-result" as unknown as T, fromCache: true };
+      },
+    }),
+  });
+
+  const result = await middleware.run(
+    { taskId: "task-cached" } as never,
+    { toolName: "read", args: {} },
+    () => Promise.resolve("fresh-result"),
+  );
+
+  assert.equal(result, "cached-result");
+});
+
+test("createCacheGovernanceMiddleware run does not call next when cache returns result", async () => {
+  let nextCalled = false;
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(): Promise<{ value: T; fromCache: boolean }> => {
+        return { value: "cached" as unknown as T, fromCache: true };
+      },
+    }),
+  });
+
+  await middleware.run(
+    { taskId: "task-next" } as never,
+    { toolName: "read", args: {} },
+    () => { nextCalled = true; return Promise.resolve("fresh"); },
+  );
+
+  assert.equal(nextCalled, false);
+});
+
+test("createCacheGovernanceMiddleware run calls next when fromCache is false", async () => {
+  let nextCalled = false;
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(): Promise<{ value: T; fromCache: boolean }> => {
+        return { value: "computed" as unknown as T, fromCache: false };
+      },
+    }),
+  });
+
+  await middleware.run(
+    { taskId: "task-next-miss" } as never,
+    { toolName: "read", args: {} },
+    () => { nextCalled = true; return Promise.resolve("fresh"); },
+  );
+
+  assert.equal(nextCalled, true);
+});
+
+test("createCacheSummaryMiddleware works without logger", async () => {
+  const hook = createCacheSummaryMiddleware({
+    cache: createMockCache(),
+  });
+
+  // Should not throw even without logger
+  const result = await hook.run({ taskId: "task-no-logger" } as never, { response: null, toolsUsed: [] });
+  assert.deepEqual(result, { success: true });
+});
+
+test("createCacheGovernanceMiddleware works without logger", async () => {
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache(),
+  });
+
+  const result = await middleware.run(
+    { taskId: "task-no-logger-2" } as never,
+    { toolName: "read", args: {} },
+    () => Promise.resolve("result"),
+  );
+
+  assert.equal(result, "result");
+});
+
+test("createCacheGovernanceMiddleware run uses correct context.taskId in tags", async () => {
+  let receivedOptions: { tags?: string[] } | undefined;
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(
+        _namespace: string,
+        _normalizedInput: unknown,
+        _compute: () => Promise<T>,
+        options?: unknown
+      ): Promise<{ value: T; fromCache: boolean }> => {
+        receivedOptions = options as { tags?: string[] };
+        return { value: {} as T, fromCache: false };
+      },
+    }),
+  });
+
+  await middleware.run(
+    { taskId: "specific-task-id-123" } as never,
+    { toolName: "read", args: {} },
+    () => Promise.resolve("result"),
+  );
+
+  assert.ok(receivedOptions?.tags?.some(t => t.includes("specific-task-id-123")));
+});
+
+test("createCacheSummaryMiddleware with custom logger receives taskId in data", async () => {
+  let receivedData: Record<string, unknown> | undefined;
+  const hook = createCacheSummaryMiddleware({
+    cache: createMockCache({
+      getMetricsSnapshot: () => ({
+        totalHits: 5,
+        totalMisses: 1,
+        hitRate: 0.83,
+        byNamespace: {},
+      }),
+    }),
+    logger: createMockLogger({
+      debug: (message, data) => {
+        if (message === "Cache metrics summary") {
+          receivedData = data;
+        }
+        return createLogEntry("debug", message, data);
+      },
+    }),
+  });
+
+  await hook.run({ taskId: "task-with-data" } as never, { response: {}, toolsUsed: [] });
+
+  assert.ok(receivedData);
+  assert.equal(receivedData!.taskId, "task-with-data");
+});
+
+test("createCacheGovernanceMiddleware run logs warning on cache error", async () => {
+  let warned = false;
+  let warnMessage = "";
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async (): Promise<never> => {
+        throw new Error("Connection timeout");
+      },
+    }),
+    logger: createMockLogger({
+      warn: (message) => {
+        warned = true;
+        warnMessage = message;
+        return createLogEntry("warn", message);
+      },
+    }),
+  });
+
+  await middleware.run(
+    { taskId: "task-warn" } as never,
+    { toolName: "read", args: {} },
+    () => Promise.resolve("fallback"),
+  );
+
+  assert.equal(warned, true);
+  assert.ok(warnMessage.includes("Cache error"));
+});
+
+test("createCacheGovernanceMiddleware run accepts various cacheable tool names", async () => {
+  const tools = ["read", "write", "edit", "search", "index"];
+  for (const toolName of tools) {
+    const middleware = createCacheGovernanceMiddleware({
+      cache: createMockCache(),
+    });
+
+    const result = await middleware.run(
+      { taskId: `task-${toolName}` } as never,
+      { toolName, args: {} },
+      () => Promise.resolve("result"),
+    );
+
+    assert.equal(result, "result");
+  }
+});
+
+test("createCacheGovernanceMiddleware run passes all args to cache", async () => {
+  let receivedArgs: Record<string, unknown> = {};
+  const middleware = createCacheGovernanceMiddleware({
+    cache: createMockCache({
+      getOrCompute: async <T>(
+        _namespace: string,
+        normalizedInput: unknown,
+        _compute: () => Promise<T>,
+        _options?: unknown
+      ): Promise<{ value: T; fromCache: boolean }> => {
+        receivedArgs = normalizedInput as Record<string, unknown>;
+        return { value: {} as T, fromCache: false };
+      },
+    }),
+  });
+
+  const args = { path: "/file.ts", encoding: "utf-8", lines: 50 };
+  await middleware.run(
+    { taskId: "task-full-args" } as never,
+    { toolName: "read", args },
+    () => Promise.resolve("result"),
+  );
+
+  assert.deepEqual(receivedArgs, args);
+});

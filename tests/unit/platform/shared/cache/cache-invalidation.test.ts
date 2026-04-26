@@ -1,49 +1,35 @@
 /**
- * Additional unit tests for CacheInvalidationEngine - more edge cases
+ * Unit tests for CacheInvalidationEngine - additional edge cases
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
-
 import { CacheInvalidationEngine } from "../../../../../src/platform/shared/cache/cache-invalidation.js";
 import type { CacheFacade } from "../../../../../src/platform/shared/cache/cache-facade.js";
-import type { CacheLookupResult } from "../../../../../src/platform/shared/cache/cache-types.js";
 
-// Mock CacheFacade implementation
-class MockCacheFacade implements CacheFacade {
-  private store = new Map<string, { value: unknown; meta: Record<string, unknown> }>();
+// Mock CacheFacade that tracks all operations
+class TrackingCacheFacade implements CacheFacade {
+  public invalidations: Array<{ type: string; tag?: string; namespace?: string }> = [];
+  private data = new Map<string, unknown>();
 
-  async get<T>(_namespace: string, _key: string): Promise<CacheLookupResult<T>> {
+  async get<T>(_namespace: string, _key: string): Promise<{ hit: boolean; value: T | null; reason?: string }> {
     return { hit: false, value: null, reason: "not_found" };
   }
 
-  async set(namespace: string, key: string, value: unknown, meta: Record<string, unknown>): Promise<void> {
-    this.store.set(`${namespace}:${key}`, { value, meta });
+  async set(namespace: string, key: string, value: unknown): Promise<void> {
+    this.data.set(`${namespace}:${key}`, value);
   }
 
   async delete(_namespace: string, _key: string): Promise<void> {}
 
   async invalidateByTag(tag: string): Promise<number> {
-    let count = 0;
-    const tagPrefix = `tags:${tag}:`;
-    for (const key of this.store.keys()) {
-      if (key.startsWith(tagPrefix)) {
-        this.store.delete(key);
-        count++;
-      }
-    }
-    return count;
+    this.invalidations.push({ type: "tag", tag });
+    return 1;
   }
 
   async invalidateNamespace(namespace: string): Promise<number> {
-    let count = 0;
-    for (const key of this.store.keys()) {
-      if (key.startsWith(`${namespace}:`)) {
-        this.store.delete(key);
-        count++;
-      }
-    }
-    return count;
+    this.invalidations.push({ type: "namespace", namespace });
+    return 1;
   }
 
   async cleanupExpired(): Promise<number> {
@@ -55,110 +41,189 @@ class MockCacheFacade implements CacheFacade {
   }
 }
 
-test("CacheInvalidationEngine handles empty tag invalidation gracefully", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.onFileChanged generates correct tag format", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  // Empty string tag should still generate a valid tag
-  const count = await engine.onFileChanged("");
-  assert.ok(typeof count === "number");
+  await engine.onFileChanged("/src/utils/helper.ts");
+
+  assert.equal(cache.invalidations.length, 1);
+  assert.equal(cache.invalidations[0]!.type, "tag");
+  assert.equal(cache.invalidations[0]!.tag, "file:/src/utils/helper.ts");
 });
 
-test("CacheInvalidationEngine handles special characters in file path", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.onSessionClosed generates correct tag format", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.onFileChanged("/path/with spaces/file.ts");
-  assert.ok(typeof count === "number");
+  await engine.onSessionClosed("sess_abc123");
+
+  assert.equal(cache.invalidations.length, 1);
+  assert.equal(cache.invalidations[0]!.type, "tag");
+  assert.equal(cache.invalidations[0]!.tag, "session:sess_abc123");
 });
 
-test("CacheInvalidationEngine handles unicode in session ID", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.onInstructionChanged generates correct tag format", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.onSessionClosed("session_\u00E9\u00E0\u00FC");
-  assert.ok(typeof count === "number");
+  await engine.onInstructionChanged("instr_fingerprint_xyz");
+
+  assert.equal(cache.invalidations.length, 1);
+  assert.equal(cache.invalidations[0]!.type, "tag");
+  assert.equal(cache.invalidations[0]!.tag, "instruction:instr_fingerprint_xyz");
 });
 
-test("CacheInvalidationEngine handles very long instruction fingerprint", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.onRepoRebuilt generates correct tag format", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const longFingerprint = "a".repeat(1000);
-  const count = await engine.onInstructionChanged(longFingerprint);
-  assert.ok(typeof count === "number");
+  await engine.onRepoRebuilt("my-org/my-repo");
+
+  assert.equal(cache.invalidations.length, 1);
+  assert.equal(cache.invalidations[0]!.type, "tag");
+  assert.equal(cache.invalidations[0]!.tag, "repo:my-org/my-repo");
 });
 
-test("CacheInvalidationEngine handles special characters in repo ID", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.onToolUpdated generates correct tag format", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.onRepoRebuilt("repo/my-project (fork)");
-  assert.ok(typeof count === "number");
+  await engine.onToolUpdated("read");
+
+  assert.equal(cache.invalidations.length, 1);
+  assert.equal(cache.invalidations[0]!.type, "tag");
+  assert.equal(cache.invalidations[0]!.tag, "tool:read");
 });
 
-test("CacheInvalidationEngine handles empty tool name", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.invalidateNamespace delegates correctly", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.onToolUpdated("");
-  assert.ok(typeof count === "number");
+  await engine.invalidateNamespace("planner");
+
+  assert.equal(cache.invalidations.length, 1);
+  assert.equal(cache.invalidations[0]!.type, "namespace");
+  assert.equal(cache.invalidations[0]!.namespace, "planner");
 });
 
-test("CacheInvalidationEngine handles empty namespace", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.invalidateTags processes multiple tags sequentially", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.invalidateNamespace("");
-  assert.ok(typeof count === "number");
+  const total = await engine.invalidateTags(["tag1", "tag2", "tag3"]);
+
+  assert.equal(cache.invalidations.length, 3);
+  assert.equal(total, 3);
 });
 
-test("CacheInvalidationEngine.invalidateTags with empty array", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine.invalidateTags returns total count from all invalidations", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.invalidateTags([]);
-  assert.equal(count, 0);
+  // Each invalidation returns 1
+  const count = await engine.invalidateTags(["a", "b"]);
+
+  assert.equal(count, 2);
 });
 
-test("CacheInvalidationEngine.invalidateTags with single tag", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine handles paths with special characters", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.invalidateTags(["single-tag"]);
-  assert.ok(typeof count === "number");
+  await engine.onFileChanged("/path/with spaces/file[1].ts");
+
+  assert.ok(cache.invalidations[0]!.tag!.includes("spaces"));
 });
 
-test("CacheInvalidationEngine.invalidateTags aggregates multiple tag results", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine handles paths with unicode", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  // Call multiple times and verify accumulation works
-  const count1 = await engine.invalidateTags(["tag1"]);
-  const count2 = await engine.invalidateTags(["tag2"]);
+  await engine.onFileChanged("/path/文件.ts");
 
-  // Counts should be independent, not accumulated in single call
-  assert.ok(typeof count1 === "number");
-  assert.ok(typeof count2 === "number");
+  assert.ok(cache.invalidations[0]!.tag!.includes("文件"));
 });
 
-test("CacheInvalidationEngine.invalidateTags with duplicate tags", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine handles empty strings gracefully", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  // Same tag listed multiple times
-  const count = await engine.invalidateTags(["same-tag", "same-tag"]);
-  assert.ok(typeof count === "number");
+  // Empty file path generates empty tag
+  await engine.onFileChanged("");
+  await engine.onSessionClosed("");
+  await engine.onInstructionChanged("");
+  await engine.onRepoRebuilt("");
+  await engine.onToolUpdated("");
+
+  // All should complete without error
+  assert.equal(cache.invalidations.length, 5);
 });
 
-test("CacheInvalidationEngine.invalidateTags handles mixed valid and invalid tags", async () => {
-  const mockFacade = new MockCacheFacade();
-  const engine = new CacheInvalidationEngine(mockFacade);
+test("CacheInvalidationEngine handles very long strings", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
 
-  const count = await engine.invalidateTags([
-    "valid-tag",
-    "",
-    "another-valid",
-  ]);
-  assert.ok(typeof count === "number");
+  const longString = "a".repeat(10000);
+  await engine.onFileChanged(longString);
+
+  assert.ok(cache.invalidations[0]!.tag!.startsWith("file:"));
+});
+
+test("CacheInvalidationEngine multiple calls accumulate invalidations", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
+
+  await engine.onFileChanged("/path1");
+  await engine.onFileChanged("/path2");
+  await engine.onSessionClosed("session1");
+  await engine.onSessionClosed("session2");
+  await engine.onToolUpdated("tool1");
+  await engine.onToolUpdated("tool2");
+
+  assert.equal(cache.invalidations.length, 6);
+});
+
+test("CacheInvalidationEngine.invalidateNamespace with special characters", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
+
+  await engine.invalidateNamespace("planner:v2:execution");
+
+  assert.equal(cache.invalidations[0]!.namespace, "planner:v2:execution");
+});
+
+test("CacheInvalidationEngine returns 0 for empty invalidTags array", async () => {
+  const cache = new TrackingCacheFacade();
+  const engine = new CacheInvalidationEngine(cache);
+
+  const result = await engine.invalidateTags([]);
+
+  assert.equal(result, 0);
+});
+
+test("CacheInvalidationEngine can be instantiated with any CacheFacade implementation", () => {
+  class CustomCacheFacade implements CacheFacade {
+    async get<T>(): Promise<{ hit: boolean; value: T | null }> {
+      return { hit: false, value: null };
+    }
+    async set(): Promise<void> {}
+    async delete(): Promise<void> {}
+    async invalidateByTag(tag: string): Promise<number> {
+      return tag === "valid" ? 1 : 0;
+    }
+    async invalidateNamespace(namespace: string): Promise<number> {
+      return namespace === "valid" ? 1 : 0;
+    }
+    async cleanupExpired(): Promise<number> { return 0; }
+    getMetricsSnapshot() {
+      return { totalHits: 0, totalMisses: 0, byNamespace: {}, hitRate: 0 };
+    }
+  }
+
+  const customCache = new CustomCacheFacade();
+  const engine = new CacheInvalidationEngine(customCache);
+
+  // Should work with custom implementation
+  assert.ok(engine instanceof CacheInvalidationEngine);
 });

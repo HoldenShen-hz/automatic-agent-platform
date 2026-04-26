@@ -118,3 +118,97 @@ test("PackCatalogService defaults sandboxTier to process when not specified", ()
 
   assert.equal(entry.sandboxTier, "process");
 });
+
+test("PackCatalogService defaults description to empty string when not specified", () => {
+  const service = new PackCatalogService();
+  const entry = service.createPack({
+    packId: "pack_desc_default",
+    name: "Description Default Test",
+    version: "1.0.0",
+    domainId: "domain_ops",
+    createdBy: "user@example.com",
+  });
+
+  assert.equal(entry.description, "");
+});
+
+test("PackCatalogService defaults riskCount to 0 when not specified", () => {
+  const service = new PackCatalogService();
+  const entry = service.createPack({
+    packId: "pack_risk_default",
+    name: "Risk Default Test",
+    version: "1.0.0",
+    domainId: "domain_ops",
+    createdBy: "user@example.com",
+  });
+
+  assert.equal(entry.riskCount, 0);
+  assert.equal(entry.dependencyCount, 0);
+  assert.equal(entry.pluginCount, 0);
+  assert.equal(entry.toolBundleCount, 0);
+});
+
+test("PackCatalogService listPacks handles zero limit", () => {
+  const service = new PackCatalogService();
+  service.createPack({
+    packId: "pack_zero_limit",
+    name: "Zero Limit Test",
+    version: "1.0.0",
+    domainId: "domain_ops",
+    createdBy: "user@example.com",
+  });
+
+  const list = service.listPacks(0);
+
+  assert.equal(list.length, 0);
+});
+
+test("PackCatalogService listPacks handles negative limit", () => {
+  const service = new PackCatalogService();
+  service.createPack({
+    packId: "pack_neg_limit",
+    name: "Negative Limit Test",
+    version: "1.0.0",
+    domainId: "domain_ops",
+    createdBy: "user@example.com",
+  });
+
+  const list = service.listPacks(-10);
+
+  assert.equal(list.length, 0);
+});
+
+test("PackCatalogService listPacks handles empty service", () => {
+  const service = new PackCatalogService();
+
+  const list = service.listPacks();
+
+  assert.deepStrictEqual(list, []);
+});
+
+test("PackCatalogService getPack returns null for non-existent pack", () => {
+  const service = new PackCatalogService();
+
+  const result = service.getPack("non_existent_pack");
+
+  assert.equal(result, null);
+});
+
+test("PackCatalogService createPack accepts all sandboxTier values", () => {
+  const service = new PackCatalogService();
+
+  const tiers = ["none", "process", "container", "scoped_external_access"] as const;
+
+  for (const tier of tiers) {
+    const entry = service.createPack({
+      packId: `pack_tier_${tier}`,
+      name: `Tier ${tier} Test`,
+      version: "1.0.0",
+      domainId: "domain_ops",
+      createdBy: "user@example.com",
+      sandboxTier: tier,
+    });
+
+    assert.equal(entry.sandboxTier, tier);
+  }
+});

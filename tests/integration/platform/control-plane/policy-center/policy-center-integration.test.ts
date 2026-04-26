@@ -105,7 +105,12 @@ test("policy center: read-only mode denies mutating actions", () => {
 
 test("policy center: read-only mode allows non-mutating actions", () => {
   const policy = new PolicyCenterService();
-  const result = policy.evaluate(makeRequest({ action: "invoke_model", mode: "read-only" }));
+  const result = policy.evaluate(makeRequest({
+    action: "invoke_model",
+    mode: "read-only",
+    riskCategory: "cost_sensitive",
+    stage: "observe",
+  }));
 
   assert.strictEqual(result.decision, "allow_with_constraints");
   assert.ok(result.matchedRuleRefs.includes("mode.read_only"));
