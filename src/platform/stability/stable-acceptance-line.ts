@@ -202,6 +202,14 @@ export function buildStableAcceptanceLineReport(
   const latencyBudget = buildLatencyBudgetStatuses(allRuns, cases);
   const soakDurationMs = options.soakReport.wallClockDurationMs;
   const longRunCoveragePct = roundMetric((soakDurationMs / STABLE_ACCEPTANCE_REQUIRED_DURATION_MS) * 100);
+  const hasValidationFailures =
+    options.validationReport.failedRuns > 0
+    || options.validationReport.integrityFailures > 0
+    || options.validationReport.backupFailures > 0;
+  const hasSoakFailures =
+    options.soakReport.failedRuns > 0
+    || options.soakReport.integrityFailures > 0
+    || options.soakReport.backupFailures > 0;
 
   // Count orphan queue claims from repair findings
   const orphanQueueClaimCount = options.repairReport.before.findings.filter(
@@ -237,14 +245,14 @@ export function buildStableAcceptanceLineReport(
     {
       criterionId: "long_run_evidence",
       status:
-        options.soakReport.failedRuns > 0 || options.soakReport.integrityFailures > 0 || options.soakReport.backupFailures > 0
+        hasValidationFailures || hasSoakFailures
           ? "fail"
           : soakDurationMs >= STABLE_ACCEPTANCE_REQUIRED_DURATION_MS
             ? "pass"
             : "partial",
       detail:
-        options.soakReport.failedRuns > 0 || options.soakReport.integrityFailures > 0 || options.soakReport.backupFailures > 0
-          ? `long-run soak evidence is not clean: failedRuns=${options.soakReport.failedRuns}, integrityFailures=${options.soakReport.integrityFailures}, backupFailures=${options.soakReport.backupFailures}`
+        hasValidationFailures || hasSoakFailures
+          ? `stable evidence is not clean: validationFailedRuns=${options.validationReport.failedRuns}, validationIntegrityFailures=${options.validationReport.integrityFailures}, validationBackupFailures=${options.validationReport.backupFailures}, soakFailedRuns=${options.soakReport.failedRuns}, soakIntegrityFailures=${options.soakReport.integrityFailures}, soakBackupFailures=${options.soakReport.backupFailures}`
           : soakDurationMs >= STABLE_ACCEPTANCE_REQUIRED_DURATION_MS
             ? `observed soak duration ${formatDurationHours(soakDurationMs)} meets the 14-day acceptance line`
             : `observed soak duration ${formatDurationHours(soakDurationMs)} is below the 14-day acceptance line (${formatDurationHours(STABLE_ACCEPTANCE_REQUIRED_DURATION_MS)})`,
@@ -252,6 +260,9 @@ export function buildStableAcceptanceLineReport(
         soakDurationMs,
         requiredDurationMs: STABLE_ACCEPTANCE_REQUIRED_DURATION_MS,
         longRunCoveragePct,
+        validationFailedRuns: options.validationReport.failedRuns,
+        validationIntegrityFailures: options.validationReport.integrityFailures,
+        validationBackupFailures: options.validationReport.backupFailures,
         failedRuns: options.soakReport.failedRuns,
         integrityFailures: options.soakReport.integrityFailures,
         backupFailures: options.soakReport.backupFailures,

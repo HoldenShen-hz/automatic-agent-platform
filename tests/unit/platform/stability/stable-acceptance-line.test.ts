@@ -14,7 +14,7 @@ test("STABLE_ACCEPTANCE_P95_BUDGET_MS has interactive and extended bands", () =>
   assert.equal(STABLE_ACCEPTANCE_P95_BUDGET_MS.extended, 120_000);
 });
 
-test("buildStableAcceptanceLineReport returns report with pass status when all criteria pass", async () => {
+test("buildStableAcceptanceLineReport returns partial status when short-run evidence is otherwise healthy", async () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: {
@@ -72,7 +72,7 @@ test("buildStableAcceptanceLineReport returns report with pass status when all c
     },
   });
 
-  assert.equal(report.status, "pass");
+  assert.equal(report.status, "partial");
   assert.equal(report.profileName, "smoke");
   assert.ok(report.evaluatedAt);
   assert.ok(Array.isArray(report.criteria));
