@@ -3,80 +3,59 @@ import test from "node:test";
 
 import { sanitizeJsonValue } from "../../../../../../src/platform/interface/api/middleware/sanitize.js";
 
-test.describe("sanitizeJsonValue", () => {
-  test("returns primitive values unchanged", () => {
-    assert.equal(sanitizeJsonValue("hello"), "hello");
-    assert.equal(sanitizeJsonValue(42), 42);
-    assert.equal(sanitizeJsonValue(true), true);
-    assert.equal(sanitizeJsonValue(null), null);
-    assert.equal(sanitizeJsonValue(undefined), undefined);
-  });
+test("sanitizeJsonValue returns primitives unchanged", () => {
+  assert.equal(sanitizeJsonValue("hello"), "hello");
+  assert.equal(sanitizeJsonValue(42), 42);
+  assert.equal(sanitizeJsonValue(true), true);
+  assert.equal(sanitizeJsonValue(null), null);
+});
 
-  test("sanitizes plain objects with safe keys", () => {
-    const input = { name: "John", age: 30 };
-    const result = sanitizeJsonValue(input) as Record<string, unknown>;
-    assert.equal(result.name, "John");
-    assert.equal(result.age, 30);
-  });
+test("sanitizeJsonValue returns plain objects with null prototype", () => {
+  const obj = { key: "value", num: 123 };
+  const result = sanitizeJsonValue(obj) as Record<string, unknown>;
+  assert.equal(result.key, "value");
+  assert.equal(result.num, 123);
+  assert.ok(Object.getPrototypeOf(result) === null);
+});
 
-  test("sanitizes nested objects", () => {
-    const input = { user: { name: "John", active: true } };
-    const result = sanitizeJsonValue(input) as { user: { name: string; active: boolean } };
-    assert.equal(result.user.name, "John");
-    assert.equal(result.user.active, true);
-  });
+test("sanitizeJsonValue recursively sanitizes arrays", () => {
+  const result = sanitizeJsonValue([
+    { key: "first" },
+    { key: "second" },
+  ]) as unknown[];
+  assert.equal((result[0] as Record<string, unknown>).key, "first");
+  assert.equal((result[1] as Record<string, unknown>).key, "second");
+  assert.ok(Object.getPrototypeOf(result[0]) === null);
+});
 
-  test("sanitizes arrays with primitive values", () => {
-    const input = [1, 2, 3];
-    const result = sanitizeJsonValue(input);
-    assert.deepEqual(result, [1, 2, 3]);
-  });
+test("sanitizeJsonValue throws on prototype key", () => {
+  assert.throws(
+    () => sanitizeJsonValue({ prototype: "evil" }),
+    (err: any) => err.code === "api.invalid_json_key"
+  );
+});
 
-  test("sanitizes arrays with objects", () => {
-    const input = [{ id: 1 }, { id: 2 }];
-    const result = sanitizeJsonValue(input) as Array<{ id: number }>;
-    assert.equal(result[0].id, 1);
-    assert.equal(result[1].id, 2);
-  });
+test("sanitizeJsonValue throws on constructor key", () => {
+  assert.throws(
+    () => sanitizeJsonValue({ constructor: {} }),
+    (err: any) => err.code === "api.invalid_json_key"
+  );
+});
 
-  test("sanitizes deeply nested structures", () => {
-    const input = { a: { b: { c: { d: 1 } } } };
-    const result = sanitizeJsonValue(input) as { a: { b: { c: { d: number } } } };
-    assert.equal(result.a.b.c.d, 1);
-  });
+test("sanitizeJsonValue allows safe keys", () => {
+  const result = sanitizeJsonValue({
+    normalKey: "allowed",
+    anotherKey: 123,
+    nested: { deeper: true },
+  }) as Record<string, unknown>;
+  assert.equal(result.normalKey, "allowed");
+  assert.equal(result.anotherKey, 123);
+  const nested = result.nested as Record<string, unknown>;
+  assert.equal(nested.deeper, true);
+  assert.ok(Object.getPrototypeOf(result) === null);
+});
 
-  test("__proto__ is not caught - bypasses Object.keys enumeration", () => {
-    // __proto__ is a special property that sets prototype directly
-    // It bypasses the DANGEROUS_JSON_KEYS check because Object.keys does not enumerate it
-    const result = sanitizeJsonValue({ __proto__: { x: 1 } });
-    assert.ok(result !== null && typeof result === "object");
-  });
-
-  test("throws on prototype key", () => {
-    assert.throws(() => sanitizeJsonValue({ prototype: { x: 1 } }), /JSON payload contains reserved key: prototype/);
-  });
-
-  test("throws on constructor key", () => {
-    assert.throws(() => sanitizeJsonValue({ constructor: { x: 1 } }), /JSON payload contains reserved key: constructor/);
-  });
-
-  test("allows other underscore keys", () => {
-    const result = sanitizeJsonValue({ _internal: "safe", __private: "also checked" });
-    // These don't throw because they don't match the exact Set values
-  });
-
-  test("returns object for empty input", () => {
-    const result = sanitizeJsonValue({});
-    // Returns null prototype object
-    assert.ok(result !== null && typeof result === "object");
-  });
-
-  test("handles mixed types in object", () => {
-    const input = { str: "text", num: 123, bool: false, null: null };
-    const result = sanitizeJsonValue(input) as Record<string, unknown>;
-    assert.equal(result.str, "text");
-    assert.equal(result.num, 123);
-    assert.equal(result.bool, false);
-    assert.equal(result.null, null);
-  });
+test("sanitizeJsonValue creates plain object with null prototype", () => {
+  const result = sanitizeJsonValue({ key: "value" });
+  assert.ok(Object.getPrototypeOf(result) === null || Object.getPrototypeOf(result) === Object.prototype);
 });

@@ -2,161 +2,197 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  MetaModelValidator,
   computeMetaModelCompleteness,
+  MetaModelValidator,
 } from "../../../../src/domains/canonical-meta-model/meta-model-validator.js";
-import type { DomainMetaModel, MetaModelAnswer } from "../../../../src/domains/canonical-meta-model/types.js";
+import type { DomainMetaModel } from "../../../../src/domains/canonical-meta-model/types.js";
 import { META_MODEL_QUESTION_IDS } from "../../../../src/domains/canonical-meta-model/types.js";
 
-function createCompleteModel(): DomainMetaModel {
-  const answers: MetaModelAnswer[] = META_MODEL_QUESTION_IDS.map((questionId) => ({
-    questionId,
-    title: `Question ${questionId}`,
-    answer: "This is a complete answer with actual content.",
-    evidenceRefs: ["evidence-1"],
-    status: "complete" as const,
-  }));
+function createCompleteModel(domainId: string): DomainMetaModel {
   return {
-    domainId: "test-domain",
+    domainId,
     displayName: "Test Domain",
     version: "v1",
-    answers,
-  };
-}
-
-function createIncompleteModel(missingIds: typeof META_MODEL_QUESTION_IDS[number][]): DomainMetaModel {
-  const answers: MetaModelAnswer[] = META_MODEL_QUESTION_IDS
-    .filter((id) => !missingIds.includes(id))
-    .map((questionId) => ({
-      questionId,
-      title: `Question ${questionId}`,
-      answer: "Complete answer",
-      evidenceRefs: ["evidence-1"],
+    answers: META_MODEL_QUESTION_IDS.map((id) => ({
+      questionId: id,
+      title: "Test Question",
+      answer: "Test answer content",
+      evidenceRefs: ["ref1"],
       status: "complete" as const,
-    }));
-  return {
-    domainId: "test-domain",
-    displayName: "Test Domain",
-    version: "v1",
-    answers,
+    })),
   };
 }
 
 test("computeMetaModelCompleteness returns 100 for complete model", () => {
-  const model = createCompleteModel();
+  const model = createCompleteModel("test-domain");
   const completeness = computeMetaModelCompleteness(model);
+
   assert.equal(completeness, 100);
 });
 
-test("computeMetaModelCompleteness returns less than 100 for incomplete model", () => {
-  const model = createIncompleteModel(["Q1_primary_user", "Q2_primary_outcomes"]);
+test("computeMetaModelCompleteness returns 0 for empty answers", () => {
+  const model: DomainMetaModel = {
+    domainId: "test-domain",
+    displayName: "Test",
+    version: "v1",
+    answers: [],
+  };
+
   const completeness = computeMetaModelCompleteness(model);
-  // 10 out of 12 questions answered = 83.33%
-  assert.ok(completeness < 100);
-  assert.ok(completeness > 0);
+
+  assert.equal(completeness, 0);
+});
+
+test("computeMetaModelCompleteness ignores incomplete answers", () => {
+  const model: DomainMetaModel = {
+    domainId: "test-domain",
+    displayName: "Test",
+    version: "v1",
+    answers: META_MODEL_QUESTION_IDS.map((id, i) => ({
+      questionId: id,
+      title: "Test",
+      answer: i === 0 ? "" : "some answer",
+      evidenceRefs: [],
+      status: i === 0 ? "pending" as const : "complete" as const,
+    })),
+  };
+
+  const completeness = computeMetaModelCompleteness(model);
+
+  // 11 out of 12 questions answered (excluding the one with empty answer)
+  assert.equal(completeness, 91.67);
 });
 
 test("MetaModelValidator.validate returns valid for complete model", () => {
   const validator = new MetaModelValidator();
-  const model = createCompleteModel();
+  const model = createCompleteModel("test-domain");
+
   const result = validator.validate(model);
 
   assert.equal(result.valid, true);
+  assert.equal(result.domainId, "test-domain");
   assert.equal(result.completeness, 100);
-  assert.equal(result.missingQuestionIds.length, 0);
-  assert.equal(result.findings.length, 0);
+  assert.deepEqual(result.missingQuestionIds, []);
+  assert.deepEqual(result.findings, []);
 });
 
-test("MetaModelValidator.validate detects missing questions", () => {
-  const validator = new MetaModelValidator();
-  const model = createIncompleteModel(["Q1_primary_user", "Q5_decision_scope"]);
-  const result = validator.validate(model);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.missingQuestionIds.includes("Q1_primary_user"));
-  assert.ok(result.missingQuestionIds.includes("Q5_decision_scope"));
-  assert.ok(result.findings.some((f) => f.includes("missing_question")));
-});
-
-test("MetaModelValidator.validate detects duplicate question answers", () => {
-  const validator = new MetaModelValidator();
-  const duplicateAnswer: MetaModelAnswer = {
-    questionId: "Q1_primary_user",
-    title: "Primary User",
-    answer: "Duplicate answer",
-    evidenceRefs: [],
-    status: "complete",
-  };
-  const model: DomainMetaModel = {
-    domainId: "test",
-    displayName: "Test",
-    version: "v1",
-    answers: [
-      duplicateAnswer,
-      duplicateAnswer,
-      ...META_MODEL_QUESTION_IDS.slice(1).map((questionId) => ({
-        questionId,
-        title: `Question ${questionId}`,
-        answer: "Complete answer",
-        evidenceRefs: [],
-        status: "complete" as const,
-      })),
-    ],
-  };
-
-  const result = validator.validate(model);
-  assert.ok(result.findings.some((f) => f.includes("duplicate_question")));
-});
-
-test("MetaModelValidator.validate detects incomplete answers", () => {
+test("MetaModelValidator.validate detects duplicate questions", () => {
   const validator = new MetaModelValidator();
   const model: DomainMetaModel = {
-    domainId: "test",
+    domainId: "test-domain",
     displayName: "Test",
     version: "v1",
     answers: [
       {
         questionId: "Q1_primary_user",
-        title: "Primary User",
-        answer: "", // Empty answer
+        title: "Q1",
+        answer: "answer 1",
         evidenceRefs: [],
-        status: "complete" as const,
+        status: "complete",
+      },
+      {
+        questionId: "Q1_primary_user",
+        title: "Q1 duplicate",
+        answer: "answer 2",
+        evidenceRefs: [],
+        status: "complete",
       },
     ],
   };
 
   const result = validator.validate(model);
-  assert.ok(result.findings.some((f) => f.includes("incomplete_answer")));
+
+  assert.equal(result.valid, false);
+  assert.ok(result.findings.some(f => f.includes("duplicate_question")));
 });
 
-test("MetaModelValidator.validate handles pending status answers", () => {
+test("MetaModelValidator.validate detects incomplete answers", () => {
   const validator = new MetaModelValidator();
   const model: DomainMetaModel = {
-    domainId: "test",
+    domainId: "test-domain",
     displayName: "Test",
     version: "v1",
-    answers: META_MODEL_QUESTION_IDS.map((questionId) => ({
-      questionId,
-      title: `Question ${questionId}`,
-      answer: "Answer content",
+    answers: [
+      {
+        questionId: "Q1_primary_user",
+        title: "Q1",
+        answer: "",
+        evidenceRefs: [],
+        status: "complete",
+      },
+    ],
+  };
+
+  const result = validator.validate(model);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.findings.some(f => f.includes("incomplete_answer")));
+});
+
+test("MetaModelValidator.validate detects missing questions", () => {
+  const validator = new MetaModelValidator();
+  const model: DomainMetaModel = {
+    domainId: "test-domain",
+    displayName: "Test",
+    version: "v1",
+    answers: [
+      {
+        questionId: "Q1_primary_user",
+        title: "Q1",
+        answer: "answer",
+        evidenceRefs: [],
+        status: "complete",
+      },
+    ],
+  };
+
+  const result = validator.validate(model);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.missingQuestionIds.length > 0);
+  assert.ok(result.missingQuestionIds.includes("Q2_primary_outcomes"));
+});
+
+test("MetaModelValidator.validate handles pending status as incomplete", () => {
+  const validator = new MetaModelValidator();
+  const model: DomainMetaModel = {
+    domainId: "test-domain",
+    displayName: "Test",
+    version: "v1",
+    answers: META_MODEL_QUESTION_IDS.map((id) => ({
+      questionId: id,
+      title: "Test",
+      answer: "some answer",
       evidenceRefs: [],
       status: "pending" as const,
     })),
   };
 
   const result = validator.validate(model);
-  // Pending status means incomplete even with content
-  assert.ok(result.completeness === 0);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.findings.some(f => f.includes("incomplete_answer")));
 });
 
-test("MetaModelValidator.validate returns correct completeness for partial completion", () => {
+test("MetaModelValidator.validate handles whitespace-only answer as incomplete", () => {
   const validator = new MetaModelValidator();
-  // Exactly half answered
-  const half = META_MODEL_QUESTION_IDS.slice(0, 6);
-  const model = createIncompleteModel(
-    META_MODEL_QUESTION_IDS.filter((id) => !half.includes(id)) as typeof META_MODEL_QUESTION_IDS[number][],
-  );
+  const model: DomainMetaModel = {
+    domainId: "test-domain",
+    displayName: "Test",
+    version: "v1",
+    answers: [
+      {
+        questionId: "Q1_primary_user",
+        title: "Q1",
+        answer: "   ",
+        evidenceRefs: [],
+        status: "complete",
+      },
+    ],
+  };
 
   const result = validator.validate(model);
-  assert.equal(result.completeness, 50);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.findings.some(f => f.includes("incomplete_answer")));
 });

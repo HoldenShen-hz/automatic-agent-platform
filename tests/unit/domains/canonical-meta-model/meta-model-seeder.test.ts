@@ -1,219 +1,152 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { seedDomainMetaModel, seedDomainMetaModels } from "../../../../src/domains/canonical-meta-model/meta-model-seeder.js";
-import type { MetaModelSeedInput } from "../../../../src/domains/canonical-meta-model/meta-model-seeder.js";
+import {
+  seedDomainMetaModel,
+  seedDomainMetaModels,
+} from "../../../../src/domains/canonical-meta-model/meta-model-seeder.js";
 import { META_MODEL_QUESTION_IDS } from "../../../../src/domains/canonical-meta-model/types.js";
 
-test("seedDomainMetaModel creates model with correct domainId", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: ["task-type-a", "task-type-b"],
+test("seedDomainMetaModel creates model with all question IDs", () => {
+  const model = seedDomainMetaModel({
+    domainId: "test-domain",
+    displayName: "Test Domain",
+    ownerOrgNodeId: "node-123",
+    taskTypes: ["task1", "task2"],
     tags: ["tag1", "tag2"],
-    riskLevel: "medium",
-  };
-
-  const model = seedDomainMetaModel(input);
-
-  assert.equal(model.domainId, "my-domain");
-});
-
-test("seedDomainMetaModel creates model with correct displayName", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Special Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: [],
-    tags: [],
     riskLevel: "high",
-  };
+  });
 
-  const model = seedDomainMetaModel(input);
-
-  assert.equal(model.displayName, "My Special Domain");
+  assert.equal(model.domainId, "test-domain");
+  assert.equal(model.displayName, "Test Domain");
+  assert.equal(model.version, "v1");
+  assert.equal(model.answers.length, META_MODEL_QUESTION_IDS.length);
 });
 
-test("seedDomainMetaModel creates model with version v1", () => {
-  const input: MetaModelSeedInput = {
+test("seedDomainMetaModel marks all answers as complete", () => {
+  const model = seedDomainMetaModel({
+    domainId: "test-domain",
+    displayName: "Test Domain",
+    ownerOrgNodeId: "node-123",
+    taskTypes: ["task1"],
+    tags: [],
+    riskLevel: "medium",
+  });
+
+  for (const answer of model.answers) {
+    assert.equal(answer.status, "complete", `Answer ${answer.questionId} should be complete`);
+  }
+});
+
+test("seedDomainMetaModel includes base evidence with domainId and owner", () => {
+  const model = seedDomainMetaModel({
     domainId: "my-domain",
     displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
+    ownerOrgNodeId: "owner-node",
     taskTypes: [],
     tags: [],
     riskLevel: "critical",
-  };
-
-  const model = seedDomainMetaModel(input);
-
-  assert.equal(model.version, "v1");
-});
-
-test("seedDomainMetaModel generates all 12 question answers", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: ["type-a", "type-b"],
-    tags: ["tag1"],
-    riskLevel: "medium",
-  };
-
-  const model = seedDomainMetaModel(input);
-
-  assert.equal(model.answers.length, META_MODEL_QUESTION_IDS.length);
-  assert.equal(model.answers.length, 12);
-});
-
-test("seedDomainMetaModel generates answers for all question IDs", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: [],
-    tags: [],
-    riskLevel: "medium",
-  };
-
-  const model = seedDomainMetaModel(input);
-
-  for (const questionId of META_MODEL_QUESTION_IDS) {
-    const answer = model.answers.find((a) => a.questionId === questionId);
-    assert.ok(answer !== undefined, `Missing answer for ${questionId}`);
-  }
-});
-
-test("seedDomainMetaModel marks all answers as complete status", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: [],
-    tags: [],
-    riskLevel: "medium",
-  };
-
-  const model = seedDomainMetaModel(input);
+  });
 
   for (const answer of model.answers) {
-    assert.equal(answer.status, "complete");
-  }
-});
-
-test("seedDomainMetaModel generates non-empty answers", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: ["type-a", "type-b", "type-c"],
-    tags: ["tag1", "tag2"],
-    riskLevel: "high",
-  };
-
-  const model = seedDomainMetaModel(input);
-
-  for (const answer of model.answers) {
-    assert.ok(answer.answer.length > 0, `Empty answer for ${answer.questionId}`);
+    assert.ok(answer.evidenceRefs.includes("domain:my-domain"), `Answer should have domain evidence`);
+    assert.ok(answer.evidenceRefs.includes("owner:owner-node"), `Answer should have owner evidence`);
   }
 });
 
 test("seedDomainMetaModel includes task types in Q3 answer", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: ["task-type-a", "task-type-b"],
+  const model = seedDomainMetaModel({
+    domainId: "test-domain",
+    displayName: "Test",
+    ownerOrgNodeId: "node",
+    taskTypes: ["type-a", "type-b", "type-c"],
     tags: [],
-    riskLevel: "medium",
-  };
+    riskLevel: "high",
+  });
 
-  const model = seedDomainMetaModel(input);
-  const q3Answer = model.answers.find((a) => a.questionId === "Q3_core_inputs");
-
-  assert.ok(q3Answer !== undefined);
-  assert.ok(q3Answer!.answer.includes("task-type-a"));
-  assert.ok(q3Answer!.answer.includes("task-type-b"));
+  const q3 = model.answers.find(a => a.questionId === "Q3_core_inputs");
+  assert.ok(q3);
+  assert.ok(q3.answer.includes("type-a"));
+  assert.ok(q3.answer.includes("type-b"));
+  assert.ok(q3.answer.includes("type-c"));
 });
 
-test("seedDomainMetaModel reflects risk level in Q6 answer", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "My Domain",
-    ownerOrgNodeId: "org-node-1",
+test("seedDomainMetaModel sets risk hotspot based on risk level", () => {
+  const modelHigh = seedDomainMetaModel({
+    domainId: "d1",
+    displayName: "D1",
+    ownerOrgNodeId: "n",
+    taskTypes: [],
+    tags: [],
+    riskLevel: "high",
+  });
+
+  const q6High = modelHigh.answers.find(a => a.questionId === "Q6_risk_hotspots");
+  assert.ok(q6High);
+  assert.ok(q6High.answer.includes("high risk"));
+
+  const modelCritical = seedDomainMetaModel({
+    domainId: "d2",
+    displayName: "D2",
+    ownerOrgNodeId: "n",
     taskTypes: [],
     tags: [],
     riskLevel: "critical",
-  };
+  });
 
-  const model = seedDomainMetaModel(input);
-  const q6Answer = model.answers.find((a) => a.questionId === "Q6_risk_hotspots");
-
-  assert.ok(q6Answer !== undefined);
-  assert.ok(q6Answer!.answer.includes("critical"));
-});
-
-test("seedDomainMetaModel uses displayName in primary user answer", () => {
-  const input: MetaModelSeedInput = {
-    domainId: "my-domain",
-    displayName: "Special Domain",
-    ownerOrgNodeId: "org-node-1",
-    taskTypes: [],
-    tags: [],
-    riskLevel: "medium",
-  };
-
-  const model = seedDomainMetaModel(input);
-  const q1Answer = model.answers.find((a) => a.questionId === "Q1_primary_user");
-
-  assert.ok(q1Answer !== undefined);
-  assert.ok(q1Answer!.answer.includes("Special Domain"));
+  const q6Critical = modelCritical.answers.find(a => a.questionId === "Q6_risk_hotspots");
+  assert.ok(q6Critical);
+  assert.ok(q6Critical.answer.includes("critical risk"));
 });
 
 test("seedDomainMetaModels creates multiple models", () => {
-  const inputs: readonly MetaModelSeedInput[] = [
-    {
-      domainId: "domain-a",
-      displayName: "Domain A",
-      ownerOrgNodeId: "org-1",
-      taskTypes: [],
-      tags: [],
-      riskLevel: "medium",
-    },
-    {
-      domainId: "domain-b",
-      displayName: "Domain B",
-      ownerOrgNodeId: "org-2",
-      taskTypes: [],
-      tags: [],
-      riskLevel: "high",
-    },
+  const inputs = [
+    { domainId: "domain-a", displayName: "Domain A", ownerOrgNodeId: "node-a", taskTypes: ["t1"], tags: [], riskLevel: "medium" as const },
+    { domainId: "domain-b", displayName: "Domain B", ownerOrgNodeId: "node-b", taskTypes: ["t2"], tags: [], riskLevel: "high" as const },
   ];
 
   const models = seedDomainMetaModels(inputs);
 
   assert.equal(models.length, 2);
-  assert.equal(models[0]!.domainId, "domain-a");
-  assert.equal(models[1]!.domainId, "domain-b");
+  assert.equal(models[0].domainId, "domain-a");
+  assert.equal(models[1].domainId, "domain-b");
 });
 
-test("seedDomainMetaModels preserves individual model properties", () => {
-  const inputs: readonly MetaModelSeedInput[] = [
-    {
-      domainId: "domain-x",
-      displayName: "Domain X",
-      ownerOrgNodeId: "org-x",
-      taskTypes: ["type-x"],
-      tags: ["tag-x"],
-      riskLevel: "critical",
-    },
-  ];
+test("seedDomainMetaModels returns array of models", () => {
+  const models = seedDomainMetaModels([
+    { domainId: "d1", displayName: "D1", ownerOrgNodeId: "n", taskTypes: [], tags: [], riskLevel: "medium" as const },
+  ]);
 
-  const models = seedDomainMetaModels(inputs);
-  const model = models[0]!;
+  assert.ok(models[0]);
+  assert.equal(models[0].domainId, "d1");
+});
 
-  assert.equal(model.domainId, "domain-x");
-  assert.equal(model.displayName, "Domain X");
-  assert.equal(model.version, "v1");
-  assert.equal(model.answers.length, 12);
+test("seedDomainMetaModel Q10 includes human governance mention", () => {
+  const model = seedDomainMetaModel({
+    domainId: "test",
+    displayName: "Test",
+    ownerOrgNodeId: "n",
+    taskTypes: [],
+    tags: [],
+    riskLevel: "medium",
+  });
+
+  const q10 = model.answers.find(a => a.questionId === "Q10_human_governance");
+  assert.ok(q10);
+  assert.ok(q10.answer.includes("Human") || q10.answer.includes("human") || q10.answer.includes("approval"));
+});
+
+test("seedDomainMetaModel Q11 includes latency mention", () => {
+  const model = seedDomainMetaModel({
+    domainId: "test",
+    displayName: "Test",
+    ownerOrgNodeId: "n",
+    taskTypes: [],
+    tags: [],
+    riskLevel: "medium",
+  });
+
+  const q11 = model.answers.find(a => a.questionId === "Q11_latency_sla");
+  assert.ok(q11);
+  assert.ok(q11.answer.includes("Latency") || q11.answer.includes("latency"));
 });

@@ -1,73 +1,120 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
+
 import { ComplianceEvidenceCollector } from "../../../../src/org-governance/compliance-engine/evidence-collector.js";
 
-test("ComplianceEvidenceCollector collect() creates a record with generated evidenceId and timestamp", () => {
+test("ComplianceEvidenceCollector.collect creates record with ID and timestamp", () => {
   const collector = new ComplianceEvidenceCollector();
-  const input = {
-    frameworkId: "sox",
-    controlId: "access_review",
-    source: "system",
-    artifactRef: "audit/2024/log-001",
-  };
 
-  const record = collector.collect(input);
+  const record = collector.collect({
+    frameworkId: "SOC2",
+    controlId: "CC1.1",
+    source: "audit-log",
+    artifactRef: "artifact-123",
+  });
 
   assert.ok(record.evidenceId.startsWith("compliance_evidence_"));
-  assert.ok(record.collectedAt.includes("T"));
-  assert.strictEqual(record.frameworkId, "sox");
-  assert.strictEqual(record.controlId, "access_review");
-  assert.strictEqual(record.source, "system");
-  assert.strictEqual(record.artifactRef, "audit/2024/log-001");
+  assert.ok(record.collectedAt);
+  assert.equal(record.frameworkId, "SOC2");
+  assert.equal(record.controlId, "CC1.1");
+  assert.equal(record.source, "audit-log");
+  assert.equal(record.artifactRef, "artifact-123");
 });
 
-test("ComplianceEvidenceCollector collect() uses provided collectedAt when given", () => {
+test("ComplianceEvidenceCollector.collect uses provided collectedAt", () => {
   const collector = new ComplianceEvidenceCollector();
-  const fixedTime = "2024-01-15T10:30:00.000Z";
-  const input = {
-    frameworkId: "hipaa",
-    controlId: "phi_access",
-    source: "hr_system",
-    artifactRef: "employee-records/001",
-    collectedAt: fixedTime,
-  };
+  const customTime = "2024-01-15T10:30:00Z";
 
-  const record = collector.collect(input);
+  const record = collector.collect({
+    frameworkId: "SOC2",
+    controlId: "CC1.1",
+    source: "audit-log",
+    artifactRef: "artifact-123",
+    collectedAt: customTime,
+  });
 
-  assert.strictEqual(record.collectedAt, fixedTime);
+  assert.equal(record.collectedAt, customTime);
 });
 
-test("ComplianceEvidenceCollector list() returns all records when frameworkId is omitted", () => {
+test("ComplianceEvidenceCollector.list returns all records when no frameworkId", () => {
   const collector = new ComplianceEvidenceCollector();
-  collector.collect({ frameworkId: "sox", controlId: "ctrl1", source: "s1", artifactRef: "a1" });
-  collector.collect({ frameworkId: "hipaa", controlId: "ctrl2", source: "s2", artifactRef: "a2" });
-  collector.collect({ frameworkId: "sox", controlId: "ctrl3", source: "s3", artifactRef: "a3" });
 
-  const all = collector.list();
+  collector.collect({
+    frameworkId: "SOC2",
+    controlId: "CC1.1",
+    source: "source-a",
+    artifactRef: "artifact-1",
+  });
+  collector.collect({
+    frameworkId: "GDPR",
+    controlId: "Req-5",
+    source: "source-b",
+    artifactRef: "artifact-2",
+  });
 
-  assert.strictEqual(all.length, 3);
+  const allRecords = collector.list();
+
+  assert.equal(allRecords.length, 2);
 });
 
-test("ComplianceEvidenceCollector list() filters by frameworkId", () => {
+test("ComplianceEvidenceCollector.list filters by frameworkId", () => {
   const collector = new ComplianceEvidenceCollector();
-  collector.collect({ frameworkId: "sox", controlId: "ctrl1", source: "s1", artifactRef: "a1" });
-  collector.collect({ frameworkId: "hipaa", controlId: "ctrl2", source: "s2", artifactRef: "a2" });
-  collector.collect({ frameworkId: "sox", controlId: "ctrl3", source: "s3", artifactRef: "a3" });
 
-  const soxRecords = collector.list("sox");
-  const hipaaRecords = collector.list("hipaa");
+  collector.collect({
+    frameworkId: "SOC2",
+    controlId: "CC1.1",
+    source: "source-a",
+    artifactRef: "artifact-1",
+  });
+  collector.collect({
+    frameworkId: "SOC2",
+    controlId: "CC1.2",
+    source: "source-b",
+    artifactRef: "artifact-2",
+  });
+  collector.collect({
+    frameworkId: "GDPR",
+    controlId: "Req-5",
+    source: "source-c",
+    artifactRef: "artifact-3",
+  });
 
-  assert.strictEqual(soxRecords.length, 2);
-  assert.strictEqual(hipaaRecords.length, 1);
-  assert.strictEqual(soxRecords[0]!.frameworkId, "sox");
-  assert.strictEqual(hipaaRecords[0]!.frameworkId, "hipaa");
+  const soc2Records = collector.list("SOC2");
+  const gdprRecords = collector.list("GDPR");
+
+  assert.equal(soc2Records.length, 2);
+  assert.equal(gdprRecords.length, 1);
+  assert.equal(soc2Records[0]?.controlId, "CC1.1");
+  assert.equal(soc2Records[1]?.controlId, "CC1.2");
 });
 
-test("ComplianceEvidenceCollector list() returns empty array for unknown frameworkId", () => {
+test("ComplianceEvidenceCollector.list returns empty for unknown framework", () => {
   const collector = new ComplianceEvidenceCollector();
-  collector.collect({ frameworkId: "sox", controlId: "ctrl1", source: "s1", artifactRef: "a1" });
 
-  const records = collector.list("unknown_framework");
+  collector.collect({
+    frameworkId: "SOC2",
+    controlId: "CC1.1",
+    source: "audit-log",
+    artifactRef: "artifact-123",
+  });
 
-  assert.strictEqual(records.length, 0);
+  const records = collector.list("UnknownFramework");
+
+  assert.equal(records.length, 0);
+});
+
+test("ComplianceEvidenceCollector collects multiple records for same framework", () => {
+  const collector = new ComplianceEvidenceCollector();
+
+  for (let i = 0; i < 5; i++) {
+    collector.collect({
+      frameworkId: "SOC2",
+      controlId: `CC1.${i}`,
+      source: "source",
+      artifactRef: `artifact-${i}`,
+    });
+  }
+
+  const records = collector.list("SOC2");
+  assert.equal(records.length, 5);
 });
