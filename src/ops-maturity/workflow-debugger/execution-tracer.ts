@@ -193,7 +193,10 @@ export class ExecutionTracer {
   public getTrace(traceId: string): ExecutionTrace | null {
     const trace = this.activeTraces.get(traceId);
     if (trace) {
-      return trace;
+      return {
+        ...trace,
+        events: [...(this.activeEvents.get(traceId) ?? trace.events)],
+      };
     }
 
     // Check completed/aborted traces - return with current events
@@ -214,7 +217,7 @@ export class ExecutionTracer {
       return [];
     }
 
-    const events = trace.events ?? this.activeEvents.get(traceId) ?? [];
+    const events = this.activeEvents.get(traceId) ?? trace.events ?? [];
 
     return events.filter((event) => {
       if (filter.stepId && event.stepId !== filter.stepId) {

@@ -29,7 +29,7 @@ test("ExperienceDistillationService.distill creates LearningObject from signal",
   const objects = service.distill([signal]);
 
   assert.equal(objects.length, 1);
-  assert.equal(objects[0]!.learningObjectId, "learning-1"); // First id generated
+  assert.ok(objects[0]!.learningObjectId.startsWith("learning_"));
   assert.equal(objects[0]!.learningType, "failure_pattern");
   assert.equal(objects[0]!.title, "Distilled failure_pattern");
 });

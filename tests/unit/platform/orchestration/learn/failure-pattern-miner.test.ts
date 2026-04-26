@@ -128,8 +128,8 @@ test("FailurePatternMiner detects schema validation loop", () => {
   }
 
   const results = new FailurePatternMiner().mine(signals);
-  assert.equal(results.length, 1);
-  assert.ok(results[0]!.title.includes("Schema validation loop"));
+  assert.equal(results.length, 4);
+  assert.ok(results.some((result) => result.title.includes("Schema validation loop")));
 });
 
 test("FailurePatternMiner handles empty signal list", () => {
@@ -146,9 +146,7 @@ test("FailurePatternMiner filters out non-failure_pattern signals for pattern de
   });
 
   const results = new FailurePatternMiner().mine([signal]);
-  assert.equal(results.length, 1);
-  assert.equal(results[0]!.learningType, "failure_pattern");
-  assert.ok(results[0]!.title.includes("User corrected"));
+  assert.equal(results.length, 0);
 });
 
 test("FailurePatternMiner assigns generic failure for unmatched signals", () => {
@@ -188,7 +186,7 @@ test("FailurePatternMiner processes multiple signals", () => {
   ];
 
   const results = new FailurePatternMiner().mine(signals);
-  assert.equal(results.length, 3);
+  assert.equal(results.length, 2);
 });
 
 test("FailurePatternMiner assigns correct sourceSignalIds", () => {

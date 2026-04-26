@@ -10,25 +10,25 @@ test("routeComplexity returns passthrough for short input", () => {
 });
 
 test("routeComplexity returns fast for lookup keywords", () => {
-  const result = routeComplexity("What is the capital of France?");
+  const result = routeComplexity("What is the capital of France?", { stepCount: 1 });
   assert.equal(result.path, "fast");
   assert.ok(result.reason.includes("keyword_match"));
 });
 
 test("routeComplexity returns standard for normal tasks", () => {
-  const result = routeComplexity("Write a function to calculate fibonacci");
+  const result = routeComplexity("Write a function to calculate fibonacci", { stepCount: 1 });
   assert.equal(result.path, "standard");
   assert.equal(result.reason, "default");
 });
 
 test("routeComplexity returns full for refactor keywords", () => {
-  const result = routeComplexity("Refactor the entire authentication module");
+  const result = routeComplexity("Refactor the entire authentication module", { stepCount: 1 });
   assert.equal(result.path, "full");
   assert.ok(result.reason.includes("keyword_match:refactor"));
 });
 
 test("routeComplexity returns full for architecture keywords", () => {
-  const result = routeComplexity("Analyze the system architecture");
+  const result = routeComplexity("Analyze the system architecture", { stepCount: 1 });
   assert.equal(result.path, "full");
   assert.ok(result.reason.includes("architecture"));
 });
@@ -46,7 +46,7 @@ test("routeComplexity returns standard for multi-step workflows", () => {
 });
 
 test("routeComplexity returns full for high token estimates", () => {
-  const result = routeComplexity("Analyze this", { estimatedTokens: 60000 });
+  const result = routeComplexity("Analyze this", { stepCount: 1, estimatedTokens: 60000 });
   assert.equal(result.path, "full");
   assert.equal(result.reason, "high_token_estimate");
 });

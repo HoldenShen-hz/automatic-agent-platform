@@ -9,8 +9,9 @@ import { FailurePattern, FailurePatternType } from "./failure-pattern-model.js";
  * §8 pattern: LLM truncation (max_tokens hit)
  */
 export function detectLlmTruncation(signal: LearningSignal): FailurePattern | null {
-  const { evidence, valueSummary, taskId, learningSignalId } = signal;
+  const { evidence, valueSummary, taskId, learningSignalId, evidenceRefs, sourceSignalIds } = signal;
   const ev = evidence as Record<string, unknown>;
+  const lineage = [...new Set([...sourceSignalIds, learningSignalId])];
 
   const finishReason = String(ev.finishReason ?? ev.finish_reason ?? "");
   const maxTokens = Number(ev.maxTokens ?? ev.max_tokens ?? 0);
@@ -25,8 +26,8 @@ export function detectLlmTruncation(signal: LearningSignal): FailurePattern | nu
       stepId: String(ev.stepId ?? ""),
       title: "LLM output truncated — max_tokens reached",
       summary: `Model output was truncated at ${tokensUsed} tokens (max_tokens=${maxTokens}). ${valueSummary}`,
-      evidenceRefs: [],
-      sourceSignalIds: [learningSignalId],
+      evidenceRefs: [...evidenceRefs],
+      sourceSignalIds: lineage,
       recommendation:
         "Increase max_tokens budget for this task type, or compress the context to leave more room for generation.",
       detectedAt: signal.generatedAt,
@@ -41,8 +42,8 @@ export function detectLlmTruncation(signal: LearningSignal): FailurePattern | nu
       stepId: String(ev.stepId ?? ""),
       title: "LLM output near token limit",
       summary: `Model output used ${tokensUsed}/${maxTokens} tokens (${Math.round((tokensUsed / maxTokens) * 100)}%). ${valueSummary}`,
-      evidenceRefs: [],
-      sourceSignalIds: [learningSignalId],
+      evidenceRefs: [...evidenceRefs],
+      sourceSignalIds: lineage,
       recommendation:
         "Consider increasing max_tokens or simplifying the prompt to reduce input token count.",
       detectedAt: signal.generatedAt,

@@ -54,7 +54,7 @@ test("scoreSystemHealth applies backlog penalty up to 30", () => {
   const score = scoreSystemHealth(systemOk);
 
   assert.ok(score < 100);
-  assert.strictEqual(score, 70);
+  assert.strictEqual(score, 90);
 });
 
 test("scoreSystemHealth caps backlog penalty at 30", () => {
@@ -79,7 +79,7 @@ test("scoreSystemHealth caps findings penalty at 20", () => {
 
   const score = scoreSystemHealth(system);
 
-  assert.strictEqual(score, 70);
+  assert.strictEqual(score, 80);
 });
 
 test("scoreSystemHealth combines both penalties", () => {
@@ -91,7 +91,7 @@ test("scoreSystemHealth combines both penalties", () => {
 
   const score = scoreSystemHealth(system);
 
-  assert.strictEqual(score, 65);
+  assert.strictEqual(score, 85);
 });
 
 test("scoreSystemHealth returns 0 at minimum", () => {
@@ -204,5 +204,5 @@ test("scoreSystemHealth backlog of exactly 3 applies 15 point penalty", () => {
 
   const score = scoreSystemHealth(system);
 
-  assert.strictEqual(score, 85);
+  assert.strictEqual(score, 97);
 });

@@ -9,8 +9,9 @@ import { FailurePattern } from "./failure-pattern-model.js";
  * §8 pattern: Model hallucination (eval < 0.3)
  */
 export function detectModelHallucination(signal: LearningSignal): FailurePattern | null {
-  const { evidence, valueSummary, taskId, learningSignalId } = signal;
+  const { evidence, valueSummary, taskId, learningSignalId, evidenceRefs, sourceSignalIds } = signal;
   const ev = evidence as Record<string, unknown>;
+  const lineage = [...new Set([...sourceSignalIds, learningSignalId])];
 
   const evalScore = Number(ev.evalScore ?? ev.eval_score ?? ev.qualityScore ?? 0);
 
@@ -23,8 +24,8 @@ export function detectModelHallucination(signal: LearningSignal): FailurePattern
       stepId: String(ev.stepId ?? ""),
       title: `Model hallucination detected — eval score ${evalScore.toFixed(2)}`,
       summary: `Model "${modelId}" produced output with very low evaluation score (${evalScore.toFixed(2)}). ${valueSummary}`,
-      evidenceRefs: [],
-      sourceSignalIds: [learningSignalId],
+      evidenceRefs: [...evidenceRefs],
+      sourceSignalIds: lineage,
       recommendation:
         "Switch to a more reliable model for this task type, or provide additional grounding context to reduce hallucination risk.",
       detectedAt: signal.generatedAt,

@@ -103,6 +103,7 @@ class MockCheckpointManager implements CheckpointManager {
   private artifacts = new Map<string, ArtifactRecord>();
 
   async createCheckpoint(input: CreateCheckpointInput): Promise<{ artifactId: string; checkpoint: WorkflowStepCheckpoint }> {
+    const producedAt = new Date(Date.now() + this.checkpoints.size).toISOString();
     const checkpoint: WorkflowStepCheckpoint = {
       schemaVersion: "workflow_step_checkpoint.v1",
       taskId: input.taskId,
@@ -113,7 +114,7 @@ class MockCheckpointManager implements CheckpointManager {
       roleId: input.roleId,
       outputKey: input.outputKey,
       status: input.status,
-      producedAt: new Date().toISOString(),
+      producedAt,
       output: input.output,
       decisionContext: {
         source: input.decisionContext.source,
@@ -195,23 +196,13 @@ class MockCheckpointManager implements CheckpointManager {
     }
 
     const completedSteps = new Set<string>();
-    let latestTime = "";
-    let lastCheckpointAt: string | null = null;
-
     for (const cp of workflowCheckpoints) {
       completedSteps.add(cp.stepId);
-      if (cp.producedAt > latestTime) {
-        latestTime = cp.producedAt;
-        lastCheckpointAt = cp.producedAt;
-      }
     }
 
-    const nextStepCheckpoints = workflowCheckpoints.filter(
-      (cp) => cp.resumeContext.nextStepId !== null,
-    );
-    const nextStepId = nextStepCheckpoints.length > 0
-      ? nextStepCheckpoints[nextStepCheckpoints.length - 1]!.resumeContext.nextStepId
-      : null;
+    const latestCheckpoint = await this.getLatestCheckpoint(workflowId);
+    const nextStepId = latestCheckpoint?.resumeContext.nextStepId ?? null;
+    const lastCheckpointAt = latestCheckpoint?.producedAt ?? null;
 
     return {
       workflowId,

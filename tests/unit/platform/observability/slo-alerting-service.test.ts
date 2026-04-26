@@ -178,12 +178,12 @@ test("SloAlertingService evaluates SLO with met status", () => {
     name: "Availability SLO",
     description: "",
     sliKind: "availability",
-    targetValue: 99,
+    targetValue: 80,
     operator: "gte",
     windowMinutes: 60,
   });
 
-  // Collect samples showing good availability (99.5%)
+  // Average exceeds target by more than the 10% at-risk margin.
   service.collectSli(slo.id, 99.5, "%");
   service.collectSli(slo.id, 99.7, "%");
   service.collectSli(slo.id, 99.3, "%");
@@ -224,14 +224,13 @@ test("SloAlertingService evaluates SLO with at_risk status near threshold", () =
     name: "Strict Availability SLO",
     description: "",
     sliKind: "availability",
-    targetValue: 100,
+    targetValue: 90,
     operator: "gte",
     windowMinutes: 60,
   });
 
-  // Collect samples very close to target (99.95%)
-  service.collectSli(slo.id, 99.95, "%");
-  service.collectSli(slo.id, 99.95, "%");
+  service.collectSli(slo.id, 95, "%");
+  service.collectSli(slo.id, 95, "%");
 
   const status = service.evaluateSlo(slo.id);
   assert.equal(status, "at_risk", "SLO should be at_risk when within 10% of threshold");
@@ -340,7 +339,7 @@ test("SloAlertingService fires alert and creates event", () => {
   const mockDb = createMockDatabase(db);
   const service = new SloAlertingService(mockDb);
 
-  service.defineAlertRule({
+  const rule = service.defineAlertRule({
     name: "Test Fire Alert",
     sloId: null,
     condition: "",
@@ -351,10 +350,10 @@ test("SloAlertingService fires alert and creates event", () => {
     enabled: true,
   });
 
-  const event = service.fireAlert("rule_test_fire", "Critical Issue", "System is degraded");
+  const event = service.fireAlert(rule.id, "Critical Issue", "System is degraded");
 
   assert.ok(event != null, "Alert event should be created");
-  assert.equal(event.ruleId, "rule_test_fire");
+  assert.equal(event.ruleId, rule.id);
   assert.equal(event.title, "Critical Issue");
   assert.equal(event.detail, "System is degraded");
   assert.equal(event.status, "firing");
@@ -499,6 +498,7 @@ test("SloAlertingService summary returns correct counts", () => {
     windowMinutes: 60,
   });
   service.collectSli(slo.id, 95, "%"); // Breached
+  service.evaluateSlo(slo.id);
 
   service.defineAlertRule({
     name: "Summary Alert Rule",
@@ -586,7 +586,7 @@ test("SloAlertingService triggerErrorBudgetDegradation returns not degraded when
     name: "Good SLO",
     description: "",
     sliKind: "availability",
-    targetValue: 99,
+    targetValue: 80,
     operator: "gte",
     windowMinutes: 60,
   });

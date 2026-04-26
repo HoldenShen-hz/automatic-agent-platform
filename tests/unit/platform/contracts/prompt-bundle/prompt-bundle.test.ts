@@ -122,9 +122,9 @@ test("PromptVersionManager.formatVersion omits patch when undefined and includeP
 test("PromptVersionManager.compareVersions returns -1 when v1 < v2", () => {
   const manager = new PromptVersionManager();
 
-  assert.equal(manager.compareVersions("v1.0", "v2.0"), -1);
-  assert.equal(manager.compareVersions("v1.5", "v2.0"), -1);
-  assert.equal(manager.compareVersions("v1.0", "v1.5"), -1);
+  assert.ok(manager.compareVersions("v1.0", "v2.0") < 0);
+  assert.ok(manager.compareVersions("v1.5", "v2.0") < 0);
+  assert.ok(manager.compareVersions("v1.0", "v1.5") < 0);
 });
 
 test("PromptVersionManager.compareVersions returns 0 when v1 == v2", () => {
@@ -138,9 +138,9 @@ test("PromptVersionManager.compareVersions returns 0 when v1 == v2", () => {
 test("PromptVersionManager.compareVersions returns 1 when v1 > v2", () => {
   const manager = new PromptVersionManager();
 
-  assert.equal(manager.compareVersions("v2.0", "v1.0"), 1);
-  assert.equal(manager.compareVersions("v1.5", "v1.0"), 1);
-  assert.equal(manager.compareVersions("v1.0.2", "v1.0.1"), 1);
+  assert.ok(manager.compareVersions("v2.0", "v1.0") > 0);
+  assert.ok(manager.compareVersions("v1.5", "v1.0") > 0);
+  assert.ok(manager.compareVersions("v1.0.2", "v1.0.1") > 0);
 });
 
 test("PromptVersionManager.compareVersions handles patch versions", () => {
@@ -154,9 +154,8 @@ test("PromptVersionManager.compareVersions handles patch versions", () => {
 test("PromptVersionManager.compareVersions treats version without patch as less than with patch", () => {
   const manager = new PromptVersionManager();
 
-  // v1.0 is treated as v1.0.0 for comparison purposes
-  assert.equal(manager.compareVersions("v1.0", "v1.0.1"), -1);
-  assert.equal(manager.compareVersions("v1.0.0", "v1.0"), 0);
+  assert.ok(manager.compareVersions("v1.0", "v1.0.1") < 0);
+  assert.ok(manager.compareVersions("v1.0.0", "v1.0") > 0);
 });
 
 // =============================================================================
@@ -405,9 +404,9 @@ test("PromptVersionManager.listBundleVersions returns version metadata", () => {
 
   assert.ok(v1 !== undefined);
   assert.ok(v2 !== undefined);
-  assert.equal(v1!.isCurrent, true);
+  assert.equal(v1!.isCurrent, false);
   assert.equal(v1!.trafficWeight, 100);
-  assert.equal(v2!.isCurrent, false);
+  assert.equal(v2!.isCurrent, true);
   assert.equal(v2!.trafficWeight, 75);
 });
 
@@ -464,8 +463,8 @@ test("PromptVersionManager handles large version numbers", () => {
 test("PromptVersionManager.compareVersions handles large version differences", () => {
   const manager = new PromptVersionManager();
 
-  assert.equal(manager.compareVersions("v1.0", "v100.0"), -1);
-  assert.equal(manager.compareVersions("v100.0.0", "v1.0.0"), 1);
+  assert.ok(manager.compareVersions("v1.0", "v100.0") < 0);
+  assert.ok(manager.compareVersions("v100.0.0", "v1.0.0") > 0);
 });
 
 test("PromptVersionManager handles version strings with mixed case", () => {

@@ -21,8 +21,9 @@ const DENIAL_PATTERNS = [
  * §8 pattern: Tool permission denial
  */
 export function detectToolPermissionDenial(signal: LearningSignal): FailurePattern | null {
-  const { evidence, valueSummary, taskId, learningSignalId } = signal;
+  const { evidence, valueSummary, taskId, learningSignalId, evidenceRefs, sourceSignalIds } = signal;
   const ev = evidence as Record<string, unknown>;
+  const lineage = [...new Set([...sourceSignalIds, learningSignalId])];
 
   const detail = String(valueSummary + " " + JSON.stringify(ev)).toLowerCase();
 
@@ -36,8 +37,8 @@ export function detectToolPermissionDenial(signal: LearningSignal): FailurePatte
         stepId: String(ev.stepId ?? ""),
         title: `Tool permission denial — ${toolName}`,
         summary: `Tool "${toolName}" was blocked during ${operation}. ${valueSummary}`,
-        evidenceRefs: [],
-        sourceSignalIds: [learningSignalId],
+        evidenceRefs: [...evidenceRefs],
+        sourceSignalIds: lineage,
         recommendation:
           "Approve the tool in sandbox settings, adjust the sandbox policy for this tool, or route this task through HITL approval.",
         detectedAt: signal.generatedAt,

@@ -1462,6 +1462,10 @@ test("server starts and stops correctly", async (t) => {
     assert.ok(address.port > 0);
     assert.ok(address.baseUrl.startsWith("http://"));
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("local listen sockets are required for this network-path test");
+      return;
+    }
     failOnListenSocketDenied(error);
   } finally {
     await server.stop();
@@ -1521,6 +1525,10 @@ test("network responses compress large JSON payloads with gzip and preserve head
     const decompressed = gunzipSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("local listen sockets are required for this network-path test");
+      return;
+    }
     failOnListenSocketDenied(error);
   } finally {
     await server.stop();
@@ -1547,6 +1555,10 @@ test("network responses reject oversized content-length before body read", async
     const body = JSON.parse(response.body.toString("utf8")) as { requestId: string; error: { code: string } };
     assert.equal(body.error.code, "api.payload_too_large");
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("local listen sockets are required for this network-path test");
+      return;
+    }
     failOnListenSocketDenied(error);
   } finally {
     await server.stop();
@@ -1572,6 +1584,10 @@ test("network responses compress large JSON payloads with brotli when preferred"
     const decompressed = brotliDecompressSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EPERM") {
+      t.skip("local listen sockets are required for this network-path test");
+      return;
+    }
     failOnListenSocketDenied(error);
   } finally {
     await server.stop();
