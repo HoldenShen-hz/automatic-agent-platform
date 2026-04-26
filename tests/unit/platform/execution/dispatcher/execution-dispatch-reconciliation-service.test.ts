@@ -272,3 +272,165 @@ test("ExecutionDispatchReconciliationService handles superseded terminal executi
   assert.equal(issues.length, 1);
   assert.equal(issues[0]!.issueType, "terminal_execution_ticket");
 });
+
+// ---------------------------------------------------------------------------
+// Additional repair scenarios
+// ---------------------------------------------------------------------------
+
+test("ExecutionDispatchReconciliationService repairTicket applies invalidate for terminal execution", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "succeeded" }],
+  ]);
+  const store = createMockStore(tickets, executions);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const result = service.repairTicket("ticket-1");
+  assert.ok(result != null);
+  assert.equal(result.applied, true);
+  assert.equal(result.resolutionAction, "invalidate_ticket");
+  assert.equal(result.replacementTicketId, null);
+});
+
+test("ExecutionDispatchReconciliationService repairTicket returns null for invalid ticket id", () => {
+  const store = createMockStore([]);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const result = service.repairTicket("nonexistent-ticket");
+  assert.equal(result, null);
+});
+
+test("ExecutionDispatchReconciliationService repairTicket returns null when no issue found", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "executing" }],
+  ]);
+  const store = createMockStore(tickets, executions);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const result = service.repairTicket("ticket-1");
+  assert.equal(result, null);
+});
+
+test("ExecutionDispatchReconciliationService findIssueByTicketId returns issue for expired lease", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "executing" }],
+  ]);
+  const pastTime = new Date(Date.now() - 60000).toISOString();
+  const leases = new Map([
+    ["exec-1", { id: "lease-1", executionId: "exec-1", workerId: "worker-1", expiresAt: pastTime }],
+  ]);
+  const store = createMockStore(tickets, executions, leases);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issue = service.findIssueByTicketId("ticket-1");
+  assert.ok(issue != null);
+  assert.equal(issue.issueType, "orphan_queue_claim");
+  assert.equal(issue.reasonCode, "lease_expired_unreclaimed");
+});
+
+test("ExecutionDispatchReconciliationService findIssueByTicketId returns issue for missing active lease", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "executing" }],
+  ]);
+  // No lease in map
+  const store = createMockStore(tickets, executions, new Map());
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issue = service.findIssueByTicketId("ticket-1");
+  assert.ok(issue != null);
+  assert.equal(issue.issueType, "orphan_queue_claim");
+  assert.equal(issue.reasonCode, "missing_active_lease");
+});
+
+test("ExecutionDispatchReconciliationService findIssueByTicketId returns issue for lease mismatch", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "different-lease", assignedWorkerId: "worker-1" },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "executing" }],
+  ]);
+  const futureTime = new Date(Date.now() + 60000).toISOString();
+  const leases = new Map([
+    ["exec-1", { id: "lease-1", executionId: "exec-1", workerId: "worker-2", expiresAt: futureTime }],
+  ]);
+  const store = createMockStore(tickets, executions, leases);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issue = service.findIssueByTicketId("ticket-1");
+  assert.ok(issue != null);
+  assert.equal(issue.issueType, "orphan_queue_claim");
+  assert.equal(issue.reasonCode, "lease_ticket_mismatch");
+});
+
+test("ExecutionDispatchReconciliationService handles mixed terminal statuses", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-failed", executionId: "exec-failed", status: "pending", leaseId: null, assignedWorkerId: null },
+    { id: "ticket-cancelled", executionId: "exec-cancelled", status: "pending", leaseId: null, assignedWorkerId: null },
+    { id: "ticket-superseded", executionId: "exec-superseded", status: "pending", leaseId: null, assignedWorkerId: null },
+  ];
+  const executions = new Map([
+    ["exec-failed", { id: "exec-failed", taskId: "task-1", status: "failed" }],
+    ["exec-cancelled", { id: "exec-cancelled", taskId: "task-2", status: "cancelled" }],
+    ["exec-superseded", { id: "exec-superseded", taskId: "task-3", status: "superseded" }],
+  ]);
+  const store = createMockStore(tickets, executions);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issues = service.scan();
+  assert.equal(issues.length, 3);
+  assert.ok(issues.every(i => i.issueType === "terminal_execution_ticket"));
+});
+
+test("ExecutionDispatchReconciliationService handles empty execution map", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
+  ];
+  const executions = new Map();
+  const store = createMockStore(tickets, executions);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issues = service.scan();
+  // No execution found, so no issue detected
+  assert.equal(issues.length, 0);
+});
+
+test("ExecutionDispatchReconciliationService findIssueByTicketId returns null for consumed status", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-1", executionId: "exec-1", status: "consumed", leaseId: null, assignedWorkerId: null },
+  ];
+  const store = createMockStore(tickets);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issue = service.findIssueByTicketId("ticket-1");
+  assert.equal(issue, null);
+});
+
+test("ExecutionDispatchReconciliationService scan includes all pending and claimed tickets", () => {
+  const tickets: MockTicket[] = [
+    { id: "ticket-pending", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
+    { id: "ticket-claimed", executionId: "exec-2", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
+    { id: "ticket-consumed", executionId: "exec-3", status: "consumed", leaseId: null, assignedWorkerId: null },
+    { id: "ticket-expired", executionId: "exec-4", status: "expired", leaseId: null, assignedWorkerId: null },
+  ];
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", status: "executing" }],
+    ["exec-2", { id: "exec-2", taskId: "task-2", status: "executing" }],
+    ["exec-3", { id: "exec-3", taskId: "task-3", status: "executing" }],
+    ["exec-4", { id: "exec-4", taskId: "task-4", status: "executing" }],
+  ]);
+  // Add the lease for exec-2 so the claimed ticket is valid
+  const futureTime = new Date(Date.now() + 60000).toISOString();
+  const leases = new Map([
+    ["exec-2", { id: "lease-1", executionId: "exec-2", workerId: "worker-1", expiresAt: futureTime }],
+  ]);
+  const store = createMockStore(tickets, executions, leases);
+  const service = new ExecutionDispatchReconciliationService(createMockDb(), store);
+  const issues = service.scan();
+  // Only pending and claimed tickets are scanned
+  // ticket-pending: no issue (execution not terminal, pending status)
+  // ticket-claimed: no issue (valid lease exists)
+  // consumed and expired are filtered out
+  assert.equal(issues.length, 0);
+});

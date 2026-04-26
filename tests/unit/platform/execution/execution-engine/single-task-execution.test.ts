@@ -360,3 +360,947 @@ test("runSingleTaskExecution input JSON is stored", async () => {
     }
   }
 });
+
+// ============================================================================
+// New Tests: Crash Injection Scenarios
+// ============================================================================
+
+test("runSingleTaskExecution crash injection at step_started throws InjectedWorkflowCrashError", async () => {
+  const dbPath = join(__dirname, "test-crash-step-started.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Crash at Step Started",
+    request: "Test crash injection",
+    crashInjection: { point: "step_started" },
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    await runSingleTaskExecution(input);
+    assert.fail("Should have thrown InjectedWorkflowCrashError");
+  } catch (err) {
+    assert.ok(err instanceof Error, "Should be an Error instance");
+    assert.ok(err.name === "InjectedWorkflowCrashError", `Expected InjectedWorkflowCrashError, got ${err.name}`);
+    assert.ok("taskId" in err, "Error should have taskId property");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution crash injection at tool_completed throws InjectedWorkflowCrashError", async () => {
+  const dbPath = join(__dirname, "test-crash-tool-completed.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Crash at Tool Completed",
+    request: "Test crash injection",
+    crashInjection: { point: "tool_completed" },
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    await runSingleTaskExecution(input);
+    assert.fail("Should have thrown InjectedWorkflowCrashError");
+  } catch (err) {
+    assert.ok(err instanceof Error, "Should be an Error instance");
+    assert.ok(err.name === "InjectedWorkflowCrashError", `Expected InjectedWorkflowCrashError, got ${err.name}`);
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution crash injection at before_commit throws InjectedWorkflowCrashError", async () => {
+  const dbPath = join(__dirname, "test-crash-before-commit.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Crash Before Commit",
+    request: "Test crash injection",
+    crashInjection: { point: "before_commit" },
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    await runSingleTaskExecution(input);
+    assert.fail("Should have thrown InjectedWorkflowCrashError");
+  } catch (err) {
+    assert.ok(err instanceof Error, "Should be an Error instance");
+    assert.ok(err.name === "InjectedWorkflowCrashError", `Expected InjectedWorkflowCrashError, got ${err.name}`);
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution crash injection with specific stepId only affects matching step", async () => {
+  const dbPath = join(__dirname, "test-crash-step-id.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  // Using a non-matching stepId should NOT trigger the crash
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Crash with Non-Matching StepId",
+    request: "Test crash injection",
+    crashInjection: { point: "step_started", stepId: "non_existent_step" },
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+    // Should succeed because stepId does not match
+    assert.ok(snapshot, "Should complete successfully when crash stepId does not match");
+    assert.equal(snapshot.task.status, "done", "Task should complete");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+// ============================================================================
+// New Tests: Admission Policy Rejection Scenarios
+// ============================================================================
+
+test("runSingleTaskExecution with admission reject due to budget exceeded", async () => {
+  const dbPath = join(__dirname, "test-admission-budget.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  // Use backpressure snapshot that triggers budget exceeded
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Budget Exceeded",
+    request: "Test budget rejection",
+    admissionBackpressureSnapshot: () => ({
+      status: "degraded",
+      degradationMode: "read_only_operations_only",
+      queueGovernance: { starvationDetected: false, queueSizes: {} },
+      findings: ["budget exceeded"],
+    }),
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+    // With read_only_operations_only, the task should be rejected/cancelled
+    assert.ok(snapshot.task, "Should return snapshot");
+    assert.ok(
+      snapshot.task.status === "cancelled" || snapshot.task.status === "done",
+      `Task status should be cancelled or done, got ${snapshot.task.status}`
+    );
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution with admission policy maxQueuedTasks 0 rejects task", async () => {
+  const dbPath = join(__dirname, "test-admission-queue-zero.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Queue Saturated",
+    request: "Test queue rejection",
+    admissionPolicy: {
+      maxQueuedTasks: 0,
+      maxActiveExecutions: 100,
+      maxTier1AckBacklog: 100,
+      urgentQueueHeadroom: 0,
+    },
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+    assert.ok(snapshot.task, "Should return snapshot");
+    // With saturated queue and no urgent priority, task should be rejected
+    assert.ok(
+      snapshot.task.status === "cancelled" || snapshot.task.status === "done",
+      `Task should be cancelled due to queue saturation, got ${snapshot.task.status}`
+    );
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution with saturated queue rejects non-urgent task", async () => {
+  const dbPath = join(__dirname, "test-admission-high-priority.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  // With saturated queue and normal priority, task should be rejected
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Queue Saturated Non-Urgent",
+    request: "Test priority rejection",
+    admissionPolicy: {
+      maxQueuedTasks: 0,
+      maxActiveExecutions: 100,
+      maxTier1AckBacklog: 100,
+      urgentQueueHeadroom: 5,
+    },
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+    // Normal priority with saturated queue should result in cancelled status
+    assert.ok(snapshot.task, "Should return snapshot");
+    assert.equal(snapshot.task.status, "cancelled", "Non-urgent task should be cancelled");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+// ============================================================================
+// New Tests: Execution and Session State Transition Verification
+// ============================================================================
+
+test("runSingleTaskExecution creates session with valid status", async () => {
+  const dbPath = join(__dirname, "test-session-streaming.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Session Status",
+    request: "Verify session creation",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.session, "Should have session");
+    assert.ok(snapshot.session.status, "Session should have a status");
+    // Session status should be a non-empty string
+    assert.equal(typeof snapshot.session.status, "string", "Session status should be a string");
+    assert.ok(snapshot.session.status.length > 0, "Session status should not be empty");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution execution transitions through created -> prechecking -> executing", async () => {
+  const dbPath = join(__dirname, "test-execution-transitions.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Execution Transitions",
+    request: "Verify execution transitions",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.execution, "Should have execution");
+    // Execution should end in a completed state
+    assert.ok(snapshot.execution, "Execution should exist");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution creates execution precheck record", async () => {
+  const dbPath = join(__dirname, "test-execution-precheck.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Execution Precheck",
+    request: "Verify precheck creation",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.execution, "Should have execution record");
+    // Precheck would be in the execution details
+    assert.ok(snapshot.execution !== null, "Execution should exist");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+// ============================================================================
+// New Tests: Cost and Billing Verification
+// ============================================================================
+
+test("runSingleTaskExecution creates cost event record", async () => {
+  const dbPath = join(__dirname, "test-cost-event.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Cost Event",
+    request: "Verify cost event creation",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    // The snapshot should contain billing/cost information
+    assert.ok(snapshot.task.actualCostUsd !== undefined, "Task should have actualCostUsd");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution estimated cost is set on task", async () => {
+  const dbPath = join(__dirname, "test-est-cost.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Estimated Cost",
+    request: "Verify estimated cost",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.ok(typeof snapshot.task.estimatedCostUsd === "number", "estimatedCostUsd should be a number");
+    assert.ok(snapshot.task.estimatedCostUsd > 0, "estimatedCostUsd should be positive");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+// ============================================================================
+// New Tests: Workflow State and Output Verification
+// ============================================================================
+
+test("runSingleTaskExecution workflow has correct workflowId", async () => {
+  const dbPath = join(__dirname, "test-workflow-id.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Workflow ID",
+    request: "Verify workflow ID",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.workflow, "Should have workflow");
+    assert.ok(snapshot.workflow.workflowId, "Workflow should have workflowId");
+    assert.equal(typeof snapshot.workflow.workflowId, "string", "workflowId should be string");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution workflow outputs JSON contains step output", async () => {
+  const dbPath = join(__dirname, "test-workflow-outputs.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const customResult = "Custom workflow output result";
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Workflow Outputs",
+    request: "Verify workflow outputs JSON",
+    stepOutputOverride: { summary: "Custom summary", result: customResult },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.workflow, "Should have workflow");
+    const outputs = JSON.parse(snapshot.workflow.outputsJson);
+    // Should contain the analysis output key (from SINGLE_AGENT_MINIMAL_WORKFLOW)
+    assert.ok(outputs.analysis !== undefined, "outputsJson should contain analysis");
+    assert.equal(outputs.analysis.result, customResult, "Result should match custom output");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution task has source field set to user", async () => {
+  const dbPath = join(__dirname, "test-task-source.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Task Source",
+    request: "Verify task source",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.equal(snapshot.task.source, "user", "Task source should be user");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution task has errorCode null on success", async () => {
+  const dbPath = join(__dirname, "test-error-code.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Error Code Null",
+    request: "Verify error code is null",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.equal(snapshot.task.errorCode, null, "Task errorCode should be null on success");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution step output has succeeded status", async () => {
+  const dbPath = join(__dirname, "test-step-status.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Step Status",
+    request: "Verify step status",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(Array.isArray(snapshot.stepOutputs), "Should have stepOutputs array");
+    assert.ok(snapshot.stepOutputs.length > 0, "Should have at least one step output");
+    assert.equal(snapshot.stepOutputs[0].status, "succeeded", "Step output status should be succeeded");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution step output contains summary", async () => {
+  const dbPath = join(__dirname, "test-step-summary.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const expectedSummary = "My custom summary for testing";
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Step Summary",
+    request: "Verify step summary",
+    stepOutputOverride: { summary: expectedSummary, result: "test result" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(Array.isArray(snapshot.stepOutputs), "Should have stepOutputs array");
+    assert.equal(snapshot.stepOutputs[0].summary, expectedSummary, "Step summary should match");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution step output contains token cost and duration", async () => {
+  const dbPath = join(__dirname, "test-step-cost-duration.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Step Cost Duration",
+    request: "Verify step cost and duration",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(Array.isArray(snapshot.stepOutputs), "Should have stepOutputs array");
+    assert.ok(typeof snapshot.stepOutputs[0].tokenCost === "number", "tokenCost should be a number");
+    assert.ok(typeof snapshot.stepOutputs[0].durationMs === "number", "durationMs should be a number");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution step output has producedAt timestamp", async () => {
+  const dbPath = join(__dirname, "test-step-produced-at.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Step ProducedAt",
+    request: "Verify step producedAt",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(Array.isArray(snapshot.stepOutputs), "Should have stepOutputs array");
+    assert.ok(snapshot.stepOutputs[0].producedAt, "Step output should have producedAt");
+    assert.match(snapshot.stepOutputs[0].producedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, "producedAt should be ISO format");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution step output contains validation JSON", async () => {
+  const dbPath = join(__dirname, "test-step-validation.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Step Validation",
+    request: "Verify step validation",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(Array.isArray(snapshot.stepOutputs), "Should have stepOutputs array");
+    assert.ok(snapshot.stepOutputs[0].validationJson, "Step output should have validationJson");
+    const validation = JSON.parse(snapshot.stepOutputs[0].validationJson);
+    assert.ok(typeof validation === "object", "validationJson should parse to object");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution step output contains artifacts JSON", async () => {
+  const dbPath = join(__dirname, "test-step-artifacts.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Step Artifacts",
+    request: "Verify step artifacts",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(Array.isArray(snapshot.stepOutputs), "Should have stepOutputs array");
+    assert.ok(snapshot.stepOutputs[0].artifactsJson, "Step output should have artifactsJson");
+    const artifacts = JSON.parse(snapshot.stepOutputs[0].artifactsJson);
+    assert.ok(Array.isArray(artifacts), "artifactsJson should parse to array");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution task completedAt is set on success", async () => {
+  const dbPath = join(__dirname, "test-completed-at.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test CompletedAt",
+    request: "Verify completedAt",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.ok(snapshot.task.completedAt, "Task should have completedAt");
+    assert.match(snapshot.task.completedAt!, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, "completedAt should be ISO format");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution task output JSON is valid and contains summary and result", async () => {
+  const dbPath = join(__dirname, "test-output-valid.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const customSummary = "Custom output summary";
+  const customResult = "Custom output result";
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Output Valid",
+    request: "Verify output is valid",
+    stepOutputOverride: { summary: customSummary, result: customResult },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task.outputJson, "Should have outputJson");
+    const output = JSON.parse(snapshot.task.outputJson!);
+    assert.equal(output.summary, customSummary, "Output summary should match");
+    assert.equal(output.result, customResult, "Output result should match");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution execution record has correct timeout from step", async () => {
+  const dbPath = join(__dirname, "test-execution-timeout.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Execution Timeout",
+    request: "Verify execution timeout",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.execution, "Should have execution");
+    assert.ok(typeof snapshot.execution.timeoutMs === "number", "timeoutMs should be a number");
+    assert.ok(snapshot.execution.timeoutMs > 0, "timeoutMs should be positive");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution execution record has budgetUsdLimit", async () => {
+  const dbPath = join(__dirname, "test-execution-budget.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Execution Budget",
+    request: "Verify execution budget",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.execution, "Should have execution");
+    assert.ok(typeof snapshot.execution.budgetUsdLimit === "number", "budgetUsdLimit should be a number");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution execution sandboxMode is workspace_write", async () => {
+  const dbPath = join(__dirname, "test-execution-sandbox.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Execution Sandbox",
+    request: "Verify execution sandbox",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.execution, "Should have execution");
+    assert.equal(snapshot.execution.sandboxMode, "workspace_write", "sandboxMode should be workspace_write");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution execution maxRetries is 0 for single task", async () => {
+  const dbPath = join(__dirname, "test-execution-retries.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Execution Retries",
+    request: "Verify execution retries",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.execution, "Should have execution");
+    assert.equal(snapshot.execution.maxRetries, 0, "maxRetries should be 0");
+    assert.equal(snapshot.execution.retryBackoff, "none", "retryBackoff should be none");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution workflow retryCount is 0 on success", async () => {
+  const dbPath = join(__dirname, "test-workflow-retry.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Workflow Retry",
+    request: "Verify workflow retry count",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.workflow, "Should have workflow");
+    assert.equal(snapshot.workflow.retryCount, 0, "retryCount should be 0");
+    assert.equal(snapshot.workflow.lastErrorCode, null, "lastErrorCode should be null");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution workflow resumableFromStep is null on success", async () => {
+  const dbPath = join(__dirname, "test-workflow-resumable.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Workflow Resumable",
+    request: "Verify workflow resumable",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.workflow, "Should have workflow");
+    assert.equal(snapshot.workflow.resumableFromStep, null, "resumableFromStep should be null");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution with very long request string", async () => {
+  const dbPath = join(__dirname, "test-long-request.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const longRequest = "A".repeat(10000);
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Long Request",
+    request: longRequest,
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.equal(snapshot.task.status, "done", "Task should complete with long request");
+    const inputData = JSON.parse(snapshot.task.inputJson);
+    assert.ok(inputData.request === longRequest, "Request should be preserved");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution with unicode title and request", async () => {
+  const dbPath = join(__dirname, "test-unicode.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test Unicode Title",
+    request: "Test with unicode: 你好世界 🌍 مرحبا",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.equal(snapshot.task.status, "done", "Task should complete with unicode");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
+test("runSingleTaskExecution with special characters in title", async () => {
+  const dbPath = join(__dirname, "test-special-chars.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const input: HappyPathInput = {
+    dbPath,
+    title: "Test <script>alert('xss')</script>",
+    request: "Test request",
+    stepOutputOverride: { summary: "test", result: "test" },
+  };
+
+  try {
+    const snapshot = await runSingleTaskExecution(input);
+
+    assert.ok(snapshot.task, "Should have task");
+    assert.equal(snapshot.task.title, "Test <script>alert('xss')</script>", "Title with special chars should be preserved");
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});

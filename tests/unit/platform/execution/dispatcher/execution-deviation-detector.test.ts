@@ -156,3 +156,152 @@ test("ExecutionDeviationDetector detect ignores non-timeout signals", () => {
   const deviations = detector.detect(plan, feedback);
   assert.equal(deviations.length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// Additional deviation detection scenarios
+// ---------------------------------------------------------------------------
+
+test("ExecutionDeviationDetector detect returns critical severity for escalated outcome", () => {
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-escalated");
+  const feedback = makeFeedback("escalated");
+  const deviations = detector.detect(plan, feedback);
+  assert.equal(deviations.length, 1);
+  assert.equal(deviations[0]!.severity, "critical");
+  assert.equal(deviations[0]!.reasonCode, "execution.escalated");
+  assert.equal(deviations[0]!.summary, "Execution outcome drifted to escalated");
+});
+
+test("ExecutionDeviationDetector detect returns high severity for repairable outcome", () => {
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-repairable");
+  const feedback = makeFeedback("repairable");
+  const deviations = detector.detect(plan, feedback);
+  assert.equal(deviations.length, 1);
+  assert.equal(deviations[0]!.severity, "high");
+  assert.equal(deviations[0]!.reasonCode, "execution.repairable");
+  assert.equal(deviations[0]!.summary, "Execution outcome drifted to repairable");
+});
+
+test("ExecutionDeviationDetector detect handles multiple timeout signals", () => {
+  const timeoutSignal1: FeedbackSignal = {
+    signalId: "sig-1",
+    taskId: "task-1",
+    source: "execution",
+    category: "timeout",
+    severity: "error",
+    payload: { message: "step timed out" },
+    stepOutputRefs: [],
+    timestamp: Date.now(),
+  };
+  const timeoutSignal2: FeedbackSignal = {
+    signalId: "sig-2",
+    taskId: "task-1",
+    source: "execution",
+    category: "timeout",
+    severity: "error",
+    payload: { message: "overall timed out" },
+    stepOutputRefs: [],
+    timestamp: Date.now(),
+  };
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-1");
+  const feedback = makeFeedback("completed", [timeoutSignal1, timeoutSignal2]);
+  const deviations = detector.detect(plan, feedback);
+  // Should still only return 1 deviation (timeout is deduplicated by category)
+  assert.equal(deviations.length, 1);
+  assert.equal(deviations[0]!.reasonCode, "execution.timeout");
+});
+
+test("ExecutionDeviationDetector detect combines outcome and timeout deviations", () => {
+  const timeoutSignal: FeedbackSignal = {
+    signalId: "sig-1",
+    taskId: "task-1",
+    source: "execution",
+    category: "timeout",
+    severity: "error",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: Date.now(),
+  };
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-1");
+  const feedback = makeFeedback("failed", [timeoutSignal]);
+  const deviations = detector.detect(plan, feedback);
+  assert.equal(deviations.length, 2);
+  // Check that we have both a failed deviation and a timeout deviation
+  const reasonCodes = deviations.map(d => d.reasonCode);
+  assert.ok(reasonCodes.includes("execution.failed"));
+  assert.ok(reasonCodes.includes("execution.timeout"));
+});
+
+test("ExecutionDeviationDetector detect handles escalated with timeout", () => {
+  const timeoutSignal: FeedbackSignal = {
+    signalId: "sig-1",
+    taskId: "task-1",
+    source: "execution",
+    category: "timeout",
+    severity: "error",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: Date.now(),
+  };
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-1");
+  const feedback = makeFeedback("escalated", [timeoutSignal]);
+  const deviations = detector.detect(plan, feedback);
+  assert.equal(deviations.length, 2);
+  const reasonCodes = deviations.map(d => d.reasonCode);
+  assert.ok(reasonCodes.includes("execution.escalated"));
+  assert.ok(reasonCodes.includes("execution.timeout"));
+});
+
+test("ExecutionDeviationDetector detect handles repairable with timeout", () => {
+  const timeoutSignal: FeedbackSignal = {
+    signalId: "sig-1",
+    taskId: "task-1",
+    source: "execution",
+    category: "timeout",
+    severity: "error",
+    payload: {},
+    stepOutputRefs: [],
+    timestamp: Date.now(),
+  };
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-1");
+  const feedback = makeFeedback("repairable", [timeoutSignal]);
+  const deviations = detector.detect(plan, feedback);
+  assert.equal(deviations.length, 2);
+  const reasonCodes = deviations.map(d => d.reasonCode);
+  assert.ok(reasonCodes.includes("execution.repairable"));
+  assert.ok(reasonCodes.includes("execution.timeout"));
+});
+
+test("ExecutionDeviationDetector detect returns deviations with unique IDs", () => {
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-1");
+  const feedback1 = makeFeedback("failed");
+  const feedback2 = makeFeedback("repairable");
+  const deviations1 = detector.detect(plan, feedback1);
+  const deviations2 = detector.detect(plan, feedback2);
+  assert.notEqual(deviations1[0]!.deviationId, deviations2[0]!.deviationId);
+});
+
+test("ExecutionDeviationDetector detect uses correct taskId from plan", () => {
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("unique-task-id-12345");
+  const feedback = makeFeedback("failed");
+  const deviations = detector.detect(plan, feedback);
+  assert.equal(deviations[0]!.taskId, "unique-task-id-12345");
+});
+
+test("ExecutionDeviationDetector detect sets detectedAt within reasonable range", () => {
+  const detector = new ExecutionDeviationDetector();
+  const plan = makePlan("task-1");
+  const feedback = makeFeedback("failed");
+  const before = Date.now() - 1000;
+  const deviations = detector.detect(plan, feedback);
+  const after = Date.now() + 1000;
+  assert.ok(deviations[0]!.detectedAt >= before);
+  assert.ok(deviations[0]!.detectedAt <= after);
+});

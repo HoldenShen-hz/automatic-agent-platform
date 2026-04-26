@@ -207,3 +207,303 @@ test("initializeMiddleware can be called after reset", () => {
   assert.ok(context2, "Second context should exist after reset");
   assert.notStrictEqual(context1, context2, "Contexts should be different instances");
 });
+
+// ---------------------------------------------------------------------------
+// Tool Argument Coercion Middleware Registration
+// ---------------------------------------------------------------------------
+
+test("initializeMiddleware registers tool_argument_coercion wrapToolCall hook", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(hooks.wrapToolCall.includes("tool_argument_coercion"), "Should register tool_argument_coercion hook");
+});
+
+test("initializeMiddleware does not register duplicate tool_argument_coercion", () => {
+  initializeMiddleware();
+  const chain1 = getGlobalMiddlewareChain();
+  const hooksBefore = chain1.getRegisteredHooks().wrapToolCall.filter(h => h === "tool_argument_coercion").length;
+
+  // Initialize again (should be idempotent)
+  initializeMiddleware();
+  const chain2 = getGlobalMiddlewareChain();
+  const hooksAfter = chain2.getRegisteredHooks().wrapToolCall.filter(h => h === "tool_argument_coercion").length;
+
+  assert.strictEqual(hooksBefore, hooksAfter, "Should not register duplicate hook");
+});
+
+// ---------------------------------------------------------------------------
+// Cache Governance and Summary Middleware Registration
+// ---------------------------------------------------------------------------
+
+test("initializeMiddleware registers cache-governance wrapToolCall hook", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(hooks.wrapToolCall.includes("cache-governance"), "Should register cache-governance hook");
+});
+
+test("initializeMiddleware registers cache-summary afterAgent hook", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(hooks.afterAgent.includes("cache-summary"), "Should register cache-summary hook");
+});
+
+test("initializeMiddleware does not register duplicate cache-governance", () => {
+  initializeMiddleware();
+  const chain1 = getGlobalMiddlewareChain();
+  const hooksBefore = chain1.getRegisteredHooks().wrapToolCall.filter(h => h === "cache-governance").length;
+
+  initializeMiddleware();
+  const chain2 = getGlobalMiddlewareChain();
+  const hooksAfter = chain2.getRegisteredHooks().wrapToolCall.filter(h => h === "cache-governance").length;
+
+  assert.strictEqual(hooksBefore, hooksAfter, "Should not register duplicate cache-governance hook");
+});
+
+// ---------------------------------------------------------------------------
+// Loop Detection Middleware Registration
+// ---------------------------------------------------------------------------
+
+test("initializeMiddleware registers loop_detection_before_agent hook", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(hooks.beforeAgent.includes("loop_detection_before_agent"), "Should register loop_detection_before_agent hook");
+});
+
+test("initializeMiddleware registers loop_detection_wrap_tool_call hook", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(hooks.wrapToolCall.includes("loop_detection_wrap_tool_call"), "Should register loop_detection_wrap_tool_call hook");
+});
+
+test("initializeMiddleware with null loopDetection does not register loop detection hooks", () => {
+  initializeMiddleware({ loopDetection: null });
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(!hooks.beforeAgent.includes("loop_detection_before_agent"), "Should NOT register loop_detection_before_agent when disabled");
+  assert.ok(!hooks.wrapToolCall.includes("loop_detection_wrap_tool_call"), "Should NOT register loop_detection_wrap_tool_call when disabled");
+});
+
+test("initializeMiddleware loopDetection patterns returns array", () => {
+  const context = initializeMiddleware();
+  const patterns = context.loopDetection.patterns();
+  assert.ok(Array.isArray(patterns), "patterns() should return an array");
+});
+
+test("initializeMiddleware with custom thresholds returns proper context", () => {
+  const context = initializeMiddleware({
+    loopDetection: {
+      warnThreshold: 2,
+      escalateThreshold: 4,
+    },
+  });
+  assert.ok(context.loopDetection, "Should have loopDetection");
+  assert.ok(context.loopDetection.state, "Should have state");
+});
+
+// ---------------------------------------------------------------------------
+// Middleware Chain Hook Priority and Registration Order
+// ---------------------------------------------------------------------------
+
+test("initializeMiddleware registers multiple wrapToolCall hooks with different priorities", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks().wrapToolCall;
+  assert.ok(hooks.length >= 3, "Should have at least 3 wrapToolCall hooks registered");
+});
+
+test("initializeMiddleware registers beforeAgent and afterAgent hooks", () => {
+  initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+  assert.ok(hooks.beforeAgent.length > 0, "Should have beforeAgent hooks");
+  assert.ok(hooks.afterAgent.length > 0, "Should have afterAgent hooks");
+});
+
+// ---------------------------------------------------------------------------
+// InitializedMiddlewareContext Structure Validation
+// ---------------------------------------------------------------------------
+
+test("InitializedMiddlewareContext has correct loopDetection structure with state", () => {
+  const context = initializeMiddleware();
+  assert.ok(context.loopDetection.state !== null, "State should not be null when loop detection enabled");
+  assert.ok(typeof context.loopDetection.patterns === "function", "patterns should be a function");
+  assert.ok(typeof context.loopDetection.reset === "function", "reset should be a function");
+  assert.ok(typeof context.loopDetection.getRepeatCount === "function", "getRepeatCount should be a function");
+});
+
+test("InitializedMiddlewareContext with null loopDetection has null state", () => {
+  const context = initializeMiddleware({ loopDetection: null });
+  assert.strictEqual(context.loopDetection.state, null, "State should be null");
+  assert.ok(typeof context.loopDetection.patterns === "function", "patterns should still be a function");
+  assert.ok(typeof context.loopDetection.reset === "function", "reset should still be a function");
+  assert.ok(typeof context.loopDetection.getRepeatCount === "function", "getRepeatCount should still be a function");
+});
+
+test("InitializedMiddlewareContext chain is the global middleware chain", () => {
+  const context = initializeMiddleware();
+  const chain = getGlobalMiddlewareChain();
+  assert.strictEqual(context.chain, chain, "Context chain should be the global chain");
+});
+
+// ---------------------------------------------------------------------------
+// Loop Detection State Functions
+// ---------------------------------------------------------------------------
+
+test("loopDetection patterns() returns empty array initially", () => {
+  const context = initializeMiddleware();
+  const patterns = context.loopDetection.patterns();
+  assert.strictEqual(patterns.length, 0, "Should have no patterns initially");
+});
+
+test("loopDetection getRepeatCount returns 0 for unregistered tool", () => {
+  const context = initializeMiddleware();
+  const count = context.loopDetection.getRepeatCount("nonexistent_tool", {});
+  assert.strictEqual(count, 0, "Should return 0 for unregistered tool");
+});
+
+test("loopDetection reset clears patterns", () => {
+  const context = initializeMiddleware();
+  context.loopDetection.reset();
+  const patterns = context.loopDetection.patterns();
+  assert.strictEqual(patterns.length, 0, "Should have no patterns after reset");
+});
+
+// ---------------------------------------------------------------------------
+// Global Middleware Chain Behavior
+// ---------------------------------------------------------------------------
+
+test("getGlobalMiddlewareChain returns same instance on multiple calls", () => {
+  const chain1 = getGlobalMiddlewareChain();
+  const chain2 = getGlobalMiddlewareChain();
+  assert.strictEqual(chain1, chain2, "Should return the same chain instance");
+});
+
+test("global middleware chain has all registration methods", () => {
+  const chain = getGlobalMiddlewareChain();
+  assert.ok(typeof chain.registerBeforeAgent === "function", "Should have registerBeforeAgent");
+  assert.ok(typeof chain.registerBeforeModel === "function", "Should have registerBeforeModel");
+  assert.ok(typeof chain.registerAfterModel === "function", "Should have registerAfterModel");
+  assert.ok(typeof chain.registerWrapModelCall === "function", "Should have registerWrapModelCall");
+  assert.ok(typeof chain.registerWrapToolCall === "function", "Should have registerWrapToolCall");
+  assert.ok(typeof chain.registerAfterAgent === "function", "Should have registerAfterAgent");
+});
+
+test("global middleware chain has beforeAgent, wrapToolCall, afterAgent methods", () => {
+  const chain = getGlobalMiddlewareChain();
+  assert.ok(typeof chain.beforeAgent === "function", "Should have beforeAgent method");
+  assert.ok(typeof chain.wrapToolCall === "function", "Should have wrapToolCall method");
+  assert.ok(typeof chain.afterAgent === "function", "Should have afterAgent method");
+});
+
+// ---------------------------------------------------------------------------
+// Reset Behavior
+// ---------------------------------------------------------------------------
+
+test("resetMiddleware clears all registered hooks", () => {
+  initializeMiddleware();
+  const chainBefore = getGlobalMiddlewareChain();
+  const hooksBefore = chainBefore.getRegisteredHooks();
+
+  resetMiddleware();
+
+  const chainAfter = getGlobalMiddlewareChain();
+  const hooksAfter = chainAfter.getRegisteredHooks();
+
+  assert.ok(hooksBefore.wrapToolCall.length > 0, "Should have hooks before reset");
+  assert.strictEqual(hooksAfter.wrapToolCall.length, 0, "Should have no wrapToolCall hooks after reset");
+  assert.strictEqual(hooksAfter.beforeAgent.length, 0, "Should have no beforeAgent hooks after reset");
+  assert.strictEqual(hooksAfter.afterAgent.length, 0, "Should have no afterAgent hooks after reset");
+});
+
+test("initializeMiddleware after reset re-registers all middleware", () => {
+  initializeMiddleware();
+  resetMiddleware();
+  initializeMiddleware();
+
+  const chain = getGlobalMiddlewareChain();
+  const hooks = chain.getRegisteredHooks();
+
+  assert.ok(hooks.wrapToolCall.includes("tool_argument_coercion"), "Should re-register tool_argument_coercion");
+  assert.ok(hooks.wrapToolCall.includes("cache-governance"), "Should re-register cache-governance");
+  assert.ok(hooks.afterAgent.includes("cache-summary"), "Should re-register cache-summary");
+  assert.ok(hooks.beforeAgent.includes("loop_detection_before_agent"), "Should re-register loop_detection_before_agent");
+  assert.ok(hooks.wrapToolCall.includes("loop_detection_wrap_tool_call"), "Should re-register loop_detection_wrap_tool_call");
+});
+
+// ---------------------------------------------------------------------------
+// Loop Detection Configuration Options
+// ---------------------------------------------------------------------------
+
+test("initializeMiddleware with loopDetection config object", () => {
+  const context = initializeMiddleware({
+    loopDetection: {
+      warnThreshold: 3,
+      escalateThreshold: 7,
+      askAtWarn: true,
+      terminateAtEscalate: true,
+    },
+  });
+  assert.ok(context.loopDetection.state, "Should have state");
+});
+
+test("initializeMiddleware with undefined loopDetection uses defaults", () => {
+  const context = initializeMiddleware({
+    failOpen: true,
+  });
+  assert.ok(context.loopDetection, "Should have loopDetection with defaults");
+});
+
+test("initializeMiddleware with empty loopDetection config uses defaults", () => {
+  const context = initializeMiddleware({
+    loopDetection: {},
+  });
+  assert.ok(context.loopDetection, "Should have loopDetection with defaults");
+});
+
+// ---------------------------------------------------------------------------
+// Edge Cases and Error Handling
+// ---------------------------------------------------------------------------
+
+test("InitializedMiddlewareContext loopDetection.getRepeatCount works with various input types", () => {
+  const context = initializeMiddleware();
+
+  // String input
+  const count1 = context.loopDetection.getRepeatCount("tool", "string_input");
+  assert.strictEqual(typeof count1, "number", "Should return number for string input");
+
+  // Object input
+  const count2 = context.loopDetection.getRepeatCount("tool", { key: "value" });
+  assert.strictEqual(typeof count2, "number", "Should return number for object input");
+
+  // Array input
+  const count3 = context.loopDetection.getRepeatCount("tool", [1, 2, 3]);
+  assert.strictEqual(typeof count3, "number", "Should return number for array input");
+
+  // Null input
+  const count4 = context.loopDetection.getRepeatCount("tool", null);
+  assert.strictEqual(typeof count4, "number", "Should return number for null input");
+});
+
+test("InitializedMiddlewareContext loopDetection.getRepeatCount with null state returns 0", () => {
+  const context = initializeMiddleware({ loopDetection: null });
+  const count = context.loopDetection.getRepeatCount("tool", {});
+  assert.strictEqual(count, 0, "Should return 0 when state is null");
+});
+
+test("InitializedMiddlewareContext loopDetection.patterns with null state returns empty array", () => {
+  const context = initializeMiddleware({ loopDetection: null });
+  const patterns = context.loopDetection.patterns();
+  assert.deepStrictEqual(patterns, [], "Should return empty array when state is null");
+});
+
+test("InitializedMiddlewareContext loopDetection.reset with null state is no-op", () => {
+  const context = initializeMiddleware({ loopDetection: null });
+  // Should not throw
+  context.loopDetection.reset();
+  assert.ok(true, "reset should be a no-op when state is null");
+});

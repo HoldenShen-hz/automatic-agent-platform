@@ -173,3 +173,175 @@ test("ExecutionResourceMonitor detect uses worker snapshot for runtime info", ()
   assert.equal(findings[0]!.runtimeInstanceId, "runtime-from-agent");
   assert.equal(findings[0]!.currentStepId, "step-from-agent");
 });
+
+// ---------------------------------------------------------------------------
+// Additional resource monitor tests
+// ---------------------------------------------------------------------------
+
+test("ExecutionResourceMonitor detect finds multiple violations for same execution", () => {
+  const startedAt = new Date(Date.now() - 600000).toISOString(); // 10 minutes ago
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1", toolCallCount: 150 }],
+  ]);
+  const workerSnapshots = new Map([
+    ["agent-1", { memoryMb: 4096 }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, agentRecords, workerSnapshots);
+  const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100, maxMemoryMb: 2048, maxElapsedMs: 300000 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  // Should find 3 violations: tool calls, memory, and elapsed time
+  assert.equal(findings.length, 3);
+});
+
+test("ExecutionResourceMonitor detect with default guard options", () => {
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions);
+  // Use default guard (no options)
+  const guard = new ExecutionResourceCeilingGuard();
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  // Should be empty since default limits are high
+  assert.equal(findings.length, 0);
+});
+
+test("ExecutionResourceMonitor detect with null toolCallCount does not trigger tool calls limit", () => {
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1", toolCallCount: undefined }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, agentRecords);
+  const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 0);
+});
+
+test("ExecutionResourceMonitor detect with null memoryMb does not trigger memory limit", () => {
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1" }],
+  ]);
+  const workerSnapshots = new Map([
+    ["agent-1", { memoryMb: undefined }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, agentRecords, workerSnapshots);
+  const guard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 2048 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 0);
+});
+
+test("ExecutionResourceMonitor detect with no ceiling limits returns empty", () => {
+  const startedAt = new Date(Date.now() - 600000).toISOString();
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1", toolCallCount: 999999 }],
+  ]);
+  const workerSnapshots = new Map([
+    ["agent-1", { memoryMb: 999999 }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, agentRecords, workerSnapshots);
+  const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: null, maxMemoryMb: null, maxElapsedMs: null });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 0);
+});
+
+test("ExecutionResourceMonitor detect processes multiple executions", () => {
+  const startedAt = new Date(Date.now() - 600000).toISOString();
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
+    ["exec-2", { id: "exec-2", taskId: "task-2", agentId: "agent-2", status: "executing", startedAt, createdAt: startedAt }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1", toolCallCount: 150 }],
+    ["exec-2", { agentId: "agent-2", toolCallCount: 200 }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }, { executionId: "exec-2" }], executions, agentRecords);
+  const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 2);
+});
+
+test("ExecutionResourceMonitor detect handles missing agent execution record", () => {
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
+  ]);
+  // No agent record
+  const workerSnapshots = new Map([
+    ["agent-1", { memoryMb: 4096 }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, new Map(), workerSnapshots);
+  const guard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 2048 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 1);
+  // Should use agentId from execution
+  assert.equal(findings[0]!.agentId, "agent-1");
+});
+
+test("ExecutionResourceMonitor detect uses execution startedAt when agentExecution startedAt is missing", () => {
+  const startedAt = new Date(Date.now() - 600000).toISOString();
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1", startedAt: undefined }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, agentRecords);
+  const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 300000 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]!.dimension, "elapsed_ms");
+});
+
+test("ExecutionResourceMonitor detect uses execution createdAt when both startedAt are missing", () => {
+  const createdAt = new Date(Date.now() - 600000).toISOString();
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1" }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }], executions, agentRecords);
+  const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 300000 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]!.dimension, "elapsed_ms");
+});
+
+test("ExecutionResourceMonitor detect handles mixed violations across executions", () => {
+  const startedAt = new Date(Date.now() - 600000).toISOString();
+  const executions = new Map([
+    ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
+    ["exec-2", { id: "exec-2", taskId: "task-2", agentId: "agent-2", status: "executing", createdAt: new Date().toISOString() }],
+  ]);
+  const agentRecords = new Map([
+    ["exec-1", { agentId: "agent-1", toolCallCount: 150 }],
+    ["exec-2", { agentId: "agent-2" }],
+  ]);
+  const workerSnapshots = new Map([
+    ["agent-2", { memoryMb: 4096 }],
+  ]);
+  const store = createMockStore([{ executionId: "exec-1" }, { executionId: "exec-2" }], executions, agentRecords, workerSnapshots);
+  const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100, maxMemoryMb: 2048, maxElapsedMs: 300000 });
+  const monitor = new ExecutionResourceMonitor(store, guard);
+  const findings = monitor.detect();
+  // exec-1: tool calls + elapsed; exec-2: memory
+  assert.equal(findings.length, 3);
+});

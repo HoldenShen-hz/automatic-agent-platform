@@ -694,3 +694,615 @@ test("dispatchNext returns no_worker when all workers filtered out", () => {
   assert.equal(result.ticket, mockTicket);
   assert.equal(result.worker, null);
 });
+
+// ---------------------------------------------------------------------------
+// dispatchNext with local_only dispatch target
+// ---------------------------------------------------------------------------
+
+test("dispatchNext with local_only dispatchTarget filters remote workers", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  mockTicket.dispatchTarget = "local_only";
+  const remoteWorker = createMockWorker("worker-remote", { placement: "remote", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  // With only remote workers, local_only dispatch target should result in no_worker
+  (store.worker as any).listWorkers = () => [remoteWorker];
+  (store.worker as any).getWorker = () => remoteWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  // The remote worker should be filtered out by local_only, leaving no eligible workers
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with require_remote dispatch target and no remote workers
+// ---------------------------------------------------------------------------
+
+test("dispatchNext with require_remote returns blocked when no remote workers", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  mockTicket.dispatchTarget = "require_remote";
+  const localWorker = createMockWorker("worker-local", { placement: "local", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [localWorker];
+  (store.worker as any).getWorker = () => localWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  // With require_remote and no remote workers, the result is "blocked" with remote.unavailable
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "remote.unavailable");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with prefer_remote and only local workers available
+// ---------------------------------------------------------------------------
+
+test("dispatchNext with prefer_remote returns no_worker when only unavailable workers", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  mockTicket.dispatchTarget = "prefer_remote";
+  // Local worker with no available slots
+  const localWorker = createMockWorker("worker-local", { placement: "local", availableSlots: 0 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  // With only local workers at capacity and prefer_remote, no eligible workers
+  (store.worker as any).listWorkers = () => [localWorker];
+  (store.worker as any).getWorker = () => localWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  // prefer_remote with no available local workers results in no_worker
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker unavailable status
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with unavailable status", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  const unavailableWorker = createMockWorker("worker-1", { status: "unavailable", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [unavailableWorker];
+  (store.worker as any).getWorker = () => unavailableWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker quarantined status
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with quarantined status", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  const quarantinedWorker = createMockWorker("worker-1", { status: "quarantined", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [quarantinedWorker];
+  (store.worker as any).getWorker = () => quarantinedWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker offline status
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with offline status", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  const offlineWorker = createMockWorker("worker-1", { status: "offline", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [offlineWorker];
+  (store.worker as any).getWorker = () => offlineWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker draining status
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with draining status", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  const drainingWorker = createMockWorker("worker-1", { status: "draining", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [drainingWorker];
+  (store.worker as any).getWorker = () => drainingWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker at capacity
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with no available slots", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  const worker = createMockWorker("worker-1", { availableSlots: 0 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [worker];
+  (store.worker as any).getWorker = () => worker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with queue affinity mismatch
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with queue affinity mismatch", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  mockTicket.queueName = "priority-queue";
+  const worker = createMockWorker("worker-1", { queueAffinity: "different-queue", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [worker];
+  (store.worker as any).getWorker = () => worker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker isolation level mismatch
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with insufficient isolation level", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  mockTicket.requiredIsolationLevel = "strict";
+  const worker = createMockWorker("worker-1", { isolationLevel: "standard", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [worker];
+  (store.worker as any).getWorker = () => worker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with worker repo version mismatch
+// ---------------------------------------------------------------------------
+
+test("dispatchNext skips workers with repo version mismatch", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  mockTicket.requiredRepoVersion = "v2.0.0";
+  const worker = createMockWorker("worker-1", { repoVersion: "v1.0.0", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [worker];
+  (store.worker as any).getWorker = () => worker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with preferredWorkerId option
+// ---------------------------------------------------------------------------
+
+test("dispatchNext with preferredWorkerId returns no_worker when worker not found", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  // When preferredWorkerId is set but getWorker returns null, no worker is found
+  (store.worker as any).listWorkers = () => [];
+  (store.worker as any).getWorker = () => null;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  const result = service.dispatchNext({ leaseTtlMs: 60000, preferredWorkerId: "nonexistent-worker" });
+
+  assert.equal(result.outcome, "no_worker");
+});
+
+// ---------------------------------------------------------------------------
+// dispatchNext with degraded workers included
+// ---------------------------------------------------------------------------
+
+test("dispatchNext without includeDegraded filters out degraded workers", () => {
+  const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
+  const degradedWorker = createMockWorker("worker-1", { status: "degraded", availableSlots: 5 });
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket];
+  (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
+  (store.operations as any).loadExecutionAuthoritativeView = () => ({
+    execution: createMockExecution("exec-1", "task-1"),
+    task: createMockTask("task-1"),
+    workflow: null,
+    session: null,
+    consistency: "authoritative",
+    observedAt: new Date().toISOString(),
+  });
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 0,
+      dispatchableBacklogSize: 0,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: null,
+      oldestClaimAgeSeconds: null,
+      queueNames: [],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+
+  (store.worker as any).listWorkers = () => [degradedWorker];
+  (store.worker as any).getWorker = () => degradedWorker;
+
+  const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
+
+  // Without includeDegraded, degraded workers should be filtered out
+  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+
+  assert.equal(result.outcome, "no_worker");
+});

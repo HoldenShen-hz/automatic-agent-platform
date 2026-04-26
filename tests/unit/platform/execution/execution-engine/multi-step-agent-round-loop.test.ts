@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mock, type MockCallSite } from "node:test/mocks";
 
 import {
   parseStepOutput,
   fallbackStepOutput,
+  executeAgentRoundLoop,
+  buildStepOutput,
   type AgentRoundLoopInput,
   type AgentRoundLoopResult,
+  type ToolCallResult,
+  type LlmModelCallResult,
 } from "../../../../../src/platform/execution/execution-engine/multi-step-agent-round-loop.js";
+import { resetModelCallProvider, initializeModelCallProvider } from "../../../../../src/platform/execution/execution-engine/model-call-provider.js";
 
 // ---------------------------------------------------------------------------
 // parseStepOutput

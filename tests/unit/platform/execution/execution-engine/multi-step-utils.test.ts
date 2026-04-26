@@ -62,6 +62,27 @@ test("parseOptionalPositiveInteger handles large numbers", () => {
   assert.equal(parseOptionalPositiveInteger(2147483647), 2147483647);
 });
 
+test("parseOptionalPositiveInteger handles very small positive decimals", () => {
+  assert.equal(parseOptionalPositiveInteger(0.1), 0, "Should truncate 0.1 to 0");
+  assert.equal(parseOptionalPositiveInteger(0.9), 0, "Should truncate 0.9 to 0");
+  assert.equal(parseOptionalPositiveInteger(0.01), 0, "Should truncate 0.01 to 0");
+});
+
+test("parseOptionalPositiveInteger handles very large numbers", () => {
+  assert.equal(parseOptionalPositiveInteger(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
+  assert.equal(parseOptionalPositiveInteger(1e15), 1e15);
+});
+
+test("parseOptionalPositiveInteger handles Number.MIN_VALUE", () => {
+  // Number.MIN_VALUE is the smallest positive number, greater than zero
+  assert.equal(parseOptionalPositiveInteger(Number.MIN_VALUE), 0, "Should truncate MIN_VALUE to 0");
+});
+
+test("parseOptionalPositiveInteger handles boundary values", () => {
+  assert.equal(parseOptionalPositiveInteger(0.9999999999), 0, "Should truncate near-zero decimals");
+  assert.equal(parseOptionalPositiveInteger(1.9999999999), 1, "Should truncate near-one decimals");
+});
+
 // =============================================================================
 // parseOptionalStringArray tests
 // =============================================================================
@@ -110,6 +131,36 @@ test("parseOptionalStringArray handles mixed valid and invalid items", () => {
 test("parseOptionalStringArray trims whitespace strings", () => {
   const result = parseOptionalStringArray(["  ", "\t", "\n", "valid"]);
   assert.deepEqual(result, ["valid"]);
+});
+
+test("parseOptionalStringArray filters strings with only tabs and newlines", () => {
+  const result = parseOptionalStringArray(["\t", "\n", "\r\n", "valid"]);
+  assert.deepEqual(result, ["valid"]);
+});
+
+test("parseOptionalStringArray handles mixed whitespace strings", () => {
+  const result = parseOptionalStringArray(["  leading", "trailing  ", "  both  ", "valid"]);
+  assert.deepEqual(result, ["leading", "trailing", "both", "valid"]);
+});
+
+test("parseOptionalStringArray handles empty string as item", () => {
+  const result = parseOptionalStringArray(["", "", ""]);
+  assert.deepEqual(result, []);
+});
+
+test("parseOptionalStringArray preserves string order", () => {
+  const result = parseOptionalStringArray(["z", "a", "m", "b"]);
+  assert.deepEqual(result, ["z", "a", "m", "b"]);
+});
+
+test("parseOptionalStringArray handles boolean false as non-string", () => {
+  const result = parseOptionalStringArray(["a", false, "b"]);
+  assert.deepEqual(result, ["a", "b"]);
+});
+
+test("parseOptionalStringArray handles zero as non-string", () => {
+  const result = parseOptionalStringArray(["a", 0, "b"]);
+  assert.deepEqual(result, ["a", "b"]);
 });
 
 // =============================================================================
@@ -165,6 +216,56 @@ test("resolveMultiStepToolPath error code contains path_outside_workspace", () =
     assert.ok(isToolError, "Expected ToolExecutionError to be thrown");
     if (isToolError) {
       assert.ok((error as ToolExecutionError).code.includes("path_outside_workspace"));
+    }
+  }
+});
+
+test("resolveMultiStepToolPath allows deep nested paths within workspace", () => {
+  const result = resolveMultiStepToolPath("/workspace", "a/b/c/d/e");
+  assert.ok(result.includes("a/b/c/d/e") || result.endsWith("a/b/c/d/e"));
+});
+
+test("resolveMultiStepToolPath rejects path with encoded traversal", () => {
+  assert.throws(
+    () => resolveMultiStepToolPath("/workspace", "foo/../bar"),
+    ToolExecutionError,
+  );
+});
+
+test("resolveMultiStepToolPath rejects absolute path at workspace boundary", () => {
+  assert.throws(
+    () => resolveMultiStepToolPath("/workspace", "/workspace"),
+    ToolExecutionError,
+  );
+});
+
+test("resolveMultiStepToolPath handles relative paths with current directory", () => {
+  const result = resolveMultiStepToolPath("/workspace", "./src");
+  assert.ok(result.includes("src"));
+});
+
+test("resolveMultiStepToolPath handles relative paths with parent traversal attempt", () => {
+  assert.throws(
+    () => resolveMultiStepToolPath("/workspace", "foo/../../bar"),
+    ToolExecutionError,
+  );
+});
+
+test("resolveMultiStepToolPath handles root path as workspace", () => {
+  // When rootPath is root, any absolute path should work (since it starts with root)
+  const result = resolveMultiStepToolPath("/", "/usr/local");
+  assert.ok(result.includes("usr/local") || result.endsWith("usr/local"));
+});
+
+test("resolveMultiStepToolPath error message contains the problematic path", () => {
+  try {
+    resolveMultiStepToolPath("/workspace", "../malicious");
+    assert.fail("Should have thrown");
+  } catch (error: unknown) {
+    assert.ok(error instanceof ToolExecutionError);
+    if (error instanceof ToolExecutionError) {
+      assert.ok(error.code.includes("path_outside_workspace"));
+      assert.ok(error.message.includes("../malicious") || error.message.includes(".."));
     }
   }
 });
@@ -236,4 +337,77 @@ test("safeParseToolResult parses JSON primitives correctly", () => {
   const boolResult = safeParseToolResult("true");
   assert.strictEqual(boolResult, true);
   assert.strictEqual(typeof boolResult, "boolean");
+});
+
+test("safeParseToolResult handles unicode characters", () => {
+  const result = safeParseToolResult('{"message": "こんにちは"}');
+  assert.deepEqual(result, { message: "こんにちは" });
+});
+
+test("safeParseToolResult handles escaped quotes", () => {
+  const result = safeParseToolResult('{"message": "He said \\"Hello\\""}');
+  assert.deepEqual(result, { message: 'He said "Hello"' });
+});
+
+test("safeParseToolResult handles scientific notation", () => {
+  const result = safeParseToolResult("1e10");
+  assert.strictEqual(result, 1e10);
+  assert.strictEqual(typeof result, "number");
+});
+
+test("safeParseToolResult handles negative numbers", () => {
+  const result = safeParseToolResult("-42");
+  assert.strictEqual(result, -42);
+});
+
+test("safeParseToolResult handles JSON false", () => {
+  const result = safeParseToolResult("false");
+  assert.strictEqual(result, false);
+  assert.strictEqual(typeof result, "boolean");
+});
+
+test("safeParseToolResult handles JSON array with mixed types", () => {
+  const result = safeParseToolResult('[1, "string", true, null, {"key": "value"}]');
+  assert.deepEqual(result, [1, "string", true, null, { key: "value" }]);
+});
+
+test("safeParseToolResult handles empty JSON object", () => {
+  const result = safeParseToolResult("{}");
+  assert.deepEqual(result, {});
+});
+
+test("safeParseToolResult handles empty JSON array", () => {
+  const result = safeParseToolResult("[]");
+  assert.deepEqual(result, []);
+});
+
+test("safeParseToolResult handles special JSON numbers", () => {
+  const result = safeParseToolResult("[0, -0, 1.5, -1.5, 1e-5, 1E+5]");
+  assert.deepEqual(result, [0, -0, 1.5, -1.5, 1e-5, 1E+5]);
+});
+
+test("safeParseToolResult handles escaped slashes", () => {
+  const result = safeParseToolResult('{"path": "C:\\\\Users\\\\test"}');
+  assert.deepEqual(result, { path: "C:\\Users\\test" });
+});
+
+test("safeParseToolResult handles unicode escape sequences", () => {
+  const result = safeParseToolResult('{"emoji": "\\uD83D\\uDE00"}');
+  assert.deepEqual(result, { emoji: "😀" });
+});
+
+test("safeParseToolResult returns raw string for incomplete JSON objects", () => {
+  const result = safeParseToolResult('{"key": "value"');
+  assert.equal(result, '{"key": "value"');
+});
+
+test("safeParseToolResult returns raw string for incomplete JSON arrays", () => {
+  const result = safeParseToolResult('[1, 2, 3');
+  assert.equal(result, '[1, 2, 3');
+});
+
+test("safeParseToolResult handles JSON with trailing comma", () => {
+  const result = safeParseToolResult('{"key": "value",}');
+  // JSON.parse would fail on trailing comma
+  assert.equal(result, '{"key": "value",}');
 });
