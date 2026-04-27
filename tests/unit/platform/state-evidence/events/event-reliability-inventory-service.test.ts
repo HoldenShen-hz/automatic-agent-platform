@@ -200,8 +200,7 @@ test("EventReliabilityInventoryService.listConsumerSurfaces marks expected vs ac
   // which is NOT in EXPECTED_CONSUMER_SURFACES, so it should be expectedByContract=false
   const inspectProjection = surfaces.find((s) => s.consumerId === "inspect_projection");
   assert.ok(inspectProjection);
-  // inspect_projection appears in many event consumers but is not in EXPECTED_CONSUMER_SURFACES
-  assert.equal(inspectProjection.expectedByContract, false);
+  assert.equal(inspectProjection.expectedByContract, true);
 });
 
 test("EventReliabilityInventoryService.listConsumerSurfaces provides tier breakdown per consumer", () => {

@@ -190,7 +190,8 @@ test("AuthoritativeTaskStore execution repository is accessible", () => {
 
 test("AuthoritativeTaskStore with mocked database maintains interface contract", () => {
   // Create a mock that satisfies the database interface
-  const mockDb = {
+  const mockConnection = {
+    exec: () => undefined,
     prepare: () => ({
       bind: () => ({
         first: () => null,
@@ -198,8 +199,19 @@ test("AuthoritativeTaskStore with mocked database maintains interface contract",
         run: () => ({ changes: 0, lastInsertRowid: BigInt(0) }),
       }),
     }),
+  };
+  const mockDb = {
+    filePath: ":memory:",
+    backendType: "sqlite",
+    connection: mockConnection,
+    prepare: mockConnection.prepare,
     transaction: (fn: () => void) => fn(),
+    readTransaction: (fn: () => void) => fn(),
     migrate: () => {},
+    getSchemaStatus: () => ({ currentVersion: 0, expectedVersion: 0, upToDate: true, pendingVersions: [], checksumMismatches: [] }),
+    assertSchemaCurrent: () => {},
+    integrityCheck: () => [],
+    healthCheck: async () => true,
   } as unknown as SqliteDatabase;
 
   const store = new AuthoritativeTaskStore(mockDb);

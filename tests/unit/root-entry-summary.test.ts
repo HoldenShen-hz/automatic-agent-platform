@@ -51,9 +51,9 @@ test("platform root summary includes architecture and five-plane startup views",
     governance: 6,
   });
   assert.deepEqual(summary.scaleOps.startupOrder, ["scale-ecosystem", "ops-maturity"]);
-  assert.equal(summary.scaleOps.totalCapabilityCount, 18);
+  assert.equal(summary.scaleOps.totalCapabilityCount, 23);
   assert.deepEqual(summary.scaleOps.capabilityCounts, {
-    scaleEcosystem: 6,
+    scaleEcosystem: 11,
     opsMaturity: 12,
   });
 });

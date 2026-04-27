@@ -77,7 +77,10 @@ test("ExperienceDistillationService.distill uses planning recommendation for non
   const result = service.distill(signals);
   const first = result[0];
   assert.ok(first != null);
-  assert.equal(first.recommendation, "Convert the observed signal into reusable planning guidance.");
+  assert.equal(
+    first.recommendation,
+    "Capture preventive measures and convert the signal into reusable planning guidance.",
+  );
 });
 
 test("ExperienceDistillationService.distill preserves evidence refs and source signal IDs", () => {

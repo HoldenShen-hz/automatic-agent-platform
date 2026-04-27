@@ -20,7 +20,9 @@ test("DeploymentInventoryService listDeployments returns a copy", () => {
   const second = service.listDeployments();
 
   assert.notEqual(first, second);
-  first.push({ deploymentId: "injected" } as never);
+  assert.throws(() => {
+    first.push({ deploymentId: "injected" } as never);
+  }, /not extensible/);
   assert.equal(second.length, 4);
 });
 

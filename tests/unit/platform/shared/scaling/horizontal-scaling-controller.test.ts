@@ -368,8 +368,8 @@ test("HorizontalScalingController computeWorkerCount with large queue", () => {
     deadLetter: 0,
   };
   const count = controller.computeWorkerCount(queueStats, 5);
-  // ceil((100 + 10) / 5) = ceil(110/5) = 22
-  assert.equal(count, 22);
+  // computeWorkerCount includes waiting, delayed, and active jobs.
+  assert.equal(count, 32);
 });
 
 test("HorizontalScalingController processMetrics returns null for no scaling needed", () => {

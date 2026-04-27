@@ -301,7 +301,7 @@ test("BillingServiceAsync throws for non-existent account", async () => {
     async () => {
       await service.evaluateEntitlement({ accountId: "nonexistent", featureKey: "feature_ai" });
     },
-    /billing.account_not_found/,
+    /Billing account not found: nonexistent/,
   );
 });
 

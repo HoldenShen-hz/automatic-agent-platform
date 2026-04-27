@@ -315,7 +315,7 @@ test("performance: priority queue FIFO within same priority", (t) => {
 // Concurrent Queue Operations Tests
 // ============================================================================
 
-test("performance: concurrent enqueue operations >1500 ops/sec", (t) => {
+test("performance: concurrent enqueue operations >1500 ops/sec", async (t) => {
   const db = createTempDb();
   const adapter = new SqliteQueueAdapter(db);
   const queueName = "test-queue";
@@ -339,9 +339,7 @@ test("performance: concurrent enqueue operations >1500 ops/sec", (t) => {
       }),
     );
 
-    Promise.all(workers).catch((err) => {
-      throw err;
-    });
+    await Promise.all(workers);
 
     const elapsed = performance.now() - start;
     const opsPerSec = (totalOps / elapsed) * 1000;
@@ -374,7 +372,7 @@ test("performance: concurrent enqueue operations >1500 ops/sec", (t) => {
   }
 });
 
-test("performance: concurrent enqueue+dequeue maintains consistency", (t) => {
+test("performance: concurrent enqueue+dequeue maintains consistency", async (t) => {
   const db = createTempDb();
   const adapter = new SqliteQueueAdapter(db);
   const queueName = "test-queue";
@@ -410,9 +408,8 @@ test("performance: concurrent enqueue+dequeue maintains consistency", (t) => {
       }),
     );
 
-    Promise.all(workers).then((results) => {
-      totalDequeues = results.reduce((sum, count) => sum + count, 0);
-    });
+    const results = await Promise.all(workers);
+    totalDequeues = results.reduce((sum, count) => sum + count, 0);
 
     const elapsed = performance.now() - start;
     const opsPerSec = (totalDequeues / elapsed) * 1000;
@@ -444,7 +441,7 @@ test("performance: concurrent enqueue+dequeue maintains consistency", (t) => {
   }
 });
 
-test("performance: concurrent mixed operations no race conditions", (t) => {
+test("performance: concurrent mixed operations no race conditions", async (t) => {
   const db = createTempDb();
   const adapter = new SqliteQueueAdapter(db);
   const queueName = "test-queue";
@@ -480,9 +477,7 @@ test("performance: concurrent mixed operations no race conditions", (t) => {
       }),
     );
 
-    Promise.all(workers).catch((err) => {
-      throw err;
-    });
+    await Promise.all(workers);
 
     // Verify all operations completed without errors
     const stats = adapter.stats(queueName);
@@ -507,7 +502,7 @@ test("performance: concurrent mixed operations no race conditions", (t) => {
   }
 });
 
-test("performance: concurrent priority enqueue ordering preserved", (t) => {
+test("performance: concurrent priority enqueue ordering preserved", async (t) => {
   const db = createTempDb();
   const adapter = new SqliteQueueAdapter(db);
   const queueName = "test-queue";
@@ -523,16 +518,14 @@ test("performance: concurrent priority enqueue ordering preserved", (t) => {
         for (let i = 0; i < itemsPerWorker; i++) {
           adapter.enqueue({
             queueName,
-            payload: { workerId, index: i },
+            payload: { workerId, index: i, priority: basePriority },
             priority: basePriority,
           });
         }
       }),
     );
 
-    Promise.all(workers).catch((err) => {
-      throw err;
-    });
+    await Promise.all(workers);
 
     // Dequeue all and verify priority ordering
     const totalItems = concurrency * itemsPerWorker;

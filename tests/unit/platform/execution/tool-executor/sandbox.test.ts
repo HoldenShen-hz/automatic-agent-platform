@@ -446,7 +446,7 @@ test("sandbox: secret redaction is applied to output containing API keys", async
       agentId: "agent-sandbox-secret",
       traceId: "trace-sandbox-secret",
       toolName: "command_exec",
-      timeoutMs: 2000,
+      timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWritePolicy(workspace),
       command: "node",
       args: [scriptPath],

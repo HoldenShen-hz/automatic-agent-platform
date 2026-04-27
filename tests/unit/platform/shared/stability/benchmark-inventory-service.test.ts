@@ -22,7 +22,9 @@ test("BenchmarkInventoryService listBenchmarks returns a copy", () => {
   const second = service.listBenchmarks();
 
   assert.notEqual(first, second);
-  first.push({ benchmarkId: "injected" } as never);
+  assert.throws(() => {
+    first.push({ benchmarkId: "injected" } as never);
+  }, /not extensible/);
   assert.equal(second.length, 6);
 });
 

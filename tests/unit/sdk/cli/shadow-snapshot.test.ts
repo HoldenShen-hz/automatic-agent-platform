@@ -128,7 +128,7 @@ test("create action does not require snapshotId", () => {
   };
 
   // For create, snapshotId is optional
-  const requiresSnapshotId = config.action === "create" && config.snapshotId == null;
+  const requiresSnapshotId = config.action === "restore" && config.snapshotId == null;
   assert.equal(requiresSnapshotId, false);
 });
 

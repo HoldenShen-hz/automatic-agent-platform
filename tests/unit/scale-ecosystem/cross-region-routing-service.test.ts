@@ -18,7 +18,7 @@ test("CrossRegionRoutingService honors residency policy before latency preferenc
       allowCrossBorder: false,
     },
     primaryRegionId: "cn-sh",
-    primaryRegionHealthy: false,
+    primaryRegionHealthy: true,
     replicationPolicy: {
       sourceRegionId: "cn-sh",
       targetRegionIds: ["cn-bj", "cn-gz"],

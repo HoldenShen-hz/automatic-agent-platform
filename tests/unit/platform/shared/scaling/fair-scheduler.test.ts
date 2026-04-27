@@ -524,14 +524,15 @@ test("FairScheduler admitTask uses workflows as proxy for llmRequestsPerMinute i
     llmRequestsPerMinute: 100,
   });
 
-  // Tenant 1 uses all workflows
-  scheduler.admitTask("tenant-1", "task-1", { maxConcurrentWorkflows: 50 });
+  // Tenant 1 leaves some idle workflows available for borrowing.
+  scheduler.admitTask("tenant-1", "task-1", { maxConcurrentWorkflows: 45 });
 
-  // Tenant 2 requests workflows - should borrow
-  const decision = scheduler.admitTask("tenant-2", "task-2", { maxConcurrentWorkflows: 5 });
+  // Tenant 2 uses its guaranteed workflows, then must borrow for overflow.
+  scheduler.admitTask("tenant-2", "task-2", { maxConcurrentWorkflows: 10 });
+  const decision = scheduler.admitTask("tenant-2", "task-3", { maxConcurrentWorkflows: 5 });
 
   assert.equal(decision.admitted, true);
-  // The borrowedFrom should include tenant-1
+  // The borrowedFrom should include tenant-1.
   assert.ok(decision.borrowedFrom !== undefined);
   assert.equal(decision.borrowedFrom!.includes("tenant-1"), true);
 });

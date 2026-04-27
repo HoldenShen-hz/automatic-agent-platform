@@ -510,13 +510,13 @@ export class TenantPlatformService {
    */
   public buildTopologySummary(): TenantTopologySummary {
     const generatedAt = nowIso();
-    const workspaces = this.store
+    const workspaces = this.store.organization
       .listWorkspaceRecords({ limit: 500 })
       .map((workspace) => ({
         ...workspace,
         memberships: this.store.organization.listWorkspaceMemberships(workspace.workspaceId),
       }));
-    const organizations = this.store
+    const organizations = this.store.organization
       .listOrganizationRecords(500)
       .map((organization) => ({
         ...organization,

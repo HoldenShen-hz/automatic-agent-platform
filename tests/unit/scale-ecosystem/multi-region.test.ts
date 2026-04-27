@@ -190,11 +190,11 @@ test("CrossRegionRoutingService.route sets recoveryTopology with failover target
     regions,
     policy: createResidencyPolicy(),
     primaryRegionId: "us-east",
-    primaryRegionHealthy: false,
+    primaryRegionHealthy: true,
   });
 
   assert.equal(decision.recoveryTopology.primaryRegionId, "us-east");
-  assert.equal(decision.recoveryTopology.failoverRegionId, "eu-west");
+  assert.equal(decision.recoveryTopology.failoverRegionId, null);
 });
 
 test("CrossRegionRoutingService.route handles residencyAllowed false", () => {

@@ -10,7 +10,7 @@ import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-reg
 
 test("scale-ops runtime catalog aggregates all W4 capability groups", () => {
   const catalog = buildScaleOpsRuntimeCatalog();
-  assert.equal(catalog.scaleEcosystem.length, 6);
+  assert.equal(catalog.scaleEcosystem.length, 11);
   assert.equal(catalog.opsMaturity.length, 12);
 });
 
