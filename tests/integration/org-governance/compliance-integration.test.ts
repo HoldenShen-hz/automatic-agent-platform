@@ -148,7 +148,7 @@ test("integration: DelegatedGovernanceService checkOperation validates role perm
       orgNodeId: "dept_1",
       domainId: "ops",
     },
-    "approve",
+    "create_trigger",
     5000,
   );
 
