@@ -30,3 +30,13 @@ dist_test
 dist-test/
 .tmp/
 .runtime/
+
+# TypeScript compiled output
+*.js
+*.js.map
+*.d.ts
+
+# Generated/test directories
+artifacts/
+dist-checkpoints/
+session-replay/
