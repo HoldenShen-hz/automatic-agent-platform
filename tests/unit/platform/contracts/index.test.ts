@@ -26,30 +26,30 @@ test("contracts barrel re-exports namespaced core contract modules", async () =>
   const mod = await import("../../../../src/platform/contracts/index.js");
 
   assert.equal(typeof mod.requestEnvelopeContract.createRequestEnvelope, "function");
-  assert.equal(typeof mod.controlDirectiveContract.createControlDirective, "function");
-  assert.equal(typeof mod.executionPlanContract.createExecutionPlan, "function");
-  assert.equal(typeof mod.executionReceiptContract.createExecutionReceipt, "function");
-  assert.equal(typeof mod.stateCommandContract.createStateCommand, "function");
+  assert.equal(typeof mod.legacyControlDirectiveContract.createControlDirective, "function");
+  assert.equal(typeof mod.legacyExecutionPlanContract.createExecutionPlan, "function");
+  assert.equal(typeof mod.legacyExecutionReceiptContract.createExecutionReceipt, "function");
+  assert.equal(typeof mod.legacyStateCommandContract.createStateCommand, "function");
 });
 
-test("contracts barrel exposes aliased core contract factories without colliding with platform-contracts", async () => {
+test("contracts barrel exposes canonical request factory without first-class legacy execution factories", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
   assert.equal(typeof mod.createPlaneRequestEnvelope, "function");
-  assert.equal(typeof mod.createPlaneControlDirective, "function");
-  assert.equal(typeof mod.createPlaneExecutionPlan, "function");
-  assert.equal(typeof mod.createPlaneExecutionReceipt, "function");
-  assert.equal(typeof mod.createPlaneStateCommand, "function");
+  assert.equal("createPlaneControlDirective" in mod, false);
+  assert.equal("createPlaneExecutionPlan" in mod, false);
+  assert.equal("createPlaneExecutionReceipt" in mod, false);
+  assert.equal("createPlaneStateCommand" in mod, false);
 });
 
-test("contracts barrel exports core contract factories directly", async () => {
+test("contracts barrel does not export legacy execution factories as direct canonical entries", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
   assert.equal(typeof mod.createRequestEnvelope, "function");
-  assert.equal(typeof mod.createControlDirective, "function");
-  assert.equal(typeof mod.createExecutionPlan, "function");
-  assert.equal(typeof mod.createExecutionReceipt, "function");
-  assert.equal(typeof mod.createStateCommand, "function");
+  assert.equal("createControlDirective" in mod, false);
+  assert.equal("createExecutionPlan" in mod, false);
+  assert.equal("createExecutionReceipt" in mod, false);
+  assert.equal("createStateCommand" in mod, false);
 });
 
 test("contracts barrel exports constants module", async () => {
