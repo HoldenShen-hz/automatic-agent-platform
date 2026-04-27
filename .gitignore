@@ -40,3 +40,8 @@ dist-test/
 artifacts/
 dist-checkpoints/
 session-replay/
+
+# Test artifacts (UUID-named task/artifact directories)
+tests/**/artifacts/
+tests/golden/snapshots/
+tests/fixtures/migration/snapshots/
