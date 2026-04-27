@@ -20,22 +20,22 @@
 
 ## 2. v4.3 Contract Freeze Scope
 
-v4.3 的实现入口以 [ADR-109](../adr/109-v4.3-contract-freeze.md)、[ADR-110](../adr/110-runtime-state-machine-authority.md)、[ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md)、[ADR-112](../adr/112-mvp-ring-implementation-boundary.md) 和下表 contract 为准。
+v4.3 的实现入口以 [ADR-109](../adr/109-contract-freeze.md)、[ADR-110](../adr/110-runtime-state-machine-authority.md)、[ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md)、[ADR-112](../adr/112-mvp-ring-implementation-boundary.md) 和下表 contract 为准。
 
 | 冻结契约 | contract 入口 | 架构章节 |
 | --- | --- | --- |
-| `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` | [v4_3_task_intake_and_request_contract.md](./v4_3_task_intake_and_request_contract.md) | `§5` / `§6` / `§39` |
-| `HarnessRun` | [v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md) | `§5` / `§25` / `§45` |
-| `PlanGraphBundle` / `PlanGraph` / `PlanNode` / `PlanEdge` | [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) | `§5` / `§13` / `§45` |
-| `GraphPatch` / `GraphPatchOperation` | [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) | `§13` / `§58` |
-| `NodeRun` / `NodeAttempt` / `AttemptLineage` | [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md) | `§14` / `§25` / `§45` |
-| `NodeAttemptReceipt` | [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md) | `§14` / `§45` |
-| `SideEffectRecord` / `ReconciliationRecord` / `CompensationRecord` | [v4_3_side_effect_reconciliation_contract.md](./v4_3_side_effect_reconciliation_contract.md) | `§14` / `§25` / `§58` |
-| `BudgetLedger` / `BudgetReservation` / `BudgetSettlement` | [v4_3_budget_ledger_contract.md](./v4_3_budget_ledger_contract.md) | `§18` / `§25` / `§45` |
-| `RunVersionLock` / `ArtifactVersionLockSet` | [v4_3_version_lock_contract.md](./v4_3_version_lock_contract.md) | `§24` / `§25` / `§26` |
-| `DecisionInputBundle` / `HarnessDecision` | [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md) | `§17` / `§21` / `§58` |
-| `HumanResponsibilityRecord` | [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md) | `§21` / `§47` / `§58` |
-| `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent` | [v4_3_event_envelope_contract.md](./v4_3_event_envelope_contract.md) | `§28` / `§58` |
+| `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` | [task-intake-request-contract.md](./task-intake-request-contract.md) | `§5` / `§6` / `§39` |
+| `HarnessRun` | [harness-run-contract.md](./harness-run-contract.md) | `§5` / `§25` / `§45` |
+| `PlanGraphBundle` / `PlanGraph` / `PlanNode` / `PlanEdge` | [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) | `§5` / `§13` / `§45` |
+| `GraphPatch` / `GraphPatchOperation` | [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) | `§13` / `§58` |
+| `NodeRun` / `NodeAttempt` / `AttemptLineage` | [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md) | `§14` / `§25` / `§45` |
+| `NodeAttemptReceipt` | [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md) | `§14` / `§45` |
+| `SideEffectRecord` / `ReconciliationRecord` / `CompensationRecord` | [side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md) | `§14` / `§25` / `§58` |
+| `BudgetLedger` / `BudgetReservation` / `BudgetSettlement` | [budget-ledger-contract.md](./budget-ledger-contract.md) | `§18` / `§25` / `§45` |
+| `RunVersionLock` / `ArtifactVersionLockSet` | [version-lock-contract.md](./version-lock-contract.md) | `§24` / `§25` / `§26` |
+| `DecisionInputBundle` / `HarnessDecision` | [decision-hitl-contract.md](./decision-hitl-contract.md) | `§17` / `§21` / `§58` |
+| `HumanResponsibilityRecord` | [decision-hitl-contract.md](./decision-hitl-contract.md) | `§21` / `§47` / `§58` |
+| `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent` | [event-envelope-contract.md](./event-envelope-contract.md) | `§28` / `§58` |
 
 兼容规则：
 
@@ -69,15 +69,15 @@ v4.3 的实现入口以 [ADR-109](../adr/109-v4.3-contract-freeze.md)、[ADR-110
 
 ### 4.0 v4.3 Contract Freeze
 
-- [v4_3_task_intake_and_request_contract.md](./v4_3_task_intake_and_request_contract.md)
-- [v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md)
-- [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md)
-- [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md)
-- [v4_3_side_effect_reconciliation_contract.md](./v4_3_side_effect_reconciliation_contract.md)
-- [v4_3_budget_ledger_contract.md](./v4_3_budget_ledger_contract.md)
-- [v4_3_version_lock_contract.md](./v4_3_version_lock_contract.md)
-- [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md)
-- [v4_3_event_envelope_contract.md](./v4_3_event_envelope_contract.md)
+- [task-intake-request-contract.md](./task-intake-request-contract.md)
+- [harness-run-contract.md](./harness-run-contract.md)
+- [plan-graph-patch-contract.md](./plan-graph-patch-contract.md)
+- [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md)
+- [side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md)
+- [budget-ledger-contract.md](./budget-ledger-contract.md)
+- [version-lock-contract.md](./version-lock-contract.md)
+- [decision-hitl-contract.md](./decision-hitl-contract.md)
+- [event-envelope-contract.md](./event-envelope-contract.md)
 
 ### 4.1 核心执行与运行时
 

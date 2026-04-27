@@ -110,7 +110,7 @@
 | [106](./106-quant-trading-pre-trade-risk-mandatory.md) | Quant Trading Pre Trade Risk Mandatory | Accepted | 2026-04-23 |
 | [107](./107-financial-services-explainable-decisions.md) | Financial Services Explainable Decisions | Accepted | 2026-04-23 |
 | [108](./108-legal-output-attorney-review-mandatory.md) | Legal Output Attorney Review Mandatory | Accepted | 2026-04-23 |
-| [109](./109-v4.3-contract-freeze.md) | v4.3 Contract Freeze | Accepted | 2026-04-27 |
+| [109](./109-contract-freeze.md) | v4.3 Contract Freeze | Accepted | 2026-04-27 |
 | [110](./110-runtime-state-machine-authority.md) | Runtime State Machine Authority | Accepted | 2026-04-27 |
 | [111](./111-platform-fact-vs-oapeflir-view-events.md) | Platform Fact vs OAPEFLIR View Events | Accepted | 2026-04-27 |
 | [112](./112-mvp-ring-implementation-boundary.md) | MVP Ring Implementation Boundary | Accepted | 2026-04-27 |

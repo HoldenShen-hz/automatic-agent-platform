@@ -37,6 +37,6 @@ OAPEFLIR 在 v4.3 中是受控认知与治理框架，不是第二套执行运�
 
 ## 关联文档
 
-- [109-v4.3-contract-freeze.md](./109-v4.3-contract-freeze.md)
+- [109-contract-freeze.md](./109-contract-freeze.md)
 - [event_registry_and_ops_threshold_contract.md](../contracts/event_registry_and_ops_threshold_contract.md)
-- [v4_3_event_envelope_contract.md](../contracts/v4_3_event_envelope_contract.md)
+- [event-envelope-contract.md](../contracts/event-envelope-contract.md)

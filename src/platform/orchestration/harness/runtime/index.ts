@@ -1,2 +1,4 @@
 export { HarnessRuntimeService } from "../index.js";
-export { V43GraphScheduler, V43HarnessRuntimeMvp } from "./v43-harness-runtime.js";
+export { PlanGraphAnalyzer, PlanGraphScheduler, PlanGraphHarnessRuntime } from "./plan-graph-harness-runtime.js";
+export { IntakeAdmissionService } from "./intake-admission-service.js";
+export { RuntimeEntryGuard } from "./runtime-entry-guard.js";

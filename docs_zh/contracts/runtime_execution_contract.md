@@ -1,6 +1,6 @@
 # Runtime Execution Contract
 
-> **v4.3 兼容说明**：本文件保留为历史 runtime execution 语义说明。v4.3 新执行主链以 `HarnessRun`、`PlanGraphBundle`、`NodeRun`、`NodeAttempt` 与 `NodeAttemptReceipt` 为 canonical contract，详见 [v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md)、[v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) 和 [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md)。
+> **v4.3 兼容说明**：本文件保留为历史 runtime execution 语义说明。v4.3 新执行主链以 `HarnessRun`、`PlanGraphBundle`、`NodeRun`、`NodeAttempt` 与 `NodeAttemptReceipt` 为 canonical contract，详见 [harness-run-contract.md](./harness-run-contract.md)、[plan-graph-patch-contract.md](./plan-graph-patch-contract.md) 和 [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md)。
 
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Execute Hub 的 runtime 执行层，对应 ADR-016。
 > **更新日期**：2026-04-17

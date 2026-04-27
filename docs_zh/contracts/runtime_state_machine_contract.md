@@ -1,6 +1,6 @@
 # Runtime State Machine Contract
 
-> **v4.3 兼容说明**：本文件保留为历史 OAPEFLIR / task / workflow 状态机说明。v4.3 状态推进权威以 [ADR-110](../adr/110-runtime-state-machine-authority.md)、[v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md)、[v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md)、[v4_3_side_effect_reconciliation_contract.md](./v4_3_side_effect_reconciliation_contract.md) 和 [v4_3_budget_ledger_contract.md](./v4_3_budget_ledger_contract.md) 为准；新模块必须通过 `RuntimeStateMachine.transition(command)` 推进 truth。
+> **v4.3 兼容说明**：本文件保留为历史 OAPEFLIR / task / workflow 状态机说明。v4.3 状态推进权威以 [ADR-110](../adr/110-runtime-state-machine-authority.md)、[harness-run-contract.md](./harness-run-contract.md)、[node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md)、[side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md) 和 [budget-ledger-contract.md](./budget-ledger-contract.md) 为准；新模块必须通过 `RuntimeStateMachine.transition(command)` 推进 truth。
 
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR 8 阶段状态机，对应 ADR-016。
 > **更新日期**：2026-04-17

@@ -48,7 +48,7 @@ v4.3 将 `HarnessRun`、`NodeRun`、`SideEffectRecord` 与 `BudgetLedger` 作为
 
 ## 关联文档
 
-- [109-v4.3-contract-freeze.md](./109-v4.3-contract-freeze.md)
+- [109-contract-freeze.md](./109-contract-freeze.md)
 - [runtime_state_machine_contract.md](../contracts/runtime_state_machine_contract.md)
-- [v4_3_harness_run_contract.md](../contracts/v4_3_harness_run_contract.md)
-- [v4_3_node_run_attempt_receipt_contract.md](../contracts/v4_3_node_run_attempt_receipt_contract.md)
+- [harness-run-contract.md](../contracts/harness-run-contract.md)
+- [node-run-attempt-receipt-contract.md](../contracts/node-run-attempt-receipt-contract.md)

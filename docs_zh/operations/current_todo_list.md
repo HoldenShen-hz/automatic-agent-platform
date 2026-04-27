@@ -8,9 +8,21 @@
 
 > 本轮审计以 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，逐条核对实现是否完成、是否与文档描述一致；先产出事实矩阵与差距清单，再决定后续实现批次。
 
+### I1 审计未完成项收口批次
+
+- [ ] 补齐 intake/admission 主链：RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun，并在 admission 时冻结 RunVersionLock。
+- [ ] 补齐 PlanGraph normalize / validate / risk propagation / worst-path analysis，并让 scheduler 输出 platform fact decision event。
+- [ ] 补齐 RuntimeStateMachine 权威边界：RunVersionLock、policy guard、budget precondition、side-effect safety、audit append 与 NodeRun lease/fencing 强制校验。
+- [ ] 补齐 runtime repository contract：Repository interface、append-only receipt、runtime truth transaction、outbox/audit 事件边界与 v4.3 physical schema baseline。
+- [ ] 补齐 Event Registry metadata/replayBehavior/consumer contract tests，并接入 v4.3 EventEnvelope 描述符。
+- [ ] 补齐 BudgetAllocator、SideEffect commit 前复检、HITL responsibility 链路和 HarnessRuntime executor/evaluator/decision 基础闭环。
+- [ ] 增加 bypass invariant tests，证明 legacy ExecutionPlan/workflow/step 不能作为 v4.3 runtime 入口或直接写 truth。
+- [ ] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`，将已实现项改为完成，将 ADR-112 后续环标为非 Ring 1 阻塞项。
+- [ ] 执行 source-only build、定向 runtime/contracts/storage/event 测试与 diff 检查。
+
 ### I0 审计后实现批次 1
 
-- [x] 为 `src/platform/contracts/v43/` 增加 executable contract package，覆盖 28 个 v4.3 canonical contract 的 Zod schema、JSON Schema 摘要、replay behavior、failure behavior 与校验入口。
+- [x] 为 `src/platform/contracts/executable-contracts/` 增加 executable contract package，覆盖 28 个 v4.3 canonical contract 的 Zod schema、JSON Schema 摘要、replay behavior、failure behavior 与校验入口。
 - [x] 将 GraphPatch operation enum 对齐 `00-platform-architecture.md`：`add_node` / `add_edge` / `disable_edge` / `add_compensation_node` / `add_failure_path` / `mark_skipped` / `append_subgraph`。
 - [x] 为 `NodeRun` 补齐 `blocked` 状态与 `blocked -> ready/skipped/cancelled/dependency_failed/policy_blocked/aborted` 状态推进。
 - [x] 更新中文 contract 与 v4.3 定向测试，验证 executable contract package、GraphPatch safety、NodeRun blocked gating。
@@ -23,7 +35,7 @@
 
 ### A1 逐项核对
 
-- [x] 核对 v4.3 Contract Freeze 12 个核心契约与 `docs_zh/contracts/`、`src/platform/contracts/v43/`、单测是否一致。
+- [x] 核对 v4.3 Contract Freeze 12 个核心契约与 `docs_zh/contracts/`、`src/platform/contracts/executable-contracts/`、单测是否一致。
 - [x] 核对 RuntimeStateMachine、Graph Scheduler、NodeRun、NodeAttemptReceipt、SideEffect、Budget、HITL、Event 分层是否符合架构主链。
 - [x] 核对五平面与推荐目录在 `src/platform/`、`src/domains/`、`src/interaction/`、`src/org-governance/`、`src/scale-ecosystem/`、`src/ops-maturity/` 的实现覆盖。
 - [x] 核对 State & Evidence、Event Registry、Projection、DLQ/Incident、Repository/Storage 与架构文档的一致性。
@@ -31,7 +43,7 @@
 
 ### A2 审计输出
 
-- [x] 生成中文实现一致性审计报告，记录逐项状态、证据路径、主要偏差与建议优先级：`docs_zh/reviews/platform-architecture-v4.3-implementation-consistency-audit.md`。
+- [x] 生成中文实现一致性审计报告，记录逐项状态、证据路径、主要偏差与建议优先级：`docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`。
 - [x] 更新本 todo 的审计项状态。
 - [x] 执行文档 diff 检查与必要的定向验证命令。
 

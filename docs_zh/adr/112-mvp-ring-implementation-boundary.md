@@ -40,6 +40,6 @@ Accepted
 
 ## 关联文档
 
-- [109-v4.3-contract-freeze.md](./109-v4.3-contract-freeze.md)
+- [109-contract-freeze.md](./109-contract-freeze.md)
 - [00-platform-architecture.md](../architecture/00-platform-architecture.md)
 - [current_todo_list.md](../operations/current_todo_list.md)

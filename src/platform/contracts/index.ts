@@ -12,7 +12,7 @@ export * as requestEnvelopeContract from "./request-envelope/index.js";
 export * from "./result-envelope/index.js";
 export * as stateCommandContract from "./state-command/index.js";
 export * from "./types/index.js";
-export * as v43Contract from "./v43/index.js";
+export * as executableContracts from "./executable-contracts/index.js";
 
 export {
   type ControlDirective as PlaneControlDirective,
