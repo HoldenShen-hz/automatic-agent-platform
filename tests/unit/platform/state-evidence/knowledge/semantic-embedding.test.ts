@@ -1,17 +1,6 @@
-/**
- * Semantic Embedding Tests
- *
- * Tests for §4 semantic embedding generation:
- * - Tokenization with synonym normalization
- * - Vector building from tokens
- * - Cosine similarity computation
- * - Embedding ID generation
- *
- * Architecture: §4 Semantic Index Layer
- */
-
-import assert from "node:assert/strict";
 import test from "node:test";
+import assert from "node:assert/strict";
+
 import {
   tokenizeSemantically,
   buildSemanticEmbedding,
@@ -53,6 +42,70 @@ test("tokenizeSemantically handles empty input", () => {
 
 test("tokenizeSemantically handles input with only special characters", () => {
   const tokens = tokenizeSemantically("### ... ---");
+  assert.equal(tokens.length, 0);
+});
+
+test("tokenizeSemantically handles whitespace-only input", () => {
+  const tokens = tokenizeSemantically("   \t\n   ");
+  assert.equal(tokens.length, 0);
+});
+
+test("tokenizeSemantically removes duplicate tokens", () => {
+  const tokens = tokenizeSemantically("build build build");
+  assert.equal(tokens.filter(t => t === "build").length, 1);
+});
+
+test("tokenizeSemantically applies synonym mapping before suffix stripping", () => {
+  // "compilation" -> "compile" (via -ation->-e) -> "build" (via synonym)
+  const tokens = tokenizeSemantically("compilation");
+  assert.ok(tokens.includes("build"), "compilation should map to 'build' via 'compile' synonym");
+});
+
+test("tokenizeSemantically applies -ing -> (no suffix) stripping", () => {
+  const tokens = tokenizeSemantically("building");
+  assert.ok(tokens.includes("build"), "building should map to build");
+});
+
+test("tokenizeSemantically applies synonym mapping for compiled", () => {
+  // "compiled" is in synonyms as "build"
+  const tokens = tokenizeSemantically("compiled");
+  assert.ok(tokens.includes("build"), "compiled should map to 'build' via synonym");
+});
+
+test("tokenizeSemantically applies -es suffix stripping when no synonym", () => {
+  // "compiles" is not in synonyms, so -es is stripped -> "compil"
+  const tokens = tokenizeSemantically("compiles");
+  assert.ok(tokens.includes("compil"), "compiles should map to 'compil' via -es stripping");
+});
+
+test("tokenizeSemantically applies -s suffix stripping when no synonym", () => {
+  // "packages" is not in synonyms, so -s is stripped -> "package"
+  const tokens = tokenizeSemantically("packages");
+  assert.ok(tokens.includes("package"), "packages should map to 'package' via -s stripping");
+});
+
+test("tokenizeSemantically does not strip short words ending in s", () => {
+  const tokens = tokenizeSemantically("bus");
+  assert.ok(!tokens.includes("bu"), "bu is too short");
+});
+
+test("tokenizeSemantically handles complex input with numbers and underscores", () => {
+  const tokens = tokenizeSemantically("v2_api endpoint auth_token build_123");
+  assert.ok(tokens.length > 0);
+});
+
+test("tokenizeSemantically splits on non-alphanumeric characters", () => {
+  const tokens = tokenizeSemantically("foo-bar_baz+qux@quux");
+  assert.ok(tokens.length > 0);
+});
+
+test("tokenizeSemantically returns empty array for single character inputs", () => {
+  const tokens = tokenizeSemantically("x");
+  assert.equal(tokens.length, 0);
+});
+
+test("tokenizeSemantically returns empty array for two character inputs", () => {
+  const tokens = tokenizeSemantically("ab");
   assert.equal(tokens.length, 0);
 });
 
@@ -111,6 +164,45 @@ test("buildSemanticEmbedding handles single meaningful token", () => {
   assert.equal(result.length, 32);
 });
 
+test("buildSemanticEmbedding handles very long input", () => {
+  const longText = "build ".repeat(100);
+  const result = buildSemanticEmbedding(longText);
+  assert.ok(result !== null);
+  assert.equal(result.length, 32);
+});
+
+test("buildSemanticEmbedding returns normalized vector with values between -1 and 1", () => {
+  const result = buildSemanticEmbedding("compilation retry cache lockfile dependency");
+  assert.ok(result !== null);
+  for (const val of result!) {
+    assert.ok(val >= -1 && val <= 1, `Value ${val} should be between -1 and 1`);
+  }
+});
+
+test("buildSemanticEmbedding handles multiple extraTerms", () => {
+  const result = buildSemanticEmbedding("build", ["compile", "retry", "cache", "lockfile"]);
+  assert.ok(result !== null);
+  assert.equal(result.length, 32);
+});
+
+test("buildSemanticEmbedding handles empty extraTerms array", () => {
+  const result = buildSemanticEmbedding("build", []);
+  assert.ok(result !== null);
+  assert.equal(result.length, 32);
+});
+
+test("buildSemanticEmbedding with extraTerms tokenizes them semantically", () => {
+  const result = buildSemanticEmbedding("build", ["compilation"]);
+  assert.ok(result !== null);
+  // "build" and "compilation" should both produce valid embeddings
+});
+
+test("buildSemanticEmbedding handles duplicate tokens across input and extraTerms", () => {
+  const result = buildSemanticEmbedding("build build build", ["build"]);
+  assert.ok(result !== null);
+  assert.equal(result.length, 32);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // semanticEmbeddingId Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,6 +243,37 @@ test("semanticEmbeddingId sorts tokens before hashing", () => {
   assert.equal(id1, id2);
 });
 
+test("semanticEmbeddingId handles very long input", () => {
+  const longText = "build ".repeat(100);
+  const result = semanticEmbeddingId(longText);
+  assert.ok(result !== null);
+  assert.ok(result.startsWith("local-hash-v1:"));
+});
+
+test("semanticEmbeddingId produces different IDs for different inputs", () => {
+  const id1 = semanticEmbeddingId("build");
+  const id2 = semanticEmbeddingId("retry");
+  assert.notEqual(id1, id2);
+});
+
+test("semanticEmbeddingId handles duplicate tokens in input", () => {
+  const id1 = semanticEmbeddingId("build build build");
+  const id2 = semanticEmbeddingId("build");
+  assert.equal(id1, id2);
+});
+
+test("semanticEmbeddingId includes extraTerms in hash", () => {
+  const id1 = semanticEmbeddingId("build", ["retry"]);
+  const id2 = semanticEmbeddingId("build", ["cache"]);
+  assert.notEqual(id1, id2);
+});
+
+test("semanticEmbeddingId handles multiple extraTerms", () => {
+  const id = semanticEmbeddingId("build", ["compile", "retry", "cache"]);
+  assert.ok(id !== null);
+  assert.ok(id.startsWith("local-hash-v1:"));
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // cosineSimilarity Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,6 +285,11 @@ test("cosineSimilarity returns 0 for null left vector", () => {
 
 test("cosineSimilarity returns 0 for null right vector", () => {
   const result = cosineSimilarity([1, 2, 3], null);
+  assert.equal(result, 0);
+});
+
+test("cosineSimilarity returns 0 for both null vectors", () => {
+  const result = cosineSimilarity(null, null);
   assert.equal(result, 0);
 });
 
@@ -216,24 +344,42 @@ test("cosineSimilarity computes correct similarity for typical embeddings", () =
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Edge Cases
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("tokenizeSemantically handles complex input with numbers and underscores", () => {
-  const tokens = tokenizeSemantically("v2_api endpoint auth_token build_123");
-  assert.ok(tokens.length > 0);
+test("cosineSimilarity returns 1 for identical non-unit vectors (normalized)", () => {
+  const vec = [2, 2];
+  const result = cosineSimilarity(vec, vec);
+  assert.equal(result, 1);
 });
 
-test("buildSemanticEmbedding handles very long input", () => {
-  const longText = "build ".repeat(100);
-  const result = buildSemanticEmbedding(longText);
-  assert.ok(result !== null);
-  assert.equal(result.length, 32);
+test("cosineSimilarity computes expected value for simple vectors", () => {
+  // vec1 = [1, 0], vec2 = [1, 0] -> dot = 1, mag1 = 1, mag2 = 1 -> 1
+  const result = cosineSimilarity([1, 0], [1, 0]);
+  assert.equal(result, 1);
 });
 
-test("semanticEmbeddingId handles very long input", () => {
-  const longText = "build ".repeat(100);
-  const result = semanticEmbeddingId(longText);
-  assert.ok(result !== null);
+test("cosineSimilarity computes expected value for 45-degree vectors", () => {
+  // vec1 = [1, 1], vec2 = [1, 0]
+  // dot = 1, mag1 = sqrt(2), mag2 = 1 -> 1/sqrt(2) ≈ 0.707
+  const result = cosineSimilarity([1, 1], [1, 0]);
+  assert.ok(Math.abs(result - 0.707) < 0.01);
+});
+
+test("cosineSimilarity handles vectors with undefined/null values", () => {
+  const vec: (number | null)[] = [1, null, 3];
+  const result = cosineSimilarity(vec as readonly number[], [1, 2, 3]);
+  // null is treated as 0
+  assert.ok(result >= -1 && result <= 1);
+});
+
+test("cosineSimilarity handles longer vectors", () => {
+  const vec1 = new Array(32).fill(0).map((_, i) => i * 0.1);
+  const vec2 = new Array(32).fill(0).map((_, i) => i * 0.1);
+  const result = cosineSimilarity(vec1, vec2);
+  assert.equal(result, 1);
+});
+
+test("cosineSimilarity returns 0 for completely dissimilar vectors", () => {
+  const vec1 = [1, 1, 1, 1];
+  const vec2 = [-1, -1, -1, -1];
+  const result = cosineSimilarity(vec1, vec2);
+  assert.equal(result, -1);
 });

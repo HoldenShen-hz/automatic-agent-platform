@@ -97,6 +97,40 @@ test("RuntimeStateMachine seals HarnessRun terminal states", () => {
   );
 });
 
+test("RuntimeStateMachine rejects no-op self transitions", () => {
+  const machine = createMachine();
+  const run = createHarnessRun({
+    harnessRunId: "run-noop",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "request-hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "ledger-1",
+    status: "running",
+    currentSeq: 4,
+  });
+
+  assert.throws(
+    () =>
+      machine.transition({
+        aggregateType: "HarnessRun",
+        aggregate: run,
+        fromStatus: "running",
+        toStatus: "running",
+        expectedSeq: 4,
+        traceId: "trace-noop",
+        tenantId: "tenant-1",
+        reasonCode: "heartbeat_is_not_state_transition",
+        emittedBy: "test",
+      }),
+    (error: unknown) =>
+      error instanceof WorkflowStateError &&
+      error.code === "runtime_state_machine.noop_transition_denied",
+  );
+});
+
 test("RuntimeStateMachine rejects stale CAS sequence", () => {
   const machine = createMachine();
   const run = createHarnessRun({

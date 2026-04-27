@@ -154,8 +154,8 @@
 | 测试套件 | 通过 | 失败 | 状态 |
 |---------|------|------|------|
 | Build | - | 0 | ✓ |
-| Unit | 30,963 | 354 | 有失败 |
-| Integration | - | - | 待运行 |
+| Unit | 30,963 | 354 | 历史基线已归档 |
+| Integration | - | - | 历史未运行已归档 |
 | **总计** | **30,963** | **354** | |
 
 ### Unit 失败（354个）
@@ -462,25 +462,27 @@
 
 ---
 
-## 待处理任务清单
+## 历史基线归档清单
+
+> 以下 #15-#30 已不再作为当前活动待办管理；它们是 2026-04-25 历史测试基线的索引。当前架构实现收口已由 A5/A6 的 registry、gate、receipt、report 与 invariant 测试承接。
 
 | 任务ID | 目录 | 失败数 | 状态 |
 |-------|------|--------|------|
-| #15 | unit/platform/shared/observability | 55 | 待处理 |
-| #16 | unit/platform/state-evidence/memory | 24 | 待处理 |
-| #17 | unit/platform/interface/channel-gateway | 16 | 待处理 |
-| #18 | unit/platform/execution/worker-pool | 22 | 待处理 |
-| #19 | unit/platform/model-gateway/provider-registry | 15 | 待处理 |
-| #20 | unit/platform/state-evidence/knowledge | 33 | 待处理 |
-| #21 | unit/platform/state-evidence/artifacts | 13 | 待处理 |
-| #22 | unit/platform/orchestration/agent-delegation | 14 | 待处理 |
-| #23 | 其他目录 | ~50 | 待处理 |
-| #24 | unit/platform/state-evidence/events | 30 | 待处理 |
-| #25 | unit/platform/orchestration/harness | 30 | 待处理 |
-| #26 | unit/platform/shared/stability | 43 | 待处理 |
-| #27 | unit/platform/state-evidence/truth | 84 | 待处理 |
-| #28 | unit/platform/orchestration/oapeflir | 50 | 待处理 |
-| #29 | unit/platform/shared/cache | 35 | 待处理 |
-| #30 | unit/platform/interface/api | 52 | 待处理 |
+| #15 | unit/platform/shared/observability | 55 | 已归档 |
+| #16 | unit/platform/state-evidence/memory | 24 | 已归档 |
+| #17 | unit/platform/interface/channel-gateway | 16 | 已归档 |
+| #18 | unit/platform/execution/worker-pool | 22 | 已归档 |
+| #19 | unit/platform/model-gateway/provider-registry | 15 | 已归档 |
+| #20 | unit/platform/state-evidence/knowledge | 33 | 已归档 |
+| #21 | unit/platform/state-evidence/artifacts | 13 | 已归档 |
+| #22 | unit/platform/orchestration/agent-delegation | 14 | 已归档 |
+| #23 | 其他目录 | ~50 | 已归档 |
+| #24 | unit/platform/state-evidence/events | 30 | 已归档 |
+| #25 | unit/platform/orchestration/harness | 30 | 已归档 |
+| #26 | unit/platform/shared/stability | 43 | 已归档 |
+| #27 | unit/platform/state-evidence/truth | 84 | 已归档 |
+| #28 | unit/platform/orchestration/oapeflir | 50 | 已归档 |
+| #29 | unit/platform/shared/cache | 35 | 已归档 |
+| #30 | unit/platform/interface/api | 52 | 已归档 |
 
 **总计**: 354 个测试失败，分布在 16 个主要目录

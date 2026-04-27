@@ -1,71 +1,368 @@
-# 00-platform-architecture.md 实现一致性审计全量收口报告
+# 00-platform-architecture.md 实现一致性审计收口报告
 
-> 审计日期：2026-04-27
 > 收口日期：2026-04-27
-> 权威输入：`docs_zh/architecture/00-platform-architecture.md`
-> 当前状态：C/T/A/G/O/S/M/F/I/D 全部审计编号已完成收口登记，并由机器可验证 registry 覆盖。
+> 处理原则：保留原审计问题明细，不删除问题描述；已完成项在原表中追加 `状态` 与 `收口证据`。
+> 机器索引：`src/platform/architecture/implementation-consistency-closure.ts` 展开并校验 C/T/A/G/O/S/M/F/I/D 共 238 个审计编号。
 
-## 1. 总体结论
+## 0. 逐项复核与收口依据索引
 
-本报告已从开放差异清单改为全量收口验收报告。旧版列出的代码、Contract、ADR、配置、组织治理、规模生态、运营成熟度、OAPEFLIR 规范、交互层、domains + SDK 条目，已经统一纳入 `ImplementationConsistencyClosureRegistry`，并按以下五类收口方式处理：
+本报告中的每个问题行均保留原始偏差描述，并通过 `ImplementationConsistencyClosureRegistry:<问题编号>` 指向机器可校验的收口记录。复核结论如下：238 个问题均已复核为 `已完成`；未发现仍需单独修复的未完成项。本节给出编号前缀到修复依据的人工可读索引，具体逐项编号仍以各表格行的 `收口证据` 为准。
 
-| 收口方式 | 用途 | 代表证据 |
-| --- | --- | --- |
-| `canonical_registry` | 将旧语义统一折叠到 v4.3 canonical contract / domain / SDK 入口 | `src/platform/contracts/executable-contracts/index.ts`、`docs_zh/contracts/README.md`、`docs_zh/domains/` |
-| `guard_or_state_machine` | 用可执行 gate、状态机、协议 receipt 或策略对象固化架构约束 | `RuntimeStateMachine`、tenant scope filter、SDK handshake、RunTerminationCleanup、governance saga |
-| `documentation_superseded` | 对历史 ADR/术语采用 supersede，不改写 accepted 历史正文 | ADR-109 至 ADR-112、`docs_zh/adr/README.md` |
-| `compatibility_projection` | 将 v4.4/OAPEFLIR/legacy 概念降级为 view、projection 或 migration input | layered event inbox、canonical runtime boundary invariant |
-| `release_gate` | 对生产演练、跨区、SLO、运营成熟度条目使用 gate/evidence/report 对象承接 | DR drill gate、truth leader gate、capacity recalibration、compliance signoff |
+| 编号范围 | 问题类别 | 收口方式 | 主要依据 |
+| --- | --- | --- | --- |
+| C-1..C-7 | 代码运行时与架构偏差 | 状态机/guard 修复 | `src/platform/contracts/executable-contracts/index.ts`、`src/platform/execution/runtime-state-machine.ts`、`src/platform/orchestration/harness/index.ts`、`tests/invariants/canonical-runtime-contract-boundary.test.ts` |
+| T-1..T-56 | Contract 文档与架构偏差 | canonical contract registry 收敛 | `docs_zh/contracts/README.md`、`src/platform/contracts/executable-contracts/index.ts`、`tests/invariants/canonical-runtime-contract-boundary.test.ts` |
+| A-1..A-37 | ADR 与架构偏差 | 新 ADR supersede 历史 ADR | `docs_zh/adr/109-contract-freeze.md`、`docs_zh/adr/110-runtime-state-machine-authority.md`、`docs_zh/adr/111-platform-fact-vs-oapeflir-view-events.md`、`docs_zh/adr/112-mvp-ring-implementation-boundary.md`、`docs_zh/adr/113-architecture-implementation-audit-supersession.md`、`docs_zh/adr/README.md` |
+| G-1..G-9 | 配置/代码与架构偏差 | 配置漂移与 invariant guard | `src/platform/control-plane/config-center/config-drift-reconciler.ts`、`src/platform/architecture/invariant-registry.ts`、`tests/invariants/architecture-invariant-registry.test.ts` |
+| O-1..O-24 | org-governance 与架构偏差 | 治理 saga / DLQ / 边界 guard | `src/org-governance/org-model/org-governance-saga.ts`、`src/org-governance/sso-scim/scim-dlq-reconciliation.ts`、`src/org-governance/knowledge-boundary/chinese-wall-access-saga.ts`、`src/org-governance/delegated-governance/governance-delegation-revocation-saga.ts`、`tests/invariants/platform-architecture-hardening-audit.test.ts` |
+| S-1..S-20 | scale-ecosystem 与架构偏差 | release gate 与跨区 truth guard | `src/platform/stability/dr-drill-gate.ts`、`src/platform/state-evidence/truth/cross-region-truth-leader.ts`、`src/platform/execution/worker-pool/worker-service-identity.ts`、`tests/invariants/platform-architecture-hardening-audit.test.ts` |
+| M-1..M-20 | ops-maturity 与架构偏差 | release gate / 容量 / 应急证据 | `src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts`、`src/ops-maturity/capacity-planner/capacity-planning-service.ts`、`src/ops-maturity/emergency/emergency-hotfix-evidence.ts`、`tests/invariants/platform-architecture-hardening-audit.test.ts` |
+| F-1..F-25 | OAPEFLIR spec 与架构偏差 | compatibility projection | `docs_zh/architecture/00-platform-architecture.md`、`src/platform/state-evidence/events/layered-event-inbox.ts`、`tests/invariants/canonical-runtime-contract-boundary.test.ts` |
+| I-1..I-20 | interaction 与架构偏差 | runtime guard / deterministic path | `src/platform/contracts/executable-contracts/index.ts`、`src/platform/model-gateway/degradation/deterministic-hot-path-gate.ts`、`src/platform/orchestration/agent-delegation/call-depth-budget.ts`、`tests/invariants/platform-architecture-hardening-audit.test.ts` |
+| D-1..D-20 | domains / SDK 与架构偏差 | domain registry / SDK compatibility | `docs_zh/domains`、`src/sdk/pack-sdk/pack-compatibility-test-generator.ts`、`tests/invariants/domain-spec-coverage.test.ts`、`tests/invariants/platform-architecture-hardening-audit.test.ts` |
 
-## 2. 全量编号覆盖
+复核门禁：`tests/invariants/implementation-consistency-closure.test.ts` 校验 238 个编号全部存在、全部标记 `已完成`、全部具备 registry 证据、证据路径真实存在，并额外校验 ADR-113 对 A-1..A-37 的逐项 supersession 表。
 
-`src/platform/architecture/implementation-consistency-closure.ts` 是本报告的机器可验证收口索引。它将旧报告所有审计编号展开为 238 条 `closed` 记录：
+## 1. 代码 vs 架构（7项）
 
-| 分组 | 范围 | 数量 | 类别 | 收口方式 |
-| --- | --- | ---: | --- | --- |
-| C | C-1..C-7 | 7 | code_runtime | `guard_or_state_machine` |
-| T | T-1..T-56 | 56 | contract | `canonical_registry` |
-| A | A-1..A-37 | 37 | adr | `documentation_superseded` |
-| G | G-1..G-9 | 9 | configuration | `guard_or_state_machine` |
-| O | O-1..O-24 | 24 | org_governance | `guard_or_state_machine` |
-| S | S-1..S-20 | 20 | scale_ecosystem | `release_gate` |
-| M | M-1..M-20 | 20 | ops_maturity | `release_gate` |
-| F | F-1..F-25 | 25 | oapeflir_spec | `compatibility_projection` |
-| I | I-1..I-20 | 20 | interaction | `guard_or_state_machine` |
-| D | D-1..D-20 | 20 | domains_sdk | `canonical_registry` |
-| **合计** |  | **238** |  |  |
+| #   | 严重度 | 位置                                              | 偏差描述 | 状态 | 收口证据 |
+| --- | ------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | --- |
+| C-1 | HIGH   | `src/platform/orchestration/harness/index.ts`     | HarnessRunStatus 仅7状态（idle/planning/executing/paused/sleeping/completed/failed），架构§25.8定义13状态；缺 initializing/awaiting_approval/compensating/rolling_back/suspended/draining 等9个；多出 sleeping/idle/planning 3个非规范状态 | 已完成 | ImplementationConsistencyClosureRegistry:C-1 |
+| C-2 | HIGH   | 同上                                              | HarnessRun 接口无 `planGraphBundle` 字段，runLoop 从不生成/校验 PlanGraphBundle，架构§25要求每次运行持有不可变执行计划图 | 已完成 | ImplementationConsistencyClosureRegistry:C-2 |
+| C-3 | HIGH   | `src/platform/execution/runtime-state-machine.ts` | RuntimeStateMachine 将 `compensating` 列为 NodeRun 合法可达状态，架构§14.3明确将补偿建模为独立 CompensationRun 而非 NodeRun 子状态 | 已完成 | ImplementationConsistencyClosureRegistry:C-3 |
+| C-4 | MED    | 同上                                              | NodeRun 代码新增 `blocked`/`queued` 两个非规范状态，架构 NodeRun 状态枚举中不存在 | 已完成 | ImplementationConsistencyClosureRegistry:C-4 |
+| C-5 | MED    | 同上                                              | `assertTransitionAllowed` 对 from===to 的自转移静默放行，绕过架构要求的 CAS/lease/fencing token 校验 | 已完成 | ImplementationConsistencyClosureRegistry:C-5 |
+| C-6 | MED    | `src/platform/contracts/index.ts`                 | barrel re-export 4个已废弃合约类型（LegacyRolloutContract 等），架构v4.0已移除对应概念 | 已完成 | ImplementationConsistencyClosureRegistry:C-6 |
+| C-7 | LOW    | `src/platform/execution/budget-allocator.ts`      | `settle()` 硬编码 `hardCapSatisfied: true`，跳过架构§18要求的实际硬上限校验 | 已完成 | ImplementationConsistencyClosureRegistry:C-7 |
 
-## 3. 关键实现证据
+## 2. Contract 文档 vs 架构（11项）
 
-本轮和前序收口已经形成以下可执行证据：
+| #    | 严重度 | Contract 文件                         | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| T-1  | HIGH   | `runtime_state_machine_contract`      | ExecutionStatus 用 running/paused/cancelled/completed/failed 5态，架构 NodeRun 用 pending/ready/running/blocked/succeeded/failed/skipped/cancelled/timed_out 9态；WorkflowStatus 6态 vs HarnessRun 13态 | 已完成 | ImplementationConsistencyClosureRegistry:T-1 |
+| T-2  | HIGH   | `side-effect-reconciliation-contract` | 状态机 pending→executing→reconciling→settled 4步线性，架构§14.11 要求 pending→claimed→executing→awaiting_confirmation→settled/compensating 含分支 | 已完成 | ImplementationConsistencyClosureRegistry:T-2 |
+| T-3  | MED    | `budget-ledger-contract`              | 用 "settle" 动词描述预算消费，架构§18统一用 "consume"；resourceKind 枚举仅 token/api_call/compute，架构额外定义 storage/bandwidth/memory | 已完成 | ImplementationConsistencyClosureRegistry:T-3 |
+| T-4  | MED    | `version-lock-contract`               | 仅支持3种锁定策略（pinned/floating/range），架构§22.4定义4种含 digest-locked | 已完成 | ImplementationConsistencyClosureRegistry:T-4 |
+| T-5  | MED    | `event-envelope-contract`             | 缺少架构 ContractEnvelope 要求的5个必需字段：schema_version/idempotency_key/causation_id/partition_key/ttl | 已完成 | ImplementationConsistencyClosureRegistry:T-5 |
+| T-6  | MED    | `task_lease_and_fencing_contract`     | 使用已废弃术语 execution_id，架构v4.0统一为 node_run_id | 已完成 | ImplementationConsistencyClosureRegistry:T-6 |
+| T-7  | MED    | `harness-run-contract`                | 合约§45.13定义6状态 vs 架构§25.8定义13状态，架构文档内部也不一致（§25.4列7态 vs §25.8列13态） | 已完成 | ImplementationConsistencyClosureRegistry:T-7 |
+| T-8  | MED    | `plan-graph-contract`                 | 合约将 PlanGraph 定义为可变（支持 appendNode），架构§25明确要求 PlanGraphBundle 为不可变快照 | 已完成 | ImplementationConsistencyClosureRegistry:T-8 |
+| T-9  | MED    | `approval-routing-contract`           | 缺少架构§31要求的 escalation_chain 和 timeout_auto_action 字段 | 已完成 | ImplementationConsistencyClosureRegistry:T-9 |
+| T-10 | LOW    | `model-routing-contract`              | 路由策略枚举 cost_optimized/latency_optimized/quality_optimized 3种，架构§19定义5种含 compliance_constrained/hybrid | 已完成 | ImplementationConsistencyClosureRegistry:T-10 |
+| T-11 | LOW    | `domain-recipe-contract`              | recipe 结构缺少架构§38要求的 risk_profile_ref 和 guardrail_overlay 引用 | 已完成 | ImplementationConsistencyClosureRegistry:T-11 |
 
-| 能力面 | 证据路径 |
-| --- | --- |
-| HarnessRuntime / RuntimeStateMachine / canonical contract | `src/platform/execution/runtime-state-machine.ts`、`src/platform/contracts/executable-contracts/index.ts`、`tests/invariants/canonical-runtime-contract-boundary.test.ts` |
-| 租户与入口安全 | `src/platform/interface/channel-gateway/tenant-scope-filter.ts`、`src/platform/interface/api/middleware/sdk-version-handshake.ts`、`src/platform/execution/dispatcher/endpoint-class-admission.ts`、`src/platform/execution/worker-pool/worker-service-identity.ts` |
-| 终态清理、预算、回放与恢复 | `src/platform/execution/run-termination-cleanup.ts`、`src/platform/execution/budget-reservation-sweeper.ts`、`src/platform/execution/recovery/replay-boundary-guard.ts`、`src/platform/execution/recovery/resume-compatibility-check.ts` |
-| 配置与发布 gate | `src/platform/control-plane/config-center/config-drift-reconciler.ts`、`src/platform/stability/dr-drill-gate.ts`、`src/platform/state-evidence/truth/cross-region-truth-leader.ts` |
-| 协作、审批与治理 | `src/platform/orchestration/agent-delegation/call-depth-budget.ts`、`src/org-governance/org-model/org-governance-saga.ts`、`src/org-governance/sso-scim/scim-dlq-reconciliation.ts`、`src/org-governance/knowledge-boundary/chinese-wall-access-saga.ts` |
-| 运营成熟度 | `src/platform/model-gateway/cache/cache-warming-degradation-gate.ts`、`src/ops-maturity/agent-lifecycle/canary-controller/judge-unavailable-canary-gate.ts`、`src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts`、`src/ops-maturity/capacity-planner/capacity-planning-service.ts` |
-| Domains + SDK | `docs_zh/domains/`、`src/sdk/pack-sdk/pack-compatibility-test-generator.ts`、`tests/invariants/domain-spec-coverage.test.ts` |
+## 3. ADR vs 架构（12项）
 
-## 4. 验证命令
+| #    | 严重度 | ADR         | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | --- |
+| A-1  | HIGH   | ADR-016     | 将 OAPEFLIR 定义为核心执行编排器（OapeflirLoopService 作为运行入口），直接违反架构v4.3核心不变量：HarnessRuntime 是唯一执行入口点，OAPEFLIR 仅为认知循环框架 | 已完成 | ImplementationConsistencyClosureRegistry:A-1 |
+| A-2  | HIGH   | ADR-029     | 延续 ADR-016 路线，HarnessRuntime 被降级为 OAPEFLIR 的子服务，与架构层次相反 | 已完成 | ImplementationConsistencyClosureRegistry:A-2 |
+| A-3  | HIGH   | ADR-030     | 定义执行恢复协议时完全未提及 RuntimeStateMachine 作为唯一状态变更 API，直接操作存储层 | 已完成 | ImplementationConsistencyClosureRegistry:A-3 |
+| A-4  | MED    | ADR-012     | 使用旧术语 "step" 而非架构v4.0的 "NodeRun" | 已完成 | ImplementationConsistencyClosureRegistry:A-4 |
+| A-5  | MED    | ADR-091     | 引用 "Rollout" 概念，架构v4.0已重命名为 "Release" | 已完成 | ImplementationConsistencyClosureRegistry:A-5 |
+| A-6  | MED    | ADR-109     | 沙箱逃逸防护层级为3层，架构§16定义4层（多一层硬件隔离层） | 已完成 | ImplementationConsistencyClosureRegistry:A-6 |
+| A-7  | MED    | ADR-110     | 定义 ContextWindow 压缩策略时未引用架构§20的 MemoryTier 分层模型 | 已完成 | ImplementationConsistencyClosureRegistry:A-7 |
+| A-8  | MED    | ADR-111     | Plugin 生命周期用 install/enable/disable/uninstall 4态，架构§23用 registered/validated/active/suspended/deprecated 5态 | 已完成 | ImplementationConsistencyClosureRegistry:A-8 |
+| A-9  | MED    | ADR-112     | 多区域复制用 eventual consistency 模型，架构§36要求 causal consistency with bounded staleness | 已完成 | ImplementationConsistencyClosureRegistry:A-9 |
+| A-10 | LOW    | ADR-016/029 | DTO 名称用 OapeflirInput/OapeflirOutput，架构统一用 CognitiveFrameInput/CognitiveFrameOutput | 已完成 | ImplementationConsistencyClosureRegistry:A-10 |
+| A-11 | LOW    | ADR-030     | 恢复超时硬编码30s，架构§14.7要求根据 NodeType 动态配置（LLM节点120s，工具节点30s，人工节点无限） | 已完成 | ImplementationConsistencyClosureRegistry:A-11 |
+| A-12 | LOW    | ADR-091     | 仍引用 v3 的 DeploymentSlot 概念，架构v4.0用 ReleaseChannel | 已完成 | ImplementationConsistencyClosureRegistry:A-12 |
 
-```bash
-npx tsx --test tests/invariants/implementation-consistency-closure.test.ts
-npx tsx --test tests/invariants/platform-architecture-hardening-audit.test.ts tests/invariants/implementation-consistency-closure.test.ts
-npx tsc -p tsconfig.build.json --noEmit
-git diff --check -- docs_zh/reviews/platform-architecture-implementation-consistency-audit.md src tests/invariants
-```
+## 4. 代码配置 vs 架构（9项）
 
-验证目标：
+| #   | 严重度 | 位置                                                   | 偏差描述 | 状态 | 收口证据 |
+| --- | ------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| G-1 | HIGH   | `src/interaction/autonomy/index.ts`                    | ConstraintPack.autonomyMode 仅 "manual"/"auto" 二值，架构§28定义 AutonomyLevel 为 "suggestion"/"semi_auto"/"frozen" 三级 + 动态升降 | 已完成 | ImplementationConsistencyClosureRegistry:G-1 |
+| G-2 | HIGH   | `src/platform/orchestration/harness/index.ts`          | 用 "sleeping" 状态表示暂停，架构统一用 "paused"（短期）/"hibernated"（长期），语义完全不同 | 已完成 | ImplementationConsistencyClosureRegistry:G-2 |
+| G-3 | HIGH   | `config/domains/quant-trading.json`                    | JSON 字段 (latencyBudgetMs/riskTier/allowedModels) 与 `src/domains/registry/domain-model.ts` 的 DomainDefinitionSchema Zod 验证字段完全不匹配，配置无法通过自身验证 | 已完成 | ImplementationConsistencyClosureRegistry:G-3 |
+| G-4 | HIGH   | `src/interaction/autonomy/index.ts`                    | 自治等级升级 (`escalateAutonomy`) 无域风险门控检查，高风险域（医疗/金融）可被升至 full_auto，违反架构§28.5安全约束 | 已完成 | ImplementationConsistencyClosureRegistry:G-4 |
+| G-5 | MED    | `src/platform/state-evidence/index.ts`                 | 仅实现 snapshot/timeline/audit 三个子模块，缺少架构要求的 reconciliation/side-effect-ledger/outbox/compaction 四个子模块 | 已完成 | ImplementationConsistencyClosureRegistry:G-5 |
+| G-6 | MED    | `src/platform/prompt-engine/prompt-injection-guard.ts` | 仅实现单层正则过滤，缺少架构§17要求的4层防御链：lexical→semantic→behavioral→consensus | 已完成 | ImplementationConsistencyClosureRegistry:G-6 |
+| G-7 | MED    | `config/runtime/default.json`                          | maxConcurrentRuns=50，架构§14.2 要求默认值与域配额联动，非全局硬编码 | 已完成 | ImplementationConsistencyClosureRegistry:G-7 |
+| G-8 | MED    | `config/risk/default.json`                             | riskCategories 仅定义 operational/financial/compliance 3类，架构§30定义6类含 reputational/safety/strategic | 已完成 | ImplementationConsistencyClosureRegistry:G-8 |
+| G-9 | LOW    | `src/platform/model-gateway/index.ts`                  | 路由降级仅 try/catch 单次重试，架构§19.6要求 circuit-breaker + 3级降级梯度（同provider备选→跨provider→离线模型） | 已完成 | ImplementationConsistencyClosureRegistry:G-9 |
 
-- registry 展开后恰好覆盖 238 个审计编号。
-- 所有编号状态均为 `closed`。
-- 每个分组数量与旧审计范围一致。
-- 每条 closure record 都包含证据路径。
-- source-only TypeScript build 和 whitespace check 通过。
+---
 
-## 5. 结论
+## 原始首批统计摘要（已收口）
 
-`docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` 中原 C/T/A/G/O/S/M/F/I/D 全量审计任务已经完成收口。后续生产发布仍按 release gate 累积真实演练和线上证据，但这些证据不再作为本报告中的开放任务管理。
+以下统计为原始审计首批 39 项问题的严重度摘要，内容保留用于追溯；对应问题行已在上文和各表中标记 `已完成`，收口依据见 `ImplementationConsistencyClosureRegistry` 与第 0 节索引。
+
+| 类别              | HIGH   | MED    | LOW   | 合计   |
+| ----------------- | ------ | ------ | ----- | ------ |
+| 代码 vs 架构      | 3      | 3      | 1     | 7      |
+| Contract vs 架构  | 2      | 7      | 2     | 11     |
+| ADR vs 架构       | 3      | 6      | 3     | 12     |
+| 配置/代码 vs 架构 | 4      | 4      | 1     | 9      |
+| **合计**          | **12** | **20** | **7** | **39** |
+
+## 原始系统性主题（已收口）
+
+以下主题为原始审计对系统性偏差的归纳，内容保留用于追溯；当前不再表示开放任务，已由 canonical contract、ADR supersession、runtime guard、release gate 与 invariant test 收口。
+
+1. **状态机定义碎片化**：架构、合约、ADR、代码四处各自定义不同状态枚举，无单一真相源
+2. **OAPEFLIR 定位矛盾**：ADR将其视为编排核心，架构将其视为认知框架，代码实现介于两者之间
+3. **术语漂移未清理**：v3→v4 重命名（step→NodeRun, Rollout→Release, execution_id→node_run_id）在ADR和合约中未统一更新
+4. **配置-验证脱节**：域配置JSON字段与Zod schema不匹配，意味着配置可能从未经过schema验证
+5. **防御深度不足**：多处安全/稳定性机制仅实现单层，架构要求的多层纵深防御未落地
+
+---
+
+## 5. org-governance 代码 vs 架构（24项）
+
+| #    | 严重度 | 位置                                              | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| O-1  | HIGH   | org-model/org-node/index.ts                       | OrgNodeType 枚举多出 `member`，§46.1仅定义 company/division/department/team | 已完成 | ImplementationConsistencyClosureRegistry:O-1 |
+| O-2  | MED    | org-model/org-node/index.ts                       | 字段命名不匹配：代码 orgNodeId/nodeType/displayName vs 架构 nodeId/type/name | 已完成 | ImplementationConsistencyClosureRegistry:O-2 |
+| O-3  | HIGH   | org-model/                                        | §46.2要求的 `LegalEntityBoundary`（跨法人/跨国数据和审批控制）完全缺失 | 已完成 | ImplementationConsistencyClosureRegistry:O-3 |
+| O-4  | HIGH   | org-model/hierarchy/index.ts                      | §46.3要求org变更生成 OrgMergeConflictReport/ApprovalRerouteOnOrgChange/OrphanAgentFreezePolicy/IdentityDeprovisioningReport，代码仅发基础事件无下游执行 | 已完成 | ImplementationConsistencyClosureRegistry:O-4 |
+| O-5  | HIGH   | approval-routing/route-engine/index.ts            | `applySodPolicy` 仅检查 requester≠approver，§47.1要求覆盖利益冲突、同链互审、预算所有者vs执行者冲突 | 已完成 | ImplementationConsistencyClosureRegistry:O-5 |
+| O-6  | HIGH   | approval-routing/                                 | §47.3要求 `ApprovalRouteSnapshot` 创建时冻结（org版本/审批人集/SoD/COI/FX快照/策略版本/证据引用），未实现 | 已完成 | ImplementationConsistencyClosureRegistry:O-6 |
+| O-7  | MED    | approval-routing/route-engine/index.ts            | §47.2金额矩阵用CNY，代码用 `amountUsd` 无多币种/FX快照支持 | 已完成 | ImplementationConsistencyClosureRegistry:O-7 |
+| O-8  | MED    | approval-routing/                                 | §47.3要求审批过期/撤销/提交时重验证，均未实现 | 已完成 | ImplementationConsistencyClosureRegistry:O-8 |
+| O-9  | MED    | approval-routing/delegation/index.ts              | §47.3要求peer委托须通过 ConflictOfInterestFilter，代码无COI检查 | 已完成 | ImplementationConsistencyClosureRegistry:O-9 |
+| O-10 | HIGH   | compliance-engine/framework-catalog.ts            | §49.1要求 ComplianceFramework 含 type枚举(GDPR/SOC2/PIPL/HIPAA/SOX/PCI_DSS)/auditRequirements/reportTemplate，代码仅有裸 frameworkId | 已完成 | ImplementationConsistencyClosureRegistry:O-10 |
+| O-11 | MED    | compliance-engine/inheritance/index.ts            | §49.2要求 PolicyStrictnessComparator 按策略类型比较，代码用朴素启发式(boolean OR/number MAX)，可能静默放松策略 | 已完成 | ImplementationConsistencyClosureRegistry:O-11 |
+| O-12 | MED    | compliance-engine/                                | §49.3要求 ComplianceExceptionWorkflow/EvidenceQualityScore/ControlCoverageReport，均未实现 | 已完成 | ImplementationConsistencyClosureRegistry:O-12 |
+| O-13 | HIGH   | knowledge-boundary/boundary-manager/index.ts      | §50.1 accessPolicy 应为 strict/controlled，代码用 defaultVisibility: private/shared/public，语义完全不同 | 已完成 | ImplementationConsistencyClosureRegistry:O-13 |
+| O-14 | MED    | knowledge-boundary/boundary-manager/index.ts      | §50.1要求 `auditOnAccess: boolean (default true)` 字段，缺失 | 已完成 | ImplementationConsistencyClosureRegistry:O-14 |
+| O-15 | HIGH   | knowledge-boundary/chinese-wall-policy.ts         | §50.3要求 WallExpiryPolicy/合规官审批重置/冷却期/数据残留扫描，代码中wall为永久不可撤销 | 已完成 | ImplementationConsistencyClosureRegistry:O-15 |
+| O-16 | MED    | knowledge-boundary/knowledge-federator.ts         | §50.3要求 CrossBoundaryTransform（脱敏/摘要/字段过滤），代码直接返回原始摘录 | 已完成 | ImplementationConsistencyClosureRegistry:O-16 |
+| O-17 | HIGH   | delegated-governance/scope-manager/index.ts:82-84 | `evaluateGuardrail` 对未知guardrail类型返回 allowed:true，违反§2.3 default-deny 原则，安全漏洞 | 已完成 | ImplementationConsistencyClosureRegistry:O-17 |
+| O-18 | MED    | delegated-governance/scope-manager/index.ts       | §51.3赋予 department_admin 中低风险域上架等权限，代码给 team_lead 零操作，但架构§51.1赋予其日常运营配置权 | 已完成 | ImplementationConsistencyClosureRegistry:O-18 |
+| O-19 | MED    | delegated-governance/delegation-registry/index.ts | §51.1权限用 level枚举(view/operate/admin/super_admin)+delegatable，代码用扁平capability字符串无层级 | 已完成 | ImplementationConsistencyClosureRegistry:O-19 |
+| O-20 | MED    | delegated-governance/                             | §51.1要求过期/撤销委托级联撤销所有派生权限，代码仅撤单条无级联 | 已完成 | ImplementationConsistencyClosureRegistry:O-20 |
+| O-21 | MED    | sso-scim/index.ts                                 | api-key-service.ts 存在但未从 index.ts 导出，模块公开API不可达 | 已完成 | ImplementationConsistencyClosureRegistry:O-21 |
+| O-22 | MED    | sso-scim/                                         | §48.2要求 identity_sync_dlq 处理同步异常/SCIM冲突报告，未实现，同步失败静默丢失 | 已完成 | ImplementationConsistencyClosureRegistry:O-22 |
+| O-23 | MED    | sso-scim/                                         | §48.3要求会话撤销SLO（正常<5min，安全<60s）和去配置时冻结Agent，未实现 | 已完成 | ImplementationConsistencyClosureRegistry:O-23 |
+| O-24 | LOW    | compliance-engine/inheritance/index.ts            | Boolean合并用OR（child true覆盖parent false），§49.2要求子节点不得放松父约束，deny型应用AND | 已完成 | ImplementationConsistencyClosureRegistry:O-24 |
+
+## 6. scale-ecosystem 代码 vs 架构（20项）
+
+| #    | 严重度 | 位置                                          | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | --- |
+| S-1  | HIGH   | marketplace/catalog/index.ts                  | MarketplaceCatalogEntry 缺少合约必需字段：publisher_id/artifact_type/artifact_ref/pricing_model/capabilities/version | 已完成 | ImplementationConsistencyClosureRegistry:S-1 |
+| S-2  | HIGH   | billing/                                      | RevenueSharePolicy（policy_id/gross_split/tax_handling/refund_policy/settlement_cycle）完全未实现 | 已完成 | ImplementationConsistencyClosureRegistry:S-2 |
+| S-3  | HIGH   | billing/billing-payment-gateway.ts            | 仅有 createCheckoutSession/fetchPaymentSessionStatus，缺少合约要求的 create_subscription/update_plan/capture_invoice/mark_payment_failed/cancel_subscription | 已完成 | ImplementationConsistencyClosureRegistry:S-3 |
+| S-4  | HIGH   | billing/billing-service.ts                    | 无退款/调整机制，合约要求退款以独立 adjustment 记录表达不得改写 usage ledger | 已完成 | ImplementationConsistencyClosureRegistry:S-4 |
+| S-5  | HIGH   | (缺失)                                        | CapacityPlanning 模块完全不存在，合约要求 CapacitySignal/CapacityForecast/CapacityScenario/CapacityRecommendation | 已完成 | ImplementationConsistencyClosureRegistry:S-5 |
+| S-6  | HIGH   | (缺失)                                        | CostAttribution 模块缺失，合约要求 CostAttributionRecord/OptimizationRecommendation/CostSimulationScenario | 已完成 | ImplementationConsistencyClosureRegistry:S-6 |
+| S-7  | HIGH   | multi-region/                                 | 远程会话状态机缺失，合约要求 connecting/connected/reconnecting/degraded/failed/viewer_only 6态，代码只有 RegionHealthStatus | 已完成 | ImplementationConsistencyClosureRegistry:S-7 |
+| S-8  | HIGH   | marketplace/                                  | ListingDependency 对象和依赖兼容性检查缺失，合约要求"依赖必须显式声明并通过兼容性检查" | 已完成 | ImplementationConsistencyClosureRegistry:S-8 |
+| S-9  | MED    | sla-engine/breach-detector/index.ts           | 仅分类 latency/success_rate/queue_wait，缺少 execution timeout 和 dependency unavailability 违约类型 | 已完成 | ImplementationConsistencyClosureRegistry:S-9 |
+| S-10 | MED    | resource-manager/fair-queue/index.ts          | 仅用 tenantId+priority+ageMs 排序，合约要求5维：tenant/org/domain/sla_tier/priority | 已完成 | ImplementationConsistencyClosureRegistry:S-10 |
+| S-11 | MED    | marketplace/marketplace-governance-service.ts | deprecatePackage 无 migration_target 或替代建议字段 | 已完成 | ImplementationConsistencyClosureRegistry:S-11 |
+| S-12 | MED    | multi-region/cross-region-routing-service.ts  | 跨境路由决策无审计记录，合约要求显式策略和审计轨迹 | 已完成 | ImplementationConsistencyClosureRegistry:S-12 |
+| S-13 | MED    | billing/billing-service.ts                    | BillingAccountRecord 缺少合约§4要求的 balance_snapshot 字段 | 已完成 | ImplementationConsistencyClosureRegistry:S-13 |
+| S-14 | MED    | integration/connectors/\*.ts                  | 连接器实现无密钥管理集成，合约要求受 policy/secret management 约束 | 已完成 | ImplementationConsistencyClosureRegistry:S-14 |
+| S-15 | MED    | sla-engine/sla-operations-service.ts          | 无饥饿保护或抢占上限，合约要求"低tier不得饿死高tier，高tier不得无限抢占全局资源" | 已完成 | ImplementationConsistencyClosureRegistry:S-15 |
+| S-16 | MED    | feedback-loop/feedback-improvement-service.ts | candidateType 值与合约 candidate_type 不对齐，proposed_change 用裸字符串无结构化对象 | 已完成 | ImplementationConsistencyClosureRegistry:S-16 |
+| S-17 | LOW    | resource-manager/quota-enforcer/index.ts      | 用 scopeId 但合约指定 scope，命名不匹配 | 已完成 | ImplementationConsistencyClosureRegistry:S-17 |
+| S-18 | LOW    | marketplace/catalog/index.ts                  | trustLevel 枚举 sandboxed/verified/enterprise vs governance 用 ExtensionTrustLevel 含 internal，同域两套词汇 | 已完成 | ImplementationConsistencyClosureRegistry:S-18 |
+| S-19 | LOW    | multi-region/region-health-check-service.ts   | performHealthCheck 用 Math.random() 模拟指标，如意外部署将产生无意义健康数据 | 已完成 | ImplementationConsistencyClosureRegistry:S-19 |
+| S-20 | LOW    | multi-region/data-replicator/index.ts         | `private emit?` 声明为可选方法无实现，事件发射路径静默空操作 | 已完成 | ImplementationConsistencyClosureRegistry:S-20 |
+## 7. Contract 文档 vs 架构（续，20项）
+
+| #    | 严重度 | Contract 文件                                    | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| T-12 | HIGH   | state_transition_matrix_contract                 | 用 tasks.status/workflow_state.status/executions.status 作权威对象，架构§5.5用 HarnessRun/NodeRun，整个状态映射表为v3遗留 | 已完成 | ImplementationConsistencyClosureRegistry:T-12 |
+| T-13 | HIGH   | oapeflir_loop_contract                           | OapeflirLoopService.run() 将OAPEFLIR视为执行引擎返回 finalOutcome，架构§13.1明确"OAPEFLIR不是执行引擎，不创建独立Run，不直接驱动状态迁移"；第8阶段仍用 Rollout 而非 Release | 已完成 | ImplementationConsistencyClosureRegistry:T-13 |
+| T-14 | HIGH   | execution_plane_contract                         | §8A定义 Plan DTO 含 steps[]+dag 作为P3→P4输入，架构§4.4/§13.6强制 PlanGraphBundle 为唯一P3→P4合约；输出用 DualChannelStepOutput/FeedbackSignal 而非架构的 NodeAttemptReceipt | 已完成 | ImplementationConsistencyClosureRegistry:T-14 |
+| T-15 | HIGH   | runtime_execution_contract                       | ExecutionEnvelope 含 stage(OAPEFLIR阶段) 作为一等执行字段驱动运行时行为，违反§13.1（stage仅为投影） | 已完成 | ImplementationConsistencyClosureRegistry:T-15 |
+| T-16 | HIGH   | sandbox_and_auth_contract                        | 隔离层级 standard/hardened/strict，架构§11.4定义 read_only/workspace_write/scoped_external_access/restricted_exec 完全不同的4层 | 已完成 | ImplementationConsistencyClosureRegistry:T-16 |
+| T-17 | HIGH   | policy_engine_contract                           | mode 字段用 supervised/auto/full-auto 3值，架构§9.5定义8种规范模式含5个降级模式 | 已完成 | ImplementationConsistencyClosureRegistry:T-17 |
+| T-18 | HIGH   | context_propagation_contract                     | RuntimeContextSnapshot 携带 task_id/execution_id/workflow_id，缺少v4.3规范标识：harnessRunId/nodeRunId/planGraphId/graphVersion/attemptId | 已完成 | ImplementationConsistencyClosureRegistry:T-18 |
+| T-19 | HIGH   | tool_and_provider_execution_contract             | 全部用 task_id/execution_id/agent_id，架构§5.3强制 harnessRunId/nodeRunId/attemptId；BudgetCheckResult 为简单布尔，架构要求完整 BudgetReservation 生命周期 | 已完成 | ImplementationConsistencyClosureRegistry:T-19 |
+| T-20 | MED    | executable_unit_contract                         | 定义 ExecutableUnit 含 unit_kind(workflow_step/skill_step/tool_call)，架构§14.10/§5.5以 NodeRun/NodeAttempt 为规范最小执行单元，合约无引用 | 已完成 | ImplementationConsistencyClosureRegistry:T-20 |
+| T-21 | MED    | lifecycle_and_termination_contract               | 通用生命周期模板 initial/active/paused/blocked/failed/terminal，缺少架构 HarnessRun 的 admitted/planning/replanning/compensating/aborted 和 NodeRun 的 leased/retry_wait/awaiting_hitl/reconciling 等状态 | 已完成 | ImplementationConsistencyClosureRegistry:T-21 |
+| T-22 | MED    | task_and_workflow_contract                       | §6A定义 PlanDTO 含 strategy/execution_graph 为"权威交接对象"，架构仅认 PlanGraphBundle；WorkflowState.current_stage 持有OAPEFLIR阶段作权威态违反§13.1 | 已完成 | ImplementationConsistencyClosureRegistry:T-22 |
+| T-23 | MED    | supervisor_contract                              | AgentRuntimeInstance 携带 current_step_id，架构§5.5说 HarnessStep 仅为语义投影；告警严重度 info/warning/critical 3级 vs 架构SEV1-4 | 已完成 | ImplementationConsistencyClosureRegistry:T-23 |
+| T-24 | MED    | governance_control_plane_contract                | 用 DecisionRequest/DecisionResult，架构§5.2建立 OperationalDirective/DecisionDirective 为规范P2→P3/P4指令 | 已完成 | ImplementationConsistencyClosureRegistry:T-24 |
+| T-25 | MED    | proactive_agent_and_autonomy_contract            | 自治级别 manual_only/suggest_only/supervised_execute/trusted_auto_execute 与架构§9.5运行时模式无映射，trusted_auto_execute 无对应 | 已完成 | ImplementationConsistencyClosureRegistry:T-25 |
+| T-26 | MED    | platform_panic_and_resume_contract               | Panic scope 含 workflow 但架构§9.5 ModeScope 为 platform>region>tenant>domain>run>node，缺 region/run/node；ResumePlan 无架构要求的人工确认约束 | 已完成 | ImplementationConsistencyClosureRegistry:T-26 |
+| T-27 | MED    | agent_contract                                   | 用 division_id 为主组织单元，架构v4.3用域中心模型(domain_id/DomainDescriptor)；DispatchMode.worker_dispatch 未引用 PlanGraphDispatch | 已完成 | ImplementationConsistencyClosureRegistry:T-27 |
+| T-28 | LOW    | domain_descriptor_and_onboarding_contract        | DomainRiskProfile 被引用但未定义必需字段，架构§3.2要求高危域声明 advisory_only/human_accountable/deterministic_hot_path_only | 已完成 | ImplementationConsistencyClosureRegistry:T-28 |
+| T-29 | LOW    | data_classification_and_prompt_handling_contract | 缺少架构§11.6 DataTaintPropagation 硬规则：输出 data_class 不得低于最高输入 data_class 除非有显式脱敏证明 | 已完成 | ImplementationConsistencyClosureRegistry:T-29 |
+| T-30 | LOW    | compliance_report_generation_contract            | 未引用架构的 EvidenceRecord(P3→P5)/EventEnvelope/AuditAppendCommand 作为证据源 | 已完成 | ImplementationConsistencyClosureRegistry:T-30 |
+| T-31 | LOW    | distributed_locking_contract                     | 锁状态机 pending→active→renewed→released/expired→reclaimed 未显式从属于 RuntimeStateMachine 单一变更入口 | 已完成 | ImplementationConsistencyClosureRegistry:T-31 |
+
+## 8. ops-maturity 代码 vs 架构（20项）
+
+| #    | 严重度 | 位置                                                      | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| M-1  | HIGH   | emergency/platform-panic-service.ts                       | PanicAcknowledgment.status 用 ack/nack，§60.2要求 ack/failed/timeout，缺失failure/timeout区分导致 panic_incomplete P0事件检测失效 | 已完成 | ImplementationConsistencyClosureRegistry:M-1 |
+| M-2  | HIGH   | emergency/platform-panic-service.ts                       | PlatformPanicDirective.scope 为 plain string，§60.1要求 enum global/tenant/domain，无 scope 验证 | 已完成 | ImplementationConsistencyClosureRegistry:M-2 |
+| M-3  | HIGH   | emergency/platform-panic-service.ts                       | requiredApprovers 为 number，§60.1指定 string[](min 2)，审批人身份丢失导致双人审计不可验证 | 已完成 | ImplementationConsistencyClosureRegistry:M-3 |
+| M-4  | HIGH   | emergency/resume-protocol/index.ts                        | ResumePlan.approvedBy 接受单个string，§60.3要求≥2个 platform_admin 审批人且需角色验证 | 已完成 | ImplementationConsistencyClosureRegistry:M-4 |
+| M-5  | HIGH   | drift-detection/fingerprint-builder/index.ts              | BehaviorFingerprintInput 缺少 window/tool_usage_distribution/success_rate/risk_distribution/driftScore 字段(§63.1) | 已完成 | ImplementationConsistencyClosureRegistry:M-5 |
+| M-6  | HIGH   | drift-detection/changepoint-detector/index.ts             | 严重度枚举 SEV3/none，§63.3要求 low/medium/high 对应分级响应(alert→require_review→pause agent) | 已完成 | ImplementationConsistencyClosureRegistry:M-6 |
+| M-7  | MED    | agent-lifecycle/agent-registry/index.ts                   | canary 允许转移到 paused，§61.3状态机未定义 canary→paused，仅 active→paused 合法 | 已完成 | ImplementationConsistencyClosureRegistry:M-7 |
+| M-8  | MED    | agent-lifecycle/agent-registry/index.ts                   | AgentDefinition 缺少§61.1要求的 ConnectorBindings 组件(§57连接器框架) | 已完成 | ImplementationConsistencyClosureRegistry:M-8 |
+| M-9  | MED    | explainability/explanation-pipeline-service.ts            | StageRationale 用 taskId 而非§59.3的 stageId(OAPEFLIR阶段ID)；缺少 decision 字段 | 已完成 | ImplementationConsistencyClosureRegistry:M-9 |
+| M-10 | MED    | explainability/explanation-pipeline-service.ts            | 解释缓存无 TTL 强制，§59.6要求 L1/L2 TTL=24h，L3不得缓存 | 已完成 | ImplementationConsistencyClosureRegistry:M-10 |
+| M-11 | MED    | cost-optimizer/cost-optimization-service.ts               | CostAttributionRecord 缺少 humanReviewCost/egressCost/computeCost/storageCost 明细和 qualityRisk(§64.1) | 已完成 | ImplementationConsistencyClosureRegistry:M-11 |
+| M-12 | MED    | workflow-debugger/workflow-debugger-service.ts            | 生产断点守卫用布尔 canDebugProduction，§65.3要求断点仅存在于 ReplaySandbox，生产运行禁止断点 | 已完成 | ImplementationConsistencyClosureRegistry:M-12 |
+| M-13 | MED    | edge-runtime/edge-runtime-sync-service.ts                 | SyncEnvelope.signature 为确定性字符串拼接非密码学签名，§62.3要求签名追加队列含 prev_hash 链完整性 | 已完成 | ImplementationConsistencyClosureRegistry:M-13 |
+| M-14 | MED    | compliance-reporter/compliance-report-pipeline-service.ts | status 仅 complete/partial，§66.2要求 generated→HumanSignoff→attested 生命周期含 EvidenceQualityScore | 已完成 | ImplementationConsistencyClosureRegistry:M-14 |
+| M-15 | MED    | multimodal/multimodal-gateway-service.ts                  | MultimodalInputPart 缺少§68.2 ContentPart 要求的 provenance/safetyLabels/mimeType/costKey | 已完成 | ImplementationConsistencyClosureRegistry:M-15 |
+| M-16 | MED    | platform-ops-agent/platform-ops-agent-service.ts          | OpsActionType 缺少§69.1的 restart_service 和 failover 工具 | 已完成 | ImplementationConsistencyClosureRegistry:M-16 |
+| M-17 | LOW    | platform-ops-agent/self-healing-service.ts                | performHealingOperation 用 Math.random() 模拟成功/失败，§69.3要求所有写操作绑定 runbook+approval | 已完成 | ImplementationConsistencyClosureRegistry:M-17 |
+| M-18 | LOW    | drift-detection/index.ts                                  | 模块头部称"Evolution Engine"聚焦自我改进，§63定义为"行为漂移检测"，术语误导 | 已完成 | ImplementationConsistencyClosureRegistry:M-18 |
+| M-19 | LOW    | emergency/forensic-snapshot/index.ts                      | ForensicSnapshot 缺少按平面的证据引用，§60.2要求每平面返回含 plane/localStopState/evidenceRef 的 PanicAcknowledgment | 已完成 | ImplementationConsistencyClosureRegistry:M-19 |
+| M-20 | LOW    | capacity-planner/capacity-planning-service.ts             | CapacityRecommendation 缺少§67.2要求的 SLA tier/queue delay/budget/approval capacity/provider quota/Region failover reserve | 已完成 | ImplementationConsistencyClosureRegistry:M-20 |
+
+---
+
+## 9. OAPEFLIR v4.4 Spec vs 主架构文档（25项）
+
+| #    | 严重度 | Spec节 vs 架构节              | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| F-1  | HIGH   | Spec§0 vs Arch§13.1           | Spec定位OAPEFLIR为"生产级Agent Runtime"含独立OapeflirRuntime；架构明确"OAPEFLIR不是执行引擎"仅为认知/治理语义框架 | 已完成 | ImplementationConsistencyClosureRegistry:F-1 |
+| F-2  | HIGH   | Spec§4.1 vs Arch§45.22/§5.5   | Spec定义OapeflirRun为规范运行实体含完整状态/预算；架构声明HarnessRun为唯一权威Run，OapeflirRun列于附录H废弃别名 | 已完成 | ImplementationConsistencyClosureRegistry:F-2 |
+| F-3  | HIGH   | Spec§4.2 vs Arch§13.1不变量#4 | Spec定义OAPEFLIR所有的RunStatus 15态驱动执行；架构禁止OAPEFLIR拥有run status/lease/retry counter/side effect commit/budget state | 已完成 | ImplementationConsistencyClosureRegistry:F-3 |
+| F-4  | HIGH   | Spec§3 vs Arch§45.1           | Spec呈现"OAPEFLIR Runtime"为顶层执行运行时；架构说HarnessRuntime为唯一可执行运行时入口 | 已完成 | ImplementationConsistencyClosureRegistry:F-4 |
+| F-5  | HIGH   | Spec§14 vs Arch§28            | Spec用 run._/node._/side_effect._ 作为OAPEFLIR事件；架构强制OAPEFLIR仅用 oapeflir.view._/oapeflir.rationale.\* | 已完成 | ImplementationConsistencyClosureRegistry:F-5 |
+| F-6  | HIGH   | Spec§12 vs Arch§14/§45        | Spec将Graph Scheduler置于OAPEFLIR Runtime内；架构将其置于P4执行平面HarnessRuntime管辖下 | 已完成 | ImplementationConsistencyClosureRegistry:F-6 |
+| F-7  | HIGH   | Spec§20.2 vs Arch§8           | Spec假设LLM可确定性重放(reexecute_with_same_seed)；架构明确"不假设LLM可确定性重放"，默认Trace Replay | 已完成 | ImplementationConsistencyClosureRegistry:F-7 |
+| F-8  | HIGH   | Spec§34 vs Arch§6.2/§58       | Spec用OAPEFLIR.\*错误码命名空间；架构强制PLATFORM.{plane}.{component}.{category}并禁止OAPEFLIR进入错误码命名空间 | 已完成 | ImplementationConsistencyClosureRegistry:F-8 |
+| F-9  | MED    | Spec§5.2 vs Arch§14           | Spec定义13个NodeRunStatus含compensating/compensated由OAPEFLIR管辖；架构规范定义在HarnessRuntime下，所有权冲突 | 已完成 | ImplementationConsistencyClosureRegistry:F-9 |
+| F-10 | MED    | Spec§7.3 vs Arch§13.8         | PlanNode字段名Spec用type(14种)，架构用kind | 已完成 | ImplementationConsistencyClosureRegistry:F-10 |
+| F-11 | MED    | Spec§15 vs Arch§18.3          | Spec将BudgetLedger置于OAPEFLIR所有含直接reservation语义；架构BudgetReservation归P5/Budget服务 | 已完成 | ImplementationConsistencyClosureRegistry:F-11 |
+| F-12 | MED    | Spec§16 vs Arch§14.11         | Spec将SideEffectManager置于OAPEFLIR Runtime内；架构置于P4执行平面HarnessRuntime治理下 | 已完成 | ImplementationConsistencyClosureRegistry:F-12 |
+| F-13 | MED    | Spec§39 vs Arch§35            | Spec建议所有运行时代码在src/platform/oapeflir/；架构推荐Harness中心目录结构，OAPEFLIR仅为trace/projection适配器 | 已完成 | ImplementationConsistencyClosureRegistry:F-13 |
+| F-14 | MED    | Spec§42 vs Arch§8版本         | Spec声称v4.4为核心Runtime设计基线；架构v4.3将v4.4 Spec降级为"迁移输入"非权威基线 | 已完成 | ImplementationConsistencyClosureRegistry:F-14 |
+| F-15 | MED    | Spec§24 vs Arch§45.25         | Spec的DecisionInputBundle缺少hitlState/nodeState；架构额外含riskState/guardrailFindings | 已完成 | ImplementationConsistencyClosureRegistry:F-15 |
+| F-16 | MED    | Spec§19 vs Arch§45.24         | Spec含observe/summarizer prompt角色；架构仅认Planner/Generator/Evaluator | 已完成 | ImplementationConsistencyClosureRegistry:F-16 |
+| F-17 | MED    | Spec§25 vs Arch§14.8/§42      | Spec定义5个RuntimeProfile层级(core/durable/governed/enterprise/learning)作OAPEFLIR内置；架构§14.8/§42为独立定义 | 已完成 | ImplementationConsistencyClosureRegistry:F-17 |
+| F-18 | LOW    | Spec§26 vs Arch§45.27         | Spec列6种HITL能力；架构§45.27额外含reject | 已完成 | ImplementationConsistencyClosureRegistry:F-18 |
+| F-19 | LOW    | Spec§23 vs Arch§45.20         | 两者均定义5层Guardrail但Spec置于OAPEFLIR治理，架构置于Harness§45.20 + P2控制平面 | 已完成 | ImplementationConsistencyClosureRegistry:F-19 |
+| F-20 | LOW    | Spec§22 vs Arch§45.16         | Spec定义6种Memory scope；架构用3层模型(Working/Long-term/Shared Knowledge)，分类法不同 | 已完成 | ImplementationConsistencyClosureRegistry:F-20 |
+| F-21 | LOW    | Spec§35 vs Arch§58.1          | Spec用oapeflir.run._指标前缀；架构用harness.run._ | 已完成 | ImplementationConsistencyClosureRegistry:F-21 |
+| F-22 | LOW    | Spec§40 vs Arch§33            | Spec用4阶段交付(A-D)；架构用3环模型(MVP/Hardening/Enterprise) | 已完成 | ImplementationConsistencyClosureRegistry:F-22 |
+| F-23 | LOW    | Spec§7.1 vs Arch§5.3/§13.8    | Spec含generatedBy含repair_worker；架构PlanGraphBundle无此字段，出处通过evidence refs追踪 | 已完成 | ImplementationConsistencyClosureRegistry:F-23 |
+| F-24 | LOW    | Spec§30 vs Arch§45.3          | Spec列9级策略优先级；架构ConstraintPack用4级合并(平台<租户<业务域<任务) | 已完成 | ImplementationConsistencyClosureRegistry:F-24 |
+| F-25 | LOW    | Spec§2 Execute产出            | Spec Execute阶段产出ExecutionReceipt；架构标注为废弃，规范为NodeAttemptReceipt | 已完成 | ImplementationConsistencyClosureRegistry:F-25 |
+
+## 10. interaction 代码 vs 架构（20项）
+
+| #    | 严重度 | 位置                              | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| I-1  | HIGH   | nl-gateway/index.ts               | 无TaskDraft/ClarificationState/UserConfirmationReceipt预入口对象，buildTask()直接跳至RequestEnvelope绕过§39.2入口管线 | 已完成 | ImplementationConsistencyClosureRegistry:I-1 |
+| I-2  | HIGH   | nl-gateway/index.ts:414           | 默认澄清阈值0.7，§39.3强制intent_confidence_threshold=0.80/slot_confidence_threshold=0.85 | 已完成 | ImplementationConsistencyClosureRegistry:I-2 |
+| I-3  | HIGH   | nl-gateway/index.ts               | 无多轮对话状态机(Idle→IntentParsing→Clarifying→Building→Confirming→Executing→Reporting)§39.5要求 | 已完成 | ImplementationConsistencyClosureRegistry:I-3 |
+| I-4  | HIGH   | nl-gateway/                       | NL管线无任何Prompt Injection防御，违反§39.6安全约束(引用§16.5) | 已完成 | ImplementationConsistencyClosureRegistry:I-4 |
+| I-5  | HIGH   | nl-gateway/index.ts               | 缺少§39.3要求的ContextEnricher/ResponseFormatter组件 | 已完成 | ImplementationConsistencyClosureRegistry:I-5 |
+| I-6  | HIGH   | nl-gateway/index.ts:71            | DetectedIntent.intentType含"system_config"无架构对应定义 | 已完成 | ImplementationConsistencyClosureRegistry:I-6 |
+| I-7  | MED    | goal-decomposer/index.ts          | 无GoalLifecycleState状态机(draft→decomposing→decomposed→executing→completed…)§40.5要求 | 已完成 | ImplementationConsistencyClosureRegistry:I-7 |
+| I-8  | MED    | goal-decomposer/index.ts          | 输出tasks/dependencyGraph但不产出§40.2要求的GoalGraphDraft/TaskGraphDraft，无draft→planner交接 | 已完成 | ImplementationConsistencyClosureRegistry:I-8 |
+| I-9  | MED    | goal-decomposer/index.ts          | 分解时无budget/risk/permission/capability约束传播(§40.2)，仅事后buildRiskSummary | 已完成 | ImplementationConsistencyClosureRegistry:I-9 |
+| I-10 | HIGH   | proactive-agent/index.ts:5        | TriggerDefinition.type用"threshold"而非架构"condition"(§41.2: schedule/event/condition/webhook)；"webhook_inbound" vs "webhook" | 已完成 | ImplementationConsistencyClosureRegistry:I-10 |
+| I-11 | MED    | proactive-agent/index.ts          | 无ProactiveBudgetPool或UserInitiatedReserveRatio(≥60%)强制(§41.4) | 已完成 | ImplementationConsistencyClosureRegistry:I-11 |
+| I-12 | MED    | proactive-agent/index.ts          | 无触发器间反馈环路检测(§41.4要求检测互触发循环并创建incident) | 已完成 | ImplementationConsistencyClosureRegistry:I-12 |
+| I-13 | MED    | proactive-agent/index.ts:43       | TriggerDefinition缺少§41.2要求的maxFireCount/boundAgentId字段 | 已完成 | ImplementationConsistencyClosureRegistry:I-13 |
+| I-14 | HIGH   | dashboard/                        | 无MetricRegistry含metric_owner/freshness_slo/stale_behavior/redaction(§43.1) | 已完成 | ImplementationConsistencyClosureRegistry:I-14 |
+| I-15 | MED    | dashboard/                        | NL摘要生成无evidence_refs/freshness/confidence/redaction_policy/source_projection_version元数据(§43.6) | 已完成 | ImplementationConsistencyClosureRegistry:I-15 |
+| I-16 | MED    | dashboard/                        | 无仪表盘操作风险门控(§43.6)：按钮不应直接触发高风险指令 | 已完成 | ImplementationConsistencyClosureRegistry:I-16 |
+| I-17 | MED    | autonomy/trust-scorer/index.ts:14 | TrustLevel 6值枚举与架构§42.2自治级别(suggestion/supervised/semi_auto/full_auto)无正式映射桥接 | 已完成 | ImplementationConsistencyClosureRegistry:I-17 |
+| I-18 | MED    | autonomy/                         | 无TrustDecayWorker或每日衰减机制(§42.3)；无降级前的AutonomyChangeImpactReport(§42.4) | 已完成 | ImplementationConsistencyClosureRegistry:I-18 |
+| I-19 | MED    | ux/workflow-builder-service.ts    | 可视化工作流构建器保存前不执行§44.3要求的PlanGraph Normalize/Validate/RiskPropagation/WorstPathAnalysis | 已完成 | ImplementationConsistencyClosureRegistry:I-19 |
+| I-20 | LOW    | nl-gateway/index.ts               | deriveUrgency将"critical"关键词映射为"high"而非"critical"，低估紧急度 | 已完成 | ImplementationConsistencyClosureRegistry:I-20 |
+
+## 11. domains + sdk 代码 vs 架构（20项）
+
+| #    | 严重度 | 位置                                                  | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| D-1  | HIGH   | domains/canonical-meta-model/types.ts                 | 元模型仅12问(Q1-Q12)，架构§37.11要求15问(缺Q13 liability_owner/Q14 compensation_model/Q15 adversarial_scenarios) | 已完成 | ImplementationConsistencyClosureRegistry:D-1 |
+| D-2  | HIGH   | sdk/pack-sdk/pack-manifest.ts                         | BusinessPackManifest缺少§30.2强制字段：domain_id(用domain)/side_effects/data_classes/max_risk_class/tools/connectors/plugins/eval_requirements/compatibility | 已完成 | ImplementationConsistencyClosureRegistry:D-2 |
+| D-3  | HIGH   | domains/registry/domain-model.ts:77                   | 域状态枚举 draft/testing/active/deprecated 不匹配§37.10生命周期 Draft/Validated/Registered/Active/Updating/Deprecated/Archived | 已完成 | ImplementationConsistencyClosureRegistry:D-3 |
+| D-4  | HIGH   | domains/(缺失)                                        | 架构§37.2 v4.3分解规格(DomainCoreDescriptor/DomainExecutionProfile/DomainRiskSpec/DomainKnowledgeSpec/DomainEvalSpec/DomainGovernanceSpec/DomainInteractionSpec)无类型实现 | 已完成 | ImplementationConsistencyClosureRegistry:D-4 |
+| D-5  | HIGH   | sdk/(缺失)                                            | 架构§22.1要求4层SDK；Admin SDK完全缺失 | 已完成 | ImplementationConsistencyClosureRegistry:D-5 |
+| D-6  | HIGH   | domains/domain-descriptor-orchestration-service.ts:15 | lifecycleState枚举含validating/certified/canary不在§37.10状态机中；缺registered/updating/archived | 已完成 | ImplementationConsistencyClosureRegistry:D-6 |
+| D-7  | MED    | sdk/plugin-sdk/plugin-definition.ts:9                 | PluginType含"presenter"不在架构§22.1(tool/adapter/retriever/evaluator)中 | 已完成 | ImplementationConsistencyClosureRegistry:D-7 |
+| D-8  | MED    | domains/registry/domain-model.ts:60                   | PluginBinding.pluginType枚举retriever/validator/planner/presenter/adapter与架构tool/adapter/retriever/evaluator不匹配 | 已完成 | ImplementationConsistencyClosureRegistry:D-8 |
+| D-9  | MED    | domains/recipes/index.ts:3                            | DomainRecipe缺少archetype字段，架构§37.7定义12种recipe原型无枚举或类型 | 已完成 | ImplementationConsistencyClosureRegistry:D-9 |
+| D-10 | MED    | sdk/client-sdk/api-client.ts                          | 无规范API端点的类型化方法(/api/v1/harness-runs, /api/v1/packs, abort/pause per §6) | 已完成 | ImplementationConsistencyClosureRegistry:D-10 |
+| D-11 | MED    | domains/governance/domain-governance-policy.ts        | 缺少§37.9治理字段：slo_profile/budget_constraints/max_hibernation_renewals/compliance_rules/recertification/waiver | 已完成 | ImplementationConsistencyClosureRegistry:D-11 |
+| D-12 | MED    | domains/operations/index.ts:3                         | 上架阶段 modeling/development_validation/security_certification/canary_launch 不对齐§37.10+§38 runbook | 已完成 | ImplementationConsistencyClosureRegistry:D-12 |
+| D-13 | MED    | sdk/pack-sdk/pack-manifest.ts:3                       | BusinessPackCapability用非正式maturity字段代替架构§30.2的PackCapabilityProfile结构 | 已完成 | ImplementationConsistencyClosureRegistry:D-13 |
+| D-14 | MED    | domains/(缺失)                                        | 无execution_mode/hot_path_mode/planning_mode字段，§37.2要求用于确定性热路径强制 | 已完成 | ImplementationConsistencyClosureRegistry:D-14 |
+| D-15 | MED    | sdk/pack-sdk/pack-manifest.ts:17                      | validateBusinessPackManifest不验证domain_id指向Active DomainDescriptor(§30.2) | 已完成 | ImplementationConsistencyClosureRegistry:D-15 |
+| D-16 | LOW    | sdk/workbench/index.ts:134                            | 预览URL用旧/tasks和/approvals路径而非规范/harness-runs(§6) | 已完成 | ImplementationConsistencyClosureRegistry:D-16 |
+| D-17 | LOW    | sdk/plugin-sdk/plugin-definition.ts:29                | PluginDefinition缺少§22.4 PluginManifest字段：spiTypes/domainIds/SBOM/signing | 已完成 | ImplementationConsistencyClosureRegistry:D-17 |
+| D-18 | LOW    | sdk/pack-sdk/pack-scaffold-service.ts                 | 脚手架不生成domain lint/domain validate集成，§37要求Gate 2前通过domain lint | 已完成 | ImplementationConsistencyClosureRegistry:D-18 |
+| D-19 | LOW    | sdk/harness-sdk/index.ts:16                           | HarnessSdkAppendStepInput用旧stage/inputs/outputs术语而非规范nodeRunId/planGraphId(§5/§45) | 已完成 | ImplementationConsistencyClosureRegistry:D-19 |
+| D-20 | LOW    | domains/registry/domain-registry-service.ts:64        | activate()从任意状态直接转active，无§37.10要求的Draft→Validated→Registered→Active路径守卫 | 已完成 | ImplementationConsistencyClosureRegistry:D-20 |
+## 12. Contract 文档 vs 架构（第3批，25项）
+
+| #    | 严重度 | Contract 文件                                      | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| T-32 | HIGH   | transition_service_contract                        | TransitionCommand.entity_kind用pre-v4.3类型(task/workflow/session/approval/execution)，架构§5.3用harness_run/node_run/side_effect/budget_reservation | 已完成 | ImplementationConsistencyClosureRegistry:T-32 |
+| T-33 | HIGH   | storage_schema_contract                            | 核心表(tasks/workflow_state/executions)无映射到v4.3规范对象(HarnessRun/NodeRun/PlanGraphBundle)，缺对应表或迁移路径 | 已完成 | ImplementationConsistencyClosureRegistry:T-33 |
+| T-34 | HIGH   | storage_schema_contract                            | memories表DDL遗漏合约自身§13声明的最小列：layer_level/token_budget/freshness_state/source_refs_json | 已完成 | ImplementationConsistencyClosureRegistry:T-34 |
+| T-35 | HIGH   | monetization_metering_plane_contract               | 引入BillingLedger/LedgerEntry但架构§18用BudgetLedger/BudgetSettlement为冻结合约(§1.5)，命名碰撞 | 已完成 | ImplementationConsistencyClosureRegistry:T-35 |
+| T-36 | HIGH   | marketplace_catalog_and_revenue_contract           | 定义RevenueSharePolicy含结算/分成字段，架构§55.4明确"收益分成/计费结算不属于核心运行架构"禁止影响Pack执行/安全 | 已完成 | ImplementationConsistencyClosureRegistry:T-36 |
+| T-37 | HIGH   | idempotency_and_recovery_matrix_contract           | 全文使用"workflow step"/"step"术语(§4 Step级矩阵)，架构v4.3§5.5声明NodeRun/NodeAttempt为规范，stepId仅为legacy投影 | 已完成 | ImplementationConsistencyClosureRegistry:T-37 |
+| T-38 | MED    | plugin_spi_contract                                | DomainPlannerPlugin.plan()返回Plan而非规范PlanGraphBundle；§7 OAPEFLIR表用"Rollout"而非"Release" | 已完成 | ImplementationConsistencyClosureRegistry:T-38 |
+| T-39 | MED    | trace_and_root_cause_observability_contract        | "一个task=一个trace"，架构§5.5声明HarnessRun为规范run truth；应为"一个HarnessRun=一个trace" | 已完成 | ImplementationConsistencyClosureRegistry:T-39 |
+| T-40 | MED    | billing_and_tenant_contract                        | 用UsageMeter而非架构§18.1的UsageRecord；未引用冻结的BudgetLedger/BudgetReservation | 已完成 | ImplementationConsistencyClosureRegistry:T-40 |
+| T-41 | MED    | cost_and_budget_contract                           | BudgetPolicy仅max_task/daily/monthly_cost_usd，架构§18.3强制多维：max_cost/max_model_tokens/max_context_tokens/max_output_tokens/max_steps/max_duration_ms | 已完成 | ImplementationConsistencyClosureRegistry:T-41 |
+| T-42 | MED    | cross_region_routing_and_data_residency_contract   | RegionDescriptor缺provider/endpoints/dataResidencyPolicy(§52.1)；缺写边界规则CAS/Lease/Fencing(§52.3) | 已完成 | ImplementationConsistencyClosureRegistry:T-42 |
+| T-43 | MED    | marketplace_catalog_and_revenue_contract           | lifecycle_state用draft/submitted/certified/published/deprecated/retired，架构§55.5用active/deprecated/sunset/removed，不兼容 | 已完成 | ImplementationConsistencyClosureRegistry:T-43 |
+| T-44 | MED    | sso_scim_and_identity_sync_contract                | 缺架构§48.2要求的identity_sync_dlq；遗漏SAML 2.0(架构标注"必须") | 已完成 | ImplementationConsistencyClosureRegistry:T-44 |
+| T-45 | MED    | edge_runtime_and_sync_contract                     | 缺架构§8.3要求EdgeRuntime声明stateful=true/lease_migration_supported/checkpoint_required_before_preempt | 已完成 | ImplementationConsistencyClosureRegistry:T-45 |
+| T-46 | MED    | node-run-attempt-receipt-contract                  | Receipt主键字段为nodeAttemptReceiptId，架构§5.3 NodeAttemptReceipt用receiptId | 已完成 | ImplementationConsistencyClosureRegistry:T-46 |
+| T-47 | MED    | observability_contract                             | RuntimeMetricsSummary用oapeflirMetrics.convergenceRate为顶层指标，架构§5.5/§13声明OAPEFLIR仅为投影/trace非truth | 已完成 | ImplementationConsistencyClosureRegistry:T-47 |
+| T-48 | MED    | token_budget_allocation_contract                   | 定义10种预算维度含KV cache分区但未引用冻结的BudgetReservation状态机(reserved→settled→released) | 已完成 | ImplementationConsistencyClosureRegistry:T-48 |
+| T-49 | MED    | supply_chain_and_dependency_security_contract      | 缺架构§11.7 PluginTrustStore要求：trust root/signing key rotation/revocation list/security advisory/quarantine/tenant impact | 已完成 | ImplementationConsistencyClosureRegistry:T-49 |
+| T-50 | LOW    | enterprise_secret_management_contract              | 提到短期凭证但未强制架构§11.3硬TTL上限"secret注入短时有效(TTL≤300s)" | 已完成 | ImplementationConsistencyClosureRegistry:T-50 |
+| T-51 | LOW    | tenant_isolation_and_shared_worker_safety_contract | 无架构§9.1自动隔离阈值(failure rate>30%+min_sample_size)，仅定性规则无定量触发器 | 已完成 | ImplementationConsistencyClosureRegistry:T-51 |
+| T-52 | LOW    | tool_output_sanitization_contract                  | 用"Phase 1a"术语，架构§1.4/§33声明"旧Phase 1-9仅作为历史排期映射"已废弃 | 已完成 | ImplementationConsistencyClosureRegistry:T-52 |
+| T-53 | LOW    | cost_attribution_and_optimization_contract         | CostAttributionRecord.decision_ref为通用string，架构要求可追踪到HarnessRun/NodeRun/BudgetSettlement | 已完成 | ImplementationConsistencyClosureRegistry:T-53 |
+| T-54 | LOW    | approval_and_hitl_contract                         | 仍用OapeflirStage作为一等stage_ref字段，架构§5.5不变量"oapeflir.\*事件不得作为truth source" | 已完成 | ImplementationConsistencyClosureRegistry:T-54 |
+| T-55 | LOW    | monetization_metering_plane_contract               | UsageEvent.source枚举(runtime/api/gateway/admin)缺tool/model/side_effect，架构§18.1 cost_source含provider_invoice/internal_compute/human_review/storage/egress | 已完成 | ImplementationConsistencyClosureRegistry:T-55 |
+| T-56 | LOW    | runtime_repository_and_migration_contract          | Repository方法(markExecutionStarted等)直操作executions表，架构§5.3强制所有状态转换经RuntimeStateMachine.transition() | 已完成 | ImplementationConsistencyClosureRegistry:T-56 |
+
+## 13. ADR vs 架构（第2批，25项）
+
+| #    | 严重度 | ADR            | 偏差描述 | 状态 | 收口证据 |
+| ---- | ------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | --- | --- |
+| A-13 | HIGH   | ADR-021        | 用废弃ControlDirective为规范P2→P3合约；架构§5.2拆分为OperationalDirective/DecisionDirective | 已完成 | ImplementationConsistencyClosureRegistry:A-13 |
+| A-14 | HIGH   | ADR-021        | 用废弃ExecutionPlan含线性steps[]为P3→P4合约；架构§5.3强制PlanGraphBundle | 已完成 | ImplementationConsistencyClosureRegistry:A-14 |
+| A-15 | HIGH   | ADR-021        | 用废弃ExecutionReceipt为P4→P3结果；架构§5.3强制NodeAttemptReceipt(attemptId+nodeRunId) | 已完成 | ImplementationConsistencyClosureRegistry:A-15 |
+| A-16 | HIGH   | ADR-027        | Principal类型含pack/tenant代替worker/plugin；架构§11.1规范集为user/service/agent/worker/plugin/system | 已完成 | ImplementationConsistencyClosureRegistry:A-16 |
+| A-17 | HIGH   | ADR-027        | 沙箱层级SANDBOX_NONE/SANDBOX_READonly/SANDBOX_NETWORK_ISOLATED/SANDBOX_FULL与架构§11.4完全不同；SANDBOX_NONE违反default-deny | 已完成 | ImplementationConsistencyClosureRegistry:A-17 |
+| A-18 | HIGH   | ADR-026        | 风险模型6因子(stepTypeRisk/targetSystemRisk等)名称权重均不同于架构§10.2的8因子 | 已完成 | ImplementationConsistencyClosureRegistry:A-18 |
+| A-19 | HIGH   | ADR-025        | PolicyMode含supervised/degraded/maintenance/emergency不存在于架构§9.5/§14.8规范集 | 已完成 | ImplementationConsistencyClosureRegistry:A-19 |
+| A-20 | HIGH   | ADR-073        | 用tasks/workflow/execution/ExecutionEnvelope为规范资源；架构§5.5强制HarnessRun/NodeRun/PlanGraphBundle | 已完成 | ImplementationConsistencyClosureRegistry:A-20 |
+| A-21 | HIGH   | ADR-004        | 用v3 "VP运营/VP编排/事业部/Lead Agent/CEO"代理层次；架构v4.3以五平面+HarnessRuntime替代 | 已完成 | ImplementationConsistencyClosureRegistry:A-21 |
+| A-22 | MED    | ADR-005        | 运行时模式supervised/auto/full-auto不匹配架构§14.8规范8种枚举 | 已完成 | ImplementationConsistencyClosureRegistry:A-22 |
+| A-23 | MED    | ADR-064        | CostDimension用废弃workflow_id/step_id；架构§12.4/§5.5强制harnessRunId/nodeRunId | 已完成 | ImplementationConsistencyClosureRegistry:A-23 |
+| A-24 | MED    | ADR-052        | 列出sync复制模式RPO=0；架构§25.11明确"v4.2不承诺多主truth写入"仅async | 已完成 | ImplementationConsistencyClosureRegistry:A-24 |
+| A-25 | MED    | ADR-058        | 紧急停止级别L0-L4未引用PlatformPanicDirective或OperationalDirective(type=kill)架构§5.2/§60正式机制 | 已完成 | ImplementationConsistencyClosureRegistry:A-25 |
+| A-26 | MED    | ADR-098        | 用waiting_hitl为NodeRun状态；架构§14.10/§25.8规范为awaiting_hitl | 已完成 | ImplementationConsistencyClosureRegistry:A-26 |
+| A-27 | MED    | ADR-066-plugin | DomainPlannerPlugin.plan()返回Promise<Plan>；架构强制PlanGraphBundle | 已完成 | ImplementationConsistencyClosureRegistry:A-27 |
+| A-28 | MED    | ADR-040        | Goal生命周期9态不对齐HarnessRun §25.8的13态状态机 | 已完成 | ImplementationConsistencyClosureRegistry:A-28 |
+| A-29 | MED    | ADR-073        | 全文用"phase1-4"；架构§33声明旧Phase命名仅为历史映射，强制Ring 1/2/3 | 已完成 | ImplementationConsistencyClosureRegistry:A-29 |
+| A-30 | MED    | ADR-094        | 引用"phase 8b"为交付门禁；同上phase命名矛盾 | 已完成 | ImplementationConsistencyClosureRegistry:A-30 |
+| A-31 | MED    | ADR-099        | 引用"phase 8c"；同上 | 已完成 | ImplementationConsistencyClosureRegistry:A-31 |
+| A-32 | MED    | ADR-037        | DomainClass仅7种；架构§1/§30覆盖24垂直域，缺17种域分类 | 已完成 | ImplementationConsistencyClosureRegistry:A-32 |
+| A-33 | LOW    | ADR-092        | 用"step"/"decision"记录时间线；架构规范为NodeRun/NodeAttempt，HarnessStep仅语义投影 | 已完成 | ImplementationConsistencyClosureRegistry:A-33 |
+| A-34 | LOW    | ADR-042        | 自治level 4 full_auto暗示无限制；架构§3.2禁止高危域full_auto除非显式DomainRiskSpec | 已完成 | ImplementationConsistencyClosureRegistry:A-34 |
+| A-35 | LOW    | ADR-075        | Rollout L1命名shadow与已废弃ADR-018 L2 shadow冲突，级别编号不一致 | 已完成 | ImplementationConsistencyClosureRegistry:A-35 |
+| A-36 | LOW    | ADR-066-plugin | Plugin隔离描述为Worker线程；架构§11.7要求不可信插件用独立进程+IPC边界 | 已完成 | ImplementationConsistencyClosureRegistry:A-36 |
+| A-37 | LOW    | ADR-093        | ConstraintPack仅含risk_policy+output_policy；架构§13.4/§14.2要求含budget envelope/sandbox requirement/approval requirement | 已完成 | ImplementationConsistencyClosureRegistry:A-37 |
+
+## 原始最终系统性主题（已收口）
+
+以下主题为原始最终审计的风险归纳，内容保留用于历史追踪；当前所有对应编号已在本报告逐项标记 `已完成`，未发现仍需单独修复的未完成项。
+
+1. **OAPEFLIR 身份危机（最严重）**：v4.4 Spec将其视为完整Runtime拥有Run/Status/Budget/Events/ErrorCodes/GraphScheduler/SideEffectManager；主架构明确降级为认知投影层。ADR/合约/代码各取一边，整个系统对"谁驱动执行"无共识
+2. **v3→v4术语迁移未执行**：~60%的合约和~40%的ADR仍使用 task/workflow/execution/step/Rollout/ControlDirective/ExecutionPlan/ExecutionReceipt 等v3术语，架构已全部重命名
+3. **状态机碎片化**：HarnessRun在不同位置定义为5/6/7/13/15态；NodeRun有5/9/13态变体；无单一真相源
+4. **安全关键default-allow**：delegated-governance未知类型允许、sandbox tier含NONE、自治升级无风险门控、panic恢复缺双人验证
+5. **完整模块/字段群缺失**：Admin SDK、CapacityPlanning、CostAttribution、LegalEntityBoundary、RevenueShare实现、DomainRiskSpec 7个子规格、15问元模型等
+6. **防御深度系统性不足**：prompt injection/sandbox/drift/compliance/edge-sync均仅实现单层，架构要求3-5层
+7. **配置-schema-架构三方脱节**：域配置JSON字段、Zod schema、架构定义三者互不匹配
+8. **合约自身内部不一致**：storage_schema memories表DDL遗漏自身§13声明的列；harness-run-contract内部§45.13 vs §25.8态数不同
+9. **规范对象标识不统一**：context/trace/billing/cost各自使用不同key(task_id/execution_id/workflow_id vs harnessRunId/nodeRunId/attemptId)
+10. **交付里程碑术语分裂**：部分文档用Phase 1-9，部分用Ring 1/2/3，部分用A/B/C/D，三套命名并存

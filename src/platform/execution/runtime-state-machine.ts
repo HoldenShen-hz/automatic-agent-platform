@@ -213,7 +213,11 @@ function assertTransitionAllowed(
   toStatus: string,
 ): void {
   if (fromStatus === toStatus) {
-    return;
+    throw new WorkflowStateError(
+      "runtime_state_machine.noop_transition_denied",
+      `No-op ${aggregateType} transition is not allowed: ${fromStatus} -> ${toStatus}`,
+      { details: { aggregateType, fromStatus, toStatus } },
+    );
   }
   const allowed = getTransitionTable(aggregateType)[fromStatus] ?? [];
   if (!allowed.includes(toStatus)) {

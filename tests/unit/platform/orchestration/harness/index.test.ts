@@ -50,6 +50,9 @@ test("HarnessRuntimeService completes a planner-generator-evaluator loop", () =>
 
   assert.equal(run.steps.length, 3);
   assert.equal(run.status, "completed");
+  assert.equal(run.planGraphBundle.harnessRunId, run.runId);
+  assert.equal(run.planGraphBundle.graph.nodes.length, 3);
+  assert.equal(run.planGraphBundle.validationReport.valid, true);
   assert.equal(run.decision?.action, "accept");
   assert.equal(run.contextSnapshots.length, 1);
   assert.equal(run.steps[0]?.semanticPhase, "plan");
@@ -102,7 +105,7 @@ test("HarnessRuntimeService escalates to human when runtime requires HITL", () =
     producedEvidenceRefs: [],
   });
 
-  assert.equal(run.status, "waiting_hitl");
+  assert.equal(run.status, "paused");
   assert.equal(run.decision?.action, "escalate_to_human");
   assert.equal(run.hitlRequest?.status, "pending");
 });
@@ -135,9 +138,9 @@ test("HarnessRuntimeService supports sleep recover and resume lifecycle transiti
   const resumed = service.resume(recovering);
 
   assert.equal(created.status, "created");
-  assert.equal(sleeping.status, "sleeping");
-  assert.equal(recovering.status, "recovering");
-  assert.equal(resumed.status, "running");
+  assert.equal(sleeping.status, "paused");
+  assert.equal(recovering.status, "replanning");
+  assert.equal(resumed.status, "resuming");
   assert.equal(resumed.sleepLease, null);
 });
 
@@ -178,7 +181,7 @@ test("HitlRuntime resolves manual review requests and HarnessRuntimeService can 
     riskScore: 60,
   });
 
-  assert.equal(waiting.status, "waiting_hitl");
+  assert.equal(waiting.status, "paused");
   assert.equal(waiting.hitlRequest?.status, "pending");
 
   const approved = service.resolveHitlReview(waiting, "approved", "legal_manager");
@@ -380,7 +383,7 @@ test("HarnessRuntimeService uses RecoveryController to recover from persisted fa
   const recovered = service.handleFailure(run, "worker_crash");
   const resumed = service.handleFailure(run, "tool_timeout");
 
-  assert.equal(recovered.status, "recovering");
+  assert.equal(recovered.status, "replanning");
   assert.equal(recovered.recoveryCheckpoint?.lastCompletedStepId, run.steps.at(-1)?.stepId ?? null);
-  assert.equal(resumed.status, "running");
+  assert.equal(resumed.status, "resuming");
 });

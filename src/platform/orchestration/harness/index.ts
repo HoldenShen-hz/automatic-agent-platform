@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
+import type { PlanGraphBundle } from "../../../platform/contracts/executable-contracts/index.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
 import { DurableHarnessService } from "./durable/durable-harness-service.js";
@@ -35,7 +36,20 @@ export type HarnessDecisionAction =
   | "escalate_to_human"
   | "downgrade_mode"
   | "abort";
-export type HarnessRunStatus = "created" | "running" | "waiting_hitl" | "sleeping" | "recovering" | "completed" | "aborted";
+export type HarnessRunStatus =
+  | "created"
+  | "admitted"
+  | "planning"
+  | "ready"
+  | "running"
+  | "pausing"
+  | "paused"
+  | "resuming"
+  | "replanning"
+  | "compensating"
+  | "completed"
+  | "failed"
+  | "aborted";
 
 export interface ConstraintPack {
   readonly policyIds: readonly string[];
@@ -153,6 +167,7 @@ export interface HarnessRun {
   readonly taskId: string;
   readonly domainId: string;
   readonly constraintPack: ConstraintPack;
+  readonly planGraphBundle: PlanGraphBundle;
   readonly steps: readonly HarnessStep[];
   readonly maxIterations: number;
   readonly currentIteration: number;
@@ -229,12 +244,20 @@ export class HarnessRuntimeService {
     taskId: string;
     domainId: string;
     constraintPack: ConstraintPack;
+    planGraphBundle?: PlanGraphBundle;
   }): HarnessRun {
+    const runId = newId("harness_run");
     const run: HarnessRun = {
-      runId: newId("harness_run"),
+      runId,
       taskId: input.taskId,
       domainId: input.domainId,
       constraintPack: input.constraintPack,
+      planGraphBundle: input.planGraphBundle ?? createInitialPlanGraphBundle({
+        runId,
+        taskId: input.taskId,
+        domainId: input.domainId,
+        constraintPack: input.constraintPack,
+      }),
       steps: [],
       maxIterations: input.constraintPack.budget.maxSteps,
       currentIteration: 0,
@@ -329,7 +352,7 @@ export class HarnessRuntimeService {
   public sleep(run: HarnessRun, reason: string, resumeAt: string): HarnessRun {
     return {
       ...run,
-      status: "sleeping",
+      status: "paused",
       sleepLease: {
         leaseId: newId("sleep_lease"),
         runId: run.runId,
@@ -353,7 +376,7 @@ export class HarnessRuntimeService {
   public recover(run: HarnessRun): HarnessRun {
     return {
       ...run,
-      status: "recovering",
+      status: "replanning",
       recoveryCheckpoint: {
         checkpointId: newId("recovery_checkpoint"),
         runId: run.runId,
@@ -377,7 +400,7 @@ export class HarnessRuntimeService {
   public resume(run: HarnessRun): HarnessRun {
     return {
       ...run,
-      status: "running",
+      status: "resuming",
       sleepLease: null,
       recoveryCheckpoint: null,
     };
@@ -386,7 +409,7 @@ export class HarnessRuntimeService {
   public openHitlReview(run: HarnessRun, reason: string, evidenceRefs: readonly string[]): HarnessRun {
     return {
       ...run,
-      status: "waiting_hitl",
+      status: "paused",
       hitlRequest: this.hitlRuntime.open({
         runId: run.runId,
         domainId: run.domainId,
@@ -464,8 +487,8 @@ export class HarnessRuntimeService {
     if ((run.status === "completed" || run.status === "aborted") && run.completedAt == null) {
       violations.push("harness.invariant.final_state_requires_completed_at");
     }
-    if (run.status === "waiting_hitl" && run.hitlRequest == null) {
-      violations.push("harness.invariant.waiting_hitl_requires_request");
+    if (run.status === "paused" && run.hitlRequest == null && run.sleepLease == null) {
+      violations.push("harness.invariant.paused_requires_wait_reason");
     }
     if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
       violations.push("harness.invariant.non_accept_decision_requires_feedback");
@@ -657,7 +680,7 @@ export class HarnessRuntimeService {
             : decision.action === "accept"
             ? "completed"
             : decision.action === "escalate_to_human"
-                ? "waiting_hitl"
+                ? "paused"
                 : "running",
         completedAt:
           guardrailAssessment.suggestedAction === "abort" || decision.action === "accept" || decision.action === "abort"
@@ -689,7 +712,7 @@ export class HarnessRuntimeService {
         action: decision.action,
         confidence: decision.confidence,
       });
-      if (baseRun.status === "waiting_hitl" && guardrailAssessment.suggestedAction !== "abort") {
+      if (baseRun.status === "paused" && decision.action === "escalate_to_human" && guardrailAssessment.suggestedAction !== "abort") {
         baseRun = this.openHitlReview(
           baseRun,
           decision.reasonCodes[0] ?? "harness.requires_human_review",
@@ -745,7 +768,7 @@ export class HarnessRuntimeService {
 
         this.ensureInvariantSafe(finalRun);
 
-        if (finalRun.status !== "waiting_hitl") {
+        if (!(finalRun.status === "paused" && finalRun.hitlRequest != null)) {
           this.durableService.persist(finalRun);
           return finalRun;
         }
@@ -789,4 +812,125 @@ export class HarnessRuntimeService {
 
     return Number((extract(input.plannerOutput) + extract(input.generatorOutput) + extract(input.evaluatorOutput)).toFixed(6));
   }
+}
+
+function createInitialPlanGraphBundle(input: {
+  readonly runId: string;
+  readonly taskId: string;
+  readonly domainId: string;
+  readonly constraintPack: ConstraintPack;
+}): PlanGraphBundle {
+  const createdAt = nowIso();
+  const plannerNodeId = newId("plan_node");
+  const generatorNodeId = newId("plan_node");
+  const evaluatorNodeId = newId("plan_node");
+  const graphId = newId("plan_graph");
+  const graphHash = [
+    input.taskId,
+    input.domainId,
+    plannerNodeId,
+    generatorNodeId,
+    evaluatorNodeId,
+  ].join(":");
+
+  return {
+    planGraphBundleId: newId("plan_graph_bundle"),
+    harnessRunId: input.runId,
+    graphVersion: 1,
+    graph: {
+      graphId,
+      nodes: [
+        {
+          nodeId: plannerNodeId,
+          nodeType: "llm",
+          inputRefs: [`task:${input.taskId}`],
+          outputSchemaRef: "schema:harness.plan",
+          riskClass: "medium",
+          budgetIntent: {
+            amount: Math.max(1, input.constraintPack.budget.maxCost / 3),
+            currency: "USD",
+            resourceKinds: ["compute"],
+          },
+          sideEffectProfile: {
+            mayCommitExternalEffect: false,
+            reversible: true,
+          },
+          retryPolicyRef: "retry:harness.default",
+          timeoutMs: input.constraintPack.budget.maxDurationMs,
+        },
+        {
+          nodeId: generatorNodeId,
+          nodeType: "tool",
+          inputRefs: [plannerNodeId],
+          outputSchemaRef: "schema:harness.work_product",
+          riskClass: "medium",
+          budgetIntent: {
+            amount: Math.max(1, input.constraintPack.budget.maxCost / 3),
+            currency: "USD",
+            resourceKinds: ["compute"],
+          },
+          sideEffectProfile: {
+            mayCommitExternalEffect: input.constraintPack.toolPolicy.allowedTools.length > 0,
+            reversible: true,
+          },
+          retryPolicyRef: "retry:harness.default",
+          timeoutMs: input.constraintPack.budget.maxDurationMs,
+        },
+        {
+          nodeId: evaluatorNodeId,
+          nodeType: "evaluator",
+          inputRefs: [generatorNodeId],
+          outputSchemaRef: "schema:harness.evaluation",
+          riskClass: "medium",
+          budgetIntent: {
+            amount: Math.max(1, input.constraintPack.budget.maxCost / 3),
+            currency: "USD",
+            resourceKinds: ["compute"],
+          },
+          sideEffectProfile: {
+            mayCommitExternalEffect: false,
+            reversible: true,
+          },
+          retryPolicyRef: "retry:harness.default",
+          timeoutMs: input.constraintPack.budget.maxDurationMs,
+        },
+      ],
+      edges: [
+        {
+          edgeId: newId("plan_edge"),
+          fromNodeId: plannerNodeId,
+          toNodeId: generatorNodeId,
+          condition: { type: "always" },
+          dependencyType: "hard",
+        },
+        {
+          edgeId: newId("plan_edge"),
+          fromNodeId: generatorNodeId,
+          toNodeId: evaluatorNodeId,
+          condition: { type: "always" },
+          dependencyType: "hard",
+        },
+      ],
+      entryNodeIds: [plannerNodeId],
+      terminalNodeIds: [evaluatorNodeId],
+      joinStrategy: "all",
+      graphHash,
+    },
+    schedulerPolicy: {
+      policyId: "scheduler:harness.deterministic_fifo",
+      strategy: "deterministic_fifo",
+    },
+    budgetPlanRef: "budget:harness.initial",
+    riskProfile: {
+      riskClass: "medium",
+      reasons: ["harness.initial_plan_graph_bundle"],
+    },
+    validationReport: {
+      valid: true,
+      findings: [],
+      normalizedNodeIds: [plannerNodeId, generatorNodeId, evaluatorNodeId],
+    },
+    artifactRefs: [],
+    createdAt,
+  };
 }

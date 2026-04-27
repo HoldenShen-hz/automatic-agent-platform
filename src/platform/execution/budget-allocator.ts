@@ -56,6 +56,10 @@ export class BudgetAllocator {
       settlementKind: "final",
       evidenceRefs: input.evidenceRefs ?? [],
     });
+    const hardCapSatisfied =
+      input.reservation.status === "reserved" &&
+      input.actualAmount <= input.reservation.amount &&
+      input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
     const reservation = this.stateMachine.transition({
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
@@ -67,7 +71,7 @@ export class BudgetAllocator {
       emittedBy: input.context.emittedBy,
       budgetPrecondition: {
         reservationId: input.reservation.budgetReservationId,
-        hardCapSatisfied: true,
+        hardCapSatisfied,
       },
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
     });

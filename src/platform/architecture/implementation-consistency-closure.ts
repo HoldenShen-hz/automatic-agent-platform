@@ -67,10 +67,11 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     category: "adr",
     closureMode: "documentation_superseded",
     evidenceRefs: [
-      "docs_zh/adr/109-v4.3-contract-freeze.md",
+      "docs_zh/adr/109-contract-freeze.md",
       "docs_zh/adr/110-runtime-state-machine-authority.md",
       "docs_zh/adr/111-platform-fact-vs-oapeflir-view-events.md",
       "docs_zh/adr/112-mvp-ring-implementation-boundary.md",
+      "docs_zh/adr/113-architecture-implementation-audit-supersession.md",
       "docs_zh/adr/README.md",
     ],
   },
