@@ -291,6 +291,14 @@ export class HotUpgradeServiceAsync {
         return { completed: allPassed, batch: { ...batch, status: batchStatus, completedAt: now, healthChecks }, allPassed, nextBatch: null, triggerRollback: false };
       }
 
+      await this.recordAudit(
+        plan.upgradeId,
+        "batch_completed",
+        "system",
+        `Batch ${batch.batchNumber} ${allPassed ? "completed successfully" : "failed health checks"}`,
+        { batchId, allPassed },
+      );
+
       // Find next pending batch
       const batches = await this.repo.listUpgradeBatchesByPlan(plan.upgradeId);
       const nextBatch = batches.find((b) => b.batchNumber > batch.batchNumber && b.status === "pending") ?? null;

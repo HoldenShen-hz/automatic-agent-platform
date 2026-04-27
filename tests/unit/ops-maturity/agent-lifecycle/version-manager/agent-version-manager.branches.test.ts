@@ -147,11 +147,10 @@ test("AgentVersionManager.switchSlot returns current version when no eligible no
   // When latestForSlot is falsy, we just return currentVersion without modification
 });
 
-// Branch coverage: switchSlot when currentSlot has no version (returns null)
-test("AgentVersionManager.switchSlot returns null when no current version in opposite slot", () => {
+// Branch coverage: switchSlot can still assign the newest eligible version when opposite slot is empty.
+test("AgentVersionManager.switchSlot assigns newest eligible version when opposite slot is empty", () => {
   const mgr = new AgentVersionManager();
-  // Register a version but don't assign any slot
-  mgr.registerVersion({
+  const version = mgr.registerVersion({
     agentId: "agent-no-slot",
     version: "1.0.0",
     stage: "stable",
@@ -164,7 +163,8 @@ test("AgentVersionManager.switchSlot returns null when no current version in opp
 
   const result = mgr.switchSlot("agent-no-slot", "green");
 
-  assert.equal(result, null); // no current version to switch from
+  assert.equal(result?.versionId, version.versionId);
+  assert.equal(result?.deploymentSlot, "green");
 });
 
 // ---------------------------------------------------------------------------

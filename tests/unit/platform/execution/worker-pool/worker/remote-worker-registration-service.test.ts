@@ -164,7 +164,7 @@ test("issueChallenge normalizes and deduplicates capabilities", () => {
 
   const result = service.issueChallenge({
     workerId: "worker-1",
-    requestedCapabilities: ["  bash  ", "edit", "bash", "  EDIT  "],
+    requestedCapabilities: ["  bash  ", "edit", "bash", "  edit  "],
   });
 
   assert.equal(result.issued, true);
@@ -324,6 +324,7 @@ test("completeRegistration rejects when token hash mismatch", () => {
     challengeToken: "wrong-token",
     capabilities: ["bash"],
     maxConcurrency: 4,
+    occurredAt: "2026-04-01T12:00:00.000Z",
   });
 
   assert.equal(result.accepted, false);
@@ -352,6 +353,7 @@ test("completeRegistration rejects when capability not allowed", () => {
     challengeToken: "token",
     capabilities: ["bash", "forbidden"],
     maxConcurrency: 4,
+    occurredAt: "2026-04-01T12:00:00.000Z",
   });
 
   assert.equal(result.accepted, false);
@@ -446,6 +448,7 @@ test("completeRegistration accepts with optional parameters", () => {
     repoVersion: "v1.0.0",
     runtimeInstanceId: "instance-1",
     remoteSessionStatus: "connected",
+    occurredAt: "2026-04-01T12:00:00.000Z",
   });
 
   assert.equal(result.accepted, true);

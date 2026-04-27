@@ -1,6 +1,6 @@
 import { fork, spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
@@ -63,7 +63,7 @@ abstract class BasePluginRuntimeHost {
     this.sandboxRoot = sandboxRoot;
     this.onReady = options.onReady ?? null;
     this.onExit = options.onExit ?? null;
-    this.childModulePath = fileURLToPath(new URL("./plugin-runtime-child.js", import.meta.url));
+    this.childModulePath = resolvePluginRuntimeChildModulePath(import.meta.url, this.workspaceRoot);
   }
 
   public async start(): Promise<number> {
@@ -431,7 +431,7 @@ export function buildPluginRuntimeSandboxRoot(
 }
 
 export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOptions): string[] {
-  const baseArgs = process.execArgv.filter((arg) => !arg.startsWith("--inspect"));
+  const baseArgs = sanitizePluginRuntimeExecArgs(process.execArgv);
   if (options.isolation !== "sandboxed_process") {
     return dedupeArgs(baseArgs);
   }
@@ -474,6 +474,59 @@ function buildSandboxReadRoots(workspaceRoot: string, execArgs: readonly string[
     }
   }
   return roots;
+}
+
+function resolvePluginRuntimeChildModulePath(currentModuleUrl: string, workspaceRoot: string): string {
+  const sourceDir = dirname(fileURLToPath(currentModuleUrl));
+  const siblingJs = resolve(sourceDir, "plugin-runtime-child.js");
+  if (existsSync(siblingJs)) {
+    return siblingJs;
+  }
+  const distJs = resolve(workspaceRoot, "dist", "src", "domains", "registry", "plugin-runtime-child.js");
+  if (existsSync(distJs)) {
+    return distJs;
+  }
+  const siblingTs = resolve(sourceDir, "plugin-runtime-child.ts");
+  if (existsSync(siblingTs)) {
+    return siblingTs;
+  }
+  return siblingJs;
+}
+
+function sanitizePluginRuntimeExecArgs(execArgs: readonly string[]): string[] {
+  const sanitized: string[] = [];
+  for (let index = 0; index < execArgs.length; index++) {
+    const arg = execArgs[index]!;
+    if (
+      (arg === "--import" || arg === "--loader" || arg === "--require")
+      && index + 1 < execArgs.length
+      && isTsxLoaderSpecifier(execArgs[index + 1]!)
+    ) {
+      index++;
+      continue;
+    }
+    if (matchesInlineTsxLoaderArg(arg)) {
+      continue;
+    }
+    if (!arg.startsWith("--inspect")) {
+      sanitized.push(arg);
+    }
+  }
+  return sanitized;
+}
+
+function matchesInlineTsxLoaderArg(arg: string): boolean {
+  for (const prefix of ["--import=", "--loader=", "--require="] as const) {
+    if (arg.startsWith(prefix) && isTsxLoaderSpecifier(arg.slice(prefix.length))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isTsxLoaderSpecifier(value: string): boolean {
+  const normalized = value.trim();
+  return normalized === "tsx" || /(^|[\\/])tsx([\\/]|$)/.test(normalized);
 }
 
 function deriveReadablePathFromExecArg(arg: string): string | null {

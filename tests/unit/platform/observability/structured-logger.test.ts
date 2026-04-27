@@ -277,8 +277,7 @@ test("StructuredLogger configureGlobalFileSink accepts null to disable", () => {
 });
 
 test("StructuredLogger configureGlobalFileSink accepts file path string", () => {
-  // Use a temp path that won't actually be written to in this test
-  StructuredLogger.configureGlobalFileSink("/tmp/test-structured-logger.log");
+  StructuredLogger.configureGlobalFileSink("logs/test-structured-logger.log");
 
   const path = StructuredLogger.getGlobalFileSinkPath();
   assert.ok(path?.includes("test-structured-logger.log"));

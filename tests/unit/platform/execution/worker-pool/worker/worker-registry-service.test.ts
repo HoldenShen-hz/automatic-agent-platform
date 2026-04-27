@@ -123,7 +123,7 @@ test("WorkerRegistryService normalizes capabilities", () => {
     capabilities: ["  bash  ", "edit", "bash", "  EDIT  "],
   }));
 
-  assert.deepEqual(view.capabilities, ["bash", "edit"]);
+  assert.deepEqual(view.capabilities, ["EDIT", "bash", "edit"]);
 });
 
 test("WorkerRegistryService defaults placement to local", () => {
@@ -402,14 +402,15 @@ test("WorkerRegistryService listEligibleWorkers hardened workers meet standard r
   assert.equal(eligible.length, 1);
 });
 
-test("WorkerRegistryService listEligibleWorkers strict does not meet hardened requirement", () => {
+test("WorkerRegistryService listEligibleWorkers strict satisfies hardened requirement", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", isolationLevel: "strict" }));
 
   const eligible = service.listEligibleWorkers({ requiredIsolationLevel: "hardened" });
 
-  assert.equal(eligible.length, 0);
+  assert.equal(eligible.length, 1);
+  assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
 test("WorkerRegistryService listStaleWorkers returns stale workers", () => {

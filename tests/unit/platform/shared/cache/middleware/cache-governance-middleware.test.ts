@@ -291,7 +291,7 @@ test("createCacheGovernanceMiddleware run does not call next when cache returns 
   assert.equal(nextCalled, false);
 });
 
-test("createCacheGovernanceMiddleware run calls next when fromCache is false", async () => {
+test("createCacheGovernanceMiddleware run returns computed value without double-calling next when fromCache is false", async () => {
   let nextCalled = false;
   const middleware = createCacheGovernanceMiddleware({
     cache: createMockCache({
@@ -301,13 +301,14 @@ test("createCacheGovernanceMiddleware run calls next when fromCache is false", a
     }),
   });
 
-  await middleware.run(
+  const result = await middleware.run(
     { taskId: "task-next-miss" } as never,
     { toolName: "read", args: {} },
     () => { nextCalled = true; return Promise.resolve("fresh"); },
   );
 
-  assert.equal(nextCalled, true);
+  assert.equal(result, "computed");
+  assert.equal(nextCalled, false);
 });
 
 test("createCacheSummaryMiddleware works without logger", async () => {

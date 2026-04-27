@@ -177,16 +177,18 @@ test("DomainGovernancePolicySchema accepts empty mandatoryEvidence", () => {
   assert.deepEqual(result.data?.mandatoryEvidence, []);
 });
 
-test("DomainGovernancePolicySchema rollout field is required", () => {
+test("DomainGovernancePolicySchema applies default rollout when omitted", () => {
   const result = DomainGovernancePolicySchema.safeParse({
     policyId: "policy_no_rollout",
     domainId: "test",
     ownerRoles: ["owner"],
     operatorRoles: ["operator"],
     approvalRoles: ["approver"],
-    // rollout is missing
   });
-  assert.equal(result.success, false);
+  assert.equal(result.success, true);
+  assert.equal(result.data?.rollout.strategy, "canary");
+  assert.equal(result.data?.rollout.approvalRequired, true);
+  assert.equal(result.data?.rollout.rollbackWindowMinutes, 60);
 });
 
 test("DomainGovernanceRolloutSchema rejects non-positive rollbackWindowMinutes via safeParse", () => {

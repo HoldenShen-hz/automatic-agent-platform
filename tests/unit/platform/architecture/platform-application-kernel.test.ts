@@ -89,9 +89,9 @@ test("PlatformApplicationKernel.buildStartupPlan for api target", async () => {
 test("PlatformApplicationKernel.buildStartupPlan includes domains startup plan when required", async () => {
   const kernel = new PlatformApplicationKernel();
 
-  // demo target requires domains layer
-  const demoPlan = kernel.buildStartupPlan("demo");
-  assert.ok(demoPlan.domainsStartupPlan !== null);
+  // api target requires domains layer
+  const apiPlan = kernel.buildStartupPlan("api");
+  assert.ok(apiPlan.domainsStartupPlan !== null);
 
   // summary target requires no layers
   const summaryPlan = kernel.buildStartupPlan("summary");
@@ -110,9 +110,9 @@ test("PlatformApplicationKernel.buildStartupPlan includes planeStartupPlan when 
 test("PlatformApplicationKernel.buildStartupPlan includes interactionGovernance plans when interaction layer required", async () => {
   const kernel = new PlatformApplicationKernel();
 
-  const demoPlan = kernel.buildStartupPlan("demo");
-  assert.ok(demoPlan.interactionGovernanceStartupPlan !== null);
-  assert.ok(demoPlan.interactionGovernanceRuntimeCatalog !== null);
+  const apiPlan = kernel.buildStartupPlan("api");
+  assert.ok(apiPlan.interactionGovernanceStartupPlan !== null);
+  assert.ok(apiPlan.interactionGovernanceRuntimeCatalog !== null);
 });
 
 test("PlatformApplicationKernel.buildStartupPlan includes scaleOps plans when scale-ecosystem layer required", async () => {

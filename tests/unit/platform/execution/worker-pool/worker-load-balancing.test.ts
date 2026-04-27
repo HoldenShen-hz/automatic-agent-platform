@@ -272,26 +272,24 @@ test("summarizeWorkerLoadSkew handles workers with zero load", () => {
   assert.equal(summary.totalActiveLeaseCount, 5);
 });
 
-test("summarizeWorkerLoadSkew uses load score as tiebreaker", () => {
+test("summarizeWorkerLoadSkew does not report skew for balanced workers even when load score differs", () => {
   const signals = [
     makeSignal({ workerId: "worker-a", activeLeaseCount: 3, runningExecutionCount: 3, availableSlots: 0, cpuPct: 20 }),
     makeSignal({ workerId: "worker-b", activeLeaseCount: 3, runningExecutionCount: 3, availableSlots: 0, cpuPct: 80 }),
   ];
   const summary = summarizeWorkerLoadSkew(signals);
-  // worker-b has higher load score due to CPU, should be dominant
-  assert.equal(summary.detected, true);
-  assert.equal(summary.dominantWorkerId, "worker-b");
+  assert.equal(summary.detected, false);
+  assert.equal(summary.dominantWorkerId, null);
 });
 
-test("summarizeWorkerLoadSkew uses workerId as final tiebreaker", () => {
+test("summarizeWorkerLoadSkew does not report skew for balanced workers even when workerId would break ties", () => {
   const signals = [
     makeSignal({ workerId: "worker-b", activeLeaseCount: 3, runningExecutionCount: 3, availableSlots: 0 }),
     makeSignal({ workerId: "worker-a", activeLeaseCount: 3, runningExecutionCount: 3, availableSlots: 0 }),
   ];
   const summary = summarizeWorkerLoadSkew(signals);
-  // Alphabetically worker-a comes first
-  assert.equal(summary.detected, true);
-  assert.equal(summary.dominantWorkerId, "worker-a");
+  assert.equal(summary.detected, false);
+  assert.equal(summary.dominantWorkerId, null);
 });
 
 test("summarizeWorkerLoadSkew returns correct skewedWorkerIds when detected", () => {

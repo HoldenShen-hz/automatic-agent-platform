@@ -507,6 +507,14 @@ export class HotUpgradeService {
         return { completed: allPassed, batch, allPassed, nextBatch: null, triggerRollback: false };
       }
 
+      this.recordAudit(
+        plan.upgradeId,
+        "batch_completed",
+        "system",
+        `Batch ${batch.batchNumber} ${allPassed ? "completed successfully" : "failed health checks"}`,
+        { batchId, allPassed },
+      );
+
       // Find next pending batch
       const nextBatch = plan.batches.find((b) => b.batchNumber > batch.batchNumber && b.status === "pending");
 
@@ -580,7 +588,7 @@ export class HotUpgradeService {
     if (rows.length === 0) return null;
 
     const plan = this.mapUpgradePlan(rows[0]!);
-    const batches = plan.batches;
+    const batches = this.listUpgradeBatches(upgradeId);
     const completedBatches = batches.filter((b) => b.status === "completed").length;
     const failedBatches = batches.filter((b) => b.status === "failed").length;
     const allHealthChecks = batches.flatMap((b) => b.healthChecks);
@@ -659,6 +667,12 @@ export class HotUpgradeService {
       .prepare(`SELECT * FROM upgrade_plans WHERE upgrade_id = ?`)
       .all(upgradeId) as RawRow[];
     return planRows.length > 0 ? this.mapUpgradePlan(planRows[0]!) : null;
+  }
+
+  private listUpgradeBatches(upgradeId: string): UpgradeBatch[] {
+    return (this.db.connection
+      .prepare(`SELECT * FROM upgrade_batches WHERE upgrade_id = ? ORDER BY batch_number ASC`)
+      .all(upgradeId) as RawRow[]).map((row) => this.mapBatch(row));
   }
 
   private mapUpgradePlan(row: RawRow): UpgradePlan {

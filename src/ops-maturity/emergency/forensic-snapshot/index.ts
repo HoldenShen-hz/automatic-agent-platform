@@ -23,10 +23,10 @@ export function buildForensicSnapshot(input: ForensicSnapshotInput): ForensicSna
     snapshotId: input.snapshotId,
     scope: input.scope,
     collectedAt: input.collectedAt,
-    artifactIds: input.artifactIds,
-    runtimeState: input.runtimeState ?? {},
-    configurationRefs: input.configurationRefs ?? [],
-    logRefs: input.logRefs ?? [],
+    artifactIds: [...input.artifactIds],
+    runtimeState: structuredClone(input.runtimeState ?? {}),
+    configurationRefs: [...(input.configurationRefs ?? [])],
+    logRefs: [...(input.logRefs ?? [])],
   };
 }
 

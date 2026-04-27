@@ -116,17 +116,17 @@ test("AgentVersionManager: blue-green deployment ping-pong", () => {
   const greenSwitch = mgr.switchSlot("agent-pingpong", "green");
   assert.equal(greenSwitch?.versionId, v3.versionId);
   assert.equal(greenSwitch?.deploymentSlot, "green");
-  assert.equal(mgr.getActiveSlot("agent-pingpong", "blue"), null);
+  assert.equal(mgr.getActiveSlot("agent-pingpong", "blue")?.versionId, v1.versionId);
 
-  // Verify v1 was evicted from blue when v3 was assigned to green
+  // Verify the existing blue deployment remains active while green is promoted.
   const versionsAfterSwitch = mgr.listVersions("agent-pingpong");
   const v1AfterSwitch = versionsAfterSwitch.find((v) => v.versionId === v1.versionId);
-  assert.equal(v1AfterSwitch?.deploymentSlot, null);
+  assert.equal(v1AfterSwitch?.deploymentSlot, "blue");
 
   const blueSwitch = mgr.switchSlot("agent-pingpong", "blue");
   assert.equal(blueSwitch?.versionId, v2.versionId);
   assert.equal(blueSwitch?.deploymentSlot, "blue");
-  assert.equal(mgr.getActiveSlot("agent-pingpong", "green"), null);
+  assert.equal(mgr.getActiveSlot("agent-pingpong", "green")?.versionId, v3.versionId);
 });
 
 test("AgentVersionManager: multiple agents independent", () => {

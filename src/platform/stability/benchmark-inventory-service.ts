@@ -67,7 +67,7 @@ const DEFAULT_BENCHMARKS: readonly BenchmarkInventoryRecord[] = [
 
 export class BenchmarkInventoryService {
   public listBenchmarks(): BenchmarkInventoryRecord[] {
-    return [...DEFAULT_BENCHMARKS];
+    return Object.freeze([...DEFAULT_BENCHMARKS]) as BenchmarkInventoryRecord[];
   }
 
   public buildSummary(): {

@@ -118,7 +118,8 @@ test("OutboxPollerService calculates backoff with jitter", () => {
   const poller = new OutboxPollerService(mockService);
 
   // Access private calculateBackoff method via casting
-  const calculateBackoff = (poller as unknown as { calculateBackoff: (retryCount: number) => number }).calculateBackoff;
+  const calculateBackoff = (retryCount: number) =>
+    (poller as unknown as { calculateBackoff: (retryCount: number) => number }).calculateBackoff.call(poller, retryCount);
 
   // For retryCount=1: 1000 * 2^0 = 1000ms base
   const backoff1 = calculateBackoff(1);
@@ -144,7 +145,8 @@ test("OutboxPollerService calculateBackoff respects maxBackoffMs", () => {
     maxBackoffMs: 5000, // Lower max for testing
   });
 
-  const calculateBackoff = (poller as unknown as { calculateBackoff: (retryCount: number) => number }).calculateBackoff;
+  const calculateBackoff = (retryCount: number) =>
+    (poller as unknown as { calculateBackoff: (retryCount: number) => number }).calculateBackoff.call(poller, retryCount);
 
   // With maxBackoffMs=5000, even high retry counts should be capped
   const backoffHigh = calculateBackoff(10);
@@ -540,7 +542,8 @@ test("OutboxPollerService calculateBackoff returns correct base delay", () => {
     maxBackoffMs: 30000,
   });
 
-  const calculateBackoff = (poller as unknown as { calculateBackoff: (retryCount: number) => number }).calculateBackoff;
+  const calculateBackoff = (retryCount: number) =>
+    (poller as unknown as { calculateBackoff: (retryCount: number) => number }).calculateBackoff.call(poller, retryCount);
 
   // initialBackoffMs=500
   // retryCount 1: 500 * 2^0 = 500

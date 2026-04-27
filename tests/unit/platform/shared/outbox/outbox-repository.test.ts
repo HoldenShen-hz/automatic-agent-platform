@@ -348,12 +348,26 @@ test("OutboxRepository.cleanupPublishedBefore calls DELETE with correct days", (
 });
 
 test("OutboxRepository.cleanupPublishedBefore with zero days", () => {
-  const conn = createMockConnection();
-  const repo = new OutboxRepository(conn as SqliteConnection);
+  let deletedSql = "";
+  let deletedParams: unknown[] = [];
+  const conn = {
+    prepare: (sql: string) => ({
+      run: (...params: unknown[]) => {
+        deletedSql = sql;
+        deletedParams = params;
+        return { changes: 1 };
+      },
+      get: () => null,
+      all: () => [],
+    }),
+  } as unknown as SqliteConnection;
+  const repo = new OutboxRepository(conn);
 
   const deleted = repo.cleanupPublishedBefore(0);
 
-  assert.equal(deleted, 0);
+  assert.equal(deleted, 1);
+  assert.ok(deletedSql.includes("DELETE FROM outbox"));
+  assert.equal(deletedParams[0], 0);
 });
 
 test("OutboxRepository.markFailed updates entry correctly", () => {

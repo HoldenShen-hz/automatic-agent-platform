@@ -39,43 +39,53 @@ test("MultiLevelCacheStore L1 hit is returned immediately without L2/L3 lookup",
   assert.equal(result.layer, "L1");
 });
 
-test("MultiLevelCacheStore L2 hit populates L1 via backfill", async () => {
+test("MultiLevelCacheStore session scope writes are served from L1 and preserved in L2", async () => {
   const l1 = new MemoryCacheStore(100);
   const l2 = new MemoryCacheStore(100);
   const l3 = new MemoryCacheStore(100);
   const store = new MultiLevelCacheStore(l1, l2, l3);
 
-  // Set value only in L2 (session scope)
+  // Session scope writes through to both L2 and L1.
   await store.set("ns", "key", "l2-value", makeMeta({ scope: "session" }));
 
-  // First get should hit L2 and backfill L1
+  // First get should already hit L1.
   const result1 = await store.get<string>("ns", "key");
   assert.equal(result1.hit, true);
   assert.equal(result1.value, "l2-value");
-  assert.equal(result1.layer, "L2");
+  assert.equal(result1.layer, "L1");
 
-  // Second get should now hit L1
+  // The value remains available in L2 as well.
+  const l2Result = await l2.get<string>("ns", "key");
+  assert.equal(l2Result.hit, true);
+  assert.equal(l2Result.value, "l2-value");
+
   const result2 = await store.get<string>("ns", "key");
   assert.equal(result2.hit, true);
   assert.equal(result2.layer, "L1");
 });
 
-test("MultiLevelCacheStore L3 hit populates L1 via backfill", async () => {
+test("MultiLevelCacheStore persistent scope writes are served from L1 and preserved in deeper layers", async () => {
   const l1 = new MemoryCacheStore(100);
   const l2 = new MemoryCacheStore(100);
   const l3 = new MemoryCacheStore(100);
   const store = new MultiLevelCacheStore(l1, l2, l3);
 
-  // Set value only in L3 (persistent scope)
+  // Persistent scope writes through to every layer.
   await store.set("ns", "key", "l3-value", makeMeta({ scope: "persistent" }));
 
-  // First get should hit L3 and backfill L1
+  // First get should already hit L1.
   const result1 = await store.get<string>("ns", "key");
   assert.equal(result1.hit, true);
   assert.equal(result1.value, "l3-value");
-  assert.equal(result1.layer, "L3");
+  assert.equal(result1.layer, "L1");
 
-  // Second get should now hit L1
+  const l2Result = await l2.get<string>("ns", "key");
+  const l3Result = await l3.get<string>("ns", "key");
+  assert.equal(l2Result.hit, true);
+  assert.equal(l2Result.value, "l3-value");
+  assert.equal(l3Result.hit, true);
+  assert.equal(l3Result.value, "l3-value");
+
   const result2 = await store.get<string>("ns", "key");
   assert.equal(result2.hit, true);
   assert.equal(result2.layer, "L1");

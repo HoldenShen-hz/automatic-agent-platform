@@ -74,7 +74,7 @@ test("OUTBOX_TABLE_CLEANUP_DDL parameter is properly escaped", () => {
 
 test("OUTBOX_TABLE_DDL can be split into valid separate statements", () => {
   const statements = OUTBOX_TABLE_DDL.split(';').map(s => s.trim()).filter(Boolean);
-  assert.ok(statements.length >= 5, "DDL should have at least 5 statements (1 table + 3 indexes + possible cleanup)");
+  assert.equal(statements.length, 4);
 });
 
 test("OUTBOX_TABLE_DDL uses TEXT for id instead of INTEGER for portability", () => {

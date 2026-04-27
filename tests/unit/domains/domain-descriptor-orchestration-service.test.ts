@@ -241,6 +241,33 @@ describe("DomainDescriptorOrchestrationService", () => {
     it("should determine onboardingReadiness as blocked when findings do not contain missing", () => {
       const input = createMinimalInput({
         lifecycleState: "active",
+        defaultWorkflowIds: ["wf-1"],
+        defaultToolBundleIds: ["bundle-1"],
+        promptLibrary: {
+          libraryId: "prompt-test",
+          domainId: "test-domain",
+          prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+        },
+        evalFramework: {
+          frameworkId: "eval-test",
+          domainId: "test-domain",
+          fewShotExamples: [],
+          evaluators: [{ evaluatorId: "e1", metric: "accuracy", threshold: 0.9, blocking: true }],
+          onlineMetrics: [],
+          releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
+        },
+        recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+        knowledgeSchema: {
+          schemaId: "knowledge-test",
+          domainId: "test-domain",
+          namespaceIds: ["ns-1"],
+          freshnessWindowHours: 24,
+          conflictResolution: "trust_priority",
+          retentionDays: 30,
+          knowledgeSources: [],
+          retrievalStrategy: { strategy: "semantic", maxResults: 10, minRelevanceScore: 0.7, rerankEnabled: false },
+          freshnessPolicy: { maxStalenessHours: 24, refreshTrigger: "scheduled", backgroundRefreshEnabled: true },
+        },
         riskProfile: {
           profileId: "risk-test",
           domainId: "test-domain",
