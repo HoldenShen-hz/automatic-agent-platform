@@ -6,6 +6,7 @@ import {
   hasEventSchema,
   getRegisteredConsumers,
   getEventSchema,
+  getEventReplayMetadata,
   validateEventPayload,
   type EventSchemaDefinition,
   type KnownEventType,
@@ -58,6 +59,18 @@ test("getEventSchema returns schema for known event", () => {
   assert.ok(schema.tier);
   assert.ok(schema.producer);
   assert.ok(Array.isArray(schema.consumers));
+});
+
+test("runtime platform events expose replay metadata and synthesized registry schema", () => {
+  assert.equal(hasEventSchema("platform.harness_run.status_changed"), true);
+
+  const schema = getEventSchema("platform.harness_run.status_changed");
+  const metadata = getEventReplayMetadata("platform.harness_run.status_changed");
+
+  assert.equal(schema.producer, "runtime-state-machine");
+  assert.equal(metadata.sourceOfTruth, "platform");
+  assert.equal(metadata.replayBehavior, "replay_as_fact");
+  assert.equal(metadata.consumerContractTests.includes("runtime-state-machine.test.ts"), true);
 });
 
 test("getEventSchema throws ValidationError for unknown event", () => {

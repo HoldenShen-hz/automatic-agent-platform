@@ -2,6 +2,7 @@ import { ENTERPRISE_GOVERNANCE_DDL } from "../../control-plane/incident-control/
 import { OUTBOX_SCHEMA_SQL } from "./sql/outbox-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "./sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "./sql/authoritative-schema.js";
+import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "./runtime-physical-schema.js";
 import {
   LLM_EVAL_DDL,
   PROMPT_MODEL_POLICY_GOVERNANCE_DDL,
@@ -52,6 +53,11 @@ const SCHEMA_INVENTORY_SOURCES = [
     source: "authoritative_schema",
     category: "core_truth",
     sql: AUTHORITATIVE_SCHEMA_SQL,
+  },
+  {
+    source: "runtime_physical_schema",
+    category: "core_truth",
+    sql: RUNTIME_PHYSICAL_SCHEMA_SQL,
   },
   {
     source: "tenant_data_namespace_foundation",
@@ -168,11 +174,11 @@ const DOCUMENTED_GROUP_PATTERNS: ReadonlyArray<{
 }> = [
   {
     group: "workflow_execution",
-    pattern: /^(agent_execution_records|delegation_events|delegations|event_consumer_acks|events|execution_.*|executions|heartbeat_snapshots|lease_audits|messages|outbox|sessions|session_events|takeover_sessions|tasks|worker_snapshots|workflow_.*)$/,
+    pattern: /^(agent_execution_records|confirmed_task_specs|delegation_events|delegations|event_consumer_acks|events|execution_.*|executions|graph_patches|harness_runs|heartbeat_snapshots|lease_audits|messages|node_attempt_receipts|node_attempts|node_runs|outbox|plan_graph_bundles|request_envelopes|runtime_event_log|runtime_outbox|sessions|session_events|side_effect_records|takeover_sessions|task_drafts|tasks|worker_snapshots|workflow_.*)$/,
   },
   {
     group: "decision_policy",
-    pattern: /^(action_proposals|approvals|budget_alerts|entitlement_decisions|evolution_policies|evolution_proposals|governance_gate_events|governance_releases|operator_actions|quota_counters|skill_execution_policies)$/,
+    pattern: /^(action_proposals|approvals|budget_alerts|budget_ledgers|budget_reservations|budget_settlements|decision_input_bundles|entitlement_decisions|evolution_policies|evolution_proposals|governance_gate_events|governance_releases|harness_decisions|human_responsibility_records|operator_actions|quota_counters|skill_execution_policies)$/,
   },
   {
     group: "knowledge_artifact",
@@ -192,7 +198,7 @@ const DOCUMENTED_GROUP_PATTERNS: ReadonlyArray<{
   },
   {
     group: "maturity_lifecycle",
-    pattern: /^(archive_bundles|compaction_records|data_movement_jobs|deployment_execution_reports|environment_promotion_history|evolution_logs|release_.*|replay_datasets)$/,
+    pattern: /^(archive_bundles|artifact_version_lock_sets|compaction_records|data_movement_jobs|deployment_execution_reports|environment_promotion_history|evolution_logs|release_.*|replay_datasets|run_version_locks|runtime_audit_refs)$/,
   },
 ] as const;
 

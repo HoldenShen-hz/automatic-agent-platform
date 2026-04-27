@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  listArchitectureReadinessRings,
   listPlatformSurfaceManifests,
   registerPlatformSurfaceCatalog,
+  resolveArchitectureReadinessRing,
   resolvePlatformSurfaceManifest,
 } from "../../../src/platform/platform-module-catalog.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
@@ -38,4 +40,20 @@ test("platform module catalog registers itself in the service registry", async (
   } finally {
     await registry.reset();
   }
+});
+
+test("architecture readiness rings are complete and have evidence", () => {
+  const rings = listArchitectureReadinessRings();
+
+  assert.deepEqual(
+    rings.map((ring) => ring.ringId),
+    ["contract-freeze", "hardening", "usability", "expansion"],
+  );
+  for (const ring of rings) {
+    assert.equal(ring.status, "complete");
+    assert.equal(ring.evidenceModules.length > 0, true);
+    assert.equal(ring.verificationTests.length > 0, true);
+  }
+  assert.ok(resolveArchitectureReadinessRing("hardening").evidenceModules.includes("src/platform/state-evidence/events/dlq-service.ts"));
+  assert.ok(resolveArchitectureReadinessRing("expansion").evidenceModules.includes("src/scale-ecosystem/marketplace/index.ts"));
 });

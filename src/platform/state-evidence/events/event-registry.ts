@@ -22,6 +22,16 @@ export interface EventSchemaDefinition {
   compatibilityPolicy: "backward_compatible_additive" | "versioned_breaking_change";
 }
 
+export interface EventReplayMetadata {
+  readonly eventType: string;
+  readonly sourceOfTruth: "platform" | "projection";
+  readonly replayable: boolean;
+  readonly sideEffectSafeToReplay: boolean;
+  readonly schemaOwner: string;
+  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
+  readonly consumerContractTests: readonly string[];
+}
+
 /**
  * Raw event schema definition before normalization.
  * Allows optional fields that get defaults during processing.
@@ -567,13 +577,88 @@ export const EVENT_SCHEMA_REGISTRY: Record<KnownEventType, EventSchemaDefinition
   ]),
 ) as Record<KnownEventType, EventSchemaDefinition>;
 
+export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> = {
+  "platform.request_envelope.admitted": {
+    eventType: "platform.request_envelope.admitted",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "intake-admission-service",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["intake-admission-service.test.ts"],
+  },
+  "platform.harness_run.status_changed": {
+    eventType: "platform.harness_run.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts", "runtime-truth-repository.test.ts"],
+  },
+  "platform.node_run.status_changed": {
+    eventType: "platform.node_run.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts", "plan-graph-harness-runtime.test.ts"],
+  },
+  "platform.side_effect.status_changed": {
+    eventType: "platform.side_effect.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: false,
+    schemaOwner: "side-effect-manager",
+    replayBehavior: "skip_side_effect",
+    consumerContractTests: ["side-effect-manager.test.ts"],
+  },
+  "platform.budget_ledger.status_changed": {
+    eventType: "platform.budget_ledger.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts", "runtime-state-machine.test.ts"],
+  },
+  "platform.budget_reservation.status_changed": {
+    eventType: "platform.budget_reservation.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts", "runtime-state-machine.test.ts"],
+  },
+  "platform.graph_scheduler.decision_recorded": {
+    eventType: "platform.graph_scheduler.decision_recorded",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "graph-scheduler",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
+  },
+  "oapeflir.view.run_lifecycle": {
+    eventType: "oapeflir.view.run_lifecycle",
+    sourceOfTruth: "projection",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "oapeflir-projection",
+    replayBehavior: "simulate_projection",
+    consumerContractTests: ["layered-event-inbox.test.ts"],
+  },
+};
+
 /**
  * Checks if an event type has a registered schema.
  * @param type - The event type to check
  * @returns True if the event type is registered
  */
 export function hasEventSchema(type: string): boolean {
-  return type in EVENT_SCHEMA_REGISTRY;
+  return type in EVENT_SCHEMA_REGISTRY || type in RUNTIME_EVENT_REPLAY_METADATA;
 }
 
 /**
@@ -596,12 +681,38 @@ export function getRegisteredConsumers(type: string): readonly string[] {
  * @throws Error if the schema is not found
  */
 export function getEventSchema(type: string): EventSchemaDefinition {
+  if (type in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
+  }
+  const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
+  if (metadata != null) {
+    return {
+      type,
+      tier: type.startsWith("platform.") ? "tier_1" : "tier_2",
+      producer: metadata.schemaOwner,
+      consumers: metadata.sourceOfTruth === "platform" ? ["truth_projector", "audit_projection"] : ["oapeflir_projection"],
+      payloadSchemaRef: buildPayloadSchemaRef(type),
+      compatibilityPolicy: "backward_compatible_additive",
+    };
+  }
   if (!hasEventSchema(type)) {
     throw new ValidationError("event.schema_missing", `Event schema not found for type: ${type}`, {
       details: { eventType: type },
     });
   }
-  return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
+  throw new ValidationError("event.schema_missing", `Event schema not found for type: ${type}`, {
+    details: { eventType: type },
+  });
+}
+
+export function getEventReplayMetadata(type: string): EventReplayMetadata {
+  const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
+  if (metadata == null) {
+    throw new ValidationError("event.replay_metadata_missing", `Event replay metadata not found for type: ${type}`, {
+      details: { eventType: type },
+    });
+  }
+  return metadata;
 }
 
 /**

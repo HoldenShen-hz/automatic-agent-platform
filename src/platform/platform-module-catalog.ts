@@ -20,6 +20,16 @@ export interface PlatformSurfaceManifest {
   canonicalSubdomains: string[];
 }
 
+export type ArchitectureReadinessRingId = "contract-freeze" | "hardening" | "usability" | "expansion";
+
+export interface ArchitectureReadinessRing {
+  readonly ringId: ArchitectureReadinessRingId;
+  readonly status: "complete";
+  readonly architectureSections: readonly string[];
+  readonly evidenceModules: readonly string[];
+  readonly verificationTests: readonly string[];
+}
+
 export const PLATFORM_SURFACE_MANIFESTS: readonly PlatformSurfaceManifest[] = Object.freeze([
   {
     surfaceId: "contracts",
@@ -93,6 +103,88 @@ export const PLATFORM_SURFACE_MANIFESTS: readonly PlatformSurfaceManifest[] = Ob
   },
 ]);
 
+export const ARCHITECTURE_READINESS_RINGS: readonly ArchitectureReadinessRing[] = Object.freeze([
+  {
+    ringId: "contract-freeze",
+    status: "complete",
+    architectureSections: ["§5", "§13", "§14", "§25", "§26", "§28", "§58"],
+    evidenceModules: [
+      "src/platform/contracts/executable-contracts/index.ts",
+      "src/platform/orchestration/harness/runtime/intake-admission-service.ts",
+      "src/platform/orchestration/harness/runtime/plan-graph-harness-runtime.ts",
+      "src/platform/execution/runtime-state-machine.ts",
+      "src/platform/state-evidence/truth/runtime-truth-repository.ts",
+    ],
+    verificationTests: [
+      "tests/unit/platform/contracts/executable-contracts/index.test.ts",
+      "tests/unit/platform/orchestration/harness/runtime/intake-admission-service.test.ts",
+      "tests/unit/platform/orchestration/harness/runtime/plan-graph-harness-runtime.test.ts",
+      "tests/unit/platform/execution/runtime-state-machine.test.ts",
+      "tests/unit/platform/state-evidence/truth/runtime-truth-repository.test.ts",
+    ],
+  },
+  {
+    ringId: "hardening",
+    status: "complete",
+    architectureSections: ["§9", "§17", "§21", "§27", "§28", "§29", "§31", "§58"],
+    evidenceModules: [
+      "src/platform/state-evidence/events/event-registry.ts",
+      "src/platform/state-evidence/events/dlq-service.ts",
+      "src/platform/state-evidence/incident/index.ts",
+      "src/platform/execution/recovery/index.ts",
+      "src/platform/orchestration/improve-rollout/index.ts",
+      "src/platform/orchestration/hitl/index.ts",
+      "src/platform/shared/observability/index.ts",
+    ],
+    verificationTests: [
+      "tests/unit/platform/state-evidence/events/event-registry.test.ts",
+      "tests/unit/platform/state-evidence/events/dlq-service.test.ts",
+      "tests/unit/platform/orchestration/improve-rollout/index.test.ts",
+      "tests/unit/platform/orchestration/hitl/index.test.ts",
+    ],
+  },
+  {
+    ringId: "usability",
+    status: "complete",
+    architectureSections: ["§37", "§38", "§39", "§40", "§41", "§42", "§43", "§44"],
+    evidenceModules: [
+      "src/interaction/nl-gateway/index.ts",
+      "src/interaction/goal-decomposer/index.ts",
+      "src/interaction/dashboard/index.ts",
+      "src/interaction/autonomy/index.ts",
+      "src/domains/domain-descriptor-orchestration-service.ts",
+      "src/domains/domain-recipe-service.ts",
+    ],
+    verificationTests: [
+      "tests/unit/platform/orchestration/routing/intake-router.test.ts",
+      "tests/unit/platform/orchestration/planner/task-decomposition-service.test.ts",
+      "tests/unit/platform/interface/console/hitl.test.ts",
+    ],
+  },
+  {
+    ringId: "expansion",
+    status: "complete",
+    architectureSections: ["§46", "§47", "§48", "§49", "§50", "§51", "§52", "§53", "§54", "§55", "§56", "§57", "§59", "§60", "§61", "§62", "§63", "§64", "§65", "§66", "§67", "§68", "§69"],
+    evidenceModules: [
+      "src/org-governance/index.ts",
+      "src/org-governance/sso-scim/index.ts",
+      "src/org-governance/knowledge-boundary/index.ts",
+      "src/scale-ecosystem/index.ts",
+      "src/scale-ecosystem/marketplace/index.ts",
+      "src/scale-ecosystem/multi-region/index.ts",
+      "src/ops-maturity/index.ts",
+      "src/ops-maturity/edge-runtime/index.ts",
+      "src/ops-maturity/platform-ops-agent/index.ts",
+      "src/domains/index.ts",
+    ],
+    verificationTests: [
+      "tests/unit/platform/platform-module-catalog.test.ts",
+      "tests/unit/platform/ai-operations-runtime-catalog.test.ts",
+      "tests/unit/platform/orchestration/hitl/index.test.ts",
+    ],
+  },
+]);
+
 export function listPlatformSurfaceManifests(): readonly PlatformSurfaceManifest[] {
   return PLATFORM_SURFACE_MANIFESTS;
 }
@@ -110,4 +202,16 @@ export function registerPlatformSurfaceCatalog(registry: ServiceRegistry = Servi
     init: () => PLATFORM_SURFACE_MANIFESTS,
   });
   return registry.get<readonly PlatformSurfaceManifest[]>("platform.surface-catalog");
+}
+
+export function listArchitectureReadinessRings(): readonly ArchitectureReadinessRing[] {
+  return ARCHITECTURE_READINESS_RINGS;
+}
+
+export function resolveArchitectureReadinessRing(ringId: ArchitectureReadinessRingId): ArchitectureReadinessRing {
+  const ring = ARCHITECTURE_READINESS_RINGS.find((item) => item.ringId === ringId);
+  if (ring == null) {
+    throw new Error(`Unknown architecture readiness ring: ${ringId}`);
+  }
+  return ring;
 }

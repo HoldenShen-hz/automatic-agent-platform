@@ -10,15 +10,15 @@
 
 ### I1 审计未完成项收口批次
 
-- [ ] 补齐 intake/admission 主链：RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun，并在 admission 时冻结 RunVersionLock。
-- [ ] 补齐 PlanGraph normalize / validate / risk propagation / worst-path analysis，并让 scheduler 输出 platform fact decision event。
-- [ ] 补齐 RuntimeStateMachine 权威边界：RunVersionLock、policy guard、budget precondition、side-effect safety、audit append 与 NodeRun lease/fencing 强制校验。
-- [ ] 补齐 runtime repository contract：Repository interface、append-only receipt、runtime truth transaction、outbox/audit 事件边界与 v4.3 physical schema baseline。
-- [ ] 补齐 Event Registry metadata/replayBehavior/consumer contract tests，并接入 v4.3 EventEnvelope 描述符。
-- [ ] 补齐 BudgetAllocator、SideEffect commit 前复检、HITL responsibility 链路和 HarnessRuntime executor/evaluator/decision 基础闭环。
-- [ ] 增加 bypass invariant tests，证明 legacy ExecutionPlan/workflow/step 不能作为 v4.3 runtime 入口或直接写 truth。
-- [ ] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`，将已实现项改为完成，将 ADR-112 后续环标为非 Ring 1 阻塞项。
-- [ ] 执行 source-only build、定向 runtime/contracts/storage/event 测试与 diff 检查。
+- [x] 补齐 intake/admission 主链：RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun，并在 admission 时冻结 RunVersionLock。
+- [x] 补齐 PlanGraph normalize / validate / risk propagation / worst-path analysis，并让 scheduler 输出 platform fact decision event。
+- [x] 补齐 RuntimeStateMachine 权威边界：RunVersionLock、policy guard、budget precondition、side-effect safety、audit append 与 NodeRun lease/fencing 强制校验。
+- [x] 补齐 runtime repository contract：Repository interface、append-only receipt、runtime truth transaction、outbox/audit 事件边界与 v4.3 physical schema baseline。
+- [x] 补齐 Event Registry metadata/replayBehavior/consumer contract tests，并接入 v4.3 EventEnvelope 描述符。
+- [x] 补齐 BudgetAllocator、SideEffect commit 前复检、HITL responsibility 链路和 HarnessRuntime executor/evaluator/decision 基础闭环。
+- [x] 增加 bypass invariant tests，证明 legacy ExecutionPlan/workflow/step 不能作为 v4.3 runtime 入口或直接写 truth。
+- [x] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`，将已实现项改为完成，将 ADR-112 后续环标为非 Ring 1 阻塞项。
+- [x] 执行 source-only build、定向 runtime/contracts/storage/event 测试与 diff 检查。
 
 ### I0 审计后实现批次 1
 
