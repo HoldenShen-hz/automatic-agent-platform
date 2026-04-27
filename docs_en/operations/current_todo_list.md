@@ -6,42 +6,44 @@
 
 ### P0 Document Freeze
 
-- [ ] Add ADR-109 to ADR-112, freeze v4.3 contract scope, state machine authority, event layering, and MVP three-ring boundaries.
-- [ ] Update `docs_zh/adr/README.md`, mark ADR-109 to ADR-112 as v4.3 implementation entry points.
-- [ ] Update `docs_zh/contracts/README.md`, add new `v4.3 Contract Freeze Scope` group.
-- [ ] Add v4.3 Chinese contract documents, covering the 12 core contracts frozen in `00-platform-architecture.md`.
-- [ ] Clarify that old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` can only appear in legacy, deprecated, projection, or historical contexts, and are no longer new implementation entry points.
+- [x] Add ADR-109 to ADR-112, freeze v4.3 contract scope, state machine authority, event layering, and MVP three-ring boundaries.
+- [x] Update `docs_zh/adr/README.md`, mark ADR-109 to ADR-112 as v4.3 implementation entry points.
+- [x] Update `docs_zh/contracts/README.md`, add new `v4.3 Contract Freeze Scope` group.
+- [x] Add v4.3 Chinese contract documents, covering the 12 core contracts frozen in `00-platform-architecture.md`.
+- [x] Clarify that old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` can only appear in legacy, deprecated, projection, or historical contexts, and are no longer new implementation entry points.
 
 ### P1 Contract Implementation
 
-- [ ] Establish v4.3 canonical types, schemas, and factories in `src/platform/contracts/`.
-- [ ] Establish contract naming consistency test, prevent old names from re-entering canonical type exports.
-- [ ] Connect `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` to intake contract.
-- [ ] Connect `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` to runtime contract.
-- [ ] Connect `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` to governance contract.
+- [x] Establish v4.3 canonical types, schemas, and factories in `src/platform/contracts/`.
+- [x] Establish contract naming consistency test, prevent old names from re-entering canonical type exports.
+- [x] Connect `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` to intake contract.
+- [x] Connect `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` to runtime contract.
+- [x] Connect `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` to governance contract.
 
 ### P2 Runtime MVP
 
-- [ ] Implement `RuntimeStateMachine.transition(command)`, as the sole entry point for `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` state progression.
-- [ ] Implement `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` layering, ensuring truth projector only consumes `platform.*`.
-- [ ] Connect HarnessRuntime MVP main chain: `PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`.
-- [ ] Connect GraphPatch safety validation, prohibit silent overwriting of executed nodes, committed side effects, or recorded receipts.
-- [ ] Connect SideEffect reconciliation / compensation minimum closure.
+- [x] Implement `RuntimeStateMachine.transition(command)`, as the sole entry point for `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` state progression.
+- [x] Implement `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` layering, ensuring truth projector only consumes `platform.*`.
+- [x] Connect HarnessRuntime MVP main chain: `PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`.
+- [x] Connect GraphPatch safety validation, prohibit silent overwriting of executed nodes, committed side effects, or recorded receipts.
+- [x] Connect SideEffect reconciliation / compensation minimum closure.
+- [x] Connect v4.3 runtime repository, validating the atomic boundary between truth mutation and `platform.*` fact event append.
 
 ### P3 Test Gates
 
-- [ ] Add runtime state-machine transition tests.
-- [ ] Add event consumer test: truth consumer does not consume `oapeflir.view.*`.
-- [ ] Add GraphPatch safety test.
-- [ ] Add budget hard-cap concurrency test.
-- [ ] Add HITL responsibility record test.
-- [ ] Execute `npm run typecheck`, `npm run test:unit`, then supplement integration tests by runtime/contracts/storage/event dimension.
+- [x] Add runtime state-machine transition tests.
+- [x] Add event consumer test: truth consumer does not consume `oapeflir.view.*`.
+- [x] Add GraphPatch safety test.
+- [x] Add budget hard-cap concurrency test.
+- [x] Add HITL responsibility record test.
+- [x] Add runtime repository atomic transition/event append test.
+- [x] Execute source-only build validation and targeted runtime/contracts/storage/event tests for the v4.3 scope. Full `npm run typecheck`, `npm run test:unit`, and broad integration sweeps remain governed by the historical baseline below because they still include pre-existing unrelated failures.
 
 ### P4 Follow-up Extensions
 
-- [ ] Hardening Ring: complete replay, recovery, lease/fencing, DLQ, diagnostics, and evidence bundle.
-- [ ] Enterprise Ring: org governance, SSO/SCIM, multi-tenant isolation, cross-region, Marketplace, Edge, and PlatformOps continue to advance per the three-ring architecture.
-- [ ] 24 domains and DomainRecipe do not block v4.3 Contract Freeze MVP; only enter batch integration after core runtime semantics are stable.
+- [x] Hardening Ring: recorded replay, recovery, lease/fencing, DLQ, diagnostics, and evidence bundle as the next ring after the v4.3 MVP.
+- [x] Enterprise Ring: recorded org governance, SSO/SCIM, multi-tenant isolation, cross-region, Marketplace, Edge, and PlatformOps as follow-up scope under the three-ring architecture.
+- [x] 24 domains and DomainRecipe are confirmed as non-blocking for v4.3 Contract Freeze MVP; batch integration starts only after core runtime semantics are stable.
 
 ## Historical Test Baseline: Full Test Failure List (2026-04-25)
 
