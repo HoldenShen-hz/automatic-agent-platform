@@ -81,12 +81,11 @@ PlanGraph(v1) + GraphPatch(v2 operations) -> PlanGraph(v2)
 
 - `add_node`
 - `add_edge`
-- `disable_unstarted_node`
-- `skip_pending_path`
-- `append_compensation_node`
-- `append_repair_node`
-- `update_scheduler_policy`
-- `update_budget_intent`
+- `disable_edge`
+- `add_compensation_node`
+- `add_failure_path`
+- `mark_skipped`
+- `append_subgraph`
 
 ## 5. 安全规则
 

@@ -27,6 +27,7 @@
 `NodeRunStatus`：
 
 - `created`
+- `blocked`
 - `ready`
 - `queued`
 - `leased`

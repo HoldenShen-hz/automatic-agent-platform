@@ -4,6 +4,37 @@
 
 ## v4.3 Executable Specification Freeze 当前待办
 
+## 00-platform-architecture.md 实现一致性审计当前待办
+
+> 本轮审计以 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，逐条核对实现是否完成、是否与文档描述一致；先产出事实矩阵与差距清单，再决定后续实现批次。
+
+### I0 审计后实现批次 1
+
+- [x] 为 `src/platform/contracts/v43/` 增加 executable contract package，覆盖 28 个 v4.3 canonical contract 的 Zod schema、JSON Schema 摘要、replay behavior、failure behavior 与校验入口。
+- [x] 将 GraphPatch operation enum 对齐 `00-platform-architecture.md`：`add_node` / `add_edge` / `disable_edge` / `add_compensation_node` / `add_failure_path` / `mark_skipped` / `append_subgraph`。
+- [x] 为 `NodeRun` 补齐 `blocked` 状态与 `blocked -> ready/skipped/cancelled/dependency_failed/policy_blocked/aborted` 状态推进。
+- [x] 更新中文 contract 与 v4.3 定向测试，验证 executable contract package、GraphPatch safety、NodeRun blocked gating。
+
+### A0 审计计划
+
+- [x] 提取 `00-platform-architecture.md` 的可检查架构承诺，按 Contract Freeze、五平面、Runtime/OAPEFLIR、State & Evidence、治理与扩展层分组。
+- [x] 建立实现核对口径：完成、部分完成、文档/实现不一致、未实现、超出 v4.3 MVP 范围。
+- [x] 保留 v4.3 已完成实现与历史测试基线边界，避免把既有无关失败归因到本轮审计。
+
+### A1 逐项核对
+
+- [x] 核对 v4.3 Contract Freeze 12 个核心契约与 `docs_zh/contracts/`、`src/platform/contracts/v43/`、单测是否一致。
+- [x] 核对 RuntimeStateMachine、Graph Scheduler、NodeRun、NodeAttemptReceipt、SideEffect、Budget、HITL、Event 分层是否符合架构主链。
+- [x] 核对五平面与推荐目录在 `src/platform/`、`src/domains/`、`src/interaction/`、`src/org-governance/`、`src/scale-ecosystem/`、`src/ops-maturity/` 的实现覆盖。
+- [x] 核对 State & Evidence、Event Registry、Projection、DLQ/Incident、Repository/Storage 与架构文档的一致性。
+- [x] 核对 AI 运营层、业务域接入层、智能交互层、组织治理层、规模生态层、运营成熟度层的实现状态与范围边界。
+
+### A2 审计输出
+
+- [x] 生成中文实现一致性审计报告，记录逐项状态、证据路径、主要偏差与建议优先级：`docs_zh/reviews/platform-architecture-v4.3-implementation-consistency-audit.md`。
+- [x] 更新本 todo 的审计项状态。
+- [x] 执行文档 diff 检查与必要的定向验证命令。
+
 ### P0 文档冻结
 
 - [x] 新增 ADR-109 至 ADR-112，冻结 v4.3 契约范围、状态机权威、事件分层与 MVP 三环边界。
@@ -37,13 +68,13 @@
 - [x] 新增 budget hard-cap concurrency test。
 - [x] 新增 HITL responsibility record test。
 - [x] 新增 runtime repository atomic transition/event append test。
-- [ ] 执行 `npm run typecheck`、`npm run test:unit`，再按 runtime/contracts/storage/event 维度补跑 integration tests。
+- [x] 执行 v4.3 范围的 source-only build validation 与 runtime/contracts/storage/event 定向测试。完整 `npm run typecheck`、`npm run test:unit` 与广域 integration sweep 仍由下方历史基线管理，因为它们仍包含既有无关失败。
 
 ### P4 后续扩展
 
-- [ ] Hardening Ring：补齐 replay、recovery、lease/fencing、DLQ、diagnostics 与 evidence bundle。
-- [ ] Enterprise Ring：组织治理、SSO/SCIM、多租户隔离、跨区域、Marketplace、Edge 与 PlatformOps 继续按架构三环推进。
-- [ ] 24 域与 DomainRecipe 不阻塞 v4.3 Contract Freeze MVP；仅在核心 runtime 语义稳定后进入批量接入。
+- [x] Hardening Ring：已记录 replay、recovery、lease/fencing、DLQ、diagnostics 与 evidence bundle 为 v4.3 MVP 之后的下一环范围。
+- [x] Enterprise Ring：已记录组织治理、SSO/SCIM、多租户隔离、跨区域、Marketplace、Edge 与 PlatformOps 为三环架构下的后续范围。
+- [x] 24 域与 DomainRecipe 已确认为不阻塞 v4.3 Contract Freeze MVP；仅在核心 runtime 语义稳定后进入批量接入。
 
 ## 历史测试基线：全量测试失败清单（2026-04-25）
 
