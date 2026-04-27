@@ -47,6 +47,8 @@ export interface CommandPolicyDefinition {
    * Empty array means no args should be sandbox-path-validated.
    */
   pathArgPositions?: readonly number[];
+  /** Argument positions that are file paths treated as write targets. */
+  writePathArgPositions?: readonly number[];
 }
 
 const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPolicyDefinition]> = [
@@ -89,11 +91,11 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["zsh", { allowed: true, riskLevel: "high" }],
   ["mkdir", { allowed: true, riskLevel: "high" }],
   ["touch", { allowed: true, riskLevel: "high" }],
-  ["cp", { allowed: true, riskLevel: "high" }],
-  ["mv", { allowed: true, riskLevel: "high" }],
-  ["rm", { allowed: true, riskLevel: "high" }],
-  ["chmod", { allowed: true, riskLevel: "high" }],
-  ["chown", { allowed: true, riskLevel: "high" }],
+  ["cp", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
+  ["mv", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
+  ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["curl", { allowed: true, riskLevel: "high" }],
   ["wget", { allowed: true, riskLevel: "high" }],
   ["tar", { allowed: true, riskLevel: "high" }],
@@ -102,8 +104,10 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["sqlite3", { allowed: true, riskLevel: "high" }],
   ["psql", { allowed: true, riskLevel: "high" }],
   // tee: arg[0] is a file path (writes to file)
-  ["tee", { allowed: true, riskLevel: "high", pathArgPositions: [0] }],
+  ["tee", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["jq", { allowed: true, riskLevel: "medium" }],
+  ["touch", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["mkdir", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
 ];
 
 export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinition> {
@@ -145,6 +149,9 @@ export interface CommandAssessment {
 
   /** Command arguments that should be treated as sandboxed read paths */
   sandboxReadArgPaths: readonly string[];
+
+  /** Command arguments that should be treated as sandboxed write paths */
+  sandboxWriteArgPaths: readonly string[];
 }
 
 interface CachedCommandAssessment {
@@ -162,6 +169,7 @@ function unknownCommandAssessment(): CommandAssessment {
     reasonCode: "tool.command_unknown_denied",
     riskLevel: "high",
     sandboxReadArgPaths: [],
+    sandboxWriteArgPaths: [],
   };
 }
 
@@ -198,6 +206,7 @@ function computeBaseAssessment(command: string, policies: ReadonlyMap<string, Co
     reasonCode: policy.reasonCode ?? null,
     riskLevel: policy.riskLevel,
     sandboxReadArgPaths: [],
+    sandboxWriteArgPaths: [],
   };
 }
 
@@ -210,18 +219,21 @@ function deniedAssessment(
     reasonCode,
     riskLevel,
     sandboxReadArgPaths: [],
+    sandboxWriteArgPaths: [],
   };
 }
 
 function allowedAssessment(
   riskLevel: CommandAssessment["riskLevel"],
   sandboxReadArgPaths: readonly string[] = [],
+  sandboxWriteArgPaths: readonly string[] = [],
 ): CommandAssessment {
   return {
     allowed: true,
     reasonCode: null,
     riskLevel,
     sandboxReadArgPaths,
+    sandboxWriteArgPaths,
   };
 }
 
@@ -303,14 +315,17 @@ export class CommandSafetyClassifier {
     const policies = this.options.policies ?? createDefaultCommandPolicies();
     const policy = policies.get(normalizedCommand);
     const policyPathArgs = this.extractPolicyPathArgs(args, policy?.pathArgPositions);
+    const policyWritePathArgs = this.extractPolicyPathArgs(args, policy?.writePathArgPositions);
     const signatureAssessment = validateCommandSignature(normalizedCommand, args, baseAssessment.riskLevel);
 
     // Merge path args from policy with those from validateCommandSignature (e.g., script interpreter paths)
     const allPathArgs = [...signatureAssessment.sandboxReadArgPaths, ...policyPathArgs];
+    const allWritePathArgs = [...signatureAssessment.sandboxWriteArgPaths, ...policyWritePathArgs];
 
     return {
       ...signatureAssessment,
       sandboxReadArgPaths: allPathArgs,
+      sandboxWriteArgPaths: allWritePathArgs,
     };
   }
 

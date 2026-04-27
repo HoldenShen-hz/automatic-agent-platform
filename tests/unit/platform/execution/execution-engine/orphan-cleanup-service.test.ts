@@ -67,6 +67,12 @@ interface MockExecution {
   status: string;
 }
 
+interface MockSession {
+  id: string;
+  taskId: string;
+  status: string;
+}
+
 interface MockActiveLease {
   executionId: string;
   workerId: string;
@@ -112,6 +118,7 @@ function createMockStore(overrides: {
   dispatchReconciliationIssues?: MockTicket[];
   workerSnapshots?: MockWorkerSnapshot[];
   executions?: Map<string, MockExecution>;
+  sessions?: Map<string, MockSession>;
   activeLeases?: Map<string, MockActiveLease>;
 } = {}): AuthoritativeTaskStore {
   const {
@@ -119,8 +126,19 @@ function createMockStore(overrides: {
     dispatchReconciliationIssues = [],
     workerSnapshots = [],
     executions = new Map(),
+    sessions = new Map(),
     activeLeases = new Map(),
   } = overrides;
+  const normalizedWorkerSnapshots = workerSnapshots.map((snapshot) => createMockWorkerSnapshot(snapshot));
+  const upsertWorkerSnapshot = (snapshot: MockWorkerSnapshot): void => {
+    const record = createMockWorkerSnapshot(snapshot);
+    const existingIndex = normalizedWorkerSnapshots.findIndex((item) => item.workerId === record.workerId);
+    if (existingIndex >= 0) {
+      normalizedWorkerSnapshots[existingIndex] = record;
+      return;
+    }
+    normalizedWorkerSnapshots.push(record);
+  };
 
   return {
     operations: {
@@ -129,18 +147,20 @@ function createMockStore(overrides: {
     worker: {
       listExecutionTicketsByStatuses: (statuses: string[]) =>
         dispatchReconciliationIssues.filter(t => statuses.includes(t.status)),
-      listWorkerSnapshots: () => workerSnapshots,
+      listWorkerSnapshots: () => normalizedWorkerSnapshots,
       getWorkerSnapshot: (workerId: string) =>
-        workerSnapshots.find((w) => w.workerId === workerId) ?? null,
+        normalizedWorkerSnapshots.find((w) => w.workerId === workerId) ?? null,
       getActiveExecutionLease: (executionId: string) =>
         activeLeases.get(executionId) ?? null,
       recordHeartbeat: (_params: Record<string, unknown>) => {},
+      upsertWorkerSnapshot,
     },
     dispatch: {
       getExecution: (id: string) => executions.get(id) ?? null,
+      getSession: (id: string) => sessions.get(id) ?? null,
     },
     session: {
-      getSession: (id: string) => null,
+      getSession: (id: string) => sessions.get(id) ?? null,
       updateSessionStatus: (_id: string, _status: string, _at: string) => {},
     },
     event: {
@@ -221,10 +241,14 @@ test("OrphanCleanupService.enforce returns report with issues and applied array"
 });
 
 test("OrphanCleanupService.enforce applies close_orphan_session for orphan sessions", () => {
+  const sessions = new Map([
+    ["sess-close-1", { id: "sess-close-1", taskId: "task-1", status: "streaming" }],
+  ]);
   const store = createMockStore({
     orphanSessions: [
       { sessionId: "sess-close-1", taskId: "task-1", sessionStatus: "streaming", taskStatus: "done" },
     ],
+    sessions,
   });
   const service = new OrphanCleanupService(createMockDb(), store);
   const report = service.enforce();
@@ -236,20 +260,22 @@ test("OrphanCleanupService.enforce applies close_orphan_session for orphan sessi
 });
 
 test("OrphanCleanupService.enforce marks applied false when session already terminal", () => {
-  // The internal session lookup returns null in mock, so applied=false
+  const sessions = new Map([
+    ["sess-term", { id: "sess-term", taskId: "task-1", status: "completed" }],
+  ]);
   const store = createMockStore({
     orphanSessions: [
       { sessionId: "sess-term", taskId: "task-1", sessionStatus: "completed", taskStatus: "done" },
     ],
+    sessions,
   });
   const service = new OrphanCleanupService(createMockDb(), store);
   const report = service.enforce();
 
-  // With mock returning null for getSession, action should be not applied
   const applied = report.applied?.find((a) => a.entityId === "sess-term");
   assert.ok(applied);
-  // Mock returns null for getSession so applied=false
   assert.equal(applied!.applied, false);
+  assert.equal(applied!.detail, "session already terminal");
 });
 
 test("OrphanCleanupService.enforce applies requeue_ticket for orphan queue claims", () => {

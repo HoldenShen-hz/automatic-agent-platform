@@ -241,6 +241,7 @@ test("ToolbeltAssembler integration: runs within harness workflow", () => {
       evaluatorOutput: { score: 0.9, verdict: "accept" },
       evaluatorScore: 0.9,
       requestedTools: ["bash", "read", "write"],
+      producedEvidenceRefs: ["execution_log"],
     });
 
     assert.ok(run.toolbelt);
@@ -295,20 +296,20 @@ test("ToolbeltAssembler integration: partial tool access in harness", () => {
       });
     });
 
-    const run = service.runLoop({
-      taskId: "task_toolbelt_006",
-      domainId: "coding",
-      constraintPack,
-      plannerOutput: { planId: "plan_002", summary: "Partial tool test" },
-      generatorOutput: { stepOutputs: [], toolCalls: [] },
-      evaluatorOutput: { score: 0.9, verdict: "accept" },
-      evaluatorScore: 0.9,
-      requestedTools: ["bash", "read", "write"],
-    });
-
-    assert.ok(run.toolbelt);
-    assert.deepEqual(run.toolbelt.grantedTools, ["read"]);
-    assert.deepEqual(run.toolbelt.blockedTools, ["bash", "write"]);
+    assert.throws(
+      () =>
+        service.runLoop({
+          taskId: "task_toolbelt_006",
+          domainId: "coding",
+          constraintPack,
+          plannerOutput: { planId: "plan_002", summary: "Partial tool test" },
+          generatorOutput: { stepOutputs: [], toolCalls: [] },
+          evaluatorOutput: { score: 0.9, verdict: "accept" },
+          evaluatorScore: 0.9,
+          requestedTools: ["bash", "read", "write"],
+        }),
+      /harness\.invariant\.blocked_tool_requested/,
+    );
   } finally {
     ctx.cleanup();
   }

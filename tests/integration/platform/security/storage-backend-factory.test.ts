@@ -20,7 +20,7 @@ function runModuleWithEnv(
   };
 
   try {
-    const stdout = execFileSync(process.execPath, ["--input-type=module", "--eval", source], options);
+    const stdout = execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", source], options);
     return {
       stdout,
       stderr: "",
@@ -52,7 +52,7 @@ test("single-task runtime routes postgres dual-run sync access through shadow sq
   try {
     createFile(shadowPath, "");
     const source = `
-      import { runSingleTaskExecution } from ${JSON.stringify(distModuleHref("../../../../src/platform/execution/execution-engine/single-task-execution.js"))};
+      import { runSingleTaskExecution } from ${JSON.stringify(distModuleHref("../../../../src/platform/execution/execution-engine/single-task-execution.ts"))};
       void (async () => {
         await runSingleTaskExecution({
           dbPath: ${JSON.stringify(dbPath)},
@@ -84,7 +84,7 @@ test("multi-step runtime routes postgres dual-run sync access through shadow sql
   try {
     createFile(shadowPath, "");
     const source = `
-      import { runMultiStepOrchestration } from ${JSON.stringify(distModuleHref("../../../../src/platform/execution/execution-engine/multi-step-orchestration.js"))};
+      import { runMultiStepOrchestration } from ${JSON.stringify(distModuleHref("../../../../src/platform/execution/execution-engine/multi-step-orchestration.ts"))};
       void (async () => {
         await runMultiStepOrchestration({
           dbPath: ${JSON.stringify(dbPath)},
@@ -116,7 +116,7 @@ test("cli authoritative storage context routes postgres dual-run sync access thr
   try {
     createFile(shadowPath, "");
     const source = `
-      import { openCliAuthoritativeStorageContext } from ${JSON.stringify(distModuleHref("../../../../src/sdk/cli/authoritative-storage.js"))};
+      import { openCliAuthoritativeStorageContext } from ${JSON.stringify(distModuleHref("../../../../src/sdk/cli/authoritative-storage.ts"))};
       const storage = openCliAuthoritativeStorageContext(${JSON.stringify(dbPath)});
       storage.migrate();
     `;
@@ -143,7 +143,7 @@ test("authoritative storage admin uses the async postgres path and surfaces driv
   try {
     createFile(shadowPath, "");
     const source = `
-      await import(${JSON.stringify(distModuleHref("../../../../src/sdk/cli/authoritative-storage-admin.js"))});
+      await import(${JSON.stringify(distModuleHref("../../../../src/sdk/cli/authoritative-storage-admin.ts"))});
     `;
     const result = runModuleWithEnv(source, {
       AA_DB_PATH: dbPath,

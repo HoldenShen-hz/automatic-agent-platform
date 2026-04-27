@@ -58,14 +58,14 @@ function writeDependencyFixtures(workspace: string): { manifestPath: string; loc
 function seedOpsDb(workspace: string): { dbPath: string; taskId: string; manifestPath: string; lockfilePath: string } {
   const dbPath = join(workspace, "enterprise-governance-cli.db");
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/execution/execution-engine/single-task-execution.js", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Enterprise governance CLI task",
       request: "Seed enterprise-governance CLI evidence.",
     });
   `;
-  execFileSync(process.execPath, ["--input-type=module", "--eval", script], {
+  execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
     cwd: repoRoot,
     stdio: "pipe",
   });

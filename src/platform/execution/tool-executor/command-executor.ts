@@ -273,6 +273,26 @@ export class CommandExecutor {
       }
     }
 
+    for (const pathArg of commandAssessment.sandboxWriteArgPaths) {
+      if (pathArg.includes("\x00")) {
+        return this.blocked(normalizedRequest, "sandbox.command_arg_path_denied", coercedRequestResult.traces);
+      }
+
+      if (normalizedRequest.sandboxPolicy.mode === "read_only") {
+        return this.blocked(normalizedRequest, "sandbox.write_path_denied", coercedRequestResult.traces);
+      }
+
+      const resolvedPathArg = resolve(cwdCheck.normalizedPath, pathArg);
+      const check = checkSandboxPath(normalizedRequest.sandboxPolicy, resolvedPathArg);
+      if (!check.allowed) {
+        return this.blocked(normalizedRequest, "sandbox.write_path_denied", coercedRequestResult.traces);
+      }
+      const scopeCheck = checkToolPathScope(check.normalizedPath, allowedPathRoots);
+      if (!scopeCheck.allowed) {
+        return this.blocked(normalizedRequest, "tool.path_scope_write_denied", coercedRequestResult.traces);
+      }
+    }
+
     for (const pathArg of commandAssessment.sandboxReadArgPaths) {
       // S-07: Reject null-byte injection in path arguments before any processing.
       // Node.js's spawn validates this, but we catch it earlier to return a consistent blocked status.

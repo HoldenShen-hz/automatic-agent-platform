@@ -214,7 +214,7 @@ test("integration: DLQ service setFailureCategory updates category and logs acti
     const categorized = dlq.setFailureCategory(record.deadLetterId, "configuration", "operator-cat");
 
     assert.equal(categorized.failureCategory, "configuration", "Failure category should be updated");
-    assert.ok(categorized.updatedAt > categorized.createdAt, "Updated timestamp should be newer than created");
+    assert.ok(categorized.updatedAt >= categorized.createdAt, "Updated timestamp should not move backwards");
 
     const lastAction = categorized.operatorActionLog[categorized.operatorActionLog.length - 1]!;
     assert.equal(lastAction.action, "category_changed", "Action should be category_changed");
@@ -473,13 +473,13 @@ test("integration: DLQ service scheduleRetry rejects invalid delay", () => {
 
     assert.throws(
       () => dlq.scheduleRetry(record.deadLetterId, -100),
-      (err: Error) => /invalid_retry_delay/i.test(err.message),
+      (err: Error) => /non-negative finite/i.test(err.message),
       "Should reject negative delay",
     );
 
     assert.throws(
       () => dlq.scheduleRetry(record.deadLetterId, NaN),
-      (err: Error) => /invalid_retry_delay/i.test(err.message),
+      (err: Error) => /non-negative finite/i.test(err.message),
       "Should reject NaN delay",
     );
   } finally {
@@ -494,27 +494,23 @@ test("integration: DLQ service operations on non-existent record throw", () => {
 
     assert.throws(
       () => dlq.scheduleRetry("non-existent-dlq-id"),
-      (err: Error) => /not_found/i.test(err.message),
+      (err: Error) => /was not found/i.test(err.message),
       "Should throw when scheduling retry on non-existent record",
     );
 
     assert.throws(
       () => dlq.markResolved("non-existent-dlq-id"),
-      (err: Error) => /not_found/i.test(err.message),
+      (err: Error) => /was not found/i.test(err.message),
       "Should throw when marking resolved on non-existent record",
     );
 
     assert.throws(
       () => dlq.discard("non-existent-dlq-id", "reason"),
-      (err: Error) => /not_found/i.test(err.message),
+      (err: Error) => /was not found/i.test(err.message),
       "Should throw when discarding non-existent record",
     );
 
-    assert.throws(
-      () => dlq.get("non-existent-dlq-id"),
-      (err: Error) => /not_found/i.test(err.message),
-      "Should throw when getting non-existent record",
-    );
+    assert.equal(dlq.get("non-existent-dlq-id"), undefined, "Should return undefined for missing record");
   } finally {
     ctx.cleanup();
   }

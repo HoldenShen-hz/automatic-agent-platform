@@ -183,6 +183,7 @@ test("ToolAccess integration: toolbelt persists in completed harness run", () =>
       evaluatorOutput: { score: 0.9, verdict: "accept" },
       evaluatorScore: 0.9,
       requestedTools: ["bash", "read"],
+      producedEvidenceRefs: ["execution_log"],
     });
 
     assert.ok(run.toolbelt);
@@ -235,24 +236,20 @@ test("ToolAccess integration: blocked tools prevent invariant violations", () =>
       });
     });
 
-    const run = service.runLoop({
-      taskId: "task_toolaccess_005",
-      domainId: "coding",
-      constraintPack,
-      plannerOutput: { planId: "plan_002", summary: "Blocked tools test" },
-      generatorOutput: { stepOutputs: [], toolCalls: [] },
-      evaluatorOutput: { score: 0.9, verdict: "accept" },
-      evaluatorScore: 0.9,
-      requestedTools: ["bash", "write", "exec"],
-    });
-
-    assert.ok(run.toolbelt);
-    assert.deepEqual(run.toolbelt.grantedTools, ["read"]);
-    assert.deepEqual(run.toolbelt.blockedTools, ["bash", "write", "exec"]);
-
-    // Verify invariant checks pass - blocked tools do not cause violations when status is completed
-    const violations = service.assertInvariants(run);
-    assert.equal(violations.violations.length, 0);
+    assert.throws(
+      () =>
+        service.runLoop({
+          taskId: "task_toolaccess_005",
+          domainId: "coding",
+          constraintPack,
+          plannerOutput: { planId: "plan_002", summary: "Blocked tools test" },
+          generatorOutput: { stepOutputs: [], toolCalls: [] },
+          evaluatorOutput: { score: 0.9, verdict: "accept" },
+          evaluatorScore: 0.9,
+          requestedTools: ["bash", "write", "exec"],
+        }),
+      /harness\.invariant\.blocked_tool_requested/,
+    );
   } finally {
     ctx.cleanup();
   }
@@ -437,8 +434,30 @@ test("ToolAccess integration: toolbelt with seed context", () => {
   try {
     const assembler = new ToolbeltAssembler();
 
-    // Using seeded context - task already exists
-    const task = ctx.store.getTask("task-seeded-001");
+    ctx.db.transaction(() => {
+      ctx.store.insertTask({
+        id: "task_toolaccess_seed_001",
+        parentId: null,
+        rootId: "task_toolaccess_seed_001",
+        divisionId: "general_ops",
+        tenantId: null,
+        title: "Tool access seed test",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completedAt: null,
+      });
+    });
+
+    const task = ctx.store.getTask("task_toolaccess_seed_001");
     assert.ok(task);
 
     const toolbelt = assembler.assemble({

@@ -31,14 +31,14 @@ const repoRoot = process.cwd();
 
 function seedHappyPathDb(dbPath: string): void {
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/execution/execution-engine/single-task-execution.js", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/execution/execution-engine/single-task-execution.ts", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Ops governance security task",
       request: "Seed security boundary coverage for ops governance.",
     });
   `;
-  execFileSync(process.execPath, ["--input-type=module", "--eval", script], {
+  execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
     cwd: repoRoot,
     stdio: "pipe",
   });

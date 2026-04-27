@@ -381,8 +381,8 @@ test("FailoverController - initiateFailover triggers onComplete callback for suc
   controller.dispose();
 });
 
-test("FailoverController - initiateFailover rejects non-idle state", () => {
-  const controller = new FailoverController();
+test("FailoverController - initiateFailover rejects reentrant call while deciding", () => {
+  let nestedError: Error | null = null;
 
   const candidates: CoordinatorNode[] = [
     {
@@ -396,12 +396,20 @@ test("FailoverController - initiateFailover rejects non-idle state", () => {
     },
   ];
 
+  const controller = new FailoverController({
+    onDecision: () => {
+      try {
+        controller.initiateFailover("node-1", candidates, "heartbeat_missing");
+      } catch (error) {
+        nestedError = error instanceof Error ? error : new Error(String(error));
+      }
+    },
+  });
+
   controller.initiateFailover("node-1", candidates, "heartbeat_missing");
 
-  assert.throws(
-    () => controller.initiateFailover("node-1", candidates, "heartbeat_missing"),
-    /Cannot initiate failover/i,
-  );
+  assert.ok(nestedError);
+  assert.match(nestedError.message, /Cannot initiate failover/i);
 
   controller.dispose();
 });
@@ -899,35 +907,43 @@ test("FailoverController - multiple sequential failovers produce unique decision
 test("FailoverController - onFail callback is called on error", () => {
   let failCalled = false;
   let capturedError: Error | null = null;
+  let capturedDecision: FailoverDecision | null = null;
 
   const controller = new FailoverController({
+    onDecision: () => {
+      throw new Error("decision callback failed");
+    },
     onFail: (error, _decision) => {
       failCalled = true;
       capturedError = error;
+      capturedDecision = _decision;
     },
   });
 
-  // Triggering an error scenario - initiate with no candidates but state won't allow
-  // Actually, we need to trigger the fail via an error path
-
-  // Let's test disposing mid-operation
-  controller.initiateFailover("node-1", [
-    {
-      nodeId: "node-2",
-      region: "us-east-1",
-      status: "active",
-      isLeader: false,
-      leadershipEpoch: 0,
-      lastHeartbeatAt: nowIso(),
-      metadata: null,
-    },
-  ], "heartbeat_missing");
-
-  // After completion, state is not idle so another initiate would fail
   assert.throws(
-    () => controller.initiateFailover("node-1", [], "heartbeat_missing"),
-    /Cannot initiate failover/i,
+    () =>
+      controller.initiateFailover(
+        "node-1",
+        [
+          {
+            nodeId: "node-2",
+            region: "us-east-1",
+            status: "active",
+            isLeader: false,
+            leadershipEpoch: 0,
+            lastHeartbeatAt: nowIso(),
+            metadata: null,
+          },
+        ],
+        "heartbeat_missing",
+      ),
+    /decision callback failed/i,
   );
+
+  assert.equal(failCalled, true);
+  assert.ok(capturedError);
+  assert.match(capturedError.message, /decision callback failed/i);
+  assert.ok(capturedDecision);
 
   controller.dispose();
 });
@@ -1009,7 +1025,7 @@ test("FailoverController - getCurrentDecision returns last decision", () => {
   controller.dispose();
 });
 
-test("FailoverController - concurrent initiation attempts are rejected", () => {
+test("FailoverController - sequential initiation attempts are allowed after completion", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -1024,14 +1040,13 @@ test("FailoverController - concurrent initiation attempts are rejected", () => {
     },
   ];
 
-  // First call succeeds
-  controller.initiateFailover("node-1", candidates, "heartbeat_missing");
+  const firstDecision = controller.initiateFailover("node-1", candidates, "heartbeat_missing");
+  const secondDecision = controller.initiateFailover("node-1", candidates, "heartbeat_missing");
 
-  // Second call fails (not idle)
-  assert.throws(
-    () => controller.initiateFailover("node-1", candidates, "heartbeat_missing"),
-    /Cannot initiate failover/i,
-  );
+  assert.equal(firstDecision.outcome, "leader_changed");
+  assert.equal(secondDecision.outcome, "leader_changed");
+  assert.equal(secondDecision.newLeaderNodeId, "node-2");
+  assert.equal(controller.getCurrentDecision(), secondDecision);
 
   controller.dispose();
 });

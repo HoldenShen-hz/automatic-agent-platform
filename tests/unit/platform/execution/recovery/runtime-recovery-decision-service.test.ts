@@ -75,6 +75,7 @@ function createMockStore(overrides: {
     listDeadLettersByTask?: () => Array<{ id: string; executionId: string; taskId: string; finalReasonCode: string; retryCount: number; lastErrorMessage: string; movedAt: string }>;
   };
   memory?: {
+    insertMemory?: () => void;
     recordFailureMemory?: () => void;
   };
 } = {}): AuthoritativeTaskStore {
@@ -107,7 +108,7 @@ function createMockStore(overrides: {
     memory: {
       findMemoryByContentHash: () => null,
       recordMemoryAccess: () => {},
-      insertMemory: overrides.memory?.recordFailureMemory ?? (() => {}),
+      insertMemory: overrides.memory?.insertMemory ?? overrides.memory?.recordFailureMemory ?? (() => {}),
     },
   } as unknown as AuthoritativeTaskStore;
 }
@@ -674,7 +675,7 @@ test("RuntimeRecoveryDecisionService deadLetter contains retry count from execut
   assert.equal(result.deadLetter!.retryCount, 5);
 });
 
-test("RuntimeRecoveryDecisionService handles move_dead_letter with precheck denial reason", () => {
+test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", () => {
   const db = createMockDb();
   let failureUpdated = false;
   let lastErrorMessage = "";
@@ -719,12 +720,13 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with precheck deni
   const result = service.apply("exec-1");
 
   assert.equal(result.applied, true);
-  assert.equal(result.decision.action, "move_dead_letter");
+  assert.equal(result.decision.action, "cancel");
+  assert.equal(failureUpdated, true);
   assert.ok(lastErrorMessage.includes("precheck denied"));
   assert.ok(lastErrorMessage.includes("security_policy_violation"));
 });
 
-test("RuntimeRecoveryDecisionService handles move_dead_letter with generic recovery reason", () => {
+test("RuntimeRecoveryDecisionService preserves null execution error message when dead-lettering", () => {
   const db = createMockDb();
   let lastErrorMessage = "";
   const candidate = createMockCandidate({
@@ -759,7 +761,8 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with generic recov
   const result = service.apply("exec-1");
 
   assert.equal(result.applied, true);
-  assert.ok(lastErrorMessage.includes("execution moved to dead letter"));
+  assert.equal(result.decision.action, "move_dead_letter");
+  assert.equal(lastErrorMessage, "");
 });
 
 test("RuntimeRecoveryDecisionService.decide uses default decidedBy when not specified", () => {
@@ -1130,7 +1133,7 @@ test("RuntimeRecoveryDecisionService handles dead letter with null lastErrorMess
 
 test("RuntimeRecoveryDecisionService handles dead letter memory recording", () => {
   const db = createMockDb();
-  let memoryParams: { taskId: string; executionId: string; agentId: string; reasonCode: string; errorMessage: string | null; occurredAt: string } | null = null;
+  let insertedMemory: { taskId: string | null; executionId: string | null; agentId: string | null; createdAt: string; contentJson: string } | null = null;
   const candidate = createMockCandidate({
     executionId: "exec-1",
     latestErrorCode: "E_MEMORY_TEST",
@@ -1151,8 +1154,8 @@ test("RuntimeRecoveryDecisionService handles dead letter memory recording", () =
       listEventsForTask: () => [],
     },
     memory: {
-      recordFailureMemory: (params: { taskId: string; executionId: string; agentId: string; reasonCode: string; errorMessage: string | null; occurredAt: string }) => {
-        memoryParams = params;
+      insertMemory: (record: { taskId: string | null; executionId: string | null; agentId: string | null; createdAt: string; contentJson: string }) => {
+        insertedMemory = record;
       },
     },
   });
@@ -1161,11 +1164,11 @@ test("RuntimeRecoveryDecisionService handles dead letter memory recording", () =
   const result = service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
-  assert.ok(memoryParams != null);
-  assert.equal(memoryParams!.taskId, "task-1");
-  assert.equal(memoryParams!.executionId, "exec-1");
-  assert.equal(memoryParams!.agentId, "agent-memory");
-  assert.equal(memoryParams!.reasonCode, "E_MEMORY_TEST");
+  assert.ok(insertedMemory != null);
+  assert.equal(insertedMemory!.taskId, "task-1");
+  assert.equal(insertedMemory!.executionId, "exec-1");
+  assert.equal(insertedMemory!.agentId, "agent-memory");
+  assert.match(insertedMemory!.contentJson, /E_MEMORY_TEST/);
 });
 
 test("RuntimeRecoveryDecisionService handles decision for resume_same_worker action", () => {
@@ -1197,7 +1200,7 @@ test("RuntimeRecoveryDecisionService handles decision for resume_same_worker act
   const decision = service.decide("exec-1");
 
   assert.equal(decision.action, "resume_same_worker");
-  assert.equal(decision.reason, "execution_error:E1");
+  assert.equal(decision.reason, "active_execution");
 });
 
 test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op action)", () => {
