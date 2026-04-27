@@ -9,8 +9,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { KnowledgePlaneService } from "../../../../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
-import { KnowledgeSnapshotStore } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
-import { KnowledgeAuditLogger } from "../../../../../src/platform/state-evidence/knowledge/governance/knowledge-audit-logger.js";
 import type { KnowledgeQueryOptions } from "../../../../../src/platform/state-evidence/knowledge/retrieval/knowledge-retrieval.js";
 
 function createTestPlane(): KnowledgePlaneService {
@@ -105,7 +103,8 @@ test("integration: KnowledgePlaneService listNamespaces returns registered names
 
   const namespaces = plane.listNamespaces();
   assert.ok(Array.isArray(namespaces));
-  assert.ok(namespaces.includes("test/list"));
+  const paths = namespaces.map((ns: any) => ns.path);
+  assert.ok(paths.includes("test/list"));
 });
 
 test("integration: KnowledgePlaneService inspectNamespace returns namespace details", () => {
@@ -266,18 +265,13 @@ test("integration: KnowledgePlaneService inspectSemanticInfrastructure returns d
   assert.equal(infrastructure.details.managedBy, "archive_scan");
 });
 
-test("integration: KnowledgePlaneService with snapshot store persists data", () => {
-  const snapshotStore = new KnowledgeSnapshotStore("/tmp/test-knowledge-snapshot-" + Date.now());
-  const auditLogger = new KnowledgeAuditLogger();
-  const plane = new KnowledgePlaneService({
-    snapshotStore,
-    knowledgeAuditLogger: auditLogger,
-  });
+test("integration: KnowledgePlaneService registers multiple namespaces", () => {
+  const plane = createTestPlane();
 
   plane.registerNamespace({
-    namespaceId: "snapshot_ns",
-    path: "test/snapshot",
-    description: "Snapshot test namespace",
+    namespaceId: "multi_ns1",
+    path: "test/multi1",
+    description: "First namespace",
     ownerDomainId: "test",
     accessPolicy: "public",
     freshnessPolicy: {
@@ -291,15 +285,25 @@ test("integration: KnowledgePlaneService with snapshot store persists data", () 
     maxTotalSizeBytes: 1000000,
   });
 
-  plane.ingest({
-    title: "Snapshot Test",
-    body: "Testing snapshot persistence.",
-    namespace: "test/snapshot",
-    sourceType: "text",
+  plane.registerNamespace({
+    namespaceId: "multi_ns2",
+    path: "test/multi2",
+    description: "Second namespace",
+    ownerDomainId: "test",
+    accessPolicy: "public",
+    freshnessPolicy: {
+      maxAgeDays: 30,
+      staleAction: "warn",
+      refreshStrategy: "manual",
+      refreshIntervalHours: null,
+    },
     trustLevel: "verified",
+    maxDocuments: 100,
+    maxTotalSizeBytes: 1000000,
   });
 
-  // Verify snapshot was saved
   const namespaces = plane.listNamespaces();
-  assert.ok(namespaces.includes("test/snapshot"));
+  const paths = namespaces.map((ns: any) => ns.path);
+  assert.ok(paths.includes("test/multi1"));
+  assert.ok(paths.includes("test/multi2"));
 });

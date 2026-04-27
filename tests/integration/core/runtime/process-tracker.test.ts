@@ -13,7 +13,7 @@ import {
   getProcessTracker,
   resetProcessTracker,
   spawnTracked,
-} from "../../../../../src/core/runtime/process-tracker.js";
+} from "../../../../src/core/runtime/process-tracker.js";
 
 test("process-tracker barrel exports ProcessTracker class", () => {
   assert.ok(typeof ProcessTracker === "function", "ProcessTracker should be a constructor");
@@ -50,7 +50,7 @@ test("process-tracker spawnTracked creates trackable child process", () => {
     assert.ok(child.pid > 0, "Child process should have a valid pid");
     assert.ok(tracker.getActiveCount() >= 0, "Tracker should track the child");
   } finally {
-    await tracker.killAll("SIGKILL", 100);
+    tracker.killAll("SIGKILL", 100);
   }
 });
 

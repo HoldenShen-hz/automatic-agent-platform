@@ -94,7 +94,7 @@ test("integration: sandbox allows valid nested paths", async () => {
       cwd: workspace,
     });
 
-    assert.equal(result.status, "success");
+    assert.equal(result.status, "succeeded");
   } finally {
     cleanupPath(workspace);
   }
@@ -123,7 +123,7 @@ test("integration: sandbox blocks access to denied subdirectory", async () => {
     // Should be blocked since we're restricting access to the secrets folder
     // But since workspace policy doesn't have deniedRoots by default, it may succeed
     // This test documents the current behavior
-    assert.equal(result.status === "success" || result.status === "blocked", true);
+    assert.ok(result.status === "succeeded" || result.status === "blocked");
   } finally {
     cleanupPath(workspace);
   }
@@ -151,7 +151,7 @@ test("integration: sandbox with denied roots blocks sensitive paths", async () =
 
     // Workspace policy allows .ssh by default - this is expected behavior
     // Denied roots must be explicitly configured
-    assert.equal(result.status === "success" || result.status === "blocked", true);
+    assert.ok(result.status === "succeeded" || result.status === "blocked");
   } finally {
     cleanupPath(workspace);
   }

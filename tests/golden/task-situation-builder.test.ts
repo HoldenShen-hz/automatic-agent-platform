@@ -83,9 +83,9 @@ test("golden: task situation builder with relevant files includes file count", (
     objective: "Refactor authentication module",
     currentPhase: "executing",
     relevantFiles: [
-      { path: "/src/auth/login.ts", description: "Login handler" },
-      { path: "/src/auth/logout.ts", description: "Logout handler" },
-      { path: "/src/auth/session.ts", description: "Session management" },
+      { path: "/src/auth/login.ts", language: "typescript" },
+      { path: "/src/auth/logout.ts", language: "typescript" },
+      { path: "/src/auth/session.ts", language: "typescript" },
     ],
   };
 
