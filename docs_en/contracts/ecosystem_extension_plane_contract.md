@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-phase loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,14 +21,14 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 This contract defines the extension ecosystem plane, including capability registry, Domain Registry, plugin SPI, domain tool bundle, review pipeline, marketplace, compatibility, and revocation mechanisms.
 
-It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to answer "how are external extensions safely onboarded, registered, published, upgraded, disabled, and rolled back."
+It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to answer "how external extensions are safely integrated, registered, published, upgraded, disabled, and rolled back".
 
 ## 2. Goals
 
-- Bring tool / skill / plugin / MCP extensions into a unified ecosystem governance model.
+- Let tool / skill / plugin / MCP extensions enter unified ecosystem governance model.
 - Clarify capability declaration, review, version compatibility, revocation, and domain binding paths.
 - Prevent third-party extensions from breaking platform security boundaries.
-- Reserve explicit contract boundaries for `M2-EXT-01`'s `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry`.
+- Leave clear contract boundaries for `M2-EXT-01`'s `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry`.
 
 ## 3. Canonical Components
 
@@ -54,7 +54,7 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 
 ## 5. Domain Capability Registry
 
-### 5.1 `CapabilityDefinition` Minimum Fields
+### 5.1 CapabilityDefinition Minimum Fields
 
 - `capability_id`
 - `provider_type`
@@ -63,7 +63,7 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 - `version`
 - `owner_ref`
 
-### 5.2 `DomainCapabilityRegistryEntry` Minimum Fields
+### 5.2 DomainCapabilityRegistryEntry Minimum Fields
 
 - `domain_id`
 - `bundle_id`
@@ -77,20 +77,20 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 
 Rules:
 
-- All extensions must first declare capability before entering the execution chain.
-- Domain bundle binding is the authoritative entry point for exposing capabilities to specific domains.
+- All extensions must declare capability first before entering execution chain.
+- Domain bundle binding is the authoritative entry for capability exposure to specific domains.
 - Runtime must not load extension packages that have not passed compatibility, permission, and trust gates.
 
 ## 6. Plugin SPI Integration
 
-The extension plane uniformly recognizes four types of SPI:
+Extension plane uniformly acknowledges four types of SPI:
 
 - `DomainRetrieverPlugin`
 - `DomainValidatorPlugin`
 - `DomainPlannerPlugin`
 - `DomainPresenterPlugin`
 
-`PluginSpiRegistration` records at minimum:
+`PluginSpiRegistration` records at least:
 
 - `plugin_id`
 - `spi_type`
@@ -108,21 +108,21 @@ The extension plane uniformly recognizes four types of SPI:
 
 Rules:
 
-- Lifecycle covers at minimum `registered -> loaded -> active -> inactive -> unloaded`.
+- Lifecycle covers at least `registered -> loaded -> active -> inactive -> unloaded`.
 - Current authoritative runtime isolation allows `shared_process`, `serialized_in_process`, `forked_process`, `sandboxed_process`, and `containerized_process`.
-- `forked_process` represents independent subprocess isolation baseline; `sandboxed_process` represents a stronger isolation mode with independent subprocess + dedicated sandbox root + minimal env whitelist + Node permission model.
-- `containerized_process` represents launcher-based external isolation runtime interface, which can be hosted by `docker` / `podman` / `bwrap` or equivalent independent sandbox launchers; communication between host and child is via stdio JSON protocol.
-- Neither `sandboxed_process` nor `containerized_process` should be directly described as completed OCI orchestrator, VM, or microVM fleet orchestration; the current repository provides auditable isolated runtime host and launcher interfaces, while real live infra still requires target environment verification.
-- Isolated failures can set the plugin to `degraded` or `disabled`, possibly with a cooldown window; cooldown state must be queryable by inventory, diagnostics, or API.
-- If `forked_process`, `sandboxed_process`, or `containerized_process` is enabled, the runtime process id should be queryable by inventory, diagnostics, or API, and the host process must be able to reclaim subprocesses on unload / shutdown.
-- If `sandboxed_process` or `containerized_process` is enabled, the runtime sandbox root should also be queryable by inventory, diagnostics, or API for operators to perform isolation root directory audits.
-- Plugin invocation should publish at minimum `plugin:invocation_started` and `plugin:invocation_completed` typed audit events for audit and feedback projection consumption.
+- `forked_process` represents independent subprocess isolation baseline; `sandboxed_process` represents stronger isolation mode with independent subprocess + exclusive sandbox root + minimal env whitelist + Node permission model.
+- `containerized_process` represents launcher-based external isolation runtime interface, can be carried by `docker` / `podman` / `bwrap` or equivalent independent sandbox launcher; communication between host and child via stdio JSON protocol.
+- Neither `sandboxed_process` nor `containerized_process` should be directly described as completed OCI orchestrator, VM, or microVM fleet orchestration; current repository provides auditable isolated runtime host and launcher interface, while real live infra still requires target environment validation.
+- Isolated failures can set plugin to `degraded` or `disabled`, with optional cooldown window; cooldown state must be queryable by inventory, diagnostics, or API.
+- If `forked_process`, `sandboxed_process`, or `containerized_process` is enabled, runtime process id should be queryable by inventory, diagnostics, or API, and host process must be able to回收 subprocess on unload / shutdown.
+- If `sandboxed_process` or `containerized_process` is enabled, runtime sandbox root should also be queryable by inventory, diagnostics, or API for operator isolation root directory audit.
+- Plugin invocation should publish at least `plugin:invocation_started` and `plugin:invocation_completed` typed audit events for audit and feedback projection consumption.
 - SPI registration results must be queryable by inventory, diagnostics, and audit systems.
-- Plugins can only interact with core through the public SDK surface and must not reach into private implementations.
+- Plugins can only interact with core through public SDK surface, must not reach-in to private implementations.
 
 ## 7. Review and Release Pipeline
 
-Review workflow contains at minimum:
+Review workflow contains at least:
 
 1. Submission
 2. Static validation
@@ -130,7 +130,7 @@ Review workflow contains at minimum:
 4. Compatibility check
 5. Human review
 6. Release
-7. Revocation or rollback
+7. Revoke or rollback
 
 `ReviewDecision` minimum fields:
 
@@ -145,19 +145,19 @@ Review workflow contains at minimum:
 
 Supplementary rules:
 
-- Marketplace releases must go through review decisions.
+- Marketplace release must go through review decision.
 - Published extensions must support revoke / disable / rollback.
-- Extension packages should support signing or equivalent integrity verification.
+- Extension packages should support signatures or equivalent integrity verification.
 
 ## 8. Compatibility Matrix
 
-Semantic version compatibility has at least three layers:
+Semantic version compatibility is divided into at least three layers:
 
 - `api_contract`
 - `permission_surface`
 - `runtime_capability`
 
-`CompatibilityMatrix` covers at minimum:
+`CompatibilityMatrix` covers at least:
 
 - `plugin_api_range`
 - `built_with_platform_version`
@@ -167,12 +167,12 @@ Semantic version compatibility has at least three layers:
 
 Rules:
 
-- `enabled` does not mean compatible; when the compatibility gate fails, fail-close is mandatory.
-- If a domain bundle upgrade introduces higher permissions or trust tier changes, re-review is required.
+- `enabled` does not mean compatible; must fail-close when compatibility gate has not passed.
+- Domain bundle upgrades that introduce higher permissions or trust tier changes must be re-reviewed.
 
 ## 9. Revocation and Rollback
 
-`RevocationRecord` contains at minimum:
+`RevocationRecord` contains at least:
 
 - `revocation_id`
 - `target_type`
@@ -182,9 +182,9 @@ Rules:
 - `rollback_target?`
 - `created_at`
 
-Revocation trigger scenarios include at minimum:
+Revocation trigger scenarios include at least:
 
-- Permission surface exceeding declaration
+- Permission surface exceeds declaration
 - Signature invalid or source untrusted
 - Compatibility regression
 - Sandbox / policy escape
@@ -193,22 +193,22 @@ Revocation trigger scenarios include at minimum:
 ## 10. Relationship with Existing Documents
 
 - [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) defines internal registration, authoring, and SPI baseline.
-- `sandbox_and_auth_contract.md` provides the security boundary for extension execution.
+- `sandbox_and_auth_contract.md` provides security boundaries for extension execution.
 - `api_surface_contract.md`, `admin_console_and_human_takeover_contract.md` are responsible for extension plane management entry points.
 
-## 11. Phased Boundaries
+## 11. Phase Boundaries
 
-### Current Phase 1-4 Authoritative Scope
+### Current phase1-4 authoritative scope
 
-- Capability declarations must exist.
-- Contract boundaries for manifest / compatibility / permission / trust must be explicit.
-- Domain bundle, plugin SPI, marketplace may exist as design boundaries but should not be described as fully operational production planes currently.
+- Capability declaration must exist
+- Contract boundaries for manifest / compatibility / permission / trust must be clear
+- Domain bundle, plugin SPI, marketplace can exist as design boundaries, but should not currently be described as fully operational production plane
 
-### `M2` Target-State Scope
+### M2 target-state scope
 
-- Domain Registry as unified registration backend.
-- Per-domain tool bundle complete control plane.
-- Plugin SPI large-scale integration.
-- Marketplace release, review, revocation, and rollback automation.
+- Domain Registry as unified registration backend
+- Per-domain tool bundle complete control plane
+- Plugin SPI large-scale integration
+- Marketplace release, review, revocation, and rollback automation
 
-Therefore, this contract primarily assumes the governance definition of the target-state extension plane; current readiness can only treat it as a boundary document rather than a completed delivery proof.
+Therefore, this contract mainly undertakes governance definition of target-state extension plane; current readiness can only treat it as a boundary document, not a completed delivery proof.

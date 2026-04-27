@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-phase loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the declarative configuration structure of divisions and the minimum requirements for roles, workflows, triggers, and retry strategies.
+This contract defines the declarative configuration structure of divisions, and minimum requirements for roles, workflows, triggers, and retry strategies.
 
 ## 2. Division Minimum Fields
 
@@ -29,7 +29,7 @@ This contract defines the declarative configuration structure of divisions and t
 | `version` | `string \| number` | Division definition version |
 | `name` | `string` | Display name |
 | `description` | `string` | Division description |
-| `priority` | `number?` | Routing priority; higher value means higher priority |
+| `priority` | `number?` | Routing priority, higher value means higher priority |
 | `triggers` | `string[]` | Routing trigger rules |
 | `domain` | `string?` | Domain bound to this division |
 | `tool_bundle_ref` | `string?` | Bound domain tool bundle |
@@ -42,8 +42,8 @@ This contract defines the declarative configuration structure of divisions and t
 ## 3. Trigger Rules
 
 - Triggers are used for VP operations' first-round rule matching.
-- High-frequency user language should be prioritized in expressions.
-- Should not be overly broad to avoid multiple divisions extensively overlapping matches.
+- Should prioritize expressing high-frequency user language.
+- Should not be too broad to avoid multiple divisions having large overlapping hits.
 
 ## 4. RoleRef Minimum Fields
 
@@ -57,10 +57,10 @@ This contract defines the declarative configuration structure of divisions and t
 
 ## 5. Workflow Rules
 
-- `division.yaml` references workflows declared under the division through `default_workflow` / `orchestration_workflow`.
-- Workflow definitions can be inline within loader-supported minimum definitions, or located in the `workflows/` directory and loaded by the loader.
-- Data is passed between steps through output keys; if rework or rollback exists, it should be explicitly expressed without relying on implicit conventions.
-- If a division declares `domain`, tool / plugin references in the workflow must match that domain.
+- `division.yaml` references workflows declared under this division through `default_workflow` / `orchestration_workflow`.
+- Workflow definitions can be inline in loader-supported minimal definitions, or located in `workflows/` directory and loaded by loader uniformly.
+- Data is passed between steps through output keys; if rework or rollback exists, it should be explicitly expressed, not relying on implicit conventions.
+- If division declares `domain`, tool / plugin references in workflow must match that domain.
 
 ## 6. Boundary with HR Agent
 
@@ -70,10 +70,10 @@ This contract defines the declarative configuration structure of divisions and t
 
 ## 7. Supplementary Rules
 
-### 7.1 `AGENT.md` Loading
+### 7.1 AGENT.md Loading
 
-- Division-level `AGENT.md` only supplements the division's behavioral description and does not override platform hard rules.
-- Load order should be: platform base -> division -> role.
+- Division-level `AGENT.md` only supplements that division's behavior description, does not override platform hard rules.
+- Loading order should be: platform base -> division -> role.
 
 ### 7.2 Trigger Conflict Resolution
 
@@ -82,12 +82,12 @@ This contract defines the declarative configuration structure of divisions and t
 
 ### 7.3 Version and Migration
 
-- `division.yaml` must carry a version.
-- Breaking workflow / role changes must provide migration notes.
-- In-flight tasks continue to be bound to the division version resolved at startup.
+- `division.yaml` must carry version.
+- Breaking workflow / role changes must provide migration note.
+- Running tasks continue to bind to the division version parsed at startup.
 
 ### 7.4 Domain Registry Integration
 
 - Each division can bind at most one authoritative `domain`.
 - `tool_bundle_ref`, `plugin_refs`, `knowledge_namespace` should be consistent with Domain Registry / Plugin Registry registration status.
-- Divisions that do not declare `domain` may use general-purpose tool sets but must not impersonate domain-specialized divisions.
+- Divisions that do not declare `domain` can use general tool sets, but must not impersonate domain-specialized division.

@@ -1,0 +1,54 @@
+# ADR-110: Runtime State Machine Authority
+
+## Status
+
+Accepted
+
+## Decision Date
+
+2026-04-27
+
+## Context
+
+v4.3 takes `HarnessRun`, `NodeRun`, `SideEffectRecord`, and `BudgetLedger` as core objects of P5 truth. If P2, P3, P4, Recovery, HITL, or operator tools can write truth tables directly, it becomes impossible to guarantee terminal state closure, CAS, lease, fencing, budget hard caps, side-effect reconciliation, and audit event transactional append.
+
+## Decision
+
+1. `RuntimeStateMachine.transition(command)` is the sole formal entry point for state transition of the following objects:
+   - `HarnessRun`
+   - `NodeRun`
+   - `NodeAttempt`
+   - `SideEffectRecord`
+   - `ReconciliationRecord`
+   - `CompensationRecord`
+   - `BudgetReservation`
+   - `BudgetSettlement`
+2. All transitions must complete within the same transaction:
+   - Validate current state, target state, and terminal state closure rules.
+   - Validate CAS version, active lease, fencing token, and `RunVersionLock`.
+   - Validate policy guard, budget precondition, and side-effect safety.
+   - Write truth mutation.
+   - Append `platform.*` fact event.
+   - Write audit / evidence references.
+3. P2/P3/P4/Recovery/HITL can only submit `TransitionCommand`, cannot directly update truth tables.
+4. Old `StateCommand` / `StateMutationCommand` can only serve as internal compatibility wrapper; cannot serve as public API or new module export.
+
+## State Machine Principles
+
+- Terminal states cannot transition out; fixes can only be expressed through redrive, compensation, GraphPatch, child run, or new HarnessRun append.
+- `retry_wait`, `awaiting_hitl`, `reconciling` are non-terminal waiting states, must carry wake condition or external resolution record.
+- Budget reservation and settlement must observe hard caps, concurrent overbooking not allowed.
+- Side effect commit must re-validate policy, budget, lease, fencing, and human approval before execution.
+
+## Consequences
+
+- Runtime tests must be established around transition matrix, terminal state closure, concurrent CAS, budget hard cap, and side-effect commit gate.
+- Storage repository can provide read/write primitives but cannot expose truth mutation methods bypassing state machine to business layer.
+- Operator recovery and panic path must also submit transition unless entering read-only forensic mode.
+
+## Related Documents
+
+- [109-v4.3-contract-freeze.md](./109-v4.3-contract-freeze.md)
+- [runtime_state_machine_contract.md](../contracts/runtime_state_machine_contract.md)
+- [v4_3_harness_run_contract.md](../contracts/v4_3_harness_run_contract.md)
+- [v4_3_node_run_attempt_receipt_contract.md](../contracts/v4_3_node_run_attempt_receipt_contract.md)

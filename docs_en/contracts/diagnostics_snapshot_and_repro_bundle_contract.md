@@ -2,9 +2,9 @@
 
 ## 1. Scope
 
-This contract defines diagnostic snapshots at failure, minimal reproduction bundles, and explanation patterns.
+This contract defines diagnostic snapshots on failure, minimal reproduction bundles, and explanation modes.
 
-Related documents:
+Related Documents:
 
 - `debug_inspect_health_backpressure_contract.md`
 - `result_envelope_contract.md`
@@ -14,37 +14,37 @@ Related documents:
 
 Improve failure location efficiency:
 
-- Automatically generate diagnostic snapshots.
-- Export minimal reproduction bundles.
-- Support explanation patterns and decision chain views.
+- Automatically generate diagnostic snapshots
+- Export minimal reproduction bundles
+- Support explanation modes and decision chain views
 
-## 3. `DiagnosticSnapshot`
+## 3. DiagnosticSnapshot
 
-At minimum contains:
+Contains at least:
 
 - Current state
 - Recent events
 - Recent tool calls
 - Current context summary
-- OAPEFLIR current stage and loop iteration summary
+- OAPEFLIR current phase and loop iteration summary
 - File lock status
 - Configuration version
 - Provider status
-- Basic system info (OS, version, architecture, execution mode)
+- Basic system information (OS, version, architecture, execution mode)
 - Enabled extensions / plugins summary
 - Prompt bundle / prompt template version summary
-- Scheduling and planned task-related summary (if system supports schedule / automation / scheduled workflow)
+- Scheduling and planned task related summary (if system supports schedule / automation / scheduled workflow)
 
-## 4. `MinimalReproBundle`
+## 4. MinimalReproBundle
 
-At minimum contains:
+Contains at least:
 
 - Task input
 - Workflow state
-- OAPEFLIR timeline
+- Oapeflir timeline
 - Relevant messages
 - Tool usage
-- Feedback signals / learning objects / rollout refs (if relevant)
+- Feedback signals / learning objects / rollout refs (if related)
 - Sanitized artifacts
 - Config subset
 - Session / interaction export (if interaction layer exists)
@@ -53,15 +53,15 @@ At minimum contains:
 
 Supplementary rules:
 
-- Diagnostics / repro bundles should support exporting as a single compressed archive or equivalent shareable artifact for support and troubleshooting.
-- Before exporting, users must be explicitly reminded that bundles may contain session messages, logs, configuration, and other sensitive information.
-- Diagnostics exports must not include secret plaintext, unsanitized tokens, or sensitive fields in crash dumps by default.
-- If the system supports issue / incident creation assistance, it should prioritize generating "report entry pre-filled with system information" rather than requiring users to manually collect environment information.
-- If the system supports multiple prompt templates, scheduled tasks, or enabled extensions, bundles should carry "actual effective version/manifest" as much as possible, rather than just exporting generic configuration.
+- Diagnostics / repro bundle should support exporting as a single compressed package or equivalent shareable artifact for support and troubleshooting.
+- Must clearly remind users before export: bundle may contain session messages, logs, configuration, and other sensitive information.
+- Diagnostics export should not default to including secret plaintext, unsanitized tokens, or sensitive fields in crash dumps.
+- If system supports issue / incident creation assistance, should prioritize generating "pre-filled system information report entry", rather than requiring users to manually collect environment information.
+- If system supports multiple prompt templates, planned tasks, or enabled extensions, bundle should carry "actually effective version/list" as much as possible, rather than only exporting general configuration.
 
-## 5. `IncidentTimelineReport`
+## 5. IncidentTimelineReport
 
-When a task fails or post-mortem troubleshooting is needed, the system should be able to automatically generate an incident timeline report.
+When tasks fail or post-mortem troubleshooting is needed, system should be able to automatically generate incident timeline report.
 
 ### 5.1 Minimum Fields
 
@@ -76,7 +76,7 @@ When a task fails or post-mortem troubleshooting is needed, the system should be
 
 ### 5.2 IncidentTimelineEntry
 
-Each timeline entry contains at minimum:
+Each timeline entry contains at least:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -92,7 +92,7 @@ Each timeline entry contains at minimum:
 
 ### 5.3 RemoteTimelineReport
 
-When a task involves remote workers, the system should be able to generate a remote execution timeline subview:
+When tasks involve remote workers, should be able to generate remote execution timeline sub-view:
 
 - `taskId`, `traceSummary`
 - `totalEntries`, `totalRemoteLogs`, `latestRemoteLogAt`
@@ -103,56 +103,56 @@ When a task involves remote workers, the system should be able to generate a rem
 
 ### 5A.1 Warning Categories
 
-| Category | Meaning |
+| category | Meaning |
 | --- | --- |
-| `health` | Health check abnormality (DB not writable, provider failure, etc.) |
-| `runtime` | Runtime exception (execution stalled, workflow failed, etc.) |
-| `approval` | Approval abnormality (long-time pending, cascading rejection, etc.) |
+| `health` | Health check abnormality (DB unwritable, provider failure, etc.) |
+| `runtime` | Runtime abnormality (execution stalled, workflow failed, etc.) |
+| `approval` | Approval abnormality (long-time pending, cascade rejection, etc.) |
 | `takeover` | Human takeover related |
-| `provider` | LLM provider degraded or unavailable |
-| `dispatch` | Dispatch abnormality (worker unavailable, isolation not satisfied, etc.) |
+| `provider` | LLM provider degradation or unavailability |
+| `dispatch` | Dispatch abnormality (worker unavailable, isolation not met, etc.) |
 | `remote_authority` | Remote worker permission violation or consistency abnormality |
-| `other` | Uncategorized |
+| `other` | Unclassified |
 
 ### 5A.2 Warning Severity
 
-| Severity | Meaning |
+| severity | Meaning |
 | --- | --- |
-| `info` | For awareness only; no immediate action required |
-| `warning` | Needs attention; may require follow-up action |
+| `info` | For reference only, no immediate action required |
+| `warning` | Needs attention, may need follow-up action |
 | `critical` | Requires immediate response |
 
 ### 5A.3 Escalation Targets
 
-| Escalation | Meaning |
+| escalation | Meaning |
 | --- | --- |
-| `none` | No escalation needed |
+| `none` | No escalation |
 | `task` | Escalate to task-level handling |
 | `operator` | Escalate to operations personnel |
 
-### 5A.4 `DiagnosticWarningSummary`
+### 5A.4 DiagnosticWarningSummary
 
-Aggregated warning summary contains at minimum:
+Aggregated warning summary contains at least:
 
 - `totalEvents`
 - `totalUniqueWarnings`
-- `suppressedDuplicateCount` (count of similar deduplication suppressions)
+- `suppressedDuplicateCount` (count of similar dedup suppressed)
 - `highestSeverity`
 - `escalationTargets`
 - `entries` (each containing code / category / severity / escalation / count / suppressedCount)
 
-## 6. `ExplanationRecord`
+## 6. ExplanationRecord
 
 Used to answer:
 
-- Why this division was chosen
+- Why this division was selected
 - Why HITL was escalated
-- Why a command was rejected
-- Why a retry was triggered
-- Why a fallback provider was switched to
-- Why an improvement candidate was accepted or rejected
-- Why a rollout was promoted or blocked
+- Why command was rejected
+- Why retry was triggered
+- Why fallback provider was switched
+- Why improvement candidate was accepted or rejected
+- Why rollout was advanced or blocked
 
-## 7. Conclusion
+## 6. Closure Conclusion
 
-Diagnostic snapshots, minimal reproduction bundles, and explanation patterns are the key capabilities that transform "when the system has a problem you can only guess" into "the system can explain its context itself."
+Diagnostic snapshots, minimal reproduction bundles, and explanation modes are key capabilities to change "when system has problems can only guess" to "system can explain its context by itself".

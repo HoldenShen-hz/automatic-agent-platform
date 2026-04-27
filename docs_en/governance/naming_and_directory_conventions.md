@@ -2,15 +2,15 @@
 
 ## 1. Objective
 
-Unify platform terminology, directory naming, and file naming to prevent multiple conflicting names across documentation, configuration, and code.
+Unify platform terminology, directory naming, and file naming to avoid multiple naming conventions across documents, configurations, and code.
 
 ## 2. Core Terminology
 
 Use the following terms uniformly:
 
-- `HQ`: Headquarters layer capabilities
+- `HQ`: Headquarters layer capability
 - `division`: Business division
-- `role`: Role within a division
+- `role`: Role within a business division
 - `task`: Task
 - `workflow`: Workflow
 - `artifact`: Artifact reference
@@ -18,13 +18,13 @@ Use the following terms uniformly:
 - `gateway`: Channel access layer
 - `provider`: Model provider layer
 
-### 2.2 OAPEFLIR 8-Stage Terminology (Added 2026-04-17)
+### 2.2 OAPEFLIR Eight-Stage Terminology (Added 2026-04-17)
 
 Use the following OAPEFLIR terms uniformly:
 
 | Stage | Term | Description |
-|------|------|-------------|
-| O | Observe / Observe Hub | Collect task/context/system status |
+|-------|------|-------------|
+| O | Observe / Observe Hub | Collect task/context/system state |
 | A | Assess / Assess Hub | Pre-execution risk/complexity/resource assessment |
 | P | Plan / Plan Hub | Generate execution plan based on assessment |
 | E | Execute / Execute Hub | Invoke runtime to execute plan |
@@ -34,19 +34,19 @@ Use the following OAPEFLIR terms uniformly:
 | R | Rollout / Rollout | Controlled release of improvements to production |
 
 Dual-chain topology terminology:
-- `Main Chain`: O→A→P→E→F (real-time execution chain)
-- `Auxiliary Chain`: F→L→I→R (async improvement chain)
+- `Main chain`: O→A→P→E→F (real-time execution chain)
+- `Secondary chain`: F→L→I→R (async improvement chain)
 
 Avoid mixing:
 
 - Do not write `division` as `department` or `business-unit`.
-- Do not mix `role`, `agent`, `worker` at the same semantic layer.
+- Do not mix `role`, `agent`, and `worker` at the same semantic layer.
 - Do not treat `session` and `task` as synonyms.
-- Do not treat `tenant`, `workspace`, `organization` as synonyms.
+- Do not treat `tenant`, `workspace`, and `organization` as synonyms.
 
 ### 2.1 Canonical ID Format
 
-When referencing control layer objects in documentation, use:
+When referencing control plane objects in documents, use uniformly:
 
 - `canonical_id` (business alias: narrative name)
 
@@ -67,15 +67,15 @@ Examples:
 
 ## 4. Directory Naming Rules
 
-- Directories use lowercase letters with hyphens or underscores; no spaces.
-- `<division-id>` in `divisions/<division-id>/` must be stable and programmatically referenceable.
+- Directories use lowercase letters with hyphens or underscores, no spaces.
+- `<division-id>` in `divisions/<division-id>/` must be stable and program-referencable.
 - Filenames under `roles/` should align with `role_id`.
 - Filenames under `workflows/` should express business actions, not author preferences.
 
 ## 5. ID Conventions
 
 - `task_id`, `approval_id`, `session_id`, `event_id` are platform-level unique identifiers.
-- `division_id`, `role_id`, `tool_name` are stable readable identifiers; do not rely on display names.
+- `division_id`, `role_id`, `tool_name` are stable readable identifiers, not dependent on display names.
 - External message IDs and platform internal IDs must be separate.
 
 ### 5.1 Other Naming Conventions
@@ -92,7 +92,7 @@ Examples:
 New module directories follow these naming rules:
 
 | Directory | Naming | Description |
-|------|------|-------------|
+|-----------|--------|-------------|
 | agent-loop | `agent-loop/` | OapeflirLoopService + Assess + Handoff |
 | planning | `planning/` | PlanBuilder + DAG + Replanning |
 | feedback | `feedback/` | Collector + Preprocessor + Consumer |
@@ -102,14 +102,14 @@ New module directories follow these naming rules:
 | domain-registry | `domain-registry/` | PluginSPI + DomainRegistry |
 | plugins | `plugins/` | Domain Plugins + Adapters |
 
-## 6. Documentation and Code Synchronization Rules
+## 6. Document and Code Synchronization Rules
 
-- When adding core objects, prioritize completing contracts first, then write type definitions.
-- If code naming conflicts with documentation naming, correct the documentation source of truth first, then unify code.
-- Inventing parallel terminology in code for local implementation convenience is prohibited.
+- When adding new core objects, prioritize supplementing contracts, then write type definitions.
+- If code naming conflicts with document naming, first correct the document source of truth, then unify code.
+- It is prohibited to invent parallel terminology in code for local implementation convenience.
 
-## 7. Documentation Writing Rules
+## 7. Document Writing Rules
 
-- When a narrative name and engineering name first appear together in a chapter, both mappings must be provided.
-- Tables, protocols, schemas, and event registries prioritize canonical IDs.
-- When preserving external project names at historical/research layers, explicitly mark them as "not this project's source of truth."
+- When a narrative name and engineering name first appear in the same chapter, both mappings must be provided.
+- Tables, protocols, schemas, and event registries prefer canonical IDs.
+- When the history layer and research layer retain external project original names, explicitly mark them as "not this project's source of truth".

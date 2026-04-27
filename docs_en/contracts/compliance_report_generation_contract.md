@@ -11,7 +11,7 @@ This contract defines report template registration, evidence mapping, and report
 - `ComplianceReportRequest`
 - `ComplianceReportArtifact`
 
-## 3. `ComplianceReportTemplate` Minimum Fields
+## 3. ComplianceReportTemplate Minimum Fields
 
 - `template_id`
 - `framework`
@@ -22,12 +22,12 @@ This contract defines report template registration, evidence mapping, and report
 
 ## 4. Rules
 
-- Reports must reference real evidence artifacts; compliance conclusions must not be fabricated manually.
-- Missing evidence must be accompanied by a gap explanation.
+- Reports must reference real evidence artifacts; fabricating compliance conclusions is not allowed.
+- When evidence is missing, gap description must be provided.
 - Auditor access to reports must be read-only and auditable.
 
 ## 5. Test Requirements
 
 - unit: template validation, evidence mapping, render completeness
 - integration: evidence store -> report pipeline
-- contract: reports with missing evidence must not be marked as complete
+- contract: reports missing evidence must not be marked as complete

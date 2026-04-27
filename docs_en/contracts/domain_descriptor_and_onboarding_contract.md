@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines domain modeling and the four-phase onboarding runbook for `§37-§38`, serving as the authoritative boundary for `src/domains/*`.
+This contract defines domain modeling and four-phase onboarding runbook for `§37-§38`, serving as the authoritative boundary for `src/domains/*`.
 
 ## 2. Canonical Objects
 
@@ -16,7 +16,7 @@ This contract defines domain modeling and the four-phase onboarding runbook for 
 - `DomainGovernancePolicy`
 - `DomainOnboardingRecord`
 
-## 3. `DomainDescriptor` Minimum Fields
+## 3. DomainDescriptor Minimum Fields
 
 - `domain_id`
 - `display_name`
@@ -37,10 +37,10 @@ This contract defines domain modeling and the four-phase onboarding runbook for 
 
 Rules:
 
-- Each domain must be independently explainable regarding its risk, knowledge, evaluation, prompts, recipes, and governance boundaries.
+- Each domain must be able to independently explain its own risk, knowledge, evaluation, Prompt, Recipe, and governance boundaries.
 - Domains must not directly reference unregistered workflows, tool bundles, plugins, or namespaces.
 
-## 4. Four-Phase Onboarding
+## 4. Onboarding Four Phases
 
 `DomainOnboardingRecord.phase` is fixed as:
 
@@ -49,7 +49,7 @@ Rules:
 3. `security_certification`
 4. `canary_launch`
 
-Each phase must record at minimum:
+Each phase records at minimum:
 
 - `phase`
 - `status`
@@ -63,17 +63,17 @@ Each phase must record at minimum:
 ## 5. Lifecycle Constraints
 
 - `draft -> validating -> certified -> canary -> active -> deprecated -> retired`
-- Skipping to `active` is a contract violation.
-- High-risk domains default to staying in `canary` with human approval evidence.
+- Skipping into `active` is considered a contract violation.
+- High-risk domains must default to staying in `canary` and have human approval evidence.
 
 ## 6. Runtime Rules
 
-- Runtime must only activate `active` or controlled `canary` domains.
-- Domains must pass registry schema validation before sinking into prompts, tools, or workflows.
+- Runtime can only activate `active` or controlled `canary` domains.
+- Domains must first pass registry schema validation before sinking to prompts, tools, workflows.
 - Domain changes must carry version and compatibility strategy.
 
 ## 7. Test Requirements
 
 - unit: descriptor schema, lifecycle transition, runbook evidence validation
-- integration: domain registration, domain loading, domain upgrade / decommission
-- contract: uncertified domains must not enter runtime
+- integration: domain registration, domain loading, domain upgrade /下线
+- contract: uncertified domains are prohibited from entering runtime

@@ -1,6 +1,6 @@
 # Runtime Sequence Diagrams
 
-> Last updated: 2026-04-20
+> Last updated: 2026-04-12
 >
 > This document describes the seven core runtime execution paths in the Automatic Agent System.
 
@@ -9,32 +9,32 @@
 ## 1. Task Intake → Workflow Start
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌──────────────────┐
-│   Client    │     │  HTTP API    │     │  IntakeRouter   │     │ Phase1bOrchestr. │
-│  (CLI/SDK)   │     │   Server     │     │                  │     │                  │
-└──────┬──────┘     └──────┬───────┘     └────────┬─────────┘     └────────┬─────────┘
-       │                  │                        │                       │
-       │ POST /tasks      │                        │                       │
-       │─────────────────>│                        │                       │
-       │                  │                        │                       │
-       │                  │ routeTask()            │                       │
-       │                  │───────────────────────>│                       │
-       │                  │                        │                       │
-       │                  │                        │ Division routing       │
-       │                  │                        │ Create TaskRecord      │
-       │                  │                        │ Create WorkflowState   │
-       │                  │                        │──────────────────────>│
-       │                  │                        │                       │
-       │                  │                        │                       │ TransitionService
-       │                  │                        │                       │ queued→pending
-       │                  │                        │                       │ createTier1Event
-       │                  │                        │                       │
-       │                  │                        │                       │ dispatch:ticket_created
-       │                  │                        │                       │ (Tier-2 event)
-       │                  │                        │                       │
-       │  Task created    │                        │                       │
-       │<─────────────────│                        │                       │
-       │                  │                        │                       │
++-------------+     +--------------+     +-----------------+     +------------------+
+|   Client    |     |  HTTP API    |     |  IntakeRouter   |     | Phase1bOrchestr. |
+|  (CLI/SDK)   |     |   Server     |     |                  |     |                  |
++--------------+     +-------+------+     +--------+---------+     +--------+---------+
+       |                  |                        |                       |
+       | POST /tasks      |                        |                       |
+       |----------------->|                        |                       |
+       |                  |                        |                       |
+       |                  | routeTask()            |                       |
+       |                  |---------------------->|                       |
+       |                  |                        |                       |
+       |                  |                        | Division routing       |
+       |                  |                        | Create TaskRecord      |
+       |                  |                        | Create WorkflowState   |
+       |                  |                        |---------------------->|
+       |                  |                        |                       |
+       |                  |                        |                       | TransitionService
+       |                  |                        |                       | queued→pending
+       |                  |                        |                       | createTier1Event
+       |                  |                        |                       |
+       |                  |                        |                       | dispatch:ticket_created
+       |                  |                        |                       | (Tier-2 event)
+       |                  |                        |                       |
+       |  Task created    |                        |                       |
+       |<-----------------|                        |                       |
+       |                  |                        |                       |
 ```
 
 **Key Points:**
@@ -48,48 +48,48 @@
 ## 2. Workflow Step Dispatch → Execution Lease → Worker Writeback
 
 ```
-┌─────────────────────┐   ┌──────────────────┐   ┌─────────────────┐   ┌────────────────┐
-│ ExecutionDispatch   │   │ WorkerRegistry    │   │ ExecutionLease  │   │     Worker     │
-│    Service          │   │    Service        │   │    Service      │   │    (Agent)     │
-└──────────┬──────────┘   └─────────┬─────────┘   └────────┬────────┘   └───────┬────────┘
-           │                         │                      │                     │
-           │ dispatchNext()          │                      │                     │
-           │ listDispatchableTickets │                      │                     │
-           │<────────────────────────│                      │                     │
-           │                         │                      │                     │
-           │ evaluateWorkersForTicket│                      │                     │
-           │<────────────────────────│                      │                     │
-           │ eligibleWorkers[]       │                      │                     │
-           │                         │                      │                     │
-           │ selectEligibleWorkers() │                      │                     │
-           │                         │                      │                     │
-           │ acquireLease()           │                      │                     │
-           │───────────────────────────────────────────────>│                     │
-           │                         │                      │                     │
-           │                         │         Insert ExecutionLeaseRecord         │
-           │                         │         fencing_token = latest + 1        │
-           │                         │                      │                     │
-           │ lease.acquired          │                      │                     │
-           │<───────────────────────────────────────────────│                     │
-           │                         │                      │                     │
-           │ dispatch:ticket_claimed (Tier-2)               │                     │
-           │                         │                      │                     │
-           │                         │     heartbeat()      │                     │
-           │                         │<─────────────────────│                     │
-           │                         │                      │                     │
-           │                         │                      │       execute()     │
-           │                         │                      │<─────────────────── │
-           │                         │                      │                     │
-           │                         │                      │    execution writeback
-           │                         │                      │    with fencing_token
-           │                         │                      │────────────────────>│
-           │                         │                      │                     │
-           │                         │                      │     validateWrite   │
-           │                         │                      │     (fencing token)  │
-           │                         │                      │                     │
-           │                         │                      │     success/reject   │
-           │                         │                      │<────────────────────│
-           │                         │                      │                     │
++---------------------+   +------------------+   +-----------------+   +----------------+
+| ExecutionDispatch   |   | WorkerRegistry    |   | ExecutionLease  |   |     Worker     |
+|    Service          |   |    Service        |   |    Service      |   |    (Agent)     |
++---------+----------+   +---------+---------+   +---------+--------+   +-------+--------+
+          |                         |                      |                     |
+          | dispatchNext()          |                      |                     |
+          | listDispatchableTickets|                      |                     |
+          |<-----------------------|                      |                     |
+          |                         |                      |                     |
+          | evaluateWorkersForTicket|                      |                     |
+          |<-----------------------|                      |                     |
+          | eligibleWorkers[]       |                      |                     |
+          |                         |                      |                     |
+          | selectEligibleWorkers()|                      |                     |
+          |                         |                      |                     |
+          | acquireLease()          |                      |                     |
+          |---------------------------------------------->|                     |
+          |                         |                      |                     |
+          |                         |         Insert ExecutionLeaseRecord         |
+          |                         |         fencing_token = latest + 1        |
+          |                         |                      |                     |
+          | lease.acquired          |                      |                     |
+          |<----------------------------------------------|                     |
+          |                         |                      |                     |
+          | dispatch:ticket_claimed (Tier-2)               |                     |
+          |                         |                      |                     |
+          |                         |     heartbeat()      |                     |
+          |                         |<---------------------|                     |
+          |                         |                      |                     |
+          |                         |                      |       execute()     |
+          |                         |                      |<------------------- |
+          |                         |                      |                     |
+          |                         |                      |    execution writeback
+          |                         |                      |    with fencing_token
+          |                         |                      |-------------------->|
+          |                         |                      |                     |
+          |                         |                      |     validateWrite   |
+          |                         |                      |     (fencing token)  |
+          |                         |                      |                     |
+          |                         |                      |     success/reject   |
+          |                         |                      |<--------------------|
+          |                         |                      |                     |
 ```
 
 **Key Points:**
@@ -103,37 +103,37 @@
 ## 3. Approval Requested → Approved/Rejected → Resume
 
 ```
-┌──────────────┐   ┌─────────────────┐   ┌────────────────┐   ┌─────────────────┐
-│  Execution   │   │  ApprovalService │   │  Human (HITL)  │   │ TransitionServ. │
-│   Service    │   │                  │   │                │   │                 │
-└──────┬───────┘   └────────┬────────┘   └───────┬────────┘   └────────┬────────┘
-       │                      │                    │                    │
-       │ executing             │                    │                    │
-       │──────────────────────>│                    │                    │
-       │                      │                    │                    │
-       │ Execution enters     │                    │                    │
-       │ "blocked" state      │                    │                    │
-       │                      │                    │                    │
-       │                      │ createApproval()    │                    │
-       │                      │                    │                    │
-       │                      │ ApprovalRecord     │                    │
-       │                      │ status = REQUESTED │                    │
-       │                      │───────────────────>│                    │
-       │                      │                    │                    │
-       │                      │      approval request      │           │
-       │                      │<─────────────────────       │           │
-       │                      │                    │                    │
-       │                      │                    │   approve/reject   │
-       │                      │                    │<────────────────── │
-       │                      │                    │                    │
-       │                      │ processApproval()  │                    │
-       │                      │                    │                    │
-       │                      │                    │                    │ blocked→executing
-       │                      │                    │                    │ (or failed)
-       │                      │                    │                    │
-       │  resume/fail         │                    │                    │
-       │<─────────────────────│                    │                    │
-       │                      │                    │                    │
++--------------+   +-----------------+   +----------------+   +-----------------+
+|  Execution   |   |  ApprovalService |   |  Human (HITL)  |   | TransitionServ. |
+|   Service    |   |                  |   |                |   |                 |
++-------+------+   +--------+---------+   +-------+--------+   +--------+--------+
+        |                      |                    |                    |
+        | executing             |                    |                    |
+        |--------------------->|                    |                    |
+        |                      |                    |                    |
+        | Execution enters     |                    |                    |
+        | "blocked" state      |                    |                    |
+        |                      |                    |                    |
+        |                      | createApproval()    |                    |
+        |                      |                    |                    |
+        |                      | ApprovalRecord     |                    |
+        |                      | status = REQUESTED |                    |
+        |                      |------------------->|                    |
+        |                      |                    |                    |
+        |                      |      approval request      |           |
+        |                      |<---------------------|       |           |
+        |                      |                    |                    |
+        |                      |                    |   approve/reject   |
+        |                      |                    |<------------------ |
+        |                      |                    |                    |
+        |                      | processApproval()  |                    |
+        |                      |                    |                    |
+        |                      |                    |                    | blocked→executing
+        |                      |                    |                    | (or failed)
+        |                      |                    |                    |
+        |  resume/fail         |                    |                    |
+        |<---------------------|                    |                    |
+        |                      |                    |                    |
 ```
 
 **Key Points:**
@@ -147,39 +147,40 @@
 ## 4. Event Emit → Persist → Replay/Recovery
 
 ```
-┌──────────────┐   ┌─────────────────┐   ┌────────────────┐   ┌─────────────────┐
-│   Producer   │   │ DurableEventBus │   │    SQLite      │   │ RecoveryService │
-│   Service    │   │                 │   │    Store       │   │                 │
-└──────┬───────┘   └────────┬────────┘   └───────┬────────┘   └────────┬────────┘
-       │                     │                    │                    │
-       │ emit(Tier1, event)  │                    │                    │
-       │────────────────────>│                    │                    │
-       │                     │                    │                    │
-       │                     │ db.transaction()    │                    │
-       │                     │───────────────────>│                    │
-       │                     │                    │                    │
-       │                     │ Insert EventRecord │                    │
-       │                     │───────────────────>│                    │
-       │                     │                    │                    │
-       │                     │ Commit              │
-       │                     │<───────────────────│                    │
-       │                     │                    │                    │
-       │                     │ dispatch to consumers│                   │
-       │                     │ (tier-specific ack) │                    │
-       │                     │                    │                    │
-       │                     │                    │  RuntimeRecoveryService
-       │                     │                    │  detects anomaly   │
-       │                     │                    │<───────────────────│
-       │                     │                    │                    │
-       │                     │                    │   RuntimeRecoveryReplay
-       │                     │                    │   Service.replay() │
-       │                     │                    │                    │
-       │                     │                    │   Rebuild state    │
-       │                     │                    │   from Tier1 events │
-       │                     │                    │                    │
-       │                     │                    │   reclaimExpired   │
-       │                     │                    │   Leases()         │
-       │                     │                    │                    │
++--------------+   +-----------------+   +----------------+   +-----------------+
+|   Producer   |   | DurableEventBus |   |    SQLite      |   | RecoveryService |
+|   Service    |   |                 |   |    Store       |   |                 |
++-------+------+   +--------+--------+   +-------+--------+   +--------+--------+
+        |                     |                    |                    |
+        | emit(Tier1, event)  |                    |                    |
+        |-------------------->|                    |                    |
+        |                     |                    |                    |
+        |                     | db.transaction()    |                    |
+        |                     |-------------------->|                    |
+        |                     |                    |                    |
+        |                     | Insert EventRecord |                    |
+        |                     |-------------------->|                    |
+        |                     |                    |                    |
+        |                     | Commit              |                    |
+        |                     |<--------------------|                    |
+        |                     |                    |                    |
+        |                     | dispatch to consumers|                   |
+        |                     | (tier-specific ack) |                    |
+        |                     |                    |                    |
+        |                     |                    |                    |
+        |                     |                    |  RuntimeRecoveryService
+        |                     |                    |  detects anomaly   |
+        |                     |                    |<-------------------|
+        |                     |                    |                    |
+        |                     |                    |   RuntimeRecoveryReplay
+        |                     |                    |   Service.replay() |
+        |                     |                    |                    |
+        |                     |                    |   Rebuild state    |
+        |                     |                    |   from Tier1 events |
+        |                     |                    |                    |
+        |                     |                    |   reclaimExpired   |
+        |                     |                    |   Leases()         |
+        |                     |                    |                    |
 ```
 
 **Key Points:**
@@ -197,22 +198,22 @@
 ## 5. State Transition: Task Lifecycle
 
 ```
-                    ┌─────────────────────────────────────────────────────────────┐
-                    │                        Task                                 │
-                    └─────────────────────────────────────────────────────────────┘
+                    +-------------------------------------------------------------+
+                    |                        Task                                 |
+                    +-------------------------------------------------------------+
 
     queued ────────┬─────────────────────────────────────────────────────────────
-                   │
-                   │ TransitionService.transition(reasonCode, traceId, ...)
-                   │ [task intake, workflow created]
+                   |
+                   | TransitionService.transition(reasonCode, traceId, ...)
+                   | [task intake, workflow created]
                    ▼
               pending ────────────────────────────────────────────────────────────
-                   │
-                   │ dispatch:ticket_claimed (Tier-2 event)
-                   │ execution lease acquired
+                   |
+                   | dispatch:ticket_claimed (Tier-2 event)
+                   | execution lease acquired
                    ▼
            in_progress ─────────────────────────────────────────────────────────
-                   │
+                   |
                    ├────────────────────────────────────────────────────────────┐
                    │                                                            │
                    │ [tool blocked, approval needed, dependency not met]         │
@@ -222,9 +223,9 @@
                    │ [human approved, tool unblocked, dependency satisfied]       │
                    │                                                            │
                    └────────────────────────────────────────────────────────────┘
-                                       │
+                                       |
                                        ▼
-                    ┌──────────────────┴──────────────────┐
+                    +------------------+------------------+
                     │                                     │
               succeeded                                 failed
                     │                                     │
@@ -233,7 +234,7 @@
 
     Any non-terminal state ────────────────────────────────────────────────────────
                    │
-                   │ [cancelled by user or system]
+                   | [cancelled by user or system]
                    ▼
                cancelled
 ```
@@ -243,9 +244,9 @@
 ## 6. Lease Lifecycle (Fencing Token)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        Lease Lifecycle with Fencing Token                       │
-└─────────────────────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------------------+
+|                        Lease Lifecycle with Fencing Token                       |
++-------------------------------------------------------------------------+
 
 Time ──────────────────────────────────────────────────────────────────────────────►
 

@@ -4,9 +4,9 @@
 
 This contract defines the hard boundary between the intelligence layer and the control layer.
 
-Core principle: `LLM is responsible for suggestions; system code is responsible for decisions.`
+Core principle: `LLM is responsible for suggestions, system code is responsible for decisions.`
 
-Related documents:
+Related Documents:
 
 - `policy_engine_contract.md`
 - `runtime_execution_contract.md`
@@ -14,33 +14,33 @@ Related documents:
 
 ## 2. Goals
 
-- Prevent model output from directly overruling system controls.
-- Bring high-risk decisions back into deterministic system code.
-- Clarify which fields can be proposed by the LLM and which must be generated or overwritten by the system.
+- Prevent model output from directly over-authorizing control systems.
+- Bring high-risk decisions back to deterministic system code.
+- Clarify which fields can be proposed by LLM and which fields must be generated or overridden by the system.
 
-## 3. Things the LLM CAN Do
+## 3. Things LLM Can Do
 
 - Propose division / role / plan
 - Generate intermediate content
 - Provide risk explanations
-- Generate candidate actions
-- Generate human-readable explanations
-- Generate drafts of `FeedbackSignal` / `LearningObject` / `ImprovementCandidate`
+- Generate candidate operations
+- Generate user-readable explanations
+- Generate `FeedbackSignal` / `LearningObject` / `ImprovementCandidate` drafts
 - Generate knowledge summaries and assess suggestions
 
-## 4. Things the LLM CANNOT Do Directly
+## 4. Things LLM Cannot Directly Do
 
-- Directly permit destructive actions
+- Directly release destructive actions
 - Directly decide `timeout_behavior`
 - Directly bypass preconditions
-- Directly write authoritative final state
-- Directly escalate its own permissions
-- Directly issue approval pass results
+- Directly write final authoritative state
+- Directly elevate its own permissions
+- Directly issue approval passing results
 - Directly mark `LearningObject` as `validated/promoted`
 - Directly advance `ImprovementCandidate` to `accepted/deployed/rolled_back`
-- Directly modify `StrategyVersion` state
+- Directly modify `StrategyVersion` status
 - Directly advance `RolloutRecord` stage / status
-- Directly modify trust tier, L5/L6 memory promotion, or feedback disposition results
+- Directly modify trust tier, L5/L6 memory promotion, or feedback handling results
 
 ## 5. Boundary Diagram
 
@@ -60,9 +60,9 @@ flowchart LR
     C --> D["Authoritative State"]
 ```
 
-## 6. Fields the System Must Override
+## 6. Fields System Must Override
 
-The following fields, if they appear in model output, must only be treated as suggestions and must not be directly trusted:
+The following fields, if appearing in model output, can only be treated as suggestions and must not be directly trusted:
 
 - `timeout_behavior`
 - `approval_required`
@@ -80,14 +80,14 @@ The following fields, if they appear in model output, must only be treated as su
 
 ## 7. Engineering Requirements
 
-- Agent output schemas must distinguish between `suggested_*` and authoritative fields.
-- Repository / transition service only accepts structures validated through the system layer.
-- Audit logs must show the difference between "model suggestion" and "system final decision".
-- UI / inspect / explainability views must display suggested value, final value, and reason for override together.
-- In the OAPEFLIR closed loop, `Observe/Assess/Plan` may be assisted by the model, but `Learn.validate`, `Improve.guardrail`, `Release.transition` must be executed by deterministic code.
+- Agent output schema must distinguish between `suggested_*` and authoritative fields.
+- Repository / transition service only accepts structures after system layer validation.
+- Audit should be able to see the difference between "model suggestion" and "system final decision".
+- UI / inspect / explainability views should simultaneously display suggested values, final values, and override reasons.
+- In OAPEFLIR closed loop, `Observe/Assess/Plan` can be assisted by models, but `Learn.validate`, `Improve.guardrail`, `Release.transition` must be executed by deterministic code.
 
-## 8. Conclusion
+## 8. Closure Conclusion
 
-An industrial-grade system that lets the model both propose and decide is difficult to audit, predict, or rely upon.
+Industrial-grade systems, if let models both suggest and decide, make it difficult to be auditable, predictable, and reliable.
 
-Therefore, this boundary must be an architecture-level hard rule, not an informal coding convention.
+Therefore, this boundary must be an architecture-level hard rule, not an unspoken understanding at coding time.

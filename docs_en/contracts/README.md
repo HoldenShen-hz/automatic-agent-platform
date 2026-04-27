@@ -1,41 +1,41 @@
 # Contracts
 
 > `contracts/` is the platform's authoritative specification layer.
-> This defines canonical objects, minimum fields, state machines, protocol boundaries, and test requirements; current coverage analysis is recorded in `../analysis/`, not in the contract body.
+> This defines canonical objects, minimum fields, state machines, protocol boundaries, and test requirements; current coverage analysis is recorded in `docs_zh/analysis/`, not in the contract body.
 
 ## 1. Usage Order
 
-When you need to change the following, first look at this directory:
+When modifying the following content, check this directory first:
 
 - schema / DTO / event payload
-- state machine, lifecycle, approval and budget constraints
-- storage model, execution protocol, cross-plane boundaries
+- State machines, lifecycles, approvals, and budget constraints
+- Storage models, execution protocols, cross-plane boundaries
 - domain / interaction / org-governance / scale-ecosystem / ops-maturity new capabilities
 
 Recommended order:
 
-1. First read the group index in this README
-2. Then read the corresponding ADR
-3. Finally enter the specific contract
+1. First check this README's group index
+2. Then check the corresponding ADR
+3. Finally proceed to the specific contract
 
 ## 2. Architecture Section to Contract Group Mapping
 
 | Architecture Section | Main ADR | Contract Group |
 | --- | --- | --- |
-| `§1-§5` | `001`, `019`, `060`, `088` | Architecture governance, plane boundaries, context and result protocols |
-| `§6-§8` | `009`, `013`, `015`, `066`, `088` | API, communication, extension and plugin governance |
-| `§9-§12` | `005`, `008`, `009`, `089`, `090` | Stability, risk, security, observability |
-| `§13-§19` | `006`, `016`, `018`, `019`, `072`, `075`, `089`, `090` | OAPEFLIR, runtime, provider, prompt, eval, cost, delegation |
-| `§20-§32` | `009`, `012`, `013`, `017`, `020`, `078`, `079`, `080`, `088`, `089`, `090` | workflow, HITL, SDK, governance, configuration, data, HA, deployment |
-| `§37-§44` | `081`, `082`, `083`, `084` | domain / interaction extension layer |
-| `§46-§51` | `085` | org-governance extension layer |
-| `§52-§57` | `086` | scale-ecosystem extension layer |
-| `§59-§69` | `087` | ops-maturity extension layer |
+| `§1-§5` | `001`, `019`, `060`, `088` | Architecture Governance, Plane Boundaries, Context and Result Protocols |
+| `§6-§8` | `009`, `013`, `015`, `066`, `088` | API, Communication, Extension and Plugin Governance |
+| `§9-§12` | `005`, `008`, `009`, `089`, `090` | Stability, Risk, Security, Observability |
+| `§13-§19` | `006`, `016`, `018`, `019`, `072`, `075`, `089`, `090` | OAPEFLIR, Runtime, Provider, Prompt, Eval, Cost, Delegation |
+| `§20-§32` | `009`, `012`, `013`, `017`, `020`, `078`, `079`, `080`, `088`, `089`, `090` | Workflow, HITL, SDK, Governance, Configuration, Data, HA, Deployment |
+| `§37-§44` | `081`, `082`, `083`, `084` | domain / interaction Extension Layer |
+| `§46-§51` | `085` | org-governance Extension Layer |
+| `§52-§57` | `086` | scale-ecosystem Extension Layer |
+| `§59-§69` | `087` | ops-maturity Extension Layer |
 
 Notes:
 
-- Original architecture document did not define `§34`, `§35`, `§45`, `§58`, `§70`.
-- Coverage status see [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md).
+- The original architecture document does not define `§34`, `§35`, `§45`, `§58`, `§70`.
+- Coverage status is at [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md).
 
 ## 3. Group Index
 
@@ -54,7 +54,7 @@ Notes:
 - [execution_plane_contract.md](./execution_plane_contract.md)
 - [supervisor_contract.md](./supervisor_contract.md)
 
-### 3.2 Context, Error and Inter-Plane Protocols
+### 3.2 Context, Errors, and Inter-Plane Protocols
 
 - [context_propagation_contract.md](./context_propagation_contract.md)
 - [app_error_contract.md](./app_error_contract.md)
@@ -63,7 +63,7 @@ Notes:
 - [architecture_governance_and_versioning_contract.md](./architecture_governance_and_versioning_contract.md)
 - [project_structure_contract.md](./project_structure_contract.md)
 
-### 3.3 Events, Gateway and Streaming Output
+### 3.3 Events, Gateway, and Streaming Output
 
 - [event_bus_contract.md](./event_bus_contract.md)
 - [typed_event_bus_contract.md](./typed_event_bus_contract.md)
@@ -87,7 +87,7 @@ Notes:
 - [plugin_spi_contract.md](./plugin_spi_contract.md)
 - [api_surface_contract.md](./api_surface_contract.md)
 
-### 3.5 Prompt, Quality, Cost and AI Governance
+### 3.5 Prompt, Quality, Cost, and AI Governance
 
 - [prompt_engine_spi_contract.md](./prompt_engine_spi_contract.md)
 - [prompt_model_policy_governance_contract.md](./prompt_model_policy_governance_contract.md)
@@ -98,7 +98,7 @@ Notes:
 - [data_classification_and_prompt_handling_contract.md](./data_classification_and_prompt_handling_contract.md)
 - [memory_decay_and_quality_contract.md](./memory_decay_and_quality_contract.md)
 
-### 3.6 Storage, Artifact, Observability and Recovery
+### 3.6 Storage, Artifact, Observability, and Recovery
 
 - [cache_contract.md](./cache_contract.md)
 - [storage_schema_contract.md](./storage_schema_contract.md)
@@ -119,7 +119,7 @@ Notes:
 - [testing_singleton_reset_contract.md](./testing_singleton_reset_contract.md)
 - [vcr_and_fixture_testing_contract.md](./vcr_and_fixture_testing_contract.md)
 
-### 3.7 Security, Approval and Enterprise Governance
+### 3.7 Security, Approval, and Enterprise Governance
 
 - [approval_and_hitl_contract.md](./approval_and_hitl_contract.md)
 - [sandbox_and_auth_contract.md](./sandbox_and_auth_contract.md)
@@ -134,7 +134,7 @@ Notes:
 - [governance_control_plane_contract.md](./governance_control_plane_contract.md)
 - [enterprise_operations_plane_contract.md](./enterprise_operations_plane_contract.md)
 
-### 3.8 Configuration, Environment and Platform Surface
+### 3.8 Configuration, Environment, and Platform Surface
 
 - [sdk_surface_contract.md](./sdk_surface_contract.md)
 - [configuration_layers_and_defaults_contract.md](./configuration_layers_and_defaults_contract.md)
@@ -193,20 +193,20 @@ Notes:
 - [multimodal_gateway_contract.md](./multimodal_gateway_contract.md)
 - [platform_ops_agent_contract.md](./platform_ops_agent_contract.md)
 
-## 4. Relationship with ADR / analysis
+## 4. Relationship with ADR / Analysis
 
-- `adr/` explains why this contract was adopted.
+- `adr/` explains why this contract exists.
 - `contracts/` defines authoritative objects and constraints.
 - `analysis/` records whether contracts have been implemented and which areas are still weak.
 
 Recommended entry points:
 
-- ADR index see [../adr/README.md](../adr/README.md)
-- Coverage matrix see [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
+- ADR index is at [../adr/README.md](../adr/README.md)
+- Coverage matrix is at [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
 ## 5. Maintenance Rules
 
-- Contracts only write specifications, not current completion status.
-- Once fields, state enums, event names, and protocol semantics enter implementation, they must remain authoritative here.
-- If contract changes represent architectural trade-off changes, besides modifying the contract, an ADR should be added.
-- If implementation temporarily differs from contract, record the gap in `analysis/`, do not write temporary status into contracts.
+- Contracts write specifications only, not current completion status.
+- Fields, state enums, event names, and protocol semantics, once in implementation, must remain authoritative here.
+- If a contract change represents an architectural decision change, in addition to modifying the contract, an ADR must be added.
+- If implementation temporarily differs from the contract, record the gap in `analysis/`, do not write temporary state into the contract.

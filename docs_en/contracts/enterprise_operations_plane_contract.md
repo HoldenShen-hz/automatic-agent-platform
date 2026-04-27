@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-phase loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,15 +19,15 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines the enterprise operations plane of the final platform, including environment registry, upgrades, rollback, SLA, support, and incident response.
+This contract defines the enterprise operations plane for the final platform, including environment registry, upgrade, rollback, SLA, support, and incident response.
 
-It answers "how is the platform delivered, upgraded, audited, and monitored in an enterprise environment."
+It answers "how the platform is delivered, upgraded, audited, and monitored in enterprise environments".
 
 ## 2. Goals
 
-- Bring environments, versions, upgrades, and operations actions into the formal control plane.
-- Give enterprise capabilities auditable, recoverable, and supportable delivery models.
-- Elevate operations from a checklist to a platform layer.
+- Bring environments, versions, upgrades, and operations actions into formal control plane.
+- Enable enterprise capabilities to have auditable, recoverable, and supportable delivery modes.
+- Elevate operations from checklist to platform layer.
 
 ## 3. Key Components
 
@@ -55,19 +55,19 @@ It answers "how is the platform delivered, upgraded, audited, and monitored in a
 - `health_status`
 - `managed_by`
 
-## 6. Behavioral Constraints
+## 6. Behavior Constraints
 
 - All upgrades and rollbacks must generate receipts.
 - Enterprise environments must have clear topology, version, and owner information.
-- Support / incident entry points must be able to correlate task, execution, release, and policy evidence.
-- SLA judgments must not rely on manual definitions and must have unified health and event definitions.
-- Environment registry, release bundle, upgrade plan, and rollback receipt must be mutually traceable and must not only retain the last state.
-- Private cloud / on-prem environments that lack certain managed capabilities must explicitly declare degradation matrices rather than implicitly having fewer features.
+- Support / incident entry must be able to associate task, execution, release, and policy evidence.
+- SLA judgment must not rely on human statements; must have unified health and event definitions.
+- Environment registry, release bundle, upgrade plan, and rollback receipt must be mutually traceable; cannot only keep the last state.
+- Private cloud / on-prem environments, if missing some managed capabilities, must explicitly declare degradation matrix, not implicitly having less functionality.
 
 ## 7. Relationship with Existing Documents
 
-- `doc/operations/operations-checklist.md` and phase documents define the current baseline.
-- This contract defines the final enterprise ops as the target state of the platform layer.
+- `doc/operations/operations-checklist.md` and phase documents define current baseline.
+- This contract defines the final enterprise ops as the target state of platform layer.
 - `tenant_and_organization_contract.md` provides environment ownership boundaries.
 
 ## 8. Phased Introduction
@@ -76,7 +76,7 @@ It answers "how is the platform delivered, upgraded, audited, and monitored in a
 
 ## 9. Supplementary Rules
 
-- Support routing distinguishes at minimum: product issues, platform incidents, security incidents, billing issues.
-- On-call policy contains at minimum: primary on-call, backup on-call, escalation path, handover requirements.
+- Support routing at least distinguishes: product issues, platform incidents, security incidents, billing issues.
+- On-call policy at least includes: primary on-call, backup on-call, escalation path, handover requirements.
 - Private cloud / on-prem deployments must clarify which capabilities are available and which depend on cloud service degradation.
 - Any upgrade failure entering rollback must be able to provide environment-level impact scope and tenant-level impact list.

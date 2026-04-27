@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines decision-level cost attribution, automated optimization recommendations, and what-if simulation for `§64`.
+This contract defines decision-level cost attribution, automatic optimization suggestions, and what-if simulation for `§64`.
 
 ## 2. Canonical Objects
 
@@ -11,7 +11,7 @@ This contract defines decision-level cost attribution, automated optimization re
 - `CostSimulationScenario`
 - `CostDashboardSlice`
 
-## 3. `CostAttributionRecord` Minimum Fields
+## 3. CostAttributionRecord Minimum Fields
 
 - `subject_type`
 - `subject_id`
@@ -23,12 +23,12 @@ This contract defines decision-level cost attribution, automated optimization re
 
 ## 4. Rules
 
-- Cost attribution granularity must cover at least task / workflow / agent / model / domain.
-- Optimization recommendations must include benefit estimates, risk explanations, and applicable scope.
+- Cost attribution granularity covers at least task / workflow / agent / model / domain.
+- Optimization recommendations must include benefit estimates, risk descriptions, and applicable scopes.
 - What-if simulation must not directly modify real budget state.
 
 ## 5. Test Requirements
 
 - unit: attribution aggregation, recommendation scoring, simulation
 - integration: cost tracker -> optimizer -> dashboard
-- contract: unattributed costs must not be included in optimization recommendations
+- contract: costs without sources must not be counted into optimization recommendations

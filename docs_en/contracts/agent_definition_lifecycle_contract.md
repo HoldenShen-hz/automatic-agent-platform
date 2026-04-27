@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines `AgentDefinition`, `AgentVersion`, and composite canary release for `§61`.
+This contract defines `AgentDefinition`, `AgentVersion`, and compound canary release for `§61`.
 
 ## 2. Canonical Objects
 
@@ -11,7 +11,7 @@ This contract defines `AgentDefinition`, `AgentVersion`, and composite canary re
 - `AgentRolloutBinding`
 - `AgentRetirementPlan`
 
-## 3. `AgentDefinition` Minimum Fields
+## 3. AgentDefinition Minimum Fields
 
 - `agent_id`
 - `display_name`
@@ -30,7 +30,7 @@ This contract defines `AgentDefinition`, `AgentVersion`, and composite canary re
 - `deprecated`
 - `retired`
 
-## 4. `AgentVersion` Minimum Fields
+## 4. AgentVersion Minimum Fields
 
 - `version_id`
 - `agent_id`

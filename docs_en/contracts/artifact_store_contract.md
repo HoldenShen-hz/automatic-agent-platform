@@ -5,7 +5,7 @@
 
 ## 1. Scope
 
-This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-based outputs.
+This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-based output artifacts.
 
 ## 2. Key Objects
 
@@ -29,12 +29,12 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 - `checksum?`
 - `created_at`
 
-## 4. Behavioral Constraints
+## 4. Behavior Constraints
 
-- Only index and references are stored in DB; large BLOB bodies are not stored.
-- Artifact paths must be stable and reconstructable.
-- Deletion policy must not destroy auditability of completed tasks.
-- Permission checks must be performed when exposing artifacts externally.
+- Only index and reference are saved in DB, not large BLOB bodies.
+- Artifact paths must be stable and reconstructible.
+- Deletion policies must not destroy the auditability of completed tasks.
+- External artifact exposure must go through permission checks.
 
 ## 5. Supplementary Rules
 
@@ -43,19 +43,19 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 Default local development layout:
 
 - `data/artifacts/<task_id>/<artifact_id>/`
-- Metadata uses DB authoritative index as the key
+- Metadata based on DB authoritative index
 
-### 5.2 Object Storage Boundaries
+### 5.2 Object Storage Boundary
 
-- Object storage is responsible for artifact body, not task truth state.
-- `artifact_id`, `storage_key`, `checksum` must be mappable to each other.
+- Object storage is responsible for artifact bodies, not task truth state.
+- `artifact_id`, `storage_key`, `checksum` must be mutually mappable.
 - After migrating to object storage, read interface semantics remain unchanged.
 
 ### 5.3 GC and Cold Storage
 
 - Core artifacts of completed tasks must not be directly deleted within the audit window.
-- Rebuildable or low-value artifacts can enter cold storage or expire deletion.
-- GC must execute according to retention policy and produce logs and audit records.
+- Reconstructible or low-value artifacts can enter cold storage or expire deletion.
+- GC must execute according to retention policy, and generate logs and audit records.
 
 ### 5.4 ArtifactLink / ArtifactBundle
 
@@ -76,8 +76,8 @@ Default local development layout:
 
 Rules:
 
-- Artifacts must be able to chain back to feedback / learning / improvement / rollout / diagnostics and other closed-loop objects through `ref_id`.
-- Publish / preview / governance-related artifacts must not only exist in filesystem paths; they must have structured indexes.
+- Artifacts must be able to trace back to feedback / learning / improvement / rollout / diagnostics and other closed-loop objects through `ref_id`.
+- Publish / preview / governance related artifacts must not exist only in filesystem paths; must have structured index.
 
 ### 5.5 ArtifactPublishService
 

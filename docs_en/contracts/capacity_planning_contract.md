@@ -11,7 +11,7 @@ This contract defines capacity tracking, forecasting models, and what-if capacit
 - `CapacityScenario`
 - `CapacityRecommendation`
 
-## 3. `CapacitySignal` Minimum Fields
+## 3. CapacitySignal Minimum Fields
 
 - `resource_type`
 - `region_id?`
@@ -22,12 +22,12 @@ This contract defines capacity tracking, forecasting models, and what-if capacit
 
 ## 4. Rules
 
-- Capacity forecasts must preserve training window and confidence intervals.
-- What-if simulation must support comparing multiple scale-up / scale-down scenarios.
+- Capacity forecasting must preserve training window and confidence interval.
+- What-if simulation must be able to compare multiple capacity increase / decrease scenarios.
 - Capacity recommendations must consider both cost and SLO risk.
 
 ## 5. Test Requirements
 
 - unit: trend analysis, forecast, scenario simulation
 - integration: runtime metrics -> forecast -> recommendation
-- contract: forecasts without time window must not enter the decision chain
+- contract: forecasts without time windows must not enter decision chain

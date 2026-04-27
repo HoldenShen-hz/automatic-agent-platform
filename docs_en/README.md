@@ -1,6 +1,6 @@
 # Automatic Agent Platform Documentation Portal
 
-`docs_en/` is now organized by "purpose" rather than "historical source"; top-level directories only retain entry points, and scattered top-level overview documents are no longer accumulated.
+`docs_en/` is now organized by "purpose" rather than "historical source". Top-level directories only retain entry points, and scattered top-level overview documents are no longer accumulated.
 
 ## Recommended Reading Order
 
@@ -12,17 +12,17 @@
 
 ## Directory Description
 
-| Directory | Purpose | Source of Truth |
+| Directory | Purpose | Is Authoritative Source |
 | --- | --- | --- |
-| [architecture/](./architecture/README.md) | Platform skeleton, code structure, architecture reference, timing and diagrams | `yes` |
-| [migration/](./migration/README.md) | Migration principles, migration scope | `yes` |
-| [contracts/](./contracts/README.md) | Authoritative contracts, protocols, state machines, object boundaries | `yes` |
-| [adr/](./adr/README.md) | Architecture decision records | `yes` |
-| [governance/](./governance/README.md) | Long-term governance rules, terminology, naming and change rules | `yes` |
-| [guides/](./guides/quickstart.md) | Getting started and authoring guides | `yes` |
-| [operations/](./operations/README.md) | Current execution, validation, operations and maintenance documents | `yes` |
-| [quality/](./quality/README.md) | Testing handbook, release checklist | `yes` |
-| [analysis/](./analysis/README.md) | Coverage matrix, codebase cross-reference analysis and other auxiliary analysis | `no` |
+| [architecture/](./architecture/README.md) | Platform skeleton, code structure, architecture reference, timing and diagrams | `Yes` |
+| [migration/](./migration/README.md) | Migration principles, migration scope | `Yes` |
+| [contracts/](./contracts/README.md) | Authoritative contracts, protocols, state machines, object boundaries | `Yes` |
+| [adr/](./adr/README.md) | Architecture decision records | `Yes` |
+| [governance/](./governance/README.md) | Long-term governance rules, terminology, naming and change rules | `Yes` |
+| [guides/](./guides/quickstart.md) | Getting started and authoring guides | `Yes` |
+| [operations/](./operations/README.md) | Current execution, validation, operations and maintenance documents | `Yes` |
+| [quality/](./quality/README.md) | Testing handbook, release checklist | `Yes` |
+| [analysis/](./analysis/README.md) | Coverage matrix, codebase cross-reference analysis and other auxiliary analysis | `No` |
 
 ## Naming and Numbering Rules
 

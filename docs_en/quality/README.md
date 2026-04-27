@@ -1,6 +1,6 @@
 # Quality
 
-`quality/` consolidates testing and release quality documentation, previously scattered across the root directory.
+`quality/` consolidates testing and release quality documents, preventing them from being scattered across the root directory.
 
 ## File Order
 
@@ -11,5 +11,5 @@
 
 ## Usage Guidelines
 
-- When designing a verification plan, refer to `00`.
-- When performing release sign-off, refer to `01`.
+- When designing a verification plan, refer to `00` first.
+- When conducting release sign-off, refer to `01`.

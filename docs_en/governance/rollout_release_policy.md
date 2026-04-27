@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This governance document regulates the following within the OAPEFLIR 8-stage cognitive loop:
+This governance document governs the following content in the OAPEFLIR eight-stage cognitive cycle:
 
 - **Observe**: Signal collection and governance boundaries
 - **Assess**: Execution assessment and permission governance
@@ -19,44 +19,44 @@ This governance document regulates the following within the OAPEFLIR 8-stage cog
 
 > **Governance Level**: Improve Hub / Rollout
 > **Effective Date**: 2026-04-17
-> **Related ADRs**: [ADR-075 Six-Level Controlled Rollout](../adr/075-controlled-rollout-release.md), [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
+> **Related ADRs**: [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md), [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
 ## 1. Objective
 
 Define complete lifecycle governance rules for ImprovementCandidate from creation to production release, ensuring:
-- Progressive release has clear stage thresholds
+- Gradual release has clear stage thresholds
 - Automatic rollback has measurable trigger conditions
-- Rollout status transitions have complete audit logs
+- Rollout state transitions have complete audit logs
 - Human approval intervenes at key checkpoints
 
-## 2. 6-Level Release Definition
+## 2. Six-Level Release Definition
 
-See [ADR-075 Six-Level Controlled Rollout](../adr/075-controlled-rollout-release.md) for details.
+See [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md) for details.
 
-| Level | Traffic | Autonomy | Approval Requirement |
-|------|--------|---------|---------------------|
+| Level | Traffic | Autonomy Permission | Approval Requirement |
+|------|---------|-------------------|-------------------|
 | L0 | 0% | None | — |
-| L1 | 0% (record) | Shadow | — |
-| L2 | 5% | Parameter adjustment | critical/high require approval |
-| L3 | 25% | Configuration suggestions | All require approval |
+| L1 | 0% (record) | shadow | — |
+| L2 | 5% | Parameter adjustment | critical/high requires approval |
+| L3 | 25% | Configuration suggestions | All requires approval |
 | L4 | 75% | Configuration changes | All must be approved |
-| L5 | 100% | Fully autonomous | Exceptions only |
+| L5 | 100% | Fully autonomous | Exceptions only for escalation |
 
 ## 3. Stage Transition Rules
 
-### 3.1 Promotion Conditions
+### 3.1 Upgrade Conditions
 
 | From | To | Required Conditions | Minimum Duration |
-|----|----|-----|------------|
-| L1 | L2 | Metrics met | 10 minutes |
+|----|-----|---------|------------|
+| L1 | L2 | Metrics meet standards | 10 minutes |
 | L2 | L3 | No rollback triggered | 30 minutes |
 | L3 | L4 | Success rate > 99% | 60 minutes |
 | L4 | L5 | Stable operation | 24 hours |
 
 ### 3.2 Automatic Rollback Conditions
 
-| Metric | Threshold | Window | Trigger Action |
-|--------|-----------|--------|---------------|
+| Metric | Threshold | Window | Triggered Action |
+|------|------|------|---------|
 | Error rate | > 1% | 5 minutes | L4→L3 |
 | P99 latency | > 500ms | 5 minutes | L4→L3 |
 | Success rate | < 99% | 5 minutes | L4→L3 |
@@ -82,13 +82,13 @@ stable_75 (L4) ←→ auto_rollback
       ↓
 stable_100 (L5)
       ↓
-released (no issues for continuous M days)
+released (continuous M days without issues)
 ```
 
-### 4.1 Status Descriptions
+### 4.1 State Descriptions
 
-| Status | Description | Available Operations |
-|--------|-------------|---------------------|
+| State | Description | Executable Operations |
+|------|------|----------|
 | `candidate_created` | New candidate | submit_for_review |
 | `under_review` | Waiting for human approval | approve / reject |
 | `approved` | Approval passed | enable_shadow |
@@ -100,13 +100,13 @@ released (no issues for continuous M days)
 | `stable_100` | Full release | release |
 | `released` | Official release complete | — |
 | `auto_rollback` | Automatic rollback in progress | — |
-| `rolled_back` | Has been rolled back | resubmit |
+| `rolled_back` | Rolled back | resubmit |
 
 ## 5. RolloutScheduler Governance
 
 ```typescript
 interface RolloutScheduler {
-  // Schedule promotion (automatically triggered after time conditions are met)
+  // Schedule upgrade (automatically triggered after time conditions are met)
   schedulePromotion(
     candidateId: string,
     targetLevel: RolloutLevel,
@@ -120,20 +120,20 @@ interface RolloutScheduler {
     targetLevel: RolloutLevel
   ): void;
 
-  // Get active rollouts
+  // Get active Rollouts
   getActiveRollouts(): RolloutRecord[];
 
-  // Get rollout history
+  // Get Rollout history
   getRolloutHistory(candidateId: string): RolloutRecord[];
 }
 ```
 
 ## 6. Audit Requirements
 
-### 6.1 Required Rollout Events to Record
+### 6.1 Rollout Events That Must Be Recorded
 
-| Event | Record Contents |
-|-------|----------------|
+| Event | Record Content |
+|------|---------|
 | `improvement:candidate_created` | candidateId, learningObjectId, priority |
 | `improvement:under_review` | candidateId, submittedBy |
 | `improvement:approved` | candidateId, approvedBy, conditions |
@@ -163,7 +163,7 @@ interface RolloutRecord {
 ### 7.1 Automatic Rollback Flow
 
 ```
-Metric threshold exceeded
+Metric threshold exceeded detection
     ↓
 RolloutScheduler.scheduleRollback()
     ↓
@@ -179,26 +179,26 @@ Wait for human review (confirm within 48 hours)
 ### 7.2 Human Intervention Conditions
 
 | Scenario | Human Confirmation Required |
-|----------|---------------------------|
-| Automatic rollback L2→L1 | Optional (automatic recovery) |
-| Automatic rollback L3→L2 | Recommended for review |
-| Automatic rollback L4→L3 | Must review |
-| Automatic rollback L5→L4 | Must review + approval required before re-promotion |
-| Same candidate rolled back 3 times consecutively | Auto-promotion prohibited; requires human approval |
+|------|----------------|
+| Automatic rollback L2→L1 | Optional (auto-recovery) |
+| Automatic rollback L3→L2 | Review recommended |
+| Automatic rollback L4→L3 | Review required |
+| Automatic rollback L5→L4 | Review required + approval needed before re-upgrade |
+| Same candidate rolled back 3 times consecutively | Auto-upgrade prohibited, human approval required |
 
 ## 8. Capacity and Resource Limits
 
 | Metric | Limit |
-|--------|-------|
-| Active Rollouts at the same time | ≤ 10 |
+|------|------|
+| Active Rollouts at same time | ≤ 10 |
 | Maximum rollback count per candidate | 3 |
-| Wait time after rollback before re-promotion | 24 hours |
-| Maximum L4 duration | 7 days |
-| Maximum new candidates per day | 50 |
+| Wait time after rollback before re-upgrade | 24 hours |
+| L4 maximum duration | 7 days |
+| Daily new candidate limit | 50 |
 
 ## 9. Related Documents
 
-- [ADR-075 Six-Level Controlled Rollout & Rollout State Machine](../adr/075-controlled-rollout-release.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 - [autonomy_boundary_policy.md](./autonomy_boundary_policy.md)
 - [rollout-state-machine.ts](../../src/platform/orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.ts)

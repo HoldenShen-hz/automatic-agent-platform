@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the Region model, cross-region routing, and data residency constraints for `§52`.
+This contract defines Region model, cross-region routing, and data residency constraints for `§52`.
 
 ## 2. Canonical Objects
 
@@ -12,7 +12,7 @@ This contract defines the Region model, cross-region routing, and data residency
 - `CrossRegionRouteDecision`
 - `ReplicationPolicy`
 
-## 3. `RegionDescriptor` Minimum Fields
+## 3. RegionDescriptor Minimum Fields
 
 - `region_id`
 - `country_code`
@@ -20,7 +20,7 @@ This contract defines the Region model, cross-region routing, and data residency
 - `capabilities`
 - `status`
 
-## 4. `CrossRegionRouteDecision` Minimum Fields
+## 4. CrossRegionRouteDecision Minimum Fields
 
 - `selected_region_id`
 - `candidate_regions`
@@ -32,11 +32,11 @@ This contract defines the Region model, cross-region routing, and data residency
 ## 5. Rules
 
 - Data residency takes priority over latency optimization.
-- Cross-border transfers must have explicit policy and audit records.
-- Regions that do not satisfy residency requirements must be excluded from the candidate set.
+- Cross-border transmission must have explicit policy and audit records.
+- Regions not meeting residency requirements must be excluded from candidate set.
 
 ## 6. Test Requirements
 
 - unit: region matching, residency checks, candidate scoring
-- integration: cross-region routing and failover decisions
-- contract: residency-violating requests must not be scheduled to illegal regions
+- integration: cross region routing and failover decision
+- contract: residency violating requests must not be scheduled to illegal region

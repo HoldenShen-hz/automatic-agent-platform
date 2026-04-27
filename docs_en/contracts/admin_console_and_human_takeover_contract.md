@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the administrator console, on-call entry point, and manual fallback takeover capabilities.
+This contract defines administrator console, on-duty entry points, and human fallback takeover capabilities.
 
 Related Documents:
 
@@ -12,8 +12,8 @@ Related Documents:
 
 ## 2. Goals
 
-- Enable production on-call personnel to understand, take over, and mitigate issues.
-- Allow manual repair of execution chains when tasks fail, not just "retry".
+- Enable production on-duty personnel to understand, take over, and mitigate damage.
+- Enable human repair of execution chain when tasks fail, not just "retry".
 - Isolate administrator capabilities from regular user capabilities.
 
 ## 3. Console Minimum Modules
@@ -50,13 +50,13 @@ Related Documents:
 - `ManualOverride`
 - `IncidentContextBundle`
 
-## 6. Security Boundaries
+## 6. Security Boundary
 
 - Human takeover must write audit logs.
 - High-risk takeover actions must pass through Policy Engine again.
 - Regular administrators must not have break-glass permissions by default.
-- Takeover actions must carry tenant / workspace / execution scope; global vague operations are not acceptable.
-- Actions such as manually supplementing artifacts, switching workers, and forcefully ending tasks must preserve before/after state difference evidence.
+- Takeover actions must carry tenant / workspace / execution scope, not global vague operations.
+- Actions like manually supplementing artifacts, switching workers, and forcefully ending tasks must retain before/after state difference evidence.
 
 ## 7. UI Goals
 
@@ -65,11 +65,11 @@ Administrators should be able to see:
 - Current task tree
 - Current execution and lease
 - Recent events
-- Current model, prompt, and policy versions
+- Current model, prompt, policy versions
 - Current OAPEFLIR stage / loop iteration / timeline
-- Current alerts and constraint reasons
-- Current tenant / workspace ownership and capability / entitlement limits
+- Current alerts and restriction reasons
+- Current tenant / workspace ownership and capability / entitlement restrictions
 
-## 8. Conclusion
+## 8. Closure Conclusion
 
-Industrial-grade systems must default to assuming "automation will fail", and provide humans with a safe, auditable, and closable takeover entry point.
+Industrial-grade systems must default to considering "automation will fail" and provide humans with a safe, auditable, closable takeover entry point.

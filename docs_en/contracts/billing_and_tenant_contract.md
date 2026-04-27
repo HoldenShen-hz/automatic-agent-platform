@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR 8-stage loop:
+This contract participates in the following phases of the OAPEFLIR eight-phase loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 ## 1. Scope
 
-This contract defines the minimum object model for metering, quota, billing, plan boundaries, and future multi-tenant isolation.
+This contract defines metering, quotas, billing, plan boundaries, and the minimum object model for future multi-tenant isolation.
 
 ## 2. Key Objects
 
@@ -55,18 +55,18 @@ This contract defines the minimum object model for metering, quota, billing, pla
 - `identity_scope`
 - `policy_scope`
 
-## 6. Behavioral Constraints
+## 6. Behavior Constraints
 
-- Metering, quota, and billing must be traceable to tasks or subjects.
-- Isolation strategies for Pro and Enterprise cannot be distinguished by UI alone.
+- Metering, quotas, and billing must be traceable to tasks or subjects.
+- Pro and Enterprise isolation strategies cannot rely on UI distinction alone.
 - Before multi-tenant design enters implementation, tenant-level storage boundaries and permission boundaries must be clarified.
-- Refunds, reversals, overdue freezes, and capability degradation must be expressed as independent billing facts, and must not directly rewrite historical usage.
+- Refunds, reversals, overdue freezes, and capability downgrades must be expressed as independent accounting facts, not directly rewriting historical usage.
 
 ## 7. Supplementary Rules
 
 ### 7.1 Payment Provider Interface
 
-Payment provider should at least support:
+Payment providers should support at least:
 
 - `create_subscription`
 - `update_plan`
@@ -77,9 +77,9 @@ Payment provider should at least support:
 ### 7.2 Invoices and Refunds
 
 - Invoices, refunds, and reversals must be traceable to `billing_account` and time window.
-- Refunds must not silently modify usage ledger; should be expressed as independent adjustment records.
+- Refunds must not silently rewrite usage ledger; should be expressed as independent adjustment records.
 
 ### 7.3 Enterprise Account Model
 
-- `organization_account` is the Enterprise billing and policy attribution subject.
-- Resource consumption of workspace / project ultimately aggregates to organization-level billing boundary.
+- `organization_account` is the Enterprise billing and policy ownership subject.
+- Resource consumption of workspace / project ultimately aggregates to organization-level accounting boundary.

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines connector abstraction, lifecycle, health check, and Connector SDK boundary for `§57`.
+This contract defines connector abstraction, lifecycle, health check, and Connector SDK boundaries for `§57`.
 
 ## 2. Canonical Objects
 
@@ -12,7 +12,7 @@ This contract defines connector abstraction, lifecycle, health check, and Connec
 - `ConnectorExecutionResult`
 - `ConnectorHealthReport`
 
-## 3. `ConnectorManifest` Minimum Fields
+## 3. ConnectorManifest Minimum Fields
 
 - `connector_id`
 - `provider`
@@ -33,8 +33,8 @@ This contract defines connector abstraction, lifecycle, health check, and Connec
 
 ## 5. Rules
 
-- Connectors must only interact with the platform through the public SDK.
-- Connector credentials, quotas, and network capabilities must be subject to policy / secret management constraints.
+- Connectors can only interact with the platform through public SDK.
+- Connector secrets, quotas, and network capabilities must be constrained by policy / secret management.
 - Connector health check failures must not silently degrade to success.
 
 ## 6. Test Requirements

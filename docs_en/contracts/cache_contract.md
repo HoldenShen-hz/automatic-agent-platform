@@ -2,9 +2,9 @@
 
 ## 1. Scope
 
-This contract defines the authoritative cache objects, tiered storage, invalidation broadcasting, and testing requirements for `src/platform/shared/cache/`.
+This contract defines the authoritative cache objects, tiered storage, invalidation broadcast, and test requirements for `src/platform/shared/cache/`.
 
-Related documents:
+Related Documents:
 
 - `configuration_layers_and_defaults_contract.md`
 - `observability_contract.md`
@@ -46,9 +46,9 @@ interface CacheStore {
 
 Rules:
 
-- `stableHash` must be generated from normalized input; unsorted objects must not be concatenated directly into a key.
-- `tags` are used for bulk invalidation by domain / prompt / workflow / tenant.
-- When `versionToken` is present, consumers must treat it as part of a strong consistency boundary.
+- `stableHash` must be generated from normalized input; unsorted objects must not be directly拼进 key.
+- `tags` are used for batch invalidation by domain / prompt / workflow / tenant.
+- When `versionToken` exists, consumers must treat it as part of a strong consistency boundary.
 
 ## 4. Lifecycle and Invalidation
 
@@ -63,19 +63,19 @@ type InvalidationReason =
 
 Rules:
 
-- Entries must not be served after `expiresAt` has passed.
-- Upon reaching `staleAt`, entries may enter stale-while-revalidate, but callers must explicitly opt in.
-- Changes to prompt, model, policy, domain descriptor, or workflow version must trigger tag-level invalidation.
-- Cache objects carrying sensitive data must not be shared across `tenant` / `workspace` boundaries.
+- Must not continue to hit after `expiresAt` expires.
+- After `staleAt` arrives, can enter stale-while-revalidate, but caller must explicitly allow.
+- Prompt, model, policy, domain descriptor, workflow version changes must trigger tag-level invalidation.
+- Must not share cache objects carrying sensitive data across `tenant` / `workspace`.
 
 ## 5. Observability and Constraints
 
-- At minimum five metrics must be recorded: `hit`, `miss`, `stale_hit`, `write`, `eviction`.
-- The fill order between L1/L2/L3 must be stable; silent drift where a lower tier is hit but the upper tier is not backfilled is prohibited.
-- A cache miss must not alter business result semantics; it may only affect latency and cost.
+- Must record at least five types of metrics: `hit`, `miss`, `stale_hit`, `write`, `eviction`.
+- Fill-back order between L1/L2/L3 must be stable; "lower layer hit but higher layer not fill-back" silent drift is prohibited.
+- Cache miss must not change business result semantics; only affects latency and cost.
 
-## 6. Testing Requirements
+## 6. Test Requirements
 
-- unit: key normalization, TTL/stale semantics, tag invalidation, multi-level backfill.
-- integration: cross-tier invalidation broadcast triggered by prompt/model/workflow changes.
-- contract: different tiers must behave consistently with respect to the `CacheStore` SPI, especially for null values, expiration, and value backfill constraints.
+- unit: key normalization, TTL/stale semantics, tag invalidation, multi-level fill-back.
+- integration: prompt/model/workflow changes trigger cross-layer invalidation broadcast.
+- contract: different tiers must have consistent behavior for `CacheStore` SPI, especially empty value, expiration, and value fill-back constraints.

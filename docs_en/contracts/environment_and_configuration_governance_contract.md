@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+This contract participates in the following phases of the OAPEFLIR eight-phase loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,9 +19,9 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 ## 1. Scope
 
-This contract defines environment layering, configuration center governance, pre-release gates, and configuration change control.
+This contract defines environment layering, configuration center governance, pre-release gate, and configuration change control.
 
-Related documents:
+Related Documents:
 
 - `configuration_layers_and_defaults_contract.md`
 - `environment_readiness_registry_contract.md`
@@ -31,20 +31,20 @@ Related documents:
 
 ## 2. Goals
 
-- Clarify capability boundaries for dev, test, staging, pre-prod, and prod.
-- Give configurations version, approval, diff, rollback, and broadcast capabilities.
-- Make pre-release gates executable at the environment dimension rather than manually judged by experience.
-- Make external environment readiness a queryable registry rather than verbal status.
+- Clarify capability boundaries for dev, test, staging, pre-prod, prod.
+- Enable configuration to have version, approval, diff, rollback, and broadcast capabilities.
+- Make pre-release gate executable at environment dimension, rather than human experience-based judgment.
+- Make external environment readiness a queryable registry, not verbal status.
 
 ## 3. Environment Layering
 
-| Environment | Primary Purpose | Allowed Capabilities |
+| Environment | Primary Use | Allowed Capabilities |
 | --- | --- | --- |
-| `dev` | Local development | Mock provider, debug switches, lenient lint |
+| `dev` | Local development | Mock providers, debug switches, relaxed lint |
 | `test` | Automated testing | Fixtures / VCR, fault injection |
-| `staging` | Integration verification | Near-production configuration, canary validation |
+| `staging` | Integration validation | Near-production configuration, canary validation |
 | `pre-prod` | Pre-release rehearsal | Production model list, migration and rollback validation |
-| `prod` | Production service | Least privilege, formal audit, strict approval |
+| `prod` | Production service | Minimum privilege, formal audit, strict approval |
 
 ## 4. Configuration Center Objects
 
@@ -57,85 +57,85 @@ Related documents:
 
 ## 5. Configuration Governance Rules
 
-- Every configuration change must generate a version number.
+- Each configuration change must generate a version number.
 - Production configuration changes must have approval records.
-- Configuration changes must be diffable and rollbackable.
-- Hot updates must be broadcast to affected components.
-- Feature flag, policy, and prompt bundle effective scopes must be visible.
-- Runtime image / sandbox image / bundled extension tree should also enter version and change governance and must not drift outside configuration governance.
-- Config schema should preferably be generated from authoritative types / protocol schema rather than long-term manually maintained.
-- For configuration read/write, validation, warnings, and schema generation, it is best to share the same source of truth, avoiding divergence between "documentation style" and "runtime parsing."
-- Secret reading interfaces default to returning masked values or equivalent sanitized views and must not expose plaintext secrets to ordinary configuration query surfaces.
-- High-risk configuration objects such as custom provider profiles, model lists, and permission lists should preferably have formal API/registry rather than scattered in command lines or private YAML.
-- Provider/model default context limits, request params, canonical limits, and other metadata should be governed through registry unification rather than independently inferred across multiple entry points.
-- If multi-credential rotation for the same provider is supported, pool strategy, cooldown TTL, reset hints, manual pinning, and disabled state should be included in formal config / registry rather than scattered in provider adapter internal state.
-- Each layer should support at minimum `default.json + <environment>.json` deterministic overlay composition, avoiding "having an environment name but no environment differences."
-- Multi-environment deployments must have machine-readable deployment matrix, summarizing config version, readiness, deployment binding, promotion prerequisite, and target release bundle.
-- Release / deployment config should declare at minimum `config_bundle_ref`, `registry_credential_ref`, `deployment_credential_ref` three types of references; runtime and CLI only propagate refs and must not propagate secret plaintext.
+- Configuration changes must be diffable,rollable.
+- Hot updates must broadcast to affected components.
+- Feature flag, policy, prompt bundle effective scope must be visible.
+- Runtime image / sandbox image / bundled extension tree should also enter version and change governance, not remain outside configuration governance.
+- Config schema should preferably be generated from authoritative types / protocol schema, rather than long-term manually maintained.
+- For configuration read/write, validation, warnings, and schema generation, best to share the same source of truth, avoiding "documentation approach" and "runtime parsing" divergence.
+- Secret read interface by default only returns masked value or equivalent desensitization view; must not expose plaintext secrets to regular configuration query surface.
+- High-risk configuration objects like custom provider profiles, model lists, permission lists should preferably have formal API/registry, rather than scattered in command lines or private YAML.
+- Metadata like provider/model default context limits, request params, canonical limits should be governed through registry, rather than separately inferred at multiple entry points.
+- If supporting multi-credential rotation for the same provider, pool strategy, cooldown TTL, reset hints, manual pinning, and disabled status should be included in formal config / registry, not scattered in provider adapter internal state.
+- Each layer should at least support deterministic overlay composition of `default.json + <environment>.json`, avoiding "environment name exists but no environment difference".
+- Multi-environment deployments must have machine-readable deployment matrix, at least summarizing config version, readiness, deployment binding, promotion prerequisite, and target release bundle.
+- Release / deployment config should at least declare three types of references: `config_bundle_ref`, `registry_credential_ref`, `deployment_credential_ref`; runtime and CLI only propagate refs, not secret plaintext.
 
-## 6. Pre-Release Gates
+## 6. Pre-Release Gate
 
-At minimum automatically check:
+At least automatically check:
 
-- Migration compatibility.
-- Config schema validity.
-- Workflow lint pass.
-- Prompt lint pass.
-- Eval threshold pass.
-- Risk flag state healthy.
-- Environment readiness registry pass.
-- Runtime image provenance / digest pinning pass.
+- migration compatibility
+- config schema validity
+- workflow lint pass
+- prompt lint pass
+- eval threshold pass
+- risk flag state healthy
+- environment readiness registry pass
+- runtime image provenance / digest pinning pass
 
-### 6.1 Runtime Image Governance
+## 6.1 Runtime Image Governance
 
-Industrial-grade environments support at minimum:
+Industrial-grade environments should at least support:
 
-- Multi-stage builds to avoid bringing build toolchain directly into runtime image.
-- Base image digest pinning or equivalent reproducible constraints.
-- Select runtime variant by capability, e.g., minimal runtime, browser runtime, sandbox runtime.
-- Optional dependency capability installed on demand rather than defaulting to bundling all dependencies into the same image.
+- Multi-stage builds, avoiding bringing build toolchain directly into runtime image
+- Base image digest pinning or equivalent reproducible constraints
+- Selecting runtime variant by capability, e.g., minimal runtime, browser runtime, sandbox runtime
+- Optional heavy-dependency capabilities installed on demand, rather than defaulting to打包 all dependencies into the same image
 
 ## 7. Priority Chain
 
 Configuration override order:
 
-1. Secret / secure override
-2. Environment bundle
-3. System config
-4. Division config
-5. Role config
-6. Runtime override
+1. secret / secure override
+2. environment bundle
+3. system config
+4. division config
+5. role config
+6. runtime override
 
 ## 7A. Dynamic Configuration Constraint Override
 
-- Configuration override cannot be unrestricted "last write wins"; explicit override scope must be declared.
-- Distinguish at minimum five constraint layers: `global`, `environment`, `tenant/workspace`, `rollout/cohort`, `break-glass`.
-- High-risk objects such as provider profiles, prompt bundles, policy rules, and feature flags must not be silently overridden by low-trust sources.
-- All overrides must produce logs and audit evidence and be queryable in readiness / doctor views.
-- Unknown override sources, illegal constraint combinations, or conflicting chains must fail-close.
+- Configuration override cannot be unrestricted "last write wins"; must explicitly declare overridable scope.
+- At least distinguish five types of constraint layers: `global`, `environment`, `tenant/workspace`, `rollout/cohort`, `break-glass`.
+- High-risk objects like provider profile, prompt bundle, policy rule, feature flag must not be silently overridden by low-trust sources.
+- All overrides must generate logs and audit evidence, and be queryable in readiness / doctor views.
+- Unknown override sources, illegal constraint combinations, or conflict chains must fail-close.
 
 ## 7.1 SDK / Runtime Compatibility Governance
 
-- If embedded SDK depends on specific CLI / app-server runtime, explicit pin or compatibility window should be declared.
-- Protocol version, runtime version, and schema artifact version should be simultaneously queryable.
-- SDK, CLI, and server must not silently drift from each other and then fail at runtime by accident.
+- Embedded SDKs that depend on specific CLI / app-server runtime should explicitly pin or declare compatibility windows.
+- Protocol version, runtime version, schema artifact version should be simultaneously queryable.
+- Must not let SDK, CLI, server each silently drift then fail at runtime by chance.
 
 ## 7.2 Multi-Environment Deployment Matrix
 
-- `dev -> test -> staging -> pre-prod -> prod` must have explicit promotion order.
-- `staging / pre-prod / prod` default requires environment readiness and deployment binding to be satisfied simultaneously; missing either should fail-close.
-- `staging / pre-prod / prod` also default require complete secret/config injection plan; missing any of `config_bundle_ref`, `registry_credential_ref`, or `deployment_credential_ref` should fail-close.
-- Before target environment release, explicit validation of prerequisite environments' promotion prerequisites should be performed rather than directly skipping levels for deployment.
+- `dev -> test -> staging -> pre-prod -> prod` must have clear promotion sequence.
+- `staging / pre-prod / prod` by default require both environment readiness and deployment binding to be satisfied; missing either should fail-close.
+- `staging / pre-prod / prod` by default also require secret/config injection plan to be complete; missing any of `config_bundle_ref`, `registry_credential_ref`, or `deployment_credential_ref` should fail-close.
+- Before target environment release, should explicitly validate prerequisites from previous environment promotion, rather than directly skipping levels for deployment.
 
-## 8. Conclusion
+## 8. Closure Conclusion
 
-Industrial-grade configuration governance is not "just able to hot-reload."
+Industrial-grade configuration governance is not "just able to hot reload".
 
 It must have:
 
-- Environment isolation.
-- Version control.
-- Approval and diff.
-- Rollback.
-- Effect broadcast.
-- Readiness registry.
+- Environment isolation
+- Version control
+- Approval and diff
+- Rollback
+- Effect broadcast
+- Readiness registry

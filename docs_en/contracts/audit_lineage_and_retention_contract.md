@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR 8-stage loop:
+This contract participates in the following phases of the OAPEFLIR eight-phase loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,7 +19,7 @@ This contract participates in the following stages of the OAPEFLIR 8-stage loop:
 
 ## 1. Scope
 
-This contract defines industrial-grade audit, evidence chain, data retention, and deletion strategy.
+This contract defines industrial-grade auditing, evidence chains, data retention, and deletion strategies.
 
 Related Documents:
 
@@ -29,7 +29,7 @@ Related Documents:
 
 ## 2. Goals
 
-- Enable key behaviors to be traced back to people, systems, versions, and policies.
+- Make key behaviors traceable to people, systems, versions, and policies.
 - Enable enterprises to export evidence chains.
 - Make retention / deletion not just a slogan, but with objects, time limits, and exception rules.
 
@@ -59,7 +59,7 @@ Unified actor model:
 - `webhook`
 - `recovery`
 
-Explanation: `recovery` represents changes automatically triggered by recovery chain (recovery coordinator, stale lease reclamation, reconciliation scans, etc.). The difference from `system` is: `system` is normal system behavior during operation, while `recovery` is system behavior on exception recovery path; the two should be distinguishable in audit and alerting.
+Note: `recovery` represents changes automatically triggered by recovery chain (recovery coordinator, stale lease recycling, reconciliation scanning, etc.). The difference from `system` is: `system` is normal runtime system behavior, `recovery` is system behavior in the exception recovery path. Both should be distinguishable in auditing and alerting.
 
 ## 5. Minimum Audit Fields
 
@@ -78,11 +78,11 @@ Explanation: `recovery` represents changes automatically triggered by recovery c
 
 ## 6. Data Retention Tiering
 
-| Data Type | Minimum Requirement |
+| Data Type | Minimum Requirements |
 | --- | --- |
-| task / execution core records | Longer than business accountability window |
+| task / execution core records | Longer than business recourse window |
 | audit log | Longer than security audit window |
-| artifact | Retained according to business and compliance policy |
+| artifact | Retained per business and compliance policy |
 | PII derived data | Must support deletion SLA |
 | backup | Must have deletion and legal preservation exception rules |
 
@@ -92,36 +92,36 @@ Set retention days by event tier:
 
 | tier | Default Retention | Description |
 | --- | --- | --- |
-| `tier_1` | `null` (never auto-delete) | Key factual events, require long-term traceability |
-| `tier_2` | `14` days | At-least-once events, cleanable after expiration |
+| `tier_1` | `null` (Never auto-delete) | Key factual events, need long-term traceability |
+| `tier_2` | `14` days | At-least-once events, can be cleaned after expiration |
 | `tier_3` | `3` days | Best-effort events, short-cycle cleanup |
 
 Event deletable conditions:
 
-- Retention period for the tier has elapsed
+- The retention period for the belonging tier has expired
 - **AND** associated task has reached terminal state (`done / failed / cancelled`) or task is empty
 
 ### 6.2 Message Retention Policy
 
 - Default retention: `30` days
-- Message types in `preservedMessageTypes` allowlist are never auto-deleted (e.g., `compaction_summary`, `approval_decision`)
+- Messages types in `preservedMessageTypes` whitelist never auto-delete (e.g., `compaction_summary`, `approval_decision`)
 - Message deletable conditions:
   - Created time exceeds retention period
-  - Message type is not in preserved allowlist
-  - **AND** associated session and task have both reached terminal state
+  - Message type not in preserved whitelist
+  - **AND** associated session and task both reached terminal state
 
 ### 6.3 Protection Rules
 
-- All messages of active sessions (non-terminal) are protected, even if associated task has reached terminal state.
-- `CompactionRecord` is never auto-deleted (compression records are key lineage for context reconstruction).
-- Retention policy supports two modes: `dry_run` and `enforced`; `dry_run` only generates reports without executing deletion.
+- All messages of active sessions (non-terminal state) are protected, even if associated task is in terminal state.
+- `CompactionRecord` never auto-deletes (compaction records are key lineage for context reconstruction).
+- Retention policy supports `dry_run` and `enforced` modes: `dry_run` only generates reports without executing deletion.
 
 ## 7. Deletion and Exceptions
 
 - PII deletion requests must have SLA.
-- When legal hold is in effect, associated objects can pause deletion, but must have audit trail.
-- Backup deletion and primary database deletion must be distinguished and explained.
-- Retention policy execution results must generate `ObservabilityRetentionReport`, containing cleanup statistics for each tier and message type.
+- When legal hold is in effect, related objects can pause deletion, but must have audit traces.
+- Backup deletion and primary database deletion must be distinguished.
+- Retention policy execution results must generate `ObservabilityRetentionReport`, including cleanup statistics for each tier and message type.
 
 ## 8. Lineage Relationships
 
@@ -139,19 +139,19 @@ flowchart LR
 
 ## 9. Export Requirements
 
-Production system should support exporting:
+Production systems should support exporting:
 
-- Designated task audit package
-- Designated tenant audit package
-- Designated time window security events
+- Specified task audit package
+- Specified tenant audit package
+- Specified time window security events
 - prompt/model/policy version correspondence
-- Complete feedback -> learning -> improvement -> rollout lineage
+- Complete lineage of feedback -> learning -> improvement -> rollout
 
-## 10. Conclusion
+## 10. Closure Conclusion
 
-Industrial-grade systems must not only "be able to log", but also prove:
+Industrial-grade systems not only need to "log", but also prove:
 
 - Who did it
 - What version was used
 - Why it was allowed
-- Where the data came from and where it flowed
+- Where data came from and where it went

@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This governance document regulates the following within the OAPEFLIR 8-stage cognitive loop:
+This governance document governs the following content in the OAPEFLIR eight-stage cognitive cycle:
 
 - **Observe**: Signal collection and governance boundaries
 - **Assess**: Execution assessment and permission governance
@@ -25,19 +25,19 @@ This governance document regulates the following within the OAPEFLIR 8-stage cog
 - [change_control.md](./change_control.md)
 - [naming_and_directory_conventions.md](./naming_and_directory_conventions.md)
 - [glossary_and_terminology.md](./glossary_and_terminology.md)
-- [autonomy_boundary_policy.md](./autonomy_boundary_policy.md) — AI autonomy boundary (L0-L5)
-- [rollout_release_policy.md](./rollout_release_policy.md) — Controlled release and rollback policy
+- [autonomy_boundary_policy.md](./autonomy_boundary_policy.md) — AI autonomy permission boundaries (L0-L5)
+- [rollout_release_policy.md](./rollout_release_policy.md) — Controlled release and rollback strategy
 
 ## Purpose
 
 - Define source of truth rules.
 - Define document update and conflict resolution rules.
-- Define cross-module boundaries, terminology, directory, and change governance methods.
-- Define unified naming conventions for canonical IDs, business aliases, and naming formats.
-- Define unified meanings for high-frequency specialized terms across core objects, status, events, governance, security, storage, and operations.
+- Define cross-module boundaries, terminology, directory, and change governance approaches.
+- Define unified conventions for canonical IDs, business aliases, and naming formats.
+- Define unified meanings for high-frequency technical terms in core objects, states, events, governance, security, storage, and operations.
 
 ## Writing Rules
 
-- Governance is a long-term rules layer; do not write temporary execution items.
-- If governance rules affect platform behavior, link to corresponding ADRs or contracts.
-- Keep only one master version per rule; avoid multiple forks.
+- Governance is a long-term rules layer; do not write temporary execution matters.
+- If a governance rule affects platform behavior, link to the corresponding ADR or contract.
+- Each rule should have only one master version to avoid multiple forks.
