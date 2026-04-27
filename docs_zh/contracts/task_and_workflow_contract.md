@@ -216,3 +216,12 @@ Phase 1a 中只要求能表达跨任务等待关系，不要求完整 DAG 查询
 - 统一执行单元抽象以下钻文档 `executable_unit_contract.md` 为准。
 - 统一结果封装以下钻文档 `result_envelope_contract.md` 为准。
 - 闭环阶段与状态转换以下钻文档 `runtime_state_machine_contract.md` 为准。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-22: §6A定义 PlanDTO 含 strategy/execution_graph 为"权威交接对象"，架构仅认 PlanGraphBundle；WorkflowState.current_stage 持有OAPEFLIR阶段作权威态违反§13.1。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

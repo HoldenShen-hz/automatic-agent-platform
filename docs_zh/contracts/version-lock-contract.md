@@ -67,3 +67,12 @@
 - 配置发布不得改变 active `HarnessRun` 的 lock。
 - GraphPatch lock 冲突必须按策略拒绝、重校验或重启。
 - artifact hash 变化必须被检测为新版本。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-4: 仅支持3种锁定策略（pinned/floating/range），架构§22.4定义4种含 digest-locked。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

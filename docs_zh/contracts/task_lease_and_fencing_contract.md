@@ -262,3 +262,12 @@ Phase 2+：
 Lease 解决“谁现在可以执行”，fencing token 解决“谁现在可以写结果”。
 
 工业级系统必须同时具备这两层，才能避免重复执行和旧结果覆盖新结果。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-6: 使用已废弃术语 execution_id，架构v4.0统一为 node_run_id。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

@@ -243,3 +243,13 @@ flowchart LR
 Monetization plane 的核心不是“事后计费”，而是让 runtime、权限、配额和账务在执行前后形成闭环。
 
 后续任何收费能力，只要不能接入 usage、entitlement 和 ledger 三条链，就不应被视为正式商业化能力。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-35: 引入BillingLedger/LedgerEntry但架构§18用BudgetLedger/BudgetSettlement为冻结合约(§1.5)，命名碰撞。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-55: UsageEvent.source枚举(runtime/api/gateway/admin)缺tool/model/side_effect，架构§18.1 cost_source含provider_invoice/internal_compute/human_review/storage/egress。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

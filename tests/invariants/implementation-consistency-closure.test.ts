@@ -18,7 +18,7 @@ test("implementation consistency closure registry covers every audit issue id", 
   assert.equal(issueIds.has("T-56"), true);
   assert.equal(issueIds.has("A-37"), true);
   assert.equal(issueIds.has("D-20"), true);
-  assert.equal(records.every((record) => record.status === "closed"), true);
+  assert.equal(records.every((record) => record.status === "fixed"), true);
   assert.equal(records.every((record) => record.evidenceRefs.length > 0), true);
 });
 
@@ -71,21 +71,22 @@ test("ADR audit findings are superseded by concrete ADR files", () => {
   }
 });
 
-test("implementation consistency audit report preserves every deviation row and marks it completed", () => {
+test("implementation consistency audit report preserves every deviation row and marks it fixed with direct evidence", () => {
   const report = readFileSync(
     "docs_zh/reviews/platform-architecture-implementation-consistency-audit.md",
     "utf8",
   );
   const records = expandAuditClosureRecords();
   const issueRows = report.match(/^\| [A-Z]+-\d+\s*\|.*$/gm) ?? [];
-  const completedRows = issueRows.filter((row) => /\|\s*已完成\s*\|/.test(row));
+  const fixedRows = issueRows.filter((row) => /\|\s*已修复\s*\|/.test(row));
 
-  assert.match(report, /实现一致性审计收口报告/);
+  assert.match(report, /实现一致性审计真实修复跟踪报告/);
   assert.match(report, /保留原审计问题明细/);
   assert.match(report, /逐项复核与收口依据索引/);
-  assert.match(report, /238 个问题均已复核为 `已完成`/);
+  assert.match(report, /238 项均已补充直接代码、contract、ADR、spec 或测试证据/);
   assert.equal(issueRows.length, records.length);
-  assert.equal(completedRows.length, records.length);
+  assert.equal(fixedRows.length, records.length);
+  assert.equal(report.includes("待真实修复"), false);
   for (const record of records) {
     assert.match(report, new RegExp(`ImplementationConsistencyClosureRegistry:${record.issueId}(?:\\\\s*\\\\|)?`));
   }

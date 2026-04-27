@@ -1,3 +1,4 @@
+export * as architectureRemediation from "./architecture-remediation.js";
 export * from "./approval-routing/index.js";
 export * from "./compliance-engine/index.js";
 export * from "./delegated-governance/index.js";

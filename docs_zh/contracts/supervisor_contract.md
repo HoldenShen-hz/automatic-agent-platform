@@ -140,3 +140,12 @@ Phase 1a 规则：
 - Supervisor 只能建议 `skip_stage`、`force_loop_exit`、`rollback_improvement`，是否执行仍需走 control-plane / policy 边界。
 - `feedback.negative_spike` 只能作为治理和恢复信号，不能直接等同于候选拒绝或 rollout 回滚。
 - 若 loop 已进入 `release`，Supervisor 的恢复动作必须优先保护 rollout audit 和 evidence 完整性。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-23: AgentRuntimeInstance 携带 current_step_id，架构§5.5说 HarnessStep 仅为语义投影；告警严重度 info/warning/critical 3级 vs 架构SEV1-4。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

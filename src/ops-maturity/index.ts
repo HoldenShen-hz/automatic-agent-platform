@@ -1,3 +1,4 @@
+export * as architectureRemediation from "./architecture-remediation.js";
 export * from "./agent-lifecycle/index.js";
 export * from "./capacity-planner/index.js";
 export * from "./chaos/index.js";

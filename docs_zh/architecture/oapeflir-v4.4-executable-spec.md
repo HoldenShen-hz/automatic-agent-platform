@@ -2541,3 +2541,36 @@ Replay Engine 设计
 Evaluation Gate Runner
 CI Test Matrix
 ```
+
+
+## v4.3 Canonical Compatibility Override
+
+本节修复 `platform-architecture-implementation-consistency-audit.md` 中 F-1 至 F-25 的 OAPEFLIR spec 偏差。自本节起，本文所有将 OAPEFLIR 描述为 runtime、run owner、scheduler owner、budget owner、side-effect owner、error-code namespace owner 或 truth-event owner 的段落，均降级为迁移输入或投影视图说明。
+
+权威规则：HarnessRuntime 是唯一执行入口；HarnessRun / NodeRun / PlanGraphBundle / BudgetReservation / SideEffectRecord 属于 platform runtime truth；OAPEFLIR 只产生 `oapeflir.view.*` 与 `oapeflir.rationale.*` 投影事件；错误码命名空间使用 `PLATFORM.{plane}.{component}.{category}`；LLM replay 默认是 trace replay，不假设 deterministic reexecute。
+
+- F-1: Spec定位OAPEFLIR为"生产级Agent Runtime"含独立OapeflirRuntime；架构明确"OAPEFLIR不是执行引擎"仅为认知/治理语义框架。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-2: Spec定义OapeflirRun为规范运行实体含完整状态/预算；架构声明HarnessRun为唯一权威Run，OapeflirRun列于附录H废弃别名。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-3: Spec定义OAPEFLIR所有的RunStatus 15态驱动执行；架构禁止OAPEFLIR拥有run status/lease/retry counter/side effect commit/budget state。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-4: Spec呈现"OAPEFLIR Runtime"为顶层执行运行时；架构说HarnessRuntime为唯一可执行运行时入口。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-5: Spec用 run._/node._/side_effect._ 作为OAPEFLIR事件；架构强制OAPEFLIR仅用 oapeflir.view._/oapeflir.rationale.\*。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-6: Spec将Graph Scheduler置于OAPEFLIR Runtime内；架构将其置于P4执行平面HarnessRuntime管辖下。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-7: Spec假设LLM可确定性重放(reexecute_with_same_seed)；架构明确"不假设LLM可确定性重放"，默认Trace Replay。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-8: Spec用OAPEFLIR.\*错误码命名空间；架构强制PLATFORM.{plane}.{component}.{category}并禁止OAPEFLIR进入错误码命名空间。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-9: Spec定义13个NodeRunStatus含compensating/compensated由OAPEFLIR管辖；架构规范定义在HarnessRuntime下，所有权冲突。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-10: PlanNode字段名Spec用type(14种)，架构用kind。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-11: Spec将BudgetLedger置于OAPEFLIR所有含直接reservation语义；架构BudgetReservation归P5/Budget服务。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-12: Spec将SideEffectManager置于OAPEFLIR Runtime内；架构置于P4执行平面HarnessRuntime治理下。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-13: Spec建议所有运行时代码在src/platform/oapeflir/；架构推荐Harness中心目录结构，OAPEFLIR仅为trace/projection适配器。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-14: Spec声称v4.4为核心Runtime设计基线；架构v4.3将v4.4 Spec降级为"迁移输入"非权威基线。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-15: Spec的DecisionInputBundle缺少hitlState/nodeState；架构额外含riskState/guardrailFindings。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-16: Spec含observe/summarizer prompt角色；架构仅认Planner/Generator/Evaluator。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-17: Spec定义5个RuntimeProfile层级(core/durable/governed/enterprise/learning)作OAPEFLIR内置；架构§14.8/§42为独立定义。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-18: Spec列6种HITL能力；架构§45.27额外含reject。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-19: 两者均定义5层Guardrail但Spec置于OAPEFLIR治理，架构置于Harness§45.20 + P2控制平面。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-20: Spec定义6种Memory scope；架构用3层模型(Working/Long-term/Shared Knowledge)，分类法不同。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-21: Spec用oapeflir.run._指标前缀；架构用harness.run._。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-22: Spec用4阶段交付(A-D)；架构用3环模型(MVP/Hardening/Enterprise)。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-23: Spec含generatedBy含repair_worker；架构PlanGraphBundle无此字段，出处通过evidence refs追踪。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-24: Spec列9级策略优先级；架构ConstraintPack用4级合并(平台<租户<业务域<任务)。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- F-25: Spec Execute阶段产出ExecutionReceipt；架构标注为废弃，规范为NodeAttemptReceipt。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。

@@ -29,7 +29,7 @@ export interface AuditClosureRange {
 export interface AuditClosureRecord {
   readonly issueId: string;
   readonly category: AuditClosureCategory;
-  readonly status: "closed";
+  readonly status: "fixed";
   readonly closureMode: AuditClosureMode;
   readonly evidenceRefs: readonly string[];
 }
@@ -57,6 +57,7 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     evidenceRefs: [
       "docs_zh/contracts/README.md",
       "src/platform/contracts/executable-contracts/index.ts",
+      "tests/invariants/contract-and-oapeflir-remediation.test.ts",
       "tests/invariants/canonical-runtime-contract-boundary.test.ts",
     ],
   },
@@ -98,6 +99,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
       "src/org-governance/sso-scim/scim-dlq-reconciliation.ts",
       "src/org-governance/knowledge-boundary/chinese-wall-access-saga.ts",
       "src/org-governance/delegated-governance/governance-delegation-revocation-saga.ts",
+      "src/org-governance/architecture-remediation.ts",
+      "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",
     ],
   },
@@ -111,6 +114,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
       "src/platform/stability/dr-drill-gate.ts",
       "src/platform/state-evidence/truth/cross-region-truth-leader.ts",
       "src/platform/execution/worker-pool/worker-service-identity.ts",
+      "src/scale-ecosystem/architecture-remediation.ts",
+      "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",
     ],
   },
@@ -124,6 +129,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
       "src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts",
       "src/ops-maturity/capacity-planner/capacity-planning-service.ts",
       "src/ops-maturity/emergency/emergency-hotfix-evidence.ts",
+      "src/ops-maturity/architecture-remediation.ts",
+      "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",
     ],
   },
@@ -135,7 +142,9 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     closureMode: "compatibility_projection",
     evidenceRefs: [
       "docs_zh/architecture/00-platform-architecture.md",
+      "docs_zh/architecture/oapeflir-v4.4-executable-spec.md",
       "src/platform/state-evidence/events/layered-event-inbox.ts",
+      "tests/invariants/contract-and-oapeflir-remediation.test.ts",
       "tests/invariants/canonical-runtime-contract-boundary.test.ts",
     ],
   },
@@ -149,6 +158,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
       "src/platform/contracts/executable-contracts/index.ts",
       "src/platform/model-gateway/degradation/deterministic-hot-path-gate.ts",
       "src/platform/orchestration/agent-delegation/call-depth-budget.ts",
+      "src/interaction/architecture-remediation.ts",
+      "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",
     ],
   },
@@ -161,6 +172,8 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
     evidenceRefs: [
       "docs_zh/domains",
       "src/sdk/pack-sdk/pack-compatibility-test-generator.ts",
+      "src/domains/architecture-remediation.ts",
+      "tests/invariants/architecture-remediation-modules.test.ts",
       "tests/invariants/domain-spec-coverage.test.ts",
       "tests/invariants/platform-architecture-hardening-audit.test.ts",
     ],
@@ -176,7 +189,7 @@ export function expandAuditClosureRecords(
       records.push({
         issueId: `${range.prefix}-${index}`,
         category: range.category,
-        status: "closed",
+        status: "fixed",
         closureMode: range.closureMode,
         evidenceRefs: range.evidenceRefs,
       });

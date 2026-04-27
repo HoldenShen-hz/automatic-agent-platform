@@ -1,3 +1,4 @@
+export * as architectureRemediation from "./architecture-remediation.js";
 export * from "./business-pack/index.js";
 export * from "./canonical-meta-model/index.js";
 export * from "./domain-baseline-catalog.js";

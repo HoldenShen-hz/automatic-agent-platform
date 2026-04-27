@@ -6,12 +6,14 @@ import {
   listPlatformSurfaceManifests,
   resolveArchitectureReadinessRing,
   resolvePlatformSurfaceManifest,
+  registerPlatformSurfaceCatalog,
   type ArchitectureReadinessRing,
   type PlatformSurfaceManifest,
   type PlatformSurfaceId,
   ARCHITECTURE_READINESS_RINGS,
   PLATFORM_SURFACE_MANIFESTS,
 } from "../../../src/platform/platform-module-catalog.js";
+import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("PLATFORM_SURFACE_MANIFESTS is frozen and has exactly 10 surfaces", () => {
   assert.ok(Object.isFrozen(PLATFORM_SURFACE_MANIFESTS), "PLATFORM_SURFACE_MANIFESTS should be frozen");
@@ -442,4 +444,68 @@ test("listArchitectureReadinessRings returns same frozen array reference", () =>
 
   // Should return the exact same array reference
   assert.strictEqual(rings1, rings2);
+});
+
+// registerPlatformSurfaceCatalog tests
+
+test("registerPlatformSurfaceCatalog registers service in registry", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const manifests = registerPlatformSurfaceCatalog(registry);
+
+    assert.ok(registry.isInitialized("platform.surface-catalog"));
+    assert.equal(manifests.length, 10);
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("registerPlatformSurfaceCatalog returns same service on subsequent calls", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const catalogs1 = registerPlatformSurfaceCatalog(registry);
+    const catalogs2 = registerPlatformSurfaceCatalog(registry);
+
+    assert.strictEqual(catalogs1, catalogs2);
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("registerPlatformSurfaceCatalog works with default registry", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const manifests = registerPlatformSurfaceCatalog();
+
+    assert.ok(manifests.length > 0);
+    assert.equal(manifests.length, 10);
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("registerPlatformSurfaceCatalog returns frozen array", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const manifests = registerPlatformSurfaceCatalog(registry);
+
+    assert.ok(Object.isFrozen(manifests));
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("registerPlatformSurfaceCatalog manifests match PLATFORM_SURFACE_MANIFESTS", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    const manifests = registerPlatformSurfaceCatalog(registry);
+
+    assert.equal(manifests.length, PLATFORM_SURFACE_MANIFESTS.length);
+    for (let i = 0; i < manifests.length; i++) {
+      assert.equal(manifests[i].surfaceId, PLATFORM_SURFACE_MANIFESTS[i].surfaceId);
+      assert.equal(manifests[i].entryModule, PLATFORM_SURFACE_MANIFESTS[i].entryModule);
+    }
+  } finally {
+    await registry.reset();
+  }
 });

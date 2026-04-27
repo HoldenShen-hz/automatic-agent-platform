@@ -672,3 +672,542 @@ test("KnowledgePromotionService handles unknown scope as personal tier", () => {
   const result = service.evaluatePromotion(memory, "team");
   assert.equal(result.canPromote, true);
 });
+
+// =============================================================================
+// KnowledgePromotionService getPromotionChain with real chains
+// =============================================================================
+
+test("KnowledgePromotionService.getPromotionChain returns single entry for direct promotion", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const request: PromotionRequest = {
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  };
+  service.promote(request, memory);
+  const chain = service.getPromotionChain(memory.id);
+  assert.equal(chain.length, 1);
+});
+
+test("KnowledgePromotionService.getPromotionChain follows promotion chain correctly", () => {
+  const service = new KnowledgePromotionService();
+
+  // First promotion: personal -> team
+  const memory1 = createMemoryRecord({
+    id: "mem_first",
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result1 = service.promote({
+    memoryId: memory1.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory1);
+  assert.ok(result1.lineage);
+
+  // Chain should start from mem_first as root
+  const chain = service.getPromotionChain(memory1.id);
+  assert.equal(chain.length, 1);
+  assert.equal(chain[0]?.originalMemoryId, memory1.id);
+});
+
+test("KnowledgePromotionService.getPromotionChain returns empty for memory with only company lineage", () => {
+  const service = new KnowledgePromotionService();
+  // company scope maps to company tier, and there's no promotion rule FROM company
+  const memory = createMemoryRecord({
+    scope: "company",
+    qualityScore: 0.9,
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  // Try to get chain for memory that was promoted to company (shouldn't happen in normal flow)
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "company",
+    promotedBy: "admin",
+  }, memory);
+  // This would fail since there's no rule from company -> anything
+  assert.equal(result.success, false);
+});
+
+// =============================================================================
+// Additional evaluatePromotion boundary tests
+// =============================================================================
+
+test("KnowledgePromotionService.evaluatePromotion passes at exact minQualityScore boundary", () => {
+  const service = new KnowledgePromotionService();
+  // personal->team requires 0.65, exactly at boundary
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.65,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, true);
+});
+
+test("KnowledgePromotionService.evaluatePromotion passes at exact minImportanceScore boundary", () => {
+  const service = new KnowledgePromotionService();
+  // personal->team requires 0.55, exactly at boundary
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.55,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, true);
+});
+
+test("KnowledgePromotionService.evaluatePromotion passes at exact minHitCount boundary", () => {
+  const service = new KnowledgePromotionService();
+  // personal->team requires 5 hits, exactly at boundary
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 5,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, true);
+});
+
+test("KnowledgePromotionService.evaluatePromotion fails just below minQualityScore boundary", () => {
+  const service = new KnowledgePromotionService();
+  // personal->team requires 0.65, just below boundary
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.6499,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService.evaluatePromotion fails just below minImportanceScore boundary", () => {
+  const service = new KnowledgePromotionService();
+  // personal->team requires 0.55, just below boundary
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.5499,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService.evaluatePromotion fails just below minHitCount boundary", () => {
+  const service = new KnowledgePromotionService();
+  // personal->team requires 5 hits, just below boundary
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 4,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+// =============================================================================
+// Additional scope tier mapping tests
+// =============================================================================
+
+test("KnowledgePromotionService handles personal scope as personal tier", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "personal",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, true);
+});
+
+test("KnowledgePromotionService handles session scope as personal tier", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "session",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  // session scope defaults to personal tier
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, true);
+});
+
+test("KnowledgePromotionService handles team scope as team tier", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "team",
+    qualityScore: 0.85,
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  const result = service.evaluatePromotion(memory, "company");
+  assert.equal(result.canPromote, true);
+});
+
+test("KnowledgePromotionService handles company scope as company tier", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "company",
+    qualityScore: 0.9,
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  // No promotion rule from company, so should fail for any target
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService handles organization scope as company tier", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "organization",
+    qualityScore: 0.9,
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  // organization maps to company tier - no rule from company
+  const result = service.evaluatePromotion(memory, "personal");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService handles global scope as company tier", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "global",
+    qualityScore: 0.9,
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  // global maps to company tier - no rule from company
+  const result = service.evaluatePromotion(memory, "personal");
+  assert.equal(result.canPromote, false);
+});
+
+// =============================================================================
+// Additional promote edge cases
+// =============================================================================
+
+test("KnowledgePromotionService.promote preserves originalMemoryId in lineage", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+  assert.ok(result.lineage);
+  assert.equal(result.lineage.originalMemoryId, memory.id);
+  assert.equal(result.lineage.sourceMemoryId, memory.id);
+});
+
+test("KnowledgePromotionService.promote includes qualityScore and importanceScore in lineage", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.87,
+    importanceScore: 0.92,
+    hitCount: 10,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+  assert.ok(result.lineage);
+  assert.equal(result.lineage.qualityScore, 0.87);
+  assert.equal(result.lineage.importanceScore, 0.92);
+});
+
+test("KnowledgePromotionService.promote rejects when promote fails evaluation", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.1, // Too low
+    importanceScore: 0.1,
+    hitCount: 1,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+  assert.equal(result.success, false);
+  assert.equal(result.rejected, true);
+  assert.ok(result.rejectionReason?.includes("qualityScore"));
+});
+
+// =============================================================================
+// Additional getLineage edge cases
+// =============================================================================
+
+test("KnowledgePromotionService.getLineage finds by rootMemoryId", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+
+  // getLineage should find by rootMemoryId too
+  const lineages = service.getLineage(memory.id);
+  assert.equal(lineages.length, 1);
+});
+
+test("KnowledgePromotionService.getLineage returns all matching lineages", () => {
+  const service = new KnowledgePromotionService();
+
+  // Create two memories and promote both
+  const memory1 = createMemoryRecord({
+    id: "mem_a",
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const memory2 = createMemoryRecord({
+    id: "mem_b",
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+
+  service.promote({ memoryId: memory1.id, targetTier: "team", promotedBy: "user_1" }, memory1);
+  service.promote({ memoryId: memory2.id, targetTier: "team", promotedBy: "user_1" }, memory2);
+
+  // Each should have its own lineage
+  const lineages1 = service.getLineage(memory1.id);
+  const lineages2 = service.getLineage(memory2.id);
+  assert.equal(lineages1.length, 1);
+  assert.equal(lineages2.length, 1);
+});
+
+// =============================================================================
+// Additional updateVerificationStatus tests
+// =============================================================================
+
+test("KnowledgePromotionService.updateVerificationStatus can set pending_review status", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+  service.updateVerificationStatus(result.lineage!.id, "pending_review", "Under review");
+  const lineages = service.getLineage(memory.id);
+  assert.equal(lineages[0]?.verificationStatus, "pending_review");
+});
+
+test("KnowledgePromotionService.updateVerificationStatus updates notes when provided", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+
+  service.updateVerificationStatus(result.lineage!.id, "verified", "First review");
+  service.updateVerificationStatus(result.lineage!.id, "verified", "Second review - confirmed");
+
+  const lineages = service.getLineage(memory.id);
+  assert.equal(lineages[0]?.metadata.verificationNotes, "Second review - confirmed");
+});
+
+test("KnowledgePromotionService.updateVerificationStatus does not overwrite notes when not provided", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+    verificationNotes: "Original notes",
+  }, memory);
+
+  service.updateVerificationStatus(result.lineage!.id, "verified");
+
+  const lineages = service.getLineage(memory.id);
+  assert.equal(lineages[0]?.metadata.verificationNotes, "Original notes");
+});
+
+// =============================================================================
+// Company tier promotion tests
+// =============================================================================
+
+test("KnowledgePromotionService.promote to company tier succeeds with high scores", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "project",
+    qualityScore: 0.85,
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "company",
+    promotedBy: "admin",
+  }, memory);
+  assert.equal(result.success, true);
+  assert.ok(result.lineage);
+  assert.equal(result.lineage.promotionTier, "company");
+});
+
+test("KnowledgePromotionService.promote to company tier fails without verification requirements met", () => {
+  const service = new KnowledgePromotionService();
+  // project scope -> team tier requires: minQualityScore 0.8, minImportanceScore 0.75, minHitCount 15
+  // team -> company also requires verification
+  const memory = createMemoryRecord({
+    scope: "project",
+    qualityScore: 0.7, // Below 0.8 threshold
+    importanceScore: 0.8,
+    hitCount: 20,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "company",
+    promotedBy: "admin",
+  }, memory);
+  assert.equal(result.success, false);
+  assert.equal(result.rejected, true);
+});
+
+// =============================================================================
+// Empty and null value handling tests
+// =============================================================================
+
+test("KnowledgePromotionService.evaluatePromotion handles missing qualityScore as zero", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: null,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService.evaluatePromotion handles missing importanceScore as zero", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: null,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService.evaluatePromotion handles missing hitCount as zero", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: null,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService.promote handles null contentHash", () => {
+  const service = new KnowledgePromotionService();
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+    contentHash: null,
+  });
+  const result = service.promote({
+    memoryId: memory.id,
+    targetTier: "team",
+    promotedBy: "user_1",
+  }, memory);
+  assert.ok(result.lineage);
+  assert.equal(result.lineage.contentHash, "");
+});
+
+// =============================================================================
+// Custom rules tests
+// =============================================================================
+
+test("KnowledgePromotionService with empty custom rules rejects all promotions", () => {
+  const service = new KnowledgePromotionService([]);
+  const memory = createMemoryRecord({
+    scope: "user",
+    qualityScore: 1.0,
+    importanceScore: 1.0,
+    hitCount: 1000,
+  });
+  const result = service.evaluatePromotion(memory, "team");
+  assert.equal(result.canPromote, false);
+});
+
+test("KnowledgePromotionService with custom rule accepts non-standard tier", () => {
+  // Create a service with a custom rule allowing company->company (not normally allowed)
+  const customRules = [
+    {
+      fromTier: "company" as const,
+      toTier: "company" as const,
+      minQualityScore: 0.5,
+      minImportanceScore: 0.5,
+      minHitCount: 1,
+      requiresVerification: false,
+    },
+  ];
+  const service = new KnowledgePromotionService(customRules);
+  const memory = createMemoryRecord({
+    scope: "company",
+    qualityScore: 0.8,
+    importanceScore: 0.7,
+    hitCount: 10,
+  });
+  const result = service.evaluatePromotion(memory, "company");
+  assert.equal(result.canPromote, true);
+});

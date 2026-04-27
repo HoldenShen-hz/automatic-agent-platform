@@ -399,3 +399,12 @@ flowchart TD
 Execution plane 的核心不是“把运行挪到多进程”，而是把 execution 权、恢复权和调度权正式建模。
 
 当前平台已有单机 runtime 基线；补齐本 contract 后，后续实现应以“control plane 与 worker plane 分层”作为唯一演进方向。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-14: §8A定义 Plan DTO 含 steps[]+dag 作为P3→P4输入，架构§4.4/§13.6强制 PlanGraphBundle 为唯一P3→P4合约；输出用 DualChannelStepOutput/FeedbackSignal 而非架构的 NodeAttemptReceipt。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

@@ -1,3 +1,4 @@
+export * as architectureRemediation from "./architecture-remediation.js";
 export * from "./autonomy/index.js";
 export * from "./dashboard/index.js";
 export * from "./interaction-baseline-catalog.js";

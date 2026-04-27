@@ -174,3 +174,13 @@
 - ImproveHub 的 `approve_candidate` 只能推进候选状态，不能跳过 guardrail 或直接发布。
 - ReleaseHub 的 `advance_rollout` / `rollback_rollout` 必须引用 rollout record，并写入 release audit。
 - OAPEFLIR 审批超时必须进入 stage timeline，且按 `timeout_policy` 转换成明确的 stage blocked / failed / remain_pending 语义。
+
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- T-9: 缺少架构§31要求的 escalation_chain 和 timeout_auto_action 字段。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-54: 仍用OapeflirStage作为一等stage_ref字段，架构§5.5不变量"oapeflir.\*事件不得作为truth source"。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
