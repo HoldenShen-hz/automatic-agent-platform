@@ -1,5 +1,7 @@
 # Event Registry And Ops Threshold Contract
 
+> **v4.3 兼容说明**：本文件保留为历史事件注册表与运维阈值说明。v4.3 事件分层以 [ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md) 和 [v4_3_event_envelope_contract.md](./v4_3_event_envelope_contract.md) 为准；`platform.*` 是 truth fact，`oapeflir.view.*` / `oapeflir.rationale.*` 只作为 projection。
+
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR 8 阶段的事件注册表，对应 ADR-016/ADR-079/ADR-080。
 > **更新日期**：2026-04-17
 

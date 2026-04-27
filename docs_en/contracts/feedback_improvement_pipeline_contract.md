@@ -12,7 +12,7 @@ This contract defines feedback collection, preprocessing, improvement candidate,
 - `ImprovementReviewDecision`
 - `FeedbackLoopSnapshot`
 
-## 3. `FeedbackSignal` Minimum Fields
+## 3. FeedbackSignal Minimum Fields
 
 - `signal_id`
 - `source_type`
@@ -36,11 +36,11 @@ This contract defines feedback collection, preprocessing, improvement candidate,
 ## 5. Rules
 
 - Feedback signals must be normalized and deduplicated before entering improvement.
-- Automated improvement must not bypass rollout / approval / policy gates.
+- Automatic improvement must not bypass rollout / approval / policy gate.
 - All improvement candidates must be traceable to source signals.
 
 ## 6. Test Requirements
 
 - unit: signal normalization, candidate generation, dedup
 - integration: feedback -> candidate -> rollout review
-- contract: candidates without source signals must not enter the release chain
+- contract: candidates without source signals must not enter release chain

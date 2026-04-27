@@ -7,3 +7,4 @@ export * from "./schema-inventory-service.js";
 export * from "./storage-backend-config.js";
 export * from "./storage-backend-factory.js";
 export * from "./storage-quota-service.js";
+export * from "./v4-3-runtime-repository.js";

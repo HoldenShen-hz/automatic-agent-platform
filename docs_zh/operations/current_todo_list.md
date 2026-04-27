@@ -6,35 +6,37 @@
 
 ### P0 文档冻结
 
-- [ ] 新增 ADR-109 至 ADR-112，冻结 v4.3 契约范围、状态机权威、事件分层与 MVP 三环边界。
-- [ ] 更新 `docs_zh/adr/README.md`，将 ADR-109 至 ADR-112 标为 v4.3 实现入口。
-- [ ] 更新 `docs_zh/contracts/README.md`，新增 `v4.3 Contract Freeze Scope` 分组。
-- [ ] 新增 v4.3 中文 contract 文档，覆盖 `00-platform-architecture.md` 已冻结的 12 个核心契约。
-- [ ] 明确旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` 只能出现在 legacy、deprecated、projection 或历史语境，不再作为新实现入口。
+- [x] 新增 ADR-109 至 ADR-112，冻结 v4.3 契约范围、状态机权威、事件分层与 MVP 三环边界。
+- [x] 更新 `docs_zh/adr/README.md`，将 ADR-109 至 ADR-112 标为 v4.3 实现入口。
+- [x] 更新 `docs_zh/contracts/README.md`，新增 `v4.3 Contract Freeze Scope` 分组。
+- [x] 新增 v4.3 中文 contract 文档，覆盖 `00-platform-architecture.md` 已冻结的 12 个核心契约。
+- [x] 明确旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` 只能出现在 legacy、deprecated、projection 或历史语境，不再作为新实现入口。
 
 ### P1 契约实现
 
-- [ ] 在 `src/platform/contracts/` 建立 v4.3 canonical 类型、schema 与 factory。
-- [ ] 建立 contract naming consistency test，阻止旧名重新进入 canonical 类型导出。
-- [ ] 将 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` 接入 intake contract。
-- [ ] 将 `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` 接入 runtime contract。
-- [ ] 将 `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` 接入治理 contract。
+- [x] 在 `src/platform/contracts/` 建立 v4.3 canonical 类型、schema 与 factory。
+- [x] 建立 contract naming consistency test，阻止旧名重新进入 canonical 类型导出。
+- [x] 将 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` 接入 intake contract。
+- [x] 将 `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` 接入 runtime contract。
+- [x] 将 `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` 接入治理 contract。
 
 ### P2 Runtime MVP
 
-- [ ] 实现 `RuntimeStateMachine.transition(command)`，作为 `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` 状态推进唯一入口。
-- [ ] 实现 `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` 分层，确保 truth projector 只消费 `platform.*`。
-- [ ] 接入 HarnessRuntime MVP 主链：`PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`。
-- [ ] 接入 GraphPatch 安全校验，禁止静默改写已执行节点、已提交副作用或已记录 receipt。
-- [ ] 接入 SideEffect reconciliation / compensation 最小闭环。
+- [x] 实现 `RuntimeStateMachine.transition(command)`，作为 `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` 状态推进唯一入口。
+- [x] 实现 `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` 分层，确保 truth projector 只消费 `platform.*`。
+- [x] 接入 HarnessRuntime MVP 主链：`PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`。
+- [x] 接入 GraphPatch 安全校验，禁止静默改写已执行节点、已提交副作用或已记录 receipt。
+- [x] 接入 SideEffect reconciliation / compensation 最小闭环。
+- [x] 接入 v4.3 runtime repository，验证 truth mutation 与 `platform.*` fact event append 的原子边界。
 
 ### P3 测试门禁
 
-- [ ] 新增 runtime state-machine transition tests。
-- [ ] 新增 event consumer test：truth consumer 不消费 `oapeflir.view.*`。
-- [ ] 新增 GraphPatch safety test。
-- [ ] 新增 budget hard-cap concurrency test。
-- [ ] 新增 HITL responsibility record test。
+- [x] 新增 runtime state-machine transition tests。
+- [x] 新增 event consumer test：truth consumer 不消费 `oapeflir.view.*`。
+- [x] 新增 GraphPatch safety test。
+- [x] 新增 budget hard-cap concurrency test。
+- [x] 新增 HITL responsibility record test。
+- [x] 新增 runtime repository atomic transition/event append test。
 - [ ] 执行 `npm run typecheck`、`npm run test:unit`，再按 runtime/contracts/storage/event 维度补跑 integration tests。
 
 ### P4 后续扩展

@@ -14,4 +14,6 @@ export * from "./execution-plane-bootstrap.js";
 export { executeToolCall, resetToolRegistry } from "./dispatcher/index.js";
 export { HaCoordinatorService } from "./ha/ha-coordinator-service-inner.js";
 export { ExecutionLeaseService } from "./lease/execution-lease-service.js";
+export { RuntimeStateMachine, isTruthConsumerEvent } from "./runtime-state-machine.js";
+export { SideEffectManager } from "./side-effect-manager.js";
 export { TransitionService } from "./state-transition/transition-service.js";

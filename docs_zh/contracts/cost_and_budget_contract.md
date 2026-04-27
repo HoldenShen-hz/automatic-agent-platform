@@ -1,5 +1,7 @@
 # Cost And Budget Contract
 
+> **v4.3 兼容说明**：本文件保留为历史成本与预算说明。v4.3 预算 truth 以 [v4_3_budget_ledger_contract.md](./v4_3_budget_ledger_contract.md) 为准；成本报表、token counter 与 `actual_cost_usd` 只能作为 projection / report 字段。
+
 ---
 
 ## OAPEFLIR 关联

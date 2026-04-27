@@ -1,5 +1,7 @@
 # Execution Plane Contract
 
+> **v4.3 兼容说明**：本文件保留为历史 execution plane 说明。v4.3 P3 -> P4 执行交接以 [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) 为准，P4 状态推进以 [ADR-110](../adr/110-runtime-state-machine-authority.md) 为准；线性 execution / workflow 语义只能作为 legacy projection。
+
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Execute Hub 的执行平面，对应 ADR-016 Execute 阶段和 ADR-079 Feedback Hub。
 > **更新日期**：2026-04-17
 

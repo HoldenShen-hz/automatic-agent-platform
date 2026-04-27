@@ -12,3 +12,4 @@ export * from "./transactional-event-appender.js";
 export * from "./typed-event-bus.js";
 export * from "./typed-event-payloads.js";
 export * from "./typed-event-publisher.js";
+export * from "./v4-3-event-inbox.js";

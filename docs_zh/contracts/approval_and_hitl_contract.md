@@ -1,5 +1,7 @@
 # Approval And HITL Contract
 
+> **v4.3 兼容说明**：本文件保留为历史审批与 HITL 说明。v4.3 裁决和人工责任以 [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md) 为准；旧 approval status 不能单独作为 `HarnessDecision` 或 `HumanResponsibilityRecord` 的替代。
+
 ## 1. 范围
 
 本 contract 定义人工决策升级、审批请求、审批结果回传和运行模式下的行为差异。

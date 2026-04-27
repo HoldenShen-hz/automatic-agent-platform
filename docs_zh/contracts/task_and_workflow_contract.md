@@ -1,5 +1,7 @@
 # Task And Workflow Contract
 
+> **v4.3 兼容说明**：本文件保留为历史 task / workflow 语义说明。v4.3 新实现入口以 [v4_3_task_intake_and_request_contract.md](./v4_3_task_intake_and_request_contract.md)、[v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md)、[v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) 和 [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md) 为准；`WorkflowStep` / `StepOutput` 只作为 legacy / projection 语义。
+
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR 主链任务与 workflow，对应 ADR-016。
 > **更新日期**：2026-04-17
 
