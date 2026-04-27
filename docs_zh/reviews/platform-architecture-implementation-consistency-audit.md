@@ -83,33 +83,33 @@ ADR-112 三环边界已转为可执行 readiness gate：Contract Freeze、Harden
 8. **HarnessRuntime MVP 主链已补齐**：RequestEnvelope admission、RunVersionLock、BudgetAllocator、PlanGraph analyze/schedule、NodeRun、NodeAttemptReceipt、platform events、audit/outbox 已形成 Ring 1 executable chain。
 9. **三环 readiness 已完成**：Enterprise、Multi-Region、Marketplace、Edge、PlatformOps、24 域均已进入 architecture readiness ring evidence。
 
-## 4. 建议优先级
+## 4. 已完成验收记录
 
-### P0：把 v4.3 契约变成真正 executable contract
+### C0：v4.3 executable contract
 
-- 为 `src/platform/contracts/executable-contracts/` 增加 Zod schemas 和 JSON Schema export。（2026-04-27 实现批次 1 已完成最小 executable contract package）
+- 为 `src/platform/contracts/executable-contracts/` 增加 Zod schemas 和 JSON Schema export。（完成）
 - 使用 `src/platform/contracts/executable-contracts/` 作为等价机器验收入口，覆盖 frozen contracts。（完成）
 - 将 GraphPatch、NodeRun、SideEffect、HarnessDecision 的枚举与架构文档重新对齐。（完成）
 
-### P1：补齐 RuntimeStateMachine 的权威边界
+### C1：RuntimeStateMachine 权威边界
 
 - 在 transition 中接入 RunVersionLock、policy guard、budget precondition、side-effect safety、audit append。（完成）
 - 增加 bypass invariant tests：旧 workflow/execution/step 路径不得直接写 v4.3 truth。（完成）
 - 强制执行态 NodeRun transition 必须带 active lease + fencing token。（完成）
 
-### P2：落地 v4.3 物理存储和 repository contract
+### C2：v4.3 物理存储和 repository contract
 
 - 将 §26.6 MVP 表集加入 schema inventory / migration baseline。（完成）
 - 将 `RuntimeTruthRepository` 扩展为 Repository interface + in-memory contract implementation + contract tests。（完成）
 - EventLog / Outbox / Audit 与 truth mutation 建立事务边界。（完成）
 
-### P3：补齐 Graph 与 Harness 主链
+### C3：Graph 与 Harness 主链
 
 - 实现 Graph Normalization、Validation、Risk Propagation、Worst-Path Analysis。（完成）
 - Scheduler decision 写 platform fact event，覆盖 replay consistency。（完成）
 - HarnessRuntime MVP 接入 BudgetReservation、SideEffectManager、HITL basic contract、DecisionInputBundle contract。（完成）
 
-### P4：ADR-112 三环 readiness
+### C4：ADR-112 三环 readiness
 
 - Hardening：replay、recovery、lease/fencing drill、DLQ、diagnostics、evidence bundle readiness 已登记。
 - Usability：NL 入口、HITL Runtime、Dashboard、DomainDescriptor readiness 已登记。
