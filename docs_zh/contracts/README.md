@@ -18,7 +18,35 @@
 2. 再看对应 ADR
 3. 最后进入具体 contract
 
-## 2. 架构章节到 contract 组映射
+## 2. v4.3 Contract Freeze Scope
+
+v4.3 的实现入口以 [ADR-109](../adr/109-v4.3-contract-freeze.md)、[ADR-110](../adr/110-runtime-state-machine-authority.md)、[ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md)、[ADR-112](../adr/112-mvp-ring-implementation-boundary.md) 和下表 contract 为准。
+
+| 冻结契约 | contract 入口 | 架构章节 |
+| --- | --- | --- |
+| `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` | [v4_3_task_intake_and_request_contract.md](./v4_3_task_intake_and_request_contract.md) | `§5` / `§6` / `§39` |
+| `HarnessRun` | [v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md) | `§5` / `§25` / `§45` |
+| `PlanGraphBundle` / `PlanGraph` / `PlanNode` / `PlanEdge` | [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) | `§5` / `§13` / `§45` |
+| `GraphPatch` / `GraphPatchOperation` | [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md) | `§13` / `§58` |
+| `NodeRun` / `NodeAttempt` / `AttemptLineage` | [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md) | `§14` / `§25` / `§45` |
+| `NodeAttemptReceipt` | [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md) | `§14` / `§45` |
+| `SideEffectRecord` / `ReconciliationRecord` / `CompensationRecord` | [v4_3_side_effect_reconciliation_contract.md](./v4_3_side_effect_reconciliation_contract.md) | `§14` / `§25` / `§58` |
+| `BudgetLedger` / `BudgetReservation` / `BudgetSettlement` | [v4_3_budget_ledger_contract.md](./v4_3_budget_ledger_contract.md) | `§18` / `§25` / `§45` |
+| `RunVersionLock` / `ArtifactVersionLockSet` | [v4_3_version_lock_contract.md](./v4_3_version_lock_contract.md) | `§24` / `§25` / `§26` |
+| `DecisionInputBundle` / `HarnessDecision` | [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md) | `§17` / `§21` / `§58` |
+| `HumanResponsibilityRecord` | [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md) | `§21` / `§47` / `§58` |
+| `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent` | [v4_3_event_envelope_contract.md](./v4_3_event_envelope_contract.md) | `§28` / `§58` |
+
+兼容规则：
+
+- `ExecutionPlan` 只允许作为 `PlanGraphBundle` 的 deprecated alias 或迁移说明。
+- `ExecutionReceipt` 只允许作为 `NodeAttemptReceipt` 的 deprecated alias。
+- `ControlDirective` 必须拆分为运行控制语义与业务裁决语义；业务裁决以 `HarnessDecision` 为入口。
+- `StateCommand` / `StateMutationCommand` 只允许作为 `RuntimeStateMachine.transition(command)` 的内部兼容 wrapper。
+- `workflow_run`、`WorkflowStep`、`StepOutput`、旧 `task.*` / `workflow.*` 事件只允许作为 legacy/deprecated/projection/历史语境，不作为 v4.3 新实现入口。
+- `oapeflir.view.*` 与 `oapeflir.rationale.*` 是投影视图事件；truth consumer 只消费 `platform.*`。
+
+## 3. 架构章节到 contract 组映射
 
 | 架构章节 | 主要 ADR | contract 组 |
 | --- | --- | --- |
@@ -37,9 +65,21 @@
 - 原始架构文档未定义 `§34`、`§35`、`§45`、`§58`、`§70`。
 - 覆盖状态见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)。
 
-## 3. 分组索引
+## 4. 分组索引
 
-### 3.1 核心执行与运行时
+### 4.0 v4.3 Contract Freeze
+
+- [v4_3_task_intake_and_request_contract.md](./v4_3_task_intake_and_request_contract.md)
+- [v4_3_harness_run_contract.md](./v4_3_harness_run_contract.md)
+- [v4_3_plan_graph_and_patch_contract.md](./v4_3_plan_graph_and_patch_contract.md)
+- [v4_3_node_run_attempt_receipt_contract.md](./v4_3_node_run_attempt_receipt_contract.md)
+- [v4_3_side_effect_reconciliation_contract.md](./v4_3_side_effect_reconciliation_contract.md)
+- [v4_3_budget_ledger_contract.md](./v4_3_budget_ledger_contract.md)
+- [v4_3_version_lock_contract.md](./v4_3_version_lock_contract.md)
+- [v4_3_decision_and_hitl_contract.md](./v4_3_decision_and_hitl_contract.md)
+- [v4_3_event_envelope_contract.md](./v4_3_event_envelope_contract.md)
+
+### 4.1 核心执行与运行时
 
 - [task_and_workflow_contract.md](./task_and_workflow_contract.md)
 - [executable_unit_contract.md](./executable_unit_contract.md)
@@ -54,7 +94,7 @@
 - [execution_plane_contract.md](./execution_plane_contract.md)
 - [supervisor_contract.md](./supervisor_contract.md)
 
-### 3.2 上下文、错误与平面间协议
+### 4.2 上下文、错误与平面间协议
 
 - [context_propagation_contract.md](./context_propagation_contract.md)
 - [app_error_contract.md](./app_error_contract.md)
@@ -63,7 +103,7 @@
 - [architecture_governance_and_versioning_contract.md](./architecture_governance_and_versioning_contract.md)
 - [project_structure_contract.md](./project_structure_contract.md)
 
-### 3.3 事件、网关与流式输出
+### 4.3 事件、网关与流式输出
 
 - [event_bus_contract.md](./event_bus_contract.md)
 - [typed_event_bus_contract.md](./typed_event_bus_contract.md)
@@ -73,7 +113,7 @@
 - [gateway_streaming_contract.md](./gateway_streaming_contract.md)
 - [message_parts_contract.md](./message_parts_contract.md)
 
-### 3.4 Tool / Skill / Plugin / Provider
+### 4.4 Tool / Skill / Plugin / Provider
 
 - [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md)
 - [tool_and_provider_execution_contract.md](./tool_and_provider_execution_contract.md)
@@ -87,7 +127,7 @@
 - [plugin_spi_contract.md](./plugin_spi_contract.md)
 - [api_surface_contract.md](./api_surface_contract.md)
 
-### 3.5 Prompt、质量、成本与 AI 治理
+### 4.5 Prompt、质量、成本与 AI 治理
 
 - [prompt_engine_spi_contract.md](./prompt_engine_spi_contract.md)
 - [prompt_model_policy_governance_contract.md](./prompt_model_policy_governance_contract.md)
@@ -98,7 +138,7 @@
 - [data_classification_and_prompt_handling_contract.md](./data_classification_and_prompt_handling_contract.md)
 - [memory_decay_and_quality_contract.md](./memory_decay_and_quality_contract.md)
 
-### 3.6 存储、Artifact、观测与恢复
+### 4.6 存储、Artifact、观测与恢复
 
 - [cache_contract.md](./cache_contract.md)
 - [storage_schema_contract.md](./storage_schema_contract.md)
@@ -119,7 +159,7 @@
 - [testing_singleton_reset_contract.md](./testing_singleton_reset_contract.md)
 - [vcr_and_fixture_testing_contract.md](./vcr_and_fixture_testing_contract.md)
 
-### 3.7 安全、审批与企业治理
+### 4.7 安全、审批与企业治理
 
 - [approval_and_hitl_contract.md](./approval_and_hitl_contract.md)
 - [sandbox_and_auth_contract.md](./sandbox_and_auth_contract.md)
@@ -134,7 +174,7 @@
 - [governance_control_plane_contract.md](./governance_control_plane_contract.md)
 - [enterprise_operations_plane_contract.md](./enterprise_operations_plane_contract.md)
 
-### 3.8 配置、环境与平台表面
+### 4.8 配置、环境与平台表面
 
 - [sdk_surface_contract.md](./sdk_surface_contract.md)
 - [configuration_layers_and_defaults_contract.md](./configuration_layers_and_defaults_contract.md)
@@ -150,27 +190,27 @@
 - [data_plane_contract.md](./data_plane_contract.md)
 - [ecosystem_extension_plane_contract.md](./ecosystem_extension_plane_contract.md)
 
-### 3.9 组织与角色
+### 4.9 组织与角色
 
 - [agent_contract.md](./agent_contract.md)
 - [division_definition_contract.md](./division_definition_contract.md)
 - [billing_and_tenant_contract.md](./billing_and_tenant_contract.md)
 
-### 3.10 v2.7 `domains / interaction`
+### 4.10 v2.7 `domains / interaction`
 
 - [domain_descriptor_and_onboarding_contract.md](./domain_descriptor_and_onboarding_contract.md)
 - [nl_entry_and_goal_decomposition_contract.md](./nl_entry_and_goal_decomposition_contract.md)
 - [proactive_agent_and_autonomy_contract.md](./proactive_agent_and_autonomy_contract.md)
 - [dashboard_and_operator_experience_contract.md](./dashboard_and_operator_experience_contract.md)
 
-### 3.11 v2.7 `org-governance`
+### 4.11 v2.7 `org-governance`
 
 - [org_hierarchy_and_dynamic_approval_contract.md](./org_hierarchy_and_dynamic_approval_contract.md)
 - [sso_scim_and_identity_sync_contract.md](./sso_scim_and_identity_sync_contract.md)
 - [knowledge_boundary_and_federated_search_contract.md](./knowledge_boundary_and_federated_search_contract.md)
 - [delegated_governance_contract.md](./delegated_governance_contract.md)
 
-### 3.12 v2.7 `scale-ecosystem`
+### 4.12 v2.7 `scale-ecosystem`
 
 - [cross_region_routing_and_data_residency_contract.md](./cross_region_routing_and_data_residency_contract.md)
 - [quota_preemption_and_fair_scheduling_contract.md](./quota_preemption_and_fair_scheduling_contract.md)
@@ -179,7 +219,7 @@
 - [feedback_improvement_pipeline_contract.md](./feedback_improvement_pipeline_contract.md)
 - [connector_framework_contract.md](./connector_framework_contract.md)
 
-### 3.13 v2.7 `ops-maturity`
+### 4.13 v2.7 `ops-maturity`
 
 - [explainability_and_stage_rationale_contract.md](./explainability_and_stage_rationale_contract.md)
 - [platform_panic_and_resume_contract.md](./platform_panic_and_resume_contract.md)
@@ -193,7 +233,7 @@
 - [multimodal_gateway_contract.md](./multimodal_gateway_contract.md)
 - [platform_ops_agent_contract.md](./platform_ops_agent_contract.md)
 
-## 4. 与 ADR / analysis 的关系
+## 5. 与 ADR / analysis 的关系
 
 - `adr/` 解释为什么做这个 contract。
 - `contracts/` 定义 authoritative 对象与约束。
@@ -204,7 +244,7 @@
 - ADR 索引见 [../adr/README.md](../adr/README.md)
 - 覆盖矩阵见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
-## 5. 维护规则
+## 6. 维护规则
 
 - contract 只写规范，不写当前完成度。
 - 字段、状态枚举、事件名、协议语义一旦进入实现，必须在这里保持 authoritative。

@@ -1,6 +1,51 @@
 # Current Todo List
 
-> 当前整改清单以 [../reviews/architecture-design-vs-implementation-review.md](../reviews/architecture-design-vs-implementation-review.md) 为主索引，并以仓内代码与可运行测试结果做最终对账。
+> 本文件当前以 v4.3 Executable Specification Freeze 为主索引。下方“2026-04-25 全量测试失败清单”保留为历史测试基线，用于回归对账；它不再作为 v4.3 新路线的唯一优先级来源。
+
+## v4.3 Executable Specification Freeze 当前待办
+
+### P0 文档冻结
+
+- [ ] 新增 ADR-109 至 ADR-112，冻结 v4.3 契约范围、状态机权威、事件分层与 MVP 三环边界。
+- [ ] 更新 `docs_zh/adr/README.md`，将 ADR-109 至 ADR-112 标为 v4.3 实现入口。
+- [ ] 更新 `docs_zh/contracts/README.md`，新增 `v4.3 Contract Freeze Scope` 分组。
+- [ ] 新增 v4.3 中文 contract 文档，覆盖 `00-platform-architecture.md` 已冻结的 12 个核心契约。
+- [ ] 明确旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` 只能出现在 legacy、deprecated、projection 或历史语境，不再作为新实现入口。
+
+### P1 契约实现
+
+- [ ] 在 `src/platform/contracts/` 建立 v4.3 canonical 类型、schema 与 factory。
+- [ ] 建立 contract naming consistency test，阻止旧名重新进入 canonical 类型导出。
+- [ ] 将 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` 接入 intake contract。
+- [ ] 将 `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` 接入 runtime contract。
+- [ ] 将 `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` 接入治理 contract。
+
+### P2 Runtime MVP
+
+- [ ] 实现 `RuntimeStateMachine.transition(command)`，作为 `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` 状态推进唯一入口。
+- [ ] 实现 `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` 分层，确保 truth projector 只消费 `platform.*`。
+- [ ] 接入 HarnessRuntime MVP 主链：`PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`。
+- [ ] 接入 GraphPatch 安全校验，禁止静默改写已执行节点、已提交副作用或已记录 receipt。
+- [ ] 接入 SideEffect reconciliation / compensation 最小闭环。
+
+### P3 测试门禁
+
+- [ ] 新增 runtime state-machine transition tests。
+- [ ] 新增 event consumer test：truth consumer 不消费 `oapeflir.view.*`。
+- [ ] 新增 GraphPatch safety test。
+- [ ] 新增 budget hard-cap concurrency test。
+- [ ] 新增 HITL responsibility record test。
+- [ ] 执行 `npm run typecheck`、`npm run test:unit`，再按 runtime/contracts/storage/event 维度补跑 integration tests。
+
+### P4 后续扩展
+
+- [ ] Hardening Ring：补齐 replay、recovery、lease/fencing、DLQ、diagnostics 与 evidence bundle。
+- [ ] Enterprise Ring：组织治理、SSO/SCIM、多租户隔离、跨区域、Marketplace、Edge 与 PlatformOps 继续按架构三环推进。
+- [ ] 24 域与 DomainRecipe 不阻塞 v4.3 Contract Freeze MVP；仅在核心 runtime 语义稳定后进入批量接入。
+
+## 历史测试基线：全量测试失败清单（2026-04-25）
+
+> 以下清单保留为 2026-04-25 的历史失败基线，用于后续对比 v4.3 修复是否扩大或缩小回归面；不删除、不重排。
 
 ## 9. 全量测试失败清单（2026-04-25 更新）
 

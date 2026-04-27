@@ -110,6 +110,10 @@
 | [106](./106-quant-trading-pre-trade-risk-mandatory.md) | Quant Trading Pre Trade Risk Mandatory | Accepted | 2026-04-23 |
 | [107](./107-financial-services-explainable-decisions.md) | Financial Services Explainable Decisions | Accepted | 2026-04-23 |
 | [108](./108-legal-output-attorney-review-mandatory.md) | Legal Output Attorney Review Mandatory | Accepted | 2026-04-23 |
+| [109](./109-v4.3-contract-freeze.md) | v4.3 Contract Freeze | Accepted | 2026-04-27 |
+| [110](./110-runtime-state-machine-authority.md) | Runtime State Machine Authority | Accepted | 2026-04-27 |
+| [111](./111-platform-fact-vs-oapeflir-view-events.md) | Platform Fact vs OAPEFLIR View Events | Accepted | 2026-04-27 |
+| [112](./112-mvp-ring-implementation-boundary.md) | MVP Ring Implementation Boundary | Accepted | 2026-04-27 |
 
 ## 状态说明
 
@@ -123,6 +127,8 @@
 
 - 原始历史文件中存在 `066` 号双占用；为避免破坏既有引用，当前保留该历史编号冲突，并在索引中显式列出。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
+- 新增的 `109-112` 是 v4.3 Contract Freeze 实现入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层，以及 MVP / Hardening / Enterprise 三环边界。
+- `109-112` 通过 supersede 关系约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` 语义；历史 ADR 正文保留，不直接改写。
 
 ## 创建新 ADR
 
