@@ -301,7 +301,7 @@ describe("stable-release-gate comprehensive", () => {
           evidenceRootDir: dir,
           targetStatus: "tenant_gray",
         });
-        assert.equal(gateGateReport.currentStatus, "tenant_gray");
+        assert.equal(gateReport.currentStatus, "tenant_gray");
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
