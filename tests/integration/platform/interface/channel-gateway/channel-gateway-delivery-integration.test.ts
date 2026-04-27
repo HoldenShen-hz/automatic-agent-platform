@@ -132,13 +132,14 @@ test("ChannelGatewayDeliveryService tracks message through full lifecycle", () =
     const success = h.deliveryService.recordDeliverySuccess(message.messageId, 202, "provider-msg-123");
     assert.ok(success != null);
     assert.equal(success.status, "success");
-    assert.equal((success as any).providerMessageId, "provider-msg-123");
+    assert.ok(success.attemptId.startsWith("dlvatt_"));
 
     // Get receipt
     const receipt = h.deliveryService.getDeliveryReceipt(message.messageId);
     assert.ok(receipt != null);
     assert.equal(receipt.finalStatus, "success");
     assert.equal(receipt.attempts, 1);
+    assert.equal(receipt.providerMessageId, "provider-msg-123");
   } finally {
     h.cleanup();
   }

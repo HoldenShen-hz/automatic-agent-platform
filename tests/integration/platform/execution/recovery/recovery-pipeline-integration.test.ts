@@ -124,7 +124,7 @@ test("recovery pipeline: transitions through stages in order", () => {
   assert.strictEqual(pipeline.getState().currentStage, "validate");
 
   pipeline.transitionTo("completed");
-  assert.strictEqual(pipeline.getState().currentStage, "complete");
+  assert.strictEqual(pipeline.getState().currentStage, "completed");
 });
 
 test("recovery pipeline: handles L1 validation failure with repair", () => {

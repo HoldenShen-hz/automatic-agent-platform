@@ -40,7 +40,7 @@ test("single-task execution persists task, workflow, execution, session, and tie
       assert.equal(cost.taskId, snapshot.task.id);
       assert.equal(cost.executionId, snapshot.execution!.id);
       assert.equal(cost.budgetScope, "task_execution");
-      assert.equal(cost.provider, "anthropic");
+      assert.equal(cost.provider, "minimax");
       assert.ok(cost.costUsd > 0, "cost should be positive");
       assert.deepEqual(
         (JSON.parse(persistedExecution!.allowedToolsJson ?? "[]") as string[]).sort(),

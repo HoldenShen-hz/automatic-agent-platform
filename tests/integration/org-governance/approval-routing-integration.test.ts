@@ -99,7 +99,7 @@ test("approval routing: requires approval for high-risk actions", () => {
   assert.equal(result.allowed, true);
 });
 
-test("approval routing: delegation chain resolves correctly", () => {
+test("approval routing: delegation entries resolve against explicit granted permissions", () => {
   const delegated = new DelegatedGovernanceService([
     {
       delegationId: "del_chain_1",
@@ -130,7 +130,8 @@ test("approval routing: delegation chain resolves correctly", () => {
   const result1 = delegated.resolve("manager", {
     orgNodeId: "dept_eng",
     domainId: "code",
-    capability: "approve",
+    capability: "manage_approvals",
+    permission: "manage_approvals",
   }, nowIso());
 
   assert.equal(result1.allowed, true);
@@ -138,7 +139,8 @@ test("approval routing: delegation chain resolves correctly", () => {
   const result2 = delegated.resolve("team_lead", {
     orgNodeId: "team_platform",
     domainId: "code",
-    capability: "approve",
+    capability: "manage_approvals",
+    permission: "manage_approvals",
   }, nowIso());
 
   assert.equal(result2.allowed, true);

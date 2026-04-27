@@ -148,7 +148,7 @@ test("dispatch reconciliation: handles multiple tickets for same execution", () 
       dispatchAfter: null,
       createdAt: "2026-04-10T10:00:06.000Z",
       claimedAt: null,
-      attempt: 0,
+      attempt: 1,
       leaseId: null,
       consumedAt: null,
       invalidatedAt: null,

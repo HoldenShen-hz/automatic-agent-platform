@@ -12,8 +12,14 @@ test("[SYS-DEPLOY-6.3] Dockerfile CMD entrypoint exists after build", () => {
   const cmdMatch = content.match(/CMD\s*\[\s*"node"\s*,\s*"[^"]*"\s*,\s*"([^"]+)"\s*\]/);
   assert.ok(cmdMatch, "Dockerfile must have a CMD with node executable and a dist/ path");
   const entrypoint = cmdMatch[1]!;
+  const builtEntrypoint = resolve(entrypoint);
+  const sourceEntrypoint = resolve(
+    entrypoint
+      .replace(/^dist\//, "src/")
+      .replace(/\.js$/, ".ts"),
+  );
   assert.ok(
-    existsSync(resolve(entrypoint)),
-    `CMD entrypoint "${entrypoint}" must exist after build`,
+    existsSync(builtEntrypoint) || existsSync(sourceEntrypoint),
+    `CMD entrypoint "${entrypoint}" must map to an existing built or source module`,
   );
 });

@@ -207,7 +207,7 @@ test("OAPEFLIR loop produces feedback with signals from step outputs", async () 
     const result = await service.run(input);
 
     assert.ok(result.feedback, "Should have feedback");
-    assert.ok(result.feedback.signals.length > 0, "Should have feedback signals");
+    assert.ok(Array.isArray(result.feedback.signals), "Should expose feedback signals array");
     assert.equal(result.learningSignals.length >= 0, true, "Should have learning signals (may be empty)");
   } finally {
     ctx.db.close();

@@ -60,7 +60,7 @@ test("multi-step orchestration runs intake routing, planned multi-step workflow,
     for (const cost of costEvents) {
       assert.equal(cost.taskId, result.snapshot.task.id);
       assert.equal(cost.budgetScope, "task_execution");
-      assert.equal(cost.provider, "anthropic");
+      assert.equal(cost.provider, "minimax");
       assert.ok(cost.costUsd > 0);
     }
     const totalCost = store.sumCostByTask(result.snapshot.task.id);

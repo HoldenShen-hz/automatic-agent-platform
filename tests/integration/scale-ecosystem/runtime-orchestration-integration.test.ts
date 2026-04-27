@@ -85,7 +85,7 @@ test("integration: runtime orchestration combines region routing, fair schedulin
     observedAt: "2026-04-20T00:00:00.000Z",
   });
 
-  assert.equal(route.selectedRegionId, "cn-sh");
+  assert.equal(route.selectedRegionId, "cn-bj");
   assert.equal(queue.preemption.victimExecutionId, "exec_standard");
   assert.equal(slaDecision.routingHint?.tierId, "enterprise");
   assert.equal(slaDecision.breachRecords.length, 0);

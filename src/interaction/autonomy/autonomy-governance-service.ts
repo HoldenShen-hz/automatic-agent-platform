@@ -59,6 +59,8 @@ export class AutonomyGovernanceService {
         || (promotion.shouldPromote && recommendedLevel === nextAutonomyLevel(score.currentAutonomy)),
       reasonCodes: promotion.shouldPromote
         ? promotion.reasonCodes
+        : promotion.reasonCodes.includes("autonomy.promotion_blocked_by_incident")
+          ? promotion.reasonCodes
         : recommendedLevel !== score.currentAutonomy
           ? ["autonomy.level_adjusted_by_trust"]
           : ["autonomy.level_unchanged"],
