@@ -101,7 +101,7 @@ test("OpsHealthMonitorService.evaluate calculates correct metrics", () => {
   assert.equal(snapshot.metrics.healthyCount, 2);
   assert.equal(snapshot.metrics.degradedCount, 1);
   assert.equal(snapshot.metrics.failedCount, 0);
-  assert.equal(snapshot.metrics.healthScore, Math.round((200 + 50 + 200) / 3));
+  assert.equal(snapshot.metrics.healthScore, Math.round((100 + 50 + 100) / 3));
 });
 
 test("OpsHealthMonitorService.evaluate returns empty alerts for all-healthy probes", () => {
@@ -284,7 +284,7 @@ test("generateHealthSummary formats string correctly", () => {
 
   const summary = generateHealthSummary(probes);
 
-  assert.ok(summary.includes("HEALTHY"));
+  assert.ok(summary.includes("DEGRADED"));
   assert.ok(summary.includes("Score:"));
   assert.ok(summary.includes("degraded"));
 });

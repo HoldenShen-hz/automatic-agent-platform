@@ -153,17 +153,17 @@ export function generateHealthSummary(probes: readonly OpsHealthProbe[]): string
   const status = summarizeOpsHealth(probes);
 
   const parts: string[] = [
-    `Overall: \${status.toUpperCase()}`,
-    `Score: \${metrics.healthScore}/100`,
-    `Components: \${metrics.healthyCount} healthy, \${metrics.degradedCount} degraded, \${metrics.failedCount} failed`,
+    `Overall: ${status.toUpperCase()}`,
+    `Score: ${metrics.healthScore}/100`,
+    `Components: ${metrics.healthyCount} healthy, ${metrics.degradedCount} degraded, ${metrics.failedCount} failed`,
   ];
 
   if (metrics.averageLatencyMs != null) {
-    parts.push(`Avg latency: \${metrics.averageLatencyMs}ms`);
+    parts.push(`Avg latency: ${metrics.averageLatencyMs}ms`);
   }
 
   if (metrics.slowestComponent) {
-    parts.push(`Slowest: \${metrics.slowestComponent}`);
+    parts.push(`Slowest: ${metrics.slowestComponent}`);
   }
 
   return parts.join(" | ");

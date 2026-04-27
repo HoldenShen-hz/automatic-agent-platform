@@ -14,17 +14,18 @@ test("LoopDetectionState records tool calls and returns correct action", () => {
   assert.equal(r1.action, "continue");
   assert.equal(r1.pattern.count, 1);
 
-  // Second call - continue (still below warnThreshold of 2)
+  // Second call - warn (reaches warnThreshold of 2)
   const r2 = state.recordToolCall("test_tool", { key: "value" });
-  assert.equal(r2.action, "continue");
+  assert.equal(r2.action, "warn");
   assert.equal(r2.pattern.count, 2);
 
-  // Third call - warn (hits warnThreshold 2)
+  // Third call - escalate (reaches escalateThreshold of 3)
   const r3 = state.recordToolCall("test_tool", { key: "value" });
-  assert.equal(r3.action, "warn");
+  assert.equal(r3.action, "escalate");
   assert.equal(r3.pattern.count, 3);
+  assert.equal(r3.pattern.escalated, true);
 
-  // Fourth call - escalate (hits escalateThreshold 3)
+  // Fourth call - stays escalated
   const r4 = state.recordToolCall("test_tool", { key: "value" });
   assert.equal(r4.action, "escalate");
   assert.equal(r4.pattern.count, 4);

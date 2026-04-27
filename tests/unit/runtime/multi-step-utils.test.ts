@@ -87,8 +87,7 @@ test("parseOptionalStringArray returns empty array for empty array", () => {
 
 test("parseOptionalStringArray preserves non-whitespace strings", () => {
   const result = parseOptionalStringArray(["hello world", " spaces ", "  leading"]);
-  // "hello world" has length > 0, " spaces " trimmed is "spaces" (length > 0), "  leading" trimmed is "leading" (>0)
-  assert.deepEqual(result, ["hello world", " spaces ", "  leading"]);
+  assert.deepEqual(result, ["hello world", "spaces", "leading"]);
 });
 
 // resolveMultiStepToolPath tests

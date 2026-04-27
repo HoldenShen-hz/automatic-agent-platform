@@ -83,8 +83,8 @@ test("operationsDomainDefinition has correct capabilities", () => {
 });
 
 test("operationsDomainDefinition has correct model preferences", () => {
-  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["incident_response"], "claude-sonnet");
-  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["runbook_execution"], "claude-haiku");
+  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["incident_response"], "MiniMax-M2.7");
+  assert.equal(operationsDomainDefinition.capabilities.modelPreferences["runbook_execution"], "MiniMax-Text-01");
 });
 
 test("operationsDomainDefinition has correct budget limits", () => {

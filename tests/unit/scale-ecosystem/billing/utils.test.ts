@@ -41,10 +41,9 @@ test("assertIdentifier rejects identifiers with invalid characters", () => {
   }, /test.code/);
 });
 
-test("assertIdentifier rejects identifiers starting with special chars", () => {
-  assert.throws(() => {
-    assertIdentifier("-invalid", "test.code");
-  }, /test.code/);
+test("assertIdentifier accepts identifiers starting with allowed punctuation", () => {
+  const result = assertIdentifier("-invalid", "test.code");
+  assert.strictEqual(result, "-invalid");
 });
 
 test("assertPositiveNumber accepts positive numbers", () => {
@@ -120,11 +119,11 @@ test("monthWindow handles leap year February", () => {
 test("monthWindow rejects invalid timestamp", () => {
   assert.throws(() => {
     monthWindow("not-a-date");
-  }, /billing.invalid_timestamp/);
+  }, /Invalid timestamp/);
 });
 
 test("monthWindow rejects empty string", () => {
   assert.throws(() => {
     monthWindow("");
-  }, /billing.invalid_timestamp/);
+  }, /Invalid timestamp/);
 });

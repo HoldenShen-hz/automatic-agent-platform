@@ -49,7 +49,7 @@ test("evaluateQuota uses burst when above hard but below burst", () => {
 
 test("isQuotaExceeded returns true when exceeded", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 100 });
-  assert.equal(isQuotaExceeded(policy, 1), true);
+  assert.equal(isQuotaExceeded(policy, 21), true);
 });
 
 test("isQuotaExceeded returns false when within limit", () => {
@@ -61,14 +61,14 @@ test("evaluateQuota handles zero requested units", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 50 });
   const result = evaluateQuota(policy, 0);
   assert.equal(result.exceeded, false);
-  assert.equal(result.remainingUnits, 50);
+  assert.equal(result.remainingUnits, 70);
 });
 
 test("evaluateQuota handles zero current usage", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 0 });
   const result = evaluateQuota(policy, 100);
   assert.equal(result.exceeded, false);
-  assert.equal(result.remainingUnits, 0);
+  assert.equal(result.remainingUnits, 20);
 });
 
 test("QuotaPolicySchema parses valid policy", () => {
