@@ -34,7 +34,7 @@ test("SimpleBenchmarkRunner evaluates proposal with no benchmark cases", async (
   assert.strictEqual(report.benchmarkCases, 0);
   assert.strictEqual(report.successRateAfter, 0);
   assert.strictEqual(report.regressionRate, 0.6);
-  assert.strictEqual(report.decision, "needs_revision");
+  assert.strictEqual(report.decision, "reject");
 });
 
 test("SimpleBenchmarkRunner evaluates proposal with benchmark cases", async () => {

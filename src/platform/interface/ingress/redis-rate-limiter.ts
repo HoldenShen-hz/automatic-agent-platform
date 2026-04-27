@@ -127,10 +127,14 @@ export class RedisRateLimiter {
   }
 
   async close(): Promise<void> {
-    if (this.redis.status === "wait" || this.redis.status === "end") {
+    if (this.redis.status === "wait" || this.redis.status === "connecting" || this.redis.status === "end") {
       this.redis.disconnect();
       return;
     }
-    await this.redis.quit();
+    try {
+      await this.redis.quit();
+    } catch {
+      this.redis.disconnect();
+    }
   }
 }

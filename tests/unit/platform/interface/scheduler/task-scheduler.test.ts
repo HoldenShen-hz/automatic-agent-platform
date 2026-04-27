@@ -214,15 +214,18 @@ function createMockAdapter(): MockQueueAdapter & { _jobs: Map<string, MockQueueJ
         job,
         ack: () => {
           job.status = "completed";
+          job.updatedAt = new Date().toISOString();
           job.completedAt = new Date().toISOString();
         },
         nack: (error?: string) => {
-          job.lastError = error ?? null;
           if (job.attempts >= job.maxAttempts) {
             job.status = "dead_letter";
+            job.lastError = error ?? "max_attempts_exceeded";
           } else {
             job.status = "waiting";
+            job.lastError = error ?? null;
           }
+          job.updatedAt = new Date().toISOString();
         },
       };
     },
@@ -575,7 +578,7 @@ test("Mock queue adapter purge removes old completed jobs", () => {
   const d = adapter.dequeue("test_queue");
   d?.ack();
 
-  const purged = adapter.purge("test_queue", new Date().toISOString());
+  const purged = adapter.purge("test_queue", new Date(Date.now() + 1).toISOString());
   assert.equal(purged, 1);
   assert.equal(adapter.listJobs("test_queue", "completed").length, 0);
 });

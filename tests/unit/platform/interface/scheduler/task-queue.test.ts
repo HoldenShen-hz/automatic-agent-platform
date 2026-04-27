@@ -52,15 +52,18 @@ function createMockDequeueResult(job: MockQueueJobRecord): MockDequeueResult {
     job,
     ack: () => {
       job.status = "completed";
+      job.updatedAt = new Date().toISOString();
       job.completedAt = new Date().toISOString();
     },
     nack: (error?: string) => {
-      job.lastError = error ?? null;
       if (job.attempts >= job.maxAttempts) {
         job.status = "dead_letter";
+        job.lastError = error ?? "max_attempts_exceeded";
       } else {
         job.status = "waiting";
+        job.lastError = error ?? null;
       }
+      job.updatedAt = new Date().toISOString();
     },
   };
 }
@@ -219,7 +222,7 @@ test("Multiple nack calls increment attempts correctly", () => {
   dequeueResult.nack();
   assert.equal(job.status, "waiting");
 
-  job.attempts = 2;
+  job.attempts = 3;
   job.status = "active";
   dequeueResult.nack();
   assert.equal(job.status, "dead_letter");

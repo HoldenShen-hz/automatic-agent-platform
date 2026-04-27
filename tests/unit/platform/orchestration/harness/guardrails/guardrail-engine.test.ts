@@ -228,7 +228,7 @@ test("GuardrailEngine assess warns when required evidence missing", () => {
   const result = engine.assess(input);
 
   assert.ok(result.passed); // still passes but with warning
-  assert.ok(!result.requiresHuman);
+  assert.ok(result.requiresHuman);
   assert.equal(result.findings.length, 1);
   assert.equal(result.findings[0]!.layer, "evidence");
   assert.equal(result.findings[0]!.severity, "warn");

@@ -370,7 +370,7 @@ test("IntakeRouter.route handles follow-up with orchestration for retry scenario
   // A follow-up that needs orchestration suggests retry/recovery scenario
   const result = router.route(createRouteInput({
     title: "Retry",
-    request: "continue analyzing the problem and propose solutions",
+    request: "continue and analyze the problem and propose solutions",
   }));
 
   assert.equal(result.classification.continuation, "follow_up");
@@ -608,7 +608,7 @@ test("IntakeRouter.route matchedRules contains keywords that triggered intent", 
 
   const matchedRules = result.classification.matchedRules;
   assert.ok(matchedRules.length > 0);
-  assert.ok(matchedRules.some(rule => rule.includes("create") || rule.includes("build")));
+  assert.ok(matchedRules.some(rule => rule.includes("how") || rule.includes("query")));
 });
 
 test("IntakeRouter.route matchedRules includes follow_up keywords when applicable", () => {

@@ -12,13 +12,21 @@ export class ExperienceDistillationService {
       confidence: signal.confidence,
       evidenceRefs: signal.evidenceRefs,
       sourceSignalIds: signal.sourceSignalIds,
-      recommendation:
-        signal.learningType === "recovery_playbook"
-          ? "Persist a recovery playbook for the next similar execution."
-          : "Convert the observed signal into reusable planning guidance.",
+      recommendation: this.buildRecommendation(signal.learningType),
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: Date.now(),
+      createdAt: signal.generatedAt,
     }));
+  }
+
+  private buildRecommendation(learningType: LearningSignal["learningType"]): string {
+    switch (learningType) {
+      case "failure_pattern":
+        return "Capture preventive measures and convert the signal into reusable planning guidance.";
+      case "recovery_playbook":
+        return "Persist a recovery playbook for the next similar execution.";
+      default:
+        return "Convert the observed signal into reusable planning guidance.";
+    }
   }
 }

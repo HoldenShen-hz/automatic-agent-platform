@@ -15,11 +15,16 @@ export interface ExecutionPlaneBootstrap {
 }
 
 export function buildExecutionPlaneBootstrap(): ExecutionPlaneBootstrap {
-  return {
+  const catalog = Object.freeze([...listExecutionCapabilityBaselines()]) as readonly ExecutionCapabilityBaseline[];
+  const registeredServiceIds = Object.freeze([
+    EXECUTION_PLANE_CATALOG_SERVICE_ID,
+    EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
+  ]) as ExecutionPlaneBootstrap["registeredServiceIds"];
+  return Object.freeze({
     planeId: "execution",
-    catalog: listExecutionCapabilityBaselines(),
-    registeredServiceIds: [EXECUTION_PLANE_CATALOG_SERVICE_ID, EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID],
-  };
+    catalog,
+    registeredServiceIds,
+  });
 }
 
 export function registerExecutionPlaneBootstrap(

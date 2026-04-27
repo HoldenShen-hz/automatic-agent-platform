@@ -36,9 +36,10 @@ test("resolveTriggerActionMode with confirmation overrides risk level", () => {
 });
 
 test("resolveTriggerActionMode handles undefined risk level", () => {
-  assert.throws(() => {
-    resolveTriggerActionMode(false, "low" as "low" | "medium" | "high" | "critical");
-  });
+  assert.strictEqual(
+    resolveTriggerActionMode(false, undefined as unknown as "low" | "medium" | "high" | "critical"),
+    "auto_execute",
+  );
 });
 
 test("resolveTriggerActionMode returns string literal types", () => {

@@ -643,7 +643,7 @@ test("CostReportService creates cost reports with resource breakdown", () => {
     submittedBy: "admin",
   });
 
-  assert.ok(report.reportId.startsWith("cr_"), "Should have valid ID");
+  assert.match(report.reportId, /^cost_report_[0-9a-f-]+$/, "Should have valid ID");
   assert.equal(report.tenantId, "tenant_1");
   assert.equal(report.totalCostUsd, 150.50);
   assert.equal(report.resourceCount, 3);

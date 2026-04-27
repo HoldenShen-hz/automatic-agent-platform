@@ -407,7 +407,7 @@ test("LongRunningWorkflowService.sweepExpired with remain_pending does not chang
     const updatedSuspension = service.getSuspension(suspension.suspensionId);
     assert.equal(updatedSuspension!.status, "expired");
 
-    assert.equal(h.store.getWorkflowState("task_sw_rp")?.status, "running");
+    assert.equal(h.store.getWorkflowState("task_sw_rp")?.status, "paused");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

@@ -78,6 +78,7 @@ test("assessPromotion does not promote when below threshold", () => {
     currentAutonomy: "suggestion",
     totalExecutions: 49,
     successfulExecutions: 47,
+    failedExecutions: 2,
     incidents: 0,
   });
   const result = assessPromotion(score);
@@ -120,12 +121,13 @@ test("assessPromotion blocked by failed executions even if metrics would pass", 
   const score = mockTrustScore({
     currentAutonomy: "suggestion",
     totalExecutions: 100,
-    successfulExecutions: 97,
-    failedExecutions: 3,
+    successfulExecutions: 95,
+    failedExecutions: 5,
     incidents: 0,
   });
   const result = assessPromotion(score);
   assert.strictEqual(result.shouldPromote, false);
+  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
 });
 
 test("assessPromotion full_auto does not promote further", () => {
