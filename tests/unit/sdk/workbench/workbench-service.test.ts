@@ -142,7 +142,7 @@ test("SdkWorkbenchService.buildPublishReadiness throws for empty workspace", () 
         packs: [],
         availableContracts: [],
       }),
-    /empty_workspace/,
+    /SDK workbench requires at least one plugin or pack/,
   );
 });
 

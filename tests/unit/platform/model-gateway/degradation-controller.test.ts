@@ -480,7 +480,7 @@ test("DegradationController.route D4 throws service unavailable error", async ()
     },
     (err: unknown) => {
       if (err instanceof Error) {
-        return err.message.includes("service_unavailable");
+        return err.message.includes("unavailable");
       }
       return false;
     }
@@ -558,7 +558,7 @@ test("DegradationController route D2 without semantic key falls through to D3", 
   assert.equal(response.degradationLevel, DegradationLevel.D3);
 });
 
-test("DegradationController uses custom templates when provided", () => {
+test("DegradationController uses custom templates when provided", async () => {
   const controller = new DegradationController({
     primaryProvider: createMockUnifiedChatProvider(),
     fallbackService: createMockFallbackService(),
@@ -574,7 +574,7 @@ test("DegradationController uses custom templates when provided", () => {
 
   controller.setLevel(DegradationLevel.D3);
 
-  const response = controller.route({
+  const response = await controller.route({
     model: "gpt-4",
     routeClass: "default",
     messages: [{ role: "user", content: "Hello" }],

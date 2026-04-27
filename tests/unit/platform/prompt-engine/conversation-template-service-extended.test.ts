@@ -474,7 +474,8 @@ test("ConversationTemplateExecutor calculates progress correctly at boundary", (
   assert.equal(conversation?.progress, 33);
 
   conversation = executor.next(conversation!, "r2");
-  assert.equal(conversation?.progress, 66);
+  // (2/3) * 100 = 66.67, rounds to 67
+  assert.equal(conversation?.progress, 67);
 
   conversation = executor.next(conversation!, "r3");
   assert.equal(conversation?.progress, 100);

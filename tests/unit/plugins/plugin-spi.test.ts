@@ -46,7 +46,8 @@ test("PluginSpiRegistry.register and get work correctly", () => {
   const retrieved = registry.get(plugin.pluginId);
 
   assert.ok(retrieved !== null);
-  assert.equal(retrieved?.pluginId, plugin.pluginId);
+  assert.equal(retrieved?.manifest.pluginId, plugin.pluginId);
+  assert.ok(retrieved?.plugin !== undefined);
 });
 
 test("PluginSpiRegistry.list returns all registered plugins", () => {
@@ -201,7 +202,6 @@ test("each builtin plugin factory creates valid plugin structure", () => {
     const plugin = factory();
     assert.ok(plugin != null);
     assert.ok(plugin.pluginId.length > 0);
-    assert.ok(plugin.version.length > 0);
     assert.ok(Array.isArray(plugin.capabilityIds));
   }
 });

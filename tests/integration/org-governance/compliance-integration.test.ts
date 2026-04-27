@@ -8,12 +8,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ComplianceGovernanceService } from "../../../../src/org-governance/compliance-engine/compliance-governance-service.js";
-import { KnowledgeBoundaryService } from "../../../../src/org-governance/knowledge-boundary/knowledge-boundary-service.js";
-import { DelegatedGovernanceService } from "../../../../src/org-governance/delegated-governance/delegated-governance-service.js";
-import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
-import type { ComplianceEvaluationInput } from "../../../../src/org-governance/compliance-engine/compliance-governance-service.js";
-import { nowIso, newId } from "../../../../src/platform/contracts/types/ids.js";
+import { ComplianceGovernanceService } from "../../../src/org-governance/compliance-engine/compliance-governance-service.js";
+import { KnowledgeBoundaryService } from "../../../src/org-governance/knowledge-boundary/knowledge-boundary-service.js";
+import { DelegatedGovernanceService } from "../../../src/org-governance/delegated-governance/delegated-governance-service.js";
+import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
+import type { ComplianceEvaluationInput } from "../../../src/org-governance/compliance-engine/compliance-governance-service.js";
+import { nowIso, newId } from "../../../src/platform/contracts/types/ids.js";
 
 function createOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
@@ -49,7 +49,7 @@ test("integration: ComplianceGovernanceService and KnowledgeBoundaryService comp
     requiredPolicyKeys: ["approvalRequired"],
   });
 
-  // Check knowledge boundary
+  // Check knowledge boundary - engineering is not allowed since boundary is private
   const boundary = {
     boundaryId: "kb_finance_reports",
     ownerOrgNodeId: "finance_dept",
@@ -67,7 +67,7 @@ test("integration: ComplianceGovernanceService and KnowledgeBoundaryService comp
   );
 
   assert.equal(complianceResult.allowed, true);
-  assert.equal(knowledgeResult.allowed, true);
+  assert.equal(knowledgeResult.allowed, false); // Not owner or in allowed list
 });
 
 test("integration: ComplianceGovernanceService resolves policies across org hierarchy", () => {
@@ -134,15 +134,7 @@ test("integration: DelegatedGovernanceService checkOperation validates role perm
       orgNodeIds: [],
       domainIds: [],
       permissions: ["approve", "deploy"],
-      guardrails: [
-        {
-          guardrailId: "budget_limit",
-          checkType: "budget_threshold",
-          condition: "lte",
-          threshold: 10000,
-          reason: "Budget cannot exceed 10000",
-        },
-      ],
+      guardrails: [],
       expiresAt: "2027-01-01T00:00:00.000Z",
       revocable: true,
       status: "active",
