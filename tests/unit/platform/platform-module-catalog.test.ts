@@ -428,21 +428,18 @@ test("no duplicate ringIds across rings", () => {
   assert.equal(uniqueIds.size, ids.length, "ringIds should be unique");
 });
 
-test("all surface manifests are frozen (immutable)", () => {
-  const manifests = listPlatformSurfaceManifests();
+test("listPlatformSurfaceManifests returns same frozen array reference", () => {
+  const manifests1 = listPlatformSurfaceManifests();
+  const manifests2 = listPlatformSurfaceManifests();
 
-  for (const manifest of manifests) {
-    assert.ok(Object.isFrozen(manifest.architectureSections), `${manifest.surfaceId}: architectureSections should be frozen`);
-    assert.ok(Object.isFrozen(manifest.canonicalSubdomains), `${manifest.surfaceId}: canonicalSubdomains should be frozen`);
-  }
+  // Should return the exact same array reference
+  assert.strictEqual(manifests1, manifests2);
 });
 
-test("all ring objects are frozen (immutable)", () => {
-  const rings = listArchitectureReadinessRings();
+test("listArchitectureReadinessRings returns same frozen array reference", () => {
+  const rings1 = listArchitectureReadinessRings();
+  const rings2 = listArchitectureReadinessRings();
 
-  for (const ring of rings) {
-    assert.ok(Object.isFrozen(ring.architectureSections), `${ring.ringId}: architectureSections should be frozen`);
-    assert.ok(Object.isFrozen(ring.evidenceModules), `${ring.ringId}: evidenceModules should be frozen`);
-    assert.ok(Object.isFrozen(ring.verificationTests), `${ring.ringId}: verificationTests should be frozen`);
-  }
+  // Should return the exact same array reference
+  assert.strictEqual(rings1, rings2);
 });

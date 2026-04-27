@@ -164,10 +164,21 @@ test("evaluateAuthorizationContext allows trusted plugin network_access", () => 
   assert.equal(result.allowed, true);
 });
 
-test("evaluateAuthorizationContext allows network_access without plugin context", () => {
+test("evaluateAuthorizationContext blocks plugin network_access when context is absent", () => {
   const result = evaluateAuthorizationContext({
     principalType: "plugin",
     roles: ["plugin_runtime"],
+    action: "network_access",
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.context_plugin_trust_required");
+});
+
+test("evaluateAuthorizationContext allows non-plugin principal network_access without special context", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "agent",
+    roles: ["agent_runtime"],
     action: "network_access",
   });
 
@@ -242,11 +253,11 @@ test("evaluateAuthorizationContext returns default allow for unrestricted action
   assert.deepEqual(result.matchedRuleRefs, ["context.default_allow"]);
 });
 
-test("evaluateAuthorizationContext respects manualTakeoverActive even in production", () => {
+test("evaluateAuthorizationContext records manualTakeoverActive for non-production-restricted actions", () => {
   const result = evaluateAuthorizationContext({
     principalType: "user",
     roles: ["viewer"],
-    action: "exec_command",
+    action: "invoke_model",
     context: { environment: "production", manualTakeoverActive: true },
   });
 

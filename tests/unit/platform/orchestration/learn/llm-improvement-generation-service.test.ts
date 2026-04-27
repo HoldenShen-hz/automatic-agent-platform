@@ -443,12 +443,9 @@ test("LLMImprovementGenerationService.generateImprovements handles JSON array th
 });
 
 test("LLMImprovementGenerationService.generateImprovements handles malformed JSON in array element", async () => {
+  // Use a manually constructed malformed JSON string since JSON.stringify can't create invalid JSON
   const mockProvider = createMockProvider([{
-    content: JSON.stringify([
-      { learningType: "failure_pattern" },
-      { invalid json },
-      { learningType: "user_correction" },
-    ]),
+    content: '[{ "learningType": "failure_pattern" }, malformed_element, { "learningType": "user_correction" }]',
   }]);
   const service = new LLMImprovementGenerationService({ provider: mockProvider as UnifiedChatProvider });
   const signals = [
@@ -458,5 +455,6 @@ test("LLMImprovementGenerationService.generateImprovements handles malformed JSO
 
   const result = await service.generateImprovements(signals);
 
+  // Should fall back to template generation and return 2 learning objects (one per signal)
   assert.equal(result.length, 2);
 });

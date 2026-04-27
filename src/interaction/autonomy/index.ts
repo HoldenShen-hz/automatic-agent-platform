@@ -83,6 +83,7 @@ export interface AutonomyEvaluationOptions {
   severityBasedDemotion?: boolean;
   minVolumeForPromotion?: number;
   minVolumeForDemotion?: number;
+  highRiskDomainIds?: readonly string[];
 }
 
 const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
@@ -91,6 +92,7 @@ const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
   severityBasedDemotion: true,
   minVolumeForPromotion: 10,
   minVolumeForDemotion: 3,
+  highRiskDomainIds: ["medical", "healthcare", "financial-services", "finance-accounting", "quant-trading", "legal"],
 };
 
 function successRate(score: CapabilityTrustScore): number {
@@ -201,6 +203,18 @@ function decideLevel(
   return "suggestion";
 }
 
+function applyDomainRiskAutonomyCap(
+  domainId: string,
+  level: AutonomyLevel,
+  options: AutonomyEvaluationOptions = DEFAULT_OPTIONS,
+): AutonomyLevel {
+  const highRiskDomainIds = options.highRiskDomainIds ?? DEFAULT_OPTIONS.highRiskDomainIds ?? [];
+  if (level === "full_auto" && highRiskDomainIds.includes(domainId)) {
+    return "semi_auto";
+  }
+  return level;
+}
+
 function lowestLevel(levels: readonly AutonomyLevel[]): AutonomyLevel {
   return [...levels].sort((left, right) => AUTONOMY_LEVEL_ORDER.indexOf(left) - AUTONOMY_LEVEL_ORDER.indexOf(right))[0] ?? "suggestion";
 }
@@ -238,7 +252,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
     const changeEvents: AutonomyChangeEvent[] = [];
     const recalculatedScores = profile.capabilityScores.map((item) => {
       const nextScore = scoreCapability(item);
-      const nextLevel = decideLevel(item, options);
+      const nextLevel = applyDomainRiskAutonomyCap(profile.domainId, decideLevel(item, options), options);
       capabilityLevels[item.capabilityId] = nextLevel;
 
       if (nextLevel !== item.currentAutonomy) {

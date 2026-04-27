@@ -1,8 +1,87 @@
 {
   "domainId": "quant-trading",
+  "name": "Quant Trading",
+  "description": "Quantitative trading workflows with mandatory pre-trade risk controls.",
+  "version": 1,
+  "status": "active",
   "phase": "9b",
   "divisionId": "analytics",
   "latencyTier": "ultra_realtime",
+  "workflows": [
+    {
+      "workflowId": "quant-trading.primary",
+      "name": "Quant Trading Primary Workflow",
+      "triggerConditions": {
+        "domainId": "quant-trading"
+      },
+      "steps": [
+        {
+          "stepName": "pre_trade_risk_check",
+          "toolHints": [
+            "market_data",
+            "risk_calculator"
+          ],
+          "requiresReview": true,
+          "timeoutMs": 30000
+        },
+        {
+          "stepName": "strategy_backtest",
+          "toolHints": [
+            "strategy_backtester"
+          ],
+          "timeoutMs": 120000
+        }
+      ]
+    }
+  ],
+  "toolBundles": [
+    {
+      "bundleId": "quant-trading.tools",
+      "tools": [
+        { "toolName": "market_data", "enabled": true },
+        { "toolName": "strategy_backtester", "enabled": true },
+        { "toolName": "risk_calculator", "enabled": true },
+        { "toolName": "order_execution", "enabled": false }
+      ]
+    }
+  ],
+  "outputContracts": [
+    {
+      "contractId": "quant-trading.pre-trade-risk",
+      "name": "Pre Trade Risk Evidence",
+      "schema": {
+        "required": [
+          "max_drawdown",
+          "pre_trade_risk",
+          "approval_ref"
+        ]
+      },
+      "validationLevel": "strict"
+    }
+  ],
+  "capabilities": {
+    "supportedTaskTypes": [
+      "strategy_backtest",
+      "pre_trade_risk_check"
+    ],
+    "requiredTools": [
+      "market_data",
+      "strategy_backtester",
+      "risk_calculator"
+    ],
+    "optionalTools": [
+      "order_execution"
+    ],
+    "modelPreferences": {
+      "analysis": "high_reasoning",
+      "execution": "deterministic_hot_path"
+    },
+    "budgetLimits": {
+      "maxTokensPerTask": 8000,
+      "maxCostPerTask": 25
+    },
+    "securityLevel": "restricted"
+  },
   "workflowProfile": {
     "workflowId": "quant-trading.primary",
     "rollout": "baseline"

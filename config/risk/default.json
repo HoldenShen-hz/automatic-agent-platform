@@ -1,5 +1,13 @@
 {
   "$schema": "../../../src/platform/contracts/types/schemas/config-schema.ts",
+  "riskCategories": [
+    "operational",
+    "financial",
+    "compliance",
+    "reputational",
+    "safety",
+    "strategic"
+  ],
   "factorWeights": {
     "stepTypeRisk": 3,
     "targetSystemRisk": 4,
