@@ -125,6 +125,9 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract insertRemoteLog(...args: RepoMethodArgs<WorkerRepository, "insertRemoteLog">): RepoMethodResult<WorkerRepository, "insertRemoteLog">;
   public abstract upsertAgentExecutionRecord(...args: RepoMethodArgs<WorkerRepository, "upsertAgentExecutionRecord">): RepoMethodResult<WorkerRepository, "upsertAgentExecutionRecord">;
   public abstract upsertWorkerSnapshot(...args: RepoMethodArgs<WorkerRepository, "upsertWorkerSnapshot">): RepoMethodResult<WorkerRepository, "upsertWorkerSnapshot">;
+  public insertWorkerSnapshot(...args: RepoMethodArgs<WorkerRepository, "upsertWorkerSnapshot">): RepoMethodResult<WorkerRepository, "upsertWorkerSnapshot"> {
+    return this.upsertWorkerSnapshot(...args);
+  }
   public abstract upsertCoordinatorInstanceSnapshot(...args: RepoMethodArgs<WorkerRepository, "upsertCoordinatorInstanceSnapshot">): RepoMethodResult<WorkerRepository, "upsertCoordinatorInstanceSnapshot">;
   public abstract insertWorkerRegistrationChallenge(...args: RepoMethodArgs<WorkerRepository, "insertWorkerRegistrationChallenge">): RepoMethodResult<WorkerRepository, "insertWorkerRegistrationChallenge">;
   public abstract getWorkerRegistrationChallenge(...args: RepoMethodArgs<WorkerRepository, "getWorkerRegistrationChallenge">): NullableRepoMethodResult<WorkerRepository, "getWorkerRegistrationChallenge">;
@@ -156,6 +159,9 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract getActiveExecutionLease(...args: RepoMethodArgs<WorkerRepository, "getActiveExecutionLease">): NullableRepoMethodResult<WorkerRepository, "getActiveExecutionLease">;
   public abstract getLatestExecutionLease(...args: RepoMethodArgs<WorkerRepository, "getLatestExecutionLease">): NullableRepoMethodResult<WorkerRepository, "getLatestExecutionLease">;
   public abstract listExecutionLeases(...args: RepoMethodArgs<WorkerRepository, "listExecutionLeases">): RepoMethodResult<WorkerRepository, "listExecutionLeases">;
+  public listLeasesByExecution(...args: RepoMethodArgs<WorkerRepository, "listExecutionLeases">): RepoMethodResult<WorkerRepository, "listExecutionLeases"> {
+    return this.listExecutionLeases(...args);
+  }
   public abstract listExecutionLeasesByStatuses(...args: RepoMethodArgs<WorkerRepository, "listExecutionLeasesByStatuses">): RepoMethodResult<WorkerRepository, "listExecutionLeasesByStatuses">;
   public abstract listExpiredExecutionLeases(...args: RepoMethodArgs<WorkerRepository, "listExpiredExecutionLeases">): RepoMethodResult<WorkerRepository, "listExpiredExecutionLeases">;
   public abstract getLatestFencingToken(...args: RepoMethodArgs<WorkerRepository, "getLatestFencingToken">): RepoMethodResult<WorkerRepository, "getLatestFencingToken">;

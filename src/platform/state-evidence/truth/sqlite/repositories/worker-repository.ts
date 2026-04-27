@@ -240,6 +240,10 @@ export class WorkerRepository {
     return this.ticketRepo.listExecutionLeases(executionId);
   }
 
+  public listLeasesByExecution(executionId: string): ExecutionLeaseRecord[] {
+    return this.listExecutionLeases(executionId);
+  }
+
   public listExecutionLeasesByStatuses(statuses: ExecutionLeaseRecord["status"][]): ExecutionLeaseRecord[] {
     return this.ticketRepo.listExecutionLeasesByStatuses(statuses);
   }

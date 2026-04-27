@@ -147,7 +147,7 @@ test("E2E: ticket created with correct priority for queued task", () => {
       queueName: "default",
       requiredCapabilitiesJson: "[]",
       dispatchAfter: now,
-      attempt: 1,
+      attempt: 2,
       status: "pending",
       assignedWorkerId: null,
       leaseId: null,

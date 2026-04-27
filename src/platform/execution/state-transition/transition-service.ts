@@ -505,10 +505,13 @@ class TaskTerminalTransitionService {
       input.terminalStatus === "failed" ? input.context.reasonCode : null,
       input.context.occurredAt,
     );
+    const currentWorkflow = this.repository.getWorkflowState(input.taskId);
+    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? (workflowTerminal === "completed" ? 1 : 0);
+
     this.repository.updateWorkflowState(
       input.taskId,
       workflowTerminal,
-      workflowTerminal === "completed" ? 1 : 0,
+      terminalStepIndex,
       input.outputsJson,
       input.context.occurredAt,
     );

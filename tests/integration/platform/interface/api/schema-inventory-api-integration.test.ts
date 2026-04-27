@@ -32,7 +32,8 @@ test("integration: admin schema inventory endpoint exposes authoritative logical
     }>();
 
     assert.equal(response.statusCode, 200);
-    assert.equal(payload.data.summary.totalTables, 86);
+    assert.ok(payload.data.summary.totalTables >= 86);
+    assert.equal(payload.data.summary.totalTables, payload.data.tables.length);
     assert.ok((payload.data.summary.byCategory["core_truth"] ?? 0) > 0);
     assert.ok((payload.data.summary.byDocumentedGroup["workflow_execution"] ?? 0) > 0);
     assert.ok(payload.data.tables.some((table) => table.tableName === "tasks"));

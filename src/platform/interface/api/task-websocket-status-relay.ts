@@ -52,7 +52,7 @@ export class TaskWebSocketStatusRelay {
       const recentEvents = this.store.event
         .listEventsByType("task:status_changed", this.backlogLimit)
         .slice()
-        .reverse();
+        .sort(compareEventsByOccurrence);
 
       for (const event of recentEvents) {
         if (this.seenEventIds.has(event.id)) {
@@ -115,4 +115,12 @@ function safeParsePayload(payloadJson: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function compareEventsByOccurrence(left: EventRecord, right: EventRecord): number {
+  const byTimestamp = left.createdAt.localeCompare(right.createdAt);
+  if (byTimestamp !== 0) {
+    return byTimestamp;
+  }
+  return left.id.localeCompare(right.id);
 }

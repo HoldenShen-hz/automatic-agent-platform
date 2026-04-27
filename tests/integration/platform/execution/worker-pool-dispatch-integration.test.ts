@@ -239,7 +239,7 @@ test("WorkerPool: stale workers are detected by heartbeat age", () => {
       capabilities: ["bash"],
       runningExecutionIds: [],
       maxConcurrency: 1,
-      occurredAt: "2026-04-01T10:10:00.000Z",
+      occurredAt: "2026-04-01T10:11:30.000Z",
     });
 
     const staleWorkers = workers.listStaleWorkers("2026-04-01T10:12:00.000Z", 60 * 1000);

@@ -10,6 +10,7 @@ import { readTrimmedEnv } from "./runtime-env.js";
 export const ENVIRONMENT_NAMES = ["dev", "test", "staging", "pre-prod", "prod"] as const;
 // Valid tenant platform actions
 export const TENANT_ACTIONS = [
+  "list",
   "create_workspace",
   "add_workspace_member",
   "create_organization",

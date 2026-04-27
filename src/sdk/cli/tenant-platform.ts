@@ -71,6 +71,7 @@ const result = withCliStorage((storage) => {
         encryptionPolicy: envConfig.encryptionPolicy ?? "",
         residencyPolicy: envConfig.residencyPolicy,
       });
+    case "list":
     case "topology":
       return service.buildTopologySummary();
     default:
