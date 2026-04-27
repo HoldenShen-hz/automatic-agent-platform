@@ -216,6 +216,25 @@ OAPEFLIR StageRationale: Observe ─→ Assess ─→ PlanGraph
 | Enterprise | Ring 3 完成，用于规模化、多域和多 Region |
 | Future | 目标态预留，不作为当前实现承诺 |
 
+## 1.5 v4.3 Contract Freeze Scope
+
+v4.3 冻结不再新增平台能力，只冻结实现团队必须共同遵守的最小可执行契约。以下契约必须具备 Zod/JSON Schema、状态机、事件清单、Repository API、contract test、replay behavior 和 failure behavior；缺任一项不得进入实现冻结。
+
+| 冻结契约 | 权威章节 |
+| --- | --- |
+| TaskDraft / ConfirmedTaskSpec / RequestEnvelope | §5 / §6 / §39 |
+| HarnessRun | §5 / §25 / §45 |
+| PlanGraphBundle / PlanGraph / PlanNode / PlanEdge | §5 / §13 / §45 |
+| GraphPatch / GraphPatchOperation | §13 / §58 |
+| NodeRun / NodeAttempt / AttemptLineage | §14 / §25 |
+| NodeAttemptReceipt | §5 / §14 / §45 |
+| SideEffectRecord / ReconciliationRecord / CompensationRecord | §14 / §25 / §57 |
+| BudgetLedger / BudgetReservation / BudgetSettlement | §18 / §25 / §26 |
+| RunVersionLock / ArtifactVersionLockSet | §20 / §25 / §29 |
+| DecisionInputBundle / HarnessDecision | §45 / §58 |
+| HumanResponsibilityRecord | §21 / §45 / §47 |
+| EventEnvelope / PlatformFactEvent / OapeflirViewEvent | §28 / §58 |
+
 ---
 
 # 2. 平台根假设与设计目标
@@ -806,8 +825,9 @@ Webhook retry policy：
 要求：
 
 - 使用 outbox pattern 保证 at-least-once
-- consumer 必须幂等（基于 event_id 去重）
+- consumer 必须使用 `event_inbox` 幂等消费（基于 event_id / dedupe_key 去重）
 - 失败事件进入 DLQ
+- projection、webhook、DLQ redrive、external callback consumer 都不得各自手写去重逻辑；必须通过 `EventInbox.consumeOnce` 记录 consumerId、eventId、dedupeKey、processedAt 和 failure reason。
 
 ### 流式推送
 
@@ -877,6 +897,8 @@ standby poller 只能在 lease TTL 过期且 fencing epoch 更新后接管。Pro
 | Phase 3（微服务化） | gRPC + event bus            | 平面间独立部署     |
 
 这保证了从单体到微服务的平滑演进，而不是一开始就要求 18 个服务。
+
+Redis / pub-sub 只能用于 cache、ephemeral queue、leader hint 或低风险通知，不得承载 truth、budget hard cap、side effect commit、approval decision 或 audit evidence。任何 Redis 数据丢失都不得导致 HarnessRun / NodeRun / Budget / SideEffect truth 丢失。
 
 ---
 
@@ -1000,6 +1022,14 @@ Level 3 (保护)     → queue_lag > 60s  → 仅允许 critical workflow + manu
 ```text
 incident-mode > manual_only > no-write > no-external-call > read_only > supervised_auto > full_auto
 ```
+
+ModeScope 优先级固定为：
+
+```text
+platform > region > tenant > domain > run > node
+```
+
+最终执行模式由 scope 优先级与模式严格度共同决定：高优先级 scope 的收紧策略优先生效；同一 scope 内取更严格模式。低优先级 scope 不得放松高优先级 scope 的限制。
 
 自动切换必须声明 `min_sample_size`、`window`、`cooldown_window`、`stable_recovery_window`、`owner` 和 `manual_override`，恢复条件满足前不得反复震荡。
 
@@ -1162,11 +1192,15 @@ sandbox mode · read_only mode · write_limited mode · approval gate · dry_run
 
 分级影响：可否入模型 · 可否外发 · 可否进入知识 · 是否必须审批
 
+DataTaintPropagation 硬规则：任何输出、artifact、memory candidate、tool result 或 summary 的 data_class 不得低于其输入集合中的最高 data_class，除非存在显式脱敏证明、字段级 redaction report 和 reviewer / policy evidence。taint_labels 必须随 DelegationResult、ToolOutput、PromptExecutionRecord、MemoryWriteRequest 和 Explanation artifact 传播。
+
 ## 11.7 插件安全
 
 插件视为不可信扩展。要求：独立进程 · 资源限制 · IPC 边界 · capability 白名单 · 输出校验 · 崩溃隔离 · 可 quarantine · 可热禁用。
 
 供应链安全基线：plugin signing、SBOM required、dependency vulnerability scan、runtime minimum privilege、sandbox egress allowlist、prompt-injection-to-tool-call attack simulation。无签名、无 SBOM 或高危依赖未处置的第三方插件不得进入 production registry。
+
+`PluginTrustStore` 必须声明 trust root、signing key rotation、signature revocation list、security advisory channel 和 quarantine policy。签名密钥泄露、SBOM 高危未修复或 advisory forced patch 触发时，平台必须支持冻结新安装、隔离活跃运行、生成 tenant impact report，并保留只读导出和回滚说明。
 
 Secret lease 规则：checkpoint never stores secret value；resume must request new secret lease；secret lease renewal requires active run + policy recheck；续租失败必须回收凭证并将 NodeRun 转入 awaiting_hitl 或 failed-safe 状态。
 
@@ -1797,7 +1831,9 @@ AttemptLineage 是审计和 replay 的事实来源，不得覆盖、压缩或删
 | admission_locked_config | run admitted 时冻结进 RunVersionLock，运行中不变 |
 | checkpoint_revalidated_config | resume / redrive / checkpoint 恢复时重新校验 |
 | hot_reloadable_config | 可热更新，但不得改变已运行 NodeRun 的语义 |
-| emergency_override_config | 安全紧急覆盖，可突破版本锁，但必须追加 P0 审计和 Evidence |
+| emergency_override_config | 安全紧急覆盖；只能收紧策略并追加 P0 审计和 Evidence |
+
+`emergency_override_config` 只能执行 deny、pause、egress block、sandbox harden、secret revoke、admission stop、forced pause/abort 等收紧动作；不得放松策略、扩大 capability、切换到更危险工具、降低 sandbox tier、提高预算 hard cap 或绕过 RunVersionLock。hot_reloadable 只能影响新 admission 或下一 checkpoint revalidation，不得改变正在运行的 NodeRun 语义。
 
 ## 24.2 配置版本化
 
@@ -2583,6 +2619,8 @@ HA-3 的 RPO=0 只适用于 in-region multi-AZ 同步复制；cross-region failo
 
 每次 leader 切换或 failover 必须生成 `FailoverRecord`、`FencingEpochChanged` 和 `RecoveryValidationReport`。新的 leader 只有在 fencing epoch 更新、旧 lease 失效、truth/event 一致性校验通过后才能接受写入。
 
+跨 Region failover 还必须生成 `FailoverReconciliationJob`，列出 unreplicated writes、open budget reservations、ambiguous side effects、pending approvals、outbox gaps 和 projection freshness watermark。该 job 完成前只能进入受限写入模式：禁止不可逆 side effect、预算上限提升和策略放松。
+
 read-only degraded 模式下只保留查询、审计导出、forensic inspection、状态看板和人工恢复操作；禁止新 HarnessRun admission、外部 side effect、预算变更、策略放松和 Pack 发布。
 
 ## 31.3 备份与恢复
@@ -3153,12 +3191,12 @@ Agent 间通过标准委托协议进行任务分派，支持三种模式：
 Delegation 状态机：
 
 ```text
-created → requested → accepted/rejected → running → completed/failed → verified → closed
+created → capability_discovery? → task_proposal → bid/decline? → award? → accepted/rejected → child_run_created → running → reported → verified → closed
 ```
 
 委托消息必须携带 `delegationId`、`parentRunId`、`childRunId`、`seq`、`expectedPreviousSeq`、`capabilityIntersection`、`budgetCap`、`dataBoundary` 和 `deadline`。乱序、重复、预算超界或 capability intersection 为空时拒绝委托。广播委托必须有 fanout limit 和 budget cap，防止成本风暴。
 
-如需多候选竞标，必须使用独立 discovery/bid/award 流程：`capability_discovery → bid → award → accept/reject`。默认委托协议不包含 child 主动 offer，避免 parent 未选定 child 前出现乱序语义。
+如需多候选竞标，必须使用独立 discovery/bid/award 流程：`capability_discovery → task_proposal → bid/decline → award → accept → child_run_created → report → verify → close`。默认委托协议不包含 child 主动 offer，避免 parent 未选定 child 前出现乱序语义。广播委托必须声明 `AggregationPolicy = first_valid | best_score | majority | human_arbitration`；无聚合策略时不得自动选择结果。
 
 ## 19.2 委托拓扑约束
 
@@ -3172,7 +3210,7 @@ created → requested → accepted/rejected → running → completed/failed →
 ## 19.3 上下文传递安全
 
 - 父 → 子：仅传递 DelegationContext 中声明的引用，不传递原始数据
-- 子 → 父：仅通过 DelegationResult 返回，包含 summary + artifact_refs
+- 子 → 父：仅通过 DelegationResult 返回，包含 summary、artifact_refs、trust_level、taint_labels、evidence_refs 和 policy_outcome
 - 跨 tenant 委托：默认禁止，需 P2 显式授权
 - 数据分级向上兼容：子 workflow 产出数据的分级 ≥ 输入数据分级
 
@@ -3193,15 +3231,20 @@ created → requested → accepted/rejected → running → completed/failed →
 
 | 消息类型             | 方向           | 语义         | 触发条件                              |
 | -------------------- | -------------- | ------------ | ------------------------------------- |
-| `task_request`       | parent → child | 发起任务委托 | Planner 分解出子任务                  |
+| `capability_discovery` | parent → candidates | 能力发现 | 仅竞标/多候选模式                    |
+| `task_proposal`      | parent → child | 发起任务提案 | Planner 分解出子任务                  |
 | `task_accept`        | child → parent | 接受委托     | child 评估能力、预算、权限后回复      |
 | `task_reject`        | child → parent | 拒绝委托     | child 能力/预算/权限不足              |
 | `partial_result`     | child → parent | 中间结果上报 | child 完成阶段性产出                  |
 | `escalation_request` | child → parent | 请求升级     | child 遇到超出自治权限的决策          |
 | `completion_report`  | child → parent | 任务完成报告 | child 完成全部工作                    |
+| `verification_report` | parent → child/P2 | 验证结果 | parent 验证子结果                     |
+| `close_notice`       | parent → child | 关闭委托     | 结果已验收或终止                      |
 | `takeover_notice`    | parent → child | 接管通知     | parent 因超时/异常/人工介入接管子任务 |
 | `bid`                | child → parent | 竞标响应     | 仅 discovery/bid/award 模式使用       |
+| `decline`            | child → parent | 竞标拒绝     | 仅 discovery/bid/award 模式使用       |
 | `award`              | parent → child | 竞标授予     | parent 从多个 bid 中选定 child        |
+| `child_run_created`  | child → parent | 子 run 创建  | child 已创建受控 HarnessRun           |
 
 ### 强制字段
 
