@@ -42,15 +42,19 @@ test("platform module catalog registers itself in the service registry", async (
   }
 });
 
-test("architecture readiness rings are complete and have evidence", () => {
+test("architecture readiness rings expose scoped gate evidence", () => {
   const rings = listArchitectureReadinessRings();
 
   assert.deepEqual(
     rings.map((ring) => ring.ringId),
     ["contract-freeze", "hardening", "usability", "expansion"],
   );
+  assert.equal(resolveArchitectureReadinessRing("contract-freeze").status, "production_verified");
+  assert.equal(resolveArchitectureReadinessRing("hardening").status, "evidence_registered");
+  assert.equal(resolveArchitectureReadinessRing("usability").status, "evidence_registered");
+  assert.equal(resolveArchitectureReadinessRing("expansion").status, "evidence_registered");
   for (const ring of rings) {
-    assert.equal(ring.status, "complete");
+    assert.match(ring.gateMeaning, /evidence|verified|implemented/);
     assert.equal(ring.evidenceModules.length > 0, true);
     assert.equal(ring.verificationTests.length > 0, true);
   }

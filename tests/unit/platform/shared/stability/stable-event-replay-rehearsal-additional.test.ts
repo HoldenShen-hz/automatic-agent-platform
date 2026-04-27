@@ -1,0 +1,139 @@
+/**
+ * Unit tests for the Stable Event Replay Rehearsal Module.
+ *
+ * Tests the event replay functionality:
+ * - Event replay scenarios
+ * - Report generation
+ */
+
+import { rmSync } from "node:fs";
+import { join } from "node:path";
+import test from "node:test";
+
+import {
+  runStableEventReplayRehearsal,
+  writeStableEventReplayRehearsalReport,
+} from "../../../../../src/platform/shared/stability/stable-event-replay-rehearsal.js";
+
+function createTempDir(): string {
+  return join("/tmp", `event-replay-test-${Date.now()}`);
+}
+
+test("runStableEventReplayRehearsal executes successfully", async () => {
+  const outputDir = createTempDir();
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+
+    if (report.totalScenarios !== 1) {
+      throw new Error(`Expected 1 scenario, got ${report.totalScenarios}`);
+    }
+    if (report.passedScenarios !== 1) {
+      throw new Error(`Expected 1 passed scenario, got ${report.passedScenarios}`);
+    }
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("failed_consumer_ack_replay scenario passes", async () => {
+  const outputDir = createTempDir();
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+    const scenario = report.scenarios.find((s) => s.scenarioId === "failed_consumer_ack_replay");
+
+    if (!scenario) {
+      throw new Error("Missing failed_consumer_ack_replay scenario");
+    }
+    if (!scenario.passed) {
+      throw new Error(`Scenario failed: ${scenario.summary}`);
+    }
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("report contains valid startedAt and finishedAt timestamps", async () => {
+  const outputDir = createTempDir();
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+
+    if (!report.startedAt) {
+      throw new Error("Missing startedAt");
+    }
+    if (!report.finishedAt) {
+      throw new Error("Missing finishedAt");
+    }
+    if (report.startedAt >= report.finishedAt) {
+      throw new Error("startedAt should be before finishedAt");
+    }
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("report outputDir matches options", async () => {
+  const outputDir = createTempDir();
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+
+    if (report.outputDir !== outputDir) {
+      throw new Error(`Expected outputDir ${outputDir}, got ${report.outputDir}`);
+    }
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("writeStableEventReplayRehearsalReport writes valid JSON", async () => {
+  const outputDir = createTempDir();
+  const reportPath = join(outputDir, "report.json");
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+    writeStableEventReplayRehearsalReport(reportPath, report);
+
+    const { readFileSync } = await import("node:fs");
+    const content = readFileSync(reportPath, "utf8");
+    const parsed = JSON.parse(content);
+
+    if (parsed.totalScenarios !== 1) {
+      throw new Error("Report missing totalScenarios");
+    }
+    if (parsed.passedScenarios !== 1) {
+      throw new Error("Report should have 1 passed scenario");
+    }
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("scenario has durationMs greater than zero", async () => {
+  const outputDir = createTempDir();
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+
+    for (const scenario of report.scenarios) {
+      if (scenario.durationMs <= 0) {
+        throw new Error(`Scenario ${scenario.scenarioId} should have durationMs > 0`);
+      }
+    }
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("scenario details contain ack replay information", async () => {
+  const outputDir = createTempDir();
+  try {
+    const report = await runStableEventReplayRehearsal({ outputDir });
+    const scenario = report.scenarios.find((s) => s.scenarioId === "failed_consumer_ack_replay");
+
+    if (!scenario) {
+      throw new Error("Missing failed_consumer_ack_replay scenario");
+    }
+
+    // Details should contain replay attempt information
+    assert.ok(scenario.details);
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});

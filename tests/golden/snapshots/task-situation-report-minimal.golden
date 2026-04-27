@@ -1,0 +1,11 @@
+{
+  "hasHeader": true,
+  "hasTaskId": true,
+  "hasPhase": true,
+  "hasObjective": true,
+  "hasIntent": true,
+  "hasConfidence": true,
+  "hasNoBlockers": true,
+  "hasNoFileRefs": true,
+  "hasNoMetrics": true
+}

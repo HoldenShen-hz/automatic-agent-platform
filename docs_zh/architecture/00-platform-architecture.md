@@ -3641,7 +3641,7 @@ v4.3 将单一大 DomainDescriptor 拆为多份可独立版本化的 Domain Spec
 
 兼容期内 `DomainDescriptor` 可作为聚合视图保留，但新实现必须读写上述分解 spec。
 
-主架构文档只保留域硬约束、元模型和少量代表性示例；24 个垂直域的完整可执行规范应迁移到 `docs_zh/domains/<domain>/domain-spec.md`，由 domain owner 维护。迁移前，§71-§94 视为历史兼容章节，不作为核心平台 milestone 的阻塞项。
+主架构文档只保留域硬约束、元模型和少量代表性示例；24 个垂直域的可执行规范入口已落到 `docs_zh/domains/<domain>/domain-spec.md`，由 domain owner 维护。§71-§94 保留为历史兼容章节和迁移索引，不作为核心平台 milestone 的阻塞项。
 
 每个独立 Domain Spec 必须至少声明以下机器契约，主文档只保留索引：
 
@@ -4103,7 +4103,7 @@ Canary 1%   Canary 10%  Canary 50%  GA 100%
 
 # Part IV — 垂直业务域深化层（§71-§94）
 
-本 Part 保留 24 个域的架构概要，用于展示 Domain Meta-Model 在高风险行业中的映射。v4.2 实施不要求一次性创建 24 个域实现目录；产品化域规范应逐步拆分到 `docs_zh/domains/<domain>/`，主文档只维护跨域不变量、代表性约束和迁移索引。
+本 Part 保留 24 个域的架构概要，用于展示 Domain Meta-Model 在高风险行业中的映射。v4.2 实施不要求一次性创建 24 个域生产实现目录；产品化域规范入口已拆分到 `docs_zh/domains/<domain>/domain-spec.md`，主文档只维护跨域不变量、代表性约束和迁移索引。
 
 ## Part IV 域专项硬约束总表
 
@@ -9561,11 +9561,11 @@ MVP 目录子集：
 
 ```text
 src/platform/contracts
-src/platform/harness
-src/platform/harness/graph
-src/platform/harness/events
-src/platform/harness/budget
-src/platform/harness/side-effects
+src/platform/orchestration/harness
+src/platform/orchestration/harness/runtime
+src/platform/orchestration/harness/eval-harness
+src/platform/orchestration/harness/durable
+src/platform/orchestration/harness/hitl-runtime
 src/platform/execution
 src/platform/state-evidence
 src/platform/control-plane
@@ -9644,43 +9644,29 @@ src/
       escalation/
       hitl/
       agent-delegation/
+      harness/            # Harness Runtime（P3 唯一可执行运行时子域）
+        runtime/            # HarnessRuntime 主入口
+        protocol/           # Harness 契约（HarnessRun/HarnessStep/HarnessDecision/PlanBundle/WorkProduct/EvaluationReport/FeedbackEnvelope）
+        planner/            # Planner Agent 实现
+        generator/          # Generator Agent 实现
+        evaluator/          # Evaluator Agent 实现
+        eval-harness/       # Evaluation Harness（预发布评测/版本对比/TaskOutcomeGrader）
+        loop/               # HarnessLoopController
+        context/            # ContextAssembler + ContextSnapshot
+        memory-namespace/   # Working/Long-term/Shared Knowledge 三层记忆 + MemoryPromotionPolicy
+        constraints/        # ConstraintEngine + ConstraintPack 装配
+        guardrails/         # 五层 Guardrails（input/planning/tool/memory/output）
+        toolbelt/           # ToolbeltAssembler + 工具可靠性画像
+        hitl-runtime/       # HITL Runtime（inspect/patch/override/takeover/resume）
+        durable/            # Durable Harness（pause/resume/checkpoint strategy）
+        async/              # Async Harness（create_run/poll/subscribe/intervene）
+        recovery/           # Harness Recovery Controller
+        runtime/plan-graph-harness-runtime.ts # PlanGraph / scheduler / NodeRun MVP runtime
+        runtime/intake-admission-service.ts   # RequestEnvelope admission
+        runtime/runtime-entry-guard.ts        # legacy bypass guard
 
     oapeflir/           # deprecated re-export barrel（若存在，仅转发到 orchestration/oapeflir）
       index.ts
-
-    harness/            # Harness Runtime（唯一可执行运行时）
-      runtime/            # HarnessRuntime 主入口
-      protocol/           # Harness 契约（HarnessRun/HarnessStep/HarnessDecision/PlanBundle/WorkProduct/EvaluationReport/FeedbackEnvelope）
-      planner/            # Planner Agent 实现
-      generator/          # Generator Agent 实现
-      evaluator/          # Evaluator Agent 实现
-      eval-harness/       # Evaluation Harness（预发布评测/版本对比/TaskOutcomeGrader）
-      loop/               # HarnessLoopController
-      context/            # ContextAssembler + ContextSnapshot
-      memory-namespace/   # Working/Long-term/Shared Knowledge 三层记忆 + MemoryPromotionPolicy
-      constraints/        # ConstraintEngine + ConstraintPack 装配
-      guardrails/         # 五层 Guardrails（input/planning/tool/memory/output）
-      toolbelt/           # ToolbeltAssembler + 工具可靠性画像
-      tool-harness/       # Tool Capability Profile + 工具生命周期治理
-      hitl-runtime/       # HITL Runtime（inspect/patch/override/takeover/resume）
-      durable/            # Durable Harness（pause/resume/checkpoint strategy）
-      async/              # Async Harness（create_run/poll/subscribe/intervene）
-      recovery/           # Harness Recovery Controller
-      graph/              # PlanGraph / GraphPatch / normalize / validate / risk / worst-path
-      events/             # Event Registry / replay behavior / event schemas
-      budget/             # Budget Ledger / reservation / consumption
-      prompt/             # PromptExecutionContract
-      llm/                # LLM decision record / recorded output refs
-      side-effects/       # SideEffect Manager / delivery semantics
-      decision/           # DecisionInputBundle / precedence policy
-      memory/             # MemoryWriteGovernance
-      evaluation/         # EvaluationGate / outcome grader
-      learning/           # LearningCandidate / quarantine
-      release/            # Learning release pipeline
-      lineage/            # AttemptLineage / causal lineage query
-      errors/             # Error Code Taxonomy
-      observability/      # Metrics / traces / runtime dashboards
-      tests/              # Runtime Test Matrix fixtures
 
     execution/          # P4
       dispatcher/
@@ -9937,10 +9923,10 @@ src/
 
 补充说明：
 
-- `src/platform/harness/` 是唯一可执行运行时实现目录，承载 HarnessRun、PlanGraph、NodeRun、Budget、SideEffect、Replay 等生产语义。
+- `src/platform/orchestration/harness/` 是 P3 Harness Runtime 的 canonical implementation path，承载 HarnessRun、PlanGraph、NodeRun、Budget、SideEffect、Replay 等生产语义；新增 Harness runtime 实现不得写入 `src/platform/harness/`。
 - `src/platform/orchestration/oapeflir/` 是 OAPEFLIR 语义框架、StageRationale、TraceProjection 与审计视图的 canonical path。
 - `src/platform/oapeflir/` 如存在，只能作为 deprecated re-export barrel 保留，新增实现不得写入该目录。
-- `§71-§94` 只作为 **24 个产品化垂直域** 的历史兼容章节和示例索引；完整可执行域规范迁移到 `docs_zh/domains/<domain>/domain-spec.md` 后以独立 Domain Spec 为准。
+- `§71-§94` 只作为 **24 个产品化垂直域** 的历史兼容章节和示例索引；可执行域规范入口以 `docs_zh/domains/<domain>/domain-spec.md` 的独立 Domain Spec 为准。
 - `src/domains/` 中额外存在的目录属于孵化域、元域或平台性支撑目录，不要求与 `§71-§94` 一一对应。
 
 ---

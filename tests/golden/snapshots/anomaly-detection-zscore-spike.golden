@@ -1,0 +1,8 @@
+{
+  "isAnomaly": true,
+  "score": 1,
+  "severity": "emergency",
+  "category": "spike",
+  "deviation": 99.8,
+  "deviationPercent": 99.60079840319361
+}

@@ -1,0 +1,15 @@
+{
+  "window": {
+    "hasFirstTaskCreatedAt": true,
+    "hasLastTaskUpdatedAt": true
+  },
+  "hasTaskMetrics": true,
+  "hasWorkflowMetrics": true,
+  "hasExecutionMetrics": true,
+  "hasRecoveryMetrics": true,
+  "hasStepMetrics": true,
+  "hasCostMetrics": true,
+  "hasApprovalMetrics": true,
+  "hasEventMetrics": true,
+  "hasRuntimeMetrics": true
+}

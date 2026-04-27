@@ -1,0 +1,7 @@
+{
+  "historyLength": 5,
+  "hasThreshold": true,
+  "thresholdUpper": 103.88908729652601,
+  "thresholdLower": 96.11091270347399,
+  "thresholdBaseline": 100
+}

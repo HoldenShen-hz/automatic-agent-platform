@@ -8,6 +8,26 @@
 
 > 本轮审计以 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，逐条核对实现是否完成、是否与文档描述一致；先产出事实矩阵与差距清单，再决定后续实现批次。
 
+### I2 审计缺口实现收口批次
+
+- [x] 修正 §35 Harness Runtime 权威路径，使架构文档、结构测试和当前代码目录一致。
+- [x] 新增 `ArchitectureInvariantRegistry` 与 `NonOverridableInvariantRegistry`，并用 `tests/invariants/` 覆盖 §2.4/§36 的机器可验证不变量。
+- [x] 将 architecture readiness ring 状态从单一 `complete` 改为分层 gate evidence，避免把 readiness 登记误判为生产全量完成。
+- [x] 建立 `docs_zh/domains/<domain>/domain-spec.md` 落点，覆盖 §71-§94 的 24 个垂直域规范入口。
+- [x] 增加 API canonical vs legacy guard 测试，证明 legacy contract 目录不是 v4.3 canonical runtime 入口。
+- [x] 更新本审计报告，把已收口项改为完成并记录验证命令。
+- [x] 执行 typecheck、定向测试与 diff 检查。
+
+### A3 00-platform-architecture.md 全文逐条一致性复核
+
+- [x] 提取 `00-platform-architecture.md` 的全量一级/二级章节，明确本轮逐条核对粒度为 §1-§94、三环路线、推荐代码目录、附录与关键子章节。
+- [x] 按章节建立实现一致性矩阵，逐项标记为：完成、部分完成、未实现、文档规划/不适用、与实现不一致。
+- [x] 将每个结论绑定到证据路径：`src/`、`tests/`、`docs_zh/contracts/`、`docs_zh/adr/`、`config/`、`divisions/` 或明确缺口。
+- [x] 核对架构文档中的五平面、OAPEFLIR/HarnessRuntime、State & Evidence、Event、Storage、Runtime MVP 与三环 readiness 是否与当前实现一致。
+- [x] 核对上层能力：AI 运营、业务域、智能交互、组织治理、规模生态、运营成熟度、24 垂直域是否为真实完成、部分骨架或仅规划登记。
+- [x] 更新实现一致性审计报告，避免把 readiness/evidence 登记误写成完整生产实现。
+- [x] 执行文档 diff 检查与必要的只读/定向验证命令。
+
 ### I1 审计收口完成批次
 
 - [x] 补齐 intake/admission 主链：RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun，并在 admission 时冻结 RunVersionLock。

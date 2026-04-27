@@ -21,10 +21,12 @@ export interface PlatformSurfaceManifest {
 }
 
 export type ArchitectureReadinessRingId = "contract-freeze" | "hardening" | "usability" | "expansion";
+export type ArchitectureReadinessStatus = "implemented" | "evidence_registered" | "production_verified";
 
 export interface ArchitectureReadinessRing {
   readonly ringId: ArchitectureReadinessRingId;
-  readonly status: "complete";
+  readonly status: ArchitectureReadinessStatus;
+  readonly gateMeaning: string;
   readonly architectureSections: readonly string[];
   readonly evidenceModules: readonly string[];
   readonly verificationTests: readonly string[];
@@ -106,7 +108,8 @@ export const PLATFORM_SURFACE_MANIFESTS: readonly PlatformSurfaceManifest[] = Ob
 export const ARCHITECTURE_READINESS_RINGS: readonly ArchitectureReadinessRing[] = Object.freeze([
   {
     ringId: "contract-freeze",
-    status: "complete",
+    status: "production_verified",
+    gateMeaning: "Ring 1 executable contract freeze is implemented and covered by source-level runtime contract tests.",
     architectureSections: ["§5", "§13", "§14", "§25", "§26", "§28", "§58"],
     evidenceModules: [
       "src/platform/contracts/executable-contracts/index.ts",
@@ -125,7 +128,8 @@ export const ARCHITECTURE_READINESS_RINGS: readonly ArchitectureReadinessRing[] 
   },
   {
     ringId: "hardening",
-    status: "complete",
+    status: "evidence_registered",
+    gateMeaning: "Hardening modules and targeted evidence are registered; production drills remain separate release evidence.",
     architectureSections: ["§9", "§17", "§21", "§27", "§28", "§29", "§31", "§58"],
     evidenceModules: [
       "src/platform/state-evidence/events/event-registry.ts",
@@ -145,7 +149,8 @@ export const ARCHITECTURE_READINESS_RINGS: readonly ArchitectureReadinessRing[] 
   },
   {
     ringId: "usability",
-    status: "complete",
+    status: "evidence_registered",
+    gateMeaning: "Usability modules and targeted evidence are registered; pilot-domain production acceptance remains separate release evidence.",
     architectureSections: ["§37", "§38", "§39", "§40", "§41", "§42", "§43", "§44"],
     evidenceModules: [
       "src/interaction/nl-gateway/index.ts",
@@ -163,7 +168,8 @@ export const ARCHITECTURE_READINESS_RINGS: readonly ArchitectureReadinessRing[] 
   },
   {
     ringId: "expansion",
-    status: "complete",
+    status: "evidence_registered",
+    gateMeaning: "Expansion modules and targeted evidence are registered; multi-region, marketplace, edge, and 24-domain GA remain separate release evidence.",
     architectureSections: ["§46", "§47", "§48", "§49", "§50", "§51", "§52", "§53", "§54", "§55", "§56", "§57", "§59", "§60", "§61", "§62", "§63", "§64", "§65", "§66", "§67", "§68", "§69"],
     evidenceModules: [
       "src/org-governance/index.ts",

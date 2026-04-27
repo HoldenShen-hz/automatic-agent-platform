@@ -1,0 +1,6 @@
+{
+  "isAnomaly": true,
+  "severity": "emergency",
+  "category": "spike",
+  "score": 1
+}

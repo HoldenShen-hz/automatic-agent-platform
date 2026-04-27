@@ -1,0 +1,7 @@
+{
+  "taskId": "dispatch_wf_task_001",
+  "workflowId": "single_agent_minimal",
+  "status": "running",
+  "currentStepIndex": 0,
+  "isResumable": false
+}

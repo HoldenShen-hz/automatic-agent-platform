@@ -1,0 +1,12 @@
+{
+  "taskId": "diag_debug_task_001",
+  "hasTraceContext": true,
+  "recentLogCount": 0,
+  "hasStateSnapshots": true,
+  "eventTailCount": 0,
+  "hasProviderStatus": true,
+  "hasBackpressure": true,
+  "hasContextSummary": true,
+  "hasDispatchSummary": true,
+  "warningCount": 1
+}

@@ -1,139 +1,67 @@
-# 00-platform-architecture.md 实现一致性审计报告
+# 00-platform-architecture.md 实现一致性审计收口报告
 
 > 审计日期：2026-04-27
+> 收口日期：2026-04-27
 > 审计输入：`docs_zh/architecture/00-platform-architecture.md`
-> 审计范围：文档中的 Contract Freeze、五平面、Runtime/OAPEFLIR、State & Evidence、三环实施边界与上层能力实现状态。
-> 状态口径：完成。
+> 审计对象：当前仓库 `src/`、`tests/`、`docs_zh/contracts/`、`docs_zh/adr/`、`docs_zh/domains/`、`config/`、`divisions/`。
+> 当前状态：本报告上一版列出的所有阻塞项已经收口。
 
 ## 1. 总体结论
 
-当前仓库已经完成 v4.3 Contract Freeze 的 Ring 1 可执行主链：ADR-109 至 ADR-112、中文 contract 文档、`src/platform/contracts/executable-contracts/` canonical 类型、Zod/JSON Schema 摘要、factory、`IntakeAdmissionService`、`RuntimeStateMachine.transition(command)`、EventInbox 分层、Event Registry replay metadata、SideEffect 最小闭环、BudgetAllocator、PlanGraph analyzer/scheduler、HarnessRuntime MVP、runtime repository contract、append-only receipt、outbox/audit 原子边界和 v4.3 physical schema baseline 均有源码与定向测试覆盖。
+当前仓库已经完成 `00-platform-architecture.md` 的实现一致性收口：v4.3 Contract Freeze / Ring 1 可执行主链保持完成状态；上一版报告中列出的 P0/P1/P2 缺口已经分别通过代码、测试或文档权威调整关闭。
 
-ADR-112 三环边界已转为可执行 readiness gate：Contract Freeze、Hardening、Usability、Expansion 四个 ring 均在 `src/platform/platform-module-catalog.ts` 登记为 `complete`，并带有 evidenceModules 与 verificationTests。
+需要区分两件事：
 
-## 2. 逐项实现矩阵
+- **实现一致性收口已完成**：架构文档、代码路径、contract、invariant、domain spec、readiness gate 和 legacy guard 已经有明确落点。
+- **生产 GA 验收仍按独立 release gate 管理**：24 域 GA、多 Region 演练、Edge 断网 24h、SOC2 报告覆盖率等属于后续生产发布证据，不再被误标为 readiness `complete`。
 
-### 2.1 v4.3 Contract Freeze 12 个核心契约
+## 2. 缺口收口矩阵
 
-| 架构承诺 | 实现状态 | 证据 | 偏差 |
-| --- | --- | --- | --- |
-| TaskDraft / ConfirmedTaskSpec / RequestEnvelope | 完成 | `task-intake-request-contract.md`；`src/platform/contracts/executable-contracts/`；`IntakeAdmissionService`；`intake-admission-service.test.ts` | RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope 已接入 admission；Zod schema、JSON Schema 摘要与 factory 已覆盖。 |
-| HarnessRun | 完成 | `harness-run-contract.md`；`createHarnessRun`；`RuntimeStateMachine`；`IntakeAdmissionService` tests | admission 幂等、RunVersionLock 冻结、policy guard、budget precondition 与 audit ref 已接入。 |
-| PlanGraphBundle / PlanGraph / PlanNode / PlanEdge | 完成 | `plan-graph-patch-contract.md`；`createPlanGraphBundle`；`PlanGraphAnalyzer`；`PlanGraphScheduler` tests | Normalize / Validate / Risk Propagation / Worst-Path Analysis 已有最小可执行实现。 |
-| GraphPatch / GraphPatchOperation | 完成 | `createGraphPatch`；GraphPatch safety test | operation enum 已与架构枚举一致；已禁止静默改写已执行节点和已提交副作用。 |
-| NodeRun / NodeAttempt / AttemptLineage | 完成 | `node-run-attempt-receipt-contract.md`；`RuntimeStateMachine`；`PlanGraphHarnessRuntime` | `blocked`、终态封闭、lease/fencing 强制校验已覆盖；`queued` 保留为调度内部瞬态。 |
-| NodeAttemptReceipt | 完成 | `createNodeAttemptReceipt`；`RuntimeTruthRepository.appendNodeAttemptReceipt`；HarnessRuntime tests | Receipt 类型、factory 与 append-only repository contract 已覆盖。 |
-| SideEffectRecord / ReconciliationRecord / CompensationRecord | 完成 | `side-effect-reconciliation-contract.md`；`SideEffectManager` tests | 状态机支持 `approved/committed/confirming/compensation_required/manual_review_required`；commit 前 policy proof 与高风险 human approval guard 已接入。 |
-| BudgetLedger / BudgetReservation / BudgetSettlement | 完成 | `budget-ledger-contract.md`；`BudgetAllocator`；budget tests | hard-cap reserve、settle/release accounting、reservation 状态推进和 audit ref 已覆盖。 |
-| RunVersionLock / ArtifactVersionLockSet | 完成 | `version-lock-contract.md`；`createRunVersionLock` / `createArtifactVersionLockSet`；admission tests | RuntimeStateMachine admission 强制携带 RunVersionLock；GraphPatch policy proof 仍由 GraphPatch contract 校验。 |
-| DecisionInputBundle / HarnessDecision | 完成 | `decision-hitl-contract.md`；factory；HITL responsibility tests | 冻结契约类型、factory 与责任记录已覆盖；Harness hardening readiness 已登记。 |
-| HumanResponsibilityRecord | 完成 | factory；HITL responsibility test | 高风险 expiresAt 校验已有；责任 scope 覆盖 approval/override/takeover/patch/resume/abort/compensation。 |
-| EventEnvelope / PlatformFactEvent / OapeflirViewEvent | 完成 | `event-envelope-contract.md`；`LayeredEventInbox`；`event-registry.test.ts` | namespace 分层、truth consumer 过滤、replayBehavior、sourceOfTruth、schemaOwner、consumerContractTests 已落到 EventEnvelope 与 Event Registry。 |
+| 原缺口 | 收口状态 | 收口证据 |
+| --- | --- | --- |
+| §35 Harness 路径权威与实现不一致 | 已完成 | `docs_zh/architecture/00-platform-architecture.md` 已将 canonical path 调整为 `src/platform/orchestration/harness/`；`tests/unit/platform/orchestration/harness/structure-alignment.test.ts` 验证该路径存在且 `src/platform/harness/` 不作为新增实现目录。 |
+| §2.4 缺少 `ArchitectureInvariantRegistry` / `NonOverridableInvariantRegistry` | 已完成 | `src/platform/architecture/invariant-registry.ts`；`tests/invariants/architecture-invariant-registry.test.ts`；`src/platform/index.ts` 导出 architecture registry。 |
+| §36 风险目录缺少可执行 `RiskRegister` 入口 | 已完成 | `src/platform/architecture/risk-register.ts`；`tests/invariants/risk-register.test.ts`；风险记录绑定 invariant、owner、mitigation、test/drill。 |
+| readiness ring 使用单一 `complete` 易误判为生产完成 | 已完成 | `src/platform/platform-module-catalog.ts` 已改为 `implemented / evidence_registered / production_verified` 分层语义；`tests/unit/platform/platform-module-catalog.test.ts` 覆盖 scoped gate evidence。 |
+| §38 / §71-§94 缺少 `docs_zh/domains/<domain>/domain-spec.md` | 已完成 | `docs_zh/domains/*/domain-spec.md` 已覆盖 24 个垂直域；`tests/invariants/domain-spec-coverage.test.ts` 验证章节、模块、风险状态、硬约束和验收入口。 |
+| §6 legacy contract 目录可能被误作 canonical runtime 入口 | 已完成 | `tests/invariants/canonical-runtime-contract-boundary.test.ts` 证明 legacy 目录仅为兼容面，`RuntimeEntryGuard` 拒绝 legacy contract truth write 和非 `platform.*` truth event。 |
+| 审计报告仍保留待办式建议 | 已完成 | 本报告已改为收口验收记录，待办同步写入并完成于 `docs_zh/operations/current_todo_list.md`。 |
 
-### 2.2 平面间通信契约与五平面
+## 3. 主章节当前状态
 
-| 架构承诺 | 实现状态 | 证据 | 偏差 |
-| --- | --- | --- | --- |
-| P1 -> P2 只能通过 RequestEnvelope | 完成 | `IntakeAdmissionService`；`RequestEnvelope` factory；admission tests | v4.3 admission 入口强制经过 ConfirmedTaskSpec 与 RequestEnvelope；旧 RequestEnvelope 保留为 legacy 兼容。 |
-| P2 -> P3/P4 OperationalDirective / DecisionDirective 拆分 | 完成 | `HarnessDecision` / `DecisionInputBundle`；`RuntimeEntryGuard` | 决策语义进入 HarnessDecision；运行入口只接收 PlanGraphBundle，旧 ControlDirective 不作为 v4.3 runtime 入口。 |
-| P3 -> P4 唯一执行契约是 PlanGraphBundle | 完成 | `PlanGraphHarnessRuntime`；`RuntimeEntryGuard` tests | bypass invariant tests 已证明 legacy ExecutionPlan/workflow/step 不能进入 v4.3 runtime truth。 |
-| P4 -> P5 状态推进必须经 RuntimeStateMachine | 完成 | `RuntimeStateMachine.transition`；`RuntimeTruthRepository`；runtime tests | status、CAS、RunVersionLock、policy guard、budget precondition、side-effect safety、audit ref、lease/fencing 已统一在 transition 边界。 |
-| 五平面目录落点 | 完成 | `src/platform/interface`、`control-plane`、`orchestration`、`execution`、`state-evidence` 均存在 | Ring 1 跨平面主链已收敛到 v4.3 canonical contracts；旧路径保留 legacy/projection 语义。 |
+| 章节范围 | 当前状态 | 证据 |
+| --- | --- | --- |
+| §1-§5 Contract Freeze 与平面通信 | 已完成 | ADR-109 至 ADR-112；`docs_zh/contracts/`；`src/platform/contracts/executable-contracts/`；RuntimeEntryGuard 与 canonical boundary tests。 |
+| §6-§12 API、通信、扩展、稳定、安全、事件处理 | 已完成一致性收口 | 对应模块已存在；legacy/canonical 边界由 invariant test 固化；生产 SLO 和演练证据由 release gate 管理。 |
+| §13-§14 OAPEFLIR / Runtime Execution | 已完成 | `src/platform/orchestration/oapeflir/`；`src/platform/orchestration/harness/runtime/plan-graph-harness-runtime.ts`；`src/platform/execution/runtime-state-machine.ts`。 |
+| §15-§23 AI 运营、委托、长时任务、HITL、SDK、合规 | 已完成一致性收口 | `src/platform/model-gateway/`、`prompt-engine/`、`orchestration/agent-delegation/`、`orchestration/hitl/`、`sdk/`、`compliance/`；后续生产指标由 readiness gate 区分。 |
+| §24-§32 配置、状态、存储、SLO、事件、知识、Pack、HA、部署 | 已完成一致性收口 | Runtime repository、schema baseline、event registry、DLQ/incident、HA/recovery、deploy modules 与 risk register 已对齐。 |
+| §33-§36 三环、ADR、目录、风险与成功标准 | 已完成 | readiness status 已分层；§35 路径已对齐；`ArchitectureInvariantRegistry` 与 `RiskRegister` 已落地。 |
+| §37-§38 域建模与接入 Runbook | 已完成 | `src/domains/domain-*-service.ts`、`src/domains/operations/domain-onboarding-service.ts`、24 个 `docs_zh/domains/<domain>/domain-spec.md`。 |
+| §39-§44 智能交互层 | 已完成一致性收口 | `src/interaction/` 模块和 admission chain 已登记；生产体验验收由 release gate 管理。 |
+| §45 / §58 Harness 工程化与横切关注面 | 已完成 | Harness canonical path 已对齐到 `src/platform/orchestration/harness/`；MVP runtime、durable、HITL、eval、guardrail 模块有结构测试。 |
+| §46-§57 组织治理、规模生态、外部集成 | 已完成一致性收口 | `src/org-governance/`、`src/scale-ecosystem/`；readiness ring 不再宣称生产全量完成。 |
+| §59-§69 运营成熟度 | 已完成一致性收口 | `src/ops-maturity/`；Panic、edge、drift、cost、debugger、report、capacity、multimodal、platform ops 均有入口与 gate 语义。 |
+| §70 与附录 | 已完成 | 附录 G/H 的 canonical/legacy 与 v4.4 收敛规则通过 executable contract、RuntimeEntryGuard 和 invariant tests 固化。 |
 
-### 2.3 Runtime / OAPEFLIR / Harness 主链
+## 4. 24 域规范入口
 
-| 架构承诺 | 实现状态 | 证据 | 偏差 |
-| --- | --- | --- | --- |
-| OAPEFLIR 是语义投影，不是执行引擎 | 完成 | ADR-111；`LayeredEventInbox` truth 过滤；`RuntimeEntryGuard` tests | truth consumer 只消费 `platform.*`；`oapeflir.view.*` / `oapeflir.rationale.*` 只作为 projection。 |
-| HarnessRuntime 唯一执行入口 | 完成 | `src/platform/orchestration/harness/`；`PlanGraphHarnessRuntime`；`RuntimeEntryGuard` | Ring 1 runtime 入口只接受 PlanGraphBundle；legacy execution contracts 被 guard 拒绝。 |
-| Deterministic Graph Scheduler | 完成 | `PlanGraphScheduler.readyNodes`；`platform.graph_scheduler.decision_recorded` event test | 按 nodeId deterministic 排序、hard dependency gating、scheduler decision platform fact event 与 deterministic seed 已覆盖。 |
-| NodeRun 状态机终态封闭 | 完成 | `RuntimeStateMachine` transition table tests | 终态封闭、`blocked`、CAS、lease/fencing 强制执行已覆盖。 |
-| SideEffect ambiguous 不得视为 success | 完成 | `SideEffectManager` tests；side-effect safety guard | ambiguous 不会被视为 success；commit 路径需要 policy proof，高风险需要 human approval。 |
-| Feedback / Learn / Improve / Release 闭环 | 完成 | `src/platform/orchestration/oapeflir/learn`、`improve-rollout`、prompt/eval 模块；architecture readiness rings | Learn/Improve/Release governance 已作为 Hardening readiness 证据登记。 |
+§71-§94 的 24 个产品化垂直域均已具备独立 Domain Spec 入口：
 
-### 2.4 State & Evidence / Event / Storage
+`quant-trading`、`ecommerce`、`advertising`、`financial-services`、`data-engineering`、`coding`、`user-operations`、`industry-research`、`academic-research`、`knowledge-base`、`finance-accounting`、`legal`、`live-streaming`、`creative-production`、`game-dev`、`game-publishing`、`human-resources`、`supply-chain`、`healthcare`、`education`、`customer-service`、`content-moderation`、`it-operations`、`marketing`。
 
-| 架构承诺 | 实现状态 | 证据 | 偏差 |
-| --- | --- | --- | --- |
-| truth mutation 与 platform fact event 同事务 | 完成 | `RuntimeTruthRepository.transition` rollback/outbox/audit tests | repository contract 已把 truth mutation、platform fact event、outbox 与 audit ref 纳入同一事务边界；当前实现为 in-memory contract，物理 SQL baseline 已登记。 |
-| EventInbox truth consumer 不消费 `oapeflir.view.*` | 完成 | `LayeredEventInbox`；event consumer tests | 与文档一致。 |
-| Event Registry 分层与 replay metadata | 完成 | `src/platform/state-evidence/events/event-registry.ts`；`event-registry.test.ts` | sourceOfTruth、replayable、sideEffectSafeToReplay、schemaOwner、replayBehavior、consumerContractTests 已落地。 |
-| MVP 物理表集 | 完成 | `src/platform/state-evidence/truth/runtime-physical-schema.ts`；`SchemaInventoryService`；schema inventory tests | §26.6 MVP 表集已加入 schema inventory：task_drafts、confirmed_task_specs、request_envelopes、harness_runs、node_runs、node_attempt_receipts、budget、event log/outbox/audit 等。 |
-| Projection / DLQ / Incident / Replay | 完成 | events projections、dlq、incident、projection rebuild 模块；EventReplayMetadata；architecture readiness rings | Replay metadata 与 DLQ/Incident/Replay evidence 已登记。 |
+每个 `domain-spec.md` 至少声明：`architecture_section`、`implementation_module`、`domain_status`、`risk_level`、`accountable_role`、硬约束和验收入口。
 
-### 2.5 AI 运营、交互、组织治理、规模生态、运营成熟度、业务域
-
-| 架构承诺 | 实现状态 | 证据 | 偏差 |
-| --- | --- | --- | --- |
-| ModelGateway / Prompt / Eval Gate | 完成 | `src/platform/model-gateway`、`prompt-engine`、architecture readiness rings | BudgetReservation、RunVersionLock、Prompt/Eval evidence 已登记。 |
-| NL 入口 / Goal Decomposition / Dashboard / Autonomy | 完成 | `src/interaction/*`；`IntakeAdmissionService`；architecture readiness rings | admission chain、NL、Goal、Dashboard、Autonomy evidence 已登记。 |
-| Org / SSO / Approval Routing / Knowledge Boundary | 完成 | `src/org-governance/*`；architecture readiness rings | Org、SSO/SCIM、approval routing、knowledge boundary evidence 已登记。 |
-| Marketplace / Multi-Region / Edge / Cost Optimizer / Drift / PlatformOps | 完成 | `src/scale-ecosystem/*`、`src/ops-maturity/*`；architecture readiness rings | Marketplace、Multi-Region、Edge、Drift、PlatformOps evidence 已登记。 |
-| 24 域 / DomainRecipe | 完成 | `src/domains/*`；architecture readiness rings | 24 域与 DomainRecipe evidence 已登记。 |
-
-## 3. 收口结果清单
-
-1. **v4.3 contract freeze 验收口径已满足 Ring 1**：TypeScript interface、factory、Zod schema、JSON Schema 摘要、runtime contract tests、repository contract、replay behavior、failure behavior 均已覆盖。
-2. **GraphPatch operation enum 已与架构文档一致**：代码、Zod schema 与中文 contract 均使用 `add_node/add_edge/disable_edge/add_compensation_node/add_failure_path/mark_skipped/append_subgraph`。
-3. **NodeRun 状态集合已收口**：`blocked` 与终态封闭已实现；`queued` 保留为调度内部瞬态，RuntimeStateMachine 对执行态强制 lease + fencing token。
-4. **SideEffect 状态机已支持生产语义**：`approved/committed/confirming/compensation_required/manual_review_required` 已进入状态机；commit path 已接入 policy proof 与高风险 human approval guard。
-5. **RuntimeStateMachine 权威边界已补齐**：status、transition、CAS、RunVersionLock、policy guard、budget precondition、side-effect safety、audit append、NodeRun lease/fencing 均在 `transition(command)` 校验。
-6. **EventEnvelope replay/registry metadata 已补齐**：EventEnvelope 与 Event Registry 均记录 replayBehavior、sourceOfTruth、schemaOwner、consumerContractTests。
-7. **物理存储 baseline 已与 §26.6 对齐**：v4.3 MVP 表集已进入 `runtime-physical-schema.ts` 与 schema inventory。
-8. **HarnessRuntime MVP 主链已补齐**：RequestEnvelope admission、RunVersionLock、BudgetAllocator、PlanGraph analyze/schedule、NodeRun、NodeAttemptReceipt、platform events、audit/outbox 已形成 Ring 1 executable chain。
-9. **三环 readiness 已完成**：Enterprise、Multi-Region、Marketplace、Edge、PlatformOps、24 域均已进入 architecture readiness ring evidence。
-
-## 4. 已完成验收记录
-
-### C0：v4.3 executable contract
-
-- 为 `src/platform/contracts/executable-contracts/` 增加 Zod schemas 和 JSON Schema export。（完成）
-- 使用 `src/platform/contracts/executable-contracts/` 作为等价机器验收入口，覆盖 frozen contracts。（完成）
-- 将 GraphPatch、NodeRun、SideEffect、HarnessDecision 的枚举与架构文档重新对齐。（完成）
-
-### C1：RuntimeStateMachine 权威边界
-
-- 在 transition 中接入 RunVersionLock、policy guard、budget precondition、side-effect safety、audit append。（完成）
-- 增加 bypass invariant tests：旧 workflow/execution/step 路径不得直接写 v4.3 truth。（完成）
-- 强制执行态 NodeRun transition 必须带 active lease + fencing token。（完成）
-
-### C2：v4.3 物理存储和 repository contract
-
-- 将 §26.6 MVP 表集加入 schema inventory / migration baseline。（完成）
-- 将 `RuntimeTruthRepository` 扩展为 Repository interface + in-memory contract implementation + contract tests。（完成）
-- EventLog / Outbox / Audit 与 truth mutation 建立事务边界。（完成）
-
-### C3：Graph 与 Harness 主链
-
-- 实现 Graph Normalization、Validation、Risk Propagation、Worst-Path Analysis。（完成）
-- Scheduler decision 写 platform fact event，覆盖 replay consistency。（完成）
-- HarnessRuntime MVP 接入 BudgetReservation、SideEffectManager、HITL basic contract、DecisionInputBundle contract。（完成）
-
-### C4：ADR-112 三环 readiness
-
-- Hardening：replay、recovery、lease/fencing drill、DLQ、diagnostics、evidence bundle readiness 已登记。
-- Usability：NL 入口、HITL Runtime、Dashboard、DomainDescriptor readiness 已登记。
-- Expansion：Enterprise、Multi-Region、Marketplace、Edge、PlatformOps、24 域 readiness 已登记。
-
-## 5. 本轮核对命令
-
-已执行的核对命令：
+## 5. 本轮新增验证
 
 ```bash
-rg -n "^#{1,4} " docs_zh/architecture/00-platform-architecture.md
-sed -n '204,352p' docs_zh/architecture/00-platform-architecture.md
-sed -n '479,671p' docs_zh/architecture/00-platform-architecture.md
-sed -n '1370,1813p' docs_zh/architecture/00-platform-architecture.md
-sed -n '1874,2242p' docs_zh/architecture/00-platform-architecture.md
-sed -n '2351,2464p' docs_zh/architecture/00-platform-architecture.md
-sed -n '8789,8878p' docs_zh/architecture/00-platform-architecture.md
-rg -n "TaskDraft|ConfirmedTaskSpec|RequestEnvelope|PlanGraphBundle|GraphPatch|NodeRun|NodeAttemptReceipt|BudgetLedger|BudgetReservation|RunVersionLock|HumanResponsibilityRecord|PlatformFactEvent|OapeflirViewEvent|RuntimeStateMachine|HarnessRuntime|SideEffectManager|EventInbox|DecisionInputBundle|HarnessDecision" src tests docs_zh/contracts docs_zh/adr --glob '!**/*.map'
-rg -n "harness_run|node_run|plan_graph|graph_patch|budget_ledger|budget_reservation|side_effect|human_responsibility_record|event_inbox|event_log" src/platform/state-evidence/truth/schema-inventory-service.ts src/platform/state-evidence/truth/sql src/platform/state-evidence/truth/migrations src/platform/state-evidence/truth/postgres --glob '!**/*.js' --glob '!**/*.map'
-```
-
-本轮已执行的 v4.3 定向验证：
-
-```bash
+npx tsx --test tests/invariants/architecture-invariant-registry.test.ts tests/invariants/risk-register.test.ts tests/invariants/domain-spec-coverage.test.ts tests/invariants/canonical-runtime-contract-boundary.test.ts tests/unit/platform/platform-module-catalog.test.ts tests/unit/platform/orchestration/harness/structure-alignment.test.ts
 npx tsc -p tsconfig.build.json --noEmit
-npx tsx --test tests/unit/platform/contracts/executable-contracts/index.test.ts tests/unit/platform/contracts/executable-contracts/naming-consistency.test.ts tests/unit/platform/execution/runtime-state-machine.test.ts tests/unit/platform/execution/side-effect-manager.test.ts tests/unit/platform/execution/budget-allocator.test.ts tests/unit/platform/state-evidence/events/layered-event-inbox.test.ts tests/unit/platform/state-evidence/events/event-registry.test.ts tests/unit/platform/orchestration/harness/runtime/plan-graph-harness-runtime.test.ts tests/unit/platform/orchestration/harness/runtime/intake-admission-service.test.ts tests/unit/platform/orchestration/harness/runtime/runtime-entry-guard.test.ts tests/unit/platform/state-evidence/truth/runtime-truth-repository.test.ts tests/unit/platform/state-evidence/truth/schema-inventory-service.test.ts
+git diff --check -- docs_zh/operations/current_todo_list.md docs_zh/reviews/platform-architecture-implementation-consistency-audit.md docs_zh/architecture/00-platform-architecture.md docs_zh/domains src/platform tests/invariants tests/unit/platform/platform-module-catalog.test.ts tests/unit/platform/orchestration/harness/structure-alignment.test.ts
 ```
+
+已通过：13 tests / 13 pass；TypeScript source-only build 通过；diff whitespace check 通过。
+
+## 6. 收口后仍需遵守的边界
+
+本报告关闭的是“架构文档与实现是否一致”的阻塞项，不把未来生产发布证据伪装成已经完成的线上验收。后续进入生产时，仍需按三环 release gate 追加真实演练、SLO、审计签核、域 GA 和跨 Region/Edge/合规报告证据。

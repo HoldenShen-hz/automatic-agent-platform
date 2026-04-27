@@ -1,0 +1,7 @@
+{
+  "taskId": "dispatch_task_001",
+  "taskStatus": "in_progress",
+  "executionId": "dispatch_exec_001",
+  "executionStatus": "executing",
+  "hasTraceId": true
+}

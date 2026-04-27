@@ -1,0 +1,13 @@
+{
+  "taskId": "diag_timeline_task_001",
+  "hasTraceSummary": true,
+  "hasWindow": true,
+  "hasSummary": true,
+  "totalEntries": 0,
+  "eventCount": 0,
+  "dispatchCount": 0,
+  "stepOutputCount": 0,
+  "hasWarnings": true,
+  "rootCauseCount": 1,
+  "entryCount": 0
+}

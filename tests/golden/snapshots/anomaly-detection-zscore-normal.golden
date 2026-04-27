@@ -1,0 +1,9 @@
+{
+  "isAnomaly": false,
+  "score": 0.09854040234159173,
+  "severity": "info",
+  "category": "trend_change",
+  "expectedValue": 100.2,
+  "deviation": 0.7999999999999972,
+  "hasExplanation": true
+}

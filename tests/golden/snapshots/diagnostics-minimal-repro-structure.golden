@@ -1,0 +1,14 @@
+{
+  "taskId": "diag_repro_task_001",
+  "hasSensitivityWarning": true,
+  "hasTaskInputJson": true,
+  "hasWorkflowState": false,
+  "hasTaskResult": false,
+  "relevantMessageCount": 0,
+  "toolUsageCount": 0,
+  "sanitizedArtifactCount": 0,
+  "fileLockCount": 0,
+  "hasConfigSubset": true,
+  "hasProviderStatus": true,
+  "dispatchDecisionCount": 0
+}

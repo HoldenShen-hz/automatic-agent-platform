@@ -1,0 +1,10 @@
+{
+  "hasHeader": true,
+  "hasTaskId": true,
+  "hasPhase": true,
+  "blockerCount": 2,
+  "hasCriticalBlocker": true,
+  "hasHighBlocker": true,
+  "hasMetrics": true,
+  "hasFileRefs": true
+}

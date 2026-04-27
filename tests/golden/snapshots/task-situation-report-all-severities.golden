@@ -1,0 +1,7 @@
+{
+  "hasLowBlocker": true,
+  "hasMediumBlocker": true,
+  "hasHighBlocker": true,
+  "hasCriticalBlocker": true,
+  "blockerCount": 4
+}

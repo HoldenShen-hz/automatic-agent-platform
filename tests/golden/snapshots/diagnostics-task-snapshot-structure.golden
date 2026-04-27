@@ -1,0 +1,10 @@
+{
+  "taskId": "diag_snapshot_task_001",
+  "hasTraceSummary": true,
+  "hasInspect": true,
+  "timelineEntryCount": 0,
+  "recentLogCount": 0,
+  "hasHealth": true,
+  "hasSystemInfo": true,
+  "hasContextSummary": true
+}

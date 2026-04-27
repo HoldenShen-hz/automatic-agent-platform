@@ -15,6 +15,7 @@ export * from "./ai-operations-startup-plan.js";
 export * from "./five-plane-runtime-bootstrap.js";
 export * from "./five-plane-runtime-orchestrator.js";
 export * from "./five-plane-startup-plan.js";
+export * from "./architecture/index.js";
 export * from "./platform-mainline-bootstrap.js";
 export * from "./platform-module-catalog.js";
 export { buildInterfacePlaneBootstrap } from "./interface/interface-plane-bootstrap.js";

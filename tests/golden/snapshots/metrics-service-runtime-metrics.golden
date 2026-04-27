@@ -1,0 +1,11 @@
+{
+  "status": "ok",
+  "degradationMode": "none",
+  "providerSuccessRate": 1,
+  "activeExecutions": 0,
+  "queuedTasks": 0,
+  "tier1AckBacklog": 0,
+  "findingsCount": 0,
+  "hasQueueGovernance": true,
+  "hasWorkerHealth": true
+}

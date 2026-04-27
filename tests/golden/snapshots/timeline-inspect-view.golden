@@ -1,0 +1,10 @@
+{
+  "taskId": "timeline_inspect_task_001",
+  "hasExecution": true,
+  "hasWorkflowState": false,
+  "hasSession": false,
+  "dispatchDecisionCount": 0,
+  "recentEventCount": 0,
+  "stepOutputCount": 0,
+  "artifactCount": 0
+}

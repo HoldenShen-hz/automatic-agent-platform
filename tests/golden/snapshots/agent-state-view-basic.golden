@@ -1,0 +1,10 @@
+{
+  "viewIdPrefix": "agent_state",
+  "agentId": "agent-001",
+  "taskId": "task-001",
+  "executionId": "exec-001",
+  "currentPhase": "executing",
+  "blockerCount": 1,
+  "activeToolCount": 2,
+  "pendingApprovalCount": 1
+}

@@ -1,0 +1,7 @@
+{
+  "isAnomaly": false,
+  "score": 0,
+  "severity": "info",
+  "category": "static",
+  "hasSignatureMatch": false
+}

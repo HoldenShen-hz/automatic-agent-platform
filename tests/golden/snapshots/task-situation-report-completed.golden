@@ -1,0 +1,6 @@
+{
+  "hasHeader": true,
+  "hasTaskId": true,
+  "hasPhase": true,
+  "hasSuccessMetric": true
+}

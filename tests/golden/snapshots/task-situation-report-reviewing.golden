@@ -1,0 +1,6 @@
+{
+  "hasPhase": true,
+  "blockerSeverity": "medium",
+  "hasLinesChanged": true,
+  "hasTestCoverage": true
+}

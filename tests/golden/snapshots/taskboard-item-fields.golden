@@ -1,0 +1,11 @@
+{
+  "taskId": "taskboard_item_task_001",
+  "hasTitle": true,
+  "priority": "normal",
+  "taskStatus": "in_progress",
+  "hasWorkflowStatus": false,
+  "hasDivisionId": true,
+  "hasCurrentStepIndex": false,
+  "hasSessionStatus": false,
+  "hasLatestEventAt": false
+}

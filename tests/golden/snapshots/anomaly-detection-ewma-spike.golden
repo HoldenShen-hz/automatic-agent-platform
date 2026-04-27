@@ -1,0 +1,7 @@
+{
+  "isAnomaly": true,
+  "score": 1,
+  "severity": "emergency",
+  "category": "spike",
+  "expectedValue": 50.495903232
+}
