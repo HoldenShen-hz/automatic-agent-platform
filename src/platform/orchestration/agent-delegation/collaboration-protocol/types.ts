@@ -14,6 +14,9 @@ export type ACPMessageType = z.infer<typeof ACPMessageTypeSchema>;
 
 export const ACPMessageSchema = z.object({
   messageId: z.string(),
+  idempotency_key: z.string().optional(),
+  sequence_no: z.number().int().min(1).optional(),
+  expectedPreviousSequence: z.number().int().min(0).optional(),
   messageType: ACPMessageTypeSchema,
   correlation_id: z.string(),
   parent_run_id: z.string(),

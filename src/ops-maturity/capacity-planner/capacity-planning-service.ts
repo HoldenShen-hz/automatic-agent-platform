@@ -43,6 +43,14 @@ export interface CapacityRecommendation {
   readonly sloRisk: "low" | "medium" | "high";
 }
 
+export interface CapacityForecastActualComparison {
+  readonly resourceType: string;
+  readonly actualUsage: number;
+  readonly forecastUsage: number;
+  readonly errorRatio: number;
+  readonly needsRecalibration: boolean;
+}
+
 export class CapacityPlanningService {
   private readonly signals = new Map<string, CapacitySignal[]>();
   private readonly forecaster = new CapacityForecasterService();
@@ -139,6 +147,25 @@ export class CapacityPlanningService {
       projectedPeak,
       estimatedCostDeltaPercent,
       sloRisk,
+    };
+  }
+
+  public compareForecastToActual(input: {
+    readonly forecast: CapacityForecast;
+    readonly actualUsage: number;
+    readonly maxErrorRatio: number;
+  }): CapacityForecastActualComparison {
+    const forecastUsage = input.forecast.projectedUsage.at(-1);
+    if (forecastUsage == null || forecastUsage === 0) {
+      throw new Error(`capacity_planning.forecast_usage_required:${input.forecast.resourceType}`);
+    }
+    const errorRatio = Number((Math.abs(input.actualUsage - forecastUsage) / forecastUsage).toFixed(4));
+    return {
+      resourceType: input.forecast.resourceType,
+      actualUsage: input.actualUsage,
+      forecastUsage,
+      errorRatio,
+      needsRecalibration: errorRatio > input.maxErrorRatio,
     };
   }
 

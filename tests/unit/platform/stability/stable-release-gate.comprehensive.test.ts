@@ -311,7 +311,8 @@ describe("stable-release-gate comprehensive", () => {
       const dir = createTempEvidenceDir();
       try {
         const smokeDir = createProfileDir(dir, "smoke");
-        const report = createMockEvidenceReport({ passed: true });
+        // Set grayReleasePassed: false so the gray criterion fails
+        const report = createMockEvidenceReport({ passed: true, grayReleasePassed: false });
         writeFileSync(join(smokeDir, "stable-evidence-report.json"), JSON.stringify(report));
 
         const gateReport = buildStableReleaseGateReport({

@@ -26,6 +26,7 @@ import type { WebSocket } from "ws";
 import { WebSocketServer } from "ws";
 import type { ApiAuthService } from "../api/api-auth-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { TenantScopeFilter, type TaskProjectionScopeResolver } from "./tenant-scope-filter.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -59,7 +60,7 @@ export type TaskWebSocketEvent =
  */
 interface ClientConnection {
   webSocket: WebSocket;
-  principal: { actorId: string; tenantId: string | null };
+  principal: { actorId: string; tenantId: string | null; scopes: readonly string[] };
   subscribedTasks: Set<string>;
 }
 
@@ -77,11 +78,14 @@ export class WebSocketBridge {
   private readonly wss: WebSocketServer;
   private readonly clients = new Map<WebSocket, ClientConnection>();
   private readonly taskSubscribers = new Map<string, Set<WebSocket>>();
+  private readonly tenantScopeFilter: TenantScopeFilter | null;
 
   constructor(
     server: Server,
     private readonly authService: ApiAuthService,
+    taskScopeResolver: TaskProjectionScopeResolver | null = null,
   ) {
+    this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
     this.wss = new WebSocketServer({ server, path: "/ws" });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
     logger.info("WebSocket bridge initialized", { path: "/ws" });
@@ -102,10 +106,10 @@ export class WebSocketBridge {
       return;
     }
 
-    let principal: { actorId: string; tenantId: string | null };
+    let principal: { actorId: string; tenantId: string | null; scopes: readonly string[] };
     try {
       const apiPrincipal = this.authService.authenticate({ authorization: `Bearer ${token}` });
-      principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId };
+      principal = { actorId: apiPrincipal.actorId, tenantId: apiPrincipal.tenantId, scopes: apiPrincipal.roles };
     } catch {
       ws.close(4003, "Invalid token");
       logger.warn("WebSocket connection rejected: invalid token");
@@ -165,8 +169,10 @@ export class WebSocketBridge {
         break;
       case "subscribe":
         if (typeof message.taskId === "string" && message.taskId.length > 0) {
-          this.subscribeToTask(ws, message.taskId);
-          ws.send(JSON.stringify({ type: "subscribed", taskId: message.taskId }));
+          const subscribed = this.subscribeToTask(ws, message.taskId);
+          ws.send(JSON.stringify(subscribed
+            ? { type: "subscribed", taskId: message.taskId }
+            : { type: "error", code: "scope_denied", message: "Task scope denied" }));
         }
         break;
       case "unsubscribe":
@@ -186,9 +192,20 @@ export class WebSocketBridge {
   /**
    * Subscribe a WebSocket client to a task's updates.
    */
-  private subscribeToTask(ws: WebSocket, taskId: string): void {
+  private subscribeToTask(ws: WebSocket, taskId: string): boolean {
     const client = this.clients.get(ws);
-    if (!client) return;
+    if (!client) return false;
+
+    const scopeDecision = this.tenantScopeFilter?.evaluate(client.principal, taskId);
+    if (scopeDecision != null && !scopeDecision.allowed) {
+      logger.warn("WebSocket task subscription denied by tenant scope filter", {
+        actorId: client.principal.actorId,
+        tenantId: client.principal.tenantId,
+        taskId,
+        reasonCode: scopeDecision.reasonCode,
+      });
+      return false;
+    }
 
     client.subscribedTasks.add(taskId);
 
@@ -201,6 +218,7 @@ export class WebSocketBridge {
       actorId: client.principal.actorId,
       taskId,
     });
+    return true;
   }
 
   /**
@@ -262,7 +280,9 @@ export class WebSocketBridge {
 
     let deliveredCount = 0;
     for (const ws of subscribers) {
-      if (ws.readyState === ws.OPEN) {
+      const client = this.clients.get(ws);
+      const scopeDecision = client == null ? null : this.tenantScopeFilter?.evaluate(client.principal, taskId);
+      if (ws.readyState === ws.OPEN && (scopeDecision == null || scopeDecision.allowed)) {
         ws.send(message);
         deliveredCount++;
       }

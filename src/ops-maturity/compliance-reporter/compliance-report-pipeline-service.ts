@@ -41,6 +41,14 @@ export interface ComplianceReportAccessReceipt {
   readonly accessedAt: string;
 }
 
+export interface ComplianceReportHumanSignoff {
+  readonly artifactId: string;
+  readonly signerId: string | null;
+  readonly signoffDueAt: string;
+  readonly signedAt: string | null;
+  readonly status: "signed" | "signoff_overdue" | "not_attested_expired";
+}
+
 export class ComplianceReportPipelineService {
   private readonly templates: readonly ComplianceReportTemplateDefinition[];
   private readonly accessLog = new Map<string, ComplianceReportAccessReceipt[]>();
@@ -96,6 +104,33 @@ export class ComplianceReportPipelineService {
 
   public getAccessLog(artifactId: string): ComplianceReportAccessReceipt[] {
     return [...(this.accessLog.get(artifactId) ?? [])];
+  }
+
+  public evaluateHumanSignoff(input: {
+    readonly artifact: ComplianceReportArtifact;
+    readonly signerId?: string | null;
+    readonly signoffDueAt: string;
+    readonly signedAt?: string | null;
+    readonly now: string;
+  }): ComplianceReportHumanSignoff {
+    const signedAt = input.signedAt ?? null;
+    if (signedAt != null && signedAt <= input.signoffDueAt) {
+      return {
+        artifactId: input.artifact.artifactId,
+        signerId: input.signerId ?? null,
+        signoffDueAt: input.signoffDueAt,
+        signedAt,
+        status: "signed",
+      };
+    }
+
+    return {
+      artifactId: input.artifact.artifactId,
+      signerId: input.signerId ?? null,
+      signoffDueAt: input.signoffDueAt,
+      signedAt,
+      status: input.now > input.signoffDueAt ? "not_attested_expired" : "signoff_overdue",
+    };
   }
 
   private buildSections(

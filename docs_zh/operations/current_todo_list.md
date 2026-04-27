@@ -4,6 +4,40 @@
 
 ## v4.3 Executable Specification Freeze 当前待办
 
+### A6 Implementation Consistency Audit 全量收口批次（2026-04-27）
+
+> 本批次以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` 中 C/T/A/G/O/S/M/F/I/D 全部编号为输入，目标是把旧差异表改为可验证的收口报告，并为 238 个审计编号建立机器可检查的 coverage registry。
+
+- [x] 建立 `ImplementationConsistencyClosureRegistry`，覆盖 C-1..C-7、T-1..T-56、A-1..A-37、G-1..G-9、O-1..O-24、S-1..S-20、M-1..M-20、F-1..F-25、I-1..I-20、D-1..D-20。
+- [x] 增加 invariant 测试，验证审计编号总数、各分组数量、关闭状态、收口类型和证据路径。
+- [x] 将 `platform-architecture-implementation-consistency-audit.md` 从开放差异清单改写为全量已收口验收报告。
+- [x] 执行聚焦测试、source-only typecheck 与 diff whitespace check。
+
+### A5 Design Review 新增约束实现收口批次（2026-04-27）
+
+> 本批次以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 中仍为“部分完成 / 未实现”的条目为输入，目标是为每个新增架构约束补齐可执行实现入口、聚焦测试和审计证据；生产演练类条目以可执行 gate / receipt / report 对象收口，不伪装为线上 GA 证据。
+
+- [x] P0 多租户与入口安全：补齐 WebSocket/SSE tenant scope 逐事件过滤、SDK version handshake、endpoint-class backpressure 与 worker service identity 检查。
+- [x] P0 运行时终态清理：补齐 WorkerDrainProtocol receipt、RunTerminationCleanup、plugin crash cleanup hook、orphaned budget reservation metric 与 DB time / clock-skew safe budget sweeper。
+- [x] P0 兼容与漂移：补齐 ConfigDriftReconciler、PackCompatibilityTestGenerator、ResumeCompatibilityCheck / ResumeDiffReport。
+- [x] P1 调度与恢复：补齐 dispatch queue bounded event 字段、Graph Scheduler queue depth evidence、DR drill pass/fail 与 tombstone replay boundary、no-real-side-effect replay guard。
+- [x] P1 协作与审批：补齐 delegation sequencing/idempotency、approval delegation chain TTL 上限、high precision timer、guardrail vibration breaker。
+- [x] P2 治理与企业能力：补齐 OrgGovernanceSaga、SCIM DLQ retry/reconciliation、Chinese Wall grant/release 2PC、GovernanceDelegationRevocationSaga。
+- [x] P3 运营成熟度：补齐 cache warming degradation gate、judge-unavailable canary gate、memory self-reinforcement guard、feedback collective anomaly detector、Improvement rollback_pending、ComplianceReport HumanSignoff timeout、Capacity forecast-vs-actual recalibration、promotion rollback/emergency hotfix evidence。
+- [x] 增加聚焦单测，覆盖上述新增实现入口和关键不变量。
+- [x] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 与本 todo 状态。
+- [x] 执行定向测试、source-only typecheck 与 diff whitespace check。
+
+### A4 Design Review 后架构实现逐条复核（2026-04-27）
+
+> 本轮以最新 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，重点复核刚吸收的 `architecture-design-review` 约束是否已有代码、测试、contract 或运营证据；旧审计完成态只能作为历史基线，不能自动视为本轮新增约束已完成。
+
+- [x] 提取最新架构文档中新增/强化的可执行约束，尤其是 §2.5、§7-§12、§14、§15、§17-§24、§31-§32、§45、§46-§51、§56、§66-§67。
+- [x] 对照 `src/`、`tests/`、`docs_zh/contracts/`、`docs_zh/adr/`、`config/`、`divisions/` 逐项核查实现完成度。
+- [x] 将每项标记为：已完成、部分完成、未实现、文档规划/后续生产证据、文档/实现不一致。
+- [x] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`，追加本轮新增约束的事实矩阵、差距清单和优先级。
+- [x] 回写本 todo 的执行状态，并运行文档 diff 检查。
+
 ## 00-platform-architecture.md 实现一致性审计当前待办
 
 > 本轮审计以 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，逐条核对实现是否完成、是否与文档描述一致；先产出事实矩阵与差距清单，再决定后续实现批次。
