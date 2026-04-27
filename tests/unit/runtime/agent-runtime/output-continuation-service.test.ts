@@ -47,7 +47,8 @@ test("buildContinuationPrompt includes partial output and budget", () => {
   assert.ok(prompt.includes("Partial output here"));
   assert.ok(prompt.includes("Original prompt"));
   assert.ok(prompt.includes("1500"));
-  assert.ok(prompt.includes("[Previous output was truncated]"));
+  assert.ok(prompt.includes("[Previous output was truncated."));
+  assert.ok(prompt.includes("Remaining budget: 1500 tokens."));
 });
 
 test("extractContinuationPoint returns null for empty input", () => {

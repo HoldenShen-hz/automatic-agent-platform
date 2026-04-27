@@ -69,13 +69,10 @@ test("createLoopDetectionMiddlewareFull returns beforeAgent and wrapToolCall hoo
 });
 
 test("createLoopDetectionMiddlewareFull beforeAgent hook escalates when pattern is already escalated", async () => {
-  const state = new (await import("../../../../src/platform/execution/execution-engine/loop-detection.js")).LoopDetectionState({
-    warnThreshold: 1,
-    escalateThreshold: 1,
-  });
+  const { beforeAgent, state } = createLoopDetectionMiddlewareFull({ warnThreshold: 1, escalateThreshold: 1 });
+  const LoopDetectionStateCtor = (await import("../../../../src/platform/execution/execution-engine/loop-detection.js")).LoopDetectionState;
+  assert.equal(state instanceof LoopDetectionStateCtor, true);
   state.recordToolCall("tool", { x: 1 }); // triggers escalation immediately
-
-  const beforeAgent = createLoopDetectionMiddlewareFull({ warnThreshold: 1, escalateThreshold: 1 }).beforeAgent;
 
   const middlewareResult = await beforeAgent.run(
     {
@@ -133,6 +130,11 @@ test("createLoopDetectionMiddlewareFull wrapToolCall throws on escalation", asyn
         { toolName: "escalate_tool", args: { x: 1 } },
         async () => "result",
       ),
-    /loop_detection\.escalated/,
+    (error: unknown) => {
+      assert.equal(error instanceof Error, true);
+      assert.match(String((error as Error & { code?: string }).code ?? ""), /loop_detection\.escalated/);
+      assert.match((error as Error).message, /repeated 3 times/);
+      return true;
+    },
   );
 });

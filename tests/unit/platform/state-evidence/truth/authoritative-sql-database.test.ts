@@ -8,16 +8,19 @@ import {
   type SqliteDatabaseOptions,
   type SqliteSchemaStatus,
 } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { SqliteWriteContentionError } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 
-test("isSqliteWriteContentionError returns true for SQLITE_BUSY error", () => {
-  const error = new Error("SQLITE_BUSY: database is locked");
+test("isSqliteWriteContentionError returns true for wrapped sqlite write contention error", () => {
+  const error = new SqliteWriteContentionError(
+    "/tmp/test.db",
+    Object.assign(new Error("database is locked"), { code: "ERR_SQLITE_ERROR" }),
+  );
   assert.equal(isSqliteWriteContentionError(error), true);
 });
 
-test("isSqliteWriteContentionError returns true for SQLITE_BUSY with code", () => {
-  const error = new Error("database locked") as Error & { code: string };
-  error.code = "SQLITE_BUSY";
-  assert.equal(isSqliteWriteContentionError(error), true);
+test("isSqliteWriteContentionError returns false for raw sqlite busy error", () => {
+  const error = Object.assign(new Error("database is locked"), { code: "ERR_SQLITE_ERROR" });
+  assert.equal(isSqliteWriteContentionError(error), false);
 });
 
 test("isSqliteWriteContentionError returns false for generic error", () => {

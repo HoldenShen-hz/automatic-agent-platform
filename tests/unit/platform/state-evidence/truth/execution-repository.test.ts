@@ -352,7 +352,8 @@ test("ExecutionRepository listExecutionsByStatuses with empty array returns empt
 test("ExecutionRepository updateExecutionStatus modifies execution status", () => {
   let capturedParams: unknown[] = [];
   const mockPrepare = (sql: string) => {
-    assert.ok(sql.includes("UPDATE executions SET status"), "Should update executions status");
+    assert.ok(sql.includes("UPDATE executions"), "Should update executions table");
+    assert.ok(sql.includes("SET status = ?"), "Should update execution status");
     return {
       run: (...params: unknown[]) => {
         capturedParams = params;
@@ -370,7 +371,10 @@ test("ExecutionRepository updateExecutionStatus modifies execution status", () =
 
   assert.equal(capturedParams[0], "prechecking", "First param should be new status");
   assert.equal(capturedParams[1], "2026-04-14T11:00:00.000Z", "Second param should be updatedAt");
-  assert.equal(capturedParams[2], "exec-001", "Last param should be executionId");
+  assert.equal(capturedParams[2], null, "Third param should be startedAt");
+  assert.equal(capturedParams[3], null, "Fourth param should be finishedAt");
+  assert.equal(capturedParams[4], null, "Fifth param should be lastErrorCode");
+  assert.equal(capturedParams[5], "exec-001", "Last param should be executionId");
 });
 
 test("ExecutionRepository updateExecutionFailure records error details", () => {
