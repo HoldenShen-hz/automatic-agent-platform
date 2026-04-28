@@ -25,6 +25,7 @@ import type {
   DelegationSpec,
   DelegationResult,
   DelegationHandle,
+  AwaitableDelegationHandle,
   DelegationChain,
   DelegationChainNode,
   DelegationOptions,
@@ -53,6 +54,7 @@ export class DelegationManagerService {
   private readonly defaultTimeout: number;
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
+  private readonly delegationRootStore: Map<string, string>;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ENTRIES = 1000;
   private readonly ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -61,15 +63,16 @@ export class DelegationManagerService {
 
   public constructor(options: DelegationOptions = {}) {
     const config: TopologyValidatorConfig = {
-      maxDepth: options.maxDepth ?? DEFAULT_MAX_DEPTH,
+      maxDepth: options.maxDepth ?? options.maxDelegationDepth ?? DEFAULT_MAX_DEPTH,
       maxFanout: options.maxFanout ?? 10,
       ...(options.allowedPackIds ? { allowedPackIds: options.allowedPackIds } : {}),
     };
     this.topologyValidator = createTopologyValidator(config);
     this.collaborationProtocol = new CollaborationProtocolService();
-    this.defaultTimeout = options.defaultTimeout ?? 300000; // 5 minutes
+    this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
     this.delegationStore = new Map();
     this.chainStore = new Map();
+    this.delegationRootStore = new Map();
   }
 
   /**
@@ -123,10 +126,10 @@ export class DelegationManagerService {
    * @returns DelegationHandle for tracking the delegation
    * @throws DelegationDepthExceededError | DelegationFanoutExceededError | DelegationCycleDetectedError
    */
-  public async delegate(
+  public delegate(
     parent: AgentContext,
     spec: DelegationSpec,
-  ): Promise<DelegationHandle> {
+  ): AwaitableDelegationHandle {
     // Step 1: Topology validation
     this.validateTopology(parent, spec);
 
@@ -137,13 +140,15 @@ export class DelegationManagerService {
     );
 
     // Step 3: Create isolated child context
-    const childContext = this.createIsolatedContext(parent, narrowedPermissions, spec);
+    this.createIsolatedContext(parent, narrowedPermissions, spec);
 
     // Step 4: Create delegation record
-    const delegationResult = await this.createDelegationRecord(parent, spec, narrowedPermissions);
+    const delegationResult = this.createDelegationRecord(parent, spec, narrowedPermissions);
 
     // Step 5: Update delegation chain
-    this.updateDelegationChain(parent.agentId, spec, delegationResult);
+    const rootAgentId = this.resolveRootAgentId(parent);
+    this.updateDelegationChain(rootAgentId, parent, spec, delegationResult);
+    this.delegationRootStore.set(delegationResult.delegationId, rootAgentId);
 
     // Step 6: Return handle (actual dispatch would be handled by caller/dispatch engine)
     return this.createHandle(delegationResult, parent.correlationId);
@@ -154,7 +159,7 @@ export class DelegationManagerService {
    *
    * @param delegationId - Delegation to cancel
    */
-  public async cancel(delegationId: string): Promise<void> {
+  public cancel(delegationId: string): void {
     const delegation = this.delegationStore.get(delegationId);
     if (!delegation) {
       throw new ValidationError(
@@ -164,7 +169,7 @@ export class DelegationManagerService {
       );
     }
 
-    if (delegation.status !== "pending" && delegation.status !== "active") {
+    if (delegation.status !== "pending" && delegation.status !== "pending_approval" && delegation.status !== "active") {
       throw new ValidationError(
         "delegation.cannot_cancel",
         `Delegation ${delegationId} cannot be cancelled (status: ${delegation.status})`,
@@ -175,15 +180,24 @@ export class DelegationManagerService {
     delegation.status = "cancelled";
   }
 
+  public cancelDelegation(delegationId: string): void {
+    this.cancel(delegationId);
+  }
+
   /**
    * Marks a delegation as completed.
    *
    * @param delegationId - Delegation to complete
    * @param outputRef - Optional reference to output artifact
    */
-  public async complete(delegationId: string, _outputRef?: string): Promise<void> {
+  public complete(delegationId: string, _outputRef?: string): void {
     const delegation = this.requireDelegation(delegationId);
     delegation.status = "completed";
+    delegation.completedAt = nowIso();
+  }
+
+  public completeDelegation(delegationId: string, outputRef?: string): void {
+    this.complete(delegationId, outputRef);
   }
 
   public async completeWithEvidence(delegationId: string, evidence: readonly string[], outputRef?: string): Promise<void> {
@@ -218,7 +232,7 @@ export class DelegationManagerService {
         details: { delegationId, violations: validation.violations },
       });
     }
-    await this.complete(delegationId, outputRef);
+    this.complete(delegationId, outputRef);
   }
 
   /**
@@ -227,9 +241,40 @@ export class DelegationManagerService {
    * @param delegationId - Delegation to fail
    * @param error - Error message
    */
-  public async fail(delegationId: string, _error: string): Promise<void> {
+  public fail(delegationId: string, _error: string): void {
     const delegation = this.requireDelegation(delegationId);
     delegation.status = "failed";
+  }
+
+  public handleDelegationTimeout(delegationId: string): void {
+    const delegation = this.requireDelegation(delegationId);
+    delegation.status = "timed_out";
+  }
+
+  public createDelegationContext(
+    delegationId: string,
+    overrides: Partial<AgentContext> = {},
+  ): AgentContext {
+    const delegation = this.requireDelegation(delegationId);
+    const activeDelegations = [
+      ...new Set([
+        delegationId,
+        ...(overrides.activeDelegations ?? []),
+      ]),
+    ];
+
+    return {
+      ...overrides,
+      agentId: overrides.agentId ?? delegation.childAgentId,
+      agentType: overrides.agentType ?? "worker",
+      packId: overrides.packId ?? delegation.childAgentId,
+      delegationDepth: overrides.delegationDepth ?? delegation.depth,
+      activeDelegations,
+      permissions: delegation.permissions,
+      sandboxTier: overrides.sandboxTier ?? "container",
+      correlationId: overrides.correlationId ?? delegation.correlationId,
+      tenantId: overrides.tenantId ?? null,
+    };
   }
 
   /**
@@ -239,7 +284,25 @@ export class DelegationManagerService {
    * @returns DelegationChain or null if not found
    */
   public getDelegationChain(agentId: string): DelegationChain | null {
-    return this.chainStore.get(agentId) ?? null;
+    const direct = this.chainStore.get(agentId);
+    if (direct) {
+      return direct;
+    }
+
+    for (const chain of this.chainStore.values()) {
+      const parentIndex = chain.nodes.findIndex((node) => node.agentId === agentId);
+      if (parentIndex >= 0) {
+        const nodes = chain.nodes.slice(parentIndex + 1);
+        return {
+          rootAgentId: chain.rootAgentId,
+          nodes,
+          maxDepthReached: nodes.reduce((maxDepth, node) => Math.max(maxDepth, node.depth), 0),
+          totalDelegations: nodes.length,
+        };
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -260,7 +323,7 @@ export class DelegationManagerService {
     return [...this.delegationStore.values()].filter(
       (d) =>
         (d.parentAgentId === agentId || d.childAgentId === agentId) &&
-        (d.status === "pending" || d.status === "active"),
+        (d.status === "pending" || d.status === "pending_approval" || d.status === "active"),
     );
   }
 
@@ -274,7 +337,7 @@ export class DelegationManagerService {
     let expired = 0;
 
     for (const delegation of this.delegationStore.values()) {
-      if (delegation.status === "pending" || delegation.status === "active") {
+      if (delegation.status === "pending" || delegation.status === "pending_approval" || delegation.status === "active") {
         if (delegation.expiresAt < now) {
           try {
             delegation.status = "expired";
@@ -301,7 +364,7 @@ export class DelegationManagerService {
     const now = nowIso();
     return [...this.delegationStore.values()].filter(
       (d) =>
-        (d.status === "pending" || d.status === "active") &&
+        (d.status === "pending" || d.status === "pending_approval" || d.status === "active") &&
         d.expiresAt < now,
     );
   }
@@ -328,7 +391,7 @@ export class DelegationManagerService {
     const chain = this.getDelegationChain(parent.agentId);
     const chainPackIds = [
       parent.packId,
-      ...(chain?.nodes.map((n) => n.packId) ?? []),
+      ...(parent.delegationDepth > 0 ? chain?.nodes.map((n) => n.packId) ?? [] : []),
     ].filter((packId): packId is string => typeof packId === "string");
 
     this.topologyValidator.validate({
@@ -389,11 +452,11 @@ export class DelegationManagerService {
     };
   }
 
-  private async createDelegationRecord(
+  private createDelegationRecord(
     parent: AgentContext,
     spec: DelegationSpec,
     permissions: PermissionSet,
-  ): Promise<DelegationResult> {
+  ): DelegationResult {
     // C-11: Evict expired entries before creating new one
     this.evictExpired();
 
@@ -408,9 +471,12 @@ export class DelegationManagerService {
       childAgentId: spec.targetAgentId,
       depth: parent.delegationDepth + 1,
       permissions,
+      grantedPermissions: permissions,
       createdAt: now,
       expiresAt,
-      status: "pending",
+      correlationId: parent.correlationId,
+      ...(spec.requiresApproval ? { requiresApproval: true } : {}),
+      status: spec.requiresApproval ? "pending_approval" : "pending",
     };
 
     this.delegationStore.set(delegationId, delegation);
@@ -429,7 +495,12 @@ export class DelegationManagerService {
     return delegation;
   }
 
-  private updateDelegationChain(rootAgentId: string, spec: DelegationSpec, delegation: DelegationResult): void {
+  private resolveRootAgentId(parent: AgentContext): string {
+    const parentDelegationId = parent.activeDelegations.at(-1);
+    return parentDelegationId ? this.delegationRootStore.get(parentDelegationId) ?? parent.agentId : parent.agentId;
+  }
+
+  private updateDelegationChain(rootAgentId: string, parent: AgentContext, spec: DelegationSpec, delegation: DelegationResult): void {
     // C-11: Evict expired entries before updating chain
     this.evictExpired();
 
@@ -448,10 +519,10 @@ export class DelegationManagerService {
       delegationId: delegation.delegationId,
       agentId: delegation.childAgentId,
       packId: spec.targetPackId,
-      agentType: "", // Would be filled from spec
+      agentType: spec.targetAgentType,
       depth: delegation.depth,
       createdAt: delegation.createdAt,
-      parentDelegationId: null, // Would be set from parent context
+      parentDelegationId: parent.activeDelegations.at(-1) ?? null,
     };
 
     chain.nodes = [...chain.nodes, node];
@@ -461,8 +532,8 @@ export class DelegationManagerService {
     this.chainStore.set(rootAgentId, chain);
   }
 
-  private createHandle(delegation: DelegationResult, correlationId: string): DelegationHandle {
-    return {
+  private createHandle(delegation: DelegationResult, correlationId: string): AwaitableDelegationHandle {
+    const handle: DelegationHandle = {
       delegationId: delegation.delegationId,
       parentAgentId: delegation.parentAgentId,
       childAgentId: delegation.childAgentId,
@@ -471,7 +542,21 @@ export class DelegationManagerService {
       createdAt: delegation.createdAt,
       timeout: new Date(delegation.expiresAt).getTime() - Date.now(),
       correlationId: `${correlationId}:${delegation.delegationId}`,
+      ...(delegation.requiresApproval ? { requiresApproval: true } : {}),
     };
+    return this.makeAwaitableHandle(handle);
+  }
+
+  private makeAwaitableHandle(handle: DelegationHandle): AwaitableDelegationHandle {
+    Object.defineProperty(handle, "then", {
+      enumerable: false,
+      configurable: true,
+      value: (
+        onFulfilled?: ((value: DelegationHandle) => DelegationHandle | PromiseLike<DelegationHandle>) | null,
+        onRejected?: ((reason: unknown) => DelegationHandle | PromiseLike<DelegationHandle>) | null,
+      ) => Promise.resolve({ ...handle }).then(onFulfilled ?? undefined, onRejected ?? undefined),
+    });
+    return handle as AwaitableDelegationHandle;
   }
 }
 

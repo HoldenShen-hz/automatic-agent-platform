@@ -204,9 +204,11 @@ test("PackSecurityService.runSecurityScan returns failed for critical severity i
 
 test("PackSecurityService.runSecurityScan returns warning for high severity issues only", async () => {
   const service = new PackSecurityService();
+  const crypto = await import("node:crypto");
+  const source = "exec(userInput)";
   const input = createSecurityScanInput({
-    sourceUri: "inline:exec(userInput)",
-    manifestChecksum: "a".repeat(64),
+    sourceUri: `inline:${source}`,
+    manifestChecksum: crypto.createHash("sha256").update(source, "utf8").digest("hex"),
     capabilities: [],
     permissions: [],
   });

@@ -270,15 +270,16 @@ test("createDelegationRequest normalizes empty strings to null", () => {
     taskId: "task_123",
     fromAgentId: "agent_alpha",
     toAgentId: "",
-    capabilityRef: "",
+    capabilityRef: "capability.review",
     priority: "normal",
     reason: "Test",
     contextRef: "   ",
     tenantId: "",
   });
 
-  // toAgentId and capabilityRef are empty, so this should throw
-  // But contextRef and tenantId being empty should normalize to null
+  assert.equal(request.toAgentId, null);
+  assert.equal(request.contextRef, null);
+  assert.equal(request.tenantId, null);
 });
 
 test("createDelegationRequest copies reason to avoid mutation", () => {

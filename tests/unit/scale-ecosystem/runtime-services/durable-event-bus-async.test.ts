@@ -81,11 +81,11 @@ test("DurableEventBusAsync getPendingCount returns 0 for unknown consumer", () =
   assert.equal(count, 0);
 });
 
-test("DurableEventBusAsync dispose marks service as disposed", () => {
+test("DurableEventBusAsync dispose marks service as disposed", async () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   bus.dispose();
   // After dispose, publish should throw
-  assert.throws(
+  await assert.rejects(
     () => bus.publish({ eventType: "test", payload: {} }),
     (err: Error) => err.message.includes("disposed"),
   );

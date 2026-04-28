@@ -452,8 +452,8 @@ test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be
     expectedVersion: 0,
   });
 
-  // The settle internally passes hardCapSatisfied: true, so it should succeed
-  // If we manually construct a reservation and pass it, the state machine checks this
+  // The allocator recomputes the hard-cap precondition from ledger/reservation/actualAmount,
+  // so a reservation settled exactly within the cap should satisfy the state-machine guard.
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,

@@ -247,14 +247,14 @@ test("WorkflowStateMachine: WorkflowStateError contains correct entityKind", () 
   const machine = createWorkflowStateMachine();
 
   try {
-    machine.assertTransition("running", "completed");
+    machine.assertTransition("running", "resuming");
     assert.fail("Expected error to be thrown");
   } catch (err) {
     assert.ok(err instanceof WorkflowStateError);
     const error = err as WorkflowStateError & { details?: { entityKind: string; current: string; next: string } };
     assert.equal(error.details?.entityKind, "workflow");
     assert.equal(error.details?.current, "running");
-    assert.equal(error.details?.next, "completed");
+    assert.equal(error.details?.next, "resuming");
   }
 });
 

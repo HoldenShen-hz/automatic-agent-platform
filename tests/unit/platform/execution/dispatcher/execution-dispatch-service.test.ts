@@ -748,7 +748,7 @@ test("dispatchNext with local_only dispatchTarget filters remote workers", () =>
 // dispatchNext with require_remote dispatch target and no remote workers
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with require_remote returns blocked when no remote workers", () => {
+test("dispatchNext with require_remote returns no_worker when no remote workers exist", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.dispatchTarget = "require_remote";
   const localWorker = createMockWorker("worker-local", { placement: "local", availableSlots: 5 });
@@ -788,7 +788,7 @@ test("dispatchNext with require_remote returns blocked when no remote workers", 
 
   const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
-  // With require_remote and no remote workers, the result is "blocked" with remote.unavailable
+  // With require_remote and no remote workers at all, the dispatch fail-closes as blocked.
   assert.equal(result.outcome, "blocked");
   assert.equal(result.reasonCode, "remote.unavailable");
 });

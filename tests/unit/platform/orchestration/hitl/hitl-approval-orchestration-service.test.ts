@@ -44,6 +44,21 @@ test("HitlApprovalOrchestrationService creates approval request with all modes",
     ];
 
     for (const mode of modes) {
+      const context =
+        mode === "multi_party_approval"
+          ? { requiredApprovals: 2 }
+          : mode === "delegated_approval"
+            ? { delegationTarget: "delegate_1" }
+            : mode === "collaborative_edit"
+              ? { sharedArtifactRef: "artifact:shared-doc-1" }
+              : undefined;
+      const options =
+        mode === "iterative_feedback"
+          ? [
+              { optionId: "approve", label: "Approve", style: "primary" as const, requiresConfirm: true },
+              { optionId: "request_changes", label: "Request changes", style: "secondary" as const, requiresConfirm: false },
+            ]
+          : [{ optionId: "approve", label: "Approve", style: "primary" as const, requiresConfirm: true }];
       const packet = await service.requestApproval({
         taskId: "task_mode_test",
         executionId: "exec_mode_test",
@@ -53,8 +68,9 @@ test("HitlApprovalOrchestrationService creates approval request with all modes",
         reason: "Testing mode",
         riskLevel: mode === "circuit_breaker_human" ? "critical" : "medium",
         stageRef: "plan",
-        options: [{ optionId: "approve", label: "Approve", style: "primary", requiresConfirm: true }],
+        options,
         timeoutPolicy: "reject",
+        ...(context != null ? { context } : {}),
       });
 
       assert.equal(packet.mode, mode, `Mode ${mode} should match`);

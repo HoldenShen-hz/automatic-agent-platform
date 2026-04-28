@@ -135,10 +135,17 @@ class CacheBootstrapManager {
 const CACHE_BOOTSTRAP_MANAGER_SERVICE = "cache-bootstrap-manager";
 function getCacheBootstrapManager(): CacheBootstrapManager {
   const registry = ServiceRegistry.getInstance();
-  registry.register(CACHE_BOOTSTRAP_MANAGER_SERVICE, {
-    init: () => new CacheBootstrapManager(),
-  });
-  return registry.get<CacheBootstrapManager>(CACHE_BOOTSTRAP_MANAGER_SERVICE);
+  try {
+    return registry.get<CacheBootstrapManager>(CACHE_BOOTSTRAP_MANAGER_SERVICE);
+  } catch (error) {
+    if (!(error instanceof InternalAppError) || error.code !== "service_registry.not_registered") {
+      throw error;
+    }
+    registry.register(CACHE_BOOTSTRAP_MANAGER_SERVICE, {
+      init: () => new CacheBootstrapManager(),
+    });
+    return registry.get<CacheBootstrapManager>(CACHE_BOOTSTRAP_MANAGER_SERVICE);
+  }
 }
 
 /**

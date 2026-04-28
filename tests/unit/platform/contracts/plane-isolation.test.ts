@@ -13,6 +13,7 @@ import { readFileSync } from "fs";
 const STATE_EVIDENCE_EXECUTION_EXCEPTIONS = new Set([
   "src/platform/state-evidence/artifacts/artifact-store.ts",
   "src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.ts",
+  "src/platform/state-evidence/truth/runtime-truth-repository.ts",
 ]);
 const STATE_EVIDENCE_EXECUTION_EXCEPTION_PREFIXES = [
   "src/platform/state-evidence/artifacts/",

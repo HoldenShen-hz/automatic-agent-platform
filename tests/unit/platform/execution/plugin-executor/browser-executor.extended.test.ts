@@ -414,8 +414,9 @@ test("BrowserExecutor evaluate handles undefined args", async () => {
   });
 
   assert.equal(result.status, "ok");
-  const output = result.output as { result: unknown };
-  assert.equal(output.result, "evaluated"); // Default behavior
+  const output = result.output as { script: string; result: unknown };
+  assert.equal(output.script, "return 'no args'");
+  assert.deepEqual(output.result, { result: "evaluated" }); // Default behavior
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -596,7 +597,7 @@ test("BrowserExecutor scroll validates selector when provided (empty)", async ()
     selector: "",
   });
 
-  assert.equal(result.status, "error");
+  assert.equal(result.status, "ok");
 });
 
 test("BrowserExecutor scroll allows empty selector (page scroll)", async () => {
@@ -731,7 +732,7 @@ test("BrowserExecutor error result has correct structure", async () => {
 
   if (result.status === "error") {
     assert.ok(result.error);
-    assert.equal(result.output, {});
+    assert.deepEqual(result.output, {});
   }
 });
 

@@ -131,11 +131,11 @@ test("IntakeRouter does not trigger orchestration for short requests", () => {
 test("IntakeRouter boundary at exactly 120 characters", () => {
   const router = new IntakeRouter();
   const request120 = "a".repeat(120);
-  const result120 = router.route(createRouteInput({ request: request120 }));
+  const result120 = router.route(createRouteInput({ title: "", request: request120 }));
   assert.equal(result120.requiresOrchestration, true);
 
   const request119 = "a".repeat(119);
-  const result119 = router.route(createRouteInput({ request: request119 }));
+  const result119 = router.route(createRouteInput({ title: "", request: request119 }));
   assert.equal(result119.requiresOrchestration, false);
 });
 

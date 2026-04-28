@@ -170,7 +170,7 @@ test("HarnessRuntimeService.assertInvariants returns empty violations for valid 
   assert.equal(result.violations.length, 0);
 });
 
-test("HarnessRuntimeService.sleep creates a sleeping run", () => {
+test("HarnessRuntimeService.sleep creates a sleeping run with a sleep lease", () => {
   const service = new HarnessRuntimeService();
   const constraintPack: ConstraintPack = {
     policyIds: [],
@@ -196,7 +196,7 @@ test("HarnessRuntimeService.sleep creates a sleeping run", () => {
   assert.equal(sleepingRun.sleepLease?.resumeAt, "2026-04-24T00:00:00Z");
 });
 
-test("HarnessRuntimeService.resume clears sleep lease", () => {
+test("HarnessRuntimeService.resume clears sleep lease and returns to running", () => {
   const service = new HarnessRuntimeService();
   const constraintPack: ConstraintPack = {
     policyIds: [],

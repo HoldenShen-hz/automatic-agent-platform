@@ -272,9 +272,7 @@ export const GraphPatchSchema = z.object({
 
 export const NodeRunStatusSchema = z.enum([
   "created",
-  "blocked",
   "ready",
-  "queued",
   "leased",
   "running",
   "retry_wait",

@@ -150,15 +150,19 @@ test("baseline descriptions are non-empty", () => {
 
 test("each baseline description is relevant to its capability", () => {
   const baselines = listModelGatewayCapabilityBaselines();
+  const expectedKeywords: Record<string, string[]> = {
+    "provider-registry": ["provider", "vendor", "registration"],
+    router: ["routing", "route", "dispatch"],
+    fallback: ["fallback", "recovery", "downgrade"],
+    degradation: ["degradation", "availability", "throttling"],
+    "cost-tracker": ["cost", "token", "chargeback", "budget"],
+    messages: ["message", "request", "response", "payload"],
+  };
 
   for (const baseline of baselines) {
     const description = baseline.description.toLowerCase();
-    const capabilityId = baseline.capabilityId.replace("-", "");
-    // Description should contain relevant terms for the capability
     assert.ok(
-      description.includes(capabilityId) ||
-      description.includes(baseline.capabilityId.replace("-", " ")) ||
-      description.includes(baseline.capabilityId.replace("-", "_")),
+      expectedKeywords[baseline.capabilityId]?.some((keyword) => description.includes(keyword)) ?? false,
       `Description for ${baseline.capabilityId} should be relevant: "${baseline.description}"`,
     );
   }

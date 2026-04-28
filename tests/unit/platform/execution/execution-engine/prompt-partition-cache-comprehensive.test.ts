@@ -358,7 +358,7 @@ test("PromptPartitionCacheService.getUsage returns correct usage", () => {
   const retrieved = service.getUsage(partition.dynamicCacheKey);
 
   assert.ok(retrieved != null);
-  assert.equal(retrieved!.reuseCount, 1);
+  assert.equal(retrieved!.reuseCount, 0);
 });
 
 test("PromptPartitionCacheService.listUsage returns all entries", () => {

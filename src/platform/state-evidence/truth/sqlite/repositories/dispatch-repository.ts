@@ -156,7 +156,7 @@ export class DispatchRepository {
   public getExecutionPrecheck(executionId: string, tenantId?: string | null): ExecutionPrecheckRecord | null {
     const scopedTenantId = resolveTenantScope(tenantId);
     if (scopedTenantId !== undefined) {
-      return queryOne<ExecutionPrecheckRecord>(
+      return normalizeExecutionPrecheck(queryOne<ExecutionPrecheckRecord>(
         this.conn,
         `SELECT ep.id, ep.execution_id AS executionId, ep.allowed, ep.reason_code AS reasonCode,
                 ep.resolved_budget_usd AS resolvedBudgetUsd, ep.resolved_timeout_ms AS resolvedTimeoutMs,
@@ -168,9 +168,9 @@ export class DispatchRepository {
          WHERE ep.execution_id = ? AND t.tenant_id = ?`,
         executionId,
         scopedTenantId,
-      ) ?? null;
+      ) ?? null);
     }
-    return queryOne<ExecutionPrecheckRecord>(
+    return normalizeExecutionPrecheck(queryOne<ExecutionPrecheckRecord>(
       this.conn,
       `SELECT id, execution_id AS executionId, allowed, reason_code AS reasonCode,
               resolved_budget_usd AS resolvedBudgetUsd, resolved_timeout_ms AS resolvedTimeoutMs,
@@ -178,7 +178,54 @@ export class DispatchRepository {
               resolved_paths_json AS resolvedPathsJson, checked_at AS checkedAt
        FROM execution_prechecks WHERE execution_id = ?`,
       executionId,
-    ) ?? null;
+    ) ?? null);
+  }
+
+  public upsertExecutionPrecheck(precheck: {
+    id?: string;
+    executionId: string;
+    allowed?: number | boolean;
+    reasonCode?: string | null;
+    resolvedBudgetUsd?: number | null;
+    resolvedTimeoutMs?: number;
+    resolvedSandboxMode?: string;
+    resolvedToolsJson?: string | null;
+    resolvedPathsJson?: string | null;
+    allowedToolsJson?: string | null;
+    resolvedTools?: string | null;
+    checkedAt?: string;
+  }): void {
+    const id = precheck.id ?? `precheck-${precheck.executionId}`;
+    const resolvedToolsJson = precheck.resolvedToolsJson ?? precheck.allowedToolsJson ?? precheck.resolvedTools ?? null;
+    this.conn
+      .prepare(
+        `INSERT INTO execution_prechecks (
+          id, execution_id, allowed, reason_code, resolved_budget_usd,
+          resolved_timeout_ms, resolved_sandbox_mode, resolved_tools_json,
+          resolved_paths_json, checked_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(execution_id) DO UPDATE SET
+          allowed = excluded.allowed,
+          reason_code = excluded.reason_code,
+          resolved_budget_usd = excluded.resolved_budget_usd,
+          resolved_timeout_ms = excluded.resolved_timeout_ms,
+          resolved_sandbox_mode = excluded.resolved_sandbox_mode,
+          resolved_tools_json = excluded.resolved_tools_json,
+          resolved_paths_json = excluded.resolved_paths_json,
+          checked_at = excluded.checked_at`,
+      )
+      .run(
+        id,
+        precheck.executionId,
+        precheck.allowed === false || precheck.allowed === 0 ? 0 : 1,
+        precheck.reasonCode ?? null,
+        precheck.resolvedBudgetUsd ?? null,
+        precheck.resolvedTimeoutMs ?? 60000,
+        precheck.resolvedSandboxMode ?? "workspace_write",
+        resolvedToolsJson,
+        precheck.resolvedPathsJson ?? null,
+        precheck.checkedAt ?? new Date().toISOString(),
+      );
   }
 
   /** Get a dead letter record by execution ID. */
@@ -321,4 +368,14 @@ export class DispatchRepository {
       workerId,
     ) ?? null;
   }
+}
+
+function normalizeExecutionPrecheck(precheck: ExecutionPrecheckRecord | null): ExecutionPrecheckRecord | null {
+  if (precheck == null) {
+    return null;
+  }
+  return {
+    ...precheck,
+    allowedToolsJson: precheck.resolvedToolsJson,
+  } as ExecutionPrecheckRecord & { allowedToolsJson: string | null };
 }

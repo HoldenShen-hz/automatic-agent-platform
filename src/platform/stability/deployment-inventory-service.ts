@@ -49,7 +49,10 @@ const DEFAULT_DEPLOYMENTS: readonly DeploymentInventoryRecord[] = [
 
 export class DeploymentInventoryService {
   public listDeployments(): DeploymentInventoryRecord[] {
-    return Object.freeze([...DEFAULT_DEPLOYMENTS]) as DeploymentInventoryRecord[];
+    return Object.freeze(DEFAULT_DEPLOYMENTS.map((record) => Object.freeze({
+      ...record,
+      requiredDrills: Object.freeze([...record.requiredDrills]),
+    }))) as DeploymentInventoryRecord[];
   }
 
   public buildSummary(): {

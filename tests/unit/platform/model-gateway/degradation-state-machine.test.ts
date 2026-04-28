@@ -400,12 +400,12 @@ describe("DegradationController state machine edge cases", () => {
         lastUpdated: new Date().toISOString(),
       };
 
-      // Even with 3 healthy checks, should not deescalate below D0
+      // D0 is the configured lower bound, so healthy checks may recover to D0.
       for (let i = 0; i < 5; i++) {
         ctrl.evaluateHealth(healthyMetrics);
       }
 
-      assert.strictEqual(ctrl.getCurrentLevel(), DegradationLevel.D1);
+      assert.strictEqual(ctrl.getCurrentLevel(), DegradationLevel.D0);
     });
 
     it("should handle consecutiveHealthyCount reset on marginal error rate", () => {

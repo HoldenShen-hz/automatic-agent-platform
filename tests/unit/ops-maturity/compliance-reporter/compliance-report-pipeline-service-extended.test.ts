@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { ComplianceReportPipelineService } from "../../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
-import type { ComplianceReportRequest, ComplianceReportArtifact } from "../../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
+import { ComplianceReportPipelineService } from "../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
+import type { ComplianceReportRequest, ComplianceReportArtifact } from "../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
 
 describe("ComplianceReportPipelineService", () => {
   describe("generate", () => {

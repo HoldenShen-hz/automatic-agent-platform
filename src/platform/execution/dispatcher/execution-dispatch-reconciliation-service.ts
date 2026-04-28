@@ -22,6 +22,8 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { ExecutionDispatchService } from "./execution-dispatch-service.js";
+import { buildWorkerSnapshotRefreshInput, removeExecutionId } from "../lease/utils.js";
+import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
@@ -46,7 +48,10 @@ export interface DispatchReconciliationRepairResult {
   replacementTicketId: string | null;
 }
 
-function parseJsonArray(value: string): string[] {
+function parseJsonArray(value: string | null | undefined): string[] {
+  if (value == null || value.length === 0) {
+    return [];
+  }
   try {
     const parsed = JSON.parse(value) as unknown;
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
@@ -66,12 +71,14 @@ function isTerminalExecutionStatus(status: ExecutionStatus): boolean {
 
 export class ExecutionDispatchReconciliationService {
   private readonly dispatch: ExecutionDispatchService;
+  private readonly workers: WorkerRegistryService;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
   ) {
     this.dispatch = new ExecutionDispatchService(db, store);
+    this.workers = new WorkerRegistryService(store);
   }
 
   public scan(now: string = nowIso()): DispatchReconciliationIssue[] {
@@ -211,6 +218,7 @@ export class ExecutionDispatchReconciliationService {
         status: "expired",
         invalidatedAt: occurredAt,
       });
+      this.releaseWorkerExecutionReference(ticket, occurredAt);
       this.recordReconciledEvent(ticket, issue, occurredAt, null);
     });
 
@@ -251,6 +259,33 @@ export class ExecutionDispatchReconciliationService {
       resolutionAction: issue.resolutionAction,
       replacementTicketId: replacement.ticket.id,
     };
+  }
+
+  private releaseWorkerExecutionReference(ticket: ExecutionTicketRecord, occurredAt: string): void {
+    if (ticket.assignedWorkerId == null) {
+      return;
+    }
+
+    const workerStore = this.store.worker as {
+      getWorkerSnapshot?: (workerId: string) => ReturnType<AuthoritativeTaskStore["worker"]["getWorkerSnapshot"]>;
+    };
+    if (typeof workerStore.getWorkerSnapshot !== "function") {
+      return;
+    }
+
+    const snapshot = workerStore.getWorkerSnapshot(ticket.assignedWorkerId);
+    if (!snapshot) {
+      return;
+    }
+
+    const nextExecutionIds = removeExecutionId(parseJsonArray(snapshot.runningExecutionsJson), ticket.executionId);
+    const nextActiveLeaseCount = Math.max(0, nextExecutionIds.length);
+    this.workers.recordHeartbeat({
+      ...buildWorkerSnapshotRefreshInput(snapshot, nextExecutionIds, occurredAt, logger),
+      activeLeaseCount: nextActiveLeaseCount,
+      currentStepId: nextExecutionIds.length === 0 ? null : snapshot.currentStepId,
+      lastProgressAt: nextExecutionIds.length === 0 ? occurredAt : snapshot.lastProgressAt,
+    });
   }
 
   private recordReconciledEvent(

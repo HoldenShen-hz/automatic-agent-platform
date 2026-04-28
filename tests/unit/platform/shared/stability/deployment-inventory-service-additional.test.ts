@@ -104,6 +104,8 @@ test("DeploymentInventoryService returns defensive copy of deployments", () => {
 
   // Should be equal but not the same reference
   assert.deepEqual(deployments1, deployments2);
-  deployments1.push({ deploymentId: "test" } as never);
-  assert.notEqual(service.listDeployments().length, deployments1.length);
+  assert.throws(() => {
+    deployments1.push({ deploymentId: "test" } as never);
+  }, /not extensible/);
+  assert.equal(service.listDeployments().length, deployments2.length);
 });

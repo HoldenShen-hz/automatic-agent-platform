@@ -91,23 +91,21 @@ test("ScopedExternalAccessSandbox resets rate limit after window expiration", as
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 2,
   });
+  const originalNow = Date.now;
+  let currentTime = 1_700_000_000_000;
+  Date.now = () => currentTime;
 
-  // Exhaust the limit
-  assert.equal(await sandbox.checkRateLimit("api.example.com"), true);
-  assert.equal(await sandbox.checkRateLimit("api.example.com"), true);
-  assert.equal(await sandbox.checkRateLimit("api.example.com"), false);
+  try {
+    assert.equal(await sandbox.checkRateLimit("api.example.com"), true);
+    assert.equal(await sandbox.checkRateLimit("api.example.com"), true);
+    assert.equal(await sandbox.checkRateLimit("api.example.com"), false);
 
-  // Simulate time passing by manipulating internal state
-  const status = sandbox.getRateLimitStatus();
-  const domainLimit = status["api.example.com"];
-  if (domainLimit) {
-    // Advance time beyond the 60-second window
-    const now = Date.now();
-    domainLimit.windowStart = now - 120_000; // 2 minutes ago
+    currentTime += 120_000;
+
+    assert.equal(await sandbox.checkRateLimit("api.example.com"), true);
+  } finally {
+    Date.now = originalNow;
   }
-
-  // Should be allowed again after window reset
-  assert.equal(await sandbox.checkRateLimit("api.example.com"), true);
 });
 
 test("ScopedExternalAccessSandbox handles rate limit for never-seen domain", async () => {

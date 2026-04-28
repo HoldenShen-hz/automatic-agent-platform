@@ -12,7 +12,7 @@ import test from "node:test";
 
 import { ReplanningService } from "../../../../../src/platform/orchestration/planner/replanning-service.js";
 import type { Plan } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
-import type { FeedbackBatch } from "../../../../../src/platform/scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import type { FeedbackBatch } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
 
 function createPlan(overrides: Partial<Plan> = {}): Plan {
   return {

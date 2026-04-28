@@ -160,27 +160,15 @@ test("RuntimeStateMachine allows valid NodeRun transitions", () => {
   const executionStatuses = ["leased", "running", "retry_wait", "awaiting_hitl", "reconciling", "succeeded", "failed"];
 
   const validTransitions: Array<[NodeRunStatus, NodeRunStatus]> = [
-    ["created", "blocked"],
     ["created", "ready"],
     ["created", "policy_blocked"],
     ["created", "dependency_failed"],
     ["created", "aborted"],
-    ["blocked", "ready"],
-    ["blocked", "skipped"],
-    ["blocked", "cancelled"],
-    ["blocked", "dependency_failed"],
-    ["blocked", "policy_blocked"],
-    ["blocked", "aborted"],
-    ["ready", "queued"],
     ["ready", "leased"],
     ["ready", "policy_blocked"],
     ["ready", "dependency_failed"],
     ["ready", "skipped"],
     ["ready", "aborted"],
-    ["queued", "leased"],
-    ["queued", "ready"],
-    ["queued", "cancelled"],
-    ["queued", "aborted"],
     ["leased", "running"],
     ["leased", "ready"],
     ["leased", "cancelled"],
@@ -598,7 +586,7 @@ test("RuntimeStateMachine rejects invalid BudgetReservation transitions", () => 
 
 type HarnessRunStatus = "created" | "admitted" | "planning" | "ready" | "running" | "pausing" | "paused" | "resuming" | "replanning" | "compensating" | "completed" | "failed" | "aborted";
 
-type NodeRunStatus = "created" | "blocked" | "ready" | "queued" | "leased" | "running" | "retry_wait" | "awaiting_hitl" | "reconciling" | "succeeded" | "failed" | "skipped" | "cancelled" | "dependency_failed" | "policy_blocked" | "aborted";
+type NodeRunStatus = "created" | "ready" | "leased" | "running" | "retry_wait" | "awaiting_hitl" | "reconciling" | "succeeded" | "failed" | "skipped" | "cancelled" | "dependency_failed" | "policy_blocked" | "aborted";
 
 type SideEffectStatus = "proposed" | "approved" | "reserved" | "committing" | "committed" | "confirming" | "confirmed" | "ambiguous" | "manual_review_required" | "reconciling" | "compensation_required" | "compensating" | "compensated" | "failed" | "revoked" | "expired";
 

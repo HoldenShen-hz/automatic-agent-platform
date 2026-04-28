@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainKnowledgeSchemaService } from "../../../src/domains/domain-knowledge-schema-service.js";
-import type { DomainKnowledgeSchema } from "../../../src/domains/knowledge-schema/index.js";
+import { DomainKnowledgeSchemaService } from "../../../../src/domains/domain-knowledge-schema-service.js";
+import type { DomainKnowledgeSchema } from "../../../../src/domains/knowledge-schema/index.js";
 
 function createTestSchema(domainId: string): DomainKnowledgeSchema {
   return {
@@ -73,7 +73,7 @@ test("DomainKnowledgeSchemaService.retrieve returns retrieval results", () => {
     maxResults: 5,
   });
 
-  assert.ok(result.queryId.startsWith("kq_"));
+  assert.ok(result.queryId.startsWith("knowledge_query_"));
   assert.equal(result.domainId, "retrieve_test");
   assert.equal(result.totalResults >= 0, true);
   assert.ok(result.executionTimeMs >= 0);
@@ -139,7 +139,7 @@ test("DomainKnowledgeSchemaService.resolveConflicts identifies and resolves conf
     key2: "value2",
   });
 
-  assert.ok(result.conflictId.startsWith("cr_"));
+  assert.ok(result.conflictId.startsWith("conflict_resolution_"));
   assert.equal(result.namespaceId, "ns_1");
 });
 
@@ -158,7 +158,7 @@ test("DomainKnowledgeSchemaService.resolveConflicts with latest_wins resolves to
   });
 
   // No conflicts when sources don't have different values for same key
-  assert.ok(result.conflictId.startsWith("cr_"));
+  assert.ok(result.conflictId.startsWith("conflict_resolution_"));
 });
 
 test("DomainKnowledgeSchemaService.checkFreshness returns freshness status", () => {

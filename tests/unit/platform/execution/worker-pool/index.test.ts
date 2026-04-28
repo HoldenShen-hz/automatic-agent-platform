@@ -2,10 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildAgentExecutionRecord,
   ExecutionWorkerHandshakeService,
   ExecutionWorkerWritebackService,
+  mergeExecutionIds,
+  parseJsonArray,
+  persistRemoteLogs,
   RemoteWorkerRegistrationService,
+  resolveRemoteAuthorityBlockReason,
+  toWorkerStatus,
   WorkerRegistryService,
+  writebackSupport,
   type RemoteAuthorityBlockReason,
   type RemoteSessionAuthorityState,
 } from "../../../../../src/platform/execution/worker-pool/index.js";

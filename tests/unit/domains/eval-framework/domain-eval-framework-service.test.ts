@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainEvalFrameworkService } from "../../../src/domains/domain-eval-framework-service.js";
-import type { DomainEvalFramework } from "../../../src/domains/eval-framework/index.js";
+import { DomainEvalFrameworkService } from "../../../../src/domains/domain-eval-framework-service.js";
+import type { DomainEvalFramework } from "../../../../src/domains/eval-framework/index.js";
 
 function createTestFramework(domainId: string): DomainEvalFramework {
   return {
@@ -293,10 +293,10 @@ test("DomainEvalFrameworkService.assessQuality computes weighted quality score",
     speed_score: 75,
   });
 
-  assert.ok(assessment.assessmentId.startsWith("qa_"));
+  assert.ok(assessment.assessmentId.startsWith("quality_assessment_"));
   assert.equal(assessment.domainId, "test_domain");
   assert.ok(assessment.overallScore > 0);
-  assert.equal(assessment.axisResults.length, 4); // 2 axes + 2 framework evaluators
+  assert.equal(assessment.axisResults.length, 5); // 2 axes + 3 framework evaluators
 });
 
 test("DomainEvalFrameworkService.assessQuality throws for unknown domain", () => {
@@ -341,7 +341,7 @@ test("DomainEvalFrameworkService.createRegressionDataset creates and stores data
 
   const dataset = service.createRegressionDataset("coding", "New Dataset", cases);
 
-  assert.ok(dataset.datasetId.startsWith("rd_"));
+  assert.ok(dataset.datasetId.startsWith("regression_dataset_"));
   assert.equal(dataset.domainId, "coding");
   assert.equal(dataset.name, "New Dataset");
   assert.equal(dataset.cases.length, 1);

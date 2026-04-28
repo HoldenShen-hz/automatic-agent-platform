@@ -126,7 +126,7 @@ export function normalizeLimit(limit: number | undefined, fallback: number): num
 export function parseJsonArray(value: string): string[] {
   try {
     const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+    return Array.isArray(parsed) ? parsed.map((item) => (item == null ? "" : String(item))) : [];
   } catch (err) {
     inspectLogger.log({ level: "debug", message: "Failed to parse JSON array", data: { error: err instanceof Error ? err.message : String(err) } });
     return [];
@@ -412,6 +412,7 @@ export function enrichDispatchDecisionTrace(decision: DispatchDecisionTrace): Di
 
 export function buildRemoteRoutingSummary(decisions: DispatchDecisionInspectTrace[]): RemoteRoutingSummary {
   const latestDecision = decisions.at(-1) ?? null;
+  const latestRemoteDecision = decisions.findLast((decision) => decision.remoteAvailability != null) ?? null;
   const remoteWorkerIds = new Set<string>();
   const localWorkerIds = new Set<string>();
 
@@ -438,7 +439,7 @@ export function buildRemoteRoutingSummary(decisions: DispatchDecisionInspectTrac
     requireRemoteBlockedCount: decisions.filter(
       (decision) => decision.outcome === "blocked" && decision.dispatchTarget === "require_remote",
     ).length,
-    latestRemoteAvailability: latestDecision?.remoteAvailability ?? null,
+    latestRemoteAvailability: latestRemoteDecision?.remoteAvailability ?? null,
     latestSelectedWorkerPlacement: latestDecision?.selectedWorkerPlacement ?? null,
     remoteWorkerIds: [...remoteWorkerIds].sort(),
     localWorkerIds: [...localWorkerIds].sort(),

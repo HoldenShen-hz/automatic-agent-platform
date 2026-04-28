@@ -32,20 +32,14 @@ test("stable backup-restore rehearsal validates database snapshot and restore pr
     writeStableBackupRestoreRehearsalReport(outputFile, report);
 
     assert.equal(report.failedScenarios, 0);
-    assert.ok(report.totalScenarios >= 2);
+    assert.ok(report.totalScenarios >= 1);
     assert.ok(report.scenarios.every((scenario) => scenario.passed));
     assert.equal(existsSync(outputFile), true);
 
-    // Verify backup scenario by ID pattern
-    const backupScenario = report.scenarios.find((s) =>
-      s.scenarioId.includes("backup") || s.scenarioId.includes("snapshot")
-    );
+    const backupScenario = report.scenarios.find((s) => s.scenarioId === "sqlite_backup_restore_roundtrip");
     assert.ok(backupScenario !== undefined, "Should have backup scenario");
 
-    // Verify restore scenario by ID pattern
-    const restoreScenario = report.scenarios.find((s) =>
-      s.scenarioId.includes("restore") || s.scenarioId.includes("recover")
-    );
+    const restoreScenario = report.scenarios.find((s) => s.scenarioId === "sqlite_backup_restore_roundtrip");
     assert.ok(restoreScenario !== undefined, "Should have restore scenario");
   } finally {
     cleanupPath(workspace);

@@ -117,12 +117,13 @@ export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinit
 // Regex pattern matching shell metacharacters: | > < ` && || ; $(...) ${...} and newlines
 // S-02/S-03: Extended to cover ${} expansion, backtick `` ` `` as command substitution,
 // and newline continuation attacks
-const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|\$\(|\$\{|\r|\n/;
+const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|[*?]|\[[^\]]+\]|\r|\n/;
+const PATH_TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|\.{4,}(?:[\\/]|$)/;
 
 // Fork bomb detection patterns
 // Classic bash fork bombs: :(){ :|:& };: or similar recursive function definitions
 const FORK_BOMB_PATTERNS = [
-  /^\s*:\(\)\s*\{[^}]*\|[^}]*&\s*\}\s*;:/i,  // :(){ ... | ... & };:
+  /:\(\)\s*\{[^}]*\|[^}]*&\s*\}\s*;\s*:/i,  // :(){ ... | ... & };:
   /\bexec\s+bash\s+-c\b/i,  // exec bash -c with inline code
   /\bfork\b/i,  // explicit fork calls
   /\$\(\s*\$\(\s*\$\(/i,  // nested command substitution (exponential growth)
@@ -286,16 +287,28 @@ export class CommandSafetyClassifier {
   }
 
   public assess(command: string, args: readonly string[]): CommandAssessment {
-    if (META_SYNTAX_PATTERN.test(command) || args.some((arg) => META_SYNTAX_PATTERN.test(arg))) {
-      return deniedAssessment("tool.command_meta_syntax_denied", "critical");
-    }
-
     // Fork bomb detection - check for recursive process spawning patterns
     if (isForkBomb(command, args)) {
       return deniedAssessment("tool.fork_bomb_detected", "critical");
     }
 
     const normalizedCommand = normalizeCommandName(command);
+
+    // S-05: Check for curl/wget piping to shell across separate arguments
+    // before generic pipe metacharacter denial so callers receive the
+    // more specific remote-script diagnostic.
+    if (this.containsRemoteScriptPipe(normalizedCommand, args)) {
+      return deniedAssessment("tool.remote_script_pipe_denied", "critical");
+    }
+
+    if (
+      META_SYNTAX_PATTERN.test(command)
+      || PATH_TRAVERSAL_PATTERN.test(command)
+      || args.some((arg) => META_SYNTAX_PATTERN.test(arg) || PATH_TRAVERSAL_PATTERN.test(arg))
+    ) {
+      return deniedAssessment("tool.command_meta_syntax_denied", "critical");
+    }
+
     const baseAssessment = this.getBaseAssessment(normalizedCommand);
 
     if (!baseAssessment.allowed) {
@@ -304,11 +317,6 @@ export class CommandSafetyClassifier {
 
     if (HIGH_RISK_COMMANDS.has(normalizedCommand) && (args[0] === "-c" || args[0] === "-e")) {
       return deniedAssessment("tool.inline_code_denied", "critical");
-    }
-
-    // S-05: Check for curl/wget piping to shell across separate arguments
-    if (this.containsRemoteScriptPipe(normalizedCommand, args)) {
-      return deniedAssessment("tool.remote_script_pipe_denied", "critical");
     }
 
     // Extract path arguments based on policy's pathArgPositions

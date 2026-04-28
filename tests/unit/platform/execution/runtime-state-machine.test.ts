@@ -305,7 +305,7 @@ test("RuntimeStateMachine requires RunVersionLock and policy guard for admission
   );
 });
 
-test("RuntimeStateMachine supports blocked NodeRun dependency gating", () => {
+test("RuntimeStateMachine rejects legacy NodeRun blocked, queued, and compensating states", () => {
   const machine = createMachine();
   const nodeRun = createNodeRun({
     harnessRunId: "run-1",
@@ -315,32 +315,56 @@ test("RuntimeStateMachine supports blocked NodeRun dependency gating", () => {
     currentSeq: 0,
   });
 
-  const blocked = machine.transition({
-    aggregateType: "NodeRun",
-    aggregate: nodeRun,
-    fromStatus: "created",
-    toStatus: "blocked",
-    expectedSeq: 0,
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "dependency_wait",
-    emittedBy: "graph-scheduler",
-  });
-  const ready = machine.transition({
-    aggregateType: "NodeRun",
-    aggregate: blocked.aggregate,
-    fromStatus: "blocked",
-    toStatus: "ready",
-    expectedSeq: 1,
-    traceId: "trace-1",
-    tenantId: "tenant-1",
-    reasonCode: "dependency_satisfied",
-    emittedBy: "graph-scheduler",
+  for (const legacyToStatus of ["blocked", "queued"] as const) {
+    assert.throws(
+      () =>
+        machine.transition({
+          aggregateType: "NodeRun",
+          aggregate: nodeRun,
+          fromStatus: "created",
+          toStatus: legacyToStatus as never,
+          expectedSeq: 0,
+          traceId: "trace-1",
+          tenantId: "tenant-1",
+          reasonCode: "legacy_status",
+          emittedBy: "graph-scheduler",
+        }),
+      (error: unknown) =>
+        error instanceof WorkflowStateError &&
+        error.code === "runtime_state_machine.invalid_transition",
+    );
+  }
+
+  const reconciling = createNodeRun({
+    harnessRunId: "run-1",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+    status: "reconciling",
+    currentSeq: 2,
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
   });
 
-  assert.equal(blocked.aggregate.status, "blocked");
-  assert.equal(ready.aggregate.status, "ready");
-  assert.equal(ready.aggregate.currentSeq, 2);
+  assert.throws(
+    () =>
+      machine.transition({
+        aggregateType: "NodeRun",
+        aggregate: reconciling,
+        fromStatus: "reconciling",
+        toStatus: "compensating" as never,
+        expectedSeq: 2,
+        leaseId: "lease-1",
+        fencingToken: "fence-1",
+        traceId: "trace-1",
+        tenantId: "tenant-1",
+        reasonCode: "legacy_compensation",
+        emittedBy: "graph-scheduler",
+      }),
+    (error: unknown) =>
+      error instanceof WorkflowStateError &&
+      error.code === "runtime_state_machine.invalid_transition",
+  );
 });
 
 test("RuntimeStateMachine transitions SideEffectRecord through reconciliation states", () => {

@@ -275,7 +275,7 @@ test("DiagnosticWarningSummaryEntry structure is correct", () => {
   };
 
   assert.equal(entry.code, "test:code");
-  assert.equal(entry.category, "test_category");
+  assert.equal(entry.category, "runtime");
   assert.equal(entry.severity, "warning");
   assert.equal(entry.escalation, "task");
   assert.equal(entry.count, 5);

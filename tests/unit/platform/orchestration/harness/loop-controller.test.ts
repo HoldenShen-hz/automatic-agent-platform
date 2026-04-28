@@ -29,12 +29,12 @@ test("HarnessLoopController constructor computes maxIterations from budget.maxSt
   assert.equal(controller2.getGuards().maxIterations, 10);
 });
 
-test("HarnessLoopController constructor enforces minimum maxIterations of 1", () => {
+test("HarnessLoopController constructor allows 0 maxIterations when maxSteps is below one full loop", () => {
   const controller = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 1, maxCost: 5, maxDurationMs: 60_000 } }));
-  assert.equal(controller.getGuards().maxIterations, 1);
+  assert.equal(controller.getGuards().maxIterations, 0);
 
   const controller2 = new HarnessLoopController(createConstraintPack({ budget: { maxSteps: 0, maxCost: 5, maxDurationMs: 60_000 } }));
-  assert.equal(controller2.getGuards().maxIterations, 1);
+  assert.equal(controller2.getGuards().maxIterations, 0);
 });
 
 test("HarnessLoopController constructor sets default guards", () => {

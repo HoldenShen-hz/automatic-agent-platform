@@ -123,6 +123,10 @@ export class ApiKeyService {
     if (!existing || existing.status !== "active") {
       return null;
     }
+    if (existing.expiresAt && new Date(existing.expiresAt) < new Date()) {
+      existing.status = "expired";
+      return null;
+    }
 
     existing.status = "revoked";
 

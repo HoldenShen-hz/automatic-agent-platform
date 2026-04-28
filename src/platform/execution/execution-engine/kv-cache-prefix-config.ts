@@ -48,13 +48,13 @@ export interface KvCachePrefixConfig {
   domainBlockTemplates: Record<string, string>;
 }
 
-const DEFAULT_BUDGET: KvCachePrefixBudget = {
+export const DEFAULT_BUDGET: KvCachePrefixBudget = {
   fixedPrefixMaxTokens: 1000,
   domainBlockMaxTokens: 400,
   enforceBudget: true,
 };
 
-const DEFAULT_STRATEGY: KvCachePrefixStrategy = {
+export const DEFAULT_STRATEGY: KvCachePrefixStrategy = {
   cacheKeyStrategy: "hash_prefix",
   kvCacheEnabled: true,
   fixedPrefixShareable: true,
@@ -65,7 +65,7 @@ const DEFAULT_STRATEGY: KvCachePrefixStrategy = {
  * Default fixed prefix template — governance constraints and stable directives.
  * This should be consistent across all agents in the system.
  */
-const DEFAULT_FIXED_PREFIX_TEMPLATE = `# System Configuration
+export const DEFAULT_FIXED_PREFIX_TEMPLATE = `# System Configuration
 
 ## Governance
 - All operations must comply with security policies

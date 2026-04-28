@@ -246,19 +246,32 @@ export class StructuredLogger {
    */
   public log(entry: StructuredLogInput): StructuredLogEntry {
     const activeTelemetryContext = getActiveTelemetryContext();
-    const traceId = entry.traceId ?? activeTelemetryContext?.traceId;
+    const rawData = entry.data ?? entry.structuredPayload;
+    const taskId = entry.taskId ?? readStringField(rawData, "taskId");
+    const agentId = entry.agentId ?? readStringField(rawData, "agentId");
+    const sessionId = entry.sessionId ?? readStringField(rawData, "sessionId");
+    const stepId = entry.stepId ?? readStringField(rawData, "stepId");
+    const traceId = entry.traceId ?? readStringField(rawData, "traceId") ?? activeTelemetryContext?.traceId;
     const spanId = entry.spanId ?? activeTelemetryContext?.spanId;
     // Note: ActiveTelemetryContext.parentSpanId is string | null, but StructuredLogEntry.parentSpanId is string | undefined
     const parentSpanId = (entry.parentSpanId ?? activeTelemetryContext?.parentSpanId) ?? undefined;
-    const correlationId = entry.correlationId ?? entry.traceId ?? activeTelemetryContext?.traceId;
+    const correlationId =
+      entry.correlationId ??
+      readStringField(rawData, "correlationId") ??
+      traceId ??
+      activeTelemetryContext?.traceId;
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
-    const data = entry.data ?? entry.structuredPayload;
+    const data = rawData;
 
     const record: StructuredLogEntry = {
       ...entry,
       service: entry.service ?? this.service,
       plane: entry.plane ?? this.plane,
+      ...(taskId !== undefined ? { taskId } : {}),
+      ...(agentId !== undefined ? { agentId } : {}),
+      ...(sessionId !== undefined ? { sessionId } : {}),
+      ...(stepId !== undefined ? { stepId } : {}),
       ...(traceId !== undefined ? { traceId } : {}),
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
@@ -336,8 +349,8 @@ export class StructuredLogger {
 
     if (actualLimit === 0) return result;
 
-    // Start from the oldest entry and go forward
-    const start = (this.head - this.count + this.retentionLimit) % this.retentionLimit;
+    // Start from the earliest entry inside the requested trailing window.
+    const start = (this.head - actualLimit + this.retentionLimit) % this.retentionLimit;
     for (let i = 0; i < actualLimit; i++) {
       const index = (start + i) % this.retentionLimit;
       const entry = this.buffer[index];
@@ -502,6 +515,11 @@ function normalizeStructuredService(value: string | undefined): string {
     ? basename(trimmed).replace(/\.[cm]?[jt]sx?$/i, "")
     : trimmed;
   return candidate.length > 0 ? candidate : "unknown_service";
+}
+
+function readStringField(record: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = record?.[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function inferStructuredPlane(explicitSourceFile?: string): StructuredPlane {

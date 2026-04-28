@@ -14,16 +14,19 @@
 - `ToolCallRequest`
 - `ToolCallResult`
 - `ExecutionError`
-- `BudgetCheckResult`
+- `BudgetReservationDecision`
 
 ## 3. ModelRequest 最小字段
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `request_id` | `string` | 请求唯一 ID |
-| `task_id` | `string` | 关联任务 |
+| `harness_run_id` | `string` | 所属 HarnessRun |
+| `node_run_id` | `string` | 所属 NodeRun |
+| `attempt_id` | `string` | 所属 NodeAttempt |
+| `task_id` | `string?` | 兼容查询入口；非 truth 主键 |
 | `agent_id` | `string` | 发起角色 |
-| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 当前闭环阶段 |
+| `stage_view_ref` | `string?` | 当前闭环阶段 view 引用；不驱动执行语义 |
 | `domain_id` | `string?` | 当前 domain |
 | `provider` | `string` | provider 标识 |
 | `model` | `string` | 目标模型 |
@@ -55,10 +58,12 @@
 ## 5. ToolCallRequest 最小字段
 
 - `call_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id`
+- `attempt_id`
+- `task_id?`
 - `agent_id`
-- `execution_id?`
-- `stage?`
+- `stage_view_ref?`
 - `domain_id?`
 - `tool_name`
 - `arguments`
@@ -91,20 +96,27 @@
 - `blocked`
 - `cancelled`
 
-## 7. BudgetCheckResult
+## 7. BudgetReservationDecision
 
 至少包含：
 
-- `allowed`
+- `reservation_id`
+- `ledger_id`
+- `decision` (`reserved | rejected | review_required`)
 - `estimated_cost_usd`
+- `reserved_amount_usd?`
 - `remaining_budget_usd`
-- `reason?`
+- `expires_at?`
+- `settlement_required`
+- `reason_code?`
+- `budget_scope_id?`
 
 规则：
 
-- LLM 调用前必须经过预算守卫。
+- LLM 调用前必须先创建或复用 `BudgetReservation`，而不是只做布尔放行判断。
 - 高风险工具执行前必须同时经过预算与权限检查。
 - workflow step 真正执行前，若存在结构化输入输出约束，应先通过 `workflow_io_compatibility_precheck_contract.md`。
+- 成功执行后必须产生 `BudgetSettlement` 或显式释放 reservation；失败或取消也必须有可审计结论。
 
 ## 8. 错误语义
 
@@ -134,6 +146,7 @@
 - 若调用请求带有 `allowed_path_roots` 或 execution precheck 已解析出 `resolved_paths_json`，工具访问路径必须同时满足 sandbox 与 path scope 两层约束。
 - 若 execution 持有 `allowed_tools_json`，direct tool 与 skill 在运行时都必须校验 `tool_name` 是否在白名单内；缺失 execution、JSON 非法或数组项存在空值/非字符串时都必须 fail-closed。
 - 所有调用都必须能关联回 `task_id`、`agent_id`、`trace_id`。
+- 所有调用都必须首先能关联回 `harness_run_id`、`node_run_id`、`attempt_id`；`task_id` 只作为兼容查询入口。
 - 若不同工具需要暴露额外结构化细节，应优先放入稳定的 `data / metadata` 字段，而不是让上层按工具名猜顶层字段。
 - `edit / patch / replace` 类工具的目标定位规则由 `edit_replacement_chain_contract.md` 定义。
 - 上下文接近 token 上限时的裁剪与 compaction 规则由 `context_compaction_and_overflow_contract.md` 定义。
@@ -151,6 +164,7 @@
 - tool argument 若启用宽松矫正，也必须限定在 schema 明确可安全收敛的类型边界内；未知字段、结构歧义和高风险参数不得静默自动修正。
 - tool argument correction 若发生，必须把 correction trace 暴露到 `metadata` 或 warnings 等可审计结果面；`command_exec`、`edit_replace`、`question`、`todo_write` 这类高频工具不得把矫正隐藏在黑盒里。
 - 对高风险工具参数的非法类型或结构歧义，executor 必须 fail-closed 返回稳定错误码，而不是让底层实现因类型异常崩溃。
+- `ModelResponse` / `ToolCallResult` 若要回传用户摘要或学习信号，必须通过 `NodeAttemptReceipt` 或其引用回链；不得把 provider/tool 原始结果直接视为 runtime truth。
 
 ## 10. 补充规则
 
@@ -164,6 +178,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-19: 全部用 task_id/execution_id/agent_id，架构§5.3强制 harnessRunId/nodeRunId/attemptId；BudgetCheckResult 为简单布尔，架构要求完整 BudgetReservation 生命周期。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-19: 本文原先把 `task_id / execution_id / agent_id` 写成 provider/tool 调用主键，并把预算守卫压缩成 `BudgetCheckResult.allowed` 布尔结果，根因是旧执行合同沿用了单次请求视角，没有把调用归属绑定到 `HarnessRun / NodeRun / NodeAttempt` 和预算 reservation/settlement 生命周期。修复：正文现把 `harness_run_id / node_run_id / attempt_id` 设为 canonical 调用身份，并把预算对象收敛到 `BudgetReservationDecision`。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

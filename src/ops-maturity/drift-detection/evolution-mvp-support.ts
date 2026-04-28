@@ -140,7 +140,7 @@ export interface RollbackEvolutionProposalInput {
 }
 
 /** Pattern for validating scope reference format */
-const SCOPE_REF_PATTERN = /^[a-zA-Z0-9._:-]{2,128}$/;
+const SCOPE_REF_PATTERN = /^[a-zA-Z][a-zA-Z0-9._:-]{1,127}$/;
 
 /**
  * Validates that a scope reference conforms to the expected format.
@@ -158,7 +158,7 @@ export function assertEvolutionScope(scopeType: EvolutionScopeType, scopeRef: st
  * Rounds a currency value to 4 decimal places to avoid floating point issues.
  */
 export function roundCurrency(value: number): number {
-  return Math.round(value * 10000) / 10000;
+  return Math.round(value * 10_000) / 10_000;
 }
 
 /**

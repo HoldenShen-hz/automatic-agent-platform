@@ -10,9 +10,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  runSingleTaskExecution,
-  type HappyPathInput,
-} from "../../../../../src/platform/execution/execution-engine/single-task-happy-path.js";
+  runMultiStepOrchestration,
+  type MultiStepToolExecutionInput,
+} from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 import {
   runPhase1BOrchestration,
 } from "../../../../../src/platform/execution/execution-engine/phase1b-orchestration.js";
@@ -21,8 +21,8 @@ import {
 // runPhase1BOrchestration alias tests
 // =============================================================================
 
-test("runPhase1BOrchestration is identical to runSingleTaskExecution", () => {
-  assert.strictEqual(runPhase1BOrchestration, runSingleTaskExecution);
+test("runPhase1BOrchestration is identical to runMultiStepOrchestration", () => {
+  assert.strictEqual(runPhase1BOrchestration, runMultiStepOrchestration);
 });
 
 test("runPhase1BOrchestration is a function", () => {
@@ -33,42 +33,48 @@ test("runPhase1BOrchestration is a function", () => {
 // HappyPathInput type re-export tests
 // =============================================================================
 
-test("HappyPathInput type is exported from phase1b-orchestration", () => {
+test("MultiStepToolExecutionInput type is exported from phase1b-orchestration compatibility surface", () => {
   // Verify the type can be used in type annotations
-  const input: HappyPathInput = {
-    dbPath: "/tmp/test.db",
-    title: "Test",
-    request: "Test request",
+  const input: MultiStepToolExecutionInput = {
+    taskId: "task-1",
+    planId: "plan-1",
+    stepId: "step-1",
+    toolCallId: "call-1",
+    toolName: "web_search",
+    args: {},
   };
 
-  assert.equal(input.title, "Test");
-  assert.equal(input.request, "Test request");
+  assert.equal(input.taskId, "task-1");
+  assert.equal(input.toolName, "web_search");
 });
 
-test("HappyPathInput type structure is correct", () => {
-  const input: HappyPathInput = {
-    dbPath: "/tmp/test.db",
-    title: "Phase1B Test Task",
-    request: "Test request for Phase1B",
-    stepOutputOverride: {
-      summary: "Override summary",
-      result: "Override result",
-    },
+test("MultiStepToolExecutionInput type structure is correct", () => {
+  const input: MultiStepToolExecutionInput = {
+    taskId: "task-2",
+    planId: "plan-2",
+    stepId: "step-2",
+    toolCallId: "call-2",
+    toolName: "git",
+    args: { cwd: "/tmp/repo", args: ["status"] },
   };
 
-  assert.ok(input.stepOutputOverride);
-  assert.equal(input.stepOutputOverride.summary, "Override summary");
-  assert.equal(input.stepOutputOverride.result, "Override result");
+  assert.equal(input.stepId, "step-2");
+  assert.deepEqual(input.args, { cwd: "/tmp/repo", args: ["status"] });
 });
 
-test("HappyPathInput has all required fields", () => {
-  const input: HappyPathInput = {
-    dbPath: "/tmp/test.db",
-    title: "Required Fields Test",
-    request: "Request text",
+test("MultiStepToolExecutionInput has all required fields", () => {
+  const input: MultiStepToolExecutionInput = {
+    taskId: "task-3",
+    planId: "plan-3",
+    stepId: "step-3",
+    toolCallId: "call-3",
+    toolName: "question",
+    args: { question: "Need approval?" },
   };
 
-  assert.ok(typeof input.dbPath === "string");
-  assert.ok(typeof input.title === "string");
-  assert.ok(typeof input.request === "string");
+  assert.ok(typeof input.taskId === "string");
+  assert.ok(typeof input.planId === "string");
+  assert.ok(typeof input.stepId === "string");
+  assert.ok(typeof input.toolCallId === "string");
+  assert.ok(typeof input.toolName === "string");
 });

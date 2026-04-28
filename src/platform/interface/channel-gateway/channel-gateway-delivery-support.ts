@@ -219,7 +219,8 @@ export function buildDeadLetterQuery(channel?: string, limit = 100, cursor?: str
   let query = `SELECT * FROM gateway_dead_letters`;
   const params: SQLInputValue[] = [];
   const conditions: string[] = [];
-  if (channel) {
+  const normalizedLimit = limit <= 0 ? (limit < 0 ? 1 : 100) : Math.min(limit, 200);
+  if (channel !== undefined) {
     conditions.push(`channel = ?`);
     params.push(channel);
   }
@@ -231,14 +232,14 @@ export function buildDeadLetterQuery(channel?: string, limit = 100, cursor?: str
     query += ` WHERE ${conditions.join(' AND ')}`;
   }
   query += ` ORDER BY moved_to_dead_letter_at DESC LIMIT ?`;
-  params.push(limit);
+  params.push(normalizedLimit);
   return { query, params };
 }
 
 export function buildDeadLetterCountQuery(channel?: string): { query: string; params: SQLInputValue[] } {
   let query = `SELECT channel, COUNT(*) as count FROM gateway_dead_letters`;
   const params: SQLInputValue[] = [];
-  if (channel) {
+  if (channel !== undefined) {
     query += ` WHERE channel = ?`;
     params.push(channel);
   }

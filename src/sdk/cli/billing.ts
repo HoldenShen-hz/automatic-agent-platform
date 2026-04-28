@@ -147,6 +147,14 @@ async function main(): Promise<void> {
           source: envConfig.source,
           ...(envConfig.capturedAt ? { capturedAt: envConfig.capturedAt } : {}),
         });
+      case "report":
+        if (envConfig.accountId == null) {
+          return {
+            generatedAt: new Date().toISOString(),
+            accounts: storage.store.billing.listBillingAccounts(envConfig.limit ?? 50),
+          };
+        }
+        return billing.buildAccountSummary(envConfig.accountId);
       case "summary":
         return billing.buildAccountSummary(envConfig.accountId ?? "");
       case "export":

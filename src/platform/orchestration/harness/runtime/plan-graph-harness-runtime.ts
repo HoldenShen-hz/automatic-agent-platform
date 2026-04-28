@@ -216,7 +216,7 @@ export class PlanGraphHarnessRuntime {
     }));
     const leaseId = `${node.nodeId}-lease`;
     const fencingToken = `${node.nodeId}-fence`;
-    const transitions: readonly NodeRun["status"][] = ["ready", "queued", "leased", "running"];
+    const transitions: readonly NodeRun["status"][] = ["ready", "leased", "running"];
     for (const toStatus of transitions) {
       const result = this.stateMachine.transition({
         aggregateType: "NodeRun",

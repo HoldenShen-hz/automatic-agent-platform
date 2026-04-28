@@ -20,16 +20,33 @@ export class StrategyLearningService {
   }
 
   public async learn(signals: readonly LearningSignal[]): Promise<LearningObject[]> {
-    const mined = this.miner.mine(signals);
-    const nonFailureSignals = signals.filter((signal) => signal.learningType !== "failure_pattern");
+    const normalizedSignals = signals.map((signal) => this.normalizeSignal(signal));
+    const mined = this.miner.mine(normalizedSignals);
+    const nonFailureSignals = normalizedSignals.filter((signal) => signal.learningType !== "failure_pattern");
     const distilled = await this.llmImprovement.generateImprovements(nonFailureSignals);
     return this.validator.validateMany([...mined, ...distilled]);
   }
 
   public learnSync(signals: readonly LearningSignal[]): LearningObject[] {
-    const mined = this.miner.mine(signals);
-    const nonFailureSignals = signals.filter((signal) => signal.learningType !== "failure_pattern");
+    const normalizedSignals = signals.map((signal) => this.normalizeSignal(signal));
+    const mined = this.miner.mine(normalizedSignals);
+    const nonFailureSignals = normalizedSignals.filter((signal) => signal.learningType !== "failure_pattern");
     const distilled = this.distillation.distill(nonFailureSignals);
     return this.validator.validateMany([...mined, ...distilled]);
+  }
+
+  private normalizeSignal(signal: LearningSignal): LearningSignal {
+    const evidenceRefs = signal.evidenceRefs.length > 0
+      ? signal.evidenceRefs
+      : [signal.sourceFeedbackId, signal.learningSignalId];
+    const sourceSignalIds = signal.sourceSignalIds.length > 0
+      ? signal.sourceSignalIds
+      : [signal.learningSignalId];
+
+    return {
+      ...signal,
+      evidenceRefs: [...new Set(evidenceRefs)],
+      sourceSignalIds: [...new Set(sourceSignalIds)],
+    };
   }
 }

@@ -118,9 +118,14 @@ function safeParsePayload(payloadJson: string): Record<string, unknown> | null {
 }
 
 function compareEventsByOccurrence(left: EventRecord, right: EventRecord): number {
-  const byTimestamp = left.createdAt.localeCompare(right.createdAt);
+  const byTimestamp = getEventOccurrence(right).localeCompare(getEventOccurrence(left));
   if (byTimestamp !== 0) {
     return byTimestamp;
   }
-  return left.id.localeCompare(right.id);
+  return right.id.localeCompare(left.id);
+}
+
+function getEventOccurrence(event: EventRecord): string {
+  const payload = safeParsePayload(event.payloadJson);
+  return typeof payload?.occurredAt === "string" ? payload.occurredAt : event.createdAt;
 }

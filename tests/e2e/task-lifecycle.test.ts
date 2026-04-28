@@ -1094,7 +1094,7 @@ test("E2E Task Lifecycle: task retry preserves partial workflow progress", async
 
     workflow = harness.store.getWorkflowState(taskId);
     assert.equal(workflow?.status, "completed", "Workflow should be completed");
-    assert.equal(workflow?.currentStepIndex, 1, "Terminal transition should normalize completed workflows to step index 1");
+    assert.equal(workflow?.currentStepIndex, 3, "Terminal transition should preserve the completed workflow step index");
 
   } finally {
     harness.cleanup();

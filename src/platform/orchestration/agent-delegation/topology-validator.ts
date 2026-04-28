@@ -49,7 +49,16 @@ export class DelegationFanoutExceededError extends ValidationError {
 }
 
 export class DelegationCycleDetectedError extends ValidationError {
-  constructor(packId: string, chain: readonly string[]) {
+  constructor(packId: string, chain: readonly string[]);
+  constructor(chain: readonly string[]);
+  constructor(
+    packIdOrChain: string | readonly string[],
+    maybeChain?: readonly string[],
+  ) {
+    const chain = Array.isArray(packIdOrChain) ? packIdOrChain : (maybeChain ?? []);
+    const packId = Array.isArray(packIdOrChain)
+      ? (chain[chain.length - 1] ?? "unknown")
+      : packIdOrChain;
     super(
       "delegation.cycle_detected",
       `Cycle detected: pack ${packId} already in delegation chain`,
@@ -67,7 +76,7 @@ export class TopologyValidator {
   private readonly maxFanout: number;
   private readonly allowedPackIds: Set<string> | null;
 
-  constructor(config: TopologyValidatorConfig) {
+  constructor(config: Partial<TopologyValidatorConfig> = {}) {
     this.maxDepth = config.maxDepth ?? DEFAULT_MAX_DEPTH;
     this.maxFanout = config.maxFanout ?? DEFAULT_MAX_FANOUT;
     this.allowedPackIds = config.allowedPackIds

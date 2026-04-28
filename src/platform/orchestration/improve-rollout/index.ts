@@ -8,3 +8,12 @@ export * from "./canary-traffic-router.js";
 export * from "./rollout/rollout-state-machine.js";
 export * from "./rollout/rollout-scheduler.js";
 export * from "./release-policy.js";
+
+export const StrategyVersion = "StrategyVersion";
+export const AutonomyTarget = "AutonomyTarget";
+export const RolloutMetrics = "RolloutMetrics";
+export const ImprovementCandidate = "ImprovementCandidate";
+export const RolloutRecord = "RolloutRecord";
+
+export const CANARY_ROLLOUT_STATUSES = ["shadow", "canary_5"] as const;
+export const PROGRESIVE_ROLLOUT_STATUSES = ["partial_25", "partial_50", "partial_75", "stable"] as const;

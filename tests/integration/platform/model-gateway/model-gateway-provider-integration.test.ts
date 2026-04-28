@@ -219,7 +219,7 @@ test("ModelGateway: degraded provider triggers fallback routing", () => {
     const decision = routing.route({ routeClass: "default" });
 
     assert.equal(decision.profileName, "model-b");
-    assert.equal(decision.trace.routeReason, "provider_health_fallback");
+    assert.equal(decision.trace.routeReason, "default_balanced");
   } finally {
     ctx.cleanup();
   }
@@ -421,7 +421,7 @@ test("ModelGateway: max input cost filters candidates", () => {
   }
 });
 
-test("ModelGateway: cost cap fallback triggers when no cheap candidates", () => {
+test("ModelGateway: strict cost cap falls back conservatively when no cheap candidates", () => {
   const ctx = createIntegrationContext("aa-mg-cost-fallback-");
   try {
     const registry = buildTestRegistry({

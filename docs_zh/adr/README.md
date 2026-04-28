@@ -114,7 +114,6 @@
 | [110](./110-runtime-state-machine-authority.md) | Runtime State Machine Authority | Accepted | 2026-04-27 |
 | [111](./111-platform-fact-vs-oapeflir-view-events.md) | Platform Fact vs OAPEFLIR View Events | Accepted | 2026-04-27 |
 | [112](./112-mvp-ring-implementation-boundary.md) | MVP Ring Implementation Boundary | Accepted | 2026-04-27 |
-| [113](./113-architecture-implementation-audit-supersession.md) | Architecture Implementation Audit Supersession | Accepted | 2026-04-27 |
 
 ## 状态说明
 
@@ -129,8 +128,7 @@
 - 原始历史文件中存在 `066` 号双占用；为避免破坏既有引用，当前保留该历史编号冲突，并在索引中显式列出。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 - 新增的 `109-112` 是 v4.3 Contract Freeze 实现入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层，以及 MVP / Hardening / Enterprise 三环边界。
-- 新增的 `113` 是实现一致性审计的 ADR 收口入口，逐项 supersede A-1 至 A-37 中记录的历史 ADR 偏差。
-- `109-113` 通过 supersede 关系约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名等语义；历史 ADR 正文保留，不直接改写。
+- `109-112` 通过 freeze / authority / event namespace / ring boundary 约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名等语义；历史 ADR 正文保留，不直接改写。
 
 ## 创建新 ADR
 

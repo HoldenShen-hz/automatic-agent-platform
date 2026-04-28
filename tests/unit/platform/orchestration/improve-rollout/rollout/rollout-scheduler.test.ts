@@ -48,6 +48,16 @@ test("RolloutScheduler.advance returns wait when no further progression availabl
 test("RolloutScheduler.advance returns wait when stage dwell time not met", async () => {
   const scheduler = new RolloutScheduler({
     now: () => Date.now(),
+    minimumStageDwellMs: { shadow: 5_000 },
+    metricsProvider: {
+      readMetrics: () => ({
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 120,
+        baselineP99LatencyMs: 100,
+        observationWindowMs: 120_000,
+      }),
+    },
   });
   const candidate = createMockCandidate();
   // Record just transitioned (1 second ago)
@@ -60,10 +70,18 @@ test("RolloutScheduler.advance returns wait when stage dwell time not met", asyn
 });
 
 test("RolloutScheduler.advance allows promotion when stage dwell time is met", async () => {
-  // Use a mock that returns true for the rollout service
   const scheduler = new RolloutScheduler({
     now: () => Date.now(),
     minimumStageDwellMs: { shadow: 1_000 }, // 1 second minimum
+    metricsProvider: {
+      readMetrics: () => ({
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 120,
+        baselineP99LatencyMs: 100,
+        observationWindowMs: 120_000,
+      }),
+    },
   });
   const candidate = createMockCandidate();
   // Record transitioned 2 seconds ago
@@ -99,6 +117,15 @@ test("RolloutScheduler allows custom minimum stage dwell times", async () => {
   const scheduler = new RolloutScheduler({
     now: () => Date.now(),
     minimumStageDwellMs: { shadow: 600_000 }, // 10 minutes
+    metricsProvider: {
+      readMetrics: () => ({
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 120,
+        baselineP99LatencyMs: 100,
+        observationWindowMs: 120_000,
+      }),
+    },
   });
   const candidate = createMockCandidate();
   const record = createMockRecord({ status: "shadow", transitionedAt: Date.now() - 300_000 }); // 5 minutes ago
@@ -113,6 +140,15 @@ test("RolloutScheduler handles custom now function", async () => {
   const scheduler = new RolloutScheduler({
     now: () => fixedTime,
     minimumStageDwellMs: { shadow: 5000 }, // 5 seconds
+    metricsProvider: {
+      readMetrics: () => ({
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 120,
+        baselineP99LatencyMs: 100,
+        observationWindowMs: 120_000,
+      }),
+    },
   });
   const candidate = createMockCandidate();
   // Record transitioned 2 seconds ago, but minimum dwell is 5 seconds - should still wait
@@ -159,6 +195,15 @@ test("RolloutScheduler handles custom minimumStageDwellMs override", async () =>
   const scheduler = new RolloutScheduler({
     minimumStageDwellMs: { shadow: 999_999_999 }, // Very long dwell time
     now: () => Date.now(),
+    metricsProvider: {
+      readMetrics: () => ({
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 120,
+        baselineP99LatencyMs: 100,
+        observationWindowMs: 120_000,
+      }),
+    },
   });
   const candidate = createMockCandidate();
   const record = createMockRecord({ status: "shadow", transitionedAt: Date.now() - 100_000 });

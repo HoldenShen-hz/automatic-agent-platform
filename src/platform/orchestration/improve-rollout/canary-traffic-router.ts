@@ -6,6 +6,12 @@ export interface CanaryRoutingDecision {
   bucket: number;
 }
 
+export interface CanaryAllocation {
+  targetLevel: RolloutStatus;
+  canaryPercentage: number;
+  stablePercentage: number;
+}
+
 const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
   draft: 0,
   pending_approval: 0,
@@ -44,6 +50,15 @@ export class CanaryTrafficRouter {
       matched: bucket < trafficPercentage,
       trafficPercentage,
       bucket,
+    };
+  }
+
+  public computeCanaryAllocation(status: RolloutStatus): CanaryAllocation {
+    const canaryPercentage = status === "stable" ? 0 : this.getTrafficPercentage(status);
+    return {
+      targetLevel: status,
+      canaryPercentage,
+      stablePercentage: 100 - canaryPercentage,
     };
   }
 }

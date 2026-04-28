@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ExecutionDispatchServiceAsync } from "../../../../../src/scale-ecosystem/runtime-services/execution-dispatch-service-async.js";
+import { ExecutionDispatchServiceAsync } from "../../../../src/scale-ecosystem/runtime-services/execution-dispatch-service-async.js";
 
 test("ExecutionDispatchServiceAsync getQueueDepth returns initial queue size", () => {
   // Cannot test without database - just verify class structure

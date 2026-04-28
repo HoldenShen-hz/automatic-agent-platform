@@ -34,7 +34,7 @@ test("golden: retention service preview has expected structure", () => {
 
   assertGolden("retention-service-preview-structure", {
     mode: report.mode,
-    evaluatedAt: report.evaluatedAt,
+    hasEvaluatedAt: typeof report.evaluatedAt === "string" && report.evaluatedAt.length > 0,
     hasPolicy: report.policy !== null,
     hasEvents: report.events !== null,
     hasMessages: report.messages !== null,

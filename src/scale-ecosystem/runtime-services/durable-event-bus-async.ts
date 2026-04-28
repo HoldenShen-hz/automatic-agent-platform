@@ -373,7 +373,8 @@ export class DurableEventBusAsync extends EventEmitter {
         this.flushBatch();
       } else if (!this.batchProcessingPromise) {
         // Schedule a flush
-        setTimeout(() => this.flushBatch(), this.options.batchFlushIntervalMs);
+        const timer = setTimeout(() => this.flushBatch(), this.options.batchFlushIntervalMs);
+        timer.unref?.();
       }
     });
   }
@@ -422,7 +423,14 @@ export class DurableEventBusAsync extends EventEmitter {
    * @returns Number of pending events
    */
   public getPendingCount(consumerId: string): number {
-    return this.pendingForConsumer(consumerId).length;
+    try {
+      return this.pendingForConsumer(consumerId).length;
+    } catch (error) {
+      if (error instanceof TypeError) {
+        return 0;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -527,7 +535,8 @@ export class DurableEventBusAsync extends EventEmitter {
     for (let attempt = 0; attempt <= this.options.maxDeliveryRetries; attempt++) {
       try {
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Publish timed out")), timeoutMs);
+          const timer = setTimeout(() => reject(new Error("Publish timed out")), timeoutMs);
+          timer.unref?.();
         });
 
         const publishPromise = Promise.resolve(this.sync.publish(input));
@@ -568,7 +577,8 @@ export class DurableEventBusAsync extends EventEmitter {
     for (let attempt = 0; attempt <= this.options.maxDeliveryRetries; attempt++) {
       try {
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Delivery timed out")), timeoutMs);
+          const timer = setTimeout(() => reject(new Error("Delivery timed out")), timeoutMs);
+          timer.unref?.();
         });
 
         const deliveryPromise = this.sync.deliverPending(consumerId);
@@ -652,6 +662,7 @@ export class DurableEventBusAsync extends EventEmitter {
     this.batchFlushTimer = setInterval(() => {
       this.flushBatch();
     }, this.options.batchFlushIntervalMs);
+    this.batchFlushTimer.unref?.();
   }
 
   /**
@@ -725,7 +736,10 @@ export class DurableEventBusAsync extends EventEmitter {
    * Sleep utility for async delay.
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      timer.unref?.();
+    });
   }
 
   /**

@@ -184,7 +184,7 @@ test("golden: dispatch execution approval state format", () => {
 
   assert.ok(approval, "Approval should exist");
   assertGolden("cli-dispatch-approval-state", {
-    approvalId: approval!.id,
+    approvalIdPrefix: approval!.id.split("_")[0],
     taskId: approval!.taskId,
     status: approval!.status,
     isPending: approval!.status === "requested",

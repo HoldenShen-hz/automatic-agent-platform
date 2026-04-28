@@ -24,7 +24,7 @@ test("RolloutStateMachine promotes approved candidates into the pending approval
     approvedBy: "operator",
   });
 
-  assert.equal(record.previousLevel, "suggest");
+  assert.equal(record.previousLevel, "off");
   assert.equal(record.level, "suggest");
   assert.equal(record.status, "pending_approval");
 });
@@ -53,7 +53,9 @@ test("RolloutStateMachine allows progressive promotion from shadow to stable lan
 test("RolloutStateMachine rejects invalid transitions", () => {
   const stateMachine = new RolloutStateMachine();
   assert.throws(
-    () => stateMachine.transition(createCandidate("approved"), "partial_25"),
+    () => stateMachine.transition(createCandidate("approved"), "partial_25", {
+      currentStatus: "draft",
+    }),
     /Invalid rollout transition/,
   );
 });

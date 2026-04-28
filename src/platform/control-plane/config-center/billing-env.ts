@@ -9,6 +9,7 @@ export type BillingCliAction =
   | "create_account"
   | "evaluate"
   | "usage"
+  | "report"
   | "summary"
   | "export"
   | "create_invoice"
@@ -145,6 +146,7 @@ function readAction(env: NodeJS.ProcessEnv): BillingCliAction {
     "create_account",
     "evaluate",
     "usage",
+    "report",
     "summary",
     "export",
     "create_invoice",

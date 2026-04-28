@@ -19,6 +19,12 @@ interface ModelRouteRequest {
   sessionId: string | null;
   tenantId: string | null;
   purpose: "plan" | "execute" | "evaluate" | "summarize" | "chat";
+  routingStrategy:
+    | "cost_optimized"
+    | "latency_optimized"
+    | "quality_optimized"
+    | "compliance_constrained"
+    | "hybrid";
   preferredModel: string | null;
   requiredCapabilities: string[];
   maxLatencyMs: number | null;
@@ -44,6 +50,8 @@ interface ModelRouteDecision {
 - `preferredModel` 仅代表偏好，不代表强制 pin；若调用方显式 pin，必须单独建模。
 - `requiredCapabilities` 不满足时必须 fail-close，不得静默降级到不兼容模型。
 - `decisionReason` 必须包含至少一个可审计原因，如 `policy_allow`、`cost_guard`、`latency_guard`、`provider_cooldown`。
+- `compliance_constrained` 必须优先满足 residency、policy、allowlist 与 provider trust boundary，再考虑成本或延迟。
+- `hybrid` 必须显式声明其主目标与次目标，不得作为“任意自由裁量”兜底模式。
 
 ## 4. Fallback 与粘性
 
@@ -79,6 +87,6 @@ type RouteFailureCode =
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-10: 路由策略枚举 cost_optimized/latency_optimized/quality_optimized 3种，架构§19定义5种含 compliance_constrained/hybrid。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-10: 路由策略枚举 cost_optimized/latency_optimized/quality_optimized 3种，架构§19定义5种含 compliance_constrained/hybrid。根因：旧路由文档只覆盖性能/成本三目标，没有把合规约束与多目标折中策略写进 canonical request。修复：`ModelRouteRequest.routingStrategy` 已补齐 5 种规范枚举，并增加 `compliance_constrained` 与 `hybrid` 的治理约束。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

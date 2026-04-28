@@ -68,7 +68,7 @@ test("PluginRuntimeRequest has correct structure for request", () => {
   assert.equal(request.pluginId, "plugin.test");
   assert.equal(request.action, "load");
   assert.deepEqual(request.context, context);
-  assert.equal(request.input, "{ data: 'test' }");
+  assert.deepEqual(request.input, { data: "test" });
 });
 
 test("PluginRuntimeRequest can have null context for system actions", () => {

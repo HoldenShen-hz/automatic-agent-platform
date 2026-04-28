@@ -30,6 +30,16 @@ function createMockAsyncDb() {
           leases.set(lease.id, lease);
           return { rowCount: 1 };
         }
+        if (sql.includes("UPDATE execution_leases\n       SET status = 'released'")) {
+          const releasedAt = args[0] as string;
+          const reasonCode = args[1] as string | null;
+          const leaseId = args[2] as string;
+          const existing = leases.get(leaseId);
+          if (existing) {
+            leases.set(leaseId, { ...existing, status: "released", releasedAt, reasonCode });
+          }
+          return { rowCount: existing ? 1 : 0 };
+        }
         if (sql.includes("UPDATE execution_leases SET status")) {
           const status = args[0] as string;
           const leaseId = args[1] as string;
@@ -45,16 +55,6 @@ function createMockAsyncDb() {
           const existing = leases.get(leaseId);
           if (existing) {
             leases.set(leaseId, { ...existing, lastHeartbeatAt });
-          }
-          return { rowCount: existing ? 1 : 0 };
-        }
-        if (sql.includes("UPDATE execution_leases SET status = 'released'")) {
-          const releasedAt = args[0] as string;
-          const reasonCode = args[1] as string | null;
-          const leaseId = args[2] as string;
-          const existing = leases.get(leaseId);
-          if (existing) {
-            leases.set(leaseId, { ...existing, status: "released", releasedAt, reasonCode });
           }
           return { rowCount: existing ? 1 : 0 };
         }
@@ -98,7 +98,7 @@ function createMockAsyncDb() {
           const maxToken = execLeases.length > 0 ? Math.max(...execLeases.map(l => l.fencingToken)) : 0;
           return { rows: [{ maxFencingToken: maxToken }] as T[] };
         }
-        if (sql.includes("FROM lease_audits WHERE execution_id")) {
+        if (sql.includes("FROM lease_audits") && sql.includes("WHERE execution_id = $1")) {
           const executionId = args[0] as string;
           const execAudits = audits.filter(a => a.executionId === executionId);
           return { rows: execAudits as T[] };

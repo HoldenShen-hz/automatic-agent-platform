@@ -7,7 +7,7 @@ import {
   type RuntimeRecoveryCandidate,
   type RecoverySuggestedAction,
 } from "../../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import type { RuntimeRecoveryRecord } from "../../../../../src/state-evidence/truth/authoritative-task-store.js";
+import type { RuntimeRecoveryRecord } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // Helper to create mock store
 function createMockStore(overrides: {

@@ -3,7 +3,7 @@ import type { PmfValidationVerdict } from "../../../platform/contracts/types/dom
 import { ValidationError } from "../../../platform/contracts/errors.js";
 
 /** Default PMF thresholds for the current product baseline */
-export const DEFAULT_PMF_THRESHOLDS: Readonly<PmfValidationThresholds> = {
+export const DEFAULT_PMF_THRESHOLDS: Readonly<PmfValidationThresholds> = Object.freeze({
   minTaskCount: 5,
   minSessionCount: 3,
   minTaskSuccessRatePct: 70,
@@ -12,7 +12,7 @@ export const DEFAULT_PMF_THRESHOLDS: Readonly<PmfValidationThresholds> = {
   minApprovalResolutionRatePct: 90,
   maxAverageSuccessfulTaskCostUsd: 2,
   maxP95StepDurationMs: 60_000,
-};
+});
 
 /**
  * Parses an ISO timestamp string into a Date object.
@@ -50,7 +50,8 @@ export function calculatePercentile(values: readonly number[], percentile: numbe
     return null;
   }
   const sorted = [...values].sort((left, right) => left - right);
-  const index = Math.max(0, Math.ceil(sorted.length * percentile) - 1);
+  const boundedPercentile = Math.min(1, Math.max(0, percentile));
+  const index = Math.ceil((sorted.length - 1) * boundedPercentile);
   return roundMetric(sorted[index] ?? sorted[sorted.length - 1] ?? 0);
 }
 
@@ -64,7 +65,7 @@ export function safeDividePercent(numerator: number, denominator: number): numbe
 
 /** Validates profile name format (alphanumeric with dots, underscores, hyphens) */
 export function validateProfileName(profileName: string): string {
-  if (!/^[a-zA-Z0-9._-]{1,64}$/.test(profileName)) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(profileName)) {
     throw new ValidationError("pmf.invalid_profile_name", "pmf.invalid_profile_name");
   }
   return profileName;
@@ -118,6 +119,9 @@ export function buildSummary(
     return "PMF validation meets the current product baseline thresholds.";
   }
   if (failed.length === 0) {
+    if (verdict === "fail") {
+      return "PMF validation did not meet the current baseline.";
+    }
     return "PMF validation completed with warnings, but no hard-fail threshold was crossed.";
   }
   return `PMF validation did not meet the current baseline for: ${failed.join(", ")}.`;

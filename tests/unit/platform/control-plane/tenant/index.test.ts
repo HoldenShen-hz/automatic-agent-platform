@@ -64,6 +64,11 @@ test("TenantBoundaryRegistryService uses provided createdAt", () => {
 
 test("TenantBoundaryRegistryService registers workspace correctly", () => {
   const service = new TenantBoundaryRegistryService();
+  service.registerOrganization({
+    organizationId: "org-001",
+    name: "Test Org",
+    createdAt: "2024-01-15T10:00:00Z",
+  });
   const workspace = service.registerWorkspace({
     workspaceId: "ws-001",
     organizationId: "org-001",
@@ -147,6 +152,11 @@ test("TenantBoundaryRegistryService adds workspace membership correctly", () => 
     displayName: "Test User",
     status: "active",
     identityProvider: "idp-001",
+  });
+  service.registerOrganization({
+    organizationId: "org-001",
+    name: "Test Org",
+    createdAt: "2024-01-15T10:00:00Z",
   });
   service.registerWorkspace({
     workspaceId: "ws-001",

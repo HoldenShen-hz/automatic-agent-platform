@@ -50,6 +50,52 @@ const EVENT_COLS_PREFIXED = `e.id,
 export class EventRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
+  public insertCostEvent(costEvent: {
+    id: string;
+    taskId: string;
+    sessionId?: string | null;
+    executionId?: string | null;
+    agentId?: string | null;
+    provider: string;
+    model?: string;
+    modelId?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    costUsd: number;
+    budgetScope?: string;
+    providerRequestId?: string | null;
+    pricingVersion?: string | null;
+    createdAt?: string;
+    occurredAt?: string;
+  }): void {
+    this.conn
+      .prepare(
+        `INSERT INTO cost_events (
+          id, task_id, session_id, execution_id, agent_id, provider, model,
+          input_tokens, output_tokens, cost_usd, budget_scope,
+          provider_request_id, pricing_version, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        costEvent.id,
+        costEvent.taskId,
+        costEvent.sessionId ?? null,
+        costEvent.executionId ?? null,
+        costEvent.agentId ?? null,
+        costEvent.provider,
+        costEvent.model ?? costEvent.modelId ?? "unknown",
+        costEvent.inputTokens ?? costEvent.promptTokens ?? 0,
+        costEvent.outputTokens ?? costEvent.completionTokens ?? 0,
+        costEvent.costUsd,
+        costEvent.budgetScope ?? "task_execution",
+        costEvent.providerRequestId ?? null,
+        costEvent.pricingVersion ?? null,
+        costEvent.createdAt ?? costEvent.occurredAt ?? nowIso(),
+      );
+  }
+
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
       eventTier?: EventRecord["eventTier"];

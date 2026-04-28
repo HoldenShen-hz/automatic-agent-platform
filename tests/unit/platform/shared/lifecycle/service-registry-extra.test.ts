@@ -185,7 +185,7 @@ test("ServiceRegistry.topologicalSort handles no dependencies", () => {
 });
 
 test("ServiceRegistry.topologicalSort handles single service", () => {
-  const registry = ServiceRegistry.getInstance();
+  const registry = new ServiceRegistry();
   registry.register("only-one", { init: () => ({}) });
 
   const sorted = registry.topologicalSort();
@@ -194,7 +194,7 @@ test("ServiceRegistry.topologicalSort handles single service", () => {
 });
 
 test("ServiceRegistry.topologicalSort reports circular dependency", () => {
-  const registry = ServiceRegistry.getInstance();
+  const registry = new ServiceRegistry();
   registry.register("circ-a", {
     init: () => ({}),
     dependsOn: ["circ-b"],

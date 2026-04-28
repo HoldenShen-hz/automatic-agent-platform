@@ -218,13 +218,13 @@ export class PackLifecycleOrchestrationService {
 
   public certifyPack(input: CertifyBusinessPackInput): PackLifecycleRecord {
     const record = this.getMutableRecord(input.packId, input.version);
-    assertLifecycleStage(record, ["testing", "certified"]);
     if (record.testing?.verdict !== "passed") {
       throw new ValidationError(
         `pack_lifecycle.testing_not_passed:${record.packId}@${record.version}`,
         `Business pack ${record.packId}@${record.version} requires a passing test report before certification.`,
       );
     }
+    assertLifecycleStage(record, ["testing", "certified"]);
 
     const compatibility = this.compatibility.evaluateManifest({
       manifest: record.manifest,
@@ -261,13 +261,13 @@ export class PackLifecycleOrchestrationService {
 
   public publishPack(input: PublishBusinessPackInput): PackLifecycleRecord {
     const record = this.getMutableRecord(input.packId, input.version);
-    assertLifecycleStage(record, ["certified", "published", "running"]);
     if (record.certification?.verdict !== "certified") {
       throw new ValidationError(
         `pack_lifecycle.not_certified:${record.packId}@${record.version}`,
         `Business pack ${record.packId}@${record.version} must be certified before publication.`,
       );
     }
+    assertLifecycleStage(record, ["certified", "published", "running", "deprecated"]);
 
     const findings = [
       ...(input.strategy === "ga" && record.apiChange.changeType === "breaking" && record.deprecation == null

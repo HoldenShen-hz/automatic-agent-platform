@@ -56,7 +56,7 @@ export function normalizeGatewayDeliveryFailure(
     };
   }
   if (error instanceof Error) {
-    const statusMatch = error.message.match(/:(\d{3})$/);
+    const statusMatch = error.message.match(/(?::|^)(\d{3})(?::|$)/);
     const responseStatus = statusMatch ? Number(statusMatch[1]) : null;
     if (responseStatus != null) {
       return {

@@ -92,6 +92,7 @@ test("WebhookIngressService receive prefers eventType over event_type", () => {
       eventType: "primary.event",
       event_type: "secondary.event",
       type: "tertiary.event",
+      eventId: "evt-preference-1",
     }),
   });
 
@@ -116,6 +117,7 @@ test("WebhookIngressService receive prefers event_type over type", () => {
     body: JSON.stringify({
       event_type: "secondary.event",
       type: "tertiary.event",
+      eventId: "evt-preference-2",
     }),
   });
 

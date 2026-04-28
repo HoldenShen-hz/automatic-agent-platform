@@ -1,6 +1,7 @@
 export interface ChineseWallPolicy {
   readonly policyId: string;
   readonly conflictGroups: Readonly<Record<string, readonly string[]>>;
+  readonly blockedOrgNodeIds?: readonly string[];
 }
 
 export interface ChineseWallDecision {
@@ -14,7 +15,15 @@ export function evaluateChineseWallPolicy(
   requesterOrgNodeId: string,
   targetOrgNodeId: string,
 ): ChineseWallDecision {
-  for (const [groupId, orgNodeIds] of Object.entries(policy.conflictGroups)) {
+  if ((policy.blockedOrgNodeIds ?? []).includes(requesterOrgNodeId) && requesterOrgNodeId !== targetOrgNodeId) {
+    return {
+      allowed: false,
+      blockedGroupId: "blocked_org_node",
+      reasonCodes: ["knowledge_boundary.chinese_wall_blocked", "knowledge_boundary.blocked_org_node"],
+    };
+  }
+
+  for (const [groupId, orgNodeIds] of Object.entries(policy.conflictGroups ?? {})) {
     if (orgNodeIds.includes(requesterOrgNodeId) && orgNodeIds.includes(targetOrgNodeId) && requesterOrgNodeId !== targetOrgNodeId) {
       return {
         allowed: false,

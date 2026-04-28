@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   parseFeedbackSignal,
   FeedbackSignalSchema,
-} from "../../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
+} from "../../../../../src/platform/orchestration/oapeflir/types/feedback-signal.js";
 
 test("parseFeedbackSignal parses valid signal", () => {
   const valid = {
@@ -140,7 +140,7 @@ test("parseFeedbackSignal rejects negative timestamp", () => {
   assert.throws(() => parseFeedbackSignal(invalid));
 });
 
-test("FeedbackSignalSchema accepts non-integer timestamp", () => {
+test("FeedbackSignalSchema rejects non-integer timestamp", () => {
   const signal = {
     signalId: "sig_123",
     taskId: "task_456",
@@ -152,6 +152,5 @@ test("FeedbackSignalSchema accepts non-integer timestamp", () => {
     stepOutputRefs: [],
   };
 
-  const result = FeedbackSignalSchema.parse(signal);
-  assert.equal(result.timestamp, 1);
+  assert.throws(() => FeedbackSignalSchema.parse(signal));
 });

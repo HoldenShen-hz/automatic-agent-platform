@@ -315,6 +315,8 @@ async function runMultiStepAdmissionScenario(outputDir: string): Promise<StableD
         workflowStatus: result.snapshot.workflow?.status ?? null,
         sessionStatus: result.snapshot.session?.status ?? null,
         executionId: result.snapshot.execution?.id ?? null,
+        stepOutputs: result.snapshot.stepOutputs,
+        streamFrames: result.streamFrames,
         eventTypes: result.snapshot.events.map((event) => event.eventType),
       },
     };

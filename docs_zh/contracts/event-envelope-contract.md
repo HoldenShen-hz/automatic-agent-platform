@@ -12,16 +12,20 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `schema_version` | `string` | envelope wire schema 版本；用于跨存储、跨队列与跨语言兼容 |
 | `eventId` | `string` | 事件 ID |
 | `eventType` | `string` | 事件类型 |
 | `eventVersion` | `string` | 事件 schema 版本 |
+| `idempotency_key` | `string` | 生产侧幂等键；用于 append / relay / consumer 去重 |
 | `aggregateType` | `string` | 聚合类型 |
 | `aggregateId` | `string` | 聚合 ID |
 | `aggregateSeq` | `number` | 聚合序列 |
 | `tenantId` | `string` | 租户 |
 | `traceId` | `string` | trace |
-| `causationId` | `string?` | 触发事件 |
+| `causation_id` | `string?` | 直接触发该事件的上游事件或命令 ID |
 | `correlationId` | `string?` | 关联链 |
+| `partition_key` | `string` | 分区路由键；同一 truth aggregate 必须稳定路由到同一分区策略 |
+| `ttl` | `duration?` | 保留/失效提示；用于 relay、cache、view rebuild 或临时投影过期策略 |
 | `payloadHash` | `string` | payload hash |
 | `payload` | `json` | payload |
 | `occurredAt` | `timestamp` | 发生时间 |
@@ -29,6 +33,8 @@
 规则：
 
 - `(aggregateType, aggregateId, aggregateSeq)` 必须唯一。
+- `schema_version`、`idempotency_key`、`partition_key` 缺一不可；缺失时不得进入 canonical event bus。
+- `ttl` 只控制 envelope 生命周期策略，不得改变已提交 truth fact 的审计保留义务。
 - Tier 1 platform fact 必须支持 per-consumer ack 与 replay。
 - event append 必须与 truth mutation 同事务。
 
@@ -93,6 +99,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-5: 缺少架构 ContractEnvelope 要求的5个必需字段：schema_version/idempotency_key/causation_id/partition_key/ttl。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-5: 缺少架构 ContractEnvelope 要求的5个必需字段：schema_version/idempotency_key/causation_id/partition_key/ttl。根因：早期文档只描述了事件事实存储字段，遗漏了 envelope 层的幂等、分区和生命周期元数据。修复：这 5 个字段现已进入 `EventEnvelope` canonical 最小字段；旧 camelCase / 省略字段写法只能作为 adapter 或 migration 输入，不得作为新实现入口。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

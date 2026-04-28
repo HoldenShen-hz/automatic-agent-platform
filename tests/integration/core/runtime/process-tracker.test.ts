@@ -64,7 +64,7 @@ test("process-tracker reset clears singleton", () => {
 
 test("process-tracker barrel module re-exports correct canonical module", async () => {
   // Verify that the barrel correctly re-exports from the canonical platform module
-  const mod = await import("../../../../../src/core/runtime/process-tracker.js");
+  const mod = await import("../../../../src/core/runtime/process-tracker.js");
   assert.ok("ProcessTracker" in mod, "Module should export ProcessTracker");
   assert.ok("getProcessTracker" in mod, "Module should export getProcessTracker");
   assert.ok("spawnTracked" in mod, "Module should export spawnTracked");

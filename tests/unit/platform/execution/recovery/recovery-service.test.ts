@@ -9,7 +9,7 @@ import {
   type RuntimeRecoveryCandidate,
   type TaskRuntimeRecoveryView,
 } from "../../../../../src/platform/execution/recovery/runtime-recovery-service.js";
-import type { RuntimeRecoveryRecord } from "../../../../../src/state-evidence/truth/authoritative-task-store.js";
+import type { RuntimeRecoveryRecord } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 /**
  * Mock store factory for RuntimeRecoveryService tests.

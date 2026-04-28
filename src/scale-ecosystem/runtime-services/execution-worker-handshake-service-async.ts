@@ -417,6 +417,7 @@ export class ExecutionWorkerHandshakeServiceAsync extends EventEmitter {
           reject(new Error(`Operation ${operationName} timed out after ${timeoutMs}ms`));
         }
       }, timeoutMs);
+      timeoutHandle.unref?.();
     });
 
     // Handle external abort
@@ -654,6 +655,7 @@ export class ExecutionWorkerHandshakeServiceAsync extends EventEmitter {
     this.batchFlushTimer = setInterval(() => {
       this.flushBatch();
     }, this.options.batchFlushIntervalMs);
+    this.batchFlushTimer.unref?.();
   }
 
   /**
@@ -762,7 +764,10 @@ export class ExecutionWorkerHandshakeServiceAsync extends EventEmitter {
    * Sleep utility for async delay.
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      timer.unref?.();
+    });
   }
 
   /**

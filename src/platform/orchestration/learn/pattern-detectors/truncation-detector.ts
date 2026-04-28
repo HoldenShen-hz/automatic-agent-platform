@@ -9,7 +9,14 @@ import { FailurePattern, FailurePatternType } from "./failure-pattern-model.js";
  * §8 pattern: LLM truncation (max_tokens hit)
  */
 export function detectLlmTruncation(signal: LearningSignal): FailurePattern | null {
-  const { evidence, valueSummary, taskId, learningSignalId, evidenceRefs, sourceSignalIds } = signal;
+  const {
+    evidence = {},
+    valueSummary = "",
+    taskId = "",
+    learningSignalId = "",
+    evidenceRefs = [],
+    sourceSignalIds = [],
+  } = signal as Partial<LearningSignal>;
   const ev = evidence as Record<string, unknown>;
   const lineage = [...new Set([...sourceSignalIds, learningSignalId])];
 

@@ -194,7 +194,7 @@ export function buildNextActions(
   }
 
   if (smoke?.present && smoke.passed === false) {
-    actions.push("Repair or rerun the smoke evidence bundle before retrying the release gate.");
+    actions.push("Fix failing smoke evidence bundle results before retrying the release gate.");
   }
 
   // Check required profiles

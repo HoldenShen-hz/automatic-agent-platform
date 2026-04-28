@@ -12,7 +12,7 @@ import {
   executeAgentRoundLoop,
   buildStepOutput,
   resolveMultiStepToolPath,
-} from "../../../../../../src/core/runtime/planner/index.js";
+} from "../../../../../src/core/runtime/planner/index.js";
 
 test("planner barrel exports executeAgentRoundLoop function", () => {
   assert.ok(typeof executeAgentRoundLoop === "function", "executeAgentRoundLoop should be a function");
@@ -27,13 +27,13 @@ test("planner barrel exports resolveMultiStepToolPath function", () => {
 });
 
 test("planner barrel module re-exports from multi-step-agent-round-loop", async () => {
-  const mod = await import("../../../../../../src/core/runtime/planner/index.js");
+  const mod = await import("../../../../../src/core/runtime/planner/index.js");
   assert.ok("executeAgentRoundLoop" in mod, "Should re-export executeAgentRoundLoop");
   assert.ok("buildStepOutput" in mod, "Should re-export buildStepOutput");
 });
 
 test("planner barrel module re-exports from multi-step-utils", async () => {
-  const mod = await import("../../../../../../src/core/runtime/planner/index.js");
+  const mod = await import("../../../../../src/core/runtime/planner/index.js");
   assert.ok("resolveMultiStepToolPath" in mod, "Should re-export resolveMultiStepToolPath");
 });
 
@@ -53,11 +53,11 @@ test("planner resolveMultiStepToolPath rejects paths outside workspace", () => {
 });
 
 test("planner barrel exports parseOptionalPositiveInteger", async () => {
-  const mod = await import("../../../../../../src/core/runtime/planner/index.js");
+  const mod = await import("../../../../../src/core/runtime/planner/index.js");
   assert.ok("parseOptionalPositiveInteger" in mod, "Should re-export parseOptionalPositiveInteger");
 });
 
 test("planner barrel exports safeParseToolResult", async () => {
-  const mod = await import("../../../../../../src/core/runtime/planner/index.js");
+  const mod = await import("../../../../../src/core/runtime/planner/index.js");
   assert.ok("safeParseToolResult" in mod, "Should re-export safeParseToolResult");
 });

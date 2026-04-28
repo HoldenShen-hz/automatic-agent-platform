@@ -74,7 +74,12 @@ export class ConfigGovernanceService {
       allowedRoots: [rootCheck.normalizedPath],
     };
 
-    for (const layerName of this.listLayerNames(rootCheck.normalizedPath)) {
+    const layerNames = this.listLayerNames(rootCheck.normalizedPath);
+    if (layerNames.length === 0) {
+      throw new ValidationError("config.root_missing", "config.root_missing");
+    }
+
+    for (const layerName of layerNames) {
       const parsed = this.loadLayerConfig(rootCheck.normalizedPath, layerName, environment, effectivePolicy);
       layers[layerName] = parsed;
       layerHashes[layerName] = sha256(stableStringify(parsed));

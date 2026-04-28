@@ -9,7 +9,7 @@ import test from "node:test";
 import type {
   QualityGateConfig,
   QualityEvaluationEvidence,
-} from "../../../../src/platform/prompt-engine/eval/types.js";
+} from "../../../../../src/platform/prompt-engine/eval/types.js";
 
 function createMockQualityGateConfig(overrides: Partial<QualityGateConfig> = {}): QualityGateConfig {
   return {

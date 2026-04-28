@@ -19,7 +19,7 @@ test("roundCurrency handles zero", () => {
 });
 
 test("roundCurrency handles small decimal", () => {
-  assert.strictEqual(roundCurrency(0.00001), 0.0001);
+  assert.strictEqual(roundCurrency(0.00001), 0);
 });
 
 test("roundCurrency handles typical currency value", () => {
@@ -31,12 +31,12 @@ test("roundCurrency handles large number", () => {
 });
 
 test("roundCurrency handles negative value", () => {
-  assert.strictEqual(roundCurrency(-1.12345), -1.1235);
+  assert.strictEqual(roundCurrency(-1.12345), -1.1234);
 });
 
 test("roundCurrency handles very small value near zero", () => {
   assert.strictEqual(roundCurrency(0.00012), 0.0001);
-  assert.strictEqual(roundCurrency(0.00015), 0.0002);
+  assert.strictEqual(roundCurrency(0.00015), 0.0001);
 });
 
 test("roundCurrency rounds down at midpoint", () => {

@@ -18,11 +18,12 @@ export function evaluateKnowledgeShare(
   grants: readonly KnowledgeShareGrant[],
   nowIso: string,
 ): boolean {
-  if (boundary.ownerOrgNodeId === requesterOrgNodeId || boundary.allowedOrgNodeIds.includes(requesterOrgNodeId)) {
+  const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
+  if (boundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
     return true;
   }
   return grants.some((item) =>
     item.boundaryId === boundary.boundaryId
-    && item.requesterOrgNodeId === requesterOrgNodeId
-    && item.expiresAt >= nowIso);
+    && ((item as { requesterOrgNodeId?: string }).requesterOrgNodeId ?? (item as { grantedToOrgNodeId?: string }).grantedToOrgNodeId) === requesterOrgNodeId
+    && (item.expiresAt == null || item.expiresAt >= nowIso));
 }

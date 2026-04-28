@@ -91,16 +91,16 @@ test("DashboardProjectionService extracts entityId from various payload shapes",
   const service = new DashboardProjectionService();
 
   const delta1 = service.processEvent("task:status_changed", { taskId: "from_taskId" });
-  const delta2 = service.processEvent("incident:opened", { incidentId: "from_incidentId" });
-  const delta3 = service.processEvent("workflow:updated", { workflowId: "from_workflowId" });
-  const delta4 = service.processEvent("generic:event", { entityRef: "from_entityRef" });
+  const delta2 = service.processEvent("incident.opened", { incidentId: "from_incidentId" });
+  const delta3 = service.processEvent("task.updated", { workflowId: "from_workflowId" });
+  const delta4 = service.processEvent("system.health.changed", { entityRef: "from_entityRef" });
   const delta5 = service.processEvent("unknown:event", {});
 
   assert.ok(delta1 !== null);
   assert.ok(delta2 !== null);
   assert.ok(delta3 !== null);
   assert.ok(delta4 !== null);
-  assert.ok(delta5 !== null);
+  assert.equal(delta5, null);
   assert.equal(delta1!.changes[0]!.entityId, "from_taskId");
   assert.equal(delta2!.changes[0]!.entityId, "from_incidentId");
   assert.equal(delta3!.changes[0]!.entityId, "from_workflowId");

@@ -15,7 +15,7 @@ import {
   type AgentTrustProfile,
   type AutonomyChangeEvent,
   type AutonomyLevel,
-} from "../../../src/interaction/autonomy/index.js";
+} from "../../../../src/interaction/autonomy/index.js";
 
 function makeTrustProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProfile {
   return {

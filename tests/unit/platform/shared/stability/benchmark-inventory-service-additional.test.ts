@@ -9,7 +9,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BenchmarkInventoryService } from "../../../../../src/platform/shared/stability/benchmark-inventory-service.js";
+import {
+  BenchmarkInventoryService,
+  type BenchmarkInventoryRecord,
+} from "../../../../../src/platform/shared/stability/benchmark-inventory-service.js";
 
 test("BenchmarkInventoryService lists all benchmarks", () => {
   const service = new BenchmarkInventoryService();
@@ -94,12 +97,13 @@ test("BenchmarkInventoryService returns defensive copy of benchmarks", () => {
 
   // Should be equal but not the same reference
   assert.deepEqual(benchmarks1, benchmarks2);
-  benchmarks1.push({ benchmarkId: "test" } as never);
-  assert.notEqual(service.listBenchmarks().length, benchmarks1.length);
+  assert.throws(() => {
+    benchmarks1.push({ benchmarkId: "test" } as never);
+  }, /not extensible/);
+  assert.equal(service.listBenchmarks().length, benchmarks2.length);
 });
 
 test("BenchmarkInventoryRecord structure validation", () => {
-  const { BenchmarkInventoryRecord } = require("../../../../../src/platform/shared/stability/benchmark-inventory-service.js");
   const record: BenchmarkInventoryRecord = {
     benchmarkId: "bench.test",
     architectureSection: "§1",

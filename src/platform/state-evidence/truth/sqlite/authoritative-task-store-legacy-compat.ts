@@ -162,6 +162,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public listLeasesByExecution(...args: RepoMethodArgs<WorkerRepository, "listExecutionLeases">): RepoMethodResult<WorkerRepository, "listExecutionLeases"> {
     return this.listExecutionLeases(...args);
   }
+  public abstract listLeasesByWorker(...args: RepoMethodArgs<WorkerRepository, "listLeasesByWorker">): RepoMethodResult<WorkerRepository, "listLeasesByWorker">;
   public abstract listExecutionLeasesByStatuses(...args: RepoMethodArgs<WorkerRepository, "listExecutionLeasesByStatuses">): RepoMethodResult<WorkerRepository, "listExecutionLeasesByStatuses">;
   public abstract listExpiredExecutionLeases(...args: RepoMethodArgs<WorkerRepository, "listExpiredExecutionLeases">): RepoMethodResult<WorkerRepository, "listExpiredExecutionLeases">;
   public abstract getLatestFencingToken(...args: RepoMethodArgs<WorkerRepository, "getLatestFencingToken">): RepoMethodResult<WorkerRepository, "getLatestFencingToken">;

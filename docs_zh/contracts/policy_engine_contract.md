@@ -35,10 +35,16 @@
 | `action` | `invoke_model \| invoke_tool \| write_file \| exec_command \| network_access \| install_extension \| org_change \| dispatch_execution \| set_isolation_level \| promote_improvement \| advance_rollout \| modify_knowledge_trust \| promote_memory_layer` | 目标动作 |
 | `resource_ref` | `string?` | 资源引用 |
 | `risk_category` | `destructive \| irreversible \| prod_affecting \| cost_sensitive \| org_changing \| sensitive_data \| strategy_affecting \| governance_sensitive` | 风险分类 |
-| `mode` | `supervised \| auto \| full-auto` | 当前运行模式 |
-| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 当前 OAPEFLIR 阶段 |
+| `mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | 当前运行模式 |
+| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 当前 OAPEFLIR 阶段视图引用；不得作为 truth 决策主键 |
 | `estimated_cost_usd` | `number?` | 估算成本 |
 | `metadata_json` | `json?` | 额外上下文 |
+
+规则：
+
+- `mode` 必须使用架构定义的 8 种规范模式；`supervised / auto / full-auto` 只允许作为 legacy 输入并在入口归一化。
+- 降级模式必须被策略显式理解，而不是由调用方用布尔组合私自推断。
+- `stage_view_ref` 只提供解释上下文，运行模式裁决仍以 `OperationalDirective`、风险分类、预算和 policy 规则为准。
 
 ### 3.2 `PolicyDecisionResult`
 
@@ -106,6 +112,7 @@ flowchart TD
 - 审批升级不应覆盖硬性禁止项；被硬拒的动作不得再通过审批放行。
 - kill switch / freeze 命中后，审批也不能把已冻结动作重新放行。
 - `allow_with_constraints` 的约束必须是 authoritative，后续执行不得擅自放宽。
+- `manual_only` 与 `incident-mode` 不是 UI 标签，而是强约束运行模式；命中后执行层不得把它们降格为普通 warning。
 
 ## 5. 敏感操作分类表
 
@@ -132,6 +139,7 @@ flowchart TD
 - Plugin / MCP 安装单元必须先通过 Policy Engine，不能直接绕过 ToolRegistry。
 - MCP 不得伪装成本地可信工具获得更宽权限。
 - 相同动作在不同 `resource_ref`、`path_scope`、`tenant scope` 下必须独立评估，不能错误复用旧放行结论。
+- 同一请求在不同 `mode` 下必须重新求值，不能把 `full_auto` 的旧 allow 复用于 `read_only`、`no-rollout` 或 `incident-mode`。
 
 ## 7B. 与 OAPEFLIR Hub 的边界
 
@@ -245,6 +253,6 @@ Policy Engine 的意义不是再造一层抽象，而是把过去分散在权限
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-17: mode 字段用 supervised/auto/full-auto 3值，架构§9.5定义8种规范模式含5个降级模式。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-17: 本文原先把运行模式压缩成 `supervised / auto / full-auto` 三值，根因是早期策略合同只覆盖“是否自动执行”，没有把架构中的降级保护模式也视为一等治理对象。修复：正文现把 `mode` 收敛到 `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode` 八种规范模式，并把旧三值降为 legacy 输入。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

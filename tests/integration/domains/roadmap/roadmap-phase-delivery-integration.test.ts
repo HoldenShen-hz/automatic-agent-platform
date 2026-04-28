@@ -8,9 +8,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RoadmapService } from "../../../src/domains/roadmap/roadmap-service.js";
-import { PhaseDeliveryService } from "../../../src/domains/roadmap/phase-delivery-service.js";
-import type { PhaseAdvanceDecision } from "../../../src/domains/roadmap/types.js";
+import { RoadmapService } from "../../../../src/domains/roadmap/roadmap-service.js";
+import { PhaseDeliveryService } from "../../../../src/domains/roadmap/phase-delivery-service.js";
+import type { PhaseAdvanceDecision } from "../../../../src/domains/roadmap/types.js";
 
 function createRoadmapService(): RoadmapService {
   return new RoadmapService();
@@ -67,8 +67,8 @@ test("integration: RoadmapService phase advance evaluation with gate", () => {
   // After deferring, still allowed since gate doesn't block on deferred and no required items
   roadmapService.deferRoadmapItem(item.itemId, "Waiting for dependency");
   decision = roadmapService.evaluatePhaseAdvance("phase2");
-  assert.equal(decision.allowed, false);
-  assert.ok(decision.reasonCodes.some((r) => r.includes("deferred")));
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.reasonCodes.some((r) => r.includes("deferred")), false);
 });
 
 test("integration: PhaseDeliveryService creates phases and deliverables", () => {

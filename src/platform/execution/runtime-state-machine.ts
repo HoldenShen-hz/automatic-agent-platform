@@ -97,15 +97,13 @@ const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
 };
 
 const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {
-  created: ["blocked", "ready", "policy_blocked", "dependency_failed", "aborted"],
-  blocked: ["ready", "skipped", "cancelled", "dependency_failed", "policy_blocked", "aborted"],
-  ready: ["queued", "leased", "policy_blocked", "dependency_failed", "skipped", "aborted"],
-  queued: ["leased", "ready", "cancelled", "aborted"],
+  created: ["ready", "policy_blocked", "dependency_failed", "aborted"],
+  ready: ["leased", "policy_blocked", "dependency_failed", "skipped", "aborted"],
   leased: ["running", "ready", "cancelled", "aborted"],
   running: ["retry_wait", "awaiting_hitl", "reconciling", "succeeded", "failed", "cancelled", "aborted"],
   retry_wait: ["ready", "failed", "aborted"],
   awaiting_hitl: ["ready", "running", "failed", "cancelled", "aborted"],
-  reconciling: ["succeeded", "failed", "compensating" as NodeRunStatus, "aborted"].filter(isNodeRunStatus),
+  reconciling: ["succeeded", "failed", "aborted"],
   succeeded: [],
   failed: [],
   skipped: [],
@@ -510,9 +508,7 @@ function toEventNamespace(aggregateType: RuntimeStateAggregateType): string {
 function isNodeRunStatus(value: string): value is NodeRunStatus {
   return [
     "created",
-    "blocked",
     "ready",
-    "queued",
     "leased",
     "running",
     "retry_wait",

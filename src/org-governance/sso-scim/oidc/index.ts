@@ -14,6 +14,8 @@ export const OidcProviderConfigSchema = z.object({
 
 export type OidcProviderConfig = z.infer<typeof OidcProviderConfigSchema>;
 
+export * from "./oidc-service.js";
+
 export function buildOidcAuthorizationUrl(config: OidcProviderConfig, state: string): string {
   const scopes = encodeURIComponent(config.scopes.join(" "));
   const authorizationEndpoint = config.authorizationEndpoint ?? `${config.issuer}/authorize`;

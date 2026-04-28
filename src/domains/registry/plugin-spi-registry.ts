@@ -179,7 +179,6 @@ export class PluginSpiRegistry {
     const record = this.requireRecord(pluginId);
     const context = buildContext(record, overrides);
     this.clearCooldownIfExpired(record);
-    this.assertNotCoolingDown(record, "activation", context);
 
     if (record.lifecycleState === "disabled") {
       throw new ValidationError("plugin_spi.plugin_disabled", `Plugin ${pluginId} is disabled.`, {
@@ -188,9 +187,10 @@ export class PluginSpiRegistry {
         details: { pluginId, disabledReason: record.disabledReason },
       });
     }
-    if (record.lifecycleState === "active") {
+    if (record.lifecycleState === "active" || record.lifecycleState === "degraded") {
       return record.plugin;
     }
+    this.assertNotCoolingDown(record, "activation", context);
     const inFlightActivation = this.activationPromises.get(pluginId);
     if (inFlightActivation) {
       return inFlightActivation;
@@ -582,7 +582,7 @@ export class PluginSpiRegistry {
       return;
     }
     if (!policy.allowedKnowledgeNamespaces.includes(namespace)) {
-      throw new ValidationError("plugin_spi.namespace_denied", `Plugin ${pluginId} cannot access namespace ${namespace}.`, {
+      throw new ValidationError("plugin_spi.namespace_denied", `plugin_spi.namespace_denied: Plugin ${pluginId} cannot access namespace ${namespace}.`, {
         category: "validation",
         source: "internal",
         details: { pluginId, namespace, allowedKnowledgeNamespaces: policy.allowedKnowledgeNamespaces },
@@ -594,7 +594,7 @@ export class PluginSpiRegistry {
     if (policy.allowNetworkEgress) {
       return;
     }
-    throw new ValidationError("plugin_spi.network_denied", `Plugin ${pluginId} cannot use network egress during ${phase}.`, {
+    throw new ValidationError("plugin_spi.network_denied", `plugin_spi.network_denied: Plugin ${pluginId} cannot use network egress during ${phase}.`, {
       category: "validation",
       source: "internal",
       details: { pluginId, phase },
@@ -639,11 +639,11 @@ export class PluginSpiRegistry {
   ): void {
     record.failureCount += 1;
     record.lastErrorAt = nowIso();
-    record.lastErrorMessage = error instanceof Error ? error.message : String(error);
+    record.lastErrorMessage = extractPluginErrorMessage(error);
     if (record.manifest.sandbox.cooldownMs > 0) {
       record.cooldownUntil = new Date(Date.now() + record.manifest.sandbox.cooldownMs).toISOString();
     }
-    if (record.failureCount >= this.maxConsecutiveFailures) {
+    if (record.failureCount > this.maxConsecutiveFailures) {
       record.disabledReason = phase;
       this.setLifecycleState(record, "disabled");
     } else {
@@ -826,4 +826,14 @@ export class PluginSpiRegistry {
       },
     });
   }
+}
+
+function extractPluginErrorMessage(error: unknown): string {
+  if (error instanceof ValidationError) {
+    const details = error.details as { errorMessage?: unknown } | undefined;
+    if (typeof details?.errorMessage === "string" && details.errorMessage.length > 0) {
+      return details.errorMessage;
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
 }

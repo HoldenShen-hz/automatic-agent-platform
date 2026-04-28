@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
-import { resolve } from "path";
-
-const srcPath = resolve(fileURLToPath(import.meta.url), "../../../../src/domains/vertical-domain-architecture-service.js");
-const mod = await import(srcPath);
+import * as mod from "../../../src/domains/vertical-domain-architecture-service.js";
 
 test("VerticalDomainArchitectureService.listVerticalDomainArchitectures returns array", () => {
   const service = new mod.VerticalDomainArchitectureService();

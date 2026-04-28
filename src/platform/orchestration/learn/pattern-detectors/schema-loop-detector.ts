@@ -12,6 +12,10 @@ export function detectSchemaValidationLoop(
   signals: readonly LearningSignal[],
   minOccurrences = 3,
 ): FailurePattern | null {
+  if (!Array.isArray(signals)) {
+    return null;
+  }
+
   // Group failure_pattern signals by stepId
   const stepIdMap = new Map<string, LearningSignal[]>();
 

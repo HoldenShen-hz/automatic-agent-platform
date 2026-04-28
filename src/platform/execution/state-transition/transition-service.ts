@@ -262,7 +262,7 @@ export class TaskTransitionService {
     }
     this.repository.createTier1StatusEvent({
       taskId: command.entityId,
-      executionId: command.executionId,
+      executionId: resolveExistingExecutionId(this.db, command.executionId),
       eventType: "task:status_changed",
       traceId: command.traceId,
       payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
@@ -506,7 +506,7 @@ class TaskTerminalTransitionService {
       input.context.occurredAt,
     );
     const currentWorkflow = this.repository.getWorkflowState(input.taskId);
-    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? (workflowTerminal === "completed" ? 1 : 0);
+    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
 
     this.repository.updateWorkflowState(
       input.taskId,
@@ -758,6 +758,19 @@ function buildEventTraceContext(context: TransitionAuditContext, taskId: string)
     spanId: traceContext.spanId ?? newId("span"),
     correlationId: context.correlationId ?? taskId,
   };
+}
+
+function resolveExistingExecutionId(db: AuthoritativeSqlDatabase, executionId: string | null): string | null {
+  if (executionId == null) {
+    return null;
+  }
+  if (typeof db.connection.prepare !== "function") {
+    return executionId;
+  }
+  const row = db.connection.prepare("SELECT 1 FROM executions WHERE id = ? LIMIT 1").get(executionId) as
+    | Record<string, unknown>
+    | undefined;
+  return row == null ? null : executionId;
 }
 
 /**

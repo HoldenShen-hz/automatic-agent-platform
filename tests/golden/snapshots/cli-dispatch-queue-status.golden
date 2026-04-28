@@ -2,9 +2,10 @@
   "totalTasks": 3,
   "queuedCount": 1,
   "inProgressCount": 1,
+  "pendingCount": 1,
   "statuses": [
     "queued",
     "in_progress",
-    "executing"
+    "pending"
   ]
 }

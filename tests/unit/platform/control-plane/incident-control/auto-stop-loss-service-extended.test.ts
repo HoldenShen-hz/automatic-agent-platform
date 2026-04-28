@@ -28,8 +28,12 @@ function createTestPlaybook(overrides: Partial<StopLossPlaybook> = {}): StopLoss
   };
 }
 
+function createIsolatedService(): AutoStopLossService {
+  return new AutoStopLossService({ playbooks: [] });
+}
+
 test("AutoStopLossService evaluateAnomaly returns matching playbooks for critical severity", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "critical-playbook",
     triggerCondition: { type: "anomaly_severity", severityThreshold: "critical" },
@@ -56,16 +60,19 @@ test("AutoStopLossService evaluateAnomaly returns empty for info severity", () =
   assert.equal(result.matchingPlaybooks.length, 0);
 });
 
-test("AutoStopLossService evaluateAnomaly respects cooldown period", () => {
-  const service = new AutoStopLossService();
-  service.registerPlaybook(createTestPlaybook({
+test("AutoStopLossService evaluateAnomaly respects cooldown period", async () => {
+  const service = createIsolatedService();
+  const playbook = createTestPlaybook({
     id: "cooldown-playbook",
     cooldownMs: 60000, // 1 minute cooldown
-  }));
+  });
+  service.registerPlaybook(playbook);
 
   // First evaluation
   const result1 = service.evaluateAnomaly("critical", "error_rate");
   assert.equal(result1.matchingPlaybooks.length, 1);
+
+  await service.executePlaybook(playbook, "Trigger cooldown");
 
   // Second evaluation immediately should not match (in cooldown)
   const result2 = service.evaluateAnomaly("critical", "error_rate");
@@ -102,7 +109,7 @@ test("AutoStopLossService evaluateAnomaly returns correct escalation levels per 
 });
 
 test("AutoStopLossService evaluateHealth matches health status playbooks", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "overloaded-playbook",
     triggerCondition: { type: "health_status", healthStatusThreshold: "overloaded" },
@@ -141,7 +148,7 @@ test("AutoStopLossService evaluateHealth returns observe for ok status", () => {
 });
 
 test("AutoStopLossService evaluateAnomaly does not match disabled playbooks", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "disabled-playbook",
     enabled: false,
@@ -153,7 +160,7 @@ test("AutoStopLossService evaluateAnomaly does not match disabled playbooks", ()
 });
 
 test("AutoStopLossService evaluateHealth does not match disabled playbooks", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "disabled-health-playbook",
     enabled: false,
@@ -452,7 +459,7 @@ test("AutoStopLossService executePlaybook handles handler exception", async () =
 });
 
 test("AutoStopLossService handles compound condition with AND operator", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "compound-and-playbook",
     triggerCondition: {
@@ -465,14 +472,14 @@ test("AutoStopLossService handles compound condition with AND operator", () => {
     },
   }));
 
-  const result = service.evaluateHealth("degraded");
+  const result = service.evaluateHealth("degraded", { anomalySeverity: "warning" });
 
-  // Should match because health_status matches
+  // Should match because both health_status and anomaly_severity match.
   assert.equal(result.matchingPlaybooks.length, 1);
 });
 
 test("AutoStopLossService handles compound condition with OR operator", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "compound-or-playbook",
     triggerCondition: {
@@ -566,7 +573,7 @@ test("AutoStopLossService getLastHealthCheck returns null initially", () => {
 });
 
 test("AutoStopLossService handles multiple playbooks matching same evaluation", () => {
-  const service = new AutoStopLossService();
+  const service = createIsolatedService();
   service.registerPlaybook(createTestPlaybook({
     id: "playbook-1",
     triggerCondition: { type: "anomaly_severity", severityThreshold: "warning" },

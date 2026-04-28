@@ -118,7 +118,18 @@ export class SuccessCriteriaService {
 
   private getLatestMeasurement(criterionId: string): SuccessCriterionMeasurement | null {
     const measurements = this.measurements.get(criterionId) ?? [];
-    return [...measurements].sort((left, right) => right.measuredAt.localeCompare(left.measuredAt))[0] ?? null;
+    return measurements.reduce<SuccessCriterionMeasurement | null>((latest, candidate) => {
+      if (latest == null) {
+        return candidate;
+      }
+      if (candidate.measuredAt > latest.measuredAt) {
+        return candidate;
+      }
+      if (candidate.measuredAt === latest.measuredAt) {
+        return candidate;
+      }
+      return latest;
+    }, null);
   }
 }
 

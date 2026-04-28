@@ -123,7 +123,9 @@ test("stable db writability rehearsal validates database write reliability", asy
 
     // Verify database writability scenario by ID pattern
     const dbScenario = report.scenarios.find((s) =>
-      s.scenarioId.includes("writability") || s.scenarioId.includes("database")
+      s.scenarioId === "health_and_doctor_fail_close_when_db_is_not_writable"
+      || s.scenarioId === "multi_step_admission_rejects_new_work_in_read_only_mode"
+      || s.scenarioId === "dispatch_blocks_claims_without_dropping_pending_ticket_in_read_only_mode"
     );
     assert.ok(dbScenario !== undefined, "Should have db writability scenario");
   } finally {

@@ -385,7 +385,7 @@ const traceContextSchema = z.object({
 }).passthrough();
 
 const taskStatusChangedPayloadSchema = z.object({
-  fromStatus: z.string(),
+  fromStatus: optionalStringSchema,
   toStatus: z.string(),
   reasonCode: optionalStringSchema,
   occurredAt: optionalStringSchema,
@@ -696,11 +696,11 @@ export function getEventSchema(type: string): EventSchemaDefinition {
     };
   }
   if (!hasEventSchema(type)) {
-    throw new ValidationError("event.schema_missing", `Event schema not found for type: ${type}`, {
+    throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
       details: { eventType: type },
     });
   }
-  throw new ValidationError("event.schema_missing", `Event schema not found for type: ${type}`, {
+  throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
     details: { eventType: type },
   });
 }

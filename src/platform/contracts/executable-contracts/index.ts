@@ -289,9 +289,7 @@ export interface GraphPatch {
 
 export type NodeRunStatus =
   | "created"
-  | "blocked"
   | "ready"
-  | "queued"
   | "leased"
   | "running"
   | "retry_wait"

@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   allocateReservedCapacity,
   type ReservedCapacityAllocation,
-} from "../../../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
+} from "../../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 
 test("allocateReservedCapacity calculates correct allocations", () => {
   const allocations: readonly ReservedCapacityAllocation[] = [

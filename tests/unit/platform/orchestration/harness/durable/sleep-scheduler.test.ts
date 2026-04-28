@@ -51,7 +51,7 @@ test("HarnessSleepScheduler.pollDueRuns returns runs with expired sleep leases",
 
   const run = createMinimalHarnessRun({
     runId: "run_due_1",
-    status: "sleeping",
+    status: "paused",
     sleepLease: {
       leaseId: "lease_1",
       runId: "run_due_1",
@@ -75,7 +75,7 @@ test("HarnessSleepScheduler.pollDueRuns excludes future sleep leases", () => {
 
   const run = createMinimalHarnessRun({
     runId: "run_future",
-    status: "sleeping",
+    status: "paused",
     sleepLease: {
       leaseId: "lease_future",
       runId: "run_future",
@@ -92,7 +92,7 @@ test("HarnessSleepScheduler.pollDueRuns excludes future sleep leases", () => {
   assert.equal(due.length, 0);
 });
 
-test("HarnessSleepScheduler.pollDueRuns excludes non-sleeping runs", () => {
+test("HarnessSleepScheduler.pollDueRuns excludes non-paused runs", () => {
   const service = new DurableHarnessService();
   const past = new Date(Date.now() - 1000).toISOString();
 
@@ -121,7 +121,7 @@ test("HarnessSleepScheduler.pollDueRuns calls onDueRun callback", () => {
 
   const run = createMinimalHarnessRun({
     runId: "run_callback",
-    status: "sleeping",
+    status: "paused",
     sleepLease: {
       leaseId: "lease_callback",
       runId: "run_callback",
@@ -161,7 +161,7 @@ test("HarnessSleepScheduler.pollDueRuns respects referenceTime parameter", () =>
 
   const run = createMinimalHarnessRun({
     runId: "run_reference",
-    status: "sleeping",
+    status: "paused",
     sleepLease: {
       leaseId: "lease_reference",
       runId: "run_reference",

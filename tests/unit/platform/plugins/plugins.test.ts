@@ -1,29 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createBasicEvaluatorPlugin } from "../../../../../src/plugins/validators/basic-evaluator.js";
-import { createBasicPlannerPlugin } from "../../../../../src/plugins/planners/basic-planner.js";
+import { createBasicEvaluatorPlugin } from "../../../../src/plugins/validators/basic-evaluator.js";
+import { createBasicPlannerPlugin } from "../../../../src/plugins/planners/basic-planner.js";
 import {
   createBuiltinPlugin,
   hasBuiltinPlugin,
   listBuiltinPluginIds,
-} from "../../../../../src/plugins/builtin-plugin-registry.js";
-import { createGithubAdapterPlugin } from "../../../../../src/plugins/adapters/github-adapter.js";
-import { createCrmAdapterPlugin } from "../../../../../src/plugins/adapters/crm-adapter.js";
-import { createGameDevAdapterPlugin } from "../../../../../src/plugins/adapters/game-dev-adapter.js";
-import { createAssetProductionAdapterPlugin } from "../../../../../src/plugins/adapters/asset-production-adapter.js";
-import { createLivestreamAdapterPlugin } from "../../../../../src/plugins/adapters/livestream-adapter.js";
-import { createCodingPresenterPlugin } from "../../../../../src/plugins/presenters/coding-presenter.js";
-import { createGrowthPresenterPlugin } from "../../../../../src/plugins/presenters/growth-presenter.js";
-import { createOperationsPresenterPlugin } from "../../../../../src/plugins/presenters/operations-presenter.js";
-import { createCodingRetrieverPlugin } from "../../../../../src/plugins/retrievers/coding-retriever.js";
-import { createGrowthRetrieverPlugin } from "../../../../../src/plugins/retrievers/growth-retriever.js";
-import { createOperationsRetrieverPlugin } from "../../../../../src/plugins/retrievers/operations-retriever.js";
-import { createGameDevRetrieverPlugin } from "../../../../../src/plugins/retrievers/game-dev-retriever.js";
-import { createAssetProductionRetrieverPlugin } from "../../../../../src/plugins/retrievers/asset-production-retriever.js";
-import { createLivestreamRetrieverPlugin } from "../../../../../src/plugins/retrievers/livestream-retriever.js";
-import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../../../../src/domains/registry/plugin-spi.js";
-import type { UnifiedAssessment } from "../../../../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
+} from "../../../../src/plugins/builtin-plugin-registry.js";
+import { createGithubAdapterPlugin } from "../../../../src/plugins/adapters/github-adapter.js";
+import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-adapter.js";
+import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/game-dev-adapter.js";
+import { createAssetProductionAdapterPlugin } from "../../../../src/plugins/adapters/asset-production-adapter.js";
+import { createLivestreamAdapterPlugin } from "../../../../src/plugins/adapters/livestream-adapter.js";
+import { createCodingPresenterPlugin } from "../../../../src/plugins/presenters/coding-presenter.js";
+import { createGrowthPresenterPlugin } from "../../../../src/plugins/presenters/growth-presenter.js";
+import { createOperationsPresenterPlugin } from "../../../../src/plugins/presenters/operations-presenter.js";
+import { createCodingRetrieverPlugin } from "../../../../src/plugins/retrievers/coding-retriever.js";
+import { createGrowthRetrieverPlugin } from "../../../../src/plugins/retrievers/growth-retriever.js";
+import { createOperationsRetrieverPlugin } from "../../../../src/plugins/retrievers/operations-retriever.js";
+import { createGameDevRetrieverPlugin } from "../../../../src/plugins/retrievers/game-dev-retriever.js";
+import { createAssetProductionRetrieverPlugin } from "../../../../src/plugins/retrievers/asset-production-retriever.js";
+import { createLivestreamRetrieverPlugin } from "../../../../src/plugins/retrievers/livestream-retriever.js";
+import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../../../src/domains/registry/plugin-spi.js";
+import type { UnifiedAssessment } from "../../../../src/platform/orchestration/oapeflir/types/unified-assessment.js";
 
 // ---------------------------------------------------------------------------
 // Basic Evaluator Plugin Tests

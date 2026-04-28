@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import * as runtimeIndex from "../../../../../src/core/runtime/index.js";
+import * as runtimeIndex from "../../../../src/core/runtime/index.js";
 
 test("core/runtime index exports module", () => {
   assert.ok(runtimeIndex !== undefined, "Module should be defined");

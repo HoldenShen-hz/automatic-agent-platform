@@ -5,6 +5,7 @@
  */
 
 import assert from "node:assert/strict";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -21,7 +22,6 @@ test("runStableEvidenceSequenceUntilComplete exits when blocked", async () => {
   const evidenceRoot = `${workspace}/evidence`;
 
   try {
-    const { mkdirSync, writeFileSync } = require("node:fs");
     const outputDir = `${evidenceRoot}/24h`;
     mkdirSync(outputDir, { recursive: true });
     writeFileSync(
@@ -77,6 +77,16 @@ test("runStableEvidenceSequenceUntilComplete respects maxPasses", async () => {
     // The sequence will keep running until maxPasses
     const report = await runStableEvidenceSequenceUntilComplete({
       evidenceRootDir: evidenceRoot,
+      profileNames: ["smoke"],
+      profileOptions: {
+        smoke: {
+          targetDurationMs: 25,
+          segmentDurationMs: 25,
+          intervalMs: 1,
+          iterationsPerCycle: 1,
+          validationIterations: 1,
+        },
+      },
       sleepMs: 1,
       maxPasses: 2,
     });
@@ -214,6 +224,7 @@ test("runStableEvidenceSequence handles custom profile options", async () => {
   try {
     const report = await runStableEvidenceSequence({
       evidenceRootDir: evidenceRoot,
+      profileNames: ["24h"],
       profileOptions: {
         "24h": {
           targetDurationMs: 50,
@@ -239,10 +250,19 @@ test("runStableEvidenceSequence sequence persists state", async () => {
   try {
     const report = await runStableEvidenceSequence({
       evidenceRootDir: evidenceRoot,
+      profileNames: ["smoke"],
+      profileOptions: {
+        smoke: {
+          targetDurationMs: 0,
+          segmentDurationMs: 0,
+          validationIterations: 1,
+          intervalMs: 0,
+          iterationsPerCycle: 1,
+        },
+      },
     });
 
     // Check that state was persisted
-    const { existsSync } = require("node:fs");
     assert.equal(existsSync(`${evidenceRoot}/stable-evidence-sequence-state.json`), true);
     assert.equal(existsSync(`${evidenceRoot}/stable-evidence-sequence-report.json`), true);
   } finally {
@@ -255,7 +275,6 @@ test("runStableEvidenceSequence blocked profile has blockReason", async () => {
   const evidenceRoot = `${workspace}/evidence`;
 
   try {
-    const { mkdirSync, writeFileSync } = require("node:fs");
     const outputDir = `${evidenceRoot}/24h`;
     mkdirSync(outputDir, { recursive: true });
     writeFileSync(
@@ -301,7 +320,6 @@ test("runStableEvidenceSequence blocked profile has blockReason", async () => {
 });
 
 test("StableEvidenceSequenceState completed when all profiles passed", async () => {
-  const { mkdirSync, writeFileSync } = require("node:fs");
   const workspace = createTempWorkspace("aa-seq-all-passed-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -360,6 +378,7 @@ test("runStableEvidenceSequence activeProfileName tracks current profile", async
     // Don't seed anything - sequence will run fresh
     const report = await runStableEvidenceSequence({
       evidenceRootDir: evidenceRoot,
+      profileNames: ["24h"],
       profileOptions: {
         "24h": {
           targetDurationMs: 50,

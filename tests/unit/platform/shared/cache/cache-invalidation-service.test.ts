@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CacheInvalidationEngine } from "../../../../../../src/platform/shared/cache/cache-invalidation.js";
+import { CacheInvalidationEngine } from "../../../../../src/platform/shared/cache/cache-invalidation.js";
 
 // Mock CacheFacade for testing the invalidation engine
 class MockCacheFacade {

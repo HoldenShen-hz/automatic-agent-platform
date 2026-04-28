@@ -76,6 +76,7 @@ export interface DelegationSpec {
   targetPackId: string;
   requiredPermissions: PermissionSet;
   timeout: number; // milliseconds
+  requiresApproval?: boolean;
   inputSchema?: ToolSchema;
   outputSchema?: ToolSchema;
   // Collaboration modes
@@ -98,18 +99,24 @@ export interface DelegationResult {
   childAgentId: string;
   depth: number;
   permissions: PermissionSet;
+  grantedPermissions: PermissionSet;
   createdAt: string;
   expiresAt: string;
+  completedAt?: string;
+  correlationId: string;
+  requiresApproval?: boolean;
   status: DelegationStatus;
 }
 
 export type DelegationStatus =
   | "pending"
+  | "pending_approval"
   | "active"
   | "completed"
   | "failed"
   | "cancelled"
-  | "expired";
+  | "expired"
+  | "timed_out";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Handle (returned to caller)
@@ -124,7 +131,10 @@ export interface DelegationHandle {
   createdAt: string;
   timeout: number;
   correlationId: string;
+  requiresApproval?: boolean;
 }
+
+export type AwaitableDelegationHandle = DelegationHandle & PromiseLike<DelegationHandle>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Delegation Chain (for tracking)
@@ -187,7 +197,9 @@ export type DelegationEvent =
 
 export interface DelegationOptions {
   maxDepth?: number;
+  maxDelegationDepth?: number;
   maxFanout?: number;
   allowedPackIds?: readonly string[];
   defaultTimeout?: number;
+  defaultTimeoutMs?: number;
 }

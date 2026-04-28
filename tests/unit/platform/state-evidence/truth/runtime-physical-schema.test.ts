@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../../../../../../src/platform/state-evidence/truth/runtime-physical-schema.js";
+import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../../../../../src/platform/state-evidence/truth/runtime-physical-schema.js";
 
 describe("runtime-physical-schema", () => {
   describe("RUNTIME_PHYSICAL_SCHEMA_SQL", () => {

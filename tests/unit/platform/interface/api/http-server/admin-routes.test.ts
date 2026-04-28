@@ -440,7 +440,8 @@ test("GET /v1/admin/inventories/schema returns authoritative schema inventory", 
     };
   };
   assert.equal(response.statusCode, 200);
-  assert.equal(body.data.summary.totalTables, 86);
+  assert.equal(body.data.summary.totalTables, body.data.tables.length);
+  assert.ok(body.data.summary.totalTables >= 86);
   assert.ok(body.data.tables.some((table) => table.tableName === "outbox"));
 });
 

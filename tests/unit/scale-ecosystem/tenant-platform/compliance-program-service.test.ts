@@ -4,9 +4,9 @@ import test from "node:test";
 import {
   ComplianceProgramService,
   type ComplianceProgramInput,
-} from "../../../../../src/scale-ecosystem/tenant-platform/compliance-program-service.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { DataNamespaceRecord } from "../../../../../src/platform/contracts/types/domain.js";
+} from "../../../../src/scale-ecosystem/tenant-platform/compliance-program-service.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { DataNamespaceRecord } from "../../../../src/platform/contracts/types/domain.js";
 
 function createMockStore(overrides: Partial<{
   tenants: ReturnType<AuthoritativeTaskStore["organization"]["listTenantRecords"]>;
@@ -40,7 +40,7 @@ test("ComplianceProgramService.buildReport returns empty report when no data", (
   assert.equal(report.namespaceCount, 0);
   assert.deepEqual(report.residencySummary, []);
   assert.equal(report.auditExportReady, false);
-  assert.ok(report.reportId.startsWith("compliance_program:"));
+  assert.ok(report.reportId.startsWith("compliance_program_"));
 });
 
 test("ComplianceProgramService.buildReport counts entities correctly", () => {

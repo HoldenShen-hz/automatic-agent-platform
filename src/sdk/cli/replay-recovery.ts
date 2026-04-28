@@ -42,7 +42,9 @@ function printHelp(): void {
 }
 
 function resolveLegacyReplayOutput(): unknown | null {
-  const action = readTrimmedEnv(process.env, "AA_REPLAY_RECOVERY_ACTION");
+  const action =
+    readTrimmedEnv(process.env, "AA_REPLAY_RECOVERY_ACTION")
+    ?? readTrimmedEnv(process.env, "AA_RECOVERY_ACTION");
   if (action == null || readTrimmedEnv(process.env, "AA_RECOVERY_REPLAY_KIND") != null) {
     return null;
   }
@@ -57,9 +59,9 @@ function resolveLegacyReplayOutput(): unknown | null {
     throw new ValidationError("replay_recovery.database_not_found", "replay_recovery.database_not_found");
   }
 
-  if (action === "status") {
+  if (action === "status" || action === "scan") {
     return {
-      mode: "status",
+      mode: action,
       dbPath,
       databaseExists: true,
     };

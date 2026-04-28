@@ -268,6 +268,8 @@ export interface IntakeRouteDecision {
   workflowId: string;
   /** ID of the division that will handle this request */
   divisionId: string;
+  /** ID of the default agent for simple execution routes */
+  agentId?: string;
   /** Human-readable reason for the routing decision */
   routeReason: string;
   /** Trace of routing decisions made (for debugging/logging) */
@@ -283,7 +285,7 @@ export interface IntakeRouteDecision {
  */
 export interface IntakeRouteInput {
   /** The title/summary of the request */
-  title: string;
+  title?: string;
   /** The detailed request content or description */
   request: string;
 }
@@ -299,8 +301,8 @@ export interface IntakeRouterOptions {
 /**
  * Normalizes text for comparison by trimming whitespace and converting to lowercase.
  */
-function normalize(text: string): string {
-  return text.trim().toLowerCase();
+function normalize(text: string | null | undefined): string {
+  return (text ?? "").trim().toLowerCase();
 }
 
 /**
@@ -322,7 +324,10 @@ export class IntakeRouter {
    * @param options - Configuration options including an optional division registry
    */
   public constructor(options: IntakeRouterOptions = {}) {
-    this.divisionRegistry = options.divisionRegistry ?? getDefaultDivisionRegistry();
+    this.divisionRegistry =
+      options.divisionRegistry === undefined
+        ? getDefaultDivisionRegistry()
+        : options.divisionRegistry;
   }
 
   /**
@@ -342,7 +347,9 @@ export class IntakeRouter {
    */
   public route(input: IntakeRouteInput): IntakeRouteDecision {
     // Combine and normalize title and request for analysis
-    const normalized = `${normalize(input.title)} ${normalize(input.request)}`;
+    const normalized = [normalize(input.title), normalize(input.request)]
+      .filter((segment) => segment.length > 0)
+      .join(" ");
     const routeTrace: string[] = [];
 
     // Find all orchestration hints present in the normalized input
@@ -387,6 +394,7 @@ export class IntakeRouter {
     return {
       workflowId,
       divisionId: division?.id ?? "general_ops",
+      agentId: `${division?.id ?? "general_ops"}_agent`,
       routeReason: "route.simple_request",
       routeTrace,
       requiresOrchestration: false,
@@ -641,7 +649,13 @@ function shouldRequireOrchestration(
   matchedHints: readonly string[],
   classification: IntakeIntentClassification,
 ): boolean {
-  if (matchedHints.length >= 2 || normalizedInput.length > 120) {
+  const containsHighComplexityChineseCue =
+    /(分析|研究|设计|对比|方案)/u.test(normalizedInput);
+
+  if (matchedHints.length >= 2 || normalizedInput.length >= 120) {
+    return true;
+  }
+  if (containsHighComplexityChineseCue && matchedHints.length >= 1) {
     return true;
   }
   if (classification.continuation === "follow_up" && matchedHints.length >= 1) {

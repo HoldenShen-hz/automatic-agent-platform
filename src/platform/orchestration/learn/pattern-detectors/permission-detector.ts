@@ -21,7 +21,14 @@ const DENIAL_PATTERNS = [
  * §8 pattern: Tool permission denial
  */
 export function detectToolPermissionDenial(signal: LearningSignal): FailurePattern | null {
-  const { evidence, valueSummary, taskId, learningSignalId, evidenceRefs, sourceSignalIds } = signal;
+  const {
+    evidence = {},
+    valueSummary = "",
+    taskId = "",
+    learningSignalId = "",
+    evidenceRefs = [],
+    sourceSignalIds = [],
+  } = signal as Partial<LearningSignal>;
   const ev = evidence as Record<string, unknown>;
   const lineage = [...new Set([...sourceSignalIds, learningSignalId])];
 

@@ -46,8 +46,8 @@ test("ConversationHistoryService addTurn includes turnId and timestamp", async (
 test("ConversationHistoryService addTurn preserves existing turns", async () => {
   const service = new ConversationHistoryService();
   const session = service.startSession("tenant-1", "user-1");
-  await service.addTurn(session, { role: "user", message: "First" });
-  const updated = await service.addTurn(session, { role: "assistant", message: "Second" });
+  const withFirstTurn = await service.addTurn(session, { role: "user", message: "First" });
+  const updated = await service.addTurn(withFirstTurn, { role: "assistant", message: "Second" });
 
   assert.strictEqual(updated.turns.length, 2);
   assert.strictEqual(updated.turns[0]!.message, "First");

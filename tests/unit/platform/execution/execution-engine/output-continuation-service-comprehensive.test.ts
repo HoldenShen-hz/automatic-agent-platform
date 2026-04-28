@@ -259,6 +259,7 @@ test("OutputContinuationService.incrementContinuationCount updates record", () =
 });
 
 test("OutputContinuationService.checkContinuationStatus identifies continuable", () => {
+  const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("length", "Some output...");
 
   assert.equal(status.canContinue, true);
@@ -269,6 +270,7 @@ test("OutputContinuationService.checkContinuationStatus identifies continuable",
 });
 
 test("OutputContinuationService.checkContinuationStatus rejects non-max-token", () => {
+  const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("stop", "Some output");
 
   assert.equal(status.canContinue, false);
@@ -278,6 +280,7 @@ test("OutputContinuationService.checkContinuationStatus rejects non-max-token", 
 });
 
 test("OutputContinuationService.checkContinuationStatus rejects when no continuation point", () => {
+  const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("length", "");
 
   assert.equal(status.canContinue, false);

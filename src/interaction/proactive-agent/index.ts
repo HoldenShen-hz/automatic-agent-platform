@@ -85,8 +85,7 @@ export interface ProactiveAgentServiceOptions {
 interface TriggerRuntimeState {
   trigger: TriggerDefinition;
   lastFiredAt: string | null;
-  lastWindowStartedAt: string | null;
-  firedInCurrentWindow: number;
+  fireTimestamps: string[];
   consecutiveFailures: number;
 }
 
@@ -187,8 +186,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     this.states.set(definition.triggerId, {
       trigger: definition,
       lastFiredAt: null,
-      lastWindowStartedAt: null,
-      firedInCurrentWindow: 0,
+      fireTimestamps: [],
       consecutiveFailures: 0,
     });
   }
@@ -232,11 +230,11 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
     const { max, windowMs } = parseRateWindow(state.trigger.maxFireRate);
     if (windowMs > 0) {
-      if (state.lastWindowStartedAt == null || now - new Date(state.lastWindowStartedAt).getTime() >= windowMs) {
-        state.lastWindowStartedAt = new Date(now).toISOString();
-        state.firedInCurrentWindow = 0;
-      }
-      if (state.firedInCurrentWindow >= max) {
+      state.fireTimestamps = state.fireTimestamps.filter(
+        (timestamp) => now - new Date(timestamp).getTime() <= windowMs,
+      );
+      const recentFireCount = state.fireTimestamps.length;
+      if (recentFireCount >= max) {
         reasons.push("proactive_agent.rate_limited");
       }
     }
@@ -255,7 +253,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     }
 
     state.lastFiredAt = new Date(now).toISOString();
-    state.firedInCurrentWindow += 1;
+    state.fireTimestamps.push(state.lastFiredAt);
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }

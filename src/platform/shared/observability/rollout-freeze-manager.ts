@@ -61,10 +61,17 @@ const ROLLOUT_FREEZE_MANAGER_SERVICE = "rollout-freeze-manager";
 
 export function getRolloutFreezeManager(): RolloutFreezeManager {
   const registry = ServiceRegistry.getInstance();
-  registry.register(ROLLOUT_FREEZE_MANAGER_SERVICE, {
-    init: () => new RolloutFreezeManager(),
-  });
-  return registry.get<RolloutFreezeManager>(ROLLOUT_FREEZE_MANAGER_SERVICE);
+  try {
+    return registry.get<RolloutFreezeManager>(ROLLOUT_FREEZE_MANAGER_SERVICE);
+  } catch (err) {
+    if (!(err instanceof Error) || !err.message.includes("service_registry.not_registered")) {
+      throw err;
+    }
+    registry.register(ROLLOUT_FREEZE_MANAGER_SERVICE, {
+      init: () => new RolloutFreezeManager(),
+    });
+    return registry.get<RolloutFreezeManager>(ROLLOUT_FREEZE_MANAGER_SERVICE);
+  }
 }
 
 export const rolloutFreezeManager: RolloutFreezeManager = new Proxy({} as RolloutFreezeManager, {

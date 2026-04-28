@@ -30,7 +30,7 @@ function makeSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): Plugin
 
 test("buildPluginRuntimeSandboxRoot returns sandbox root path with sanitized plugin id", () => {
   const root = buildPluginRuntimeSandboxRoot("plugin.coding.retriever");
-  assert.ok(root.endsWith("plugin-coding-retriever"));
+  assert.ok(root.endsWith("plugin.coding.retriever"));
 });
 
 test("buildPluginRuntimeSandboxRoot sanitizes dots and underscores", () => {

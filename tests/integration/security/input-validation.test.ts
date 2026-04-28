@@ -14,10 +14,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CommandExecutor } from "../../../../src/platform/execution/tool-executor/command-executor.js";
-import { ToolArgumentCoercion } from "../../../../src/platform/execution/tool-executor/tool-argument-coercion.js";
+import { CommandExecutor } from "../../../src/platform/execution/tool-executor/command-executor.js";
+import { ToolArgumentCoercion } from "../../../src/platform/execution/tool-executor/tool-argument-coercion.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
-import { newId } from "../../../../src/platform/contracts/types/ids.js";
+import { newId } from "../../../src/platform/contracts/types/ids.js";
 
 function createSandboxPolicy(workspace: string) {
   return {
@@ -299,7 +299,7 @@ test("command-executor blocks non-numeric timeout", async () => {
       command: "echo",
       args: ["test"],
       cwd: workspace,
-      timeoutMs: "5000" as unknown as number, // String instead of number
+      timeoutMs: "five seconds" as unknown as number, // Non-numeric string instead of number
       sandboxPolicy: createSandboxPolicy(workspace),
       allowedTools: ["echo"],
       allowedPathRoots: [workspace],

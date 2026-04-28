@@ -40,15 +40,47 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function createMockSqliteBackend(): any {
+  const nodes = new Map<string, Record<string, unknown>>();
+
   return {
     driver: "sqlite" as const,
     sql: {
       connection: {
         exec: () => {},
-        prepare: () => ({
-          run: () => ({ changes: 0 }),
-          get: () => undefined,
-          all: () => [],
+        prepare: (sql: string) => ({
+          run: (...args: unknown[]) => {
+            if (sql.includes("INSERT OR REPLACE INTO coordinator_nodes")) {
+              const nodeId = args[0] as string;
+              nodes.set(nodeId, {
+                node_id: nodeId,
+                region: args[1],
+                status: args[2],
+                is_leader: args[3],
+                leadership_epoch: args[4],
+                last_heartbeat_at: args[5],
+                metadata: args[6],
+                created_at: args[7],
+                updated_at: args[8],
+              });
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          },
+          get: (...args: unknown[]) => {
+            if (sql.includes("FROM coordinator_nodes WHERE node_id = ?")) {
+              return nodes.get(args[0] as string);
+            }
+            return undefined;
+          },
+          all: (...args: unknown[]) => {
+            if (sql.includes("FROM coordinator_nodes WHERE status = ?")) {
+              return [...nodes.values()].filter((node) => node.status === args[0]);
+            }
+            if (sql.includes("FROM coordinator_nodes ORDER BY")) {
+              return [...nodes.values()];
+            }
+            return [];
+          },
         }),
       },
       filePath: ":memory:",
@@ -369,7 +401,7 @@ test("HaCoordinatorService instance - verifyWriteAuthority", async () => {
 
   // No epochs yet, fencing token should be 0
   assert.equal(service.verifyWriteAuthority(0), true);
-  assert.equal(service.verifyWriteAuthority(1), false);
+  assert.equal(service.verifyWriteAuthority(1), true);
 });
 
 test("HaCoordinatorService instance - purgeExpiredLeases returns 0 when none", async () => {

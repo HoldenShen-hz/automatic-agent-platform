@@ -20,9 +20,9 @@ test("WorkflowHibernationService.hibernate creates hibernated record", () => {
 
 test("WorkflowHibernationService.hibernate clamps TTL to 30 days max", () => {
   const service = new WorkflowHibernationService();
-  const record = service.hibernate("wf-max", "task-max", 100, "2026-04-01T00:00:00.000Z");
+  const record = service.hibernate("wf-max", "task-max", 24 * 45, "2026-04-01T00:00:00.000Z");
 
-  // 100 hours should be clamped to 30 days
+  // 45 days should be clamped to 30 days
   assert.ok(record.expiresAt!.includes("2026-05-01"));
 });
 
@@ -44,6 +44,7 @@ test("WorkflowHibernationService.hibernate clamps negative TTL to 1 day min", ()
 test("WorkflowHibernationService.emitStillHibernated throws for non-hibernated workflow", () => {
   const service = new WorkflowHibernationService();
   service.hibernate("wf-active", "task-1", 24);
+  service.resume("wf-active");
 
   assert.throws(
     () => service.emitStillHibernated("wf-active"),

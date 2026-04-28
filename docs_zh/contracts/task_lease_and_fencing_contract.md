@@ -21,7 +21,7 @@
 
 本 contract 定义工业级执行平面里的任务租约、续约、回收和 fencing token 规则。
 
-它回答的问题是：当 execution 被派发到 worker 后，系统如何保证只有当前合法持有者能继续写结果，避免双写、脏写和 stale worker 回写。
+它回答的问题是：当 `NodeRun` 被派发到 worker 后，系统如何保证只有当前合法持有者能继续写结果，避免双写、脏写和 stale worker 回写。
 
 相关文档：
 
@@ -32,7 +32,7 @@
 
 ## 2. 目标
 
-- 为每个 active execution 建立 authoritative lease。
+- 为每个 active `NodeRun` 建立 authoritative lease。
 - 用 `visibility timeout` 和 `lease renew` 控制执行权生命周期。
 - 用 `fencing token` 拒绝旧 worker 的回写。
 - 让恢复、接管、重试和死信进入统一链路。
@@ -59,9 +59,9 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `lease_id` | `string` | 租约 ID |
-| `execution_id` | `string` | 目标 execution |
+| `node_run_id` | `string` | 目标 `NodeRun` |
 | `worker_id` | `string` | 当前持有者 |
-| `attempt` | `integer` | execution attempt |
+| `attempt_id` | `string` | 关联 `NodeAttempt` |
 | `fencing_token` | `integer` | 单调递增执行权版本 |
 | `leased_at` | `timestamp` | 获取时间 |
 | `expires_at` | `timestamp` | 当前到期时间 |
@@ -69,7 +69,7 @@
 
 规则：
 
-- 同一 `execution_id` 在任一时刻只能有一个 `active` lease。
+- 同一 `node_run_id` 在任一时刻只能有一个 `active` lease。
 - 每次重新派发、接管或回收后重新授予 lease 时，`fencing_token` 必须递增。
 - 任何副作用写入都必须带上当前 `fencing_token`。
 
@@ -102,8 +102,8 @@ flowchart TD
 
 ## 8. Fencing Token 规则
 
-- `fencing_token` 是 execution 写权限版本号，不是展示字段。
-- storage 层更新 execution、artifact、step output、tool result 时必须比较 token。
+- `fencing_token` 是 `NodeRun` 写权限版本号，不是展示字段。
+- storage 层更新 `NodeRun`、artifact、tool result、side-effect receipt 时必须比较 token。
 - 小于当前 authoritative token 的写入必须被拒绝，并记录 `stale_write_rejected` 审计事件。
 - worker 本地缓存的旧 lease 即使尚未感知过期，也不得被系统接受。
 
@@ -163,7 +163,7 @@ Handover 是指在不中断 execution 的前提下，由当前 worker 主动将 
 `QueueDispatchRecord` 最小字段：
 
 - `dispatch_id`
-- `execution_id`
+- `node_run_id`
 - `queue_name`
 - `enqueued_at`
 - `dequeued_at?`
@@ -174,7 +174,7 @@ Handover 是指在不中断 execution 的前提下，由当前 worker 主动将 
 `LeaseAuditRecord` 最小字段：
 
 - `audit_id`
-- `execution_id`
+- `node_run_id`
 - `lease_id`
 - `worker_id`
 - `event_type` (`lease_granted | lease_renewed | lease_expired | lease_reclaimed | stale_write_rejected | lease_released`)
@@ -192,7 +192,7 @@ Handover 是指在不中断 execution 的前提下，由当前 worker 主动将 
 `LeaseReconciliationRecord` 最小字段：
 
 - `reconciliation_id`
-- `execution_id`
+- `node_run_id`
 - `lease_id`
 - `issue_type` (`stale_lease | duplicate_owner | replay_recovery_needed | orphan_queue_claim`)
 - `detected_at`
@@ -201,7 +201,7 @@ Handover 是指在不中断 execution 的前提下，由当前 worker 主动将 
 
 ### 11.1 Dispatch Reconciliation 扫描
 
-Reconciliation 服务扫描所有 `pending` 或 `claimed` 状态的 execution ticket，检测以下异常：
+Reconciliation 服务扫描所有 `pending` 或 `claimed` 状态的 `NodeRun` dispatch ticket，检测以下异常：
 
 | issue_type | 检测条件 | 修复动作 |
 | --- | --- | --- |
@@ -214,7 +214,7 @@ Reconciliation 服务扫描所有 `pending` 或 `claimed` 状态的 execution ti
 
 替代 ticket 继承原 ticket 的以下属性：
 
-- `execution_id`、`priority`、`queue_name`
+- `node_run_id`、`priority`、`queue_name`
 - `dispatch_target`、`required_isolation_level`、`required_capabilities`
 - `dispatch_after`
 
@@ -240,7 +240,7 @@ Reconciliation 服务扫描所有 `pending` 或 `claimed` 状态的 execution ti
 
 工业级最低一致性要求：
 
-- execution 当前 lease：强一致
+- `NodeRun` 当前 lease：强一致
 - fencing token 比较：强一致
 - heartbeat 展示：最终一致
 - worker UI 状态：最终一致
@@ -263,11 +263,19 @@ Lease 解决“谁现在可以执行”，fencing token 解决“谁现在可以
 
 工业级系统必须同时具备这两层，才能避免重复执行和旧结果覆盖新结果。
 
+## 15. Legacy / Deprecated 映射
+
+| 旧名 | 新语义 |
+| --- | --- |
+| `execution_id` | legacy queue / repository 字段；v4.3 规范对象应映射为 `node_run_id` |
+| `attempt` | legacy attempt 序号；v4.3 规范对象应映射为 `attempt_id` / `NodeAttempt` |
+| `task lease` | 仅保留叙事语义；权威对象是 `NodeRun` lease |
+
 
 ## v4.3 Architecture Remediation
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-6: 使用已废弃术语 execution_id，架构v4.0统一为 node_run_id。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-6: 使用已废弃术语 execution_id，架构v4.0统一为 node_run_id。根因：该文档沿用了 v3 execution-centric 队列/租约术语，但没有随 `HarnessRun` / `NodeRun` 权威对象迁移同步更新。修复：`LeaseGrant`、`QueueDispatchRecord`、`LeaseAuditRecord`、`LeaseReconciliationRecord` 与 requeue 语义均已收敛到 `node_run_id` / `attempt_id`；`execution_id` 只保留为 legacy 映射说明。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

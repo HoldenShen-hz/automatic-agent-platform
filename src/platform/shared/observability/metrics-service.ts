@@ -247,7 +247,11 @@ export class MetricsService {
       averageActualCostUsdPerSuccessfulTask: number | null;
     }>(
       `SELECT
-         COALESCE(SUM(actual_cost_usd), 0) AS totalActualCostUsd,
+         CASE
+           WHEN (SELECT COUNT(*) FROM cost_events) > 0
+             THEN COALESCE((SELECT SUM(cost_usd) FROM cost_events), 0)
+           ELSE COALESCE(SUM(actual_cost_usd), 0)
+         END AS totalActualCostUsd,
          AVG(actual_cost_usd) AS averageActualCostUsdPerTask,
          AVG(CASE WHEN status = 'done' THEN actual_cost_usd END) AS averageActualCostUsdPerSuccessfulTask
        FROM tasks`,

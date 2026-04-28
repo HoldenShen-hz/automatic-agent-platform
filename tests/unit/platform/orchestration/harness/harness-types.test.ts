@@ -76,11 +76,17 @@ test("HarnessDecisionAction accepts all valid values", () => {
 test("HarnessRunStatus accepts all valid values", () => {
   const validStatuses: HarnessRunStatus[] = [
     "created",
+    "admitted",
+    "planning",
+    "ready",
     "running",
-    "waiting_hitl",
-    "sleeping",
-    "recovering",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
     "completed",
+    "failed",
     "aborted",
   ];
 

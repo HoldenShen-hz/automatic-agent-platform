@@ -1060,7 +1060,7 @@ test("dispatchNext blocks require_remote when no remote workers available", () =
   const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   assert.equal(result.outcome, "blocked");
-  assert.ok(result.reasonCode?.includes("remote"));
+  assert.equal(result.reasonCode, "remote.unavailable");
 });
 
 // ---------------------------------------------------------------------------
@@ -1190,7 +1190,7 @@ test("dispatchNext records decision trace with correct outcome", () => {
   assert.equal(result.trace?.ticketId, "ticket-1");
 });
 
-test("dispatchNext records reasonCode when blocked", () => {
+test("dispatchNext returns no reasonCode when require_remote has no remote candidates", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "low");
   mockTicket.dispatchTarget = "require_remote"; // Will block since only local workers
 
@@ -1221,7 +1221,7 @@ test("dispatchNext records reasonCode when blocked", () => {
   const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
   assert.equal(result.outcome, "blocked");
-  assert.ok(result.reasonCode != null);
+  assert.equal(result.reasonCode, "remote.unavailable");
 });
 
 // ---------------------------------------------------------------------------

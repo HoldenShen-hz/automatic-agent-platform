@@ -23,19 +23,26 @@
 
 - `instance_id`
 - `agent_id`
-- `task_id`
-- `execution_id?`
+- `harness_run_id`
+- `node_run_id?`
+- `attempt_id?`
+- `task_id?`
 - `status`
 - `started_at`
 - `last_heartbeat_at`
-- `current_step_id?`
+- `current_node_view_ref?`
+
+规则：
+
+- `current_node_view_ref` 只能表达语义投影，不得把 `HarnessStep` / `current_step_id` 重新引入为 runtime truth 主键。
+- 任何 supervisor 恢复、告警或接管动作都必须能回链到 `harness_run_id / node_run_id / attempt_id`。
 
 ## 4. HealthSnapshot 最小字段
 
 - `instance_id`
 - `health` (`healthy \| degraded \| stalled \| failed`)
-- `current_stage?`
-- `loop_iteration?`
+- `current_stage_view?`
+- `loop_iteration_view?`
 - `negative_feedback_ratio?`
 - `reason?`
 - `sampled_at`
@@ -55,7 +62,7 @@ Phase 1a 规则：
 
 - `alert_id`
 - `instance_id`
-- `severity` (`info \| warning \| critical`)
+- `severity` (`SEV1 \| SEV2 \| SEV3 \| SEV4`)
 - `code`
 - `message`
 - `created_at`
@@ -63,14 +70,15 @@ Phase 1a 规则：
 
 告警分级建议：
 
-- `info`: 正常恢复、轻微抖动、可观测提示。
-- `warning`: 心跳陈旧、重试次数偏高、运行时间异常。
-- `critical`: 卡死、连续失败、预算越界、权限异常。
+- `SEV4`: 局部轻微、可自动恢复、主要用于观测提示。
+- `SEV3`: 单 workflow / 单 worker 影响，例如心跳陈旧、重试次数偏高、运行时间异常。
+- `SEV2`: 单业务域 / 单租户明显受影响，例如安全策略异常、批量失败、预算异常扩散。
+- `SEV1`: 平台级影响 / 安全事件 / 生产严重风险。
 
 推荐告警 code 基线：
 
-- `oapeflir.stage_stalled`
-- `oapeflir.loop_diverging`
+- `supervisor.stage_stalled`
+- `supervisor.loop_diverging`
 - `feedback.negative_spike`
 
 ## 7. RecoveryAction 最小字段
@@ -110,9 +118,10 @@ Phase 1a 规则：
 
 `LoopHealthSnapshot` 最小字段：
 
-- `task_id`
-- `loop_iteration`
-- `current_stage`
+- `harness_run_id`
+- `task_id?`
+- `loop_iteration_view`
+- `current_stage_view`
 - `loop_health` (`healthy \| drifting \| stalled \| terminated`)
 - `stage_duration_ms?`
 - `negative_feedback_count`
@@ -120,15 +129,17 @@ Phase 1a 规则：
 
 `StageStallAlert` 最小字段：
 
-- `task_id`
-- `loop_iteration`
-- `stage`
+- `harness_run_id`
+- `task_id?`
+- `loop_iteration_view`
+- `stage_view_ref`
 - `stall_reason`
 - `created_at`
 
 `FeedbackAccumulator` 最小字段：
 
-- `task_id`
+- `harness_run_id`
+- `task_id?`
 - `window_started_at`
 - `positive_count`
 - `neutral_count`
@@ -146,6 +157,6 @@ Phase 1a 规则：
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-23: AgentRuntimeInstance 携带 current_step_id，架构§5.5说 HarnessStep 仅为语义投影；告警严重度 info/warning/critical 3级 vs 架构SEV1-4。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-23: 本文原先把 `current_step_id` 和 `info / warning / critical` 三档严重度写进 supervisor 主对象，根因是早期单进程 agent 监管模型既把业务步骤当执行主键，又沿用通用日志级别代替平台事件分级。修复：正文现把实例关联键收敛到 `harness_run_id / node_run_id / attempt_id`，并把告警严重度改为 `SEV1-4`。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

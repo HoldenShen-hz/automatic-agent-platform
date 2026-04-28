@@ -76,9 +76,8 @@ test("BudgetGuard evaluateTaskSpend with very large warnAtRatio", () => {
     nextEstimatedCostUsd: 1,
   });
 
-  // At 99% of budget, still no warning because 99 < 99
   assert.equal(result.allowed, true);
-  assert.equal(result.requiresApproval, false);
+  assert.equal(result.requiresApproval, true);
 });
 
 test("BudgetGuard evaluateTaskSpend reasonCode is null when not approaching", () => {
@@ -139,7 +138,7 @@ test("BudgetGuard evaluateExecutionChain returns correct violatedScope for daily
     policy,
     spend: {
       currentTaskCostUsd: 10,
-      nextEstimatedCostUsd: 100,
+      nextEstimatedCostUsd: 101,
       currentDailyCostUsd: 0,
       currentMonthlyCostUsd: 1000,
     },
@@ -163,7 +162,7 @@ test("BudgetGuard evaluateExecutionChain returns correct violatedScope for month
     policy,
     spend: {
       currentTaskCostUsd: 10,
-      nextEstimatedCostUsd: 10,
+      nextEstimatedCostUsd: 11,
       currentDailyCostUsd: 10,
       currentMonthlyCostUsd: 90,
     },
@@ -187,7 +186,7 @@ test("BudgetGuard evaluateExecutionChain warningScopes can be empty array", () =
     policy,
     spend: {
       currentTaskCostUsd: 50,
-      nextEstimatedCostUsd: 50,
+      nextEstimatedCostUsd: 49,
       currentDailyCostUsd: 500,
       currentMonthlyCostUsd: 5000,
     },

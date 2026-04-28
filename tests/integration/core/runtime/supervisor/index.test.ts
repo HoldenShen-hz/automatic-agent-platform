@@ -11,7 +11,7 @@ import test from "node:test";
 import {
   executeStepLoop,
   buildStepFailureSummary,
-} from "../../../../../../src/core/runtime/supervisor/index.js";
+} from "../../../../../src/core/runtime/supervisor/index.js";
 
 test("supervisor barrel exports executeStepLoop function", () => {
   assert.ok(typeof executeStepLoop === "function", "executeStepLoop should be a function");
@@ -22,7 +22,7 @@ test("supervisor barrel exports buildStepFailureSummary function", () => {
 });
 
 test("supervisor barrel module re-exports from multi-step-supervisor", async () => {
-  const mod = await import("../../../../../../src/core/runtime/supervisor/index.js");
+  const mod = await import("../../../../../src/core/runtime/supervisor/index.js");
   assert.ok("executeStepLoop" in mod, "Should re-export executeStepLoop");
   assert.ok("buildStepFailureSummary" in mod, "Should re-export buildStepFailureSummary");
 });

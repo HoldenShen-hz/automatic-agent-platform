@@ -17,7 +17,7 @@ function makeSignal(overrides: Partial<LearningSignal> & { learningSignalId: str
     learningSignalId: overrides.learningSignalId,
     taskId: overrides.taskId,
     sourceFeedbackId: `feedback-${overrides.learningSignalId}`,
-    learningType: "failure_pattern",
+    learningType: overrides.learningType ?? "failure_pattern",
     valueSummary: overrides.valueSummary ?? "test failure",
     confidence: overrides.confidence ?? 0.8,
     generatedAt: overrides.generatedAt ?? Date.now(),

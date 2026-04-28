@@ -962,7 +962,7 @@ test("PackLifecycleOrchestrationService.publishPack rejects packs before certifi
         owner: "release@example.com",
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "pack_lifecycle.invalid_transition:unpublished-pack@1.0.0",
+      error instanceof ValidationError && error.code === "pack_lifecycle.not_certified:unpublished-pack@1.0.0",
   );
 });
 

@@ -250,6 +250,43 @@ test("runtime factories create harness, graph, node, attempt, and receipt record
   assert.equal(receipt.status, "succeeded");
 });
 
+test("HarnessRun status schema matches the canonical 13-state runtime model", async () => {
+  const { HarnessRunStatusSchema } = await import("../../../../../src/platform/contracts/executable-contracts/schemas.js");
+
+  const canonicalStatuses = [
+    "created",
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+    "completed",
+    "failed",
+    "aborted",
+  ];
+  const legacyStatuses = [
+    "idle",
+    "executing",
+    "sleeping",
+    "initializing",
+    "awaiting_approval",
+    "rolling_back",
+    "suspended",
+    "draining",
+  ];
+
+  for (const status of canonicalStatuses) {
+    assert.equal(HarnessRunStatusSchema.safeParse(status).success, true, `expected canonical status ${status} to be accepted`);
+  }
+  for (const status of legacyStatuses) {
+    assert.equal(HarnessRunStatusSchema.safeParse(status).success, false, `expected legacy status ${status} to be rejected`);
+  }
+});
+
 test("GraphPatch requires version advance and at least one operation", () => {
   assert.throws(
     () =>

@@ -46,9 +46,9 @@ export class SessionRepository {
       .run(
         session.id,
         session.taskId,
-        session.channel,
+        session.channel ?? "cli",
         session.status,
-        session.externalSessionId,
+        session.externalSessionId ?? null,
         session.createdAt,
         session.updatedAt,
       );
@@ -171,11 +171,11 @@ export class SessionRepository {
       .run(
         message.id,
         message.sessionId,
-        message.direction,
+        message.direction ?? inferMessageDirection(message.messageType),
         message.messageType,
-        message.content,
+        message.content ?? message.partsJson ?? "",
         message.partsJson ?? null,
-        message.attachmentsJson,
+        message.attachmentsJson ?? null,
         message.createdAt,
       );
     this.recordDualStorage("insertMessage", () => {
@@ -495,4 +495,14 @@ export class SessionRepository {
       });
     }
   }
+}
+
+function inferMessageDirection(messageType: string): "inbound" | "outbound" | "system" {
+  if (messageType.includes("assistant") || messageType.includes("response")) {
+    return "outbound";
+  }
+  if (messageType.includes("system") || messageType.includes("tool")) {
+    return "system";
+  }
+  return "inbound";
 }

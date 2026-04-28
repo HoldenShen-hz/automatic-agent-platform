@@ -133,7 +133,7 @@ test("readIncomingBody reads empty string body", async () => {
   const mockReq = createMockIncomingMessage(data);
 
   const result = await readIncomingBody(mockReq);
-  assert.equal(result, "");
+  assert.equal(result, null);
 });
 
 test("readIncomingBody handles JSON content", async () => {

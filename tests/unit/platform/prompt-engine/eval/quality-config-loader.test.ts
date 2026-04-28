@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadQualityConfig } from "../../../../../../src/platform/prompt-engine/eval/quality-config-loader.js";
+import { loadQualityConfig } from "../../../../../src/platform/prompt-engine/eval/quality-config-loader.js";
 
 test("loadQualityConfig returns default config when file does not exist", () => {
   const config = loadQualityConfig("/nonexistent/path/config.json");

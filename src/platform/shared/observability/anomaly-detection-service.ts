@@ -174,6 +174,12 @@ export class AnomalyDetectionService {
     const ts = timestamp ?? nowIso();
     const series = this.history.get(metricName) ?? [];
 
+    // Check signature patterns first - these override statistical detection
+    const signatureMatch = this.checkSignatures(metricName, value, ts);
+    if (signatureMatch) {
+      return signatureMatch;
+    }
+
     // Need minimum data points for reliable detection
     if (series.length < this.config.minDataPoints) {
       const classified = classifyAnomalyEvent({
@@ -193,12 +199,6 @@ export class AnomalyDetectionService {
         deviationPercent: 0,
         explanation: `Insufficient data for anomaly detection (${series.length}/${this.config.minDataPoints} points)`,
       };
-    }
-
-    // Check signature patterns first - these override statistical detection
-    const signatureMatch = this.checkSignatures(metricName, value, ts);
-    if (signatureMatch) {
-      return signatureMatch;
     }
 
     // Use configured algorithm for statistical detection

@@ -120,7 +120,7 @@ async function measureScenario(
   return {
     scenarioId: definition.scenarioId,
     passed,
-    durationMs: Math.round((performance.now() - started) * 100) / 100,
+    durationMs: Math.max(1, Math.round((performance.now() - started) * 100) / 100),
     summary: passed
       ? `prompt injection scenario ${definition.scenarioId} classified as ${definition.expectedRisk}`
       : `prompt injection scenario ${definition.scenarioId} deviated from the expected classification`,

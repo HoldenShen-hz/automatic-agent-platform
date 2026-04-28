@@ -234,6 +234,10 @@ export abstract class AuthoritativeTaskStoreDelegatingEngagement extends Authori
     return this.delegateLegacy("listExecutionLeases", "worker", "listExecutionLeases", ...args);
   }
 
+  public override listLeasesByWorker(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listLeasesByWorker"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listLeasesByWorker"]> {
+    return this.delegateLegacy("listLeasesByWorker", "worker", "listLeasesByWorker", ...args);
+  }
+
   public override listExecutionLeasesByStatuses(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["listExecutionLeasesByStatuses"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["listExecutionLeasesByStatuses"]> {
     return this.delegateLegacy("listExecutionLeasesByStatuses", "worker", "listExecutionLeasesByStatuses", ...args);
   }

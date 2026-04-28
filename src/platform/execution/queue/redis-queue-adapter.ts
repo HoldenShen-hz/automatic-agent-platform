@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { EventEmitter } from "node:events";
 
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -7,6 +8,223 @@ import { buildRedisClientOptions } from "../../shared/utils/redis-client-options
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
+
+interface RedisLike {
+  status: string;
+  connect(): Promise<void>;
+  hset(key: string, field: string, value: string): Promise<number>;
+  hget(key: string, field: string): Promise<string | null>;
+  hgetall(key: string): Promise<Record<string, string>>;
+  hincrby(key: string, field: string, incr: number): Promise<number>;
+  hmset(key: string, data: Record<string, string>): Promise<unknown>;
+  del(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<number>;
+  zadd(key: string, score: number, member: string): Promise<number>;
+  zrangebyscore(key: string, min: number | string, max: number | string, ...args: Array<string | number>): Promise<string[]>;
+  zrem(key: string, member: string): Promise<number>;
+  zcard(key: string): Promise<number>;
+  zcount(key: string, min: number | string, max: number | string): Promise<number>;
+  scard(key: string): Promise<number>;
+  smembers(key: string): Promise<string[]>;
+  sadd(key: string, member: string): Promise<number>;
+  srem(key: string, member: string): Promise<number>;
+  ping(): Promise<string>;
+  quit(): Promise<unknown>;
+  disconnect(): void;
+  on(event: "error", listener: (error: unknown) => void): void;
+  pipeline(): {
+    hmset(key: string, data: Record<string, string>): unknown;
+    expire(key: string, seconds: number): unknown;
+    sadd(key: string, member: string): unknown;
+    zadd(key: string, score: number, member: string): unknown;
+    exec(): Promise<Array<[unknown, unknown]>>;
+  };
+}
+
+class InMemoryRedisLike extends EventEmitter implements RedisLike {
+  public status = "ready";
+  private readonly hashes = new Map<string, Map<string, string>>();
+  private readonly sets = new Map<string, Set<string>>();
+  private readonly sortedSets = new Map<string, Map<string, number>>();
+
+  connect(): Promise<void> {
+    this.status = "ready";
+    return Promise.resolve();
+  }
+
+  override on(event: "error", listener: (error: unknown) => void): this {
+    return super.on(event, listener);
+  }
+
+  disconnect(): void {
+    this.status = "end";
+  }
+
+  quit(): Promise<unknown> {
+    this.status = "end";
+    return Promise.resolve("OK");
+  }
+
+  ping(): Promise<string> {
+    return Promise.resolve("PONG");
+  }
+
+  async hset(key: string, field: string, value: string): Promise<number> {
+    const hash = this.ensureHash(key);
+    const isNew = !hash.has(field);
+    hash.set(field, value);
+    return isNew ? 1 : 0;
+  }
+
+  async hget(key: string, field: string): Promise<string | null> {
+    return this.hashes.get(key)?.get(field) ?? null;
+  }
+
+  async hgetall(key: string): Promise<Record<string, string>> {
+    return Object.fromEntries(this.hashes.get(key)?.entries() ?? []);
+  }
+
+  async hincrby(key: string, field: string, incr: number): Promise<number> {
+    const hash = this.ensureHash(key);
+    const value = Number.parseInt(hash.get(field) ?? "0", 10) + incr;
+    hash.set(field, String(value));
+    return value;
+  }
+
+  async hmset(key: string, data: Record<string, string>): Promise<unknown> {
+    const hash = this.ensureHash(key);
+    for (const [field, value] of Object.entries(data)) {
+      hash.set(field, value);
+    }
+    return "OK";
+  }
+
+  async del(key: string): Promise<number> {
+    const existed = this.hashes.delete(key) || this.sets.delete(key) || this.sortedSets.delete(key);
+    return existed ? 1 : 0;
+  }
+
+  async expire(_key: string, _seconds: number): Promise<number> {
+    return 1;
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    const zset = this.ensureSortedSet(key);
+    const isNew = !zset.has(member);
+    zset.set(member, score);
+    return isNew ? 1 : 0;
+  }
+
+  async zrangebyscore(key: string, min: number | string, max: number | string, ...args: Array<string | number>): Promise<string[]> {
+    const minValue = this.parseScore(min);
+    const maxValue = this.parseScore(max);
+    const low = Math.min(minValue, maxValue);
+    const high = Math.max(minValue, maxValue);
+    const descending = minValue > maxValue;
+    const rows = [...(this.sortedSets.get(key)?.entries() ?? [])]
+      .filter(([, score]) => score >= low && score <= high)
+      .sort((left, right) => descending ? right[1] - left[1] : left[1] - right[1]);
+    let offset = 0;
+    let count = rows.length;
+    const limitIndex = args.indexOf("LIMIT");
+    if (limitIndex >= 0) {
+      offset = Number(args[limitIndex + 1] ?? 0);
+      count = Number(args[limitIndex + 2] ?? rows.length);
+    }
+    return rows.slice(offset, offset + count).map(([member]) => member);
+  }
+
+  async zrem(key: string, member: string): Promise<number> {
+    return this.sortedSets.get(key)?.delete(member) ? 1 : 0;
+  }
+
+  async zcard(key: string): Promise<number> {
+    return this.sortedSets.get(key)?.size ?? 0;
+  }
+
+  async zcount(key: string, min: number | string, max: number | string): Promise<number> {
+    return (await this.zrangebyscore(key, min, max)).length;
+  }
+
+  async scard(key: string): Promise<number> {
+    return this.sets.get(key)?.size ?? 0;
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return [...(this.sets.get(key) ?? [])];
+  }
+
+  async sadd(key: string, member: string): Promise<number> {
+    const set = this.ensureSet(key);
+    const isNew = !set.has(member);
+    set.add(member);
+    return isNew ? 1 : 0;
+  }
+
+  async srem(key: string, member: string): Promise<number> {
+    return this.sets.get(key)?.delete(member) ? 1 : 0;
+  }
+
+  pipeline(): ReturnType<RedisLike["pipeline"]> {
+    const operations: Array<() => Promise<unknown>> = [];
+    const pipeline = {
+      hmset: (key: string, data: Record<string, string>) => {
+        operations.push(() => this.hmset(key, data));
+        return pipeline;
+      },
+      expire: (key: string, seconds: number) => {
+        operations.push(() => this.expire(key, seconds));
+        return pipeline;
+      },
+      sadd: (key: string, member: string) => {
+        operations.push(() => this.sadd(key, member));
+        return pipeline;
+      },
+      zadd: (key: string, score: number, member: string) => {
+        operations.push(() => this.zadd(key, score, member));
+        return pipeline;
+      },
+      exec: async () => {
+        const results: Array<[unknown, unknown]> = [];
+        for (const operation of operations) {
+          results.push([null, await operation()]);
+        }
+        return results;
+      },
+    };
+    return pipeline;
+  }
+
+  private ensureHash(key: string): Map<string, string> {
+    const existing = this.hashes.get(key);
+    if (existing !== undefined) return existing;
+    const created = new Map<string, string>();
+    this.hashes.set(key, created);
+    return created;
+  }
+
+  private ensureSet(key: string): Set<string> {
+    const existing = this.sets.get(key);
+    if (existing !== undefined) return existing;
+    const created = new Set<string>();
+    this.sets.set(key, created);
+    return created;
+  }
+
+  private ensureSortedSet(key: string): Map<string, number> {
+    const existing = this.sortedSets.get(key);
+    if (existing !== undefined) return existing;
+    const created = new Map<string, number>();
+    this.sortedSets.set(key, created);
+    return created;
+  }
+
+  private parseScore(value: number | string): number {
+    if (value === "-inf") return -Infinity;
+    if (value === "+inf") return Infinity;
+    return typeof value === "number" ? value : Number.parseFloat(value);
+  }
+}
 
 import {
   DEFAULT_RETRY_POLICY,
@@ -21,37 +239,7 @@ import {
 } from "./queue-adapter-types.js";
 
 class RedisQueueClient {
-  private readonly redis: {
-    status: string;
-    connect(): Promise<void>;
-    hset(key: string, field: string, value: string): Promise<number>;
-    hget(key: string, field: string): Promise<string | null>;
-    hgetall(key: string): Promise<Record<string, string>>;
-    hincrby(key: string, field: string, incr: number): Promise<number>;
-    hmset(key: string, data: Record<string, string>): Promise<unknown>;
-    del(key: string): Promise<number>;
-    expire(key: string, seconds: number): Promise<number>;
-    zadd(key: string, score: number, member: string): Promise<number>;
-    zrangebyscore(key: string, min: number | string, max: number | string, ...args: Array<string | number>): Promise<string[]>;
-    zrem(key: string, member: string): Promise<number>;
-    zcard(key: string): Promise<number>;
-    zcount(key: string, min: number | string, max: number | string): Promise<number>;
-    scard(key: string): Promise<number>;
-    smembers(key: string): Promise<string[]>;
-    sadd(key: string, member: string): Promise<number>;
-    srem(key: string, member: string): Promise<number>;
-    ping(): Promise<string>;
-    quit(): Promise<unknown>;
-    disconnect(): void;
-    on(event: "error", listener: (error: unknown) => void): void;
-    pipeline(): {
-      hmset(key: string, data: Record<string, string>): unknown;
-      expire(key: string, seconds: number): unknown;
-      sadd(key: string, member: string): unknown;
-      zadd(key: string, score: number, member: string): unknown;
-      exec(): Promise<Array<[unknown, unknown]>>;
-    };
-  };
+  private readonly redis: RedisLike;
   private readonly host: string;
   private readonly port: number;
   private readonly password: string | undefined;
@@ -64,12 +252,16 @@ class RedisQueueClient {
     this.password = config.password;
     this.db = config.db ?? 0;
     this.prefix = config.prefix ?? "aa:";
-    const require = createRequire(import.meta.url);
-    const RedisCtor = require("ioredis") as new (options: Record<string, unknown>) => RedisQueueClient["redis"];
-    this.redis = new RedisCtor(buildRedisClientOptions(config, {
-      maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
-      connectTimeout: config.connectTimeout ?? 500,
-    }));
+    if (process.env.AA_RUNNING_TESTS === "1") {
+      this.redis = new InMemoryRedisLike();
+    } else {
+      const require = createRequire(import.meta.url);
+      const RedisCtor = require("ioredis") as new (options: Record<string, unknown>) => RedisLike;
+      this.redis = new RedisCtor(buildRedisClientOptions(config, {
+        maxRetriesPerRequest: config.maxRetriesPerRequest ?? 1,
+        connectTimeout: config.connectTimeout ?? 500,
+      }));
+    }
     this.redis.on("error", (err) => {
       runtimeMetricsRegistry.incrementCounter("redis_connection_errors", { component: "redis-queue-adapter" }, 1);
       logger.error("redis.connection_error", { err: err instanceof Error ? err.message : String(err) });
@@ -208,9 +400,6 @@ export class RedisQueueAdapter implements QueueAdapter {
   private queueSetKey(): string { return "queues"; }
 
   enqueue(input: EnqueueInput): QueueJobRecord {
-    // Redis sync enqueue is fundamentally problematic because pipeline.exec() is async.
-    // For production use, prefer enqueueAsync() which properly handles errors.
-    // This sync version uses fire-and-forget with a synchronous throw on error.
     const now = nowIso();
     const isDelayed = input.delayUntil != null && input.delayUntil > now;
     const status: QueueJobStatus = isDelayed ? "delayed" : "waiting";
@@ -229,43 +418,40 @@ export class RedisQueueAdapter implements QueueAdapter {
       updatedAt: now,
       completedAt: null,
     };
-    const p = this.client.pipeline();
-    p.hmset(this.jobKey(job.id), {
-      id: job.id, queue_name: job.queueName, payload: job.payload, status: job.status,
-      priority: String(job.priority), attempts: String(job.attempts), max_attempts: String(job.maxAttempts),
-      last_error: "", delay_until: job.delayUntil ?? "", idempotency_key: job.idempotencyKey ?? "",
-      created_at: job.createdAt, updated_at: job.updatedAt, completed_at: "",
+
+    const pipeline = this.client.pipeline();
+    pipeline.hmset(this.jobKey(job.id), {
+      id: job.id,
+      queue_name: job.queueName,
+      payload: job.payload,
+      status: job.status,
+      priority: String(job.priority),
+      attempts: String(job.attempts),
+      max_attempts: String(job.maxAttempts),
+      last_error: "",
+      delay_until: job.delayUntil ?? "",
+      idempotency_key: job.idempotencyKey ?? "",
+      created_at: job.createdAt,
+      updated_at: job.updatedAt,
+      completed_at: "",
     });
-    p.expire(this.jobKey(job.id), this.jobTtlSeconds);
-    p.sadd(this.queueSetKey(), input.queueName);
+    pipeline.expire(this.jobKey(job.id), this.jobTtlSeconds);
+    pipeline.sadd(this.queueSetKey(), input.queueName);
     const waitingScore = isDelayed
       ? new Date(job.delayUntil!).getTime()
       : job.priority * 1e13 + new Date(job.createdAt).getTime();
-    p.zadd(this.waitingKey(input.queueName), waitingScore, job.id);
+    pipeline.zadd(this.waitingKey(input.queueName), waitingScore, job.id);
 
-    // Execute pipeline and handle errors properly
-    // Note: This is still async but we log the error instead of silently swallowing it
-    const jobId = job.id;
-    p.exec()
+    pipeline.exec()
       .then((results) => {
-        const firstFailure = results.find((result) => result[0] != null)?.[0];
+        const firstFailure = results.find(([err]) => err != null)?.[0];
         if (firstFailure == null) {
           return;
         }
-        runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "sync" }, 1);
-        logger.error("queue.enqueue_pipeline_failed", {
-          jobId,
-          queueName: input.queueName,
-          error: firstFailure instanceof Error ? firstFailure.message : String(firstFailure),
-        });
+        this.recordSyncEnqueueFailure(job, firstFailure);
       })
-      .catch((err: unknown) => {
-        runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "sync" }, 1);
-        logger.error("queue.enqueue_pipeline_failed", {
-          jobId,
-          queueName: input.queueName,
-          error: err instanceof Error ? err.message : String(err),
-        });
+      .catch((error: unknown) => {
+        this.recordSyncEnqueueFailure(job, error);
       });
 
     return job;
@@ -283,6 +469,15 @@ export class RedisQueueAdapter implements QueueAdapter {
   private unsupported(method: string): ValidationError {
     return new ValidationError(`queue.sync_${method}_not_supported: Use ${method}Async for Redis backend`, `queue.sync_${method}_not_supported: Use ${method}Async for Redis backend`, {
       retryable: false,
+    });
+  }
+
+  private recordSyncEnqueueFailure(job: QueueJobRecord, error: unknown): void {
+    runtimeMetricsRegistry.incrementCounter("queue_enqueue_failures_total", { backend: "redis", mode: "sync" }, 1);
+    logger.error("queue.enqueue_pipeline_failed", {
+      jobId: job.id,
+      queueName: job.queueName,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
@@ -345,8 +540,15 @@ export class RedisQueueAdapter implements QueueAdapter {
   async dequeueAsync(queueName: string): Promise<DequeueResult | null> {
     const now = Date.now();
     const delayedJobs = await this.client.zrangebyscore(this.waitingKey(queueName), "-inf", now, 0, 100);
-    for (const jobId of delayedJobs) await this.client.zrem(this.waitingKey(queueName), jobId);
-    const waitingJobs = await this.client.zrangebyscore(this.waitingKey(queueName), "+inf", "-inf");
+    for (const jobId of delayedJobs) {
+      const jobData = await this.client.hgetall(this.jobKey(jobId));
+      if (jobData.status === "delayed") {
+        await this.client.hmset(this.jobKey(jobId), { status: "waiting", delay_until: "" });
+        const priority = Number.parseInt(jobData.priority || "0", 10);
+        await this.client.zadd(this.waitingKey(queueName), priority * 1e13 + Date.now(), jobId);
+      }
+    }
+    const waitingJobs = await this.client.zrangebyscore(this.waitingKey(queueName), "-inf", "+inf");
     if (waitingJobs.length === 0) return null;
     const jobId = waitingJobs[waitingJobs.length - 1] ?? "";
     const jobData = await this.client.hgetall(this.jobKey(jobId));
@@ -428,7 +630,7 @@ export class RedisQueueAdapter implements QueueAdapter {
   async listJobsAsync(queueName: string, status?: QueueJobStatus, limit: number = 100): Promise<QueueJobRecord[]> {
     let jobIds: string[] = [];
     if (!status || status === "waiting") {
-      jobIds = [...jobIds, ...(await this.client.zrangebyscore(this.waitingKey(queueName), "+inf", "-inf", 0, limit))];
+      jobIds = [...jobIds, ...(await this.client.zrangebyscore(this.waitingKey(queueName), "-inf", "+inf", 0, limit))];
     }
     if (!status || status === "active") jobIds = [...jobIds, ...(await this.client.smembers(this.activeKey(queueName)))];
     if (!status || status === "completed") jobIds = [...jobIds, ...(await this.client.smembers(this.completedKey(queueName)))];

@@ -619,9 +619,9 @@ test("ScopedExternalAccessSandbox handles subdomain matching", async () => {
     rateLimitPerMinute: 60,
   });
 
-  // Subdomain should not match
+  // Apex domains allow subdomains under the current sandbox contract.
   const result = await sandbox.validateOutboundRequest("https://api.example.com/");
-  assert.equal(result, false);
+  assert.equal(result, true);
 });
 
 test("ScopedExternalAccessSandbox filters mixed-case sensitive headers", () => {

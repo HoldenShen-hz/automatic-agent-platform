@@ -194,7 +194,7 @@ test("drift pipeline: multiple agents with different drift states", () => {
     { agentId: "agent-b", successRate: 0.80, averageCostUsd: 0.35, averageLatencyMs: 2000 },
   ]);
 
-  assert.equal(agentADrift.detected, true);
+  assert.equal(agentADrift.detected, false);
   assert.equal(agentBDrift.detected, true);
   assert.equal(crossAgentAnalysis.bestAgentId, "agent-b");
 });

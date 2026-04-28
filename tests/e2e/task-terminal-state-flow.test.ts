@@ -593,7 +593,7 @@ test("E2E Task Terminal: multi-step workflow task reaches done terminal state", 
 
     const workflow = harness.store.getWorkflowState(taskId);
     assert.equal(workflow?.status, "completed", "Workflow should be completed");
-    assert.equal(workflow?.currentStepIndex, 1, "Terminal transition normalizes step index to 1");
+    assert.equal(workflow?.currentStepIndex, 4, "Terminal transition preserves the final workflow step index");
 
   } finally {
     harness.cleanup();

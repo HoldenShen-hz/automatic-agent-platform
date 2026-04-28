@@ -63,6 +63,7 @@ export interface StableValidationCaseSummary {
 
 /** Stored baseline for comparison */
 export interface StableValidationBaseline {
+  inventoryVersion?: 1;
   createdAt: string;
   sourceStartedAt: string;
   sourceFinishedAt: string;
@@ -130,6 +131,7 @@ const STABLE_VALIDATION_INVENTORY_FILE = "golden-task-inventory.json";
 
 /** Duration drift threshold: 250% increase */
 const DURATION_DRIFT_THRESHOLD_PCT = 250;
+const MAX_DURATION_DRIFT_THRESHOLD_PCT = 200;
 /** Minimum duration delta in ms to trigger drift detection */
 const DURATION_DRIFT_MIN_DELTA_MS = 20;
 
@@ -196,6 +198,7 @@ export function buildStableValidationBaseline(report: Pick<
 >): StableValidationBaseline {
   return {
     createdAt: new Date().toISOString(),
+    inventoryVersion: 1,
     sourceStartedAt: report.startedAt,
     sourceFinishedAt: report.finishedAt,
     iterations: report.iterations,
@@ -298,7 +301,10 @@ export function compareStableValidationToBaseline(
   const status: StableValidationBaselineComparison["status"] =
     regressionDetected
     || resolveDriftStatus(averageDurationDeltaMs, averageDurationDeltaPct) === "drift_detected"
-    || resolveDriftStatus(maxDurationDeltaMs, maxDurationDeltaPct) === "drift_detected"
+    || (
+      maxDurationDeltaMs >= DURATION_DRIFT_MIN_DELTA_MS &&
+      maxDurationDeltaPct >= MAX_DURATION_DRIFT_THRESHOLD_PCT
+    )
     || caseDrifts.some((entry) => entry.status === "drift_detected")
       ? "drift_detected"
       : "match";
@@ -331,10 +337,10 @@ export function compareStableValidationToBaseline(
 export function mergeStableValidationReports(reports: readonly StableValidationReport[]): StableValidationReport {
   const runs = reports.flatMap((report) => report.runs);
   const totalRuns = runs.length;
-  const passedRuns = runs.filter((run) => run.passed).length;
-  const failedRuns = totalRuns - passedRuns;
-  const integrityFailures = runs.filter((run) => !run.dbIntegrityPassed).length;
-  const backupFailures = runs.filter((run) => !run.backupPassed).length;
+  const passedRuns = reports.reduce((sum, report) => sum + report.passedRuns, 0);
+  const failedRuns = reports.reduce((sum, report) => sum + report.failedRuns, 0);
+  const integrityFailures = reports.reduce((sum, report) => sum + report.integrityFailures, 0);
+  const backupFailures = reports.reduce((sum, report) => sum + report.backupFailures, 0);
   const totalDurationMs = runs.reduce((sum, run) => sum + run.durationMs, 0);
   const maxDurationMs = runs.reduce((max, run) => Math.max(max, run.durationMs), 0);
   const caseSummaries = summarizeStableValidationRuns(runs);

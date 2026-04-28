@@ -2,6 +2,7 @@ import type { AgentTrustProfile, AutonomyLevel, CapabilityTrustScore, TrustLevel
 import { compareAutonomyLevels, nextAutonomyLevel } from "./level-manager/index.js";
 import { assessPromotion } from "./promotion-engine/index.js";
 import { calculateTrustScore, mapTrustLevel } from "./trust-scorer/index.js";
+import type { AutonomyAuditService } from "./autonomy-audit-service.js";
 
 export interface AutonomyGovernanceDecision {
   readonly agentId: string;
@@ -22,6 +23,31 @@ export interface AutonomyGovernanceSnapshot {
 }
 
 export class AutonomyGovernanceService {
+  private auditService: AutonomyAuditService | null = null;
+  private readonly frozenAgents = new Set<string>();
+  private readonly maxAutonomyByAgent = new Map<string, AutonomyLevel>();
+
+  public setAuditService(auditService: AutonomyAuditService | null): void {
+    this.auditService = auditService;
+  }
+
+  public getMaxAutonomyLevel(agentId: string): AutonomyLevel {
+    return this.maxAutonomyByAgent.get(agentId) ?? "full_auto";
+  }
+
+  public canPromote(agentId: string, _capabilityId: string, targetLevel: AutonomyLevel): boolean {
+    return !this.isFrozen(agentId) && compareAutonomyLevels(targetLevel, this.getMaxAutonomyLevel(agentId)) <= 0;
+  }
+
+  public canDemote(agentId: string, _capabilityId: string, _targetLevel: AutonomyLevel): boolean {
+    return !this.isFrozen(agentId);
+  }
+
+  public isFrozen(agentId: string): boolean {
+    void this.auditService;
+    return this.frozenAgents.has(agentId);
+  }
+
   public evaluateProfile(profile: AgentTrustProfile): AutonomyGovernanceSnapshot {
     const decisions = profile.capabilityScores.map((score) => this.evaluateCapability(profile.agentId, score));
     const overallTrustScore = decisions.length === 0
@@ -31,7 +57,7 @@ export class AutonomyGovernanceService {
     return {
       agentId: profile.agentId,
       overallTrustScore,
-      overallTrustLevel: mapTrustLevel(overallTrustScore),
+      overallTrustLevel: reconcileProfileTrustLevel(overallTrustScore, profile),
       decisions,
     };
   }
@@ -66,4 +92,14 @@ export class AutonomyGovernanceService {
           : ["autonomy.level_unchanged"],
     };
   }
+}
+
+function reconcileProfileTrustLevel(score: number, profile: AgentTrustProfile): TrustLevel {
+  if (profile.capabilityScores.length > 0 && score < 30 && profile.overallTrustLevel === "probation") {
+    return "probation";
+  }
+  if (score >= 95 && profile.overallTrustLevel === "probation") {
+    return "trusted";
+  }
+  return mapTrustLevel(score);
 }

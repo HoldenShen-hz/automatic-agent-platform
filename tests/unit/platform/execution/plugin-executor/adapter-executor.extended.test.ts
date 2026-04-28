@@ -205,7 +205,7 @@ test("AdapterExecutor REST adapter handles text response", async () => {
 
 test("AdapterExecutor REST adapter handles empty response body", async () => {
   const executor = new AdapterExecutor({
-    fetchImpl: async () => new Response("", { status: 204 }),
+    fetchImpl: async () => new Response(null, { status: 204 }),
   });
 
   executor.register({
@@ -423,9 +423,18 @@ test("AdapterExecutor retry policy handles retry with backoff delay", async () =
     },
   });
 
+  executor.register({
+    adapterId: "retry-backoff",
+    protocol: "rest",
+    endpoint: "https://example.com/retry",
+    retryPolicy: {
+      maxAttempts: 2,
+      backoffMs: 10,
+    },
+  });
+
   const startTime = Date.now();
   const result = await executor.execute("retry-backoff", {
-    adapterId: "retry-backoff",
     action: "test",
     payload: {},
     context: { taskId: "task_1" },

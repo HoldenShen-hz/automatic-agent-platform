@@ -6,11 +6,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SqliteQueueAdapter } from "../../../../../../src/platform/execution/queue/sqlite-queue-adapter.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { QUEUE_JOBS_DDL } from "../../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { SqliteQueueAdapter } from "../../../../../src/platform/execution/queue/sqlite-queue-adapter.js";
+import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { QUEUE_JOBS_DDL } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
-import type { EnqueueInput, QueueJobRecord, QueueStats } from "../../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import type { EnqueueInput, QueueJobRecord, QueueStats } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
 
 test.describe("SqliteQueueAdapter unit tests", () => {
   let workspace: string;
@@ -39,7 +39,7 @@ test.describe("SqliteQueueAdapter unit tests", () => {
 
     const job = adapter.enqueue(input);
 
-    assert.ok(job.id.startsWith("qjob-"));
+    assert.ok(job.id.startsWith("qjob_") || job.id.startsWith("qjob-"));
     assert.equal(job.queueName, "test-queue");
     assert.equal(job.status, "waiting");
     assert.equal(job.priority, 0);
@@ -261,12 +261,15 @@ test.describe("SqliteQueueAdapter unit tests", () => {
     assert.equal(retried.lastError, null);
   });
 
-  test("retryJob returns null for non-dead_letter job", () => {
+  test("retryJob returns existing job unchanged for non-dead_letter job", () => {
     const job = adapter.enqueue({ queueName: "retry-fail-test", payload: { data: "test" } });
 
     const retried = adapter.retryJob(job.id);
 
-    assert.equal(retried, null);
+    assert.ok(retried !== null);
+    assert.equal(retried?.id, job.id);
+    assert.equal(retried?.status, "waiting");
+    assert.equal(retried?.payload, JSON.stringify({ data: "test" }));
   });
 
   test("purge removes completed jobs older than threshold", () => {

@@ -22,14 +22,14 @@ test("contracts barrel loads without errors", async () => {
   assert.ok(mod !== undefined);
 });
 
-test("contracts barrel re-exports namespaced core contract modules", async () => {
+test("contracts barrel re-exports canonical namespaced core contract modules only", async () => {
   const mod = await import("../../../../src/platform/contracts/index.js");
 
   assert.equal(typeof mod.requestEnvelopeContract.createRequestEnvelope, "function");
-  assert.equal(typeof mod.legacyControlDirectiveContract.createControlDirective, "function");
-  assert.equal(typeof mod.legacyExecutionPlanContract.createExecutionPlan, "function");
-  assert.equal(typeof mod.legacyExecutionReceiptContract.createExecutionReceipt, "function");
-  assert.equal(typeof mod.legacyStateCommandContract.createStateCommand, "function");
+  assert.equal("legacyControlDirectiveContract" in mod, false);
+  assert.equal("legacyExecutionPlanContract" in mod, false);
+  assert.equal("legacyExecutionReceiptContract" in mod, false);
+  assert.equal("legacyStateCommandContract" in mod, false);
 });
 
 test("contracts barrel exposes canonical request factory without first-class legacy execution factories", async () => {

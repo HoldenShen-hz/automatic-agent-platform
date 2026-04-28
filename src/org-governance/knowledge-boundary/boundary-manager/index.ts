@@ -11,7 +11,8 @@ export const KnowledgeBoundarySchema = z.object({
 export type KnowledgeBoundary = z.infer<typeof KnowledgeBoundarySchema>;
 
 export function canAccessKnowledgeBoundary(boundary: KnowledgeBoundary, requesterOrgNodeId: string): boolean {
+  const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
   return boundary.defaultVisibility === "public"
     || boundary.ownerOrgNodeId === requesterOrgNodeId
-    || boundary.allowedOrgNodeIds.includes(requesterOrgNodeId);
+    || allowedOrgNodeIds.includes(requesterOrgNodeId);
 }

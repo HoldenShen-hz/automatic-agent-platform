@@ -91,6 +91,8 @@ export class ExecutionTicketRepository {
   }
 
   public insertExecutionTicket(ticket: ExecutionTicketRecord): void {
+    this.ensureExecutionForLegacyTicket(ticket);
+    const requiredCapabilitiesJson = ticket.requiredCapabilitiesJson ?? "[]";
     execute(
       this.conn,
       `INSERT INTO execution_tickets (
@@ -107,15 +109,62 @@ export class ExecutionTicketRepository {
       ticket.dispatchTarget ?? "any",
       ticket.requiredIsolationLevel ?? "standard",
       ticket.requiredRepoVersion ?? null,
-      ticket.requiredCapabilitiesJson,
-      ticket.dispatchAfter,
-      ticket.attempt,
+      requiredCapabilitiesJson,
+      ticket.dispatchAfter ?? null,
+      ticket.attempt ?? 1,
       ticket.status,
-      ticket.assignedWorkerId,
-      ticket.leaseId,
-      ticket.claimedAt,
-      ticket.consumedAt,
-      ticket.invalidatedAt,
+      ticket.assignedWorkerId ?? null,
+      ticket.leaseId ?? null,
+      ticket.claimedAt ?? null,
+      ticket.consumedAt ?? null,
+      ticket.invalidatedAt ?? null,
+      ticket.createdAt,
+      ticket.updatedAt,
+    );
+  }
+
+  private ensureExecutionForLegacyTicket(ticket: ExecutionTicketRecord): void {
+    const existing = queryOne<{ id: string }>(
+      this.conn,
+      "SELECT id FROM executions WHERE id = ?",
+      ticket.executionId,
+    );
+    if (existing) {
+      return;
+    }
+
+    execute(
+      this.conn,
+      `INSERT INTO executions (
+        id, task_id, workflow_id, parent_execution_id, agent_id, role_id,
+        run_kind, status, input_ref, trace_id, attempt, timeout_ms,
+        budget_usd_limit, requires_approval, sandbox_mode, allowed_tools_json,
+        allowed_paths_json, max_retries, retry_backoff, last_error_code,
+        last_error_message, started_at, finished_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ticket.executionId,
+      ticket.taskId,
+      null,
+      null,
+      "legacy-ticket-dispatcher",
+      "general_executor",
+      "task_run",
+      "created",
+      null,
+      `trace:${ticket.executionId}`,
+      ticket.attempt ?? 1,
+      0,
+      null,
+      0,
+      "workspace_write",
+      "[]",
+      "[]",
+      0,
+      "none",
+      null,
+      null,
+      null,
+      null,
       ticket.createdAt,
       ticket.updatedAt,
     );
@@ -426,6 +475,16 @@ export class ExecutionTicketRepository {
        WHERE execution_id = ?
        ORDER BY fencing_token ASC`,
       executionId,
+    );
+  }
+
+  public listLeasesByWorker(workerId: string): ExecutionLeaseRecord[] {
+    return queryAll<ExecutionLeaseRecord>(
+      this.conn,
+      `${EXECUTION_LEASE_SELECT}
+       WHERE worker_id = ?
+       ORDER BY leased_at ASC, id ASC`,
+      workerId,
     );
   }
 

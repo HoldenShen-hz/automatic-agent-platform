@@ -32,6 +32,12 @@ interface MockExecution {
   taskId: string;
   status: string;
   traceId?: string;
+  attempt?: number;
+  agentId?: string;
+  workflowId?: string | null;
+  roleId?: string | null;
+  runKind?: string;
+  lastErrorCode?: string | null;
 }
 
 interface MockLease {
@@ -46,13 +52,49 @@ function createMockStore(
   executions: Map<string, MockExecution> = new Map(),
   leases: Map<string, MockLease> = new Map(),
 ): AuthoritativeTaskStore {
+  const agentExecutions = new Map<string, unknown>();
   return {
     worker: {
       listExecutionTicketsByStatuses: (statuses: string[]) =>
         tickets.filter(t => statuses.includes(t.status)),
       getExecutionTicket: (id: string) => tickets.find(t => t.id === id) ?? null,
+      getActiveExecutionTicket: (executionId: string) => tickets.find(t => t.executionId === executionId && t.status !== "expired" && t.status !== "cancelled") ?? null,
       getActiveExecutionLease: (executionId: string) => leases.get(executionId) ?? null,
+      getWorkerSnapshot: (_workerId: string) => null,
+      getAgentExecutionRecord: (executionId: string) => agentExecutions.get(executionId) ?? null,
+      upsertAgentExecutionRecord: (record: { executionId: string }) => {
+        agentExecutions.set(record.executionId, record);
+      },
+      insertExecutionTicket: (ticket: MockTicket) => {
+        tickets.push(ticket);
+      },
       invalidateExecutionTicket: (_params: { ticketId: string; status: string; invalidatedAt: string }) => { /* noop */ },
+    },
+    operations: {
+      loadExecutionAuthoritativeView: (executionId: string) => {
+        const execution = executions.get(executionId);
+        if (!execution) {
+          return null;
+        }
+        return {
+          execution: {
+            id: execution.id,
+            taskId: execution.taskId,
+            status: execution.status,
+            traceId: execution.traceId ?? null,
+            attempt: execution.attempt ?? 1,
+            workflowId: execution.workflowId ?? null,
+            roleId: execution.roleId ?? null,
+            runKind: execution.runKind ?? "standard",
+            agentId: execution.agentId ?? "agent-test",
+            lastErrorCode: execution.lastErrorCode ?? null,
+          },
+          task: {
+            id: execution.taskId,
+            priority: "normal",
+          },
+        };
+      },
     },
     dispatch: {
       getExecution: (id: string) => executions.get(id) ?? null,

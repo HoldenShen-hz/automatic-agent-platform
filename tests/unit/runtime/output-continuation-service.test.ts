@@ -119,7 +119,7 @@ test("OutputContinuationService creates continuation records", () => {
     maxContinuationTokens: 2000,
   });
 
-  assert.ok(record.id.startsWith("continuation_"));
+  assert.ok(record.id.startsWith("continuation:"));
   assert.equal(record.taskId, "task-1");
   assert.equal(record.partialOutput, "Hello world");
   assert.equal(record.finishReason, "max_tokens_exceeded");

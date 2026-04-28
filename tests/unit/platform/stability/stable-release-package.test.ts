@@ -310,13 +310,13 @@ describe("stable-release-package", () => {
 
     test("suggests repair when smoke present but failing", () => {
       const actions = buildNextActions(createGateReport(), createProfiles({ smoke: { present: true, passed: false } }));
-      assert.ok(actions.includes("Repair or rerun the smoke evidence bundle before retrying the release gate."));
+      assert.ok(actions.includes("Fix failing smoke evidence bundle results before retrying the release gate."));
     });
 
     test("returns no smoke-specific action when smoke passes", () => {
       const actions = buildNextActions(createGateReport(), createProfiles());
       assert.equal(actions.includes("Generate smoke evidence before any promotion decision."), false);
-      assert.equal(actions.includes("Repair or rerun the smoke evidence bundle before retrying the release gate."), false);
+      assert.equal(actions.includes("Fix failing smoke evidence bundle results before retrying the release gate."), false);
     });
 
     test("suggests promotion when gate is approved", () => {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   StepTemplateConfigSchema,
@@ -234,6 +235,16 @@ test("DomainDefinitionSchema parses valid definition", () => {
   assert.equal(result.domainId, "domain-001");
   assert.equal(result.status, "active");
   assert.equal(result.version, 1);
+});
+
+test("DomainDefinitionSchema parses the quant-trading domain config", () => {
+  const raw = readFileSync("config/domains/quant-trading.json", "utf8");
+  const result = DomainDefinitionSchema.parse(JSON.parse(raw));
+
+  assert.equal(result.domainId, "quant-trading");
+  assert.equal(result.status, "active");
+  assert.equal(result.capabilities.securityLevel, "restricted");
+  assert.equal(result.workflows[0]?.workflowId, "quant-trading.primary");
 });
 
 test("DomainDefinitionSchema rejects empty domainId", () => {

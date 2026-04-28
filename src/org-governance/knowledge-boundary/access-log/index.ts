@@ -12,8 +12,9 @@ export const KnowledgeAccessLogRecordSchema = z.object({
 export type KnowledgeAccessLogRecord = z.infer<typeof KnowledgeAccessLogRecordSchema>;
 
 export function redactKnowledgeAccessLog(record: KnowledgeAccessLogRecord): KnowledgeAccessLogRecord {
+  const requesterId = typeof record.requesterId === "string" ? record.requesterId : String(record.requesterId ?? "");
   return {
     ...record,
-    requesterId: `redacted:${record.requesterId.slice(0, 4)}`,
+    requesterId: `redacted:${requesterId.slice(0, 4)}`,
   };
 }

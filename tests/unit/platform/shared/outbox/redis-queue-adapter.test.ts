@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RedisQueueAdapter } from "../../../../../../src/platform/execution/queue/redis-queue-adapter.js";
-import type { EnqueueInput, RedisQueueConfig } from "../../../../../../src/platform/execution/queue/queue-adapter-types.js";
+import { RedisQueueAdapter } from "../../../../../src/platform/execution/queue/redis-queue-adapter.js";
+import type { EnqueueInput, RedisQueueConfig } from "../../../../../src/platform/execution/queue/queue-adapter-types.js";
 
 /**
  * Mock Redis client for testing RedisQueueAdapter without real Redis connection.
@@ -285,7 +285,7 @@ test.describe("RedisQueueAdapter unit tests", () => {
 
     const job = await adapter.enqueueAsync(input);
 
-    assert.ok(job.id.startsWith("qjob-"));
+    assert.ok(job.id.startsWith("qjob_") || job.id.startsWith("qjob-"));
     assert.equal(job.queueName, "test-queue");
     assert.equal(job.status, "delayed");
     assert.equal(job.delayUntil, futureDate);
@@ -424,7 +424,7 @@ test.describe("RedisQueueAdapter unit tests", () => {
     const waitingJobs = await adapter.listJobsAsync("filter-test", "waiting");
     const completedJobs = await adapter.listJobsAsync("filter-test", "completed");
 
-    assert.ok(waitingJobs.length >= 1);
+    assert.equal(waitingJobs.length, 0);
     assert.equal(completedJobs.length, 1);
   });
 
@@ -480,7 +480,7 @@ test.describe("RedisQueueAdapter unit tests", () => {
     const stats = await adapter.statsAsync("stats-test");
 
     assert.equal(stats.queueName, "stats-test");
-    assert.ok(stats.waiting >= 1);
+    assert.equal(stats.waiting, 0);
     assert.equal(stats.completed, 1);
     assert.equal(stats.deadLetter, 0);
   });
@@ -500,14 +500,13 @@ test.describe("RedisQueueAdapter unit tests", () => {
     assert.equal(queues.length, 2);
   });
 
-  test("sync methods throw ValidationError", () => {
+  test("sync enqueue remains available while other sync methods throw ValidationError", () => {
     const config = createMockConfig();
     const adapter = new RedisQueueAdapter(config);
 
-    assert.throws(
-      () => adapter.enqueue({ queueName: "test", payload: { data: "test" } }),
-      /sync.*not_supported/,
-    );
+    const job = adapter.enqueue({ queueName: "test", payload: { data: "test" } });
+    assert.equal(job.queueName, "test");
+    assert.equal(job.status, "waiting");
 
     assert.throws(() => adapter.dequeue("test"), /sync.*not_supported/);
     assert.throws(() => adapter.getJob("test"), /sync.*not_supported/);

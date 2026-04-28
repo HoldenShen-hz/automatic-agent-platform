@@ -19,7 +19,7 @@
 
 Phase 1a 的上下文传播至少要保证：
 
-- 日志、DB、工具执行能自动拿到当前 task / execution / trace。
+- 日志、DB、工具执行能自动拿到当前 run / node / attempt / trace。
 - 取消、超时和恢复链能读取同一份上下文快照。
 - 显式参数只保留工具特有配置，不继续承载全局运行身份。
 
@@ -30,14 +30,19 @@ Phase 1a 的上下文传播至少要保证：
 | `trace_id` | `string` | 链路追踪主键 |
 | `span_id` | `string?` | 当前 span（对齐 `trace_and_root_cause_observability_contract.md` §3） |
 | `parent_span_id` | `string?` | 父 span |
-| `task_id` | `string` | 当前任务 |
-| `execution_id` | `string?` | 当前 execution |
-| `workflow_id` | `string?` | 当前 workflow |
+| `harness_run_id` | `string` | 当前 HarnessRun |
+| `node_run_id` | `string?` | 当前 NodeRun |
+| `attempt_id` | `string?` | 当前 NodeAttempt |
+| `plan_graph_id` | `string?` | 当前执行图 ID |
+| `graph_version` | `integer?` | 当前执行图版本 |
+| `task_id` | `string?` | legacy 任务查询入口 |
+| `execution_id` | `string?` | legacy execution 查询入口 |
+| `workflow_id` | `string?` | legacy workflow 查询入口 |
 | `session_id` | `string?` | 当前会话 |
 | `agent_id` | `string?` | 当前 agent |
 | `division_id` | `string?` | 当前事业部 |
-| `oapeflir_stage` | `string?` | 当前闭环阶段 |
-| `loop_iteration` | `integer?` | 当前闭环轮次 |
+| `stage_view_ref` | `string?` | 当前闭环阶段 view 引用 |
+| `loop_iteration_view` | `integer?` | 当前闭环轮次投影 |
 | `knowledge_namespace` | `string?` | 当前 knowledge namespace |
 | `memory_layer` | `string?` | 当前 memory layer |
 | `domain_id` | `string?` | 当前 domain |
@@ -48,7 +53,7 @@ Phase 1a 的上下文传播至少要保证：
 | `abort_signal_ref` | `string?` | 取消信号引用 |
 | `budget_scope_id` | `string?` | 预算聚合范围 |
 
-说明：`span_id` 和 `parent_span_id` 用于在 trace 树中定位当前执行位置。每进入一个新 agent step、tool call 或 LLM call 时，应通过 `withContextPatch` 更新 `span_id` 并将旧 `span_id` 推入 `parent_span_id`。Phase 1a 可不实现完整 span 树，但字段位应保留以避免后续破坏性变更。
+说明：`span_id` 和 `parent_span_id` 用于在 trace 树中定位当前执行位置。每进入一个新 `NodeAttempt`、tool call 或 LLM call 时，应通过 `withContextPatch` 更新 `span_id` 并将旧 `span_id` 推入 `parent_span_id`。Phase 1a 可不实现完整 span 树，但字段位应保留以避免后续破坏性变更。
 
 ## 4. 传播入口
 
@@ -97,13 +102,18 @@ flowchart TD
 
 不应再由显式参数层层透传的内容：
 
+- `harness_run_id`
+- `node_run_id`
+- `attempt_id`
+- `plan_graph_id`
+- `graph_version`
 - `task_id`
 - `session_id`
 - `agent_id`
 - `trace_id`
 - `division_id`
-- `oapeflir_stage`
-- `loop_iteration`
+- `stage_view_ref`
+- `loop_iteration_view`
 - `knowledge_namespace`
 - `memory_layer`
 - `domain_id`
@@ -112,22 +122,24 @@ flowchart TD
 ## 7. 取消与恢复语义
 
 - 同一上下文快照应关联一个可查询的取消信号引用。
-- 恢复新 execution 时，必须创建新的 `execution_id`，但可复用同一 `task_id / trace_id` lineage。
-- 旧 execution 的 ALS 上下文不得在恢复后继续复用。
+- 恢复新 attempt 时，必须创建新的 `attempt_id`；若发生节点级恢复，还必须刷新 `node_run_id` 或其 attempt lineage，同时保留 `harness_run_id / trace_id` 连续性。
+- 旧 attempt 的 ALS 上下文不得在恢复后继续复用。
 
 ## 8. 观测与审计要求
 
 所有结构化日志、事件和 DB 写入至少要能从上下文中拿到：
 
 - `trace_id`
-- `task_id`
-- `execution_id?`
+- `harness_run_id`
+- `node_run_id?`
+- `attempt_id?`
 - `agent_id?`
 
 规则：
 
 - 若当前操作缺少这些关键字段，应尽早失败，而不是写出无法关联的记录。
 - 审计日志中的 `actor` 与 runtime 上下文字段不得互相冲突。
+- 兼容层若仍读取 `task_id / execution_id`，也必须能从同一快照回链到 `harness_run_id / node_run_id / attempt_id`。
 
 ## 9. Phase 边界
 
@@ -149,7 +161,7 @@ Phase 1a 明确做：
 - 嵌套 async 调用下上下文不丢失
 - 并发任务之间上下文不串线
 - detached 任务若未显式提供上下文会直接失败
-- 恢复 execution 后 `execution_id` 已刷新但 `task_id / trace_id` 保持 lineage 连续
+- 恢复 attempt 后 `attempt_id` 已刷新但 `harness_run_id / trace_id` 保持 lineage 连续
 
 ## 11. 收口结论
 
@@ -160,6 +172,6 @@ Phase 1a 明确做：
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-18: RuntimeContextSnapshot 携带 task_id/execution_id/workflow_id，缺少v4.3规范标识：harnessRunId/nodeRunId/planGraphId/graphVersion/attemptId。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-18: 本文原先把 `task_id / execution_id / workflow_id` 作为 ALS 主身份，根因是上下文 contract 直接复用了旧 gateway/runtime 参数透传模型，没有随 `HarnessRun / NodeRun / PlanGraphBundle / NodeAttempt` 的真相模型升级。修复：正文现把 `harness_run_id / node_run_id / attempt_id / plan_graph_id / graph_version` 提升为快照主键，旧字段只保留为兼容查询入口。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

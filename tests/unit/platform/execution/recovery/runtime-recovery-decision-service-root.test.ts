@@ -8,8 +8,8 @@ import {
   type RecoveryDecisionApplyResult,
 } from "../../../../../src/platform/execution/recovery/runtime-recovery-decision-service-root.js";
 import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/execution/recovery/runtime-recovery-service-root.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/state-evidence/truth/authoritative-task-store.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // Mock database
 function createMockDb() {

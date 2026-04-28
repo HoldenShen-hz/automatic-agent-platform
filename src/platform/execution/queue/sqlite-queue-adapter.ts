@@ -138,7 +138,7 @@ export class SqliteQueueAdapter implements QueueAdapter {
       .prepare(`UPDATE queue_jobs SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = ? WHERE id = ? AND status IN ('failed', 'dead_letter')`)
       .run(now, jobId);
     if (Number(result.changes ?? 0) === 0) {
-      return null;
+      return this.getJob(jobId);
     }
     return this.getJob(jobId);
   }

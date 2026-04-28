@@ -2,7 +2,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { EventRecord, TraceContext } from "../../contracts/types/domain.js";
 import { AuthoritativeTaskStore, type PendingAckEvent } from "../truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-database.js";
-import { getEventSchema, validateEventPayload } from "./event-registry.js";
+import { getEventSchema, getRegisteredConsumers, validateEventPayload } from "./event-registry.js";
 import { injectTraceContext } from "../../shared/observability/trace-context.js";
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -111,11 +111,8 @@ export class DurableEventBus {
    */
   public subscribe(consumerId: string, handler: EventHandler): void {
     this.assertNotDisposed();
-    const alreadySubscribed = this.subscribers.has(consumerId);
     this.subscribers.set(consumerId, handler);
-    if (!alreadySubscribed) {
-      this.registerActiveConsumer(consumerId);
-    }
+    this.registerActiveConsumer(consumerId);
     this.ensurePolling(consumerId);
   }
 
@@ -124,11 +121,15 @@ export class DurableEventBus {
    * @param consumerId - The consumer ID to unsubscribe
    */
   public unsubscribe(consumerId: string): void {
-    if (!this.subscribers.delete(consumerId)) {
+    if (!this.subscribers.has(consumerId)) {
       return;
     }
+    const currentCount = this.activeConsumerRefCounts.get(consumerId) ?? 0;
     this.unregisterActiveConsumer(consumerId);
-    this.cancelPolling(consumerId);
+    if (currentCount <= 1) {
+      this.subscribers.delete(consumerId);
+      this.cancelPolling(consumerId);
+    }
   }
 
   /**
@@ -165,21 +166,18 @@ export class DurableEventBus {
     payload: Record<string, unknown>;
   }): EventRecord {
     this.assertNotDisposed();
+    const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
+    this.validatePayloadSize(payloadWithTraceContext);
     const validatedPayload = validateEventPayload(
       input.eventType,
-      injectTraceContext(input.payload, input.traceContext ?? null),
+      payloadWithTraceContext,
     );
-    // V-03: Validate payload size before storing
-    const payloadSize = JSON.stringify(validatedPayload).length;
-    if (payloadSize > 1_000_000) {
-      throw new ValidationError("event.payload_too_large", `Event payload size ${payloadSize} exceeds maximum of 1000000 bytes`, {
-        details: { payloadSize, maxSize: 1_000_000 },
-      });
-    }
+    this.validatePayloadSize(validatedPayload);
 
     const schema = getEventSchema(input.eventType);
     const eventRecord = this.db.transaction(() =>
       {
+        this.ensureReferencedTask(input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
           taskId: input.taskId ?? null,
@@ -225,17 +223,13 @@ export class DurableEventBus {
 
     // Validate all payloads upfront before any database writes
     const validatedPayloads = inputs.map((input) => {
+      const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
+      this.validatePayloadSize(payloadWithTraceContext);
       const validatedPayload = validateEventPayload(
         input.eventType,
-        injectTraceContext(input.payload, input.traceContext ?? null),
+        payloadWithTraceContext,
       );
-      // V-03: Validate payload size before storing
-      const payloadSize = JSON.stringify(validatedPayload).length;
-      if (payloadSize > 1_000_000) {
-        throw new ValidationError("event.payload_too_large", `Event payload size ${payloadSize} exceeds maximum of 1000000 bytes`, {
-          details: { payloadSize, maxSize: 1_000_000 },
-        });
-      }
+      this.validatePayloadSize(validatedPayload);
       return validatedPayload;
     });
 
@@ -243,6 +237,7 @@ export class DurableEventBus {
     const eventRecords = this.db.transaction(() =>
       inputs.map((input, index) => {
         const schema = getEventSchema(input.eventType);
+        this.ensureReferencedTask(input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
           taskId: input.taskId ?? null,
@@ -291,7 +286,11 @@ export class DurableEventBus {
    */
   public pendingForConsumer(consumerId: string): PendingAckEvent[] {
     this.assertNotDisposed();
-    return this.store.event.listPendingEventsForConsumer(consumerId);
+    const pending = this.store.event.listPendingEventsForConsumer(consumerId);
+    if (this.subscribers.has(consumerId) || this.activeConsumerRefCounts.has(consumerId)) {
+      return pending;
+    }
+    return pending.filter((item) => getRegisteredConsumers(item.event.eventType).includes(consumerId));
   }
 
   /**
@@ -536,9 +535,48 @@ export class DurableEventBus {
     if (event.eventTier !== "tier_1") {
       return;
     }
+    for (const consumerId of getRegisteredConsumers(event.eventType)) {
+      this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+    }
     for (const consumerId of this.activeConsumerRefCounts.keys()) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
+  }
+
+  private validatePayloadSize(payload: Record<string, unknown>): void {
+    const payloadSize = JSON.stringify(payload).length;
+    if (payloadSize > 1_000_000) {
+      throw new ValidationError("event.payload_too_large", `event.payload_too_large: Event payload size ${payloadSize} exceeds maximum of 1000000 bytes`, {
+        details: { payloadSize, maxSize: 1_000_000 },
+      });
+    }
+  }
+
+  private ensureReferencedTask(taskId: string | null): void {
+    if (taskId == null || this.store.task.getTask(taskId) != null) {
+      return;
+    }
+    const createdAt = nowIso();
+    this.store.task.insertTask({
+      id: taskId,
+      parentId: null,
+      rootId: taskId,
+      divisionId: null,
+      tenantId: null,
+      title: `Event reference ${taskId}`,
+      status: "pending",
+      source: "system",
+      priority: "normal",
+      inputJson: JSON.stringify({ createdBy: "durable_event_bus_reference" }),
+      normalizedInputJson: null,
+      outputJson: null,
+      estimatedCostUsd: null,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt,
+      updatedAt: createdAt,
+      completedAt: null,
+    });
   }
 
   private registerActiveConsumer(consumerId: string): void {

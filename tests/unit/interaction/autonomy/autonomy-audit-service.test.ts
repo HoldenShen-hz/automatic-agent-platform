@@ -32,14 +32,14 @@ function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProf
   };
 }
 
-test("ProgressiveAutonomyService promotes highly reliable capability to full_auto", () => {
+test("ProgressiveAutonomyService promotes highly reliable capability to semi_auto under engineering_ops guardrails", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile());
 
-  assert.equal(evaluation.decision.level, "full_auto");
+  assert.equal(evaluation.decision.level, "semi_auto");
   assert.equal(evaluation.decision.trustLevel, "fully_trusted");
-  assert.equal(evaluation.capabilityLevels.deploy, "full_auto");
-  assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.promoted");
+  assert.equal(evaluation.capabilityLevels.deploy, "semi_auto");
+  assert.equal(evaluation.changeEvents.length, 0);
 });
 
 test("ProgressiveAutonomyService demotes risky capability to suggestion", () => {

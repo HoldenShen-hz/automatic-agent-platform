@@ -12,8 +12,8 @@ import {
   buildInterfacePlaneBootstrap,
   registerInterfacePlaneBootstrap,
   type InterfacePlaneBootstrap,
-} from "../../../../../src/platform/interface/interface-plane-bootstrap.js";
-import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
+} from "../../../../src/platform/interface/interface-plane-bootstrap.js";
+import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 test("INTERFACE_PLANE_CATALOG_SERVICE_ID has correct value", () => {
   assert.equal(INTERFACE_PLANE_CATALOG_SERVICE_ID, "plane.interface.catalog");

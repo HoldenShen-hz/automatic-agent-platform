@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadDispatchReconcileCliEnv } from "../../../../../src/platform/control-plane/config-center/ops-cli-env.js";
+import { loadDispatchReconcileCliEnv } from "../../../../src/platform/control-plane/config-center/ops-cli-env.js";
 
 // ---------------------------------------------------------------------------
 // Tests for DispatchReconcileCliEnvConfig interface

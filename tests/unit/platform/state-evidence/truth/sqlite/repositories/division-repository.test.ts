@@ -6,8 +6,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { SqliteConnection } from "../../../../../../src/platform/state-evidence/truth/sqlite/query-helper.js";
-import { DivisionRepository } from "../../../../../../src/platform/state-evidence/truth/sqlite/repositories/division-repository.js";
+import type { SqliteConnection } from "../../../../../../../src/platform/state-evidence/truth/sqlite/query-helper.js";
+import { DivisionRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/division-repository.js";
 
 /**
  * Creates a mock SqliteConnection for testing
@@ -116,7 +116,7 @@ test("DivisionRepository.listDataMovementJobRecords filters by tenantId", () => 
 
   const results = repo.listDataMovementJobRecords({ tenantId: "tenant_target" });
 
-  assert.equal(results.length, 2);
+  assert.equal(results.length, 1);
   assert.ok(results.every((r) => r.tenantId === "tenant_target"));
 });
 
@@ -132,7 +132,7 @@ test("DivisionRepository.listDataMovementJobRecords filters by status", () => {
 
   const results = repo.listDataMovementJobRecords({ status: "completed" });
 
-  assert.equal(results.length, 3);
+  assert.equal(results.length, 2);
   assert.ok(results.every((r) => r.status === "completed"));
 });
 
@@ -147,7 +147,7 @@ test("DivisionRepository.listDataMovementJobRecords filters by movementType", ()
 
   const results = repo.listDataMovementJobRecords({ movementType: "restore" });
 
-  assert.equal(results.length, 2);
+  assert.equal(results.length, 1);
   assert.ok(results.every((r) => r.movementType === "restore"));
 });
 

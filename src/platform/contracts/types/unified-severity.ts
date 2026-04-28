@@ -34,7 +34,7 @@ export const UNIFIED_SEVERITY_SLA: Record<UnifiedSeverity, UnifiedSeveritySla> =
 export type ObservabilitySeverity = "info" | "warning" | "critical" | "emergency";
 export type AlertingSeverity = "info" | "warning" | "critical" | "page";
 export type RunbookSeverity = "P0" | "P1" | "P2" | "P3";
-export type DiagnosticSeverity = "info" | "warning" | "critical";
+export type DiagnosticSeverity = "info" | "warning" | "critical" | "emergency";
 
 export function anomalySeverityToUnifiedSeverity(severity: ObservabilitySeverity): UnifiedSeverity {
   switch (severity) {
@@ -80,6 +80,8 @@ export function runbookSeverityToUnifiedSeverity(severity: RunbookSeverity): Uni
 
 export function diagnosticSeverityToUnifiedSeverity(severity: DiagnosticSeverity): UnifiedSeverity {
   switch (severity) {
+    case "emergency":
+      return "SEV1";
     case "critical":
       return "SEV2";
     case "warning":
@@ -89,4 +91,3 @@ export function diagnosticSeverityToUnifiedSeverity(severity: DiagnosticSeverity
       return "SEV4";
   }
 }
-

@@ -45,17 +45,17 @@ test("knowledge-boundary index exports KnowledgeBoundaryService", () => {
 });
 
 test("knowledge-boundary index exports from boundary-manager", () => {
-  assert.ok(knowledgeBoundaryIndex.forensicSnapshot !== undefined);
+  assert.ok(knowledgeBoundaryIndex.KnowledgeBoundarySchema !== undefined);
 });
 
 test("sso-scim index exports identity-sync-service", () => {
-  assert.ok(ssoScimIndex.identitySyncService !== undefined);
+  assert.ok(ssoScimIndex.IdentitySyncService !== undefined);
 });
 
 test("sso-scim index exports from oidc", () => {
-  assert.ok(ssoScimIndex.OidcService !== undefined);
+  assert.ok(ssoScimIndex.OidcIdentityService !== undefined);
 });
 
 test("sso-scim index exports from scim-sync", () => {
-  assert.ok(ssoScimIndex.ScimService !== undefined);
+  assert.ok(ssoScimIndex.ScimProvisionService !== undefined);
 });

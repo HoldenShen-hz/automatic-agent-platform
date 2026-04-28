@@ -66,10 +66,14 @@ interface ServiceRegistration<T> {
 export class ServiceRegistry {
   private static _instance: ServiceRegistry | null = null;
   private static readonly bootstrapRegistrars = new Map<string, (registry: ServiceRegistry) => void>();
+  private static readonly liveRegistries = new Set<ServiceRegistry>();
   private readonly services = new Map<string, ServiceRegistration<unknown>>();
   private readonly instances = new Map<string, unknown>();
+  private readonly initializing = new Set<string>();
 
-  public constructor() {}
+  public constructor() {
+    ServiceRegistry.liveRegistries.add(this);
+  }
 
   /**
    * Gets the singleton registry instance.
@@ -89,7 +93,13 @@ export class ServiceRegistry {
    */
   public static registerBootstrap(name: string, registrar: (registry: ServiceRegistry) => void): void {
     ServiceRegistry.bootstrapRegistrars.set(name, registrar);
-    registrar(ServiceRegistry.getInstance());
+    if (ServiceRegistry.liveRegistries.size === 0) {
+      registrar(ServiceRegistry.getInstance());
+      return;
+    }
+    for (const registry of ServiceRegistry.liveRegistries) {
+      registrar(registry);
+    }
   }
 
   /**
@@ -98,19 +108,32 @@ export class ServiceRegistry {
    * then resets the singleton so the next getInstance() returns a fresh registry.
    */
   public async reset(): Promise<void> {
-    for (const [name, instance] of this.instances) {
-      const registration = this.services.get(name);
+    const teardownEntries = [...this.instances].map(([name, instance]) => ({
+      name,
+      instance,
+      registration: this.services.get(name),
+    }));
+    this.instances.clear();
+    this.services.clear();
+    this.initializing.clear();
+    ServiceRegistry._instance = null;
+
+    const pending: Promise<void>[] = [];
+    for (const { name, instance, registration } of teardownEntries) {
       if (registration?.teardown) {
         try {
-          await registration.teardown(instance);
+          const result = registration.teardown(instance);
+          if (result instanceof Promise) {
+            pending.push(result.catch((err: unknown) => {
+              logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+            }));
+          }
         } catch (err) {
           logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
         }
       }
     }
-    this.instances.clear();
-    this.services.clear();
-    ServiceRegistry._instance = null;
+    await Promise.all(pending);
   }
 
   /**
@@ -119,6 +142,9 @@ export class ServiceRegistry {
    * @param registration - Object with init and optional teardown functions
    */
   public register<T>(name: string, registration: ServiceRegistration<T>): void {
+    if (!this.instances.has(name)) {
+      this.instances.delete(name);
+    }
     this.services.set(name, registration as ServiceRegistration<unknown>);
   }
 
@@ -141,13 +167,20 @@ export class ServiceRegistry {
     // Already initialized - return cached
     const cached = this.instances.get(name) as T | undefined;
     if (cached !== undefined) return cached;
+    if (this.initializing.has(name)) {
+      throw new InternalAppError(
+        "service_registry.circular_dependency",
+        `service_registry.circular_dependency: ServiceRegistry is already initializing "${name}"`,
+        { source: "internal", details: { serviceName: name } },
+      );
+    }
 
     // Not registered
     const registration = this.services.get(name);
     if (!registration) {
       throw new InternalAppError(
         "service_registry.not_registered",
-        `ServiceRegistry: no service registered with name "${name}"`,
+        `service_registry.not_registered: ServiceRegistry: no service registered with name "${name}"`,
         { source: "internal", details: { serviceName: name } },
       );
     }
@@ -157,7 +190,7 @@ export class ServiceRegistry {
       visiting.add(name);
       try {
         for (const dep of registration.dependsOn) {
-          if (this.services.has(dep)) {
+          if (this.services.has(dep) && !visiting.has(dep)) {
             this.getRecursive(dep, visiting);
           }
         }
@@ -167,9 +200,14 @@ export class ServiceRegistry {
     }
 
     // Initialize this service and cache
-    const instance = registration.init() as T;
-    this.instances.set(name, instance);
-    return instance;
+    this.initializing.add(name);
+    try {
+      const instance = registration.init() as T;
+      this.instances.set(name, instance);
+      return instance;
+    } finally {
+      this.initializing.delete(name);
+    }
   }
 
   /**
@@ -195,6 +233,7 @@ export class ServiceRegistry {
     // Get services in reverse topological order (dependents first)
     const sorted = this.topologicalSort();
     const reversed = [...sorted].reverse();
+    const pending: Promise<void>[] = [];
 
     for (const name of reversed) {
       const instance = this.instances.get(name);
@@ -202,7 +241,12 @@ export class ServiceRegistry {
         const registration = this.services.get(name);
         if (registration?.teardown) {
           try {
-            await registration.teardown(instance);
+            const result = registration.teardown(instance);
+            if (result instanceof Promise) {
+              pending.push(result.catch((err: unknown) => {
+                logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+              }));
+            }
           } catch (err) {
             logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
           }
@@ -210,6 +254,7 @@ export class ServiceRegistry {
       }
     }
     this.instances.clear();
+    await Promise.all(pending);
   }
 
   /**

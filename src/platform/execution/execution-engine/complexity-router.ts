@@ -65,6 +65,11 @@ export function routeComplexity(
 ): ComplexityRouteResult {
   const config = { ...DEFAULT_CONFIG, ...options?.config };
   const title = taskTitle.toLowerCase();
+  const hasPositiveStepCount = (options?.stepCount ?? 0) > 0;
+  const isSingleTokenShortInput =
+    taskTitle.length <= config.passthroughMaxChars
+    && !hasPositiveStepCount
+    && !/\s/.test(taskTitle.trim());
 
   // QA mode always routes to full
   if (options?.qaMode && config.qaModeForceFull) {
@@ -97,16 +102,6 @@ export function routeComplexity(
     };
   }
 
-  // Very short input → passthrough
-  if (taskTitle.length <= config.passthroughMaxChars && !options?.stepCount) {
-    return {
-      path: "passthrough",
-      reason: "short_input",
-      estimatedBudgetFactor: 0.1,
-      routedAt: nowIso(),
-    };
-  }
-
   // High token estimate → full
   if ((options?.estimatedTokens ?? 0) > 50000) {
     return {
@@ -127,6 +122,16 @@ export function routeComplexity(
         routedAt: nowIso(),
       };
     }
+  }
+
+  // Very short single-token input → passthrough
+  if (isSingleTokenShortInput) {
+    return {
+      path: "passthrough",
+      reason: "short_input",
+      estimatedBudgetFactor: 0.1,
+      routedAt: nowIso(),
+    };
   }
 
   // Check fast-path keywords

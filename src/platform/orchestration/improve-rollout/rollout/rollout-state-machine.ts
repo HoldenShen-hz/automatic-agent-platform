@@ -35,8 +35,8 @@ export class RolloutStateMachine {
     nextLevel: RolloutLevel,
     options: RolloutTransitionOptions = {},
   ): RolloutRecord {
-    const currentStatus = options.currentStatus ?? inferCurrentStatus(candidate);
-    const targetStatus = options.targetStatus ?? inferStatusFromLevel(nextLevel);
+    const currentStatus = options.currentStatus ?? inferCurrentStatus(candidate, nextLevel);
+    const targetStatus = options.targetStatus ?? inferStatusFromLevel(nextLevel, currentStatus);
     const allowedTransitions = ROLLOUT_TRANSITIONS[currentStatus] ?? [];
     if (!allowedTransitions.includes(targetStatus)) {
       throw new Error(`Invalid rollout transition: ${currentStatus} -> ${targetStatus}`);
@@ -57,12 +57,15 @@ export class RolloutStateMachine {
   }
 }
 
-function inferCurrentStatus(candidate: ImprovementCandidate): RolloutStatus {
+function inferCurrentStatus(candidate: ImprovementCandidate, nextLevel: RolloutLevel): RolloutStatus {
   switch (candidate.status) {
     case "approved":
-      return "pending_approval";
+      if (nextLevel === "off") {
+        return "stable";
+      }
+      return inferPreviousStatusFromLevel(nextLevel, "pending_approval");
     case "shadow_running":
-      return "shadow";
+      return inferPreviousStatusFromLevel(nextLevel, "shadow");
     case "rejected":
       return "rejected";
     case "rolled_back":
@@ -72,10 +75,10 @@ function inferCurrentStatus(candidate: ImprovementCandidate): RolloutStatus {
   }
 }
 
-function inferStatusFromLevel(level: RolloutLevel): RolloutStatus {
+function inferStatusFromLevel(level: RolloutLevel, currentStatus: RolloutStatus): RolloutStatus {
   switch (level) {
     case "off":
-      return "draft";
+      return currentStatus === "draft" ? "rejected" : "rolled_back";
     case "suggest":
       return "pending_approval";
     case "shadow":
@@ -90,6 +93,27 @@ function inferStatusFromLevel(level: RolloutLevel): RolloutStatus {
       return "partial_75";
     case "stable":
       return "stable";
+  }
+}
+
+function inferPreviousStatusFromLevel(level: RolloutLevel, fallback: RolloutStatus): RolloutStatus {
+  switch (level) {
+    case "off":
+      return fallback;
+    case "suggest":
+      return "draft";
+    case "shadow":
+      return fallback === "pending_approval" ? "pending_approval" : "draft";
+    case "canary_5":
+      return "shadow";
+    case "partial_25":
+      return "canary_5";
+    case "partial_50":
+      return "partial_25";
+    case "partial_75":
+      return "partial_50";
+    case "stable":
+      return "partial_75";
   }
 }
 

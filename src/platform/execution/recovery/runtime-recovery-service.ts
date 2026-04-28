@@ -137,6 +137,21 @@ export interface RuntimeRecoveryCandidate {
   suggestedAction: RecoverySuggestedAction;
 }
 
+export interface LegacyRecoveryCandidate extends RuntimeRecoveryCandidate {
+  errorClassification: "E7" | "E8" | "EC" | "unknown";
+}
+
+export interface LegacyRecoveryCandidateQuery {
+  includeStatuses?: RuntimeRecoveryRecord["status"][];
+  divisionId?: string | null;
+  tenantId?: string | null;
+}
+
+export interface LegacyStaleExecutionQuery {
+  stalenessThresholdMs?: number;
+  tenantId?: string | null;
+}
+
 /**
  * Comprehensive recovery view for a single task, including all its
  * execution candidates, pending approvals, dead letters, and recent
@@ -257,6 +272,34 @@ export class RuntimeRecoveryService {
    */
   public listStaleRuns(staleBefore: string, tenantId?: string | null): RuntimeRecoveryCandidate[] {
     return this.store.operations.listStaleRuns(staleBefore, tenantId).map((record) => toCandidate(record, "stale_execution", this.config));
+  }
+
+  public findRecoveryCandidates(query: LegacyRecoveryCandidateQuery = {}): LegacyRecoveryCandidate[] {
+    const statuses = query.includeStatuses?.length ? query.includeStatuses : ["created", "prechecking", "executing", "blocked", "failed"];
+    const whereParts = [`e.status IN (${statuses.map(() => "?").join(", ")})`];
+    const params: string[] = [...statuses];
+
+    if (query.divisionId !== undefined) {
+      if (query.divisionId == null) {
+        whereParts.push("t.division_id IS NULL");
+      } else {
+        whereParts.push("t.division_id = ?");
+        params.push(query.divisionId);
+      }
+    }
+
+    return this.store.operations
+      .listRuntimeRecoveryRecords(whereParts.join(" AND "), params)
+      .map((record) => toLegacyCandidate(record, inferReason(record), this.config));
+  }
+
+  public findStaleExecuting(query: LegacyStaleExecutionQuery = {}): LegacyRecoveryCandidate[] {
+    const thresholdMs = Math.max(0, query.stalenessThresholdMs ?? this.config.staleExecutionThresholdMs);
+    const staleBefore = new Date(Date.now() + thresholdMs).toISOString();
+    return this.listStaleRuns(staleBefore, query.tenantId).map((candidate) => ({
+      ...candidate,
+      errorClassification: classifyLegacyError(candidate.latestErrorCode),
+    }));
   }
 
   /**
@@ -427,6 +470,52 @@ function toCandidate(record: RuntimeRecoveryRecord, reason: string, config: Exce
     reason,
     suggestedAction: inferSuggestedAction(record, reason, config),
   };
+}
+
+function toLegacyCandidate(
+  record: RuntimeRecoveryRecord,
+  reason: string,
+  config: ExceptionRecoveryConfig,
+): LegacyRecoveryCandidate {
+  const candidate = toCandidate(record, reason, config);
+  const errorClassification = classifyLegacyError(record.latestErrorCode);
+  return {
+    ...candidate,
+    errorClassification,
+    suggestedAction: inferLegacySuggestedAction(candidate, errorClassification),
+  };
+}
+
+function classifyLegacyError(errorCode: string | null): LegacyRecoveryCandidate["errorClassification"] {
+  if (errorCode?.startsWith("E7")) {
+    return "E7";
+  }
+  if (errorCode?.startsWith("E8")) {
+    return "E8";
+  }
+  if (errorCode?.startsWith("EC")) {
+    return "EC";
+  }
+  return "unknown";
+}
+
+function inferLegacySuggestedAction(
+  candidate: RuntimeRecoveryCandidate,
+  errorClassification: LegacyRecoveryCandidate["errorClassification"],
+): RecoverySuggestedAction {
+  if (candidate.suggestedAction === "move_dead_letter" || candidate.suggestedAction === "cancel") {
+    return candidate.suggestedAction;
+  }
+  if (errorClassification === "E7") {
+    return "retry_new_ticket";
+  }
+  if (errorClassification === "E8") {
+    return "escalate_takeover";
+  }
+  if (errorClassification === "EC" && candidate.attempt <= 1) {
+    return "resume_same_worker";
+  }
+  return candidate.suggestedAction;
 }
 
 /**

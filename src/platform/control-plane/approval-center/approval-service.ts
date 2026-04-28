@@ -35,6 +35,7 @@
  */
 
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { ApprovalRecord } from "../../contracts/types/domain.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import {
   createRuntimeLifecycleRepository,
@@ -52,6 +53,7 @@ import { ValidationError } from "../../contracts/errors.js";
  */
 export interface ApprovalRequest {
   approvalId: string;
+  status?: "pending";
   taskId: string;
   executionId?: string | null;
   sourceAgentId: string;
@@ -84,6 +86,22 @@ export interface ApprovalDecision {
   respondedBy: string;
   /** ISO timestamp when decision was made */
   respondedAt: string;
+}
+
+export interface LegacyApprovalResolutionInput {
+  approvalId: string;
+  decision: "approve" | "approved" | "reject" | "rejected";
+  resolvedBy: string;
+  resolutionReason?: string;
+}
+
+export interface LegacyApprovalView {
+  approvalId: string;
+  status: "pending" | "approved" | "rejected" | "expired" | "cancelled";
+  resolvedBy: string | null;
+  resolutionReason: string | null;
+  request: ApprovalRequest;
+  response: ApprovalDecision | null;
 }
 
 interface CascadeDecisionPayload extends ApprovalDecision {
@@ -169,7 +187,7 @@ export class ApprovalService {
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
-    store: AuthoritativeTaskStore,
+    private readonly store: AuthoritativeTaskStore,
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
   ) {
     this.repository = repository;
@@ -186,11 +204,16 @@ export class ApprovalService {
    * @returns The created approval request with generated ID and timestamp
    */
   public createRequest(input: Omit<ApprovalRequest, "approvalId" | "createdAt">): ApprovalRequest {
+    const contextApproverGroups = Array.isArray(input.context.approverGroups)
+      ? input.context.approverGroups.filter((group): group is string => typeof group === "string")
+      : [];
     const approval: ApprovalRequest = {
       approvalId: newId("approval"),
+      status: "pending",
       createdAt: nowIso(),
       ...input,
       executionId: input.executionId ?? null,
+      approverGroups: input.approverGroups ?? contextApproverGroups,
     };
 
     this.db.transaction(() => {
@@ -220,6 +243,39 @@ export class ApprovalService {
     return approval;
   }
 
+  public getApproval(approvalId: string): LegacyApprovalView | null {
+    const record = this.repository.getApproval(approvalId);
+    return record == null ? null : toLegacyApprovalView(record);
+  }
+
+  public resolve(input: LegacyApprovalResolutionInput): LegacyApprovalView {
+    const decision: ApprovalDecision = input.decision === "approve" || input.decision === "approved"
+      ? {
+          approvalId: input.approvalId,
+          decisionType: "confirmed",
+          confirmed: true,
+          respondedBy: input.resolvedBy,
+          respondedAt: nowIso(),
+        }
+      : {
+          approvalId: input.approvalId,
+          decisionType: "rejected",
+          respondedBy: input.resolvedBy,
+          respondedAt: nowIso(),
+        };
+    this.applyDecision(decision);
+    const resolved = this.getApproval(input.approvalId);
+    if (resolved == null) {
+      throw new ValidationError("approval.not_found", `Approval not found: ${input.approvalId}`, {
+        details: { approvalId: input.approvalId },
+      });
+    }
+    return {
+      ...resolved,
+      resolutionReason: input.resolutionReason ?? resolved.resolutionReason,
+    };
+  }
+
   /**
    * Applies a decision to an existing approval request.
    *
@@ -235,7 +291,7 @@ export class ApprovalService {
    * @param decision - The decision to apply
    * @throws Error if decision is invalid or approval not found
    */
-  public applyDecision(decision: ApprovalDecision): void {
+  public applyDecision(decision: ApprovalDecision): ApprovalDecision {
     validateApprovalDecision(decision);
     this.db.transaction(() => {
       const existing = this.repository.getApproval(decision.approvalId);
@@ -335,6 +391,39 @@ export class ApprovalService {
           }
         }
       }
+
+      this.applyExecutionEffect(existing.executionId, nextStatus, decision.respondedAt);
     });
+    return decision;
   }
+
+  private applyExecutionEffect(
+    executionId: string | null,
+    approvalStatus: "approved" | "rejected" | "expired",
+    occurredAt: string,
+  ): void {
+    if (executionId == null || (approvalStatus !== "rejected" && approvalStatus !== "expired")) {
+      return;
+    }
+
+    const execution = this.store.execution.getExecution(executionId);
+    if (!execution || execution.status !== "blocked") {
+      return;
+    }
+
+    this.repository.updateExecutionStatus(executionId, "cancelled", occurredAt, execution.startedAt, occurredAt, "approval.denied");
+  }
+}
+
+function toLegacyApprovalView(record: ApprovalRecord): LegacyApprovalView {
+  const request = parseApprovalRequest(record.requestJson);
+  const response = record.responseJson == null ? null : JSON.parse(record.responseJson) as ApprovalDecision;
+  return {
+    approvalId: record.id,
+    status: record.status === "requested" ? "pending" : record.status,
+    resolvedBy: response?.respondedBy ?? null,
+    resolutionReason: null,
+    request,
+    response,
+  };
 }

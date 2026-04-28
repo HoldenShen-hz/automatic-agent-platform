@@ -45,6 +45,7 @@ test("StrategyLearningService.learnSync processes mixed signal types", () => {
         taskId: "task-sls-mixed",
         learningType: "user_correction",
         valueSummary: "User corrected the approach",
+        confidence: 0.95,
       }),
       makeSignal({
         learningSignalId: "sig-sls-mixed-3",

@@ -35,6 +35,8 @@ import {
   type DelegationFailedEvent,
   type DelegationEvent,
   type DelegationOptions,
+  createDelegationManager,
+  createDelegationTracker,
 } from "../../../../src/platform/agent-delegation/index.js";
 
 test("DelegationManagerService is exported as function", () => {

@@ -16,8 +16,9 @@ import { ApprovalService } from "./approval-service.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { ApprovalRecord } from "../../contracts/types/domain.js";
+import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import type { ApprovalRepository } from "../../state-evidence/truth/sqlite/repositories/approval-repository.js";
+import { ApprovalRepository } from "../../state-evidence/truth/sqlite/repositories/approval-repository.js";
 
 /** Default timeout per policy in milliseconds (24 hours). */
 const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1000;
@@ -35,6 +36,18 @@ export interface ApprovalTimeoutExecutorOptions {
   defaultTimeoutMs?: number;
 }
 
+export interface ApprovalTimeoutExecutionInput {
+  approvalId: string;
+  expiredAt?: string;
+}
+
+export interface ApprovalTimeoutExecutionResult {
+  approvalId: string;
+  status: ApprovalRecord["status"];
+  decisionType: "expired";
+  respondedAt: string;
+}
+
 /**
  * Scans for expired pending approvals and applies their timeout policy.
  *
@@ -48,13 +61,33 @@ export class ApprovalTimeoutExecutor {
   private readonly logger = new StructuredLogger({ retentionLimit: 50 });
   private readonly defaultTimeoutMs: number;
 
+  private readonly approvalService: ApprovalService;
+  private readonly store: AuthoritativeTaskStore;
+  private readonly approvalRepo: ApprovalRepository;
+
   public constructor(
-    private readonly approvalService: ApprovalService,
-    private readonly store: AuthoritativeTaskStore,
-    private readonly approvalRepo: ApprovalRepository,
+    approvalServiceOrDb: ApprovalService | AuthoritativeSqlDatabase,
+    store: AuthoritativeTaskStore,
+    approvalRepoOrOptions?: ApprovalRepository | ApprovalTimeoutExecutorOptions,
     options: ApprovalTimeoutExecutorOptions = {},
   ) {
-    this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+    if (approvalServiceOrDb instanceof ApprovalService) {
+      this.approvalService = approvalServiceOrDb;
+      this.store = store;
+      this.approvalRepo = approvalRepoOrOptions instanceof ApprovalRepository
+        ? approvalRepoOrOptions
+        : (() => {
+          throw new Error("approval_timeout_executor.repository_required");
+        })();
+      this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+      return;
+    }
+
+    this.approvalService = new ApprovalService(approvalServiceOrDb, store);
+    this.store = store;
+    this.approvalRepo = new ApprovalRepository(approvalServiceOrDb.connection);
+    const legacyOptions = approvalRepoOrOptions instanceof ApprovalRepository ? options : approvalRepoOrOptions;
+    this.defaultTimeoutMs = legacyOptions?.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   /**
@@ -125,6 +158,54 @@ export class ApprovalTimeoutExecutor {
     });
 
     return { processed: pendingApprovals.length, rejected, approved, skipped, errors };
+  }
+
+  public executeTimeout(input: ApprovalTimeoutExecutionInput): ApprovalTimeoutExecutionResult {
+    const approval = this.approvalRepo.getApproval(input.approvalId);
+    if (!approval) {
+      throw new Error(`approval.not_found:${input.approvalId}`);
+    }
+
+    const respondedAt = input.expiredAt ?? nowIso();
+    switch (approval.timeoutPolicy) {
+      case "reject":
+        this.approvalService.applyDecision({
+          approvalId: approval.id,
+          decisionType: "expired",
+          respondedBy: "system:timeout_executor",
+          respondedAt,
+        });
+        return {
+          approvalId: approval.id,
+          status: "rejected",
+          decisionType: "expired",
+          respondedAt,
+        };
+
+      case "approve":
+        this.approvalService.applyDecision({
+          approvalId: approval.id,
+          decisionType: "confirmed",
+          confirmed: true,
+          respondedBy: "system:timeout_executor",
+          respondedAt,
+        });
+        return {
+          approvalId: approval.id,
+          status: "approved",
+          decisionType: "expired",
+          respondedAt,
+        };
+
+      case "remain_pending":
+        return {
+          approvalId: approval.id,
+          status: "requested",
+          decisionType: "expired",
+          respondedAt,
+        };
+    }
+    throw new Error(`approval_timeout_executor.unsupported_policy:${approval.timeoutPolicy}`);
   }
 
   /**

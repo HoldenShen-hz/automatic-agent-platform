@@ -89,6 +89,13 @@ export function buildOpenApiDocument() {
       responses: {
         200: {
           description: "Successful response",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+              },
+            },
+          },
         },
       },
     };

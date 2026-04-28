@@ -20,9 +20,9 @@ function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProf
         currentAutonomy: "semi_auto",
         trustScore: 90,
         totalExecutions: 520,
-        successfulExecutions: 516,
-        failedExecutions: 1,
-        humanOverrides: 2,
+        successfulExecutions: 520,
+        failedExecutions: 0,
+        humanOverrides: 0,
         incidents: 0,
         lastIncidentAgeDays: 120,
       },
@@ -41,7 +41,7 @@ test("ProgressiveAutonomyService promotes highly reliable capability to full_aut
   assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.promoted");
 });
 
-test("ProgressiveAutonomyService demotes risky capability to suggestion", () => {
+test("ProgressiveAutonomyService demotes risky capability to suggestion when freeze-on-incident is disabled", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile({
     capabilityScores: [
@@ -57,7 +57,7 @@ test("ProgressiveAutonomyService demotes risky capability to suggestion", () => 
         lastIncidentAgeDays: 1,
       },
     ],
-  }));
+  }), { freezeOnIncident: false });
 
   assert.equal(evaluation.decision.level, "suggestion");
   assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.demoted");

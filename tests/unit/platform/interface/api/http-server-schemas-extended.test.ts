@@ -45,14 +45,14 @@ test("parseGatewayWebhookPayload rejects dangerous keys", () => {
   obj["constructor"] = "dangerous";
   assert.throws(
     () => parseGatewayWebhookPayload(obj),
-    (err: unknown) => (err as { code?: string }).code === "api.invalid_gateway_webhook_payload:payload"
+    (err: unknown) => (err as { code?: string }).code === "api.dangerous_key"
   );
 });
 
 test("parseGatewayWebhookPayload rejects nested dangerous keys", () => {
   assert.throws(
     () => parseGatewayWebhookPayload({ nested: { "constructor": "dangerous" } }),
-    (err: unknown) => (err as { code?: string }).code === "api.invalid_gateway_webhook_payload:payload"
+    (err: unknown) => (err as { code?: string }).code === "api.dangerous_key"
   );
 });
 

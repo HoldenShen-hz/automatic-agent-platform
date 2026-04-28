@@ -6,9 +6,9 @@ import {
   RuntimeRepairService,
   type RepairExecutionResult,
 } from "../../../../../src/platform/execution/recovery/runtime-repair-service-root.js";
-import type { RepairAction, StartupConsistencyReport } from "../../../../../src/startup/startup-consistency-checker.js";
-import type { AuthoritativeSqlDatabase } from "../../../../../src/state-evidence/truth/authoritative-sql-database.js";
-import type { AuthoritativeTaskStore } from "../../../../../src/state-evidence/truth/authoritative-task-store.js";
+import type { RepairAction, StartupConsistencyReport } from "../../../../../src/platform/execution/startup/startup-consistency-checker.js";
+import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
 // Mock database
 function createMockDb() {

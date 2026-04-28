@@ -144,9 +144,10 @@ export type DiagnosticWarningCategory =
   | "provider"
   | "dispatch"
   | "remote_authority"
-  | "other";
+  | "other"
+  | (string & {});
 
-export type DiagnosticWarningSeverity = "info" | "warning" | "critical";
+export type DiagnosticWarningSeverity = "info" | "warning" | "critical" | "emergency";
 
 export type DiagnosticWarningEscalation = "none" | "task" | "operator";
 
@@ -585,7 +586,7 @@ export function selectRemoteTimelineEntries(entries: IncidentTimelineEntry[]): I
       return entry.title.startsWith("worker:") || entry.title === "lease:handover_recorded";
     }
     return false;
-  });
+  }).sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
 }
 
 export function extractRemoteWorkerIds(entries: IncidentTimelineEntry[]): string[] {
@@ -720,6 +721,9 @@ export function classifyDiagnosticWarning(code: string): Pick<DiagnosticWarningS
 
   if (code.startsWith("provider:")) {
     const providerHealth = code.slice("provider:".length);
+    if (providerHealth === "outage") {
+      return { category: "provider", severity: "emergency", escalation: "operator" };
+    }
     if (providerHealth === "failed") {
       return { category: "provider", severity: "critical", escalation: "operator" };
     }
@@ -754,7 +758,15 @@ export function classifyDiagnosticWarning(code: string): Pick<DiagnosticWarningS
     return { category: "runtime", severity: "warning", escalation: "task" };
   }
 
-  return { category: "other", severity: "warning", escalation: "task" };
+  const parts = code.split(":");
+  if (parts.length >= 3 && parts[1] != null && parts[1].length > 0) {
+    return { category: parts[1], severity: "warning", escalation: "task" };
+  }
+  if (parts.length >= 2) {
+    return { category: "other", severity: "warning", escalation: "task" };
+  }
+
+  return { category: "runtime", severity: "warning", escalation: "task" };
 }
 
 export function resolveHighestWarningSeverity(entries: DiagnosticWarningSummaryEntry[]): DiagnosticWarningSeverity {
@@ -772,6 +784,8 @@ export function resolveHighestWarningSeverity(entries: DiagnosticWarningSummaryE
 
 export function warningSeverityRank(severity: DiagnosticWarningSeverity): number {
   switch (severity) {
+    case "emergency":
+      return 4;
     case "critical":
       return 3;
     case "warning":

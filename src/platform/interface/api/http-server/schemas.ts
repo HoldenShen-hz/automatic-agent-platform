@@ -80,7 +80,11 @@ const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 function checkDangerousKeys(obj: unknown, path: string[] = []): void {
   if (typeof obj !== "object" || obj === null) return;
-  for (const key of Object.keys(obj)) {
+  const prototype = Object.getPrototypeOf(obj);
+  if (prototype !== Object.prototype && prototype !== null && path.length === 0) {
+    throw new ApiError(400, "api.dangerous_key", "Reserved key: __proto__");
+  }
+  for (const key of Object.getOwnPropertyNames(obj)) {
     if (DANGEROUS_KEYS.has(key)) {
       throw new ApiError(400, "api.dangerous_key", `Reserved key: ${key}`);
     }
@@ -198,6 +202,7 @@ export interface GatewaySendPayload {
 }
 
 export function parseGatewaySendPayload(body: unknown): GatewaySendPayload {
+  checkDangerousKeys(body);
   const payload = parseWithApiSchema(
     gatewaySendPayloadSchema,
     body,
@@ -214,6 +219,7 @@ export function parseGatewaySendPayload(body: unknown): GatewaySendPayload {
 }
 
 export function parseGatewayWebhookPayload(body: unknown): Record<string, unknown> {
+  checkDangerousKeys(body);
   return parseWithApiSchema(
     gatewayWebhookPayloadSchema,
     body,

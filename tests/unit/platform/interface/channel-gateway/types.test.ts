@@ -11,7 +11,7 @@ import type {
   GatewayDeliveryReceipt,
   GatewayRetryQueueSummary,
   TrackedGatewayDeliveryPayload,
-} from "../../../../src/platform/interface/channel-gateway/types.js";
+} from "../../../../../src/platform/interface/channel-gateway/types.js";
 
 test("channel-gateway/types: TelegramGatewayConfig structure", () => {
   const config: TelegramGatewayConfig = {

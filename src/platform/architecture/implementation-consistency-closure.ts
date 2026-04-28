@@ -17,6 +17,11 @@ export type AuditClosureMode =
   | "compatibility_projection"
   | "release_gate";
 
+export type AuditReviewStatus =
+  | "unresolved"
+  | "verified_fixed"
+  | "verified_not_fixed";
+
 export interface AuditClosureRange {
   readonly prefix: "C" | "T" | "A" | "G" | "O" | "S" | "M" | "F" | "I" | "D";
   readonly from: number;
@@ -29,11 +34,21 @@ export interface AuditClosureRange {
 export interface AuditClosureRecord {
   readonly issueId: string;
   readonly category: AuditClosureCategory;
-  readonly status: "fixed";
+  readonly reviewStatus: AuditReviewStatus;
   readonly closureMode: AuditClosureMode;
-  readonly evidenceRefs: readonly string[];
+  readonly historicalEvidenceRefs: readonly string[];
 }
 
+/**
+ * Historical audit index only.
+ *
+ * The previous version of this file was incorrectly used as a blanket "all fixed"
+ * closure registry. In reality, these ranges only prove issue-id coverage and
+ * area-level evidence roots. They do not prove item-level remediation.
+ *
+ * Until each issue receives direct, issue-specific evidence and a real code or
+ * document fix, every row remains unresolved.
+ */
 export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRange[] = [
   {
     prefix: "C",
@@ -72,7 +87,6 @@ export const IMPLEMENTATION_CONSISTENCY_CLOSURE_RANGES: readonly AuditClosureRan
       "docs_zh/adr/110-runtime-state-machine-authority.md",
       "docs_zh/adr/111-platform-fact-vs-oapeflir-view-events.md",
       "docs_zh/adr/112-mvp-ring-implementation-boundary.md",
-      "docs_zh/adr/113-architecture-implementation-audit-supersession.md",
       "docs_zh/adr/README.md",
     ],
   },
@@ -189,9 +203,9 @@ export function expandAuditClosureRecords(
       records.push({
         issueId: `${range.prefix}-${index}`,
         category: range.category,
-        status: "fixed",
+        reviewStatus: "unresolved",
         closureMode: range.closureMode,
-        evidenceRefs: range.evidenceRefs,
+        historicalEvidenceRefs: range.evidenceRefs,
       });
     }
     return records;
@@ -215,5 +229,18 @@ export function summarizeAuditClosure(
     oapeflir_spec: 0,
     interaction: 0,
     domains_sdk: 0,
+  });
+}
+
+export function summarizeAuditReviewStatus(
+  records: readonly AuditClosureRecord[] = expandAuditClosureRecords(),
+): Readonly<Record<AuditReviewStatus, number>> {
+  return records.reduce<Record<AuditReviewStatus, number>>((summary, record) => {
+    summary[record.reviewStatus] += 1;
+    return summary;
+  }, {
+    unresolved: 0,
+    verified_fixed: 0,
+    verified_not_fixed: 0,
   });
 }

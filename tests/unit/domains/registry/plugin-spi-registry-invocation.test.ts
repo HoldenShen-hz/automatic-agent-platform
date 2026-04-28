@@ -249,23 +249,30 @@ test("PluginSpiRegistry applies cooldown after failures", async () => {
 
   await registry.ensureActive("plugin.cooldown");
 
-  // Trigger multiple failures to enter cooldown
-  for (let i = 0; i < 3; i++) {
-    try {
-      await registry.invokeRetriever("plugin.cooldown", {
-        query: {
-          taskId: `task_fail_${i}`,
-          intent: "fail",
-          context: {},
-          tokenBudget: 1000,
-        },
-      });
-    } catch {
-      // Expected
-    }
-  }
+  await assert.rejects(
+    registry.invokeRetriever("plugin.cooldown", {
+      query: {
+        taskId: "task_fail_0",
+        intent: "fail",
+        context: {},
+        tokenBudget: 1000,
+      },
+    }),
+  );
 
-  assert.ok(attemptCount >= 3);
+  await assert.rejects(
+    registry.invokeRetriever("plugin.cooldown", {
+      query: {
+        taskId: "task_fail_1",
+        intent: "fail",
+        context: {},
+        tokenBudget: 1000,
+      },
+    }),
+    /cooling down during retrieve/i,
+  );
+
+  assert.equal(attemptCount, 1);
 });
 
 test("PluginSpiRegistry clears cooldown when invocations succeed", async () => {
@@ -296,14 +303,14 @@ test("PluginSpiRegistry clears cooldown when invocations succeed", async () => {
     publicSdkSurface: "test",
     settingsSchema: {},
     sandbox: makeSandboxPolicy({
-      cooldownMs: 1000,
+      cooldownMs: 10,
       timeoutMs: 1000,
     }),
   });
 
   await registry.ensureActive("plugin.clear_cooldown");
 
-  // First two fail
+  // First failure starts cooldown.
   for (let i = 0; i < 2; i++) {
     try {
       await registry.invokeRetriever("plugin.clear_cooldown", {
@@ -317,9 +324,10 @@ test("PluginSpiRegistry clears cooldown when invocations succeed", async () => {
     } catch {
       // Expected
     }
+    await new Promise((resolve) => setTimeout(resolve, 15));
   }
 
-  // Third should succeed and clear cooldown state
+  // Third succeeds after cooldown expiry and clears failure state.
   const result = await registry.invokeRetriever("plugin.clear_cooldown", {
     query: {
       taskId: "task_success",

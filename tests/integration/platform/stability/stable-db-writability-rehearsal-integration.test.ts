@@ -7,7 +7,7 @@ import {
   runStableDbWritabilityRehearsal,
   writeStableDbWritabilityRehearsalReport,
   type StableDbWritabilityRehearsalReport,
-} from "../../../../../src/platform/stability/stable-db-writability-rehearsal.js";
+} from "../../../../src/platform/stability/stable-db-writability-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("runStableDbWritabilityRehearsal runs all three scenarios and produces report", async () => {

@@ -129,7 +129,10 @@ export class HitlApprovalOrchestrationService {
       options: request.options,
       riskLevel: request.riskLevel,
       timeoutPolicy: request.timeoutPolicy,
-      ...(request.context != null ? { context: request.context } : {}),
+      context: {
+        ...(request.context ?? {}),
+        breakGlassApproved: request.breakGlassApproved ?? false,
+      },
     });
 
     const approval = this.approvalService.createRequest({
@@ -214,7 +217,8 @@ export class HitlApprovalOrchestrationService {
     this.approvalService.applyDecision(decision);
     const updatedLink: ApprovalFeedbackLink = {
       ...existingLink,
-      feedbackSignalId: decision.decisionType === "text_input" ? newId("feedback_signal") : existingLink.feedbackSignalId,
+      feedbackSignalId: existingLink.feedbackSignalId
+        ?? (decision.decisionType === "expired" ? null : newId("feedback_signal")),
       decisionEffect: defaultEffectForDecision(decision),
     };
     this.feedbackLinks.set(decision.approvalId, updatedLink);

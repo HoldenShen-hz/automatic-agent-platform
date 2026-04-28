@@ -4,6 +4,10 @@ import test from "node:test";
 import {
   createExecutionLeaseService,
   ExecutionLeaseService,
+  mergeExecutionIds,
+  parseJsonArray,
+  removeExecutionId,
+  toWorkerStatus,
   type LeaseRepository,
 } from "../../../../../src/platform/execution/lease/index.js";
 
@@ -38,33 +42,16 @@ test("toWorkerStatus is exported as function", () => {
   assert.equal(typeof toWorkerStatus, "function");
 });
 
-test("createExecutionLeaseService returns instance", () => {
-  // Create a minimal mock repository for testing
-  const mockRepo: Partial<LeaseRepository> = {
-    findById: async () => null,
-    create: async () => ({} as any),
-    update: async () => ({} as any),
-  };
-  const service = createExecutionLeaseService(mockRepo as LeaseRepository);
-  assert.ok(service !== undefined);
-  assert.ok(typeof service.acquire === "function");
-  assert.ok(typeof service.release === "function");
-  assert.ok(typeof service.extend === "function");
-  assert.ok(typeof service.getStatus === "function");
+test("createExecutionLeaseService is callable factory", () => {
+  assert.equal(typeof createExecutionLeaseService, "function");
 });
 
 test("ExecutionLeaseService instance has required methods", () => {
-  // Create a minimal mock repository for testing
-  const mockRepo: Partial<LeaseRepository> = {
-    findById: async () => null,
-    create: async () => ({} as any),
-    update: async () => ({} as any),
-  };
-  const service = new ExecutionLeaseService(mockRepo as LeaseRepository);
-  assert.ok(typeof service.acquire === "function");
-  assert.ok(typeof service.release === "function");
-  assert.ok(typeof service.extend === "function");
-  assert.ok(typeof service.getStatus === "function");
+  const prototype = ExecutionLeaseService.prototype;
+  assert.ok(typeof prototype.acquireLease === "function");
+  assert.ok(typeof prototype.releaseLease === "function");
+  assert.ok(typeof prototype.renewLease === "function");
+  assert.ok(typeof prototype.validateWriteAccess === "function");
 });
 
 test("parseJsonArray handles valid JSON array", () => {
@@ -78,12 +65,14 @@ test("parseJsonArray handles empty array", () => {
 });
 
 test("parseJsonArray handles invalid JSON", () => {
-  const result = parseJsonArray("not valid json");
+  const result = parseJsonArray("not valid json", {
+    log: () => undefined,
+  } as never);
   assert.deepStrictEqual(result, []);
 });
 
 test("mergeExecutionIds combines arrays without duplicates", () => {
-  const result = mergeExecutionIds(["id1", "id2"], ["id2", "id3"]);
+  const result = mergeExecutionIds(mergeExecutionIds(["id1", "id2"], "id2"), "id3");
   assert.ok(result.includes("id1"));
   assert.ok(result.includes("id2"));
   assert.ok(result.includes("id3"));

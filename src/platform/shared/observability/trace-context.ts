@@ -124,23 +124,32 @@ function normalizeTraceContext(
     correlationId?: string | null;
   },
 ): TraceContext | null {
-  const traceId =
-    typeof value.traceId === "string"
-      ? value.traceId
-      : fallback.traceId ?? null;
-  if (traceId == null) {
+  const traceId = readTraceId(value.traceId) ?? readNonEmptyString(fallback.traceId) ?? null;
+  const spanId = readNonEmptyString(value.spanId);
+  const parentSpanId = readNonEmptyString(value.parentSpanId);
+  const correlationId =
+    readNonEmptyString(value.correlationId)
+    ?? readNonEmptyString(fallback.correlationId)
+    ?? traceId;
+  if (traceId == null && spanId == null && parentSpanId == null && correlationId == null) {
     return null;
   }
 
   return {
-    traceId,
-    spanId: typeof value.spanId === "string" ? value.spanId : null,
-    parentSpanId: typeof value.parentSpanId === "string" ? value.parentSpanId : null,
-    correlationId:
-      typeof value.correlationId === "string"
-        ? value.correlationId
-        : fallback.correlationId ?? traceId,
+    traceId: traceId as TraceContext["traceId"],
+    spanId,
+    parentSpanId,
+    correlationId,
   };
+}
+
+function readTraceId(value: unknown): string | null {
+  const traceId = readNonEmptyString(value);
+  return traceId === "invalid" ? null : traceId;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 /**

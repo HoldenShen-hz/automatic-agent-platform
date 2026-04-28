@@ -39,6 +39,10 @@ function createMockStore(): AuthoritativeTaskStore {
       getAgentExecutionRecord: () => null,
       upsertAgentExecutionRecord: () => {},
       getActiveExecutionLease: () => null,
+      getExecutionLease: () => null,
+      getLatestFencingToken: () => 0,
+      insertExecutionLease: () => {},
+      insertLeaseAudit: () => {},
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
       getWorker: () => null,
@@ -232,7 +236,15 @@ function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
 
 test("dispatchNext skips untrusted remote workers", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
-  const trustedRemoteWorker = createMockWorker("worker-trusted", { placement: "remote", trusted: true, availableSlots: 5 });
+  const trustedRemoteWorker = createMockWorker("worker-trusted", {
+    placement: "remote",
+    trusted: true,
+    remoteSessionStatus: "connected",
+    lastAcknowledgedStreamOffset: "offset-1",
+    sessionConsistencyCheckStatus: "passed",
+    workspaceSyncStatus: "aligned",
+    availableSlots: 5,
+  });
   const untrustedRemoteWorker = createMockWorker("worker-untrusted", { placement: "remote", trusted: false, availableSlots: 5 });
 
   const store = createMockStore();
@@ -321,7 +333,7 @@ test("dispatchNext require_remote blocked by local_only placement", () => {
 
   const result = service.dispatchNext({ leaseTtlMs: 60000 });
 
-  assert.equal(result.outcome, "no_worker");
+  assert.equal(result.outcome, "blocked");
 });
 
 // ---------------------------------------------------------------------------
@@ -440,7 +452,15 @@ test("dispatchNext with includeDegraded allows degraded workers", () => {
 
 test("dispatchNext skips workers with remote session unready", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
-  const readyWorker = createMockWorker("worker-ready", { placement: "remote", trusted: true, remoteSessionStatus: "connected", availableSlots: 5 });
+  const readyWorker = createMockWorker("worker-ready", {
+    placement: "remote",
+    trusted: true,
+    remoteSessionStatus: "connected",
+    lastAcknowledgedStreamOffset: "offset-1",
+    sessionConsistencyCheckStatus: "passed",
+    workspaceSyncStatus: "aligned",
+    availableSlots: 5,
+  });
   const unreadyWorker = createMockWorker("worker-unready", { placement: "remote", trusted: true, remoteSessionStatus: "connecting", availableSlots: 5 });
 
   const store = createMockStore();

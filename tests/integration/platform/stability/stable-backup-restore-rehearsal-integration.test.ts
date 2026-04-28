@@ -9,7 +9,7 @@ import {
   buildStableDisasterRecoveryPlaybook,
   type StableBackupRestoreRehearsalReport,
   type StableDisasterRecoveryPlaybook,
-} from "../../../../../src/platform/stability/stable-backup-restore-rehearsal.js";
+} from "../../../../src/platform/stability/stable-backup-restore-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("runStableBackupRestoreRehearsal passes sqlite_backup_restore_roundtrip scenario and produces artifacts", async () => {

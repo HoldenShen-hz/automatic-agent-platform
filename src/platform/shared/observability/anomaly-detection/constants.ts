@@ -1,6 +1,6 @@
 import type { AnomalyCategory, AnomalyDetectionConfig } from "./types.js";
 
-export const ANOMALY_CATEGORY_LABELS: Record<AnomalyCategory, string> = {
+export const ANOMALY_CATEGORY_LABELS: Record<AnomalyCategory, string> = Object.freeze({
   spike: "Sudden increase",
   dip: "Sudden decrease",
   trend_change: "Trend direction changed",
@@ -9,7 +9,7 @@ export const ANOMALY_CATEGORY_LABELS: Record<AnomalyCategory, string> = {
   rate_of_change: "Rate of change exceeded threshold",
   static: "Expected variation absent",
   pattern_break: "Known pattern disrupted",
-};
+});
 
 export const DEFAULT_CONFIG: AnomalyDetectionConfig = {
   algorithm: "zscore",

@@ -46,7 +46,10 @@ test("parseGatewayWebhookPayload rejects non-object", () => {
     parseGatewayWebhookPayload([]);
     assert.fail("Expected error");
   } catch (error: any) {
-    assert.ok(error.code?.startsWith("api.invalid_gateway_webhook_payload"));
+    assert.ok(
+      error.code?.startsWith("api.invalid_gateway_webhook_payload")
+      || error.code === "api.dangerous_key",
+    );
   }
 });
 

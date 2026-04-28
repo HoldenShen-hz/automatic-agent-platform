@@ -29,7 +29,7 @@ export class HarnessLoopController {
     overrides: Partial<HarnessLoopGuards> = {},
     initialState: Partial<Omit<HarnessLoopState, "startedAt">> & { startedAt?: number } = {},
   ) {
-    const maxIterations = Math.max(1, Math.floor(constraintPack.budget.maxSteps / 3));
+    const maxIterations = Math.max(0, Math.floor(constraintPack.budget.maxSteps / 3));
     this.guards = {
       maxIterations,
       maxReplans: 3,

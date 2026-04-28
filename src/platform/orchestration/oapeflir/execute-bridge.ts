@@ -112,3 +112,12 @@ export interface ExecuteBridge {
    */
   toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[];
 }
+
+export {
+  MockExecuteBridge,
+  RuntimeExecuteBridge,
+  mapStepOutputRecord,
+  mapToDualChannelStepOutputs,
+  extractStepOutputRecords,
+  serialiseOapeflirPlan,
+} from "./runtime-execute-bridge.js";

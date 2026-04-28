@@ -42,6 +42,9 @@ export type HarnessRunStatus =
   | "planning"
   | "ready"
   | "running"
+  | "sleeping"
+  | "waiting_hitl"
+  | "recovering"
   | "pausing"
   | "paused"
   | "resuming"
@@ -352,7 +355,7 @@ export class HarnessRuntimeService {
   public sleep(run: HarnessRun, reason: string, resumeAt: string): HarnessRun {
     return {
       ...run,
-      status: "paused",
+      status: "sleeping",
       sleepLease: {
         leaseId: newId("sleep_lease"),
         runId: run.runId,
@@ -376,7 +379,7 @@ export class HarnessRuntimeService {
   public recover(run: HarnessRun): HarnessRun {
     return {
       ...run,
-      status: "replanning",
+      status: "recovering",
       recoveryCheckpoint: {
         checkpointId: newId("recovery_checkpoint"),
         runId: run.runId,
@@ -400,7 +403,7 @@ export class HarnessRuntimeService {
   public resume(run: HarnessRun): HarnessRun {
     return {
       ...run,
-      status: "resuming",
+      status: "running",
       sleepLease: null,
       recoveryCheckpoint: null,
     };
@@ -409,7 +412,7 @@ export class HarnessRuntimeService {
   public openHitlReview(run: HarnessRun, reason: string, evidenceRefs: readonly string[]): HarnessRun {
     return {
       ...run,
-      status: "paused",
+      status: "waiting_hitl",
       hitlRequest: this.hitlRuntime.open({
         runId: run.runId,
         domainId: run.domainId,
@@ -489,6 +492,12 @@ export class HarnessRuntimeService {
     }
     if (run.status === "paused" && run.hitlRequest == null && run.sleepLease == null) {
       violations.push("harness.invariant.paused_requires_wait_reason");
+    }
+    if (run.status === "waiting_hitl" && run.hitlRequest == null) {
+      violations.push("harness.invariant.waiting_hitl_requires_request");
+    }
+    if (run.status === "sleeping" && run.sleepLease == null) {
+      violations.push("harness.invariant.sleeping_requires_sleep_lease");
     }
     if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
       violations.push("harness.invariant.non_accept_decision_requires_feedback");
@@ -680,7 +689,7 @@ export class HarnessRuntimeService {
             : decision.action === "accept"
             ? "completed"
             : decision.action === "escalate_to_human"
-                ? "paused"
+                ? "waiting_hitl"
                 : "running",
         completedAt:
           guardrailAssessment.suggestedAction === "abort" || decision.action === "accept" || decision.action === "abort"
@@ -712,10 +721,12 @@ export class HarnessRuntimeService {
         action: decision.action,
         confidence: decision.confidence,
       });
-      if (baseRun.status === "paused" && decision.action === "escalate_to_human" && guardrailAssessment.suggestedAction !== "abort") {
+      if (baseRun.status === "waiting_hitl" && decision.action === "escalate_to_human" && guardrailAssessment.suggestedAction !== "abort") {
         baseRun = this.openHitlReview(
           baseRun,
-          decision.reasonCodes[0] ?? "harness.requires_human_review",
+          guardrailAssessment.requiresHuman
+            ? "guardrail_or_operator_escalation"
+            : decision.reasonCodes[0] ?? "harness.requires_human_review",
           input.producedEvidenceRefs ?? [],
         );
       }
@@ -768,18 +779,18 @@ export class HarnessRuntimeService {
 
         this.ensureInvariantSafe(finalRun);
 
-        if (!(finalRun.status === "paused" && finalRun.hitlRequest != null)) {
-          this.durableService.persist(finalRun);
-          return finalRun;
+        if (finalRun.status === "waiting_hitl" && finalRun.hitlRequest == null) {
+          const withHitl = this.openHitlReview(
+            finalRun,
+            "guardrail_or_operator_escalation",
+            [...(input.producedEvidenceRefs ?? []), ...guardrailAssessment.findings.map((finding) => finding.code)],
+          );
+          this.durableService.persist(withHitl);
+          return withHitl;
         }
 
-        const withHitl = this.openHitlReview(
-          finalRun,
-          "guardrail_or_operator_escalation",
-          [...(input.producedEvidenceRefs ?? []), ...guardrailAssessment.findings.map((finding) => finding.code)],
-        );
-        this.durableService.persist(withHitl);
-        return withHitl;
+        this.durableService.persist(finalRun);
+        return finalRun;
       }
 
       run = {

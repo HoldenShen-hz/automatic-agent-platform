@@ -116,14 +116,14 @@ test("HealthService calculates queue governance metrics", () => {
     db.migrate();
     const store = new AuthoritativeTaskStore(db);
 
-    seedTaskAndExecution(db, store, {
-      taskId: "task-queue",
-      executionId: "exec-queue",
-      traceId: "trace-queue",
-    });
-
     // Create multiple pending tickets
     for (let i = 0; i < 5; i++) {
+      seedTaskAndExecution(db, store, {
+        taskId: `task-queue-${i}`,
+        executionId: `exec-queue-${i}`,
+        traceId: `trace-queue-${i}`,
+      });
+
       store.insertExecutionTicket({
         id: `ticket-queue-${i}`,
         executionId: `exec-queue-${i}`,

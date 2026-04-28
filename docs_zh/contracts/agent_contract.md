@@ -21,6 +21,7 @@
 - `PreconditionCheck`
 - `DispatchMode`
 - `AgentMiddlewareHook`
+- `DomainBinding`
 
 ## 3. AgentDefinition 最小字段
 
@@ -31,6 +32,7 @@
 | `model_tier` | `reasoning \| coding \| balanced \| fast` | 模型分级 |
 | `tools` | `string[]` | 可用工具列表 |
 | `scope` | `AgentScope` | 职责与边界 |
+| `domain_binding` | `DomainBinding` | 域绑定与领域约束 |
 | `input_schema` | `schema` | 输入要求 |
 | `output_schema` | `schema` | 输出要求 |
 | `preconditions` | `PreconditionCheck[]` | 执行前检查 |
@@ -49,11 +51,20 @@
 - `responsibilities`
 - `boundaries`
 
+`DomainBinding` 至少包含：
+
+- `domain_id`
+- `domain_descriptor_ref`
+- `risk_profile_ref?`
+- `tool_bundle_ids?`
+- `knowledge_namespaces?`
+
 规则：
 
 - responsibilities 说明能做什么。
 - boundaries 说明明确不能做什么。
 - 角色间不得出现高重叠核心职责而没有裁决边界。
+- `domain_id` 必须指向已注册 `DomainDescriptor`；Agent 的工具、知识和治理边界应从 domain binding 派生，而不是从组织叙事单元反推。
 
 ## 5. Preconditions
 
@@ -86,13 +97,13 @@ Phase 边界：
 
 - `workflow_delegation`: 父级工作流把步骤委派给角色，这是业务编排语义。
 - `sub_agent_spawn`: 在同一逻辑运行面内拉起协作子 Agent，这是协作执行策略。
-- `worker_dispatch`: execution plane 把执行票据派给 worker，这是基础设施调度语义。
+- `worker_dispatch`: execution plane 通过 `PlanGraphDispatch (PlanGraphBundle)` 把执行票据派给 worker，这是基础设施调度语义。
 
 规则：
 
 - 三者不能混用为同一个抽象词“派发”。
 - 业务文档谈角色委派时，不应默认等同于 worker 调度。
-- execution plane 的 queue / lease / worker 语义由 `execution_plane_contract.md` 负责。
+- execution plane 的 queue / lease / worker 语义由 `execution_plane_contract.md` 负责，且 canonical handoff 必须是 `PlanGraphDispatch (PlanGraphBundle)`。
 
 ## 7. 失败语义
 
@@ -109,7 +120,7 @@ Agent executor 在 phase1-4 范围内应按 OAPEFLIR 阶段消费或产出结果
 | Observe | 收集信号 | 不得做评估决策 |
 | Assess | 评估风险/复杂度 | 不得绕过 Plan 直接执行 |
 | Plan | 生成执行计划 | 必须符合 R3-SINGLE 约束 |
-| Execute | 执行计划 | 不得绕过 Plan DTO（R3-NOBYPASS） |
+| Execute | 执行计划 | 不得绕过 `PlanGraphBundle`（R3-NOBYPASS） |
 | Feedback | 收集信号 | 不得直接影响执行 |
 | Learn | 提取模式 | 不得直接写受控状态 |
 | Improve | 评估候选 | 必须经过 guardrail + approval |
@@ -141,7 +152,7 @@ Agent executor 在 phase1-4 范围内应按 OAPEFLIR 阶段消费或产出结果
 所有角色至少统一包含：
 
 - `role_id`
-- `role_kind` (`hq | division`)
+- `role_kind` (`platform | domain`)
 - `display_name`
 - `objective`
 - `prompt_ref`
@@ -152,7 +163,7 @@ Agent executor 在 phase1-4 范围内应按 OAPEFLIR 阶段消费或产出结果
 
 规则：
 
-- HQ 与事业部角色只是在 `role_kind` 和权限范围上不同，不应演化为两套对象模型。
+- 平台角色与领域角色只是在 `role_kind`、`domain_binding` 和权限范围上不同，不应演化为两套对象模型。
 - 任何新角色都必须声明输出 contract 和工具边界。
 
 ### 8.2 Prompt 模板变量
@@ -161,7 +172,7 @@ prompt 模板变量最少分为：
 
 - `system_vars`
 - `task_vars`
-- `division_vars`
+- `domain_vars`
 - `runtime_vars`
 
 规则：
@@ -180,6 +191,6 @@ prompt 模板变量最少分为：
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-27: 用 division_id 为主组织单元，架构v4.3用域中心模型(domain_id/DomainDescriptor)；DispatchMode.worker_dispatch 未引用 PlanGraphDispatch。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-27: 本文原先沿用 `division` 叙事作为 Agent 的主要组织边界，并把 `worker_dispatch` 写成不带 `PlanGraphDispatch` 的泛化派发语义，根因是角色合同继承了 v3 组织编排模型，没有随 v4.3 的域中心模型和 graph dispatch handoff 同步重写。修复：正文现把 Agent 绑定收敛到 `domain_id / DomainDescriptor`，并把 `worker_dispatch` 明确绑定到 `PlanGraphDispatch (PlanGraphBundle)`。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

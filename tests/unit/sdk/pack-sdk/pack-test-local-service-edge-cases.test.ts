@@ -126,7 +126,7 @@ test("PackTestLocalService.addMockToolResult overwrites existing tool result", (
   });
 
   const result = service["mockToolResults"].get("tool-x");
-  assert.equal(result!.output, "second");
+  assert.deepEqual(result!.output, { result: "second" });
 });
 
 test("PackTestLocalService.test integration mode without mock LLM", async () => {

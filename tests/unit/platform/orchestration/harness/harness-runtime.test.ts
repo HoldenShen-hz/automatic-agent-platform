@@ -132,7 +132,9 @@ test("HarnessRuntimeService.decide includes current timestamp", () => {
   const decision = runtime.decide({ evaluatorScore: 0.9 });
   const after = Date.now();
 
-  assert.ok(decision.createdAt >= before && decision.createdAt <= after);
+  const createdAtMs = Date.parse(decision.createdAt);
+  assert.ok(Number.isFinite(createdAtMs));
+  assert.ok(createdAtMs >= before && createdAtMs <= after);
 });
 
 test("HarnessRuntimeService.decide confidence is rounded to 4 decimal places", () => {
@@ -325,7 +327,7 @@ test("HarnessRuntimeService.assertInvariants detects final_state_requires_comple
   assert.ok(result.violations.includes("harness.invariant.final_state_requires_completed_at"));
 });
 
-test("HarnessRuntimeService.assertInvariants detects waiting_hitl_requires_request", () => {
+test("HarnessRuntimeService.assertInvariants detects paused_requires_wait_reason", () => {
   const runtime = new HarnessRuntimeService();
   const run = runtime.createRun({
     taskId: "task-1",
@@ -341,14 +343,15 @@ test("HarnessRuntimeService.assertInvariants detects waiting_hitl_requires_reque
     },
   });
 
-  const waitingRun = {
+  const pausedRun = {
     ...run,
-    status: "waiting_hitl" as const,
-    hitlRequest: null, // Missing hitlRequest
+    status: "paused" as const,
+    hitlRequest: null,
+    sleepLease: null,
   };
 
-  const result = runtime.assertInvariants(waitingRun);
-  assert.ok(result.violations.includes("harness.invariant.waiting_hitl_requires_request"));
+  const result = runtime.assertInvariants(pausedRun);
+  assert.ok(result.violations.includes("harness.invariant.paused_requires_wait_reason"));
 });
 
 test("HarnessRuntimeService.assertInvariants detects non_accept_decision_requires_feedback", () => {

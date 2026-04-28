@@ -285,6 +285,10 @@ test("ConnectorFrameworkService listBindings filters by connectorId", () => {
     lifecycleState: "enabled",
   };
   service.register(manifest);
+  service.register({
+    ...manifest,
+    connectorId: "other-connector",
+  });
 
   service.bind("test-connector", "tenant-1", "dev");
   service.bind("test-connector", "tenant-2", "dev");

@@ -14,7 +14,7 @@ import type {
   DiagnosticsService,
   DiagnosticWarningSummary,
   IncidentTimelineReport,
-} from "../../../../../src/shared/observability/diagnostics-service.js";
+} from "../../../../../src/platform/shared/observability/diagnostics-service.js";
 import type { TaskSnapshot } from "../../../..//shared/observability/diagnostics-service.js";
 
 // Mock DiagnosticsService

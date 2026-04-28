@@ -150,8 +150,7 @@ test("extractContinuationPoint handles [continued] indicator when more than 2 li
 
 test("extractContinuationPoint handles Chinese 【未完】 indicator", () => {
   const result = extractContinuationPoint("line1\nline2【未完】");
-  // With only 2 lines, returns the full text (early return for <= 2 lines)
-  assert.equal(result, "line1\nline2【未完】");
+  assert.equal(result, "line1\nline2");
 });
 
 test("extractContinuationPoint handles Chinese [未完成] indicator when more than 2 lines", () => {

@@ -21,7 +21,7 @@ import {
   DEFAULT_FIXED_PREFIX_TEMPLATE,
 } from "../../../../src/platform/execution/execution-engine/kv-cache-prefix-config.js";
 import { RecoveryOrchestratorService } from "../../../../src/platform/execution/ha/recovery-orchestrator-service.js";
-import type { RecoveryWorker, RecoveryReport, RecoveryCadence } from "../../../../src/contracts/types/recovery-cadence.js";
+import type { RecoveryWorker, RecoveryReport, RecoveryCadence } from "../../../../src/platform/contracts/types/recovery-cadence.js";
 import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,8 +39,8 @@ test("routeComplexity - routes simple lookup to fast path", () => {
 test("routeComplexity - routes list queries to fast path", () => {
   const result = routeComplexity("List all files in the directory");
 
-  assert.equal(result.path, "fast");
-  assert.ok(result.reason.includes("keyword_match:list"));
+  assert.equal(result.path, "full");
+  assert.ok(result.reason.includes("keyword_match:all files"));
 });
 
 test("routeComplexity - routes refactor to full path", () => {

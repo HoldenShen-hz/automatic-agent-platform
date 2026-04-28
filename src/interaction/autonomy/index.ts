@@ -28,7 +28,7 @@ export interface AutonomyDecision {
 }
 
 export interface AutonomyPolicyPort {
-  evaluate(subjectId: string): Promise<AutonomyDecision>;
+  evaluate(subjectId: string): AutonomyDecision | Promise<AutonomyDecision>;
 }
 
 export interface CapabilityTrustScore {
@@ -54,6 +54,7 @@ export interface AgentTrustProfile {
 }
 
 export interface AutonomyChangeEvent {
+  readonly eventId?: string;
   readonly eventType: "agent.autonomy.promoted" | "agent.autonomy.demoted" | "agent.autonomy.frozen";
   readonly agentId: string;
   readonly capabilityId: string;
@@ -90,7 +91,7 @@ const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
   windowDays: 30,
   freezeOnIncident: true,
   severityBasedDemotion: true,
-  minVolumeForPromotion: 10,
+  minVolumeForPromotion: 50,
   minVolumeForDemotion: 3,
   highRiskDomainIds: ["medical", "healthcare", "financial-services", "finance-accounting", "quant-trading", "legal"],
 };
@@ -175,14 +176,10 @@ function decideLevel(
     return "frozen";
   }
 
-  if (score.failedExecutions >= (options.minVolumeForDemotion ?? 3)) {
-    return "suggestion";
-  }
-
   if (score.incidents > 0) {
     if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing
-      return demoteOneLevel(score.currentAutonomy);
+      return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
     }
 
     if (options.freezeOnIncident) {
@@ -191,13 +188,23 @@ function decideLevel(
     return "suggestion";
   }
 
+  if (score.failedExecutions >= (options.minVolumeForDemotion ?? 3)) {
+    if (score.currentAutonomy === "frozen" && score.incidents === 0) {
+      // Allow recovery to be driven by fresh success evidence once incidents clear.
+    } else {
+      return "suggestion";
+    }
+  } else if (score.failedExecutions > 0 && score.totalExecutions >= 50) {
+    return score.currentAutonomy === "suggestion" ? "supervised" : score.currentAutonomy;
+  }
+
   if (score.totalExecutions >= 500 && success >= 0.99 && overrides < 0.01) {
     return "full_auto";
   }
   if (score.totalExecutions >= 200 && success >= 0.98 && overrides < 0.05) {
     return "semi_auto";
   }
-  if (score.totalExecutions >= 50 && success >= 0.95) {
+  if (score.totalExecutions >= (options.minVolumeForPromotion ?? 50) && success >= 0.95) {
     return "supervised";
   }
   return "suggestion";
@@ -231,7 +238,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
     this.auditCallbacks.push(callback);
   }
 
-  public async evaluate(subjectId: string): Promise<AutonomyDecision> {
+  public evaluate(subjectId: string): AutonomyDecision {
     const profile = this.profiles.get(subjectId);
     if (profile == null) {
       return {
@@ -272,6 +279,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
         };
 
         const changeEvent: AutonomyChangeEvent = {
+          eventId: `autonomy_event_${Date.now()}_${changeEvents.length + 1}`,
           eventType,
           agentId: profile.agentId,
           capabilityId: item.capabilityId,

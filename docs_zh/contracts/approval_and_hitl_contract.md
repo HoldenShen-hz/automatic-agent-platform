@@ -20,22 +20,35 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `approval_id` | `string` | 审批 ID |
-| `task_id` | `string` | 关联任务 |
+| `harness_run_id` | `string` | 关联 `HarnessRun` |
+| `node_run_id` | `string?` | 关联 `NodeRun`；针对节点级审批必填 |
 | `source_agent_id` | `string` | 发起 Agent |
 | `reason` | `string` | 升级原因 |
 | `risk_level` | `low \| medium \| high \| critical` | 风险等级 |
-| `stage_ref` | `OapeflirStage?` | 触发审批的 OAPEFLIR 阶段 |
+| `stage_view_ref` | `OapeflirStage?` | 仅解释/时间线视图引用；不得作为 truth 主键或状态推进依据 |
 | `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | 关联证据或发布对象 |
 | `options` | `string[]` | 可选决策 |
 | `context` | `json` | 相关上下文 |
 | `timeout_policy` | `reject \| approve \| remain_pending` | 超时策略 |
+| `timeout_auto_action` | `reject \| escalate \| remain_pending \| continue_readonly` | 超时后系统自动执行的治理动作 |
+| `escalation_chain` | `ApprovalEscalationHop[]` | 明确的逐级升级链与每级时限/责任人 |
 | `created_at` | `timestamp` | 发起时间 |
 
 规则：
 
 - `timeout_policy` 是治理请求的一部分，但最终只能被系统代码收紧，不能被下游 Agent 任意放宽。
+- `timeout_auto_action` 是控制平面执行语义，不得由 UI 渲染层或下游 Agent 自行推断。
 - Agent 输出不得越权覆盖已经冻结的超时策略。
 - `critical` 风险默认不得使用 `approve` 作为超时策略，除非有显式 break-glass 规则与额外审计。
+- 审批的权威关联键是 `harness_run_id` / `node_run_id`；`stage_view_ref` 只能用于解释视图，不得作为 truth source。
+
+`ApprovalEscalationHop` 最小字段：
+
+- `level`
+- `reviewer_type`
+- `reviewer_ref`
+- `timeout_ms`
+- `on_timeout`
 
 ## 4. ApprovalDecision 最小字段
 
@@ -94,7 +107,7 @@
 - 同一 `approval_id` 的 decision payload 必须满足判别约束，不能出现互相冲突字段并存。
 - 审批结果落地后，最终动作执行前必须再次经过 Policy Engine 复核，防止环境变化后仍沿用旧批准。
 - `critical` 风险动作应支持双审批或 break-glass 流程，不能只靠单次普通确认。
-- 带 `stage_ref` 的审批必须能回写到对应 OAPEFLIR timeline，不能只存在于审批表或消息渠道中。
+- 带 `stage_view_ref` 的审批必须能回写到对应 OAPEFLIR timeline，不能只存在于审批表或消息渠道中。
 - 与 Improve / Release 相关的审批结果只能改变候选或 rollout 的受控状态，不得直接改写已发布策略内容。
 - 用户文本输入型审批若表达纠正、偏好或负面反馈，应转成 `FeedbackSignal`，供 FeedbackHub / LearnHub 消费。
 
@@ -105,8 +118,8 @@
 `ApprovalPacket` 至少包含：
 
 - `approval_id`
-- `task_id`
-- `execution_id?`
+- `harness_run_id`
+- `node_run_id?`
 - `title`
 - `reason`
 - `risk_level`
@@ -160,8 +173,9 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `approval_id` | `string` | 审批 ID |
-| `task_id` | `string` | 关联任务 |
-| `stage_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | 触发阶段 |
+| `harness_run_id` | `string` | 关联 `HarnessRun` |
+| `node_run_id` | `string?` | 关联 `NodeRun` |
+| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | OAPEFLIR 视图阶段引用，不得作为 truth 主键 |
 | `loop_iteration` | `integer?` | 触发轮次 |
 | `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | 关联对象 |
 | `feedback_signal_id` | `string?` | 审批产生或消费的反馈信号 |
@@ -180,7 +194,7 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-9: 缺少架构§31要求的 escalation_chain 和 timeout_auto_action 字段。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
-- T-54: 仍用OapeflirStage作为一等stage_ref字段，架构§5.5不变量"oapeflir.\*事件不得作为truth source"。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-9: 缺少架构§31要求的 escalation_chain 和 timeout_auto_action 字段。根因：旧审批 contract 把“超时策略”压缩成了单值 UI 语义，没有把控制平面的自动动作和逐级升级链建模出来。修复：`ApprovalRequest` 已补入 `timeout_auto_action` 与 `escalation_chain`，并定义 `ApprovalEscalationHop` 最小字段。
+- T-54: 仍用OapeflirStage作为一等stage_ref字段，架构§5.5不变量"oapeflir.\*事件不得作为truth source"。根因：历史审批流把 OAPEFLIR 阶段既当解释视图又当权威关联键，混淆了 projection 与 runtime truth。修复：正文已改为 `harness_run_id` / `node_run_id` 为权威关联键，`stage_view_ref` 只保留视图语义。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

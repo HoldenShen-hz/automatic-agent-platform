@@ -262,7 +262,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
   private detectTemplate(description: string): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
     const normalized = description.toLowerCase();
-    if (/(campaign|marketing|广告|投放|素材)/i.test(description)) {
+    if (/(campaign|marketing|广告|投放|素材|营销|推广)/i.test(description)) {
       return "marketing_campaign";
     }
     if (/(launch|release|deploy|上线|发布)/i.test(description)) {

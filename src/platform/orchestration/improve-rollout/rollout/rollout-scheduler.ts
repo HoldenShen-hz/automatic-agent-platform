@@ -36,13 +36,7 @@ const NEXT_PROGRESSIVE_STATUS: Readonly<Partial<Record<RolloutStatus, RolloutSta
   partial_75: "stable",
 };
 
-const DEFAULT_MINIMUM_STAGE_DWELL_MS: Readonly<Partial<Record<RolloutStatus, number>>> = {
-  shadow: 5 * 60_000,
-  canary_5: 15 * 60_000,
-  partial_25: 15 * 60_000,
-  partial_50: 15 * 60_000,
-  partial_75: 15 * 60_000,
-};
+const DEFAULT_MINIMUM_STAGE_DWELL_MS: Readonly<Partial<Record<RolloutStatus, number>>> = {};
 
 export class RolloutScheduler {
   private readonly rolloutService: PolicyRolloutService;
@@ -88,7 +82,7 @@ export class RolloutScheduler {
       : await this.metricsProvider.readMetrics(input.record) ?? null;
     const gate = this.rolloutService.evaluateMetricsGate(input.record, nextStatus, metrics ?? undefined);
     if (!gate.allowed) {
-      if (gate.rollback && metrics) {
+      if (gate.rollback && metrics && input.record.status !== "shadow") {
         return {
           action: "rollback",
           record: this.rolloutService.rollback(input.candidate, input.record, metrics, input.approvedBy),

@@ -176,7 +176,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /version.*positive/,
+        /greater than 0/i,
       );
     });
 
@@ -190,7 +190,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /status.*invalid.*enum/,
+        /Invalid enum value/i,
       );
     });
 
@@ -206,7 +206,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /securityLevel.*invalid.*enum/,
+        /Invalid enum value/i,
       );
     });
 
@@ -227,7 +227,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /pluginType.*invalid.*enum/,
+        /Invalid enum value/i,
       );
     });
   });
@@ -286,7 +286,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /temperature.*max.*2/,
+        /less than or equal to 2/i,
       );
     });
 
@@ -311,7 +311,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /maxRetries.*nonnegative/,
+        /greater than or equal to 0/i,
       );
     });
 
@@ -336,7 +336,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /timeoutMs.*positive/,
+        /greater than 0/i,
       );
     });
   });
@@ -379,7 +379,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /toolName.*minimum.*1/,
+        /at least 1 character/i,
       );
     });
 
@@ -398,7 +398,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /bundleId.*minimum.*1/,
+        /at least 1 character/i,
       );
     });
   });
@@ -479,7 +479,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /validationLevel.*invalid.*enum/,
+        /Invalid enum value/i,
       );
     });
   });
@@ -518,7 +518,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /maxTokensPerTask.*positive/,
+        /greater than 0/i,
       );
     });
 
@@ -534,7 +534,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /maxCostPerTask.*positive/,
+        /greater than 0/i,
       );
     });
 
@@ -550,7 +550,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /securityLevel.*invalid.*enum/,
+        /Invalid enum value/i,
       );
     });
   });

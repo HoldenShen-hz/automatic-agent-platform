@@ -85,6 +85,13 @@ export interface SystemHealthSnapshot {
   providerHealth: "healthy" | "degraded" | "failed";
 }
 
+interface ConditionMatchContext {
+  severity?: AnomalySeverity;
+  metricName?: string;
+  healthStatus?: SystemHealthSnapshot["status"];
+  context?: Record<string, unknown>;
+}
+
 // ── Default Playbooks ──────────────────────────────────────────────────
 
 const DEFAULT_PLAYBOOKS: StopLossPlaybook[] = [
@@ -362,7 +369,17 @@ export class AutoStopLossService {
       if (this.isPlaybookInCooldown(playbook)) continue;
       if (this.isPlaybookRateLimited(playbook)) continue;
 
-      if (this.conditionMatches(playbook.triggerCondition, { severity: severity, metricName: metricName, ...(context !== undefined ? { context } : {}) })) {
+      const matchContext: ConditionMatchContext = {
+        severity,
+        metricName,
+        ...(context !== undefined ? { context } : {}),
+      };
+      const healthStatus = this.getContextHealthStatus(context);
+      if (healthStatus !== undefined) {
+        matchContext.healthStatus = healthStatus;
+      }
+
+      if (this.conditionMatches(playbook.triggerCondition, matchContext)) {
         matchingPlaybooks.push(playbook);
       }
     }
@@ -390,7 +407,20 @@ export class AutoStopLossService {
       if (this.isPlaybookInCooldown(playbook)) continue;
       if (this.isPlaybookRateLimited(playbook)) continue;
 
-      if (this.conditionMatches(playbook.triggerCondition, { healthStatus: status, ...(context !== undefined ? { context } : {}) })) {
+      const matchContext: ConditionMatchContext = {
+        healthStatus: status,
+        ...(context !== undefined ? { context } : {}),
+      };
+      const severity = this.getContextAnomalySeverity(context);
+      if (severity !== undefined) {
+        matchContext.severity = severity;
+      }
+      const metricName = this.getContextMetricName(context);
+      if (metricName !== undefined) {
+        matchContext.metricName = metricName;
+      }
+
+      if (this.conditionMatches(playbook.triggerCondition, matchContext)) {
         matchingPlaybooks.push(playbook);
       }
     }
@@ -406,12 +436,7 @@ export class AutoStopLossService {
    */
   private conditionMatches(
     condition: PlaybookCondition,
-    ctx: {
-      severity?: AnomalySeverity;
-      metricName?: string;
-      healthStatus?: SystemHealthSnapshot["status"];
-      context?: Record<string, unknown>;
-    },
+    ctx: ConditionMatchContext,
   ): boolean {
     switch (condition.type) {
       case "anomaly_severity":
@@ -505,6 +530,29 @@ export class AutoStopLossService {
     }
 
     return undefined;
+  }
+
+  private getContextAnomalySeverity(context: Record<string, unknown> | undefined): AnomalySeverity | undefined {
+    const severity = context?.anomalySeverity ?? context?.severity;
+    return this.isAnomalySeverity(severity) ? severity : undefined;
+  }
+
+  private getContextHealthStatus(context: Record<string, unknown> | undefined): SystemHealthSnapshot["status"] | undefined {
+    const status = context?.healthStatus ?? context?.status;
+    return this.isHealthStatus(status) ? status : undefined;
+  }
+
+  private getContextMetricName(context: Record<string, unknown> | undefined): string | undefined {
+    const metricName = context?.metricName;
+    return typeof metricName === "string" && metricName.length > 0 ? metricName : undefined;
+  }
+
+  private isAnomalySeverity(value: unknown): value is AnomalySeverity {
+    return value === "info" || value === "warning" || value === "critical" || value === "emergency";
+  }
+
+  private isHealthStatus(value: unknown): value is SystemHealthSnapshot["status"] {
+    return value === "ok" || value === "degraded" || value === "overloaded" || value === "unhealthy";
   }
 
   private toSnakeCase(value: string): string {

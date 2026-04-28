@@ -19,7 +19,9 @@ export function matchRoute(request: ApiRequestLike): RouteMatch | null {
   if (method !== "GET" && method !== "POST" && method !== "OPTIONS") {
     return null;
   }
-  const parsed = parseUrl(request.url ?? "/", true);
+  const rawUrl = request.url ?? "/";
+  const normalizedUrl = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+  const parsed = parseUrl(normalizedUrl, true);
   const pathname = parsed.pathname ?? "/";
   const segments = pathname.split("/").filter((segment) => segment.length > 0);
   return { pathname, segments };

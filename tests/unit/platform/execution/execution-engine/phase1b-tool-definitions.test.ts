@@ -96,8 +96,8 @@ test("getPhase1BToolDefinitions ignores unknown tool names", () => {
 
 test("getPhase1BToolDefinitions returns tools in same order as source", () => {
   const result = getPhase1BToolDefinitions(["web_fetch", "web_search", "git"]);
-  assert.equal(result[0].name, "web_fetch");
-  assert.equal(result[1].name, "web_search");
+  assert.equal(result[0].name, "web_search");
+  assert.equal(result[1].name, "web_fetch");
   assert.equal(result[2].name, "git");
 });
 

@@ -266,7 +266,7 @@ test("CrossRegionDeploymentService sets region weight", () => {
       metadata: null,
     });
 
-    service.setRegionWeight("region-weight", 75, "2026-04-26T00:00:00.000Z", "2026-04-27T00:00:00.000Z");
+    service.setRegionWeight("region-weight", 75, "2026-04-26T00:00:00.000Z", "2099-01-01T00:00:00.000Z");
 
     const weights = service.getEffectiveWeights();
     assert.ok(weights.length > 0, "Should have weights");
@@ -644,7 +644,7 @@ test("CrossRegionDeploymentService getEffectiveWeights filters expired", () => {
     });
 
     service.setRegionWeight("weights-region", 50, "2025-01-01T00:00:00.000Z", "2025-01-02T00:00:00.000Z");
-    service.setRegionWeight("weights-region", 75, "2026-04-26T00:00:00.000Z", "2026-04-27T00:00:00.000Z");
+    service.setRegionWeight("weights-region", 75, "2026-04-26T00:00:00.000Z", "2099-01-01T00:00:00.000Z");
 
     const weights = service.getEffectiveWeights();
     const activeWeights = weights.filter((w) => w.regionId === "weights-region");

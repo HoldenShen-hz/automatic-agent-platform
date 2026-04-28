@@ -17,7 +17,7 @@ import {
   type QueueStats,
   type RetryPolicy,
   type QueueAdapter,
-} from "../../../../../src/core/runtime/queue-adapter.js";
+} from "../../../../src/core/runtime/queue-adapter.js";
 
 test("queue-adapter barrel exports DEFAULT_RETRY_POLICY", () => {
   assert.ok(DEFAULT_RETRY_POLICY !== undefined, "DEFAULT_RETRY_POLICY should be exported");
@@ -34,7 +34,8 @@ test("queue-adapter barrel exports QUEUE_JOBS_DDL", () => {
 });
 
 test("queue-adapter barrel exports QueueBackendKind type", () => {
-  assert.ok(typeof QueueBackendKind === "string", "QueueBackendKind should be a string type");
+  const kinds: QueueBackendKind[] = ["sqlite", "redis"];
+  assert.deepEqual(kinds, ["sqlite", "redis"]);
 });
 
 test("queue-adapter barrel exports QueueJobStatus type", () => {
@@ -111,7 +112,7 @@ test("queue-adapter DDL contains all required columns", () => {
 });
 
 test("queue-adapter module re-exports correct canonical module", async () => {
-  const mod = await import("../../../../../src/core/runtime/queue-adapter.js");
+  const mod = await import("../../../../src/core/runtime/queue-adapter.js");
   assert.ok("DEFAULT_RETRY_POLICY" in mod, "Module should export DEFAULT_RETRY_POLICY");
   assert.ok("QUEUE_JOBS_DDL" in mod, "Module should export QUEUE_JOBS_DDL");
 });

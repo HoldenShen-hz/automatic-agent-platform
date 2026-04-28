@@ -7,7 +7,7 @@ import type {
   GatewayDeliveryReceipt,
   GatewayRetryQueueSummary,
   TrackedGatewayDeliveryPayload,
-} from "../../../../src/platform/interface/channel-gateway/types.js";
+} from "../../../../../../src/platform/interface/channel-gateway/types.js";
 
 test("ChannelGatewayServiceOptions interface structure", () => {
   // Test that the options interface can be satisfied
@@ -131,7 +131,7 @@ test("TrackedGatewayDeliveryPayload with optional metadata", () => {
 });
 
 test("TelegramGatewayConfig structure", () => {
-  const config: import("../../../../src/platform/interface/channel-gateway/types.js").TelegramGatewayConfig = {
+  const config: import("../../../../../../src/platform/interface/channel-gateway/types.js").TelegramGatewayConfig = {
     botToken: "12345:ABC",
     baseUrl: "https://api.telegram.org",
   };
@@ -140,14 +140,14 @@ test("TelegramGatewayConfig structure", () => {
 });
 
 test("TelegramGatewayConfig without optional baseUrl", () => {
-  const config: import("../../../../src/platform/interface/channel-gateway/types.js").TelegramGatewayConfig = {
+  const config: import("../../../../../../src/platform/interface/channel-gateway/types.js").TelegramGatewayConfig = {
     botToken: "12345:ABC",
   };
   assert.ok(!config.baseUrl);
 });
 
 test("SlackGatewayConfig structure", () => {
-  const config: import("../../../../src/platform/interface/channel-gateway/types.js").SlackGatewayConfig = {
+  const config: import("../../../../../../src/platform/interface/channel-gateway/types.js").SlackGatewayConfig = {
     botToken: "xoxb-12345",
     baseUrl: "https://slack.com/api",
   };
@@ -155,13 +155,13 @@ test("SlackGatewayConfig structure", () => {
 });
 
 test("WebhookGatewayConfig structure", () => {
-  const config: import("../../../../src/platform/interface/channel-gateway/types.js").WebhookGatewayConfig = {
+  const config: import("../../../../../../src/platform/interface/channel-gateway/types.js").WebhookGatewayConfig = {
     defaultHeaders: { Authorization: "Bearer token" },
   };
   assert.deepEqual(config.defaultHeaders, { Authorization: "Bearer token" });
 });
 
 test("WebhookGatewayConfig without optional headers", () => {
-  const config: import("../../../../src/platform/interface/channel-gateway/types.js").WebhookGatewayConfig = {};
+  const config: import("../../../../../../src/platform/interface/channel-gateway/types.js").WebhookGatewayConfig = {};
   assert.ok(!config.defaultHeaders);
 });

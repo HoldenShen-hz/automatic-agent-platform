@@ -370,7 +370,7 @@ test("CLI integration: multiple CLIs coordinate on same database", () => {
 
 test("CLI integration: CLI fails gracefully with invalid database path", () => {
   const result = runCli("pmf.js", {
-    AA_DB_PATH: "/tmp/invalid/path/to/db.sqlite",
+    AA_DB_PATH: "/dev/null/automatic-agent-invalid/db.sqlite",
     AA_PMF_ACTION: "history",
   });
 

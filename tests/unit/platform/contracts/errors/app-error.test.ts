@@ -22,7 +22,7 @@ import {
   isAppError,
   getErrorCode,
   normalizeToAppError,
-} from "../../../../src/platform/contracts/errors.js";
+} from "../../../../../src/platform/contracts/errors.js";
 
 test("AppError basic construction", () => {
   const err = new AppError("TEST_ERROR", "Test message");
@@ -77,7 +77,7 @@ test("AppError.toJSON serializes all fields", () => {
   assert.equal(json.category, "validation");
   assert.equal(json.source, "gateway");
   assert.equal(json.traceId, "trace-abc");
-  assert.equal(json.task_id, "trace-abc");
+  assert.equal(json.task_id, "task-xyz");
   assert.equal(json.taskId, "task-xyz");
   assert.equal(json.statusCode, 400);
   assert.equal(json.retryable, false);

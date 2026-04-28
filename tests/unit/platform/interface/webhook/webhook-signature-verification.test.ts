@@ -101,7 +101,7 @@ test("WebhookIngressService receive with sha256_hmac accepts signature without p
   });
 
   const body = JSON.stringify({ eventType: "alert", eventId: "evt-no-prefix" });
-  const signature = createHmac(secret, body).digest("hex");
+  const signature = createHmac("sha256", secret).update(body).digest("hex");
 
   const envelope = service.receive({
     endpointId: "ep-no-prefix",

@@ -21,8 +21,7 @@ test("parseJsonArray handles JSON array with escaped characters", () => {
 
 test("parseJsonArray handles nested JSON arrays", () => {
   const result = parseJsonArray('[["inner"], "outer"]');
-  // Only filters out non-strings, keeps the inner array as string representation
-  assert.equal(result.length, 2);
+  assert.deepEqual(result, ["outer"]);
 });
 
 test("parseJsonArray handles unicode characters", () => {

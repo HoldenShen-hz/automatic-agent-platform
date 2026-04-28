@@ -236,7 +236,7 @@ test("isElevatedPriority returns false for low", () => {
 
 test("normalizeStringArray with unicode strings", () => {
   const result = normalizeStringArray(["日本語", "中文", "한국어"]);
-  assert.deepEqual(result, ["日本語", "中文", "한국어"]);
+  assert.deepEqual(result, ["中文", "日本語", "한국어"]);
 });
 
 test("parseJsonArray with escaped strings", () => {

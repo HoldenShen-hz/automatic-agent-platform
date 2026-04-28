@@ -305,7 +305,7 @@ export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
 
       // Return a promise that resolves when the coalesced writeback completes
       return new Promise((resolve, reject) => {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           // The actual resolution happens when the coalesced operation completes
           this.enqueueOperation(
             "recordWriteback",
@@ -318,6 +318,7 @@ export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
             .then(resolve)
             .catch(reject);
         }, this.options.coalescingWindowMs);
+        timer.unref?.();
       });
     }
 
@@ -453,6 +454,7 @@ export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
           reject(new Error(`Operation ${operationName} timed out after ${timeoutMs}ms`));
         }
       }, timeoutMs);
+      timeoutHandle.unref?.();
     });
 
     // Handle external abort
@@ -692,6 +694,7 @@ export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
     this.coalescingTimer = setInterval(() => {
       this.flushCoalescedWritebacks();
     }, this.options.coalescingWindowMs * 2);
+    this.coalescingTimer.unref?.();
   }
 
   /**
@@ -715,6 +718,7 @@ export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
     this.batchFlushTimer = setInterval(() => {
       this.flushBatch();
     }, this.options.batchFlushIntervalMs);
+    this.batchFlushTimer.unref?.();
   }
 
   /**
@@ -822,7 +826,10 @@ export class ExecutionWorkerWritebackServiceAsync extends EventEmitter {
    * Sleep utility for async delay.
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      timer.unref?.();
+    });
   }
 
   /**

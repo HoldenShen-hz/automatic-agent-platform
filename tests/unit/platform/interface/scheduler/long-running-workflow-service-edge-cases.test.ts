@@ -1045,7 +1045,16 @@ test("LongRunningWorkflowService resume handles all timeoutPolicy values", () =>
 
     const decisions = service.sweepExpired("2026-04-25T12:01:00.000Z");
     assert.equal(decisions.length, 1);
-    assert.equal(decisions[0]!.timeoutPolicy, timeoutPolicy);
+    assert.equal(
+      decisions[0]!.nextWorkflowStatus,
+      timeoutPolicy === "fail_workflow" ? "failed" : null,
+    );
+    assert.equal(
+      decisions[0]!.reasonCode,
+      timeoutPolicy === "fail_workflow"
+        ? "workflow_sleep.expired_failed"
+        : "workflow_sleep.expired_remain_pending",
+    );
   }
   h.db.close();
   cleanupPath(h.workspace);

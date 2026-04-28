@@ -12,9 +12,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CommandExecutor } from "../../../../src/platform/execution/tool-executor/command-executor.js";
+import { CommandExecutor } from "../../../src/platform/execution/tool-executor/command-executor.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
-import { newId } from "../../../../src/platform/contracts/types/ids.js";
+import { newId } from "../../../src/platform/contracts/types/ids.js";
 
 function createSandboxPolicy(workspace: string) {
   return {

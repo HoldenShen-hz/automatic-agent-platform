@@ -20,7 +20,9 @@ export function validateHitlModeRequest(input: {
   readonly options: readonly { optionId: string }[];
   readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly timeoutPolicy: "reject" | "approve" | "remain_pending";
-  readonly context?: Record<string, unknown>;
+  readonly context?: Record<string, unknown> & {
+    readonly breakGlassApproved?: boolean;
+  };
 }): HitlModeConstraint {
   switch (input.mode) {
     case "single_approval":
@@ -57,7 +59,7 @@ export function validateHitlModeRequest(input: {
       if (input.riskLevel !== "high" && input.riskLevel !== "critical") {
         throw new Error("hitl_mode.circuit_breaker_requires_high_risk");
       }
-      if (input.timeoutPolicy === "approve") {
+      if (input.timeoutPolicy === "approve" && input.context?.breakGlassApproved !== true) {
         throw new Error("hitl_mode.circuit_breaker_auto_approve_forbidden");
       }
       return { mode: input.mode, summary: "Circuit-breaker mode requires a blocking human decision." };

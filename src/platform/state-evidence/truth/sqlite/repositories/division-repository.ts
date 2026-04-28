@@ -63,8 +63,12 @@ export class DivisionRepository {
        FROM data_movement_jobs
        ${whereClause}
        ORDER BY started_at DESC, job_id ASC
-       LIMIT ?`,
+      LIMIT ?`,
       ...parameters,
-    );
+    )
+      .filter((record) => options.tenantId === undefined || record.tenantId === options.tenantId)
+      .filter((record) => options.status == null || record.status === options.status)
+      .filter((record) => options.movementType == null || record.movementType === options.movementType)
+      .slice(0, safeLimit);
   }
 }

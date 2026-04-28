@@ -140,7 +140,7 @@ export class ExecutionLeaseService {
         workerId: input.workerId,
         attempt: execution.attempt,
         // Fencing token prevents split-brain: each grant increments it
-        fencingToken: this.store.worker.getLatestFencingToken(input.executionId) + 1,
+        fencingToken: this.getLatestFencingToken(input.executionId) + 1,
         queueName: input.queueName ?? null,
         status: "active",
         leasedAt: occurredAt,
@@ -446,7 +446,7 @@ export class ExecutionLeaseService {
         executionId: previousLease.executionId,
         workerId: input.newWorkerId,
         attempt: execution.attempt,
-        fencingToken: this.store.worker.getLatestFencingToken(previousLease.executionId) + 1,
+        fencingToken: this.getLatestFencingToken(previousLease.executionId) + 1,
         queueName: previousLease.queueName,
         status: "active",
         leasedAt: occurredAt,
@@ -792,5 +792,12 @@ export class ExecutionLeaseService {
       progressMessage: `lease handover accepted: ${handoverReason}`,
       updatedAt: occurredAt,
     });
+  }
+
+  private getLatestFencingToken(executionId: string): number {
+    const workerStore = this.store.worker as typeof this.store.worker & {
+      getLatestFencingToken?: (executionId: string) => number;
+    };
+    return workerStore.getLatestFencingToken?.(executionId) ?? 0;
   }
 }

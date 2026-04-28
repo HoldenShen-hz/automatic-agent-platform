@@ -67,7 +67,7 @@ export class WebhookIngressService {
     assertNonEmpty(input.endpointId, "webhook.invalid_endpoint_id");
     assertNonEmpty(input.source, "webhook.invalid_source");
     if (input.algorithm === "sha256_hmac" && (input.signingSecret == null || input.signingSecret.length === 0)) {
-      throw new ValidationError("webhook.signing_secret_required", "Signed webhook endpoints require a signing secret.", {
+      throw new ValidationError("webhook.signing_secret_required", "webhook.signing_secret_required: Signed webhook endpoints require a signing secret.", {
         details: { endpointId: input.endpointId },
       });
     }
@@ -87,12 +87,12 @@ export class WebhookIngressService {
   public receive(input: InboundWebhookRequest): WebhookDispatchEnvelope {
     const endpoint = this.endpoints.get(input.endpointId);
     if (endpoint == null) {
-      throw new ValidationError("webhook.endpoint_not_found", "Webhook endpoint is not registered.", {
+      throw new ValidationError("webhook.endpoint_not_found", "webhook.endpoint_not_found: Webhook endpoint is not registered.", {
         details: { endpointId: input.endpointId },
       });
     }
     if (!endpoint.enabled) {
-      throw new ValidationError("webhook.endpoint_disabled", "Webhook endpoint is disabled.", {
+      throw new ValidationError("webhook.endpoint_disabled", "webhook.endpoint_disabled: Webhook endpoint is disabled.", {
         details: { endpointId: input.endpointId },
       });
     }
@@ -100,10 +100,10 @@ export class WebhookIngressService {
     const payload = parseWebhookPayload(input.body);
     const eventType = readString(payload, "eventType") ?? readString(payload, "event_type") ?? readString(payload, "type");
     if (eventType == null) {
-      throw new ValidationError("webhook.event_type_required", "Webhook payload must include eventType, event_type, or type.");
+      throw new ValidationError("webhook.event_type_required", "webhook.event_type_required: Webhook payload must include eventType, event_type, or type.");
     }
     if (endpoint.allowedEventTypes.length > 0 && !endpoint.allowedEventTypes.includes(eventType)) {
-      throw new ValidationError("webhook.event_type_not_allowed", "Webhook event type is not allowed for this endpoint.", {
+      throw new ValidationError("webhook.event_type_not_allowed", "webhook.event_type_not_allowed: Webhook event type is not allowed for this endpoint.", {
         details: { endpointId: input.endpointId, eventType, allowedEventTypes: endpoint.allowedEventTypes },
       });
     }
@@ -119,7 +119,7 @@ export class WebhookIngressService {
       ?? readString(payload, "event_id")
       ?? readString(payload, "id");
     if (idempotencyKey == null) {
-      throw new ValidationError("webhook.idempotency_key_required", "Webhook request must include an idempotency key.", {
+      throw new ValidationError("webhook.idempotency_key_required", "webhook.idempotency_key_required: Webhook request must include an idempotency key.", {
         details: { endpointId: input.endpointId, eventType },
       });
     }
@@ -210,20 +210,26 @@ function verifySignature(input: {
   if (input.endpoint.algorithm === "none") {
     return false;
   }
-  const signature = readHeader(input.headers, input.endpoint.signatureHeader ?? "x-aa-signature");
+  const signature = readHeaderRaw(input.headers, input.endpoint.signatureHeader ?? "x-aa-signature");
   if (signature == null) {
-    throw new ValidationError("webhook.signature_required", "Signed webhook request is missing its signature header.", {
+    throw new ValidationError("webhook.signature_required", "webhook.signature_required: Signed webhook request is missing its signature header.", {
+      details: { endpointId: input.endpoint.endpointId },
+    });
+  }
+  const trimmedSignature = signature.trim();
+  if (trimmedSignature.length === 0) {
+    throw new ValidationError("webhook.signature_invalid", "webhook.signature_invalid: Webhook signature verification failed.", {
       details: { endpointId: input.endpoint.endpointId },
     });
   }
   const expected = createHmac("sha256", input.endpoint.signingSecret ?? "")
     .update(input.body)
     .digest("hex");
-  const normalizedSignature = signature.startsWith("sha256=") ? signature.slice("sha256=".length) : signature;
+  const normalizedSignature = trimmedSignature.startsWith("sha256=") ? trimmedSignature.slice("sha256=".length) : trimmedSignature;
   const expectedBuffer = Buffer.from(expected, "hex");
   const actualBuffer = Buffer.from(normalizedSignature, "hex");
   if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
-    throw new ValidationError("webhook.signature_invalid", "Webhook signature verification failed.", {
+    throw new ValidationError("webhook.signature_invalid", "webhook.signature_invalid: Webhook signature verification failed.", {
       details: { endpointId: input.endpoint.endpointId },
     });
   }
@@ -234,7 +240,7 @@ function parseWebhookPayload(body: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(body) as unknown;
     if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new ValidationError("webhook.invalid_json", "Webhook body must be a JSON object.", {
+      throw new ValidationError("webhook.invalid_json", "webhook.invalid_json: Webhook body must be a JSON object.", {
         details: { message: "payload must be an object" },
       });
     }
@@ -245,21 +251,29 @@ function parseWebhookPayload(body: string): Record<string, unknown> {
     if (error instanceof ValidationError) {
       throw error;
     }
-    throw new ValidationError("webhook.invalid_json", "Webhook body must be a valid JSON object.", {
+    throw new ValidationError("webhook.invalid_json", "webhook.invalid_json: Webhook body must be a valid JSON object.", {
       details: { message: error instanceof Error ? error.message : String(error) },
     });
   }
 }
 
 function readHeader(headers: Record<string, string | string[] | undefined>, name: string): string | null {
+  const value = readHeaderRaw(headers, name);
+  if (value == null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function readHeaderRaw(headers: Record<string, string | string[] | undefined>, name: string): string | null {
   const normalized = normalizeHeaderName(name);
   for (const [headerName, value] of Object.entries(headers)) {
     if (normalizeHeaderName(headerName) !== normalized || value == null) {
       continue;
     }
     const first = Array.isArray(value) ? value[0] : value;
-    const trimmed = first?.trim();
-    return trimmed == null || trimmed.length === 0 ? null : trimmed;
+    return first ?? null;
   }
   return null;
 }
@@ -275,7 +289,7 @@ function normalizeHeaderName(name: string): string {
 
 function assertNonEmpty(value: string, code: string): void {
   if (value.trim().length === 0) {
-    throw new ValidationError(code, "Webhook configuration value must be non-empty.", {
+    throw new ValidationError(code, `${code}: Webhook configuration value must be non-empty.`, {
       details: { value },
     });
   }

@@ -93,10 +93,9 @@ test("removeExecutionId handles single element array not matching", () => {
   assert.deepStrictEqual(result, ["only"]);
 });
 
-test("removeExecutionId handles multiple occurrences (should only remove one)", () => {
-  // Note: In practice IDs should be unique, but let's verify behavior
+test("removeExecutionId removes duplicate stale occurrences", () => {
   const result = removeExecutionId(["a", "b", "b", "c"], "b");
-  assert.deepStrictEqual(result, ["a", "b", "c"]);
+  assert.deepStrictEqual(result, ["a", "c"]);
 });
 
 test("removeExecutionId returns empty sorted array when all removed", () => {

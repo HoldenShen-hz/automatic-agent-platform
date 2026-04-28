@@ -405,6 +405,18 @@ export class ExecutionDispatchService {
           leaseId: lease.lease?.id ?? "",
           claimedAt: occurredAt,
         });
+        const workerSnapshot = this.store.worker.getWorkerSnapshot(selectedWorker.workerId);
+        if (workerSnapshot) {
+          const runningExecutionIds = new Set(parseJsonArray(workerSnapshot.runningExecutionsJson));
+          runningExecutionIds.add(ticket.executionId);
+          this.store.worker.upsertWorkerSnapshot({
+            ...workerSnapshot,
+            status: "busy",
+            activeLeaseCount: Math.max(workerSnapshot.activeLeaseCount ?? 0, runningExecutionIds.size),
+            runningExecutionsJson: JSON.stringify([...runningExecutionIds].sort()),
+            updatedAt: occurredAt,
+          });
+        }
         const execution = this.store.dispatch.getExecution(ticket.executionId);
         this.store.event.insertEvent({
           id: newId("evt"),

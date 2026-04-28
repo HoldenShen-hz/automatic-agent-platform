@@ -205,7 +205,7 @@ test("PolicyRolloutService.evaluateMetricsGate returns allowed for non-progressi
   const service = new PolicyRolloutService();
   const current = makeRecord({ status: "shadow" });
 
-  const gate = service.evaluateMetricsGate(current, "canary_5");
+  const gate = service.evaluateMetricsGate(current, "rejected");
 
   assert.equal(gate.allowed, true);
 });

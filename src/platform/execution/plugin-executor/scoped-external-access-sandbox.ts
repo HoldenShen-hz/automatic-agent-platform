@@ -86,12 +86,20 @@ export class ScopedExternalAccessSandbox {
    * @param url - The URL to validate
    * @returns true if the request is allowed
    */
-  public async validateOutboundRequest(url: string): Promise<boolean> {
+  public validateOutboundRequest(url: string): boolean {
     try {
       const targetUrl = new URL(url);
-      const hostname = targetUrl.hostname;
+      const hostname = targetUrl.hostname.toLowerCase();
+      const allowed = this.config.allowedDomains.some((domain) => {
+        const allowedDomain = domain.toLowerCase();
+        if (hostname === allowedDomain) {
+          return true;
+        }
+        const isApexDomain = allowedDomain.split(".").length === 2;
+        return isApexDomain && hostname.endsWith(`.${allowedDomain}`);
+      });
 
-      if (!this.config.allowedDomains.includes(hostname)) {
+      if (!allowed) {
         logger.log({
           level: "warn",
           message: "External request blocked: domain not in whitelist",
@@ -120,7 +128,7 @@ export class ScopedExternalAccessSandbox {
    * @param domain - The domain to check
    * @returns true if within rate limit
    */
-  public async checkRateLimit(domain: string): Promise<boolean> {
+  public checkRateLimit(domain: string): boolean {
     const now = Date.now();
     const minuteMs = 60 * 1000;
 
@@ -153,10 +161,12 @@ export class ScopedExternalAccessSandbox {
    */
   public filterResponseHeaders(headers: Record<string, string>): Record<string, string> {
     const filtered = { ...headers };
+    const sensitiveHeaderSet = new Set(this.config.sensitiveHeaders.map((header) => header.toLowerCase()));
 
-    for (const sensitiveHeader of this.config.sensitiveHeaders) {
-      delete filtered[sensitiveHeader.toLowerCase()];
-      delete filtered[sensitiveHeader];
+    for (const header of Object.keys(filtered)) {
+      if (sensitiveHeaderSet.has(header.toLowerCase())) {
+        delete filtered[header];
+      }
     }
 
     return filtered;
@@ -304,7 +314,12 @@ export class ScopedExternalAccessSandbox {
    * Returns current rate limit status for all tracked domains.
    */
   public getRateLimitStatus(): Record<string, DomainRateLimit> {
-    return Object.fromEntries(this.rateLimits);
+    return Object.fromEntries(
+      [...this.rateLimits.entries()].map(([domain, status]) => [
+        domain,
+        { ...status },
+      ]),
+    );
   }
 }
 

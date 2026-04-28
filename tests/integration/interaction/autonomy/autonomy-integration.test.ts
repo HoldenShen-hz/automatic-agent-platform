@@ -349,9 +349,9 @@ test("integration: ProgressiveAutonomyService with custom evaluation options", a
   });
   service.registerProfile(profile);
 
-  // With severityBasedDemotion enabled (default), P1 should demote one level
+  // P1 demotion now stays at the suggestion floor instead of promoting upward.
   const result1 = await service.evaluate("custom_opts_agent");
-  assert.equal(result1.level, "supervised");
+  assert.equal(result1.level, "suggestion");
 
   // With severityBasedDemotion disabled, P1 should freeze
   const profile2 = makeProfile({
@@ -369,7 +369,7 @@ test("integration: ProgressiveAutonomyService with custom evaluation options", a
   });
   service.registerProfile(profile2);
   const result2 = await service.evaluate("no_severity_agent");
-  assert.equal(result2.level, "supervised");
+  assert.equal(result2.level, "suggestion");
 });
 
 test("integration: AutonomyGovernanceService evaluateCapability with zero executions", () => {

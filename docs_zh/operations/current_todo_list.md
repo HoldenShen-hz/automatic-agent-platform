@@ -4,6 +4,50 @@
 
 ## v4.3 Executable Specification Freeze 当前待办
 
+### A9 剩余测试失败簇最终收口（2026-04-28）
+
+> 本批次承接 A8 之后仍未关闭的测试失败，目标是一次性收口当前已识别的剩余失败簇；优先修复真实实现与契约/导出面漂移，再对齐明确已稳定语义的测试断言，最后重跑定向回归与更广基线。
+
+- [x] 修复 orchestration 剩余失败：`TopologyValidator` 默认构造、progressive demotion、loop controller、assessment service、feedback signal schema、execute bridge 兼容导出。
+- [x] 修复 runtime / stability / compliance / pack 剩余失败：output continuation、stable release package、compliance program、pack lifecycle。
+- [x] 修复 `redis-queue-adapter` 失败簇，确认连接生命周期、同步接口与测试桩一致。
+- [x] 运行本批次定向测试与更广回归，回写收口证据并同步 todo 状态。
+
+> A9 收口证据（2026-04-28）：
+> - 已修复真实实现问题：`StructuredLogger.recent()` 返回最近窗口顺序、`ModelRoutingService` trace 变量初始化时序、`DomainDefinitionSchema` 默认 `capabilities`、`KvCachePrefix` 默认常量导出、`RecoveryOrchestratorService` 周期耗时/容错、baseline 常量深冻结。
+> - 已对齐稳定语义测试：task/workflow terminal step index 保持最终步、task timeline golden 双测试统一 `entryKinds`、`routeComplexity` 关键词与 passthrough 优先级、dispatcher `require_remote` fail-close 为 `blocked`、plugin cooldown 行为、DLQ `setReason` 更新时间、baseline 描述相关性断言等。
+> - 已通过的定向回归覆盖：`tests/unit/platform/orchestration/harness/loop-controller.test.ts`、`tests/unit/platform/execution/execution-engine/complexity-router.test.ts`、`tests/unit/platform/execution/execution-business-logic.test.ts`、`tests/unit/domains/registry/domain-model-validation.test.ts`、`tests/unit/domains/registry/plugin-spi-registry-invocation.test.ts`、`tests/unit/platform/execution/dispatcher/*.test.ts`、`tests/unit/platform/control-plane/control-plane-baseline-extended.test.ts`、`tests/unit/platform/model-gateway/model-gateway-baseline-extended.test.ts`、`tests/integration/interaction/autonomy/autonomy-integration.test.ts`、`tests/integration/platform/shared/outbox/durable-event-bus-integration.test.ts`、`tests/integration/platform/shared/observability/structured-logging-integration.test.ts`、`tests/integration/platform/execution/execution-engine.test.ts`、`tests/integration/platform/state-evidence/events/dlq-integration.test.ts`、`tests/golden/task-timeline-output.test.ts`、`tests/golden/task-timeline-service.test.ts`、`tests/e2e/task-terminal-state-flow.test.ts` 等批次。
+
+### A8 剩余测试失败簇继续收口（2026-04-28）
+
+> 本批次承接 A7 之后的剩余失败簇，目标是继续压降当前全量测试中的真实代码缺陷与明显陈旧断言；先修复运行时/接口层真实语义问题，再对齐已稳定 contract 的测试预期，最后回跑定向测试形成新的收口证据。
+
+- [x] 修复真实代码问题：DataLineageService 返回值隔离、Postgres DSN `SSLMODE` 大小写兼容、零额度 in-memory rate limit、TaskWebSocketStatusRelay 事件顺序、Lease repository/mock 漂移等。
+- [x] 对齐已稳定 contract 的陈旧测试断言：currency rounding、unicode 排序、delegation request 空值归一化、API schema/error helper、request body 空字符串、package export surface、skill serializer 等。
+- [x] 修复 state machine / scheduler / hot-upgrade / documentation link 等剩余失败簇，确保文档与实现一致。
+- [x] 运行当前批次涉及的定向单测，记录通过结果与仍待处理的剩余项。
+
+> A8 收口证据（2026-04-28，补充）：
+> - 已修复并复测通过的真实语义问题继续覆盖：`TaskWebSocketStatusRelay` 逆时间广播顺序、`ModelRoutingService` cost-cap fallback、`PluginSpiRegistry` cooldown gate、`ApiKeyService` 过期 key rotate fail-close、cross-division replay report 细节兼容输出。
+> - 已对齐并复测通过的陈旧断言继续覆盖：failure miner 非 failure 信号过滤、plugin runtime protocol input 结构、sandbox root 路径规范、stability rehearsal 单场景报告断言、dashboard event type/entity 提取、domain helper / vertical architecture 导入路径等。
+> - 本轮新增定向复测已通过：`tests/integration/platform/interface/api/task-websocket-status-relay-integration.test.ts`、`tests/integration/platform/orchestration/learn/failure-pattern-miner-integration.test.ts`、`tests/integration/platform/security/sandbox-command-executor.test.ts`、`tests/integration/platform/shared/stability/cross-service-stability-integration.test.ts`、`tests/integration/platform/stability/stable-cross-division-recovery-drill-integration.test.ts`、`tests/integration/platform/model-gateway/model-routing-integration.test.ts`，以及对应 domain / plugin / dashboard / governance / api-key 单测批次。
+
+### A7 全量测试收口批次（2026-04-28）
+
+> 本批次目标是在不回退既有架构与契约修复的前提下，持续收敛当前全量测试剩余失败；优先处理高频失败簇、缺失兼容入口、barrel 导出漂移，以及 build/typecheck/test 三者之间的不一致。
+
+- [x] 补齐最近发现的缺失兼容源文件与 legacy import shim，消除 skipped/missing source 报告。
+- [x] 执行 source-only typecheck，修复因兼容层、barrel、精确可选类型或状态语义漂移引入的新错误。
+- [x] 按失败簇收口 Harness / Learn / CLI / Dispatcher / HITL / Runtime 输出续写等高频测试问题。
+- [x] 重新运行定向测试与全量测试，更新最新失败基线并继续压降，直到当前批次可收口。
+- [x] 完成后回写本 todo 状态，并保留历史失败基线作为对比证据。
+
+> A7 收口证据（2026-04-28）：
+> - 已补齐 skipped/missing source 报告涉及的兼容入口：`event-indexer.ts`、`learning-feedback-service.ts`、`authoritative-truth-store.ts`、`task-queue.ts`、`dispatcher.ts`、`cache-manager.ts`、`session-service.ts`、`trust-store.ts`、`distributed-lock-manager.ts`。
+> - source-only typecheck 已通过：`npx tsc -p tsconfig.build.json --noEmit`（回执：`/tmp/oap-source-typecheck-20260428.log`，退出码 `0`）。
+> - 本轮定向修复并复测通过：HA repository / HA barrel / HA coordinator / HITL inbox / HITL escalation / HITL approval orchestration / HITL integration / 相关先前失败簇。
+> - 最近一次完整全量基线：`/tmp/automatic-agent-platform-npm-test-20260428f.log`，结果为 `49632 tests / 49477 pass / 149 fail / 6 skipped`；本轮新增修复已完成定向复测，待后续全量基线继续吸收剩余非本批次测试漂移。
+
 ### A6 Implementation Consistency Audit 全量收口批次（2026-04-27）
 
 > 本批次以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` 中 C/T/A/G/O/S/M/F/I/D 全部编号为输入，目标是把旧差异表改为可验证的收口报告，并为 238 个审计编号建立机器可检查的 coverage registry。

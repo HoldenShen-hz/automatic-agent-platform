@@ -336,6 +336,9 @@ export function defaultSummary(
  * Handles arrays, objects (with sorted keys), and primitives.
  */
 export function stableSerialize(value: unknown): string {
+  if (value === undefined) {
+    return "undefined";
+  }
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
   }

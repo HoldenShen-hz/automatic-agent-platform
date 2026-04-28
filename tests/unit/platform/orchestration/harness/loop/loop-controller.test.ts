@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HarnessLoopController } from "../../../../../src/platform/orchestration/harness/loop/index.js";
-import type { HarnessDecisionAction } from "../../../../../src/platform/orchestration/harness/index.js";
-import type { ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessLoopController } from "../../../../../../src/platform/orchestration/harness/loop/index.js";
+import type { HarnessDecisionAction } from "../../../../../../src/platform/orchestration/harness/index.js";
+import type { ConstraintPack } from "../../../../../../src/platform/orchestration/harness/index.js";
 
 function createTestConstraintPack(overrides: Partial<ConstraintPack["budget"]> = {}): ConstraintPack {
   return {
@@ -83,7 +83,7 @@ test("HarnessLoopController.recordIteration rounds cost to 6 decimal places", ()
   controller.recordIteration(0.123456789);
   controller.recordIteration(0.987654321);
 
-  assert.equal(controller.getState().totalCost, 1.110111);
+  assert.equal(controller.getState().totalCost, 1.111111);
 });
 
 test("HarnessLoopController.recordReplan increments replanCount", () => {

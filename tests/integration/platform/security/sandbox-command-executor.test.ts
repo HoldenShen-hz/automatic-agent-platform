@@ -653,9 +653,7 @@ test("command executor blocks curl-to-shell pipe pattern", async () => {
     });
 
     assert.equal(result.status, "blocked");
-    // The pipe character is first caught by META_SYNTAX_PATTERN (which includes |)
-    // before containsRemoteScriptPipe can be reached
-    assert.equal(result.error?.code, "tool.command_meta_syntax_denied");
+    assert.equal(result.error?.code, "tool.remote_script_pipe_denied");
   } finally {
     cleanupPath(workspace);
   }

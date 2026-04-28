@@ -171,7 +171,7 @@ test("KnowledgeBoundaryService evaluateDynamicAccess with all conditions met", (
   const result = service.evaluateDynamicAccess({
     boundary,
     requesterId: "allowed_user",
-    requesterOrgNodeId: "org_1",
+    requesterOrgNodeId: "org_owner",
     purpose: "allowed_purpose",
     grants: [],
     dynamicPolicy: {

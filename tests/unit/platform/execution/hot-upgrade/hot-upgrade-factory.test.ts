@@ -5,15 +5,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createHotUpgradeService } from "../../../../src/platform/execution/hot-upgrade/hot-upgrade-factory.js";
+import { createHotUpgradeService } from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-factory.js";
 import {
   HotUpgradeService,
   HOT_UPGRADE_DDL,
-} from "../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
+} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-service.js";
 import type {
   HotUpgradeRepository,
   UpgradeAuditEntry,
-} from "../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
+} from "../../../../../src/platform/execution/hot-upgrade/hot-upgrade-repository.js";
 
 // Note: createHotUpgradeService requires a real storage backend handle
 // so we test the factory function signature and type output here
@@ -79,9 +79,8 @@ test("createHotUpgradeService is exported and callable", () => {
   assert.ok(typeof createHotUpgradeService === "function");
 });
 
-test("HotUpgradeService types are exported from index", () => {
-  // Import from index to verify exports work
-  const indexModule = require("../../../../../src/platform/execution/hot-upgrade/index.js");
+test("HotUpgradeService types are exported from index", async () => {
+  const indexModule = await import("../../../../../src/platform/execution/hot-upgrade/index.js");
 
   assert.ok(indexModule.HotUpgradeService !== undefined);
   assert.ok(indexModule.createHotUpgradeService !== undefined);
@@ -105,8 +104,9 @@ test("UpgradeAuditEntry interface structure", () => {
   assert.deepEqual(entry.details, { key: "value" });
 });
 
-test("HOT_UPGRADE_DDL includes foreign key constraints", () => {
-  assert.ok(HOT_UPGRADE_DDL.includes("FOREIGN KEY"));
+test("HOT_UPGRADE_DDL links child tables by upgrade_id columns", () => {
+  assert.ok(HOT_UPGRADE_DDL.includes("CREATE TABLE IF NOT EXISTS upgrade_batches"));
+  assert.ok(HOT_UPGRADE_DDL.includes("upgrade_id TEXT NOT NULL"));
 });
 
 test("HOT_UPGRADE_DDL includes proper constraints", () => {

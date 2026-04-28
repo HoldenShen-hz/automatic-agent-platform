@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import { HumanWaitExecutor, type HumanWaitExecutionContext, type HumanWaitResolution } from "../../../../../src/platform/execution/plugin-executor/human-wait-executor.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -829,7 +830,9 @@ test("HumanWaitExecutor.resolveApproval() throws for unknown approvalId", () => 
         status: "approved",
       }),
     (err: Error) => {
-      return err.message.includes("approval_not_found");
+      return err instanceof ValidationError
+        && err.code === "human_wait.approval_not_found"
+        && err.message.includes("Human wait approval was not found.");
     },
   );
 });

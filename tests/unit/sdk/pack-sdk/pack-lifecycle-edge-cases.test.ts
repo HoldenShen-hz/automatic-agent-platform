@@ -12,7 +12,7 @@ function createManifest(overrides: Partial<ReturnType<typeof validateBusinessPac
     domain: "testing",
     owner: "test@example.com",
     capabilities: [
-      { capabilityKey: "test.capability", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+      { capabilityKey: "workflow.suggest", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
     ],
     ...overrides,
   });
@@ -87,6 +87,25 @@ test("PackLifecycleOrchestrationService.recordTesting throws for invalid lifecyc
   service.registerPack({
     manifest: createManifest(),
     owner: "owner@example.com",
+  });
+  service.recordTesting({
+    packId: "test-pack",
+    version: "1.0.0",
+    coveragePercent: 90,
+    mockTestsPassed: true,
+    stagingIntegrationPassed: true,
+    evalPassed: true,
+    reportRef: "artifact://test",
+  });
+  service.certifyPack({
+    packId: "test-pack",
+    version: "1.0.0",
+    reviewer: "reviewer@example.com",
+    certificationReportRef: "artifact://cert",
+    selectedLicenseTier: "community",
+    pluginIds: ["plugin.core.basic-planner"],
+    securityReviewPassed: true,
+    riskReviewPassed: true,
   });
 
   assert.throws(
@@ -362,7 +381,16 @@ test("PackLifecycleOrchestrationService handles GA with deprecation notice", () 
 
 test("PackLifecycleOrchestrationService blocks GA without deprecation for breaking change", () => {
   const service = new PackLifecycleOrchestrationService();
-  setupCertifiedPack(service);
+  setupCertifiedPack(service, {
+    previousManifest: createManifest({
+      version: "0.9.0",
+      capabilities: [
+        { capabilityKey: "workflow.suggest", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
+        { capabilityKey: "removed.cap", maturity: "ga", requiredContracts: [] },
+      ],
+    }),
+    declaredDeprecationWarnings: 2,
+  });
 
   const published = service.publishPack({
     packId: "test-pack",
@@ -411,11 +439,19 @@ function setupPublishedPack(service: PackLifecycleOrchestrationService) {
   });
 }
 
-function setupCertifiedPack(service: PackLifecycleOrchestrationService) {
+function setupCertifiedPack(
+  service: PackLifecycleOrchestrationService,
+  options: {
+    previousManifest?: ReturnType<typeof validateBusinessPackManifest>;
+    declaredDeprecationWarnings?: number;
+  } = {},
+) {
   service.registerPack({
     manifest: createManifest(),
     owner: "owner@example.com",
     evalDatasetIds: ["dataset-1"],
+    previousManifest: options.previousManifest,
+    declaredDeprecationWarnings: options.declaredDeprecationWarnings,
   });
   service.recordTesting({
     packId: "test-pack",

@@ -95,7 +95,7 @@ test("EscalationManager createEscalation throws at max depth", () => {
 
   assert.throws(
     () => manager.createEscalation(context, rule),
-    /max depth exceeded/i,
+    /Cannot escalate beyond max depth of 3/i,
   );
 });
 
@@ -141,13 +141,15 @@ test("EscalationManager isDelegationExpired returns true for expired TTL", () =>
   assert.equal(manager.isDelegationExpired(delegation), true);
 });
 
-test("EscalationManager isDelegationExpired returns true for revoked status", () => {
+test("EscalationManager isDelegationExpired does not treat revoked status as ttl-expired", () => {
   const manager = new EscalationManager();
 
   const delegation = manager.createDelegation("user1", "user2", "approval_rev", 60000);
   manager.revokeDelegation(delegation.delegationId);
 
-  assert.equal(manager.isDelegationExpired(delegation), true);
+  const revoked = manager.getDelegation(delegation.delegationId);
+  assert.ok(revoked);
+  assert.equal(manager.isDelegationExpired(revoked), false);
 });
 
 test("EscalationManager resetDelegationTtl increments reset count", () => {
@@ -177,10 +179,12 @@ test("EscalationManager resetDelegationTtl throws on inactive delegation", () =>
 
   const delegation = manager.createDelegation("user1", "user2", "approval_inactive", 60000);
   manager.completeDelegation(delegation.delegationId);
+  const completed = manager.getDelegation(delegation.delegationId);
+  assert.ok(completed);
 
   assert.throws(
-    () => manager.resetDelegationTtl(delegation, 60000),
-    /not active/,
+    () => manager.resetDelegationTtl(completed, 60000),
+    /inactive delegation/,
   );
 });
 

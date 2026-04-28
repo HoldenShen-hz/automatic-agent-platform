@@ -181,17 +181,9 @@ test("ExecutionDeviationDetector detect generates unique deviationId each call",
   assert.notEqual(deviations2[0]!.deviationId, deviations3[0]!.deviationId);
 });
 
-test("ExecutionDeviationDetector detect returns empty plan without error", () => {
+test("ExecutionDeviationDetector detect handles minimal valid plan without error", () => {
   const detector = new ExecutionDeviationDetector();
-  const emptyPlan = parsePlan({
-    planId: "plan-empty",
-    taskId: "task-empty",
-    version: 1,
-    assessmentRef: "assessment-1",
-    strategy: "linear",
-    steps: [],
-    createdAt: Date.now(),
-  });
+  const emptyPlan = makePlan("task-empty");
   const feedback = makeFeedback("failed");
   const deviations = detector.detect(emptyPlan, feedback);
   assert.equal(deviations.length, 1);

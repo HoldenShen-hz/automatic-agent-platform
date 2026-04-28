@@ -167,7 +167,7 @@ test("HitlInboxService sorts pending before decided", () => {
       createPacket({ approvalId: "decided" }),
       createPacket({ approvalId: "pending", deadlineAt: null }),
     ],
-    [createFeedbackLink({ approvalId: "decided" })],
+    [createFeedbackLink({ approvalId: "decided", decisionEffect: "approve_candidate" })],
   );
 
   assert.equal(items[0]?.approvalId, "pending");
@@ -297,7 +297,7 @@ test("HitlInboxService buildSummary counts decided correctly", () => {
       createPacket({ approvalId: "p2" }),
     ],
     [
-      createFeedbackLink({ approvalId: "p1" }),
+      createFeedbackLink({ approvalId: "p1", decisionEffect: "approve_candidate" }),
       createFeedbackLink({ approvalId: "p2", feedbackSignalId: "sig-2" }),
     ],
   );
@@ -334,7 +334,7 @@ test("HitlInboxService preserves itemId format", () => {
 test("HitlInboxService preserves stageRef from feedbackLink", () => {
   const service = new HitlInboxService();
   const items = service.buildInbox(
-    [createPacket({ approvalId: "p1" })],
+    [createPacket({ approvalId: "p1", feedbackLink: createFeedbackLink({ approvalId: "p1", stageRef: "execute" }) })],
     [createFeedbackLink({ approvalId: "p1", stageRef: "execute" })],
   );
 

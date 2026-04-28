@@ -19,7 +19,7 @@ test("OutputContinuationService sandbox: creates record for max_tokens", () => {
     finishReason: "length",
   });
 
-  assert.ok(record.id.startsWith("continuation_"));
+  assert.ok(record.id.startsWith("continuation:"));
   assert.equal(record.finishReason, "max_tokens_exceeded");
   const status = service.checkContinuationStatus("length", record.partialOutput);
   assert.ok(status.canContinue);

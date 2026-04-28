@@ -135,10 +135,20 @@ test("PluginSpiRegistry isolates plugin failures and disables unhealthy plugins 
       tokenBudget: 100,
     },
   }));
+  await assert.rejects(() => registry.invokeRetriever("plugin.coding.broken", {
+    domainId: "coding",
+    namespace: "coding/repo",
+    query: {
+      taskId: "task_2",
+      intent: "retry",
+      context: {},
+      tokenBudget: 100,
+    },
+  }));
 
   const record = registry.get("plugin.coding.broken");
   assert.equal(record?.lifecycleState, "disabled");
-  assert.equal(record?.failureCount, 1);
+  assert.equal(record?.failureCount, 2);
   assert.match(record?.lastErrorMessage ?? "", /failed during retrieve|boom/);
   assert.ok(seenEvents.includes("plugin:error_isolated"));
 });

@@ -6,7 +6,7 @@ import type {
   HaProgramReport,
   HaProgramComponent,
   HaProgramExportResult,
-} from "../../../../../src/scale-ecosystem/tenant-platform/ha-program-service.js";
+} from "../../../../src/scale-ecosystem/tenant-platform/ha-program-service.js";
 
 // Mock minimal types for testing
 interface MockEnvironmentReadinessRecord {

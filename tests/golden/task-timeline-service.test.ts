@@ -42,6 +42,7 @@ test("golden: task timeline buildTaskTimeline has expected structure", () => {
     taskId: result.taskId,
     entryCount: result.entries.length,
     hasInspect: result.inspect !== undefined,
+    entryKinds: [...new Set(result.entries.map((e) => e.kind))],
   });
 
   db.close();

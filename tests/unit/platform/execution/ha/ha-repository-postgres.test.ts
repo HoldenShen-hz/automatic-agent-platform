@@ -52,6 +52,45 @@ function createMockAsyncDb() {
           }
           return { rowCount: existing ? 1 : 0 };
         }
+        if (sql.includes("INSERT INTO leadership_epochs")) {
+          const epochNumber = args[0] as number;
+          epochs.set(epochNumber, {
+            epoch: epochNumber,
+            leader_node_id: args[1],
+            started_at: args[2],
+            ended_at: args[3],
+            cause: args[4],
+            fencing_token: args[5],
+          });
+          return { rowCount: 1 };
+        }
+        if (sql.includes("UPDATE leadership_epochs SET ended_at")) {
+          const epochNumber = args[2] as number;
+          const existing = epochs.get(epochNumber) as Record<string, unknown> | undefined;
+          if (existing && existing.ended_at == null) {
+            epochs.set(epochNumber, {
+              ...existing,
+              ended_at: args[0],
+              cause: args[1],
+            });
+            return { rowCount: 1 };
+          }
+          return { rowCount: 0 };
+        }
+        if (sql.includes("INSERT INTO failover_decisions")) {
+          const decisionId = args[0] as string;
+          failoverDecisions.set(decisionId, {
+            decision_id: decisionId,
+            old_leader_node_id: args[1],
+            new_leader_node_id: args[2],
+            epoch: args[3],
+            cause: args[4],
+            outcome: args[5],
+            decided_at: args[6],
+            fencing_token: args[7],
+          });
+          return { rowCount: 1 };
+        }
         if (sql.includes("DELETE FROM coordinator_nodes")) {
           const existed = nodes.has(args[0] as string);
           nodes.delete(args[0] as string);

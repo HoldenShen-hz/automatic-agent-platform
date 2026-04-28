@@ -9,6 +9,8 @@ export const ScimProvisioningEventSchema = z.object({
 
 export type ScimProvisioningEvent = z.infer<typeof ScimProvisioningEventSchema>;
 
+export * from "./scim-service.js";
+
 export function isTerminalScimAction(action: ScimProvisioningEvent["action"]): boolean {
   return action === "user_disabled" || action === "user_deleted";
 }

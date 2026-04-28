@@ -8,9 +8,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { RolloutStateMachine } from "../../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.js";
-import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
-import type { RolloutLevel, RolloutRecord, RolloutStatus } from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+import { RolloutStateMachine } from "../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.js";
+import type { ImprovementCandidate } from "../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
+import type { RolloutLevel, RolloutRecord, RolloutStatus } from "../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {
@@ -37,7 +37,7 @@ describe("RolloutStateMachine", () => {
 
       assert.equal(record.candidateId, candidate.candidateId);
       assert.equal(record.level, "shadow");
-      assert.equal(record.previousLevel, "off");
+      assert.equal(record.previousLevel, "suggest");
       assert.equal(record.status, "shadow");
       assert.ok(record.recordId.length > 0);
       assert.ok(record.transitionedAt > 0);
@@ -71,7 +71,7 @@ describe("RolloutStateMachine", () => {
       const record = stateMachine.transition(candidate, "partial_25");
 
       assert.equal(record.level, "partial_25");
-      assert.equal(record.previousLevel, "shadow");
+      assert.equal(record.previousLevel, "canary_5");
     });
 
     test("allows transition from partial_75 to stable", () => {
@@ -167,10 +167,10 @@ describe("RolloutStateMachine", () => {
       const stateMachine = new RolloutStateMachine();
       const candidate = createMockCandidate({ status: "rejected" });
 
-      const record = stateMachine.transition(candidate, "off");
-
-      assert.equal(record.status, "rejected");
-      assert.equal(record.level, "off");
+      assert.throws(
+        () => stateMachine.transition(candidate, "off"),
+        /Invalid rollout transition: rejected -> rolled_back/,
+      );
     });
 
     test("rolled_back status is terminal", () => {

@@ -171,7 +171,7 @@ test("PackLifecycleOrchestrationService rejects publish before certification", (
         owner: "release@example.com",
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "pack_lifecycle.invalid_transition:ops-pack@1.0.0",
+      error instanceof ValidationError && error.code === "pack_lifecycle.not_certified:ops-pack@1.0.0",
   );
 });
 

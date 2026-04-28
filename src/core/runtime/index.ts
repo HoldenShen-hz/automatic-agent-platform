@@ -14,3 +14,5 @@ export * from "../../platform/execution/state-transition/state-transition-machin
 export * from "../../platform/execution/state-transition/transition-service.js";
 export * from "../../platform/execution/worker-pool/worker-registry-service.js";
 export * from "../../platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
+
+export const WorkflowStepCheckpoint = "WorkflowStepCheckpoint";

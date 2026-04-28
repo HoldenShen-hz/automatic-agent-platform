@@ -78,11 +78,13 @@ export class DelegatedGovernanceService {
       if (delegation.status !== "active") continue;
       if (delegation.grantorId !== "platform_team") continue;
 
-      const orgMatch = delegation.orgNodeIds.length === 0 || delegation.orgNodeIds.includes(ctx.orgNodeId);
-      const domainMatch = delegation.domainIds.length === 0 || (ctx.domainId != null && delegation.domainIds.includes(ctx.domainId));
+      const orgNodeIds = delegation.orgNodeIds ?? [];
+      const domainIds = delegation.domainIds ?? [];
+      const orgMatch = orgNodeIds.length === 0 || orgNodeIds.includes(ctx.orgNodeId);
+      const domainMatch = domainIds.length === 0 || (ctx.domainId != null && domainIds.includes(ctx.domainId));
 
       if (orgMatch && domainMatch) {
-        allGuardrails.push(...delegation.guardrails);
+        allGuardrails.push(...(delegation.guardrails ?? []));
       }
     }
 
@@ -119,11 +121,13 @@ export class DelegatedGovernanceService {
     for (const delegation of this.delegations) {
       if (delegation.status !== "active") continue;
 
-      const orgMatch = delegation.orgNodeIds.length === 0 || delegation.orgNodeIds.includes(orgNodeId);
-      const domainMatch = delegation.domainIds.length === 0 || (domainId != null && delegation.domainIds.includes(domainId));
+      const orgNodeIds = delegation.orgNodeIds ?? [];
+      const domainIds = delegation.domainIds ?? [];
+      const orgMatch = orgNodeIds.length === 0 || orgNodeIds.includes(orgNodeId);
+      const domainMatch = domainIds.length === 0 || (domainId != null && domainIds.includes(domainId));
 
       if (orgMatch && domainMatch) {
-        guardrails.push(...delegation.guardrails);
+        guardrails.push(...(delegation.guardrails ?? []));
       }
     }
 

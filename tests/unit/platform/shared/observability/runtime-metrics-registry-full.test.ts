@@ -242,14 +242,14 @@ test("histogram returns independent copies of arrays", () => {
   const h = histograms[0]!;
 
   h.buckets[0] = 999;
-  h.bucketCounts[0] = 999;
+  h.bucketCounts[1] = 999;
   h.count = 999;
   h.sum = 999;
 
   const histograms2 = registry.getHistograms("duration");
   const h2 = histograms2[0]!;
   assert.equal(h2.buckets[0], 10); // original value
-  assert.equal(h2.bucketCounts[0], 1); // original value
+  assert.equal(h2.bucketCounts[1], 1); // original value
   assert.equal(h2.count, 1);
   assert.equal(h2.sum, 50);
 });

@@ -15,7 +15,9 @@ export function defaultPostgresFactory(dsn: string, options: Record<string, unkn
 
 export function inferPgSslFromDsn(dsn: string): false | { rejectUnauthorized: true } | null {
   try {
-    return new URL(dsn).searchParams.get("sslmode")?.trim().toLowerCase() === "require"
+    const searchParams = new URL(dsn).searchParams;
+    const sslmode = Array.from(searchParams.entries()).find(([key]) => key.toLowerCase() === "sslmode")?.[1];
+    return sslmode?.trim().toLowerCase() === "require"
       ? { rejectUnauthorized: true }
       : null;
   } catch {

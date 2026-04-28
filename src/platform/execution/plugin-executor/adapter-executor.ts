@@ -77,6 +77,11 @@ export class AdapterExecutor {
   }
 
   public register(descriptor: AdapterDescriptor): void {
+    if (this.descriptors.has(descriptor.adapterId)) {
+      throw new ValidationError("adapter_executor.adapter_already_registered", "Adapter descriptor is already registered.", {
+        details: { adapterId: descriptor.adapterId },
+      });
+    }
     this.descriptors.set(descriptor.adapterId, descriptor);
   }
 
@@ -161,6 +166,12 @@ export class AdapterExecutor {
       }),
       signal: AbortSignal.timeout(descriptor.timeoutMs ?? 5_000),
     });
+    if (response.status === 204 || response.status === 205) {
+      if (!response.ok) {
+        throw new Error(`adapter_executor.rest_failed:${response.status}`);
+      }
+      return null;
+    }
     const contentType = response.headers.get("content-type") ?? "";
     const body = contentType.includes("application/json")
       ? await response.json()

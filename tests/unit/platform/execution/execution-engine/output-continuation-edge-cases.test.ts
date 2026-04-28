@@ -158,11 +158,11 @@ test("extractContinuationPoint finds sentence boundary at 70% position", () => {
   assert.ok(result !== null);
 });
 
-test("extractContinuationPoint returns null for text under 70% threshold", () => {
-  // Short incomplete text that doesn't meet 70% threshold
+test("extractContinuationPoint returns full content for short text", () => {
+  // Short outputs are still valid continuation anchors for resumable responses.
   const text = "Hello";
   const result = extractContinuationPoint(text);
-  assert.equal(result, null);
+  assert.equal(result, text);
 });
 
 test("extractContinuationPoint handles incomplete JSON-like structure", () => {

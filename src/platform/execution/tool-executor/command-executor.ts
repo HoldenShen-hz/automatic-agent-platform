@@ -201,6 +201,25 @@ export class CommandExecutor {
     const coercionWarnings = formatToolArgumentCoercionWarnings(coercedRequestResult.traces);
 
     const metadata = resolveToolExecutionMetadata(normalizedRequest.toolName);
+    if (
+      normalizedRequest.timeoutMs != null &&
+      (
+        typeof normalizedRequest.timeoutMs !== "number" ||
+        !Number.isFinite(normalizedRequest.timeoutMs) ||
+        normalizedRequest.timeoutMs <= 0 ||
+        normalizedRequest.timeoutMs > 600_000
+      )
+    ) {
+      return this.blocked(normalizedRequest, "tool.timeout_invalid", coercedRequestResult.traces);
+    }
+    if (
+      normalizedRequest.sandboxPolicy.mode !== "read_only" &&
+      normalizedRequest.sandboxPolicy.mode !== "workspace_write" &&
+      normalizedRequest.sandboxPolicy.mode !== "scoped_external_access" &&
+      normalizedRequest.sandboxPolicy.mode !== "restricted_exec"
+    ) {
+      return this.blocked(normalizedRequest, "tool.sandbox_policy_invalid", coercedRequestResult.traces);
+    }
     const timeoutMs = resolveToolTimeoutMs(normalizedRequest.timeoutMs, metadata);
     if (!isStringArray(normalizedRequest.args)) {
       return this.blocked(normalizedRequest, "tool.command_args_invalid", coercedRequestResult.traces);

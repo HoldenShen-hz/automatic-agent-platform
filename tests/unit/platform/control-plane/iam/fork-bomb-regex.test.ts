@@ -14,6 +14,7 @@ test('blocks classic fork bomb: :(){ :|:& };:', () => {
   const result = assessCommand('bash', ['-c', bomb]);
   assert.strictEqual(result.allowed, false);
   assert.ok(
+    result.reasonCode === 'tool.fork_bomb_detected' ||
     result.reasonCode === 'tool.inline_code_denied' ||
     result.reasonCode === 'tool.command_meta_syntax_denied',
     `Expected blocked but got ${result.reasonCode}`
@@ -25,6 +26,7 @@ test('blocks classic fork bomb variant: :(){:|:&};:', () => {
   const result = assessCommand('bash', ['-c', bomb]);
   assert.strictEqual(result.allowed, false);
   assert.ok(
+    result.reasonCode === 'tool.fork_bomb_detected' ||
     result.reasonCode === 'tool.inline_code_denied' ||
     result.reasonCode === 'tool.command_meta_syntax_denied',
     `Expected blocked but got ${result.reasonCode}`

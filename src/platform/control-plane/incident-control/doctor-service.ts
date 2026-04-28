@@ -267,15 +267,16 @@ export class DoctorService {
     });
 
     // Gather file lock information
-    const fileLocks = this.options.store?.lock.listFileLocks() ?? [];
-    const expiredFileLocks = this.options.store?.lock.listExpiredFileLocks(checkedAt) ?? [];
-    const auditIntegrity = this.options.store?.event.getTier1AuditIntegrityReport() ?? null;
-    const lockSummary = buildLockSummary(fileLocks, expiredFileLocks, this.options.store != null);
+    const store = this.options?.store ?? null;
+    const fileLocks = store?.lock?.listFileLocks() ?? [];
+    const expiredFileLocks = store?.lock?.listExpiredFileLocks(checkedAt) ?? [];
+    const auditIntegrity = store?.event?.getTier1AuditIntegrityReport() ?? null;
+    const lockSummary = buildLockSummary(fileLocks, expiredFileLocks, store != null);
 
     // Build event backlog summary from health report
     const eventBacklogSummary = {
-      pendingTier1Acks: this.options.store?.event.countPendingTier1Acks() ?? health.tier1AckBacklog,
-      failedTier1Acks: this.options.store?.event.countFailedTier1Acks() ?? 0,
+      pendingTier1Acks: store?.event?.countPendingTier1Acks() ?? health.tier1AckBacklog,
+      failedTier1Acks: store?.event?.countFailedTier1Acks() ?? 0,
       queueBacklogSize: health.queueGovernance.backlogSize,
       dispatchableBacklogSize: health.queueGovernance.dispatchableBacklogSize,
       claimedBacklogSize: health.queueGovernance.claimedBacklogSize,
@@ -499,7 +500,9 @@ function buildDoctorChecks(input: {
     checkId: "db",
     label: "Database",
     status:
-      !input.health.dbWritable || !input.sqliteReliability.schemaStatus.upToDate
+      (input.startupConsistency.status === "fail_closed" && databaseFindings.length > 0) ||
+      !input.health.dbWritable ||
+      !input.sqliteReliability.schemaStatus.upToDate
         ? "fail_closed"
         : !input.sqliteReliability.integrityPassed || input.sqliteReliability.schemaStatus.checksumMismatches.length > 0
             ? "degraded"

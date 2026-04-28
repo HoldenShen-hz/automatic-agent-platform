@@ -6,11 +6,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DurableEventBus } from "../../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
+import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
-import { newId } from "../../../../../../src/platform/contracts/types/ids.js";
+import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 test.describe("DurableEventBus unit tests", () => {
   let workspace: string;
@@ -40,7 +40,7 @@ test.describe("DurableEventBus unit tests", () => {
       payload: { fromStatus: "pending", toStatus: "running" },
     });
 
-    assert.ok(event.id.startsWith("evt-"));
+    assert.ok(event.id.startsWith("evt_") || event.id.startsWith("evt-"));
     assert.equal(event.eventType, "task:status_changed");
     assert.equal(event.taskId, "task-123");
     assert.equal(event.eventTier, "tier_1");

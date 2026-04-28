@@ -7,12 +7,13 @@ import type {
 export interface GovernanceActionScope {
   readonly orgNodeId: string;
   readonly domainId?: string;
-  readonly capability: string;
+  readonly capability?: string;
+  readonly action?: string;
   readonly permission?: GovernancePermission;
 }
 
 export interface GovernanceOperationContext {
-  readonly actorId: string;
+  readonly actorId?: string;
   readonly actorRole: "platform_team" | "division_admin" | "department_admin" | "team_lead";
   readonly orgNodeId: string;
   readonly domainId?: string;
@@ -25,10 +26,13 @@ export function matchesGovernanceScope(
   delegation: GovernanceDelegation,
   scope: GovernanceActionScope,
 ): boolean {
-  const orgAllowed = delegation.orgNodeIds.length === 0 || delegation.orgNodeIds.includes(scope.orgNodeId);
-  const domainAllowed = delegation.domainIds.length === 0 || scope.domainId == null || delegation.domainIds.includes(scope.domainId);
-  const capabilityAllowed = delegation.permissions.length === 0 ||
-    (scope.permission != null && delegation.permissions.includes(scope.permission));
+  const orgNodeIds = delegation.orgNodeIds ?? [];
+  const domainIds = delegation.domainIds ?? [];
+  const permissions = delegation.permissions ?? [];
+  const orgAllowed = orgNodeIds.length === 0 || orgNodeIds.includes(scope.orgNodeId);
+  const domainAllowed = domainIds.length === 0 || scope.domainId == null || domainIds.includes(scope.domainId);
+  const capabilityAllowed = permissions.length === 0 ||
+    (scope.permission != null && permissions.includes(scope.permission));
   return orgAllowed && domainAllowed && capabilityAllowed;
 }
 
@@ -40,7 +44,8 @@ export function evaluateGuardrail(
   guardrail: Guardrail,
   attemptedValue: unknown,
 ): { allowed: boolean; reason: string } {
-  switch (guardrail.type) {
+  const guardrailType: string | undefined = guardrail.type ?? (guardrail as { guardrailType?: string }).guardrailType;
+  switch (guardrailType) {
     case "max_risk_level": {
       const maxRisk = guardrail.value as string;
       const attemptedRisk = attemptedValue as string;
@@ -52,6 +57,7 @@ export function evaluateGuardrail(
       }
       return { allowed: true, reason: "Within risk guardrail" };
     }
+    case "budget_limit":
     case "max_budget": {
       const maxBudget = guardrail.value as number;
       const attemptedBudget = attemptedValue as number;
@@ -88,6 +94,8 @@ export function evaluateGuardrail(
  * Operation type for self-service governance as defined in §51.3.
  */
 export type GovernanceOperationType =
+  | "approve_task"
+  | "approve_budget_increase"
   | "domain_onboarding"
   | "modify_approval_rules"
   | "publish_pack"
@@ -105,6 +113,8 @@ export function isOperationAllowedByRole(
 ): boolean {
   const allowedByRole: Record<string, GovernanceOperationType[]> = {
     platform_team: [
+      "approve_task",
+      "approve_budget_increase",
       "domain_onboarding",
       "modify_approval_rules",
       "publish_pack",
@@ -114,6 +124,8 @@ export function isOperationAllowedByRole(
       "cross_domain_strategy",
     ],
     division_admin: [
+      "approve_task",
+      "approve_budget_increase",
       "domain_onboarding",
       "modify_approval_rules",
       "publish_pack",
@@ -121,6 +133,7 @@ export function isOperationAllowedByRole(
       "create_trigger",
     ],
     department_admin: [
+      "approve_task",
       "domain_onboarding",
       "modify_approval_rules",
       "publish_pack",

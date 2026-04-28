@@ -59,6 +59,9 @@ export function inferApiErrorSource(code: string): AppErrorSource {
 }
 
 export function normalizeError(error: unknown): AppError {
+  if (error instanceof GatewayRateLimitError) {
+    return new ApiError(429, "gateway.rate_limited", `Gateway channel ${error.channel} exceeded rate limits.`);
+  }
   if (error instanceof AppError) {
     if (error.code === "storage.task_not_found") {
       return new ApiError(404, "api.task_not_found", "Task not found.");
@@ -76,9 +79,6 @@ export function normalizeError(error: unknown): AppError {
   }
   if (error instanceof GatewayTargetAmbiguousError) {
     return new ApiError(409, "gateway.target_ambiguous", "Gateway target query is ambiguous.");
-  }
-  if (error instanceof GatewayRateLimitError) {
-    return new ApiError(429, "gateway.rate_limited", `Gateway channel ${error.channel} exceeded rate limits.`);
   }
   if (error instanceof Error) {
     if (error.message === "workflow.not_found") {

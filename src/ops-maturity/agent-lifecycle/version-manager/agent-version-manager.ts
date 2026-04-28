@@ -59,14 +59,17 @@ export class AgentVersionManager {
   private readonly slotAssignments = new Map<string, string>();
 
   public registerVersion(detail: Omit<AgentVersionDetail, "versionId" | "createdAt">): AgentVersionDetail {
-    const version: AgentVersionDetail = {
+    const version = AgentVersionDetailSchema.parse({
       ...detail,
       versionId: newId("agentver"),
       createdAt: nowIso(),
-    };
+    });
 
     const existing = this.versions.get(detail.agentId) ?? [];
     this.versions.set(detail.agentId, [...existing, version]);
+    if (version.deploymentSlot != null) {
+      this.slotAssignments.set(`${version.agentId}:${version.deploymentSlot}` as const, version.versionId);
+    }
 
     return version;
   }

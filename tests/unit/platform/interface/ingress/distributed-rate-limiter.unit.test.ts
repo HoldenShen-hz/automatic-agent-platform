@@ -164,11 +164,9 @@ test("DistributedRateLimiter - handles zero maxCalls behavior", async () => {
     windowMs: 5000,
   });
 
-  // With maxCalls: 0, the first request creates entry but allows request
-  // because the check for exceeded limit comes after the new entry creation
   const result = await limiter.checkAndConsume("zero-limit");
-  // The implementation allows first request and sets remaining to -1 (maxCalls - count)
-  assert.equal(result.remaining, -1);
+  assert.equal(result.allowed, false);
+  assert.equal(result.remaining, 0);
 });
 
 test("DistributedRateLimiter - handles very large maxCalls", async () => {

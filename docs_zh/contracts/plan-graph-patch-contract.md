@@ -53,7 +53,14 @@
 - `condition`
 - `dependencyType` (`hard | soft | compensation | retry | replan`)
 
-## 4. GraphPatch
+## 4. 不可变性约束
+
+- `PlanGraphBundle` 是不可变快照；一旦下发给 P4，`graphVersion` 对应的 `nodes` / `edges` / `schedulerPolicy` / `riskProfile` 不得原地修改。
+- canonical contract 禁止以 `appendNode`、`removeNode`、`updateNode` 或任何原地 mutate API 改写既有 `PlanGraph`。
+- 任意语义变更都必须表达为 `GraphPatch(baseGraphVersion -> newGraphVersion)`，并生成新的快照版本。
+- 已执行节点、已产生 `NodeAttemptReceipt` 的节点、以及已确认副作用关联的路径，只能通过追加补偿或追加修复路径处理，不得回写历史图。
+
+## 5. GraphPatch
 
 Replan 不覆盖旧图，只追加 `GraphPatch`：
 
@@ -87,14 +94,14 @@ PlanGraph(v1) + GraphPatch(v2 operations) -> PlanGraph(v2)
 - `mark_skipped`
 - `append_subgraph`
 
-## 5. 安全规则
+## 6. 安全规则
 
 - 已完成节点、已有 `NodeAttemptReceipt`、confirmed / ambiguous `SideEffectRecord` 的语义不得被改写。
 - 已提交不可逆副作用的 node 不得被静默删除；只能追加补偿、跳过后续路径、追加修复节点或人工接管。
 - `baseGraphVersion` 必须与当前图版本一致，否则拒绝 patch。
 - `incompatible_restart_required` 不得应用到原 run；必须新建 `HarnessRun`。
 
-## 6. Legacy / Deprecated 映射
+## 7. Legacy / Deprecated 映射
 
 | 旧名 | v4.3 语义 |
 | --- | --- |
@@ -102,7 +109,7 @@ PlanGraph(v1) + GraphPatch(v2 operations) -> PlanGraph(v2)
 | 线性 `steps` | 只能作为导入/调试视图；执行前必须 normalize 为 graph |
 | `PlanBundle` | 产品或 debug wrapper，不是 P3 -> P4 canonical contract |
 
-## 7. 测试要求
+## 8. 测试要求
 
 - GraphPatch safety test 覆盖已执行节点、receipt、副作用三类不可改写对象。
 - 调度器只消费 `PlanGraphBundle`，拒绝线性 `steps`。
@@ -113,6 +120,6 @@ PlanGraph(v1) + GraphPatch(v2 operations) -> PlanGraph(v2)
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-8: 合约将 PlanGraph 定义为可变（支持 appendNode），架构§25明确要求 PlanGraphBundle 为不可变快照。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-8: 合约将 PlanGraph 定义为可变（支持 appendNode），架构§25明确要求 PlanGraphBundle 为不可变快照。根因：早期文档把 in-memory builder 的编辑语义误写成了 runtime canonical contract。修复：正文现明确 `PlanGraphBundle` / `PlanGraph` 为不可变快照，所有变更只能通过 `GraphPatch` 生成新版本。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

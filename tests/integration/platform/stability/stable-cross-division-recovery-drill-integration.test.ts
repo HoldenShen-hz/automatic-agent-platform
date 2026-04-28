@@ -7,7 +7,7 @@ import {
   runStableCrossDivisionRecoveryDrill,
   writeStableCrossDivisionRecoveryDrillReport,
   type StableCrossDivisionRecoveryDrillReport,
-} from "../../../../../src/platform/stability/stable-cross-division-recovery-drill.js";
+} from "../../../../src/platform/stability/stable-cross-division-recovery-drill.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 test("runStableCrossDivisionRecoveryDrill runs both cross_division_overview and cross_division_replay_matrix scenarios", async () => {

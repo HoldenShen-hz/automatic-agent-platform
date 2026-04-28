@@ -70,6 +70,34 @@ export interface RecordedInteraction {
   recordedAt: string;
 }
 
+export interface VcrReplayFixtureOptions {
+  fixtureId: string;
+  outputDir: string;
+  seed?: number;
+}
+
+export interface VcrReplayEvent {
+  eventType: string;
+  timestamp: string;
+  payload: unknown;
+}
+
+export interface VcrReplayRecording {
+  fixtureId: string;
+  recordedAt: string;
+  durationMs: number;
+  events: VcrReplayEvent[];
+  metadata: Record<string, unknown>;
+}
+
+export interface VcrReplayFixture {
+  fixtureId: string;
+  outputDir: string;
+  seed: number | null;
+  replay(recording: VcrReplayRecording): VcrReplayEvent[];
+  record(input: Omit<VcrReplayRecording, "fixtureId">): VcrReplayRecording;
+}
+
 /**
  * VCR Fixture Store
  *
@@ -159,6 +187,71 @@ export class VcrFixtureStore {
     }
     return interaction;
   }
+}
+
+export function buildVcrReplayFixture(options: VcrReplayFixtureOptions): VcrReplayFixture {
+  return {
+    fixtureId: options.fixtureId,
+    outputDir: options.outputDir,
+    seed: options.seed ?? null,
+    replay(recording) {
+      const validation = validateVcrReplayRecording(recording);
+      if (!validation.valid) {
+        throw new ValidationError("vcr.replay_recording_invalid", validation.errors.join("; "), {
+          retryable: false,
+        });
+      }
+      return recording.events.map((event) => ({ ...event }));
+    },
+    record(input) {
+      return createVcrReplayRecording({
+        fixtureId: options.fixtureId,
+        ...input,
+      });
+    },
+  };
+}
+
+export function createVcrReplayRecording(input: VcrReplayRecording): VcrReplayRecording {
+  return {
+    fixtureId: input.fixtureId,
+    recordedAt: input.recordedAt,
+    durationMs: input.durationMs,
+    events: input.events.map((event) => ({ ...event })),
+    metadata: { ...input.metadata },
+  };
+}
+
+export function validateVcrReplayRecording(recording: VcrReplayRecording): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (typeof recording.fixtureId !== "string" || recording.fixtureId.length === 0) {
+    errors.push("fixtureId is required");
+  }
+  if (typeof recording.recordedAt !== "string" || Number.isNaN(Date.parse(recording.recordedAt))) {
+    errors.push("recordedAt must be an ISO timestamp");
+  }
+  if (!Number.isFinite(recording.durationMs) || recording.durationMs < 0) {
+    errors.push("durationMs must be non-negative");
+  }
+  if (!Array.isArray(recording.events)) {
+    errors.push("events must be an array");
+  } else {
+    recording.events.forEach((event, index) => {
+      if (typeof event.eventType !== "string" || event.eventType.length === 0) {
+        errors.push(`events[${index}].eventType is required`);
+      }
+      if (typeof event.timestamp !== "string" || Number.isNaN(Date.parse(event.timestamp))) {
+        errors.push(`events[${index}].timestamp must be an ISO timestamp`);
+      }
+    });
+  }
+  if (recording.metadata == null || typeof recording.metadata !== "object" || Array.isArray(recording.metadata)) {
+    errors.push("metadata must be an object");
+  }
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
 }
 
 /**

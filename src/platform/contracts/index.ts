@@ -25,11 +25,6 @@ export {
 } from "./types/platform-contracts.js";
 export * as executableContracts from "./executable-contracts/index.js";
 
-export * as legacyControlDirectiveContract from "./control-directive/index.js";
-export * as legacyExecutionPlanContract from "./execution-plan/index.js";
-export * as legacyExecutionReceiptContract from "./execution-receipt/index.js";
-export * as legacyStateCommandContract from "./state-command/index.js";
-
 export {
   type RequestEnvelope as PlaneRequestEnvelope,
   createRequestEnvelope as createPlaneRequestEnvelope,

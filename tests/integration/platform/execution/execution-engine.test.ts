@@ -78,9 +78,9 @@ test("AgentExecutor can be instantiated with required dependencies", () => {
   assert.ok(executor);
 });
 
-test("routeComplexity categorizes simple requests as passthrough", () => {
+test("routeComplexity categorizes simple lookup requests by keyword priority", () => {
   const result = routeComplexity("What is the status?");
-  assert.equal(result.path, "passthrough");
+  assert.equal(result.path, "fast");
 });
 
 test("routeComplexity categorizes multi-step requests as standard", () => {

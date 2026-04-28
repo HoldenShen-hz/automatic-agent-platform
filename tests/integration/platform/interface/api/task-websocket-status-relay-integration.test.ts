@@ -60,16 +60,16 @@ test("integration: TaskWebSocketStatusRelay broadcasts multiple unseen events", 
 
   assert.equal(broadcasts.length, 3);
   assert.deepEqual(broadcasts[0], {
-    taskId: "task-1",
-    event: { eventType: "status_changed", taskId: "task-1", status: "in_progress", timestamp: "2026-04-16T00:00:00.000Z" },
+    taskId: "task-3",
+    event: { eventType: "status_changed", taskId: "task-3", status: "failed", timestamp: "2026-04-16T00:02:00.000Z" },
   });
   assert.deepEqual(broadcasts[1], {
     taskId: "task-2",
     event: { eventType: "status_changed", taskId: "task-2", status: "completed", timestamp: "2026-04-16T00:01:00.000Z" },
   });
   assert.deepEqual(broadcasts[2], {
-    taskId: "task-3",
-    event: { eventType: "status_changed", taskId: "task-3", status: "failed", timestamp: "2026-04-16T00:02:00.000Z" },
+    taskId: "task-1",
+    event: { eventType: "status_changed", taskId: "task-1", status: "in_progress", timestamp: "2026-04-16T00:00:00.000Z" },
   });
 });
 
@@ -328,7 +328,7 @@ test("integration: TaskWebSocketStatusRelay handles backlog limit eviction", () 
   assert.ok(broadcasts.length > 0);
 });
 
-test("integration: TaskWebSocketStatusRelay polls in reverse order (newest first)", () => {
+test("integration: TaskWebSocketStatusRelay broadcasts status events in reverse chronological order", () => {
   const broadcasts: Array<{ taskId: string; event: TaskWebSocketEvent }> = [];
   const events = [
     createEvent({ id: "evt-oldest", taskId: "task-oldest", payloadJson: JSON.stringify({ toStatus: "oldest", occurredAt: "2026-04-16T00:00:00.000Z" }) }),
@@ -354,7 +354,6 @@ test("integration: TaskWebSocketStatusRelay polls in reverse order (newest first
 
   relay.pollOnce();
 
-  // Newest event should be broadcast first
   assert.equal(broadcasts.length, 3);
   assert.equal(broadcasts[0]!.taskId, "task-newest");
   assert.equal(broadcasts[2]!.taskId, "task-oldest");

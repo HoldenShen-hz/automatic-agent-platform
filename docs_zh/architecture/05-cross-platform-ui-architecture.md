@@ -97,7 +97,7 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 
 补充说明：
 
-- 针对 [ui-design-vs-implementation-review.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/ui-design-vs-implementation-review.md) 的 `UIR1-UIR6` 仓内整改已完成。
+- 针对 [architecture-design-vs-implementation-review.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/architecture-design-vs-implementation-review.md) 的 `UIR1-UIR6` 仓内整改已完成。
 - 当前 UI 子工程已提供 `npm install && npm run typecheck && npm test && npm run build` 闭环脚本。
 - 桌面与移动端按“smoke-ready 工程基线”验收，不将商店发布、签名和真实原生桥接上线伪装为仓内已闭环。
 

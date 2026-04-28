@@ -73,7 +73,7 @@ export const DomainDefinitionSchema = z.object({
   toolBundles: z.array(ToolBundleConfigSchema).default([]),
   outputContracts: z.array(OutputContractConfigSchema).default([]),
   promptOverrides: z.record(z.string(), z.string()).default({}),
-  capabilities: DomainCapabilityProfileSchema,
+  capabilities: DomainCapabilityProfileSchema.default({}),
   status: z.enum(["draft", "testing", "active", "deprecated"]).default("draft"),
   externalAdapters: z.array(z.string()).default([]),
   pluginBindings: z.array(PluginBindingSchema).default([]),

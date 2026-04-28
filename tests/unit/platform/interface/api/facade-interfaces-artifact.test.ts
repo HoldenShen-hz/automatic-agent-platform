@@ -149,7 +149,28 @@ test("ArtifactPublishLedgerEntry structure is correct", () => {
 });
 
 test("ArtifactFacadeService interface defines required methods", () => {
-  const service = {} as ArtifactFacadeService;
+  const service: ArtifactFacadeService = {
+    prepareBundle: () => ({
+      bundle: {
+        bundleId: "bundle-1",
+        bundleType: "asset_bundle",
+        taskId: "task-1",
+        domainId: "domain-1",
+        artifacts: [],
+        links: [],
+        finalDeliverables: [],
+        createdAt: "2026-04-01T00:00:00.000Z",
+      },
+      governance: { allowed: true, issues: [] },
+      preview: "preview",
+    }),
+    publishBundle: (bundle) => ({
+      bundle,
+      governance: { allowed: true, issues: [] },
+      preview: "preview",
+    }),
+    listPublishHistory: () => [],
+  };
   assert.equal(typeof service.prepareBundle, "function");
   assert.equal(typeof service.publishBundle, "function");
   assert.equal(typeof service.listPublishHistory, "function");
@@ -207,7 +228,14 @@ test("KnowledgeQueryOptions allows empty object", () => {
 });
 
 test("KnowledgeFacadeService interface defines required methods", () => {
-  const service = {} as KnowledgeFacadeService;
+  const service: KnowledgeFacadeService = {
+    listNamespaces: () => [],
+    queryForDomain: async () => [],
+    queryAsync: async () => [],
+    inspectGraph: () => null,
+    inspectSemanticInfrastructure: () => null,
+    inspectNamespace: () => null,
+  };
   assert.equal(typeof service.listNamespaces, "function");
   assert.equal(typeof service.queryForDomain, "function");
   assert.equal(typeof service.queryAsync, "function");

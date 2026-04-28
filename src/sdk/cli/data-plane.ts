@@ -96,6 +96,7 @@ const result = withCliStorage((storage) => {
       return service.exportSummary({
         tenantId: envConfig.tenantId,
       });
+    case "status":
     case "summary":
       return service.buildSummary({
         tenantId: envConfig.tenantId,

@@ -326,6 +326,62 @@ export function formatToolArgumentCoercionWarnings(traces: readonly ToolArgument
   return traces.map((trace) => `tool.args_coerced:${trace.fieldPath}:${trace.strategy}`);
 }
 
+export interface LegacyToolArgumentCoercionInput {
+  readonly request: {
+    readonly args?: unknown;
+  };
+  readonly traceId?: string;
+}
+
+export interface LegacyToolArgumentCoercionDecision {
+  readonly denied: boolean;
+  readonly diagnostic: {
+    readonly code: string;
+    readonly message: string;
+  };
+}
+
+export class ToolArgumentCoercion {
+  public static coerce(input: LegacyToolArgumentCoercionInput): LegacyToolArgumentCoercionDecision {
+    const args = input.request.args;
+    if (!Array.isArray(args)) {
+      return {
+        denied: true,
+        diagnostic: {
+          code: "tool.args_invalid_type",
+          message: `Command args must be an array, received ${readType(args)}.`,
+        },
+      };
+    }
+    if (Object.getPrototypeOf(args) !== Array.prototype) {
+      return {
+        denied: true,
+        diagnostic: {
+          code: "tool.args_invalid_array",
+          message: "Command args must be a plain array.",
+        },
+      };
+    }
+    const invalidIndex = args.findIndex((arg) => typeof arg !== "string");
+    if (invalidIndex >= 0) {
+      return {
+        denied: true,
+        diagnostic: {
+          code: "tool.args_invalid_element",
+          message: `Command arg ${invalidIndex} must be string, received ${readType(args[invalidIndex])}.`,
+        },
+      };
+    }
+    return {
+      denied: false,
+      diagnostic: {
+        code: "tool.args_valid",
+        message: "Command args are valid.",
+      },
+    };
+  }
+}
+
 /**
  * Coerces arguments for the command execution tool.
  */

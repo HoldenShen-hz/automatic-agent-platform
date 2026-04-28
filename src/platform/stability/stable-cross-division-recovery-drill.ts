@@ -323,6 +323,12 @@ async function runCrossDivisionReplayScenario(
             finalOutcome: execution.finalOutcome,
             suggestedAction: execution.suggestedAction,
           })),
+          executions: report.executions.map((execution) => ({
+            executionId: execution.executionId,
+            finalOutcome: execution.finalOutcome,
+            suggestedAction: execution.suggestedAction,
+            timeline: execution.timeline,
+          })),
         })),
       },
     };

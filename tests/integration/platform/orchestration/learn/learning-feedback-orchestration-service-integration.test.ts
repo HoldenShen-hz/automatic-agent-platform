@@ -87,7 +87,12 @@ test("LearningFeedbackOrchestrationService.process counts learning objects by ty
       signals: [
         makeSignal({ learningSignalId: "sig-lfos-count-1", taskId: "task-lfos-count", learningType: "failure_pattern" }),
         makeSignal({ learningSignalId: "sig-lfos-count-2", taskId: "task-lfos-count", learningType: "failure_pattern" }),
-        makeSignal({ learningSignalId: "sig-lfos-count-3", taskId: "task-lfos-count", learningType: "user_correction" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-count-3",
+          taskId: "task-lfos-count",
+          learningType: "user_correction",
+          confidence: 0.95,
+        }),
         makeSignal({ learningSignalId: "sig-lfos-count-4", taskId: "task-lfos-count", learningType: "recovery_playbook" }),
       ],
       promoteToKnowledge: false,
@@ -197,10 +202,25 @@ test("LearningFeedbackOrchestrationService.process handles various learning type
       taskId: "task-lfos-types",
       signals: [
         makeSignal({ learningSignalId: "sig-lfos-types-1", taskId: "task-lfos-types", learningType: "failure_pattern" }),
-        makeSignal({ learningSignalId: "sig-lfos-types-2", taskId: "task-lfos-types", learningType: "user_correction" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-types-2",
+          taskId: "task-lfos-types",
+          learningType: "user_correction",
+          confidence: 0.95,
+        }),
         makeSignal({ learningSignalId: "sig-lfos-types-3", taskId: "task-lfos-types", learningType: "recovery_playbook" }),
-        makeSignal({ learningSignalId: "sig-lfos-types-4", taskId: "task-lfos-types", learningType: "model_retraining" }),
-        makeSignal({ learningSignalId: "sig-lfos-types-5", taskId: "task-lfos-types", learningType: "dataset_gap" }),
+        makeSignal({
+          learningSignalId: "sig-lfos-types-4",
+          taskId: "task-lfos-types",
+          learningType: "model_retraining",
+          confidence: 0.85,
+        }),
+        makeSignal({
+          learningSignalId: "sig-lfos-types-5",
+          taskId: "task-lfos-types",
+          learningType: "dataset_gap",
+          confidence: 0.85,
+        }),
       ],
       promoteToKnowledge: false,
       rememberValidatedLearnings: false,

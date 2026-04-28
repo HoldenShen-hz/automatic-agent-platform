@@ -62,7 +62,11 @@ test("HealthGateConfig is exported as type", () => {
 });
 
 test("HotUpgradeRepository is exported as type", () => {
-  assert.ok(typeof HotUpgradeRepository === "object");
+  const repo: Partial<HotUpgradeRepository> = {
+    getUpgradePlan: async () => null,
+    listUpgradePlansByStatus: async () => [],
+  };
+  assert.ok(repo);
 });
 
 test("RollbackTrigger is exported as type", () => {
@@ -128,17 +132,21 @@ test("HotUpgradeService can be instantiated with minimal config", () => {
 });
 
 test("createHotUpgradeService returns service with required methods", () => {
-  const mockRepo: Partial<HotUpgradeRepository> = {
-    findPlan: async () => null,
-    createPlan: async () => ({} as any),
-    updatePlan: async () => ({} as any),
-  };
-  const service = createHotUpgradeService(mockRepo as HotUpgradeRepository);
+  const service = createHotUpgradeService({
+    driver: "sqlite",
+    runtimeProfile: {} as any,
+    sql: {} as any,
+    asyncSql: {} as any,
+    asyncRepos: {} as any,
+    sqlite: {} as any,
+    migrate: () => undefined,
+    close: () => undefined,
+  });
   assert.ok(service !== undefined);
   assert.ok(typeof service.createUpgradePlan === "function");
-  assert.ok(typeof service.executeUpgrade === "function");
-  assert.ok(typeof service.rollback === "function");
-  assert.ok(typeof service.getStatus === "function");
+  assert.ok(typeof service.startUpgrade === "function");
+  assert.ok(typeof service.triggerRollback === "function");
+  assert.ok(typeof service.getUpgradeProgress === "function");
 });
 
 test("VersionCompatibility works with incompatible version", () => {

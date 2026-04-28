@@ -1,4 +1,5 @@
 export {
+  assemblePromptSegments,
   DEFAULT_ML_CLASSIFIER_CONFIG,
   classifyPromptInjectionRisk,
   embedCanaryToken,
@@ -6,10 +7,15 @@ export {
   classifyRiskLevel,
   protectSystemPrompt,
   inspectProtectedModelOutput,
+  sanitizePromptInput,
+  sanitizePromptOutput,
   type CanaryTokenResult,
+  type PromptDefenseLayer,
+  type PromptDefenseLayerAssessment,
   type MLInjectionClassifierConfig,
   type PromptInjectionClassification,
   type PromptInjectionSignal,
+  type PromptRoleSegment,
   type PromptProtectionInspection,
   type PromptProtectionPlan,
 } from "../shared/stability/prompt-injection-guard.js";

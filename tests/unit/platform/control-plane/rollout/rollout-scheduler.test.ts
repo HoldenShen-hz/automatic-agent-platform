@@ -9,9 +9,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { RolloutScheduler } from "../../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-scheduler.js";
-import type { RolloutRecord, RolloutStatus } from "../../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
-import type { ImprovementCandidate } from "../../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
+import { RolloutScheduler } from "../../../../../src/platform/orchestration/improve-rollout/rollout/rollout-scheduler.js";
+import type { RolloutRecord, RolloutStatus } from "../../../../../src/platform/orchestration/oapeflir/types/rollout-record.js";
+import type { ImprovementCandidate } from "../../../../../src/platform/orchestration/improve-rollout/improvement-candidate-registry.js";
 
 function createMockCandidate(overrides: Partial<ImprovementCandidate> = {}): ImprovementCandidate {
   return {
@@ -172,7 +172,7 @@ describe("RolloutScheduler", () => {
       // Note: This behavior depends on implementation
     });
 
-    test("partial minimumStageDwellMs overrides only specified stages", () => {
+    test("partial minimumStageDwellMs overrides only specified stages", async () => {
       const scheduler = new RolloutScheduler({
         minimumStageDwellMs: { shadow: 999_999 }, // Very long for shadow only
         now: () => Date.now(),
@@ -180,7 +180,7 @@ describe("RolloutScheduler", () => {
       const candidate = createMockCandidate();
       const record = createMockRecord({ status: "shadow", transitionedAt: Date.now() - 100_000 });
 
-      const decision = scheduler.advance({ candidate, record });
+      const decision = await scheduler.advance({ candidate, record });
       assert.equal(decision.action, "wait");
     });
   });

@@ -13,7 +13,7 @@ import type {
   HarnessDecision,
   HarnessRun,
   ConstraintPack,
-} from "../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../src/platform/orchestration/harness/index.js";
 
 function createMockConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
   return {
@@ -612,7 +612,7 @@ test("HarnessRun with running status", () => {
   assert.equal(run.completedAt, null);
 });
 
-test("HarnessRun with waiting_hitl status", () => {
+test("HarnessRun with paused HITL status", () => {
   const run: HarnessRun = {
     runId: "run_4",
     taskId: "task_4",
@@ -621,7 +621,7 @@ test("HarnessRun with waiting_hitl status", () => {
     steps: [],
     maxIterations: 10,
     currentIteration: 7,
-    status: "waiting_hitl",
+    status: "paused",
     createdAt: "2026-04-26T00:00:00.000Z",
     completedAt: null,
     decision: null,
@@ -635,10 +635,10 @@ test("HarnessRun with waiting_hitl status", () => {
     timeline: [],
   };
 
-  assert.equal(run.status, "waiting_hitl");
+  assert.equal(run.status, "paused");
 });
 
-test("HarnessRun with sleeping status", () => {
+test("HarnessRun with paused sleep-lease status", () => {
   const run: HarnessRun = {
     runId: "run_5",
     taskId: "task_5",
@@ -647,7 +647,7 @@ test("HarnessRun with sleeping status", () => {
     steps: [],
     maxIterations: 10,
     currentIteration: 2,
-    status: "sleeping",
+    status: "paused",
     createdAt: "2026-04-26T00:00:00.000Z",
     completedAt: null,
     decision: null,
@@ -667,11 +667,11 @@ test("HarnessRun with sleeping status", () => {
     timeline: [],
   };
 
-  assert.equal(run.status, "sleeping");
+  assert.equal(run.status, "paused");
   assert.notEqual(run.sleepLease, null);
 });
 
-test("HarnessRun with recovering status", () => {
+test("HarnessRun with replanning status", () => {
   const run: HarnessRun = {
     runId: "run_6",
     taskId: "task_6",
@@ -680,7 +680,7 @@ test("HarnessRun with recovering status", () => {
     steps: [],
     maxIterations: 10,
     currentIteration: 4,
-    status: "recovering",
+    status: "replanning",
     createdAt: "2026-04-26T00:00:00.000Z",
     completedAt: null,
     decision: null,
@@ -700,7 +700,7 @@ test("HarnessRun with recovering status", () => {
     timeline: [],
   };
 
-  assert.equal(run.status, "recovering");
+  assert.equal(run.status, "replanning");
   assert.notEqual(run.recoveryCheckpoint, null);
 });
 

@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadDispatchExecutionCliEnv } from "../../../../../src/platform/control-plane/config-center/runtime-ops-env.js";
+import { loadDispatchExecutionCliEnv } from "../../../../src/platform/control-plane/config-center/runtime-ops-env.js";
 
 // ---------------------------------------------------------------------------
 // Tests for DispatchExecutionCliEnvConfig interface

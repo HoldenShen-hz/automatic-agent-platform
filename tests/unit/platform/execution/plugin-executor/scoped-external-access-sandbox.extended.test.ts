@@ -470,9 +470,7 @@ test("ScopedExternalAccessSandbox constructs proxy URL with encoded target", () 
 
   // This will fail at the actual HTTP request, but we can verify it processed the request
   // by checking the response (it will be blocked for domain, not for URL construction)
-  sandbox.validateOutboundRequest(request.url).then((allowed) => {
-    assert.equal(allowed, true);
-  });
+  assert.equal(sandbox.validateOutboundRequest(request.url), true);
 });
 
 test("ScopedExternalAccessSandbox handles egress proxy without trailing equals", () => {
@@ -486,9 +484,7 @@ test("ScopedExternalAccessSandbox handles egress proxy without trailing equals",
     method: "GET",
   };
 
-  sandbox.validateOutboundRequest(request.url).then((allowed) => {
-    assert.equal(allowed, true);
-  });
+  assert.equal(sandbox.validateOutboundRequest(request.url), true);
 });
 
 test("ScopedExternalAccessSandbox uses direct URL when no egress proxy", () => {
@@ -502,9 +498,7 @@ test("ScopedExternalAccessSandbox uses direct URL when no egress proxy", () => {
     method: "GET",
   };
 
-  sandbox.validateOutboundRequest(request.url).then((allowed) => {
-    assert.equal(allowed, true);
-  });
+  assert.equal(sandbox.validateOutboundRequest(request.url), true);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

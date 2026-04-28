@@ -128,7 +128,7 @@ export class PolicyRolloutService {
     targetStatus: RolloutStatus,
     metrics?: RolloutMetrics,
   ): MetricsGateDecision {
-    if (!PROGRESSIVE_STATUSES.has(targetStatus) || current.status === "shadow") {
+    if (!PROGRESSIVE_STATUSES.has(targetStatus)) {
       return { allowed: true, rollback: false, reasonCodes: [] };
     }
     if (!metrics) {

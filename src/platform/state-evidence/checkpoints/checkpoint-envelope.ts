@@ -303,7 +303,7 @@ export function getEnvelopeCompressionRatio(envelope: CheckpointEnvelope): numbe
   if (envelope.metadata.originalSizeBytes === 0) {
     return 1;
   }
-  return envelope.metadata.compressedSizeBytes / envelope.metadata.originalSizeBytes;
+  return Math.min(1, envelope.metadata.compressedSizeBytes / envelope.metadata.originalSizeBytes);
 }
 
 /**

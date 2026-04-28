@@ -134,7 +134,26 @@ test("CoordinatorLoadBalancingSummary allows empty arrays", () => {
 });
 
 test("ApiDelegationService interface defines required methods", () => {
-  const service = {} as ApiDelegationService;
+  const service: ApiDelegationService = {
+    buildSummary: () => ({
+      generatedAt: "2026-04-26T10:00:00.000Z",
+      coordinatorCount: 0,
+      activeCount: 0,
+      drainingCount: 0,
+      offlineCount: 0,
+      totalCapacity: 0,
+      totalActiveDispatchCount: 0,
+      totalBacklogCount: 0,
+      regions: [],
+      hotCoordinatorIds: [],
+    }),
+    selectCoordinator: () => ({
+      outcome: "no_candidate",
+      selectedCoordinatorId: null,
+      reasonCode: "none",
+      evaluations: [],
+    }),
+  };
   assert.equal(typeof service.buildSummary, "function");
   assert.equal(typeof service.selectCoordinator, "function");
 });

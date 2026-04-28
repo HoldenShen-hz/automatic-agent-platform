@@ -112,6 +112,13 @@ export interface WorkerHealthSummary {
   skewedWorkerIds: string[];
 }
 
+export interface BackpressureHealthSummary {
+  status: HealthStatusReport["status"];
+  degradationMode: HealthStatusReport["degradationMode"];
+  tier1AckBacklog: number;
+  queueGovernance: QueueGovernanceHealthSummary;
+}
+
 /**
  * Complete health status report including system status, provider health,
  * execution metrics, memory usage, and degradation mode.
@@ -129,6 +136,7 @@ export interface HealthStatusReport {
   memoryRssMb: number;
   tier1AckBacklog: number;
   degradationMode: "none" | "queue_only" | "fast_only" | "pause_non_critical" | "read_only_operations_only";
+  backpressure: BackpressureHealthSummary;
   queueGovernance: QueueGovernanceHealthSummary;
   workerHealth: WorkerHealthSummary;
   findings: string[];
@@ -474,7 +482,7 @@ export class HealthService {
 
     return {
       status,
-      uptimeSeconds: Math.floor((nowMs - this.startedAt) / 1000),
+      uptimeSeconds: Math.max(0, Math.floor((nowMs - this.startedAt) / 1000)),
       dbWritable,
       providerHealth: providerSummary.status,
       providerSuccessRate: providerSummary.successRate,
@@ -485,6 +493,12 @@ export class HealthService {
       memoryRssMb,
       tier1AckBacklog,
       degradationMode,
+      backpressure: {
+        status,
+        degradationMode,
+        tier1AckBacklog,
+        queueGovernance,
+      },
       queueGovernance,
       workerHealth,
       findings,

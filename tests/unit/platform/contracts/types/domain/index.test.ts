@@ -6,27 +6,27 @@ import test from "node:test";
 
 test("domain barrel exports Timestamp type", () => {
   // Timestamp is a primitive string type
-  const timestamp: import("../../../../../src/platform/contracts/types/domain/index.js").Timestamp = "2024-01-15T10:00:00Z";
+  const timestamp: import("../../../../../../src/platform/contracts/types/domain/index.js").Timestamp = "2024-01-15T10:00:00Z";
   assert.equal(timestamp, "2024-01-15T10:00:00Z");
 });
 
 test("domain barrel exports TaskPriority type", () => {
-  const priority: import("../../../../../src/platform/contracts/types/domain/index.js").TaskPriority = "high";
+  const priority: import("../../../../../../src/platform/contracts/types/domain/index.js").TaskPriority = "high";
   assert.equal(priority, "high");
 });
 
 test("domain barrel exports WorkerStatus type", () => {
-  const status: import("../../../../../src/platform/contracts/types/domain/index.js").WorkerStatus = "active";
+  const status: import("../../../../../../src/platform/contracts/types/domain/index.js").WorkerStatus = "active";
   assert.equal(status, "active");
 });
 
 test("domain barrel exports LeaseStatus type", () => {
-  const status: import("../../../../../src/platform/contracts/types/domain/index.js").LeaseStatus = "active";
+  const status: import("../../../../../../src/platform/contracts/types/domain/index.js").LeaseStatus = "active";
   assert.equal(status, "active");
 });
 
 test("domain barrel exports ExecutionRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").ExecutionRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").ExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
     status: "running",
@@ -38,7 +38,7 @@ test("domain barrel exports ExecutionRecord type", () => {
 });
 
 test("domain barrel exports TaskRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").TaskRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").TaskRecord = {
     taskId: "task-001",
     status: "pending",
     priority: "medium",
@@ -49,7 +49,7 @@ test("domain barrel exports TaskRecord type", () => {
 });
 
 test("domain barrel exports WorkflowStateRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").WorkflowStateRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").WorkflowStateRecord = {
     workflowId: "wf-001",
     taskId: "task-001",
     status: "running",
@@ -62,7 +62,7 @@ test("domain barrel exports WorkflowStateRecord type", () => {
 });
 
 test("domain barrel exports SessionRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").SessionRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").SessionRecord = {
     sessionId: "sess-001",
     workspaceId: "ws-001",
     status: "active",
@@ -73,7 +73,7 @@ test("domain barrel exports SessionRecord type", () => {
 });
 
 test("domain barrel exports WorkspaceRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").WorkspaceRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").WorkspaceRecord = {
     workspaceId: "ws-001",
     organizationId: "org-001",
     name: "Test Workspace",
@@ -83,7 +83,7 @@ test("domain barrel exports WorkspaceRecord type", () => {
 });
 
 test("domain barrel exports TenantRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").TenantRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").TenantRecord = {
     tenantId: "tenant-001",
     organizationId: "org-001",
     name: "Test Tenant",
@@ -93,7 +93,7 @@ test("domain barrel exports TenantRecord type", () => {
 });
 
 test("domain barrel exports OrganizationRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").OrganizationRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").OrganizationRecord = {
     organizationId: "org-001",
     name: "Test Org",
     createdAt: "2024-01-15T10:00:00Z",
@@ -102,7 +102,7 @@ test("domain barrel exports OrganizationRecord type", () => {
 });
 
 test("domain barrel exports ReleaseBundleRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").ReleaseBundleRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").ReleaseBundleRecord = {
     bundleId: "bundle-001",
     version: "v1.0.0",
     status: "active",
@@ -112,7 +112,7 @@ test("domain barrel exports ReleaseBundleRecord type", () => {
 });
 
 test("domain barrel exports BillingAccountRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").BillingAccountRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").BillingAccountRecord = {
     accountId: "acct-001",
     tenantId: "tenant-001",
     status: "active",
@@ -122,7 +122,7 @@ test("domain barrel exports BillingAccountRecord type", () => {
 });
 
 test("domain barrel exports SecretRegistryRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").SecretRegistryRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").SecretRegistryRecord = {
     secretId: "secret-001",
     name: "api-key",
     category: "api_key",
@@ -133,7 +133,7 @@ test("domain barrel exports SecretRegistryRecord type", () => {
 });
 
 test("domain barrel exports EventRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").EventRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").EventRecord = {
     eventId: "event-001",
     sessionId: "sess-001",
     tier: "info",
@@ -143,7 +143,7 @@ test("domain barrel exports EventRecord type", () => {
 });
 
 test("domain barrel exports DispatchTarget type", () => {
-  const target: import("../../../../../src/platform/contracts/types/domain/index.js").DispatchTarget = {
+  const target: import("../../../../../../src/platform/contracts/types/domain/index.js").DispatchTarget = {
     workerPool: "default",
     region: "us-east-1",
   };
@@ -151,7 +151,7 @@ test("domain barrel exports DispatchTarget type", () => {
 });
 
 test("domain barrel exports EvolutionProposalRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").EvolutionProposalRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").EvolutionProposalRecord = {
     proposalId: "prop-001",
     kind: "optimization",
     status: "pending",
@@ -161,7 +161,7 @@ test("domain barrel exports EvolutionProposalRecord type", () => {
 });
 
 test("domain barrel exports EnvironmentReadinessRecord type", () => {
-  const record: import("../../../../../src/platform/contracts/types/domain/index.js").EnvironmentReadinessRecord = {
+  const record: import("../../../../../../src/platform/contracts/types/domain/index.js").EnvironmentReadinessRecord = {
     componentType: "database",
     name: "primary-db",
     status: "ready",

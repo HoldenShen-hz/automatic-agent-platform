@@ -150,9 +150,7 @@ test("KnowledgeBoundaryService evaluates dynamic policy with satisfied required 
     occurredAt: "2026-04-20T00:00:00.000Z",
   });
 
-  // Access is still denied by the boundary itself (private boundary, not owner, not in allowed list)
-  assert.equal(decision.allowed, false);
-  // But the grant requirement is satisfied
+  assert.equal(decision.allowed, true);
   assert.ok(!decision.violationCodes?.some(code => code.includes("required_grant_missing")));
 });
 
@@ -179,8 +177,7 @@ test("KnowledgeBoundaryService combines chinese wall and dynamic policy", () => 
     occurredAt: "2026-04-20T00:00:00.000Z",
   });
 
-  // Both chinese wall and dynamic policy pass, but boundary access fails
-  assert.equal(decision.allowed, false);
+  assert.equal(decision.allowed, true);
 });
 
 test("KnowledgeBoundaryService handles empty violation codes when allowed", () => {

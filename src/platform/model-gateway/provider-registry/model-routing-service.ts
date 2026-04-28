@@ -380,6 +380,10 @@ export class ModelRoutingService {
     const turnId = normalizeTurnId(request.turnId);
     const fallbackLease = normalizeFallbackLease(request.fallbackLease);
     const governanceSnapshot = normalizeGovernanceSnapshot(request.governanceSnapshot);
+    const pinnedProfileName = normalizeOptionalName(request.pinnedProfileName);
+    const preferredProfileName = normalizeOptionalName(request.preferredProfileName);
+    const stickyProfileName = normalizeOptionalName(request.stickyProfileName);
+    const maxInputPer1kUsd = request.maxInputPer1kUsd ?? null;
     const filteredOut: string[] = [];
 
     const getGovernanceStatus = (
@@ -440,9 +444,9 @@ export class ModelRoutingService {
       targetTierOrder,
       selectedProfileName,
       selectedProvider,
-      preferredProfileName: request.preferredProfileName ?? null,
-      pinnedProfileName: request.pinnedProfileName ?? null,
-      stickyProfileName: request.stickyProfileName ?? null,
+      preferredProfileName,
+      pinnedProfileName,
+      stickyProfileName,
       turnId,
       turnScopedFallbackPrimaryProfileName: fallbackPrimaryProfileName,
       turnScopedFallbackProfileName: fallbackProfileName,
@@ -494,7 +498,6 @@ export class ModelRoutingService {
       return buildDecision(found, reason);
     };
 
-    const pinnedProfileName = normalizeOptionalName(request.pinnedProfileName);
     if (pinnedProfileName != null) {
       return requireProfile(pinnedProfileName, "pinned_profile");
     }
@@ -503,9 +506,6 @@ export class ModelRoutingService {
     const governanceHealthyProfiles = normalHealthProfiles.filter(
       (candidate) => getGovernanceStatus(candidate.profileName) !== "degraded",
     );
-    const preferredProfileName = normalizeOptionalName(request.preferredProfileName);
-    const stickyProfileName = normalizeOptionalName(request.stickyProfileName);
-
     const findGovernanceFallbackCandidate = (profileName: string): EligibleProfile | null => {
       const rollbackTarget = getGovernanceRollbackTarget(profileName);
       if (rollbackTarget == null || rollbackTarget === profileName) {
@@ -562,6 +562,10 @@ export class ModelRoutingService {
       if (found == null) {
         return null;
       }
+      if (maxInputPer1kUsd != null && found.profile.pricing.inputPer1kUsd > maxInputPer1kUsd) {
+        filteredOut.push(`${profileName}:cost_cap_exceeded`);
+        return null;
+      }
       return buildDecision(found, reason);
     };
 
@@ -575,6 +579,20 @@ export class ModelRoutingService {
       return preferred;
     }
 
+    for (const tier of targetTierOrder) {
+      const degradedWithRollback = normalHealthProfiles
+        .filter((candidate) => candidate.profile.tier === tier && getGovernanceStatus(candidate.profileName) === "degraded")
+        .sort(compareProfiles)
+        .map((candidate) => ({
+          primary: candidate,
+          fallback: findGovernanceFallbackCandidate(candidate.profileName),
+        }))
+        .find((candidate) => candidate.fallback != null);
+      if (degradedWithRollback?.fallback != null) {
+        return buildDecision(degradedWithRollback.fallback, "governance_fallback");
+      }
+    }
+
     const candidatePool =
       governanceHealthyProfiles.length > 0
         ? governanceHealthyProfiles
@@ -585,11 +603,12 @@ export class ModelRoutingService {
       throw new AppError("model_route.no_eligible_profiles", "model_route.no_eligible_profiles: No eligible model profiles found for routing request", { category: "provider", source: "provider" });
     }
 
-    const maxInputPer1kUsd = request.maxInputPer1kUsd ?? null;
     const allowStrongUpgrade = request.allowStrongUpgrade ?? false;
     let routeReason = determineBaseRouteReason(routeClass, riskLevel, requiredCapabilities);
+    let costCapFallbackTriggered = false;
 
     const chooseByTiers = (tiers: readonly string[]): EligibleProfile | null => {
+      let costFallbackCandidate: EligibleProfile | null = null;
       for (const tier of tiers) {
         const withinTier = candidatePool
           .filter((candidate) => candidate.profile.tier === tier)
@@ -597,15 +616,22 @@ export class ModelRoutingService {
         const costFiltered = maxInputPer1kUsd == null
           ? withinTier
           : withinTier.filter((candidate) => candidate.profile.pricing.inputPer1kUsd <= maxInputPer1kUsd);
-        const source = costFiltered.length > 0 ? costFiltered : withinTier;
+        const source = costFiltered;
+        if (maxInputPer1kUsd != null && withinTier.length > 0 && costFiltered.length === 0) {
+          costCapFallbackTriggered = true;
+          costFallbackCandidate ??= withinTier[0] ?? null;
+        }
         if (source.length > 0) {
-          if (maxInputPer1kUsd != null && costFiltered.length === 0) {
+          if (costCapFallbackTriggered || (maxInputPer1kUsd != null && costFiltered.length < withinTier.length)) {
             routeReason = "cost_cap_fallback";
           }
           return source[0] ?? null;
         }
       }
-      return null;
+      if (costFallbackCandidate != null) {
+        routeReason = "cost_cap_fallback";
+      }
+      return costFallbackCandidate;
     };
 
     let chosen = chooseByTiers(targetTierOrder);

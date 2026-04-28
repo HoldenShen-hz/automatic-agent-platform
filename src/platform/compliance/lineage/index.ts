@@ -32,21 +32,32 @@ export class DataLineageService {
       actorRef: input.actorRef,
       policyRef: input.policyRef ?? null,
       createdAt: nowIso(),
-      metadata: input.metadata ?? {},
+      metadata: cloneMetadata(input.metadata),
     };
     this.edges.push(edge);
-    return edge;
+    return cloneEdge(edge);
   }
 
   public traceFrom(sourceRef: string): DataLineageEdge[] {
-    return this.edges.filter((edge) => edge.sourceRef === sourceRef);
+    return this.edges.filter((edge) => edge.sourceRef === sourceRef).map(cloneEdge);
   }
 
   public traceTo(targetRef: string): DataLineageEdge[] {
-    return this.edges.filter((edge) => edge.targetRef === targetRef);
+    return this.edges.filter((edge) => edge.targetRef === targetRef).map(cloneEdge);
   }
 
   public listEdges(): DataLineageEdge[] {
-    return [...this.edges];
+    return this.edges.map(cloneEdge);
   }
+}
+
+function cloneEdge(edge: DataLineageEdge): DataLineageEdge {
+  return {
+    ...edge,
+    metadata: cloneMetadata(edge.metadata),
+  };
+}
+
+function cloneMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
+  return metadata == null ? {} : { ...metadata };
 }

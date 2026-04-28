@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { LearningSignal } from "../../../../../src/scale-ecosystem/feedback-loop/collector/feedback-model.js";
-import type { UnifiedChatProvider, ChatMessage } from "../../../../../src/model-gateway/provider-registry/unified-chat-provider.js";
+import type { UnifiedChatProvider, ChatMessage } from "../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 import { LLMImprovementGenerationService } from "../../../../../src/platform/orchestration/learn/llm-improvement-generation-service.js";
 import type { LearningObject } from "../../../../../src/platform/orchestration/learn/learning-object-model.js";
 

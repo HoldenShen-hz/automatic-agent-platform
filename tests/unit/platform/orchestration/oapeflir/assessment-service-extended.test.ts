@@ -48,7 +48,7 @@ test("AssessmentService assigns small model for trivial complexity", () => {
 test("AssessmentService assigns medium model for moderate complexity", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: ["file1.ts", "file2.ts"],
+    fileRefs: ["file1.ts", "file2.ts", "file3.ts", "file4.ts"],
     blockers: [],
   }));
 
@@ -373,7 +373,7 @@ test("AssessmentService sets single-step workflow for trivial complexity", () =>
 test("AssessmentService sets multi-step workflow for non-trivial complexity", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
-    fileRefs: ["file1.ts", "file2.ts"],
+    fileRefs: ["file1.ts", "file2.ts", "file3.ts", "file4.ts"],
   }));
 
   assert.equal(result.routingDecision.workflow, "multi-step");

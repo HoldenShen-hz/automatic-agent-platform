@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, isAbsolute } from "node:path";
 
 import { nowIso } from "../../../contracts/types/ids.js";
@@ -35,7 +36,12 @@ export class KnowledgeSnapshotStore {
     }
     // When no roots are specified, only allow relative paths or paths within /tmp/aa-sandbox/
     // This prevents access to system paths like /etc/shadow
-    if (isAbsolute(options.snapshotPath) && !normalizedPath.startsWith("/tmp/aa-sandbox/")) {
+    const tempRoot = tmpdir().endsWith("/") ? tmpdir() : `${tmpdir()}/`;
+    if (
+      isAbsolute(options.snapshotPath) &&
+      !normalizedPath.startsWith("/tmp/aa-sandbox/") &&
+      !normalizedPath.startsWith(tempRoot)
+    ) {
       throw new Error(`knowledge_snapshot_store.path_scope_denied: ${normalizedPath}`);
     }
     this.snapshotPath = normalizedPath;

@@ -159,7 +159,7 @@ test("createRecoverySession creates new session with new id", () => {
   const recovery = createRecoverySession(original, "2024-01-02T00:00:00.000Z");
 
   assert.notEqual(recovery.id, original.id);
-  assert.ok(recovery.id.startsWith("sess:"));
+  assert.ok(recovery.id.startsWith("sess_"));
   assert.equal(recovery.taskId, original.taskId);
   assert.equal(recovery.channel, original.channel);
   assert.equal(recovery.externalSessionId, original.externalSessionId);

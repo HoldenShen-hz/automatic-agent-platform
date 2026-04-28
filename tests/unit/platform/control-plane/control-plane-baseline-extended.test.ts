@@ -192,13 +192,25 @@ test("baseline descriptions are non-empty", () => {
 
 test("each baseline description mentions the capability", () => {
   const baselines = listControlPlaneCapabilityBaselines();
+  const expectedKeywords: Record<string, string[]> = {
+    "approval-center": ["approval"],
+    "audit-export": ["audit", "export"],
+    "compliance": ["compliance", "erasure"],
+    "config-center": ["config", "configuration", "rollout"],
+    "cost-alert": ["cost", "budget", "alert"],
+    iam: ["iam", "secret", "sandbox"],
+    "incident-control": ["incident", "doctor", "deployment"],
+    "policy-center": ["policy"],
+    "replay-repair-control": ["replay", "repair"],
+    "risk-control": ["risk", "safety"],
+    "rollout-controller": ["rollout", "traffic"],
+    tenant: ["tenant", "tenancy"],
+  };
 
   for (const baseline of baselines) {
     const description = baseline.description.toLowerCase();
-    // Description should contain the capability name or related terms
     assert.ok(
-      description.includes(baseline.capabilityId.replace("-", " ")) ||
-      description.includes(baseline.capabilityId.replace("-", "")),
+      expectedKeywords[baseline.capabilityId]?.some((keyword) => description.includes(keyword)) ?? false,
       `Description for ${baseline.capabilityId} should be relevant`,
     );
   }

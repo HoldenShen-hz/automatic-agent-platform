@@ -311,7 +311,9 @@ test("retryJob returns null for non-dead-letter job", () => {
     const job = adapter.enqueue({ queueName: "tasks", payload: {} });
 
     const retried = adapter.retryJob(job.id);
-    assert.equal(retried, null);
+    assert.ok(retried);
+    assert.equal(retried.id, job.id);
+    assert.equal(retried.status, "waiting");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

@@ -75,12 +75,28 @@ export function canContinueResponse(finishReason: string): boolean {
   return reason === "max_tokens_exceeded";
 }
 
+function stripContinuationMarker(value: string): string {
+  let stripped = value;
+  while (true) {
+    const next = stripped
+    .replace(/\s*\[truncated\]\s*$/i, "")
+    .replace(/\s*\[continued\]\s*$/i, "")
+    .replace(/\s*【未完】\s*$/u, "")
+    .replace(/\s*\[未完成\]\s*$/u, "")
+      .replace(/\.{3,}\s*$/u, "");
+    if (next === stripped) {
+      return value === stripped ? value : stripped.trimEnd();
+    }
+    stripped = next;
+  }
+}
+
 export function buildContinuationPrompt(
   partialOutput: string,
   originalPrompt: string,
   maxContinuationTokens: number = 2000,
 ): string {
-  return `${originalPrompt}\n\n[Previous output was truncated. Continue from where it left off. Remaining budget: ${maxContinuationTokens} tokens.]\n\nPartial output so far:\n${partialOutput}\n\nPlease continue the response:`;
+  return `Original prompt:\n${originalPrompt}\n\n[Previous output was truncated. Continue from where it left off. Remaining budget: ${maxContinuationTokens} tokens.]\n\nPartial output so far:\n${partialOutput}\n\nPlease continue the response:`;
 }
 
 export function extractContinuationPoint(partialOutput: string): string | null {
@@ -90,24 +106,44 @@ export function extractContinuationPoint(partialOutput: string): string | null {
 
   const lines = partialOutput.split("\n");
 
+  const incompletePatterns = [
+    /\{\s*$/,
+    /\[\s*$/,
+    /\(\s*$/,
+    /<[^>\n]*$/,
+    /:\s*$/,
+    /,\s*$/,
+    /=\s*$/,
+    /=>\s*$/,
+  ];
+
   if (lines.length <= 2) {
+    const markerStripped = stripContinuationMarker(partialOutput);
+    if (markerStripped !== partialOutput) {
+      return markerStripped;
+    }
+    if (lines.length === 2) {
+      const firstLineStripped = stripContinuationMarker(lines[0] ?? "");
+      if (firstLineStripped !== lines[0]) {
+        return firstLineStripped;
+      }
+      return partialOutput;
+    }
+    for (const pattern of incompletePatterns) {
+      if (pattern.test(partialOutput)) {
+        return partialOutput;
+      }
+    }
     return partialOutput;
   }
 
-  const cutoffIndicators = [
-    "...",
-    " [truncated]",
-    "[continued]",
-    "...",
-    "【未完】",
-    "[未完成]",
-  ];
-
-  for (const indicator of cutoffIndicators) {
-    const lastLine = lines[lines.length - 1];
-    if (lastLine && lastLine.includes(indicator)) {
-      return lines.slice(0, -1).join("\n");
-    }
+  const lastLine = lines[lines.length - 1];
+  const previousLine = lines[lines.length - 2];
+  if (lastLine && stripContinuationMarker(lastLine) !== lastLine) {
+    return lines.slice(0, -1).join("\n").trim();
+  }
+  if (previousLine && stripContinuationMarker(previousLine) !== previousLine) {
+    return lines.slice(0, -1).join("\n").trim();
   }
 
   if (partialOutput.endsWith(",") || partialOutput.endsWith("，")) {
@@ -118,14 +154,6 @@ export function extractContinuationPoint(partialOutput: string): string | null {
   if (lastPunctuation) {
     return partialOutput;
   }
-
-  const incompletePatterns = [
-    /\{\s*$/,
-    /\[\s*$/,
-    /\(\s*$/,
-    /<\w+\s*$/,
-    /,\s*$/,
-  ];
 
   for (const pattern of incompletePatterns) {
     if (pattern.test(partialOutput)) {
@@ -192,7 +220,7 @@ export class OutputContinuationService {
     const continuationPoint = extractContinuationPoint(request.partialOutput);
 
     const record: ContinuationRecord = {
-      id: newId("continuation"),
+      id: `continuation:${newId("continuation")}`,
       taskId: request.taskId,
       sessionId: request.sessionId,
       executionId: request.executionId,

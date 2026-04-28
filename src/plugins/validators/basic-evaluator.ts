@@ -27,7 +27,7 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
       const suggestions: string[] = [];
 
       for (const field of contract.requiredFields ?? []) {
-        if (!(field in payload)) {
+        if (!(field in payload) || payload[field] == null) {
           errors.push({
             field,
             message: `Missing required field "${field}"`,
@@ -39,6 +39,14 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
 
       for (const [field, expectedType] of Object.entries(contract.fieldTypes ?? {})) {
         if (!(field in payload)) {
+          if ((contract.requiredFields ?? []).length > 0) {
+            errors.push({
+              field,
+              message: `Expected ${expectedType}, received missing`,
+              severity: "error",
+            });
+            suggestions.push(`Normalize "${field}" to ${expectedType}.`);
+          }
           continue;
         }
         const value = payload[field];

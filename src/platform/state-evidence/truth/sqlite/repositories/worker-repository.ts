@@ -244,6 +244,10 @@ export class WorkerRepository {
     return this.listExecutionLeases(executionId);
   }
 
+  public listLeasesByWorker(workerId: string): ExecutionLeaseRecord[] {
+    return this.ticketRepo.listLeasesByWorker(workerId);
+  }
+
   public listExecutionLeasesByStatuses(statuses: ExecutionLeaseRecord["status"][]): ExecutionLeaseRecord[] {
     return this.ticketRepo.listExecutionLeasesByStatuses(statuses);
   }

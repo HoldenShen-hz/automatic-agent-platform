@@ -28,6 +28,7 @@ const DATA_PLANE_ACTIONS = [
   "create_replay_dataset",
   "start_movement_job",
   "complete_movement_job",
+  "status",
   "summary",
   "export",
 ] as const;
@@ -127,6 +128,7 @@ export interface DataPlaneCliEnvConfig {
     | "create_replay_dataset"
     | "start_movement_job"
     | "complete_movement_job"
+    | "status"
     | "summary"
     | "export";
   artifactRoot: string | null;

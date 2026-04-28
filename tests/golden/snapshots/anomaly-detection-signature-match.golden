@@ -1,7 +1,7 @@
 {
-  "isAnomaly": false,
-  "score": 0,
-  "severity": "info",
-  "category": "static",
-  "hasSignatureMatch": false
+  "isAnomaly": true,
+  "score": 1,
+  "severity": "critical",
+  "category": "spike",
+  "hasSignatureMatch": true
 }

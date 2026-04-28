@@ -31,6 +31,7 @@ export function mapRiskLevelToSeverity(riskLevel: "low" | "medium" | "high" | "c
     case "medium": return "warning";
     case "high": return "error";
     case "critical": return "critical";
+    default: return "critical";
   }
 }
 
@@ -85,6 +86,8 @@ export function getSeverityColorTokens(severity: NotificationSeverity): {
     case "error":
       return { background: "#ffebee", foreground: "#b71c1c", border: "#f44336", contrastRatio: 5.1 };
     case "critical":
+      return { background: "#ffcdd2", foreground: "#7f0000", border: "#d32f2f", contrastRatio: 7.2 };
+    default:
       return { background: "#ffcdd2", foreground: "#7f0000", border: "#d32f2f", contrastRatio: 7.2 };
   }
 }

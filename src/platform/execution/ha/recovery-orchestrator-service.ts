@@ -5,6 +5,7 @@ export interface RecoveryOrchestratorCycleReport {
   readonly orchestratorId: string;
   readonly startedAt: string;
   readonly completedAt: string;
+  readonly durationMs: number;
   readonly workerReports: readonly RecoveryReport[];
 }
 
@@ -20,15 +21,37 @@ export class RecoveryOrchestratorService {
 
   public async runCycle(): Promise<RecoveryOrchestratorCycleReport> {
     const startedAt = nowIso();
+    const startedAtMs = Date.parse(startedAt);
     const orderedWorkers = [...this.workers].sort(compareRecoveryWorkers);
     const workerReports: RecoveryReport[] = [];
     for (const worker of orderedWorkers) {
-      workerReports.push(await worker.runRecoveryCycle());
+      try {
+        workerReports.push(await worker.runRecoveryCycle());
+      } catch (error) {
+        const completedAt = nowIso();
+        workerReports.push({
+          workerId: worker.getWorkerId(),
+          workerType: "recovery_worker",
+          startedAt,
+          completedAt,
+          durationMs: Math.max(0, Date.parse(completedAt) - startedAtMs),
+          itemsProcessed: 0,
+          itemsRecovered: 0,
+          errors: [
+            {
+              code: "recovery_worker.run_failed",
+              message: error instanceof Error ? error.message : String(error),
+            },
+          ],
+        });
+      }
     }
+    const completedAt = nowIso();
     return {
       orchestratorId: this.orchestratorId,
       startedAt,
-      completedAt: nowIso(),
+      completedAt,
+      durationMs: Math.max(0, Date.parse(completedAt) - startedAtMs),
       workerReports,
     };
   }

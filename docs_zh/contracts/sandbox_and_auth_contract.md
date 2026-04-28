@@ -10,6 +10,7 @@ This contract defines execution sandbox, filesystem/network permissions, user au
 ## 2. Key Objects
 
 - `SandboxPolicy`
+- `SandboxCapabilityProfile`
 - `FilesystemRule`
 - `NetworkRule`
 - `AuthSession`
@@ -27,6 +28,31 @@ This contract defines execution sandbox, filesystem/network permissions, user au
 - `symlink_policy`
 - `allowed_roots`
 - `denied_roots`
+
+`SandboxPolicy.mode` canonical enum:
+
+- `read_only`
+- `workspace_write`
+- `scoped_external_access`
+- `restricted_exec`
+
+`SandboxCapabilityProfile` minimum fields:
+
+- `mode`
+- `execution_isolation`
+- `filesystem_profile`
+- `network_profile`
+- `memory_limit_mb`
+- `timeout_limit_ms`
+- `approval_gate_required`
+
+Rules:
+
+- `read_only` only allows read-only mounts and no external egress.
+- `workspace_write` only allows writes inside explicit workspace / tmpfs scope, still no external egress.
+- `scoped_external_access` only allows allowlisted egress targets and explicit writable scratch space.
+- `restricted_exec` is the highest-risk execution profile; it must run with explicit approval / policy justification and the strongest isolation profile.
+- `standard / hardened / strict` only survive as deprecated migration aliases; new schema and new APIs must use the four canonical modes above.
 
 ## 4. AuthSession Minimum Fields
 
@@ -57,7 +83,7 @@ Remote worker registration uses challenge-response mode:
 
 **Phase 1: Issue Challenge**
 
-- Requester declares `workerId`, `capabilities`, `isolationLevel`.
+- Requester declares `workerId`, `capabilities`, `sandboxMode`.
 - System generates random `challengeToken` and stores its SHA256 hash (not plaintext).
 - System filters requested capabilities according to `allowedCapabilities` in security config, records rejected capabilities.
 - Challenge has TTL (default `challengeTtlMs = 300000`, i.e., 5 minutes).
@@ -76,6 +102,7 @@ Remote worker registration uses challenge-response mode:
 - Expired challenge automatically becomes invalid.
 - Filtered capabilities must be recorded in `rejectedCapabilities` for audit.
 - Challenge does not replace runtime sandbox and policy, only solves worker identity and initial capability declaration.
+- Worker-declared `sandboxMode` is only a capability claim; whether a run can use that mode still depends on Policy Engine and dispatch-time constraints.
 
 ## 5B. Remote Session Authority Guard
 
@@ -110,11 +137,26 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 - If standalone command execution surface exists, should be modeled separately from task / workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
 - PTY, stdin streaming, stdout/stderr streaming, output cap, timeout这类 execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
 
+### 6A. Canonical Sandbox Mode Matrix
+
+| mode | filesystem | network | execution profile | typical use |
+| --- | --- | --- | --- | --- |
+| `read_only` | read-only mounts only | denied | subprocess + seccomp | inspect, search, parse |
+| `workspace_write` | tmpfs + explicit workspace write roots | denied | subprocess + seccomp | code edit, local artifact generation |
+| `scoped_external_access` | tmpfs + scoped writable roots | allowlist only | isolated multi-process / container optional | verified fetch, registry / API calls |
+| `restricted_exec` | overlay / isolated fs | allowlist only | strongest isolated exec profile | privileged but tightly governed execution |
+
+Rules:
+
+- Sandbox mode must be decided before execution ticket dispatch and written into the execution constraint pack.
+- Tool / provider / worker runtime must consume the resolved canonical mode, not reinterpret deprecated aliases locally.
+- `AuthSession` does not upgrade sandbox mode; identity proof and sandbox authority are orthogonal.
+
 
 ## v4.3 Architecture Remediation
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-16: 隔离层级 standard/hardened/strict，架构§11.4定义 read_only/workspace_write/scoped_external_access/restricted_exec 完全不同的4层。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-16: 本文原先沿用 `standard / hardened / strict` 三档隔离级别，根因是早期安全设计按“实现强度”分层，后来主架构改为按“可写性 + egress + exec 治理面”定义四档 canonical sandbox mode 后，旧 worker 注册与执行合同没有一起迁移。修复：正文现把 `SandboxPolicy.mode` 收敛到 `read_only / workspace_write / scoped_external_access / restricted_exec`，旧三档仅保留为 deprecated alias。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

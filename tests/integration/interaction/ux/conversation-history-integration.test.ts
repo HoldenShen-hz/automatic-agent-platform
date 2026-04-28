@@ -8,11 +8,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ConversationHistoryService } from "../../../src/interaction/ux/conversation-history-service.js";
+import { ConversationHistoryService } from "../../../../src/interaction/ux/conversation-history-service.js";
 import type {
   ConversationSessionRecord,
   ConversationTurnRecord,
-} from "../../../src/interaction/ux/conversation-history-service.js";
+} from "../../../../src/interaction/ux/conversation-history-service.js";
 
 function createService(): ConversationHistoryService {
   return new ConversationHistoryService();

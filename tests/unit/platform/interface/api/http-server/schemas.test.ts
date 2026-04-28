@@ -57,7 +57,10 @@ test("parseGatewaySendPayload rejects non-object body", () => {
     parseGatewaySendPayload([]);
     assert.fail("Expected error for array");
   } catch (error: any) {
-    assert.ok(error.code.startsWith("api.invalid_gateway_payload"));
+    assert.ok(
+      error.code.startsWith("api.invalid_gateway_payload")
+      || error.code === "api.dangerous_key",
+    );
   }
 });
 

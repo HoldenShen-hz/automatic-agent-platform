@@ -37,6 +37,15 @@ test("RolloutScheduler promotes shadow rollout after dwell window", async () => 
   const scheduler = new RolloutScheduler({
     now: () => 1_000_000,
     minimumStageDwellMs: { shadow: 1_000 },
+    metricsProvider: {
+      readMetrics: () => ({
+        requestCount: 100,
+        failureRate: 0.01,
+        p99LatencyMs: 120,
+        baselineP99LatencyMs: 100,
+        observationWindowMs: 120_000,
+      }),
+    },
   });
 
   const decision = await scheduler.advance({
@@ -124,6 +133,17 @@ test("RolloutScheduler.advanceMany processes multiple rollouts", async () => {
   const scheduler = new RolloutScheduler({
     now: () => 1_000_000,
     minimumStageDwellMs: { shadow: 1_000, canary_5: 1_000 },
+    metricsProvider: {
+      readMetrics: (record) => record.status === "shadow"
+        ? {
+            requestCount: 100,
+            failureRate: 0.01,
+            p99LatencyMs: 120,
+            baselineP99LatencyMs: 100,
+            observationWindowMs: 120_000,
+          }
+        : null,
+    },
   });
 
   const inputs = [

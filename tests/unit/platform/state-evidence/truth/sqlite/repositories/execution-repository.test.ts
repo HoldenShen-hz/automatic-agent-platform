@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { ExecutionRepository } from "../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js";
+
 // Test type exports and structure from the execution-repository
 // We test the structure and types without needing actual database connections
 
@@ -14,8 +16,6 @@ test("ExecutionRepository can be instantiated with mock connection", () => {
     }),
   } as any;
 
-  // Import and instantiate
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
   
   assert.ok(repo);
@@ -33,7 +33,6 @@ test("ExecutionRepository has all required methods", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   // Execution methods
@@ -66,7 +65,6 @@ test("ExecutionRepository insertExecution accepts ExecutionRecord type", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   // Create a mock execution record
@@ -113,7 +111,6 @@ test("ExecutionRepository getExecution returns undefined when not found", () => 
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const result = repo.getExecution("nonexistent-id");
@@ -129,7 +126,6 @@ test("ExecutionRepository listExecutionsByStatuses handles empty array", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const result = repo.listExecutionsByStatuses([]);
@@ -145,7 +141,6 @@ test("ExecutionRepository updateExecutionStatusCas returns number", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const result = repo.updateExecutionStatusCas("exec-123", "executing", "completed", "2026-04-26T10:00:00.000Z", null, null, null);
@@ -161,7 +156,6 @@ test("ExecutionRepository countActiveExecutions returns number", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const result = repo.countActiveExecutions();
@@ -177,7 +171,6 @@ test("ExecutionRepository insertExecutionPrecheck accepts record", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const precheck = {
@@ -207,7 +200,6 @@ test("ExecutionRepository insertDeadLetter accepts record", () => {
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const deadLetter = {
@@ -234,7 +226,6 @@ test("ExecutionRepository getDeadLetterByExecutionId returns undefined when not 
     }),
   } as any;
 
-  const { ExecutionRepository } = require("../../../../../../../src/platform/state-evidence/truth/sqlite/repositories/execution-repository.js");
   const repo = new ExecutionRepository(mockConn);
 
   const result = repo.getDeadLetterByExecutionId("nonexistent-exec");

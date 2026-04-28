@@ -61,6 +61,9 @@ export class DistributedRateLimiter {
 
   private checkLocal(key: string): RateLimitCheckResult {
     const now = Date.now();
+    if (this.maxCalls <= 0) {
+      return { allowed: false, remaining: 0, retryAfterMs: this.windowMs };
+    }
     const entry = this.localEntries.get(key);
 
     if (!entry || now - entry.windowStart >= this.windowMs) {

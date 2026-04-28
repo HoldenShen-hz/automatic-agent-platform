@@ -1,13 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
-import { resolve } from "path";
-
-// Use resolve to find the module properly
-const srcPath = resolve(fileURLToPath(import.meta.url), "../../../../src/domains/domain-module-helper.js");
-
-// Import using the resolved path
-const mod = await import(srcPath);
+import * as mod from "../../../src/domains/domain-module-helper.js";
 
 test("createDomainModulePreset creates preset with correct domainId", () => {
   const preset = mod.createDomainModulePreset(

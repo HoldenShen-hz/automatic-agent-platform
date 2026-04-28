@@ -243,7 +243,7 @@ test("integration: DLQ service setReason updates reason field", () => {
     const updated = dlq.setReason(record.deadLetterId, reason);
 
     assert.equal(updated.reason, reason, "Reason should be updated");
-    assert.equal(updated.updatedAt, updated.createdAt, "Updated at should be unchanged (no op log for setReason)");
+    assert.ok(updated.updatedAt >= updated.createdAt, "Updated at should reflect the persisted reason update");
   } finally {
     ctx.cleanup();
   }

@@ -145,7 +145,6 @@ test("PlanGraphHarnessRuntime executes ready node into NodeRun, NodeAttemptRecei
       "platform.node_run.status_changed",
       "platform.node_run.status_changed",
       "platform.node_run.status_changed",
-      "platform.node_run.status_changed",
     ],
   );
 });

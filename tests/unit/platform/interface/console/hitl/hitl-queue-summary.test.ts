@@ -45,7 +45,7 @@ test("mapRiskLevelToSeverity handles unknown risk level returns critical", () =>
   // Unknown risk levels should still return a valid severity
   // The function should handle any string input
   const result = mapRiskLevelToSeverity("unknown" as any);
-  assert.equal(typeof result, "string");
+  assert.equal(result, "critical");
 });
 
 test("calculateNotificationPriority handles all risk levels", () => {

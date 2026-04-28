@@ -202,24 +202,24 @@ test("DurableHarnessService supports sqlite-backed persistence", () => {
   assert.equal(restored?.runId, "sqlite-run");
 });
 
-test("HarnessSleepScheduler polls due sleeping runs", () => {
+test("HarnessSleepScheduler polls due paused runs with sleep leases", () => {
   const service = new DurableHarnessService();
-  const sleepingRun = createMinimalHarnessRun({
-    runId: "sleeping-run",
-    status: "sleeping",
+  const pausedRun = createMinimalHarnessRun({
+    runId: "paused-run",
+    status: "paused",
     sleepLease: {
       leaseId: "lease-1",
-      runId: "sleeping-run",
+      runId: "paused-run",
       reason: "awaiting_approval",
       resumeAt: "2026-04-20T00:00:00.000Z",
       createdAt: "2026-04-19T23:00:00.000Z",
     },
   });
-  service.persist(sleepingRun);
+  service.persist(pausedRun);
 
   const scheduler = new HarnessSleepScheduler(service);
   const dueRuns = scheduler.pollDueRuns("2026-04-21T00:00:00.000Z");
 
   assert.equal(dueRuns.length, 1);
-  assert.equal(dueRuns[0]?.runId, "sleeping-run");
+  assert.equal(dueRuns[0]?.runId, "paused-run");
 });

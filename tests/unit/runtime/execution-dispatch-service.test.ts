@@ -829,7 +829,7 @@ test("dispatchNext enforces local_only placement", () => {
   }
 });
 
-test("dispatchNext blocks require_remote when no remote workers available", () => {
+test("dispatchNext blocks for require_remote when no remote workers exist", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");

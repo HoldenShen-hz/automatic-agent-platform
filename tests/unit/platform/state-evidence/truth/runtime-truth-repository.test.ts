@@ -245,7 +245,7 @@ test("transition increments aggregateSeq for each event on same aggregate", () =
     aggregateType: "NodeRun",
     aggregate: t1.aggregate,
     fromStatus: "ready",
-    toStatus: "queued",
+    toStatus: "leased",
     tenantId: "tenant-1",
     traceId: "trace-1",
     reasonCode: "test",

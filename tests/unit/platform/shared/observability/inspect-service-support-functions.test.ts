@@ -284,7 +284,7 @@ test("buildLeaseHandoverSummary extracts handover events correctly", () => {
   assert.equal(summary.latestReasonCode, null);
   assert.equal(summary.latestPreviousWorkerId, "worker-new");
   assert.equal(summary.latestWorkerId, "worker-latest");
-  assert.deepEqual(summary.workerIds.sort(), ["worker-new", "worker-old", "worker-latest"]);
+  assert.deepEqual(summary.workerIds, ["worker-latest", "worker-new", "worker-old"]);
 });
 
 test("buildLeaseHandoverSummary handles invalid JSON payload", () => {
@@ -392,7 +392,7 @@ test("buildStepResultEnvelopes maps step outputs to artifacts", () => {
   const envelopes = buildStepResultEnvelopes(stepOutputs, artifacts);
 
   assert.equal(envelopes.length, 2);
-  assert.equal(envelopes[0]!.stepOutput.stepId, "plan");
+  assert.equal(envelopes[0]!.provenance?.stepId, "plan");
   assert.equal(envelopes[0]!.artifacts.length, 1);
   assert.equal(envelopes[1]!.artifacts.length, 0);
 });

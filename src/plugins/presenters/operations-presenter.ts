@@ -22,7 +22,7 @@ function formatRunbook(output: { stepId: string; payload: Record<string, unknown
   return [
     `## ${title}`,
     "",
-    ...steps.map((step, i) => `${i + 1}. ${step}`),
+    ...steps.map((step, i) => `${i + 1}. ${step.replace(/^Step\s+\d+\s*:\s*/i, "")}`),
   ].join("\n");
 }
 

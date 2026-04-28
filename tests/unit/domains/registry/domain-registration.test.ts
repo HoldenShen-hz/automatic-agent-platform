@@ -395,7 +395,7 @@ test("register throws on invalid domain definition schema", () => {
   assert.throws(() => {
     // @ts-expect-error — deliberately malformed input
     service.register({ domainId: "", name: "", description: "" });
-  }, /domainId.*empty|invalid/i);
+  }, /domainId|at least 1 character|too_small|invalid/i);
 });
 
 test("register throws on workflow with empty workflowId", () => {

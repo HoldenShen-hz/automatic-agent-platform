@@ -27,14 +27,14 @@ test("HarnessLoopController constructor computes maxIterations from budget.maxSt
   assert.equal(guards.maxIterations, 10, "maxIterations should be floor(30/3) = 10");
 });
 
-test("HarnessLoopController constructor uses Math.max(1, ...) for small maxSteps", () => {
+test("HarnessLoopController constructor allows zero iterations for very small maxSteps", () => {
   const pack1 = createMockConstraintPack({ maxSteps: 1 });
   const controller1 = new HarnessLoopController(pack1);
-  assert.equal(controller1.getGuards().maxIterations, 1, "maxIterations should be at least 1");
+  assert.equal(controller1.getGuards().maxIterations, 0, "maxIterations should be floor(1/3) = 0");
 
   const pack2 = createMockConstraintPack({ maxSteps: 0 });
   const controller2 = new HarnessLoopController(pack2);
-  assert.equal(controller2.getGuards().maxIterations, 1, "maxIterations should be at least 1");
+  assert.equal(controller2.getGuards().maxIterations, 0, "maxIterations should remain 0 when maxSteps is 0");
 });
 
 test("HarnessLoopController constructor applies overrides", () => {

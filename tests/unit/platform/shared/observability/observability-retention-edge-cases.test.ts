@@ -62,7 +62,7 @@ test("observability retention enforces deletion and returns deleted count", () =
 
     db.close();
   } finally {
-    cleanupPath(h.workspace);
+    cleanupPath(workspace);
   }
 });
 

@@ -54,6 +54,28 @@ export interface HumanWaitExecutorOptions {
   readonly idFactory?: () => string;
 }
 
+function cloneMetadataValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneMetadataValue(entry));
+  }
+  if (value != null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, cloneMetadataValue(entry)]),
+    );
+  }
+  return value;
+}
+
+function createReadonlyMetadataProxy(
+  value: Record<string, unknown>,
+): Readonly<Record<string, unknown>> {
+  return new Proxy(value, {
+    set: () => true,
+    defineProperty: () => true,
+    deleteProperty: () => true,
+  });
+}
+
 export class HumanWaitExecutor {
   private readonly pending = new Map<string, HumanWaitExecutionResult>();
   private readonly now: () => string;
@@ -77,8 +99,11 @@ export class HumanWaitExecutor {
       });
     }
 
-    const approvalId = request.approvalId?.trim() || this.idFactory();
+    const approvalId = this.allocateApprovalId(request.approvalId?.trim() || this.idFactory());
     const requestedAt = request.requestedAt ?? this.now();
+    const metadata = createReadonlyMetadataProxy(
+      (cloneMetadataValue(request.metadata ?? {}) as Record<string, unknown>),
+    );
     const result: HumanWaitExecutionResult = {
       approvalId,
       executionId: context.executionId,
@@ -95,7 +120,7 @@ export class HumanWaitExecutor {
       resolvedAt: null,
       durationMs: 0,
       note: null,
-      metadata: request.metadata ?? {},
+      metadata,
     };
     this.pending.set(approvalId, result);
     return result;
@@ -128,5 +153,15 @@ export class HumanWaitExecutor {
 
   public listPendingApprovals(): readonly HumanWaitExecutionResult[] {
     return [...this.pending.values()];
+  }
+
+  private allocateApprovalId(candidate: string): string {
+    let approvalId = candidate;
+    let suffix = 1;
+    while (this.pending.has(approvalId)) {
+      approvalId = `${candidate}-${suffix}`;
+      suffix += 1;
+    }
+    return approvalId;
   }
 }
