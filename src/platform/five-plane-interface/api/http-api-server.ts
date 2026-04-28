@@ -26,6 +26,7 @@ import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifa
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
+import type { IntakeAdmissionService } from "../../orchestration/harness/runtime/intake-admission-service.js";
 import type { ApiRequestLike, ApiResponsePayload, RouteContext, RouteDefinition, RouteMatch } from "./http-server/types.js";
 import {
   createNoOpIncidentFacadeService,
@@ -100,6 +101,8 @@ export interface HttpApiServerOptions {
   artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
   pluginRegistry?: PluginSpiRegistry | null;
+  /** Intake admission service for task creation pipeline validation */
+  intakeAdmissionService?: IntakeAdmissionService | null;
   /** Distributed rate limiter for API endpoint protection */
   rateLimiter?: DistributedRateLimiter | null;
   /** Enable WebSocket support for real-time task updates */

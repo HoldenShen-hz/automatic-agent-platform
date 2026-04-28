@@ -224,64 +224,36 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           roles: principal.roles,
         });
 
-        // R6-16: Route through intake pipeline if IntakeAdmissionService is available
+        // R6-16: Route through intake pipeline - this is REQUIRED
         // This provides proper task spec validation, risk classification, and admission control
-        if (deps.intakeAdmissionService) {
-          const defaultRiskPreview: RiskPreview = {
-            riskClass: "low",
-            reasons: [],
-          };
-          const defaultBudgetIntent: BudgetIntent = {
-            amount: 100,
-            currency: "USD",
-            resourceKinds: ["compute", "storage"],
-          };
-          const source: TaskInputSource = (payload.source as TaskInputSource) ?? "user";
-
-          const admissionResult = deps.intakeAdmissionService.admit({
-            tenantId: tenantId ?? "global",
-            principal: principalRef,
-            source,
-            goal: payload.title,
-            inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
-            riskPreview: defaultRiskPreview,
-            constraintPackRef: `constraints:${payload.divisionId}`,
-            budgetIntent: defaultBudgetIntent,
-            idempotencyKey: taskId,
-            traceId: ctx.requestId,
-          });
-
-          // Store the task using the authoritative task store
-          if (!deps.taskStore) {
-            throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
-          }
-          deps.taskStore.task.insertTask({
-            id: taskId,
-            parentId: payload.parentId ?? null,
-            rootId: taskId,
-            divisionId: payload.divisionId,
-            tenantId,
-            title: payload.title,
-            status: "queued",
-            source: payload.source ?? "user",
-            priority: payload.priority ?? "normal",
-            inputJson: payload.inputJson ?? "{}",
-            normalizedInputJson: null,
-            outputJson: null,
-            estimatedCostUsd: null,
-            actualCostUsd: 0,
-            errorCode: null,
-            createdAt: now,
-            updatedAt: now,
-            completedAt: null,
-          });
-
-          const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
-          return buildJsonResponse(ctx.requestId, 201, cockpit);
+        if (!deps.intakeAdmissionService) {
+          throw new ApiError(503, "api.intake_pipeline_unavailable", "Intake pipeline is not configured. Task creation requires the intake admission service.");
         }
+        const defaultRiskPreview: RiskPreview = {
+          riskClass: "low",
+          reasons: [],
+        };
+        const defaultBudgetIntent: BudgetIntent = {
+          amount: 100,
+          currency: "USD",
+          resourceKinds: ["compute", "storage"],
+        };
+        const source: TaskInputSource = (payload.source as TaskInputSource) ?? "user";
 
-        // Fallback: direct task creation without intake pipeline (legacy path)
-        // This bypasses proper intake validation and should be deprecated
+        deps.intakeAdmissionService.admit({
+          tenantId: tenantId ?? "global",
+          principal: principalRef,
+          source,
+          goal: payload.title,
+          inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
+          riskPreview: defaultRiskPreview,
+          constraintPackRef: `constraints:${payload.divisionId}`,
+          budgetIntent: defaultBudgetIntent,
+          idempotencyKey: taskId,
+          traceId: ctx.requestId,
+        });
+
+        // Store the task using the authoritative task store
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
         }
@@ -289,7 +261,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           id: taskId,
           parentId: payload.parentId ?? null,
           rootId: taskId,
-          divisionId: payload.divisionId ?? null,
+          divisionId: payload.divisionId,
           tenantId,
           title: payload.title,
           status: "queued",
