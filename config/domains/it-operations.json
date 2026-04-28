@@ -3,6 +3,11 @@
   "phase": "9d",
   "divisionId": "operations",
   "latencyTier": "realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "it-operations.primary",
     "rollout": "baseline"
