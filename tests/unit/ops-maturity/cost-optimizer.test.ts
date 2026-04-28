@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CostOptimizationService, type CostAttributionRecord } from '../../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js';
-import { aggregateCostAttribution } from '../../../../src/ops-maturity/cost-optimizer/attribution-engine/index.js';
-import { buildCostOptimizationRecommendation, prioritizeCostOptimizationRecommendations } from '../../../../src/ops-maturity/cost-optimizer/recommendation-engine/index.js';
-import { simulateCostOptimization, simulateScenarioSavings } from '../../../../src/ops-maturity/cost-optimizer/simulator/index.js';
+import { CostOptimizationService, type CostAttributionRecord } from '../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js';
+import { aggregateCostAttribution } from '../../../src/ops-maturity/cost-optimizer/attribution-engine/index.js';
+import { buildCostOptimizationRecommendation, prioritizeCostOptimizationRecommendations } from '../../../src/ops-maturity/cost-optimizer/recommendation-engine/index.js';
+import { simulateCostOptimization, simulateScenarioSavings } from '../../../src/ops-maturity/cost-optimizer/simulator/index.js';
 
 function makeCostRecord(overrides: Partial<CostAttributionRecord> = {}): CostAttributionRecord {
   return {

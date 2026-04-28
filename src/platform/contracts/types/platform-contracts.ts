@@ -81,11 +81,19 @@ export {
 // Re-exports from execution-plan (deprecated legacy types)
 // =============================================================================
 
-// Legacy ExecutionPlan - deprecated, use PlanGraphBundle instead
+// Legacy ExecutionPlan - deprecated per §4.4, use PlanGraphBundle instead
 export {
-  // Legacy - deprecated
+  /**
+   * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
+   */
   type ExecutionPlan,
+  /**
+   * @deprecated ExecutionPlanStep is deprecated per §4.4. Use PlanNode from executable-contracts instead.
+   */
   type ExecutionPlanStep,
+  /**
+   * @deprecated createExecutionPlan is deprecated per §4.4. Use createPlanGraphBundle instead.
+   */
   createExecutionPlan,
 } from "../execution-plan/index.js";
 

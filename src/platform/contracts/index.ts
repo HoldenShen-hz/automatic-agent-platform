@@ -57,7 +57,10 @@ export * from "./evidence-record/index.js";
 // These are retained for backward compatibility only.
 
 // Legacy request-envelope - deprecated, use executable-contracts RequestEnvelope
-export { createRequestEnvelope as createLegacyRequestEnvelope } from "./request-envelope/index.js";
+// NOTE: Only re-export the factory as deprecated alias; types come from executable-contracts
+export {
+  createRequestEnvelope as createLegacyRequestEnvelope,
+} from "./request-envelope/index.js";
 
 // Legacy control-directive (re-exported from platform-contracts for convenience)
 export {

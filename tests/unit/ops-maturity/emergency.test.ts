@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PlatformPanicService, type PanicActivationRequest } from '../../../../src/ops-maturity/emergency/platform-panic-service.js';
-import { shouldEnterPanicMode } from '../../../../src/ops-maturity/emergency/panic-controller/index.js';
-import { canResumeFromPanic, type ResumePlan } from '../../../../src/ops-maturity/emergency/resume-protocol/index.js';
-import { buildForensicSnapshot } from '../../../../src/ops-maturity/emergency/forensic-snapshot/index.js';
+import { PlatformPanicService, type PanicActivationRequest } from '../../../src/ops-maturity/emergency/platform-panic-service.js';
+import { shouldEnterPanicMode } from '../../../src/ops-maturity/emergency/panic-controller/index.js';
+import { canResumeFromPanic, type ResumePlan } from '../../../src/ops-maturity/emergency/resume-protocol/index.js';
+import { buildForensicSnapshot } from '../../../src/ops-maturity/emergency/forensic-snapshot/index.js';
 
 test('shouldEnterPanicMode returns true when activeIncidents > 0', () => {
   const result = shouldEnterPanicMode({

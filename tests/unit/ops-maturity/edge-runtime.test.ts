@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EdgeRuntimeSyncService, type EdgeRuntimeProfile, type OfflineExecutionRequest } from '../../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js';
-import { buildOfflineExecutionRecord } from '../../../../src/ops-maturity/edge-runtime/edge-executor/index.js';
-import { buildEdgeExecutionPlan } from '../../../../src/ops-maturity/edge-runtime/edge-orchestrator/index.js';
-import { selectEdgeLocalModel, type LocalModelProfile } from '../../../../src/ops-maturity/edge-runtime/local-model/index.js';
-import { orderEdgeSyncQueue, dedupeEdgeSyncQueue, type EdgeSyncEnvelope } from '../../../../src/ops-maturity/edge-runtime/sync-queue/index.js';
+import { EdgeRuntimeSyncService, type EdgeRuntimeProfile, type OfflineExecutionRequest } from '../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js';
+import { buildOfflineExecutionRecord } from '../../../src/ops-maturity/edge-runtime/edge-executor/index.js';
+import { buildEdgeExecutionPlan } from '../../../src/ops-maturity/edge-runtime/edge-orchestrator/index.js';
+import { selectEdgeLocalModel, type LocalModelProfile } from '../../../src/ops-maturity/edge-runtime/local-model/index.js';
+import { orderEdgeSyncQueue, dedupeEdgeSyncQueue, type EdgeSyncEnvelope } from '../../../src/ops-maturity/edge-runtime/sync-queue/index.js';
 import { createHash } from 'node:crypto';
 
 function makeProfile(overrides: Partial<EdgeRuntimeProfile> = {}): EdgeRuntimeProfile {
