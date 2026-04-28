@@ -4,11 +4,11 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Read input, planning, tool, memory, and output five-layer signals
-- **Assess**: Form guardrail findings and escalation advice
-- **Plan**: Set block points for each run
-- **Execute**: Intercept or route to human during execution
-- **Feedback**: Output findings, codes, and evidence
+- **Observe**: Read five-layer signals: input, plan, tool, memory, output
+- **Assess**: Form guardrail findings and escalation recommendations
+- **Plan**: Set blocking points for each execution round
+- **Execute**: Intercept or escalate to human during runtime
+- **Feedback**: Output findings, codes, evidence
 - **Learn**: Aggregate high-frequency violation patterns
 - **Improve**: Iterate guardrail policy
 - **Release**: Guardrail pass rate as release gate
@@ -20,14 +20,14 @@
 
 ## Context
 
-Guardrails cannot be a single output filter only; Harness needs full-chain risk interception.
+Guardrails cannot be just a single output filter; Harness requires full-chain risk interception.
 
 ## Decision
 
-- Guardrails are fixed to five layers: input / planning / tool / memory / output
-- Each layer is independently configured, intercepted, and audited
-- Evaluation results must flow into timeline and feedback
+- Guardrails are fixed at five layers: input / planning / tool / memory / output
+- Each layer has independent configuration, independent interception, and independent auditing
+- Evaluation results must enter timeline and feedback
 
 ## Consequences
 
-- Harness risk control upgrades from point interception to chain-based control
+- Harness risk control upgrades from point interception to chain-style control

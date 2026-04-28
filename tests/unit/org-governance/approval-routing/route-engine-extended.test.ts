@@ -85,13 +85,13 @@ test("ApprovalRouteRequestSchema rejects invalid risk level", () => {
   assert.equal(result.success, false);
 });
 
-test("ApprovalRouteRequestSchema defaults amountUsd to 0", () => {
+test("ApprovalRouteRequestSchema leaves amountUsd undefined when omitted", () => {
   const result = ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
     orgNodeId: "dept-1",
     riskLevel: "low",
   });
-  assert.equal(result.amountUsd, 0);
+  assert.equal(result.amountUsd, undefined);
 });
 
 test("ApprovalRouteRequestSchema rejects negative amountUsd", () => {
@@ -235,9 +235,13 @@ test("applySodPolicy filters out initiator from approver list", () => {
     createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director", "manager"] }),
   ];
 
-  const result = applySodPolicy("director", ["director", "manager"], nodes, "dept-1");
+  const result = applySodPolicy(ApprovalRouteRequestSchema.parse({
+    requesterId: "director",
+    orgNodeId: "dept-1",
+    riskLevel: "low",
+  }), ["director", "manager"], nodes, "dept-1");
 
-  assert.deepStrictEqual(result, ["manager"]);
+  assert.deepStrictEqual(result, []);
 });
 
 test("applySodPolicy returns all approvers when initiator not in list", () => {
@@ -245,7 +249,11 @@ test("applySodPolicy returns all approvers when initiator not in list", () => {
     createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["manager"] }),
   ];
 
-  const result = applySodPolicy("director", ["manager", "vp"], nodes, "dept-1");
+  const result = applySodPolicy(ApprovalRouteRequestSchema.parse({
+    requesterId: "director",
+    orgNodeId: "dept-1",
+    riskLevel: "low",
+  }), ["manager", "vp"], nodes, "dept-1");
 
   assert.deepStrictEqual(result, ["manager", "vp"]);
 });
@@ -255,7 +263,11 @@ test("applySodPolicy returns empty array when all approvers filtered", () => {
     createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] }),
   ];
 
-  const result = applySodPolicy("director", ["director"], nodes, "dept-1");
+  const result = applySodPolicy(ApprovalRouteRequestSchema.parse({
+    requesterId: "director",
+    orgNodeId: "dept-1",
+    riskLevel: "low",
+  }), ["director"], nodes, "dept-1");
 
   assert.deepStrictEqual(result, []);
 });

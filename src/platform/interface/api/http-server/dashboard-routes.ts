@@ -79,6 +79,7 @@ export function createDashboardRoutes(deps: DashboardRouteDeps): RouteDefinition
             activeGoals: [],
             recentCompletions: missionControl.taskBoard.filter((item) => item.taskStatus === "done").slice(0, 5),
             proactiveSuggestions: [],
+            metricRegistry: [],
           },
           approvalQueue: missionControl.pendingApprovals.slice(0, 10).map((approval) => ({
             approvalId: approval.id,

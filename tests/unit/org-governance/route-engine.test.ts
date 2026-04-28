@@ -44,9 +44,8 @@ const COMPANY = createOrgNode({ orgNodeId: "company-1", nodeType: "company" });
 const DIVISION = createOrgNode({ orgNodeId: "division-1", nodeType: "division", parentOrgNodeId: "company-1" });
 const DEPARTMENT = createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "division-1" });
 const TEAM = createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["team-manager"] });
-const MEMBER = createOrgNode({ orgNodeId: "member-1", nodeType: "member", parentOrgNodeId: "team-1", ownerUserIds: ["user-1"] });
 
-const SAMPLE_NODES: readonly OrgNode[] = [COMPANY, DIVISION, DEPARTMENT, TEAM, MEMBER];
+const SAMPLE_NODES: readonly OrgNode[] = [COMPANY, DIVISION, DEPARTMENT, TEAM];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Validation Tests
@@ -73,7 +72,11 @@ test("ApprovalRouteRequestSchema applies defaults", () => {
     riskLevel: "low",
   });
 
-  assert.equal(request.amountUsd, 0);
+  assert.deepEqual(request.requesterManagerIds, []);
+  assert.deepEqual(request.conflictedApproverIds, []);
+  assert.equal(request.policyVersion, "approval-routing/v2");
+  assert.equal(request.orgVersion, "org-chart/v2");
+  assert.deepEqual(request.evidenceRefs, []);
 });
 
 test("ApprovalRouteRequestSchema rejects empty requesterId", () => {
@@ -276,20 +279,50 @@ test("resolveAmountRoute prefers nodes within request orgNodeId or its parent", 
 
 test("applySodPolicy filters out initiator from approvers", () => {
   const approvers = ["user-1", "user-2", "user-3"];
-  const result = applySodPolicy("user-2", approvers, SAMPLE_NODES, "dept-1");
+  const result = applySodPolicy({
+    requesterId: "user-2",
+    orgNodeId: "dept-1",
+    riskLevel: "medium",
+    amountUsd: 0,
+    requesterManagerIds: [],
+    conflictedApproverIds: [],
+    policyVersion: "approval-routing/v2",
+    orgVersion: "org-chart/v2",
+    evidenceRefs: [],
+  }, approvers, SAMPLE_NODES, "dept-1");
 
   assert.deepStrictEqual(result, ["user-1", "user-3"]);
 });
 
 test("applySodPolicy returns all approvers when initiator not in list", () => {
   const approvers = ["user-1", "user-2", "user-3"];
-  const result = applySodPolicy("user-4", approvers, SAMPLE_NODES, "dept-1");
+  const result = applySodPolicy({
+    requesterId: "user-4",
+    orgNodeId: "dept-1",
+    riskLevel: "medium",
+    amountUsd: 0,
+    requesterManagerIds: [],
+    conflictedApproverIds: [],
+    policyVersion: "approval-routing/v2",
+    orgVersion: "org-chart/v2",
+    evidenceRefs: [],
+  }, approvers, SAMPLE_NODES, "dept-1");
 
   assert.deepStrictEqual(result, ["user-1", "user-2", "user-3"]);
 });
 
 test("applySodPolicy handles empty approver list", () => {
-  const result = applySodPolicy("user-1", [], SAMPLE_NODES, "dept-1");
+  const result = applySodPolicy({
+    requesterId: "user-1",
+    orgNodeId: "dept-1",
+    riskLevel: "medium",
+    amountUsd: 0,
+    requesterManagerIds: [],
+    conflictedApproverIds: [],
+    policyVersion: "approval-routing/v2",
+    orgVersion: "org-chart/v2",
+    evidenceRefs: [],
+  }, [], SAMPLE_NODES, "dept-1");
   assert.deepStrictEqual(result, []);
 });
 
@@ -379,7 +412,8 @@ test("resolveApprovalRoute applies SoD policy", () => {
   const result = resolveApprovalRoute(nodesWithMembers, request);
 
   assert.ok(!result.approverChain.includes("member-1"), "Initiator should be filtered out");
-  assert.ok(result.approverChain.includes("member-2"), "Other member should remain");
+  assert.deepStrictEqual(result.approverChain, []);
+  assert.deepStrictEqual(result.routeSnapshot.sodSnapshot.blockedApproverIds.sort(), ["member-1", "member-2"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

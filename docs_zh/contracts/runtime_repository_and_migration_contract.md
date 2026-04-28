@@ -19,11 +19,11 @@
 
 ## 1. Scope
 
-This contract defines Phase 1a runtime persistence layer authoritative rules for "code interface layer" and "database migration layer".
+This contract defines v4.3 runtime persistence authoritative rules for the repository interface layer and the migration layer.
 
 It answers two questions:
 
-- Which repository should read and write runtime-related data.
+- Which repository should read runtime-related data and which transition-backed adapter should write truth mutations.
 - What rules should schema changes, initial table creation, and subsequent migration comply with.
 
 Related documents:
@@ -34,53 +34,55 @@ Related documents:
 
 ## 2. Goals
 
-Phase 1a repository layer should satisfy:
+Repository layer should satisfy:
 
-- Can reliably create and update `executions` main record.
-- Can persist `execution_prechecks`, `dead_letters`, `heartbeat_snapshots`.
-- Can rebuild "which runs are executing, which runs are blocked, which runs are dead-letter" after crash recovery.
+- Can reliably create and read `harness_runs`, `plan_graph_bundles`, `node_runs`, `node_attempts`, `node_attempt_receipts`.
+- Can persist recovery evidence, event ack, session projection, file lock and compatibility views.
+- Can rebuild "which harness runs are active, which node runs are blocked, which attempts need recovery" after crash recovery.
 - Can let migration initialize SQLite in idempotent, auditable, replayable way.
 
 ## 3. Repository Boundaries
 
-Phase 1a minimum requires the following repositories:
+v4.3 minimum requires the following repositories / adapters:
 
-- `ExecutionRepository`
-- `ExecutionPrecheckRepository`
-- `DeadLetterRepository`
-- `HeartbeatSnapshotRepository`
+- `HarnessRunRepository`
+- `PlanGraphBundleRepository`
+- `NodeRunRepository`
+- `NodeAttemptRepository`
+- `NodeAttemptReceiptRepository`
+- `BudgetLedgerRepository`
+- `TransitionRepositoryAdapter`
 - `SessionRepository`
 - `EventAckRepository`
 - `FileLockRepository`
-- `RuntimeRecoveryRepository`
+- `RuntimeRecoveryViewRepository`
 
 Rules:
 
 - Repository is responsible for authoritative persistence, does not undertake business orchestration.
 - Workflow orchestration layer must not directly scatter-write SQL to multiple runtime tables bypassing repository.
 - Repository return value must be sufficient to support runtime recovery, not just return boolean.
+- All truth state mutations must be initiated through `RuntimeStateMachine.transition(command)` and then persisted by the transition-backed adapter; repository methods must not bypass the state machine by directly flipping status columns.
 
-## 4. `ExecutionRepository` Contract
+## 4. `TransitionRepositoryAdapter` Contract
 
 Minimum method set:
 
-- `createExecution(input)`
-- `getExecutionById(executionId)`
-- `listExecutionsByTask(taskId)`
-- `markExecutionStarted(executionId, startedAt)`
-- `markExecutionBlocked(executionId, reasonCode, updatedAt)`
-- `createRetryExecution(input)`
-- `markExecutionSucceeded(executionId, finishedAt)`
-- `markExecutionFailed(executionId, errorCode, errorMessage, finishedAt)`
-- `markExecutionCancelled(executionId, reasonCode, finishedAt)`
-- `attachExecutionError(executionId, errorCode, errorMessage, updatedAt)`
+- `createHarnessRun(input)`
+- `attachPlanGraphBundle(input)`
+- `createNodeRun(input)`
+- `appendNodeAttempt(input)`
+- `appendNodeAttemptReceipt(input)`
+- `transition(command)`
+- `projectSessionView(input)`
+- `projectCompatibilityViews(input)`
 
 Behavioral constraints:
 
-- `createExecution` must write initial attempt, trace, guardrail parsing result.
-- Retry should not be implemented through original execution entering independent `retrying` state, but should create new attempt execution and retain lineage.
-- Terminal state methods must not overwrite existing terminal state, unless it is explicitly recovery-generated new execution.
-- State progression must align with `runtime_state_machine_contract.md`.
+- `transition(command)` must be the only canonical entry for truth status progression.
+- Retry should append new `NodeAttempt`, not directly mutate old attempt / receipt into a retry state.
+- Terminal truth methods must not overwrite existing terminal state, unless a new recovery-driven attempt or graph patch has been created.
+- Historical methods such as `markExecutionStarted` / `markExecutionBlocked` / `markExecutionSucceeded` are only allowed inside legacy compatibility adapters that normalize into `RuntimeStateMachine.transition(command)` before any write happens.
 
 ## 5. `ExecutionPrecheckRepository` Contract
 
@@ -125,7 +127,7 @@ Rules:
 - `getLatestHeartbeat` should serve supervisor's liveness judgment.
 - `pruneHeartbeatSnapshots` is a maintenance action, must not delete latest snapshot still used for recovery judgment.
 
-## 8. `RuntimeRecoveryRepository` Contract
+## 8. `RuntimeRecoveryViewRepository` Contract
 
 Minimum method set:
 
@@ -136,13 +138,15 @@ Minimum method set:
 
 Return result at minimum should contain:
 
-- `execution_id`
+- `harness_run_id`
+- `node_run_id?`
+- `attempt_id?`
 - `task_id`
 - `status`
-- `attempt`
+- `attempt_no?`
 - `trace_id`
 - `last_heartbeat_at?`
-- `latest_precheck?`
+- `latest_receipt_ref?`
 - `latest_error_code?`
 
 Rules:
@@ -265,9 +269,9 @@ At minimum should cover the following verification:
 
 - Migration initializes successfully from empty database.
 - Migration repeated execution does not destroy schema.
-- Repository can correctly persist execution lifecycle.
-- Precheck / dead-letter / heartbeat query interface can support supervisor and recovery process.
-- Session state progression does not conflict with task / workflow truth state.
+- Transition-backed repositories can correctly persist harness run / node run / attempt lifecycle.
+- Recovery / heartbeat / receipt query interface can support supervisor and recovery process.
+- Session state progression does not conflict with harness run / node run truth state.
 - Event ack query can identify "a consumer has not acknowledged" rather than just identify "event not consumed".
 - File lock query can identify shared read lock, exclusive write lock, reentrant lock, and expired lock.
 - Under crash recovery scenario, `RuntimeRecoveryRepository` can identify stale / blocked / recoverable run.
@@ -276,13 +280,13 @@ At minimum should cover the following verification:
 
 - After PG migration, repositories at minimum split into transaction repositories and queue/lease support repositories.
 - Migration checksum must be stably recalculable; if introducing signature, signature only enhances release credibility, does not replace checksum.
-- Phase 1b multi-worker scenario should add `LeaseRepository`, and maintain explainable transaction boundary with `ExecutionRepository`.
+- Multi-worker scenario should add `LeaseRepository`, and maintain explainable transaction boundary with `TransitionRepositoryAdapter`.
 
 
 ## v4.3 Architecture Remediation
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-56: Repository方法(markExecutionStarted等)直操作executions表，架构§5.3强制所有状态转换经RuntimeStateMachine.transition()。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-56: 本文原先把 `markExecutionStarted / markExecutionBlocked / markExecutionSucceeded` 这类 repository 方法写成直接操作 `executions` 表的 canonical 接口，根因是运行时持久化合同停留在旧 execution-centric repository 模型，没有随着 v4.3 的 truth 状态机边界迁移到 transition-backed 写入。修复：正文现改为 `TransitionRepositoryAdapter` 驱动，明确所有 truth 状态变化都必须先经过 `RuntimeStateMachine.transition(command)`，旧 `markExecution*` 只允许存在于 legacy compatibility adapter 内部。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

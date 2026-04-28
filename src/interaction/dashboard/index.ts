@@ -22,6 +22,7 @@ export interface AttentionItem {
   readonly actionOptions: readonly string[];
   readonly createdAt: string;
   readonly domainId: string;
+  readonly actionControls?: readonly DashboardActionControl[];
 }
 
 export interface DailySummary {
@@ -32,6 +33,7 @@ export interface DailySummary {
   readonly agentUptimePercent: number;
   readonly highlights: readonly string[];
   readonly concerns: readonly string[];
+  readonly nlSummaryMetadata?: NlSummaryMetadata;
 }
 
 export interface AgentHealthCard {
@@ -54,6 +56,7 @@ export interface OperatorDashboard {
   readonly activeGoals: readonly { readonly goalId: string; readonly progressPercent: number }[];
   readonly recentCompletions: readonly TaskBoardItem[];
   readonly proactiveSuggestions: readonly AttentionItem[];
+  readonly metricRegistry: readonly MetricRegistryEntry[];
 }
 
 export interface DomainAdminDashboard {
@@ -111,7 +114,57 @@ export interface DashboardAggregationServiceOptions {
   readonly forecastCostUsd?: number;
   readonly activeGoals?: readonly { goalId: string; progressPercent: number }[];
   readonly suggestions?: readonly AttentionItem[];
+  readonly metricRegistry?: readonly MetricRegistryEntry[];
 }
+
+export interface MetricRegistryEntry {
+  readonly metricId: string;
+  readonly metricOwner: string;
+  readonly sourceOfTruth: string;
+  readonly freshnessSlo: string;
+  readonly actionability: "informational" | "operator_actionable" | "policy_gated";
+  readonly permissionFilter: string;
+  readonly staleBehavior: "hide" | "mark_stale" | "block_actions";
+  readonly redactionPolicy: "none" | "tenant" | "strict";
+}
+
+export interface NlSummaryMetadata {
+  readonly evidenceRefs: readonly string[];
+  readonly freshness: string;
+  readonly confidence: number;
+  readonly redactionPolicy: MetricRegistryEntry["redactionPolicy"];
+  readonly sourceProjectionVersion: string;
+}
+
+export interface DashboardActionControl {
+  readonly actionId: string;
+  readonly riskLevel: "low" | "medium" | "high" | "critical";
+  readonly executionMode: "direct" | "requires_confirmation" | "blocked";
+  readonly reasonCode: string;
+}
+
+const DEFAULT_METRIC_REGISTRY: readonly MetricRegistryEntry[] = [
+  {
+    metricId: "workflow_backlog",
+    metricOwner: "orchestration_ops",
+    sourceOfTruth: "authoritative-task-store",
+    freshnessSlo: "1m",
+    actionability: "operator_actionable",
+    permissionFilter: "dashboard:l1",
+    staleBehavior: "mark_stale",
+    redactionPolicy: "tenant",
+  },
+  {
+    metricId: "incident_count",
+    metricOwner: "platform_ops",
+    sourceOfTruth: "incident_projection",
+    freshnessSlo: "30s",
+    actionability: "policy_gated",
+    permissionFilter: "dashboard:l2",
+    staleBehavior: "block_actions",
+    redactionPolicy: "strict",
+  },
+] as const;
 
 function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`;
@@ -148,6 +201,7 @@ export class DashboardAggregationService implements DashboardPort {
   private readonly forecastCostUsd: number;
   private readonly activeGoals: readonly { goalId: string; progressPercent: number }[];
   private readonly suggestions: readonly AttentionItem[];
+  private readonly metricRegistry: readonly MetricRegistryEntry[];
 
   public constructor(private readonly options: DashboardAggregationServiceOptions) {
     this.now = options.currentTime ?? (() => new Date().toISOString());
@@ -155,6 +209,7 @@ export class DashboardAggregationService implements DashboardPort {
     this.forecastCostUsd = options.forecastCostUsd ?? this.costBurnUsd;
     this.activeGoals = options.activeGoals ?? [];
     this.suggestions = options.suggestions ?? [];
+    this.metricRegistry = options.metricRegistry ?? DEFAULT_METRIC_REGISTRY;
   }
 
   public async getSnapshot(): Promise<DashboardSnapshot> {
@@ -185,6 +240,17 @@ export class DashboardAggregationService implements DashboardPort {
         `${system.queueBacklog.size} tasks currently queued`,
       ],
       concerns: attentionQueue.map((item) => item.title).slice(0, 3),
+      nlSummaryMetadata: {
+        evidenceRefs: [
+          "projection:task_summary",
+          "projection:incident_summary",
+          "projection:system_situation",
+        ],
+        freshness: "1m",
+        confidence: system.healthStatus === "ok" ? 0.91 : 0.84,
+        redactionPolicy: "tenant",
+        sourceProjectionVersion: "dashboard.v43",
+      },
     };
 
     return {
@@ -198,6 +264,7 @@ export class DashboardAggregationService implements DashboardPort {
       activeGoals: this.activeGoals,
       recentCompletions,
       proactiveSuggestions: this.suggestions,
+      metricRegistry: this.metricRegistry,
     };
   }
 
@@ -287,6 +354,7 @@ export class DashboardAggregationService implements DashboardPort {
           title: `Task failed: ${task.title}`,
           description: `Task ${task.taskId} requires attention`,
           actionOptions: ["inspect", "retry"],
+          actionControls: this.buildActionControls("incident", "high", ["inspect", "retry"]),
           createdAt: task.updatedAt,
           domainId: task.divisionId ?? "general_ops",
         });
@@ -298,6 +366,7 @@ export class DashboardAggregationService implements DashboardPort {
           title: `Pending task: ${task.title}`,
           description: "This task has not started or is still waiting to be processed.",
           actionOptions: ["open_task", "prioritize"],
+          actionControls: this.buildActionControls("approval_needed", "normal", ["open_task", "prioritize"]),
           createdAt: task.updatedAt,
           domainId: task.divisionId ?? "general_ops",
         });
@@ -311,6 +380,7 @@ export class DashboardAggregationService implements DashboardPort {
         title: "Platform health degraded",
         description: `Current system status: ${system.healthStatus}`,
         actionOptions: ["open_ops_dashboard", "run_doctor"],
+        actionControls: this.buildActionControls("incident", system.healthStatus === "unhealthy" ? "critical" : "high", ["open_ops_dashboard", "run_doctor"]),
         createdAt: this.now(),
         domainId: "platform",
       });
@@ -323,11 +393,31 @@ export class DashboardAggregationService implements DashboardPort {
         title: "Cost burn exceeds forecast",
         description: `Current spend ${formatUsd(this.costBurnUsd)} has exceeded forecast ${formatUsd(this.forecastCostUsd)}`,
         actionOptions: ["review_budget", "adjust_scope"],
+        actionControls: this.buildActionControls("budget_warning", "high", ["review_budget", "adjust_scope"]),
         createdAt: this.now(),
         domainId: "platform",
       });
     }
 
     return [...queue, ...this.suggestions].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  private buildActionControls(
+    itemType: AttentionItem["itemType"],
+    priority: AttentionItem["priority"],
+    actionOptions: readonly string[],
+  ): DashboardActionControl[] {
+    return actionOptions.map((actionId) => {
+      const riskLevel: DashboardActionControl["riskLevel"] =
+        priority === "critical" ? "critical" : priority === "high" ? "high" : itemType === "approval_needed" ? "medium" : "low";
+      return {
+        actionId,
+        riskLevel,
+        executionMode: riskLevel === "high" || riskLevel === "critical" ? "requires_confirmation" : "direct",
+        reasonCode: riskLevel === "high" || riskLevel === "critical"
+          ? "dashboard.action_requires_risk_gate"
+          : "dashboard.action_low_risk",
+      };
+    });
   }
 }

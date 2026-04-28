@@ -1,7 +1,8 @@
 # ADR-003 Six-Layer Memory and KV Cache Fixed Prefix
 
-- Status: Accepted
+- Status: Superseded by ADR-020
 - Decision Date: 2026-04-02
+- Superseded by: ADR-020 (2026-04-17) redefined the six-layer plane model with different TTL and promotion rules
 
 ## Context
 

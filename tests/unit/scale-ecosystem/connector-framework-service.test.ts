@@ -31,6 +31,8 @@ test("ConnectorFrameworkService enforces verification and health on production e
     connectorId: "crm_sync",
     capability: "sync",
     payload: {},
+    policyRef: "policy.connector.crm_sync",
+    secretBindings: [{ secretRef: "secret://crm_sync/token", purpose: "api_token" }],
   }, {
     environment: "prod",
     eventType: "crm.contact.updated",
@@ -61,6 +63,8 @@ test("ConnectorFrameworkService forbids unverified prod events and failed health
     connectorId: "erp_sync",
     capability: "sync",
     payload: {},
+    policyRef: "policy.connector.erp_sync",
+    secretBindings: [{ secretRef: "secret://erp_sync/token", purpose: "api_token" }],
   }, {
     environment: "prod",
     eventType: "erp.invoice.created",

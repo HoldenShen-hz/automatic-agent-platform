@@ -250,7 +250,7 @@ test("SdkWorkbenchService.listWorkbenchShortcuts returns expected shortcuts", ()
 
   assert.ok(shortcuts.length >= 4);
   assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.tasks.list"));
-  assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.approvals.queue"));
+  assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.packs.list"));
   assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.pack.test"));
   assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.readme.contracts"));
 });
@@ -261,11 +261,11 @@ test("SdkWorkbenchService.listWorkbenchShortcuts returns correct URLs", () => {
 
   const tasksShortcut = shortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
   assert.ok(tasksShortcut);
-  assert.ok(tasksShortcut.previewUrl?.includes("/v1/tasks"));
+  assert.ok(tasksShortcut.previewUrl?.includes("/v1/harness-runs"));
 
-  const approvalsShortcut = shortcuts.find((s) => s.shortcutId === "sdk.approvals.queue");
+  const approvalsShortcut = shortcuts.find((s) => s.shortcutId === "sdk.packs.list");
   assert.ok(approvalsShortcut);
-  assert.ok(approvalsShortcut.previewUrl?.includes("/v1/approvals"));
+  assert.ok(approvalsShortcut.previewUrl?.includes("/v1/packs"));
   assert.ok(approvalsShortcut.previewUrl?.includes("limit=10"));
 });
 

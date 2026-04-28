@@ -24,6 +24,7 @@ test("ComplianceReportPipelineService marks reports partial when required eviden
 
   assert.equal(artifact.status, "partial");
   assert.deepEqual(artifact.missingEvidenceTypes, ["control_test"]);
+  assert.equal(artifact.evidenceQualityScore, 50);
   assert.match(artifact.markdown, /control_test: MISSING/);
   assert.equal(artifact.readOnly, true);
 
@@ -32,7 +33,7 @@ test("ComplianceReportPipelineService marks reports partial when required eviden
   assert.equal(service.getAccessLog(artifact.artifactId).length, 1);
 });
 
-test("ComplianceReportPipelineService marks reports complete when all evidence exists", () => {
+test("ComplianceReportPipelineService keeps reports generated when all evidence exists", () => {
   const service = new ComplianceReportPipelineService([
     {
       templateId: "iso27001_quarterly",
@@ -53,6 +54,7 @@ test("ComplianceReportPipelineService marks reports complete when all evidence e
     requestedBy: "auditor_2",
   });
 
-  assert.equal(artifact.status, "complete");
+  assert.equal(artifact.status, "generated");
   assert.deepEqual(artifact.missingEvidenceTypes, []);
+  assert.equal(artifact.evidenceQualityScore, 100);
 });

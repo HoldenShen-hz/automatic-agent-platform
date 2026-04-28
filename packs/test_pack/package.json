@@ -5,6 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "node --test tests/"
+    "test": "node --test tests/",
+    "domain:lint": "agent-platform domain validate --domain-id=testing --lint-only",
+    "domain:validate": "agent-platform domain validate --domain-id=testing"
   }
 }

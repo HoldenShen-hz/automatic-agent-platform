@@ -59,8 +59,8 @@ test("computeMetaModelCompleteness ignores incomplete answers", () => {
 
   const completeness = computeMetaModelCompleteness(model);
 
-  // 11 out of 12 questions answered (excluding the one with empty answer)
-  assert.equal(completeness, 91.67);
+  // 14 out of 15 questions answered (excluding the one with empty answer)
+  assert.equal(completeness, 93.33);
 });
 
 test("MetaModelValidator.validate returns valid for complete model", () => {

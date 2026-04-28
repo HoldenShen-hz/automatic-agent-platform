@@ -66,8 +66,11 @@ export class SqliteDelegationStore implements DelegationStore {
         delegation_id TEXT PRIMARY KEY,
         grantor_id TEXT NOT NULL,
         grantee_id TEXT NOT NULL,
+        level TEXT NOT NULL,
+        delegatable INTEGER NOT NULL,
         org_node_ids_json TEXT NOT NULL,
         domain_ids_json TEXT NOT NULL,
+        derived_delegation_ids_json TEXT NOT NULL,
         permissions_json TEXT NOT NULL,
         guardrails_json TEXT NOT NULL,
         expires_at TEXT NOT NULL,
@@ -78,32 +81,39 @@ export class SqliteDelegationStore implements DelegationStore {
   }
 
   public save(delegation: GovernanceDelegation): void {
+    const normalized = normalizeDelegationForPersistence(delegation);
     this.db.prepare(`
       INSERT INTO governance_delegations (
-        delegation_id, grantor_id, grantee_id, org_node_ids_json, domain_ids_json,
-        permissions_json, guardrails_json, expires_at, revocable, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        delegation_id, grantor_id, grantee_id, level, delegatable, org_node_ids_json, domain_ids_json,
+        derived_delegation_ids_json, permissions_json, guardrails_json, expires_at, revocable, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(delegation_id) DO UPDATE SET
         grantor_id = excluded.grantor_id,
         grantee_id = excluded.grantee_id,
+        level = excluded.level,
+        delegatable = excluded.delegatable,
         org_node_ids_json = excluded.org_node_ids_json,
         domain_ids_json = excluded.domain_ids_json,
+        derived_delegation_ids_json = excluded.derived_delegation_ids_json,
         permissions_json = excluded.permissions_json,
         guardrails_json = excluded.guardrails_json,
         expires_at = excluded.expires_at,
         revocable = excluded.revocable,
         status = excluded.status
     `).run(
-      delegation.delegationId,
-      delegation.grantorId,
-      delegation.granteeId,
-      JSON.stringify(delegation.orgNodeIds),
-      JSON.stringify(delegation.domainIds),
-      JSON.stringify(delegation.permissions),
-      JSON.stringify(delegation.guardrails),
-      delegation.expiresAt,
-      delegation.revocable ? 1 : 0,
-      delegation.status,
+      normalized.delegationId,
+      normalized.grantorId,
+      normalized.granteeId,
+      normalized.level,
+      normalized.delegatable ? 1 : 0,
+      JSON.stringify(normalized.orgNodeIds),
+      JSON.stringify(normalized.domainIds),
+      JSON.stringify(normalized.derivedDelegationIds),
+      JSON.stringify(normalized.permissions),
+      JSON.stringify(normalized.guardrails),
+      normalized.expiresAt,
+      normalized.revocable ? 1 : 0,
+      normalized.status,
     );
   }
 
@@ -137,8 +147,11 @@ export class SqliteDelegationStore implements DelegationStore {
       delegationId: String(row.delegation_id),
       grantorId: String(row.grantor_id),
       granteeId: String(row.grantee_id),
+      level: String(row.level) as GovernanceDelegation["level"],
+      delegatable: Number(row.delegatable) === 1,
       orgNodeIds: JSON.parse(String(row.org_node_ids_json)) as string[],
       domainIds: JSON.parse(String(row.domain_ids_json)) as string[],
+      derivedDelegationIds: JSON.parse(String(row.derived_delegation_ids_json)) as string[],
       permissions: JSON.parse(String(row.permissions_json)) as GovernanceDelegation["permissions"],
       guardrails: JSON.parse(String(row.guardrails_json)) as GovernanceDelegation["guardrails"],
       expiresAt: String(row.expires_at),
@@ -146,6 +159,19 @@ export class SqliteDelegationStore implements DelegationStore {
       status: String(row.status) as GovernanceDelegation["status"],
     };
   }
+}
+
+function normalizeDelegationForPersistence(delegation: GovernanceDelegation): GovernanceDelegation {
+  return {
+    ...delegation,
+    level: delegation.level ?? "delegated",
+    delegatable: delegation.delegatable ?? false,
+    orgNodeIds: delegation.orgNodeIds ?? [],
+    domainIds: delegation.domainIds ?? [],
+    derivedDelegationIds: delegation.derivedDelegationIds ?? [],
+    permissions: delegation.permissions ?? [],
+    guardrails: delegation.guardrails ?? [],
+  };
 }
 
 export class SqliteAuditLogStore implements AuditLogStore {

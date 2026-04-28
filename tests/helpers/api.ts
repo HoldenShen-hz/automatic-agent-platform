@@ -277,7 +277,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       budgetLimits: { maxTokensPerTask: 6000, maxCostPerTask: 4 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: ["github"],
     pluginBindings: [
       {
@@ -292,7 +292,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       {
         bindingId: "binding.presenter",
         domainId: "coding",
-        pluginType: "presenter",
+        pluginType: "tool",
+        bindingRole: "presenter",
         pluginId: "plugin.coding.presenter",
         priority: 5,
         enabled: true,

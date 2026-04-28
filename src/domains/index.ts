@@ -9,6 +9,7 @@ export * from "../domains-runtime-orchestrator.js";
 export * from "../domains-startup-plan.js";
 export * from "./coding/index.js";
 export * from "./domain-descriptor-orchestration-service.js";
+export * from "./domain-specs.js";
 export * from "./domain-task-design-service.js";
 export * from "./eval-framework/index.js";
 export * from "./governance/index.js";

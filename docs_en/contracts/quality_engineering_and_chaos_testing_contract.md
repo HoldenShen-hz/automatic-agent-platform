@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the formal testing matrix, regression baseline library, and chaos engineering scope.
+This contract defines the formal test matrix, regression baseline library, and chaos engineering scope.
 
 Related documents:
 
@@ -13,38 +13,38 @@ Related documents:
 
 ## 2. Goals
 
-- Upgrade quality engineering from "test type list" to "coverage matrix".
-- Establish cross-execution-mode, cross-storage, cross-tenant regression baselines.
-- Verify recovery, alerting, and loss-control logic through chaos drills.
+- Elevate quality engineering from "test type list" to "coverage matrix".
+- Establish cross-runtime-mode, cross-storage, cross-tenant regression baselines.
+- Verify recovery, alerting, and damage control logic through chaos drills.
 
-## 3. Formal Testing Matrix
+## 3. Formal Test Matrix
 
-At minimum cover the following dimension intersections:
+Must cover at least the following dimension combinations:
 
-- Standalone / distributed
+- Single-machine / distributed
 - SQLite / PostgreSQL
-- supervised / auto / full-auto
+- Supervised / auto / full-auto
 - Single-tenant / multi-tenant
 - Local tools / MCP tools / remote workers
-- Small context / ultra-long context / malicious input
+- Small context / super-long context / malicious input
 - OAPEFLIR closed-loop stages / rollout / feedback / learning
 
 ## 4. Regression Baseline Library
 
-Fixed task set includes at minimum:
+Fixed task set must include at least:
 
 - Programming class
 - Research class
 - Content class
 - Data class
-- Cross-division class
+- Cross-business division class
 - High-risk approval class
 - Crash recovery class
 - OAPEFLIR closed-loop class
 - Rollout / rollback class
 - Observe-compatible product chain class
 
-Each baseline task records at minimum:
+Each benchmark task must record at minimum:
 
 - expected class
 - success criteria
@@ -55,9 +55,9 @@ Each baseline task records at minimum:
 
 ## 5. Testability Design Requirements
 
-Key runtime chains should prioritize exposing narrow dependency injection surfaces rather than relying on global patches or module-level monkey patches.
+Key execution chains should preferentially expose narrow dependency injection surfaces rather than relying on global patches or module-level monkey patches.
 
-At minimum applies to:
+Must apply at minimum to:
 
 - query / model call
 - compaction
@@ -67,34 +67,34 @@ At minimum applies to:
 
 Rules:
 
-- Dependency injection surfaces should be as narrow as possible, covering only high-frequency change points.
-- Production implementation and test mock implementation should reuse the same signature, avoiding test-specific bypass interfaces.
-- If a module can only be tested through global state replacement, it should be treated as quality debt and entered into governance ledger.
+- Dependency injection surfaces should be as narrow as possible, only covering high-frequency change points.
+- Production implementation and test mock implementation should reuse the same signatures, avoiding test-specific bypass interfaces.
+- If a module can only be tested through global state replacement, it should be treated as quality debt and entered into the governance ledger.
 
 ## 6. Chaos Engineering Scope
 
-Mature industrial platform drills at minimum:
+Mature industrial platforms must drill at minimum:
 
 - Random kill worker
 - Random provider 429 / 500
 - Random DB lock conflict
 - Random queue delay
-- Random event duplicate / loss
+- Random event duplication / loss
 - Random MCP timeout
-- Random OAPEFLIR stage interrupt
+- Random OAPEFLIR stage interruption
 - Random rollout gate block
 
 ## 7. Release Gate
 
-Before release must have:
+Before release, must have:
 
-- regression baseline pass
-- fixture / VCR pass
-- recovery drill pass
-- migration compatibility pass
-- chaos smoke scenario pass
+- Regression baseline pass
+- Fixture / VCR pass
+- Recovery drill pass
+- Migration compatibility pass
+- Chaos smoke scenario pass
 - OAPEFLIR loop regression pass
-- rollout / rollback regression pass
+- Rollout / rollback regression pass
 
 ## 8. Test Artifacts
 
@@ -108,7 +108,7 @@ Before release must have:
 
 ## 8.1 Registry-backed Contract Suite
 
-For stable registries or ecosystem boundaries, prioritize establishing shared contract suites rather than writing scattered assertions repeatedly for each integration surface.
+For stable registries or ecosystem boundaries, prioritize establishing shared contract suites rather than writing scattered assertions for each ingress.
 
 Applicable objects include:
 
@@ -120,11 +120,11 @@ Applicable objects include:
 Rules:
 
 - Shared contract suite should verify "whether registered, whether fields align, whether fallback meets expectations, whether ordering/output is stable".
-- For long-term stable boundaries, inventory baseline can be retained, with explicit diff review on changes.
+- For long-term stable boundaries, inventory baseline can be retained, with explicit diff review at change time.
 
 ## 8.2 Hook / Lifecycle Event Contract Suite
 
-For boundaries like hook, lifecycle callback, and integration event, prioritize using formal event enumeration and contract suite rather than free-form strings.
+For boundaries like hooks, lifecycle callbacks, and integration events, prioritize using formal event enums and contract suites rather than free-form strings.
 
 Applicable objects include:
 
@@ -136,16 +136,16 @@ Applicable objects include:
 Rules:
 
 - Hook event names should be centrally defined and versioned.
-- Plugins and integration layers are not allowed to arbitrarily create event strings with similar semantics but different names.
+- Plugins and integration layers must not arbitrarily create semantically similar but differently named event strings.
 - Related tests should verify: event name legality, order legality, and clear failure semantics when key events are missing.
 
 ## 9. Closure Conclusion
 
-Industrial-grade quality engineering is not "write several types of tests".
+Industrial-grade quality engineering is not "write a few types of tests".
 
 It must answer:
 
 - Which scenarios are covered
 - Which environment combinations are verified
-- Which failures have been injected
-- Whether the system can recover and control losses after failure
+- Which faults have been injected
+- Whether the system can recover and mitigate damage after failure

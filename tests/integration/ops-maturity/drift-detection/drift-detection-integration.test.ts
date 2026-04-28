@@ -199,7 +199,7 @@ test("drift pipeline: multiple agents with different drift states", () => {
   assert.equal(crossAgentAnalysis.bestAgentId, "agent-b");
 });
 
-test("drift pipeline: SEV3 event emission for detected drift", () => {
+test("drift pipeline: high severity event emission for detected drift", () => {
   const changepointDetector = new ChangepointDetectorService();
 
   const drift = changepointDetector.detect([
@@ -232,7 +232,7 @@ test("drift pipeline: SEV3 event emission for detected drift", () => {
     { observedAt: "2026-04-20T01:02:00.000Z", score: 0.58 },
   ]);
 
-  assert.equal(drift.severity, "SEV3");
+  assert.equal(drift.severity, "high");
   assert.equal(drift.reasonCode, "drift.changepoint_detected");
 });
 

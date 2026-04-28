@@ -1,15 +1,15 @@
-# ADR-014 Whether Organization Model Directly Maps to Code Objects
+# ADR-014 Org Model Direct Mapping to Code Objects
 
 ---
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post-execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
+- **Execute**: Step execution and dual-channel output
 - **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
@@ -22,55 +22,55 @@ This document defines the following components in the OAPEFLIR eight-phase cogni
 
 ## Context
 
-Automatic Agent uses anthropomorphic naming like CEO, VP, Lead, HR, and divisions in product narrative, which helps express system roles and collaboration methods. However, if these names directly enter code objects, protocol fields, and configuration primary keys, it will increase implementation complexity and make subsequent refactoring easier to be led by product copy.
+Automatic Agent uses anthropomorphic naming in its product narrative, such as CEO, VP, Lead, HR, and business division. This helps express system roles and collaboration methods. However, if these names directly enter code objects, protocol fields, and configuration primary keys, it increases implementation complexity and makes subsequent refactoring more susceptible to being driven by product copy.
 
 Need to clarify:
 
-- Whether product narrative naming and engineering naming are one-to-one direct mapping.
-- What naming is authoritative at code layer.
+- Whether product narrative naming and engineering naming have a one-to-one direct mapping.
+- What naming should be authoritative at the code layer.
 
 ## Decision
 
-Product narrative naming preserved, but engineering implementation, configuration, and protocols prioritize canonical id.
+Product narrative naming is preserved, but engineering implementation, configuration, and protocols prioritize canonical id.
 
 Unified rules:
 
-- External narration, product materials, and onboarding documentation may continue using business alias.
-- Configuration, contract, API, state tables, events, and implementation code prioritize canonical id.
-- Documentation allows `canonical id + business alias` dual naming.
+- External presentations, product materials, and onboarding documents may continue using business aliases.
+- Configuration, contracts, APIs, state tables, events, and implementation code prioritize canonical id.
+- Documents may use `canonical id + business alias` dual-layer naming.
 
 ## Alternatives
 
-### Option A: Business Naming Directly into Code Objects
+### Option A: Business Naming Directly Entering Code Objects
 
-Benefits:
+Pros:
 
 - Most intuitive for product expression.
 
 Costs:
 
-- Engineering object naming will be constrained by narrative layer.
-- As roles evolve, naming drift and unclear implementation responsibilities easily occur.
-- Abstracting local sub-agent, remote worker, workflow planner, etc. becomes harder to unify.
+- Engineering object naming is constrained by the narrative layer.
+- As roles evolve, naming drift and unclear implementation responsibilities easily emerge.
+- Abstractions like local sub-agent, remote worker, and workflow planner are harder to unify.
 
-### Option B: Completely Remove Business Alias
+### Option B: Completely Remove Business Aliases
 
-Benefits:
+Pros:
 
 - Most stable and clean engineering naming.
 
 Costs:
 
-- Unfriendly for business communication, roadmap expression, and role understanding.
-- Will weaken the product narrative of "organized agent collaboration".
+- Unfriendly to business communication, roadmap expression, and role understanding.
+- Weakens the system's "organized agent collaboration" product narrative.
 
 ### Option C: Current Decision
 
-- Engineering layer canonical id as authoritative
-- Business alias preserved as narrative layer
-- Documentation allows dual naming, but contract/schema only uses canonical id as standard
+- Engineering layer canonical id is authoritative
+- Business alias is preserved as narrative layer
+- Documents allow dual-layer naming, but contracts/schemas only use canonical id as standard
 
-## Reasons for Choosing This Approach
+## Reasons for Selecting This Option
 
 - Balances product expression and engineering maintainability.
 - Helps decouple organizational layer narrative from scheduling layer implementation.
@@ -78,14 +78,14 @@ Costs:
 
 ## Key Invariants
 
-- Contract, API, storage schema, and event types must not use business alias as sole primary key.
-- Once canonical id enters implementation, should remain stable.
-- If documentation uses dual naming, canonical id must be first or at least clearly identifiable.
+- Contracts, APIs, storage schemas, and event types must not use business alias as the sole primary key.
+- Once canonical id enters implementation, it should remain stable.
+- If documents use dual-layer naming, canonical id must come first or at least be clearly identifiable.
 - Business alias changes must not force schema or core protocol renaming.
 
-## Adoption Triggers
+## Adoption Conditions
 
-All current HQ/division/role naming should follow this rule, especially:
+All current HQ / division / role naming should follow this rule, especially:
 
 - `intake_router`
 - `workflow_planner`
@@ -94,34 +94,34 @@ All current HQ/division/role naming should follow this rule, especially:
 
 ## Exit Conditions
 
-This decision has no "complete exit" goal, but if major product narrative redesign occurs in the future, should still keep canonical id layer stable, no need to flood business alias back into implementation primary keys.
+This decision has no "complete exit" goal, but if product narrative undergoes a major revision in the future, the canonical id layer should remain stable without needing to backfill business aliases into implementation primary keys.
 
 ## Implementation Impact
 
 Current implementation and documentation requirements:
 
 - Configuration files, events, and API return fields prioritize canonical id
-- When documentation first appears, may write `canonical id (business alias)`
-- Runtime dispatch model should name by responsibility rather than by organizational title
+- First occurrence in documentation may be written as `canonical id (business alias)`
+- Runtime dispatch models should be named by responsibility rather than organizational title
 
 ## Results
 
-Benefits:
+Pros:
 
-- Preserves expressiveness while suppressing implementation complexity.
-- Makes subsequent technical layers like execution plane, policy engine, tool registry easier to unify.
-- Reduces engineering turbulence from product narrative changes.
+- Preserves expressiveness while controlling implementation complexity.
+- Makes subsequent execution plane, policy engine, tool registry, and other technical layers easier to unify.
+- Reduces engineering turbulence caused by product narrative changes.
 
 Costs:
 
-- Documentation and product materials need to maintain dual mapping.
-- New members need to first understand canonical id and alias correspondence.
+- Documentation and product materials need to maintain dual-layer mapping.
+- New members need to first understand the correspondence between canonical id and alias.
 
 ## Cross-References
 
-- [ADR-001 Three-Layer Distributed Architecture](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Architecture](./001-three-layer-architecture.md)
 - [ADR-002 Division System](./002-division-system.md)
-- [ADR-015 Whether Skill and Plugin Converge to Single Marketplace](./015-unified-extension-marketplace.md)
+- [ADR-015 Skill and Plugin Convergence to Single Marketplace](./015-unified-extension-marketplace.md)
 
 ## Source Sections
 

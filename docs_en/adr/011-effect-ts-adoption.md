@@ -1,15 +1,15 @@
-# ADR-011 Whether Effect-TS as Core Runtime Foundation
+# ADR-011 Effect-TS Adoption as Core Runtime Foundation
 
 ---
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post-execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
+- **Execute**: Step execution and dual-channel output
 - **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
@@ -22,121 +22,121 @@ This document defines the following components in the OAPEFLIR eight-phase cogni
 
 ## Context
 
-The system has clearly required state machine, unified error model, recovery chain, context propagation, resource lifecycle management, and subsequent execution plane evolution. Effect-TS can provide a relatively complete set of effect, resource, layer, and typed error abstractions, but will also significantly increase team learning cost and initial implementation burden.
+The system has clearly identified needs for state machines, unified error models, recovery chains, context propagation, resource lifecycle management, and subsequent execution plane evolution. Effect-TS can provide a relatively complete set of abstractions for effects, resources, layers, and typed errors, but it also significantly increases team learning costs and initial implementation burden.
 
-The real problem at the current stage is not "whether you like Effect-TS" but:
+The real question at the current stage is not "whether we like Effect-TS", but rather:
 
-- Is Phase 1a/1b worth introducing a heavier runtime abstraction in advance for future capabilities?
-- If not introduced now, when should we re-evaluate?
+- Is Phase 1a / 1b the right time to introduce a heavier runtime abstraction for future capabilities?
+- If we don't introduce it now, when should we re-evaluate?
 
 ## Decision
 
-Do not mandate Effect-TS as core runtime foundation in Phase 1a/1b.
+Effect-TS will NOT be mandated as the core runtime foundation in Phase 1a / 1b.
 
-Current stage adopts a lighter strategy:
+The current stage will adopt a lighter strategy:
 
-- TypeScript native async/await as main execution model.
-- Contract-driven error model, state machine, and repository boundary freeze first.
-- Reserve structural space for possible future Effect-TS introduction, but do not let implementation prematurely depend on its programming model.
+- TypeScript native async/await as the primary execution model.
+- Contract-driven error models, state machines, and repository boundaries will be frozen first.
+- Boundaries will be preserved for possible future Effect-TS adoption, but the implementation will not prematurely depend on its programming model.
 
-Re-evaluation timing placed at Phase 2:
+The re-evaluation point is set for Phase 2:
 
-- When multi-worker, queue, complex resource lifecycle, and typed effect composition begin to significantly increase, formally evaluate whether to introduce.
+- When multi-worker, queue, complex resource lifecycles, and typed effect combinations begin to increase significantly, a formal evaluation of adoption will be conducted.
 
 ## Alternatives
 
-### Option A: Immediately Adopt Effect-TS in Phase 1a
+### Option A: Immediately adopt Effect-TS comprehensively in Phase 1a
 
-Benefits:
+Pros:
 
-- More unified error, dependency, concurrency, and resource management model.
-- Subsequent execution plane may be smoother.
+- More unified error, dependency, concurrency, and resource management models.
+- Smoother subsequent execution plane evolution.
 
 Costs:
 
 - Steep learning curve.
-- Significantly increased initial implementation, testing, debugging, and onboarding costs.
-- Current team is still closing platform boundaries; switching abstraction layer too early will amplify documentation-to-code translation costs.
+- Significantly higher costs for initial implementation, testing, debugging, and onboarding.
+- The team is still closing platform boundaries; switching abstractions prematurely increases translation costs from documentation to code.
 
-### Option B: Completely Exclude Effect-TS
+### Option B: Completely exclude Effect-TS
 
-Benefits:
+Pros:
 
-- Lowest mental burden at initial stage.
+- Lowest initial mental burden.
 - Fastest implementation speed.
 
 Costs:
 
-- Once Phase 2 complexity significantly increases, may lack unified effect/resource model.
-- If introduced later, migration cost is higher.
+- If Phase 2 complexity increases significantly, there may be a lack of unified effect/resource model.
+- If introduced later, migration costs will be higher.
 
 ### Option C: Current Decision
 
-- Not mandating adoption currently
-- Preserving structural space for future introduction
-- Using contract and boundary design instead of premature runtime framework lock-in
+- Do not mandate adoption currently
+- Preserve structural space for future introduction
+- Use contract and boundary design instead of premature runtime framework lock-in
 
-## Reasons for Choosing This Approach
+## Reasons for Selecting This Option
 
-- Current most important thing is to tighten the five foundations: state, error, event, recovery, and security.
-- These problems are first and foremost boundary and contract problems, not runtime framework problems.
-- Prematurely introducing Effect-TS would front-load "implementation complexity" to Phase 1a, which is not the current main risk.
+- The most important thing at this stage is to first tighten the five foundations: state, errors, events, recovery, and security.
+- These issues are primarily boundary and contract problems, not runtime framework problems.
+- Prematurely introducing Effect-TS pushes "implementation complexity" into Phase 1a, which is not the current primary risk.
 - Preserving space for future re-evaluation is more prudent than locking in now.
 
 ## Key Invariants
 
 - Current code must not assume Effect-TS will definitely be introduced in the future.
-- Current code also must not be written in a form that "absolutely cannot introduce Effect-TS".
-- Error model, repository boundary, context propagation, and state push entry must be established independently of specific runtime framework.
+- Current code must also not be written in a form that makes it "impossible to ever introduce Effect-TS".
+- Error models, repository boundaries, context propagation, and state entry points must be valid independently of any specific runtime framework.
 
-## Adoption Triggers
+## Adoption Conditions
 
-If any of the following occur, should reopen evaluation:
+If any of the following occur, a new evaluation should be initiated:
 
-- Execution plane enters multi-worker/queue/lease/handover implementation stage.
-- Resource lifecycle management begins widely involving sandbox, provider, gateway, worker registry.
-- Existing async/await + service organization clearly causes error propagation, resource cleanup, or dependency injection to become uncontrolled.
+- The execution plane enters multi-worker / queue / lease / handover implementation phase.
+- Resource lifecycle management extensively involves sandbox, provider, gateway, worker registry.
+- Existing async/await + service organization clearly causes uncontrolled error propagation, resource cleanup, or dependency injection.
 
 ## Exit Conditions
 
-If after Phase 2 evaluation still find:
+If after Phase 2 evaluation it is still found that:
 
-- Complexity not yet sufficient to prove introduction benefits
-- Team maintenance cost higher than expected
-- Contract and service already sufficient to support evolution
+- Complexity is insufficient to justify adoption benefits
+- Team maintenance costs are higher than expected
+- Contracts and services are sufficient to support evolution
 
-Then continue to maintain non-introduction, do not view as "deferred failure".
+Then continue to maintain non-adoption and do not treat it as a "postponed failure".
 
 ## Implementation Impact
 
 Requirements for current implementation:
 
-- Continue converging core capabilities as service + repository + contract.
+- Continue converging core capabilities to service + repository + contract.
 - Use `AppError`, transition service, policy engine, context propagation and other contracts instead of framework coupling.
-- Avoid forming implicit global dependencies in code that are difficult to replace.
+- Avoid forming hard-to-replace implicit global dependencies in code.
 
 Requirements for subsequent evolution:
 
-- If future evaluation introduces, should first use ADR to supplement migration scope, benefit proof, and rollback strategy.
+- If future evaluation leads to adoption, an ADR must first be added to cover migration scope, benefit proof, and rollback strategy.
 
 ## Results
 
-Benefits:
+Pros:
 
-- Phase 1a/1b landing speed and understanding cost more controllable.
-- First stabilize platform boundaries, then decide whether to upgrade runtime abstraction.
-- Avoid misusing framework preferences as architectural necessities.
+- Phase 1a / 1b delivery speed and comprehension costs are more manageable.
+- Stabilize platform boundaries first, then decide whether to upgrade runtime abstraction.
+- Avoid mischaracterizing framework preferences as architectural necessities.
 
 Costs:
 
-- Some typed effect and resource safety advantages temporarily not available at current stage.
-- If Phase 2 decides to introduce, still need a controlled migration.
+- Some typed effect and resource safety advantages are temporarily unavailable at this stage.
+- If adopted in Phase 2, a controlled migration will still be required.
 
 ## Cross-References
 
-- [ADR-012 Whether SQLite as Phase 1-2 Only Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
-- [ADR-013 Whether EventEmitter Continues to Phase 2](./013-eventemitter-phase-2-boundary.md)
-- [ADR-014 Whether Organization Model Directly Maps to Code Objects](./014-org-model-code-boundary.md)
+- [ADR-012 SQLite as Phase 1-2 Sole Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-013 EventEmitter Usage Through Phase 2](./013-eventemitter-phase-2-boundary.md)
+- [ADR-014 Org Model Direct Mapping to Code Objects](./014-org-model-code-boundary.md)
 
 ## Source Sections
 

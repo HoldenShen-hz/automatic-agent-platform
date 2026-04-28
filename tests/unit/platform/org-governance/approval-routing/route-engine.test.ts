@@ -85,7 +85,7 @@ test("applySodPolicy removes requester from candidate approvers", () => {
   const nodes = [mockOrgNode()];
   const candidateApprovers = ["approver-1", "approver-2", "requester-1"];
 
-  const result = applySodPolicy("requester-1", candidateApprovers, nodes, "node-1");
+  const result = applySodPolicy(mockRequest(), candidateApprovers, nodes, "node-1");
 
   assert.ok(!result.includes("requester-1"));
   assert.strictEqual(result.length, 2);
@@ -95,7 +95,7 @@ test("applySodPolicy keeps all approvers when requester not in list", () => {
   const nodes = [mockOrgNode()];
   const candidateApprovers = ["approver-1", "approver-2"];
 
-  const result = applySodPolicy("requester-1", candidateApprovers, nodes, "node-1");
+  const result = applySodPolicy(mockRequest(), candidateApprovers, nodes, "node-1");
 
   assert.strictEqual(result.length, 2);
 });
@@ -157,7 +157,7 @@ test("applySodPolicy returns empty array when all filtered out", () => {
   const nodes = [mockOrgNode()];
   const candidateApprovers = ["requester-1"];
 
-  const result = applySodPolicy("requester-1", candidateApprovers, nodes, "node-1");
+  const result = applySodPolicy(mockRequest(), candidateApprovers, nodes, "node-1");
 
   assert.strictEqual(result.length, 0);
 });

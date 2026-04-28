@@ -1,27 +1,28 @@
-# Automatic Agent Platform — Code Architecture Analysis Reference Document
+# Automatic Agent Platform — Code Architecture Reference Document
 
-> **Analysis Date**: 2026-04-20 (Version 10, full rescan after 7-layer architecture reorganization)
-> **Analysis Scope**: src/ (1,052 files, 191,611 lines), tests/ (1,018 files, 206,717 lines), config/, deploy/, scripts/
-> **Analysis Method**: Directory-by-directory static analysis + dependency tracing + test coverage mapping + pattern recognition
-> **Document Purpose**: Source code status, call chains, technical debt, refactoring basis; not directly indicative of production readiness
-> **Document Nature**: Internal audit document, not production-ready proof
+> **Version**: v13.0
+> **Analysis Date**: 2026-04-23
+> **Analysis Scope**: src/ (1,387 files, 265,020 lines), tests/ (1,825 files, 440,180 lines), config/ (60 files), deploy/ (42 files), divisions/ (11, 61 files)
+> **Analysis Method**: Directory-by-directory static analysis + dependency tracing + test coverage mapping + pattern recognition + design document cross-validation
+> **Document Purpose**: Authoritative reference document for codebase status, recording actual architecture, module status, technical debt, and refactoring baseline
+> **Related Documents**: `00-platform-architecture.md` v3.2 (design specification), `05-cross-platform-ui-architecture.md` v3.0 (UI architecture), `reviews/architecture-design-vs-implementation-review.md` v7.0 (gap review)
+> **v13.0 Changes**: Full codebase rescan (+154 source files / +18,343 lines / +670 test files / +189,972 lines); updated all module statistics; added `constitution/` config directory, 13 root-level orchestrator files, `plugins/validators/` submodule; expanded async mirrors from 7 to 10+ groups
 
 ---
 
 ## Table of Contents
 
 1. [Repository Overview and Key Metrics](#1-repository-overview-and-key-metrics)
-2. [Seven-Layer Architecture Module Inventory and Status Matrix](#2-seven-layer-architecture-module-inventory-and-status-matrix)
-3. [Platform Layer Module-by-Module Deep Analysis](#3-platform-layer-module-by-module-deep-analysis)
-4. [Business and Interaction Layer Module-by-Module Deep Analysis](#4-business-and-interaction-layer-module-by-module-deep-analysis)
+2. [Module Inventory and Status Matrix](#2-module-inventory-and-status-matrix)
+3. [Platform Layer Deep Analysis](#3-platform-layer-deep-analysis)
+4. [Business Layer Deep Analysis](#4-business-layer-deep-analysis)
 5. [Core Call Chain Analysis](#5-core-call-chain-analysis)
 6. [Module Dependency and Boundary Analysis](#6-module-dependency-and-boundary-analysis)
-7. [Code Quality Issues](#7-code-quality-issues)
-8. [Security and Reliability Analysis](#8-security-and-reliability-analysis)
-9. [Testing Analysis](#9-testing-analysis)
-10. [Configuration and Deployment Architecture](#10-configuration-and-deployment-architecture)
-11. [Refactoring Priorities and Conclusions](#11-refactoring-priorities-and-conclusions)
-12. [Appendix](#appendix)
+7. [Code Quality Analysis](#7-code-quality-analysis)
+8. [Testing Analysis](#8-testing-analysis)
+9. [Configuration and Deployment Architecture](#9-configuration-and-deployment-architecture)
+10. [Technical Debt and Refactoring Priorities](#10-technical-debt-and-refactoring-priorities)
+11. [Conclusion](#11-conclusion)
 
 ---
 
@@ -29,1150 +30,782 @@
 
 ### 1.1 Code Scale
 
-| Metric                   | Value                                                    |
-| ------------------------ | -------------------------------------------------------- |
-| Source files (`src/`)    | 1,052 `.ts` files                                        |
-| Source lines             | 191,611 lines                                            |
-| Test files (`tests/`)    | 1,018 `.ts` files                                        |
-| Test lines               | 206,717 lines                                            |
-| Test cases               | ~9,141 (`test()` 9,109 + `it()` 32)                     |
-| Test/Source ratio        | 1.08:1                                                   |
-| Top-level src/ modules   | 10 (seven-layer architecture + apps/core/sdk)            |
-| Runtime dependencies     | 5 (`typescript`, `zod`, `ioredis`, `ws`, `postgres`)    |
-| Division definitions     | 10 (56 files)                                            |
-| Config files             | 27 (11 configuration categories)                          |
-| Deployment files         | 41 (Helm/Terraform/Prometheus/Grafana/Chaos)             |
-| npm scripts              | 110+                                                     |
+| Metric | Value | vs v12.0 |
+| --- | --- | --- |
+| Source files (`src/`) | 1,387 `.ts` files | +154 (+12.5%) |
+| Source lines | 265,020 lines | +18,343 (+7.4%) |
+| Test files (`tests/`) | 1,825 `.test.ts` files | +670 (+58.0%) |
+| Test lines | 440,180 lines | +189,972 (+76.0%) |
+| Test/Source ratio | 1.66:1 | ↑ from 1.01:1 |
+| Top-level modules | 10 independent modules + platform/ with 13 submodules + 13 root-level files | +13 orchestrators |
+| Config files | 60 JSON (19 directories) | +26 |
+| Deployment files | 42 (Helm + Terraform + Scripts + Monitoring + Chaos) | |
+| Division definitions | 11 (61 files) | |
+| npm scripts | 103 (including 26 stable-* rehearsal scripts) | +21 |
+| Runtime dependencies | 11 | +1 |
+| Dev dependencies | 14 | +1 |
 
-### 1.2 Seven-Layer Architecture Code Distribution
+### 1.2 Source Module Distribution
 
-| Layer                   | Directory                  | Files    | Lines      | Share    |
-| ----------------------- | -------------------------- | -------- | ---------- | -------- |
-| **Infrastructure Layer**| `src/platform/`            | 712      | 160,122    | 83.6%    |
-| **Scale Ecosystem Layer**| `src/scale-ecosystem/`     | 57       | 9,167      | 4.8%     |
-| **SDK/CLI Layer**       | `src/sdk/`                 | 87       | 7,268      | 3.8%     |
-| **Business Domain Layer**| `src/domains/`            | 34       | 5,076      | 2.6%     |
-| **Ops Maturity Layer**  | `src/ops-maturity/`        | 72       | 4,397      | 2.3%     |
-| **Intelligent Interaction Layer**| `src/interaction/` | 28       | 2,608      | 1.4%     |
-| **Plugin Layer**        | `src/plugins/`             | 20       | 1,672      | 0.9%     |
-| **Org Governance Layer**| `src/org-governance/`      | 30       | 1,222      | 0.6%     |
-| Application Entry       | `src/apps/`                | 4        | 50         | 0.0%     |
-| Legacy Shim             | `src/core/`                | 8        | 29         | 0.0%     |
-| **Total**               |                            | **1,052**| **191,611**| **100%** |
+| Module | Files | Lines | Share | Stubs | Stub Rate | vs v12.0 Files | vs v12.0 Lines |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `src/platform/` | 941 | 207,967 | 78.5% | 121 | 12.9% | +102 | +10,890 |
+| `src/scale-ecosystem/` | 74 | 15,507 | 5.9% | 23 | 31.1% | +7 | +438 |
+| `src/domains/` | 56 | 10,579 | 4.0% | 10 | 17.9% | +9 | +2,006 |
+| `src/sdk/` | 93 | 8,749 | 3.3% | 25 | 26.9% | — | +163 |
+| `src/ops-maturity/` | 88 | 8,957 | 3.4% | 23 | **26.1%** | +6 | +2,188 |
+| `src/interaction/` | 41 | 5,587 | 2.1% | 10 | 24.4% | +4 | +376 |
+| `src/org-governance/` | 41 | 4,445 | 1.7% | 13 | **31.7%** | +8 | +996 |
+| `src/plugins/` | 25 | 1,686 | 0.6% | 5 | 20.0% | +5 | +14 |
+| `src/apps/` | 4 | 112 | <0.1% | 3 | 75%* | — | +62 |
+| `src/core/` | 8 | 29 | <0.1% | 8 | 100%* | — | — |
+| `src/` root files | 13 | 1,298 | 0.5% | 0 | 0% | **New** | **+1,298** |
+| `src/testing/` | 1 | 21 | <0.1% | — | — | — | — |
+| `src/benchmarks/` | 1 | 74 | <0.1% | — | — | — | — |
+| `src/types/` | 1 | 9 | <0.1% | — | — | **New** | **+9** |
+| **Total** | **1,387** | **265,020** | 100% | **242** | **17.4%** | **+154** | **+18,343** |
 
-### 1.3 Technology Stack
+> \***`apps/`** is pure manifest declarations, and **`core/`** is pure re-export compatibility layer; both are by design intent.
 
-| Category       | Technology Choice                                               |
-| -------------- | --------------------------------------------------------------- |
-| Language       | TypeScript 5.8+ (strict mode + ESM)                            |
-| Runtime        | Node.js 22+                                                    |
-| Database       | SQLite (WAL mode, ~52 tables) + PostgreSQL (in adaptation)     |
-| Cache          | Memory + SQLite + Redis (ioredis ^5.10.1)                      |
-| WebSocket      | ws ^8.18.0                                                     |
-| Schema Valid.  | Zod ^3.25                                                      |
-| Observability  | OpenTelemetry SDK + Prometheus + custom structured logging     |
-| Testing        | `node:test` + `node:assert/strict` + `c8` coverage              |
-| Build          | `tsc` (build vs build:test separation)                         |
-| Lint           | ESLint 9.x flat config + Prettier                              |
-| Mutation Test  | Stryker Mutator                                                |
-| Container      | Multi-stage Dockerfile, `node:22-bookworm-slim`               |
-| CI             | GitHub Actions (matrix: Node 20/22)                            |
-| Deployment     | Helm + Terraform (EKS/ECR/RDS/ElastiCache)                    |
+### 1.3 Root-Level Orchestrator Files (v13.0 New)
 
-### 1.4 Judgment Criteria: Dual-Dimensional Status System
+| File | Lines | Responsibility |
+| --- | --- | --- |
+| `index.ts` | 272 | Platform main entry barrel export |
+| `platform-architecture-bootstrap.ts` | 152 | Five-plane startup orchestration |
+| `platform-application-kernel.ts` | 142 | Application kernel dependency injection |
+| `domains-runtime-orchestrator.ts` | 127 | Domain runtime orchestration (24 domains) |
+| `interaction-governance-runtime-orchestrator.ts` | 132 | Interaction + governance runtime orchestration |
+| `scale-ops-runtime-orchestrator.ts` | 132 | Scale + ops runtime orchestration |
+| `domains-startup-plan.ts` | 53 | Domain startup plan |
+| `interaction-governance-startup-plan.ts` | 62 | Interaction + governance startup plan |
+| `scale-ops-startup-plan.ts` | 62 | Scale + ops startup plan |
+| `domains-runtime-catalog.ts` | 51 | Domain runtime catalog |
+| `interaction-governance-runtime-catalog.ts` | 39 | Interaction + governance runtime catalog |
+| `scale-ops-runtime-catalog.ts` | 39 | Scale + ops runtime catalog |
+| `platform-architecture-types.ts` | 35 | Architecture type definitions |
 
-**Dimension A — Implementation Status**
+### 1.4 Technology Stack
 
-| Status      | Meaning                                                      |
-| ----------- | ------------------------------------------------------------ |
-| Not Started | Zero code or only `export {}` placeholder files              |
-| Skeleton    | Interfaces/types defined, core logic empty or TODO           |
-| Partial     | Main path implemented, secondary paths or edge cases missing |
-| Implemented | Functional code complete, compiles successfully             |
+| Category | Choice |
+| --- | --- |
+| Language | TypeScript 5.8+ (strict, ESM, `noUncheckedIndexedAccess`) |
+| Runtime | Node.js 22+ |
+| Database | SQLite (WAL) — 55 tables + PostgreSQL — 75+ tables (dual-backend adapter) |
+| Cache | Memory L1 + SQLite L2 + Redis L3 (ioredis ^5.10) |
+| WebSocket | ws ^8.18 |
+| Observability | OpenTelemetry (tracing + metrics) |
+| Validation | Zod ^3.25 schema validation |
+| Testing | `node:test` + `node:assert/strict` + c8 coverage + Stryker mutation testing |
+| Build | tsc (ES2023 target, NodeNext module) |
+| Lint | ESLint 9 flat config + Prettier |
+| Container | Multi-stage Dockerfile, node:22-bookworm-slim |
 
-**Dimension B — Production Confidence**
+### 1.5 Judgment Criteria: Dual-Dimensional Status System
 
-| Level             | Meaning                                                      |
-| ----------------- | ------------------------------------------------------------ |
-| Unverified        | No dedicated tests, or only compilation passes               |
-| Test-covered      | Unit/integration tests cover main paths                      |
-| Staging-verified  | Verified in staging-like environment                         |
-| Production-ready  | Confirmed via traffic validation, fault injection, monitoring closed-loop |
+**Dimension A — Implementation Status**: Not Started → Skeleton → Partial → Implemented
+**Dimension B — Production Confidence**: Unverified → Test-covered → Staging-verified → Production-ready
 
 > **No module in the current codebase has reached Staging-verified or Production-ready**.
 
-### 1.5 Architecture Blockers
+### 1.6 Architecture Blockers
 
-| #   | Blocker                          | Severity | Location                                                           | Description                                                |
-| --- | -------------------------------- | -------- | ------------------------------------------------------------------ | ---------------------------------------------------------- |
-| B1  | **PostgreSQL async/sync incompatibility** | Blocking | `platform/state-evidence/truth/postgres/sqlite-database-wrapper.ts` | Sync API wraps async PG connection, dual backend cannot switch |
-| B2  | **src/core/ legacy shim**        | Medium   | `src/core/runtime/` (8 files, 29 lines)                            | Pure re-export shim, should delete and update consumers    |
-| B3  | **E2E test coverage insufficient** | Medium   | `tests/e2e/` (10 files, 2,807 lines)                              | Coverage needs significant expansion                         |
-
----
-
-## 2. Seven-Layer Architecture Module Inventory and Status Matrix
-
-### 2.1 Platform Layer (`src/platform/` — 712 files, 160,122 lines)
-
-| Submodule         | Files | Lines  | Core Services                                                                                          | Impl. Status | Prod. Confidence |
-| ----------------- | ----- | ------ | ------------------------------------------------------------------------------------------------------ | ----------- | --------------- |
-| `execution/`      | 167   | 44,641 | `AgentExecutor`, `ExecutionDispatchService`, `ExecutionLeaseService`, `CommandExecutor`               | Implemented | Test-covered    |
-| `state-evidence/` | 169   | 36,787 | `AuthoritativeTaskStore` (delegation chain), `MemoryService`, `KnowledgePlaneService`, `TypedEventBus`| Implemented | Test-covered    |
-| `shared/`         | 101   | 24,618 | `StructuredLogger`, `HealthService`, `CacheFacade`, 28+ stability rehearsal suites                    | Implemented | Test-covered    |
-| `control-plane/`  | 75    | 24,309 | `DoctorService`, `PolicyEngine`, `SecretManagementService`, `ConfigGovernanceService`                 | Implemented | Test-covered    |
-| `interface/`      | 51    | 9,563  | `HttpApiServer`, `ChannelGatewayService`, `DistributedRateLimiter`                                    | Implemented | Test-covered    |
-| `orchestration/`  | 80    | 7,602  | `OapeflirLoopService`, `IntakeRouter`, `HitlApprovalOrchestrationService`                             | Implemented | Unverified      |
-| `model-gateway/`  | 17    | 5,137  | `UnifiedChatProvider`, `ModelRoutingService`, `CircuitBreaker`                                        | Implemented | Test-covered    |
-| `contracts/`      | 34    | 4,337  | `AppError` + 14 subclasses, Domain types, IDs                                                        | Implemented | Test-covered    |
-| `prompt-engine/`  | 11    | 2,521  | `LlmEvalService`, `PromptRolloutService`, `PromptTemplateRegistryService`                             | Implemented | Test-covered    |
-| `compliance/`     | 6     | 591    | `ComplianceCaseOrchestrationService`, `DataResidencyPolicyService`                                    | Implemented | Unverified      |
-
-### 2.2 Non-Platform Layer Module Inventory
-
-| Layer        | Module                                | Files | Lines  | Core Services                                                                  | Impl. Status | Prod. Confidence |
-| ------------ | ------------------------------------- | ----- | ------ | ------------------------------------------------------------------------------ | ------------ | ---------------- |
-| Scale        | `scale-ecosystem/marketplace/`        | 26    | 7,737  | `BillingService`, `TenantPlatformService`, `PmfValidationService`             | Implemented  | Test-covered     |
-| Scale        | `scale-ecosystem/feedback-loop/`      | 9     | 739    | `FeedbackImprovementService`, `SignalPreprocessor`                             | Implemented  | Unverified       |
-| Scale        | `scale-ecosystem/integration/`        | 5     | 203    | `ConnectorFrameworkService`                                                     | Implemented  | Unverified       |
-| Scale        | `scale-ecosystem/sla-engine/`         | 5     | 142    | `SlaOperationsService`                                                          | Implemented  | Unverified       |
-| Scale        | `scale-ecosystem/multi-region/`       | 5     | 134    | `CrossRegionRoutingService`                                                     | Partial      | Unverified       |
-| Scale        | `scale-ecosystem/resource-manager/`   | 5     | 118    | `FairSchedulingService`                                                         | Partial      | Unverified       |
-| Domain       | `domains/registry/`                   | 15    | 2,612  | `PluginSpiRegistry` (829 lines), `PluginRuntimeHost` (611 lines)               | Implemented  | Unverified       |
-| Domain       | `domains/governance/`                 | 5     | 1,636  | `DivisionLoader` (798 lines), `HrRoleGovernanceService` (571 lines)            | Implemented  | Test-covered     |
-| Domain       | `domains/other 8 submodules`          | 14    | 828    | Domain models, Prompt library, Eval framework, Risk profiles                   | Implemented  | Unverified       |
-| Ops Maturity | `ops-maturity/drift-detection/`      | 15    | 2,399  | `EvolutionMvpService` (645 lines), `SimpleProposalEngine`                     | Implemented  | Unverified       |
-| Ops Maturity | `ops-maturity/other 10 submodules`    | 57    | 1,998  | Lifecycle/capacity/cost/explainability/debugger/edge/emergency/multimodal/compliance reporter/Ops Agent | Implemented | Unverified |
-| Interaction  | `interaction/nl-gateway/`              | 4     | 553    | `NlEntryService` (505 lines)                                                    | Implemented  | Unverified       |
-| Interaction  | `interaction/other 6 submodules`     | 24    | 2,055  | Goal decomposition, proactive agent, dashboard, autonomy, UX                   | Implemented  | Unverified       |
-| Org Gov.     | `org-governance/org-model/`           | 5     | 639    | `HrRoleGovernanceService` (571 lines, duplicate)                              | Implemented  | Unverified       |
-| Org Gov.     | `org-governance/other 5 submodules`   | 25    | 583    | Approval routing, compliance engine, knowledge boundary, SSO/SCIM, delegated governance | Implemented | Unverified |
-| Plugin       | `plugins/`                            | 20    | 1,672  | 6 retrievers, 5 adapters, 3 presenters, 1 planner, 1 validator                 | Implemented  | Unverified       |
-| SDK          | `sdk/cli/`                            | 79    | 6,231  | 78 CLI entry points (ops/governance/rehearsal/product/API)                     | Implemented  | Test-covered     |
-| SDK          | `sdk/pack-sdk/`                       | 4     | 819    | `PackLifecycleOrchestrationService` (490 lines)                               | Implemented  | Unverified       |
-| SDK          | `sdk/other`                           | 4     | 218    | workbench, plugin-sdk, client-sdk                                             | Partial      | Unverified       |
-| App          | `apps/`                               | 4     | 50     | `PlatformAppManifest` (api/console/worker)                                     | Implemented  | Unverified       |
-| Legacy       | `core/`                               | 8     | 29     | Pure re-export shim → `platform/`                                              | **To Delete** | —               |
-
-### 2.3 v9 → v10 Key Structural Changes
-
-| Change                | v9                                                        | v10                                                                                          |
-| --------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Directory structure   | `src/core/` (42 subdirs) + `src/cli/` + `src/gateway/`   | Seven-layer architecture: `platform/` + 6 business layers + `sdk/` + `apps/`                  |
-| `src/core/` files/lines | 698 / 164,428                                           | **8 / 29** (pure re-export shim)                                                             |
-| `src/platform/`       | Does not exist                                            | **712 / 160,122**                                                                            |
-| `src/` total files/lines | 797 / 174,585                                         | **1,052 / 191,611** (+255 files, +17,026 lines)                                               |
-| `tests/` total files/lines | 985 / 205,811                                      | **1,018 / 206,717** (+33 files, +906 lines)                                                   |
-| New top-level modules | `plugins/` (7 files)                                      | `domains/`, `interaction/`, `org-governance/`, `scale-ecosystem/`, `ops-maturity/`, `apps/`   |
-| Plugin file count    | 7                                                          | **20** (+13: domain config, multiple retriever/adapter/presenter)                            |
-| CLI location         | `src/cli/` (76 files)                                     | `src/sdk/cli/` (79 files)                                                                     |
-| Gateway location     | `src/gateway/` (13 files)                                | `src/platform/interface/channel-gateway/` (13 files)                                         |
-| Runtime dependencies | 4                                                          | **5** (added `postgres`)                                                                     |
+| # | Blocker | Severity | Description |
+| --- | --- | --- | --- |
+| B1 | PostgreSQL sync/async dual-backend | High | 10+ groups of sync/async mirror files (~6,934 lines), high maintenance cost for sync |
+| B2 | E2E test scenarios limited | Medium | `tests/e2e/` 17 files 6,687 lines, covering ~17 flows |
 
 ---
 
-## 3. Platform Layer Module-by-Module Deep Analysis
+## 2. Module Inventory and Status Matrix
 
-### 3.1 `platform/execution/` — Execution Engine (167 files, 44,641 lines)
+### 2.1 `src/platform/` Module Inventory (941 files, 207,967 lines)
 
-The largest and most complex module in the codebase. 14 subdirectories:
+| Submodule | Files | Lines | Core Services | Impl. Status | Confidence | vs v12.0 |
+| --- | --- | --- | --- | --- | --- | --- |
+| execution/ | 188 | 50,695 | ExecutionDispatchService, ExecutionLeaseService, MultiStepSupervisor, PatchDslService | Implemented | Test-covered | +11/+1,761 |
+| state-evidence/ | 212 | 49,461 | AuthoritativeTaskStore, DurableEventBus, WorkerRepository, 55 SQLite tables | Implemented | Test-covered | +11/+1,724 |
+| control-plane/ | 114 | 36,793 | PolicyCenterService, DoctorService, AutoStopLossService, CveIntelligenceService | Implemented | Test-covered | +7/+1,237 |
+| shared/ | 120 | 28,169 | SloAlertingService (1,021), AnomalyDetectionService (795), StabilityFramework (13,642) | Implemented | Test-covered | +7/+1,375 |
+| interface/ | 69 | 12,881 | HttpApiServer (50+ routes, 17 route files), ChannelGatewayService (3,480), ConsoleRoutes | Implemented | Test-covered | +7/+801 |
+| orchestration/ | 129 | 12,312 | OapeflirLoopService (5,678), IntakeRouter, AgentDelegation (2,176), HITL (1,474), Harness | Implemented | Test-covered | +38/+2,194 |
+| model-gateway/ | 23 | 5,807 | UnifiedChatProvider, CircuitBreaker, ModelRoutingService, three providers (4,500 lines registry) | Implemented | Test-covered | +4/+178 |
+| contracts/ | 38 | 4,633 | AppError (14 subclasses), PromptBundle type system, envelope contracts | Implemented | Test-covered | +1/+48 |
+| prompt-engine/ | 24 | 4,562 | HierarchicalRegistryService, PromptVersionManager, PromptRolloutService | Implemented | Test-covered | +5/+542 |
+| compliance/ | 12 | 1,647 | ComplianceCaseOrchestrationService (324) | Partial | Test-covered | +3/+164 |
+| cost-management/ | 1 | 26 | Placeholder module | Skeleton | — | — |
+| agent-delegation/ | 1 | 71 | re-export (actual implementation in orchestration/agent-delegation/) | Legacy | — | — |
+| prompt-registry/ | 1 | 30 | Placeholder module | Skeleton | — | — |
 
-| Subdirectory        | Files | Lines  | Responsibilities                                                                   |
-| ------------------- | ----- | ------ | ---------------------------------------------------------------------------------- |
-| `tool-executor/`    | 36    | 13,500 | Command execution, Patch DSL, Skill create/execute/govern, semantic repo map, tool recommendation, shadow snapshot |
-| `execution-engine/` | 30    | 7,812  | Agent executor, middleware chain, call governance, loop detection, effect buffering, context compression, model invocation |
-| `recovery/`         | 21    | 6,264  | Runtime recovery/decision/replay/repair, hang detection/upgrade, DB queue disconnect repair |
-| `ha/`               | 12    | 3,218  | HA coordinator (sync/async), cross-region deployment, load balancing             |
-| `worker-pool/`      | 19    | 3,288  | Worker handshake/writeback (sync/async), registration/discovery/load balancing   |
-| `dispatcher/`       | 11    | 2,980  | Ticket dispatch, admission control, priority preemption, reconciliation, resource monitoring |
-| `hot-upgrade/`      | 6     | 1,952  | Hot upgrade (SQLite/PG storage + sync/async)                                      |
-| `lease/`            | 8     | 1,807  | Execution lease (fencing token 5-step verification)                              |
-| `startup/`          | 4     | 1,195  | Graceful shutdown, startup consistency check, preflight check                      |
-| `state-transition/` | 2     | 788    | State machines (Task/Workflow/Session/Execution/Approval 5 sets)                  |
-| `queue/`            | 6     | 771    | Queue adapter (SQLite/Redis) + factory                                            |
-| `distributed-lock/` | 8     | 635    | Distributed lock (SQLite/PG Advisory/Redis) + factory                             |
-| `resource/`         | 2     | 361    | Process tracking (PID + PGID)                                                      |
-| `plugin-executor/`  | 1     | 48     | Plugin execution service (thin layer)                                              |
+### 2.2 Business Layer Module Inventory
 
-**Security Chain (7 Layers of Defense)**:
-
-1. Metacharacter detection → 2. Command policy (deny-by-default) → 3. Parameter validation → 4. Remote pipe detection → 5. Fork bomb detection → 6. Sandbox path verification (realpath + symlink) → 7. Output sanitization (secret redaction + injection detection)
-
-### 3.2 `platform/state-evidence/` — State and Evidence Layer (169 files, 36,787 lines)
-
-| Subdirectory                                       | Files | Lines   | Responsibilities                                                        |
-| -------------------------------------------------- | ----- | ------- | ----------------------------------------------------------------------- |
-| `truth/sqlite/`                                    | 47    | 13,934  | SQLite engine, AuthoritativeTaskStore delegation chain, 22 repositories |
-| `truth/async-repositories/`                        | 22    | 6,585   | 21 Async\*Repository (PG-compatible async access)                        |
-| `truth/postgres/`                                  | 11    | 2,200   | PgDatabase, Schema management                                           |
-| `truth/other`                                      | 22    | 3,405   | Migration runner, storage quota, dual storage session, backend factory  |
-| `memory/`                                          | 16    | 3,335   | Tiered memory: MemoryService, Promotion, Retrieval, ExperienceCache     |
-| `knowledge/`                                       | 23    | 3,443   | Knowledge plane: BM25 + vector hybrid retrieval, ingestion pipeline, governance, archival |
-| `events/`                                          | 10    | 2,149   | Three-tier event delivery (Tier 1/2/3), TypedEventBus, DurableEventBus |
-| `artifacts/`                                      | 13    | 1,095   | Artifact lifecycle: storage→scan→preview→publish→govern→archive          |
-| `checkpoints/`                                    | 1     | 324     | Workflow step checkpoints                                               |
-| `dlq/` + `incident/` + `projections/` + `audit/` | 4     | 317     | DLQ, event projections, audit, incident management                     |
-
-**AuthoritativeTaskStore Delegation Chain**:
-`core → compat → delegating-governance → delegating-runtime → delegating-core → facade`
-Legacy compat reduced from 8,469 lines in v5 to 308 lines (-96%), 22 repositories total 8,497 lines as primary data access layer.
-
-### 3.3 `platform/shared/` — Shared Infrastructure (101 files, 24,618 lines)
-
-| Subdirectory    | Files | Lines   | Responsibilities                                                                              |
-| --------------- | ----- | ------- | --------------------------------------------------------------------------------------------- |
-| `stability/`    | 32    | 13,328  | **Largest submodule**. 28+ rehearsal suites + VCR + evidence system + release gate            |
-| `observability/`| 36    | 8,175   | StructuredLogger, Health, Metrics, SLI/SLO alerting (5 channels), anomaly detection, diagnostics, OTel |
-| `cache/`        | 27    | 2,518   | Three-tier cache L1/L2/L3: Memory/SQLite/Redis/MultiLevel + strategy + governance            |
-| `utils/`        | 3     | 321     | BoundedCache, Redis connection config                                                         |
-| `lifecycle/`    | 3     | 276     | ServiceRegistry (dependency injection/service location)                                        |
-
-### 3.4 `platform/control-plane/` — Control Plane (75 files, 24,309 lines)
-
-| Subdirectory             | Files | Lines | Responsibilities                                                                              |
-| ------------------------ | ----- | ----- | --------------------------------------------------------------------------------------------- |
-| `incident-control/`      | 19    | 8,308 | DoctorService, EnterpriseGovernance, AutoStopLoss, DeploymentExecution, HumanTakeover        |
-| `iam/`                   | 19    | 7,125 | PolicyEngine, SecretManagement (5 Providers), network egress, data classification, CVE intel, sandbox policy |
-| `config-center/`         | 27    | 6,776 | ConfigGovernance, model metadata registration, startup Schema, 20+ CLI environment loaders   |
-| `rollout-controller/`    | 2     | 502   | TrafficRoutingService (blue-green/canary)                                                    |
-| `approval-center/`       | 3     | 495   | ApprovalService + timeout executor                                                            |
-| `audit-export/`          | 2     | 346   | AuditExportService                                                                            |
-| `policy-center/`         | 1     | 298   | PolicyCenterService                                                                           |
-| `tenant/`                | 1     | 276   | TenantBoundaryRegistryService                                                                 |
-| `replay-repair-control/` | 1     | 183   | ReplayRepairControlService                                                                    |
-
-### 3.5 `platform/interface/` — Interface Layer (51 files, 9,563 lines)
-
-| Subdirectory      | Files | Lines | Responsibilities                                                               |
-| ----------------- | ----- | ----- | ------------------------------------------------------------------------------ |
-| `api/`            | 31    | 5,141 | HttpApiServer, ApiAuth, MissionControl, OIDC/OAuth, middleware                |
-| `channel-gateway/`| 13    | 3,472 | Channel gateway delivery (retry/rate-limit/DLQ/HMAC), WebSocket/SSE Bridge, target directory |
-| `console-backend/`| 1     | 253   | OperatorConsoleBackendService                                                  |
-| `scheduler/`      | 2     | 253   | LongRunningWorkflowService                                                    |
-| `ingress/`        | 3     | 225   | RedisRateLimiter, DistributedRateLimiter                                      |
-| `webhook/`        | 1     | 219   | WebhookIngressService                                                         |
-
-### 3.6 `platform/orchestration/` — Orchestration Layer (80 files, 7,602 lines)
-
-| Subdirectory | Files | Lines | Responsibilities                                                                               |
-| ------------ | ----- | ----- | --------------------------------------------------------------------------------------------- |
-| `oapeflir/`  | 62    | 5,159 | **OAPEFLIR Loop**: O→A→P→E→F→L→I→R eight stages. Contains learn/, improve-rollout/, workflow/, schemas/ |
-| `routing/`   | 4     | 1,057 | IntakeRouter (keyword+trigger+intent routing), WorkflowPlanner, AgentTeamService              |
-| `hitl/`      | 3     | 1,020 | HITL approval orchestration, operator console, explainability                                    |
-| `planner/`   | 9     | 314   | DAG planning: PlanBuilder, DagValidator, Evaluator, Replanning, TaskDecomposition              |
-| `escalation/`| 1     | 51    | EscalationService                                                                              |
-| `replan/`    | 1     | 1     | re-export barrel                                                                               |
-
-### 3.7 `platform/model-gateway/` — Model Gateway (17 files, 5,137 lines)
-
-| Subdirectory                      | Files | Lines | Responsibilities                                                                                     |
-| --------------------------------- | ----- | ----- | --------------------------------------------------------------------------------------------------- |
-| `provider-registry/`               | 10    | 4,441 | UnifiedChatProvider, BaseChatProvider (template method), CircuitBreaker, 3 Providers (OpenAI/Anthropic/MiniMax), credential pool |
-| `messages/`                        | 2     | 509   | Token estimation, message parsing                                                                    |
-| `cost-tracker/`                    | 2     | 64    | BudgetGuard                                                                                         |
-| `cache/` + `fallback/` + `router/` | 3     | 123   | Gateway cache, fallback, routing                                                                     |
-
-### 3.8 `platform/contracts/` — Contracts Layer (34 files, 4,337 lines)
-
-| Subdirectory           | Files | Lines | Responsibilities                                                                     |
-| --------------------- | ----- | ----- | ----------------------------------------------------------------------------------- |
-| `types/`             | 22    | 3,138 | TaskSnapshot, SessionRecord, WorkflowRecord and other Domain types + IDs + state enums |
-| `errors.ts`          | 1     | 497   | AppError + 14 subclasses                                                            |
-| `result-envelope/`   | 2     | 390   | Standardized result envelope                                                         |
-| 7 envelope subdirs   | 7     | ~300  | Control commands, delegation requests, execution plan/receipt, model requests, request envelope, state commands |
-
-### 3.9 `platform/prompt-engine/` — Prompt Engine (11 files, 2,521 lines)
-
-| Subdirectory | Files | Lines | Responsibilities                                                                                                     |
-| ------------ | ----- | ----- | ------------------------------------------------------------------------------------------------------------------- |
-| `eval/`     | 7     | 2,087 | LlmEvalService, EvalDatasetJudge, ExecutionOutcomeEvaluator, PostExecutionQualityGate, PromptModelPolicyGovernance |
-| `rollout/`  | 2     | 243   | PromptRolloutService, PlatformPromptReleaseOrchestration                                                              |
-| `registry/` | 1     | 129   | PromptTemplateRegistryService                                                                                         |
-| `renderer/` | 1     | 62    | PromptRendererService                                                                                                 |
-
-### 3.10 `platform/compliance/` — Compliance (6 files, 591 lines)
-
-| File                                | Lines | Responsibilities    |
-| ----------------------------------- | ----- | ------------------- |
-| `ComplianceCaseOrchestrationService`| ~200  | Compliance case orchestration |
-| `DataResidencyPolicyService`        | ~100  | Data residency policy |
-| `FieldEncryptionService`            | ~100  | Field encryption     |
-| `ErasurePlanningService`            | ~100  | Erasure planning     |
-| `DataLineageService`                | ~80   | Data lineage         |
+| Module | Files | Lines | Core Services | Impl. Status | Confidence | vs v12.0 |
+| --- | --- | --- | --- | --- | --- | --- |
+| scale-ecosystem/ | 74 | 15,507 | BillingService (792), MarketplaceGovernanceService (866), ConnectorFrameworkService | Implemented | Unverified | +7/+438 |
+| domains/ | 56 | 10,579 | DomainBaselineCatalog (1,113), PluginSpiRegistry (829), DivisionLoader (798) | Implemented | Test-covered | +9/+2,006 |
+| sdk/ | 93 | 8,749 | PackLifecycleOrchestrationService, 79 CLI entry points (including 26 stable-* rehearsal scripts, factory pattern) | Implemented | Test-covered | —/+163 |
+| ops-maturity/ | 88 | 8,957 | EvolutionMvpService (645), PlatformOpsAgentService (1,306), EdgeRuntimeSyncService | Partial | Unverified | +6/+2,188 |
+| interaction/ | 41 | 5,587 | NlGatewayService (681), GoalDecomposer (397), DashboardWebSocketServer (382) | Implemented | Unverified | +4/+376 |
+| org-governance/ | 41 | 4,445 | ScimProvisionService (828), OidcIdentityService (432), SamlService (186) | Implemented | Unverified | +8/+996 |
+| plugins/ | 25 | 1,686 | 6 Adapter + 7 Retriever + 4 Presenter + 2 Planner + 2 Validator (5 stub files) | Implemented | Test-covered | +5/+14 |
+| apps/ | 4 | 112 | PlatformAppManifest (api/console/workers) | Implemented | — | —/+62 |
+| core/ | 8 | 29 | Pure re-export compatibility layer | Legacy | — | — |
 
 ---
 
-## 4. Business and Interaction Layer Module-by-Module Deep Analysis
+## 3. Platform Layer Deep Analysis
 
-### 4.1 `scale-ecosystem/marketplace/` — Marketplace and Billing (26 files, 7,737 lines)
+### 3.1 execution/ (188 files, 50,695 lines) — Largest Submodule
 
-| Core Services                         | Lines | Responsibilities                                                              |
-| ------------------------------------- | ----- | --------------------------------------------------------------------------- |
-| `BillingService`                      | 791   | Complete billing: account/quota/metering/invoice/payment session/credit management |
-| `MarketplaceGovernanceService`        | 788   | Extension package registration/review/publish/withdrawal/directory governance |
-| `PerceptionService`                   | 656   | Intelligence source registration, intelligence ingestion, brief construction, action recommendations |
-| `DataPlaneFlowService`               | 649   | Analyze facts, archive packages, replay datasets, data migration             |
-| `EnterpriseCapabilityMatrixService`  | 641   | Capability matrix, environment readiness, tiered gating                    |
-| `TenantPlatformService`               | 586   | Tenant/organization/workspace CRUD + deployment binding                      |
-| `LicenseEnforcementService`           | 584   | License check, feature gating, usage metering                               |
-| `PmfValidationService`               | 578   | PMF validation: survey/metrics/adjudication calculation                      |
-| `BillingPaymentGateway`              | 549   | 3 gateway implementations (Manual/Stripe/Paddle)                            |
-| `PlatformOperatorService`            | 531   | Operations report, execution plane summary, stable version management       |
+| Subdirectory | Files | Lines | Responsibilities | vs v12.0 |
+| --- | --- | --- | --- | --- |
+| tool-executor/ | 37 | 13,540 | Tool execution, sandbox, patch DSL, filesystem tools | +1/+40 |
+| execution-engine/ | 30 | 7,698 | Multi-step orchestration, loop detection, middleware, context compression | —/−102 |
+| recovery/ | 23 | 6,811 | Execution recovery, replay, repair | **+15/+5,868** |
+| ha/ | 18 | 6,115 | HA coordination, failover | +1/+115 |
+| worker-pool/ | 20 | 3,310 | Worker handshake, writeback, registration, load balancing | +1/+10 |
+| dispatcher/ | 11 | 3,028 | Admission control, dispatch service | —/+28 |
+| plugin-executor/ | 5 | 2,296 | Plugin execution (4-layer sandbox: none/process/container/scoped_external_access) | −18/−4,304 |
+| hot-upgrade/ | 7 | 1,968 | Hot upgrade verification | +4/+768 |
+| lease/ | 9 | 1,822 | Lease acquire/renew/release, fencing token | +4/−1,678 |
+| startup/ | 5 | 1,197 | Startup consistency, preflight checks | —/−803 |
+| queue/ | 7 | 975 | Queue adapter | +3/−825 |
+| state-transition/ | 3 | 839 | Execution state machine, transition service | −5/−3,161 |
+| distributed-lock/ | 8 | 630 | Distributed lock (SQLite/PG/Redis) | —/−5 |
+| resource/ | 2 | 361 | Process resource tracking | —/−4 |
 
-### 4.2 `scale-ecosystem/feedback-loop/` — Feedback Loop (9 files, 739 lines)
+> **Key Change**: recovery/ expanded significantly from 8 files 943 lines to 23 files 6,811 lines, becoming the third largest execution submodule. plugin-executor/ streamlined and consolidated (from 23 files reduced to 5 files).
 
-Signal collection → preprocessing → trend analysis → improvement candidates → review → closed loop. `SignalPreprocessor` (239 lines) normalization/deduplication/scoring; `DomainEventFeedbackConsumer` (206 lines) subscribes to TypedEventBus to convert domain events into feedback signals.
+### 3.2 state-evidence/ (212 files, 49,461 lines)
 
-### 4.3 `domains/` — Business Domains (34 files, 5,076 lines)
+| Subdirectory | Files | Lines | Responsibilities | vs v12.0 |
+| --- | --- | --- | --- | --- |
+| truth/ | 118 | 30,058 | Authoritative data store, 55 SQLite tables + PG migration, 22+ Repositories | +6/+958 |
+| events/ | 26 | 7,021 | Persistent event bus, typed publish | **+15/+4,521** |
+| memory/ | 20 | 5,519 | Multi-tier memory (session/project/user) | +4/+2,019 |
+| knowledge/ | 24 | 3,910 | Semantic knowledge, vector storage, ingestion pipeline | +9/−590 |
+| artifacts/ | 13 | 1,095 | Artifact storage, publish, sensitive content scanning | +5/−905 |
+| checkpoints/ | 3 | 757 | Execution checkpoints | −1/−443 |
+| projections/ | 2 | 584 | Read model projections | —/−216 |
+| dlq/ | 1 | 284 | Dead letter queue | —/−16 |
+| incident/ | 1 | 96 | Event records | −2/−504 |
+| audit/ | 1 | 44 | Audit trail, integrity verification | −4/−1,456 |
 
-| Submodule        | Files | Lines | Core                                                                                          |
-| ---------------- | ----- | ----- | --------------------------------------------------------------------------------------------- |
-| `registry/`       | 15    | 2,612 | `PluginSpiRegistry` (829 lines, complete SPI lifecycle), `PluginRuntimeHost` (611 lines, subprocess isolation) |
-| `governance/`     | 5     | 1,636 | `DivisionLoader` (798 lines, YAML definition loading/validation), `HrRoleGovernanceService` (571 lines) |
-| `prompt-library/` | 2     | 182   | Prompt template parsing + governance (review/rollout/rollback)                                 |
-| `operations/`     | 2     | 153   | DomainOnboardingService (4-stage gating)                                                     |
-| `eval-framework/` | 2     | 126   | Evaluation gating + regression suite                                                         |
-| Other 5 submodules| 8     | 367   | Risk profiles, coding presets, interaction strategies, knowledge Schema, Recipes               |
+> **Key Change**: events/ expanded from 11 files to 26 files (+4,521 lines), DurableEventBus ecosystem significantly enriched. memory/ expanded from 16 files to 20 files (+2,019 lines). audit/ streamlined and consolidated.
 
-### 4.4 `interaction/` — Intelligent Interaction (28 files, 2,608 lines)
+### 3.3 control-plane/ (114 files, 36,793 lines)
 
-| Submodule          | Files | Lines | Core Services                                                                      |
-| ------------------ | ----- | ----- | --------------------------------------------------------------------------------- |
-| `nl-gateway/`      | 4     | 553   | `NlEntryService` (505 lines): intent extraction, entity parsing, ambiguity detection, risk preview, cost estimation |
-| `goal-decomposer/`| 4     | 427   | `GoalDecompositionService`: high-level goal → task DAG + dependencies + cost      |
-| `proactive-agent/` | 4     | 379   | `ProactiveAgentService`: schedule/event/threshold/webhook triggering               |
-| `dashboard/`       | 4     | 372   | `DashboardAggregationService`: 5 dashboard views + watchlist + health cards       |
-| `ux/`              | 6     | 537   | Guided wizard, template engine, workflow builder, UX orchestration                 |
-| `autonomy/`        | 5     | 328   | Progressive autonomy (5 levels), trust scoring, promotion engine, autonomy governance |
+| Subdirectory | Files | Lines | Core Services | vs v12.0 |
+| --- | --- | --- | --- | --- |
+| incident-control/ | 26 | 11,145 | DoctorService, AutoStopLossService, HumanTakeoverService, RunbookExecutor | +2/+345 |
+| config-center/ | 32 | 8,900 | 29 environment config loaders, ConfigGovernanceService, versioning | +1/+300 |
+| iam/ | 21 | 7,386 | PolicyEngine, SandboxPolicy, Secrets (Vault/AWS KMS/GCP), CVE | +1/+136 |
+| approval-center/ | 11 | 3,919 | ApprovalFlowEngine (1,017), quorum, escalation, multi-party approval | —/+119 |
+| compliance/ | 6 | 2,220 | Data residency, encryption keys, erasure requests/reports | —/+20 |
+| cost-alert/ | 4 | 902 | CostAlertService | **+2/+602** |
+| rollout-controller/ | 2 | 502 | RolloutStateMachine, AutoRollbackService | −3/−498 |
+| risk-control/ | 4 | 493 | RiskEvaluationEngine | +1/+93 |
+| policy-center/ | 1 | 409 | PolicyCenterService | **New** |
+| audit-export/ | 2 | 353 | AuditExportService | +1/+153 |
+| replay-repair-control/ | 1 | 183 | ReplayRepairControlService | **New** |
+| tenant/ | 1 | 282 | TenantService | −3/−218 |
 
-### 4.5 `ops-maturity/` — Operations Maturity (72 files, 4,397 lines)
+> **Key Change**: cost-alert/ expanded from 2 files 300 lines to 4 files 902 lines. New policy-center/ and replay-repair-control/.
 
-| Submodule            | Files | Lines  | Core                                                                                  |
-| ------------------- | ----- | ------ | ------------------------------------------------------------------------------------- |
-| `drift-detection/`  | 15    | 2,399  | `EvolutionMvpService` (645 lines, complete evolution lifecycle), proposal/reflection/baseline/promotion/release management |
-| `platform-ops-agent/`| 7     | 291    | Autonomous ops Agent: signal classification, action recommendations, maturity gating  |
-| `emergency/`       | 5     | 229    | Platform panic: 4 freeze modes, propagation, recovery                                 |
-| `agent-lifecycle/`  | 6     | 221    | Agent version management, canary binding, retirement                                  |
-| `multimodal/`       | 6     | 214    | Image/audio/document processing, modality routing                                    |
-| `capacity-planner/` | 5     | 193    | Prediction, trend analysis, scenario simulation                                       |
-| `edge-runtime/`     | 6     | 177    | Offline execution, sync queue, local model                                           |
-| `compliance-reporter/`| 5   | 174    | Report pipeline, templates, evidence mapping                                         |
-| `explainability/`   | 6     | 160    | Causal chains, evidence collection, explanation cache                                 |
-| `cost-optimizer/`   | 5     | 153    | Cost attribution, simulation, recommendations                                        |
-| `workflow-debugger/` | 5     | 139    | Breakpoint debugging, timeline rendering, run comparison                              |
+### 3.4 Remaining Platform Submodules
 
-### 4.6 `org-governance/` — Organization Governance (30 files, 1,222 lines)
+| Submodule | Files | Lines | Key Points | vs v12.0 |
+| --- | --- | --- | --- | --- |
+| shared/ | 120 | 28,169 | SLO alerting (1,021), anomaly detection (795), **Stability (13,642)**, three-tier cache, OTel | +7/+1,375 |
+| orchestration/ | 129 | 12,312 | OAPEFLIR 64 files (5,678), AgentDelegation (2,176), HITL (1,474), Harness | **+38/+2,194** |
+| interface/ | 69 | 12,881 | 50+ REST routes (17 route files), ChannelGateway (3,480), Console, WebSocket | +7/+801 |
+| model-gateway/ | 23 | 5,807 | Three providers (Anthropic/OpenAI/MiniMax), circuit breaker, ProviderRegistry (4,500) | +4/+178 |
+| contracts/ | 38 | 4,633 | AppError (14 subclasses), PromptBundle (99), envelope contracts | +1/+48 |
+| prompt-engine/ | 24 | 4,562 | Hierarchical registry, version management, Eval, Rollout | +5/+542 |
+| compliance/ | 12 | 1,647 | Compliance orchestration: classification → governance → residency → encryption → lineage → erasure | +3/+164 |
 
-| Submodule              | Files | Lines | Core                                                                              |
-| ---------------------- | ----- | ----- | --------------------------------------------------------------------------------- |
-| `org-model/`            | 5     | 639   | Organization node hierarchy, `HrRoleGovernanceService` (571 lines, **duplicate with domains/**) |
-| `approval-routing/`     | 5     | 162   | Approval routing engine + escalation + delegation                                  |
-| `knowledge-boundary/`   | 5     | 121   | Knowledge boundary management, access logs, sharing gate                           |
-| `compliance-engine/`    | 5     | 109   | Policy parsing, inheritance, audit execution                                      |
-| `sso-scim/`            | 5     | 90    | OIDC/SAML/SCIM identity sync                                                     |
-| `delegated-governance/` | 4     | 78    | Delegation registry, scope management                                             |
+> **Key Change**: orchestration/ grew from 91 files to 129 files (+38), OAPEFLIR expanded from single file 439 lines to 64 files 5,678 lines. shared/stability/ became the largest shared submodule (13,642 lines).
 
-### 4.7 `plugins/` — Plugins (20 files, 1,672 lines)
+---
 
-5 SPI types: Retriever(6), Adapter(5), Presenter(3), Planner(1), Validator(1).
-Registered via `builtin-plugin-registry.ts`, running in subprocess sandbox. 2 domain configuration files (growth 208 lines, operations 185 lines).
+## 4. Business Layer Deep Analysis
 
-### 4.8 `sdk/` — SDK and CLI (87 files, 7,268 lines)
+### 4.1 scale-ecosystem/ (74 files, 15,507 lines)
 
-- **CLI** (79 files, 6,231 lines): 78 entry points. 3 bootstrap modes (`withCliStorage`, `createStableCli()`, top-level command style). Largest: `authoritative-storage.ts` (406 lines), `api-server.ts` (307 lines)
-- **pack-sdk/** (4 files, 819 lines): `PackLifecycleOrchestrationService` (490 lines) — business package registration/test/certification/publish/deprecation
-- **workbench/** (1 file, 134 lines), **plugin-sdk/** (1 file, 41 lines), **client-sdk/** (1 file, 38 lines)
+| Submodule | Files | Lines | Core Services | Assessment |
+| --- | --- | --- | --- | --- |
+| marketplace/ | 32 | 11,972 | BillingService (792), MarketplaceGovernance (866), TenantPlatform, 3 payment gateways, 6 async mirrors | Complete |
+| feedback-loop/ | 11 | 1,275 | FeedbackImprovementService, FineTuningExporter (277), QualityGrader (257) | Medium |
+| multi-region/ | 7 | 1,265 | RegionHealthCheckService (462), CdcReplicationService (328), FailoverController | Medium |
+| integration/ | 5 | 203 | ConnectorFrameworkService (141) — framework complete, no actual connector adapters | Thin |
+| sla-engine/ | 5 | 142 | SlaOperationsService (90) — Zod schema + simple logic only | Stub |
+| resource-manager/ | 5 | 118 | FairSchedulingService (69) — basic queue logic only | Stub |
 
-### 4.9 `apps/` and `core/`
+> marketplace/ added 6 async mirror files (handshake/writeback/dispatch/event-bus/human-takeover/governance), totaling ~4,867 lines.
 
-- **apps/** (4 files, 50 lines): 3 `PlatformAppManifest` (api:8004, console:3000, worker:no port)
-- **core/** (8 files, 29 lines): Pure re-export shim pointing to `platform/execution/` and `platform/state-evidence/`, **should be deleted**
+### 4.2 domains/ (56 files, 10,579 lines)
+
+| Submodule | Files | Lines | Core Services | Assessment | vs v12.0 |
+| --- | --- | --- | --- | --- | --- |
+| registry/ | 15 | 2,753 | PluginSpiRegistry (829), PluginRuntimeHost (611, Fork/Container) | Complete | — |
+| business-pack/ | 6 | 1,833 | PackManifest, Migration, Lifecycle, DomainAssociation | Medium | +1/+133 |
+| governance/ | 6 | 1,672 | DivisionLoader (798), HrRoleGovernanceService | Complete | +1/+36 |
+| roadmap/ | 5 | 647 | RoadmapService, PhaseDeliveryService | Medium | +1/+295 |
+| operations/ | 2 | 193 | DomainOnboardingService | Medium | — |
+| canonical-meta-model/ | 4 | 140 | CanonicalMetaModel, Validator, Seeder, CompletenessCalculator | **New** | **+4/+140** |
+| prompt-library/ | 2 | 182 | PromptLibraryService | Stub-medium | — |
+| eval-framework/ | 2 | 159 | JudgeProviderRegistry, QualityGate | Stub-medium | — |
+| interaction-policy/ | 1 | 96 | InteractionPolicyService | **New** | **+1/+96** |
+| risk-profile/ | 1 | 79 | DomainRiskProfile | Stub | — |
+| knowledge-schema/ | 1 | 62 | KnowledgeSchemaService | Stub | — |
+| coding/ | 1 | 31 | CodingDomainDescriptor | **New** | **+1/+31** |
+| recipes/ | 1 | 18 | DomainRecipeService | Stub | — |
+
+> **Key Change**: Added canonical-meta-model/ (4 files), interaction-policy/, coding/ three submodules. DomainBaselineCatalog (root-level, 1,113 lines) became the largest single domains file.
+
+### 4.3 ops-maturity/ (88 files, 8,957 lines)
+
+| Submodule | Files | Lines | Core Services | Assessment | vs v12.0 |
+| --- | --- | --- | --- | --- | --- |
+| drift-detection/ | 15 | 2,484 | EvolutionMvpService (645), ProposalEngine, ReflectionEngine | **Complete** | —/+85 |
+| platform-ops-agent/ | 9 | 1,306 | PlatformOpsAgentService + submodules | **Medium** (↑ from stub) | **+2/+1,266** |
+| agent-lifecycle/ | 8 | 1,022 | AgentLifecycleService (311), PerformanceProfiler | Medium | —/+28 |
+| version-management/ | 3 | 738 | SemverValidator (336), CompatibilityMatrix (380) | Complete | — |
+| explainability/ | 7 | 660 | ExplanationPipeline (121), SimplifiedExplainer (280) | Medium | —/+39 |
+| workflow-debugger/ | 6 | 454 | TimeTravelDebugService (214) + 3 stub subdirectories | Partial | —/+101 |
+| multimodal/ | 7 | 381 | MultimodalGatewayService (187) + processors | **Medium** (↑ from stub) | —/+112 |
+| emergency/ | 5 | 284 | PlatformPanicService (197) + 3 stub subdirectories | Partial | —/+55 |
+| chaos/ | 2 | 261 | ChaosExperimentScheduler | Partial | +1/+77 |
+| compliance-reporter/ | 5 | 261 | ComplianceReportPipeline + 3 stub subdirectories | Partial (↑ from stub) | —/+87 |
+| capacity-planner/ | 5 | 258 | CapacityPlanningService (162) + 3 stub subdirectories | Partial (↑ from stub) | —/+65 |
+| cost-optimizer/ | 5 | 246 | CostOptimizationService + 3 stub subdirectories | **Stub** | —/+93 |
+| edge-runtime/ | 6 | 214 | EdgeRuntimeSyncService (143) + submodules | **Stub** | —/+37 |
+| monitoring/ | 2 | 212 | AnomalyDetectionService | Medium | +1/+14 |
+
+> **Key Change**: platform-ops-agent/ expanded dramatically from 10 lines stub to 1,306 lines (+1,266). Stub rate decreased from 51.2% to 26.1%.
+
+### 4.4 interaction/ (41 files, 5,587 lines)
+
+| Submodule | Files | Lines | Core Services | Assessment |
+| --- | --- | --- | --- | --- |
+| nl-gateway/ | 6 | 1,270 | NlGatewayService (681), DisambiguationHandler (396) | Complete |
+| dashboard/ | 6 | 1,100 | DashboardProjection (346), WebSocketServer (382) | Complete |
+| ux/ | 8 | 1,077 | ConversationHistory, Onboarding, UxEventTracking | Medium |
+| proactive-agent/ | 5 | 694 | ProactiveAgentService (335), TriggerEngine | Medium |
+| autonomy/ | 7 | 566 | AutonomyGovernanceService, TrustScorer, Promotion | Medium |
+| goal-decomposer/ | 4 | 493 | GoalDecomposer (397), Validator, DependencyGraph | Medium |
+
+### 4.5 org-governance/ (41 files, 4,445 lines)
+
+| Submodule | Files | Lines | Core Services | Assessment | vs v12.0 |
+| --- | --- | --- | --- | --- | --- |
+| sso-scim/ | 8 | 1,669 | ScimProvisionService (828), OidcService (432), SamlService (186) | **Complete** | — |
+| org-model/ | 5 | 959 | OrgHierarchy, OrgNodeSync | Complete | — |
+| delegated-governance/ | 4 | 406 | DelegatedGovernanceService, ScopeManager | Medium | — |
+| approval-routing/ | 5 | 162 | ApprovalRoutingService — thin routing engine | Stub | — |
+| knowledge-boundary/ | 5 | 121 | KnowledgeBoundaryService — thin boundary management | Stub | — |
+| compliance-engine/ | 5 | 109 | ComplianceGovernanceService — thin policy engine | Stub | — |
+
+> org-governance/ grew from 33 to 41 files (+8), and lines from 3,449 to 4,445 (+996), but approval-routing/, knowledge-boundary/, and compliance-engine/ remain stubs.
 
 ---
 
 ## 5. Core Call Chain Analysis
 
-### 5.1 Request Ingestion Chain
+### 5.1 OAPEFLIR 8-Stage Loop (orchestration/oapeflir/ — 64 files, 5,678 lines)
+
+OAPEFLIR (Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release) is the platform's core cognitive pipeline, transforming task goals into executable work, evaluating results, extracting learning, and optionally rolling out policy improvements.
+
+#### 5.1.1 Stage Call Chain
 
 ```
-User Request (CLI/SDK/SSE/API)
-    ↓
-IntakeRouter.route()
-  [platform/orchestration/routing/intake-router.ts]
-    - Input normalization → Intent classification (query/create/modify/approve/cancel/clarify)
-    - Trigger matching selects Division (by priority descending)
-    - Determine if multi-step orchestration is needed
-    ↓
-DivisionLoader.loadAll() → DivisionRegistry
-  [domains/governance/division-loader.ts]
-    ↓
-OapeflirLoopService.runLoop()
-  [platform/orchestration/oapeflir/oapeflir-loop-service.ts]
-    - Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Rollout
-    ↓
-RuntimeExecuteBridge.execute()
-  [platform/orchestration/oapeflir/runtime-execute-bridge.ts]
-    ↓
-AgentExecutor.executeAgentRound()
-  [platform/execution/execution-engine/agent-executor.ts]
-    - before_agent → before_model → wrap_model_call → after_model → after_agent
-    ↓
-TransitionService.transition() — 5 sets of state machines
-  [platform/execution/state-transition/transition-service.ts]
-    ↓
-DurableEventBus.publish() → dispatch:ticket_created (Tier-2)
-  [platform/state-evidence/events/durable-event-bus.ts]
+OapeflirLoopService.run()
+│
+├─ 1. OBSERVE
+│  ├─ TaskSituationBuilder.build()           → TaskSituation
+│  ├─ SystemSituationBuilder.build()         → SystemSituation
+│  └─ ObservationAggregator.aggregate()      → UnifiedObservation
+│
+├─ 2. ASSESS
+│  └─ AssessmentService.assess()             → UnifiedAssessment
+│     ├─ Risk factor analysis (blocker severity, intent confidence, tool risk)
+│     ├─ Complexity derivation (trivial/simple/moderate/complex/critical)
+│     └─ Routing decision (single-step/multi-step, model category, timeout, approval strategy)
+│
+├─ 3. PLAN
+│  └─ PlanBuilder.build()                    → Plan
+│
+├─ 4. EXECUTE
+│  └─ RuntimeExecuteBridge.executePlan()     → DualChannelStepOutput[]
+│     └─ runMultiStepOrchestration()         ← core/runtime/orchestrator
+│
+├─ 5. FEEDBACK
+│  ├─ FeedbackCollector.collect()            → FeedbackBatch
+│  └─ FeedbackCollector.toLearningSignals() → LearningSignal[]
+│
+├─ 6. LEARN
+│  ├─ FailurePatternMiner.mine()             (4 detectors: hallucination/truncation/permission/schema-loop)
+│  ├─ LLMImprovementGenerationService.generateImprovements()
+│  ├─ LearningObjectValidator.validateMany()
+│  └─ KnowledgePromotionService.promote()   → state-evidence/knowledge
+│
+├─ 7. IMPROVE (Conditional — only when learningObjects exist)
+│  ├─ AutonomyBoundaryPolicy.decide()
+│  └─ ImprovementCandidateRegistry.register()
+│
+├─ 8. RELEASE (Conditional — only when improvement candidates are approved)
+│  ├─ PolicyRolloutService.start()           → RolloutRecord
+│  ├─ RolloutStateMachine.transition()
+│  ├─ GuardrailEvaluator.evaluate()
+│  └─ RolloutFreezeManager check
+│
+└─ POST-LOOP
+   ├─ ExecutionOutcomeEvaluator.evaluate()   → ExecutionOutcomeEvaluation
+   ├─ PostExecutionQualityGate.decide()      → PostExecutionQualityGateDecision
+   └─ ReplanningService.decide()             → ReplanningDecision
 ```
 
-### 5.2 Dispatch Chain
+Each stage is wrapped with `startActiveSpan()` (OpenTelemetry) and metrics are recorded on entry/exit via `runtimeMetricsRegistry`. Inter-stage boundaries are validated with Zod schemas.
+
+#### 5.1.2 OAPEFLIR Subdirectory Structure
+
+| Subdirectory | Files | Lines | Responsibility |
+| --- | --- | --- | --- |
+| root files | 15 | 2,007 | Main loop service, FSM, execution bridge, handoff build/serialize, types |
+| types/ | 16 | 498 | Inter-stage data types (assessment/plan/observation etc.) |
+| schemas/ | 2 | 319 | Zod validators + schema index |
+| workflow/ | 5 | 1,015 | Workflow validation, output schema, retry strategy |
+| learn/ | 16 | 911 | Learning pipeline: pattern mining, knowledge promotion, strategy learning |
+| improve-rollout/ | 11 | 928 | Release pipeline: scheduler, state machine, guardrails, canary routing |
+
+#### 5.1.3 OAPEFLIR Cross-Module Dependencies
+
+| Dependency Target | Purpose |
+| --- | --- |
+| `platform/shared/observability/` | Task/system situation building, OTel tracing, freeze manager |
+| `platform/execution/` | MultiStepOrchestrationResult, StepOutputRecord |
+| `platform/prompt-engine/eval/` | Execution result evaluator, quality gate |
+| `platform/state-evidence/knowledge/` | Knowledge plane (Learn stage knowledge promotion) |
+| `platform/state-evidence/events/` | TypedEventPublisher (learning event publishing) |
+| `platform/contracts/` | ID generation, timestamps, error types |
+| `platform/model-gateway/` | LLM improvement generation |
+| `scale-ecosystem/feedback-loop/` | FeedbackCollector, FeedbackModel |
+| `domains/governance/` | DivisionLoader (workflow validation) |
+
+### 5.2 Execution Call Chain (execution/ → state-evidence/ → control-plane/)
 
 ```
-ExecutionDispatchService.dispatchNext()
-  [platform/execution/dispatcher/execution-dispatch-service.ts]
-    ↓
-evaluateWorkersForTicket() — Worker eligibility check + load skew analysis
-    ↓
-ExecutionLeaseService.acquireLease()
-  [platform/execution/lease/execution-lease-service.ts]
-    - fencing_token = latest + 1, 5-step verification
-    ↓
-DurableEventBus.publish() → dispatch:ticket_claimed (Tier-2)
+ExecutionDispatchService.dispatch()
+├─ AdmissionController.evaluate()         ← control-plane/iam/sandbox-policy
+├─ ExecutionLeaseService.acquire()        ← fencing token
+├─ AuthoritativeTaskStore.create()        ← state-evidence/truth/
+├─ WorkerPool.assign()
+│  ├─ ExecutionWorkerHandshakeService.handshake()
+│  └─ ExecutionWorkerWritebackService.writeback()
+├─ MultiStepSupervisor.run()
+│  ├─ ToolExecutor.execute()              ← 4-layer sandbox (none/process/container/scoped)
+│  ├─ PatchDslService.apply()
+│  └─ ContextCompressor.compress()
+├─ ExecutionLeaseService.release()
+└─ DurableEventBus.publish()              ← state-evidence/events/
 ```
 
-### 5.3 Tool Execution Chain
+### 5.3 HITL Approval Call Chain
 
 ```
-SkillExecutionService.execute()
-  [platform/execution/tool-executor/skill-execution-service.ts]
-    ↓
-Cache lookup (SHA256 + gitHead) → For each step:
-    CommandExecutor.execute()
-      [platform/execution/tool-executor/command-executor.ts]
-        1. Concurrency check (max 16)
-        2. CommandSecurity 7-layer evaluation
-        3. Sandbox path verification (realpath + symlink)
-        4. spawnTracked()
-        5. sanitizeToolOutput()
-          [platform/execution/tool-executor/tool-output-sanitizer.ts]
+HitlApprovalOrchestrationService.requestApproval()
+├─ ApprovalContextSummaryService.produce()
+├─ HITLExplainabilityService.explain()    (583 lines, generates human-readable approval rationale)
+├─ ApprovalFlowEngine.submit()            ← control-plane/approval-center/ (1,017 lines)
+│  ├─ Quorum voting
+│  ├─ Escalation strategy
+│  └─ Multi-party approval
+├─ HitlInboxService.enqueue()
+└─ HitlOperatorConsoleService.notify()
 ```
 
-### 5.4 Event Delivery Chain
+### 5.4 Agent Delegation Call Chain
 
 ```
-DurableEventBus.publish({ eventType, payload, tier })
-  [platform/state-evidence/events/durable-event-bus.ts]
-    ↓
-db.transaction(): Insert EventRecord → Create ack records (Tier 1/2)
-    ↓
-scheduleFanOut() → deliverPending() → deliverSingleEvent()
-    MAX_DELIVERY_RETRIES=3, calculateBackoff()
-    ↓
-Consumer ack() or status:"failed"
-```
-
-### 5.5 Gateway Delivery Chain
-
-```
-ChannelGatewayService.sendMessage()
-  [platform/interface/channel-gateway/channel-gateway-service.ts]
-    ↓
-GatewayTargetDirectoryService.resolveTarget() — 6-level resolution
-  [platform/interface/channel-gateway/gateway-target-directory-service.ts]
-    ↓
-deliverResolvedTarget() — Telegram/Slack/Webhook (HMAC-SHA256)
-    ↓
-On failure: recordDeliveryFailure() → retry (backoff, max 5) or dead letter
-    ↓
-ChannelGatewayRetryExecutor (every 15s): batch 25, rate limit → re-deliver
-```
-
-### 5.6 Recovery Replay Chain
-
-```
-RuntimeRecoveryService.buildRuntimeRecoveryView()
-  [platform/execution/recovery/runtime-recovery-service.ts]
-    ↓
-RuntimeRecoveryDecisionService.decide()
-    ↓
-RuntimeRecoveryReplayService.buildTaskReplayReport()
-    - Read Tier-1 events → replay in time order → rebuild consistent state
-    ↓
-ExecutionLeaseService.acquireLease() — reclaim expired leases
-    ↓
-TransitionService.transition() — fix state
+DelegationManagerService.delegate()
+├─ TopologyValidator.validate()           (depth/fanout/cycle detection)
+├─ ContextIsolator.createSandboxedContext() (IsolationLevel)
+├─ DelegationGovernanceService.enforce()
+├─ CollaborationProtocolService.validate() (ACP message validation)
+│  └─ InvariantEnforcer.enforce()         (permission narrowing, budget, risk invariants)
+├─ DelegationTracker.track()               (tree-shaped delegation tracking)
+└─ DelegationAuditService.record()
 ```
 
 ---
 
 ## 6. Module Dependency and Boundary Analysis
 
-### 6.1 Seven-Layer Dependency Flow
+### 6.1 Dependency Hierarchy Model
 
 ```
-contracts  ←── Foundation, imported by all modules
-    │
-shared/observability  ←── Imported by most modules
-    │
-state-evidence ←──→ execution ←──→ orchestration
-    │                  │                │
-    v                  │                v
-control-plane ←────────┘          prompt-engine
-    │
-    v
-interface
-    │
-model-gateway
-    │
-compliance (relatively independent)
+Layer 4 (Entry)     src/*.ts root orchestrators (13 files)
+                    ↓ imports
+Layer 3 (Business)  scale-ecosystem/ | domains/ | ops-maturity/ | interaction/ | org-governance/
+                    ↓ imports
+Layer 2 (Platform)  orchestration/ | execution/ | interface/ | model-gateway/ | prompt-engine/
+                    ↓ imports
+Layer 1 (Core)      state-evidence/ | control-plane/ | shared/ | contracts/ | compliance/
+                    ↓ imports
+Layer 0 (Infra)     node:* stdlib | zod | ioredis | postgres | ws | @opentelemetry/*
 ```
 
-### 6.2 Cross-Layer Dependency Matrix
+### 6.2 Cross-Module Coupling (by import frequency)
 
-```
-platform/  ←────── core/ (pure re-export)
-    ^
-    │  ┌──── domains/ ────── plugins/ (bidirectional: plugin SPI)
-    │  │         │
-    │  │         └──→ scale-ecosystem/ (connector framework)
-    │  │
-    ├──┤──── interaction/ ──→ scale-ecosystem/ (cost estimation)
-    │  │
-    ├──┤──── ops-maturity/ (only depends on platform/)
-    │  │
-    ├──┤──── org-governance/ ──→ domains/ (division loader)
-    │  │
-    ├──┤──── scale-ecosystem/ (only depends on platform/)
-    │  │
-    └──┴──── sdk/ ──→ scale-ecosystem/, plugins/, domains/
-```
+| Source → Target | Import Count | Assessment |
+| --- | --- | --- |
+| execution/ → contracts/ (ids/errors/domain) | 132 | High (reasonable) |
+| execution/ → state-evidence/truth/ | 97 | High (reasonable) |
+| execution/ → shared/observability/ | 48 | Medium |
+| orchestration/ → contracts/ (ids/errors) | 22 | Medium (reasonable) |
+| orchestration/ → scale-ecosystem/feedback/ | 5 | Low (cross-layer) |
+| orchestration/ → shared/observability/ | 4 | Low |
+| execution/ → control-plane/iam/ | 14 | Medium (reasonable) |
 
-### 6.3 Platform Internal Bidirectional Dependencies
+### 6.3 Architecture Boundary Violation Analysis
 
-| Dependency Pair                 | Direction | Import Count | Description                               |
-| ------------------------------ | --------- | ------------ | ----------------------------------------- |
-| execution ↔ state-evidence     | Bidirectional | 16 + 3    | Expected: execution engine reads/writes state |
-| execution ↔ orchestration      | Bidirectional | 7 + 1     | Execution engine needs orchestration types   |
-| shared ↔ control-plane         | Bidirectional | 5 + 13    | stability/ rehearsal modules need control-plane services |
-| state-evidence → model-gateway | Unidirectional | 2         | token estimation                            |
-| state-evidence → prompt-engine | Unidirectional | 2         | eval schema                                 |
-| state-evidence → domains       | Cross-layer | 3           | plugin-spi, domain-registry               |
+| # | Violation Type | Description | Severity |
+| --- | --- | --- | --- |
+| V1 | Cross-layer dependency | orchestration/ (L2) → scale-ecosystem/feedback-loop/ (L3): OAPEFLIR learning pipeline depends on business layer | Medium |
+| V2 | Missing abstraction | 5 async mirrors in marketplace/ lack corresponding sync files, directly implementing PG-specific logic | Medium |
+| V3 | Giant barrel | `src/index.ts` (272 lines) exports all modules, no selective tree-shaking | Low |
 
-### 6.4 Leaf Modules (Zero Internal Dependencies)
+### 6.4 Module Cohesion Assessment
 
-| Module                   | Lines |
-| ------------------------ | ----- |
-| `contracts/errors.ts`    | 497   |
-| `contracts/constants/`   | 16    |
-| `contracts/types/ids.ts` | 47    |
-| `shared/utils/`          | 321   |
-| `apps/`                  | 50    |
-
-### 6.5 Factory Pattern
-
-| Factory                  | Optional Backends                | Location                    |
-| ------------------------ | ------------------------------- | -------------------------- |
-| `StorageBackendFactory`  | SQLite / PostgreSQL             | `state-evidence/truth/`    |
-| `QueueAdapterFactory`    | SQLite / Redis               | `execution/queue/`            |
-| `DistributedLockFactory` | SQLite / PG Advisory / Redis | `execution/distributed-lock/` |
-
-### 6.6 Singleton Management
-
-`shared/lifecycle/service-registry.ts` (268 lines) manages: division-loader, tool-registry, middleware-context, agent-executor-context, network-egress-audit/policy, output-continuation, model-call-provider, graceful-shutdown, process-tracker.
-
-### 6.7 Sync/Async Dual Mode
-
-Multiple services provide both sync (SQLite) and async (PostgreSQL) versions:
-`ExecutionLeaseService`/Async, `HaCoordinatorService`/Async, `HotUpgradeService`/Async, `ExecutionDispatchService`/Async, `ExecutionWorkerHandshakeService`/Async, `ExecutionWorkerWritebackService`/Async, `DurableEventBus`/Async + 21 Async\*Repository.
+| Module | Cohesion | Description |
+| --- | --- | --- |
+| execution/ | High | 14 subdirectories with clear responsibilities; recovery/ expansion remains independent |
+| state-evidence/ | High | truth/events/memory/knowledge four subsystems have clear boundaries |
+| control-plane/ | High | 12 subdirectories each independent; new policy-center/ and replay-repair-control/ don't affect existing modules |
+| orchestration/ | **Medium** | After OAPEFLIR expanded from single file to 64 files, internal learn/ and improve-rollout/ may need extraction as independent submodules |
+| shared/ | Medium | stability/ (13,642 lines) is too large, may need splitting |
+| scale-ecosystem/ | Medium | marketplace/ (11,972 lines) accounts for 77%, imbalanced with other 5 submodules |
+| ops-maturity/ | Medium | Among 14 submodules, 6 remain stub/partial implementation, but stub rate continues declining |
 
 ---
 
-## 7. Code Quality Issues
+## 7. Code Quality Analysis
 
-### 7.1 Type Safety
+### 7.1 Stub Statistics
 
-| Issue                        | Quantity              | Severity |
-| ---------------------------- | --------------------- | -------- |
-| `as unknown as` type assertions | ~50 occurrences (24 files) | Medium |
-| `as any`                    | 3 occurrences          | Low     |
-| Query results without schema validation | All store methods | Medium |
-| Non-null assertions `!`    | Multiple (uncounted)   | Medium   |
+| Metric | v13.0 | vs v12.0 |
+| --- | --- | --- |
+| Total stub files | 242 | +21 |
+| Total stub rate | 17.4% | ↓ 0.5pp |
+| Highest stub rate module | org-governance/ (31.7%) | — |
+| Lowest stub rate module | platform/ (12.9%) | — |
 
-### 7.2 Code Duplication
+> Stub rate calculation: stub files / total module files. apps/ (75%) and core/ (100%) are by design intent, excluded from assessment.
 
-| Issue                                                                                                                      | Impact         | Severity |
-| ------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
-| `HrRoleGovernanceService` in two places (`domains/governance/` and `org-governance/org-model/`, 571 lines × 2, only 2 import lines different) | 1,142 lines redundant | High   |
-| CLI governance files share large chunks of initialization code (doctor/ops-governance/enterprise-governance)                | ~300 lines      | Medium   |
-| `trust-scorer/index.ts` (21 lines) duplicates `trustLevelFromScore` + `scoreCapability` in `autonomy/index.ts`             | 21 lines        | Low     |
-| Inconsistent CLI output methods (`console.log` vs `process.stdout.write`)                                                    | ~50 occurrences | Low     |
+#### 7.1.1 Module Stub Rate Distribution
 
-### 7.3 Redundant Code
+| Module | Stub Rate | vs v12.0 |
+| --- | --- | --- |
+| platform/ | 12.9% | ↓ (orchestration enrichment) |
+| domains/ | 17.9% | ↓ (+3 new submodules) |
+| plugins/ | 20.0% | ↓ (+validators) |
+| interaction/ | 24.4% | — |
+| ops-maturity/ | **26.1%** | **↓ from 51.2%** |
+| sdk/ | 26.9% | — |
+| scale-ecosystem/ | 31.1% | — |
+| org-governance/ | **31.7%** | — |
 
-| Issue                                                       | Lines    | Severity |
-| ----------------------------------------------------------- | -------- | -------- |
-| `src/core/runtime/` 8 re-export shims                       | 29       | Medium   |
-| `platform/shared/lifecycle/evolution-mvp-service.ts` 1-line shim | 1    | Low      |
-| 4 incomplete async wrappers (marketplace 3 + drift-detection 1) | ~205 | Medium   |
-| 43 empty stub `export {}` files                             | 43 files | Medium   |
+### 7.2 Top 15 Largest Source Files
 
-### 7.4 Complexity Centers
+| Rank | Lines | File | Responsibility |
+| --- | --- | --- | --- |
+| 1 | 1,113 | `domains/domain-baseline-catalog.ts` | 24 vertical domain baseline catalog |
+| 2 | 1,052 | `state-evidence/truth/async-repositories/worker-repository.ts` | Async Worker data access layer |
+| 3 | 1,021 | `shared/observability/slo-alerting-service.ts` | SLO alerting engine |
+| 4 | 1,017 | `control-plane/approval-center/approval-flow-engine.ts` | Approval flow engine (quorum + escalation) |
+| 5 | 926 | `scale-ecosystem/marketplace/human-takeover-service-async.ts` | Human takeover async mirror |
+| 6 | 868 | `state-evidence/truth/sqlite/repositories/operations-repo.ts` | Operations aggregate repository |
+| 7 | 867 | `scale-ecosystem/marketplace/worker-writeback-service-async.ts` | Worker writeback async mirror |
+| 8 | 866 | `scale-ecosystem/marketplace/marketplace-governance-service.ts` | Marketplace governance (publish/review/withdraw) |
+| 9 | 850 | `state-evidence/truth/sqlite/sqlite-database.ts` | SQLite database management (WAL + migration) |
+| 10 | 829 | `domains/registry/plugin-spi-registry.ts` | Plugin SPI registry |
+| 11 | 828 | `org-governance/sso-scim/scim-sync/scim-service.ts` | SCIM 2.0 user/group sync |
+| 12 | 802 | `scale-ecosystem/marketplace/worker-handshake-service-async.ts` | Worker handshake async mirror |
+| 13 | 798 | `domains/governance/division-loader.ts` | Division definition loader |
+| 14 | 796 | `execution/lease/execution-lease-service.ts` | Execution lease (fencing token) |
+| 15 | 795 | `shared/observability/anomaly-detection-service.ts` | Time-series anomaly detection (z-score/IQR/EWMA) |
 
-| File                            | Lines | Module          | Issue                    |
-| ------------------------------ | ----- | --------------- | ------------------------ |
-| `worker-repository.ts`         | 1,057 | state-evidence  | Largest Repository file  |
-| `async worker-repository.ts`   | 1,052 | state-evidence  | Sync version mirror      |
-| `operations-repository.ts`     | 868   | state-evidence  | Complex ops data access  |
-| `slo-alerting-service.ts`      | 799   | shared          | 5-channel alerting       |
-| `execution-lease-service.ts`   | 796   | execution       | Multi-step verification chain |
-| `anomaly-detection-service.ts` | 795   | shared          | Complex statistical logic |
-| `billing-service.ts`           | 791   | scale-ecosystem | Complete billing engine  |
-| `patch-dsl-service.ts`         | 791   | execution       | DSL parsing              |
-| `plugin-spi-registry.ts`       | 829   | domains         | Single file too large     |
+> 4 files exceed 1,000 lines (vs v12.0: 2 files). 4 of Top 15 are async mirror files.
 
-### 7.5 Outdated Documentation Paths
+### 7.3 Sync/Async Mirror Analysis
 
-6 root-level Markdown files (`src/README.md`, `MEMORY.md`, `CLAUDE.md`, `README.md`, `AGENTS.md`, `MIGRATION_BASELINE.md`) still reference non-existent paths like `src/core/`, `src/cli/`, `src/gateway/`.
+| Metric | v13.0 | vs v12.0 |
+| --- | --- | --- |
+| Total async mirror files | 19 | +12 |
+| Total async mirror lines | 6,934 | +5,000+ |
+| Directory groups | 5 | +2 |
+| Has sync counterpart | 14 (73.7%) | — |
+| **Missing sync counterpart** | **5 (26.3%)** | **New risk** |
 
----
+#### 7.3.1 Distribution by Module
 
-## 8. Security and Reliability Analysis
+| Module | Async Files | Lines | Missing Sync |
+| --- | --- | --- | --- |
+| `scale-ecosystem/marketplace/` | 9 | 4,215 | **5** |
+| `platform/execution/` (across 4 subdirectories) | 7 | 1,766 | 0 |
+| `platform/control-plane/incident-control/` | 1 | 784 | 0 |
+| `platform/state-evidence/events/` | 1 | 121 | 0 |
+| `ops-maturity/drift-detection/` | 1 | 48 | 0 |
 
-### 8.1 Security Capability Matrix
-
-| Capability           | Status           | Location                                                        | Assessment             |
-| ------------------- | ---------------- | --------------------------------------------------------------- | ---------------------- |
-| Sandbox path verification | **Implemented** | `control-plane/iam/sandbox-policy.ts` (327 lines, 3 modes)     | realpath + symlink detection |
-| Shell injection defense | **Implemented** | `execution/tool-executor/command-executor.ts` 7-layer defense   | Complete              |
-| Command policy       | **Implemented** | deny-by-default, unknown commands rejected                       | Complete              |
-| Output sanitization  | **Implemented** | `execution/tool-executor/tool-output-sanitizer.ts`               | secret redaction + injection detection |
-| OIDC/OAuth          | **Implemented** | `interface/api/oidc-oauth/`                                     | JWKS + IdP token validation |
-| JWT authentication   | **Implemented** | `interface/api/api-auth-service.ts`                             | Algorithm whitelist missing |
-| Secret management    | **Implemented** | `control-plane/iam/` (510 lines, 5 Providers)                   | Cloud providers not production-verified |
-| CVE intelligence     | **Implemented** | `control-plane/iam/cve-intelligence-service.ts` (748 lines)    | Complete              |
-| Network egress control | **Implemented** | `control-plane/iam/` network-egress-* + outbound-url-policy | Complete              |
-| Data classification  | **Implemented** | `control-plane/iam/data-classification-service.ts` (730 lines) | PII/sensitive data    |
-| Audit integrity      | **Implemented** | `control-plane/iam/audit-event-integrity.ts`                   | Tier-1 audit event chain |
-| MCP tool guard      | **Implemented** | `execution/tool-executor/mcp-tool-guard.ts`                    | Complete              |
-
-### 8.2 Reliability Capability Matrix
-
-| Capability              | Status            | Location                                                         | Assessment      |
-| --------------------- | ----------------- | ---------------------------------------------------------------- | -------------- |
-| Lease + fencing token | **Implemented**   | `execution/lease/` (796 lines, 5-step verification)              | Complete        |
-| Transactional state updates | **Implemented** | `db.transaction()` wrapped state changes                     | Complete        |
-| Tier-1 event persistence | **Implemented** | `state-evidence/events/durable-event-bus.ts`                   | Complete        |
-| Graceful shutdown     | **Implemented**   | `execution/startup/graceful-shutdown.ts` (276 lines)              | Complete        |
-| Process tracking      | **Implemented**   | `execution/resource/process-tracker.ts`                          | PID + PGID      |
-| Loop detection        | **Implemented**   | `execution/execution-engine/loop-detection.ts` (443 lines)        | Complete        |
-| Admission control     | **Implemented**   | `execution/execution-engine/admission-controller.ts`             | Complete        |
-| Context compression   | **Implemented**   | `execution/execution-engine/context-compaction-service.ts`      | Complete        |
-| Gateway retry + DLQ   | **Implemented**   | Exponential backoff, max 5, rate limiting, dead letter queue     | Complete        |
-| Circuit breaker       | **Implemented**   | `model-gateway/provider-registry/circuit-breaker.ts` (289 lines)  | Needs production verification |
-| Hot upgrade           | **Experimental**  | `execution/hot-upgrade/` (1,952 lines)                            | Needs verification |
-| Cross-region deployment | **Experimental** | `execution/ha/cross-region-deployment-service.ts` (663 lines)  | Needs verification |
-| Stability rehearsal   | **Implemented**   | `shared/stability/` (32 files, 13,328 lines, 28+ rehearsal suites) | Complete      |
-
-### 8.3 Observability Capability Matrix
-
-| Capability         | Status           | Location                                                                              |
-| ----------------- | ---------------- | ------------------------------------------------------------------------------------- |
-| Structured logging | **Implemented** | `shared/observability/structured-logger.ts` (342 lines, ring buffer)                    |
-| Health checks      | **Implemented** | 4 levels: ok → degraded → overloaded → unhealthy                                        |
-| Prometheus export  | **Implemented** | `shared/observability/prometheus-metrics-exporter.ts`                                   |
-| OpenTelemetry      | **Implemented** | `shared/observability/otel-bootstrap.ts` + `otel-tracer.ts`                            |
-| Log transmission   | **Implemented** | 3 channels: Stdout / Fluentd / Datadog                                                |
-| Diagnostics service | **Implemented** | `shared/observability/diagnostics-service.ts` + `diagnostics-support.ts` (1,165 lines) |
-| Anomaly detection  | **Implemented** | `shared/observability/anomaly-detection-service.ts` (795 lines)                        |
-| SLI/SLO alerting   | **Implemented** | `shared/observability/slo-alerting-service.ts` (799 lines, 5 channels)                 |
-| Distributed tracing | **Implemented** | `shared/observability/trace-context.ts` + OTel integration                             |
+> **Risk**: The 5 sync-less async files in marketplace/ (human-takeover/handshake/writeback/dispatch/event-bus) account for 61% of total async lines. These files directly implement PG-specific logic rather than wrapping existing sync services.
 
 ---
 
-## §9 Testing System Analysis
+## 8. Testing Analysis
 
-### 9.1 Test Scale Overview
+### 8.1 Test Scale Overview
 
-| Dimension          | Value                                |
-| ----------------- | ------------------------------------ |
-| Total test files  | 1,018                                |
-| Test code lines   | 206,717                              |
-| Test cases        | ~9,255                               |
-| Helper files      | 19 (2,120 lines)                     |
-| Fixture files     | 4 (459 lines)                        |
-| Golden snapshot files | 3 (332 lines)                    |
-| Test framework    | `node:test` + `node:assert/strict`   |
-| External test deps| None (zero Jest/Mocha/Sinon/Chai)   |
-| Concurrency       | `--test-concurrency=12`               |
+| Metric | v13.0 | vs v12.0 |
+| --- | --- | --- |
+| Total test files | 1,825 `.test.ts` | +670 (+58.0%) |
+| Test lines | 440,180 | +189,972 (+76.0%) |
+| Test/Source ratio | 1.66:1 | ↑ from 1.01:1 |
+| `test()` cases | 21,682 | — |
+| `it()` cases | 536 | — |
+| `describe()` blocks | 285 | — |
+| **Total cases** | **22,218** | — |
+| `test.skip()` count | 74 | — |
 
-### 9.2 Distribution by Directory
+> 97.6% of cases use `node:test` native `test()` style, 2.4% use `it()`/`describe()` style.
 
-| Directory          | Files | Lines    |
-| ----------------- | -----:| --------:|
-| `tests/unit/`     |   704 | 148,154 |
-| `tests/integration/` | 289 |  53,317 |
-| `tests/e2e/`      |    10 |   2,807 |
-| `tests/golden/`   |     8 |   1,330 |
-| `tests/performance/` |   6 |     874 |
-| `tests/fixtures/` |     1 |     235 |
-| **Total**         |**1,018**|**206,717** |
+### 8.2 Test Category Distribution
 
-### 9.3 Unit Test Breakdown (704 files, 148,154 lines)
+| Category | Files | Lines | test() | it() | Description |
+| --- | --- | --- | --- | --- | --- |
+| unit/ | 1,398 | 346,906 | 19,678 | 473 | Module isolation tests |
+| integration/ | 360 | 77,159 | 1,709 | 32 | Cross-service/CLI/runtime/sandbox tests |
+| golden/ | 14 | 2,033 | 80 | — | API response/CLI output/OpenAPI snapshots |
+| e2e/ | 17 | 6,687 | 133 | — | End-to-end flows (~17 flows) |
+| performance/ | 15 | 4,893 | 72 | 31 | Performance benchmarks |
 
-| Sub-area           | Files |   Lines |
-| ------------------ | ----: | ------: |
-| `unit/platform/`   |   519 | 111,903 |
-| `unit/runtime/`   |    45 |  15,050 |
-| `unit/scale-ecosystem/` |     37 |   7,917 |
-| `unit/domains/`         |     25 |   4,520 |
-| `unit/ops-maturity/`    |     27 |   3,776 |
-| `unit/plugins/`         |     18 |   2,644 |
-| `unit/sdk/`             |     10 |     915 |
-| `unit/interaction/`     |      9 |     659 |
-| `unit/org-governance/`  |      8 |     585 |
-| `unit/apps/`            |      4 |      39 |
-| `unit/docs/`            |      1 |     120 |
-| `unit/core/`            |      1 |      26 |
+> **helpers/**: 19 files 2,126 lines (api/pmf/concurrent-runner/typed-factories/e2e-harness/integration-context/seed/process-guard/golden/repository-harness etc.)
+> **fixtures/**: 7 files 513 lines (migration snapshots + prompt-engine templates)
 
-**Platform Unit Test Deep Breakdown (519 files, 111,903 lines):**
+### 8.3 Unit Test Module Distribution (tests/unit/)
 
-| Submodule                        | Files |   Lines |
-| -------------------------------- | ----: | ------: |
-| `unit/platform/state-evidence/`  |   102 |  31,659 |
-| `unit/platform/shared/`          |    88 |  15,894 |
-| `unit/platform/control-plane/`   |    82 |  14,960 |
-| `unit/platform/execution/`       |    63 |  12,921 |
-| `unit/platform/orchestration/`   |    59 |  11,634 |
-| `unit/platform/interface/`       |    53 |  10,954 |
-| `unit/platform/contracts/`       |    33 |   6,482 |
-| `unit/platform/model-gateway/`   |    21 |   5,873 |
-| `unit/platform/prompt-engine/`   |    11 |   1,262 |
-| `unit/platform/compliance/`       |     6 |     244 |
+| Subdirectory | Files | Lines | Share |
+| --- | --- | --- | --- |
+| platform/ | 902 | 245,676 | 70.9% |
+| ops-maturity/ | 103 | 21,485 | 6.2% |
+| runtime/ | 48 | 16,683 | 4.8% |
+| scale-ecosystem/ | 70 | 14,402 | 4.2% |
+| domains/ | 55 | 11,918 | 3.4% |
+| org-governance/ | 42 | 10,357 | 3.0% |
+| sdk/ | 65 | 10,113 | 2.9% |
+| interaction/ | 47 | 7,774 | 2.2% |
+| plugins/ | 24 | 3,269 | 0.9% |
+| core/ | 13 | 3,084 | 0.9% |
+| root-level | 14 | 941 | 0.3% |
+| Other | 15 | 1,204 | 0.3% |
 
-### 9.4 Integration Test Breakdown (289 files, 53,317 lines)
+### 8.4 Integration Test Module Distribution (tests/integration/)
 
-| Sub-area                        | Files |   Lines |
-| ------------------------------ | -----: | ------: |
-| `integration/platform/`         |   220 |  41,277 |
-| `integration/sdk/`              |    35 |   9,165 |
-| `integration/ops-maturity/`     |    12 |     783 |
-| `integration/domains/`          |     6 |     604 |
-| `integration/scale-ecosystem/` |     7 |     499 |
-| `integration/stability/`        |     2 |     263 |
-| `integration/workflow/`        |     2 |     218 |
-| `integration/org-governance/`   |     2 |     188 |
-| `integration/orchestration/`    |     1 |     185 |
-| `integration/interaction/`      |     2 |     135 |
+| Subdirectory | Files | Lines |
+| --- | --- | --- |
+| platform/ | 272 | 59,664 |
+| sdk/ | 35 | 9,139 |
+| domains/ | 17 | 3,267 |
+| ops-maturity/ | 17 | 2,597 |
+| scale-ecosystem/ | 7 | 500 |
+| interaction-governance/ | 1 | 453 |
+| scale-ops/ | 1 | 405 |
+| interaction/ | 3 | 287 |
+| stability/ | 2 | 263 |
+| workflow/ | 2 | 218 |
+| org-governance/ | 2 | 194 |
+| orchestration/ | 1 | 185 |
 
-**Platform Integration Test Deep Breakdown (220 files, 41,277 lines):**
+### 8.5 Coverage Configuration
 
-| Submodule                                | Files |   Lines |
-| ---------------------------------------- | -----: | ------: |
-| `integration/platform/execution/`         |    83 |  15,735 |
-| `integration/platform/security/`          |    63 |   9,019 |
-| `integration/platform/state-evidence/`    |    19 |   3,749 |
-| `integration/platform/contracts/`         |    13 |   3,266 |
-| `integration/platform/shared/`            |    13 |   3,124 |
-| `integration/platform/control-plane/`     |    10 |   2,842 |
-| `integration/platform/interface/`         |     4 |   1,167 |
-| `integration/platform/model-gateway/`     |     7 |   1,066 |
-| `integration/platform/orchestration/`     |     3 |     855 |
-| `integration/platform/prompt-engine/`     |     3 |     320 |
-| `integration/platform/compliance/`         |     2 |     134 |
+| Config Item | Value |
+| --- | --- |
+| Tool | c8 ^11.0.0 |
+| Report formats | text, html, lcov, json-summary |
+| Instrumentation scope | `dist/src/**/*.js` (`"all": true` includes untested files) |
+| Force 100% flag | Disabled |
+| Baseline gate thresholds | All `null` (not yet seeded) |
+| Baseline gate epsilon | 0.05% |
+| Current global line coverage | 0.75% (affected by `"all": true`) |
+| Mutation testing | Stryker ^9.6.1 + typescript-checker |
 
-### 9.5 Top 15 Largest Test Files
-
-| Rank | File                                                                          | Lines |
-| ---: | ---------------------------------------------------------------------------- | -----: |
-|    1 | `integration/sdk/cli/ops-cli.test.ts`                                        | 3,916 |
-|    2 | `unit/runtime/execution-handshake.test.ts`                                    | 1,873 |
-|    3 | `unit/platform/state-evidence/truth/async-repositories.test.ts`               | 1,699 |
-|    4 | `integration/platform/execution/execution-dispatch-service.test.ts`            | 1,684 |
-|    5 | `unit/platform/interface/api/http-api-server.test.ts`                             | 1,557 |
-|    6 | `unit/runtime/execution-dispatch-service.test.ts`                                 | 1,378 |
-|    7 | `unit/runtime/execution-lease-service.test.ts`                                    | 1,251 |
-|    8 | `integration/platform/control-plane/incident-control/doctor.test.ts`              | 1,212 |
-|    9 | `unit/platform/model-gateway/provider-registry/openai-chat-service.test.ts`       | 1,195 |
-|   10 | `unit/scale-ecosystem/marketplace/billing-payment-gateway.test.ts`                | 1,146 |
-|   11 | `unit/platform/state-evidence/memory/memory-service.test.ts`                      | 1,104 |
-|   12 | `unit/platform/model-gateway/provider-registry/anthropic-chat-service.test.ts`    | 1,060 |
-|   13 | `integration/platform/execution/startup-consistency-recovery.test.ts`             | 1,027 |
-|   14 | `unit/platform/state-evidence/truth/repositories/organization-repository.test.ts` | 1,022 |
-|   15 | `integration/platform/contracts/v2-7-extension-contracts.test.ts`                 |   983 |
-
-### 9.6 Test Framework and Patterns
-
-- **Runner**: `node:test` — imported in 1,015/1,018 files
-- **Assertion library**: `node:assert/strict` — imported in 1,009 files
-- **Registration pattern**: Flat `test()` predominant (9,116 times), `it()` only 139 times, `describe()` only 8 times
-- **Mock**: `node:test` built-in mock objects, used in only 3 files
-- **Zero external dependencies**: No Jest / Mocha / Sinon / Chai
-
-### 9.7 Coverage Configuration
-
-**c8 coverage tool (`.c8rc.json`)**:
-
-- Report formats: `text`, `html`, `lcov`, `json-summary`
-- Scope: `dist/src/**/*.js`, enabled `all: true` full instrumentation
-- Exclude: `dist/tests/`, `node_modules/`, `scripts/`, config files
-
-**Coverage baseline (`.coverage-baseline.json`)**:
-
-| Metric  | Minimum Required |
-| ------- | --------------: |
-| Lines   |           84.1% |
-| Stmts   |           84.1% |
-| Funcs   |           82.8% |
-| Branch  |           79.8% |
-
-- Tracks independent metrics for **42 source directories**
-- CI gate: `scripts/ci/check-coverage-baseline.mjs` — blocks on coverage degradation
-- Ratchet update: `scripts/ci/update-coverage-baseline.mjs` — only allows upward adjustment
-
-**Mutation testing (Stryker)**:
-
-- 9 critical path files participate in mutation testing
-- Thresholds: high=80, low=60, break=50
-- Targets: auth/billing/approval/gateway routing + OAPEFLIR loop + Redis configuration
-
-### 9.8 Test Script Matrix
-
-| Script                        | Purpose                          |
-| ----------------------------- | -------------------------------- |
-| `npm test`                    | Full regression + coverage gate  |
-| `npm run test:unit`           | Unit tests only                  |
-| `npm run test:integration`    | Integration tests only           |
-| `npm run test:golden`         | Golden snapshot tests only       |
-| `npm run test:pg-integration` | PostgreSQL integration (concurrency=1) |
-| `npm run test:performance`    | Performance benchmarks (concurrency=1) |
-| `npm run test:mutation`       | Stryker mutation testing         |
-| `npm run test:secret-providers` | Secret provider isolation tests |
-
-### 9.9 Test Helper System
-
-**`tests/helpers/` (19 files, 2,120 lines) — Key files**:
-
-| File                   | Lines | Purpose                    |
-| ---------------------- | ----: | -------------------------- |
-| `api.ts`               |   362 | HTTP API test helper       |
-| `pmf.ts`               |   251 | PMF scenario builder       |
-| `fixtures/composite.ts`|   227 | Composite fixture generation |
-| `concurrent-runner.ts` |   158 | Concurrent test runner      |
-| `typed-factories.ts`   |   143 | Type-safe factory methods   |
-| `integration-context.ts`|   131 | Integration test context    |
-| `e2e-harness.ts`       |   131 | E2E test harness            |
-
-### 9.10 Test System Assessment
-
-**Strengths**:
-
-- Test code (206,717 lines) exceeds source code (191,611 lines), test density 1.08:1
-- Zero external test dependencies, entirely based on Node.js built-in capabilities
-- Coverage baseline gate + mutation testing dual guarantee
-- 42 directory-level independent coverage tracking
-
-**Risks**:
-
-- E2E tests only 10 files (2,807 lines), lacking end-to-end scenario coverage
-- `tests/unit/runtime/` (45 files) not aligned with new 7-layer structure, should migrate to `unit/platform/`
-- `tests/unit/core/` and `tests/unit/apps/` only 1/4 files each, extremely low coverage
-- Largest test file (ops-cli.test.ts, 3,916 lines) too large, recommend splitting
+> Coverage values are extremely low because `"all": true` instruments all source files, while tests only indirectly reach a small number of internal functions through barrel re-exports. Actual functional coverage should reference per-module reports.
 
 ---
 
-## §10 Configuration and Deployment Architecture
+## 9. Configuration and Deployment Architecture
 
-### 10.1 Configuration System
+### 9.1 Config Directory Structure (60 files, 19 directories)
 
-**27 JSON files, 652 lines, distributed across 9 subdirectories:**
+| Directory | Files | Description | vs v12.0 |
+| --- | --- | --- | --- |
+| domains/ | 25 | 24 vertical domain configs + domain schema | — |
+| security/ | 6 | Security policies (sandbox/secrets/cve/iam/encryption/compliance) | — |
+| runtime/ | 6 | Runtime configs (execution/worker/lease/queue/ha/startup) | — |
+| environments/ | 5 | dev/test/staging/pre-prod/prod environment coverage | — |
+| providers/ | 3 | Model provider configs (anthropic/openai/minimax) | — |
+| risk/ | 2 | Risk assessment policies | — |
+| **constitution/** | **1** | **Platform constitution principle registry (4 fundamental governance principles)** | **New** |
+| bootstrap/ | 1 | Platform bootstrap config | — |
+| conversation/ | 1 | Conversation config | — |
+| cost-alert/ | 1 | Cost alert thresholds | — |
+| dr/ | 1 | Disaster recovery config | — |
+| exception-recovery/ | 1 | Exception recovery policies | — |
+| gateways/ | 1 | Gateway config | — |
+| knowledge/ | 1 | Knowledge base config | — |
+| nl-gateway/ | 1 | NL gateway config | — |
+| plugins/ | 1 | Plugin registry config | — |
+| product/ | 1 | Product config | — |
+| quality/ | 1 | Quality gate config | — |
+| workflows/ | 1 | Workflow definitions | — |
 
-| Directory             | Files | Responsibilities                                         |
-| --------------------- | ----: | ------------------------------------------------------- |
-| `config/runtime/`     |     6 | Runtime parameters: concurrency / task timeout / step timeout |
-| `config/security/`    |     6 | Approval mode / sandbox level / destructive operation control |
-| `config/environments/`|     5 | Deployment descriptors: registry / namespace / release strategy |
-| `config/providers/`   |     3 | Model providers: OpenAI / Anthropic / MiniMax configuration |
-| `config/bootstrap/`   |     1 | Application identity: name / stage gating / core enablement |
-| `config/domains/`     |     1 | Domain definitions: Coding workflow / toolkit / model preferences |
-| `config/gateways/`    |     1 | Gateway defaults: CLI interface / SSE stream              |
-| `config/knowledge/`   |     1 | Knowledge namespace: access policy / capacity limit / freshness |
-| `config/plugins/`      |     1 | Plugin list: sandbox constraints for 3 built-in plugins    |
-| `config/product/`      |     1 | Billing plans: Community / Pro / Enterprise tiers          |
+#### 9.1.1 constitution/ Details (v13.0 New)
 
-### 10.2 Environment Gradient (5 Levels)
+`constitution/default.json` declares 4 platform constitutional principles:
 
-`dev` → `test` → `staging` → `pre-prod` → `prod`, progressively tightened across 4 configuration layers:
+1. **human-approval-for-high-risk** — High-risk/irreversible operations require human approval. Executors: policy-center, approval-routing, platform-panic
+2. **authoritative-state-before-side-effects** — State changes must persist before side effects. Executors: truth-store, dispatcher, outbox
+3. **least-privilege-sandboxing** — File/network/execution scope must be within policy authorization boundaries. Executors: policy-center, sandbox, connector-framework
+4. **knowledge-boundary-and-chinese-wall** — Cross-boundary knowledge access must comply with authorization and organizational isolation. Executors: knowledge-boundary, knowledge-federator, chinese-wall-policy
 
-| Dimension         | dev           | test          | staging      | pre-prod         | prod              |
-| ---------------- | ------------- | ------------- | ------------ | ---------------- | ----------------- |
-| Approval mode    | auto          | supervised    | supervised   | supervised       | **strict**        |
-| Max concurrency  | 1             | 2             | 4            | 6                | **8**             |
-| Task timeout     | 120s          | 180s          | 240s         | 300s             | **600s**          |
-| Release strategy | rolling, canary| rolling, canary| +blue_green | canary, blue_green | canary, blue_green |
-| Replica count   | 1             | 1             | 2            | 2                | **3**             |
-| HPA             | disabled      | disabled      | 2-5          | 2-6              | **3-10**          |
-| PDB             | disabled      | disabled      | min 1        | min 1            | **min 2**         |
-| Storage driver  | sqlite        | sqlite        | sqlite       | postgres         | **postgres**      |
-| ExternalSecrets | disabled      | disabled      | disabled     | AWS SM           | **AWS SM**        |
-| Destructive ops | (not set)     | (not set)     | (not set)    | **false**        | **false**         |
+### 9.2 Deployment Architecture (42 files)
 
-### 10.3 Docker Configuration
+| Directory | Files | Tool |
+| --- | --- | --- |
+| helm/ | 19 | Helm chart (6 environment values + 11 templates including canary ingress) |
+| terraform/ | 9 | AWS IaC (EKS/RDS/ElastiCache/ECR modules, 3 environment tfvars) |
+| scripts/ | 4 | deploy.sh, rollback.sh, dr-drill.sh, verify-hot-upgrade.sh |
+| chaos/ | 4 | Chaos experiments (Redis disconnect/PG disconnect/Pod Kill/Network latency) |
+| prometheus/ | 3 | Prometheus + Alertmanager + alerting rules |
+| grafana/ | 2 | Dashboard JSON + supply config |
+| runbooks/ | 1 | Production alerting runbook |
 
-**Dockerfile (46 lines)** — Two-stage build:
+### 9.3 npm Script System (103 scripts)
 
-| Stage     | Base Image             | Purpose                              |
-| --------- | ---------------------- | ------------------------------------ |
-| `build`   | `node:22-bookworm-slim` | Full dependency install + TypeScript compilation |
-| `runtime` | `node:22-bookworm-slim` | Production dependencies only + compiled artifacts |
+| Category | Count | Description |
+| --- | --- | --- |
+| stable-* rehearsals | 26 | Production rehearsal scripts (chaos/lease/migration/recovery etc.) |
+| CLI operation entry points | ~60 | doctor/inspect/dispatch/worker/replay etc. |
+| Testing | 9 | unit/integration/golden/pg/secret/performance/mutation |
+| Coverage | 3 | report/gate/baseline:update |
+| Build/Lint | 3 | build/lint/format |
+| Migration | 4 | status/up/down/sqlite-to-pg |
 
-Security hardening:
+### 9.4 Dependency List
 
-- Running as non-root user `node` (UID 1000)
-- All files `--chown=node:node`
-- Health check: `GET /healthz` (30s interval, 3 retries)
-- Exposed port: **3000**
+**Runtime (11)**: @opentelemetry/{exporter-trace-otlp-http, instrumentation-http, resources, sdk-node, semantic-conventions}, ioredis ^5.10, postgres ^3.4, typescript ^5.8, ws ^8.18, xml-crypto ^2.1, zod ^3.25
 
-**docker-compose.yml (131 lines)** — 5 services:
-
-| Service      | Image                        | Port | Key Configuration                                             |
-| ----------- | ---------------------------- | ---- | ------------------------------------------------------------- |
-| `api-server` | local build                  | 3000 | Read-only filesystem, 64MB tmpfs, 1 CPU / 512MB / 256 PIDs, all capabilities dropped |
-| `postgres`  | `postgres:16-bookworm`       | 5432 | Persistent volume `automatic-agent-postgres`                   |
-| `redis`     | `redis:7-alpine`            | 6379 | AOF disabled, 256MB limit, LRU eviction                       |
-| `prometheus`| `prom/prometheus:v2.54.1`    | 9090 | Mounted rules directory read-only                             |
-| `alertmanager`| `prom/alertmanager:v0.27.0` | 9093 | Mounted config read-only                                     |
-
-### 10.4 CI/CD Workflows (4)
-
-**ci.yml (133 lines)** — Main CI pipeline, 5 jobs:
-
-| Job              | Trigger      | Responsibilities                                                                  |
-| --------------- | ------------ | --------------------------------------------------------------------------------- |
-| `validate`       | push/PR      | lint → audit → typecheck → test → coverage gate → stable validation (Node 20+22 matrix) |
-| `pg-integration` | push/PR      | PostgreSQL 16 service container, `test:pg-integration`                              |
-| `mutation-test`  | push to main | Stryker mutation testing                                                           |
-| `security`       | push/PR      | CodeQL TypeScript static analysis                                                 |
-| `trivy-scan`     | push/PR      | Docker image CRITICAL/HIGH vulnerability scanning                                   |
-
-**publish-image.yml (70 lines)** — Docker image publishing:
-
-- Manual trigger (`workflow_dispatch`), input: environment / tag / repository
-- Pre-check build → GHCR login → Buildx build push (GHA cache)
-
-**deploy-environment.yml (278 lines)** — Environment deployment:
-
-- Manual trigger, 5-level environment selection
-- Supports rolling / canary / blue_green three strategies
-- AWS OIDC authentication → kubectl + Helm 3.16.3
-- Auto rollback: rollback to previous Helm version on deployment failure
-
-**secret-provider-integration.yml (19 lines)** — Secret provider integration testing
-
-### 10.5 Deployment Infrastructure (40 files, ~2,533 lines)
-
-| Category          | Files | Lines | Tool              |
-| ---------------- | -----: | ----: | ----------------- |
-| Helm Charts       |    18 |   720 | Helm 3.16.3        |
-| Terraform modules |     9 |   956 | Terraform + AWS   |
-| Prometheus rules  |     3 |    74 | Prometheus v2.54.1 |
-| Grafana dashboards|     2 |   348 | Grafana JSON      |
-| Chaos engineering |     4 |    59 | Chaos Mesh        |
-| Deployment scripts|     3 |   323 | Bash              |
-| Operations manual    |     1 |    53 | Markdown           |
-
-**Terraform architecture** (`terraform/main.tf`, 359 lines):
-
-- AWS provider (~> 5.0)
-- VPC (3 AZ, public/private subnets, NAT gateway)
-- EKS: Kubernetes 1.29, managed node groups
-- RDS: PostgreSQL 16.2, encrypted, production multi-AZ
-- ElastiCache: Redis 7.1, encrypted, production 3-cluster auto-failover
-- ECR: push scanning, 14-day cleanup of untagged images
-
-**Helm Chart** (`automatic-agent` v0.1.0):
-
-- Deployment (rolling update, non-root UID 1000, three probes + preStop hook)
-- Service (ClusterIP, http + metrics ports)
-- Ingress (nginx, TLS) + Canary Ingress (weight annotations)
-- HPA (CPU + memory autoscaling) + PDB
-- ExternalSecret (AWS Secrets Manager integration)
-
-**Prometheus alerting rules** (3 rules):
-
-- `AutomaticAgentHighErrorRate`: >5% 5xx for 10min → critical
-- `AutomaticAgentTaskFailureRate`: >10% failure for 15min → warning
-- `AutomaticAgentMemoryPressure`: RSS > 512MiB for 10min → warning
-
-**Grafana dashboards** ("Automatic Agent Platform", 13 panels):
-
-- Request metrics: rate / P50/P95/P99 latency
-- Execution & queue: active executions / queue depth / provider success rate
-- OAPEFLIR & knowledge: stage duration / result distribution
-- System health: memory / event loop delay / Worker health ratio / DLQ size
-
-**Chaos engineering** (4 scenarios):
-
-- Pod kill (30s), network latency (500ms + 100ms jitter, 2min)
-- PostgreSQL disconnect (60s), Redis disconnect (60s)
-
-### 10.6 Script System (10 files, 1,236 lines)
-
-| Script                                 | Lines | Purpose                                 |
-| ------------------------------------- | ----: | -------------------------------------- |
-| `reorg-code-structure.mjs`             |   754 | Code structure reorganization: old flat → 7-layer architecture |
-| `generate-src-module-test-matrix.mjs` |   200 | Generate source-test coverage matrix      |
-| `restore-sqlite.sh`                   |    85 | SQLite restore + integrity verification  |
-| `backup-sqlite.sh`                    |    84 | WAL safe online backup + retention policy |
-| `check-coverage-baseline.mjs`         |    42 | Coverage baseline gate                  |
-| `check-changelog.mjs`                |    22 | Changelog version validation            |
-| `update-coverage-baseline.mjs`        |    16 | Coverage baseline ratchet update         |
-| `clean-dist.mjs`                      |    15 | Build artifact cleanup                  |
-| `mutation-critical-tests.sh`           |    10 | Critical path mutation test subset      |
-| `generate-coverage-report.mjs`         |     8 | Coverage report generation              |
+**Dev (14)**: @eslint/js ^9.25, @prettier/plugin-xml ^3.4, @stryker-mutator/{core, typescript-checker} ^9.6, @types/{node, ws, xml-crypto}, c8 ^11.0, eslint ^9.25, husky ^9.1, lint-staged ^16.4, prettier ^3.8, tsx ^4.21, typescript-eslint ^8.31
 
 ---
 
-## §11 Refactoring Priorities and Conclusions
+## 10. Technical Debt and Refactoring Priorities
 
-### 11.1 P0 — Architecture Blockers (Immediate Action)
+### 10.1 Technical Debt Inventory
 
-| ID   | Issue                            | Impact                                                                        | Recommended Action                                |
-| ---- | -------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| B1   | PostgreSQL async/sync incompatibility | Production environment (pre-prod/prod) must use postgres driver, but many repositories still sync SQLite implementation | Unify async interface, demote SQLite to dev/test backend |
-| B2   | `src/core/` legacy shim          | 8 files only 29 lines, all single-line re-exports, adds path confusion    | Delete `src/core/`, directly reference `src/platform/` |
-| B3   | E2E coverage insufficient        | Only 10 files / 2,807 lines, cannot verify complete user journey           | Add core scenarios: task submission→dispatch→execution→result delivery→billing |
+| # | Category | Description | Severity | Impact Scope | vs v12.0 |
+| --- | --- | --- | --- | --- | --- |
+| TD-1 | Mirror maintenance | 19 async mirror files (6,934 lines), marketplace/ 5 lack sync counterparts | **High** | Cross 5 modules | **Worsened** (+12 files) |
+| TD-2 | Module bloat | OAPEFLIR expanded from single file 439 lines to 64 files 5,678 lines; learn/ and improve-rollout/ can be extracted as independent submodules | Medium | orchestration/ | **New** |
+| TD-3 | Stub coverage | 242 stub files (17.4%); org-governance/ (31.7%) and scale-ecosystem/ (31.1%) stub rates high | Medium | Global | Improved (↓0.5pp) |
+| TD-4 | Large files | 4 files exceed 1,000 lines (DomainBaselineCatalog 1,113 / WorkerRepository 1,052 / SloAlerting 1,021 / ApprovalFlow 1,017) | Medium | 4 modules | Worsened (2→4) |
+| TD-5 | Coverage baseline | Coverage gate thresholds all `null`, CI won't reject coverage regression | Medium | CI/CD | — |
+| TD-6 | Weak E2E | Only 17 files 133 cases covering ~17 flows, far insufficient for production validation | Medium | tests/e2e/ | — |
+| TD-7 | shared bloat | shared/stability/ (13,642 lines) accounts for 48% of shared/, can be split as independent top-level submodule | Low | platform/shared/ | — |
+| TD-8 | marketplace imbalance | marketplace/ (11,972 lines) accounts for 77% of scale-ecosystem/, imbalanced with other 5 submodules | Low | scale-ecosystem/ | — |
+| TD-9 | barrel export | `src/index.ts` (272 lines) exports all modules, no selective tree-shaking | Low | Entry | **New** |
 
-### 11.2 P1 — Structure Optimization (This Iteration)
+#### 10.1.1 Status Updates (2026-04-24)
 
-| ID   | Issue                            | Recommended Action                                      |
-| ---- | -------------------------------- | --------------------------------------------------------|
-| S1   | CLI startup entry fragmentation (79 entry points) | Unify CLI framework, subcommand routing instead of independent files |
-| S2   | `tests/unit/runtime/` misaligned | Migrate 45 files to corresponding submodules in `tests/unit/platform/` |
-| S3   | `shared ↔ control-plane` bidirectional dependency | Extract stability rehearsal as independent module, eliminate reverse references |
-| S4   | 26 re-export barrel files         | Evaluate retention value, merge or delete redundant layers |
-| S5   | `execution` cross-module coupling (386 lines) | Introduce contracts abstraction, reduce direct dependency on state-evidence |
+- **TD-1 status**: Core gap resolved. Added `src/scale-ecosystem/runtime-services/` submodule; marketplace/ root's 5 async entries previously lacking sync counterparts have all been supplemented with compatible sync/sync-shim; orphan mirror count `5 -> 0`.
+- **TD-2 status**: First-phase boundary split completed. Added `src/platform/orchestration/learn/` and `src/platform/orchestration/improve-rollout/` top-level export surfaces; `learn/` + `improve-rollout/` no longer only under `oapeflir/` internal paths.
+- **TD-3 status**: Guard tightened. `stub-count-ratchet` now excludes pure compatibility facade/re-export modules, avoiding miscounting compatibility layers as stubs; current ratchet baseline tightened to `111`.
+- **TD-4 status**: The 4 `1000+` files listed in the document have been eliminated this round. Current line counts are `DomainBaselineCatalog 599`, `WorkerRepository 711`, `SloAlerting 992`, `ApprovalFlow 885`.
+- **TD-5 status**: Resolved. `.coverage-baseline.json` now has numeric thresholds, and `compareAgainstBaseline()` now errors directly on `null/missing/invalid` baseline; the "null threshold but CI passes" loophole no longer exists.
+- **TD-6 status**: Original table numbers outdated; risk now observable. Current `tests/e2e/` is `21` files, `190` cases; new `E2E` scale ratchet added to prevent end-to-end coverage from regressing again; larger-scale business process expansion can continue.
+- **TD-7 status**: Top-level split entry completed. Added `src/platform/stability/index.ts` and package subpath export; `shared/stability/` now has independent top-level consumer surface; physical migration can continue.
+- **TD-8 status**: Partially resolved. Heavy runtime async implementations in `marketplace/` have been moved to `runtime-services/`; current `marketplace/` is approximately `7,537` lines, significantly reduced from table's `11,972` lines.
+- **TD-9 status**: Resolved. `package.json` added selective subpath exports; root `src/index.ts` changed to named exports + namespace exports combination, no longer relying solely on full barrel for architecture surface.
+- **TD-2追加 status**: Physical split completed. Implementation files from `oapeflir/learn/` and `oapeflir/improve-rollout/` moved to `src/platform/orchestration/learn/` and `src/platform/orchestration/improve-rollout/`; old paths retain compatible re-export shims; after migration, `tsc` and all related 281 unit tests and 15 integration/e2e tests passed.
+- **TD-7追加 status**: Physical split completed. 34 implementation files from `shared/stability/` moved to `src/platform/stability/`; old directory only retains compatibility shim; current `src/platform/stability/` is approximately `13,642` lines, `src/platform/shared/stability/` reduced to `35` lines; all related 384 stability tests passed.
+- **TD-6追加 status**: Test quality guard continued tightening. E2E guard upgraded from "file/case count" to four-dimensional check: file count + case count + named flow count + skip=0; current `tests/e2e/` is `24` files, `231` `test/it` cases, `229` named flows, `0` `test.skip / it.skip / describe.skip`; already meets `50+` real flow coverage threshold, no longer停留在 early `~21` flow scale.
+- **TD-8追加 status**: Structural de-imbalance completed. billing, tenant-platform, intelligence, enterprise, operations in `marketplace/` split as independent top-level submodules under `src/scale-ecosystem/`; old path shim compatibility retained; current `marketplace/` implementation lines approximately `1,202`, accounting for approximately `7.66%` of `scale-ecosystem/` implementation lines; no longer single-directory swallowing scale.
+- **TD-1追加 status**: Async mirror maintenance closed. Added `SyncBackedAsyncService` to uniformly handle sync-backed async facade; thin wrappers for billing/tenant-platform/perception/dispatch/worker-handshake/worker-writeback/preemption/evolution converged to shared mechanism; added `async-mirror-ratchet` to continuously require scale-side async mirrors to have sync counterparts, preventing return to orphan mirrors and duplicate样板 diffusion.
+- **TD-3追加 status**: High stub rate governance closed. `stub-count-ratchet` now identifies multi-line compatibility facade/re-export, no longer misjudging compatibility exits as stubs; current warehouse short file count is `83 / 1,212` (approximately `6.8%`); `org-governance` is `0 / 17` (`0%`); `scale-ecosystem` is `0 / 85` (`0%`); the two hot modules in the original text no longer have high stub rates.
+- **TD-6追加 status**: E2E weakness item closed. E2E guard upgraded from "file/case count" to four-dimensional: file count + case count + named flow count + skip=0; current `tests/e2e/` is `24` files, `231` `test/it` cases, `229` named flows, `0` `test.skip / it.skip / describe.skip`; already meets `50+` real flow coverage threshold, no longer停留在 early `~21` flow scale.
 
-### 11.3 P2 — Quality Improvement (Next Iteration)
+### 10.2 Refactoring Priority Matrix
 
-| ID   | Issue                            | Recommended Action                                      |
-| ---- | -------------------------------- | --------------------------------------------------------|
-| Q1   | `as unknown as` 58 occurrences   | Gradually replace with type guards or generic constraints |
-| Q2   | Coverage baseline some directories below 50% | Focus on supplementing `org-governance`, `interaction`, `apps` tests |
-| Q3   | HA verification only in stability rehearsal | Add real multi-replica HA integration tests |
-| Q4   | Stryker only covers 9 files     | Expand to state-evidence and control-plane critical paths |
-| Q5   | ops-cli.test.ts (3,916 lines)   | Split into independent test files by functional domain   |
+| Priority | Item | Estimated Effort | Expected Benefit |
+| --- | --- | --- | --- |
+| P0 | Unify async mirror strategy (abstract backend interface, eliminate 5 orphans) | 2-3 weeks | Reduce ~3,000 lines duplicate code, eliminate sync risk |
+| P0 | Seed coverage baseline, enable gate | 1 day | Prevent silent coverage regression |
+| P1 | Split OAPEFLIR learn/ and improve-rollout/ as top-level submodules | 1 week | Improve orchestration/ cohesion |
+| P1 | Expand E2E tests to 50+ flows | 3-4 weeks | Improve production confidence |
+| P2 | Split shared/stability/ as independent submodule | 1 week | Control shared/ size |
+| P2 | Split DomainBaselineCatalog as per-domain config files | 2-3 days | Reduce single file size, improve maintainability |
+| P2 | Reduce org-governance/ and scale-ecosystem/ stub rates | Ongoing | Improve module completeness |
+| P3 | Selective barrel export (layered index.ts) | 2 days | Improve tree-shaking and build performance |
 
-### 11.4 Execution Phase Recommendations
+### 10.3 vs v12.0 Technical Debt Trend
 
-```
-Phase 1 (Week 1-2):  B1 PostgreSQL unification + B2 core/ deletion
-Phase 2 (Week 3-4):  S1 CLI unification + S2 test directory alignment + S3 bidirectional dependency elimination
-Phase 3 (Week 5-6):  B3 E2E coverage + Q1 type safety + Q2 coverage improvement
-Phase 4 (Week 7-8):  S4/S5 structure optimization + Q3/Q4/Q5 quality finalization
-```
-
-### 11.5 Comprehensive Assessment
-
-| Dimension          | Score     | Description                                                                                  |
-| ---------------- | --------: | -------------------------------------------------------------------------------------------- |
-| Architecture layering | **8/10** | 7-layer responsibilities clear, but shared ↔ control-plane bidirectional dependency needs resolution |
-| Code scale        |   **9/10** | 1,052 files / 191,611 lines, reasonable module granularity                                   |
-| Test density      |   **8/10** | 1.08:1 test/source ratio, 84.1% coverage, insufficient E2E                                   |
-| Security hardening |   **9/10** | 12 security capabilities all implemented, Trivy + CodeQL + mutation testing                     |
-| Observability      |   **9/10** | 9 capabilities all implemented, OTel + Prometheus + Grafana complete chain                    |
-| Reliability        |   **8/10** | 13 capabilities implemented, lacking real multi-replica HA verification                        |
-| Deployment maturity|   **9/10** | 5-level environment gradient, Helm + Terraform + Chaos full chain                              |
-| Configuration mgmt |   **8/10** | 27 files / 11 categories / 4-layer environment coverage, ratchet gate                           |
-| **Overall**       | **8.5/10** | Refactoring from v9 single-layer core/ to v10 seven-layer architecture basically complete, remaining work focused on P0 blockers and test supplementation |
-
----
-
-## Appendix
-
-### Appendix A: Top 20 Source Files (by Lines)
-
-| Rank | Lines | File Path                                                                         |
-| ---: | ----: | -------------------------------------------------------------------------------- |
-|    1 | 1,057 | `src/platform/state-evidence/truth/sqlite/repositories/worker-repository.ts`     |
-|    2 | 1,052 | `src/platform/state-evidence/truth/async-repositories/worker-repository.ts`      |
-|    3 |   868 | `src/platform/state-evidence/truth/sqlite/repositories/operations-repository.ts` |
-|    4 |   829 | `src/domains/registry/plugin-spi-registry.ts`                                    |
-|    5 |   799 | `src/platform/shared/observability/slo-alerting-service.ts`                      |
-|    6 |   798 | `src/domains/governance/division-loader.ts`                                      |
-|    7 |   796 | `src/platform/execution/lease/execution-lease-service.ts`                        |
-|    8 |   795 | `src/platform/shared/observability/anomaly-detection-service.ts`                 |
-|    9 |   793 | `src/platform/state-evidence/truth/sqlite/repositories/billing-repository.ts`    |
-|   10 |   791 | `src/scale-ecosystem/marketplace/billing-service.ts`                             |
-|   11 |   791 | `src/platform/execution/tool-executor/patch-dsl-service.ts`                      |
-|   12 |   789 | `src/platform/execution/worker-pool/execution-worker-handshake-service.ts`       |
-|   13 |   788 | `src/scale-ecosystem/marketplace/marketplace-governance-service.ts`              |
-|   14 |   786 | `src/platform/interface/channel-gateway/channel-gateway-delivery-service.ts`     |
-|   15 |   782 | `src/platform/shared/observability/diagnostics-support.ts`                       |
-|   16 |   782 | `src/platform/control-plane/incident-control/doctor-service.ts`                  |
-|   17 |   779 | `src/platform/execution/execution-engine/multi-step-supervisor.ts`               |
-|   18 |   774 | `src/platform/control-plane/config-center/remaining-cli-env-support.ts`          |
-|   19 |   773 | `src/platform/control-plane/incident-control/enterprise-governance-service.ts`   |
-|   20 |   768 | `src/platform/control-plane/incident-control/auto-stop-loss-service.ts`          |
-
-### Appendix B: `as unknown as` Distribution
-
-| Directory                         | Occurrences |
-| ------------------------------ | ----------: |
-| `src/platform/execution/`       |          29 |
-| `src/platform/state-evidence/`  |          19 |
-| `src/domains/governance/`      |           3 |
-| `src/platform/shared/`          |           2 |
-| `src/sdk/`                     |           2 |
-| `src/platform/control-plane/`   |           1 |
-| `src/domains/registry/`         |           1 |
-| `src/plugins/`                 |           1 |
-| **Total**                      |      **58** |
-
-### Appendix C: Cross-Module Coupling Matrix (Platform Layer)
-
-Source module → Target reference line counts:
-
-| Source ↓ / Target → | contracts | state-evidence | shared | control-plane | execution | orchestration | model-gateway | interface | prompt-engine |
-| ------------------ | --------: | -------------: | -----: | ------------: | --------: | ------------: | ------------: | --------: | ------------: |
-| **execution**      |       140 |            127 |     63 |            34 |         — |            12 |             6 |         4 |             — |
-| **shared**         |        48 |             63 |      — |            15 |        80 |             4 |             — |         1 |             — |
-| **control-plane**  |        94 |             45 |     24 |             — |        12 |             2 |             4 |         1 |             2 |
-| **state-evidence** |       114 |              — |     16 |            10 |         4 |             1 |             4 |         — |             2 |
-| **interface**      |        38 |             14 |     25 |             5 |         3 |             — |             — |         — |             — |
-| **orchestration**  |        20 |              4 |      9 |             1 |         1 |             — |             — |         — |             4 |
-| **model-gateway**  |        10 |              — |      8 |             8 |         — |             — |             — |         — |             1 |
-| **prompt-engine**  |        12 |              2 |      — |             — |         — |             1 |             — |         — |             — |
-| **compliance**     |         5 |              — |      — |             2 |         — |             — |             — |         — |             — |
-| **contracts**      |         — |              — |      1 |             — |         — |             1 |             — |         — |             — |
-
-Coupling ratio (cross-module files/total files):
-
-| Module          | Cross-Module Files | Total Files | Coupling Ratio |
-| -------------- | -----------------: | ----------: | -------------: |
-| control-plane   |                 64 |          75 |          85.3% |
-| prompt-engine   |                  8 |          11 |          72.7% |
-| execution       |                121 |         167 |          72.5% |
-| compliance      |                  4 |           6 |          66.7% |
-| model-gateway   |                 11 |          17 |          64.7% |
-| interface       |                 33 |          51 |          64.7% |
-| state-evidence  |                 94 |         169 |          55.6% |
-| shared          |                 52 |         101 |          51.5% |
-| orchestration   |                 22 |          80 |          27.5% |
-| contracts       |                  2 |          34 |         **5.9%** |
-
-### Appendix D: Version History
-
-| Version | Date       | Major Changes                                                                                                                                                                                                             |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| v2   | —          | Initial version, based on `src/core/` single-layer architecture                                                                                                                                                        |
-| v3   | —          | Added CLI layer (`src/cli/`)                                                                                                                                                                                             |
-| v4   | —          | Added Gateway layer (`src/gateway/`)                                                                                                                                                                                     |
-| v5   | —          | Introduced dual-dimensional status system                                                                                                                                                                               |
-| v6   | —          | Security matrix expansion                                                                                                                                                                                                 |
-| v7   | —          | Configuration and deployment chapter                                                                                                                                                                                     |
-| v8   | —          | Testing system analysis                                                                                                                                                                                                   |
-| v9   | —          | 1,541 lines, covering core/ + cli/ + gateway/ three-layer complete analysis                                                                                                                                             |
-| v10  | 2026-04-20 | **Complete rewrite**: 7-layer architecture (platform/domains/interaction/org-governance/scale-ecosystem/ops-maturity/plugins/sdk/apps), 1,052 files / 191,611 lines source, 1,018 files / 206,717 lines tests, all-new configuration and deployment architecture chapter, cross-module coupling matrix |
+| Dimension | v12.0 | v13.0 | Trend |
+| --- | --- | --- | --- |
+| Stub rate | 17.9% | 17.4% | ↓ Improved |
+| ops-maturity stub rate | 51.2% | 26.1% | ↓↓ Significantly improved |
+| Async mirror files | 7 | 19 | ↑↑ Worsened |
+| 1000+ line files | 2 | 4 | ↑ Worsened |
+| E2E coverage | ~17 flows | ~17 flows | → Stalled |
+| Test/Source ratio | 1.01:1 | 1.66:1 | ↑↑ Significantly improved |
 
 ---
 
-_Document version: v10 | Generated: 2026-04-20 | Source snapshot: 1,052 files / 191,611 lines | Test snapshot: 1,018 files / 206,717 lines_
+## 11. Conclusion
+
+### 11.1 Codebase Health Rating
+
+| Dimension | Rating | Description |
+| --- | --- | --- |
+| Architecture clarity | ⬛⬛⬛⬛⬜ | Five-plane layering clear; root-level orchestrator new startup orchestration clear; OAPEFLIR bloat needs attention |
+| Implementation completeness | ⬛⬛⬛⬜⬜ | platform/ core complete (12.9% stubs); business layer average 26% stubs; org-governance/scale-ecosystem need enrichment |
+| Testing maturity | ⬛⬛⬛⬛⬜ | 22,218 cases, 1.66:1 test ratio significantly improved; E2E and coverage gate still need strengthening |
+| Ops readiness | ⬛⬛⬛⬜⬜ | 26 stable-* rehearsal scripts + chaos experiments + Helm/Terraform; coverage baseline not seeded |
+| Technical debt controllability | ⬛⬛⬛⬜⬜ | Stub rate continues declining, but async mirror issue worsened; 4 large files need splitting |
+
+### 11.2 Key Numbers Summary
+
+| Metric | Value |
+| --- | --- |
+| Source scale | 1,387 files / 265,020 lines |
+| Test scale | 1,825 files / 440,180 lines / 22,218 cases |
+| Modules | 10 business modules + 13 platform submodules + 13 root |
+| Config files | 60 JSON / 19 directories |
+| Deployment files | 42 files (Helm + Terraform + Chaos) |
+| npm scripts | 103 (including 26 stable-*) |
+| Stub rate | 17.4% (242/1,387) |
+| Async mirrors | 19 files / 6,934 lines |
+| OAPEFLIR scale | 64 files / 5,678 lines (8-stage loop) |
+| Largest module | execution/ (188 files / 50,695 lines) |
+| Largest single file | DomainBaselineCatalog (1,113 lines) |
+
+### 11.3 Key Changes vs v12.0
+
+1. **Test explosion growth**: +670 files / +189,972 lines, test ratio from 1.01:1 to 1.66:1
+2. **Recovery capability significantly strengthened**: execution/recovery/ from 8→23 files (6× line growth)
+3. **OAPEFLIR systematized**: from single file 439 lines to 64 files 5,678 lines complete learning/improvement/release pipeline
+4. **ops-maturity de-stubbed**: stub rate from 51.2% to 26.1%; PlatformOpsAgent from empty stub to 1,306 lines
+5. **Architecture orchestration layer added**: 13 root-level orchestrator files (1,298 lines) + constitution/ config
+6. **Async mirror expansion**: from 7 to 19 files; marketplace/ added 9 (5 without sync counterparts)
+
+---
+
+> **End of Document** — v13.0 @ 2026-04-23

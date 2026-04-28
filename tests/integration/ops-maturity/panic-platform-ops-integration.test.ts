@@ -9,7 +9,7 @@ test("integration: panic blocks ops execution until resume and approval complete
   const opsService = new PlatformOpsAgentService({
     agentId: "agent_ops_platform",
     specialty: "runtime",
-    allowedActionTypes: ["investigate_incident", "scale_capacity"],
+    allowedActionTypes: ["investigate_incident", "scale_capacity", "failover"],
     requiredApprovals: ["sre_manager"],
     maxAutonomyLevel: "supervised_execution",
     evidenceRequirements: ["runbook:runtime"],
@@ -20,6 +20,7 @@ test("integration: panic blocks ops execution until resume and approval complete
     reasonCode: "security.compromise",
     activeIncidents: 2,
     issuedBy: "security_lead",
+    requiredApprovers: ["security_lead", "sre_manager"],
     issuedAt: "2026-04-20T00:00:00.000Z",
   });
 
@@ -41,6 +42,7 @@ test("integration: panic blocks ops execution until resume and approval complete
   panicService.resume("platform/runtime", {
     scope: "platform/runtime",
     approvedBy: ["sre_manager", "security_lead"],
+    approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,

@@ -40,7 +40,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `entity_kind` | `task \| workflow \| session \| approval \| execution` | 目标实体类型 |
+| `entity_kind` | `harness_run \| node_run \| side_effect \| budget_reservation \| session_projection \| approval_projection \| task_projection \| workflow_projection` | 目标实体类型 |
 | `entity_id` | `string` | 目标 ID |
 | `from_status` | `string?` | 期望旧状态，可选 optimistic guard |
 | `to_status` | `string` | 目标状态 |
@@ -52,6 +52,11 @@
 | `idempotency_key` | `string?` | 防重入键 |
 | `occurred_at` | `timestamp` | 事实发生时间 |
 | `metadata_json` | `json?` | 附加上下文 |
+
+规则：
+
+- `harness_run`、`node_run`、`side_effect`、`budget_reservation` 是 truth entity kind；`task_projection`、`workflow_projection`、`session_projection`、`approval_projection` 只允许作为投影更新目标。
+- `execution`、`task`、`workflow` 这类 pre-v4.3 `entity_kind` 只能作为 migration input，在入口归一化后不得继续作为 canonical transition target。
 
 ### 3.2 `TransitionMutationResult`
 
@@ -74,24 +79,30 @@
 
 Phase 1a / 1b 最少冻结以下入口：
 
-- `transitionTaskStatus(command)`
-- `transitionWorkflowStatus(command)`
-- `transitionSessionStatus(command)`
-- `transitionApprovalStatus(command)`
-- `transitionExecutionStatus(command)`
+- `RuntimeStateMachine.transition(command)`
+- `transitionHarnessRun(command)`
+- `transitionNodeRun(command)`
+- `transitionSideEffect(command)`
+- `transitionBudgetReservation(command)`
+- `projectHarnessRunToTaskView(input)`
+- `projectNodeRunToWorkflowView(input)`
+- `projectNodeRunToSessionView(input)`
+- `projectDecisionToApprovalView(input)`
 - `transitionBlockedForApproval(input)`
-- `transitionTaskTerminalState(input)`
+- `transitionHarnessTerminalState(input)`
 
 聚合入口说明：
 
 - `transitionBlockedForApproval(...)`
-  - 同时推进 `tasks.status=awaiting_decision`
-  - `workflow_state.status=paused`
-  - `executions.status=blocked`
-  - 创建或关联 `approvals`
-  - 追加 Tier 1 事件
-- `transitionTaskTerminalState(...)`
-  - 统一收口 `task / workflow / session / execution`
+  - truth 上推进 `node_run=awaiting_hitl` 或 `policy_blocked`
+  - truth 上保持或推进 `harness_run=running / paused`
+  - 投影上同步 `tasks.status=awaiting_decision`
+  - 投影上同步 `workflow_state.status=paused`
+  - 创建或关联 approval projection
+  - 同事务追加 `platform.*` Tier 1 事件
+- `transitionHarnessTerminalState(...)`
+  - truth 上统一收口 `harness_run / node_run / budget reservation / side-effect`
+  - 投影上统一收口 `task / workflow / session`
   - 负责成功、失败、取消三类终态
 
 ## 5. 调用顺序与事务边界
@@ -124,15 +135,15 @@ flowchart TD
 
 ### 6.2 聚合推进
 
-- `task=done` 时，`workflow=completed` 与 `session=completed` 应在同一聚合 transition 或同一恢复收口中完成。
-- `execution=blocked` 且原因为审批等待时，不得遗漏 `task=awaiting_decision`。
-- `approval=approved / rejected / expired` 生效时，必须能回溯对应被阻塞的 execution。
-- `task` 存在活跃 execution 时，不得由并发调用创建第二个活跃推进者；若进入恢复或接管，必须先完成旧 execution 的显式收口。
+- `harness_run=completed` 时，`task_projection=done`、`workflow_projection=completed` 与 `session_projection=completed` 应在同一聚合 transition 或同一恢复收口中完成。
+- `node_run=awaiting_hitl` 或 `policy_blocked` 且原因为审批等待时，不得遗漏 `task_projection=awaiting_decision`。
+- `DecisionDirective(approve / deny / expire_approval)` 生效时，必须能回溯对应被阻塞的 `node_run` / `budget_reservation` / `side_effect`。
+- `harness_run` 存在活跃 `node_run` 时，不得由并发调用创建第二个活跃推进者；若进入恢复或接管，必须先完成旧 node attempt 的显式收口。
 
 ### 6.3 终态重入与 attempt 规则
 
-- `done` 任务不得通过普通 transition 重新进入 `in_progress`。
-- `failed / cancelled` 若要恢复，必须创建新的 execution attempt，并保留旧终态、旧错误码和旧 trace 证据。
+- `completed` / `failed` / `aborted` 的 `HarnessRun` 不得通过普通 transition 重新进入活跃态。
+- `failed / cancelled / aborted` 的 `NodeRun` 若要恢复，必须创建新的 `NodeAttempt` 或追加 `GraphPatch`，并保留旧终态、旧错误码和旧 trace 证据。
 - 对同一 step 的重复 `completed` 写入，只允许作为幂等 no-op 返回，不得重复派生新的副作用或 Tier 1 事件。
 
 ## 7. 幂等与恢复
@@ -192,6 +203,6 @@ Phase 1a 明确只做：
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-32: TransitionCommand.entity_kind用pre-v4.3类型(task/workflow/session/approval/execution)，架构§5.3用harness_run/node_run/side_effect/budget_reservation。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-32: 本文原先把 `TransitionCommand.entity_kind` 绑定在 `task / workflow / session / approval / execution` 这组 pre-v4.3 对象上，根因是 transition service 直接继承了旧 repository 表模型，没有随着 `HarnessRun / NodeRun / SideEffect / BudgetReservation` 成为 truth aggregate 一起迁移。修复：正文现把 canonical `entity_kind` 收敛到 `harness_run / node_run / side_effect / budget_reservation`，其余仅保留为 projection 或 migration 输入。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

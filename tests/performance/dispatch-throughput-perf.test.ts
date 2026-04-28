@@ -54,21 +54,74 @@ function createTaskWithExecution(db: SqliteDatabase, store: AuthoritativeTaskSto
     });
 
     store.execution.insertExecution({
-      executionId,
+      id: executionId,
       taskId,
+      workflowId: "dispatch_perf",
+      parentExecutionId: null,
+      agentId: "agent-dispatch",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "created",
+      inputRef: null,
+      traceId: newId("trace"),
       attempt: 1,
-      status,
-      isolationLevel: "standard",
+      timeoutMs: 60_000,
+      budgetUsdLimit: null,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: null,
+      finishedAt: null,
       createdAt: now,
       updatedAt: now,
-      startedAt: null,
-      completedAt: null,
-      errorCode: null,
-      errorMessage: null,
     });
   });
 
   return { taskId, executionId };
+}
+
+function upsertWorkerSnapshot(store: AuthoritativeTaskStore, workerId: string, occurredAt: string): void {
+  store.upsertWorkerSnapshot({
+    workerId,
+    status: "idle",
+    placement: "local",
+    isolationLevel: "standard",
+    repoVersion: "repo-main",
+    remoteSessionStatus: null,
+    lastAcknowledgedStreamOffset: null,
+    streamResumeSuccessRate: null,
+    credentialRefreshSuccessRate: null,
+    sessionConsistencyCheckStatus: null,
+    sessionConsistencyCheckedAt: null,
+    workspaceSyncStatus: null,
+    workspaceSyncCheckedAt: null,
+    saturation: 0,
+    activeLeaseCount: 0,
+    meanStartupLatencyMs: null,
+    sandboxSuccessRate: null,
+    repoCacheHitRate: null,
+    registrationVerifiedAt: null,
+    registrationChallengeId: null,
+    capabilitiesJson: JSON.stringify(["code-execution"]),
+    runningExecutionsJson: "[]",
+    maxConcurrency: 5,
+    queueAffinity: "general_ops",
+    runtimeInstanceId: `runtime-${workerId}`,
+    restartedFromRuntimeInstanceId: null,
+    restartGeneration: 0,
+    cpuPct: 10,
+    memoryMb: 256,
+    toolBacklogCount: 0,
+    currentStepId: null,
+    lastProgressAt: occurredAt,
+    lastHeartbeatAt: occurredAt,
+    updatedAt: occurredAt,
+  });
 }
 
 // ============================================================================
@@ -275,25 +328,14 @@ test("performance: Worker registry listWorkers() throughput >2000 ops/sec", (t) 
     for (let i = 0; i < 10; i++) {
       const workerId = newId("worker");
       const now = nowIso();
-      store.worker.registerWorker({
-        workerId,
-        workerName: `worker-${i}`,
-        divisionId: "general_ops",
-        enabled: true,
-        maxConcurrency: 5,
-        currentLoadScore: 0.5,
-        lastHeartbeatAt: now,
-        registeredAt: now,
-        version: "1.0.0",
-        metadata: {},
-      });
+      upsertWorkerSnapshot(store, workerId, now);
     }
 
     const iterations = 1000;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.worker.listWorkers("general_ops");
+      store.worker.listWorkerSnapshots();
     }
 
     const elapsed = performance.now() - start;
@@ -327,18 +369,7 @@ test("performance: Worker registry listWorkers() P99 latency <2ms", (t) => {
     for (let i = 0; i < 10; i++) {
       const workerId = newId("worker");
       const now = nowIso();
-      store.worker.registerWorker({
-        workerId,
-        workerName: `worker-${i}`,
-        divisionId: "general_ops",
-        enabled: true,
-        maxConcurrency: 5,
-        currentLoadScore: 0.5,
-        lastHeartbeatAt: now,
-        registeredAt: now,
-        version: "1.0.0",
-        metadata: {},
-      });
+      upsertWorkerSnapshot(store, workerId, now);
     }
 
     const latencies: number[] = [];
@@ -346,13 +377,13 @@ test("performance: Worker registry listWorkers() P99 latency <2ms", (t) => {
 
     // Warmup
     for (let i = 0; i < 50; i++) {
-      store.worker.listWorkers("general_ops");
+      store.worker.listWorkerSnapshots();
     }
 
     // Measure
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.worker.listWorkers("general_ops");
+      store.worker.listWorkerSnapshots();
       latencies.push(performance.now() - start);
     }
 
@@ -387,37 +418,34 @@ test("performance: Execution lease creation throughput >1000 ops/sec", (t) => {
   const store = new AuthoritativeTaskStore(db);
 
   try {
-    const { taskId, executionId } = createTaskWithExecution(db, store);
     const workerId = newId("worker");
 
     // Register worker first
     const now = nowIso();
-    store.worker.registerWorker({
-      workerId,
-      workerName: "test-worker",
-      divisionId: "general_ops",
-      enabled: true,
-      maxConcurrency: 5,
-      currentLoadScore: 0.5,
-      lastHeartbeatAt: now,
-      registeredAt: now,
-      version: "1.0.0",
-      metadata: {},
-    });
+    upsertWorkerSnapshot(store, workerId, now);
 
     const iterations = 500;
+    const executionIds: string[] = [];
+    for (let i = 0; i < iterations; i++) {
+      executionIds.push(createTaskWithExecution(db, store).executionId);
+    }
+
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      const leaseId = newId("lease");
-      store.lease.createExecutionLease({
-        leaseId,
-        executionId,
+      store.insertExecutionLease({
+        id: newId("lease"),
+        executionId: executionIds[i]!,
         workerId,
+        attempt: 1,
+        fencingToken: i + 1,
+        queueName: "general_ops",
         status: "active",
-        createdAt: nowIso(),
+        leasedAt: nowIso(),
         expiresAt: nowIso(),
-        heartbeatAt: now,
+        lastHeartbeatAt: now,
+        releasedAt: null,
+        reasonCode: null,
       });
     }
 
@@ -448,35 +476,28 @@ test("performance: Execution lease lookup by worker throughput >2000 ops/sec", (
   const store = new AuthoritativeTaskStore(db);
 
   try {
-    const { executionId } = createTaskWithExecution(db, store);
     const workerId = newId("worker");
 
     // Register worker
     const now = nowIso();
-    store.worker.registerWorker({
-      workerId,
-      workerName: "test-worker",
-      divisionId: "general_ops",
-      enabled: true,
-      maxConcurrency: 5,
-      currentLoadScore: 0.5,
-      lastHeartbeatAt: now,
-      registeredAt: now,
-      version: "1.0.0",
-      metadata: {},
-    });
+    upsertWorkerSnapshot(store, workerId, now);
 
     // Create leases
     for (let i = 0; i < 10; i++) {
-      const leaseId = newId("lease");
-      store.lease.createExecutionLease({
-        leaseId,
+      const { executionId } = createTaskWithExecution(db, store);
+      store.insertExecutionLease({
+        id: newId("lease"),
         executionId,
         workerId,
+        attempt: 1,
+        fencingToken: i + 1,
+        queueName: "general_ops",
         status: "active",
-        createdAt: nowIso(),
+        leasedAt: nowIso(),
         expiresAt: nowIso(),
-        heartbeatAt: now,
+        lastHeartbeatAt: now,
+        releasedAt: null,
+        reasonCode: null,
       });
     }
 
@@ -484,7 +505,7 @@ test("performance: Execution lease lookup by worker throughput >2000 ops/sec", (
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.lease.listActiveLeasesForWorker(workerId);
+      store.listLeasesByWorker(workerId);
     }
 
     const elapsed = performance.now() - start;

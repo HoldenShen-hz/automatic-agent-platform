@@ -18,6 +18,10 @@ export const GovernancePermissionSchema = z.enum([
 
 export type GovernancePermission = z.infer<typeof GovernancePermissionSchema>;
 
+export const GovernanceDelegationLevelSchema = z.enum(["view", "operate", "admin", "super_admin"]);
+
+export type GovernanceDelegationLevel = z.infer<typeof GovernanceDelegationLevelSchema>;
+
 /**
  * Guardrail type enum as defined in architecture doc §51.1.
  */
@@ -53,10 +57,13 @@ export const GovernanceDelegationSchema = z.object({
   delegationId: z.string().min(1),
   grantorId: z.string().min(1),
   granteeId: z.string().min(1),
+  level: GovernanceDelegationLevelSchema.default("view"),
+  delegatable: z.boolean().default(false),
   /** Org nodes where this delegation applies (empty = all) */
   orgNodeIds: z.array(z.string()).default([]),
   /** Domains where this delegation applies (empty = all) */
   domainIds: z.array(z.string()).default([]),
+  derivedDelegationIds: z.array(z.string().min(1)).default([]),
   /** Specific governance permissions granted */
   permissions: z.array(GovernancePermissionSchema).default([]),
   /** Platform team-set guardrails (non-overridable) */

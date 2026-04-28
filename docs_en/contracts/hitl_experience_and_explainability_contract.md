@@ -2,12 +2,12 @@
 
 ---
 
-## OAPEFLIR Related
+## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR 8-stage cycle:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution evaluation and risk assessment
+- **Assess**: Pre-execution assessment and risk judgment
 - **Plan**: Task decomposition and DAG construction
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
@@ -21,14 +21,14 @@ This contract participates in the following stages of the OAPEFLIR 8-stage cycle
 
 This contract defines approval experience, human takeover experience, and key decision explainability boundaries.
 
-Related Documents:
+Related documents:
 
 - `approval_and_hitl_contract.md`
 - `admin_console_and_human_takeover_contract.md`
 - `policy_engine_contract.md`
 - `control_vs_intelligence_boundary_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
 - Reduce approval noise and improve human collaboration efficiency.
 - Make human takeover not just "pause and wait for reply", but a formal operation surface.
@@ -36,28 +36,28 @@ Related Documents:
 
 ## 3. Approval Experience
 
-Approval system supports at minimum:
+Approval system must support at minimum:
 
-- Same-type approval consolidation
+- Same-type approval merging
 - Batch approval
-- Risk tiered display
+- Risk-layered display
 - Default recommendation explanation
-- Approval strategy caching
+- Approval policy caching
 
 Decision presentation minimum structure:
 
 - What happened
-- Why it needs your decision
-- What options exist
+- Why you need to decide
+- What options are available
 - Which is recommended
 - What happens if no response
 
-Input collection recommendations:
+Input collection suggestions:
 
-- Option questions should support single-choice structure, rather than degrading all interactions to free text.
-- Notes should be supplementary fields, not override the options themselves.
-- If user does not provide answer, should explicitly record as `skipped` or equivalent semantics, not silently missing.
-- In interactive UI, should separately govern option selection, notes input, submit/cancel focus state to reduce accidental triggers.
+- Option questions should support single-select structure, rather than degrading all interactions to free text.
+- Notes should be auxiliary fields, not overriding the options themselves.
+- If user does not provide an answer, should explicitly record as `skipped` or equivalent semantics, rather than silent absence.
+- In interactive UI, option selection, notes input, submit/cancel focus states should be governed separately to reduce accidental triggers.
 
 ## 4. Human Takeover Actions
 
@@ -67,7 +67,7 @@ Input collection recommendations:
 - Manually specify worker
 - Manually degrade running mode
 - End task and archive reason
-- Mark task unrecoverable
+- Mark task as unrecoverable
 
 ## 5. Explainability Objects
 
@@ -79,14 +79,14 @@ Input collection recommendations:
 
 ## 6. Explainability Requirements
 
-System can explain at minimum:
+System must at minimum explain:
 
 - Why this division was chosen
-- Why HITL escalation occurred
+- Why HITL was escalated
 - Why a certain command was rejected
 - Why retry was determined
 - Why model / worker / provider was switched
-- Why approval, rejection, or dual approval was determined
+- Why approved, rejected, or requiring dual approval
 - Why a certain feedback signal was adopted or ignored
 - Why a certain improvement candidate was accepted or rejected
 - Why rollout was advanced, paused, or rolled back
@@ -100,17 +100,17 @@ Permission / policy explanation minimum must include:
 
 Notes:
 
-- `reason_source` at minimum distinguishes `policy bundle / project settings / local settings / runtime guard / manual override`.
-- When explanation comes from rule shadowing, unknown command conservative rejection, or hook forced upgrade, should explicitly tell user "what rule caused current result" and "where to go to correct".
+- `reason_source` must at minimum distinguish `policy bundle / project settings / local settings / runtime guard / manual override`.
+- When explanation comes from rule masking, conservative rejection of unknown commands, or hook-forced escalation, should explicitly tell user "what rule caused the current result" and "where to go to fix it".
 
-## 7. Approval And Takeover Boundary
+## 7. Approval and Takeover Boundaries
 
-- Explainability should not change authoritative policy result; it only explains result.
-- Human takeover actions must write audit; must not become "bypass policy" without trace.
+- Explainability must not change authoritative policy results; it only explains results.
+- Human takeover actions must write audit, must not become "bypass policy" invisible backdoor.
 - High-risk takeover actions should again go through Policy Engine or break-glass process.
-- Read-only observation or viewer mode can display explanations, but must not obtain takeover, approval, or force execution rights.
+- Read-only observation or viewer mode can display explanations, but must not obtain takeover, approval, or enforcement rights.
 
-## 8. Closure Conclusion
+## 8. Conclusion
 
 Industrial-grade human-machine collaboration cannot only provide an approval button.
 

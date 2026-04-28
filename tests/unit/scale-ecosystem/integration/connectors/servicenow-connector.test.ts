@@ -14,6 +14,10 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
     connectorId: overrides.connectorId ?? "servicenow-test",
     capability: overrides.capability ?? "create_incident",
     payload: overrides.payload ?? {},
+    policyRef: "policyRef" in overrides ? overrides.policyRef : "policy.connector.servicenow-test",
+    secretBindings: "secretBindings" in overrides
+      ? overrides.secretBindings
+      : [{ secretRef: "secret://servicenow-test/token", purpose: "api_token" }],
   };
 }
 
@@ -135,6 +139,26 @@ test("ServiceNowConnector.execute handles empty payload", () => {
 test("ServiceNowConnector.execute rejects delete_ticket capability", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "delete_ticket" });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("ServiceNowConnector.execute fails closed when policyRef is missing", () => {
+  const connector = new ServiceNowConnector();
+  const request = createRequest({ policyRef: undefined });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("ServiceNowConnector.execute fails closed when secretBindings are missing", () => {
+  const connector = new ServiceNowConnector();
+  const request = createRequest({ secretBindings: [] });
 
   const result = connector.execute(request);
 

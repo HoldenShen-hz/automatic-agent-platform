@@ -115,9 +115,9 @@ Rules:
 - Debug dump reads sanitized version by default; if raw output truly needs to be viewed, it should be protected by higher privileges and additional audit.
 - If output subsequently enters knowledge / memory / feedback chain, must preserve provenance marking, and must not disguise sanitized text as "native internal text".
 
-## 9. Phase Boundaries
+## 9. Current / Transition Boundaries
 
-Phase 1a explicitly does:
+Current canonical baseline explicitly does:
 
 - ANSI cleanup
 - Control character cleanup
@@ -125,7 +125,7 @@ Phase 1a explicitly does:
 - Length truncation
 - Injection risk classification
 
-Currently does not do:
+Transition / target-state extensions currently do not do:
 
 - Full DLP engine
 - Multi-language deep semantic sensitive information detection
@@ -134,3 +134,12 @@ Currently does not do:
 ## 10. Closure Conclusion
 
 Tool output is not a "safe object that can be directly fed back to the model" upon receipt; the sanitization pipeline is the first gate that transforms external text into trusted platform internal input.
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-52: This document originally continued using `Phase 1a` as current capability boundary term. Root cause: sanitization contract沿用了旧排期文案 (adopted old scheduling language), did not change to `Current / Transition / Target` expression as the main architecture dropped `Phase 1-9` to historical mapping. Fix: This version changes to `Current / Transition` boundary semantics, old phase names no longer serve as canonical capability expression.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

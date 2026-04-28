@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the trace/span model, business and technical metric layering, and fault root cause analysis assistance capabilities.
+This contract defines the trace/span model, business and technical metric stratification, and fault root cause analysis assistance capabilities.
 
 Related documents:
 
@@ -13,29 +13,33 @@ Related documents:
 
 ## 2. Objectives
 
-- Enable a single task to be linked on trace from entry through step, tool, LLM, and decision.
-- Separate business dashboard and technical dashboard governance.
-- Automatically generate preliminary RCA clues after faults, rather than just leaving scattered logs.
+- Enable a single `HarnessRun` to be traced end-to-end from entry through nodes, tools, LLMs, and decisions.
+- Separate governance of business dashboards and technical dashboards.
+- Automatically generate preliminary RCA clues after failures, rather than leaving only scattered logs.
 
 ## 3. Trace Model
 
 Minimum hierarchy:
 
-- One task = one `trace`
-- One agent step = one `span`
+- One `HarnessRun` = one `trace`
+- One `NodeRun` = one main execution `span`
+- One `NodeAttempt` = one attempt `span`
 - One tool call = one `span`
 - One LLM call = one `span`
 - One decision / escalation = one `span`
-- One OAPEFLIR stage = one upper-level `span`
+- One `oapeflir.view.*` stage explanation may be mapped as an upper-layer view span, but must not serve as runtime truth
 
-Must-propagate correlation fields:
+Required correlation fields:
 
 - `trace_id`
 - `span_id`
 - `parent_span_id`
 - `correlation_id`
-- `task_id`
-- `execution_id`
+- `harness_run_id`
+- `node_run_id?`
+- `attempt_id?`
+- `task_id?`
+- `execution_id?`
 - `session_id`
 
 Recommended baggage:
@@ -46,7 +50,7 @@ Recommended baggage:
 - `agent_id?`
 - `user_id?`
 - `priority?`
-- `oapeflir_stage?`
+- `stage_view_ref?`
 - `loop_iteration?`
 - `domain_id?`
 
@@ -61,10 +65,10 @@ Recommended carrier types:
 
 Minimum requirements:
 
-- Gateway ingress must be able to create or extract trace context.
-- Runtime / worker / gateway / approval / remote bridge must explicitly inject and extract trace context between each other.
-- Trace propagation failure must not interrupt main task execution, but must record observability warning.
-- Trace sink, callback, subscriber, or exporter exceptions must not reverse interrupt the main execution chain; observability surface defaults to fail-open, but must preserve warning / dropped event evidence.
+- Gateway ingress must create or extract trace context.
+- Runtime / worker / gateway / approval / remote bridge must explicitly inject and extract trace context.
+- Trace propagation failure must not interrupt main task execution, but must log an observability warning.
+- Exceptions from trace sinks, callbacks, subscribers, or exporters must not reverse-interrupt the main execution chain; the observability surface defaults to fail-open, but must preserve warning / dropped event evidence.
 
 Recommended fields:
 
@@ -82,22 +86,22 @@ Recommended rules:
 | debug / operator takeover | `100%` |
 | error / dead-letter / stale write | `100%` |
 | approval / policy escalation | `100%` |
-| normal task | `10%` |
+| normal harness run | `10%` |
 | background / periodic maintenance | `1%` |
 
-## 6. Metric Layering
+## 6. Metric Stratification
 
-| Layer | Metric Examples |
+| Layer | Example Metrics |
 | --- | --- |
-| `oapeflir` | Loop convergence rate, feedback positive/negative ratio, rollout success rate |
-| `business` | Task success rate, approval rate, business unit output, user upgrade rate |
-| `platform` | Throughput, queue backlog, recovery success rate, lease recovery count |
-| `runtime` | Worker heartbeat, execution duration, retry rate, backpressure trigger rate |
-| `infra` | DB latency, cache hit, CPU, memory, event loop latency |
+| `oapeflir` | loop convergence rate, feedback positive/negative ratio, rollout success rate |
+| `business` | task success rate, approval rate, division output, user escalation rate |
+| `platform` | throughput, queue backlog, recovery success rate, lease reclamation count |
+| `runtime` | worker heartbeat, execution duration, retry rate, backpressure trigger rate |
+| `infra` | DB latency, cache hit rate, CPU, memory, event loop latency |
 
 ## 7. Root Cause Analysis Assistance
 
-Fault view should automatically aggregate at least:
+The fault view should automatically aggregate at minimum:
 
 - Recent related events
 - Recent related configuration changes
@@ -108,20 +112,20 @@ Fault view should automatically aggregate at least:
 
 ## 8. Anomaly Pattern Detection
 
-Must support identifying at least:
+Must support identifying at minimum:
 
-- A certain role stuck consecutively on the same step
-- A certain tool's recent failure rate surge
-- A certain tenant or business unit's cost abnormal increase
-- A certain worker's heartbeat jitter anomaly
-- A certain loop not converging for a long time
-- A certain rollout consecutively blocked or rolled back
+- A role stuck consecutively on the same node
+- A tool with recently spiked failure rate
+- A tenant or division with anomalous cost increase
+- A worker with anomalous heartbeat jitter
+- A loop that has not converged for a long time
+- A rollout consecutively blocked or rolled back
 
 ## 9. Visualization Goals
 
 ```mermaid
 flowchart TD
-    A["Task Trace"] --> B["Step Spans"]
+    A["HarnessRun Trace"] --> B["NodeRun / NodeAttempt Spans"]
     B --> C["Tool / LLM / Decision Spans"]
     C --> D["Metrics + Events + Logs"]
     D --> E["RCA Summary"]
@@ -133,6 +137,14 @@ Industrial-grade observability cannot stop at "having logs" and "having healthz"
 
 It must support:
 
-- Trace-level chaining
-- Business and technical metric layering
-- Automatic convergence of root cause clues after faults
+- HarnessRun-level trace chaining
+- Business and technical metric stratification
+- Automatic aggregation of root cause clues after failures
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-39: This document originally treated `task` as the trace subject. The root cause was that the observability contract inherited the old task-centric single-machine execution model and was not rewritten along with `HarnessRun / NodeRun / NodeAttempt` becoming runtime truth. Fix: The main text now explicitly states "one HarnessRun = one trace", elevates `harness_run_id / node_run_id / attempt_id` to required correlation fields, and `task_id / execution_id` are retained only as legacy / projection correlation keys.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

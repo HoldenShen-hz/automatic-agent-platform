@@ -9,16 +9,22 @@ import {
 test("ComplianceFrameworkSchema parses valid framework", () => {
   const valid = {
     frameworkId: "custom",
+    type: "soc2",
     displayName: "Custom Framework",
     controlIds: ["ctrl1", "ctrl2"],
+    auditRequirements: ["attestation"],
+    reportTemplate: "custom_template",
     minimumPolicies: { enabled: true },
   };
 
   const result = ComplianceFrameworkSchema.parse(valid);
 
   assert.strictEqual(result.frameworkId, "custom");
+  assert.strictEqual(result.type, "soc2");
   assert.strictEqual(result.displayName, "Custom Framework");
   assert.deepStrictEqual(result.controlIds, ["ctrl1", "ctrl2"]);
+  assert.deepStrictEqual(result.auditRequirements, ["attestation"]);
+  assert.strictEqual(result.reportTemplate, "custom_template");
   assert.deepStrictEqual(result.minimumPolicies, { enabled: true });
 });
 
@@ -75,10 +81,13 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains SOX framework", () => {
   const sox = DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.frameworkId === "sox");
 
   assert.ok(sox);
+  assert.strictEqual(sox.type, "sox");
   assert.strictEqual(sox.displayName, "Sarbanes-Oxley");
   assert.ok(sox.controlIds.includes("access_review"));
   assert.ok(sox.controlIds.includes("approval_segregation"));
   assert.ok(sox.controlIds.includes("audit_retention"));
+  assert.ok(sox.auditRequirements.includes("quarterly_access_review"));
+  assert.strictEqual(sox.reportTemplate, "sox_control_attestation");
   assert.strictEqual(sox.minimumPolicies.segregationOfDuties, true);
   assert.strictEqual(sox.minimumPolicies.auditRetentionDays, 2555);
   assert.strictEqual(sox.minimumPolicies.approvalChainRequired, true);
@@ -88,10 +97,13 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains HIPAA framework", () => {
   const hipaa = DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.frameworkId === "hipaa");
 
   assert.ok(hipaa);
+  assert.strictEqual(hipaa.type, "hipaa");
   assert.strictEqual(hipaa.displayName, "HIPAA");
   assert.ok(hipaa.controlIds.includes("phi_access"));
   assert.ok(hipaa.controlIds.includes("minimum_necessary"));
   assert.ok(hipaa.controlIds.includes("encryption_required"));
+  assert.ok(hipaa.auditRequirements.includes("phi_access_log"));
+  assert.strictEqual(hipaa.reportTemplate, "hipaa_phi_control_report");
   assert.strictEqual(hipaa.minimumPolicies.dataClassification, "restricted");
   assert.strictEqual(hipaa.minimumPolicies.encryptionRequired, true);
   assert.strictEqual(hipaa.minimumPolicies.breachNotificationHours, 72);
@@ -101,10 +113,13 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains PCI DSS framework", () => {
   const pci = DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.frameworkId === "pci_dss");
 
   assert.ok(pci);
+  assert.strictEqual(pci.type, "pci_dss");
   assert.strictEqual(pci.displayName, "PCI DSS");
   assert.ok(pci.controlIds.includes("network_segmentation"));
   assert.ok(pci.controlIds.includes("key_rotation"));
   assert.ok(pci.controlIds.includes("payment_audit"));
+  assert.ok(pci.auditRequirements.includes("cardholder_data_scan"));
+  assert.strictEqual(pci.reportTemplate, "pci_dss_attestation");
   assert.strictEqual(pci.minimumPolicies.cardDataIsolation, true);
   assert.strictEqual(pci.minimumPolicies.keyRotationDays, 90);
   assert.strictEqual(pci.minimumPolicies.dualControl, true);
@@ -114,14 +129,30 @@ test("DEFAULT_COMPLIANCE_FRAMEWORKS contains GDPR framework", () => {
   const gdpr = DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.frameworkId === "gdpr");
 
   assert.ok(gdpr);
+  assert.strictEqual(gdpr.type, "gdpr");
   assert.strictEqual(gdpr.displayName, "GDPR");
   assert.ok(gdpr.controlIds.includes("lawful_basis"));
   assert.ok(gdpr.controlIds.includes("erasure"));
   assert.ok(gdpr.controlIds.includes("residency"));
   assert.ok(gdpr.controlIds.includes("consent_audit"));
+  assert.ok(gdpr.auditRequirements.includes("lawful_basis_register"));
+  assert.strictEqual(gdpr.reportTemplate, "gdpr_data_governance_report");
   assert.strictEqual(gdpr.minimumPolicies.erasureWorkflowRequired, true);
   assert.strictEqual(gdpr.minimumPolicies.residencyAwareProcessing, true);
   assert.strictEqual(gdpr.minimumPolicies.consentTracking, true);
+});
+
+test("DEFAULT_COMPLIANCE_FRAMEWORKS includes SOC2 and PIPL canonical types", () => {
+  const soc2 = DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.frameworkId === "soc2");
+  const pipl = DEFAULT_COMPLIANCE_FRAMEWORKS.find((f) => f.frameworkId === "pipl");
+
+  assert.ok(soc2);
+  assert.strictEqual(soc2.type, "soc2");
+  assert.ok(soc2.auditRequirements.includes("control_owner_attestation"));
+
+  assert.ok(pipl);
+  assert.strictEqual(pipl.type, "pipl");
+  assert.ok(pipl.auditRequirements.includes("cross_border_transfer_register"));
 });
 
 test("DEFAULT_COMPLIANCE_FRAMEWORKS frameworks are readonly", () => {

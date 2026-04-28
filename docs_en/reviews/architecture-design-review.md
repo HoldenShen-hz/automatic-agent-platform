@@ -70,6 +70,9 @@ Design Defects (53)
 61	§39.2	NL Router misroutes with no feedback arc	Rejection → reroute
 62	§21.1	Approval delegation resets TTL with no ceiling	Limit chain length
 63	§19.1	Broadcast bid losing bidder token not settled	Charge to parent run
+
+Runtime & Reliability (20)
+#	Location	Issue	Recommendation
 64	§45.5	ContextSnapshot writes P5 every iteration with no eviction → storage unbounded growth	Retention policy + compaction
 65	§45.7/§45.21	Evaluator is single bottleneck, degradation has no bypass/circuit breaker	Circuit breaker policy
 66	§62.3	Edge SyncQueue hash-chain vs non-linear dependency graph cannot be linearized	Allow chain forks
@@ -141,8 +144,3 @@ Multi-step orchestration has no atomicity: Org cascade/Chinese Wall/delegation r
 Backpressure systematically missing: Evaluator/Budget/Approval/Dispatch queue four bottlenecks have no graceful degradation
 Resource leak paths: Run terminal/Plugin crash/Draft abandoned/Secret lease/ContextSnapshot all lack cleanup
 Unified architecture serves irreconcilable requirements: 50μs quant trading vs 30s LLM; cost derived token; 24 domains uncalibrated risk share engine
-
----
-
-Platform Overall Architecture v4.0 — Design Review
-Target: docs_zh/architecture/00-platform-architecture.md | Date: 2026-04-27 | Total Items: 115

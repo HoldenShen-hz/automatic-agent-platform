@@ -4,22 +4,22 @@
 
 ## 1. Scope
 
-`PlanGraphBundle` is the sole execution plan contract for P3 -> P4. All tasks, including simple tasks, must be issued in graph form; simple tasks degenerate to single-node graphs. `ExecutionPlan` is only permitted as a deprecated alias.
+`PlanGraphBundle` is the sole execution plan contract from P3 to P4. All tasks, including simple tasks, must be dispatched in graph form; simple tasks degrade to single-node graphs. `ExecutionPlan` is only permitted as a deprecated alias.
 
 ## 2. PlanGraphBundle Minimum Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `planGraphBundleId` | `string` | Bundle ID |
-| `harnessRunId` | `string` | Parent run |
-| `graphVersion` | `number` | Graph version |
-| `graph` | `PlanGraph` | Graph structure |
-| `schedulerPolicy` | `ReadyNodeSchedulingPolicy` | Scheduling policy |
-| `budget` | `BudgetPlanRef` | Budget plan reference |
-| `riskProfile` | `RiskProfile` | Graph-level risk |
-| `validationReport` | `GraphValidationReport` | Graph validation report |
-| `artifactRefs` | `ArtifactRef[]` | Large object references |
-| `createdAt` | `timestamp` | Creation time |
+| `planGraphBundleId` | `string` | bundle ID |
+| `harnessRunId` | `string` | owning run |
+| `graphVersion` | `number` | graph version |
+| `graph` | `PlanGraph` | graph structure |
+| `schedulerPolicy` | `ReadyNodeSchedulingPolicy` | scheduling policy |
+| `budget` | `BudgetPlanRef` | budget plan reference |
+| `riskProfile` | `RiskProfile` | graph-level risk |
+| `validationReport` | `GraphValidationReport` | graph validation report |
+| `artifactRefs` | `ArtifactRef[]` | large object references |
+| `createdAt` | `timestamp` | creation time |
 
 ## 3. PlanGraph / PlanNode / PlanEdge
 
@@ -53,11 +53,18 @@
 - `condition`
 - `dependencyType` (`hard | soft | compensation | retry | replan`)
 
-## 4. GraphPatch
+## 4. Immutability Constraints
 
-Replan does not overwrite the old graph; it only appends `GraphPatch`:
+- `PlanGraphBundle` is an immutable snapshot; once dispatched to P4, the `nodes` / `edges` / `schedulerPolicy` / `riskProfile` corresponding to that `graphVersion` must not be modified in place.
+- The canonical contract prohibits rewriting an existing `PlanGraph` via `appendNode`, `removeNode`, `updateNode`, or any in-place mutate API.
+- Any semantic change must be expressed as `GraphPatch(baseGraphVersion -> newGraphVersion)`, generating a new snapshot version.
+- Executed nodes, nodes that have produced a `NodeAttemptReceipt`, and paths with confirmed side effect associations can only be handled by appending compensation or appending remediation paths; historical graphs must not be rewritten.
 
-```text
+## 5. GraphPatch
+
+Replan does not overwrite the old graph, only appends a `GraphPatch`:
+
+```
 PlanGraph(v1) + GraphPatch(v2 operations) -> PlanGraph(v2)
 ```
 
@@ -65,17 +72,17 @@ Minimum fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `graphPatchId` | `string` | Patch ID |
-| `harnessRunId` | `string` | Parent run |
-| `baseGraphVersion` | `number` | Base version |
-| `newGraphVersion` | `number` | New version |
-| `operations` | `GraphPatchOperation[]` | Closed operations |
-| `affectedExecutedNodes` | `string[]` | Affected executed nodes |
-| `affectedSideEffects` | `string[]` | Affected side effects |
-| `compatibilityClass` | `safe_append \| requires_checkpoint_revalidation \| requires_human_approval \| incompatible_restart_required` | Compatibility class |
-| `compensationPlanRef` | `ArtifactRef?` | Required compensation plan |
-| `policyProofRef` | `ArtifactRef` | Policy proof |
-| `auditRef` | `ArtifactRef` | Audit reference |
+| `graphPatchId` | `string` | patch ID |
+| `harnessRunId` | `string` | owning run |
+| `baseGraphVersion` | `number` | base version |
+| `newGraphVersion` | `number` | new version |
+| `operations` | `GraphPatchOperation[]` | closed operations |
+| `affectedExecutedNodes` | `string[]` | affected executed nodes |
+| `affectedSideEffects` | `string[]` | affected side effects |
+| `compatibilityClass` | `safe_append \| requires_checkpoint_revalidation \| requires_human_approval \| incompatible_restart_required` | compatibility class |
+| `compensationPlanRef` | `ArtifactRef?` | required compensation plan |
+| `policyProofRef` | `ArtifactRef` | policy proof |
+| `auditRef` | `ArtifactRef` | audit reference |
 
 `GraphPatchOperation` is a closed enum:
 
@@ -87,32 +94,32 @@ Minimum fields:
 - `mark_skipped`
 - `append_subgraph`
 
-## 5. Safety Rules
+## 6. Safety Rules
 
-- Completed nodes, nodes with existing `NodeAttemptReceipt`, and confirmed / ambiguous `SideEffectRecord` semantics must not be rewritten.
-- Nodes with committed irreversible side effects must not be silently deleted; only append compensation, skip subsequent paths, append fix nodes, or hand over to human.
+- Semantics of completed nodes, nodes with `NodeAttemptReceipt`, and confirmed / ambiguous `SideEffectRecord` must not be rewritten.
+- Nodes with committed irreversible side effects must not be silently deleted; only compensation may be appended, subsequent paths skipped, remediation nodes appended, or human takeover initiated.
 - `baseGraphVersion` must match the current graph version, otherwise the patch is rejected.
 - `incompatible_restart_required` must not be applied to the original run; a new `HarnessRun` must be created.
 
-## 6. Legacy / Deprecated Mapping
+## 7. Legacy / Deprecated Mapping
 
 | Old Name | v4.3 Semantics |
 | --- | --- |
-| `ExecutionPlan` | Deprecated alias, must map to `PlanGraphBundle` |
-| Linear `steps` | Only serve as import/debug view; must be normalized to graph before execution |
-| `PlanBundle` | Product or debug wrapper, not P3 -> P4 canonical contract |
+| `ExecutionPlan` | deprecated alias, must be mapped to `PlanGraphBundle` |
+| Linear `steps` | only permitted as import/debug view; must be normalized to graph before execution |
+| `PlanBundle` | product or debug wrapper, not P3 -> P4 canonical contract |
 
-## 7. Test Requirements
+## 8. Test Requirements
 
-- GraphPatch safety test covers three types of non-rewritable objects: executed nodes, receipts, and side effects.
-- Scheduler only consumes `PlanGraphBundle`, rejects linear `steps`.
+- GraphPatch safety tests must cover three types of immutable objects: executed nodes, receipts, and side effects.
+- Scheduler must only consume `PlanGraphBundle` and reject linear `steps`.
 - Single-node tasks must also produce a valid graph.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-8: Contract defines PlanGraph as mutable (supports appendNode), architecture §25 explicitly requires PlanGraphBundle as an immutable snapshot. Fix: This semantics converges to v4.3 canonical contract; old fields, old states, old DTOs, or old terminology are only permitted as legacy/deprecated/projection/migration input, not as new implementation entry points.
+- T-8: This contract previously defined PlanGraph as mutable (supporting appendNode), while architecture §25 explicitly requires PlanGraphBundle to be an immutable snapshot. Root cause: early documentation confused in-memory builder edit semantics with runtime canonical contract semantics. Fix: the main text now explicitly states that `PlanGraphBundle` / `PlanGraph` are immutable snapshots, and all changes must be made via `GraphPatch` to generate new versions.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only serve as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

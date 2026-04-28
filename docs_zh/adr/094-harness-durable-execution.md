@@ -11,7 +11,7 @@
 - **Feedback**: 标记恢复结果与未决风险
 - **Learn**: 分析故障恢复模式
 - **Improve**: 优化 durable boundary
-- **Release**: Durable 能力作为 phase 8b 验收门
+- **Release**: Durable 能力作为 Ring 2 durable-readiness 验收门
 
 ---
 
@@ -32,3 +32,7 @@
 
 - Harness 不再依赖单进程内存才能继续运行
 - 崩溃恢复与长时任务有统一技术基线
+
+## v4.3 ADR Remediation
+
+- A-30: 本 ADR 原先使用 `phase 8b` 作为交付门禁术语，根因是 durable execution ADR 沿用了历史阶段排期，没有切换到主架构统一的 ring 口径。修复：正文现改为 `Ring 2 durable-readiness`。

@@ -27,10 +27,10 @@ interface DecisionRecord {
 
 | Level | Description | Audience |
 |-------|-------------|----------|
-| what | What was done | Operator |
-| why | Why it was done | Analyst |
+### Decision Traceability
+| why | Why it was done | Analysts |
 | how | How it was done | Developer |
-| full | Complete reasoning chain | Auditor |
+| full | Complete reasoning chain | Auditors |
 
 ### Explanation Generation
 
@@ -43,34 +43,34 @@ interface DecisionRecord {
 
 ### Audit Logs
 
-- All high-risk decisions recorded
+- All high-risk decisions are recorded
 - Tamper-proof storage
-- Support queries and export
+- Supports querying and exporting
 
 ### Compliance Reports
 
-- Automatically generate compliance reports
-- Support regulatory agency review
-- Publish transparency reports periodically
+- Automatically generated compliance reports
+- Supports regulatory agency review
+- Regularly published transparency reports
 
 ## Consequences
 
-Positive:
+Advantages:
 
-- Meet EU AI Act and other regulatory requirements
-- Increase user trust
-- Facilitate problem diagnosis and repair
+- Meets EU AI Act and other regulatory requirements
+- Increases user trust
+- Facilitates problem identification and resolution
 
-Negative:
+Costs:
 
 - Explanation generation adds latency
-- Storage costs increase
+- Increased storage costs
 
 ## Cross-References
 
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
 - [ADR-066 Compliance Report Auto-Generation Engine](./066-compliance-report-auto-generation.md)
 
-## Source Sections
+## Source Section
 
 - `§59` Agent Explainability and Decision Transparency Architecture

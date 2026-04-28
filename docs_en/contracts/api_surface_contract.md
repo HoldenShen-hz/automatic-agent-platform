@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -67,60 +67,60 @@ This contract defines the minimum resource model and interface boundaries for th
 - `GET /healthz`
 - `GET /health` (compat alias)
 
-If the platform subsequently exposes a standalone execution control plane, the following may additionally be provided:
+If the platform subsequently exposes an independent execution control plane, the following may additionally be provided:
 
 - `POST /command/exec`
 - `POST /command/exec/:processId/write`
 - `POST /command/exec/:processId/resize`
 - `POST /command/exec/:processId/terminate`
 
-## 4. Behavior Constraints
+## 4. Behavioral Constraints
 
 - API return structure must align with contract naming.
-- Write interfaces must return stable IDs and timestamps.
+- Write interfaces must return stable ID and timestamp.
 - High-risk actions should require approval or explicit permissions.
-- OpenAPI should be generated from schema, not maintaining manually written drifted versions.
-- The status semantics and field naming for health / inspect are based on `debug_inspect_health_backpressure_contract.md`.
-- CLI, Web Console, TUI, and admin tools consuming the same service surface should preferentially share the same versioned API / SDK surface, rather than each maintaining implicit private protocols.
-- Rollout / feedback / timeline interfaces, if the current deployment does not have the corresponding capability enabled, should return explicit `not_enabled` or controlled `404` semantics, not disguised as successful empty objects.
-- Knowledge / domain / plugin / artifact plane interfaces, if the current deployment does not have the corresponding capability enabled, should return explicit `not_enabled`, not silently empty list.
+- OpenAPI should be generated from schema and not maintain manually written drifted versions.
+- The status semantics and field naming for health / inspect follow `debug_inspect_health_backpressure_contract.md`.
+- CLI, Web Console, TUI, and admin tools consuming the same service surface should prioritize sharing the same versioned API / SDK surface rather than each maintaining implicit private protocols.
+- rollout / feedback / timeline interfaces should return explicit `not_enabled` or controlled `404` semantics if the current deployment does not have the corresponding capability enabled, rather than pretending to be a successful empty object.
+- knowledge / domain / plugin / artifact plane interfaces should return explicit `not_enabled` if the current deployment does not have the corresponding capability enabled, rather than silently returning an empty list.
 
 ## 5. Supplementary Rules
 
 ### 5.1 Authentication
 
-- `POST /tasks`, `POST /approvals/:approvalId/decision`, and cancellation interfaces require authenticated principal by default.
+- `POST /tasks`, `POST /approvals/:approvalId/decision`, and cancellation interfaces require an authenticated principal by default.
 - `GET /healthz` may allow restricted anonymous access; `GET /health` is only a compat alias.
-- `inspect` interfaces require administrator, task owner, or principal with explicit debugging permissions by default.
+- `inspect` interfaces require administrator, task owner, or principal with explicit debug permission by default.
 
 ### 5.2 Pagination and Filtering
 
 - List interfaces uniformly use `limit`, `cursor`, `sort`.
-- Filter fields use explicit whitelist, not accepting arbitrary field pass-through.
+- Filter fields use explicit whitelist and do not accept arbitrary field passthrough.
 - Default sorting should be stable to avoid pagination drift.
-- Knowledge query should at least support `q`, `namespace?`, `domainId?`, `limit?`; when semantic backend is enabled, callers do not need to understand whether the underlying is `local_hash` or `pgvector`.
-- `GET /knowledge/semantic/inspect` should return current semantic backend, readiness, and backend details; if `pgvector` is explicitly enabled but the backend is unavailable, runtime startup should fail-close.
+- Knowledge query should support at minimum `q`, `namespace?`, `domainId?`, `limit?`; when the semantic backend is enabled, callers do not need to understand whether the underlying is `local_hash` or `pgvector`.
+- `GET /knowledge/semantic/inspect` should return the current semantic backend, readiness, and backend details; when `pgvector` is explicitly enabled but the backend is unavailable, runtime startup should fail-close.
 
 ### 5.3 Version Evolution
 
-- External API uses `/v1` prefix or equivalent version strategy by default.
-- Breaking field changes must go through new version or add field compatibility period.
+- External API uses `/v1` prefix or equivalent versioning strategy by default.
+- Breaking field changes must go through a new version or a compatibility period for new fields.
 - OpenAPI artifacts are derived products; the source of truth remains in contract and schema.
 
 ### 5.4 SDK and Embedded Consumer Surfaces
 
 - Typed clients, server bootstrap helpers, and admin SDKs should all be derived from the same schema / OpenAPI.
-- The platform allows different clients such as CLI / TUI / Web, but they should not fork the source of truth by copying interface definitions.
+- The platform may have CLI / TUI / Web as different clients, but they should not fork the source of truth by copying interface definitions.
 - If a client needs adaptation logic such as transport or header rewriting, it should be treated as a client compatibility layer, not the API contract itself.
-- If SDK depends on a specific runtime / CLI binary, it should explicitly declare version relationship or pinning rules, not implicitly assume "user's local is just compatible".
+- If an SDK depends on a specific runtime / CLI binary, it should explicitly declare the version relationship or pinning rules rather than implicitly assuming "the user's local version happens to be compatible".
 
 ### 5.5 Standalone Execution Control Plane
 
-- Standalone `command/exec`, if it exists, should be treated as a controlled control plane capability, not a shortcut for regular task execution.
+- Standalone `command/exec`, if it exists, should be treated as a controlled control plane capability, not a shortcut for ordinary task execution.
 - It must explicitly declare execution control items such as `sandboxPolicy`, `timeout`, `output cap`, `pty/streaming`.
-- Process control state generated by command/exec must not retroactively tamper with task / workflow primary state.
+- Process control state generated by command/exec must not reverse-override task / workflow main state.
 
 ### 5.6 Plugin Registry Inventory
 
-- `GET /plugins` and `GET /domains/:domainId/plugins` should at least return `manifest`, `lifecycle_state`, `failure_count`, `cooldown_until?`, `runtime_process_id?`.
-- If the plugin runs in a standalone sandbox runtime, it should also expose `runtime_sandbox_root?` for diagnostics / operator audit.
+- `GET /plugins` and `GET /domains/:domainId/plugins` should return at minimum `manifest`, `lifecycle_state`, `failure_count`, `cooldown_until?`, `runtime_process_id?`.
+- If a plugin runs in an independent sandbox runtime, it should also expose `runtime_sandbox_root?` for diagnostics / operator audit.

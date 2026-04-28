@@ -80,5 +80,5 @@ test("domain support modules expose contract-aligned helpers", () => {
     true,
   );
 
-  assert.equal(nextOnboardingPhase("security_certification"), "canary_launch");
+  assert.equal(nextOnboardingPhase("security_certification"), "gray_rollout");
 });

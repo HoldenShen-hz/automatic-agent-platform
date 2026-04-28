@@ -5,55 +5,55 @@
 
 ## Context
 
-Platform evolution requires a clear phased roadmap with success gates to ensure systematic delivery and architectural integrity across multiple phases.
+Platform construction is an incremental process that requires clear phase divisions and phase gates to ensure each phase delivers usable functionality.
 
 ## Decision
 
 ### 7-Phase Roadmap
 
-| Phase | Focus | Key Deliverables |
-|-------|-------|------------------|
-| Phase 1 | Core runtime | Task execution, basic workflow |
-| Phase 2 | Platform foundation | API, auth, storage |
-| Phase 3 | Intelligence layer | OAPEFLIR, learning |
-| Phase 4 | Enterprise features | Multi-tenant, compliance |
-| Phase 5 | Scale ecosystem | Marketplace, multi-region |
-| Phase 6 | Ops maturity | Explainability, DR |
-| Phase 7 | Future innovations | TBD |
+| Phase | Objective | Key Deliverables |
+|-------|-----------|------------------|
+| Phase 1 | Core Execution Plane | Basic Workflow, Plugin, State Management |
+| Phase 2 | Stability Enhancement | Recovery Mechanism, Monitoring Alerts |
+| Phase 3 | AI Operations Layer | LLM Abstraction, Prompt Governance, Cost Management |
+| Phase 4 | Business Domain Onboarding | DomainDescriptor, Pack SDK |
+| Phase 5 | Intelligent Interaction | NL Entry, Goal Decomposition, Proactive Agent |
+| Phase 6 | Organization Governance | Tenant Isolation, SSO, Permission Management |
+| Phase 7 | Scale Ecosystem | Multi-Region, Marketplace |
 
-### Phase Gate Criteria
-
-- Each phase has specific success criteria
-- Criteria registered in `domains/roadmap/success-criteria-service.ts`
-- Gateway evaluation via `evaluatePhaseAdvance()`
-- Automatic blocking of advancement if criteria not met
-
-### Roadmap Tracking
+### Roadmap Service
 
 - `domains/roadmap/roadmap-service.ts` (124 lines)
 - Phase tracking and status management
 - Completion records
 
+### Phase Gates
+
+- SuccessCriteriaService supports phase gate registration
+- Metric scoring
+- `evaluatePhaseAdvance()` interception
+
+### Feature Flags
+
+- Feature flag governance in `config-override-governance`
+- `gray-release-rehearsal` supports canary release
+
 ## Consequences
 
 Positive:
-- Clear roadmap provides direction and alignment
-- Phase gates ensure quality before advancement
-- Tracking enables progress visibility
+- Phasing reduces delivery risk
+- Phase gates ensure quality
+- Feature flags support incremental release
 
 Negative:
-- Roadmap requires maintenance and updates
-- Phase gates may slow down delivery
-
-Trade-offs:
-- Structure vs. agility
-- Quality vs. velocity
+- Roadmap maintenance requires ongoing investment
+- Phase boundaries may need adjustment
 
 ## Cross-References
 
-- [ADR-034 ADR Freeze Recommendation](./034-adr-freeze-recommendation.md)
-- [ADR-036 Risk Constraints and Success Criteria](./036-risk-constraints-and-success-criteria.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
+- [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
 ## Source Sections
 
-- `§33` Roadmap and Phase Planning
+- `§33` Phased Roadmap

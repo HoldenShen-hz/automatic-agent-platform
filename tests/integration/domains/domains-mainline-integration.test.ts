@@ -67,7 +67,7 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
 
     const onboarding = new DomainOnboardingService(codingRegistry);
     onboarding.start(codingBaseline.domainId);
-    for (const phase of ["modeling", "development_validation", "security_certification", "canary_launch"] as const) {
+    for (const phase of ["domain_modeling", "pack_development", "security_certification", "gray_rollout"] as const) {
       const session = onboarding.get(codingBaseline.domainId);
       if (session.activePhase === phase) {
         onboarding.advance(codingBaseline.domainId, [`${phase}:evidence`, `${phase}:rollback-plan`]);

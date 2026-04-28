@@ -193,15 +193,21 @@ test("PluginBindingSchema parses valid binding", () => {
 });
 
 test("PluginBindingSchema accepts all plugin types", () => {
-  const types = ["retriever", "validator", "planner", "presenter", "adapter"];
-  for (const type of types) {
+  const cases = [
+    ["retriever", "retriever"],
+    ["validator", "evaluator"],
+    ["planner", "tool"],
+    ["presenter", "tool"],
+    ["adapter", "adapter"],
+  ] as const;
+  for (const [type, expected] of cases) {
     const result = PluginBindingSchema.parse({
       bindingId: "b1",
       domainId: "d1",
       pluginType: type,
       pluginId: "p1",
     });
-    assert.equal(result.pluginType, type);
+    assert.equal(result.pluginType, expected);
   }
 });
 

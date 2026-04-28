@@ -5,7 +5,7 @@
 
 ## Context
 
-Agents cannot only passively respond to requests; they also need to proactively perceive environmental changes and take actions.
+Agents cannot only passively respond to requests; they also need to proactively perceive environmental changes and take action.
 
 ## Decision
 
@@ -29,41 +29,39 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 
 | Action Type | Description |
 |-------------|-------------|
-| create_task | Create task |
-| create_goal | Create goal |
+| create_task | Create a task |
+| create_goal | Create a goal |
 | suggest_to_user | Suggest to user |
 | update_dashboard | Update dashboard |
 
-### Trigger Storm Protection (4 layers)
+### Trigger Storm Protection (4 Layers)
 
 | Layer | Mechanism |
 |-------|-----------|
-| Per-trigger rate limit | Default 10 times/hour |
+| Per-trigger rate limiting | Default 10 times/hour |
 | Cooldown period | Default 5 minutes |
-| Circuit breaker | 3 consecutive failures = disable |
+| Circuit breaker | 3 consecutive failures = disabled |
 | Per-domain daily budget | dailyTriggerBudgetByDomain |
 
 ### TriggerEngine
 
 - `proactive-agent/` (5 files, 694 lines)
-- Evaluates trigger conditions
-- Executes trigger actions
-- Records trigger history
+- Evaluate trigger conditions
+- Execute trigger actions
+- Record trigger history
 
 ## Consequences
 
 Positive:
+
 - Proactive perception improves platform intelligence
 - Multi-layer protection prevents trigger storms
 - Multiple trigger types cover common scenarios
 
 Negative:
-- Proactive behavior may disturb users
-- Trigger logic complexity is high
 
-Trade-offs:
-- Intelligence vs. intrusiveness
-- Proactivity vs. overhead
+- Proactive behavior may disturb users
+- Trigger logic complexity is relatively high
 
 ## Cross-References
 
@@ -72,4 +70,4 @@ Trade-offs:
 
 ## Source Sections
 
-- `§41` Proactive Agent
+- `§41` Proactive Agent Framework

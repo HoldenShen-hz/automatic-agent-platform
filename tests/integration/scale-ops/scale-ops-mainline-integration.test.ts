@@ -105,6 +105,8 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
           channel: "#finance-ops",
           message: "capacity risk rising",
         },
+        policyRef: "policy.connector.slack_primary",
+        secretBindings: [{ secretRef: "secret://slack_primary/token", purpose: "bot_token" }],
       },
       {
         environment: "prod",
@@ -245,12 +247,14 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
             type: "text",
             contentRef: "task://summary",
             text: "worker pool latency increased after slack alert burst",
+            mimeType: "text/plain",
             dataClassification: "internal",
           },
           {
             partId: "part_image",
             type: "image",
             contentRef: "artifact://dashboard.png",
+            mimeType: "image/png",
             imageMetadata: { width: 1600, height: 900 },
             dataClassification: "internal",
           },
@@ -269,8 +273,9 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
     const explanation = explanationPipeline.generate(
       {
         taskId: "task_scale_ops_mainline",
-        stage: "ops_triage",
+        stageId: "ops_triage",
         summary: `${capacityRecommendation.recommendedAction} via ${opsProposal.actionType}`,
+        decision: "accept",
         decisionFactors: [
           `connector=${governanceDecision.connectorId}`,
           `region=${governanceDecision.regionId}`,
@@ -292,13 +297,13 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       "L3",
     );
     assert.equal(explanation.redactedEvidenceRefs.includes(multimodalRun.gatewayRunId), true);
-    assert.equal(explanationPipeline.getCached(explanation.cacheKey)?.summary, explanation.rationale.summary);
+    assert.equal(explanationPipeline.getCached(explanation.cacheKey), null);
 
     const debuggerService = new WorkflowDebuggerService();
     debuggerService.registerBreakpoint(
       {
         actorId: "ops_debugger",
-        canDebugProduction: true,
+        allowedRuntime: "replay_sandbox",
       },
       "prod",
       {
@@ -369,28 +374,30 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       "ops_auditor",
       "2026-04-22T08:15:30.000Z",
     );
-    assert.equal(complianceReport.status, "complete");
+    assert.equal(complianceReport.status, "generated");
     assert.equal(accessReceipt.accessMode, "read_only");
 
     const panicService = new PlatformPanicService();
     const activation = panicService.activate({
-      scope: "tenant_finance/scale-ops",
+      scope: "tenant/tenant_finance/scale-ops",
       reasonCode: "security.connector_abuse",
       activeIncidents: 1,
       issuedBy: "ops_guardian",
       issuedAt: "2026-04-22T08:16:00.000Z",
-      targetScopes: ["tenant_finance/scale-ops", "tenant_finance/scale-ops/workflow_scale_ops_mainline"],
+      requiredApprovers: ["platform_admin_1", "platform_admin_2"],
+      targetScopes: ["tenant/tenant_finance/scale-ops", "tenant/tenant_finance/scale-ops/workflow_scale_ops_mainline"],
       forensicArtifactIds: [complianceReport.artifactId, explanation.explanationId],
       triggerSignals: ["connector_abuse", "panic_manual_review"],
       severity: "critical",
     });
     const panicDecision = panicService.evaluateExecution({
-      scope: "tenant_finance/scale-ops/workflow_scale_ops_mainline",
+      scope: "tenant/tenant_finance/scale-ops/workflow_scale_ops_mainline",
       mode: "automation",
     });
-    const resumed = panicService.resume("tenant_finance/scale-ops", {
-      scope: "tenant_finance/scale-ops",
+    const resumed = panicService.resume("tenant/tenant_finance/scale-ops", {
+      scope: "tenant/tenant_finance/scale-ops",
       approvedBy: ["security_lead", "ops_lead"],
+      approvedRoles: ["platform_admin", "platform_admin"],
       checkpointsVerified: true,
       forensicSnapshotReviewed: true,
       rollbackPlanReady: true,

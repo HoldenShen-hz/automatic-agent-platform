@@ -68,23 +68,22 @@ test("performance: transitionTaskStatus throughput >5000 ops/sec", (t) => {
 
   try {
     const taskIds: string[] = [];
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5000; i++) {
       const taskId = newId("task");
       taskIds.push(taskId);
       seedTask(store, db, taskId, "queued");
     }
 
-    const iterations = 5000;
+    const iterations = taskIds.length;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
       const taskId = taskIds[i % taskIds.length]!;
-      const fromStatus = i % 2 === 0 ? "queued" : "pending";
       transitions.transitionTaskStatus({
         entityKind: "task",
         entityId: taskId,
-        fromStatus: fromStatus as "queued" | "pending",
-        toStatus: fromStatus === "queued" ? "pending" : "in_progress",
+        fromStatus: "queued",
+        toStatus: "pending",
         executionId: null,
         reasonCode: "perf_test",
         traceId: newId("trace"),
@@ -123,19 +122,26 @@ test("performance: transitionTaskStatus P99 latency <1ms", (t) => {
   const transitions = new TransitionService(db, store);
 
   try {
-    const taskIds: string[] = [];
+    const warmupTaskIds: string[] = [];
     for (let i = 0; i < 100; i++) {
+      const taskId = newId("task");
+      warmupTaskIds.push(taskId);
+      seedTask(store, db, taskId, "queued");
+    }
+
+    const taskIds: string[] = [];
+    for (let i = 0; i < 5000; i++) {
       const taskId = newId("task");
       taskIds.push(taskId);
       seedTask(store, db, taskId, "queued");
     }
 
     const latencies: number[] = [];
-    const iterations = 5000;
+    const iterations = taskIds.length;
 
     // Warmup
     for (let i = 0; i < 100; i++) {
-      const taskId = taskIds[i % taskIds.length]!;
+      const taskId = warmupTaskIds[i % warmupTaskIds.length]!;
       transitions.transitionTaskStatus({
         entityKind: "task",
         entityId: taskId,
@@ -146,13 +152,6 @@ test("performance: transitionTaskStatus P99 latency <1ms", (t) => {
         traceId: newId("trace"),
         actorType: "system",
         occurredAt: nowIso(),
-      });
-    }
-
-    // Reset tasks to queued
-    for (const taskId of taskIds) {
-      db.transaction(() => {
-        store.updateTaskStatus(taskId, "queued", nowIso(), null, null);
       });
     }
 
@@ -211,7 +210,7 @@ test("performance: transitionSessionStatus throughput >5000 ops/sec", (t) => {
     const sessionIds: string[] = [];
     const taskIds: string[] = [];
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5000; i++) {
       const taskId = newId("task");
       const sessionId = newId("sess");
       taskIds.push(taskId);
@@ -251,7 +250,7 @@ test("performance: transitionSessionStatus throughput >5000 ops/sec", (t) => {
       });
     }
 
-    const iterations = 5000;
+    const iterations = sessionIds.length;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
@@ -259,8 +258,8 @@ test("performance: transitionSessionStatus throughput >5000 ops/sec", (t) => {
       transitions.transitionSessionStatus({
         entityKind: "session",
         entityId: sessionId,
-        fromStatus: i % 2 === 0 ? "open" : "streaming",
-        toStatus: i % 2 === 0 ? "streaming" : "completed",
+        fromStatus: "open",
+        toStatus: "streaming",
         reasonCode: "perf_test",
         traceId: newId("trace"),
         actorType: "system",
@@ -304,7 +303,7 @@ test("performance: transitionWorkflowStatus throughput >5000 ops/sec", (t) => {
   try {
     const taskIds: string[] = [];
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5000; i++) {
       const taskId = newId("task");
       taskIds.push(taskId);
 
@@ -326,7 +325,7 @@ test("performance: transitionWorkflowStatus throughput >5000 ops/sec", (t) => {
       });
     }
 
-    const iterations = 5000;
+    const iterations = taskIds.length;
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
@@ -334,8 +333,8 @@ test("performance: transitionWorkflowStatus throughput >5000 ops/sec", (t) => {
       transitions.transitionWorkflowStatus({
         entityKind: "workflow",
         entityId: taskId,
-        fromStatus: i % 2 === 0 ? "running" : "paused",
-        toStatus: i % 2 === 0 ? "paused" : "running",
+        fromStatus: "running",
+        toStatus: "paused",
         currentStepIndex: 1,
         outputsJson: "{}",
         reasonCode: "perf_test",

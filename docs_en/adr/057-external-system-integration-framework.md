@@ -58,13 +58,13 @@ interface ExternalAdapter {
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Unified framework reduces integration costs
-- Standardized error processing
+- Standardized error handling
 - Governance capabilities ensure security
 
-Negative:
+Costs:
 
 - Adapter development takes time
 - Maintaining multiple integrations increases complexity
@@ -74,6 +74,6 @@ Negative:
 - [ADR-027 Security Architecture](./027-security-architecture.md)
 - [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
 
-## Source Sections
+## Source Section
 
 - `§57` External System Integration Framework

@@ -1,4 +1,4 @@
-# ADR-049 Department Compliance Policy Engine
+# ADR-049 Department-Level Compliance Policy Engine
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -43,35 +43,33 @@ interface ComplianceRule {
 ### Policy Inheritance and Override
 
 - Sub-departments inherit parent department policies
-- Sub-departments can override parent department policies (stricter)
+- Sub-departments may override parent department policies (more strict)
 - Platform-level policies cannot be overridden
 
 ### Compliance Checkpoints
 
-- Pre-execution check
-- Post-execution check
-- Periodic scanning check
+- Pre-task execution check
+- Post-task execution check
+- Periodic scan check
 
 ## Consequences
 
 Positive:
+
 - Differentiated compliance supports business needs
 - Inheritance mechanism reduces duplicate configuration
 - Checkpoint mechanism ensures compliance implementation
 
 Negative:
+
 - Policy management complexity
 - Override rules may cause confusion
-
-Trade-offs:
-- Flexibility vs. consistency
-- Customization vs. complexity
 
 ## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
 
 ## Source Sections
 
-- `§49` Sub-Department Compliance Policy
+- `§49` Department-Level Compliance Policy Engine

@@ -147,7 +147,7 @@ test("SdkWorkbenchService.buildSnapshot generates workbench shortcuts", () => {
   assert.ok(snapshot.workbenchShortcuts.length > 0);
   const taskShortcut = snapshot.workbenchShortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
   assert.ok(taskShortcut != null);
-  assert.ok(taskShortcut?.previewUrl?.includes("/tasks"));
+  assert.ok(taskShortcut?.previewUrl?.includes("/harness-runs"));
 });
 
 test("SdkWorkbenchService.buildPublishReadiness reports findings for unresolved capabilities", () => {
@@ -235,5 +235,5 @@ test("SdkWorkbenchService.listWorkbenchShortcuts builds correct preview URLs", (
   const shortcuts = service.listWorkbenchShortcuts(mockClient);
 
   const tasksShortcut = shortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
-  assert.ok(tasksShortcut?.previewUrl?.includes("https://api.example.com/v1/tasks"));
+  assert.ok(tasksShortcut?.previewUrl?.includes("https://api.example.com/v1/harness-runs"));
 });

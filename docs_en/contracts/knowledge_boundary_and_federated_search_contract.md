@@ -41,7 +41,7 @@ This contract defines knowledge domain isolation, federated search, and Chinese 
 
 ## 5. Security Rules
 
-- Default deny for cross-boundary access.
+- Default deny cross-boundary access.
 - Sharing must go through `KnowledgeShareGrant` or explicit policy.
 - Requests hitting Chinese Wall must be blocked and audited.
 

@@ -2,7 +2,7 @@
  * Unit tests for drift detection thresholds per §17 spec
  * - 24-hour sliding window
  * - -10% relative change threshold
- * - Maps to SEV3 events
+ * - Maps to tiered drift severities
  */
 
 import assert from "node:assert/strict";
@@ -36,7 +36,7 @@ test("ChangepointDetectorService uses 24h baseline window", () => {
   const result = service.detect(samples);
 
   assert.strictEqual(result.detected, true);
-  assert.strictEqual(result.severity, "SEV3");
+  assert.strictEqual(result.severity, "low");
 });
 
 test("ChangepointDetectorService detects -10% relative change", () => {
@@ -65,7 +65,7 @@ test("ChangepointDetectorService detects -10% relative change", () => {
     Math.abs(result.relativeShift - (-0.10)) < 1e-9 || result.relativeShift < -0.10,
     `Expected relative shift ~= -0.10, got ${result.relativeShift}`,
   );
-  assert.strictEqual(result.severity, "SEV3");
+  assert.strictEqual(result.severity, "low");
   assert.strictEqual(result.reasonCode, "drift.changepoint_detected");
 });
 
@@ -117,10 +117,10 @@ test("ChangepointDetectorService detects -15% change (well below threshold)", ()
 
   assert.strictEqual(result.detected, true);
   assert.ok(result.relativeShift <= -0.10);
-  assert.strictEqual(result.severity, "SEV3");
+  assert.strictEqual(result.severity, "medium");
 });
 
-test("ChangepointDetectorService returns SEV3 severity on drift detection", () => {
+test("ChangepointDetectorService returns tiered severity on drift detection", () => {
   const service = new ChangepointDetectorService();
 
   // Significant degradation: score drops from 0.9 to 0.7
@@ -141,7 +141,7 @@ test("ChangepointDetectorService returns SEV3 severity on drift detection", () =
   const result = service.detect(samples);
 
   assert.strictEqual(result.detected, true);
-  assert.strictEqual(result.severity, "SEV3");
+  assert.strictEqual(result.severity, "medium");
 });
 
 test("ChangepointDetectorService returns none severity when stable", () => {
@@ -280,5 +280,5 @@ test("ChangepointDetectorService negative shift indicates performance degradatio
 
   assert.strictEqual(result.detected, true);
   assert.ok(result.relativeShift < 0, "Relative shift should be negative for degradation");
-  assert.strictEqual(result.severity, "SEV3");
+  assert.strictEqual(result.severity, "medium");
 });

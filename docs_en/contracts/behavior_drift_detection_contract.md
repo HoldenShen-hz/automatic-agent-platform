@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines behavior fingerprints, change point detection, and cross-Agent anomaly detection for `§63`.
+This contract defines `§63`'s behavior fingerprints, change point detection, and cross-Agent anomaly detection.
 
 ## 2. Canonical Objects
 
@@ -24,9 +24,9 @@ This contract defines behavior fingerprints, change point detection, and cross-A
 
 - Drift detection must distinguish expected changes from anomalous deviations.
 - Drift response must support `observe_only | throttle | downgrade | rollback | freeze`.
-- Response strategy must coordinate with rollout / governance.
+- Response strategies must coordinate with rollout / governance.
 
-## 5. Test Requirements
+## 5. Testing Requirements
 
 - unit: fingerprint build, changepoint detect, response planning
 - integration: drift signal -> rollout / autonomy response

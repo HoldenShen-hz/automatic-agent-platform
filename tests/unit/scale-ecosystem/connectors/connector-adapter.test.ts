@@ -17,6 +17,8 @@ function createMockRequest(overrides: Partial<ConnectorExecutionRequest> = {}): 
     connectorId: "test-connector",
     capability: "test_capability",
     payload: {},
+    policyRef: "policy.connector.default",
+    secretBindings: [{ secretRef: "secret://connector/token", purpose: "api_token" }],
     ...overrides,
   };
 }

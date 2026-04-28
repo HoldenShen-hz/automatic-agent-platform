@@ -36,9 +36,14 @@ type RegionRole = 'primary' | 'replica' | 'hot_standby';
 
 | 同步模式 | 说明 | RPO |
 |----------|------|-----|
-| sync | 同步复制 | 0 |
 | async | 异步复制 | < 1s |
 | eventual | 最终一致 | < 1min |
+
+约束：
+
+- v4.2/v4.3 不承诺多主 truth 写入，也不承诺跨 region `sync` 复制的 `RPO = 0`。
+- `HarnessRun / NodeRun / BudgetLedger` truth 必须保持单 writer；跨 region 复制只允许 append-only evidence、read model 或异步 shadow data。
+- 自动故障转移必须建立在 async replication、lease 接管与 fencing 校验之上，而不是假设多主同步真相写入。
 
 ### 故障转移
 
@@ -67,3 +72,7 @@ type RegionRole = 'primary' | 'replica' | 'hot_standby';
 ## 来源章节
 
 - `§52` 多 Region 部署架构
+
+## v4.3 ADR Remediation
+
+- A-24: 本 ADR 原先列出 `sync` 复制并给出 `RPO=0`，根因是多 region ADR 复用了传统数据库部署话语，没有区分 append-only evidence 复制与 runtime truth 单 writer 边界。修复：正文现明确 v4.2/v4.3 只承认 async/eventual 复制，不承诺多主 truth 写入或 `RPO=0` 的 sync 复制。

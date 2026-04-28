@@ -17,6 +17,10 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
     connectorId: overrides.connectorId ?? "test-connector",
     capability: overrides.capability ?? "create_pr",
     payload: overrides.payload ?? {},
+    policyRef: "policyRef" in overrides ? overrides.policyRef : "policy.connector.default",
+    secretBindings: "secretBindings" in overrides
+      ? overrides.secretBindings
+      : [{ secretRef: "secret://connector/token", purpose: "api_token" }],
   };
 }
 

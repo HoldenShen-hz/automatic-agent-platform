@@ -6,7 +6,8 @@
 
 import { ValidationError } from "../../platform/contracts/errors.js";
 
-export type PluginType = "tool" | "adapter" | "retriever" | "evaluator" | "presenter";
+export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
+export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
 
 export interface PluginCapability {
   name: string;
@@ -31,11 +32,20 @@ export interface PluginDefinition {
   name: string;
   version: string;
   type: PluginType;
+  role?: PluginRole;
   description?: string;
   capabilities: PluginCapability[];
   resourceLimits: PluginResourceLimits;
   dependencies: string[];
   security: PluginSecurityConfig;
+  spiTypes: PluginType[];
+  domainIds: string[];
+  sbomRef: string | null;
+  signing: {
+    keyId: string;
+    signature: string;
+    algorithm: string;
+  } | null;
 }
 
 export interface DefinePluginOptions {
@@ -43,11 +53,20 @@ export interface DefinePluginOptions {
   name?: string;
   version?: string;
   type?: PluginType;
+  role?: PluginRole;
   description?: string;
   capabilities?: PluginCapability[];
   resourceLimits?: PluginResourceLimits;
   dependencies?: string[];
   security?: PluginSecurityConfig;
+  spiTypes?: PluginType[];
+  domainIds?: string[];
+  sbomRef?: string | null;
+  signing?: {
+    keyId: string;
+    signature: string;
+    algorithm?: string;
+  } | null;
 }
 
 const DEFAULT_RESOURCE_LIMITS: PluginResourceLimits = {
@@ -114,10 +133,19 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
     name: options.name.trim(),
     version: options.version.trim(),
     type: options.type,
+    ...(options.role !== undefined ? { role: options.role } : {}),
     capabilities: options.capabilities,
     resourceLimits: options.resourceLimits ?? DEFAULT_RESOURCE_LIMITS,
     dependencies: options.dependencies ?? [],
     security: options.security ?? DEFAULT_SECURITY,
+    spiTypes: [...new Set((options.spiTypes ?? [options.type]).filter((type): type is PluginType => type !== undefined))],
+    domainIds: [...new Set((options.domainIds ?? []).map((domainId) => domainId.trim()).filter((domainId) => domainId.length > 0))],
+    sbomRef: options.sbomRef?.trim() ? options.sbomRef.trim() : null,
+    signing: options.signing == null ? null : {
+      keyId: options.signing.keyId.trim(),
+      signature: options.signing.signature.trim(),
+      algorithm: options.signing.algorithm?.trim() || "ed25519",
+    },
   };
   if (options.description?.trim()) {
     result.description = options.description.trim();
@@ -162,10 +190,15 @@ export function validatePluginDefinition(definition: PluginDefinition): PluginDe
     name: definition.name,
     version: definition.version,
     type: definition.type,
+    ...(definition.role !== undefined ? { role: definition.role } : {}),
     description: definition.description ?? "Plugin description",
     capabilities: definition.capabilities,
     resourceLimits: definition.resourceLimits,
     dependencies: definition.dependencies,
     security: definition.security,
+    spiTypes: definition.spiTypes,
+    domainIds: definition.domainIds,
+    sbomRef: definition.sbomRef,
+    signing: definition.signing,
   });
 }

@@ -52,7 +52,7 @@ test("resolveCompliancePolicyForNode returns merged policy for intermediate node
 
   const result = resolveCompliancePolicyForNode(nodes, "dept", policiesByNodeId);
 
-  assert.strictEqual(result.retentionDays, 90);
+  assert.strictEqual(result.retentionDays, 30);
 });
 
 test("resolveCompliancePolicyForNode returns empty object when node has no policies in lineage", () => {

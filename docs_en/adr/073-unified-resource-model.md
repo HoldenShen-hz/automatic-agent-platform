@@ -26,7 +26,8 @@ Therefore, this ADR needs to be rewritten to: first define the current authorita
 
 The unified resource model adopts a "two-layer definition":
 
-1. Phase1-4 authoritative resource family: resource types, typed refs, and lineage boundaries that the current repository and contracts should uniformly use.
+1. Ring 1 authoritative resource family: resource types, typed refs, and lineage boundaries that the current repository and contracts should uniformly use.
+2. Ring 2 / Ring 3 extension resource family: extended resources after full platformization of Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry, not counted toward current delivery declarations.
 2. `M2` target-state resource family: extended resources after full platformization of Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry, not counted toward current delivery declarations.
 
 ## Canonical Typed Ref
@@ -52,13 +53,16 @@ Constraints:
 
 ## Authoritative Resource Family
 
-The current phase1-4 authoritative resource family is as follows:
+The current Ring 1 authoritative resource family is as follows:
 
 | Resource Type | Current Canonical Object | Minimum Identifier |
 | --- | --- | --- |
-| `task` | `TaskRecord` / `tasks` | `task_id` |
-| `workflow` | `WorkflowState` / `workflow_state` | `workflow_id` |
-| `execution` | `ExecutionEnvelope` / `executions` | `execution_id` |
+| `harness_run` | `HarnessRun` / `harness_runs` | `harness_run_id` |
+| `plan_graph_bundle` | `PlanGraphBundle` / `plan_graph_bundles` | `plan_graph_bundle_id` |
+| `node_run` | `NodeRun` / `node_runs` | `node_run_id` |
+| `node_attempt_receipt` | `NodeAttemptReceipt` / `node_attempt_receipts` | `receipt_id` |
+| `task_projection` | `TaskRecord` / `tasks` | `task_id` |
+| `workflow_projection` | `WorkflowState` / `workflow_state` | `workflow_id` |
 | `approval` | `ApprovalRequest` / `approvals` | `approval_id` |
 | `event` | typed event / `events` | `event_id` |
 | `artifact` | `ArtifactRecord` | `ArtifactRef` |
@@ -76,7 +80,7 @@ Supplementary rules:
 
 - `feedback_signal / learning_object / improvement_candidate / strategy_version / rollout_record` are first-class resources in the OAPEFLIR loop and are no longer treated as subordinate logs.
 - `memory_layer` is a governance partition of `MemoryEntry`, not an independent business object; however, contracts may treat layer promotion as an independent audit resource.
-- `knowledge_entry` may exist with a minimal implementation in the current phase1-4, but naming, references, and lineage semantics must be fixed.
+- `knowledge_entry` may exist with a minimal implementation in the current Ring 1, but naming, references, and lineage semantics must be fixed.
 
 ## Resource Projection
 
@@ -84,7 +88,8 @@ The unified resource model does not require the current repository to immediatel
 
 | Resource Family | Current Common Projections |
 | --- | --- |
-| task / workflow / execution | `storage_schema_contract.md`, `runtime_execution_contract.md` |
+| harness_run / plan_graph_bundle / node_run / node_attempt_receipt | `storage_schema_contract.md`, `runtime_execution_contract.md` |
+| task_projection / workflow_projection | `task_and_workflow_contract.md`, interaction projection |
 | approval / event | `approval_and_hitl_contract.md`, `event_bus_contract.md` |
 | artifact / evidence | `artifact_store_contract.md`, `diagnostics_snapshot_and_repro_bundle_contract.md` |
 | memory_entry / memory_layer | `memory_decay_and_quality_contract.md`, `context_compaction_and_overflow_contract.md` |
@@ -159,13 +164,13 @@ interface KnowledgeRefMetadata {
 
 The unified resource model must support the following lineage paths:
 
-`Task/Workflow/Execution -> FeedbackSignal -> LearningObject -> ImprovementCandidate -> StrategyVersion -> RolloutRecord -> Artifact/Evidence`
+`HarnessRun/NodeRun/NodeAttemptReceipt -> FeedbackSignal -> LearningObject -> ImprovementCandidate -> StrategyVersion -> RolloutRecord -> Artifact/Evidence`
 
 While also allowing:
 
-`Task/Execution -> MemoryRef`
+`HarnessRun/NodeRun -> MemoryRef`
 
-`Task/Execution -> KnowledgeRef`
+`HarnessRun/NodeRun -> KnowledgeRef`
 
 Constraints:
 
@@ -175,15 +180,16 @@ Constraints:
 
 ## Phase Boundary
 
-### Current phase1-4 authoritative scope
+### Current Ring 1 Authoritative Scope
 
 The current document system must describe according to the following boundaries:
 
-- `tasks / workflow / execution / approval / event / artifact / evidence / feedback / learning / improvement / rollout / memory / knowledge-minimum` all belong to the currently aligned scope.
-- The typed ref family is already part of the current document boundaries, even if the underlying implementation still has legacy naming.
-- `Observe / Assess / Plan / Execute / Feedback / Learn / Improve / Release` as top-level loop phases are already current contract canonical terminology.
+- `harness_run / plan_graph_bundle / node_run / node_attempt_receipt / approval / event / artifact / evidence / feedback / learning / improvement / rollout / memory / knowledge-minimum` all belong to the currently aligned scope.
+- `tasks / workflow_state / sessions` are only allowed as projection / interaction resource narratives.
+- The typed ref family is already part of the current document boundaries, even if the underlying implementation still has compatible naming.
+- `Observe / Assess / Plan / Execute / Feedback / Learn / Improve / Release` as top-level loop stages are already current contract canonical terminology.
 
-### `M2` target-state scope
+### `M2` Target-State Scope
 
 The following resources are reserved as `M2-EXT-01` target-state and must not be stated as delivered in current readiness:
 
@@ -192,7 +198,7 @@ The following resources are reserved as `M2-EXT-01` target-state and must not be
 - Full `McpServerSpec` control plane integration
 - Full `Knowledge Plane / Artifact Plane / Domain Registry / Plugin SPI Registry`
 
-These resources may appear in contracts or ADRs but must be explicitly marked as target-state or extension-plane, not as current phase1-4 authoritative deliverables.
+These resources may appear in contracts or ADRs but must be explicitly marked as target-state or extension-plane, not as current Ring 1 authoritative deliverables.
 
 ## Relationship with Existing Documents
 
@@ -206,5 +212,10 @@ These resources may appear in contracts or ADRs but must be explicitly marked as
 After adopting this ADR, the meaning of the unified resource model is consolidated as:
 
 1. Current contracts must share the same typed ref and resource family.
-2. Phase1-4 completed scope and `M2` extended scope are explicitly layered.
+2. Ring 1 completed scope and Ring 2 / Ring 3 extended scope are explicitly layered.
 3. When adding new APIs, table structures, or diagnostic objects in the future, they must first project to existing canonical resource families rather than introducing new parallel naming.
+
+## v4.3 ADR Remediation
+
+- A-20: This ADR originally listed `tasks / workflow / execution / ExecutionEnvelope` as authoritative resource family. Root cause: The unified resource model was first drafted from historical storage projection objects, then was not rewritten when `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` became runtime truth. Fix: The canonical resource subject is now changed to run/node/graph/receipt in the main text; old task/workflow/execution are retained only as projection resources.
+- A-29: This ADR repeatedly used `phase1-4` as the current completion boundary. Root cause: The resource model ADR followed old scheduling naming and was not updated along with the main architecture's unification to `Ring 1 / Ring 2 / Ring 3`. Fix: The main text now uses ring layering terminology; old phase names are no longer used as canonical delivery scope.

@@ -7,8 +7,9 @@ test("ExplanationPipelineService preserves facts across depths and redacts unaut
   const service = new ExplanationPipelineService();
   const request = {
     taskId: "task_release_1",
-    stage: "approval",
+    stageId: "approval",
     summary: "release requires manual approval",
+    decision: "accept" as const,
     decisionFactors: ["production change", "error budget tight"],
     evidence: [
       { evidenceId: "evt_public_1", category: "trace" },
@@ -32,5 +33,5 @@ test("ExplanationPipelineService preserves facts across depths and redacts unaut
   assert.deepEqual(audit.redactedEvidenceRefs, ["evt_secret_1"]);
   assert.match(standard.rendered, /factors=production change; error budget tight/);
   assert.match(audit.rendered, /redacted=evt_secret_1/);
-  assert.equal(service.getCached(audit.cacheKey)?.summary, "release requires manual approval");
+  assert.equal(service.getCached(audit.cacheKey), null);
 });

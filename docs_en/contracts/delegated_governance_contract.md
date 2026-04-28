@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines governance delegation, inheritance, and self-service governance console for `§49-§51`.
+This contract defines `§49-§51` governance delegation, inheritance, and self-service governance console.
 
 ## 2. Canonical Objects
 
@@ -12,7 +12,7 @@ This contract defines governance delegation, inheritance, and self-service gover
 - `GovernanceConsoleAction`
 - `DelegationRevocation`
 
-## 3. GovernanceDelegation Minimum Fields
+## 3. `GovernanceDelegation` Minimum Fields
 
 - `delegation_id`
 - `grantor`
@@ -23,7 +23,7 @@ This contract defines governance delegation, inheritance, and self-service gover
 - `revocable`
 - `status`
 
-`DelegationScope` contains at least:
+`DelegationScope` must include at minimum:
 
 - `org_node_ids`
 - `domain_ids`
@@ -32,13 +32,13 @@ This contract defines governance delegation, inheritance, and self-service gover
 
 ## 4. Rules
 
-- Delegation must minimize授权 scope.
+- Delegation must follow least-privilege authorization scope.
 - Delegatee must not re-delegate beyond scope.
 - Delegation must support immediate revocation, expiration, and audit tracking.
 
 ## 5. Console Behavior
 
-`GovernanceConsoleAction` covers at least:
+`GovernanceConsoleAction` must cover at minimum:
 
 - `delegate`
 - `override`
@@ -50,4 +50,5 @@ This contract defines governance delegation, inheritance, and self-service gover
 
 - unit: scope match, override precedence, revocation
 - integration: delegation -> governance action -> audit trail
-- contract: governance operations beyond scope must fail
+- contract: out-of-scope governance operations must fail
+

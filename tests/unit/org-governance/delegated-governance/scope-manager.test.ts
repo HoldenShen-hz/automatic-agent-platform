@@ -312,12 +312,21 @@ test("isOperationAllowedByRole allows department_admin most operations", () => {
   assert.equal(isOperationAllowedByRole("cross_domain_strategy", "department_admin"), false);
 });
 
-test("isOperationAllowedByRole allows team_lead no operations", () => {
-  const operations: GovernanceOperationType[] = ["domain_onboarding", "modify_approval_rules", "publish_pack",
-    "adjust_agent_autonomy", "create_trigger", "modify_global_guardrails", "cross_domain_strategy"];
+test("isOperationAllowedByRole gives team_lead only daily operations scope", () => {
+  const deniedOperations: GovernanceOperationType[] = [
+    "domain_onboarding",
+    "modify_approval_rules",
+    "publish_pack",
+    "adjust_agent_autonomy",
+    "modify_global_guardrails",
+    "cross_domain_strategy",
+  ];
 
-  for (const op of operations) {
+  for (const op of deniedOperations) {
     const result = isOperationAllowedByRole(op, "team_lead");
     assert.equal(result, false, `${op} should not be allowed for team_lead`);
   }
+
+  assert.equal(isOperationAllowedByRole("approve_task", "team_lead"), true);
+  assert.equal(isOperationAllowedByRole("create_trigger", "team_lead"), true);
 });

@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Gather domain latency and SLA requirements
-- **Assess**: Classify as ultra-low latency, realtime, near-realtime, or batch
+- **Observe**: Collect domain latency / SLA requirements
+- **Assess**: Classify as ultra-low latency, realtime, near-realtime, batch processing
 - **Plan**: Allocate resources and scheduling strategy
-- **Execute**: Run with latency tier-aware routing and capacity
-- **Feedback**: Monitor breaches and contention
+- **Execute**: Run by latency tier
+- **Feedback**: Monitor breach and congestion
 - **Learn**: Optimize resource pool allocation
-- **Improve**: Tune per-domain SLA
-- **Release**: Latency tier is part of domain readiness gate
+- **Improve**: Adjust domain-level SLA
+- **Release**: Latency tier enters domain release gate
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Latency requirements vary significantly across domains, and a uniform scheduling strategy leads to resource waste or SLA failure.
+Different domains have vastly different latency requirements; a unified scheduling strategy leads to resource waste or SLA failure.
 
 ## Decision
 
-- Every domain must declare a latency tier
-- The platform uses it to assign queue priority, resource pools, and recovery order
+- Each domain must declare its latency tier
+- Platform allocates queue priority, resource pool, and recovery order accordingly
 
 ## Consequences
 
-- Domain config no longer lacks SLA and latency dimensions
+- Domain configuration no longer lacks SLA / latency dimension

@@ -18,7 +18,7 @@ test("inheritPolicyLayers merges boolean values with OR logic", () => {
   assert.strictEqual(result.segregationOfDuties, true);
 });
 
-test("inheritPolicyLayers merges number values with max", () => {
+test("inheritPolicyLayers keeps retention-style numbers at the strictest value", () => {
   const layers: readonly PolicyLayer[] = [
     { policyId: "p1", rules: { auditRetentionDays: 100 } },
     { policyId: "p2", rules: { auditRetentionDays: 2555 } },
@@ -81,7 +81,7 @@ test("inheritPolicyLayers merges multiple layers in order", () => {
 
   const result = inheritPolicyLayers(layers);
 
-  assert.strictEqual(result.rule1, 3);
+  assert.strictEqual(result.rule1, 1);
   assert.strictEqual(result.rule2, "restricted");
   assert.strictEqual(result.rule3, true);
 });

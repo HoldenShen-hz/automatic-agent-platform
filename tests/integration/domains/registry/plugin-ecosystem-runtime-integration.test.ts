@@ -49,7 +49,7 @@ test("integration: plugin ecosystem runtime aligns domain activation with connec
     name: "Sales",
     description: "Sales workflows",
     version: 1,
-    status: "draft",
+    status: "validated",
     capabilities: {
       supportedTaskTypes: ["quote"],
       requiredTools: [],

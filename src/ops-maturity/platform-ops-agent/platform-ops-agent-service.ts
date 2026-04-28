@@ -5,7 +5,7 @@ import { DeveloperAssistantService } from "./dev-assistant/index.js";
 import { OpsHealthMonitorService, summarizeOpsHealth, type OpsHealthProbe } from "./health-monitor/index.js";
 import { IncidentDiagnoserService, classifyOpsIncident } from "./incident-diagnoser/index.js";
 
-export type OpsActionType = "scale_capacity" | "tune_config" | "investigate_incident" | "developer_assist";
+export type OpsActionType = "scale_capacity" | "tune_config" | "investigate_incident" | "developer_assist" | "restart_service" | "failover";
 export type OpsMaturityLevel = "observe_only" | "suggest_only" | "supervised_execution" | "trusted_automation";
 export type OpsRiskLevel = "low" | "medium" | "high";
 export type OpsApprovalStatus = "not_required" | "pending" | "approved";
@@ -189,7 +189,7 @@ export class PlatformOpsAgentService {
     capacityRisk: "low" | "medium" | "high",
   ): OpsActionType {
     if (incidentLevel !== "warning") {
-      return "investigate_incident";
+      return input.errorRate >= 0.2 ? "failover" : "restart_service";
     }
     if (capacityRisk !== "low") {
       return "scale_capacity";
@@ -209,6 +209,10 @@ export class PlatformOpsAgentService {
     switch (actionType) {
       case "investigate_incident":
         return `incident:${incidentLevel}: ${summarizeOpsHealth(input.probes)}`;
+      case "restart_service":
+        return `restart_service:${summarizeOpsHealth(input.probes)}`;
+      case "failover":
+        return `failover:${incidentLevel}:${summarizeOpsHealth(input.probes)}`;
       case "scale_capacity":
         return `capacity:${capacityRisk}: ${input.currentLoad} -> ${input.projectedLoad}`;
       case "tune_config":

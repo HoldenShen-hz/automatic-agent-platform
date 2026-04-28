@@ -73,19 +73,24 @@ const CLARIFICATION_THRESHOLD = 0.7;  // Confidence < 0.7 → human assistance
 const DEFAULT_MAX_DEPTH = 5;  // Maximum decomposition depth 5 layers
 ```
 
-### 9 Goal Lifecycle States
+### GoalProjection and HarnessRun Lifecycle Relationship
 
-| State | Description |
-|-------|-------------|
-| draft | Draft |
-| decomposing | Decomposing |
-| planned | Planned |
-| executing | Executing |
-| paused | Paused |
-| completed | Completed |
-| failed | Failed |
-| cancelled | Cancelled |
-| expired | Expired |
+`Goal` itself only describes the decomposition input; upon entering execution, the truth state must converge to `HarnessRun.status`.
+
+| GoalProjection State | Corresponding HarnessRun truth |
+|---------------------|-------------------------------|
+| draft | HarnessRun not yet created |
+| decomposing | `created / admitted / planning` |
+| planned | `ready` |
+| executing | `running / replanning / compensating` |
+| paused | `pausing / paused / resuming` |
+| completed | `completed` |
+| failed | `failed` |
+| cancelled | `aborted` |
+
+Rules:
+- `GoalProjection` is only allowed as an upper-level projection or product display, and must not replace `HarnessRun.status`.
+- The 9-state goal lifecycle parallel to `HarnessRun` is no longer defined separately.
 
 ### Circular Dependency Detection
 
@@ -103,9 +108,9 @@ Negative:
 - Complex goal decomposition may be inaccurate
 - Dependency analysis requires comprehensive context
 
-Trade-offs:
-- Efficiency vs. accuracy
-- Automation vs. safety
+## v4.3 ADR Remediation
+
+- A-28: This ADR originally defined a separate 9-state goal lifecycle. The root cause was that the goal decomposition ADR mixed "decomposition product state" and "runtime truth state" into one lifecycle, and did not converge when `HarnessRun` became the sole execution state machine. Fix: The main text now demotes goal state to `GoalProjection`, and the execution phase uniformly maps to `HarnessRun.status`.
 
 ## Cross-References
 

@@ -10,7 +10,8 @@ export interface ProactiveAgentPort {
   registerTrigger(trigger: ProactiveTrigger): Promise<void>;
 }
 
-export type TriggerType = "schedule" | "event" | "threshold" | "webhook_inbound";
+export type CanonicalTriggerType = "schedule" | "event" | "condition" | "webhook";
+export type TriggerType = CanonicalTriggerType | "threshold" | "webhook_inbound";
 
 export interface ScheduleTriggerConfig {
   readonly cron: string;
@@ -25,7 +26,7 @@ export interface EventTriggerConfig {
   readonly batchWindow?: string;
 }
 
-export interface ThresholdTriggerConfig {
+export interface ConditionTriggerConfig {
   readonly metricSource: string;
   readonly metricName: string;
   readonly condition: "gt" | "lt" | "eq" | "change_rate_gt";
@@ -33,6 +34,8 @@ export interface ThresholdTriggerConfig {
   readonly evaluationWindow: string;
   readonly consecutiveBreaches: number;
 }
+
+export type ThresholdTriggerConfig = ConditionTriggerConfig;
 
 export interface TriggerAction {
   readonly actionType: "create_task" | "create_goal" | "suggest_to_user" | "update_dashboard";
@@ -45,16 +48,19 @@ export interface TriggerDefinition {
   readonly domainId: string;
   readonly name: string;
   readonly type: TriggerType;
-  readonly config: ScheduleTriggerConfig | EventTriggerConfig | ThresholdTriggerConfig;
+  readonly config: ScheduleTriggerConfig | EventTriggerConfig | ConditionTriggerConfig;
   readonly action: TriggerAction;
   readonly enabled: boolean;
   readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly maxFireRate: string;
   readonly cooldown: string;
+  readonly maxFireCount?: number;
+  readonly boundAgentId?: string;
+  readonly feedbackTargetTriggerIds?: readonly string[];
 }
 
 export interface TriggerEvaluationInput {
-  readonly kind: "schedule" | "event" | "threshold" | "webhook_inbound";
+  readonly kind: TriggerType;
   readonly now?: string;
   readonly event?: { source: string; name: string; payload?: Record<string, unknown> };
   readonly metric?: { source: string; name: string; value: number; previousValue?: number };
@@ -76,10 +82,24 @@ export interface ProactiveSuggestion {
   readonly action: TriggerAction;
 }
 
+export interface ProactiveBudgetPool {
+  readonly domainId: string;
+  readonly totalDailyBudget: number;
+  readonly userInitiatedReserveRatio: number;
+}
+
+export interface ProactiveIncident {
+  readonly incidentId: string;
+  readonly triggerIds: readonly string[];
+  readonly reasonCode: "proactive_agent.feedback_loop_detected";
+  readonly createdAt: string;
+}
+
 export interface ProactiveAgentServiceOptions {
   readonly declaredTriggerIdsByDomain?: Readonly<Record<string, readonly string[]>>;
   readonly maxConsecutiveFailures?: number;
   readonly dailyTriggerBudgetByDomain?: Readonly<Record<string, number>>;
+  readonly budgetPoolsByDomain?: Readonly<Record<string, ProactiveBudgetPool>>;
 }
 
 interface TriggerRuntimeState {
@@ -87,6 +107,7 @@ interface TriggerRuntimeState {
   lastFiredAt: string | null;
   fireTimestamps: string[];
   consecutiveFailures: number;
+  fireCount: number;
 }
 
 function parseDurationMs(raw: string): number {
@@ -124,13 +145,16 @@ function parseRateWindow(raw: string): { max: number; windowMs: number } {
 
 function toDefinition(trigger: ProactiveTrigger | TriggerDefinition): TriggerDefinition {
   if ("type" in trigger) {
-    return trigger;
+    return {
+      ...trigger,
+      type: normalizeTriggerType(trigger.type),
+    };
   }
   return {
     triggerId: trigger.triggerId,
     domainId: "general_ops",
     name: trigger.triggerId,
-    type: trigger.kind === "signal" ? "threshold" : trigger.kind,
+    type: trigger.kind === "signal" ? "condition" : trigger.kind,
     config: trigger.kind === "schedule"
       ? {
           cron: trigger.expression,
@@ -163,6 +187,16 @@ function toDefinition(trigger: ProactiveTrigger | TriggerDefinition): TriggerDef
   };
 }
 
+function normalizeTriggerType(type: TriggerType): CanonicalTriggerType {
+  if (type === "threshold") {
+    return "condition";
+  }
+  if (type === "webhook_inbound") {
+    return "webhook";
+  }
+  return type;
+}
+
 export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly states = new Map<string, TriggerRuntimeState>();
   private readonly suggestions = new Map<string, ProactiveSuggestion>();
@@ -170,11 +204,14 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly maxConsecutiveFailures: number;
   private readonly dailyTriggerBudgetByDomain: Readonly<Record<string, number>>;
   private readonly dailyTriggerUsage = new Map<string, number>();
+  private readonly budgetPoolsByDomain: Readonly<Record<string, ProactiveBudgetPool>>;
+  private readonly incidents: ProactiveIncident[] = [];
 
   public constructor(options: ProactiveAgentServiceOptions = {}) {
     this.declaredTriggerIdsByDomain = options.declaredTriggerIdsByDomain ?? {};
     this.maxConsecutiveFailures = options.maxConsecutiveFailures ?? 3;
     this.dailyTriggerBudgetByDomain = options.dailyTriggerBudgetByDomain ?? {};
+    this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
   }
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
@@ -188,7 +225,9 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       lastFiredAt: null,
       fireTimestamps: [],
       consecutiveFailures: 0,
+      fireCount: 0,
     });
+    this.detectFeedbackLoop(definition.triggerId);
   }
 
   public listTriggers(domainId?: string): TriggerDefinition[] {
@@ -201,6 +240,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     return [...this.suggestions.values()]
       .filter((item) => domainId == null || item.domainId === domainId)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  public listIncidents(): ProactiveIncident[] {
+    return [...this.incidents];
   }
 
   public evaluate(triggerId: string, input: TriggerEvaluationInput): TriggerFireDecision {
@@ -222,6 +265,15 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null && (this.dailyTriggerUsage.get(usageKey) ?? 0) >= dailyBudget) {
       reasons.push("proactive_agent.domain_budget_exhausted");
     }
+    const budgetPool = this.budgetPoolsByDomain[state.trigger.domainId];
+    if (budgetPool != null) {
+      const proactiveBudgetCap = Math.floor(
+        budgetPool.totalDailyBudget * (1 - Math.max(0.6, budgetPool.userInitiatedReserveRatio)),
+      );
+      if ((this.dailyTriggerUsage.get(usageKey) ?? 0) >= proactiveBudgetCap) {
+        reasons.push("proactive_agent.user_initiated_reserve_protected");
+      }
+    }
 
     const cooldownMs = parseDurationMs(state.trigger.cooldown);
     if (state.lastFiredAt != null && cooldownMs > 0 && now - new Date(state.lastFiredAt).getTime() < cooldownMs) {
@@ -237,6 +289,9 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       if (recentFireCount >= max) {
         reasons.push("proactive_agent.rate_limited");
       }
+    }
+    if (state.trigger.maxFireCount != null && state.fireCount >= state.trigger.maxFireCount) {
+      reasons.push("proactive_agent.max_fire_count_reached");
     }
 
     if (!this.matchesTrigger(state.trigger, input)) {
@@ -254,6 +309,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
     state.lastFiredAt = new Date(now).toISOString();
     state.fireTimestamps.push(state.lastFiredAt);
+    state.fireCount += 1;
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
@@ -293,19 +349,19 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   }
 
   private matchesTrigger(trigger: TriggerDefinition, input: TriggerEvaluationInput): boolean {
-    if (trigger.type !== input.kind) {
+    if (normalizeTriggerType(trigger.type) !== normalizeTriggerType(input.kind)) {
       return false;
     }
 
-    if (trigger.type === "event" || trigger.type === "webhook_inbound") {
+    if (normalizeTriggerType(trigger.type) === "event" || normalizeTriggerType(trigger.type) === "webhook") {
       const config = trigger.config as EventTriggerConfig;
       return input.event?.source === config.eventSource
         && input.event.name.includes(config.eventPattern)
         && Object.entries(config.filter).every(([key, value]) => String(input.event?.payload?.[key] ?? "") === value);
     }
 
-    if (trigger.type === "threshold") {
-      const config = trigger.config as ThresholdTriggerConfig;
+    if (normalizeTriggerType(trigger.type) === "condition") {
+      const config = trigger.config as ConditionTriggerConfig;
       const metric = input.metric;
       if (metric == null || metric.source !== config.metricSource || metric.name !== config.metricName) {
         return false;
@@ -331,5 +387,46 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       action: trigger.action,
     });
     return suggestionId;
+  }
+
+  private detectFeedbackLoop(triggerId: string): void {
+    const visited = new Set<string>();
+    const stack = new Set<string>();
+    const hasCycle = (currentId: string): boolean => {
+      if (stack.has(currentId)) {
+        return true;
+      }
+      if (visited.has(currentId)) {
+        return false;
+      }
+      visited.add(currentId);
+      stack.add(currentId);
+      const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
+      for (const nextId of targets) {
+        if (hasCycle(nextId)) {
+          return true;
+        }
+      }
+      stack.delete(currentId);
+      return false;
+    };
+    if (!hasCycle(triggerId)) {
+      return;
+    }
+    this.incidents.push({
+      incidentId: newId("proactive_incident"),
+      triggerIds: [...stack],
+      reasonCode: "proactive_agent.feedback_loop_detected",
+      createdAt: nowIso(),
+    });
+    for (const loopTriggerId of stack) {
+      const state = this.states.get(loopTriggerId);
+      if (state != null) {
+        state.trigger = {
+          ...state.trigger,
+          enabled: false,
+        };
+      }
+    }
   }
 }

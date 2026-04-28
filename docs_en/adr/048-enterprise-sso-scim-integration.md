@@ -5,7 +5,7 @@
 
 ## Context
 
-Enterprises need to integrate with existing identity providers (IdP) to achieve single sign-on and automated user lifecycle management.
+Enterprises need to integrate with existing Identity Providers (IdP) to achieve single sign-on and automated user lifecycle management.
 
 ## Decision
 
@@ -37,10 +37,10 @@ interface SCIMGroup {
 
 ### User Lifecycle
 
-| Event | Auto Action |
-|-------|-------------|
+| Event | Automatic Action |
+|-------|------------------|
 | Onboarding | Create account + join default group |
-| Transfer | Update organization info |
+| Transfer | Update organization information |
 | Offboarding | Disable account + revoke permissions |
 
 ### Sync Strategy
@@ -52,23 +52,21 @@ interface SCIMGroup {
 ## Consequences
 
 Positive:
+
 - SSO improves user experience and security
 - SCIM automates user management
 - Reduces manual operations
 
 Negative:
-- IdP integration complexity
-- Sync delay may cause permission issues
 
-Trade-offs:
-- Convenience vs. complexity
-- Automation vs. control
+- IdP integration complexity
+- Sync delays may cause permission issues
 
 ## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
 ## Source Sections
 
-- `§48` Enterprise SSO/SCIM Integration
+- `§48` Enterprise SSO/SCIM Integration Architecture

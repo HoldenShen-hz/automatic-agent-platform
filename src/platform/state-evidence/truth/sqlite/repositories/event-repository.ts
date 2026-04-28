@@ -478,6 +478,17 @@ export class EventRepository {
     );
   }
 
+  public listEventsForExecution(executionId: string): EventRecord[] {
+    return queryAll<EventRecord>(
+      this.conn,
+      `SELECT ${EVENT_COLS}
+       FROM events
+       WHERE execution_id = ?
+       ORDER BY created_at ASC, id ASC`,
+      executionId,
+    );
+  }
+
   public getEvent(eventId: string): EventRecord | undefined {
     return queryOne<EventRecord>(
       this.conn,

@@ -10,7 +10,7 @@
 
 此前仓库里已经存在：
 
-- `tasks / workflow_state / executions / events / approvals / artifacts / memories` 等持久化对象
+- `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / events / approvals / artifacts / memories` 等持久化对象
 - `FeedbackSignal / LearningObject / ImprovementCandidate / StrategyVersion / RolloutRecord` 等领域对象
 - `ArtifactRef / EvidenceRef` 一类引用语义
 
@@ -18,7 +18,7 @@
 
 1. typed ref 不完整，`MemoryRef / KnowledgeRef` 未在统一资源模型中明确。
 2. 资源枚举偏旧，尚未把 feedback / learning / improvement / rollout / knowledge / memory layer 纳入同一套 canonical resource family。
-3. 旧草案把 `EnvironmentSpec / Session / AgentThread / McpServerSpec` 直接写成当前必须交付，容易与 phase1-4 已完成范围混淆。
+3. 旧草案把 `EnvironmentSpec / Session / AgentThread / McpServerSpec` 直接写成当前必须交付，容易与 Ring 1 已完成范围混淆。
 
 因此本 ADR 需要改写为：先给出当前 authoritative 资源边界，再把 `M2` 目标态扩展单独标注。
 
@@ -26,8 +26,8 @@
 
 统一资源模型采用“两层定义”：
 
-1. phase1-4 authoritative resource family：当前仓库与 contract 应统一使用的资源类型、typed ref 和 lineage 边界。
-2. `M2` target-state resource family：`Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` 完整平台化后的扩展资源，不计入当前完成声明。
+1. Ring 1 authoritative resource family：当前仓库与 contract 应统一使用的资源类型、typed ref 和 lineage 边界。
+2. Ring 2 / Ring 3 extension resource family：`Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` 完整平台化后的扩展资源，不计入当前完成声明。
 
 ## Canonical Typed Ref
 
@@ -52,13 +52,16 @@ type KnowledgeRef = `knowledge:${string}`;
 
 ## Authoritative Resource Family
 
-当前 phase1-4 authoritative 资源家族如下：
+当前 Ring 1 authoritative 资源家族如下：
 
 | 资源类型 | 当前 canonical 对象 | 最小标识 |
 | --- | --- | --- |
-| `task` | `TaskRecord` / `tasks` | `task_id` |
-| `workflow` | `WorkflowState` / `workflow_state` | `workflow_id` |
-| `execution` | `ExecutionEnvelope` / `executions` | `execution_id` |
+| `harness_run` | `HarnessRun` / `harness_runs` | `harness_run_id` |
+| `plan_graph_bundle` | `PlanGraphBundle` / `plan_graph_bundles` | `plan_graph_bundle_id` |
+| `node_run` | `NodeRun` / `node_runs` | `node_run_id` |
+| `node_attempt_receipt` | `NodeAttemptReceipt` / `node_attempt_receipts` | `receipt_id` |
+| `task_projection` | `TaskRecord` / `tasks` | `task_id` |
+| `workflow_projection` | `WorkflowState` / `workflow_state` | `workflow_id` |
 | `approval` | `ApprovalRequest` / `approvals` | `approval_id` |
 | `event` | typed event / `events` | `event_id` |
 | `artifact` | `ArtifactRecord` | `ArtifactRef` |
@@ -76,7 +79,7 @@ type KnowledgeRef = `knowledge:${string}`;
 
 - `feedback_signal / learning_object / improvement_candidate / strategy_version / rollout_record` 是 OAPEFLIR 闭环中的一等资源，不再只视为附属日志。
 - `memory_layer` 是 `MemoryEntry` 的治理分区，而不是独立业务对象；但 contract 中允许把 layer promotion 当成独立审计资源。
-- `knowledge_entry` 在当前 phase1-4 中允许以最小实现存在，但命名、引用和 lineage 语义必须固定。
+- `knowledge_entry` 在当前 Ring 1 中允许以最小实现存在，但命名、引用和 lineage 语义必须固定。
 
 ## Resource Projection
 
@@ -84,7 +87,8 @@ type KnowledgeRef = `knowledge:${string}`;
 
 | 资源家族 | 当前常见投影 |
 | --- | --- |
-| task / workflow / execution | `storage_schema_contract.md`、`runtime_execution_contract.md` |
+| harness_run / plan_graph_bundle / node_run / node_attempt_receipt | `storage_schema_contract.md`、`runtime_execution_contract.md` |
+| task_projection / workflow_projection | `task_and_workflow_contract.md`、interaction projection |
 | approval / event | `approval_and_hitl_contract.md`、`event_bus_contract.md` |
 | artifact / evidence | `artifact_store_contract.md`、`diagnostics_snapshot_and_repro_bundle_contract.md` |
 | memory_entry / memory_layer | `memory_decay_and_quality_contract.md`、`context_compaction_and_overflow_contract.md` |
@@ -159,13 +163,13 @@ interface KnowledgeRefMetadata {
 
 统一资源模型必须支持以下 lineage 路径：
 
-`Task/Workflow/Execution -> FeedbackSignal -> LearningObject -> ImprovementCandidate -> StrategyVersion -> RolloutRecord -> Artifact/Evidence`
+`HarnessRun/NodeRun/NodeAttemptReceipt -> FeedbackSignal -> LearningObject -> ImprovementCandidate -> StrategyVersion -> RolloutRecord -> Artifact/Evidence`
 
 同时允许：
 
-`Task/Execution -> MemoryRef`
+`HarnessRun/NodeRun -> MemoryRef`
 
-`Task/Execution -> KnowledgeRef`
+`HarnessRun/NodeRun -> KnowledgeRef`
 
 约束：
 
@@ -175,11 +179,12 @@ interface KnowledgeRefMetadata {
 
 ## Phase Boundary
 
-### 当前 phase1-4 authoritative 范围
+### 当前 Ring 1 authoritative 范围
 
 当前文档体系必须按以下边界叙述：
 
-- `tasks / workflow / execution / approval / event / artifact / evidence / feedback / learning / improvement / rollout / memory / knowledge-minimum` 均属于当前已对齐范围。
+- `harness_run / plan_graph_bundle / node_run / node_attempt_receipt / approval / event / artifact / evidence / feedback / learning / improvement / rollout / memory / knowledge-minimum` 均属于当前已对齐范围。
+- `tasks / workflow_state / sessions` 只允许作为 projection / interaction 资源叙述。
 - typed ref family 已是当前文档边界的一部分，哪怕底层实现仍存在兼容命名。
 - `Observe / Assess / Plan / Execute / Feedback / Learn / Improve / Release` 作为顶层循环阶段已是当前 contract canonical 术语。
 
@@ -192,7 +197,7 @@ interface KnowledgeRefMetadata {
 - 完整 `McpServerSpec` 控制面化
 - 完整 `Knowledge Plane / Artifact Plane / Domain Registry / Plugin SPI Registry`
 
-这些资源可以在 contract 或 ADR 中出现，但必须显式标为 target-state 或 extension-plane，而不是当前 phase1-4 authoritative deliverable。
+这些资源可以在 contract 或 ADR 中出现，但必须显式标为 target-state 或 extension-plane，而不是当前 Ring 1 authoritative deliverable。
 
 ## 与现有文档的关系
 
@@ -206,5 +211,10 @@ interface KnowledgeRefMetadata {
 采用本 ADR 后，统一资源模型的含义被收敛为：
 
 1. 当前 contract 必须共用同一套 typed ref 与资源家族。
-2. phase1-4 已完成范围与 `M2` 扩展范围被明确分层。
+2. Ring 1 已完成范围与 Ring 2 / Ring 3 扩展范围被明确分层。
 3. 后续新增 API、表结构或诊断对象时，必须优先投影到现有 canonical resource family，而不是再引入新的平行命名。
+
+## v4.3 ADR Remediation
+
+- A-20: 本 ADR 原先把 `tasks / workflow / execution / ExecutionEnvelope` 写成 authoritative 资源家族，根因是统一资源模型先以历史存储投影对象起草，后续没有随着 `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` 成为 runtime truth 同步重写。修复：正文现把 canonical 资源主语改为 run/node/graph/receipt，旧 task/workflow/execution 仅保留为 projection 资源。
+- A-29: 本 ADR 原先反复使用 `phase1-4` 作为当前完成边界，根因是资源模型 ADR 沿用了旧排期命名，没有随着主架构统一到 `Ring 1 / Ring 2 / Ring 3`。修复：正文现改为 ring 分层术语，旧 phase 名称不再作为 canonical 交付口径。

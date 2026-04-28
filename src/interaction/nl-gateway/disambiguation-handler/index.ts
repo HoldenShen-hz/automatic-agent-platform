@@ -206,7 +206,6 @@ export class DisambiguationHandler {
       task_modify: "修改/更新已有内容",
       status_inquiry: "状态查询",
       approval_action: "审批操作",
-      system_config: "系统配置",
     };
     return labels[intentType] ?? intentType;
   }
@@ -367,7 +366,7 @@ export class DisambiguationHandler {
    * Check if intent typically requires entities
    */
   private requiresEntities(intentType: DetectedIntent["intentType"]): boolean {
-    return ["task_modify", "approval_action", "system_config"].includes(intentType);
+    return ["task_modify", "approval_action"].includes(intentType);
   }
 
   /**

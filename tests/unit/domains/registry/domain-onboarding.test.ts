@@ -180,11 +180,11 @@ test("buildCapabilityEntry throws for unknown domain", () => {
 
 // --- domain activation lifecycle ---
 
-test("domain transitions from draft to active after activation", () => {
+test("domain transitions from registered to active after activation", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({
     domainId: "lifecycle",
-    status: "draft",
+    status: "testing",
     capabilities: {
       supportedTaskTypes: [],
       requiredTools: [],
@@ -201,7 +201,7 @@ test("domain transitions from draft to active after activation", () => {
 
 test("active domains appear in listActive", () => {
   const service = new DomainRegistryService();
-  service.register(makeMinimalDefinition({ domainId: "active_one", status: "draft", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
+  service.register(makeMinimalDefinition({ domainId: "active_one", status: "testing", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
   service.register(makeMinimalDefinition({ domainId: "active_two", status: "testing", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
   service.register(makeMinimalDefinition({ domainId: "still_draft", status: "draft", capabilities: { supportedTaskTypes: [], requiredTools: [], optionalTools: [], modelPreferences: {}, budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 }, securityLevel: "standard" } }));
 
@@ -233,7 +233,7 @@ test("deprecate preserves domain data after deprecation", () => {
   assert.equal(retrieved?.status, "deprecated");
 });
 
-test("activating already active domain succeeds (idempotent)", () => {
+test("activating already active domain is rejected by lifecycle guard", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({
     domainId: "double_active",
@@ -248,15 +248,16 @@ test("activating already active domain succeeds (idempotent)", () => {
     },
   }));
 
-  // should not throw
-  const result = service.activate("double_active");
-  assert.equal(result.status, "active");
+  assert.throws(() => service.activate("double_active"), (err: unknown) => {
+    return err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state";
+  });
 });
 
 test("activate fails for draft domain with no workflows", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({
     domainId: "empty_wf",
+    status: "testing",
     workflows: [],
   }));
 
@@ -360,9 +361,9 @@ test("resolvePlugins returns resolved plugin instances", async () => {
     name: "Resolver Plugin",
     version: "1.0.0",
     owner: "test",
-    domainIds: ["resolve_test"],
-    capabilityIds: [],
-    spiTypes: ["presenter"],
+      domainIds: ["resolve_test"],
+      capabilityIds: [],
+      spiTypes: ["presenter"],
     extensionKind: "domain_plugin",
     trustLevel: "trusted",
     publicSdkSurface: "test",
@@ -374,7 +375,7 @@ test("resolvePlugins returns resolved plugin instances", async () => {
   service.register(makeMinimalDefinition({
     domainId: "resolve_test",
     pluginBindings: [
-      { bindingId: "b1", domainId: "resolve_test", pluginType: "presenter", pluginId: "resolver_plugin", priority: 1, enabled: true, config: {} },
+      { bindingId: "b1", domainId: "resolve_test", pluginType: "tool", bindingRole: "presenter", pluginId: "resolver_plugin", priority: 1, enabled: true, config: {} },
     ],
   }));
 

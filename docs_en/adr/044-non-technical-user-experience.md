@@ -1,68 +1,64 @@
-# ADR-044 Non-Technical User Experience
+# ADR-044 Non-Technical User Experience Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-Non-technical users need guided experiences to accomplish tasks without understanding underlying technical details. The platform must provide clear guidance and safe defaults.
+Non-technical users (business operators, operations personnel) need simplified interaction methods without requiring understanding of underlying APIs and technical details.
 
 ## Decision
 
-### Guided Onboarding
+### User Roles
 
-| Phase | Description |
-|-------|-------------|
-| Welcome | Platform introduction |
-| Task Creation | Step-by-step task wizard |
-| Status Monitoring | Plain-language status updates |
-| Troubleshooting | Guided problem resolution |
+| Role | Description | Interface |
+|------|-------------|-----------|
+| business_operator | Business operator | Simplified interface |
+| team_lead | Team lead | Management view |
+| executive | Executive | Report view |
+| admin | Administrator | Full-featured interface |
 
-### Workflow Builder
+### Simplified Interaction Patterns
 
-- Visual workflow construction
-- Template library for common tasks
-- Drag-and-drop step arrangement
+- Templated task creation
+- Natural language input
+- Visual progress tracking
+- One-click approve/reject
 
-### UX Design Principles
+### Notifications and Feedback
 
-1. **Clarity**: Use plain language, avoid technical jargon
-2. **Guidance**: Show next steps clearly
-3. **Safety**: Confirm high-risk actions
-4. **Feedback**: Provide immediate visual feedback
+- Push notifications
+- Email notifications
+- In-app messages
+- Real-time status updates
 
-### WCAG Compliance
+### Auxiliary Features
 
-- Level A conformance minimum
-- Keyboard navigation support
-- Screen reader compatible
-- Color contrast ratio ≥ 4.5:1
-
-### User Experience Orchestration
-
-- `interaction/ux/user-experience-orchestration-service.ts`
-- Converges onboarding/wizard/template/builder into unified service
+| Feature | Description |
+|---------|-------------|
+| Task Templates | Predefined templates for common tasks |
+| Quick Actions | One-click execution for common operations |
+| History | Operable history traceable |
+| Export Reports | Data export support |
 
 ## Consequences
 
 Positive:
-- Guided experiences lower barrier to entry
-- Workflow builder enables task automation
-- WCAG compliance ensures accessibility
+
+- Lower barrier to entry for non-technical users
+- Templating improves efficiency
+- Real-time feedback enhances experience
 
 Negative:
-- Multiple UX paths increase maintenance
-- Visual builder requires significant development
 
-Trade-offs:
-- Accessibility vs. complexity
-- Guidance vs. flexibility
+- Multi-role interfaces increase complexity
+- Template maintenance requires ongoing investment
 
 ## Cross-References
 
+- [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-043 Unified Operations Dashboard](./043-unified-operations-dashboard.md)
-- [ADR-084 Operator Dashboard and User Experience](./084-operator-dashboard-and-user-experience.md)
 
 ## Source Sections
 
-- `§44` Non-Technical User UX
+- `§44` Non-Technical User Experience Architecture

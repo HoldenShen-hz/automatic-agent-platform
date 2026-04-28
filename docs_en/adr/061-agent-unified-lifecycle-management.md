@@ -5,7 +5,7 @@
 
 ## Context
 
-Agent is composed of multiple loosely coupled components, lacking unified version and lifecycle management.
+Agents are composed of multiple loosely coupled components, lacking unified version and lifecycle management.
 
 ## Decision
 
@@ -51,33 +51,33 @@ interface AgentComponent {
 ### Deployment Management
 
 - Blue-green deployment
-- Canary release
+- Canary releases
 - Rollback capability
 
 ### Component Dependencies
 
-- Dependency graph
+- Dependency relationship graph
 - Version compatibility matrix
 - Upgrade impact analysis
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Unified management improves maintainability
 - Versioning supports rollback
 - Dependency management prevents conflicts
 
-Negative:
+Costs:
 
 - Component version coordination is complex
-- Lifecycle state machine maintenance cost
+- Lifecycle state machine maintenance costs
 
 ## Cross-References
 
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
 
-## Source Sections
+## Source Section
 
 - `§61` Agent Unified Lifecycle Management Architecture

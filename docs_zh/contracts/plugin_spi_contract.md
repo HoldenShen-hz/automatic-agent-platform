@@ -64,8 +64,10 @@ interface DomainValidatorPlugin {
 
 interface ValidationContext {
   phase: 'pre-execution' | 'post-execution' | 'on-demand';
-  taskId: string;
-  target: unknown;  // Plan | StepResult | Artifact
+  harnessRunId: string;
+  nodeRunId?: string;
+  attemptId?: string;
+  target: unknown;  // PlanGraphBundle | NodeAttemptReceipt | Artifact
   domainContext: Record<string, unknown>;
 }
 
@@ -97,7 +99,7 @@ interface DomainPlannerPlugin {
   readonly domainId: string;
 
   // 为特定 domain 生成计划
-  plan(assessment: UnifiedAssessment, domain: DomainId): Promise<Plan>;
+  plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>;
 
   initialize(config: PluginConfig): Promise<void>;
   activate(): Promise<void>;
@@ -106,7 +108,7 @@ interface DomainPlannerPlugin {
 }
 
 interface UnifiedAssessment {
-  taskId: string;
+  harnessRunId: string;
   complexity: 'low' | 'medium' | 'high' | 'very_high';
   riskLevel: 'minimal' | 'low' | 'medium' | 'high' | 'critical';
   resourceRequirements: ResourceEstimate;
@@ -237,12 +239,12 @@ const PluginDescriptorSchema = z.object({
 |--------------|-----------|
 | Observe | DomainRetrieverPlugin 检索上下文知识 |
 | Assess | DomainValidatorPlugin 验证预执行条件 |
-| Plan | DomainPlannerPlugin 生成 domain 特定计划 |
-| Execute | DomainValidatorPlugin 验证执行输出 |
+| Plan | DomainPlannerPlugin 生成 domain 特定 `PlanGraphBundle` |
+| Execute | DomainValidatorPlugin 基于 `NodeAttemptReceipt` 验证执行输出 |
 | Feedback | DomainRetrieverPlugin 收集反馈信号 |
 | Learn | — |
 | Improve | — |
-| Rollout | DomainPresenterPlugin 格式化发布报告 |
+| Release | DomainPresenterPlugin 格式化发布报告 |
 
 ## 8. 约束
 
@@ -257,6 +259,6 @@ const PluginDescriptorSchema = z.object({
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-38: DomainPlannerPlugin.plan()返回Plan而非规范PlanGraphBundle；§7 OAPEFLIR表用"Rollout"而非"Release"。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-38: 本文原先让 `DomainPlannerPlugin.plan()` 返回泛化 `Plan`，并在 OAPEFLIR 集成表中继续使用 `Rollout`，根因是 Plugin SPI 仍沿用早期“线性计划 + rollout”接口草案，没有随着 v4.3 的 `PlanGraphBundle` handoff 和 `Release` 阶段命名同步升级。修复：正文现把 planner 输出收敛到 `PlanGraphBundle`，验证上下文与输出验证对齐到 `harnessRunId / nodeRunId / attemptId / NodeAttemptReceipt`，阶段表也改回 `Release`。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

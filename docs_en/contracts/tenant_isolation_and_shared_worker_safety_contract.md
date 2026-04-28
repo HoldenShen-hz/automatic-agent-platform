@@ -63,6 +63,25 @@ Supplementary rules:
 - Shared cache hits must not be reused across tenants, even if payloads appear identical.
 - Before shared worker recycling or tenant switching, context erasure and secret recovery must be completed.
 
+## 5A. Automatic Isolation Triggers
+
+When shared workers or shared infrastructure show signs of cross-tenant risk, system must automatically enter isolation mode.
+
+- Default trigger threshold: failure_rate > 30% within rolling window AND sample_count >= min_sample_size.
+- `min_sample_size` default must not be lower than `20`.
+- After trigger, must automatically execute: stop new scheduling, isolate worker pool, elevate audit level, require human review.
+- If single tenant hot spot fault, isolation scope should be minimized to `tenant / workspace`; if ownership cannot be determined, elevate to shared worker pool level isolation and fail-closed.
+- Before automatically releasing isolation, must see failure rate decline, sample size satisfied, and context erasure and secret recovery checks completed.
+
 ## 6. Closure Conclusion
 
 Multi-tenant security is not complete by just adding a `tenant_id` to tables; the execution state isolation of shared workers must also be formally modeled.
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-51: This document originally only had qualitative isolation rules. Root cause: tenant isolation contract emphasized boundary principles, but did not elevate shared worker risk to executable automatic triggers. Fix: This version adds automatic isolation triggers, requiring automatic isolation and fail-closed when failure_rate > 30% AND min_sample_size is reached.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

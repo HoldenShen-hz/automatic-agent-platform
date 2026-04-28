@@ -68,7 +68,6 @@ export interface DetectedIntent {
     | "task_create"
     | "task_query"
     | "task_modify"
-    | "system_config"
     | "status_inquiry"
     | "approval_action";
   readonly domainHint: string | null;
@@ -87,6 +86,11 @@ export interface IntentParseResult {
   readonly continuation: "new_task" | "follow_up" | "correction";
   readonly suggestedDivisionId: string;
   readonly suggestedWorkflowId: string;
+  readonly conversationState: ConversationState;
+  readonly clarificationState: ClarificationState;
+  readonly context: ContextEnrichment;
+  readonly securityFindings: readonly PromptInjectionFinding[];
+  readonly blockedByPolicy: boolean;
 }
 
 export interface RiskPreview {
@@ -114,12 +118,64 @@ export interface NlRequestPayload {
 
 export type RequestEnvelope = PlatformRequestEnvelope<NlRequestPayload>;
 
+export type ConversationState =
+  | "Idle"
+  | "IntentParsing"
+  | "Clarifying"
+  | "Building"
+  | "Confirming"
+  | "Executing"
+  | "Reporting";
+
+export interface PromptInjectionFinding {
+  readonly reasonCode: string;
+  readonly severity: "low" | "medium" | "high";
+  readonly blocked: boolean;
+  readonly matchedText: string;
+}
+
+export interface ContextEnrichment {
+  readonly domainHint: string;
+  readonly extractedConstraints: readonly string[];
+  readonly targetEnvironments: readonly string[];
+  readonly requestedChannels: readonly string[];
+  readonly timelineRefs: readonly string[];
+}
+
+export interface TaskDraft {
+  readonly draftId: string;
+  readonly rawInput: string;
+  readonly locale: string;
+  readonly intent: DetectedIntent;
+  readonly context: ContextEnrichment;
+  readonly riskPreview: RiskPreview;
+  readonly state: Extract<ConversationState, "Building" | "Confirming" | "Executing">;
+}
+
+export interface ClarificationState {
+  readonly state: "none" | "required" | "blocked";
+  readonly reasonCodes: readonly string[];
+  readonly questions: readonly string[];
+}
+
+export interface UserConfirmationReceipt {
+  readonly confirmationId: string;
+  readonly required: boolean;
+  readonly state: "not_required" | "pending_user_confirmation";
+  readonly reasonCodes: readonly string[];
+  readonly summary: string;
+}
+
 export interface TaskBuildResult {
   readonly requestEnvelope: RequestEnvelope;
   readonly riskPreview: RiskPreview;
   readonly costEstimate: CostEstimate;
   readonly confirmationRequired: boolean;
   readonly humanSummary: string;
+  readonly taskDraft: TaskDraft;
+  readonly clarificationState: ClarificationState;
+  readonly confirmationReceipt: UserConfirmationReceipt;
+  readonly conversationState: ConversationState;
 }
 
 export interface LocaleConfig {
@@ -142,6 +198,18 @@ export interface NlEntryServiceOptions {
   readonly conversationWindowSize?: number;
   readonly nlGatewayConfig?: NlGatewayConfig;
 }
+
+const INTENT_CONFIDENCE_THRESHOLD = 0.8;
+const SLOT_CONFIDENCE_THRESHOLD = 0.85;
+const PROMPT_INJECTION_PATTERNS = [
+  /ignore (all|any|previous|prior) instructions/i,
+  /reveal (the )?(system|developer) prompt/i,
+  /show me (the )?(hidden|internal) instructions/i,
+  /bypass (the )?(guardrails|safety|policy)/i,
+  /忽略(所有|之前|上面)指令/,
+  /泄露(系统|开发者)?提示词/,
+  /绕过(安全|策略|护栏)/,
+] as const;
 
 /**
  * Conversation context for multi-turn dialogs
@@ -276,7 +344,10 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
 
 function deriveUrgency(message: string): DetectedIntent["urgency"] {
   const normalized = message.toLowerCase();
-  if (/(asap|immediately|urgent|critical|立刻|马上|紧急|尽快)/.test(normalized)) {
+  if (/(critical|sev1|p0|立刻停机|立即回滚|马上删除生产|critical incident|紧急停机)/.test(normalized)) {
+    return "critical";
+  }
+  if (/(asap|immediately|urgent|立刻|马上|紧急|尽快)/.test(normalized)) {
     return "high";
   }
   if (/(today|before|今晚|今天|本周)/.test(normalized)) {
@@ -346,10 +417,20 @@ function defaultCostEstimate(): CostEstimate {
   };
 }
 
+function estimateSlotConfidence(entities: readonly ExtractedEntity[], message: string): number {
+  if (entities.length >= 2) {
+    return 0.95;
+  }
+  if (entities.length === 1) {
+    return /(deploy|release|delete|修改|更新|删除|发布)/i.test(message) ? 0.78 : 0.88;
+  }
+  return /(deploy|release|delete|修改|更新|删除|发布)/i.test(message) ? 0.52 : 0.72;
+}
+
 function buildClarificationQuestions(message: string, confidence: number, divisionId: string, entities: readonly ExtractedEntity[]): string[] {
   const questions: string[] = [];
   const normalized = message.toLowerCase();
-  if (confidence < 0.7) {
+  if (confidence < INTENT_CONFIDENCE_THRESHOLD) {
     questions.push("你希望我先查询现状、创建新任务，还是修改已有内容？");
   }
   if (GENERIC_AMBIGUOUS_PATTERNS.some((pattern) => normalized.includes(pattern))) {
@@ -362,6 +443,38 @@ function buildClarificationQuestions(message: string, confidence: number, divisi
     questions.push("请指出具体对象或环境，避免误操作。");
   }
   return questions;
+}
+
+function detectPromptInjection(message: string): PromptInjectionFinding[] {
+  return PROMPT_INJECTION_PATTERNS.flatMap((pattern) => {
+    const matched = pattern.exec(message);
+    if (matched == null) {
+      return [];
+    }
+    return [{
+      reasonCode: "nl_gateway.prompt_injection_detected",
+      severity: /reveal|show me|泄露/.test(matched[0]) ? "high" : "medium",
+      blocked: true,
+      matchedText: matched[0],
+    } satisfies PromptInjectionFinding];
+  });
+}
+
+function deriveConversationState(
+  requiresClarification: boolean,
+  confirmationRequired: boolean,
+  blockedByPolicy: boolean,
+): ConversationState {
+  if (blockedByPolicy) {
+    return "Clarifying";
+  }
+  if (requiresClarification) {
+    return "Clarifying";
+  }
+  if (confirmationRequired) {
+    return "Confirming";
+  }
+  return "Executing";
 }
 
 function buildRiskPreview(message: string, intentType: DetectedIntent["intentType"]): RiskPreview {
@@ -399,6 +512,55 @@ function buildRiskPreview(message: string, intentType: DetectedIntent["intentTyp
   };
 }
 
+export class ContextEnricher {
+  public enrich(
+    message: string,
+    divisionId: string,
+    entities: readonly ExtractedEntity[],
+  ): ContextEnrichment {
+    return {
+      domainHint: divisionId,
+      extractedConstraints: [
+        ...(entities.some((entity) => entity.entityType === "money") ? ["budget_constraint"] : []),
+        ...(entities.some((entity) => entity.entityType === "date") ? ["timeline_constraint"] : []),
+        ...(/(prod|production|线上|生产环境)/i.test(message) ? ["production_scope"] : []),
+      ],
+      targetEnvironments: entities
+        .filter((entity) => entity.entityType === "environment")
+        .map((entity) => String(entity.normalized)),
+      requestedChannels: entities
+        .filter((entity) => entity.entityType === "channel")
+        .map((entity) => String(entity.normalized)),
+      timelineRefs: entities
+        .filter((entity) => entity.entityType === "date")
+        .map((entity) => String(entity.normalized)),
+    };
+  }
+}
+
+export class ResponseFormatter {
+  public formatTaskSummary(input: {
+    readonly divisionId: string;
+    readonly workflowId: string;
+    readonly costEstimate: CostEstimate;
+    readonly riskPreview: RiskPreview;
+    readonly clarificationState: ClarificationState;
+  }): string {
+    const clarificationHint = input.clarificationState.state === "required"
+      ? "需要先完成澄清"
+      : input.clarificationState.state === "blocked"
+        ? "请求命中安全防护，需要人工确认"
+        : "可直接进入执行编排";
+    return [
+      `我将把请求路由到 ${input.divisionId}`,
+      `使用工作流 ${input.workflowId}`,
+      `预估成本 $${input.costEstimate.estimatedCostUsd.toFixed(2)}`,
+      `风险等级 ${input.riskPreview.overallRisk}`,
+      clarificationHint,
+    ].join("，");
+  }
+}
+
 export class NlEntryService implements NlEntryPort {
   private readonly intakeRouter: IntakeRouter;
   private readonly costEstimator: CostEstimatorPort | null;
@@ -406,11 +568,16 @@ export class NlEntryService implements NlEntryPort {
   private readonly localeConfig: LocaleConfig;
   private readonly conversationWindowSize: number;
   private readonly nlConfig: NlGatewayConfig;
+  private readonly contextEnricher = new ContextEnricher();
+  private readonly responseFormatter = new ResponseFormatter();
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
     this.costEstimator = options.costEstimator ?? null;
-    this.clarificationThreshold = options.clarificationThreshold ?? 0.7;
+    const configuredThreshold = options.clarificationThreshold
+      ?? options.nlGatewayConfig?.disambiguation.threshold
+      ?? INTENT_CONFIDENCE_THRESHOLD;
+    this.clarificationThreshold = Math.max(INTENT_CONFIDENCE_THRESHOLD, configuredThreshold);
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;
     this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
     this.conversationWindowSize = options.conversationWindowSize
@@ -428,14 +595,14 @@ export class NlEntryService implements NlEntryPort {
    * Get the configured clarification threshold
    */
   public getClarificationThreshold(): number {
-    return this.nlConfig.disambiguation.threshold;
+    return this.clarificationThreshold;
   }
 
   /**
    * Check if clarification should be requested based on config
    */
   public shouldRequestClarification(confidence: number): boolean {
-    return shouldRequestClarification(this.nlConfig, confidence);
+    return confidence < this.clarificationThreshold;
   }
 
   public async parse(request: NlEntryRequest): Promise<NlEntryIntent> {
@@ -456,6 +623,7 @@ export class NlEntryService implements NlEntryPort {
       request: request.message,
     });
     const entities = extractEntities(request.message);
+    const securityFindings = detectPromptInjection(request.message);
     const detectedIntent: DetectedIntent = {
       intentType: mapIntentType(route.classification.intent),
       domainHint: route.divisionId,
@@ -463,6 +631,7 @@ export class NlEntryService implements NlEntryPort {
       urgency: deriveUrgency(request.message),
       confidence: route.classification.confidence,
     };
+    const context = this.contextEnricher.enrich(request.message, route.divisionId, entities);
     const clarificationQuestions = buildClarificationQuestions(
       request.message,
       route.classification.confidence,
@@ -470,18 +639,37 @@ export class NlEntryService implements NlEntryPort {
       entities,
     );
     const locale = this.resolveLocale(request);
+    const slotConfidence = estimateSlotConfidence(entities, request.message);
+    const blockedByPolicy = securityFindings.some((item) => item.blocked);
+    const requiresClarification =
+      blockedByPolicy
+      || route.classification.confidence < this.clarificationThreshold
+      || slotConfidence < SLOT_CONFIDENCE_THRESHOLD
+      || clarificationQuestions.length > 0;
+    const clarificationState: ClarificationState = {
+      state: blockedByPolicy ? "blocked" : requiresClarification ? "required" : "none",
+      reasonCodes: [
+        ...(blockedByPolicy ? ["nl_gateway.prompt_injection_detected"] : []),
+        ...(route.classification.confidence < this.clarificationThreshold ? ["nl_gateway.intent_confidence_low"] : []),
+        ...(slotConfidence < SLOT_CONFIDENCE_THRESHOLD ? ["nl_gateway.slot_confidence_low"] : []),
+      ],
+      questions: clarificationQuestions,
+    };
 
     return {
       rawInput: request.message,
       detectedIntents: [detectedIntent],
       confidence: route.classification.confidence,
-      requiresClarification:
-        route.classification.confidence < this.clarificationThreshold
-        || clarificationQuestions.length > 0,
+      requiresClarification,
       locale,
       continuation: route.classification.continuation,
       suggestedDivisionId: route.divisionId,
       suggestedWorkflowId: route.workflowId,
+      conversationState: requiresClarification ? "Clarifying" : "Building",
+      clarificationState,
+      context,
+      securityFindings,
+      blockedByPolicy,
       ...(clarificationQuestions.length > 0 ? { clarificationQuestions } : {}),
     };
   }
@@ -497,13 +685,39 @@ export class NlEntryService implements NlEntryPort {
     };
     const riskPreview = buildRiskPreview(request.message, primaryIntent.intentType);
     const costEstimate = this.costEstimator?.estimate(detailed.suggestedDivisionId) ?? defaultCostEstimate();
-    const confirmationRequired = detailed.requiresClarification || riskPreview.approvalNeeded || riskPreview.overallRisk === "critical";
-    const humanSummary = [
-      `我将把请求路由到 ${detailed.suggestedDivisionId}`,
-      `使用工作流 ${detailed.suggestedWorkflowId}`,
-      `预估成本 $${costEstimate.estimatedCostUsd.toFixed(2)}`,
-      `风险等级 ${riskPreview.overallRisk}`,
-    ].join("，");
+    const confirmationRequired = detailed.requiresClarification || riskPreview.approvalNeeded || riskPreview.overallRisk === "critical" || detailed.blockedByPolicy;
+    const humanSummary = this.responseFormatter.formatTaskSummary({
+      divisionId: detailed.suggestedDivisionId,
+      workflowId: detailed.suggestedWorkflowId,
+      costEstimate,
+      riskPreview,
+      clarificationState: detailed.clarificationState,
+    });
+    const conversationState = deriveConversationState(
+      detailed.requiresClarification,
+      confirmationRequired,
+      detailed.blockedByPolicy,
+    );
+    const taskDraft: TaskDraft = {
+      draftId: deriveTitle(request.message).replace(/\s+/g, "_").toLowerCase(),
+      rawInput: request.message,
+      locale: detailed.locale,
+      intent: primaryIntent,
+      context: detailed.context,
+      riskPreview,
+      state: confirmationRequired ? "Confirming" : "Executing",
+    };
+    const confirmationReceipt: UserConfirmationReceipt = {
+      confirmationId: `${taskDraft.draftId}:confirmation`,
+      required: confirmationRequired,
+      state: confirmationRequired ? "pending_user_confirmation" : "not_required",
+      reasonCodes: [
+        ...(detailed.requiresClarification ? ["nl_gateway.clarification_required"] : []),
+        ...(riskPreview.approvalNeeded ? ["nl_gateway.approval_required"] : []),
+        ...(detailed.blockedByPolicy ? ["nl_gateway.security_review_required"] : []),
+      ],
+      summary: humanSummary,
+    };
 
     return {
       requestEnvelope: createRequestEnvelope<NlRequestPayload>({
@@ -540,6 +754,10 @@ export class NlEntryService implements NlEntryPort {
       costEstimate,
       confirmationRequired,
       humanSummary,
+      taskDraft,
+      clarificationState: detailed.clarificationState,
+      confirmationReceipt,
+      conversationState,
     };
   }
 

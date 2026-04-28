@@ -291,23 +291,22 @@ test("orderFairQueue considers age in scoring (age score caps at 9)", () => {
 });
 
 test("orderFairQueue age score calculation", () => {
-  // age score = Math.min(9, Math.floor(ageMs / 60_000))
+  // age score = Math.min(99, Math.floor(ageMs / 60_000))
   const items: FairQueueItem[] = [
     createQueueItem({ itemId: "zero", priority: 5, ageMs: 0 }),
     createQueueItem({ itemId: "30sec", priority: 5, ageMs: 30_000 }),
     createQueueItem({ itemId: "1min", priority: 5, ageMs: 60_000 }),
     createQueueItem({ itemId: "5min", priority: 5, ageMs: 5 * 60_000 }),
     createQueueItem({ itemId: "10min", priority: 5, ageMs: 10 * 60_000 }),
-    createQueueItem({ itemId: "very-old", priority: 5, ageMs: 15 * 60_000 }), // capped at 9
+    createQueueItem({ itemId: "very-old", priority: 5, ageMs: 15 * 60_000 }),
   ];
 
   const ordered = orderFairQueue(items);
 
-  // Score for 10min (score=9) should be higher than very-old (score=9, same cap)
-  // Both have same score, but very-old appears later in input
+  // With a wider age cap, the older item keeps accumulating age bonus.
   const tenMinIdx = ordered.findIndex((i) => i.itemId === "10min");
   const veryOldIdx = ordered.findIndex((i) => i.itemId === "very-old");
-  assert.ok(tenMinIdx <= veryOldIdx, "10min should come before or same as very-old due to stable sort");
+  assert.ok(veryOldIdx < tenMinIdx, "very-old should outrank 10min due to a larger age bonus");
 });
 
 test("orderFairQueue does not modify original array", () => {

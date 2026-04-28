@@ -18,7 +18,7 @@ OAPEFLIR 八阶段架构需要对不同业务域（coding/operations/growth/game
 |------|------|---------|
 | `DomainRetrieverPlugin` | 从知识库/内存/上下文中检索相关内容 | `retrieve(query: RetrievalQuery): Promise<RetrievalResult[]>` |
 | `DomainValidatorPlugin` | 验证执行输入/输出是否符合 domain 规范 | `validate(input: unknown, context: ValidationContext): Promise<ValidationResult>` |
-| `DomainPlannerPlugin` | 为特定 domain 生成定制化执行计划 | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<Plan>` |
+| `DomainPlannerPlugin` | 为特定 domain 生成定制化执行计划 | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>` |
 | `DomainPresenterPlugin` | 将执行结果格式化为 domain 特定输出 | `present(output: DualChannelStepOutput, format: OutputFormat): Promise<PresentedOutput>` |
 
 ### 2. Plugin 生命周期状态机
@@ -56,7 +56,7 @@ unregistered → loading → registered → initialized → active ↔ suspended
 
 ### 4. Plugin 隔离与安全
 
-- **进程隔离**：每个 Plugin 运行在独立 Worker 线程，通过 `plugin-runtime-host.ts` 管理。
+- **进程隔离**：不可信 Plugin 必须运行在独立进程，通过 `plugin-runtime-host.ts` 的 IPC 边界管理；Worker 线程不得作为不可信插件的最终隔离边界。
 - **权限边界**：Plugin 只能访问 `PluginBinding` 中声明的权限集合。
 - **资源限制**：单个 Plugin 执行超时 30s，内存上限 512MB。
 - **配置注入防护**：`domain-config.json` 必须经过 `PluginConfigValidator` 校验。
@@ -90,10 +90,10 @@ interface PluginRegistryService {
 ## 后果
 
 - `plugin-spi-registry.ts`（829 行）作为核心注册表。
-- `plugin-runtime-host.ts` 提供进程隔离。
+- `plugin-runtime-host.ts` 提供独立进程 + IPC 隔离。
 - 每个 Domain 需要实现 4 个 Plugin 接口。
 - `PluginConfigValidator` 防止恶意配置注入。
-- M2 Phase 1 优先实现 Operations Domain（复用 GitHub adapter）。
+- Ring 2 优先实现 Operations Domain（复用 GitHub adapter）。
 
 ## 交叉引用
 
@@ -108,3 +108,8 @@ interface PluginRegistryService {
 - `§B.7` ExternalAdapterPlugin
 - `§B.11` Plugin 生命周期状态机
 - `§G.1-G.2` Per-domain tool bundles & 8 adapters
+
+## v4.3 ADR Remediation
+
+- A-27: 本 ADR 原先让 `DomainPlannerPlugin.plan()` 返回 `Promise<Plan>`，根因是 Plugin SPI ADR 沿用了早期线性计划接口草案，没有随着 graph handoff contract 升级。修复：正文现把 planner 输出收敛到 `Promise<PlanGraphBundle>`。
+- A-36: 本 ADR 原先把不可信插件隔离描述成 Worker 线程，根因是实现早期先落了同进程并发原型，文档却没有再升级到主架构要求的独立进程 + IPC 边界。修复：正文现明确不可信插件必须走独立进程隔离。

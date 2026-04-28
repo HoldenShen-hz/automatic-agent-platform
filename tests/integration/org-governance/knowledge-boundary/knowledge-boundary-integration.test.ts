@@ -13,7 +13,7 @@ import { evaluateChineseWallPolicy, type ChineseWallPolicy } from "../../../../s
 import { redactKnowledgeAccessLog } from "../../../../src/org-governance/knowledge-boundary/access-log/index.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
-test("Knowledge Boundary: evaluateAccess grants access to public boundary", () => {
+test("Knowledge Boundary: evaluateAccess grants access to public boundary only with explicit allowlist", () => {
   const workspace = createTempWorkspace("aa-kb-access-public-");
   const dbPath = join(workspace, "kb-access-public.db");
 
@@ -34,7 +34,7 @@ test("Knowledge Boundary: evaluateAccess grants access to public boundary", () =
       ownerOrgNodeId: "org-finance",
       namespaceIds: ["finance-docs"],
       defaultVisibility: "public",
-      allowedOrgNodeIds: [],
+      allowedOrgNodeIds: ["org-engineering"],
     };
 
     const decision = kbService.evaluateAccess(
@@ -339,7 +339,7 @@ test("Knowledge Boundary: listRedactedLogs returns redacted access records", () 
   }
 });
 
-test("Knowledge Boundary: canAccessKnowledgeBoundary returns true for public boundary", () => {
+test("Knowledge Boundary: canAccessKnowledgeBoundary requires explicit allowlist even for public boundary", () => {
   const boundary: KnowledgeBoundary = {
     boundaryId: "kb-test",
     ownerOrgNodeId: "org-owner",
@@ -348,7 +348,7 @@ test("Knowledge Boundary: canAccessKnowledgeBoundary returns true for public bou
     allowedOrgNodeIds: [],
   };
 
-  assert.equal(canAccessKnowledgeBoundary(boundary, "any-org-node"), true);
+  assert.equal(canAccessKnowledgeBoundary(boundary, "any-org-node"), false);
 });
 
 test("Knowledge Boundary: canAccessKnowledgeBoundary returns true for owner", () => {
@@ -568,7 +568,7 @@ test("Knowledge Boundary: evaluateAccess records correct access log entries", ()
       ownerOrgNodeId: "org-finance",
       namespaceIds: ["docs"],
       defaultVisibility: "public",
-      allowedOrgNodeIds: [],
+      allowedOrgNodeIds: ["org-requester"],
     };
 
     const decision = kbService.evaluateAccess(

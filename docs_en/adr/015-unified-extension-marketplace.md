@@ -1,15 +1,15 @@
-# ADR-015 Whether Skill and Plugin Converge to Single Marketplace
+# ADR-015 Skill and Plugin Convergence to Single Marketplace
 
 ---
 
 ## OAPEFLIR Association
 
-This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post-execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
+- **Execute**: Step execution and dual-channel output
 - **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
@@ -22,71 +22,71 @@ This document defines the following components in the OAPEFLIR eight-phase cogni
 
 ## Context
 
-Historical materials of the system have separately appeared with multiple extension entry points like Skill Marketplace, Plugin Marketplace, and template market. If these concepts coexist long-term, it will lead to:
+Historical system materials have separately introduced multiple extension entry points such as Skill Marketplace, Plugin Marketplace, and Template Marketplace. If these concepts coexist long-term, it will lead to:
 
 - Scattered installation and permission governance entry points
-- Duplicate construction of review, signature, version compatibility, and disable policies
-- Users find it difficult to understand "where to actually find extensions"
+- Redundant construction of review, signing, version compatibility, and disable policies
+- Users struggling to understand "where to go to find extensions"
 
-Current stage will not really implement marketplace, but need to freeze direction first to prevent documentation from continuing to diverge along different market models.
+The current stage will not truly implement a marketplace, but the direction needs to be frozen first to prevent documentation from continuing to diverge along different marketplace models.
 
 ## Decision
 
-Do not implement marketplace in Phase 1a/1b.
+Phase 1a / 1b does not implement a marketplace.
 
-Long-term direction: Skill, Plugin, template and other extension capabilities converge to unified governance entry point, rather than maintaining multiple market models.
+The long-term direction is to converge Skills, Plugins, templates, and other extension capabilities into a unified governance entry point, rather than maintaining multiple marketplace models.
 
 This means:
 
-- Currently only preserve extension object model and governance contract
-- When truly entering Phase 4, prioritize building unified extension marketplace
+- Only extension object models and governance contracts are preserved currently
+- When truly entering Phase 4, priority is given to building a unified extension marketplace
 
 ## Alternatives
 
-### Option A: Long-Term Maintain Multiple Markets
+### Option A: Long-Term Maintenance of Multiple Marketplaces
 
-Benefits:
+Pros:
 
 - Each extension type appears more "tailored to its own semantics".
 
 Costs:
 
 - Heavy user mental burden.
-- Highly duplicated review, permission, signature, compatibility, deprecation, and billing capabilities.
+- Highly repetitive review, permission, signing, compatibility, deprecation, and billing capabilities.
 - Significantly increased platform governance complexity.
 
-### Option B: Implement Unified Market Now
+### Option B: Implement Unified Marketplace Now
 
-Benefits:
+Pros:
 
 - Most direct path.
 
 Costs:
 
-- Clearly beyond stage.
-- Currently even internal extension governance has not yet entered implementation; doing marketplace prematurely will only weigh down the platform.
+- Clearly beyond the current stage.
+- Internal extension governance has not yet entered implementation; doing marketplace prematurely will only make the platform heavier.
 
 ### Option C: Current Decision
 
-- Currently not implementing marketplace
-- Long-term direction converges to unified entry point
-- First unify extension object, permission, and lifecycle at contract layer
+- Do not implement marketplace currently
+- Long-term direction converges to unified entry
+- First unify extension object, permission, and lifecycle at the contract layer
 
-## Reasons for Choosing This Approach
+## Reasons for Selecting This Option
 
-- Most important at current stage is internal extension boundary, not marketplace product form.
-- Unified governance entry point better aligns with long-term needs of permission, approval, signature, compatibility, and billing.
-- Freezing direction first can prevent documentation from continuing to show multiple parallel market concepts.
+- The most important thing at this stage is internal extension boundaries, not marketplace product form.
+- Unified governance entry better fits the long-term needs of permission, approval, signing, compatibility, and billing.
+- Freezing the direction early can prevent documentation from continuing to introduce multiple parallel marketplace concepts.
 
 ## Key Invariants
 
-- Skill, Plugin, template should all go through unified governance chain in the future.
+- Skills, Plugins, and templates should all pass through unified governance chain in the future.
 - Installation units must not bypass ToolRegistry, Policy Engine, and permission review.
-- Even if front-end displays in columns, does not mean back-end needs to maintain multiple market kernels.
+- Even if the frontend displays in separate columns, it does not mean the backend needs to maintain multiple marketplace cores.
 
-## Adoption Triggers
+## Adoption Conditions
 
-Before formally entering the following topics, should continue to abide by this direction:
+Continue to follow this direction before formally entering:
 
 - ecosystem extension plane
 - monetization metering plane
@@ -94,37 +94,37 @@ Before formally entering the following topics, should continue to abide by this 
 
 ## Exit Conditions
 
-If future evidence proves:
+If future evidence shows:
 
-- Skill and Plugin have completely different lifecycle, risk model, and business model
-- Unified governance complexity is actually higher
+- Skills and Plugins have completely different lifecycles, risk models, and business models
+- Unified governance brings higher complexity instead
 
-Then may reopen ADR discussion on splitting, but cannot return to "multiple markets evolving in parallel" without new decision.
+Then a new ADR may be opened to discuss splitting, but returning to "multiple marketplaces evolving in parallel" without a new decision is not allowed.
 
 ## Implementation Impact
 
 Current documentation and subsequent implementation requirements:
 
-- Use unified extension/installable/capability registry language in contracts and documentation
-- Phase 1a/1b only do registry, permission, installation boundary, not marketplace UI or commercial distribution
-- If Phase 4 begins marketplace, should design directly from unified governance entry point, not first do multiple market sets then merge
+- Contracts and documents use unified extension / installable / capability registry language as much as possible.
+- Phase 1a / 1b only does registry, permission, and installation boundaries, not marketplace UI or commercial distribution.
+- If Phase 4 begins marketplace work, design should directly proceed from unified governance entry, rather than first doing multiple marketplace sets and then merging.
 
 ## Results
 
-Benefits:
+Pros:
 
 - More consistent long-term governance.
 - Simpler user mental model.
-- Easier to unify permission, signature, version compatibility, and billing.
+- Easier to unify permission, signing, version compatibility, and billing.
 
 Costs:
 
-- Need to, when actually implementing in the future, abstract different extension types into the same governance model.
-- Some type-specific capabilities may need additional subtype rules rather than completely flat handling.
+- When truly implemented in the future, different extension types need to be abstracted into the same governance model.
+- Some type-specific capabilities may require additional subtype rules rather than completely flat handling.
 
 ## Cross-References
 
-- [ADR-014 Whether Organization Model Directly Maps to Code Objects](./014-org-model-code-boundary.md)
+- [ADR-014 Org Model Direct Mapping to Code Objects](./014-org-model-code-boundary.md)
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-010 Commercial Model](./010-commercial-model.md)
 

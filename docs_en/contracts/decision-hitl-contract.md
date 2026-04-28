@@ -4,7 +4,7 @@
 
 ## 1. Scope
 
-This contract defines the adjudication protocol between runtime, policy, evaluator, and human collaboration. Actions such as approval, takeover, override, resume, reject, and patch must have structured input, decision results, and responsibility records.
+This contract defines the adjudication protocol between runtime, policy, evaluator, and human collaboration. Approval, takeover, override, resume, reject, patch, and other actions must have structured input, adjudication results, and responsibility records.
 
 ## 2. DecisionInputBundle
 
@@ -26,7 +26,7 @@ Minimum fields:
 
 Rules:
 
-- High / critical decisions must include sufficient evidence and responsibility scope.
+- high / critical decisions must include sufficient evidence and scope of responsibility.
 - LLM-as-Judge must not override deterministic failure, policy deny, or hard cap failure.
 
 ## 3. HarnessDecision
@@ -46,8 +46,8 @@ Minimum fields:
 Rules:
 
 - `HarnessDecision` is append-only; when a new decision supersedes an old one, the old ID must be explicitly referenced.
-- `accept` only indicates the current gate passed, not that the run succeeded.
-- `patch` / `replan` must generate `GraphPatch` or a rejection reason.
+- `accept` only indicates the current gate passed, and is not equivalent to run success.
+- `patch` / `replan` must generate a `GraphPatch` or rejection reason.
 
 ## 4. HumanResponsibilityRecord
 
@@ -58,7 +58,7 @@ Minimum fields:
 | `humanResponsibilityRecordId` | `string` | Responsibility record ID |
 | `harnessDecisionId` | `string` | Associated decision |
 | `humanActorRef` | `PrincipalRef` | Human responsible party |
-| `responsibilityScope` | `approval \| override \| takeover \| patch \| resume \| abort \| compensation` | Responsibility scope |
+| `responsibilityScope` | `approval \| override \| takeover \| patch \| resume \| abort \| compensation` | Scope of responsibility |
 | `acknowledgedRiskClass` | `low \| medium \| high \| critical` | Acknowledged risk |
 | `acknowledgementReceiptRef` | `ArtifactRef` | Acknowledgement receipt |
 | `effectiveFrom` | `timestamp` | Effective time |
@@ -66,20 +66,20 @@ Minimum fields:
 
 Rules:
 
-- High / critical human actions must record the responsible party, risk acknowledgment, and expiration time.
-- Break-glass must require dual approval, time limits, scope limits, forensic logging, and post-incident review.
+- high / critical human actions must record the responsible party, risk acknowledgement, and expiration time.
+- break-glass requires dual approval, time-limited, scope-limited, forensic logging, and post-incident review.
 - Human takeover must not bypass `RuntimeStateMachine.transition(command)`.
 
 ## 5. Legacy / Deprecated Mapping
 
 | Old Name | v4.3 Semantics |
 | --- | --- |
-| `ControlDirective` | Split into runtime control and business decision; business decision uses `HarnessDecision` |
-| Approval status only | Insufficient to express v4.3 decisions; must have input bundle and responsibility record |
-| Takeover event | Projection; authoritative record is `HarnessDecision` + `HumanResponsibilityRecord` |
+| `ControlDirective` | Split into runtime control and business adjudication; business adjudication uses `HarnessDecision` |
+| approval status only | Insufficient to express v4.3 decisions; must have input bundle and responsibility record |
+| takeover event | projection; authoritative record is `HarnessDecision` + `HumanResponsibilityRecord` |
 
-## 6. Testing Requirements
+## 6. Test Requirements
 
 - HITL responsibility record test must cover high / critical human actions.
-- LLM judge cannot override policy deny / hard cap failure.
-- Takeover / resume must progress through the state machine.
+- LLM judge must not override policy deny / hard cap failure.
+- takeover / resume must advance through the state machine.

@@ -19,6 +19,12 @@
 | 3 | high_auto | 高度自动化 |
 | 4 | full_auto | 完全自动化 |
 
+规则：
+
+- `full_auto` 不代表无限制自动化。
+- 高危域默认不得进入 `full_auto`，除非存在显式 `DomainRiskSpec` / `DomainRiskProfile` 允许并附带人工责任边界。
+- 若 domain 被标记为 `advisory_only`、`human_accountable` 或 `deterministic_hot_path_only`，则自治等级上限必须低于 `full_auto`。
+
 ### 晋升规则
 
 - 基于执行成功率
@@ -59,3 +65,7 @@
 ## 来源章节
 
 - `§42` 渐进式自主权模型
+
+## v4.3 ADR Remediation
+
+- A-34: 本 ADR 原先把 level 4 `full_auto` 写成“完全自动化”，根因是渐进式自主权 ADR 把自治等级误写成无限授权梯子，没有跟高危域风险覆盖规则绑定。修复：正文现明确高危域默认不得 `full_auto`，除非有显式 `DomainRiskSpec / DomainRiskProfile` 允许。

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines capacity tracking, forecasting models, and what-if capacity simulation for `§67`.
+This contract defines `§67`'s capacity tracking, forecasting models, and what-if capacity simulation.
 
 ## 2. Canonical Objects
 
@@ -22,12 +22,12 @@ This contract defines capacity tracking, forecasting models, and what-if capacit
 
 ## 4. Rules
 
-- Capacity forecasting must preserve training window and confidence interval.
-- What-if simulation must be able to compare multiple capacity increase / decrease scenarios.
+- Capacity forecasts must preserve training windows and confidence intervals.
+- What-if simulations must be able to compare multiple capacity increase / decrease scenarios.
 - Capacity recommendations must consider both cost and SLO risk.
 
-## 5. Test Requirements
+## 5. Testing Requirements
 
 - unit: trend analysis, forecast, scenario simulation
 - integration: runtime metrics -> forecast -> recommendation
-- contract: forecasts without time windows must not enter decision chain
+- contract: forecasts without time windows must not enter the decision chain

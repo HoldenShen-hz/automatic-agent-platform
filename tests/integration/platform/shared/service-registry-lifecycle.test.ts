@@ -239,9 +239,21 @@ test("service-registry-lifecycle: reset clears instances and registrations", asy
 });
 
 test("service-registry-lifecycle: registerBootstrap registers services on new instances", async () => {
-  // Skip this test - bootstrap registrars persist across tests and are replayed
-  // for every new registry instance, making counter-based assertions unreliable
-  // when tests run in sequence. The bootstrap mechanism itself works correctly
-  // as demonstrated by other tests that use bootstrap-registered services.
-  await test.skip();
+  const serviceId = `test.bootstrap-service.${Date.now()}`;
+  const bootstrapId = `test.bootstrap.${Date.now()}`;
+
+  ServiceRegistry.registerBootstrap(bootstrapId, (registry) => {
+    registry.register(serviceId, {
+      init: () => ({ serviceId }),
+    });
+  });
+
+  const registryA = new ServiceRegistry();
+  const registryB = new ServiceRegistry();
+
+  assert.equal(registryA.get<{ serviceId: string }>(serviceId).serviceId, serviceId);
+  assert.equal(registryB.get<{ serviceId: string }>(serviceId).serviceId, serviceId);
+
+  await registryA.reset();
+  await registryB.reset();
 });

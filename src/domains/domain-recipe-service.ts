@@ -11,7 +11,7 @@
  */
 
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
-import { type DomainRecipe, matchDomainRecipe } from "./recipes/index.js";
+import { type DomainRecipe, matchDomainRecipe, type DomainRecipeArchetype } from "./recipes/index.js";
 
 export interface RecipeTemplate {
   readonly templateId: string;
@@ -46,6 +46,7 @@ export interface RecipeVersion {
 
 export interface RecipeCreateRequest {
   readonly domainId: string;
+  readonly archetype?: DomainRecipeArchetype;
   readonly name: string;
   readonly description: string;
   readonly triggerPhrases: readonly string[];
@@ -218,6 +219,7 @@ export class DomainRecipeService {
     const recipe: DomainRecipe = {
       recipeId: newId("recipe"),
       domainId: request.domainId,
+      archetype: request.archetype ?? "crud_heavy",
       name: request.name,
       description: request.description,
       triggerPhrases: [...request.triggerPhrases],

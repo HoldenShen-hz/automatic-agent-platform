@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,32 +19,32 @@ This contract participates in the following phases of the OAPEFLIR eight-phase l
 
 ## 1. Scope
 
-This contract defines the architecture decision process, module boundary governance, and version compatibility strategies required for mature industrial platforms.
+This contract defines the architectural decision process, module boundary governance, and version compatibility strategy required for mature industrial platforms.
 
-Related Documents:
+Related documents:
 
 - `project_structure_contract.md`
 - `api_surface_contract.md`
 - `control_vs_intelligence_boundary_contract.md`
 - `workflow_static_analysis_and_compensation_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-- Ensure new architecture decisions enter formal ADR process, rather than staying in chat or code comments.
-- Tighten call boundaries between domain layer, orchestration layer, runtime layer, and infrastructure layer.
-- Establish unified version governance for workflow DSL, role contract, tool schema, event schema, and memory schema.
+- Ensure new architectural trade-offs enter the formal ADR process, rather than remaining in chat or code comments.
+- Tighten the invocation boundaries between the domain layer, orchestration layer, runtime layer, and infrastructure layer.
+- Establish unified version governance for workflow DSL, role contracts, tool schemas, event schemas, and memory schemas.
 
 ## 3. ADR Governance Requirements
 
-The following changes must add new ADR or update existing ADR:
+The following changes must introduce a new ADR or update an existing ADR:
 
-- Adding new authoritative store, queue, broker, or cache.
-- Adding new cross-boundary security model, execution model, or tenant isolation model.
-- Changing model selection strategy, fallback strategy, or control/intelligence boundary.
-- Changing workflow DSL, event schema, tool schema compatibility strategy.
+- Adding authoritative stores, queues, brokers, or caches.
+- Adding cross-boundary security models, execution models, or tenant isolation models.
+- Changing model selection strategies, fallback strategies, or control/intelligence boundaries.
+- Changing compatibility strategies for workflow DSL, event schemas, or tool schemas.
 - Introducing new production-level dependencies, plugin distribution mechanisms, or cross-region disaster recovery solutions.
 
-Each ADR must contain at least:
+Each ADR must include at minimum:
 
 - context
 - decision
@@ -54,32 +54,32 @@ Each ADR must contain at least:
 - rollback / exit criteria
 - migration impact
 
-Supplementary requirements:
+Additional requirements:
 
-- If a design explicitly references an external system or external framework, "borrowing points" and "points not directly adopted" should be recorded.
-- If deciding not to adopt an seemingly reasonable external solution, the minimal rejection reason should be retained to avoid the same proposal being repeatedly resubmitted.
-- For long-term stable boundaries, allowing introduction of architecture smell inventory or guard scripts to continuously discover facade pollution, cross-layer dependencies, and runtime service locator bloat.
-- For long-term high-frequency changing core modules, continuously review module bloat risk; if central modules chronically absorb unrelated responsibilities, priority should be given to splitting boundaries, rather than continuing to accumulate logic to "all-powerful core".
+- If a design explicitly references an external system or external framework, document the "borrowed points" and "points not directly adopted."
+- If deciding not to adopt a seemingly reasonable external solution, retain a minimal rejection reason to avoid the same solution being repeatedly re-proposed.
+- For long-term stable boundaries, allow the introduction of an architecture smell inventory or guard scripts to continuously detect facade pollution, cross-layer dependencies, and runtime service locator bloat.
+- For core modules that change frequently over the long term, continuously review module bloat risks; if a central module persistently absorbs unrelated responsibilities, prioritize splitting boundaries rather than continuing to pile logic onto an "omniscient core."
 
 ## 4. Module Boundaries
 
 Recommended layers:
 
-| Layer | Responsible Content | Forbidden Direct Dependencies |
+| Layer | Responsible For | Forbidden Direct Dependencies |
 | --- | --- | --- |
-| `domain` | Task, workflow, decision, result, policy objects | Infra details, SDK clients |
-| `orchestration` | Planner, orchestrator, transition service, recovery manager | Underlying DB driver, specific web framework |
-| `runtime` | Execution, lease, worker, queue, sandbox, gateway | Product narrative objects, UI components |
-| `infrastructure` | PostgreSQL, Redis, object store, provider adapter, observability adapter | Business orchestration rules |
+| `domain` | task, workflow, decision, result, policy objects | infra details, SDK clients |
+| `orchestration` | planner, orchestrator, transition service, recovery manager | low-level DB drivers, specific web frameworks |
+| `runtime` | execution, lease, worker, queue, sandbox, gateway | product narrative objects, UI components |
+| `infrastructure` | PostgreSQL, Redis, object store, provider adapter, observability adapter | business orchestration rules |
 
 Boundary rules:
 
-- Cross-layer capabilities must be exposed through interface / port.
-- "Upper layers directly stealing lower layer implementation details" is not allowed.
+- Cross-layer capabilities must be exposed through interfaces / ports.
+- "Upper layers are not allowed to directly call lower-layer implementation details."
 - Domain objects must not hold infrastructure clients.
 - Prompt, workflow, and policy files must not replace mandatory system code boundaries.
-- Public facade must not retroactively re-export private implementations, avoiding freezing accidental paths into de facto public contracts.
-- Type layer / contract layer should not directly bind implementation shims; if lazy loading is necessary, it should be received through explicit runtime boundary.
+- Public facades must not re-export private implementations in reverse, avoiding freezing accidental paths into de facto public contracts.
+- Type layer / contract layer should not directly bind implementation shims; if lazy loading is necessary, it must be handled through explicit runtime boundaries.
 
 ## 5. Version Governance Objects
 
@@ -98,11 +98,11 @@ Objects that must be explicitly versioned:
 
 | Object | Default Compatibility Strategy |
 | --- | --- |
-| workflow DSL | Minor backward compatible, major allows breaking changes |
-| role contract | Minor adds optional fields, major changes required fields or semantics |
-| tool schema | Within production, must be compatible with two adjacent minor versions |
-| event schema | Producer and consumer must be compatible with at least current and previous versions |
-| memory schema | Must provide migration or lazy upgrade rules during upgrade |
+| workflow DSL | minor backward compatible, major allows breaking changes |
+| role contract | minor adds optional fields, major changes required fields or semantics |
+| tool schema | must be compatible with two adjacent minor versions in production |
+| event schema | producer and consumer must be compatible with at least current and previous versions |
+| memory schema | must provide migration or lazy upgrade rules during upgrades |
 
 ## 7. Version Upgrade Process
 
@@ -118,7 +118,7 @@ flowchart TD
 
 ## 7.1 Protocol and Recovery Hints
 
-External protocols or control plane handshakes should at least clarify:
+External protocols or control plane handshakes must explicitly define at minimum:
 
 - protocol version negotiation
 - role / scope boundary
@@ -127,19 +127,19 @@ External protocols or control plane handshakes should at least clarify:
 
 Rules:
 
-- Protocol changes belong to contract changes and should not drift quietly relying on implementation details alone.
-- On compatibility failure, should try to return structured recovery suggestions, not just exposing bare error strings.
-- External methods, payloads, and notification naming should follow unified conventions, e.g., `*Params / *Response / *Notification` or equivalent style, not mixing multiple naming systems within the same protocol layer.
-- Experimental / unstable surfaces must be explicitly marked, with defined promotion or deletion paths to avoid temporary fields lingering as implicit formal interfaces long-term.
+- Protocol changes are contract changes and should not silently drift through implementation details alone.
+- On compatibility failure, should return structured recovery suggestions rather than exposing bare error strings.
+- External methods, payloads, and notification naming should follow unified conventions, such as `*Params / *Response / *Notification` or equivalent styles, and should not mix multiple naming systems within the same protocol layer.
+- experimental / unstable surfaces must be explicitly marked, with defined promotion or deletion paths to avoid temporary fields lingering long-term as implicit formal interfaces.
 
 ## 8. Closure Conclusion
 
-Mature industrial platforms cannot maintain stability by just "current implementation can run".
+Mature industrial platforms cannot maintain stability by merely "keeping the current implementation running."
 
-Formal architecture governance must simultaneously cover:
+Formal architectural governance must simultaneously cover:
 
-- Decision records
-- Layer boundaries
-- Schema versions
-- Compatibility windows
-- Upgrade and rollback conditions
+- decision records
+- layer boundaries
+- schema versions
+- compatibility windows
+- upgrade and rollback conditions

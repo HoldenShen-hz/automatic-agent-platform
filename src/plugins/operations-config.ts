@@ -178,8 +178,8 @@ export const operationsDomainDefinition: DomainDefinition = {
   externalAdapters: ["github"],
   pluginBindings: [
     { bindingId: "ops.retriever", domainId: "operations", pluginType: "retriever", pluginId: "plugin.operations.retriever", priority: 10, enabled: true, config: {} },
-    { bindingId: "ops.presenter", domainId: "operations", pluginType: "presenter", pluginId: "plugin.operations.presenter", priority: 10, enabled: true, config: {} },
-    { bindingId: "ops.validator", domainId: "operations", pluginType: "validator", pluginId: "plugin.core.basic-evaluator", priority: 5, enabled: true, config: {} },
-    { bindingId: "ops.planner", domainId: "operations", pluginType: "planner", pluginId: "plugin.core.basic-planner", priority: 1, enabled: true, config: {} },
+    { bindingId: "ops.presenter", domainId: "operations", pluginType: "tool", bindingRole: "presenter", pluginId: "plugin.operations.presenter", priority: 10, enabled: true, config: {} },
+    { bindingId: "ops.validator", domainId: "operations", pluginType: "evaluator", bindingRole: "validator", pluginId: "plugin.core.basic-evaluator", priority: 5, enabled: true, config: {} },
+    { bindingId: "ops.planner", domainId: "operations", pluginType: "tool", bindingRole: "planner", pluginId: "plugin.core.basic-planner", priority: 1, enabled: true, config: {} },
   ],
 };

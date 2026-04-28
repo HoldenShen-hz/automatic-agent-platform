@@ -55,13 +55,14 @@ test("ComplianceReportPipelineService.generate creates report for valid template
   assert.equal(report.templateId, "soc2-type2");
   assert.equal(report.framework, "SOC2");
   assert.equal(report.reportType, "Type II");
-  assert.equal(report.status, "complete");
+  assert.equal(report.status, "generated");
   assert.equal(report.missingEvidenceTypes.length, 0);
+  assert.equal(report.evidenceQualityScore, 100);
   assert.ok(report.markdown.length > 0);
   assert.equal(report.readOnly, true);
 });
 
-test("ComplianceReportPipelineService.generate marks report partial when evidence missing", () => {
+test("ComplianceReportPipelineService.generate marks partial status and records evidence gaps when evidence is missing", () => {
   const service = new ComplianceReportPipelineService(createTestTemplates());
   const request: ComplianceReportRequest = {
     templateId: "soc2-type2",
@@ -73,6 +74,7 @@ test("ComplianceReportPipelineService.generate marks report partial when evidenc
 
   assert.equal(report.status, "partial");
   assert.equal(report.missingEvidenceTypes.length, 2);
+  assert.equal(report.evidenceQualityScore, 33);
   assert.ok(report.missingEvidenceTypes.includes("change_record"));
   assert.ok(report.missingEvidenceTypes.includes("incident_log"));
 });
@@ -175,7 +177,7 @@ test("ComplianceReportPipelineService.generate handles GDPR template with data e
 
   assert.equal(report.templateId, "gdpr-data-processing");
   assert.equal(report.framework, "GDPR");
-  assert.equal(report.status, "complete");
+  assert.equal(report.status, "generated");
 });
 
 test("EvidenceMapperService summarizes coverage ratio", () => {

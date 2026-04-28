@@ -198,8 +198,8 @@ test("SdkWorkbenchService.buildPublishReadiness returns preview URLs", () => {
   });
 
   assert.ok(report.previewUrls.length > 0);
-  assert.ok(report.previewUrls.some((u) => u.includes("/v1/tasks")));
-  assert.ok(report.previewUrls.some((u) => u.includes("/v1/approvals")));
+  assert.ok(report.previewUrls.some((u) => u.includes("/v1/harness-runs")));
+  assert.ok(report.previewUrls.some((u) => u.includes("/v1/packs")));
 });
 
 test("SdkWorkbenchService.listWorkbenchShortcuts returns shortcut list", () => {
@@ -211,7 +211,7 @@ test("SdkWorkbenchService.listWorkbenchShortcuts returns shortcut list", () => {
 
   assert.ok(shortcuts.length > 0);
   assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.tasks.list"));
-  assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.approvals.queue"));
+  assert.ok(shortcuts.some((s) => s.shortcutId === "sdk.packs.list"));
   assert.ok(shortcuts.some((s) => s.kind === "cli"));
   assert.ok(shortcuts.some((s) => s.kind === "docs"));
 });

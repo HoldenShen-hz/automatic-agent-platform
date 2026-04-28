@@ -41,6 +41,12 @@ export interface CapacityRecommendation {
   readonly projectedPeak: number;
   readonly estimatedCostDeltaPercent: number;
   readonly sloRisk: "low" | "medium" | "high";
+  readonly slaTier: "gold" | "silver" | "bronze";
+  readonly queueDelayRiskMs: number;
+  readonly budgetHeadroomPercent: number;
+  readonly approvalCapacityNeeded: number;
+  readonly providerQuotaPressure: number;
+  readonly regionFailoverReservePercent: number;
 }
 
 export interface CapacityForecastActualComparison {
@@ -147,6 +153,12 @@ export class CapacityPlanningService {
       projectedPeak,
       estimatedCostDeltaPercent,
       sloRisk,
+      slaTier: sloRisk === "high" ? "gold" : sloRisk === "medium" ? "silver" : "bronze",
+      queueDelayRiskMs: options.latestQueueDepth ?? 0,
+      budgetHeadroomPercent: Math.max(0, 100 - Math.max(0, estimatedCostDeltaPercent)),
+      approvalCapacityNeeded: sloRisk === "high" ? 2 : 1,
+      providerQuotaPressure: forecast.confidenceInterval.high,
+      regionFailoverReservePercent: 15,
     };
   }
 

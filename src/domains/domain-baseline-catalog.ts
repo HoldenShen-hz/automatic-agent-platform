@@ -365,6 +365,7 @@ function buildRecipes(seed: DomainSeed, workflowId: string, bundleId: string): r
     {
       recipeId: `${seed.domainId}.baseline-recipe`,
       domainId: seed.domainId,
+      archetype: inferRecipeArchetype(seed.tags),
       name: `${seed.displayName} Baseline Recipe`,
       description: `Baseline recipe for ${seed.displayName}.`,
       triggerPhrases: seed.tags.map((tag) => tag.replace(/-/g, " ")),
@@ -394,6 +395,12 @@ function buildGovernancePolicy(seed: DomainSeed): DomainGovernancePolicy {
     operatorRoles: ["domain_operator"],
     approvalRoles: seed.riskLevel === "critical" ? ["risk_committee", "domain_owner"] : ["domain_owner"],
     restrictedDataClasses: [...seed.restrictedDataClasses],
+    sloProfile: {},
+    budgetConstraints: {},
+    maxHibernationRenewals: 0,
+    complianceRules: [],
+    recertification: { cadence: "annual", requiredEvidence: [] },
+    waiver: { allowed: false, approvalRoles: [], maxDurationDays: 30 },
     rollout: {
       strategy: seed.rolloutStrategy,
       approvalRequired: seed.riskLevel !== "medium",
@@ -439,10 +446,19 @@ function buildDefinition(seed: DomainSeed, workflowId: string, bundleId: string,
       },
       securityLevel: securityLevelForRisk(seed.riskLevel),
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [...seed.externalAdapters],
     pluginBindings: [],
   };
+}
+
+function inferRecipeArchetype(tags: readonly string[]) {
+  if (tags.includes("realtime")) return "realtime" as const;
+  if (tags.includes("trading")) return "trading" as const;
+  if (tags.includes("research")) return "research" as const;
+  if (tags.includes("compliance")) return "compliance" as const;
+  if (tags.includes("analytics")) return "analytics" as const;
+  return "crud_heavy" as const;
 }
 
 function buildDomainBaseline(seed: DomainSeed): DomainBaseline {

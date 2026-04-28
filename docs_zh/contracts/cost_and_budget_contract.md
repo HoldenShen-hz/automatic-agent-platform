@@ -34,15 +34,25 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `max_task_cost_usd` | `number` | 单任务上限 |
-| `max_daily_cost_usd` | `number` | 每日上限 |
-| `max_monthly_cost_usd` | `number` | 每月上限 |
+| `max_cost_usd` | `number` | 本次 run 可消耗的总成本上限 |
+| `max_model_tokens` | `number` | 模型 token 总上限 |
+| `max_context_tokens` | `number` | 输入上下文 token 上限 |
+| `max_output_tokens` | `number` | 输出 token 上限 |
+| `max_steps` | `number` | 允许完成的 node 数上限 |
+| `max_duration_ms` | `number` | 总运行时长上限 |
 | `warn_at_ratio` | `number` | 预警阈值 |
-| `mode` | `supervised \| auto \| full-auto` | 运行模式 |
+| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | 预算生效时的运行模式 |
+
+兼容说明：
+
+- `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd` 只允许作为 billing / accounting projection guardrail，不再作为 runtime canonical `BudgetPolicy` 最小字段。
 
 ## 4. CostEvent 最小字段
 
 - `task_id`
+- `harness_run_id?`
+- `node_run_id?`
+- `attempt_id?`
 - `session_id?`
 - `agent_id?`
 - `stage?`
@@ -56,7 +66,7 @@
 ## 5. 行为约束
 
 - 成本记录应尽量靠近真实调用点。
-- 预算判断不能只看单次调用，应看累计值。
+- 预算判断不能只看单次调用，应看累计值，并与 `BudgetLedger / BudgetReservation / BudgetSettlement` truth 对齐。
 - 触发阈值后必须有明确动作：告警、审批、暂停或熔断。
 
 ## 6. 关联范围
@@ -68,6 +78,7 @@
 - 自愈重试。
 - 压缩与后台任务。
 - Observe / Assess / Plan / Feedback / Learn / Improve / Release 各阶段调用。
+- node 重试、tool 调用、副作用确认与人工复核调用。
 
 ## 7. 补充规则
 
@@ -111,7 +122,7 @@
 
 - 隐式成本必须参与预算阈值判断，不得绕过 `BudgetPolicy` 的累计检查。
 - skill 缓存命中时不产生模型调用成本，但缓存存储和查找的计算成本不计入 token 预算。
-- compaction 成本若使单任务超过 `max_task_cost_usd`，应触发与普通模型调用相同的阈值动作（告警、审批或熔断），不得静默放行。
+- compaction 成本若使 run 超过 `max_cost_usd`，应触发与普通模型调用相同的阈值动作（告警、审批或熔断），不得静默放行。
 - CostEvent 的 `budget_scope` 字段必须区分上述场景，使成本报告可按来源维度聚合。
 
 补充说明：
@@ -138,6 +149,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-41: BudgetPolicy仅max_task/daily/monthly_cost_usd，架构§18.3强制多维：max_cost/max_model_tokens/max_context_tokens/max_output_tokens/max_steps/max_duration_ms。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-41: 本文原先把 `BudgetPolicy` 缩减成 `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd` 三个财务阈值，根因是成本合同沿用了报表/账单口径，没有随着 v4.3 runtime budget guard 升级为多维预算约束。修复：正文现把 canonical `BudgetPolicy` 改为 `max_cost_usd / max_model_tokens / max_context_tokens / max_output_tokens / max_steps / max_duration_ms`，旧日/月统计只保留为 billing projection guardrail。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

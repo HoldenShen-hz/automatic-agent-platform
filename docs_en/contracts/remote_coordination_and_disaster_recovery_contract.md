@@ -2,7 +2,7 @@
 
 ---
 
-## OAPEFLIR Related
+## OAPEFLIR Relevance
 
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
@@ -30,16 +30,16 @@ Related documents:
 
 ## 2. Goals
 
-- Enable remote workers to have consistency and recoverability, not just "able to connect".
-- Establish formal recovery paths for cross-region coordination, worker disconnection, and sync breakage.
-- Establish ground truth for future coordinator clusters and region-level failover.
+- Make remote workers not just "able to connect", but have consistency and recoverability.
+- Make cross-region coordination, worker disconnection, and sync breaks have formal recovery paths.
+- Establish a source of truth for future coordinator clusters and region-level failover.
 
 ## 3. Remote File Consistency
 
 Must define at minimum:
 
 - Conflict detection
-- Incremental checksum
+- Incremental validation
 - Hash reconciliation
 - Sync recovery after session disconnection
 - Large file sync rate limiting
@@ -60,7 +60,7 @@ Should also support at minimum:
 - bridge credential refresh success rate
 - stream resume success rate
 - last acknowledged stream offset
-- reconnect session consistency check result
+- session consistency check result after reconnect
 
 Remote session status must distinguish at minimum:
 
@@ -82,14 +82,14 @@ Mature industrial platforms should progressively support:
 
 ## 6. Key Invariants
 
-- After remote worker disconnection, old lease must not continue writing back to authoritative state.
+- After remote worker disconnection, old leases must not continue writing back to authoritative state.
 - File sync status must be verifiable, must not rely solely on "looked successful last time".
-- After region-level switch, control plane must be able to determine which executions need rebuild and which only need reconnect.
-- When sync hash inconsistency, repo version inconsistency, or lease ownership inconsistency occurs, must not continue execution by default.
+- After region-level switch, control plane must be able to determine which executions need rebuilding and which only need reconnecting.
+- When sync hash inconsistency, repo version inconsistency, or lease ownership inconsistency occurs, execution must not continue by default.
 - After bridge credential refresh, new epoch / session generation must override old transport's write permissions.
 - Remote stream recovery should continue from acknowledged offset, not default to full replay.
-- `viewer_only` sessions can consume logs and status, but must not send interrupts, approvals, dispatches, or write back to authoritative state.
-- Transient reconnect and permanent disconnect must be explicitly distinguished at event and UI layers, avoiding misidentifying short-term jitter as final failure.
+- `viewer_only` sessions can consume logs and status, but must not send interrupts, approvals, dispatch, or write back to authoritative state.
+- Transient reconnect and permanent disconnect must be explicitly distinguished at event and UI layers to avoid misjudging short-term jitter as final failure.
 
 ## 7. Topology Diagram
 
@@ -103,14 +103,14 @@ flowchart LR
 
 ## 8. Closure Conclusion
 
-After remote coordination enters industrial grade, the focus is no longer "can dispatch" but:
+After remote coordination enters industrial-grade, the focus is no longer "can it dispatch" but:
 
-- Whether files and status are consistent
-- Whether workers are safely recoverable after disconnection
+- Whether files and state are consistent
+- Whether workers are safely reclaimable after disconnection
 - Whether region failure is controllable for switchover
-- Whether inconsistencies can be promptly blocked, rebuilt, and given clear recovery paths
+- Whether inconsistency can be timely blocked, rebuilt, and given clear recovery paths
 
 Supplementary notes:
 
-- Currently only borrowing common patterns from remote bridging such as token refresh, 401 recovery, offset continuation streaming.
-- Do not directly write external system's proprietary session / bridge protocol as this system's ground truth.
+- Currently only borrowing universal patterns from remote bridging such as token refresh, 401 recovery, and offset continuation.
+- Not directly writing external system's proprietary session / bridge protocols as this system's source of truth.

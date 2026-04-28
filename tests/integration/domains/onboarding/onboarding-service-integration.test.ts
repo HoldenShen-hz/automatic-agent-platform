@@ -59,7 +59,7 @@ function registerMinimalDomain(registry: DomainRegistryService, domainId: string
   });
 }
 
-test("DomainOnboardingService: start creates session with modeling phase", () => {
+test("DomainOnboardingService: start creates session with domain_modeling phase", () => {
   const ctx = createIntegrationContext("aa-onboarding-start-");
   try {
     const registry = new DomainRegistryService();
@@ -69,10 +69,10 @@ test("DomainOnboardingService: start creates session with modeling phase", () =>
     const session = onboarding.start("test_start");
 
     assert.equal(session.domainId, "test_start");
-    assert.equal(session.activePhase, "modeling");
+    assert.equal(session.activePhase, "domain_modeling");
     assert.equal(session.completed, false);
     assert.ok(session.records.length === 1);
-    assert.equal(session.records[0]?.phase, "modeling");
+    assert.equal(session.records[0]?.phase, "domain_modeling");
     assert.equal(session.records[0]?.status, "in_progress");
   } finally {
     ctx.cleanup();
@@ -83,14 +83,14 @@ test("DomainOnboardingService: advance progresses through all phases", () => {
   const ctx = createIntegrationContext("aa-onboarding-advance-");
   try {
     const registry = new DomainRegistryService();
-    registerMinimalDomain(registry, "test_advance", "active");
+    registerMinimalDomain(registry, "test_advance");
 
     const onboarding = new DomainOnboardingService(registry);
     onboarding.start("test_advance");
 
     // Advance through modeling
     let session = onboarding.advance("test_advance", ["modeling_evidence"]);
-    assert.equal(session.activePhase, "development_validation");
+    assert.equal(session.activePhase, "pack_development");
     assert.equal(session.records[0]?.status, "completed");
 
     // Advance through development_validation
@@ -99,7 +99,7 @@ test("DomainOnboardingService: advance progresses through all phases", () => {
 
     // Advance through security_certification
     session = onboarding.advance("test_advance", ["security_evidence"]);
-    assert.equal(session.activePhase, "canary_launch");
+    assert.equal(session.activePhase, "gray_rollout");
 
     // Advance through canary_launch - completes onboarding
     session = onboarding.advance("test_advance", ["canary_evidence"]);
@@ -140,7 +140,7 @@ test("DomainOnboardingService: block marks current phase as blocked", () => {
     const session = onboarding.block("test_block", "block_reason_artifact");
 
     assert.equal(session.activePhase, null); // No active phase when blocked
-    const modelingRecord = session.records.find((r) => r.phase === "modeling");
+    const modelingRecord = session.records.find((r) => r.phase === "domain_modeling");
     assert.equal(modelingRecord?.status, "blocked");
     assert.ok(modelingRecord?.evidenceArtifactIds.includes("block_reason_artifact"));
   } finally {
@@ -161,11 +161,11 @@ test("DomainOnboardingService: rollback restores to earlier phase", () => {
     onboarding.advance("test_rollback", ["modeling_evidence"]);
 
     // Rollback to modeling
-    const session = onboarding.rollback("test_rollback", "modeling", "rollback_checkpoint", "test rollback");
+    const session = onboarding.rollback("test_rollback", "domain_modeling", "rollback_checkpoint", "test rollback");
 
-    assert.equal(session.activePhase, "modeling");
+    assert.equal(session.activePhase, "domain_modeling");
     assert.ok(session.rollbackHistory.length === 1);
-    assert.equal(session.rollbackHistory[0]?.phase, "development_validation");
+    assert.equal(session.rollbackHistory[0]?.phase, "pack_development");
     assert.equal(session.rollbackHistory[0]?.checkpointArtifactId, "rollback_checkpoint");
     assert.equal(session.rollbackHistory[0]?.reason, "test rollback");
   } finally {
@@ -220,7 +220,7 @@ test("DomainOnboardingService: advance merges evidence artifact ids", () => {
     // Advance with multiple evidence items
     const session = onboarding.advance("test_merge", ["evidence_1", "evidence_2", "evidence_1"]); // duplicate
 
-    const modelingRecord = session.records.find((r) => r.phase === "modeling");
+    const modelingRecord = session.records.find((r) => r.phase === "domain_modeling");
     assert.equal(modelingRecord?.evidenceArtifactIds.length, 2); // deduplicated
     assert.ok(modelingRecord?.evidenceArtifactIds.includes("evidence_1"));
     assert.ok(modelingRecord?.evidenceArtifactIds.includes("evidence_2"));

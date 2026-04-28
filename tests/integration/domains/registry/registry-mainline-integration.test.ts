@@ -206,9 +206,9 @@ test("Domain registry: onboarding advances through phases", () => {
     onboarding.start("test_domain");
 
     assert.ok(onboarding.get("test_domain"));
-    assert.equal(onboarding.get("test_domain")?.activePhase, "modeling");
+    assert.equal(onboarding.get("test_domain")?.activePhase, "domain_modeling");
 
-    const phases = ["modeling", "development_validation", "security_certification", "canary_launch"] as const;
+    const phases = ["domain_modeling", "pack_development", "security_certification", "gray_rollout"] as const;
     for (const phase of phases) {
       onboarding.advance("test_domain", [`${phase}:evidence`]);
     }

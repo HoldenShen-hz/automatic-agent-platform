@@ -2,7 +2,7 @@
  * E2E Domain Onboarding Flow Tests
  *
  * End-to-end tests covering the full domain onboarding lifecycle:
- * modeling -> development_validation -> security_certification -> canary_launch -> active
+ * domain_modeling -> pack_development -> security_certification -> gray_rollout -> active
  *
  * These tests verify the complete onboarding flow including:
  * - Phase advancement with evidence
@@ -57,7 +57,7 @@ function registerTestDomain(service: DomainRegistryService, domainId: string): v
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   });
@@ -70,25 +70,25 @@ test("E2E: domain onboarding completes all phases and activates domain", () => {
   const service = new DomainOnboardingService(registry);
   let session = service.start("coding");
 
-  // Phase 1: modeling
-  assert.equal(session.activePhase, "modeling", "Should start at modeling phase");
+  // Phase 1: domain_modeling
+  assert.equal(session.activePhase, "domain_modeling", "Should start at domain_modeling phase");
   assert.equal(session.completed, false, "Should not be completed");
 
-  // Advance to phase 2: development_validation
+  // Advance to phase 2: pack_development
   session = service.advance("coding", ["artifact:modeling-doc"]);
-  assert.equal(session.activePhase, "development_validation", "Should advance to development_validation");
+  assert.equal(session.activePhase, "pack_development", "Should advance to pack_development");
   assert.ok(
-    session.records.find((r) => r.phase === "modeling")?.status === "completed",
-    "modeling should be completed",
+    session.records.find((r) => r.phase === "domain_modeling")?.status === "completed",
+    "domain_modeling should be completed",
   );
 
   // Advance to phase 3: security_certification
   session = service.advance("coding", ["artifact:validation-report"]);
   assert.equal(session.activePhase, "security_certification", "Should advance to security_certification");
 
-  // Advance to phase 4: canary_launch
+  // Advance to phase 4: gray_rollout
   session = service.advance("coding", ["artifact:security-cert"]);
-  assert.equal(session.activePhase, "canary_launch", "Should advance to canary_launch");
+  assert.equal(session.activePhase, "gray_rollout", "Should advance to gray_rollout");
 
   // Advance to completed (activates domain)
   session = service.advance("coding", ["artifact:canary-success"]);
@@ -124,17 +124,17 @@ test("E2E: domain onboarding can rollback to earlier phase", () => {
   const service = new DomainOnboardingService(registry);
   service.start("ml_ops");
 
-  // Advance to development_validation
+  // Advance to pack_development
   let session = service.advance("ml_ops", ["artifact:modeling"]);
-  assert.equal(session.activePhase, "development_validation");
+  assert.equal(session.activePhase, "pack_development");
 
   // Advance to security_certification
   session = service.advance("ml_ops", ["artifact:validation"]);
   assert.equal(session.activePhase, "security_certification");
 
-  // Rollback to modeling phase
-  session = service.rollback("ml_ops", "modeling", "artifact:checkpoint-1", "Quality issues found");
-  assert.equal(session.activePhase, "modeling", "Should rollback to modeling");
+  // Rollback to domain_modeling phase
+  session = service.rollback("ml_ops", "domain_modeling", "artifact:checkpoint-1", "Quality issues found");
+  assert.equal(session.activePhase, "domain_modeling", "Should rollback to domain_modeling");
   assert.equal(
     session.records.filter((record) => record.status === "in_progress").length,
     1,
@@ -148,9 +148,9 @@ test("E2E: domain onboarding can rollback to earlier phase", () => {
 
   // Restart and verify can still advance
   session = service.advance("ml_ops", ["artifact:modeling-v2"]);
-  assert.equal(session.activePhase, "development_validation", "Should be able to re-advance");
+  assert.equal(session.activePhase, "pack_development", "Should be able to re-advance");
   assert.equal(
-    session.records.filter((record) => record.phase === "development_validation").length,
+    session.records.filter((record) => record.phase === "pack_development").length,
     1,
     "Rollback and re-advance should not duplicate the next phase record",
   );
@@ -176,7 +176,7 @@ test("E2E: domain onboarding records completion even when activation smoke test 
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   });
@@ -197,7 +197,7 @@ test("E2E: domain onboarding records completion even when activation smoke test 
   // Even though activation fails, the onboarding session has completed all phases.
   session = service.get("incomplete");
   assert.equal(session.completed, true, "Onboarding flow should complete");
-  assert.equal(session.activatedDomainStatus, "testing", "Domain should remain non-active when smoke test fails");
+  assert.equal(session.activatedDomainStatus, "registered", "Domain should remain registered when smoke test fails");
 });
 
 test("E2E: domain onboarding preserves evidence across phases", () => {
@@ -208,13 +208,13 @@ test("E2E: domain onboarding preserves evidence across phases", () => {
   service.start("evidence_flow");
 
   let session = service.advance("evidence_flow", ["artifact:modeling", "artifact:modeling-rollback"]);
-  assert.equal(session.activePhase, "development_validation");
+  assert.equal(session.activePhase, "pack_development");
 
   session = service.advance("evidence_flow", ["artifact:validation", "artifact:validation-checklist"]);
   assert.equal(session.activePhase, "security_certification");
 
-  const modelingRecord = session.records.find((record) => record.phase === "modeling");
-  const validationRecord = session.records.find((record) => record.phase === "development_validation");
+  const modelingRecord = session.records.find((record) => record.phase === "domain_modeling");
+  const validationRecord = session.records.find((record) => record.phase === "pack_development");
 
   assert.deepEqual(
     modelingRecord?.evidenceArtifactIds,
@@ -239,9 +239,9 @@ test("E2E: domain onboarding blocks and resumes a phase via advance", () => {
   assert.equal(session.activePhase, null, "Blocked phase should leave no active phase");
 
   session = service.advance("blocked_flow", ["artifact:modeling-retry"]);
-  assert.equal(session.activePhase, "development_validation", "Advance should reopen and complete the blocked phase");
+  assert.equal(session.activePhase, "pack_development", "Advance should reopen and complete the blocked phase");
 
-  const modelingRecord = session.records.find((record) => record.phase === "modeling");
+  const modelingRecord = session.records.find((record) => record.phase === "domain_modeling");
   assert.deepEqual(
     modelingRecord?.evidenceArtifactIds,
     ["artifact:blocked", "artifact:modeling-retry"],

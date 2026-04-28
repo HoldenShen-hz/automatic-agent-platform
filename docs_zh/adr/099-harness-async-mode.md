@@ -11,7 +11,7 @@
 - **Feedback**: 记录异步延迟、超时与恢复结果
 - **Learn**: 汇总异步失败模式
 - **Improve**: 优化异步策略与 backlog
-- **Release**: Async Harness 作为 phase 8c 验收项
+- **Release**: Async Harness 作为 Ring 2 async-readiness 验收项
 
 ---
 
@@ -31,3 +31,7 @@
 ## 后果
 
 - Harness 可承载真正的异步工作流
+
+## v4.3 ADR Remediation
+
+- A-31: 本 ADR 原先使用 `phase 8c` 作为交付门禁术语，根因是 async mode ADR 沿用了历史阶段排期，没有切换到主架构统一的 ring 口径。修复：正文现改为 `Ring 2 async-readiness`。

@@ -482,8 +482,11 @@ test("ComplianceGovernanceService evaluate with multiple required keys missing",
 test("ComplianceGovernanceService evaluate deduplicates missing controls", () => {
   const duplicateFramework: ComplianceFramework = {
     frameworkId: "dup_framework",
+    type: "soc2",
     displayName: "Duplicate Framework",
     controlIds: ["shared_control"],
+    auditRequirements: ["shared_attestation"],
+    reportTemplate: "duplicate_framework_report",
     minimumPolicies: { shared_policy: true },
   };
   const binding: DepartmentComplianceBinding = {
@@ -513,7 +516,7 @@ test("inheritPolicyLayers merges multiple policy layers", () => {
 
   const result = inheritPolicyLayers(layers);
   assert.strictEqual(result["boolVal"], true);
-  assert.strictEqual(result["numVal"], 200);
+  assert.strictEqual(result["numVal"], 100);
 });
 
 test("inheritPolicyLayers returns empty object for empty layers", () => {

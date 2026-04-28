@@ -1,31 +1,31 @@
 # Artifact Unified Model Contract
 
-> **OAPEFLIR Related**: This contract defines the unified model for OAPEFLIR Artifact Plane, corresponding to ADR-016 §11.
-> **Updated**: 2026-04-17
+> **OAPEFLIR Association**: This contract defines the unified model for the OAPEFLIR Artifact Plane, corresponding to ADR-016 §11.
+> **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract unifies three types of result expressions: `output`, `step output`, and `artifact`, avoiding mixing text results, structured results, and file artifacts.
+This contract unifies the expression of three result types: `output`, `step output`, and `artifact`, to avoid mixing text results, structured results, and file artifacts.
 
-Related Documents:
+Related documents:
 
 - `result_envelope_contract.md`
 - `artifact_store_contract.md`
 - `task_and_workflow_contract.md`
-- [ADR-016 OAPEFLIR Eight-Phase Model](../adr/016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
 
-## 2. Goals
+## 2. Objectives
 
 - Clarify that user-readable results and file artifacts are not the same type of object.
-- Unify boundaries between intermediate structured output and final deliverables.
+- Unify the boundaries between intermediate structured outputs and final deliverables.
 - Provide unified semantics for inspect, replay, download, and retention.
-- Support OAPEFLIR 8-phase artifact tracking (Plan/Execute/Learn/Improve/Rollout).
+- Support artifact tracking across OAPEFLIR 8 stages (Plan/Execute/Learn/Improve/Rollout).
 
 ## 3. Unified Objects
 
-- `HumanOutput`: Conclusions or summaries displayed to users
-- `StructuredStepOutput`: Structured intermediate results of workflow / step (corresponding to OAPEFLIR Execute DualChannelStepOutput)
-- `ArtifactRecord`: Physical artifacts such as files, images, reports, compressed packages
+- `HumanOutput`: Conclusions or summaries intended for user display
+- `StructuredStepOutput`: Structured intermediate results of workflows/steps (corresponding to OAPEFLIR Execute DualChannelStepOutput)
+- `ArtifactRecord`: Physical artifacts such as files, images, reports, and compressed packages
 
 ### 3.1 OAPEFLIR ArtifactPlane Interface
 
@@ -40,7 +40,7 @@ interface ArtifactRecord {
   mimeType: string;
   sizeBytes: number;
   checksum?: string;
-  refs?: ArtifactRef[];      // Cross-phase references
+  refs?: ArtifactRef[];      // Cross-stage references
   publishStatus: PublishStatus;
   createdAt: string;
   metadata: Record<string, unknown>;
@@ -53,9 +53,9 @@ interface ArtifactRef {
 }
 ```
 
-### 3.2 ArtifactType Extension
+### 3.2 ArtifactType Extensions
 
-`ArtifactType` should currently cover at least:
+`ArtifactType` must cover at minimum:
 
 - `report`
 - `evidence_bundle`
@@ -70,7 +70,7 @@ interface ArtifactRef {
 - `plan_dag_export`              // OAPEFLIR Plan Hub
 - `execution_output`             // OAPEFLIR Execute Hub
 
-`BundleType` should currently cover at least:
+`BundleType` must cover at minimum:
 
 - `task_result`
 - `incident`
@@ -88,20 +88,20 @@ interface ArtifactRef {
 
 ## 4. Rules
 
-- `HumanOutput` can reference artifacts but cannot replace artifact index.
-- `StructuredStepOutput` is used for subsequent step dependencies and should not be directly exposed to users by default.
-- `ArtifactRecord` all access through index and permission control, not directly stuffed into message body.
-- When cross-closed-loop objects reference artifacts, should prioritize using `ArtifactRef`, not directly embedding local paths or blobs.
-- Token saving via `ref:artifact:{id}` should be used for Execute→Feedback delivery to reduce token consumption (corresponding to design document §11.4).
+- `HumanOutput` may reference artifacts but cannot replace artifact indexes.
+- `StructuredStepOutput` is used for downstream step dependencies and should not be directly exposed to users by default.
+- `ArtifactRecord` is always accessed through indexes and permission controls, not embedded directly in message bodies.
+- When cross closed-loop objects reference artifacts, `ArtifactRef` should be preferred; do not directly embed local paths or blobs.
+- Token saving via `ref:artifact:{id}` should be used for Execute-Feedback transfer to reduce token consumption (corresponding to design document §11.4).
 
 ## 5. OAPEFLIR Artifact Plane Constraints
 
-- Plan artifacts must be traceable to original assessment and strategy.
-- Execute artifacts must include DualChannelStepOutput reference.
+- Plan artifacts must be traceable to original assessments and strategies.
+- Execute artifacts must include DualChannelStepOutput references.
 - Learning artifacts must include evidence links (R4-EVIDENCE constraint).
 - Rollout artifacts must include metrics snapshots.
-- Artifact 10MB bundle limit and 7-day auto-archive rules (§D.7).
+- Artifact 10MB bundle limit and 7-day auto-archival rules (§D.7).
 
 ## 6. Closure Conclusion
 
-The key to unified artifact model is not adding new objects, but letting "text conclusions, structured results, file artifacts" each find their proper place.
+The key to a unified artifact model is not adding new objects, but ensuring that "text conclusions, structured results, and file artifacts" each occupy their proper place.

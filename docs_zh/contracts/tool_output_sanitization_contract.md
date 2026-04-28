@@ -115,9 +115,9 @@ flowchart LR
 - debug dump 默认读取净化版本；若确需查看原始输出，应受更高权限和额外审计保护。
 - 若输出后续进入 knowledge / memory / feedback 链，必须保留 provenance 标记，不得把净化后的文本伪装成“原生内部文本”。
 
-## 9. Phase 边界
+## 9. Current / Transition 边界
 
-Phase 1a 明确做：
+当前 canonical 基线明确做：
 
 - ANSI 清理
 - 控制字符清理
@@ -125,7 +125,7 @@ Phase 1a 明确做：
 - 长度截断
 - 注入风险分级
 
-当前不做：
+Transition / target-state 扩展当前不做：
 
 - 完整 DLP 引擎
 - 多语言深度语义敏感信息检测
@@ -140,6 +140,6 @@ Phase 1a 明确做：
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-52: 用"Phase 1a"术语，架构§1.4/§33声明"旧Phase 1-9仅作为历史排期映射"已废弃。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-52: 本文原先继续用 `Phase 1a` 作为当前能力边界术语，根因是净化合同沿用了旧排期文案，没有随着主架构把 `Phase 1-9` 降为历史映射而改成 `Current / Transition / Target` 表达。修复：正文现改为 `Current / Transition` 边界语义，旧 phase 名称不再作为 canonical 能力口径。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

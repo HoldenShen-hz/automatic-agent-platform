@@ -11,7 +11,10 @@ test("ApprovalDelegationSchema validates correct delegation", () => {
     delegationId: "del_123",
     approverId: "approver_456",
     delegateApproverId: "delegate_789",
+    delegationType: "temporary_cover",
     scopeNodeIds: ["node_1", "node_2"],
+    conflictOfInterestApproverIds: [],
+    coiReviewStatus: "passed",
     startsAt: "2026-04-01T00:00:00.000Z",
     expiresAt: "2026-04-30T00:00:00.000Z",
     active: true,
@@ -20,6 +23,7 @@ test("ApprovalDelegationSchema validates correct delegation", () => {
   assert.equal(result.delegationId, "del_123");
   assert.equal(result.approverId, "approver_456");
   assert.equal(result.delegateApproverId, "delegate_789");
+  assert.equal(result.delegationType, "temporary_cover");
   assert.deepEqual(result.scopeNodeIds, ["node_1", "node_2"]);
   assert.equal(result.active, true);
 });
@@ -34,6 +38,8 @@ test("ApprovalDelegationSchema applies defaults", () => {
   };
   const result = ApprovalDelegationSchema.parse(minimal);
   assert.deepEqual(result.scopeNodeIds, []);
+  assert.deepEqual(result.conflictOfInterestApproverIds, []);
+  assert.equal(result.coiReviewStatus, "pending");
   assert.equal(result.active, true);
 });
 
@@ -60,7 +66,10 @@ test("resolveDelegatedApprover returns original approver when delegation is inac
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_1",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: false,
@@ -76,7 +85,10 @@ test("resolveDelegatedApprover returns delegate when delegation is active and va
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_1",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: true,
@@ -92,7 +104,10 @@ test("resolveDelegatedApprover returns original when delegation has not started 
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_1",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-20T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: true,
@@ -108,7 +123,10 @@ test("resolveDelegatedApprover returns original when delegation has expired", ()
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_1",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-10T00:00:00.000Z",
       active: true,
@@ -124,7 +142,10 @@ test("resolveDelegatedApprover respects scopeNodeIds when not empty", () => {
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_1",
+      delegationType: "temporary_cover",
       scopeNodeIds: ["node_target"],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: true,
@@ -144,7 +165,10 @@ test("resolveDelegatedApprover allows empty scopeNodeIds for all nodes", () => {
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_1",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: true,
@@ -160,7 +184,10 @@ test("resolveDelegatedApprover returns first matching delegation", () => {
       delegationId: "del_1",
       approverId: "approver_1",
       delegateApproverId: "delegate_first",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: true,
@@ -169,7 +196,10 @@ test("resolveDelegatedApprover returns first matching delegation", () => {
       delegationId: "del_2",
       approverId: "approver_1",
       delegateApproverId: "delegate_second",
+      delegationType: "temporary_cover",
       scopeNodeIds: [],
+      conflictOfInterestApproverIds: [],
+      coiReviewStatus: "passed",
       startsAt: "2026-04-01T00:00:00.000Z",
       expiresAt: "2026-04-30T00:00:00.000Z",
       active: true,
@@ -177,4 +207,24 @@ test("resolveDelegatedApprover returns first matching delegation", () => {
   ];
   const result = resolveDelegatedApprover(delegations, "approver_1", "node_1", "2026-04-14T12:00:00.000Z");
   assert.equal(result, "delegate_first");
+});
+
+test("resolveDelegatedApprover blocks peer delegation without COI clearance", () => {
+  const delegations = [
+    {
+      delegationId: "del_peer",
+      approverId: "approver_1",
+      delegateApproverId: "peer_1",
+      delegationType: "peer_cover" as const,
+      scopeNodeIds: [],
+      conflictOfInterestApproverIds: ["peer_1"],
+      coiReviewStatus: "failed" as const,
+      startsAt: "2026-04-01T00:00:00.000Z",
+      expiresAt: "2026-04-30T00:00:00.000Z",
+      active: true,
+    },
+  ];
+
+  const result = resolveDelegatedApprover(delegations, "approver_1", "node_1", "2026-04-14T12:00:00.000Z");
+  assert.equal(result, "approver_1");
 });

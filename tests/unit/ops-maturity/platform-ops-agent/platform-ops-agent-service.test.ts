@@ -36,14 +36,14 @@ function makeProposalInput(overrides: {
 }
 
 function makeAgentDefinition(overrides: {
-  allowedActionTypes?: readonly ("scale_capacity" | "tune_config" | "investigate_incident" | "developer_assist")[];
+  allowedActionTypes?: readonly ("scale_capacity" | "tune_config" | "investigate_incident" | "developer_assist" | "restart_service" | "failover")[];
   requiredApprovals?: readonly string[];
   maxAutonomyLevel?: "observe_only" | "suggest_only" | "supervised_execution" | "trusted_automation";
 } = {}) {
   return {
     agentId: "ops_agent_1",
     specialty: "infrastructure",
-    allowedActionTypes: overrides.allowedActionTypes ?? ["scale_capacity", "tune_config", "investigate_incident", "developer_assist"],
+    allowedActionTypes: overrides.allowedActionTypes ?? ["scale_capacity", "tune_config", "investigate_incident", "developer_assist", "restart_service", "failover"],
     requiredApprovals: overrides.requiredApprovals ?? [],
     maxAutonomyLevel: overrides.maxAutonomyLevel ?? "supervised_execution",
     evidenceRequirements: [],
@@ -59,7 +59,7 @@ test("PlatformOpsAgentService.createProposal creates a valid proposal", () => {
   assert.ok(proposal.proposalId.startsWith("ops_proposal_"));
   assert.equal(proposal.agentId, "ops_agent_1");
   assert.equal(proposal.specialty, "infrastructure");
-  assert.ok(["scale_capacity", "tune_config", "investigate_incident", "developer_assist"].includes(proposal.actionType));
+  assert.ok(["scale_capacity", "tune_config", "investigate_incident", "developer_assist", "restart_service", "failover"].includes(proposal.actionType));
   assert.ok(["low", "medium", "high"].includes(proposal.riskLevel));
   assert.ok(["not_required", "pending", "approved"].includes(proposal.approvalStatus));
   assert.ok(typeof proposal.executable === "boolean");
@@ -77,10 +77,10 @@ test("PlatformOpsAgentService.createProposal with healthy probes defaults to dev
   const proposal = service.createProposal(input);
 
   // With healthy probes and warning-level signals, action should be developer_assist
-  assert.ok(["scale_capacity", "tune_config", "investigate_incident", "developer_assist"].includes(proposal.actionType));
+  assert.ok(["scale_capacity", "tune_config", "investigate_incident", "developer_assist", "restart_service", "failover"].includes(proposal.actionType));
 });
 
-test("PlatformOpsAgentService.createProposal with failed probe can trigger investigate_incident", () => {
+test("PlatformOpsAgentService.createProposal with failed probe triggers restart or failover remediation", () => {
   const service = new PlatformOpsAgentService(makeAgentDefinition());
   const input = makeProposalInput({
     probes: [makeProbe("healthy"), makeProbe("failed")],
@@ -89,8 +89,7 @@ test("PlatformOpsAgentService.createProposal with failed probe can trigger inves
 
   const proposal = service.createProposal(input);
 
-  // With high error rate and failed probe, action should be investigate_incident
-  assert.equal(proposal.actionType, "investigate_incident");
+  assert.equal(proposal.actionType, "failover");
 });
 
 test("PlatformOpsAgentService.createProposal sets pending approval for high risk", () => {
@@ -200,7 +199,7 @@ test("PlatformOpsAgentService.execute returns receipt with executed=false for no
 test("PlatformOpsAgentService.execute returns receipt for any proposal", () => {
   const service = new PlatformOpsAgentService(makeAgentDefinition({
     maxAutonomyLevel: "trusted_automation",
-    allowedActionTypes: ["developer_assist", "tune_config", "investigate_incident", "scale_capacity"],
+    allowedActionTypes: ["developer_assist", "tune_config", "investigate_incident", "scale_capacity", "restart_service", "failover"],
   }));
   const input = makeProposalInput({
     errorRate: 0.01,
@@ -238,7 +237,7 @@ test("PlatformOpsAgentService computes blockedBy for action not in allowed types
     maxAutonomyLevel: "trusted_automation",
   }));
   const input = makeProposalInput({
-    probes: [makeProbe("failed")], // would normally choose investigate_incident
+    probes: [makeProbe("failed")], // would normally choose incident remediation
     errorRate: 0.5,
   });
 
@@ -268,7 +267,7 @@ test("PlatformOpsAgentService.canExecuteAtLevel observe_only cannot execute", ()
 test("PlatformOpsAgentService.canExecuteAtLevel supervised_execution allows low risk without approval", () => {
   const service = new PlatformOpsAgentService(makeAgentDefinition({
     maxAutonomyLevel: "supervised_execution",
-    allowedActionTypes: ["developer_assist", "tune_config", "investigate_incident", "scale_capacity"],
+    allowedActionTypes: ["developer_assist", "tune_config", "investigate_incident", "scale_capacity", "restart_service", "failover"],
   }));
   const input = makeProposalInput({
     errorRate: 0.01,

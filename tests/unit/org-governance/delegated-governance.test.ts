@@ -519,7 +519,7 @@ test("evaluateGuardrail blocks value below min_eval_threshold", () => {
   assert.ok(result.reason.includes("below minimum"));
 });
 
-test("evaluateGuardrail handles unknown guardrail type", () => {
+test("evaluateGuardrail handles unknown guardrail type with default deny", () => {
   const guardrail = {
     guardrailId: "gr-unknown",
     type: "unknown_type" as any,
@@ -529,7 +529,7 @@ test("evaluateGuardrail handles unknown guardrail type", () => {
   };
 
   const result = evaluateGuardrail(guardrail, "anything");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -568,18 +568,18 @@ test("department_admin can perform same operations as division_admin", () => {
   assert.equal(isOperationAllowedByRole("modify_global_guardrails", "department_admin"), false);
 });
 
-test("team_lead cannot perform any governance operations", () => {
-  const operations: GovernanceOperationType[] = [
+test("team_lead only has the limited governance operations allowed by scope manager", () => {
+  assert.equal(isOperationAllowedByRole("approve_task", "team_lead"), true);
+  assert.equal(isOperationAllowedByRole("create_trigger", "team_lead"), true);
+  const disallowed: GovernanceOperationType[] = [
     "domain_onboarding",
     "modify_approval_rules",
     "publish_pack",
     "adjust_agent_autonomy",
-    "create_trigger",
     "modify_global_guardrails",
     "cross_domain_strategy",
   ];
-
-  for (const op of operations) {
+  for (const op of disallowed) {
     assert.equal(isOperationAllowedByRole(op, "team_lead"), false, `${op} should not be allowed for team_lead`);
   }
 });

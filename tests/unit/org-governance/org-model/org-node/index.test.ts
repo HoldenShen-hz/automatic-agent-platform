@@ -8,12 +8,14 @@ import {
   getPlatformMapping,
   validateHierarchyDepth,
   createCrossOrgCollaborator,
+  getLegalEntityApprovalRoles,
+  requiresLegalEntityApproval,
   type OrgNode,
   type OrgNodeType,
 } from "../../../../../src/org-governance/org-model/org-node/index.js";
 
 test("OrgNodeTypeSchema accepts valid node types", () => {
-  const validTypes = ["company", "division", "department", "team", "member"] as const;
+  const validTypes = ["company", "division", "department", "team"] as const;
   for (const nodeType of validTypes) {
     const result = OrgNodeTypeSchema.parse(nodeType);
     assert.equal(result, nodeType);
@@ -38,8 +40,11 @@ test("OrgNodeSchema parses valid org node", () => {
   };
   const result = OrgNodeSchema.parse(node);
   assert.equal(result.orgNodeId, "node-1");
+  assert.equal(result.nodeId, "node-1");
   assert.equal(result.nodeType, "company");
+  assert.equal(result.type, "company");
   assert.equal(result.displayName, "Acme Corp");
+  assert.equal(result.name, "Acme Corp");
   assert.equal(result.parentOrgNodeId, null);
 });
 
@@ -60,21 +65,18 @@ test("OrgNodeSchema rejects missing required fields", () => {
   assert.throws(() => OrgNodeSchema.parse({ orgNodeId: "id" }));
 });
 
-test("isLeafOrgNode returns true for member node", () => {
-  const memberNode: OrgNode = {
-    orgNodeId: "user-1",
-    nodeType: "member",
-    displayName: "John Doe",
-    parentOrgNodeId: "team-1",
-    ownerUserIds: ["user-1"],
-    active: true,
-    costCenter: "",
-    metadata: {},
-  };
-  assert.equal(isLeafOrgNode(memberNode), true);
+test("isLeafOrgNode returns true for team node", () => {
+  const teamNode: OrgNode = OrgNodeSchema.parse({
+    orgNodeId: "team-1",
+    nodeType: "team",
+    displayName: "Engineering",
+    parentOrgNodeId: "dept-1",
+    ownerUserIds: ["lead-1"],
+  });
+  assert.equal(isLeafOrgNode(teamNode), true);
 });
 
-test("isLeafOrgNode returns false for non-member nodes", () => {
+test("isLeafOrgNode returns false for non-team nodes", () => {
   const companyNode: OrgNode = {
     orgNodeId: "comp-1",
     nodeType: "company",
@@ -85,18 +87,7 @@ test("isLeafOrgNode returns false for non-member nodes", () => {
     costCenter: "",
     metadata: {},
   };
-  const teamNode: OrgNode = {
-    orgNodeId: "team-1",
-    nodeType: "team",
-    displayName: "Engineering",
-    parentOrgNodeId: "dept-1",
-    ownerUserIds: [],
-    active: true,
-    costCenter: "",
-    metadata: {},
-  };
   assert.equal(isLeafOrgNode(companyNode), false);
-  assert.equal(isLeafOrgNode(teamNode), false);
 });
 
 test("getPlatformMapping returns correct mapping for each node type", () => {
@@ -104,7 +95,6 @@ test("getPlatformMapping returns correct mapping for each node type", () => {
   assert.equal(getPlatformMapping("division"), "tenant_group");
   assert.equal(getPlatformMapping("department"), "tenant");
   assert.equal(getPlatformMapping("team"), "domain/pack_group");
-  assert.equal(getPlatformMapping("member"), "principal");
 });
 
 test("validateHierarchyDepth returns valid for empty nodes", () => {
@@ -172,23 +162,13 @@ test("validateHierarchyDepth returns depth for valid hierarchies", () => {
       costCenter: "",
       metadata: {},
     },
-    {
-      orgNodeId: "member-1",
-      nodeType: "member",
-      displayName: "John",
-      parentOrgNodeId: "team-1",
-      ownerUserIds: ["user-1"],
-      active: true,
-      costCenter: "",
-      metadata: {},
-    },
   ];
   const result = validateHierarchyDepth(nodes);
   assert.equal(result.valid, true);
-  assert.equal(result.depth, 5);
+  assert.equal(result.depth, 4);
 });
 
-test("validateHierarchyDepth returns invalid for depth > 5", () => {
+test("validateHierarchyDepth returns invalid for depth > 4", () => {
   const nodes: OrgNode[] = [
     {
       orgNodeId: "node-1",
@@ -203,10 +183,10 @@ test("validateHierarchyDepth returns invalid for depth > 5", () => {
   ];
   // Manually create a chain deeper than 5 levels
   const deepNodes = [...nodes];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 5; i++) {
     deepNodes.push({
       orgNodeId: `node-${i + 2}`,
-      nodeType: "member",
+      nodeType: "team",
       displayName: `Node ${i + 2}`,
       parentOrgNodeId: deepNodes[deepNodes.length - 1].orgNodeId,
       ownerUserIds: [],
@@ -217,7 +197,7 @@ test("validateHierarchyDepth returns invalid for depth > 5", () => {
   }
   const result = validateHierarchyDepth(deepNodes);
   assert.equal(result.valid, false);
-  assert.ok(result.depth > 5);
+  assert.ok(result.depth > 4);
 });
 
 test("createCrossOrgCollaborator builds valid collaborator", () => {
@@ -281,4 +261,72 @@ test("validateHierarchyDepth handles single node", () => {
   const result = validateHierarchyDepth(nodes);
   assert.equal(result.valid, true);
   assert.equal(result.depth, 1);
+});
+
+test("OrgNodeSchema normalizes canonical field names", () => {
+  const result = OrgNodeSchema.parse({
+    nodeId: "team-2",
+    type: "team",
+    name: "Runtime",
+    parentNodeId: "dept-1",
+  });
+
+  assert.equal(result.nodeId, "team-2");
+  assert.equal(result.orgNodeId, "team-2");
+  assert.equal(result.type, "team");
+  assert.equal(result.nodeType, "team");
+  assert.equal(result.name, "Runtime");
+  assert.equal(result.displayName, "Runtime");
+  assert.equal(result.parentNodeId, "dept-1");
+  assert.equal(result.parentOrgNodeId, "dept-1");
+});
+
+test("requiresLegalEntityApproval detects cross-entity access", () => {
+  const source = {
+    boundaryId: "le-1",
+    legalEntityId: "entity-cn",
+    jurisdictionCountry: "CN",
+    dataResidencyRegion: "cn-sh",
+  };
+  const target = {
+    boundaryId: "le-2",
+    legalEntityId: "entity-us",
+    jurisdictionCountry: "US",
+    dataResidencyRegion: "us-east",
+  };
+
+  assert.equal(
+    requiresLegalEntityApproval(
+      {
+        ...source,
+        crossBorderTransferPolicy: "approval_required",
+        crossEntityApprovalRoles: ["legal_reviewer"],
+        restrictedDataClasses: [],
+      },
+      {
+        ...target,
+        crossBorderTransferPolicy: "approval_required",
+        crossEntityApprovalRoles: ["compliance_officer"],
+        restrictedDataClasses: [],
+      },
+    ),
+    true,
+  );
+  assert.deepEqual(
+    getLegalEntityApprovalRoles(
+      {
+        ...source,
+        crossBorderTransferPolicy: "approval_required",
+        crossEntityApprovalRoles: ["legal_reviewer"],
+        restrictedDataClasses: [],
+      },
+      {
+        ...target,
+        crossBorderTransferPolicy: "approval_required",
+        crossEntityApprovalRoles: ["compliance_officer"],
+        restrictedDataClasses: [],
+      },
+    ).sort(),
+    ["compliance_officer", "legal_reviewer"],
+  );
 });

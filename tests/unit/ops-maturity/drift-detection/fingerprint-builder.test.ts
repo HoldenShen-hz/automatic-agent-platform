@@ -355,12 +355,17 @@ test.describe("BehaviorFingerprintBuilder", () => {
       averageCostUsd: 0.5,
     });
 
-    assert.equal(result.normalizedFeatures.length, 5);
+    assert.equal(result.normalizedFeatures.length, 10);
     assert.ok(result.normalizedFeatures.includes("agent:full-agent"));
     assert.ok(result.normalizedFeatures.includes("tools:edit,read"));
     assert.ok(result.normalizedFeatures.includes("failures:timeout"));
     assert.ok(result.normalizedFeatures.includes("latency_bucket:medium"));
     assert.ok(result.normalizedFeatures.includes("cost_bucket:medium"));
+    assert.ok(result.normalizedFeatures.includes("window:na:na"));
+    assert.ok(result.normalizedFeatures.includes("tool_usage:{}"));
+    assert.ok(result.normalizedFeatures.includes("success_rate:0"));
+    assert.ok(result.normalizedFeatures.includes("risk_distribution:{}"));
+    assert.ok(result.normalizedFeatures.includes("drift_score:0"));
   });
 
   test("build hash matches manually computed SHA-256", () => {
@@ -375,7 +380,7 @@ test.describe("BehaviorFingerprintBuilder", () => {
 
     // The hash should be SHA-256 of the normalized features joined by "|"
     const expectedHash = createHash("sha256")
-      .update("agent:verify-agent|tools:|failures:|latency_bucket:fast|cost_bucket:low")
+      .update("agent:verify-agent|tools:|failures:|latency_bucket:fast|cost_bucket:low|window:na:na|tool_usage:{}|success_rate:0|risk_distribution:{}|drift_score:0")
       .digest("hex");
 
     assert.equal(result.hash, expectedHash);

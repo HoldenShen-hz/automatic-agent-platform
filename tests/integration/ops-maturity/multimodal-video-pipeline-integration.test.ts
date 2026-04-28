@@ -24,6 +24,7 @@ test("integration: multimodal video pipeline materializes transcript scenes keyf
         partId: "video_1",
         type: "video",
         contentRef: "/tmp/operator_handoff_scenes3_1920x1080_45s_60fps.mp4",
+        mimeType: "video/mp4",
       },
     ],
     requestedOutputs: ["summary", "transcript"],

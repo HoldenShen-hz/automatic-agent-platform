@@ -31,21 +31,33 @@ function createMemoryRecord(
   store: AuthoritativeTaskStore,
   taskId: string,
   contentJson: string,
-  memoryKind: "working" | "long_term" | "session_summary" = "working",
+  memoryLayer: "working" | "episodic" | "semantic" = "working",
 ): string {
   const memoryId = newId("mem");
   const now = nowIso();
   store.memory.insertMemory({
-    memoryId,
+    id: memoryId,
     taskId,
+    sessionId: null,
     agentId: null,
-    kind: memoryKind,
+    executionId: null,
+    memoryLayer,
+    scope: "task",
     contentJson,
-    contentSize: contentJson.length,
-    importanceScore: 0.5,
+    classification: "fact",
+    sourceTrustLevel: "high",
+    qualityScore: 0.5,
+    hitCount: 0,
     createdAt: now,
-    accessedAt: now,
-    decayScore: null,
+    lastAccessedAt: now,
+    expiresAt: null,
+    revokedAt: null,
+    revocationReason: null,
+    kind: "general",
+    status: "active",
+    importanceScore: 0.5,
+    freshnessScore: 1,
+    contentHash: memoryId,
   });
   return memoryId;
 }
@@ -149,16 +161,28 @@ test("performance: MemoryStore.insertMemory() throughput >1000 ops/sec", (t) => 
       const memoryId = newId("mem");
       const now = nowIso();
       store.memory.insertMemory({
-        memoryId,
+        id: memoryId,
         taskId,
+        sessionId: null,
         agentId: null,
-        kind: "working",
+        executionId: null,
+        memoryLayer: "working",
+        scope: "task",
         contentJson: JSON.stringify({ text: `Memory content ${i}`, data: { value: i } }),
-        contentSize: 100,
-        importanceScore: 0.5,
+        classification: "fact",
+        sourceTrustLevel: "high",
+        qualityScore: 0.5,
+        hitCount: 0,
         createdAt: now,
-        accessedAt: now,
-        decayScore: null,
+        lastAccessedAt: now,
+        expiresAt: null,
+        revokedAt: null,
+        revocationReason: null,
+        kind: "general",
+        status: "active",
+        importanceScore: 0.5,
+        freshnessScore: 1,
+        contentHash: memoryId,
       });
     }
 
@@ -198,16 +222,28 @@ test("performance: MemoryStore.insertMemory() P99 latency <5ms", (t) => {
       const memoryId = newId("mem");
       const now = nowIso();
       store.memory.insertMemory({
-        memoryId,
+        id: memoryId,
         taskId,
+        sessionId: null,
         agentId: null,
-        kind: "working",
+        executionId: null,
+        memoryLayer: "working",
+        scope: "task",
         contentJson: JSON.stringify({ text: `Warmup ${i}` }),
-        contentSize: 50,
-        importanceScore: 0.5,
+        classification: "fact",
+        sourceTrustLevel: "high",
+        qualityScore: 0.5,
+        hitCount: 0,
         createdAt: now,
-        accessedAt: now,
-        decayScore: null,
+        lastAccessedAt: now,
+        expiresAt: null,
+        revokedAt: null,
+        revocationReason: null,
+        kind: "general",
+        status: "active",
+        importanceScore: 0.5,
+        freshnessScore: 1,
+        contentHash: memoryId,
       });
     }
 
@@ -217,16 +253,28 @@ test("performance: MemoryStore.insertMemory() P99 latency <5ms", (t) => {
       const now = nowIso();
       const start = performance.now();
       store.memory.insertMemory({
-        memoryId,
+        id: memoryId,
         taskId,
+        sessionId: null,
         agentId: null,
-        kind: "working",
+        executionId: null,
+        memoryLayer: "working",
+        scope: "task",
         contentJson: JSON.stringify({ text: `Memory ${i}` }),
-        contentSize: 100,
-        importanceScore: 0.5,
+        classification: "fact",
+        sourceTrustLevel: "high",
+        qualityScore: 0.5,
+        hitCount: 0,
         createdAt: now,
-        accessedAt: now,
-        decayScore: null,
+        lastAccessedAt: now,
+        expiresAt: null,
+        revokedAt: null,
+        revocationReason: null,
+        kind: "general",
+        status: "active",
+        importanceScore: 0.5,
+        freshnessScore: 1,
+        contentHash: memoryId,
       });
       latencies.push(performance.now() - start);
     }
@@ -274,7 +322,7 @@ test("performance: MemoryStore.getMemoryById() throughput >5000 ops/sec", (t) =>
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.memory.getMemoryById(memoryIds[i % memoryIds.length]!);
+      store.memory.getMemory(memoryIds[i % memoryIds.length]!);
     }
 
     const elapsed = performance.now() - start;
@@ -317,13 +365,13 @@ test("performance: MemoryStore.getMemoryById() P99 latency <0.5ms", (t) => {
 
     // Warmup
     for (let i = 0; i < 100; i++) {
-      store.memory.getMemoryById(memoryIds[i % memoryIds.length]!);
+      store.memory.getMemory(memoryIds[i % memoryIds.length]!);
     }
 
     // Measure
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.memory.getMemoryById(memoryIds[i % memoryIds.length]!);
+      store.memory.getMemory(memoryIds[i % memoryIds.length]!);
       latencies.push(performance.now() - start);
     }
 
@@ -369,7 +417,7 @@ test("performance: MemoryStore.listMemoriesForTask() throughput >2000 ops/sec", 
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.memory.listMemoriesForTask(taskId, "working");
+      store.memory.listMemories({ taskId, memoryLayers: ["working"] });
     }
 
     const elapsed = performance.now() - start;
@@ -411,13 +459,13 @@ test("performance: MemoryStore.listMemoriesForTask() P99 latency <2ms", (t) => {
 
     // Warmup
     for (let i = 0; i < 50; i++) {
-      store.memory.listMemoriesForTask(taskId, "working");
+      store.memory.listMemories({ taskId, memoryLayers: ["working"] });
     }
 
     // Measure
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.memory.listMemoriesForTask(taskId, "working");
+      store.memory.listMemories({ taskId, memoryLayers: ["working"] });
       latencies.push(performance.now() - start);
     }
 

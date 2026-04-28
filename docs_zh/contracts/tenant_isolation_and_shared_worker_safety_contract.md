@@ -62,6 +62,16 @@
 - shared cache 命中不得跨 tenant 复用，即使 payload 看起来相同。
 - shared worker 回收或切换 tenant 前，必须完成上下文擦除与 secret 回收。
 
+## 5A. 自动隔离触发器
+
+当 shared worker 或共享基础设施出现跨 tenant 风险迹象时，系统必须自动进入隔离模式。
+
+- 默认触发阈值：滚动窗口内 `failure_rate > 30%` 且 `sample_count >= min_sample_size`。
+- `min_sample_size` 默认不得低于 `20`。
+- 触发后必须自动执行：停止新调度、隔离 worker 池、提升审计等级、要求人工复核。
+- 若为单 tenant 热点故障，隔离范围应最小化到 `tenant / workspace`；若无法判定归属，则提升到 shared worker 池级隔离并 fail-closed。
+- 自动解除隔离前，必须看到故障率回落、样本量满足、并完成上下文擦除与 secret 回收检查。
+
 ## 6. 收口结论
 
 多租户安全不是给表加 `tenant_id` 就结束，shared worker 的执行态隔离同样必须被正式建模。
@@ -71,6 +81,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-51: 无架构§9.1自动隔离阈值(failure rate>30%+min_sample_size)，仅定性规则无定量触发器。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-51: 本文原先只有定性隔离规则，根因是租户隔离合同强调边界原则，却没有把 shared worker 风险提升到可执行的自动触发器。修复：正文现新增自动隔离触发器，要求在 `failure_rate > 30%` 且达到 `min_sample_size` 时自动隔离并 fail-closed。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

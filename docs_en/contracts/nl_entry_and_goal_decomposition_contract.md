@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the natural language entry point, multi-round clarification, and goal decomposition boundaries for `§39-§40`.
+This contract defines the natural language entry, multi-turn clarification, and goal decomposition boundaries for `§39-§40`.
 
 ## 2. Canonical Objects
 
@@ -30,8 +30,8 @@ This contract defines the natural language entry point, multi-round clarificatio
 
 Rules:
 
-- Low confidence, high risk, and missing entities must all allow `requires_clarification=true`.
-- `suggested_division_id` is only a recommendation and does not equal final execution authorization.
+- Low confidence, high risk, and missing entities这三类情况 (these three situations) must allow `requires_clarification=true`.
+- `suggested_division_id` is only a suggestion and does not equal final execution authorization.
 
 ## 4. `GoalDecomposition` Minimum Fields
 
@@ -44,7 +44,7 @@ Rules:
 - `decomposition_confidence`
 - `requires_human_review`
 
-`PlannedTask` Minimum Fields:
+`PlannedTask` minimum fields:
 
 - `task_id`
 - `domain_id`
@@ -75,11 +75,12 @@ Rules:
 ## 6. Boundary Rules
 
 - NL entry must not directly execute runtime side effects.
-- GoalDecomposer must not bypass approval, budget, or risk gates.
-- The only controlled output from NL to runtime is the structured envelope / decomposition.
+- GoalDecomposer must not bypass approval, budget, and risk gates.
+- The only controlled output from NL to runtime is structured envelope / decomposition.
 
 ## 7. Test Requirements
 
 - unit: intent, entity, clarification, decomposition graph
 - integration: NL -> decomposition -> orchestration handoff
-- contract: ambiguous requests must not directly enter automatic execution
+- contract: Ambiguous requests must not directly enter automatic execution
+

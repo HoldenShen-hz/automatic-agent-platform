@@ -245,6 +245,21 @@ test("evaluateGuardrail rejects eval threshold below minimum", () => {
   assert.deepEqual(result, { allowed: false, reason: "Eval threshold 0.5 below minimum 0.8" });
 });
 
+test("evaluateGuardrail denies unknown guardrail types by default", () => {
+  const guardrail = {
+    guardrailId: "gr_unknown",
+    type: "unexpected_guardrail" as never,
+    value: "anything",
+    setBy: "platform_team" as const,
+    overridable: false as const,
+  };
+  const result = evaluateGuardrail(guardrail, "attempted");
+  assert.deepEqual(result, {
+    allowed: false,
+    reason: "Unknown guardrail type unexpected_guardrail denied by default",
+  });
+});
+
 test("isOperationAllowedByRole returns true for platform_team with all operations", () => {
   const operations = [
     "domain_onboarding",
@@ -261,17 +276,18 @@ test("isOperationAllowedByRole returns true for platform_team with all operation
   }
 });
 
-test("isOperationAllowedByRole returns false for team_lead with any operation", () => {
-  const operations = [
+test("isOperationAllowedByRole returns the limited team_lead allowlist", () => {
+  assert.equal(isOperationAllowedByRole("approve_task", "team_lead"), true);
+  assert.equal(isOperationAllowedByRole("create_trigger", "team_lead"), true);
+  const denied = [
     "domain_onboarding",
     "modify_approval_rules",
     "publish_pack",
     "adjust_agent_autonomy",
-    "create_trigger",
     "modify_global_guardrails",
     "cross_domain_strategy",
   ] as const;
-  for (const op of operations) {
+  for (const op of denied) {
     const result = isOperationAllowedByRole(op, "team_lead");
     assert.equal(result, false, `team_lead should not allow ${op}`);
   }

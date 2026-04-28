@@ -83,12 +83,12 @@ test("register emits domain:registered event", () => {
       },
     },
   });
-  service.register(makeMinimalDefinition({ domainId: "evt_test", status: "testing" }));
+  service.register(makeMinimalDefinition({ domainId: "evt_test", status: "validated" }));
 
   assert.equal(events.length, 1);
   assert.equal(events[0]!.eventType, "domain:registered");
   assert.equal(events[0]!.payload.domainId, "evt_test");
-  assert.equal(events[0]!.payload.status, "testing");
+  assert.equal(events[0]!.payload.status, "registered");
 });
 
 // --- duplicate workflow IDs ---
@@ -209,7 +209,7 @@ test("register throws when plugin binding type does not match plugin manifest", 
   const definition = makeMinimalDefinition({
     domainId: "type_mismatch",
     pluginBindings: [
-      { bindingId: "b1", domainId: "type_mismatch", pluginType: "presenter", pluginId: "plugin_retriever", priority: 1, enabled: true, config: {} },
+      { bindingId: "b1", domainId: "type_mismatch", pluginType: "tool", bindingRole: "presenter", pluginId: "plugin_retriever", priority: 1, enabled: true, config: {} },
     ],
   });
 
@@ -329,6 +329,7 @@ test("activate throws when smoke test fails", () => {
   const service = new DomainRegistryService();
   service.register(makeMinimalDefinition({
     domainId: "smoke_fail",
+    status: "registered",
     // no workflows — smoke test will fail
     workflows: [],
   }));
@@ -351,7 +352,7 @@ test("activate emits domain:activated event on success", () => {
   });
   service.register(makeMinimalDefinition({
     domainId: "activate_event",
-    status: "testing",
+    status: "validated",
     capabilities: {
       supportedTaskTypes: ["test"],
       requiredTools: [],

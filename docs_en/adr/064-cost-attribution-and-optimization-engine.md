@@ -5,7 +5,7 @@
 
 ## Context
 
-LLM cost is a major component of OPEX, requiring precise cost attribution and optimization guidance.
+LLM costs are a major component of OPEX, requiring precise cost attribution and optimization guidance.
 
 ## Decision
 
@@ -23,8 +23,9 @@ interface CostDimension {
   tenant_id: string;
   domain_id?: string;
   agent_id?: string;
-  workflow_id?: string;
-  step_id?: string;
+  harness_run_id?: string;
+  node_run_id?: string;
+  budget_settlement_ref?: string;
   model_id?: string;
 }
 ```
@@ -33,7 +34,7 @@ interface CostDimension {
 
 | Type | Description |
 |------|-------------|
-| llm_token | LLM Token consumption |
+| llm_token | LLM token consumption |
 | compute | Compute resources |
 | storage | Storage resources |
 | network | Network bandwidth |
@@ -43,14 +44,14 @@ interface CostDimension {
 
 | Recommendation Type | Description | Expected Savings |
 |---------------------|-------------|------------------|
-| prompt_compression | Reduce Token consumption | 20-40% |
+| prompt_compression | Reduce token consumption | 20-40% |
 | model_downgrade | Use cheaper model | 30-60% |
 | cache_reuse | Cache similar requests | 50-80% |
-| batch_processing | Batch request merge | 20-30% |
+| batch_processing | Batch request merging | 20-30% |
 
 ### Budget Control
 
-- 4-level budget: platform/tenant/pack/step
+- 4-level budget: platform/tenant/harness_run/node_run
 - Real-time budget monitoring
 - Budget overrun alerts
 - Automatic degradation
@@ -59,7 +60,7 @@ interface CostDimension {
 
 - Real-time cost dashboard
 - Historical trend analysis
-- Budget execution report
+- Budget execution reports
 - Optimization effectiveness tracking
 
 ## Consequences
@@ -73,13 +74,8 @@ Positive:
 Negative:
 
 - Metering adds overhead
-- Optimization accuracy depends on data quality
+- Optimization recommendations
 
-## Cross-References
+## v4.3 ADR Remediation
 
-- [ADR-008 Cost Model](./008-cost-model.md)
-- [Platform Architecture §14 Cost Management](../architecture/00-platform-architecture.md)
-
-## Source Sections
-
-- `§64` Cost Attribution and Optimization Engine
+- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimensions. Root cause: the cost engine ADR followed the linear workflow granularity and did not transition with v4.3 execution truth objects to `HarnessRun / NodeRun / BudgetSettlement`. Fix: The main text now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.

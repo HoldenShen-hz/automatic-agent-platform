@@ -28,6 +28,14 @@ export interface CreateBillingAccountInput {
   createdAt?: string;
 }
 
+export interface RevenueSharePolicy {
+  policyId: string;
+  grossSplit: Readonly<Record<string, number>>;
+  taxHandling: "platform_withholds" | "publisher_remits" | "split_by_region";
+  refundPolicy: "clawback_proportional" | "platform_absorbs" | "publisher_absorbs";
+  settlementCycle: "weekly" | "monthly" | "quarterly";
+}
+
 export interface EvaluateEntitlementInput {
   accountId: string;
   featureKey: string;
@@ -153,4 +161,21 @@ export interface BillingServiceOptions {
   sandboxPolicy?: SandboxPolicy;
   policyVersion?: string;
   paymentGateway?: BillingPaymentGateway;
+}
+
+export interface CreateBillingAdjustmentInput {
+  accountId: string;
+  periodId: string;
+  amountUsd: number;
+  reasonCode: string;
+  sourceRef?: string | null;
+  recordedAt?: string;
+}
+
+export interface RefundBillingInvoiceInput {
+  invoiceId: string;
+  tenantId?: string | null;
+  refundAmountUsd: number;
+  reasonCode: string;
+  recordedAt?: string;
 }

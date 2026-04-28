@@ -19,7 +19,7 @@
 
 ## 1. 范围
 
-本 contract 定义最终平台的商业化计量平面，包括 usage metering、quota enforcement、entitlement evaluation、billing ledger 和 plan catalog。
+本 contract 定义最终平台的商业化计量平面，包括 usage metering、quota enforcement、entitlement evaluation、budget truth、settlement read model 和 plan catalog。
 
 它扩展 `billing_and_tenant_contract.md` 与 `cost_and_budget_contract.md`，用于回答“平台如何把使用量、权限、配额和账单连成闭环”。
 
@@ -27,7 +27,7 @@
 
 - 把计量和配额从静态字段提升为正式平台能力。
 - 让 runtime、API、workspace 权限都能消费 entitlement 决策。
-- 为 Pro 与 Enterprise 的收费模型建立统一账务基础。
+- 为 Pro 与 Enterprise 的收费模型建立统一预算与结算基础。
 - 让 usage、quota、billing 与 tenant / organization 模型可对接。
 
 ## 3. 非目标
@@ -41,7 +41,8 @@
 - `UsageIngestionPipeline`
 - `EntitlementEvaluator`
 - `QuotaEnforcementHook`
-- `BillingLedger`
+- `BudgetLedgerProjector`
+- `SettlementReadModel`
 - `PlanCatalog`
 - `InvoiceBoundaryAdapter`
 
@@ -52,10 +53,11 @@ flowchart LR
     C --> D["Execution / Feature Access"]
     D --> E["UsageIngestionPipeline"]
     E --> F["QuotaCounter"]
-    E --> G["BillingLedger"]
+    E --> G["BudgetLedgerProjector"]
     H["PlanCatalog"] --> B
     I["Tenant / Organization"] --> B
-    G --> J["InvoiceBoundaryAdapter"]
+    G --> J["SettlementReadModel"]
+    J --> K["InvoiceBoundaryAdapter"]
 ```
 
 ## 5. 核心对象
@@ -63,9 +65,14 @@ flowchart LR
 - `UsageEvent`
 - `EntitlementDecision`
 - `QuotaCounter`
-- `LedgerEntry`
+- `SettlementReadEntry`
 - `PlanEntitlement`
 - `BillingPeriod`
+
+说明：
+
+- `BudgetLedger / BudgetReservation / BudgetSettlement` 是 runtime truth，冻结定义见 `budget-ledger-contract.md`。
+- `SettlementReadModel / SettlementReadEntry` 是面向发票、对账和商业报表的派生读模型，不得反向充当预算 truth。
 
 ## 6. `UsageEvent` 最小字段
 
@@ -75,12 +82,20 @@ flowchart LR
 | `subject_id` | `string` | 产生使用量的主体 |
 | `workspace_id?` | `string` | 关联 workspace |
 | `tenant_id?` | `string` | 关联 tenant |
-| `task_id?` | `string` | 关联任务 |
-| `execution_id?` | `string` | 关联 execution |
+| `harness_run_id?` | `string` | 关联运行主链 truth |
+| `node_run_id?` | `string` | 关联节点运行 truth |
+| `task_id?` | `string` | 关联任务投影 |
+| `execution_id?` | `string` | legacy 执行投影或迁移输入 |
 | `metric_type` | `string` | 指标类型 |
 | `quantity` | `number` | 数量 |
-| `source` | `runtime \| api \| gateway \| admin` | 来源 |
+| `source` | `runtime \| api \| gateway \| admin \| tool \| model \| side_effect` | 来源 |
+| `cost_source` | `provider_invoice \| internal_compute \| human_review \| storage \| egress` | 成本归因来源 |
 | `captured_at` | `timestamp` | 采集时间 |
+
+规则：
+
+- `harness_run_id / node_run_id` 是 v4.3 runtime truth 对齐字段；`task_id / execution_id` 只允许作为投影、legacy 查询键或迁移输入保留。
+- `source` 表示使用量来自哪类入口或执行源；`cost_source` 表示成本最终由哪类结算依据驱动，二者不可混用。
 
 ## 7. `PlanEntitlement` 最小字段
 
@@ -114,7 +129,7 @@ flowchart LR
 - `degrade` 用于能力降级，而不是完全拒绝。
 - `warn` 只能用于不影响安全和账务正确性的软阈值场景。
 
-## 9. `QuotaCounter` 与 `LedgerEntry`
+## 9. `QuotaCounter`、`BudgetLedger` 与 `SettlementReadEntry`
 
 `QuotaCounter` 最小字段：
 
@@ -127,7 +142,12 @@ flowchart LR
 - `limit_quantity`
 - `updated_at`
 
-`LedgerEntry` 最小字段：
+`BudgetLedger` / `BudgetReservation` / `BudgetSettlement`：
+
+- truth contract 直接复用 `budget-ledger-contract.md`
+- 本文不再重复定义另一套与其平行的 ledger truth DTO
+
+`SettlementReadEntry` 最小字段：
 
 - `entry_id`
 - `account_ref`
@@ -141,9 +161,9 @@ flowchart LR
 规则：
 
 - quota counter 服务实时限制。
-- billing ledger 服务账务与审计。
-- ledger 不得依赖临时内存累计结果。
-- usage event、quota counter、ledger entry 之间必须可对账，不能只依赖最终聚合结果。
+- `BudgetLedger` 负责执行前预算 truth 与结算事实，不得依赖临时内存累计结果。
+- `SettlementReadEntry` 服务账务展示、发票边界和对账报表。
+- usage event、quota counter、budget settlement、settlement read entry 之间必须可对账，不能只依赖最终聚合结果。
 
 ## 10. 计量粒度
 
@@ -163,7 +183,7 @@ Phase 3 起至少支持：
 3. evaluator 读取 plan entitlement、quota counter、tenant/org 归属。
 4. 返回 `allow / deny / degrade / warn`。
 5. 动作执行后由 `UsageIngestionPipeline` 回写 usage event。
-6. 周期性或准实时聚合进入 quota 与 ledger。
+6. 周期性或准实时聚合进入 quota、budget settlement 与 settlement read model。
 
 ### 11.1 商业化闭环流程图
 
@@ -179,7 +199,7 @@ flowchart TD
     F --> G
     G --> H["Capture UsageEvent"]
     H --> I["Update QuotaCounter"]
-    H --> J["Write BillingLedger"]
+    H --> J["Project BudgetSettlement To SettlementReadModel"]
     I --> K["Next Decision"]
     J --> L["Billing / Audit"]
 ```
@@ -191,7 +211,7 @@ flowchart LR
     A["PlanCatalog"] --> B["PlanEntitlement"]
     B --> C["EntitlementDecision"]
     D["UsageEvent"] --> E["QuotaCounter"]
-    D --> F["LedgerEntry"]
+    D --> F["SettlementReadEntry"]
     C --> G["Runtime / API Gate"]
     E --> C
 ```
@@ -203,6 +223,7 @@ flowchart LR
 - 体验类能力可采用 degrade，例如降低并发或延迟执行。
 - quota 判断结果应可追溯到 plan entitlement 和当前 counter。
 - entitlement 决策不得只依赖过期缓存；若 authoritative counter 不可用，应优先 fail-closed 或保守 degrade。
+- commercial metering 不得绕过 `BudgetLedger / BudgetReservation / BudgetSettlement` truth 直接写 invoice ledger 字段。
 
 ## 13. Tenant / Organization 关系
 
@@ -214,22 +235,23 @@ flowchart LR
 
 - `billing_and_tenant_contract.md` 是主体模型基线。
 - `cost_and_budget_contract.md` 是单次执行预算基线。
+- `budget-ledger-contract.md` 冻结 `BudgetLedger / BudgetReservation / BudgetSettlement` 作为 runtime truth。
 - `tenant_and_organization_contract.md` 定义归属边界。
-- 本 contract 定义产品收费、配额和账务的完整平台层。
+- 本 contract 定义产品收费、配额、预算 truth 派生结算读模型的完整平台层。
 
 ## 15. Failure Mode
 
 需要重点防范：
 
 - 动作执行成功但 usage 未回写。
-- ledger 延迟导致账务不一致。
+- settlement read model 延迟或回放失败导致账务展示不一致。
 - quota counter 落后导致透支执行。
 - organization 汇总时 tenant 归属错误。
 
 处理原则：
 
 - 高成本动作宁可保守 deny，也不应无计量执行。
-- usage pipeline 与 ledger pipeline 必须有补偿路径。
+- usage pipeline、budget settlement projector 与 settlement read model pipeline 必须有补偿路径。
 - entitlement 决策优先使用 authoritative counter，而不是缓存猜测值。
 - 若动作已执行但 usage 未回写，系统必须能通过对账任务补账，而不是默默丢失计量。
 
@@ -240,16 +262,16 @@ flowchart LR
 
 ## 17. 收口结论
 
-Monetization plane 的核心不是“事后计费”，而是让 runtime、权限、配额和账务在执行前后形成闭环。
+Monetization plane 的核心不是“事后计费”，而是让 runtime、权限、配额、预算 truth 与结算读模型在执行前后形成闭环。
 
-后续任何收费能力，只要不能接入 usage、entitlement 和 ledger 三条链，就不应被视为正式商业化能力。
+后续任何收费能力，只要不能接入 usage、entitlement 和 `BudgetLedger / BudgetReservation / BudgetSettlement` 三条链，就不应被视为正式商业化能力。
 
 
 ## v4.3 Architecture Remediation
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-35: 引入BillingLedger/LedgerEntry但架构§18用BudgetLedger/BudgetSettlement为冻结合约(§1.5)，命名碰撞。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
-- T-55: UsageEvent.source枚举(runtime/api/gateway/admin)缺tool/model/side_effect，架构§18.1 cost_source含provider_invoice/internal_compute/human_review/storage/egress。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-35: 本文原先把 `BillingLedger / LedgerEntry` 写成商业化计量平面的核心对象，根因是旧版文案把发票/报表读模型和执行前预算 truth 混成同一层，未在 v4.3 引入 `BudgetLedger / BudgetReservation / BudgetSettlement` 后同步重构。修复：正文现明确预算 truth 复用 `budget-ledger-contract.md`，`SettlementReadModel / SettlementReadEntry` 只保留为派生账务读模型。
+- T-55: 本文原先的 `UsageEvent.source` 仍停留在 `runtime / api / gateway / admin` 四类入口枚举，根因是该段落沿用了早期 API 入口视角，没有随着工具执行、模型调用和副作用结算接入统一成本归因模型一起扩展。修复：正文现补齐 `tool / model / side_effect` 来源，并新增独立 `cost_source` 枚举承接 `provider_invoice / internal_compute / human_review / storage / egress`。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

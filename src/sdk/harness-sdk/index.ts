@@ -15,7 +15,10 @@ export interface HarnessSdkCreateRunInput {
 
 export interface HarnessSdkAppendStepInput {
   readonly role: HarnessRole;
-  readonly stage: string;
+  readonly nodeRunId: string;
+  readonly planGraphId: string;
+  readonly stage?: string;
+  readonly phase?: string;
   readonly inputs: Readonly<Record<string, unknown>>;
   readonly outputs: Readonly<Record<string, unknown>>;
   readonly iteration?: number;
@@ -29,7 +32,18 @@ export class HarnessSdk {
   }
 
   public appendStep(run: HarnessRun, input: HarnessSdkAppendStepInput): HarnessRun {
-    return this.runtime.appendStep(run, input);
+    const runtimeInput = {
+      role: input.role,
+      stage: input.phase ?? input.stage ?? input.nodeRunId,
+      inputs: {
+        ...input.inputs,
+        nodeRunId: input.nodeRunId,
+        planGraphId: input.planGraphId,
+      },
+      outputs: input.outputs,
+      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
+    };
+    return this.runtime.appendStep(run, runtimeInput);
   }
 
   public decide(input: Parameters<HarnessRuntimeService["decide"]>[0]): HarnessDecision {
@@ -40,8 +54,9 @@ export class HarnessSdk {
     return this.runtime.evaluateRun(run);
   }
 
-  public persist(run: HarnessRun) {
-    return this.runtime.persistRun(run);
+  public persist(run: HarnessRun): HarnessRun {
+    this.runtime.persistRun(run);
+    return run;
   }
 
   public checkpoint(run: HarnessRun): string {

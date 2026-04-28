@@ -23,8 +23,8 @@ import {
 // META_MODEL_QUESTION_IDS
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("META_MODEL_QUESTION_IDS contains exactly 12 question IDs", () => {
-  assert.equal(META_MODEL_QUESTION_IDS.length, 12);
+test("META_MODEL_QUESTION_IDS contains exactly 15 question IDs", () => {
+  assert.equal(META_MODEL_QUESTION_IDS.length, 15);
 });
 
 test("META_MODEL_QUESTION_IDS contains expected question IDs in order", () => {
@@ -41,10 +41,13 @@ test("META_MODEL_QUESTION_IDS contains expected question IDs in order", () => {
     "Q10_human_governance",
     "Q11_latency_sla",
     "Q12_pre_launch_certs",
+    "Q13_liability_owner",
+    "Q14_compensation_model",
+    "Q15_adversarial_scenarios",
   ]);
 });
 
-test("META_MODEL_QUESTION_IDS is an array of 12 question ID strings", () => {
+test("META_MODEL_QUESTION_IDS is an array of 15 question ID strings", () => {
   assert.ok(Array.isArray(META_MODEL_QUESTION_IDS));
   assert.equal(typeof META_MODEL_QUESTION_IDS[0], "string");
 });
@@ -128,7 +131,7 @@ test("DomainMetaModel accepts fully populated answers", () => {
     riskLevel: "medium",
   });
   assert.equal(model.domainId, "coding");
-  assert.equal(model.answers.length, 12);
+  assert.equal(model.answers.length, 15);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -167,7 +170,7 @@ test("MetaModelValidationResult structure for invalid model", () => {
 // seedDomainMetaModel
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("seedDomainMetaModel creates model with 12 answers", () => {
+test("seedDomainMetaModel creates model with 15 answers", () => {
   const model = seedDomainMetaModel({
     domainId: "ecommerce",
     displayName: "E-commerce",
@@ -176,7 +179,7 @@ test("seedDomainMetaModel creates model with 12 answers", () => {
     tags: ["retail", "commerce"],
     riskLevel: "high",
   });
-  assert.equal(model.answers.length, 12);
+  assert.equal(model.answers.length, 15);
 });
 
 test("seedDomainMetaModel creates model with correct domainId", () => {
@@ -308,9 +311,9 @@ test("computeMetaModelCompleteness calculates correct percentage", () => {
       },
     ],
   };
-  // Only Q1 and Q3 have non-empty answers, but denominator is 12 (all META_MODEL_QUESTION_IDS)
-  // So: 2/12 = 16.67%
-  assert.equal(computeMetaModelCompleteness(model), 16.67);
+  // Only Q1 and Q3 have non-empty answers, but denominator is 15 (all META_MODEL_QUESTION_IDS)
+  // So: 2/15 = 13.33%
+  assert.equal(computeMetaModelCompleteness(model), 13.33);
 });
 
 test("computeMetaModelCompleteness only counts complete answers with content", () => {
@@ -335,9 +338,9 @@ test("computeMetaModelCompleteness only counts complete answers with content", (
       },
     ],
   };
-  // Q1 has answer, Q2 has empty answer. Denominator is 12 (all META_MODEL_QUESTION_IDS)
-  // Only 1 complete with non-empty answer: 1/12 = 8.33%
-  assert.equal(computeMetaModelCompleteness(model), 8.33);
+  // Q1 has answer, Q2 has empty answer. Denominator is 15 (all META_MODEL_QUESTION_IDS)
+  // Only 1 complete with non-empty answer: 1/15 = 6.67%
+  assert.equal(computeMetaModelCompleteness(model), 6.67);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

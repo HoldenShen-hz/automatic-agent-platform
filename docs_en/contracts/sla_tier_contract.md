@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the SLA tier model and SLA-aware scheduling for `§54`.
+This contract defines the SLA tiering model and SLA-aware scheduling for `§54`.
 
 ## 2. Canonical Objects
 
@@ -21,14 +21,14 @@ This contract defines the SLA tier model and SLA-aware scheduling for `§54`.
 - `preemption_priority`
 - `reserved_capacity_percent`
 
-## 4. Operating Rules
+## 4. Operational Rules
 
 - SLA tier must participate in queuing, resource reservation, preemption, and escalation.
-- Breach detection must distinguish queuing timeout, execution timeout, and dependency unavailability.
-- Low tier must not starve high tier; high tier must not unlimitedly preempt global resources.
+- Breach detection must distinguish between queue timeout, execution timeout, and dependency unavailable.
+- Low tier must not starve high tier; high tier must not arbitrarily preempt global resources.
 
-## 5. Test Requirements
+## 5. Testing Requirements
 
 - unit: tier resolution, breach classification
 - integration: SLA-aware scheduling
-- contract: objects with committed tier must retain auditable SLO evidence
+- contract: Objects with committed tier must retain auditable SLO evidence

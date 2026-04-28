@@ -13,7 +13,7 @@ function createService(overrides: Partial<OpsAgentDefinition> = {}) {
   return new PlatformOpsAgentService({
     agentId: "test_ops_agent",
     specialty: "test_specialty",
-    allowedActionTypes: ["investigate_incident", "scale_capacity", "tune_config", "developer_assist"],
+    allowedActionTypes: ["investigate_incident", "scale_capacity", "tune_config", "developer_assist", "restart_service", "failover"],
     requiredApprovals: [],
     maxAutonomyLevel: "trusted_automation",
     evidenceRequirements: ["evidence:test"],
@@ -39,7 +39,7 @@ describe("PlatformOpsAgentService - Edge Cases", () => {
       assert.equal(proposal.healthStatus, "healthy");
     });
 
-    test("incident-level error rate triggers investigate_incident", () => {
+    test("incident-level error rate triggers restart_service", () => {
       const service = createService();
       const proposal = service.createProposal({
         probes: [{ component: "db", status: "degraded" }],
@@ -49,7 +49,7 @@ describe("PlatformOpsAgentService - Edge Cases", () => {
         projectedLoad: 90,
       });
 
-      assert.equal(proposal.actionType, "investigate_incident");
+      assert.equal(proposal.actionType, "restart_service");
       assert.equal(proposal.incidentLevel, "incident");
     });
 
@@ -64,7 +64,7 @@ describe("PlatformOpsAgentService - Edge Cases", () => {
       });
 
       assert.equal(proposal.incidentLevel, "critical_incident");
-      assert.equal(proposal.actionType, "investigate_incident");
+      assert.equal(proposal.actionType, "failover");
     });
 
     test("high capacity ratio triggers scale_capacity action", () => {

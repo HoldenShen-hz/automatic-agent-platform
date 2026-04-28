@@ -14,25 +14,25 @@ Enterprise-class Agent platforms must have comprehensive stability mechanisms to
 | Layer | Mechanism | Threshold/Strategy |
 |-------|-----------|-------------------|
 | L1 Isolation | Tenant failure rate >30% auto-isolation | AutoStopLossService |
-| L2 Rate Limiting/Backpressure | 4-level queue_lag thresholds | Backpressure control in dispatcher |
-| L3 Timeout Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
+| L2 Rate Limiting & Backpressure | 4-level queue_lag threshold | Backpressure controlled in dispatcher |
+| L3 Timeout & Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
 | L4 Circuit Breaker | 50% failure rate/60s → open → 30s half-open | CircuitBreaker |
 | L5 Degradation Mode | 8 runtime modes | PolicyMode enum |
-| L6 Recovery | 6 recovery workers | RuntimeRecoveryService etc. |
+| L6 Recovery | 6 recovery workers | RuntimeRecoveryService, etc. |
 | L7 Observability | metrics/logs/traces/audit | shared/observability/ |
 
 ### PolicyMode 8 Runtime Modes
 
 ```typescript
 enum PolicyMode {
-  supervised = 'supervised',       // Human supervision
-  auto = 'auto',                   // Auto mode
-  full_auto = 'full_auto',         // Fully automatic
-  read_only = 'read_only',         // Read-only
-  maintenance = 'maintenance',     // Maintenance mode
-  incident_mode = 'incident_mode', // Incident mode
-  degraded = 'degraded',           // Degraded mode
-  emergency = 'emergency'          // Emergency mode
+  full_auto = 'full_auto',
+  supervised_auto = 'supervised_auto',
+  read_only = 'read_only',
+  no_write = 'no-write',
+  no_external_call = 'no-external-call',
+  no_rollout = 'no-rollout',
+  manual_only = 'manual_only',
+  incident_mode = 'incident-mode'
 }
 ```
 
@@ -45,36 +45,38 @@ enum PolicyMode {
 5. StalledExecutionEscalationService (130 lines)
 6. ExecutionDbQueueDisconnectRepairService (346 lines)
 
-### Auto-Rollback Conditions
+### Automatic Rollback Conditions
 
 | Condition | Threshold | Window |
 |-----------|-----------|--------|
 | Error rate exceeded | > 1% | 5 minutes |
 | P99 latency exceeded | > 500ms | 5 minutes |
-| Success rate below target | < 99% | 5 minutes |
+| Success rate not met | < 99% | 5 minutes |
 | Consecutive failures | > 10 | 10 minutes |
 | Resource exhaustion | Memory > 90% | 1 minute |
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Seven layers of defense cover common failure scenarios
-- Auto degradation ensures core service availability
-- 6 recovery workers implement self-healing capability
+- Automatic degradation ensures core service availability
+- 6 recovery workers implement self-healing capabilities
 
-Negative:
-- Multi-layer mechanism increases system complexity
-- Requires comprehensive monitoring and alerting support
+Costs:
 
-Trade-offs:
-- Defense in depth vs. complexity
-- Resilience vs. overhead
+- Multi-layer mechanisms increase system complexity
+- Requires comprehensive monitoring and alerting infrastructure
 
-## Cross-References
+## Cross References
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 
-## Source Sections
+## Source Section
 
-- `§9` Stability Architecture (7 layers)
+- `§9` Stability Architecture (Seven Layers)
+
+## v4.3 ADR Remediation
+
+- A-19: This ADR originally mixed `supervised / degraded / maintenance / emergency` into the canonical `PolicyMode`. The root cause was that the stability ADR merged alerting/operational semantics with runtime enforced modes into one enum. Fix: The text now converges the mode enum to the 8 runtime modes specified by the main architecture: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`.

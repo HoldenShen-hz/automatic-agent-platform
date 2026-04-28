@@ -55,13 +55,13 @@ interface ResourceAllocation {
 
 ## Consequences
 
-Positive:
+Advantages:
 
-- Fair resource allocation prevents resource starvation
-- Priority mechanism ensures critical business
+- Fair resource allocation prevents starvation
+- Priority mechanism ensures critical business needs
 - Dynamic adjustment adapts to load changes
 
-Negative:
+Costs:
 
 - Scheduling algorithm complexity
 - Quota calculation overhead
@@ -71,6 +71,6 @@ Negative:
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)
 
-## Source Sections
+## Source Section
 
 - `§53` Scaling Resource Competition Management

@@ -7,7 +7,7 @@ test("PlatformOpsAgentService requires approval before high-risk proposals becom
   const service = new PlatformOpsAgentService({
     agentId: "agent_ops_1",
     specialty: "incident_response",
-    allowedActionTypes: ["investigate_incident", "scale_capacity"],
+    allowedActionTypes: ["restart_service", "failover", "scale_capacity"],
     requiredApprovals: ["sre_manager"],
     maxAutonomyLevel: "supervised_execution",
     evidenceRequirements: ["runbook:incident"],
@@ -22,7 +22,7 @@ test("PlatformOpsAgentService requires approval before high-risk proposals becom
     observedAt: "2026-04-20T00:00:00.000Z",
   });
 
-  assert.equal(proposal.actionType, "investigate_incident");
+  assert.equal(proposal.actionType, "failover");
   assert.equal(proposal.approvalStatus, "pending");
   assert.equal(proposal.executable, false);
 

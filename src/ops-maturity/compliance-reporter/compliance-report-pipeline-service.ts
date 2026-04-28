@@ -25,9 +25,10 @@ export interface ComplianceReportArtifact {
   readonly framework: string;
   readonly reportType: string;
   readonly version: string;
-  readonly status: "complete" | "partial";
+  readonly status: "generated" | "partial" | "human_signoff" | "attested";
   readonly missingEvidenceTypes: readonly string[];
   readonly evidenceMap: Readonly<Record<string, readonly string[]>>;
+  readonly evidenceQualityScore: number;
   readonly markdown: string;
   readonly readOnly: true;
   readonly generatedAt: string;
@@ -78,9 +79,10 @@ export class ComplianceReportPipelineService {
       framework: template.framework,
       reportType: template.reportType,
       version: template.version,
-      status: missingEvidenceTypes.length === 0 ? "complete" : "partial",
+      status: missingEvidenceTypes.length === 0 ? "generated" : "partial",
       missingEvidenceTypes,
       evidenceMap,
+      evidenceQualityScore: Number((coverage.coverageRatio * 100).toFixed(2)),
       markdown: this.renderer.renderMarkdown(
         `${template.framework} ${template.reportType} report`,
         sections,

@@ -15,7 +15,7 @@ export class ArtifactBundleService {
       taskId: input.taskId,
       artifacts: [...input.artifacts],
       links: [...(input.links ?? [])],
-      finalDeliverables: [...(input.finalDeliverables ?? input.artifacts.map((artifact) => artifact.artifactId))],
+      finalDeliverables: [...(input.finalDeliverables ?? input.artifacts.map((artifact) => artifact.path || artifact.artifactId))],
       totalSize: input.artifacts.reduce((total, artifact) => total + artifact.size, 0),
       createdAt: nowIso(),
       bundleType: input.bundleType,

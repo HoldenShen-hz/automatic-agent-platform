@@ -1,11 +1,11 @@
 # Context Propagation Contract
 
-> **OAPEFLIR Related**: This contract defines context propagation for OAPEFLIR 8 phases, corresponding to ADR-016.
-> **Updated**: 2026-04-17
+> **OAPEFLIR Correlation**: This contract defines context propagation across OAPEFLIR 8 stages, corresponding to ADR-016.
+> **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines runtime context propagation rules based on `AsyncLocalStorage`, avoiding `taskId / sessionId / agentId / traceId / workdir` from being passed layer by layer through deep call chains.
+This contract defines runtime context propagation rules based on `AsyncLocalStorage`, avoiding the need to pass `taskId / sessionId / agentId / traceId / workdir` explicitly through deep call chains.
 
 Related Documents:
 
@@ -13,31 +13,36 @@ Related Documents:
 - `app_error_contract.md`
 - `observability_contract.md`
 - `tool_and_provider_execution_contract.md`
-- [ADR-016 OAPEFLIR Eight-Phase Model](../adr/016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
 
-## 2. Goals
+## 2. Objectives
 
-Phase 1a context propagation must guarantee at least:
+Phase 1a context propagation must ensure at minimum:
 
-- Logs, DB, and tool execution can automatically get current task / execution / trace.
-- Cancellation, timeout, and recovery chain can read the same context snapshot.
-- Explicit parameters only retain tool-specific configurations, no longer carrying global runtime identity.
+- Logs, DB, and tool execution can automatically access the current run / node / attempt / trace.
+- Cancellation, timeout, and recovery chains can read the same context snapshot.
+- Explicit parameters retain only tool-specific configuration, no longer carrying global runtime identity.
 
-## 3. RuntimeContextSnapshot
+## 3. `RuntimeContextSnapshot`
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `trace_id` | `string` | Trace ID primary key |
+| `trace_id` | `string` | Trace correlation primary key |
 | `span_id` | `string?` | Current span (aligned with `trace_and_root_cause_observability_contract.md` §3) |
 | `parent_span_id` | `string?` | Parent span |
-| `task_id` | `string` | Current task |
-| `execution_id` | `string?` | Current execution |
-| `workflow_id` | `string?` | Current workflow |
+| `harness_run_id` | `string` | Current HarnessRun |
+| `node_run_id` | `string?` | Current NodeRun |
+| `attempt_id` | `string?` | Current NodeAttempt |
+| `plan_graph_id` | `string?` | Current execution graph ID |
+| `graph_version` | `integer?` | Current execution graph version |
+| `task_id` | `string?` | Legacy task query entry |
+| `execution_id` | `string?` | Legacy execution query entry |
+| `workflow_id` | `string?` | Legacy workflow query entry |
 | `session_id` | `string?` | Current session |
 | `agent_id` | `string?` | Current agent |
 | `division_id` | `string?` | Current division |
-| `oapeflir_stage` | `string?` | Current closed-loop phase |
-| `loop_iteration` | `integer?` | Current closed-loop iteration |
+| `stage_view_ref` | `string?` | Current loop stage view reference |
+| `loop_iteration_view` | `integer?` | Current loop iteration projection |
 | `knowledge_namespace` | `string?` | Current knowledge namespace |
 | `memory_layer` | `string?` | Current memory layer |
 | `domain_id` | `string?` | Current domain |
@@ -48,15 +53,15 @@ Phase 1a context propagation must guarantee at least:
 | `abort_signal_ref` | `string?` | Cancellation signal reference |
 | `budget_scope_id` | `string?` | Budget aggregation scope |
 
-Note: `span_id` and `parent_span_id` are used to locate current execution position in trace tree. Each time entering a new agent step, tool call, or LLM call, `span_id` should be updated via `withContextPatch` and old `span_id` pushed into `parent_span_id`. Phase 1a may not implement complete span tree, but field positions should be preserved to avoid subsequent breaking changes.
+Note: `span_id` and `parent_span_id` are used to locate the current execution position in the trace tree. Each time a new `NodeAttempt`, tool call, or LLM call is entered, `span_id` should be updated via `withContextPatch` and the old `span_id` pushed into `parent_span_id`. Phase 1a may not implement a complete span tree, but the field positions must be reserved to avoid future breaking changes.
 
 ## 4. Propagation Entry Points
 
-Must explicitly `provideContext(...)` from one of the following entry points:
+Context must be explicitly `provideContext(...)` at one of the following entry points:
 
 - Gateway receives user request
 - Scheduler / runtime creates execution
-- Recovery chain re-takes over stale run
+- Recovery chain re-takes stale run
 - Approval resume resumes execution
 
 ```mermaid
@@ -71,7 +76,7 @@ flowchart TD
 
 ## 5. API Constraints
 
-Minimum runtime interface suggestions:
+Minimum runtime interface recommendations:
 
 - `provideContext(snapshot, fn)`
 - `getContext()`
@@ -81,13 +86,13 @@ Minimum runtime interface suggestions:
 
 Rules:
 
-- `getContext()` must explicitly throw error when no context, not return pseudo default value.
-- `withContextPatch` can only overwrite partial fields, must not silently lose existing identifiers.
+- `getContext()` must explicitly throw an error when no context is available, not return a pseudo-default value.
+- `withContextPatch` can only overwrite local fields, must not silently lose existing identifiers.
 - Background detached tasks must explicitly copy or rebuild context, cannot rely on implicit inheritance.
 
 ## 6. Boundary with Explicit Parameters
 
-Contents to keep explicit parameters:
+Content to preserve as explicit parameters:
 
 - `timeout_ms`
 - `tool arguments`
@@ -95,15 +100,20 @@ Contents to keep explicit parameters:
 - `sandbox options`
 - `output destination`
 
-Contents that should no longer be passed layer by layer through explicit parameters:
+Content that should NO longer be passed through layers as explicit parameters:
 
+- `harness_run_id`
+- `node_run_id`
+- `attempt_id`
+- `plan_graph_id`
+- `graph_version`
 - `task_id`
 - `session_id`
 - `agent_id`
 - `trace_id`
 - `division_id`
-- `oapeflir_stage`
-- `loop_iteration`
+- `stage_view_ref`
+- `loop_iteration_view`
 - `knowledge_namespace`
 - `memory_layer`
 - `domain_id`
@@ -112,45 +122,57 @@ Contents that should no longer be passed layer by layer through explicit paramet
 ## 7. Cancellation and Recovery Semantics
 
 - The same context snapshot should be associated with a queryable cancellation signal reference.
-- When recovering new execution, new `execution_id` must be created, but same `task_id / trace_id` lineage can be reused.
-- Old execution's ALS context must not continue to be reused after recovery.
+- When recovering a new attempt, a new `attempt_id` must be created; if node-level recovery occurs, `node_run_id` or its attempt lineage must also be refreshed, while maintaining `harness_run_id / trace_id` continuity.
+- Old attempt ALS context must not be reused after recovery.
 
 ## 8. Observability and Audit Requirements
 
-All structured logs, events, and DB writes must be able to get from context at least:
+All structured logs, events, and DB writes must be able to obtain at minimum from context:
 
 - `trace_id`
-- `task_id`
-- `execution_id?`
+- `harness_run_id`
+- `node_run_id?`
+- `attempt_id?`
 - `agent_id?`
 
 Rules:
 
-- If current operation lacks these key fields, should fail early rather than write un关联 records.
-- `actor` in audit logs and runtime context fields must not conflict with each other.
+- If the current operation lacks these critical fields, it should fail early rather than write untraceable records.
+- The `actor` in audit logs must not conflict with runtime context fields.
+- If the compatibility layer still reads `task_id / execution_id`, it must also be able to trace back to `harness_run_id / node_run_id / attempt_id` from the same snapshot.
 
-## 9. Phase Boundary
+## 9. Phase Boundaries
 
 Phase 1a explicitly does:
 
 - Single-process `AsyncLocalStorage`
-- Unified read entry points for runtime, tool, provider, logging, DB
+- Unified read access for runtime, tool, provider, logging, DB
 
-Currently does not do:
+Currently does NOT do:
 
-- Cross-process automatic context propagation
+- Automatic cross-process context propagation
 - OpenTelemetry full链路 automatic injection
 - Remote worker context federation
 
 ## 10. Test Requirements
 
-Cover at least:
+Must cover at minimum:
 
 - Context not lost under nested async calls
 - Context not crossed between concurrent tasks
 - Detached tasks fail directly if context not explicitly provided
-- After recovering execution, `execution_id` refreshed but `task_id / trace_id` maintains lineage continuity
+- After recovery attempt, `attempt_id` refreshed but `harness_run_id / trace_id` maintain lineage continuity
 
 ## 11. Closure Conclusion
 
-The focus of context propagation is not passing fewer parameters, but making "who is currently executing what" a fact that any layer at runtime can reliably read.
+The focus of context propagation is not passing fewer parameters, but making "who is currently executing what" a reliably readable fact at any runtime layer.
+
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-18: This document previously used `task_id / execution_id / workflow_id` as ALS primary identity. Root cause: the context contract directly reused the old gateway/runtime parameter passing model and did not upgrade along with the `HarnessRun / NodeRun / PlanGraphBundle / NodeAttempt` truth model. Fix: The main text now elevates `harness_run_id / node_run_id / attempt_id / plan_graph_id / graph_version` to snapshot primary keys, with old fields retained only as compatibility query entries.
+
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -55,6 +55,7 @@
 - secret 必须有 `scope`，至少区分 system / tenant / workspace / worker。
 - secret 必须有 rotation policy。
 - worker 只应拿到短时、最小作用域凭证。
+- secret 注入型短时凭证必须满足硬 TTL 上限：`TTL <= 300s`。
 - secret value 不得出现在日志、event payload、artifact 或 memory。
 - secret value 不得进入 prompt、tool 输出回显、debug dump 或 crash snapshot。
 
@@ -81,6 +82,7 @@
 - `granted_to`
 - `granted_at`
 - `expires_at`
+- `ttl_seconds`
 - `usage_purpose`
 
 当前基线实现补充：
@@ -120,6 +122,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-50: 提到短期凭证但未强制架构§11.3硬TTL上限"secret注入短时有效(TTL≤300s)"。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-50: 本文原先只定性要求“短时凭证”，根因是 secret 合同强调托管和审计，却没有把运行时注入的 TTL 硬上限写成可执行约束。修复：正文现把 secret 注入型短时凭证强制收敛到 `TTL <= 300s`，并要求审计字段显式记录 `ttl_seconds`。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

@@ -17,7 +17,7 @@ The existing `rollout-state-machine.ts` (119 lines) has implemented canary→par
 | Level | Name | Traffic Ratio | Use Case |
 |------|------|---------|---------|
 | **L0** | `off` | 0% | Improvement disabled |
-| **L1** | `shadow` | 0% (record only) | Learning object validation, no production impact |
+| **L1** | `evaluate_0` | 0% (recording only) | Candidate evaluation and evidence validation, no production impact |
 | **L2** | `canary_5` | 5% | Small-scale validation, most conservative |
 | **L3** | `partial_25` | 25% | Expanded validation, medium |
 | **L4** | `stable_75` | 75% | Near full rollout, advanced |
@@ -28,17 +28,17 @@ The existing `rollout-state-machine.ts` (119 lines) has implemented canary→par
 ```
 candidate_created
       ↓
-shadow_enabled (L1)
+evaluation_enabled (L1)
       ↓ (metrics meet threshold)
 canary_5 (L2)
-      ↓ (N minutes with no rollback triggered)
+      ↓ (N minutes without rollback trigger)
 partial_25 (L3)
-      ↓ (N minutes with no rollback triggered)
+      ↓ (N minutes without rollback trigger)
 stable_75 (L4)
-      ↓ (N minutes with no rollback triggered)
-stable_100 (L5) ←→ auto_rollback ←→ (rollback conditions triggered)
+      ↓ (N minutes without rollback trigger)
+stable_100 (L5) ←→ auto_rollback ←→ (rollback condition triggered)
       ↓
-released (stable for M days)
+released (stable operation for M days)
 ```
 
 ### 3. State Transition Rules
@@ -91,7 +91,7 @@ type ImprovementCandidateStatus =
   | 'under_review'
   | 'approved'
   | 'rejected'
-  | 'shadow_enabled'
+  | 'evaluation_enabled'
   | 'canary_5'
   | 'partial_25'
   | 'stable_75'
@@ -151,6 +151,10 @@ Cons: Higher implementation complexity (~500 lines of code + monitoring integrat
 ## Source Sections
 
 - `§9` Improve Hub Design
-- `§9.1` 6-Level controlled release
-- `§9.2-9.9` ImprovementCandidate interfaces
-- `§L.8` R4-RELEASE constraint
+- `§9.1` 6-Level Controlled Release
+- `§9.2-9.9` ImprovementCandidate Interfaces
+- `§L.8` R4-RELEASE Constraint
+
+## v4.3 ADR Remediation
+
+- A-35: This ADR originally named L1 level directly as `shadow` and used `shadow_enabled` as rollout status simultaneously. Root cause: The release level and rollout status dimensions were mixed into one naming system, continuing the historical shadow terminology from ADR-018. Fix: L1 level is now changed to `evaluate_0` and status to `evaluation_enabled`, clearly separating level and status to avoid level numbers conflicting with old shadow semantics.

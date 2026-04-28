@@ -11,8 +11,8 @@ function createCatalogEntry(overrides: Partial<MarketplaceCatalogEntry> = {}): M
   return {
     listingId: overrides.listingId ?? "listing-1",
     title: overrides.title ?? "Test Listing",
-    trustLevel: overrides.trustLevel ?? "sandboxed",
-    lifecycleState: overrides.lifecycleState ?? "published",
+    trustLevel: overrides.trustLevel ?? "community",
+    lifecycleState: overrides.lifecycleState ?? "active",
     qualityMetrics: overrides.qualityMetrics ?? {
       reliabilityScore: 0.8,
       usabilityScore: 0.8,
@@ -26,28 +26,28 @@ function createCatalogEntry(overrides: Partial<MarketplaceCatalogEntry> = {}): M
 // sortMarketplaceCatalog Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("sortMarketplaceCatalog orders enterprise before verified", () => {
+test("sortMarketplaceCatalog orders internal before verified", () => {
   const entries = [
     createCatalogEntry({ listingId: "verified-entry", trustLevel: "verified" }),
-    createCatalogEntry({ listingId: "enterprise-entry", trustLevel: "enterprise" }),
+    createCatalogEntry({ listingId: "internal-entry", trustLevel: "internal" }),
   ];
 
   const sorted = sortMarketplaceCatalog(entries);
 
-  assert.equal(sorted[0]!.listingId, "enterprise-entry");
+  assert.equal(sorted[0]!.listingId, "internal-entry");
   assert.equal(sorted[1]!.listingId, "verified-entry");
 });
 
-test("sortMarketplaceCatalog orders verified before sandboxed", () => {
+test("sortMarketplaceCatalog orders verified before community", () => {
   const entries = [
-    createCatalogEntry({ listingId: "sandboxed-entry", trustLevel: "sandboxed" }),
+    createCatalogEntry({ listingId: "community-entry", trustLevel: "community" }),
     createCatalogEntry({ listingId: "verified-entry", trustLevel: "verified" }),
   ];
 
   const sorted = sortMarketplaceCatalog(entries);
 
   assert.equal(sorted[0]!.listingId, "verified-entry");
-  assert.equal(sorted[1]!.listingId, "sandboxed-entry");
+  assert.equal(sorted[1]!.listingId, "community-entry");
 });
 
 test("sortMarketplaceCatalog sorts by quality score within same trust level", () => {
@@ -64,8 +64,8 @@ test("sortMarketplaceCatalog sorts by quality score within same trust level", ()
 
 test("sortMarketplaceCatalog does not mutate original array", () => {
   const entries = [
-    createCatalogEntry({ listingId: "entry-a", trustLevel: "sandboxed" }),
-    createCatalogEntry({ listingId: "entry-b", trustLevel: "enterprise" }),
+    createCatalogEntry({ listingId: "entry-a", trustLevel: "community" }),
+    createCatalogEntry({ listingId: "entry-b", trustLevel: "internal" }),
   ];
   const original = [...entries];
 
@@ -90,9 +90,9 @@ test("sortMarketplaceCatalog handles single entry", () => {
 
 test("sortMarketplaceCatalog handles all same trust level with different quality", () => {
   const entries = [
-    createCatalogEntry({ listingId: "a", trustLevel: "sandboxed", qualityMetrics: { reliabilityScore: 0.5, usabilityScore: 0.5, supportScore: 0.5 } }),
-    createCatalogEntry({ listingId: "b", trustLevel: "sandboxed", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.9, supportScore: 0.9 } }),
-    createCatalogEntry({ listingId: "c", trustLevel: "sandboxed", qualityMetrics: { reliabilityScore: 0.3, usabilityScore: 0.3, supportScore: 0.3 } }),
+    createCatalogEntry({ listingId: "a", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.5, usabilityScore: 0.5, supportScore: 0.5 } }),
+    createCatalogEntry({ listingId: "b", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.9, supportScore: 0.9 } }),
+    createCatalogEntry({ listingId: "c", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.3, usabilityScore: 0.3, supportScore: 0.3 } }),
   ];
 
   const sorted = sortMarketplaceCatalog(entries);
@@ -104,17 +104,16 @@ test("sortMarketplaceCatalog handles all same trust level with different quality
 
 test("sortMarketplaceCatalog handles mixed trust levels and quality", () => {
   const entries = [
-    createCatalogEntry({ listingId: "sandboxed-high", trustLevel: "sandboxed", qualityMetrics: { reliabilityScore: 0.95, usabilityScore: 0.95, supportScore: 0.95 } }),
+    createCatalogEntry({ listingId: "community-high", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.95, usabilityScore: 0.95, supportScore: 0.95 } }),
     createCatalogEntry({ listingId: "verified-low", trustLevel: "verified", qualityMetrics: { reliabilityScore: 0.3, usabilityScore: 0.3, supportScore: 0.3 } }),
-    createCatalogEntry({ listingId: "enterprise-low", trustLevel: "enterprise", qualityMetrics: { reliabilityScore: 0.4, usabilityScore: 0.4, supportScore: 0.4 } }),
+    createCatalogEntry({ listingId: "internal-low", trustLevel: "internal", qualityMetrics: { reliabilityScore: 0.4, usabilityScore: 0.4, supportScore: 0.4 } }),
   ];
 
   const sorted = sortMarketplaceCatalog(entries);
 
-  // Enterprise trust level always comes before verified and sandboxed
-  assert.equal(sorted[0]!.listingId, "enterprise-low");
+  assert.equal(sorted[0]!.listingId, "internal-low");
   assert.equal(sorted[1]!.listingId, "verified-low");
-  assert.equal(sorted[2]!.listingId, "sandboxed-high");
+  assert.equal(sorted[2]!.listingId, "community-high");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,7 +125,7 @@ test("MarketplaceCatalogEntrySchema parses valid entry", () => {
     listingId: "listing-123",
     title: "My Marketplace Listing",
     trustLevel: "verified",
-    lifecycleState: "published",
+    lifecycleState: "active",
     qualityMetrics: {
       reliabilityScore: 0.9,
       usabilityScore: 0.85,
@@ -142,23 +141,23 @@ test("MarketplaceCatalogEntrySchema parses valid entry", () => {
 });
 
 test("MarketplaceCatalogEntrySchema accepts all trust levels", () => {
-  for (const trustLevel of ["sandboxed", "verified", "enterprise"]) {
+  for (const trustLevel of ["internal", "verified", "community", "unknown"]) {
     const result = MarketplaceCatalogEntrySchema.safeParse({
       listingId: "test",
       title: "Test",
       trustLevel,
-      lifecycleState: "published",
+      lifecycleState: "active",
     });
     assert.equal(result.success, true, `Trust level ${trustLevel} should be valid`);
   }
 });
 
 test("MarketplaceCatalogEntrySchema accepts all lifecycle states", () => {
-  for (const lifecycleState of ["draft", "submitted", "certified", "published", "deprecated", "retired"]) {
+  for (const lifecycleState of ["active", "deprecated", "sunset", "removed"]) {
     const result = MarketplaceCatalogEntrySchema.safeParse({
       listingId: "test",
       title: "Test",
-      trustLevel: "sandboxed",
+      trustLevel: "community",
       lifecycleState,
     });
     assert.equal(result.success, true, `Lifecycle state ${lifecycleState} should be valid`);
@@ -169,8 +168,8 @@ test("MarketplaceCatalogEntrySchema accepts default quality metrics", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
-    trustLevel: "sandboxed",
-    lifecycleState: "published",
+    trustLevel: "community",
+    lifecycleState: "active",
   });
 
   assert.equal(result.success, true);
@@ -185,8 +184,8 @@ test("MarketplaceCatalogEntrySchema rejects empty listingId", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "",
     title: "Test",
-    trustLevel: "sandboxed",
-    lifecycleState: "published",
+    trustLevel: "community",
+    lifecycleState: "active",
   });
 
   assert.equal(result.success, false);
@@ -196,8 +195,8 @@ test("MarketplaceCatalogEntrySchema rejects empty title", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "",
-    trustLevel: "sandboxed",
-    lifecycleState: "published",
+    trustLevel: "community",
+    lifecycleState: "active",
   });
 
   assert.equal(result.success, false);
@@ -207,8 +206,8 @@ test("MarketplaceCatalogEntrySchema rejects invalid trust level", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
-    trustLevel: "unknown",
-    lifecycleState: "published",
+    trustLevel: "sandboxed",
+    lifecycleState: "active",
   });
 
   assert.equal(result.success, false);
@@ -218,7 +217,7 @@ test("MarketplaceCatalogEntrySchema rejects invalid lifecycle state", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
-    trustLevel: "sandboxed",
+    trustLevel: "community",
     lifecycleState: "invalid",
   });
 
@@ -229,8 +228,8 @@ test("MarketplaceCatalogEntrySchema rejects reliability score below 0", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
-    trustLevel: "sandboxed",
-    lifecycleState: "published",
+    trustLevel: "community",
+    lifecycleState: "active",
     qualityMetrics: { reliabilityScore: -0.1, usabilityScore: 0.5, supportScore: 0.5 },
   });
 
@@ -241,8 +240,8 @@ test("MarketplaceCatalogEntrySchema rejects reliability score above 1", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
-    trustLevel: "sandboxed",
-    lifecycleState: "published",
+    trustLevel: "community",
+    lifecycleState: "active",
     qualityMetrics: { reliabilityScore: 1.1, usabilityScore: 0.5, supportScore: 0.5 },
   });
 
@@ -253,8 +252,8 @@ test("MarketplaceCatalogEntrySchema accepts boundary values 0 and 1 for quality 
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
-    trustLevel: "sandboxed",
-    lifecycleState: "published",
+    trustLevel: "community",
+    lifecycleState: "active",
     qualityMetrics: { reliabilityScore: 0, usabilityScore: 1, supportScore: 0.5 },
   });
 

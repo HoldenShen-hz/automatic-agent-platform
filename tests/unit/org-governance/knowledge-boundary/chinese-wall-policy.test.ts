@@ -100,3 +100,29 @@ test("evaluateChineseWallPolicy handles multiple conflict groups", () => {
   assert.equal(decision3.allowed, false);
   assert.equal(decision3.blockedGroupId, "group-b");
 });
+
+test("evaluateChineseWallPolicy requires compliance officer reset after expiry", () => {
+  const policy: ChineseWallPolicy = {
+    policyId: "policy-expiry",
+    conflictGroups: {},
+    wallExpiryPolicy: "expires_at",
+    expiresAt: "2024-01-01T00:00:00.000Z",
+    resetRequiresApprovalRole: "compliance_officer",
+    coolDownUntil: "2024-01-02T00:00:00.000Z",
+    residualScanRequired: true,
+  };
+
+  const blocked = evaluateChineseWallPolicy(policy, "node-a", "node-b", {
+    nowIso: "2024-01-03T00:00:00.000Z",
+  });
+  assert.equal(blocked.allowed, false);
+  assert.ok(blocked.reasonCodes.includes("knowledge_boundary.chinese_wall_reset_requires_compliance_officer"));
+
+  const allowed = evaluateChineseWallPolicy(policy, "node-a", "node-b", {
+    approvedByRole: "compliance_officer",
+    residualScanCompleted: true,
+    nowIso: "2024-01-03T00:00:00.000Z",
+  });
+  assert.equal(allowed.allowed, true);
+  assert.ok(allowed.reasonCodes.includes("knowledge_boundary.chinese_wall_expired_and_reset"));
+});

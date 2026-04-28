@@ -28,6 +28,7 @@ export interface PlannedTask {
   readonly delegationMode: "auto" | "supervised" | "manual";
   readonly estimatedDuration: string;
   readonly estimatedCost: CostEstimate;
+  readonly constraintEnvelope?: GoalConstraintEnvelope;
   /** @deprecated Use dependencyGraph instead - explicit depends_on for DAG scheduling */
   readonly dependsOn?: readonly string[];
 }
@@ -56,6 +57,53 @@ export interface GoalDecomposition {
   readonly depthUsed: number;
   /** Whether maxDepth was reached during decomposition */
   readonly maxDepthReached: boolean;
+  readonly lifecycleState: GoalLifecycleState;
+  readonly goalGraphDraft: GoalGraphDraft;
+  readonly taskGraphDraft: TaskGraphDraft;
+  readonly plannerHandoff: PlannerHandoffReceipt;
+}
+
+export type GoalLifecycleState =
+  | "draft"
+  | "decomposing"
+  | "decomposed"
+  | "executing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface GoalConstraintEnvelope {
+  readonly budgetLimitUsd: number | null;
+  readonly riskTolerance: "low" | "medium" | "high";
+  readonly requiresApproval: boolean;
+  readonly requiredPermissions: readonly string[];
+  readonly requiredCapabilities: readonly string[];
+}
+
+export interface GoalGraphDraft {
+  readonly goalId: string;
+  readonly lifecycleState: GoalLifecycleState;
+  readonly constraintEnvelope: GoalConstraintEnvelope;
+  readonly plannerIntent: "template" | "llm_plan" | "hybrid" | "human_assisted";
+  readonly evidenceRefs: readonly string[];
+}
+
+export interface TaskGraphDraft {
+  readonly graphId: string;
+  readonly goalId: string;
+  readonly tasks: readonly PlannedTask[];
+  readonly dependencyGraph: readonly TaskDependency[];
+  readonly normalized: boolean;
+  readonly validationMessages: readonly string[];
+  readonly worstPathTaskIds: readonly string[];
+}
+
+export interface PlannerHandoffReceipt {
+  readonly handoffId: string;
+  readonly goalId: string;
+  readonly state: "ready_for_planner";
+  readonly graphId: string;
+  readonly constraintEnvelope: GoalConstraintEnvelope;
 }
 
 export type GoalDecompositionResult = GoalDecomposition;
@@ -149,6 +197,26 @@ function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPrevi
   };
 }
 
+function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
+  const rawConstraints = [goal.description, ...goal.constraints].join(" ");
+  const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(rawConstraints);
+  const requiredPermissions = [
+    ...( /(deploy|release|publish|上线|发布)/i.test(rawConstraints) ? ["deployment:write"] : []),
+    ...( /(delete|drop|remove|删除|清空)/i.test(rawConstraints) ? ["destructive:write"] : []),
+  ];
+  const requiredCapabilities = [
+    ...( /(dashboard|report|报表|roi|分析)/i.test(rawConstraints) ? ["analytics"] : []),
+    ...( /(approval|审批)/i.test(rawConstraints) ? ["approval_workflow"] : []),
+  ];
+  return {
+    budgetLimitUsd: budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!),
+    riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
+    requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
+    requiredPermissions,
+    requiredCapabilities,
+  };
+}
+
 function totalCost(costs: readonly CostEstimate[]): CostEstimate {
   if (costs.length === 0) {
     return DEFAULT_COST_ESTIMATE;
@@ -183,6 +251,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const maxDepthReached = currentDepth >= maxDepth;
 
     const goal = normalizeGoal(goalInput);
+    const constraintEnvelope = parseConstraintEnvelope(goal);
     const matchedTemplate = this.detectTemplate(goal.description);
     let tasks = this.buildTasks(goal, matchedTemplate);
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
@@ -202,7 +271,10 @@ export class GoalDecompositionService implements GoalDecompositionPort {
           this.options.maxLlmPlanLatencyMs ?? DEFAULT_LLM_PLAN_LATENCY_MS,
         );
         if (llmPlan.tasks.length > 0) {
-          tasks = [...llmPlan.tasks];
+          tasks = llmPlan.tasks.map((task) => ({
+            ...task,
+            constraintEnvelope,
+          }));
           dependencyGraph = [...llmPlan.dependencyGraph];
           decompositionStrategy = "llm_plan";
         }
@@ -221,6 +293,35 @@ export class GoalDecompositionService implements GoalDecompositionPort {
           : matchedTemplate === "generic_multi_step"
             ? 0.74
             : 0.88;
+
+    const validationMessages = [
+      ...(graphAnalysis.hasCycle ? ["goal_decomposer.cycle_detected"] : []),
+      ...(constraintEnvelope.requiresApproval ? ["goal_decomposer.approval_constraint_propagated"] : []),
+    ];
+    const lifecycleState: GoalLifecycleState = "decomposed";
+    const goalGraphDraft: GoalGraphDraft = {
+      goalId: goal.goalId,
+      lifecycleState,
+      constraintEnvelope,
+      plannerIntent: decompositionStrategy,
+      evidenceRefs: [`goal:${goal.goalId}`, `template:${matchedTemplate ?? "none"}`],
+    };
+    const taskGraphDraft: TaskGraphDraft = {
+      graphId: `${goal.goalId}:task_graph_draft`,
+      goalId: goal.goalId,
+      tasks,
+      dependencyGraph,
+      normalized: !graphAnalysis.hasCycle,
+      validationMessages,
+      worstPathTaskIds: graphAnalysis.criticalPathTaskIds,
+    };
+    const plannerHandoff: PlannerHandoffReceipt = {
+      handoffId: `${goal.goalId}:planner_handoff`,
+      goalId: goal.goalId,
+      state: "ready_for_planner",
+      graphId: taskGraphDraft.graphId,
+      constraintEnvelope,
+    };
 
     return {
       goalId: goal.goalId,
@@ -241,6 +342,10 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       criticalPathTaskIds: graphAnalysis.criticalPathTaskIds,
       depthUsed: currentDepth,
       maxDepthReached,
+      lifecycleState,
+      goalGraphDraft,
+      taskGraphDraft,
+      plannerHandoff,
     };
   }
 
@@ -366,6 +471,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
   private makeTask(domainId: string, description: string, goal: Goal, estimatedDuration: string): PlannedTask {
     const estimatedCost = this.options.costEstimator?.estimate(domainId) ?? DEFAULT_COST_ESTIMATE;
+    const constraintEnvelope = parseConstraintEnvelope(goal);
     return {
       taskId: `${goal.goalId}:${domainId}:${description.slice(0, 12)}`,
       domainId,
@@ -380,6 +486,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       delegationMode: goal.priority === "critical" ? "manual" : goal.priority === "high" ? "supervised" : "auto",
       estimatedDuration,
       estimatedCost,
+      constraintEnvelope,
     };
   }
 

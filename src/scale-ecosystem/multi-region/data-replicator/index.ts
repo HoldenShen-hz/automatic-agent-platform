@@ -60,6 +60,7 @@ export interface DataReplicatorConfig {
   flushIntervalMs: number;
   retryAttempts: number;
   checksumAlgorithm: "sha256" | "md5";
+  emit?: (targetRegionId: string, event: ReplicationEvent) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -132,9 +133,11 @@ export class DataReplicatorService {
   private readonly buffers = new Map<string, ReplicationEventBuffer>();
   private checkpoints = new Map<string, ReplicationCheckpoint>();
   private readonly eventHandlers = new Map<string, (event: ReplicationEvent) => Promise<void>>();
+  private readonly emit: (targetRegionId: string, event: ReplicationEvent) => void;
 
   public constructor(config: DataReplicatorConfig) {
     this.config = { ...config };
+    this.emit = config.emit ?? (() => {});
     for (const regionId of config.targetRegionIds) {
       this.buffers.set(regionId, new ReplicationEventBuffer(this.config.batchSize, this.config.flushIntervalMs));
     }
@@ -309,11 +312,8 @@ export class DataReplicatorService {
     if (handler) {
       await handler(event);
     }
-    // Emit event for external listeners
-    this.emit?.(targetRegionId, event);
+    this.emit(targetRegionId, event);
   }
-
-  private emit?(targetRegionId: string, event: ReplicationEvent): void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -25,7 +25,7 @@ Harness 如果没有统一的约束引擎，就会让风险、预算、输出治
 ## 决策
 
 - 每个 HarnessRun 必须携带显式 `ConstraintPack`
-- `ConstraintPack` 至少包含 `risk_policy` 与 `output_policy`
+- `ConstraintPack` 至少包含 `risk_policy`、`output_policy`、`budget_envelope`、`sandbox_requirement` 与 `approval_requirement`
 - 约束来源按 平台 -> 租户 -> 领域 -> 任务 合并
 - 不满足约束时必须 fail-close，并写入审计和 timeline
 
@@ -33,3 +33,7 @@ Harness 如果没有统一的约束引擎，就会让风险、预算、输出治
 
 - 高风险动作不会绕过 Harness 约束
 - 运行时与文档中的 success criteria 保持一致
+
+## v4.3 ADR Remediation
+
+- A-37: 本 ADR 原先把 `ConstraintPack` 缩减为 `risk_policy + output_policy`，根因是约束引擎 ADR 起草时只覆盖风险与输出治理，没有把预算、沙箱和审批要求一并纳入统一约束包。修复：正文现将 `budget_envelope / sandbox_requirement / approval_requirement` 补入最小集合。

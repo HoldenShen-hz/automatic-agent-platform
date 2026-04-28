@@ -59,7 +59,7 @@ export class SdkWorkbenchService {
     const plugins = input.plugins.map((plugin) => validatePluginManifest(plugin));
     const packs = input.packs.map((pack) => validateBusinessPackManifest(pack));
     const installPlans = packs.map((pack) => this.createInstallPlan({ pack, plugins }));
-    const requiredContracts = [...new Set(packs.flatMap((pack) => pack.capabilities.flatMap((capability) => capability.requiredContracts)))];
+    const requiredContracts = [...new Set(packs.flatMap((pack) => pack.capabilities.flatMap((capability) => capability.requiredContracts ?? [])))];
     const availableContracts = new Set(input.availableContracts.map((contract) => contract.trim()).filter((contract) => contract.length > 0));
     const missingContracts = requiredContracts.filter((contract) => !availableContracts.has(contract));
 
@@ -94,11 +94,15 @@ export class SdkWorkbenchService {
         unresolvedCapabilities.push(capability.capabilityKey);
         continue;
       }
-      const pluginCapability = match.capabilityIds.find((id) => id === capability.capabilityKey)!;
+      const pluginCapability = match.capabilityIds.find((id) => id === capability.capabilityKey);
+      if (pluginCapability == null) {
+        unresolvedCapabilities.push(capability.capabilityKey);
+        continue;
+      }
       pluginAssignments.push({
         capabilityKey: capability.capabilityKey,
         pluginId: match.pluginId,
-        pluginCapability: pluginCapability,
+        pluginCapability,
       });
     }
 
@@ -131,8 +135,8 @@ export class SdkWorkbenchService {
     }
 
     const previewUrls = [
-      buildApiUrl(input.client, { path: "/tasks" }),
-      buildApiUrl(input.client, { path: "/approvals", query: { limit: 10 } }),
+      buildApiUrl(input.client, { path: "/harness-runs", query: { limit: 10 } }),
+      buildApiUrl(input.client, { path: "/packs", query: { limit: 10 } }),
       buildApiUrl(input.client, { path: "/skills/registry/summary" }),
     ];
 
@@ -149,17 +153,17 @@ export class SdkWorkbenchService {
     return [
       {
         shortcutId: "sdk.tasks.list",
-        label: "List Tasks",
+        label: "List Harness Runs",
         kind: "api",
-        command: "GET /v1/tasks",
-        previewUrl: buildApiUrl(client, { path: "/tasks" }),
+        command: "GET /v1/harness-runs",
+        previewUrl: buildApiUrl(client, { path: "/harness-runs", query: { limit: 10 } }),
       },
       {
-        shortcutId: "sdk.approvals.queue",
-        label: "Approval Queue",
+        shortcutId: "sdk.packs.list",
+        label: "List Packs",
         kind: "api",
-        command: "GET /v1/approvals",
-        previewUrl: buildApiUrl(client, { path: "/approvals", query: { limit: 10 } }),
+        command: "GET /v1/packs",
+        previewUrl: buildApiUrl(client, { path: "/packs", query: { limit: 10 } }),
       },
       {
         shortcutId: "sdk.pack.test",

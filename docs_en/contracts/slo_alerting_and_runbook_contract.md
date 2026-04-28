@@ -2,9 +2,9 @@
 
 ## 1. Scope
 
-This contract defines industrial-grade SLI/SLO/SLA, alert classification, and runbook directory.
+This contract defines industrial-grade SLI/SLO/SLA, alert levels, and runbook directory.
 
-It answers the questions: what counts as "production available", when should alerts be triggered, and what should on-call personnel look at, do, and how to contain damage when issues occur.
+It answers the question: what counts as "production available", when does alerting need to happen, and when something happens on call, what should the person on duty look at, do, and how to limit damage.
 
 Related documents:
 
@@ -12,14 +12,14 @@ Related documents:
 - `debug_inspect_health_backpressure_contract.md`
 - `enterprise_operations_plane_contract.md`
 
-## 2. SLI Hierarchy
+## 2. SLI Layering
 
 | Layer | SLI Examples |
 | --- | --- |
 | OAPEFLIR Layer | loop convergence rate, feedback positive rate, rollout success rate |
 | System Layer | API availability, event loop latency, DB writability |
 | Platform Layer | task success rate, startup latency, recovery success rate |
-| Interaction Layer | approval availability, streaming first-packet latency |
+| Interaction Layer | approval availability, streaming first-byte latency |
 | Cost Layer | budget estimation error, token metering delay |
 
 ## 3. Minimum SLO Set
@@ -37,7 +37,7 @@ Related documents:
 Rules:
 
 - Before production declaration, each SLO must have calculation formula, data source, and alert threshold.
-- Targets without observable formula must not be written as external SLA.
+- Targets without observability formula must not be written as external SLA.
 
 ## 4. Alert Classification
 
@@ -45,8 +45,8 @@ Rules:
 | --- | --- | --- |
 | `P0` | Platform core unavailable | New tasks cannot execute, authoritative DB not writable |
 | `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain broadly failed |
-| `P2` | Single division or local capability significantly degraded | Certain division failure rate spikes |
-| `P3` | Local anomaly or capacity warning | Queue latency increasing, cost drift high |
+| `P2` | Single division or local capability significant degradation | Certain division failure rate surged |
+| `P3` | Local anomaly or capacity warning | Queue latency rising, cost drift high |
 
 ## 5. Alert Must Include
 
@@ -54,7 +54,7 @@ Rules:
 - Impact scope
 - First discovery time
 - Recommended runbook
-- Whether auto mitigation has been executed
+- Whether automatic damage control action has been executed
 
 ## 6. Runbook Directory
 
@@ -71,7 +71,7 @@ At minimum should have the following runbooks:
 - `oapeflir_loop_stalled`
 - `rollout_blocked_or_rollback`
 
-## 7. Alert Flow Diagram
+## 7. Alert Flowchart
 
 ```mermaid
 flowchart TD
@@ -84,16 +84,16 @@ flowchart TD
     G --> H["Page Oncall / Create Incident"]
 ```
 
-## 8. Auto Mitigation Boundaries
+## 8. Automatic Damage Control Boundaries
 
-Allowed to auto-execute:
+Allowed to automatically execute:
 
 - admission control tightening
-- provider failover
+- provider traffic switching
 - queue rate limiting
-- specific tenant / division throttling
+- specific tenant / division rate limiting
 
-Forbidden to auto-execute:
+Prohibited from automatically executing:
 
 - Unauthorized large-scale destructive rollback
 - Cross-tenant data-level operations
@@ -105,19 +105,19 @@ Phase 1a / 1b must freeze at minimum:
 
 - SLI name and formula
 - P0-P3 classification
-- Basic runbook checklist
+- Basic runbook inventory
 
-Must complete before production:
+Before entering production must complete:
 
 - Threshold finalization
 - On-call contact and escalation path
 - Drill records
 
-## 10. Closure Conclusion
+## 10. Conclusion
 
 Industrial-grade operations is not "lots of logs", but:
 
-- Has clear SLO
-- Has actionable alerts
-- Has runbooks
-- Has auto mitigation boundaries
+- Have clear SLO
+- Have actionable alerts
+- Have runbooks
+- Have automatic damage control boundaries

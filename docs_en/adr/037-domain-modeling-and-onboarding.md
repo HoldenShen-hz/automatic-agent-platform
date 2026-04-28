@@ -1,4 +1,4 @@
-# ADR-037 Domain Modeling and Onboarding Architecture
+# ADR-037 Business Domain Modeling and Onboarding Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-20
@@ -16,7 +16,7 @@ interface DomainDescriptor {
   domain_id: string;
   name: string;
   description: string;
-  domain_class: DomainClass;      // 7 types
+  domain_class: DomainClass;      // 24 vertical domain types
   risk_profile: DomainRiskProfile;
   knowledge_schema: DomainKnowledgeSchema;
   eval_framework: DomainEvalFramework;
@@ -30,17 +30,34 @@ interface DomainDescriptor {
 }
 ```
 
-### DomainClass 7 Types
+### DomainClass 24 Types
 
 | Type | Description |
 |------|-------------|
-| code_development | Code development |
-| content_creation | Content creation |
-| data_analytics | Data analytics |
-| customer_service | Customer service |
+| quant_trading | Quantitative Trading |
+| ecommerce | E-commerce |
+| ad_promotion | Advertising Promotion |
+| financial_services | Financial Services |
+| data_processing | Data Processing |
+| code_development | Code Development |
+| user_operations | User Operations |
+| industry_research | Industry Research |
+| academic_research | Academic Research |
+| enterprise_knowledge | Enterprise Knowledge Base |
 | finance | Finance |
-| hr | Human resources |
-| operations | Operations |
+| legal | Legal |
+| live_streaming | Live Streaming |
+| ad_creative_production | Ad Creative Production |
+| game_development | Game Development |
+| game_publishing | Game Publishing |
+| human_resources | Human Resources |
+| supply_chain_logistics | Supply Chain and Logistics |
+| healthcare | Healthcare |
+| education_training | Education and Training |
+| customer_service | Customer Service |
+| content_moderation_safety | Content Moderation and Safety |
+| it_ops_sre_devops | IT Operations SRE/DevOps |
+| marketing_brand | Marketing and Brand |
 
 ### Domain Risk Profile
 
@@ -78,15 +95,15 @@ Negative:
 - DomainDescriptor complexity is high
 - Domain modeling requires domain expert involvement
 
-Trade-offs:
-- Structure vs. flexibility
-- Standardization vs. customization
+## v4.3 ADR Remediation
+
+- A-32: This ADR originally compressed `DomainClass` into 7 broad categories. The root cause was that when the domain modeling ADR was formed, it still leaned towards product-market groupings and did not expand as the main architecture took the 24 vertical domains as the unified metamodel instantiation entry. Fix: The main text now converges `DomainClass` to 24 vertical domain types and aligns with the domain directory in main architecture `§71-§94`.
 
 ## Cross-References
 
+- [ADR-030 Runtime Execution Plane](./030-runtime-execution-plane.md)
 - [ADR-038 Business Domain Onboarding Runbook](./038-business-domain-onboarding-runbook.md)
-- [ADR-081 Domain Descriptor and Onboarding](./081-domain-descriptor-and-onboarding.md)
 
 ## Source Sections
 
-- `§37` DomainDescriptor Structured Domain Modeling
+- `§37` Business Domain Modeling and Onboarding Architecture

@@ -1,0 +1,32 @@
+import type { ApiClientConfig } from "../client-sdk/api-client.js";
+import { RetryableApiClient, createApiClient } from "../client-sdk/api-client.js";
+
+export interface AdminSdkConfig extends ApiClientConfig {}
+
+export class AdminSdk {
+  private readonly client: RetryableApiClient;
+
+  public constructor(config: AdminSdkConfig) {
+    this.client = createApiClient(config);
+  }
+
+  public listDomains<T>() {
+    return this.client.getPaginated<T>("/domains");
+  }
+
+  public registerDomain<T>(body: unknown) {
+    return this.client.post<T>("/domains", body);
+  }
+
+  public publishPack<T>(packId: string, body: unknown) {
+    return this.client.publishPack<T>(packId, body);
+  }
+
+  public pauseHarnessRun<T>(runId: string, reason?: string) {
+    return this.client.pauseHarnessRun<T>(runId, reason);
+  }
+
+  public abortHarnessRun<T>(runId: string, reason?: string) {
+    return this.client.abortHarnessRun<T>(runId, reason);
+  }
+}

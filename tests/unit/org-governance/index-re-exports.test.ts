@@ -52,10 +52,18 @@ test("sso-scim index exports identity-sync-service", () => {
   assert.ok(ssoScimIndex.IdentitySyncService !== undefined);
 });
 
+test("sso-scim index exports api-key-service", () => {
+  assert.ok(ssoScimIndex.ApiKeyService !== undefined);
+});
+
 test("sso-scim index exports from oidc", () => {
   assert.ok(ssoScimIndex.OidcIdentityService !== undefined);
 });
 
 test("sso-scim index exports from scim-sync", () => {
   assert.ok(ssoScimIndex.ScimProvisionService !== undefined);
+});
+
+test("sso-scim index exports scim-dlq-reconciliation", () => {
+  assert.ok(ssoScimIndex.ScimDlqReconciliationService !== undefined);
 });

@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -23,7 +23,7 @@ This contract defines the platform's unified error model.
 
 It requires that all errors propagated to runtime, gateway, approval, recovery, and observability layers must first converge to `AppError`.
 
-## 2. AppError Minimum Fields
+## 2. `AppError` Minimum Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -37,39 +37,39 @@ It requires that all errors propagated to runtime, gateway, approval, recovery, 
 | `task_id?` | `string` | Associated task |
 | `execution_id?` | `string` | Associated execution |
 | `caused_by?` | `string` | Upstream error code or exception reference |
-| `occurred_at` | `timestamp` | Occurrence time |
+| `occurred_at` | `timestamp` | Time of occurrence |
 
 ## 3. Unified Rules
 
-- All errors must have a stable `code`, not just throwing free text.
+- All errors must have a stable `code` and must not throw free-form text only.
 - All errors must explicitly mark `retryable`.
 - `user_message` and `internal_details` must be separated.
 - Provider / tool native errors must first be adapted to `AppError` before entering upper layers.
 
 ## 4. Category Semantics
 
-| Category | Meaning | Default Retry Suggestion |
+| Category | Meaning | Default Retry Advice |
 | --- | --- | --- |
-| `validation` | Invalid input, schema, configuration | No |
-| `policy` | Policy, approval, sensitive action denial | No |
-| `auth` | Insufficient identity or permissions | No |
-| `budget` | Budget, quota, cost exceeded | No |
+| `validation` | Input, schema, or configuration invalid | No |
+| `policy` | Policy, approval, or sensitive action denied | No |
+| `auth` | Identity or insufficient permissions | No |
+| `budget` | Budget, quota, or cost exceeded | No |
 | `provider` | LLM provider failure | Depends on error code |
 | `tool` | Tool execution failure | Depends on tool and idempotency |
-| `sandbox` | Path, network, isolation denial | Usually no |
-| `storage` | Database, file, index failure | Depends on error code |
-| `workflow` | Orchestration, dependency, step inconsistency | Usually no |
-| `runtime` | Runtime, sandbox, timeout, recovery failure | Depends on error code |
-| `tenant` | Tenant ownership, isolation, organization boundary error | Usually no |
-| `monetization` | Entitlement, quota, ledger, billing error | Depends on error code |
+| `sandbox` | Path, network, or isolation denied | Usually no |
+| `storage` | Database, file, or index failure | Depends on error code |
+| `workflow` | Orchestration, dependency, or step inconsistency | Usually no |
+| `runtime` | Runtime, sandbox, timeout, or recovery failure | Depends on error code |
+| `tenant` | Tenant ownership, isolation, or organization boundary error | Usually no |
+| `monetization` | Entitlement, quota, ledger, or billing error | Depends on error code |
 | `external` | External system fluctuation | Depends on error code |
-| `internal` | Unclassified internal error | Default no |
+| `internal` | Uncategorized internal error | Default no |
 
 ## 5. Relationship with Retry and Recovery
 
-- `retryable=true` only indicates permission to enter retry strategy, not equal to must retry.
-- Retry still needs to combine `RetryPolicy`, remaining budget, tool idempotency, and execution mode.
-- When non-retryable errors enter dead-letter or human escalation, `AppError.code` must be preserved.
+- `retryable=true` only indicates permission to enter the retry policy and does not equal mandatory retry.
+- Retry still needs to consider `RetryPolicy`, remaining budget, tool idempotency, and execution mode.
+- Non-retryable errors entering dead-letter or human escalation must preserve the `AppError.code`.
 
 ## 6. Standard Derived Types
 

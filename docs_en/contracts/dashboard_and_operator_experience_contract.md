@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines operational dashboards, attention queues, and non-technical user experience for `§43-§44`.
+This contract defines `§43-§44` operational dashboards, attention queues, and non-technical user experience.
 
 ## 2. Canonical Objects
 
@@ -17,14 +17,14 @@ This contract defines operational dashboards, attention queues, and non-technica
 
 ## 3. Dashboard Hierarchy
 
-The platform must support at least four layers of views:
+The platform must support at minimum four view layers:
 
 - `operator`
 - `domain_admin`
 - `platform_ops`
 - `fleet_admin`
 
-Each layer view must be mappable to structured DTOs, not UI-private patching (composition).
+Each view layer must be mappable to structured DTOs, not UI-private stitching.
 
 ## 4. `AttentionItem` Minimum Fields
 
@@ -38,7 +38,7 @@ Each layer view must be mappable to structured DTOs, not UI-private patching (co
 
 Rules:
 
-- All objects requiring human action must enter `AttentionItem`.
+- All objects requiring human operation enter `AttentionItem` uniformly.
 - AttentionItem must preserve source object references for drill-down.
 
 ## 5. UX Objects
@@ -61,12 +61,13 @@ Rules:
 
 ## 6. Runtime Rules
 
-- The UX layer is responsible only for guidance and presentation; it does not hold final governance authority.
-- Non-technical UX defaults to showing summaries, templates, and wizards; it must not directly expose low-level runtime terminology.
+- UX layer is only responsible for guidance and presentation and does not hold final governance authority.
+- Non-technical UX defaults to showing summaries, templates, and wizards, not directly exposing low-level runtime terminology.
 - L1-L4 dashboards share the same evidence plane and consistent time baseline.
 
 ## 7. Test Requirements
 
 - unit: dashboard aggregation, attention ranking, wizard step validation
-- integration: console / dashboard linked with approval / incident / runtime data
-- contract: different roles must not see unauthorized views
+- integration: console / dashboard data linkage with approval / incident / runtime
+- contract: different roles cannot see out-of-authority views
+

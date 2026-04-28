@@ -15,6 +15,34 @@ export const DomainGovernancePolicySchema = z.object({
   operatorRoles: z.array(DomainGovernanceRoleSchema).min(1),
   approvalRoles: z.array(DomainGovernanceRoleSchema).min(1),
   restrictedDataClasses: z.array(z.string().min(1)).default([]),
+  sloProfile: z.object({
+    latencySloMs: z.number().int().positive().optional(),
+    availabilityTarget: z.number().min(0).max(1).optional(),
+    freshnessSloMinutes: z.number().int().positive().optional(),
+  }).default({}),
+  budgetConstraints: z.object({
+    maxCostUsdPerDay: z.number().nonnegative().optional(),
+    maxTokensPerDay: z.number().int().nonnegative().optional(),
+    maxConcurrentRuns: z.number().int().positive().optional(),
+  }).default({}),
+  maxHibernationRenewals: z.number().int().nonnegative().default(0),
+  complianceRules: z.array(z.string().min(1)).default([]),
+  recertification: z.object({
+    cadence: z.enum(["quarterly", "semi_annual", "annual", "on_change"]).default("annual"),
+    requiredEvidence: z.array(z.string().min(1)).default([]),
+  }).default({
+    cadence: "annual",
+    requiredEvidence: [],
+  }),
+  waiver: z.object({
+    allowed: z.boolean().default(false),
+    approvalRoles: z.array(DomainGovernanceRoleSchema).default([]),
+    maxDurationDays: z.number().int().positive().default(30),
+  }).default({
+    allowed: false,
+    approvalRoles: [],
+    maxDurationDays: 30,
+  }),
   rollout: DomainGovernanceRolloutSchema.default({
     strategy: "canary",
     approvalRequired: true,

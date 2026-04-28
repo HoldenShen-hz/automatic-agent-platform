@@ -1,4 +1,4 @@
-import type { KnowledgeBoundary } from "./boundary-manager/index.js";
+import { canAccessKnowledgeBoundary, type KnowledgeBoundary } from "./boundary-manager/index.js";
 import { evaluateChineseWallPolicy, type ChineseWallPolicy } from "./chinese-wall-policy.js";
 
 export interface FederatedKnowledgeSource {
@@ -8,12 +8,14 @@ export interface FederatedKnowledgeSource {
   readonly title: string;
   readonly content: string;
   readonly tags: readonly string[];
+  readonly structuredFields?: Readonly<Record<string, string>>;
 }
 
 export interface FederatedKnowledgeQuery {
   readonly requesterOrgNodeId: string;
   readonly query: string;
   readonly boundaryIds?: readonly string[];
+  readonly transform?: CrossBoundaryTransform;
 }
 
 export interface FederatedKnowledgeResult {
@@ -22,6 +24,12 @@ export interface FederatedKnowledgeResult {
   readonly title: string;
   readonly excerpt: string;
   readonly matchedTags: readonly string[];
+  readonly transformApplied: "none" | "summary" | "field_filter";
+}
+
+export interface CrossBoundaryTransform {
+  readonly mode: "summary" | "field_filter";
+  readonly allowedFieldKeys?: readonly string[];
 }
 
 export class KnowledgeFederator {
@@ -42,9 +50,7 @@ export class KnowledgeFederator {
         if (boundary == null) {
           return false;
         }
-        if (boundary.defaultVisibility !== "public"
-          && boundary.ownerOrgNodeId !== query.requesterOrgNodeId
-          && !boundary.allowedOrgNodeIds.includes(query.requesterOrgNodeId)) {
+        if (!canAccessKnowledgeBoundary(boundary, query.requesterOrgNodeId)) {
           return false;
         }
         if (policy == null) {
@@ -56,12 +62,56 @@ export class KnowledgeFederator {
         const haystack = `${source.title} ${source.content} ${source.tags.join(" ")}`.toLowerCase();
         return haystack.includes(normalizedQuery);
       })
-      .map((source) => ({
-        sourceId: source.sourceId,
-        boundaryId: source.boundaryId,
-        title: source.title,
-        excerpt: source.content.slice(0, 180),
-        matchedTags: source.tags.filter((tag) => normalizedQuery.includes(tag.toLowerCase()) || tag.toLowerCase().includes(normalizedQuery)),
-      }));
+      .map((source) => {
+        const boundary = boundaries.find((item) => item.boundaryId === source.boundaryId)!;
+        const transformed = applyCrossBoundaryTransform(
+          source,
+          boundary,
+          query.requesterOrgNodeId,
+          query.transform,
+        );
+        return {
+          sourceId: source.sourceId,
+          boundaryId: source.boundaryId,
+          title: source.title,
+          excerpt: transformed.excerpt,
+          matchedTags: source.tags.filter((tag) => normalizedQuery.includes(tag.toLowerCase()) || tag.toLowerCase().includes(normalizedQuery)),
+          transformApplied: transformed.mode,
+        };
+      });
   }
+}
+
+function applyCrossBoundaryTransform(
+  source: FederatedKnowledgeSource,
+  boundary: KnowledgeBoundary,
+  requesterOrgNodeId: string,
+  transform?: CrossBoundaryTransform,
+): { excerpt: string; mode: "none" | "summary" | "field_filter" } {
+  if (requesterOrgNodeId === boundary.ownerOrgNodeId) {
+    return { excerpt: source.content.slice(0, 180), mode: "none" };
+  }
+  if (transform?.mode === "field_filter" && transform.allowedFieldKeys != null && transform.allowedFieldKeys.length > 0) {
+    const fields = source.structuredFields ?? {};
+    const filtered = transform.allowedFieldKeys
+      .filter((key) => key.length > 0 && (boundary.fieldAllowlist.length === 0 || boundary.fieldAllowlist.includes(key)))
+      .map((key) => `${key}: ${fields[key] ?? "[redacted]"}`);
+    return {
+      excerpt: filtered.join(" | ").slice(0, 180),
+      mode: "field_filter",
+    };
+  }
+  return {
+    excerpt: buildSummaryExcerpt(source.content),
+    mode: "summary",
+  };
+}
+
+function buildSummaryExcerpt(content: string): string {
+  const normalized = content
+    .replace(/\S+@\S+/g, "[redacted-email]")
+    .replace(/\b\d{4,}\b/g, "[redacted-number]")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized.slice(0, 180);
 }

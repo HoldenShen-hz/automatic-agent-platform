@@ -1,4 +1,5 @@
 import { CODING_DOMAIN_PRESET, requiresCodingReview, type CodingTaskType } from "./coding/index.js";
+import { type DomainLifecycleState, DomainLifecycleStateSchema } from "./domain-specs.js";
 import { listBlockingEvaluators, type DomainEvalFramework } from "./eval-framework/index.js";
 import { type DomainInteractionRule } from "./interaction-policy/index.js";
 import { resolveKnowledgeNamespaces, type DomainKnowledgeSchema } from "./knowledge-schema/index.js";
@@ -12,7 +13,7 @@ export interface DomainDescriptorInput {
   readonly displayName: string;
   readonly description: string;
   readonly ownerOrgNodeId: string;
-  readonly lifecycleState: "draft" | "validating" | "certified" | "canary" | "active" | "deprecated" | "retired";
+  readonly lifecycleState: DomainLifecycleState | "validating" | "certified" | "canary" | "retired";
   readonly version: number;
   readonly riskProfile: DomainRiskProfile;
   readonly knowledgeSchema: DomainKnowledgeSchema;
@@ -53,6 +54,7 @@ export interface DomainOnboardingChecklist {
 
 export class DomainDescriptorOrchestrationService {
   public review(input: DomainDescriptorInput): DomainDescriptorReview {
+    const lifecycleState = normalizeLifecycleState(input.lifecycleState);
     const blockingEvaluatorIds = listBlockingEvaluators(input.evalFramework).map((item) => item.evaluatorId);
     const promptIds = input.promptLibrary.prompts.map((item) => item.promptId);
     const promptStageCoverage = [...new Set(input.promptLibrary.prompts.map((item) => item.stage))];
@@ -79,14 +81,14 @@ export class DomainDescriptorOrchestrationService {
       ...(recipeIds.length === 0 ? ["domain_descriptor.recipe_missing"] : []),
       ...(metaModelCompleteness < 100 ? [`domain_descriptor.meta_model_incomplete:${metaModelCompleteness}`] : []),
       ...metaModelMissingQuestionIds.map((questionId) => `domain_descriptor.meta_model_missing:${questionId}`),
-      ...(input.lifecycleState === "active" && input.riskProfile.defaultRiskLevel === "critical"
-        ? ["domain_descriptor.high_risk_active_requires_canary_history"]
+      ...(lifecycleState === "active" && input.riskProfile.defaultRiskLevel === "critical"
+        ? ["domain_descriptor.high_risk_active_requires_registered_release_evidence"]
         : []),
     ];
 
     return {
       domainId: input.domainId,
-      lifecycleState: input.lifecycleState,
+      lifecycleState,
       ownerOrgNodeId: input.ownerOrgNodeId,
       blockingEvaluatorIds,
       promptIds,
@@ -111,22 +113,32 @@ export class DomainDescriptorOrchestrationService {
       domainId,
       phases: [
         {
-          phase: "modeling",
+          phase: "domain_modeling",
           requiredEvidence: ["descriptor", "risk_profile", "knowledge_schema"],
         },
         {
-          phase: "development_validation",
-          requiredEvidence: ["workflow_validation", "eval_framework", "prompt_library"],
+          phase: "pack_development",
+          requiredEvidence: ["domain_lint", "workflow_validation", "eval_framework", "prompt_library"],
         },
         {
           phase: "security_certification",
           requiredEvidence: ["security_review", "interaction_policy", "approval_path"],
         },
         {
-          phase: "canary_launch",
-          requiredEvidence: ["canary_metrics", "rollback_plan", "operator_signoff"],
+          phase: "gray_rollout",
+          requiredEvidence: ["rollout_metrics", "rollback_plan", "operator_signoff"],
         },
       ],
     };
   }
+}
+
+function normalizeLifecycleState(value: DomainDescriptorInput["lifecycleState"]): DomainLifecycleState {
+  const aliasMap: Record<string, DomainLifecycleState> = {
+    validating: "validated",
+    certified: "registered",
+    canary: "registered",
+    retired: "archived",
+  };
+  return DomainLifecycleStateSchema.parse(aliasMap[value] ?? value);
 }

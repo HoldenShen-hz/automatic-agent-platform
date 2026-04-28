@@ -8,8 +8,10 @@ export type ExplanationDepth = "L1" | "L2" | "L3";
 
 export interface ExplanationRequest {
   readonly taskId: string;
-  readonly stage: string;
+  readonly stageId?: string;
+  readonly stage?: string;
   readonly summary: string;
+  readonly decision?: "accept" | "retry_same_plan" | "replan" | "escalate_to_human" | "downgrade_mode" | "abort";
   readonly decisionFactors: readonly string[];
   readonly evidence: readonly ExplanationEvidence[];
   readonly riskNotes: readonly string[];
@@ -20,7 +22,8 @@ export interface ExplanationRequest {
 
 export interface StageRationale {
   readonly taskId: string;
-  readonly stage: string;
+  readonly stageId: string;
+  readonly decision: ExplanationRequest["decision"];
   readonly summary: string;
   readonly decisionFactors: readonly string[];
   readonly evidenceRefs: readonly string[];
@@ -38,9 +41,9 @@ export interface ExplanationBundle {
   readonly cacheKey: string;
 }
 
-function explanationCacheKey(taskId: string, stage: string, depth: ExplanationDepth): string {
+function explanationCacheKey(taskId: string, stageId: string, depth: ExplanationDepth): string {
   const depthKey = depth === "L3" ? "audit" : depth;
-  return `${taskId}:${stage}:${depthKey}`;
+  return `${taskId}:${stageId}:${depthKey}`;
 }
 
 function uniqueStrings(values: readonly string[]): string[] {
@@ -51,6 +54,7 @@ export class ExplanationPipelineService {
   private cache: Record<string, ExplanationCacheEntry> = {};
 
   public generate(request: ExplanationRequest, depth: ExplanationDepth = "L2"): ExplanationBundle {
+    const stageId = request.stageId ?? request.stage ?? "unknown";
     const allowedCategories = new Set(request.allowedEvidenceCategories ?? request.evidence.map((item) => item.category));
     const visibleEvidence = request.evidence.filter((item) => allowedCategories.has(item.category));
     const hiddenEvidence = request.evidence.filter((item) => !allowedCategories.has(item.category));
@@ -58,7 +62,8 @@ export class ExplanationPipelineService {
     const redactedEvidenceRefs = collectExplanationEvidenceIds(hiddenEvidence);
     const rationale: StageRationale = {
       taskId: request.taskId,
-      stage: request.stage,
+      stageId,
+      decision: request.decision ?? "accept",
       summary: request.summary,
       decisionFactors: uniqueStrings(request.decisionFactors),
       evidenceRefs,
@@ -66,12 +71,13 @@ export class ExplanationPipelineService {
       generatedAt: request.generatedAt ?? nowIso(),
     };
     const causalSummary = buildCausalChainSummary(request.causalLinks ?? []);
-    const cacheKey = explanationCacheKey(request.taskId, request.stage, depth);
+    const cacheKey = explanationCacheKey(request.taskId, stageId, depth);
     const rendered = this.renderBundle(rationale, depth, causalSummary, redactedEvidenceRefs);
 
     this.cache = putExplanationCacheEntry(this.cache, {
       cacheKey,
       summary: rationale.summary,
+      ttlHours: depth === "L3" ? 0 : 24,
     });
 
     return {
@@ -95,9 +101,10 @@ export class ExplanationPipelineService {
     causalSummary: readonly string[],
     redactedEvidenceRefs: readonly string[],
   ): string {
-    const base = renderStageExplanation(rationale.stage, rationale.summary, rationale.evidenceRefs);
+    const base = renderStageExplanation(rationale.stageId, rationale.summary, rationale.evidenceRefs);
+    const decision = ` decision=${rationale.decision}`;
     if (depth === "L1") {
-      return base;
+      return `${base}${decision}`;
     }
 
     const factors = rationale.decisionFactors.length > 0
@@ -108,7 +115,7 @@ export class ExplanationPipelineService {
       : "";
 
     if (depth === "L2") {
-      return `${base}${factors}${risks}`;
+      return `${base}${decision}${factors}${risks}`;
     }
 
     const causal = causalSummary.length > 0
@@ -117,6 +124,6 @@ export class ExplanationPipelineService {
     const redaction = redactedEvidenceRefs.length > 0
       ? ` redacted=${redactedEvidenceRefs.join(",")}`
       : "";
-    return `${base}${factors}${risks}${causal}${redaction}`;
+    return `${base}${decision}${factors}${risks}${causal}${redaction}`;
   }
 }

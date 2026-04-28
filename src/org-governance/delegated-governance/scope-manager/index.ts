@@ -52,6 +52,12 @@ export function evaluateGuardrail(
       const riskOrder = ["low", "medium", "high", "critical"];
       const maxIndex = riskOrder.indexOf(maxRisk);
       const attemptIndex = riskOrder.indexOf(attemptedRisk);
+      if (maxIndex < 0 || attemptIndex < 0) {
+        return {
+          allowed: false,
+          reason: `Unrecognized risk level guardrail payload: max=${maxRisk}, attempted=${attemptedRisk}`,
+        };
+      }
       if (attemptIndex > maxIndex) {
         return { allowed: false, reason: `Risk level ${attemptedRisk} exceeds max ${maxRisk}` };
       }
@@ -80,13 +86,22 @@ export function evaluateGuardrail(
     case "min_eval_threshold": {
       const minThreshold = guardrail.value as number;
       const attemptedThreshold = attemptedValue as number;
+      if (!Number.isFinite(minThreshold) || !Number.isFinite(attemptedThreshold)) {
+        return {
+          allowed: false,
+          reason: `Invalid eval threshold guardrail payload: min=${String(minThreshold)}, attempted=${String(attemptedThreshold)}`,
+        };
+      }
       if (attemptedThreshold < minThreshold) {
         return { allowed: false, reason: `Eval threshold ${attemptedThreshold} below minimum ${minThreshold}` };
       }
       return { allowed: true, reason: "Above eval threshold" };
     }
     default:
-      return { allowed: true, reason: "Unknown guardrail type" };
+      return {
+        allowed: false,
+        reason: `Unknown guardrail type ${guardrailType ?? "undefined"} denied by default`,
+      };
   }
 }
 
@@ -140,7 +155,10 @@ export function isOperationAllowedByRole(
       "adjust_agent_autonomy",
       "create_trigger",
     ],
-    team_lead: [],
+    team_lead: [
+      "approve_task",
+      "create_trigger",
+    ],
   };
 
   return allowedByRole[role]?.includes(operation) ?? false;

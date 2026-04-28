@@ -14,6 +14,10 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
     connectorId: overrides.connectorId ?? "jira-test",
     capability: overrides.capability ?? "create_issue",
     payload: overrides.payload ?? {},
+    policyRef: "policyRef" in overrides ? overrides.policyRef : "policy.connector.jira-test",
+    secretBindings: "secretBindings" in overrides
+      ? overrides.secretBindings
+      : [{ secretRef: "secret://jira-test/token", purpose: "api_token" }],
   };
 }
 
@@ -108,6 +112,26 @@ test("JiraConnector.execute is case-sensitive for capability names", () => {
 test("JiraConnector.execute rejects delete_issue capability", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "delete_issue" });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("JiraConnector.execute fails closed when policyRef is missing", () => {
+  const connector = new JiraConnector();
+  const request = createRequest({ policyRef: undefined });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("JiraConnector.execute fails closed when secretBindings are missing", () => {
+  const connector = new JiraConnector();
+  const request = createRequest({ secretBindings: [] });
 
   const result = connector.execute(request);
 

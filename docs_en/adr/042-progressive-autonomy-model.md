@@ -5,19 +5,25 @@
 
 ## Context
 
-Agents of different maturity levels need different autonomous permissions, and newly onboarded agents should gradually earn trust.
+Agents with different maturity levels require different autonomy permissions. Newly onboarded agents should progressively earn trust.
 
 ## Decision
 
 ### Autonomy Levels
 
-| Level | Name | Permissions |
-|-------|------|-------------|
+| Level | Name | Permission |
+|-------|------|------------|
 | 0 | supervised | Full human supervision |
-| 1 | assisted | Assistance suggestions |
+| 1 | assisted | Assisted suggestions |
 | 2 | partial_auto | Partial automation |
 | 3 | high_auto | High automation |
 | 4 | full_auto | Full automation |
+
+Rules:
+
+- `full_auto` does not represent unlimited automation.
+- High-risk domains are not allowed to enter `full_auto` by default, unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance with human accountability boundaries.
+- If a domain is marked as `advisory_only`, `human_accountable`, or `deterministic_hot_path_only`, the autonomy level ceiling must be below `full_auto`.
 
 ### Promotion Rules
 
@@ -28,30 +34,28 @@ Agents of different maturity levels need different autonomous permissions, and n
 
 ### Demotion Rules
 
-- Consecutive failures trigger demotion
+- Continuous failures trigger demotion
 - Risk events trigger demotion
 - Users can manually demote
 
 ### Permission Boundaries
 
 - Each level has clear permission scope
-- High-risk operations require high level
-- Key decisions retain human approval
+- High-risk operations require higher levels
+- Critical decisions retain human approval
 
 ## Consequences
 
 Positive:
+
 - Progressive authorization reduces risk
-- Incentivizes agents to continuously improve
+- Encourages continuous agent improvement
 - Clear permission boundaries facilitate management
 
 Negative:
+
 - Promotion/demotion logic is complex
 - Requires comprehensive monitoring and evaluation mechanisms
-
-Trade-offs:
-- Trust vs. safety
-- Efficiency vs. control
 
 ## Cross-References
 
@@ -60,4 +64,8 @@ Trade-offs:
 
 ## Source Sections
 
-- `§42` Gradual Autonomy
+- `§42` Progressive Autonomy Model
+
+## v4.3 ADR Remediation
+
+- A-34: This ADR originally described level 4 `full_auto` as "full automation". The root cause was that the Progressive Autonomy ADR mistakenly wrote autonomy levels as an unlimited authorization ladder, without binding to high-risk domain risk override rules. Fix: The main text now explicitly states that high-risk domains cannot enter `full_auto` by default, unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance.

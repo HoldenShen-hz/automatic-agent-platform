@@ -17,7 +17,11 @@ export interface ImprovementCandidate {
     | "model_retraining"
     | "data_augmentation";
   readonly sourceSignalIds: readonly string[];
-  readonly proposedChange: string;
+  readonly candidate_type?: ImprovementCandidate["candidateType"];
+  readonly proposedChange: {
+    readonly summary: string;
+    readonly targetSurface: "prompt" | "workflow" | "policy" | "playbook" | "model" | "dataset";
+  };
   readonly riskAssessment: "low" | "medium" | "high";
   readonly reviewStatus: "proposed" | "reviewing" | "approved" | "rejected" | "released";
 }
@@ -61,8 +65,12 @@ export class FeedbackImprovementService {
     const candidate: ImprovementCandidate = {
       candidateId: newId("improvement_candidate"),
       candidateType: this.mapCandidateType(signal.learningType),
+      candidate_type: this.mapCandidateType(signal.learningType),
       sourceSignalIds: signal.sourceSignalIds,
-      proposedChange: signal.valueSummary,
+      proposedChange: {
+        summary: signal.valueSummary,
+        targetSurface: this.mapTargetSurface(signal.learningType),
+      },
       riskAssessment: signal.confidence >= 0.85 ? "low" : signal.confidence >= 0.6 ? "medium" : "high",
       reviewStatus: "proposed",
     };
@@ -154,6 +162,22 @@ export class FeedbackImprovementService {
       case "recovery_playbook":
       default:
         return "playbook_update";
+    }
+  }
+
+  private mapTargetSurface(signalType: LearningSignal["learningType"]): ImprovementCandidate["proposedChange"]["targetSurface"] {
+    switch (signalType) {
+      case "failure_pattern":
+        return "workflow";
+      case "user_correction":
+        return "prompt";
+      case "model_retraining":
+        return "model";
+      case "dataset_gap":
+        return "dataset";
+      case "recovery_playbook":
+      default:
+        return "playbook";
     }
   }
 

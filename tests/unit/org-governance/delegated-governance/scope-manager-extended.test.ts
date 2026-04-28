@@ -107,7 +107,7 @@ test("matchesGovernanceScope handles multiple domainIds", () => {
   assert.equal(result, true);
 });
 
-test("evaluateGuardrail handles unknown guardrail type as allowed", () => {
+test("evaluateGuardrail handles unknown guardrail type as denied", () => {
   const guardrail: any = {
     guardrailId: "g1",
     type: "unknown_type",
@@ -117,7 +117,7 @@ test("evaluateGuardrail handles unknown guardrail type as allowed", () => {
   };
 
   const result = evaluateGuardrail(guardrail, "any_value");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
 });
 
 test("evaluateGuardrail max_risk_level handles risk levels not in order", () => {

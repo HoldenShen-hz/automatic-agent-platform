@@ -5,71 +5,59 @@
 
 ## Context
 
-Operators need a unified dashboard to monitor platform health, view task status, and manage incidents. The dashboard must aggregate data from multiple planes.
+Operations personnel need a unified view to understand the overall platform status, rather than being scattered across multiple monitoring systems.
 
 ## Decision
 
 ### Dashboard Architecture
 
-```
-src/interaction/dashboard/
-```
-
-### L1-L4 DTO Aggregation
-
-| Layer | Description |
-|-------|-------------|
-| L1 | Raw metrics and events |
-| L2 | Aggregated indicators |
-| L3 | Trend analysis |
-| L4 | Predictive insights |
-
-### Core Metrics
-
-| Metric | Description |
+| Module | Description |
 |--------|-------------|
-| Task Success Rate | Percentage of successfully completed tasks |
-| Average Execution Time | Mean task execution duration |
-| Active Workers | Current number of active workers |
-| Queue Depth | Number of pending tasks |
-| Error Rate | Percentage of failed tasks |
+| System Overview | Overall platform health status |
+| Task Board | Real-time task status and progress |
+| Event Center | Alerts and event lists |
+| Cost Report | Resource consumption and costs |
+| Performance Monitoring | P99/latency/error rate |
+| Security Posture | Authentication/authorization/audit |
 
-### Real-Time Updates
+### WebSocket Real-time Push
 
-- WebSocket /ws/v1/stream
-- Server-Sent Events support
-- Polling fallback for legacy clients
+- `/ws/v1/stream` endpoint
+- DashboardWebSocketServer implementation
+- Real-time status updates
 
-### Dashboard Components
+### View Layers
 
-| Component | Description |
-|-----------|-------------|
-| TaskMonitor | Real-time task status monitoring |
-| WorkerPoolView | Worker allocation and health |
-| IncidentPanel | Active incident management |
-| MetricChart | Time-series visualization |
-| AlertFeed | Live alert notifications |
+| Layer | Audience | Content |
+|-------|----------|---------|
+| Management Layer | Executives | Business metrics, health status |
+| Operations Layer | SRE | System metrics, alerts, capacity |
+| Development Layer | Developers | Task details, logs, trace |
+
+### Alert Aggregation
+
+- Reduce alert fatigue
+- Intelligent grouping
+- Root cause analysis assistance
 
 ## Consequences
 
 Positive:
+
 - Unified view improves operational efficiency
-- Real-time updates enable quick response
-- L1-L4 aggregation provides comprehensive insights
+- Real-time push ensures timely response
+- Layered views serve different audiences
 
 Negative:
-- Dashboard complexity increases with more metrics
-- Real-time updates require robust infrastructure
 
-Trade-offs:
-- Visibility vs. complexity
-- Real-time vs. resource cost
+- Dashboard maintenance costs
+- Real-time data pipeline complexity
 
 ## Cross-References
 
-- [ADR-041 Proactive Agent Framework](./041-proactive-agent-framework.md)
+- [ADR-028 Incident and Event Handling Architecture](./028-incident-and-event-handling-architecture.md)
 - [ADR-084 Operator Dashboard and User Experience](./084-operator-dashboard-and-user-experience.md)
 
 ## Source Sections
 
-- `§43` Unified Operations Dashboard
+- `§43` Unified Operations Dashboard Architecture

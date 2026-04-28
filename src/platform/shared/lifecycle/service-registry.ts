@@ -73,6 +73,9 @@ export class ServiceRegistry {
 
   public constructor() {
     ServiceRegistry.liveRegistries.add(this);
+    for (const registrar of ServiceRegistry.bootstrapRegistrars.values()) {
+      registrar(this);
+    }
   }
 
   /**
@@ -81,9 +84,6 @@ export class ServiceRegistry {
   public static getInstance(): ServiceRegistry {
     if (!ServiceRegistry._instance) {
       ServiceRegistry._instance = new ServiceRegistry();
-      for (const registrar of ServiceRegistry.bootstrapRegistrars.values()) {
-        registrar(ServiceRegistry._instance);
-      }
     }
     return ServiceRegistry._instance;
   }
@@ -94,7 +94,7 @@ export class ServiceRegistry {
   public static registerBootstrap(name: string, registrar: (registry: ServiceRegistry) => void): void {
     ServiceRegistry.bootstrapRegistrars.set(name, registrar);
     if (ServiceRegistry.liveRegistries.size === 0) {
-      registrar(ServiceRegistry.getInstance());
+      ServiceRegistry.getInstance();
       return;
     }
     for (const registry of ServiceRegistry.liveRegistries) {
@@ -116,6 +116,7 @@ export class ServiceRegistry {
     this.instances.clear();
     this.services.clear();
     this.initializing.clear();
+    ServiceRegistry.liveRegistries.delete(this);
     ServiceRegistry._instance = null;
 
     const pending: Promise<void>[] = [];

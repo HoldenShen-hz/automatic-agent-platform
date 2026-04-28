@@ -5,7 +5,7 @@
 
 ## Context
 
-Enterprises have deep organizational hierarchies from business groups → departments → teams, and the platform needs to express these hierarchical relationships and support hierarchical governance.
+Enterprises have deep organizational hierarchies of business group -> department -> team, and the platform needs to express this hierarchical relationship and support tiered governance.
 
 ## Decision
 
@@ -13,8 +13,8 @@ Enterprises have deep organizational hierarchies from business groups → depart
 
 ```typescript
 interface OrganizationHierarchy {
-  root: OrgNode;           // Root node (company)
-  business_groups: OrgNode[];  // Business groups
+  root: OrgNode;              // Root node (company)
+  business_groups: OrgNode[]; // Business groups
   departments: OrgNode[];     // Departments
   teams: OrgNode[];           // Teams
   individuals: OrgNode[];     // Individuals
@@ -30,35 +30,33 @@ interface OrgNode {
 }
 ```
 
-### Hierarchical Governance Policy
+### Tiered Governance Strategy
 
 | Level | Governance Autonomy | Approval Chain |
-|-------|---------------------|---------------|
-| Company-level | Platform managed | CEO/Governance Committee |
-| Business group | Business group managed | VP |
-| Department-level | Department managed | Department head |
-| Team-level | Team managed | Team Lead |
+|-------|---------------------|----------------|
+| Company Level | Platform management | CEO/Governance Committee |
+| Business Group Level | Business group management | VP |
+| Department Level | Department management | Department head |
+| Team Level | Team management | Team Lead |
 
-### Relationship with Tenant
+### Relationship with Tenants
 
 - Tenant is the top-level isolation unit
-- Organization hierarchy subdivides within tenant
-- No organizational relationship across tenants
+- Organization hierarchy is subdivided within tenant
+- No organizational relationships across tenants
 
 ## Consequences
 
 Positive:
-- Hierarchy model matches enterprise reality
-- Hierarchical governance improves management efficiency
-- Approval chain is clear
+
+- Hierarchy model matches actual enterprise structure
+- Tiered governance improves management efficiency
+- Clear approval chains
 
 Negative:
+
 - Hierarchy maintenance complexity
 - Cross-level collaboration requires additional design
-
-Trade-offs:
-- Structure vs. flexibility
-- Control vs. autonomy
 
 ## Cross-References
 
@@ -67,4 +65,4 @@ Trade-offs:
 
 ## Source Sections
 
-- `§46` Organizational Hierarchy Model
+- `§46` Organization Hierarchy Model

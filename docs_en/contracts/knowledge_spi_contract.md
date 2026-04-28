@@ -1,14 +1,14 @@
 # Knowledge SPI Contract
 
-> **OAPEFLIR Related**: This contract defines the SPI interface for OAPEFLIR Knowledge Plane, corresponding to ADR-078.
+> **OAPEFLIR Relevance**: This contract defines the SPI interfaces for the OAPEFLIR Knowledge Plane, corresponding to ADR-078.
 > **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the Service Provider Interface (SPI) for Knowledge Plane, including KIP 5-stage pipeline, three index types, and three-level query standardized interfaces.
+This contract defines the Service Provider Interface (SPI) for the Knowledge Plane, including the KIP 5-stage pipeline, three index types, and three-level query normalization interfaces.
 
-Related Documents:
-- `artifact_store_contract.md`: Boundary between Knowledge and Artifact.
+Related documents:
+- `artifact_store_contract.md`: Boundaries between Knowledge and Artifact.
 - [ADR-078 Knowledge Plane Architecture](../adr/078-knowledge-plane-architecture.md)
 
 ## 2. KIP 5-Stage Pipeline
@@ -16,13 +16,13 @@ Related Documents:
 ```
 Intake → Extraction → Archive → Index → Query
   ↓        ↓           ↓         ↓       ↓
-Raw Doc  Semantic    Cold      Three    Three
-       Extraction   Storage   Indexes   Levels
+Raw Doc  Semantic    Cold      Three   Three
+         Extraction  Storage   Indexes Queries
 ```
 
 | Stage | Component | Responsibility |
-|------|------|------|
-| Intake | `KnowledgeIngestionPipeline` | Receive raw documents, format validation |
+|-------|-----------|----------------|
+| Intake | `KnowledgeIngestionPipeline` | Receives raw documents, format validation |
 | Extraction | `KnowledgeExtractor` | Semantic extraction, chunking, summarization |
 | Archive | `KnowledgeArchive` | Cold data persistence (SQLite) |
 | Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index types maintenance |
@@ -118,7 +118,7 @@ interface SemanticVectorStore {
 }
 ```
 
-**Current Status**: Using SHA-256 hash pseudo-vector (`local-hash-v1:` prefix).
+**Current Status**: Using SHA-256 hash pseudo-vectors (`local-hash-v1:` prefix).
 
 ### 4.3 ASTIndex
 
@@ -138,10 +138,10 @@ interface ASTIndex {
 ## 5. KnowledgeQueryService Three-Level Query SPI
 
 | Level | Response Time Target | Retrieval Scope |
-|------|------------|---------|
+|-------|---------------------|-----------------|
 | `quick` | <100ms P99 | Keyword index only (L1 cache) |
-| `standard` | <500ms P99 | Keyword + semantic vector mixed |
-| `deep` | <2000ms | All indexes + cross namespace |
+| `standard` | <500ms P99 | Keyword + semantic vector hybrid |
+| `deep` | <2000ms | All indexes + cross-namespace |
 
 ```typescript
 enum QueryLevel {
@@ -191,16 +191,16 @@ interface RetrievalHit {
 
 ## 6. 4-Level Trust Model
 
-| Trust Level | Source | Purpose |
-|---------|------|------|
+| Trust Level | Source | Usage |
+|-------------|--------|-------|
 | `verified` | Human-reviewed content | Production decisions |
-| `reviewed` | LearningObjectValidator verification | Improvement candidates |
-| `inferred` | System inferred | Suggestions / reference |
+| `reviewed` | LearningObjectValidator verified | Improvement candidates |
+| `inferred` | System-inferred | Suggestions/references |
 | `untrusted` | Unverified source | Display only |
 
 ## 7. Learn→Knowledge Integration
 
-LearningObject injects into knowledge plane through `KnowledgePromotionService`:
+LearningObject is injected into the knowledge plane through `KnowledgePromotionService`:
 
 ```typescript
 interface KnowledgePromotionService {
@@ -231,14 +231,14 @@ FailurePatternMiner.mine()
             namespace: "system/learned-patterns",
             trustLevel: "reviewed"
           })
-    → Subsequent Observe stage can retrieve learned patterns
+    → Subsequent Observe phase can retrieve learned patterns
 ```
 
 ## 8. Constraints
 
-- **Quick mode**: Must not access SemanticVectorStore or KeywordIndex; only query L1 cache.
-- **Standard mode**: Must not execute graph traversal or AST query.
-- **Deep mode**: Must include semantic similarity sorted topK=30; optional graph expansion.
-- **Namespace isolation**: Cross-namespace query must go through KnowledgeAccessControl authorization.
-- **R4-EVIDENCE**: Content injected from Learn→Knowledge must include EvidenceRef link.
-- **Trust level propagation**: trustLevel must be determined at intake; must not degrade.
+- **Quick Mode**: Must not access SemanticVectorStore or KeywordIndex, only query L1 cache.
+- **Standard Mode**: Must not execute graph traversal or AST queries.
+- **Deep Mode**: Must include semantic similarity ranking topK=30, optional graph expansion.
+- **Namespace Isolation**: Cross-namespace queries must be authorized through KnowledgeAccessControl.
+- **R4-EVIDENCE**: Content injected from Learn→Knowledge must include EvidenceRef links.
+- **Trust Level Propagation**: trustLevel must be determined at intake time, no demotion allowed.

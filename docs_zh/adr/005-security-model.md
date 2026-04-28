@@ -54,9 +54,18 @@ Automatic Agent 允许 Agent 访问工具、执行命令、调用外部系统，
 
 平台的运行模式会影响审批和自动化边界：
 
-- `supervised`：安全优先，敏感行为必须显式确认。
-- `auto`：允许更多自动执行，但仍保留高风险审批。
-- `full-auto`：仅在更严格的预算、安全和回滚条件下开放，仍保留硬性禁止项。
+- `full_auto`：仅在更严格的预算、安全和回滚条件下开放。
+- `supervised_auto`：允许自动执行，但高风险行为仍需受监督。
+- `read_only`：禁止写入和副作用。
+- `no-write`：允许读取与分析，但不允许任何写操作。
+- `no-external-call`：禁止外部网络与第三方系统调用。
+- `no-rollout`：禁止发布、推广和外部影响放大动作。
+- `manual_only`：所有敏感动作都要求人工显式确认。
+- `incident-mode`：事件处置模式，优先保护系统和证据链。
+
+说明：
+
+- `supervised / auto / full-auto` 只允许作为旧产品话术或 UI 投影，不再作为 canonical runtime mode 枚举。
 
 ## 沙箱与执行策略
 
@@ -130,3 +139,7 @@ Automatic Agent 允许 Agent 访问工具、执行命令、调用外部系统，
 - `§8.4`
 - `§8.5`
 - `§8.6`
+
+## v4.3 ADR Remediation
+
+- A-22: 本 ADR 原先只保留 `supervised / auto / full-auto` 三档运行模式，根因是早期安全模型把自动化程度当作唯一控制轴，没有把只读、禁写、禁外呼、禁 rollout、manual-only、incident-mode 这些运行时保护模式建成 canonical 枚举。修复：正文现将运行模式收敛到主架构规定的 8 种 runtime mode，并把旧三档降为 UI / 产品投影术语。

@@ -413,13 +413,13 @@ function hasContractTightening(
   previousCapabilities: readonly BusinessPackCapability[],
   candidateCapabilities: readonly BusinessPackCapability[],
 ): boolean {
-  const previous = new Map(previousCapabilities.map((capability) => [capability.capabilityKey, capability.requiredContracts.slice().sort().join("|")]));
+  const previous = new Map(previousCapabilities.map((capability) => [capability.capabilityKey, (capability.requiredContracts ?? []).slice().sort().join("|")]));
   for (const candidate of candidateCapabilities) {
     const previousContracts = previous.get(candidate.capabilityKey);
     if (previousContracts == null) {
       continue;
     }
-    if (previousContracts !== candidate.requiredContracts.slice().sort().join("|")) {
+    if (previousContracts !== (candidate.requiredContracts ?? []).slice().sort().join("|")) {
       return true;
     }
   }
@@ -427,7 +427,7 @@ function hasContractTightening(
 }
 
 function uniqueContracts(capabilities: readonly BusinessPackCapability[]): string[] {
-  return [...new Set(capabilities.flatMap((capability) => capability.requiredContracts))].sort();
+  return [...new Set(capabilities.flatMap((capability) => capability.requiredContracts ?? []))].sort();
 }
 
 function parseSemver(version: string): { major: number; minor: number; patch: number } {

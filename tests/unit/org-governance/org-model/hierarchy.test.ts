@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { OrgNode, OrgChangeEvent } from "../../../../src/org-governance/org-model/org-node/index.js";
+import type { OrgNode, OrgPrincipalAssignment } from "../../../../src/org-governance/org-model/org-node/index.js";
 import {
   validateOrgHierarchy,
   listAncestorNodeIds,
@@ -165,21 +165,27 @@ test("buildReportingChain returns manager chain", () => {
     createNode({ orgNodeId: "company", nodeType: "company", ownerUserIds: ["ceo"] }),
     createNode({ orgNodeId: "division", nodeType: "division", parentOrgNodeId: "company", ownerUserIds: ["vp"] }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division", ownerUserIds: ["manager"] }),
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
   ];
 
-  const chain = buildReportingChain(nodes, "employee", "member");
+  const chain = buildReportingChain(nodes, "employee", "team");
 
   assert.deepEqual(chain, ["manager", "vp", "ceo"]);
 });
 
 test("detectOrgChangeEvents detects offboarding", () => {
   const before: OrgNode[] = [
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
+    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division" }),
   ];
   const after: OrgNode[] = [];
+  const assignments: OrgPrincipalAssignment[] = [{
+    principalId: "principal-1",
+    userId: "user-1",
+    homeNodeId: "team",
+    managerUserId: "manager-1",
+    active: true,
+  }];
 
-  const events = detectOrgChangeEvents(before, after);
+  const events = detectOrgChangeEvents(before, after, assignments);
 
   assert.ok(events.some((e) => e.type === "employee_offboarding"));
 });
@@ -187,23 +193,37 @@ test("detectOrgChangeEvents detects offboarding", () => {
 test("detectOrgChangeEvents detects onboarding", () => {
   const before: OrgNode[] = [];
   const after: OrgNode[] = [
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["user-1"] }),
+    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division" }),
   ];
+  const assignments: OrgPrincipalAssignment[] = [{
+    principalId: "principal-1",
+    userId: "user-1",
+    homeNodeId: "team",
+    managerUserId: "manager-1",
+    active: true,
+  }];
 
-  const events = detectOrgChangeEvents(before, after);
+  const events = detectOrgChangeEvents(before, after, assignments);
 
   assert.ok(events.some((e) => e.type === "employee_onboarding"));
 });
 
 test("detectOrgChangeEvents detects transfer", () => {
   const before: OrgNode[] = [
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team-a", ownerUserIds: ["user-1"] }),
+    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division-a" }),
   ];
   const after: OrgNode[] = [
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team-b", ownerUserIds: ["user-1"] }),
+    createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "division-b" }),
   ];
+  const assignments: OrgPrincipalAssignment[] = [{
+    principalId: "principal-1",
+    userId: "user-1",
+    homeNodeId: "team",
+    managerUserId: "manager-2",
+    active: true,
+  }];
 
-  const events = detectOrgChangeEvents(before, after);
+  const events = detectOrgChangeEvents(before, after, assignments);
 
   assert.ok(events.some((e) => e.type === "employee_transfer"));
 });
@@ -281,10 +301,9 @@ test("buildReportingChain returns empty when member has no managers", () => {
   const nodes: OrgNode[] = [
     createNode({ orgNodeId: "company", nodeType: "company", ownerUserIds: [] }),
     createNode({ orgNodeId: "team", nodeType: "team", parentOrgNodeId: "company", ownerUserIds: [] }),
-    createNode({ orgNodeId: "member", nodeType: "member", parentOrgNodeId: "team", ownerUserIds: ["employee"] }),
   ];
 
-  const chain = buildReportingChain(nodes, "employee", "member");
+  const chain = buildReportingChain(nodes, "employee", "team");
 
   assert.deepEqual(chain, []);
 });
@@ -295,10 +314,9 @@ test("validateOrgHierarchy handles multiple root nodes", () => {
     createNode({ orgNodeId: "company-b", nodeType: "company" }),
   ];
 
-  // Multiple roots should not cause recursion issues
   const findings = validateOrgHierarchy(nodes);
 
-  assert.equal(findings.length, 0);
+  assert.ok(findings.includes("org_hierarchy.invalid_root_count:2"));
 });
 
 test("getNodesAtLevel returns empty array for invalid level", () => {
@@ -315,15 +333,14 @@ test("getNodesAtLevel returns empty array for invalid level", () => {
 test("detectOrgChangeEvents detects department merge", () => {
   const before: OrgNode[] = [
     createNode({ orgNodeId: "dept-a", nodeType: "department", parentOrgNodeId: "division" }),
-    createNode({ orgNodeId: "dept-b", nodeType: "department", parentOrgNodeId: "division" }),
+    createNode({ orgNodeId: "dept-b", nodeType: "department", parentOrgNodeId: "division-a" }),
   ];
   const after: OrgNode[] = [
-    createNode({ orgNodeId: "dept-a", nodeType: "department", parentOrgNodeId: "division" }),
-    // dept-b removed - but detectOrgChangeEvents only handles member types
+    createNode({ orgNodeId: "dept-a", nodeType: "department", parentOrgNodeId: "division-b" }),
+    createNode({ orgNodeId: "dept-b", nodeType: "department", parentOrgNodeId: "division-a" }),
   ];
 
   const events = detectOrgChangeEvents(before, after);
 
-  // Only member-level changes trigger events in current implementation
-  assert.ok(!events.some((e) => e.type === "department_merge"));
+  assert.ok(events.some((e) => e.type === "department_merge"));
 });

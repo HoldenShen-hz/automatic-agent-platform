@@ -1,5 +1,7 @@
 import type { CapabilityTrustScore, TrustLevel } from "../index.js";
 
+export type ArchitectureAutonomyLevel = "suggestion" | "supervised" | "semi_auto" | "full_auto";
+
 export function calculateTrustScore(score: CapabilityTrustScore): number {
   if (score.totalExecutions === 0) {
     return 0;
@@ -18,4 +20,32 @@ export function mapTrustLevel(score: number): TrustLevel {
   if (score >= 50) return "supervised";
   if (score >= 30) return "probation";
   return "untrusted";
+}
+
+export function mapTrustLevelToAutonomyLevel(level: TrustLevel): ArchitectureAutonomyLevel {
+  switch (level) {
+    case "fully_trusted":
+      return "full_auto";
+    case "trusted":
+    case "semi_trusted":
+      return "semi_auto";
+    case "supervised":
+      return "supervised";
+    case "probation":
+    case "untrusted":
+    default:
+      return "suggestion";
+  }
+}
+
+export function applyTrustDecay(
+  score: number,
+  inactiveDays: number,
+  decayRate = 0.05,
+): number {
+  if (inactiveDays <= 0) {
+    return score;
+  }
+  const decayed = score * Math.pow(1 - decayRate, inactiveDays);
+  return Math.max(0, Math.round(decayed));
 }

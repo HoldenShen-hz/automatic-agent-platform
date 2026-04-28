@@ -21,6 +21,10 @@ export interface MultimodalInputPart {
   readonly partId: string;
   readonly type: string;
   readonly contentRef: string;
+  readonly provenance?: string;
+  readonly safetyLabels?: readonly string[];
+  readonly mimeType?: string;
+  readonly costKey?: string;
   readonly text?: string;
   readonly imageMetadata?: ImageMetadata;
   readonly videoMetadata?: VideoMetadata;
@@ -222,6 +226,14 @@ export class MultimodalGatewayService {
         severity: processedVideo.qualityAssessment.readiness === "ready" ? "low" : "medium",
         reasonCode: processedVideo.qualityAssessment.reasonCodes[0]!,
         blocked: processedVideo.qualityAssessment.readiness === "blocked",
+      });
+    }
+    if ((part.mimeType ?? "").trim().length === 0) {
+      findings.push({
+        partId: part.partId,
+        severity: "medium",
+        reasonCode: "multimodal_gateway.mime_type_required",
+        blocked: true,
       });
     }
     return findings;

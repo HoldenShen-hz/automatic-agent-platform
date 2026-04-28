@@ -2,12 +2,12 @@
 
 ---
 
-## OAPEFLIR Related
+## OAPEFLIR Association
 
-This contract participates in the following stages of the OAPEFLIR 8-stage cycle:
+This contract participates in the following stages of the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution evaluation and risk assessment
+- **Assess**: Pre-execution assessment and risk judgment
 - **Plan**: Task decomposition and DAG construction
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
@@ -19,24 +19,24 @@ This contract participates in the following stages of the OAPEFLIR 8-stage cycle
 
 ## 1. Scope
 
-This contract defines the engineering approach for capability boundaries under future product forms such as Community, Professional, Enterprise editions.
+This contract defines the capability boundary engineering approach for future product tiers such as Community, Professional, and Enterprise editions.
 
-Related Documents:
+Related documents:
 
 - `billing_and_tenant_contract.md`
 - `monetization_metering_plane_contract.md`
 - `tenant_and_organization_contract.md`
 - `feature` flags in `environment_and_configuration_governance_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-- Build feature, quota, concurrency, audit, multi-tenancy capabilities as controllable switches early.
+- Proactively engineering features, quotas, concurrency, audit, and multi-tenant capabilities as controllable switches.
 - Avoid hard-cutting code paths after commercialization.
-- Make entitlement judgment enter formal policy / metering closed loop.
+- Bring entitlement judgment into the formal policy/metering closed loop.
 
 ## 3. Capability Boundaries
 
-At minimum, the following dimensions can be switched in the future:
+At minimum, the following dimensions should be controllable in the future:
 
 - feature gate
 - quota gate
@@ -46,7 +46,7 @@ At minimum, the following dimensions can be switched in the future:
 - remote worker gate
 - enterprise security gate
 
-## 4. Core Objects
+## 4. Canonical Objects
 
 - `LicenseTier`
 - `CapabilityBundle`
@@ -56,28 +56,28 @@ At minimum, the following dimensions can be switched in the future:
 
 ## 5. Rules
 
-- All commercial capabilities should go through capability check; must not be scattered in UI or routing.
-- Capability check result must be auditable.
-- Trial, downgrade, owed payment, freeze must all have explicit system behavior.
-- Product tiering must not break the same set of contract truths.
-- Capability check must not only take effect at frontend or gateway layer; runtime, API, admin console must also reuse the same judgment result.
-- Owed payment, freeze, downgrade must not silently relax existing isolation and audit boundaries.
+- All commercial capabilities should go through capability checks, rather than being scattered across UI or routing.
+- Capability check results must be auditable.
+- Trial periods, downgrades, overdue payments, and freezes must all have clear system behaviors.
+- Product tiering must not break the unified contract truth.
+- Capability checks must not be enforced only at the frontend or gateway layer; runtime, API, and admin console must all reuse the same judgment results.
+- Overdue payments, freezes, and downgrades should not silently relax existing isolation and audit boundaries.
 
 ## 6. Typical Tiers
 
 | Tier | Typical Capabilities |
 | --- | --- |
 | `community` | Single-tenant, local capabilities, basic tools |
-| `professional` | More concurrency, more quota, basic audit |
+| `professional` | Higher concurrency, higher quotas, basic audit |
 | `enterprise` | Multi-tenant, SSO, audit export, private models, private network deployment |
 
 ## 7. Closure Conclusion
 
 Commercial capability boundaries must be engineered early.
 
-Otherwise, subsequently will appear:
+Otherwise, the following issues will arise later:
 
 - Code forking
 - Permission drift
-- Quota rules scattered
-- Enterprise capabilities difficult to safely deploy
+- Scattered quota rules
+- Enterprise capabilities difficult to deploy safely

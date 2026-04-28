@@ -22,7 +22,7 @@ Phase 1a 与 Phase 1b 继续以 SQLite 作为默认 / 首选主事务存储。
 - PostgreSQL 后端可以作为受控替代实现存在，用于双写演练、并发验证和后续迁移准备，但不得绕过既有 storage contract。
 - artifact 主体仍可存文件系统或对象存储，但索引和事实状态以 SQLite 为准。
 - 进入更复杂的数据平面后，再按 `data_plane_contract.md` 演进为分层存储。
-- OAPEFLIR 新增的 `TaskSituation / Assessment / Plan / Feedback / Learning / Improvement / Rollout` 等事实对象，在当前阶段仍与既有任务事实一起受 SQLite authoritative 边界约束。
+- OAPEFLIR 新增的 `TaskSituation / Assessment / PlanRationale / Feedback / Learning / Improvement / ReleaseDecisionView` 等认知投影对象，在当前阶段仍必须能映射回 `harness_runs / node_runs / node_attempt_receipts` 这组 SQLite authoritative truth 边界。
 
 ## 备选方案
 
@@ -70,7 +70,7 @@ Phase 1a 与 Phase 1b 继续以 SQLite 作为默认 / 首选主事务存储。
 - `foreign_keys = ON` 是正式运行要求，不是可选优化。
 - 高价值事实状态不得只存在内存。
 - 不允许把“SQLite 未来会迁移”当成当前可忽略一致性的借口。
-- OAPEFLIR 演化实体即使暂时由轻量服务或内存注册表托管，也必须能映射回 SQLite authoritative 事实边界，不能形成不受治理的第二真相源。
+- OAPEFLIR 演化实体即使暂时由轻量服务或内存注册表托管，也必须能映射回 `HarnessRun / NodeRun / NodeAttemptReceipt` 的 SQLite authoritative 事实边界，不能形成不受治理的第二真相源。
 
 ## 采用触发条件
 
@@ -120,9 +120,13 @@ Phase 1a 与 Phase 1b 继续以 SQLite 作为默认 / 首选主事务存储。
 
 截至当前 phase1-4 交付，本 ADR 的现实含义变为：
 
-- 主任务、执行、审批和诊断事实仍然由 SQLite 边界托底。
-- OAPEFLIR DTO、LearningObject、Rollout 等新对象已经先在类型、测试和 contract 层收口，再逐步往持久化扩展。
+- `harness_runs / node_runs / node_attempt_receipts / approvals / events / diagnostics` 等事实仍然由 SQLite 边界托底。
+- OAPEFLIR 认知 DTO、LearningObject、ReleaseDecisionView 等新对象已经先在类型、测试和 contract 层收口，再逐步往持久化扩展。
 - 这意味着“先定义 authoritative 语义，再补存储形态”，而不是先引入第二套数据平面。
+
+## v4.3 ADR Remediation
+
+- A-4: 本 ADR 原先延续 task/workflow/execution-centric 存储叙事，根因是 SQLite 决策形成时 runtime truth 仍以旧对象命名为主，后续没有随着 `NodeRun` / `NodeAttemptReceipt` 主链完成统一迁移。修复：正文现明确 SQLite authoritative truth 主语为 `harness_runs / node_runs / node_attempt_receipts`，旧 task/workflow/execution 只保留为兼容叙事。
 
 ## 交叉引用
 

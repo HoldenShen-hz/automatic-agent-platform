@@ -1,6 +1,6 @@
 # Sandbox And Auth Contract
 
-> **OAPEFLIR Related**: This contract defines the OAPEFLIR Execute Hub's security boundaries, corresponding to ADR-016.
+> **OAPEFLIR Related**: This contract defines the security boundary of OAPEFLIR Execute Hub, corresponding to ADR-016.
 > **Last Updated**: 2026-04-17
 
 ## 1. Scope
@@ -10,6 +10,7 @@ This contract defines execution sandbox, filesystem/network permissions, user au
 ## 2. Key Objects
 
 - `SandboxPolicy`
+- `SandboxCapabilityProfile`
 - `FilesystemRule`
 - `NetworkRule`
 - `AuthSession`
@@ -27,6 +28,31 @@ This contract defines execution sandbox, filesystem/network permissions, user au
 - `symlink_policy`
 - `allowed_roots`
 - `denied_roots`
+
+`SandboxPolicy.mode` canonical enum:
+
+- `read_only`
+- `workspace_write`
+- `scoped_external_access`
+- `restricted_exec`
+
+`SandboxCapabilityProfile` minimum fields:
+
+- `mode`
+- `execution_isolation`
+- `filesystem_profile`
+- `network_profile`
+- `memory_limit_mb`
+- `timeout_limit_ms`
+- `approval_gate_required`
+
+Rules:
+
+- `read_only` only allows read-only mounts and no external egress.
+- `workspace_write` only allows writes inside explicit workspace / tmpfs scope, still no external egress.
+- `scoped_external_access` only allows allowlisted egress targets and explicit writable scratch space.
+- `restricted_exec` is the highest-risk execution profile; it must run with explicit approval / policy justification and the strongest isolation profile.
+- `standard / hardened / strict` only survive as deprecated migration aliases; new schema and new APIs must use the four canonical modes above.
 
 ## 4. AuthSession Minimum Fields
 
@@ -57,7 +83,7 @@ Remote worker registration uses challenge-response mode:
 
 **Phase 1: Issue Challenge**
 
-- Requester declares `workerId`, `capabilities`, `isolationLevel`.
+- Requester declares `workerId`, `capabilities`, `sandboxMode`.
 - System generates random `challengeToken` and stores its SHA256 hash (not plaintext).
 - System filters requested capabilities according to `allowedCapabilities` in security config, records rejected capabilities.
 - Challenge has TTL (default `challengeTtlMs = 300000`, i.e., 5 minutes).
@@ -71,11 +97,12 @@ Remote worker registration uses challenge-response mode:
 
 ### 5A.2 Rules
 
-- Challenge token is returned only once during issue phase, thereafter only hash is stored.
+- Challenge token is returned only once during issue phase; thereafter only hash is stored.
 - Same challenge cannot be completed twice (one-time consumption).
 - Expired challenge automatically becomes invalid.
 - Filtered capabilities must be recorded in `rejectedCapabilities` for audit.
 - Challenge does not replace runtime sandbox and policy, only solves worker identity and initial capability declaration.
+- Worker-declared `sandboxMode` is only a capability claim; whether a run can use that mode still depends on Policy Engine and dispatch-time constraints.
 
 ## 5B. Remote Session Authority Guard
 
@@ -108,4 +135,28 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 - Minimum command execution sandbox and browser / GUI automation sandbox should be managed in layers, not recommended to share same heavyweight image.
 - If browser sandbox needs Chromium, Xvfb or equivalent graphics dependencies, should be treated as independent capability profile, and enter separate readiness and cost evaluation.
 - If standalone command execution surface exists, should be modeled separately from task / workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
-- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout, and similar execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
+- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout these execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
+
+### 6A. Canonical Sandbox Mode Matrix
+
+| mode | filesystem | network | execution profile | typical use |
+| --- | --- | --- | --- | --- |
+| `read_only` | read-only mounts only | denied | subprocess + seccomp | inspect, search, parse |
+| `workspace_write` | tmpfs + explicit workspace write roots | denied | subprocess + seccomp | code edit, local artifact generation |
+| `scoped_external_access` | tmpfs + scoped writable roots | allowlist only | isolated multi-process / container optional | verified fetch, registry / API calls |
+| `restricted_exec` | overlay / isolated fs | allowlist only | strongest isolated exec profile | privileged but tightly governed execution |
+
+Rules:
+
+- Sandbox mode must be decided before execution ticket dispatch and written into the execution constraint pack.
+- Tool / provider / worker runtime must consume the resolved canonical mode, not reinterpret deprecated aliases locally.
+- `AuthSession` does not upgrade sandbox mode; identity proof and sandbox authority are orthogonal.
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+
+- T-16: This document originally continued using `standard / hardened / strict` three-tier isolation levels. The root cause was that early security design was layered by "implementation strength", but later the main architecture changed to defining four-tier canonical sandbox mode by "writability + egress + exec governance surface". After the old worker registration and execution contract did not migrate together. Fix: This main text now converges `SandboxPolicy.mode` to `read_only / workspace_write / scoped_external_access / restricted_exec`; the old three tiers are only retained as deprecated aliases.
+
+Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

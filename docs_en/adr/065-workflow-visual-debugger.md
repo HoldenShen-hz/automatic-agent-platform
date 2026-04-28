@@ -5,19 +5,19 @@
 
 ## Context
 
-When Workflow fails, developers need visual tools to understand execution flow and locate issues.
+When workflows fail, developers need visual tools to understand execution flow and locate problems.
 
 ## Decision
 
 ### Debugger Architecture
 
 | Component | Description |
-|------------|-------------|
+|-----------|-------------|
 | Visualizer | DAG visualization |
 | StepInspector | Step detail viewer |
 | StateExplorer | State browser |
-| TraceViewer | Trace viewer |
-| BreakpointManager | Breakpoint manager |
+| TraceViewer | Trace tracking |
+| BreakpointManager | Breakpoint management |
 
 ### DAG Visualization
 
@@ -32,10 +32,10 @@ interface WorkflowDAGView {
 }
 ```
 
-### Debug Functions
+### Debugging Features
 
-| Function | Description |
-|----------|-------------|
+| Feature | Description |
+|---------|-------------|
 | step_over | Step over |
 | step_into | Step into |
 | step_out | Step out |
@@ -45,7 +45,7 @@ interface WorkflowDAGView {
 
 ### State Viewing
 
-- Complete WorkflowState
+- Complete WorkflowState status
 - Step input/output
 - Intermediate variables
 - Error messages
@@ -54,14 +54,14 @@ interface WorkflowDAGView {
 
 | Type | Description |
 |------|-------------|
-| step_start | Step start |
-| step_complete | Step complete |
+| step_start | Step started |
+| step_complete | Step completed |
 | error | Error occurred |
 | condition | Condition met |
 
 ### Trace Integration
 
-- Full链路 trace (Full trace)
+- Full trace
 - Span details
 - Performance profiling
 - Error chain
@@ -71,8 +71,8 @@ interface WorkflowDAGView {
 Positive:
 
 - Visual debugging improves efficiency
-- Complete state aids problem location
-- Breakpoint supports fine-grained debugging
+- Complete state facilitates problem location
+- Breakpoint support for fine-grained debugging
 
 Negative:
 
@@ -82,7 +82,7 @@ Negative:
 ## Cross-References
 
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
-- [ADR-090 Runtime Data Reliability and Operations](./090-runtime-data-reliability-and-operations.md)
+- [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
 ## Source Sections
 

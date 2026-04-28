@@ -1,62 +1,72 @@
-# ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model
+# ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
 
 - Status: Accepted
 - Decision Date: 2026-04-17
 
 ## Context
 
-Early system architecture was organized based on "three-layer distributed architecture" (control/runtime/learning/data). During Phase 1 evolution, a clearer eight-phase cognitive loop model OAPEFLIR (Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Rollout) gradually formed. This ADR formally records this architectural decision.
+The system's early architecture was organized based on "three-layer separation of powers" (control / runtime / learning / data). As `HarnessRuntime` became the sole execution entry point, the platform needed a controlled cognitive framework to explain and constrain the cognitive loop, rather than introducing a second execution runtime. OAPEFLIR (Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release) was therefore retained as the cognitive/governance semantic framework.
 
 ## Decision
 
-### OAPEFLIR Eight-Phase Model
+### OAPEFLIR Eight-Stage Model
 
-System adopts eight-phase serial cognitive loop:
+The system adopts an eight-stage cognitive loop, but it is not an independent execution engine:
 
 ```
-Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Rollout
+Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
    ↓                    ↓           ↓           ↓            ↓
    └────────────────────┴───────────┴───────────┴────────────┘
-                    （Dual-chain topology: main chain O→A→P→E, secondary chain F→L→I→R）
+                    (Dual-chain topology: main chain O→A→P→E→F, side chain F→L→I→R)
 ```
 
-### Each Phase Responsibilities
+Constraints:
 
-| Phase | Core Responsibility | Key Output |
-|-------|---------------------|-------------|
+- `HarnessRuntime` is the sole execution entry point.
+- OAPEFLIR only produces `oapeflir.view.*` and `oapeflir.rationale.*` projections and does not own run status, budget, lease, side effect commit, or error code namespaces.
+
+### Stage Responsibilities
+
+| Stage | Core Responsibility | Key Output |
+|-------|---------------------|------------|
 | **O**bserve | Collect task/context/system state | UnifiedObservation (TaskSituation + SystemSituation) |
 | **A**ssess | Pre-execution risk/complexity/resource assessment | UnifiedAssessment (six-dimensional scoring) |
-| **P**lan | Generate execution plan based on assessment | Plan (steps + DAG + retryPolicy) |
-| **E**xecute | Call runtime execution engine | DualChannelStepOutput + ExecutionOutcome |
+| **P**lan | Form plan rationale and constrain execution handoff | PlanRationale + `PlanGraphBundle` reference |
+| **E**xecute | Read Harness execution results and generate cognitive view | `NodeAttemptReceipt` reference + ExecutionSummaryView |
 | **F**eedback | Collect execution result feedback signals | LearningSignal[] |
 | **L**earn | Extract patterns/knowledge from signals | LearningObject[] |
 | **I**mprove | Evaluate improvement candidates + guardrail | ImprovementCandidate |
-| **R**ollout | Controlled release of improvements to production | RolloutRecord |
+| **R**elease | Controlled release of improvements to production | ReleaseDecisionView / RolloutRecord |
 
 ### Mapping to Phase 1A/1B Execution Model
 
-- **Phase 1A** (`phase1a-happy-path.ts`): Covers O→A→P→E single-step execution.
-- **Phase 1B** (`phase1b-orchestration.ts`): Covers P→E multi-step DAG + context compaction + streaming.
-- **OAPEFLIR Loop** (`OapeflirLoopService`): Complete eight-phase closed loop, including F→L→I→R secondary chain.
+- `HarnessRuntime` undertakes the real `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` execution main chain.
+- OAPEFLIR generates stage views/rationale above the Harness main chain and drives the Feedback→Learn→Improve→Release side chain.
+- The canonical narrative of `OapeflirLoopService` as an independent runtime entry point no longer exists.
 
 ### Execute Layer Integration Requirements
 
-Execute phase must call real runtime execution engine (AgentExecutor/CommandExecutor), must not use mock data. Specific integration implemented through `RuntimeExecuteBridge` interface.
+The Execute stage can only consume `NodeAttemptReceipt` / evidence refs produced by the real runtime and must not drive a second execution engine on its own. Any real state changes remain the responsibility of `RuntimeStateMachine.transition(command)` and the Harness main chain.
 
 ## Alternatives
 
-### Option A: Maintain Three-Layer Distributed Architecture, Don't Introduce OAPEFLIR
+### Option A: Maintain Three-Layer Separation of Powers Without Introducing OAPEFLIR
 
-Benefits: Simple architecture, no need to refactor existing modules.
-Costs: Cannot clearly express cognitive closed loop and progressive improvement path.
+Pros: Simple architecture, no need to refactor existing modules.
+Costs: Cannot clearly express cognitive closure and progressive improvement paths.
 
 ### Option B: OAPEFLIR and Three-Layer Architecture Coexist
 
-Benefits: Compatible with existing modules.
+Pros: Compatible with existing modules.
 Costs: Two mental models cause confusion.
 
 ## Consequences
 
-- `OapeflirLoopService` is the system's core orchestrator.
-- All new modules (Observe builders, Assess evaluators, Plan strategies, etc.) must be able to find their position in the eight phases.
+- OAPEFLIR is no longer the system's core orchestrator; `HarnessRuntime` remains the sole execution runtime.
+- All new modules (Observe builders, Assess evaluators, Plan strategies, etc.) must be able to find their position within the eight-stage cognitive framework but must not bypass the Harness main chain.
 - This ADR is the architectural foundation for all subsequent OAPEFLIR-related GAPs (V2-01 ~ V2-12).
+
+## v4.3 ADR Remediation
+
+- A-1: This ADR originally described OAPEFLIR as an independent execution orchestrator; root cause was that the cognitive loop model simultaneously bore runtime and interpretation layer responsibilities in early drafts. Fix: The body now explicitly states that `HarnessRuntime` is the sole execution entry point and OAPEFLIR is retained only as a cognitive/governance semantic framework.
+- A-10: This ADR originally continued the `Oapeflir*` style DTO naming context; root cause was early documents directly naming input/output objects after the framework. Fix: The body now converges stage objects to cognitive view objects like `PlanRationale`, `ExecutionSummaryView` and aligns with the `CognitiveFrameInput/CognitiveFrameOutput` system.

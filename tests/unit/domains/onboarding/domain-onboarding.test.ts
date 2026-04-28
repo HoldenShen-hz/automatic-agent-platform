@@ -10,10 +10,10 @@ import {
 
 test("DomainOnboardingPhaseSchema accepts valid phases", () => {
   const validPhases: DomainOnboardingPhase[] = [
-    "modeling",
-    "development_validation",
+    "domain_modeling",
+    "pack_development",
     "security_certification",
-    "canary_launch",
+    "gray_rollout",
   ];
 
   for (const phase of validPhases) {
@@ -41,7 +41,7 @@ test("DomainOnboardingPhaseSchema rejects invalid phases", () => {
 test("DomainOnboardingRecordSchema accepts valid records", () => {
   const validRecord = {
     domainId: "test_domain",
-    phase: "modeling",
+    phase: "domain_modeling",
     status: "in_progress",
     evidenceArtifactIds: ["artifact_1", "artifact_2"],
   };
@@ -53,7 +53,7 @@ test("DomainOnboardingRecordSchema accepts valid records", () => {
 test("DomainOnboardingRecordSchema applies default evidenceArtifactIds", () => {
   const recordWithoutEvidence = {
     domainId: "test_domain",
-    phase: "modeling",
+    phase: "domain_modeling",
     status: "in_progress",
   };
 
@@ -65,7 +65,7 @@ test("DomainOnboardingRecordSchema applies default evidenceArtifactIds", () => {
 test("DomainOnboardingRecordSchema rejects invalid status", () => {
   const invalidRecord = {
     domainId: "test_domain",
-    phase: "modeling",
+    phase: "domain_modeling",
     status: "invalid_status",
   };
 
@@ -76,7 +76,7 @@ test("DomainOnboardingRecordSchema rejects invalid status", () => {
 test("DomainOnboardingRecordSchema rejects empty domainId", () => {
   const invalidRecord = {
     domainId: "",
-    phase: "modeling",
+    phase: "domain_modeling",
     status: "in_progress",
   };
 
@@ -84,40 +84,40 @@ test("DomainOnboardingRecordSchema rejects empty domainId", () => {
   assert.equal(result.success, false);
 });
 
-test("nextOnboardingPhase returns correct next phase for modeling", () => {
-  const next = nextOnboardingPhase("modeling");
-  assert.equal(next, "development_validation");
+test("nextOnboardingPhase returns correct next phase for domain_modeling", () => {
+  const next = nextOnboardingPhase("domain_modeling");
+  assert.equal(next, "pack_development");
 });
 
-test("nextOnboardingPhase returns correct next phase for development_validation", () => {
-  const next = nextOnboardingPhase("development_validation");
+test("nextOnboardingPhase returns correct next phase for pack_development", () => {
+  const next = nextOnboardingPhase("pack_development");
   assert.equal(next, "security_certification");
 });
 
 test("nextOnboardingPhase returns correct next phase for security_certification", () => {
   const next = nextOnboardingPhase("security_certification");
-  assert.equal(next, "canary_launch");
+  assert.equal(next, "gray_rollout");
 });
 
-test("nextOnboardingPhase returns null for canary_launch (last phase)", () => {
-  const next = nextOnboardingPhase("canary_launch");
+test("nextOnboardingPhase returns null for gray_rollout (last phase)", () => {
+  const next = nextOnboardingPhase("gray_rollout");
   assert.equal(next, null);
 });
 
 test("nextOnboardingPhase is deterministic", () => {
-  const phase = "modeling";
+  const phase = "domain_modeling";
   const result1 = nextOnboardingPhase(phase);
   const result2 = nextOnboardingPhase(phase);
   assert.equal(result1, result2);
-  assert.equal(result1, "development_validation");
+  assert.equal(result1, "pack_development");
 });
 
 test("DomainOnboardingPhase type matches schema inference", () => {
-  const phase: DomainOnboardingPhase = "modeling";
-  assert.equal(phase, "modeling");
+  const phase: DomainOnboardingPhase = "domain_modeling";
+  assert.equal(phase, "domain_modeling");
 
-  const phase2: DomainOnboardingPhase = "canary_launch";
-  assert.equal(phase2, "canary_launch");
+  const phase2: DomainOnboardingPhase = "gray_rollout";
+  assert.equal(phase2, "gray_rollout");
 });
 
 test("valid record status values", () => {
@@ -126,7 +126,7 @@ test("valid record status values", () => {
   for (const status of validStatuses) {
     const record = {
       domainId: "test",
-      phase: "modeling" as DomainOnboardingPhase,
+      phase: "domain_modeling" as DomainOnboardingPhase,
       status,
     };
     const result = DomainOnboardingRecordSchema.safeParse(record);
@@ -147,7 +147,7 @@ test("invalid record status values are rejected", () => {
   for (const status of invalidStatuses) {
     const record = {
       domainId: "test",
-      phase: "modeling" as DomainOnboardingPhase,
+      phase: "domain_modeling" as DomainOnboardingPhase,
       status,
     };
     const result = DomainOnboardingRecordSchema.safeParse(record);
@@ -158,7 +158,7 @@ test("invalid record status values are rejected", () => {
 test("evidenceArtifactIds can be empty array", () => {
   const record = {
     domainId: "test",
-    phase: "modeling",
+    phase: "domain_modeling",
     status: "in_progress",
     evidenceArtifactIds: [],
   };
@@ -171,7 +171,7 @@ test("evidenceArtifactIds can be empty array", () => {
 test("evidenceArtifactIds can contain duplicate values (deduplication happens elsewhere)", () => {
   const record = {
     domainId: "test",
-    phase: "modeling",
+    phase: "domain_modeling",
     status: "in_progress",
     evidenceArtifactIds: ["a", "b", "a", "c", "b"],
   };
@@ -183,10 +183,10 @@ test("evidenceArtifactIds can contain duplicate values (deduplication happens el
 
 test("all onboarding phases are covered by nextOnboardingPhase", () => {
   const phases: DomainOnboardingPhase[] = [
-    "modeling",
-    "development_validation",
+    "domain_modeling",
+    "pack_development",
     "security_certification",
-    "canary_launch",
+    "gray_rollout",
   ];
 
   for (let i = 0; i < phases.length; i++) {

@@ -11,7 +11,7 @@
 - **Feedback**: 将失败、人工反馈、评测结论回流
 - **Learn**: 形成 failure-to-learning 与 prompt/memory 改进候选
 - **Improve**: 推进支柱级治理与重放能力增强
-- **Release**: 把八支柱纳入 phase 8 验收门
+- **Release**: 把八支柱纳入 Ring 2 release-readiness 验收门
 
 ---
 
@@ -35,10 +35,20 @@ Harness 采用固定八支柱模型：
 7. HITL Runtime
 8. Observability / Replay
 
+补充约束：
+
+- 第八支柱的发布语义统一对接 `ReleaseChannel` 与 `ReleaseDecisionView`，不再使用旧 `DeploymentSlot` 作为 harness canonical 发布主语。
+- 八支柱中的改进推广语义一律使用 `Release`，不再回退到旧 `Rollout` 作为顶层阶段名。
+
 每个支柱必须具备独立代码入口、测试与验收证据，不允许只存在文档描述。
 
 ## 后果
 
 - `src/platform/orchestration/harness` 必须围绕八支柱组织目录和导出面
-- `Phase 8a-8c` 的验收要按支柱拆解
+- `Ring 2` 的验收要按支柱拆解
 - review 中对 Harness 的缺口以支柱为最小整改单元
+
+## v4.3 ADR Remediation
+
+- A-5: 本 ADR 历史上曾沿用 Improve/Release 链路中的 `Rollout` 话语，根因是 harness 验收门和发布控制面命名没有及时同步到主架构的 `Release` 口径。修复：正文现显式要求八支柱中的改进推广语义统一使用 `Release`。
+- A-12: 本 ADR 原先沿用旧阶段验收和部署表达的历史语境，根因是 harness 八支柱 ADR 形成时仍夹带旧发布实现术语。修复：正文现显式把发布主语对齐到 `ReleaseChannel` / `ReleaseDecisionView`，不再把 `DeploymentSlot` 作为 harness canonical 发布语义。

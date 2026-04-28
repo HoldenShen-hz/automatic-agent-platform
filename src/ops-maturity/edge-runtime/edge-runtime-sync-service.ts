@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { buildOfflineExecutionRecord, type OfflineExecutionRecord } from "./edge-executor/index.js";
 import { buildEdgeExecutionPlan } from "./edge-orchestrator/index.js";
@@ -30,6 +31,8 @@ export interface SyncEnvelope {
   readonly priority: number;
   readonly dataClassification: "public" | "internal" | "restricted";
   readonly payloadDigest: string;
+  readonly prevHash: string | null;
+  readonly signature: string;
   readonly createdAt: string;
 }
 
@@ -78,14 +81,21 @@ export class EdgeRuntimeSyncService {
     priority = 1,
     dataClassification: SyncEnvelope["dataClassification"] = "internal",
     createdAt = nowIso(),
+    prevHash: string | null = null,
   ): SyncEnvelope {
+    const recordId = `${record.edgeNodeId}:${record.taskId}:${record.createdAt}`;
+    const signature = createHash("sha256")
+      .update(`${profile.edgeNodeId}:${recordId}:${payloadDigest}:${prevHash ?? "root"}`)
+      .digest("hex");
     return {
       envelopeId: newId("sync"),
-      recordId: `${record.edgeNodeId}:${record.taskId}:${record.createdAt}`,
+      recordId,
       edgeNodeId: profile.edgeNodeId,
       priority,
       dataClassification,
       payloadDigest,
+      prevHash,
+      signature,
       createdAt,
     };
   }
@@ -114,6 +124,15 @@ export class EdgeRuntimeSyncService {
         });
         continue;
       }
+      if (!this.verifyEnvelopeSignature(envelope)) {
+        rejectedEnvelopeIds.push(envelope.envelopeId);
+        decisions.push({
+          envelopeId: envelope.envelopeId,
+          resolution: "reject",
+          rationale: "edge.sync_signature_invalid",
+        });
+        continue;
+      }
 
       const cloudDigest = cloudPayloadDigests[envelope.recordId];
       if (cloudDigest != null && cloudDigest !== envelope.payloadDigest) {
@@ -139,5 +158,12 @@ export class EdgeRuntimeSyncService {
       rejectedEnvelopeIds,
       decisions,
     };
+  }
+
+  private verifyEnvelopeSignature(envelope: SyncEnvelope): boolean {
+    const expected = createHash("sha256")
+      .update(`${envelope.edgeNodeId}:${envelope.recordId}:${envelope.payloadDigest}:${envelope.prevHash ?? "root"}`)
+      .digest("hex");
+    return expected === envelope.signature;
   }
 }

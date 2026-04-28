@@ -31,6 +31,28 @@ export interface ComplianceEvaluationResult {
   readonly auditRecord: GovernanceAuditRecord;
 }
 
+export interface ComplianceExceptionWorkflow {
+  readonly exceptionId: string;
+  readonly scope: string;
+  readonly expiresAt: string;
+  readonly approver: string;
+  readonly compensatingControls: readonly string[];
+  readonly auditRef: string;
+}
+
+export interface EvidenceQualityScore {
+  readonly frameworkId: string;
+  readonly score: number;
+  readonly missingEvidenceIds: readonly string[];
+}
+
+export interface ControlCoverageReport {
+  readonly frameworkId: string;
+  readonly coveredControlIds: readonly string[];
+  readonly missingControlIds: readonly string[];
+  readonly coverageRatio: number;
+}
+
 export class ComplianceGovernanceService {
   private readonly frameworks = new Map<string, ComplianceFramework>();
   private readonly bindings = new Map<string, DepartmentComplianceBinding[]>();
@@ -68,6 +90,61 @@ export class ComplianceGovernanceService {
 
   public listEvidence(frameworkId?: string): ComplianceEvidenceRecord[] {
     return this.evidenceCollector.list(frameworkId);
+  }
+
+  public createExceptionWorkflow(input: {
+    readonly scope: string;
+    readonly expiresAt: string;
+    readonly approver: string;
+    readonly compensatingControls: readonly string[];
+    readonly auditRef: string;
+  }): ComplianceExceptionWorkflow {
+    return {
+      exceptionId: `compliance_exception:${input.scope}:${input.expiresAt}`,
+      scope: input.scope,
+      expiresAt: input.expiresAt,
+      approver: input.approver,
+      compensatingControls: [...input.compensatingControls],
+      auditRef: input.auditRef,
+    };
+  }
+
+  public scoreEvidenceQuality(frameworkId: string): EvidenceQualityScore {
+    const evidence = this.listEvidence(frameworkId);
+    const missingEvidenceIds = evidence
+      .filter((item) => item.artifactRef.trim().length === 0 || item.source.trim().length === 0)
+      .map((item) => item.evidenceId);
+    const score = evidence.length === 0
+      ? 0
+      : Number((((evidence.length - missingEvidenceIds.length) / evidence.length) * 100).toFixed(2));
+    return {
+      frameworkId,
+      score,
+      missingEvidenceIds,
+    };
+  }
+
+  public buildControlCoverageReport(frameworkId: string, orgNodeId: string): ControlCoverageReport {
+    const framework = this.frameworks.get(frameworkId);
+    if (framework == null) {
+      return {
+        frameworkId,
+        coveredControlIds: [],
+        missingControlIds: [],
+        coverageRatio: 0,
+      };
+    }
+    const effectivePolicy = resolveCompliancePolicyForNode(this.nodes, orgNodeId, this.policiesByNodeId);
+    const coveredControlIds = framework.controlIds.filter((controlId) => controlId in effectivePolicy);
+    const missingControlIds = framework.controlIds.filter((controlId) => !coveredControlIds.includes(controlId));
+    return {
+      frameworkId,
+      coveredControlIds,
+      missingControlIds,
+      coverageRatio: framework.controlIds.length === 0
+        ? 1
+        : Number((coveredControlIds.length / framework.controlIds.length).toFixed(4)),
+    };
   }
 
   public evaluate(input: ComplianceEvaluationInput): ComplianceEvaluationResult {

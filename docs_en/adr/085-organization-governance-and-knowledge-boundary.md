@@ -10,7 +10,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - **Assess**: Approval chain, knowledge sharing, governance delegation, and compliance matching
 - **Plan**: Organization routing, inheritance / override, controlled sharing strategy
 - **Execute**: SSO, SCIM, approval routing, knowledge isolation, governance console
-- **Feedback**: Approval timeout, access denial, sharing review
+- **Feedback**: Approval timeout, access denial, sharing retrospective
 - **Learn**: Organization governance rules and boundary strategy optimization
 - **Improve**: Department-level compliance and governance configuration continuous evolution
 - **Release**: Organization governance changes phased release
@@ -20,7 +20,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 v2.7 `§46-§51` introduces the organization governance layer. The current repository already has:
 
@@ -30,13 +30,13 @@ v2.7 `§46-§51` introduces the organization governance layer. The current repos
 - `src/org-governance/knowledge-boundary`
 - `src/org-governance/delegated-governance`
 
-But most directories are still empty shells, lacking unified decisions.
+However, most of these directories are still empty barrel files, lacking unified decisions.
 
-## Decision
+## Decisions
 
-### 1. Organization Node is the Common Root Object for Governance, Approval, Knowledge, and Compliance
+### 1. Organization nodes are the common root object for governance, approval, knowledge, and compliance
 
-Organization model must support at minimum:
+The organization model must support at minimum:
 
 - enterprise
 - business_unit
@@ -44,16 +44,16 @@ Organization model must support at minimum:
 - team
 - seat / user
 
-### 2. Approval, Compliance, and Knowledge Boundary All Follow "Inherit First, Explicit Override"
+### 2. Approval, compliance, and knowledge boundaries all follow "inheritance first, explicit override"
 
-Default rules inherited from parent node;
-Child nodes can only override within authorized scope.
+Default rules are inherited from the parent node;
+child nodes can only override within authorized scope.
 
-### 3. SSO / SCIM Only Handles Identity Sync, Does Not Directly Grant Business Permissions
+### 3. SSO / SCIM is only responsible for identity synchronization, not directly granting business permissions
 
-Identity access and governance authorization are separated to prevent directory systems from directly exceeding authority.
+Identity access and governance authorization are separated to prevent directory systems from directly bypassing permissions.
 
-### 4. Knowledge Sharing Must Explicitly Declare Boundaries and Audit
+### 4. Knowledge sharing must explicitly declare boundaries and audits
 
 Cross-department knowledge access must include:
 
@@ -62,11 +62,11 @@ Cross-department knowledge access must include:
 - approver / policy source
 - access log
 
-### 5. Governance Delegation Must Be Revocable, Auditable, and Scope-Limited
+### 5. Governance delegation must be revocable, auditable, and scope-limited
 
 Governance delegation is not a permanent transfer, but a controlled authorization with scope, TTL, and revoke.
 
 ## Consequences
 
 - The organization governance layer will become the unified upper boundary for `tenant / division / policy / knowledge`
-- Subsequent implementation prioritizes supplementing organization model, approval routing, and knowledge boundary contracts and state machine tests
+- Subsequent implementation will prioritize adding contracts and state machine tests for organization model, approval routing, and knowledge boundary

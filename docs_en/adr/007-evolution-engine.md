@@ -1,7 +1,8 @@
 # ADR-007 Evolution Engine
 
-- Status: Accepted
+- Status: Partially Superseded by ADR-075
 - Decision Date: 2026-04-02
+- Partially superseded: ADR-075's six-level release model has replaced the description of "Release only allowing off/suggest/shadow three tiers"
 
 ## Context
 

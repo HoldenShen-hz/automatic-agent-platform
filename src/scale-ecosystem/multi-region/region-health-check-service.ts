@@ -48,6 +48,12 @@ export interface RegionHealthCheckConfig {
   readonly checkIntervalMs: number;
   readonly timeoutMs: number;
   readonly retryCount: number;
+  readonly metricSnapshot?: {
+    readonly latencyMs?: number;
+    readonly errorRate?: number;
+    readonly cpuUsage?: number;
+    readonly memoryUsage?: number;
+  };
   readonly thresholds: {
     readonly maxLatencyMs: number;
     readonly maxErrorRate: number;
@@ -277,20 +283,31 @@ export class RegionHealthCheckService {
   private async performHealthCheck(
     config: RegionHealthCheckConfig,
   ): Promise<{ metrics: HealthCheckMetric[] }> {
-    // Simulate health check metrics
-    // In production, this would actually ping endpoints and collect metrics
+    const snapshot = config.metricSnapshot ?? {};
     const metrics: HealthCheckMetric[] = [
       {
         metricName: "latency",
-        value: Math.random() * config.thresholds.maxLatencyMs,
+        value: snapshot.latencyMs ?? Math.min(config.thresholds.maxLatencyMs, config.endpoint.length * 10),
         threshold: config.thresholds.maxLatencyMs,
-        isHealthy: true,
+        isHealthy: (snapshot.latencyMs ?? config.endpoint.length * 10) <= config.thresholds.maxLatencyMs,
       },
       {
         metricName: "error_rate",
-        value: Math.random() * 0.1,
+        value: snapshot.errorRate ?? 0,
         threshold: config.thresholds.maxErrorRate,
-        isHealthy: true,
+        isHealthy: (snapshot.errorRate ?? 0) <= config.thresholds.maxErrorRate,
+      },
+      {
+        metricName: "cpu_usage",
+        value: snapshot.cpuUsage ?? 0,
+        threshold: config.thresholds.maxCpuUsage,
+        isHealthy: (snapshot.cpuUsage ?? 0) <= config.thresholds.maxCpuUsage,
+      },
+      {
+        metricName: "memory_usage",
+        value: snapshot.memoryUsage ?? 0,
+        threshold: config.thresholds.maxMemoryUsage,
+        isHealthy: (snapshot.memoryUsage ?? 0) <= config.thresholds.maxMemoryUsage,
       },
     ];
 
@@ -310,7 +327,9 @@ export class RegionHealthCheckService {
       return "degraded";
     }
 
-    const config = this.configs.get(metrics[0]!.metricName ?? "");
+    const regionId = [...this.healthResults.entries()]
+      .find(([, result]) => result.metrics === metrics)?.[0];
+    const config = regionId == null ? null : this.configs.get(regionId);
     if (config && latencyMs > config.thresholds.maxLatencyMs) {
       return "degraded";
     }

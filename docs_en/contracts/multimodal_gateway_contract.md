@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines the multimodal `ModelGateway` extension, request structure, and security boundary for `§68`.
+This contract defines the multimodal `ModelGateway` extension, request structure, and security boundaries for `§68`.
 
 ## 2. Canonical Objects
 
@@ -26,15 +26,17 @@ This contract defines the multimodal `ModelGateway` extension, request structure
 - `image`
 - `audio`
 - `document`
+- `video`
 
 ## 4. Rules
 
 - Multimodal requests must follow unified trace, budget, and policy constraints.
 - `ModalityRouter` must explicitly select provider / processor.
-- Modality inputs that fail safety checks must not enter model invocation.
+- Modality inputs that fail security checks must not enter model calls.
+- `video` input must be standardized through a structured video pipeline, producing at minimum metadata, scene timeline, keyframe, quality/readiness assessment; if transcript segment is unavailable, must expose as conditional safety finding rather than silently ignoring.
 
 ## 5. Test Requirements
 
 - unit: request validation, route decision, safety findings
-- integration: multimodal request -> gateway -> output
-- contract: illegal modality types must not silently degrade to text execution
+- integration: multimodal request -> gateway -> output, and `video` path must cover transcript segment, scene timeline, keyframe, and gateway summary
+- contract: Illegal modality types must not silently degrade to text execution

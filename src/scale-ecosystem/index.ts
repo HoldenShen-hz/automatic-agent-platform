@@ -1,5 +1,7 @@
 export * as architectureRemediation from "./architecture-remediation.js";
 export * from "./billing/index.js";
+export * from "./capacity-planning/index.js";
+export * from "./cost-attribution/index.js";
 export * from "./enterprise/index.js";
 export * from "./feedback-loop/index.js";
 export * from "./intelligence/index.js";

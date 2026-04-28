@@ -329,7 +329,7 @@ test("DisambiguationHandler requires entities for approval_action intent", () =>
   assert.ok(result.questions.some((q) => q.entityType !== undefined));
 });
 
-test("DisambiguationHandler requires entities for system_config intent", () => {
+test("DisambiguationHandler does not require entities for removed system_config intent", () => {
   const handler = new DisambiguationHandler();
 
   const intent: DetectedIntent = {
@@ -340,11 +340,11 @@ test("DisambiguationHandler requires entities for system_config intent", () => {
     confidence: 0.6,
   };
 
-  // With 0.6 confidence (low), entity questions are generated
+  // system_config is no longer a canonical intent, so entity-requirement heuristics should not treat it specially.
   const result = handler.generateClarification("修改配置", 0.6, intent, []);
 
-  assert.equal(result.requiresClarification, true);
-  assert.ok(result.questions.some((q) => q.entityType !== undefined));
+  assert.equal(result.requiresClarification, false);
+  assert.ok(result.questions.every((q) => q.entityType === undefined));
 });
 
 test("DisambiguationHandler medium confidence with entities does not require clarification", () => {

@@ -56,7 +56,7 @@ function registerTestDomain(
   });
 }
 
-test("DomainOnboardingService.start creates session with modeling phase", () => {
+test("DomainOnboardingService.start creates session with domain_modeling phase", () => {
   const registry = new DomainRegistryService();
   registerTestDomain(registry, "test_start");
 
@@ -64,10 +64,10 @@ test("DomainOnboardingService.start creates session with modeling phase", () => 
   const session = service.start("test_start");
 
   assert.equal(session.domainId, "test_start");
-  assert.equal(session.activePhase, "modeling");
+  assert.equal(session.activePhase, "domain_modeling");
   assert.equal(session.completed, false);
   assert.equal(session.records.length, 1);
-  assert.equal(session.records[0]?.phase, "modeling");
+  assert.equal(session.records[0]?.phase, "domain_modeling");
   assert.equal(session.records[0]?.status, "in_progress");
   assert.deepEqual(session.records[0]?.evidenceArtifactIds, []);
 });
@@ -82,7 +82,7 @@ test("DomainOnboardingService.start is idempotent for same domain", () => {
 
   assert.equal(first.records.length, 1);
   assert.equal(second.records.length, 1);
-  assert.equal(second.activePhase, "modeling");
+  assert.equal(second.activePhase, "domain_modeling");
 });
 
 test("DomainOnboardingService.start throws for unknown domain", () => {
@@ -101,13 +101,13 @@ test("DomainOnboardingService.start throws for unknown domain", () => {
 
 test("DomainOnboardingService.advance progresses through all phases and activates domain", () => {
   const registry = new DomainRegistryService();
-  registerTestDomain(registry, "test_advance", "active");
+  registerTestDomain(registry, "test_advance");
 
   const service = new DomainOnboardingService(registry);
   service.start("test_advance");
 
   let session = service.advance("test_advance", ["modeling_artifact"]);
-  assert.equal(session.activePhase, "development_validation");
+  assert.equal(session.activePhase, "pack_development");
   assert.equal(session.records[0]?.status, "completed");
   assert.deepEqual(session.records[0]?.evidenceArtifactIds, ["modeling_artifact"]);
 
@@ -115,7 +115,7 @@ test("DomainOnboardingService.advance progresses through all phases and activate
   assert.equal(session.activePhase, "security_certification");
 
   session = service.advance("test_advance", ["security_artifact"]);
-  assert.equal(session.activePhase, "canary_launch");
+  assert.equal(session.activePhase, "gray_rollout");
 
   session = service.advance("test_advance", ["canary_artifact"]);
   assert.equal(session.completed, true);
@@ -200,7 +200,7 @@ test("DomainOnboardingService.block marks current phase as blocked", () => {
   const session = service.block("test_block", "block_reason_artifact");
 
   assert.equal(session.activePhase, null);
-  const modelingRecord = session.records.find((r) => r.phase === "modeling");
+  const modelingRecord = session.records.find((r) => r.phase === "domain_modeling");
   assert.equal(modelingRecord?.status, "blocked");
   assert.ok(modelingRecord?.evidenceArtifactIds.includes("block_reason_artifact"));
 });
@@ -233,18 +233,18 @@ test("DomainOnboardingService.rollback restores to earlier phase", () => {
   service.advance("test_rollback", ["modeling_evidence"]);
 
   // Rollback to modeling
-  const session = service.rollback("test_rollback", "modeling", "rollback_checkpoint", "test reason");
+  const session = service.rollback("test_rollback", "domain_modeling", "rollback_checkpoint", "test reason");
 
-  assert.equal(session.activePhase, "modeling");
-  const modelingRecord = session.records.find((r) => r.phase === "modeling");
+  assert.equal(session.activePhase, "domain_modeling");
+  const modelingRecord = session.records.find((r) => r.phase === "domain_modeling");
   assert.equal(modelingRecord?.status, "in_progress");
   assert.ok(modelingRecord?.evidenceArtifactIds.includes("rollback_checkpoint"));
 
-  const devRecord = session.records.find((r) => r.phase === "development_validation");
+  const devRecord = session.records.find((r) => r.phase === "pack_development");
   assert.equal(devRecord?.status, "pending");
 
   assert.equal(session.rollbackHistory.length, 1);
-  assert.equal(session.rollbackHistory[0]?.phase, "development_validation");
+  assert.equal(session.rollbackHistory[0]?.phase, "pack_development");
   assert.equal(session.rollbackHistory[0]?.checkpointArtifactId, "rollback_checkpoint");
   assert.equal(session.rollbackHistory[0]?.reason, "test reason");
 });
@@ -261,11 +261,11 @@ test("DomainOnboardingService.rollback reopens a completed phase when re-advanci
   assert.equal(session.records[0]?.status, "completed");
 
   // Rollback to modeling
-  session = service.rollback("test_reopen", "modeling", "checkpoint", "rollback");
+  session = service.rollback("test_reopen", "domain_modeling", "checkpoint", "rollback");
 
   // Re-advance through modeling
   session = service.advance("test_reopen", ["new_modeling_evidence"]);
-  assert.equal(session.activePhase, "development_validation");
+  assert.equal(session.activePhase, "pack_development");
   assert.equal(session.records[0]?.status, "completed");
   assert.ok(session.records[0]?.evidenceArtifactIds.includes("new_modeling_evidence"));
 });
@@ -278,7 +278,7 @@ test("DomainOnboardingService.rollback throws when no session exists", () => {
   // No session started - should throw session_not_started
 
   assert.throws(
-    () => service.rollback("test_rollback_no_session", "modeling", "checkpoint", "reason"),
+    () => service.rollback("test_rollback_no_session", "domain_modeling", "checkpoint", "reason"),
     (error: unknown) => {
       assert.ok(error instanceof ValidationError);
       assert.equal((error as ValidationError).code, "domain_onboarding.session_not_started");
@@ -289,7 +289,7 @@ test("DomainOnboardingService.rollback throws when no session exists", () => {
 
 test("DomainOnboardingService.rollback throws when all phases are completed", () => {
   const registry = new DomainRegistryService();
-  registerTestDomain(registry, "test_rollback_complete", "active");
+  registerTestDomain(registry, "test_rollback_complete");
 
   const service = new DomainOnboardingService(registry);
   service.start("test_rollback_complete");
@@ -302,7 +302,7 @@ test("DomainOnboardingService.rollback throws when all phases are completed", ()
 
   // Now there's no active phase - should throw no_active_phase
   assert.throws(
-    () => service.rollback("test_rollback_complete", "modeling", "checkpoint", "reason"),
+    () => service.rollback("test_rollback_complete", "domain_modeling", "checkpoint", "reason"),
     (error: unknown) => {
       assert.ok(error instanceof ValidationError);
       assert.equal((error as ValidationError).code, "domain_onboarding.no_active_phase");
@@ -322,7 +322,7 @@ test("DomainOnboardingService.get returns current session state", () => {
   const session = service.get("test_get");
 
   assert.equal(session.domainId, "test_get");
-  assert.equal(session.activePhase, "development_validation");
+  assert.equal(session.activePhase, "pack_development");
   assert.equal(session.completed, false);
   assert.equal(session.records.length, 2);
 });
@@ -377,8 +377,8 @@ test("DomainOnboardingService.list returns sessions in sorted order", () => {
 
 test("DomainOnboardingService.session maintains separate state per domain", () => {
   const registry = new DomainRegistryService();
-  registerTestDomain(registry, "domain_x", "active");
-  registerTestDomain(registry, "domain_y", "active");
+  registerTestDomain(registry, "domain_x");
+  registerTestDomain(registry, "domain_y");
 
   const service = new DomainOnboardingService(registry);
   service.start("domain_x");
@@ -388,22 +388,22 @@ test("DomainOnboardingService.session maintains separate state per domain", () =
   const sessionX = service.get("domain_x");
   const sessionY = service.get("domain_y");
 
-  assert.equal(sessionX.activePhase, "development_validation");
-  assert.equal(sessionY.activePhase, "modeling");
+  assert.equal(sessionX.activePhase, "pack_development");
+  assert.equal(sessionY.activePhase, "domain_modeling");
 });
 
 test("DomainOnboardingService.rollbackHistory persists multiple rollbacks", () => {
   const registry = new DomainRegistryService();
-  registerTestDomain(registry, "test_multi_rollback", "active");
+  registerTestDomain(registry, "test_multi_rollback");
 
   const service = new DomainOnboardingService(registry);
   service.start("test_multi_rollback");
 
   service.advance("test_multi_rollback", ["modeling"]);
-  service.rollback("test_multi_rollback", "modeling", "checkpoint_1", "first rollback");
+  service.rollback("test_multi_rollback", "domain_modeling", "checkpoint_1", "first rollback");
 
   service.advance("test_multi_rollback", ["modeling_v2"]);
-  service.rollback("test_multi_rollback", "modeling", "checkpoint_2", "second rollback");
+  service.rollback("test_multi_rollback", "domain_modeling", "checkpoint_2", "second rollback");
 
   const session = service.get("test_multi_rollback");
   assert.equal(session.rollbackHistory.length, 2);
@@ -413,7 +413,7 @@ test("DomainOnboardingService.rollbackHistory persists multiple rollbacks", () =
 
 test("DomainOnboardingService.completed is true only when all phases are completed", () => {
   const registry = new DomainRegistryService();
-  registerTestDomain(registry, "test_complete", "active");
+  registerTestDomain(registry, "test_complete");
 
   const service = new DomainOnboardingService(registry);
   service.start("test_complete");

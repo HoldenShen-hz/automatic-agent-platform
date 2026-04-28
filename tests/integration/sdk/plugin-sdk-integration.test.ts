@@ -92,8 +92,7 @@ test("plugin SDK: definePlugin throws on empty capabilities", () => {
   );
 });
 
-test.skip("plugin SDK: definePlugin throws on capability missing inputSchema", () => {
-  // Skipped: TypeScript compilation issue with undefined schema causes early validation failure
+test("plugin SDK: definePlugin throws on capability missing inputSchema", () => {
   assert.throws(
     () =>
       definePlugin({
@@ -289,7 +288,7 @@ test("plugin SDK: PluginContext fork creates a child context with overrides", ()
   assert.equal(child.userId, "child-user");
 });
 
-test.skip("plugin SDK: PluginContext toRecord returns all values as plain object", () => {
+test("plugin SDK: PluginContext toRecord returns all values as plain object", () => {
   const ctx = new PluginContext({ pluginId: "test-plugin" });
   ctx.set("custom.data", { nested: true });
 

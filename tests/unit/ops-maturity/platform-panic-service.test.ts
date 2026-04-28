@@ -10,6 +10,7 @@ test("PlatformPanicService blocks execution until an explicit resume succeeds", 
     reasonCode: "security.compromise",
     activeIncidents: 1,
     issuedBy: "sre_lead",
+    requiredApprovers: ["sre_lead", "security_lead"],
     issuedAt: "2026-04-20T00:00:00.000Z",
     targetScopes: ["platform", "platform/domain:payments"],
     forensicArtifactIds: ["artifact:panic:1"],
@@ -37,12 +38,13 @@ test("PlatformPanicService blocks execution until an explicit resume succeeds", 
     scope: "platform",
     approvedBy: "",
     checkpointsVerified: false,
-  });
+  } as any);
   assert.equal(rejectedResume.resumed, false);
 
   const acceptedResume = service.resume("platform", {
     scope: "platform",
     approvedBy: ["sre_lead", "security_lead"],
+    approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,

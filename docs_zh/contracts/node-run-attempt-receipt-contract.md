@@ -81,7 +81,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `nodeAttemptReceiptId` | `string` | receipt ID |
+| `receiptId` | `string` | receipt ID |
 | `nodeAttemptId` | `string` | 对应 attempt |
 | `nodeRunId` | `string` | 对应 node run |
 | `receiptKind` | `tool \| llm \| hitl \| subgraph \| evaluator \| router` | 回执类别 |
@@ -106,6 +106,7 @@
 | --- | --- |
 | `WorkflowStep` | 语义 step；执行前展开为 `PlanNode` / `NodeRun` |
 | `ExecutionReceipt` | deprecated alias；新回执使用 `NodeAttemptReceipt` |
+| `nodeAttemptReceiptId` | deprecated storage-shaped key；canonical API 字段使用 `receiptId` |
 | `StepOutput` | 可作为 projection 或 output artifact，不是执行回执权威 |
 
 ## 7. 测试要求
@@ -120,6 +121,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-46: Receipt主键字段为nodeAttemptReceiptId，架构§5.3 NodeAttemptReceipt用receiptId。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-46: 本文原先把回执主键写成 `nodeAttemptReceiptId`，根因是 contract 直接跟随底层存储命名习惯暴露了 table-shaped 字段名，没有维持 v4.3 executable contract 的 canonical API 形状。修复：正文现把主键统一收敛到 `receiptId`，并把 `nodeAttemptReceiptId` 降为 deprecated storage-shaped key。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

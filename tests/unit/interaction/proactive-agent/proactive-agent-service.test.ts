@@ -146,13 +146,12 @@ test("ProactiveAgentService.evaluate respects cooldown period", () => {
   assert.ok(decision2.reasonCodes.includes("proactive_agent.cooldown_active"));
 });
 
-test.skip("ProactiveAgentService.evaluate respects rate limiting - skipped: rate window timing complex", () => {
-  // This test is skipped because the rate limiting logic depends on time windows
-  // that are complex to set up correctly in a unit test. The rate limiting
-  // implementation resets the window when current time is older than window start,
-  // making it difficult to test without a mock clock.
+test("ProactiveAgentService.evaluate respects rate limiting", () => {
   const service = new ProactiveAgentService();
-  service.registerTrigger(makeTriggerDefinition("trigger-rate", "schedule"));
+  service.registerTrigger({
+    ...makeTriggerDefinition("trigger-rate", "schedule"),
+    cooldown: "0s",
+  });
 
   const now = "2026-04-20T01:00:00.000Z";
 

@@ -5,6 +5,12 @@ import {
 } from "../../platform/contracts/types/unified-runtime-mode.js";
 import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-service.js";
 export { AutonomyGovernanceService } from "./autonomy-governance-service.js";
+export {
+  applyTrustDecay,
+  mapTrustLevelToAutonomyLevel,
+  type ArchitectureAutonomyLevel,
+} from "./trust-scorer/index.js";
+import { applyTrustDecay } from "./trust-scorer/index.js";
 
 export { autonomyAuditService, AutonomyAuditService };
 
@@ -75,6 +81,39 @@ export interface ProgressiveAutonomyEvaluation {
   readonly decision: AutonomyDecision;
   readonly capabilityLevels: Readonly<Record<string, AutonomyLevel>>;
   readonly changeEvents: readonly AutonomyChangeEvent[];
+  readonly impactReports: readonly AutonomyChangeImpactReport[];
+}
+
+export interface AutonomyChangeImpactReport {
+  readonly reportId: string;
+  readonly agentId: string;
+  readonly capabilityId: string;
+  readonly fromLevel: AutonomyLevel;
+  readonly toLevel: AutonomyLevel;
+  readonly activeRunsImpact: "none" | "limited" | "broad";
+  readonly slaImpact: "none" | "warning" | "degradation_risk";
+  readonly approvalQueueImpact: "none" | "increase_expected";
+  readonly budgetImpact: "none" | "higher_human_review_cost";
+  readonly businessOwnerAction: "inform" | "confirm" | "immediate_pause";
+}
+
+export class TrustDecayWorker {
+  public run(
+    profile: AgentTrustProfile,
+    options: {
+      readonly inactiveDays: number;
+      readonly decayRate?: number;
+    },
+  ): AgentTrustProfile {
+    return {
+      ...profile,
+      capabilityScores: profile.capabilityScores.map((item) => ({
+        ...item,
+        trustScore: applyTrustDecay(item.trustScore, options.inactiveDays, options.decayRate),
+      })),
+      lastEvaluation: nowIso(),
+    };
+  }
 }
 
 export interface AutonomyEvaluationOptions {
@@ -257,6 +296,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
   ): ProgressiveAutonomyEvaluation {
     const capabilityLevels: Record<string, AutonomyLevel> = {};
     const changeEvents: AutonomyChangeEvent[] = [];
+    const impactReports: AutonomyChangeImpactReport[] = [];
     const recalculatedScores = profile.capabilityScores.map((item) => {
       const nextScore = scoreCapability(item);
       const nextLevel = applyDomainRiskAutonomyCap(profile.domainId, decideLevel(item, options), options);
@@ -290,6 +330,18 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           evidence,
         };
         changeEvents.push(changeEvent);
+        impactReports.push({
+          reportId: `autonomy_impact_${Date.now()}_${impactReports.length + 1}`,
+          agentId: profile.agentId,
+          capabilityId: item.capabilityId,
+          fromLevel: item.currentAutonomy,
+          toLevel: nextLevel,
+          activeRunsImpact: item.currentAutonomy === "full_auto" && nextLevel !== "full_auto" ? "broad" : "limited",
+          slaImpact: item.currentAutonomy === "full_auto" && nextLevel === "suggestion" ? "degradation_risk" : "warning",
+          approvalQueueImpact: nextLevel === "suggestion" || nextLevel === "supervised" ? "increase_expected" : "none",
+          budgetImpact: nextLevel === "suggestion" ? "higher_human_review_cost" : "none",
+          businessOwnerAction: nextLevel === "frozen" ? "immediate_pause" : "inform",
+        });
         this.auditCallbacks.forEach((cb) => cb(changeEvent));
       }
       return nextScore;
@@ -311,6 +363,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
       },
       capabilityLevels,
       changeEvents,
+      impactReports,
     };
   }
 }

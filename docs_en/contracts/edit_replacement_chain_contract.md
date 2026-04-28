@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,14 +21,14 @@ This contract participates in the following phases of the OAPEFLIR eight-phase l
 
 This contract defines the multi-level matching chain when edit / patch / replace tools locate old content and apply replacements.
 
-Related Documents:
+Related documents:
 
 - `tool_and_provider_execution_contract.md`
 - `file_lock_contract.md`
 - `tool_output_sanitization_contract.md`
 - `idempotency_and_recovery_matrix_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
 Multi-level matching chain must simultaneously solve two types of problems:
 
@@ -40,7 +40,7 @@ Multi-level matching chain must simultaneously solve two types of problems:
 - Matching chain must try in fixed order, stopping at first success.
 - The more fuzzy the match level, the stricter the security constraints must be.
 - Any non-exact replacement must leave warning and audit record.
-- When cannot uniquely locate, must fail, not "guess a similar place".
+- When cannot uniquely locate, must fail, not "guess a similar place."
 
 ## 4. EditReplacementAttempt
 
@@ -153,4 +153,4 @@ Phase 1b does:
 
 ## 11. Closure Conclusion
 
-Improving edit success rate cannot rely on "being bolder", but on a matching chain that tightens order, shows risks explicitly, and fails explainably.
+Improving edit success rate cannot rely on "being bolder," but on a matching chain that tightens order, shows risks explicitly, and fails explainably.

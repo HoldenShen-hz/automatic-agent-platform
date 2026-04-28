@@ -5,7 +5,7 @@
 
 ## Context
 
-Approval requests need to be dynamically routed to the correct approver based on organizational structure, not hard-coded approval chains.
+Approval requests need to be dynamically routed to the correct approver based on organizational structure, rather than hardcoded approval chains.
 
 ## Decision
 
@@ -42,30 +42,28 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 
 ### Routing Rules Engine
 
-- Dynamic routing based on organizational hierarchy, roles, risk level
+- Dynamic routing based on organizational hierarchy, roles, and risk levels
 - Supports approval delegation
-- Supports approval urgent handling
+- Supports approval expedited processing
 
 ## Consequences
 
 Positive:
+
 - Dynamic routing adapts to organizational changes
 - Multi-type approval flows support complex scenarios
 - Automated timeout handling
 
 Negative:
+
 - Rules engine complexity
 - Routing performance impact
-
-Trade-offs:
-- Flexibility vs. complexity
-- Automation vs. control
 
 ## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-085 Organization Governance and Knowledge Boundary](./085-organization-governance-and-knowledge-boundary.md)
+- [Approval / HITL Contract](../contracts/approval_and_hitl_contract.md)
 
 ## Source Sections
 
-- `§47` Organizational Approval Routing
+- `§47` Organization Approval Routing

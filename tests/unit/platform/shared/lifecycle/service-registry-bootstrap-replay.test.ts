@@ -63,7 +63,7 @@ test("ServiceRegistry multiple bootstraps can be registered", async () => {
     reg.register("multi-service-2", { init: () => ({}) });
   });
 
-  const sorted = registry.topologicalSort();
+  const sorted = ServiceRegistry.getInstance().topologicalSort();
   assert.ok(sorted.includes("multi-service-1"), "First bootstrap service should be registered");
   assert.ok(sorted.includes("multi-service-2"), "Second bootstrap service should be registered");
 });
@@ -78,7 +78,7 @@ test("ServiceRegistry bootstrap registrar can register multiple services", async
     reg.register("batch-service-3", { init: () => ({}) });
   });
 
-  const sorted = registry.topologicalSort();
+  const sorted = ServiceRegistry.getInstance().topologicalSort();
   assert.ok(sorted.includes("batch-service-1"));
   assert.ok(sorted.includes("batch-service-2"));
   assert.ok(sorted.includes("batch-service-3"));
@@ -96,7 +96,7 @@ test("ServiceRegistry bootstrap registrar can register services with dependencie
     });
   });
 
-  const sorted = registry.topologicalSort();
+  const sorted = ServiceRegistry.getInstance().topologicalSort();
   const baseIdx = sorted.indexOf("base-service");
   const depIdx = sorted.indexOf("dependent-service");
 
@@ -118,8 +118,9 @@ test("ServiceRegistry bootstrap registrar with teardown is supported", async () 
     });
   });
 
-  registry.get("teardown-bootstrap-service");
-  await registry.reset();
+  const activeRegistry = ServiceRegistry.getInstance();
+  activeRegistry.get("teardown-bootstrap-service");
+  await activeRegistry.reset();
 
   assert.equal(teardownCalled, true, "Teardown should be called on reset");
 });
@@ -128,7 +129,6 @@ test("ServiceRegistry getInstance before registerBootstrap still gets bootstraps
   // This test verifies that if bootstrap is registered after first getInstance,
   // the bootstrap is still applied to that instance
   const registry1 = ServiceRegistry.getInstance();
-  await registry1.reset();
 
   // Register bootstrap after registry was already used
   ServiceRegistry.registerBootstrap("late-bootstrap", (reg) => {
@@ -145,7 +145,8 @@ test("ServiceRegistry bootstrap services can depend on runtime-registered servic
   await registry.reset();
 
   // Register a service at runtime
-  registry.register("runtime-service", { init: () => ({ value: 1 }) });
+  const activeRegistry = ServiceRegistry.getInstance();
+  activeRegistry.register("runtime-service", { init: () => ({ value: 1 }) });
 
   // Bootstrap depends on runtime service
   ServiceRegistry.registerBootstrap("runtime-dep-bootstrap", (reg) => {
@@ -155,7 +156,7 @@ test("ServiceRegistry bootstrap services can depend on runtime-registered servic
     });
   });
 
-  const sorted = registry.topologicalSort();
+  const sorted = activeRegistry.topologicalSort();
   const runtimeIdx = sorted.indexOf("runtime-service");
   const depIdx = sorted.indexOf("bootstrap-with-runtime-dep");
 

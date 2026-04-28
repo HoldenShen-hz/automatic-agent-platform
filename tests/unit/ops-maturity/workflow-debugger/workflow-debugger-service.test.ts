@@ -15,11 +15,11 @@ import {
 } from "../../../../src/ops-maturity/workflow-debugger/index.js";
 
 function createProdActor(): DebuggerActor {
-  return { actorId: "sre-1", canDebugProduction: true };
+  return { actorId: "sre-1", allowedRuntime: "replay_sandbox" };
 }
 
 function createNonProdActor(): DebuggerActor {
-  return { actorId: "viewer-1", canDebugProduction: false };
+  return { actorId: "viewer-1", allowedRuntime: "non_prod" };
 }
 
 function createBreakpoint(
@@ -78,7 +78,7 @@ test.describe("WorkflowDebuggerService", () => {
 
     test("throws with correct actorId in error message", () => {
       const service = new WorkflowDebuggerService();
-      const actor = { actorId: "unauthorized-user", canDebugProduction: false };
+      const actor = { actorId: "unauthorized-user", allowedRuntime: "non_prod" as const };
       const bp = createBreakpoint();
 
       assert.throws(

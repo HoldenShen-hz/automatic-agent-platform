@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,9 +21,9 @@ This contract participates in the following phases of the OAPEFLIR eight-phase l
 
 This contract defines the enterprise operations plane for the final platform, including environment registry, upgrade, rollback, SLA, support, and incident response.
 
-It answers "how the platform is delivered, upgraded, audited, and monitored in enterprise environments".
+It answers "how the platform is delivered, upgraded, audited, and monitored in enterprise environments."
 
-## 2. Goals
+## 2. Objectives
 
 - Bring environments, versions, upgrades, and operations actions into formal control plane.
 - Enable enterprise capabilities to have auditable, recoverable, and supportable delivery modes.
@@ -55,7 +55,7 @@ It answers "how the platform is delivered, upgraded, audited, and monitored in e
 - `health_status`
 - `managed_by`
 
-## 6. Behavior Constraints
+## 6. Behavioral Constraints
 
 - All upgrades and rollbacks must generate receipts.
 - Enterprise environments must have clear topology, version, and owner information.

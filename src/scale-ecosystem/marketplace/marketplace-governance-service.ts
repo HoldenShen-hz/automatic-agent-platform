@@ -150,6 +150,8 @@ export interface DeprecateExtensionInput {
   packageId: string;
   tenantId?: string | null;
   reasonCode: string;
+  migrationTarget?: string | null;
+  replacementSuggestions?: readonly string[];
   deprecatedAt?: string;
 }
 
@@ -183,6 +185,8 @@ export interface MarketplaceCatalogEntry {
   };
   capabilities: string[];
   permissions: string[];
+  migrationTarget?: string | null;
+  replacementSuggestions?: readonly string[];
 }
 
 /** Summary statistics for the marketplace catalog */
@@ -622,7 +626,11 @@ export class MarketplaceGovernanceService {
       this.store.marketplace.upsertMarketplacePublication({
         ...publication,
         status: "deprecated",
-        revocationReasonCode: assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_deprecation_reason"),
+        revocationReasonCode: [
+          assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_deprecation_reason"),
+          input.migrationTarget == null ? null : `migration_target:${assertSimpleIdentifier(input.migrationTarget, "marketplace.invalid_migration_target")}`,
+          ...(input.replacementSuggestions ?? []).map((item) => `replacement:${assertSimpleIdentifier(item, "marketplace.invalid_replacement_suggestion")}`),
+        ].filter((item): item is string => item != null).join("|"),
         updatedAt: deprecatedAt,
       });
     }

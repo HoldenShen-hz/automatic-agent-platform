@@ -35,7 +35,7 @@ export interface PackCompatibilityReport {
   manifest: BusinessPackManifest;
   selectedLicenseTier: LicenseTier;
   requiredLicenseTier: LicenseTier;
-  capabilityMatrix: Record<BusinessPackCapability["maturity"], number>;
+  capabilityMatrix: Record<NonNullable<BusinessPackCapability["maturity"]>, number>;
   selectedPlugins: BuiltinPluginInventoryEntry[];
   availablePlugins: BuiltinPluginInventoryEntry[];
   capabilityCoverage: PackCapabilityCompatibility[];
@@ -128,7 +128,7 @@ export class PackPluginCompatibilityService {
     const capabilityCoverage = manifest.capabilities.map((capability) =>
       this.evaluateCapability(manifest, capability, selectedPlugins, availablePlugins),
     );
-    const requiredContracts = [...new Set(manifest.capabilities.flatMap((capability) => capability.requiredContracts))].sort();
+    const requiredContracts = [...new Set(manifest.capabilities.flatMap((capability) => capability.requiredContracts ?? []))].sort();
     const requiredLicenseTier = capabilityCoverage.reduce<LicenseTier>(
       (highest, capability) => maxTier(highest, capability.requiredLicenseTier),
       "community",
@@ -167,18 +167,18 @@ export class PackPluginCompatibilityService {
     availablePlugins: readonly BuiltinPluginInventoryEntry[],
   ): PackCapabilityCompatibility {
     const rankedSelected = selectedPlugins
-      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domain, capability.capabilityKey) }))
+      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domainId, capability.capabilityKey) }))
       .filter((item) => item.score > 0)
       .sort((left, right) => right.score - left.score || left.plugin.pluginId.localeCompare(right.plugin.pluginId));
     const rankedCandidates = availablePlugins
-      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domain, capability.capabilityKey) }))
+      .map((plugin) => ({ plugin, score: scorePluginForCapability(plugin, manifest.domainId, capability.capabilityKey) }))
       .filter((item) => item.score > 0)
       .sort((left, right) => right.score - left.score || left.plugin.pluginId.localeCompare(right.plugin.pluginId));
     const matchedPluginIds = rankedSelected.map((item) => item.plugin.pluginId);
     const candidatePluginIds = rankedCandidates.map((item) => item.plugin.pluginId).slice(0, 5);
     const requiredLicenseTier = [
       inferCapabilityLicenseTier(capability.capabilityKey),
-      ...capability.requiredContracts.map((contract) => inferCapabilityLicenseTier(contract)),
+      ...(capability.requiredContracts ?? []).map((contract) => inferCapabilityLicenseTier(contract)),
       ...rankedSelected.map((item) => item.plugin.minimumLicenseTier),
     ].reduce<LicenseTier>((highest, tier) => maxTier(highest, tier), "community");
     const reasons: string[] = [];
@@ -195,8 +195,8 @@ export class PackPluginCompatibilityService {
 
     return {
       capabilityKey: capability.capabilityKey,
-      maturity: capability.maturity,
-      requiredContracts: capability.requiredContracts,
+      maturity: capability.maturity ?? capability.profile?.maturity ?? "experimental",
+      requiredContracts: capability.requiredContracts ?? [],
       matchedPluginIds,
       candidatePluginIds,
       requiredLicenseTier,

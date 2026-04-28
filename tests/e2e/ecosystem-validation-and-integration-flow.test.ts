@@ -65,6 +65,8 @@ test("E2E: connector framework enforces prod verification, defers degraded conne
     connectorId: "crm-sync-e2e",
     capability: "sync",
     payload: { contactId: "contact-1" },
+    policyRef: "policy.connector.crm-sync-e2e",
+    secretBindings: [{ secretRef: "secret://crm-sync-e2e/token", purpose: "api_token" }],
   }, {
     environment: "prod",
     eventType: "crm.contact.updated",
@@ -74,6 +76,8 @@ test("E2E: connector framework enforces prod verification, defers degraded conne
     connectorId: "ops-webhook-e2e",
     capability: "notify",
     payload: { incidentId: "incident-1" },
+    policyRef: "policy.connector.ops-webhook-e2e",
+    secretBindings: [{ secretRef: "secret://ops-webhook-e2e/token", purpose: "webhook_secret" }],
   }, {
     environment: "prod",
     eventType: "ops.incident.opened",
@@ -83,6 +87,8 @@ test("E2E: connector framework enforces prod verification, defers degraded conne
     connectorId: "crm-sync-e2e",
     capability: "sync",
     payload: { contactId: "contact-2" },
+    policyRef: "policy.connector.crm-sync-e2e",
+    secretBindings: [{ secretRef: "secret://crm-sync-e2e/token", purpose: "api_token" }],
   }, {
     environment: "prod",
     eventType: "crm.contact.deleted",

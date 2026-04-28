@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Receive failure types, checkpoints, and last decisions
-- **Assess**: Decide recover / retry / abort / escalate
-- **Plan**: Build recovery path and repair boundary
+- **Observe**: Receive failure type, checkpoint, and last decision
+- **Assess**: Determine recover / retry / abort / escalate
+- **Plan**: Plan recovery path and repair boundary
 - **Execute**: Apply recovery actions
 - **Feedback**: Record recovery evidence and residual risk
-- **Learn**: Deposit failure patterns into learning pipeline
+- **Learn**: Accumulate failure patterns into learning pipeline
 - **Improve**: Enhance recovery strategy
-- **Release**: Recovery control as phase 8b gate
+- **Release**: Recovery control as Phase 8b gate
 
 ---
 
@@ -20,15 +20,15 @@
 
 ## Context
 
-Harness failure recovery cannot be left to arbitrary caller decisions, or it will break consistency and auditability.
+Harness failure recovery cannot rely on the caller to decide freely, as this would undermine consistency and auditing.
 
 ## Decision
 
-- `RecoveryController` owns unified Harness failure handling
+- `RecoveryController` is responsible for unified handling of Harness failures
 - Recovery actions must be based on checkpoint / durable run / decision state
-- Recovery flow must write to timeline and recovery evidence
+- Recovery process must write timeline and recovery evidence
 
 ## Consequences
 
-- Failure handling is no longer scattered
+- Failure handling is no longer fragmented
 - Replay, repair, and resume share the same recovery model

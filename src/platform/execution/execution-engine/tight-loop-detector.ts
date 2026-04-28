@@ -143,10 +143,12 @@ export class TightLoopDetector {
     const similarHash = computeSimilarityHash(normalized);
     const sequenceKey = `${toolName}:${exactHash}`;
     const now = nowIso();
+    const sequenceHistoryLimit = this.config.sequenceWindowSize
+      * Math.max(2, this.config.sequenceRepeatThreshold, this.config.warnThreshold, this.config.escalateThreshold);
 
     this.actionSequence.push(sequenceKey);
-    if (this.actionSequence.length > this.config.sequenceWindowSize * 2) {
-      this.actionSequence = this.actionSequence.slice(-this.config.sequenceWindowSize);
+    if (this.actionSequence.length > sequenceHistoryLimit) {
+      this.actionSequence = this.actionSequence.slice(-sequenceHistoryLimit);
     }
 
     const exactPattern = this.exactPatterns.get(sequenceKey);

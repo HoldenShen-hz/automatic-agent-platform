@@ -22,15 +22,16 @@ test("ExplanationPipelineService generate creates L1 brief explanation", () => {
 
   const bundle = service.generate({
     taskId: "task:1",
-    stage: "planning",
+    stageId: "planning",
     summary: "Selected optimal route",
+    decision: "accept",
     decisionFactors: ["latency", "cost"],
     evidence: [],
     riskNotes: ["risk1"],
   }, "L1");
 
   assert.equal(bundle.depth, "L1");
-  assert.equal(bundle.rendered, "planning: Selected optimal route");
+  assert.equal(bundle.rendered, "planning: Selected optimal route decision=accept");
   assert.equal(bundle.rationale.decisionFactors.length, 2);
   assert.equal(bundle.rationale.riskNotes.length, 1);
   assert.ok(bundle.explanationId.startsWith("explanation_"));
@@ -41,15 +42,16 @@ test("ExplanationPipelineService generate creates L2 standard explanation with f
 
   const bundle = service.generate({
     taskId: "task:2",
-    stage: "execution",
+    stageId: "execution",
     summary: "Approved deployment",
+    decision: "accept",
     decisionFactors: ["security_scan_passed", "test_coverage_90pct"],
     evidence: [],
     riskNotes: ["no_rollback_plan"],
   }, "L2");
 
   assert.equal(bundle.depth, "L2");
-  assert.equal(bundle.rendered, "execution: Approved deployment factors=security_scan_passed; test_coverage_90pct risks=no_rollback_plan");
+  assert.equal(bundle.rendered, "execution: Approved deployment decision=accept factors=security_scan_passed; test_coverage_90pct risks=no_rollback_plan");
 });
 
 test("ExplanationPipelineService generate creates L3 audit explanation with causal chain", () => {
@@ -61,8 +63,9 @@ test("ExplanationPipelineService generate creates L3 audit explanation with caus
 
   const bundle = service.generate({
     taskId: "task:3",
-    stage: "review",
+    stageId: "review",
     summary: "Deployment approved after security scan",
+    decision: "accept",
     decisionFactors: ["cve_scan_passed"],
     evidence: [],
     riskNotes: ["edge_case_unclear"],
@@ -79,8 +82,9 @@ test("ExplanationPipelineService caches explanations", () => {
 
   const bundle1 = service.generate({
     taskId: "task:cache",
-    stage: "planning",
+    stageId: "planning",
     summary: "First generation",
+    decision: "accept",
     decisionFactors: [],
     evidence: [],
     riskNotes: [],
@@ -105,8 +109,9 @@ test("ExplanationPipelineService deduplicates decision factors and risk notes", 
 
   const bundle = service.generate({
     taskId: "task:dedup",
-    stage: "review",
+    stageId: "review",
     summary: "Deduplicated entries",
+    decision: "accept",
     decisionFactors: ["factor1", "factor2", "factor1", "factor3", "factor2"],
     evidence: [],
     riskNotes: ["risk1", "risk1", "risk2"],
@@ -126,8 +131,9 @@ test("ExplanationPipelineService filters evidence by allowed categories", () => 
 
   const bundle = service.generate({
     taskId: "task:filter",
-    stage: "validation",
+    stageId: "validation",
     summary: "Evidence filtered",
+    decision: "accept",
     decisionFactors: [],
     evidence,
     riskNotes: [],

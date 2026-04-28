@@ -12,10 +12,12 @@ export class JiraConnector {
   }
 
   private buildResult(request: ConnectorExecutionRequest, supported: boolean): ConnectorExecutionResult {
+    const hasSecrets = Array.isArray(request.secretBindings) && request.secretBindings.length > 0;
+    const hasPolicy = typeof request.policyRef === "string" && request.policyRef.trim().length > 0;
     return {
       connectorId: request.connectorId,
-      success: supported,
-      status: supported ? "succeeded" : "failed",
+      success: supported && hasSecrets && hasPolicy,
+      status: supported && hasSecrets && hasPolicy ? "succeeded" : "failed",
     };
   }
 

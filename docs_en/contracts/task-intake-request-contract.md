@@ -79,7 +79,7 @@ Minimum fields:
 | `principal` | `PrincipalRef` | Initiating principal |
 | `traceId` | `string` | Trace |
 | `idempotencyKey` | `string` | Idempotency key |
-| `requestHash` | `string` | Admission idempotency校验 hash |
+| `requestHash` | `string` | Admission idempotency check hash |
 | `constraintPackRef` | `ConstraintPackRef` | Constraint bundle |
 | `budgetIntent` | `BudgetIntent` | Budget intent, not reservation |
 | `policyContext` | `PolicyContext` | Policy context |

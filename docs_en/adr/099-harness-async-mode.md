@@ -5,13 +5,13 @@
 ## OAPEFLIR Association
 
 - **Observe**: Receive async queue, sleep lease, and external events
-- **Assess**: Decide whether execution can continue
-- **Plan**: Plan async resume and rescheduling
-- **Execute**: Handle long-running tasks through async harness
+- **Assess**: Determine if execution can continue
+- **Plan**: Plan async recovery and rescheduling
+- **Execute**: Handle long-running tasks via async harness
 - **Feedback**: Record async delay, timeout, and recovery results
 - **Learn**: Aggregate async failure patterns
 - **Improve**: Optimize async strategy and backlog
-- **Release**: Async Harness as phase 8c acceptance item
+- **Release**: Async Harness as Ring 2 async-readiness acceptance item
 
 ---
 
@@ -24,10 +24,14 @@ Long-running tasks, external waits, and human approvals all require Harness to h
 
 ## Decision
 
-- `AsyncHarnessService` is a first-class Harness subsystem
-- Async run needs queue / checkpoint / resume capability
+- `AsyncHarnessService` as formal subsystem of Harness
+- Async run requires queue / checkpoint / resume capability
 - Sleep / wake / timeout must be part of the same lifecycle model
 
 ## Consequences
 
-- Harness can carry genuine async workflows
+- Harness can now host true async workflows
+
+## v4.3 ADR Remediation
+
+- A-31: This ADR originally used `phase 8c` as delivery gate terminology. The root cause was that the async mode ADR followed historical phase scheduling and did not switch to the main architecture's unified ring terminology. Fix: The body now uses `Ring 2 async-readiness`.

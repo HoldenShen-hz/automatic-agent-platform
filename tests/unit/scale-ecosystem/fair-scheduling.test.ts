@@ -284,7 +284,7 @@ test("orderFairQueue handles empty array", () => {
   assert.deepEqual(ordered, []);
 });
 
-test("orderFairQueue age score caps at 9 for very old items", () => {
+test("orderFairQueue age score continues accumulating until the 99-minute cap", () => {
   const items = [
     createQueueItem({ itemId: "old", priority: 5, ageMs: 15 * 60_000 }),
     createQueueItem({ itemId: "very-old", priority: 5, ageMs: 60 * 60_000 }),
@@ -292,11 +292,9 @@ test("orderFairQueue age score caps at 9 for very old items", () => {
 
   const ordered = orderFairQueue(items);
 
-  // Both age scores = min(9, floor(age/60000)) = 9
-  // So new-medium (priority 5) with same age score should stay in input order relative to old
   const oldIdx = ordered.findIndex((i) => i.itemId === "old");
   const veryOldIdx = ordered.findIndex((i) => i.itemId === "very-old");
-  assert.ok(oldIdx <= veryOldIdx);
+  assert.ok(veryOldIdx < oldIdx);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

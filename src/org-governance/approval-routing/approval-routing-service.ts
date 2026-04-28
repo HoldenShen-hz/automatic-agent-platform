@@ -70,6 +70,10 @@ export class ApprovalRoutingService {
       approverChain,
       delegated: base.delegated,
       routingStrategy: base.routingStrategy,
+      routeSnapshot: {
+        ...base.routeSnapshot,
+        approverIds: approverChain,
+      },
       escalatedTo,
       auditRecord: buildGovernanceAuditRecord({
         recordId: `audit_${request.requesterId}_${request.orgNodeId}`,

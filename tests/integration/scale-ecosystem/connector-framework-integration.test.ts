@@ -26,6 +26,8 @@ test("integration: verified connector runs prod callback path while degraded con
     connectorId: "crm_sync",
     capability: "sync",
     payload: {},
+    secretBindings: [{ secretRef: "secret://crm_sync", purpose: "api_token" }],
+    policyRef: "policy://connectors/crm_sync",
   }, {
     environment: "prod",
     eventType: "crm.contact.updated",

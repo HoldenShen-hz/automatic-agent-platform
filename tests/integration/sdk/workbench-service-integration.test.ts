@@ -120,12 +120,12 @@ test("integration: workbench shortcuts contain valid preview URLs", () => {
   // Check task list shortcut
   const taskShortcut = shortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
   assert.ok(taskShortcut);
-  assert.ok(taskShortcut!.previewUrl!.includes("/v2/tasks"));
+  assert.ok(taskShortcut!.previewUrl!.includes("/v2/harness-runs"));
 
-  // Check approval queue shortcut
-  const approvalShortcut = shortcuts.find((s) => s.shortcutId === "sdk.approvals.queue");
-  assert.ok(approvalShortcut);
-  assert.ok(approvalShortcut!.previewUrl!.includes("/v2/approvals"));
+  // Check packs shortcut
+  const packsShortcut = shortcuts.find((s) => s.shortcutId === "sdk.packs.list");
+  assert.ok(packsShortcut);
+  assert.ok(packsShortcut!.previewUrl!.includes("/v2/packs"));
 });
 
 test("integration: workbench creates install plan with plugin assignments", () => {

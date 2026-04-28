@@ -1,11 +1,11 @@
 # Artifact Store Contract
 
-> **OAPEFLIR Related**: This contract defines the storage mechanism for OAPEFLIR Artifact Plane, corresponding to ADR-016 §11 and design document §D.
-> **Updated**: 2026-04-17
+> **OAPEFLIR Association**: This contract defines the storage mechanism for the OAPEFLIR Artifact Plane, corresponding to ADR-016 §11 and design document §D.
+> **Last Updated**: 2026-04-17
 
 ## 1. Scope
 
-This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-based output artifacts.
+This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-based artifacts.
 
 ## 2. Key Objects
 
@@ -29,12 +29,12 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 - `checksum?`
 - `created_at`
 
-## 4. Behavior Constraints
+## 4. Behavioral Constraints
 
-- Only index and reference are saved in DB, not large BLOB bodies.
+- Only indexes and references are stored in the DB; large BLOB bodies are not stored.
 - Artifact paths must be stable and reconstructible.
-- Deletion policies must not destroy the auditability of completed tasks.
-- External artifact exposure must go through permission checks.
+- Deletion policies must not compromise the auditability of completed tasks.
+- Artifacts exposed externally must undergo permission checks.
 
 ## 5. Supplementary Rules
 
@@ -43,19 +43,19 @@ This contract defines the storage layout, metadata index, lifecycle, and referen
 Default local development layout:
 
 - `data/artifacts/<task_id>/<artifact_id>/`
-- Metadata based on DB authoritative index
+- Metadata is governed by DB authoritative index
 
-### 5.2 Object Storage Boundary
+### 5.2 Object Storage Boundaries
 
-- Object storage is responsible for artifact bodies, not task truth state.
-- `artifact_id`, `storage_key`, `checksum` must be mutually mappable.
+- Object storage is responsible for artifact bodies, not for task truth state.
+- `artifact_id`, `storage_key`, and `checksum` must be mappable to each other.
 - After migrating to object storage, read interface semantics remain unchanged.
 
 ### 5.3 GC and Cold Storage
 
 - Core artifacts of completed tasks must not be directly deleted within the audit window.
-- Reconstructible or low-value artifacts can enter cold storage or expire deletion.
-- GC must execute according to retention policy, and generate logs and audit records.
+- Reconstructible or low-value artifacts may enter cold storage or expire for deletion.
+- GC must execute according to retention policy and produce logs and audit records.
 
 ### 5.4 ArtifactLink / ArtifactBundle
 
@@ -76,8 +76,8 @@ Default local development layout:
 
 Rules:
 
-- Artifacts must be able to trace back to feedback / learning / improvement / rollout / diagnostics and other closed-loop objects through `ref_id`.
-- Publish / preview / governance related artifacts must not exist only in filesystem paths; must have structured index.
+- Artifacts must be able to trace back to closed-loop objects such as feedback, learning, improvement, rollout, and diagnostics through `ref_id`.
+- Publish, preview, and governance-related artifacts must not exist only in filesystem paths; they must have structured indexes.
 
 ### 5.5 ArtifactPublishService
 

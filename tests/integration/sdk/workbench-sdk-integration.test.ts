@@ -37,6 +37,6 @@ test("integration: sdk workbench composes client, plugin, and pack manifests int
   });
 
   assert.equal(report.ready, true);
-  assert.ok(report.previewUrls.some((url) => url.includes("/v1/tasks")));
+  assert.ok(report.previewUrls.some((url) => url.includes("/v1/harness-runs")));
   assert.deepEqual(report.findings, []);
 });

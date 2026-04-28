@@ -1,11 +1,11 @@
-# ADR-022 API Contract and Versioning
+# ADR-022 API Contract and Versioning Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-03
 
 ## Context
 
-The platform exposes REST/WebSocket APIs externally and requires unified versioning strategy, error format, pagination conventions, and idempotency guarantees to avoid API fragmentation.
+The platform exposes REST/WebSocket APIs externally and requires a unified versioning strategy, error format, pagination standard, and idempotency guarantees to avoid API fragmentation.
 
 ## Decision
 
@@ -28,7 +28,7 @@ The platform exposes REST/WebSocket APIs externally and requires unified version
 | GET/PUT | /api/v1/admin/config | Configuration management |
 | GET/POST/PUT | /api/v1/admin/tenants | Tenant management |
 | GET/PUT | /api/v1/admin/budgets | Budget management |
-| GET/POST | /api/v1/admin/rollouts | Rollout management |
+| GET/POST | /api/v1/admin/rollouts | Release management |
 | WebSocket | /ws/v1/stream | Real-time streaming |
 
 ### ApiError Format
@@ -44,39 +44,37 @@ interface ApiError {
 
 ### Idempotency Guarantee
 
-- Support Idempotency-Key header
-- Duplicate requests with same key return original response
+- Supports Idempotency-Key header
+- Repeated requests with the same key return the original response
 
-### Pagination Specification
+### Pagination Standard
 
 - Cursor-based pagination, max 100 items per page
 
 ### Webhook Delivery Guarantee
 
-- Retry mechanism: max 50 attempts
-- Auto-disable webhook after 50 consecutive failures
+- Retry mechanism: up to 50 times
+- Automatically disables webhook after 50 consecutive failures
 - Failure count can be reset
 
 ## Consequences
 
-Positive:
+Benefits:
+
 - Unified API contracts improve developer experience
 - Idempotency guarantee makes retries safe
-- Webhook auto-disable prevents无效 delivery
+- Automatic webhook disabling prevents invalid deliveries
 
-Negative:
-- Route layer needs unified error handling and pagination logic
+Costs:
+
+- Routing layer needs to implement unified error handling and pagination logic
 - Idempotency-Key storage requires additional resources
 
-Trade-offs:
-- Standardization vs. API flexibility
-- Safety vs. complexity
-
-## Cross-References
+## Cross References
 
 - [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 
-## Source Sections
+## Source Section
 
-- `§6` API Contract and Versioning
+- `§6` API Contract and Versioning Architecture

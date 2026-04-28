@@ -83,10 +83,10 @@ test("isValidLifecycleTransition allows staging to canary or testing", () => {
   assert.equal(isValidLifecycleTransition("staging", "testing"), true);
 });
 
-test("isValidLifecycleTransition allows canary to active, staging, or paused", () => {
+test("isValidLifecycleTransition allows canary to active or staging but not paused", () => {
   assert.equal(isValidLifecycleTransition("canary", "active"), true);
   assert.equal(isValidLifecycleTransition("canary", "staging"), true);
-  assert.equal(isValidLifecycleTransition("canary", "paused"), true);
+  assert.equal(isValidLifecycleTransition("canary", "paused"), false);
 });
 
 test("isValidLifecycleTransition allows active to paused or deprecated", () => {

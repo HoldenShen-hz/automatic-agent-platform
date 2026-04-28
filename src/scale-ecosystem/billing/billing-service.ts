@@ -59,6 +59,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type {
   BillingAccountSummary,
   BillingServiceOptions,
+  CreateBillingAdjustmentInput,
   CreateBillingAccountInput,
   CreateBillingCheckoutSessionInput,
   CreateBillingInvoiceInput,
@@ -70,6 +71,7 @@ import type {
   ReconcilePendingPaymentSessionsResult,
   RecordUsageInput,
   RecordUsageResult,
+  RefundBillingInvoiceInput,
   SettleBillingPaymentSessionInput,
 } from "./types.js";
 import {
@@ -86,6 +88,7 @@ export type {
   BillingAccountSummary,
   BillingServiceOptions,
   CreateBillingAccountInput,
+  CreateBillingAdjustmentInput,
   CreateBillingCheckoutSessionInput,
   CreateBillingInvoiceInput,
   EvaluateEntitlementInput,
@@ -96,6 +99,7 @@ export type {
   ReconcilePendingPaymentSessionsResult,
   RecordUsageInput,
   RecordUsageResult,
+  RefundBillingInvoiceInput,
   SettleBillingPaymentSessionInput,
 } from "./types.js";
 
@@ -156,6 +160,11 @@ export class BillingService {
       workspaceId,
       planId: plan.planId,
       status: input.status ?? "active",
+      balanceSnapshot: {
+        outstandingUsd: 0,
+        creditUsd: 0,
+        lastCalculatedAt: timestamp,
+      },
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -347,6 +356,53 @@ export class BillingService {
       recentLedgerEntries,
       recentDecisions,
     };
+  }
+
+  public createAdjustment(input: CreateBillingAdjustmentInput): LedgerEntryRecord {
+    const account = this.requireActiveAccount(input.accountId);
+    const recordedAt = input.recordedAt ?? nowIso();
+    const entry: LedgerEntryRecord = {
+      entryId: newId("ledger"),
+      accountId: account.accountId,
+      usageId: null,
+      periodId: input.periodId,
+      entryType: "adjustment",
+      amountUsd: roundCurrency(input.amountUsd),
+      currency: "USD",
+      sourceRef: input.sourceRef ?? input.reasonCode,
+      recordedAt,
+    };
+    this.store.billing.insertLedgerEntry(entry);
+    this.store.billing.upsertBillingAccount({
+      ...account,
+      balanceSnapshot: this.recalculateBalanceSnapshot(account.accountId, recordedAt),
+      updatedAt: recordedAt,
+    });
+    return entry;
+  }
+
+  public refundInvoice(input: RefundBillingInvoiceInput): LedgerEntryRecord {
+    const invoice = this.requireInvoice(input.invoiceId, input.tenantId);
+    const account = this.requireActiveAccount(invoice.accountId);
+    const recordedAt = input.recordedAt ?? nowIso();
+    const entry: LedgerEntryRecord = {
+      entryId: newId("ledger"),
+      accountId: account.accountId,
+      usageId: null,
+      periodId: invoice.periodId,
+      entryType: "refund",
+      amountUsd: roundCurrency(-Math.abs(input.refundAmountUsd)),
+      currency: "USD",
+      sourceRef: input.reasonCode,
+      recordedAt,
+    };
+    this.store.billing.insertLedgerEntry(entry);
+    this.store.billing.upsertBillingAccount({
+      ...account,
+      balanceSnapshot: this.recalculateBalanceSnapshot(account.accountId, recordedAt),
+      updatedAt: recordedAt,
+    });
+    return entry;
   }
 
   /**
@@ -713,6 +769,19 @@ export class BillingService {
       });
     }
     return account;
+  }
+
+  private recalculateBalanceSnapshot(accountId: string, calculatedAt: string): NonNullable<BillingAccountRecord["balanceSnapshot"]> {
+    const ledgerEntries = this.store.billing.listLedgerEntriesForAccount(accountId, 1_000);
+    const outstandingUsd = roundCurrency(ledgerEntries.reduce((sum, entry) => sum + entry.amountUsd, 0));
+    const creditUsd = roundCurrency(Math.abs(ledgerEntries
+      .filter((entry) => entry.entryType === "credit" || entry.entryType === "refund")
+      .reduce((sum, entry) => sum + Math.min(0, entry.amountUsd), 0)));
+    return {
+      outstandingUsd,
+      creditUsd,
+      lastCalculatedAt: calculatedAt,
+    };
   }
 
   /** Requires an invoice, throws if not found */

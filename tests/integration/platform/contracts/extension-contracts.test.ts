@@ -588,6 +588,7 @@ test("contract: PlatformPanicService blocks execution until explicit resume", ()
     reasonCode: "security.compromise",
     activeIncidents: 1,
     issuedBy: "security_lead",
+    requiredApprovers: ["security_lead", "sre_manager"],
     issuedAt: "2026-04-20T00:00:00.000Z",
   });
 
@@ -603,6 +604,7 @@ test("contract: PlatformPanicService blocks execution until explicit resume", ()
   const receipt = service.resume("platform/runtime", {
     scope: "platform/runtime",
     approvedBy: ["sre_manager", "security_lead"],
+    approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
@@ -646,7 +648,7 @@ test("contract: PlatformOpsAgentService requires approval for high-risk actions 
   const service = new PlatformOpsAgentService({
     agentId: "agent_ops_1",
     specialty: "incident_response",
-    allowedActionTypes: ["investigate_incident", "scale_capacity"],
+    allowedActionTypes: ["investigate_incident", "scale_capacity", "restart_service", "failover"],
     requiredApprovals: ["sre_manager"],
     maxAutonomyLevel: "supervised_execution",
     evidenceRequirements: ["runbook:incident"],

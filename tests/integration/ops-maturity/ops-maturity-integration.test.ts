@@ -38,7 +38,8 @@ test("ExplanationPipelineService generates L2 explanation with causal chain and 
   const bundle = service.generate(request, "L2");
   assert.equal(bundle.depth, "L2");
   assert.equal(bundle.rationale.taskId, "task_explain_001");
-  assert.equal(bundle.rationale.stage, "plan");
+  assert.equal(bundle.rationale.stageId, "plan");
+  assert.equal(bundle.rationale.decision, "accept");
   assert.deepEqual(bundle.rationale.decisionFactors, ["low_latency_requirement", "resource_availability"]);
   assert.deepEqual(bundle.rationale.evidenceRefs, ["ev_001", "ev_002"]);
   assert.deepEqual(bundle.causalSummary, [
@@ -146,14 +147,16 @@ test("EdgeRuntimeSyncService rejects restricted data when policy denies", () => 
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: false, requireOrdering: false },
   };
+  const restrictedRecord = buildOfflineExecutionRecord("edge_node_002", "task_001", "2026-04-23T00:00:00.000Z");
+  const internalRecord = buildOfflineExecutionRecord("edge_node_002", "task_002", "2026-04-23T01:00:00.000Z");
   const envelopes = [
-    { envelopeId: "env_001", recordId: "edge_node_002:task_001:2026-04-23T00:00:00.000Z", edgeNodeId: "edge_node_002", priority: 1, dataClassification: "restricted" as const, payloadDigest: "digest_r_001", createdAt: "2026-04-23T00:00:00.000Z" },
-    { envelopeId: "env_002", recordId: "edge_node_002:task_002:2026-04-23T01:00:00.000Z", edgeNodeId: "edge_node_002", priority: 2, dataClassification: "internal" as const, payloadDigest: "digest_i_001", createdAt: "2026-04-23T01:00:00.000Z" },
+    service.buildSyncEnvelope(profile, restrictedRecord, "digest_r_001", 1, "restricted", "2026-04-23T00:00:00.000Z"),
+    service.buildSyncEnvelope(profile, internalRecord, "digest_i_001", 2, "internal", "2026-04-23T01:00:00.000Z"),
   ];
   const cloudDigests: Record<string, string> = {};
   const receipt = service.sync(profile, envelopes, cloudDigests);
-  assert.deepEqual(receipt.rejectedEnvelopeIds, ["env_001"]);
-  assert.deepEqual(receipt.acceptedEnvelopeIds, ["env_002"]);
+  assert.deepEqual(receipt.rejectedEnvelopeIds, [envelopes[0]!.envelopeId]);
+  assert.deepEqual(receipt.acceptedEnvelopeIds, [envelopes[1]!.envelopeId]);
   assert.equal(receipt.decisions[0]?.resolution, "reject");
   assert.equal(receipt.decisions[0]?.rationale, "edge.sync_policy_restricted_data_denied");
   assert.equal(receipt.decisions[1]?.resolution, "accept_edge");
@@ -169,12 +172,13 @@ test("EdgeRuntimeSyncService merges when cloud digest differs from edge digest",
     allowedModels: [],
     syncPolicy: { allowRestrictedDataUpload: true, requireOrdering: false },
   };
+  const record = buildOfflineExecutionRecord("edge_node_003", "task_101", "2026-04-23T00:00:00.000Z");
   const envelopes = [
-    { envelopeId: "env_101", recordId: "edge_node_003:task_101:2026-04-23T00:00:00.000Z", edgeNodeId: "edge_node_003", priority: 1, dataClassification: "internal" as const, payloadDigest: "edge_digest_v2", createdAt: "2026-04-23T00:00:00.000Z" },
+    service.buildSyncEnvelope(profile, record, "edge_digest_v2", 1, "internal", "2026-04-23T00:00:00.000Z"),
   ];
-  const cloudDigests = { "edge_node_003:task_101:2026-04-23T00:00:00.000Z": "cloud_digest_v1" };
+  const cloudDigests = { [envelopes[0]!.recordId]: "cloud_digest_v1" };
   const receipt = service.sync(profile, envelopes, cloudDigests);
-  assert.deepEqual(receipt.acceptedEnvelopeIds, ["env_101"]);
+  assert.deepEqual(receipt.acceptedEnvelopeIds, [envelopes[0]!.envelopeId]);
   assert.equal(receipt.decisions[0]?.resolution, "merge");
   assert.equal(receipt.decisions[0]?.rationale, "edge.sync_conflict_merge_required");
 });

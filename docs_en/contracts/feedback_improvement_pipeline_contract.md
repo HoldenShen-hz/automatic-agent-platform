@@ -12,7 +12,7 @@ This contract defines feedback collection, preprocessing, improvement candidate,
 - `ImprovementReviewDecision`
 - `FeedbackLoopSnapshot`
 
-## 3. FeedbackSignal Minimum Fields
+## 3. `FeedbackSignal` Minimum Fields
 
 - `signal_id`
 - `source_type`
@@ -24,7 +24,7 @@ This contract defines feedback collection, preprocessing, improvement candidate,
 
 ## 4. Improvement Candidate
 
-`ImprovementCandidate` minimum fields:
+`ImprovementCandidate` Minimum Fields:
 
 - `candidate_id`
 - `candidate_type`

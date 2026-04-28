@@ -38,22 +38,32 @@ export class DomainRegistryService {
 
   public register(input: DomainDefinition): DomainDefinition {
     const parsed = DomainDefinitionSchema.parse(input);
-    this.validateDefinition(parsed);
-    this.registry.set(parsed.domainId, parsed);
-    this.workflowRegistry.registerAll(parsed.workflows);
-    this.toolBundleRegistry.registerAll(parsed.toolBundles);
-    this.contractRegistry.registerAll(parsed.outputContracts);
+    const normalized = parsed.status === "validated"
+      ? { ...parsed, status: "registered" as const }
+      : parsed;
+    const normalizedBindings = normalized.pluginBindings.map((binding, index) =>
+      normalizePluginBinding(binding, input.pluginBindings[index]),
+    );
+    const normalizedDefinition: DomainDefinition = {
+      ...normalized,
+      pluginBindings: normalizedBindings,
+    };
+    this.validateDefinition(normalizedDefinition);
+    this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
+    this.workflowRegistry.registerAll(normalizedDefinition.workflows);
+    this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);
+    this.contractRegistry.registerAll(normalizedDefinition.outputContracts);
     this.eventPublisher?.publish({
       eventType: "domain:registered",
       payload: {
-        domainId: parsed.domainId,
-        status: parsed.status,
-        capabilityCount: parsed.pluginBindings.length,
-        pluginCount: parsed.pluginBindings.length,
+        domainId: normalizedDefinition.domainId,
+        status: normalizedDefinition.status,
+        capabilityCount: normalizedDefinition.pluginBindings.length,
+        pluginCount: normalizedDefinition.pluginBindings.length,
         occurredAt: nowIso(),
       },
     });
-    return parsed;
+    return normalizedDefinition;
   }
 
   public validate(domainId: string): DomainSmokeTestResult {
@@ -63,6 +73,13 @@ export class DomainRegistryService {
 
   public activate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
+    if (current.status !== "registered") {
+      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
     const smoke = this.smokeTests.run(current);
     if (!smoke.passed) {
       throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed.", {
@@ -150,7 +167,7 @@ export class DomainRegistryService {
     }
     return domain.pluginBindings
       .filter((binding) => binding.enabled)
-      .filter((binding) => pluginType == null || binding.pluginType === pluginType)
+      .filter((binding) => pluginType == null || binding.pluginType === pluginType || resolveBindingRole(binding) === pluginType)
       .sort((left, right) => right.priority - left.priority);
   }
 
@@ -220,12 +237,14 @@ export class DomainRegistryService {
     }
 
     for (const binding of parsed.pluginBindings) {
+      const bindingRole = resolveBindingRole(binding);
       if (binding.domainId !== parsed.domainId) {
         throw this.validationError("domain_registry.plugin_domain_mismatch", "Plugin binding domain must match the registered domain.");
       }
       const registryRecord = this.pluginRegistry?.get(binding.pluginId) ?? null;
       if (registryRecord) {
-        if (!registryRecord.manifest.spiTypes.includes(binding.pluginType)) {
+        const manifestTypes = new Set(registryRecord.manifest.spiTypes.flatMap((type: string) => normalizePluginManifestType(type)));
+        if (!manifestTypes.has(binding.pluginType) && !registryRecord.manifest.spiTypes.includes(bindingRole as any)) {
           throw this.validationError("domain_registry.plugin_type_mismatch", "Plugin binding type does not match plugin manifest.");
         }
         if (registryRecord.manifest.domainIds.length > 0 && !registryRecord.manifest.domainIds.includes(parsed.domainId)) {
@@ -248,4 +267,57 @@ export class DomainRegistryService {
       source: "internal",
     });
   }
+}
+
+function normalizePluginManifestType(type: string): PluginBinding["pluginType"][] {
+  switch (type) {
+    case "planner":
+    case "presenter":
+      return ["tool"];
+    case "validator":
+      return ["evaluator"];
+    case "tool":
+    case "adapter":
+    case "retriever":
+    case "evaluator":
+      return [type];
+    default:
+      return [];
+  }
+}
+
+function resolveBindingRole(binding: PluginBinding): NonNullable<PluginBinding["bindingRole"]> {
+  if (binding.bindingRole !== undefined) {
+    return binding.bindingRole;
+  }
+  switch (binding.pluginType) {
+    case "tool":
+      return "tool";
+    case "adapter":
+      return "adapter";
+    case "retriever":
+      return "retriever";
+    case "evaluator":
+      return "evaluator";
+    case "planner":
+      return "planner";
+    case "presenter":
+      return "presenter";
+    case "validator":
+      return "validator";
+  }
+}
+
+function normalizePluginBinding(
+  binding: PluginBinding,
+  rawBinding: PluginBinding | undefined,
+): PluginBinding {
+  if (binding.bindingRole != null) {
+    return binding;
+  }
+  const legacyRole = rawBinding?.bindingRole ?? rawBinding?.pluginType;
+  if (legacyRole === "planner" || legacyRole === "presenter" || legacyRole === "validator") {
+    return { ...binding, bindingRole: legacyRole };
+  }
+  return { ...binding, bindingRole: resolveBindingRole(binding) };
 }

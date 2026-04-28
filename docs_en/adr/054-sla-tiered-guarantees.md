@@ -38,7 +38,7 @@ interface SLARequirement {
 
 ### SLA Compensation
 
-| Violation Type | Compensation |
+| Violation Type | Compensation Method |
 |----------------|--------------|
 | Availability below target | Service extension |
 | Latency exceeded | Partial refund |
@@ -46,13 +46,13 @@ interface SLARequirement {
 
 ## Consequences
 
-Positive:
+Advantages:
 
-- Tiered service meets different business needs
+- Tiered services meet different business needs
 - SLA compensation enhances user trust
-- Monitoring metrics facilitate problem diagnosis
+- Monitoring metrics facilitate problem identification
 
-Negative:
+Costs:
 
 - Multi-tier SLA increases operational complexity
 - Compensation calculation requires precision
@@ -60,6 +60,11 @@ Negative:
 ## Cross-References
 
 - [ADR-053 Scaling Resource Competition Management](./053-scaling-resource-competition-management.md)
+- [Platform Architecture §27 Performance Architecture and SLO](../architecture/00-platform-architecture.md)
+
+## Source Section
+
+- `§54` SLA Tiered Guaranteescompetition-management.md)
 - [Platform Architecture §27 Performance Architecture and SLO](../architecture/00-platform-architecture.md)
 
 ## Source Sections

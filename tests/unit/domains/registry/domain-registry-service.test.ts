@@ -106,13 +106,14 @@ test("DomainRegistryService registers, validates, activates, and filters tools",
       budgetLimits: { maxTokensPerTask: 6000, maxCostPerTask: 4 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: ["github"],
     pluginBindings: [
       {
         bindingId: "binding.presenter",
         domainId: "coding",
-        pluginType: "presenter",
+        pluginType: "tool",
+        bindingRole: "presenter",
         pluginId: "plugin.coding.presenter",
         priority: 1,
         enabled: true,
@@ -128,7 +129,7 @@ test("DomainRegistryService registers, validates, activates, and filters tools",
   assert.equal(service.getWorkflow("coding", "wf_build")?.name, "Build");
   assert.equal(service.getToolBundle("coding", "coding-default")?.tools.length, 2);
   assert.equal(service.getOutputContract("coding", "contract.patch")?.validationLevel, "strict");
-  assert.equal(service.resolvePlugins("coding", "presenter").length, 1);
+  assert.equal(service.resolvePlugins("coding", "presenter" as any).length, 1);
   assert.deepEqual(service.buildCapabilityEntry("coding").pluginIds, ["plugin.coding.presenter"]);
   assert.deepEqual(service.buildCapabilityEntry("coding").knowledgeNamespaces, ["coding/repo"]);
   assert.ok(events.includes("domain:registered"));
@@ -154,7 +155,7 @@ test("DomainRegistryService list and listActive return registered domains", () =
       budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
       securityLevel: "standard",
     },
-    status: "testing",
+    status: "validated",
     externalAdapters: [],
     pluginBindings: [],
   });
@@ -259,8 +260,8 @@ test("DomainRegistryService getPluginBindings filters by pluginType", () => {
     status: "active",
     externalAdapters: [],
     pluginBindings: [
-      { bindingId: "b1", domainId: "multi_plugin", pluginType: "presenter", pluginId: "p1", priority: 1, enabled: true, config: {} },
-      { bindingId: "b2", domainId: "multi_plugin", pluginType: "presenter", pluginId: "p2", priority: 2, enabled: true, config: {} },
+      { bindingId: "b1", domainId: "multi_plugin", pluginType: "tool", bindingRole: "presenter", pluginId: "p1", priority: 1, enabled: true, config: {} },
+      { bindingId: "b2", domainId: "multi_plugin", pluginType: "tool", bindingRole: "presenter", pluginId: "p2", priority: 2, enabled: true, config: {} },
       { bindingId: "b3", domainId: "multi_plugin", pluginType: "retriever", pluginId: "p3", priority: 1, enabled: true, config: {} },
       { bindingId: "b4", domainId: "multi_plugin", pluginType: "retriever", pluginId: "p4", priority: 1, enabled: false, config: {} },
     ],
@@ -269,7 +270,7 @@ test("DomainRegistryService getPluginBindings filters by pluginType", () => {
   const all = service.getPluginBindings("multi_plugin");
   assert.equal(all.length, 3); // enabled presenter (2) + enabled retriever (1), disabled excluded
 
-  const presenters = service.getPluginBindings("multi_plugin", "presenter");
+  const presenters = service.getPluginBindings("multi_plugin", "presenter" as any);
   assert.equal(presenters.length, 2);
 
   const retrievers = service.getPluginBindings("multi_plugin", "retriever");

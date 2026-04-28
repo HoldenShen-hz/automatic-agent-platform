@@ -7,20 +7,20 @@
 This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
 - **Observe**: Region, quota, SLA, feedback, marketplace, connector health signals
-- **Assess**: Cross-region routing, resource contention, SLA tiering, ecosystem governance
+- **Assess**: Cross-region routing, resource competition, SLA stratification, ecosystem governance
 - **Plan**: Region selection, quota allocation, connector execution, and ecosystem expansion strategy
-- **Execute**: Multi-region operation, preemption, fair scheduling, connector calls, marketplace install
-- **Feedback**: User feedback, quality signals, marketplace performance, and connector health return
+- **Execute**: Multi-region execution, preemption, fair scheduling, connector invocation, marketplace installation
+- **Feedback**: User feedback, quality signals, marketplace performance, and connector health feedback
 - **Learn**: Marketplace performance, resource strategy, and feedback-driven improvement
 - **Improve**: SLA, scheduler, connector, and ecosystem capability continuous optimization
-- **Release**: Cross-region, ecosystem components, and connector phased release
+- **Release**: Cross-region, ecosystem component, and connector tiered release
 
 ---
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Context
+## Background
 
 v2.7 `§52-§57` requires the platform to enter the scale operation and open ecosystem phase. The current repository already has:
 
@@ -31,35 +31,35 @@ v2.7 `§52-§57` requires the platform to enter the scale operation and open eco
 - `src/scale-ecosystem/feedback-loop`
 - `src/scale-ecosystem/integration`
 
-But the maturity of these directories varies significantly.
+However, the maturity of these directories is significantly inconsistent.
 
-## Decision
+## Decisions
 
-### 1. Multi-Region Routing Must Be Constrained by Both Data Residency and Execution Proximity
+### 1. Multi-region routing must be constrained by both data residency and execution locality
 
-Region selection cannot look at latency alone; must simultaneously satisfy:
+Region selection cannot look at latency alone; it must simultaneously satisfy:
 
 - data residency
 - legal transfer rule
 - workload affinity
 - recovery topology
 
-### 2. Quota, Preemption, and Fair Scheduling Belong to a Unified Scheduling Governance Surface
+### 2. Quota, preemption, and fair scheduling belong to a unified scheduling governance plane
 
-Resource contention management is not a scattered policy collection, but a unified scheduler contract.
+Resource competition management is not a scattered collection of policies, but a unified scheduler contract.
 
-### 3. SLA Tier Must Directly Affect Scheduling and Isolation
+### 3. SLA tier must directly affect scheduling and isolation
 
-SLA is not a pure reporting field; must participate in:
+SLA is not a pure reporting field and must participate in:
 
 - queue priority
 - reservation
 - preemption
 - escalation
 
-### 4. Marketplace, Feedback, and Connectors Use a Unified Ecosystem Governance Approach
+### 4. Marketplace, feedback, and connectors adopt a unified ecosystem governance approach
 
-Although these three capability types have different scenarios, all must comply with:
+Although these three capabilities have different scenarios, all must comply with:
 
 - manifest / metadata
 - lifecycle

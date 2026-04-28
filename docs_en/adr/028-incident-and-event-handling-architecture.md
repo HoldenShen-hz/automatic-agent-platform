@@ -5,7 +5,7 @@
 
 ## Context
 
-The platform generates large volumes of events and alerts during runtime, requiring unified event classification, severity levels, detection rules, and alert routing mechanisms.
+The platform runtime generates a large number of events and alerts, requiring unified event classification, severity levels, detection rules, and alert routing mechanisms.
 
 ## Decision
 
@@ -13,12 +13,12 @@ The platform generates large volumes of events and alerts during runtime, requir
 
 | Type | Description |
 |------|-------------|
-| E1 | System-level failures |
-| E2 | Application-level exceptions |
-| E3 | Business-level events |
-| E4 | Security events |
-| E5 | Performance events |
-| E6 | Change events |
+| E1 | System-level failure |
+| E2 | Application-level exception |
+| E3 | Business-level event |
+| E4 | Security event |
+| E5 | Performance event |
+| E6 | Change event |
 
 ### SEV1-SEV4 Severity Levels
 
@@ -27,7 +27,7 @@ The platform generates large volumes of events and alerts during runtime, requir
 | SEV1 | Platform unavailable | 15 minutes |
 | SEV2 | Core functionality impaired | 30 minutes |
 | SEV3 | Non-core functionality abnormal | 2 hours |
-| SEV4 | Minor issues | 24 hours |
+| SEV4 | Minor issue | 24 hours |
 
 ### DetectionRule Interface
 
@@ -43,16 +43,16 @@ interface DetectionRule {
 
 ### 5 Built-in Detection Rules
 
-1. Heartbeat missing detection
+1. Heartbeat absence detection
 2. Timeout spike detection
-3. Projection delay detection
+3. Projection latency detection
 4. Security violation detection
-5. Full platform failure detection
+5. Platform-wide failure detection
 
 ### 10 Core Metrics
 
 - Collected via OTel integration
-- Support Prometheus export
+- Supports Prometheus export
 
 ### StructuredLog Interface
 
@@ -73,24 +73,22 @@ interface StructuredLog {
 
 ## Consequences
 
-Positive:
-- Unified event classification facilitates analysis and response
-- Tiered alerts ensure critical issues are prioritized
-- StructuredLog facilitates log retrieval and analysis
+Benefits:
 
-Negative:
+- Unified event classification facilitates analysis and response
+- Tiered alerting ensures critical issues are prioritized
+- StructuredLog facilitates log search and analysis
+
+Costs:
+
 - Event collection adds system overhead
 - Requires supporting alert routing system
 
-Trade-offs:
-- Visibility vs. overhead
-- Comprehensiveness vs. complexity
-
-## Cross-References
+## Cross References
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
-- [ADR-025 Stability Architecture Seven Layers](./025-stability-architecture-seven-layers.md)
+- [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
 
-## Source Sections
+## Source Section
 
-- `§12` Anomaly Events and Observability
+- `§12` Incident and Event Handling Architecture

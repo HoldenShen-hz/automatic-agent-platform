@@ -110,6 +110,10 @@
 | [106](./106-quant-trading-pre-trade-risk-mandatory.md) | Quant Trading Pre Trade Risk Mandatory | Accepted | 2026-04-23 |
 | [107](./107-financial-services-explainable-decisions.md) | Financial Services Explainable Decisions | Accepted | 2026-04-23 |
 | [108](./108-legal-output-attorney-review-mandatory.md) | Legal Output Attorney Review Mandatory | Accepted | 2026-04-23 |
+| [109](./109-contract-freeze.md) | v4.3 Contract Freeze | Accepted | 2026-04-27 |
+| [110](./110-runtime-state-machine-authority.md) | Runtime State Machine Authority | Accepted | 2026-04-27 |
+| [111](./111-platform-fact-vs-oapeflir-view-events.md) | Platform Fact vs OAPEFLIR View Events | Accepted | 2026-04-27 |
+| [112](./112-mvp-ring-implementation-boundary.md) | MVP Ring Implementation Boundary | Accepted | 2026-04-27 |
 
 ## Status
 
@@ -123,6 +127,8 @@
 
 - The historical archive contains a retained `066` numbering collision. The index keeps both entries to avoid breaking existing references.
 - `091-108` are newly added to close the Harness pillar and domain governance ADR gaps tracked by the architecture review.
+- `109-112` are v4.3 Contract Freeze implementation entries: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event stratification, and MVP / Hardening / Enterprise three-ring boundary.
+- `109-112` constrain old semantics such as `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming through freeze / authority / event namespace / ring boundary; historical ADR body text is preserved and not directly rewritten.
 
 ## Creating New ADRs
 

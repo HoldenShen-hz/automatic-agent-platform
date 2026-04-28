@@ -1,15 +1,15 @@
 # Perception Contract
 
-> **OAPEFLIR Association**: This contract defines the OAPEFLIR Observe Hub, corresponding to ADR-016 §3 and G6 solution.
-> **Update Date**: 2026-04-17
+> **OAPEFLIR Relevance**: This contract defines the OAPEFLIR Observe Hub, corresponding to ADR-016 §3 and G6 solution.
+> **Last Updated**: 2026-04-17
 
-> Compatibility note: The filename retains `perception_contract.md` to maintain historical link stability; the current authoritative semantics have been closed into the `Observe` stage of OAPEFLIR.
+> **Compatibility Note**: The filename is preserved as `perception_contract.md` to maintain historical link stability; the current authoritative semantics are aligned to the OAPEFLIR `Observe` stage.
 
 ## 1. Scope
 
-This contract defines minimum specifications for the `Observe` stage, including multi-source signal collection, context snapshot construction, and risk/domain hints organization.
+This contract defines the minimum specification for the `Observe` stage, including multi-source signal collection, context snapshot construction, and risk/domain hint organization.
 
-`perception` is no longer considered an independent business plane; it is a historical naming compatibility shell whose actual semantics align with `ObserveHub`.
+Currently, "perception" is no longer viewed as an independent business plane; it is a historical naming compatibility shell whose actual semantics are aligned with `ObserveHub`.
 
 ## 2. Key Objects
 
@@ -25,7 +25,7 @@ This contract defines minimum specifications for the `Observe` stage, including 
 ## 3. ObserveSource Minimum Fields
 
 - `source_id`
-- `type`, value range `rss | web | github | api | custom`
+- `type`, value set: `rss | web | github | api | custom`
 - `name`
 - `enabled`
 - `schedule`
@@ -59,12 +59,12 @@ This contract defines minimum specifications for the `Observe` stage, including 
 - `health_status`: `ok | degraded | overloaded | unhealthy`
 - `provider_health`: Map<providerId, { available, latencyP99 }>
 - `resource_utilization`: { memoryMB, cpuPercent, activeProcesses }
-- `event_bus_backlog`: pending event count
+- `event_bus_backlog`: Number of pending events
 - `generated_at`
 
 ## 5.2 ObservationAggregator
 
-`ObservationAggregator` is the single exit point for the Observe stage, aggregating `TaskSituation` + `SystemSituation` into `UnifiedObservation`:
+`ObservationAggregator` is the sole exit point for the Observe stage, aggregating `TaskSituation` + `SystemSituation` into `UnifiedObservation`:
 
 ```typescript
 interface UnifiedObservation {
@@ -76,14 +76,18 @@ interface UnifiedObservation {
 
 ## 6. Behavioral Constraints
 
-- Observe does not modify the main task chain by default; it can only produce signals and `TaskSituation`.
+- Observe does not modify the main task chain by default, only produces signals and `TaskSituation`.
 - Observe stage output must be traceable to source ref or signal ref before entering `Assess / Plan`.
 - Duplicate information must support deduplication and TTL.
-- Observe analysis cost must be traceable and subject to budget control.
+- Observe analysis costs must be traceable and budget-controlled.
 
 ## 8. Supplementary Rules
 
-- Information source capability matrix records at minimum: pull method, frequency, trust level, cost level, and range of triggerable actions.
-- `TaskSituationBuilder` produces at minimum: `context_snapshot`, `risk_signals`, `domain_hints`.
-- `SystemSituationBuilder` produces at minimum: `health_status`, `provider_health`, `resource_utilization`, `event_bus_backlog`.
-- Active task creation or action triggering defaults to HQ/system policy; Observe must not directly issue authorizations on its own.
+- Information source capability matrix must record at minimum: pull method, frequency, trustworthiness, cost level, and triggerable action scope.
+- `TaskSituationBuilder` must produce at minimum: `context_snapshot`, `risk_signals`, `domain_hints`.
+- `SystemSituationBuilder` must produce at minimum: `health_status`, `provider_health`, `resource_utilization`, `event_bus_backlog`.
+- Active task creation or action triggering must go through HQ/system policy by default; Observe must not directly issue these on its own.
+
+## 9. Closure Conclusion
+
+Perception is the compatibility shell for historical naming; authoritative semantics are now aligned to the OAPEFLIR Observe stage.

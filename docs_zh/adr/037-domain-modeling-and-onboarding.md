@@ -16,7 +16,7 @@ interface DomainDescriptor {
   domain_id: string;
   name: string;
   description: string;
-  domain_class: DomainClass;      // 7 种类型
+  domain_class: DomainClass;      // 24 种垂直域类型
   risk_profile: DomainRiskProfile;
   knowledge_schema: DomainKnowledgeSchema;
   eval_framework: DomainEvalFramework;
@@ -30,17 +30,34 @@ interface DomainDescriptor {
 }
 ```
 
-### DomainClass 7 种类型
+### DomainClass 24 种类型
 
 | 类型 | 说明 |
 |------|------|
+| quant_trading | 量化交易 |
+| ecommerce | 电商 |
+| ad_promotion | 广告推广 |
+| financial_services | 金融服务 |
+| data_processing | 数据处理 |
 | code_development | 代码开发 |
-| content_creation | 内容创作 |
-| data_analytics | 数据分析 |
-| customer_service | 客服 |
+| user_operations | 用户运营 |
+| industry_research | 行业调研 |
+| academic_research | 学术调研 |
+| enterprise_knowledge | 企业知识库 |
 | finance | 财务 |
-| hr | 人力资源 |
-| operations | 运营 |
+| legal | 法务 |
+| live_streaming | 在线直播 |
+| ad_creative_production | 广告素材制作 |
+| game_development | 游戏开发 |
+| game_publishing | 游戏上架 |
+| human_resources | 人力资源 |
+| supply_chain_logistics | 供应链与物流 |
+| healthcare | 医疗健康 |
+| education_training | 教育培训 |
+| customer_service | 客户服务 |
+| content_moderation_safety | 内容审核与安全 |
+| it_ops_sre_devops | IT 运维 SRE/DevOps |
+| marketing_brand | 市场营销与品牌 |
 
 ### 领域风险画像
 
@@ -79,6 +96,10 @@ interface DomainDescriptor {
 
 - DomainDescriptor 复杂度较高
 - 领域建模需要领域专家参与
+
+## v4.3 ADR Remediation
+
+- A-32: 本 ADR 原先把 `DomainClass` 压缩成 7 种宽泛分类，根因是领域建模 ADR 形成时仍偏向产品市场分组，没有随着主架构把 24 个垂直域作为统一元模型实例化入口而扩展。修复：正文现把 `DomainClass` 收敛到 24 个垂直域类型，并与主架构 `§71-§94` 的域目录对齐。
 
 ## 交叉引用
 

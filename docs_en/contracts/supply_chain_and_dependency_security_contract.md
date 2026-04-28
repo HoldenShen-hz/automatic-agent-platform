@@ -2,7 +2,7 @@
 
 ---
 
-## OAPEFLIR Related
+## OAPEFLIR Association
 
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
@@ -42,6 +42,7 @@ Related documents:
 - SBOM generation
 - Vulnerability scanning
 - Third-party plugin isolation levels
+- `PluginTrustStore`
 
 ## 4. Distribution Unit Classification
 
@@ -51,6 +52,17 @@ Related documents:
 | `skill bundle` | source provenance + permission declaration |
 | `plugin bundle` | signature / digest + capability declaration |
 | `MCP server` | trust level + isolation level + domain allowlist |
+
+## 4A. `PluginTrustStore` Minimum Fields
+
+- `trust_store_id`
+- `trust_roots`
+- `active_signing_keys`
+- `signing_key_rotation_policy`
+- `revocation_list_ref`
+- `security_advisory_ref`
+- `quarantine_status`
+- `tenant_impact_scope`
 
 ## 5. Isolation Levels
 
@@ -63,6 +75,9 @@ Rules:
 - `untrusted_third_party` must not default to destructive permissions.
 - MCP must not impersonate local trusted tool.
 - Plugin permissions must not bypass ToolRegistry and Policy Engine.
+- `PluginTrustStore` must support trust root management, signing key rotation, revocation list, security advisory, and isolation quarantine.
+- Plugins/dependencies that are revoked, hit by advisory, or entered quarantine must not continue new installation or activate on affected tenants.
+- `tenant_impact_scope` must allow locating supply chain event impact scope by tenant / workspace / organization.
 
 ## 6. Security Check Process
 
@@ -85,6 +100,9 @@ Must record:
 - granted capability scope
 - scan result summary
 - disable / revoke action
+- trust root / signing key version
+- revocation / advisory / quarantine decision
+- tenant impact summary
 
 ## 8. Closure Conclusion
 
@@ -96,3 +114,12 @@ It must simultaneously answer:
 - Whether permissions are minimal
 - Whether updates are traceable
 - Whether it can be quickly disabled and traced when problems occur
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-49: This document originally only covered "scan at import time" and coarse-grained trust level. Root cause: supply chain contract remained at pre-installation verification perspective, did not make plugin trust roots, signing key rotation, revocation/advisory, and tenant impact scope into continuous governance objects. Fix: This version adds `PluginTrustStore`, and writes trust root, signing key rotation, revocation list, security advisory, quarantine, tenant impact as required capabilities.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

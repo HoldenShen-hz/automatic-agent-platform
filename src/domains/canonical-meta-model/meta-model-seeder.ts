@@ -38,7 +38,14 @@ function buildAnswer(input: MetaModelSeedInput, questionId: typeof META_MODEL_QU
       return { questionId, title: "Latency SLA", answer: `Latency target is calibrated to domain risk and task urgency for ${domainLabel}.`, evidenceRefs: [...baseEvidence, "sla:baseline"], status: "complete" };
     case "Q12_pre_launch_certs":
       return { questionId, title: "Pre-launch Certifications", answer: "Pre-launch evidence includes risk profile, eval framework, prompt library, workflow baseline, and rollout plan.", evidenceRefs: [...baseEvidence, "certs:baseline"], status: "complete" };
+    case "Q13_liability_owner":
+      return { questionId, title: "Liability Owner", answer: `${domainLabel} business owner and delegated approvers remain accountable for high-risk outcomes.`, evidenceRefs: [...baseEvidence, "governance:owner"], status: "complete" };
+    case "Q14_compensation_model":
+      return { questionId, title: "Compensation Model", answer: "Side effects require explicit compensation policy covering reversal, refund, appeal, or manual repair.", evidenceRefs: [...baseEvidence, "risk:compensation"], status: "complete" };
+    case "Q15_adversarial_scenarios":
+      return { questionId, title: "Adversarial Scenarios", answer: "Prompt injection, overreach, cross-domain leakage, and cost amplification scenarios are covered in eval holdouts.", evidenceRefs: [...baseEvidence, "eval:redteam"], status: "complete" };
   }
+  throw new Error(`Unsupported meta-model question: ${questionId}`);
 }
 
 export function seedDomainMetaModel(input: MetaModelSeedInput): DomainMetaModel {

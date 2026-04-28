@@ -49,6 +49,7 @@ test.describe("ForensicSnapshot", () => {
       assert.deepEqual(result.runtimeState, {});
       assert.deepEqual(result.configurationRefs, []);
       assert.deepEqual(result.logRefs, []);
+      assert.deepEqual(result.planeAcknowledgments, []);
     });
 
     test("handles empty artifactIds array", () => {
@@ -134,7 +135,7 @@ test.describe("ForensicSnapshot", () => {
 
       const result = summarizeForensicSnapshot(snapshot);
 
-      assert.equal(result, "scope=platform,artifacts=2,configs=1,logs=1");
+      assert.equal(result, "scope=platform,artifacts=2,configs=1,logs=1,planes=0");
     });
 
     test("summarizes snapshot with empty arrays", () => {
@@ -147,7 +148,7 @@ test.describe("ForensicSnapshot", () => {
 
       const result = summarizeForensicSnapshot(snapshot);
 
-      assert.equal(result, "scope=platform,artifacts=0,configs=0,logs=0");
+      assert.equal(result, "scope=platform,artifacts=0,configs=0,logs=0,planes=0");
     });
 
     test("summarizes snapshot with many artifacts", () => {
@@ -160,7 +161,7 @@ test.describe("ForensicSnapshot", () => {
 
       const result = summarizeForensicSnapshot(snapshot);
 
-      assert.equal(result, "scope=division-a,artifacts=5,configs=0,logs=0");
+      assert.equal(result, "scope=division-a,artifacts=5,configs=0,logs=0,planes=0");
     });
 
     test("summarizes snapshot with only configs", () => {
@@ -174,7 +175,7 @@ test.describe("ForensicSnapshot", () => {
 
       const result = summarizeForensicSnapshot(snapshot);
 
-      assert.equal(result, "scope=platform,artifacts=0,configs=3,logs=0");
+      assert.equal(result, "scope=platform,artifacts=0,configs=3,logs=0,planes=0");
     });
 
     test("summarizes snapshot with only logs", () => {
@@ -188,7 +189,7 @@ test.describe("ForensicSnapshot", () => {
 
       const result = summarizeForensicSnapshot(snapshot);
 
-      assert.equal(result, "scope=platform,artifacts=0,configs=0,logs=1");
+      assert.equal(result, "scope=platform,artifacts=0,configs=0,logs=1,planes=0");
     });
   });
 });

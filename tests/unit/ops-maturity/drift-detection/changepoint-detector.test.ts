@@ -19,7 +19,7 @@ test("ChangepointDetectorService detects drift when recent mean is 10% lower tha
   const result = new ChangepointDetectorService().detect(samples);
 
   assert.equal(result.detected, true);
-  assert.equal(result.severity, "SEV3");
+  assert.equal(result.severity, "low");
   assert.ok(result.baselineMean > 0);
   assert.ok(result.recentMean < result.baselineMean);
   assert.ok(result.relativeShift < -0.10);
@@ -102,7 +102,7 @@ test("ChangepointDetectorService uses custom baseline and recent windows when pr
   const result = new ChangepointDetectorService().detect(samples, 7, 3);
 
   assert.equal(result.detected, true);
-  assert.equal(result.severity, "SEV3");
+  assert.equal(result.severity, "medium");
 });
 
 test("ChangepointDetectorService computes correct absolute and relative shift", () => {

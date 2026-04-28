@@ -26,6 +26,11 @@ export interface CostAttributionRecord {
   readonly subjectId: string;
   readonly costType: "model" | "tool" | "storage" | "runtime" | "network";
   readonly amountUsd: number;
+  readonly humanReviewCostUsd?: number;
+  readonly egressCostUsd?: number;
+  readonly computeCostUsd?: number;
+  readonly storageCostUsd?: number;
+  readonly qualityRisk?: "low" | "medium" | "high";
   readonly decisionRef: string;
   readonly modelRef?: string;
   readonly capturedAt: string;

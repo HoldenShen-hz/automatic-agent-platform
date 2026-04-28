@@ -23,19 +23,31 @@
 
 ## 2. 关键对象
 
-- `UsageMeter`
+- `UsageRecord`
 - `QuotaPolicy`
 - `BillingAccount`
+- `BudgetLedger`
+- `BudgetReservation`
 - `PlanDefinition`
 - `TenantBoundary`
 
-## 3. UsageMeter 最小字段
+说明：
+
+- `UsageRecord` 是计量事实对象。
+- `BudgetLedger / BudgetReservation` 的 truth 定义冻结在 `budget-ledger-contract.md`，本文只定义它们与 tenant / billing subject 的关系，不重复发明第二套预算账本。
+
+## 3. UsageRecord 最小字段
 
 - `usage_id`
 - `subject_id`
+- `tenant_id`
+- `workspace_id?`
+- `harness_run_id?`
+- `node_run_id?`
 - `task_id?`
 - `metric_type`
 - `quantity`
+- `cost_source?`
 - `captured_at`
 
 ## 4. BillingAccount 最小字段
@@ -57,10 +69,11 @@
 
 ## 6. 行为约束
 
-- 计量、配额和账单必须可追溯到任务或主体。
+- 计量、配额和账单必须可追溯到 `tenant / subject / harness_run / node_run`。
 - Pro 与 Enterprise 的隔离策略不能只靠 UI 区分。
 - 多租户设计进入实现前，必须先明确租户级存储边界和权限边界。
 - 退款、冲正、欠费冻结和能力降级必须以独立账务事实表达，不得直接重写历史 usage。
+- 账单聚合不得绕过 `BudgetLedger / BudgetReservation / BudgetSettlement` truth；usage 与 budget 只能向 billing projection 单向派生。
 
 ## 7. 补充规则
 
@@ -77,18 +90,19 @@
 ### 7.2 发票与退款
 
 - 发票、退款和冲正必须可追溯到 `billing_account` 与时间窗。
-- 退款不得静默改写 usage ledger，应以独立 adjustment 记录表达。
+- 退款不得静默改写 `UsageRecord` 或 `BudgetLedger` 历史，应以独立 adjustment 记录表达。
 
 ### 7.3 Enterprise 账户模型
 
 - `organization_account` 是 Enterprise 计费与策略归属主体。
 - workspace / project 的资源消耗最终归集到 organization 级账务边界。
+- organization 级 billing projection 必须能回链到租户下的 `UsageRecord` 与 `BudgetLedger`。
 
 
 ## v4.3 Architecture Remediation
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-40: 用UsageMeter而非架构§18.1的UsageRecord；未引用冻结的BudgetLedger/BudgetReservation。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-40: 本文原先继续使用 `UsageMeter`，且完全没有把 tenant 账单与冻结的 `BudgetLedger / BudgetReservation` 关系写进正文，根因是计费合同长期停留在产品套餐/账单视角，没有随着 v4.3 的 usage fact 与预算 truth 模型同步升级。修复：正文现把计量事实收敛为 `UsageRecord`，并显式引用 `BudgetLedger / BudgetReservation` 作为预算真相主链，只允许向 billing projection 派生。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

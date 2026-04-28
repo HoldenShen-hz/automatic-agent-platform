@@ -489,7 +489,7 @@ test("ProactiveAgentService.registerTrigger converts signal kind to threshold ty
   await service.registerTrigger(trigger);
 
   const triggers = service.listTriggers();
-  assert.equal(triggers[0]!.type, "threshold");
+  assert.equal(triggers[0]!.type, "condition");
 });
 
 test("ProactiveAgentService.evaluate rejects mismatched kind", () => {

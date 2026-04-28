@@ -4,7 +4,7 @@
 
 This contract defines the promote criteria that modules must satisfy when being elevated from "existing design or partial implementation" to "formal platform capability".
 
-It answers the question: a module cannot be judged complete simply because "it has a service, has code, has a contract"; what freeze, testing, observability, runbook, rollback, and ownership conditions must also be satisfied.
+It answers the question: A module cannot be judged complete simply because "it has a service, has code, has a contract". What other freezing, testing, observability, runbook, rollback, and ownership conditions must be met?
 
 Related documents:
 
@@ -15,7 +15,7 @@ Related documents:
 
 ## 2. Goals
 
-- Unify criteria for judging "from partial to platform-ready".
+- Unify judgment standards for "partial to platform-ready".
 - Avoid false completion judgments of module maturity such as "service exists", "tests are placeholders", "has dashboard but no alerts".
 - Make promote and rollback have formal evidence chains.
 
@@ -48,12 +48,12 @@ Related documents:
 ## 4. Required Criteria
 
 | Criteria | Minimum Requirement |
-| --- | --- |
-| `contracts_frozen` | Related main documents, contracts, and ADRs are frozen and mutually non-conflicting |
+|----------|---------------------|
+| `contracts_frozen` | Related main documents, contracts, and ADRs are frozen and non-conflicting |
 | `conformance_tests` | Corresponding conformance / integration / recovery tests have passed |
 | `telemetry_instrumented` | Metrics, traces, and alerts are at least in place for current stage requirements |
 | `runbooks_documented` | Deployment, rollback, and incident runbooks exist |
-| `rollback_tested` | At least one successful rollback rehearsal or drill |
+| `rollback_tested` | At least one successful rollback rehearsal or drill has been performed |
 | `ownership_defined` | Owner, backup, and incident contact are clear |
 | `oapeflir_loop_tested` | OAPEFLIR loop and stage timeline have coverage |
 | `knowledge_plane_tested` | If knowledge is enabled, namespace / trust / freshness have been verified |
@@ -70,21 +70,21 @@ Related documents:
 
 Rules:
 
-- Optional items cannot substitute required items.
-- If target status is `production_ready`, it is recommended to at least add `performance_benchmarks` and `security_review`.
+- Optional items cannot replace required items.
+- If target status is `production_ready`, it is recommended to at least complete `performance_benchmarks` and `security_review`.
 
 ## 6. Promote Stage Requirements
 
 | Path | Minimum Requirement |
-| --- | --- |
-| `draft -> partial` | Contract draft, happy path tests, minimum owner defined |
-| `partial -> contract_frozen` | All current-stage contracts frozen, tests passed, boundaries clear |
-| `contract_frozen -> canary` | Telemetry, runbook, ownership, and rollback path in place |
-| `canary -> production_ready` | Rollback rehearsal, alerting, benchmarks, and security review in place |
+|------|---------------------|
+| `draft -> partial` | Contract first edition, happy path tests, minimum owner clear |
+| `partial -> contract_frozen` | All current stage contracts frozen, tests passed, boundaries clear |
+| `contract_frozen -> canary` | Telemetry, runbook, ownership, rollback path in place |
+| `canary -> production_ready` | Rollback rehearsal, alerting, benchmarks, security review in place |
 
 ## 7. Anti-Patterns
 
-The following situations must not be used as promotion basis:
+The following must not be used as promote evidence:
 
 - `service_exists_only`
 - `tests_without_assertions`
@@ -111,6 +111,6 @@ The following situations must not be used as promotion basis:
 
 ## 9. Closure Conclusion
 
-Platform maturity cannot be judged simply by "looks done".
+Platform maturity cannot be judged solely by "looks complete".
 
-Only when contracts, tests, observability, runbooks, rollback, and owner close together does a module qualify to be promoted from "partial capability" to "formal platform capability".
+Only when contracts, tests, observability, runbooks, rollback, and owners close together does a module qualify to be promoted from "partial capability" to "formal platform capability".

@@ -42,7 +42,7 @@ Related documents:
 | Level | Name | Traffic | AI 自主权限 | 人类审批 |
 | --- | --- | --- | --- | --- |
 | L0 | `off` | 0% | 无操作权限，仅记录 | — |
-| L1 | `shadow` | 0%（仅记录） | shadow | — |
+| L1 | `evaluate_0` | 0%（仅记录） | candidate evaluation / evidence validation | — |
 | L2 | `canary_5` | 5% | 参数调整、策略选择 | critical/high 需审批 |
 | L3 | `partial_25` | 25% | 配置建议 | 全部需审批 |
 | L4 | `stable_75` | 75% | 执行配置变更 | 全部必须审批 |
@@ -59,7 +59,7 @@ under_review （人类审批）
       ↓
 approved / rejected
       ↓
-shadow_enabled (L1)
+evaluation_enabled (L1)
       ↓
 canary_5 (L2) ←→ auto_rollback
       ↓
@@ -95,7 +95,7 @@ released （持续 M 天无问题）
 
 ### 4.5 状态约束
 
-- `shadow`（L1）：后台对比，不得直接覆盖用户可见结果。
+- `evaluate_0`（L1）：候选评估和证据验证，不得直接覆盖用户可见结果。
 - `canary_5`（L2）/ `partial_25`（L3）/ `stable_75`（L4）：需通过 metrics gate 方可升级。
 - `stable_100`（L5）：全量流量，完全自主（受 guardrail 约束）。
 - `auto_rollback`：自动或手动回滚。
@@ -107,13 +107,13 @@ LearningObject(validated/promoted)
     → ImprovementCandidate(candidate_created)
     → under_review
     → approved / rejected
-    → RolloutRecord(shadow → canary → partial → stable → released)
+    → RolloutRecord(evaluate_0 → canary → partial → stable → released)
 ```
 
 **必须满足的条件**（R4-EVIDENCE 约束）：
 - LearningObject without evidence chain must not enter rollout.
-- Candidate not passing guardrail can only stay in candidate_created state, must not enter shadow.
-- `shadow` runtime should record guardrail reason codes for explainability and audit.
+- Candidate not passing guardrail can only stay in candidate_created state, must not enter `evaluation_enabled`.
+- `evaluation_enabled` runtime should record guardrail reason codes for explainability and audit.
 
 ## 6. ImprovementCandidate 接口
 

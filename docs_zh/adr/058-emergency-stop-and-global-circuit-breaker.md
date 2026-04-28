@@ -14,10 +14,10 @@
 | 级别 | 名称 | 影响范围 |
 |------|------|----------|
 | L0 | 无 | 正常运行 |
-| L1 | pause_new | 暂停新任务创建 |
-| L2 | pause_all | 暂停所有执行 |
-| L3 | kill_all | 终止所有运行中任务 |
-| L4 | lockdown | 锁定平台，只允许读操作 |
+| L1 | pause_new | 通过 `OperationalDirective(type=pause_run)` 或 admission gate 暂停新 run |
+| L2 | pause_all | 通过 `PlatformPanicDirective(scope=platform)` 暂停全平台执行 |
+| L3 | kill_all | 通过 `OperationalDirective(type=kill_run)` 或 `PlatformPanicDirective(scope=platform)` 终止运行中 run |
+| L4 | lockdown | 通过 `PlatformPanicDirective(mode=incident-mode)` 锁定平台，只允许读操作 |
 
 ### 触发条件
 
@@ -52,6 +52,7 @@ interface GlobalCircuitBreaker {
 - 紧急制动需要特定权限
 - 操作需要二次确认
 - 所有操作记录审计日志
+- 紧急制动必须落到正式机制：`PlatformPanicDirective` 或 `OperationalDirective`，不得以裸开关变量或旁路脚本直接替代。
 
 ## 后果
 
@@ -74,3 +75,7 @@ interface GlobalCircuitBreaker {
 ## 来源章节
 
 - `§60` 紧急制动与全局熔断架构
+
+## v4.3 ADR Remediation
+
+- A-25: 本 ADR 原先只定义 `L0-L4` 级别名，没有把它们绑定到正式控制面机制，根因是紧急制动 ADR 先从运维 playbook 起草，后续没有跟 `PlatformPanicDirective / OperationalDirective` 主干合约对齐。修复：正文现把各级别明确绑定到 `PlatformPanicDirective` 或 `OperationalDirective(type=kill_run / pause_run)`。

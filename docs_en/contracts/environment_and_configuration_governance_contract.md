@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -21,7 +21,7 @@ This contract participates in the following phases of the OAPEFLIR eight-phase l
 
 This contract defines environment layering, configuration center governance, pre-release gate, and configuration change control.
 
-Related Documents:
+Related documents:
 
 - `configuration_layers_and_defaults_contract.md`
 - `environment_readiness_registry_contract.md`
@@ -29,7 +29,7 @@ Related Documents:
 - `prompt_model_policy_governance_contract.md`
 - `enterprise_secret_management_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
 - Clarify capability boundaries for dev, test, staging, pre-prod, prod.
 - Enable configuration to have version, approval, diff, rollback, and broadcast capabilities.
@@ -59,7 +59,7 @@ Related Documents:
 
 - Each configuration change must generate a version number.
 - Production configuration changes must have approval records.
-- Configuration changes must be diffable,rollable.
+- Configuration changes must be diffable and rollable.
 - Hot updates must broadcast to affected components.
 - Feature flag, policy, prompt bundle effective scope must be visible.
 - Runtime image / sandbox image / bundled extension tree should also enter version and change governance, not remain outside configuration governance.
@@ -69,7 +69,7 @@ Related Documents:
 - High-risk configuration objects like custom provider profiles, model lists, permission lists should preferably have formal API/registry, rather than scattered in command lines or private YAML.
 - Metadata like provider/model default context limits, request params, canonical limits should be governed through registry, rather than separately inferred at multiple entry points.
 - If supporting multi-credential rotation for the same provider, pool strategy, cooldown TTL, reset hints, manual pinning, and disabled status should be included in formal config / registry, not scattered in provider adapter internal state.
-- Each layer should at least support deterministic overlay composition of `default.json + <environment>.json`, avoiding "environment name exists but no environment difference".
+- Each layer should at least support deterministic overlay composition of `default.json + <environment>.json`, avoiding "environment name exists but no environment difference."
 - Multi-environment deployments must have machine-readable deployment matrix, at least summarizing config version, readiness, deployment binding, promotion prerequisite, and target release bundle.
 - Release / deployment config should at least declare three types of references: `config_bundle_ref`, `registry_credential_ref`, `deployment_credential_ref`; runtime and CLI only propagate refs, not secret plaintext.
 
@@ -93,7 +93,7 @@ Industrial-grade environments should at least support:
 - Multi-stage builds, avoiding bringing build toolchain directly into runtime image
 - Base image digest pinning or equivalent reproducible constraints
 - Selecting runtime variant by capability, e.g., minimal runtime, browser runtime, sandbox runtime
-- Optional heavy-dependency capabilities installed on demand, rather than defaulting to打包 all dependencies into the same image
+- Optional heavy-dependency capabilities installed on demand, rather than defaulting to bundle all dependencies into the same image
 
 ## 7. Priority Chain
 
@@ -129,7 +129,7 @@ Configuration override order:
 
 ## 8. Closure Conclusion
 
-Industrial-grade configuration governance is not "just able to hot reload".
+Industrial-grade configuration governance is not "just able to hot reload."
 
 It must have:
 

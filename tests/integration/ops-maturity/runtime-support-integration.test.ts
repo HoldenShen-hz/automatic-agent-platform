@@ -132,6 +132,7 @@ test("ops-maturity support modules coordinate lifecycle, explainability, panic, 
     canResumeFromPanic({
       scope: "platform",
       approvedBy: ["sre_lead", "platform_ops_lead"],
+      approvedRoles: ["platform_admin", "security_team"],
       checkpointsVerified: true,
       forensicSnapshotReviewed: true,
       rollbackPlanReady: true,

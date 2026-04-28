@@ -8,6 +8,11 @@ import {
   type ForensicSnapshotInput,
 } from "../../../../../src/ops-maturity/emergency/forensic-snapshot/index.js";
 
+const defaultPlaneAcknowledgments = [
+  { plane: "P1", localStopState: "ack", evidenceRef: "panic:p1" },
+  { plane: "P2", localStopState: "ack", evidenceRef: "panic:p2" },
+] as const;
+
 test("buildForensicSnapshot creates snapshot with all fields", () => {
   const input: ForensicSnapshotInput = {
     snapshotId: "snap-001",
@@ -17,6 +22,7 @@ test("buildForensicSnapshot creates snapshot with all fields", () => {
     runtimeState: { severity: "critical", triggerSignals: ["sig-1"] },
     configurationRefs: ["cfg-1", "cfg-2"],
     logRefs: ["log-1"],
+    planeAcknowledgments: defaultPlaneAcknowledgments,
   };
 
   const result = buildForensicSnapshot(input);
@@ -27,6 +33,7 @@ test("buildForensicSnapshot creates snapshot with all fields", () => {
   assert.equal(result.artifactIds.length, 3);
   assert.equal(result.configurationRefs.length, 2);
   assert.equal(result.logRefs.length, 1);
+  assert.equal(result.planeAcknowledgments.length, 2);
   assert.equal(result.runtimeState.severity, "critical");
 });
 
@@ -43,6 +50,7 @@ test("buildForensicSnapshot applies defaults for missing optional fields", () =>
   assert.deepEqual(result.runtimeState, {});
   assert.deepEqual(result.configurationRefs, []);
   assert.deepEqual(result.logRefs, []);
+  assert.deepEqual(result.planeAcknowledgments, []);
 });
 
 test("buildForensicSnapshot handles empty artifactIds", () => {
@@ -111,6 +119,7 @@ test("summarizeForensicSnapshot formats correctly with all fields", () => {
     runtimeState: {},
     configurationRefs: ["c1"],
     logRefs: ["l1"],
+    planeAcknowledgments: defaultPlaneAcknowledgments,
   };
 
   const result = summarizeForensicSnapshot(snapshot);
@@ -119,6 +128,7 @@ test("summarizeForensicSnapshot formats correctly with all fields", () => {
   assert.ok(result.includes("artifacts=2"));
   assert.ok(result.includes("configs=1"));
   assert.ok(result.includes("logs=1"));
+  assert.ok(result.includes("planes=2"));
 });
 
 test("summarizeForensicSnapshot handles empty snapshot", () => {
@@ -130,6 +140,7 @@ test("summarizeForensicSnapshot handles empty snapshot", () => {
     runtimeState: {},
     configurationRefs: [],
     logRefs: [],
+    planeAcknowledgments: [],
   };
 
   const result = summarizeForensicSnapshot(snapshot);
@@ -138,6 +149,7 @@ test("summarizeForensicSnapshot handles empty snapshot", () => {
   assert.ok(result.includes("artifacts=0"));
   assert.ok(result.includes("configs=0"));
   assert.ok(result.includes("logs=0"));
+  assert.ok(result.includes("planes=0"));
 });
 
 test("summarizeForensicSnapshot shows correct counts", () => {
@@ -149,6 +161,7 @@ test("summarizeForensicSnapshot shows correct counts", () => {
     runtimeState: {},
     configurationRefs: ["c1", "c2"],
     logRefs: ["l1", "l2", "l3"],
+    planeAcknowledgments: defaultPlaneAcknowledgments,
   };
 
   const result = summarizeForensicSnapshot(snapshot);
@@ -156,6 +169,7 @@ test("summarizeForensicSnapshot shows correct counts", () => {
   assert.ok(result.includes("artifacts=5"));
   assert.ok(result.includes("configs=2"));
   assert.ok(result.includes("logs=3"));
+  assert.ok(result.includes("planes=2"));
 });
 
 test("ForensicSnapshot interface fields are readonly", () => {
@@ -167,6 +181,7 @@ test("ForensicSnapshot interface fields are readonly", () => {
     runtimeState: {},
     configurationRefs: [],
     logRefs: [],
+    planeAcknowledgments: [],
   };
 
   assert.equal(snapshot.snapshotId, "snap-readonly");
@@ -227,6 +242,7 @@ test("ForensicSnapshotInput interface structure", () => {
     runtimeState: { test: true },
     configurationRefs: ["cfg-1"],
     logRefs: ["log-1"],
+    planeAcknowledgments: defaultPlaneAcknowledgments,
   };
 
   assert.ok(input.snapshotId.length > 0);
@@ -243,6 +259,7 @@ test("buildForensicSnapshot returns distinct copies", () => {
     runtimeState: { value: 1 },
     configurationRefs: ["cfg-1"],
     logRefs: ["log-1"],
+    planeAcknowledgments: defaultPlaneAcknowledgments,
   };
 
   const result1 = buildForensicSnapshot(input);
@@ -261,16 +278,18 @@ test("summarizeForensicSnapshot output format", () => {
     runtimeState: {},
     configurationRefs: [],
     logRefs: [],
+    planeAcknowledgments: [],
   };
 
   const result = summarizeForensicSnapshot(snapshot);
   const parts = result.split(",");
 
-  assert.equal(parts.length, 4);
+  assert.equal(parts.length, 5);
   assert.ok(parts[0]!.startsWith("scope="));
   assert.ok(parts[1]!.startsWith("artifacts="));
   assert.ok(parts[2]!.startsWith("configs="));
   assert.ok(parts[3]!.startsWith("logs="));
+  assert.ok(parts[4]!.startsWith("planes="));
 });
 
 test("ForensicSnapshot snapshotId is string", () => {
@@ -282,6 +301,7 @@ test("ForensicSnapshot snapshotId is string", () => {
     runtimeState: {},
     configurationRefs: [],
     logRefs: [],
+    planeAcknowledgments: [],
   };
 
   assert.equal(typeof snapshot.snapshotId, "string");
@@ -296,6 +316,7 @@ test("ForensicSnapshot collectedAt is ISO string", () => {
     runtimeState: {},
     configurationRefs: [],
     logRefs: [],
+    planeAcknowledgments: [],
   };
 
   assert.ok(snapshot.collectedAt.endsWith("Z"));
@@ -311,6 +332,7 @@ test("ForensicSnapshot artifactIds is readonly array", () => {
     runtimeState: {},
     configurationRefs: [],
     logRefs: [],
+    planeAcknowledgments: [],
   };
 
   assert.ok(Array.isArray(snapshot.artifactIds));

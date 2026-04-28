@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const QuotaPolicySchema = z.object({
-  scopeId: z.string().min(1),
+  scope: z.string().min(1).default("tenant"),
+  scopeId: z.string().min(1).optional(),
   resourceType: z.string().min(1).default("runtime_units"),
   hardLimit: z.number().nonnegative(),
   softLimit: z.number().nonnegative().optional(),

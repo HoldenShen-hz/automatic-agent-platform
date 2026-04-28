@@ -1,8 +1,25 @@
 {
   "packId": "test_pack",
   "version": "0.1.0",
+  "domainId": "testing",
   "domain": "testing",
   "owner": "test@example.com",
+  "sideEffects": [],
+  "dataClasses": [],
+  "maxRiskClass": "low",
+  "tools": [],
+  "connectors": [],
+  "plugins": [],
+  "evalRequirements": {
+    "requiredDatasets": [],
+    "blockingEvaluators": []
+  },
+  "compatibility": {
+    "requiresActiveDomain": true,
+    "supportedDomainSpecVersions": [
+      "cdm-v2"
+    ]
+  },
   "capabilities": [
     {
       "capabilityKey": "query.execute",

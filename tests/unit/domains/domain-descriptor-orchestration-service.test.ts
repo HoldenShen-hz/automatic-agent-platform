@@ -208,7 +208,7 @@ describe("DomainDescriptorOrchestrationService", () => {
 
       const review = service.review(input);
 
-      assert.ok(review.findings.includes("domain_descriptor.high_risk_active_requires_canary_history"));
+      assert.ok(review.findings.includes("domain_descriptor.high_risk_active_requires_registered_release_evidence"));
     });
 
     it("should not flag high risk non-active domain", () => {
@@ -224,7 +224,7 @@ describe("DomainDescriptorOrchestrationService", () => {
 
       const review = service.review(input);
 
-      assert.ok(!review.findings.includes("domain_descriptor.high_risk_active_requires_canary_history"));
+      assert.ok(!review.findings.includes("domain_descriptor.high_risk_active_requires_registered_release_evidence"));
     });
 
     it("should determine onboardingReadiness as needs_evidence when findings contain missing", () => {
@@ -387,23 +387,24 @@ describe("DomainDescriptorOrchestrationService", () => {
       assert.strictEqual(checklist.phases.length, 4);
 
       const phaseNames = checklist.phases.map((p: { phase: string }) => p.phase);
-      assert.ok(phaseNames.includes("modeling"));
-      assert.ok(phaseNames.includes("development_validation"));
+      assert.ok(phaseNames.includes("domain_modeling"));
+      assert.ok(phaseNames.includes("pack_development"));
       assert.ok(phaseNames.includes("security_certification"));
-      assert.ok(phaseNames.includes("canary_launch"));
+      assert.ok(phaseNames.includes("gray_rollout"));
     });
 
     it("should include required evidence for each phase", () => {
       const checklist = service.buildOnboardingChecklist("test-domain");
 
-      const modelingPhase = checklist.phases.find((p: { phase: string }) => p.phase === "modeling");
+      const modelingPhase = checklist.phases.find((p: { phase: string }) => p.phase === "domain_modeling");
       assert.ok(modelingPhase);
       assert.ok(modelingPhase.requiredEvidence.includes("descriptor"));
       assert.ok(modelingPhase.requiredEvidence.includes("risk_profile"));
       assert.ok(modelingPhase.requiredEvidence.includes("knowledge_schema"));
 
-      const devValidationPhase = checklist.phases.find((p: { phase: string }) => p.phase === "development_validation");
+      const devValidationPhase = checklist.phases.find((p: { phase: string }) => p.phase === "pack_development");
       assert.ok(devValidationPhase);
+      assert.ok(devValidationPhase.requiredEvidence.includes("domain_lint"));
       assert.ok(devValidationPhase.requiredEvidence.includes("workflow_validation"));
       assert.ok(devValidationPhase.requiredEvidence.includes("eval_framework"));
       assert.ok(devValidationPhase.requiredEvidence.includes("prompt_library"));
@@ -414,9 +415,9 @@ describe("DomainDescriptorOrchestrationService", () => {
       assert.ok(securityPhase.requiredEvidence.includes("interaction_policy"));
       assert.ok(securityPhase.requiredEvidence.includes("approval_path"));
 
-      const canaryPhase = checklist.phases.find((p: { phase: string }) => p.phase === "canary_launch");
+      const canaryPhase = checklist.phases.find((p: { phase: string }) => p.phase === "gray_rollout");
       assert.ok(canaryPhase);
-      assert.ok(canaryPhase.requiredEvidence.includes("canary_metrics"));
+      assert.ok(canaryPhase.requiredEvidence.includes("rollout_metrics"));
       assert.ok(canaryPhase.requiredEvidence.includes("rollback_plan"));
       assert.ok(canaryPhase.requiredEvidence.includes("operator_signoff"));
     });

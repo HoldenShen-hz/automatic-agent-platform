@@ -392,7 +392,8 @@ test("getPluginBindings filters by pluginType", () => {
   assert.equal(presenters.length, 1);
   const firstPresenter = presenters.at(0);
   assert.ok(firstPresenter);
-  assert.equal(firstPresenter.pluginType, "presenter");
+  assert.equal(firstPresenter.pluginType, "tool");
+  assert.equal(firstPresenter.bindingRole, "presenter");
 });
 
 test("buildCapabilityEntry returns domain capability summary", () => {

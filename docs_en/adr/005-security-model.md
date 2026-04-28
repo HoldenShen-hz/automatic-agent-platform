@@ -130,3 +130,7 @@ Costs:
 - `§8.4`
 - `§8.5`
 - `§8.6`
+
+## v4.3 ADR Remediation
+
+- A-22: This ADR originally only retained three execution modes: `supervised / auto / full-auto`. The root cause was that the early security model treated automation level as the sole control axis and did not build runtime protection modes like read-only, write-disabled, external-call-disabled, rollout-disabled, manual-only, and incident-mode as canonical enumerations. Fix: The main text now converges execution modes to the 8 canonical runtime modes specified in the main architecture, and demotes the legacy three-tier modes to UI/product projection terminology.

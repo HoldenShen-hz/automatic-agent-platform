@@ -1,7 +1,6 @@
 # ADR-004 Workflow and Routing
 
 ---
-
 ## OAPEFLIR Association
 
 This document defines the following components in the OAPEFLIR eight-phase cognitive loop:
@@ -137,3 +136,7 @@ Constraints:
 - `§4.4`
 - `§4.5`
 - `§4.6`
+
+## v4.3 ADR Remediation
+
+- A-21: This ADR originally continued using the v3 agent hierarchy of `VP Operations / VP Orchestration / Division / Lead Agent / CEO`. The root cause was that the Workflow and Routing ADR had long served as an organizational narrative and was not rewritten as the v4.3 five-plane and `HarnessRuntime` became the runtime backbone. Fix: The main text now uses P1/P2/P3 and `HarnessRuntime`-driven routing and execution models.

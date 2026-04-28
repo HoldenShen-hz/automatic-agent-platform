@@ -14,6 +14,10 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
     connectorId: overrides.connectorId ?? "slack-test",
     capability: overrides.capability ?? "send_message",
     payload: overrides.payload ?? {},
+    policyRef: "policyRef" in overrides ? overrides.policyRef : "policy.connector.slack-test",
+    secretBindings: "secretBindings" in overrides
+      ? overrides.secretBindings
+      : [{ secretRef: "secret://slack-test/token", purpose: "api_token" }],
   };
 }
 
@@ -97,4 +101,24 @@ test("SlackConnector.execute is case-sensitive for capability names", () => {
   // Lowercase should succeed
   assert.equal(resultLower.success, true);
   assert.equal(resultLower.status, "succeeded");
+});
+
+test("SlackConnector.execute fails closed when policyRef is missing", () => {
+  const connector = new SlackConnector();
+  const request = createRequest({ policyRef: undefined });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("SlackConnector.execute fails closed when secretBindings are missing", () => {
+  const connector = new SlackConnector();
+  const request = createRequest({ secretBindings: [] });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
 });

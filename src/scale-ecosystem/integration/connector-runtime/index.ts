@@ -4,6 +4,11 @@ export const ConnectorExecutionRequestSchema = z.object({
   connectorId: z.string().min(1),
   capability: z.string().min(1),
   payload: z.record(z.string(), z.unknown()).default({}),
+  policyRef: z.string().min(1).optional(),
+  secretBindings: z.array(z.object({
+    secretRef: z.string().min(1),
+    purpose: z.string().min(1),
+  })).default([]),
 });
 
 export const ConnectorExecutionResultSchema = z.object({

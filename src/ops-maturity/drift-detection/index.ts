@@ -1,8 +1,8 @@
 /**
- * Evolution Engine Module
+ * Behavior Drift Detection Module
  *
- * Provides agent self-improvement capabilities through evidence collection,
- * reflection, proposal generation, benchmarking, and staged rollout.
+ * Provides behavior fingerprinting, changepoint detection, evidence collection,
+ * and rollout guardrails for agent drift management.
  */
 
 // Core MVP service (existing)

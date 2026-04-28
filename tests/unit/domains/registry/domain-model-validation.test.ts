@@ -557,9 +557,15 @@ describe("DomainDefinitionSchema", () => {
 
   describe("plugin binding schema validation", () => {
     it("should accept valid plugin bindings for all types", () => {
-      const pluginTypes = ["retriever", "validator", "planner", "presenter", "adapter"] as const;
+      const pluginTypes = [
+        ["retriever", "retriever"],
+        ["validator", "evaluator"],
+        ["planner", "tool"],
+        ["presenter", "tool"],
+        ["adapter", "adapter"],
+      ] as const;
 
-      for (const pluginType of pluginTypes) {
+      for (const [pluginType, expected] of pluginTypes) {
         const input = {
           domainId: "test-domain",
           name: "Test Domain",
@@ -579,7 +585,7 @@ describe("DomainDefinitionSchema", () => {
 
         const result = DomainDefinitionSchema.parse(input);
 
-        assert.strictEqual(result.pluginBindings[0]!.pluginType, pluginType);
+        assert.strictEqual(result.pluginBindings[0]!.pluginType, expected);
       }
     });
 

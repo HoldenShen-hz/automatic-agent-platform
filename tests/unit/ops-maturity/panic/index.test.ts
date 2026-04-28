@@ -26,6 +26,34 @@ import {
   type PanicDirectiveInput,
 } from "../../../../src/ops-maturity/emergency/panic-controller/index.js";
 
+const defaultPlaneAcknowledgments = [
+  { plane: "P1", localStopState: "ack", evidenceRef: "panic:p1" },
+  { plane: "P2", localStopState: "ack", evidenceRef: "panic:p2" },
+] as const;
+
+function createActivationRequest(overrides: Partial<PanicActivationRequest> = {}): PanicActivationRequest {
+  return {
+    scope: overrides.scope ?? "platform",
+    reasonCode: overrides.reasonCode ?? "security.incident",
+    activeIncidents: overrides.activeIncidents ?? 1,
+    issuedBy: overrides.issuedBy ?? "operator-1",
+    requiredApprovers: overrides.requiredApprovers ?? ["operator-1", "security-lead"],
+    ...overrides,
+  };
+}
+
+function createValidResumePlan(overrides: Partial<ResumePlanType> = {}): ResumePlanType {
+  return {
+    scope: overrides.scope ?? "platform",
+    approvedBy: overrides.approvedBy ?? ["operator-1", "operator-2"],
+    approvedRoles: overrides.approvedRoles ?? ["platform_admin", "security_team"],
+    checkpointsVerified: overrides.checkpointsVerified ?? true,
+    forensicSnapshotReviewed: overrides.forensicSnapshotReviewed ?? true,
+    rollbackPlanReady: overrides.rollbackPlanReady ?? true,
+    validationRunPassed: overrides.validationRunPassed ?? true,
+  };
+}
+
 test.describe("panic index module exports", () => {
   test.describe("PanicController - shouldEnterPanicMode", () => {
     test("returns true when activeIncidents > 0", () => {
@@ -98,6 +126,7 @@ test.describe("panic index module exports", () => {
         runtimeState: {},
         configurationRefs: ["cfg-1", "cfg-2"],
         logRefs: ["log-1"],
+        planeAcknowledgments: defaultPlaneAcknowledgments,
       };
       const summary = summarizeForensicSnapshot(snapshot);
       assert.ok(summary.includes("scope=platform"));
@@ -109,99 +138,49 @@ test.describe("panic index module exports", () => {
 
   test.describe("ResumeProtocol - canResumeFromPanic", () => {
     test("returns true when all conditions met with array approvers", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2", "operator-3"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), true);
+      assert.equal(
+        canResumeFromPanic(createValidResumePlan({ approvedBy: ["operator-1", "operator-2", "operator-3"] })),
+        true,
+      );
     });
 
     test("returns true when all conditions met with string approver", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
+      const plan = {
+        ...createValidResumePlan(),
         approvedBy: "operator-1",
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      } as unknown as ResumePlanType;
       assert.equal(canResumeFromPanic(plan), false); // only 1 approver
     });
 
     test("returns false when checkpoints not verified", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2"],
-        checkpointsVerified: false,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ checkpointsVerified: false })), false);
     });
 
     test("returns false when forensic snapshot not reviewed", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: false,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ forensicSnapshotReviewed: false })), false);
     });
 
     test("returns false when rollback plan not ready", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: false,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ rollbackPlanReady: false })), false);
     });
 
     test("returns false when validation run not passed", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: false,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ validationRunPassed: false })), false);
     });
 
     test("handles single approver as string (minimum 2 required)", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
+      const plan = {
+        ...createValidResumePlan(),
         approvedBy: "only-one",
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      } as unknown as ResumePlanType;
       assert.equal(canResumeFromPanic(plan), false);
     });
 
     test("filters out empty approver strings", () => {
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "", "   ", "operator-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), true); // 2 valid approvers
+      assert.equal(
+        canResumeFromPanic(createValidResumePlan({ approvedBy: ["operator-1", "", "   ", "operator-2"] })),
+        true,
+      );
     });
   });
 
@@ -212,12 +191,7 @@ test.describe("panic index module exports", () => {
 
     test("activate creates panic directive with security reason", () => {
       const service = createTestService();
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-      };
+      const request = createActivationRequest();
       const activation = service.activate(request);
       assert.ok(activation.directive.directiveId);
       assert.equal(activation.directive.scope, "platform");
@@ -226,24 +200,14 @@ test.describe("panic index module exports", () => {
 
     test("activate applies full freeze modes for security reason", () => {
       const service = createTestService();
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-      };
+      const request = createActivationRequest();
       const activation = service.activate(request);
       assert.deepEqual(activation.directive.freezeModes, ["deploy", "approval", "write", "automation"]);
     });
 
     test("activate applies limited freeze modes for non-security", () => {
       const service = createTestService();
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "capacity.issue",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-      };
+      const request = createActivationRequest({ reasonCode: "capacity.issue" });
       const activation = service.activate(request);
       assert.deepEqual(activation.directive.freezeModes, ["deploy", "automation"]);
     });
@@ -264,7 +228,7 @@ test.describe("panic index module exports", () => {
 
     test("getActive returns activation by scope", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
       const activation = service.getActive("platform");
       assert.ok(activation);
       assert.equal(activation!.directive.scope, "platform");
@@ -277,8 +241,8 @@ test.describe("panic index module exports", () => {
 
     test("listActive returns all active activations sorted by scope", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-      service.activate({ scope: "division-a", reasonCode: "capacity.issue", activeIncidents: 1, issuedBy: "op2" });
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
+      service.activate(createActivationRequest({ scope: "domain/division-a", reasonCode: "capacity.issue", issuedBy: "op2", requiredApprovers: ["op2", "security-lead"] }));
       const active = service.listActive();
       assert.equal(active.length, 2);
       assert.ok(active[0]!.directive.scope <= active[1]!.directive.scope);
@@ -294,7 +258,7 @@ test.describe("panic index module exports", () => {
 
     test("evaluateExecution blocks frozen mode", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
       const check: PanicExecutionCheck = { scope: "platform", mode: "deploy" };
       const decision = service.evaluateExecution(check);
       assert.equal(decision.blocked, true);
@@ -303,7 +267,7 @@ test.describe("panic index module exports", () => {
 
     test("evaluateExecution allows non-frozen mode", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "capacity.issue", activeIncidents: 1, issuedBy: "op1", freezeModes: ["deploy"] });
+      service.activate(createActivationRequest({ reasonCode: "capacity.issue", issuedBy: "op1", requiredApprovers: ["op1", "security-lead"], freezeModes: ["deploy"] }));
       const check: PanicExecutionCheck = { scope: "platform", mode: "approval" };
       const decision = service.evaluateExecution(check);
       assert.equal(decision.blocked, false);
@@ -311,7 +275,7 @@ test.describe("panic index module exports", () => {
 
     test("evaluateExecution allows allow-listed actor", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1", allowList: ["operator-2"] });
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"], allowList: ["operator-2"] }));
       const check: PanicExecutionCheck = { scope: "platform", mode: "deploy", actorId: "operator-2" };
       const decision = service.evaluateExecution(check);
       assert.equal(decision.blocked, false);
@@ -320,15 +284,8 @@ test.describe("panic index module exports", () => {
 
     test("resume succeeds with valid plan", () => {
       const service = createTestService();
-      const activation = service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      const activation = service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
+      const plan = createValidResumePlan();
       const receipt = service.resume("platform", plan);
       assert.equal(receipt.resumed, true);
       assert.ok(receipt.resumedAt);
@@ -337,11 +294,10 @@ test.describe("panic index module exports", () => {
 
     test("resume fails without directive", () => {
       const service = createTestService();
-      const plan: ResumePlanType = {
-        scope: "unknown",
+      const plan = {
+        ...createValidResumePlan({ scope: "unknown" }),
         approvedBy: "operator-1",
-        checkpointsVerified: true,
-      } as any;
+      } as unknown as ResumePlanType;
       const receipt = service.resume("unknown", plan);
       assert.equal(receipt.resumed, false);
       assert.ok(receipt.reasonCodes.includes("panic.directive_not_found"));
@@ -349,15 +305,8 @@ test.describe("panic index module exports", () => {
 
     test("getResumeReceipt returns receipt after resume", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-      const plan: ResumePlanType = {
-        scope: "platform",
-        approvedBy: ["operator-1", "operator-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
+      const plan = createValidResumePlan();
       service.resume("platform", plan);
       const receipt = service.getResumeReceipt("platform");
       assert.ok(receipt);
@@ -366,15 +315,13 @@ test.describe("panic index module exports", () => {
 
     test("activation includes forensic snapshot", () => {
       const service = createTestService();
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
+      const request = createActivationRequest({
         issuedBy: "op1",
+        requiredApprovers: ["op1", "security-lead"],
         forensicArtifactIds: ["art-1", "art-2"],
         severity: "critical",
         triggerSignals: ["signal-1"],
-      };
+      });
       const activation = service.activate(request);
       assert.ok(activation.forensicSnapshot);
       assert.equal(activation.forensicSnapshot.artifactIds.length, 2);
@@ -383,13 +330,11 @@ test.describe("panic index module exports", () => {
 
     test("activation creates propagation records for target scopes", () => {
       const service = createTestService();
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
+      const request = createActivationRequest({
         issuedBy: "op1",
+        requiredApprovers: ["op1", "security-lead"],
         targetScopes: ["platform", "platform/division-a"],
-      };
+      });
       const activation = service.activate(request);
       assert.equal(activation.propagationRecords.length, 2);
       assert.equal(activation.propagationRecords[0]!.propagationMode, "direct");

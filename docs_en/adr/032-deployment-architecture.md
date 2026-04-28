@@ -5,56 +5,55 @@
 
 ## Context
 
-Platform deployment requires unified environment management, release orchestration, and environment readiness validation to ensure smooth deployment across multiple environments.
+The platform needs to support multi-environment deployment (dev/test/staging/pre-prod/prod) and support different deployment scales.
 
 ## Decision
 
-### Environment Layering
+### Deployment Stages
 
-| Environment | Purpose | Release Criteria |
-|-------------|---------|------------------|
-| dev | Development | Unit tests pass |
-| test | Testing | Integration tests pass |
-| staging | Pre-production | Performance tests pass, canary healthy |
-| prod | Production | Full test suite, gradual rollout |
+| Stage | Description |
+|-------|-------------|
+| D1 Monolithic | ≤10 concurrent, current default config |
+| D2 Multi-process | 10-100 concurrent |
+| D3 Distributed | 100-1000 concurrent |
+| D4 K8s Cluster | 5000+ concurrent |
 
-### Environment Readiness Registry
+### 5 Environments
 
-- `shared/stability/environment-readiness-orchestration-service.ts`
-- Validates environment readiness before promotion
-- Checks dependencies, configurations, and resource availability
+| Environment | Purpose |
+|-------------|---------|
+| dev | Development environment |
+| test | Unit/Integration testing |
+| staging | Pre-release testing |
+| pre-prod | Pre-production validation |
+| prod | Production environment |
 
-### Release Orchestration
+### Worker Pool Isolation
 
-- Six-level controlled release (L0-L5)
-- Canary → staged → stable progression
-- Automatic rollback on metrics gate failure
+- `worker-pool/` supports capability category isolation
+- Different types of tasks use different Worker pools
+- Prevents resource contention
 
-### Feature Flags
+### Deployment Methods
 
-- Control phased capability enablement
-- Avoid premature coupling of immature capabilities
-- Support compile-time DCE in production builds
+- Helm values manage K8s configuration
+- Terraform tfvars manage infrastructure configuration
 
 ## Consequences
 
 Positive:
-- Environment layering ensures release stability
-- Readiness validation prevents faulty releases
-- Feature flags enable safe phased rollout
+- Multi-environment separation facilitates testing and release
+- Worker pool isolation improves stability
+- IaC approach facilitates environment consistency
 
 Negative:
-- Multi-environment increases configuration complexity
-- Release orchestration requires careful monitoring
-
-Trade-offs:
-- Safety vs. velocity
-- Control vs. flexibility
+- Multi-environment increases operational complexity
+- Deployment process requires standardization
 
 ## Cross-References
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
-- [ADR-025 Stability Architecture Seven Layers](./025-stability-architecture-seven-layers.md)
+- [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 
 ## Source Sections
 

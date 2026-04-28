@@ -2,9 +2,9 @@
 
 ## Goal
 
-A division is the basic unit for the platform to extend business capabilities. This guide defines how to add or maintain a division configuration, while ensuring new businesses do not break the platform's main path constraints.
+A division is the basic unit for the platform to extend business capabilities. This guide defines how to add or maintain a division configuration while ensuring that new business does not break the platform's main path constraints.
 
-## Minimal Structure
+## Minimum Structure
 
 Each division must contain at least:
 
@@ -17,9 +17,9 @@ Recommended template:
 ```yaml
 id: engineering
 name: Engineering Division
-description: Full software development lifecycle
+description: Full software development workflow
 triggers:
-  - "write code|program|develop|implement|fix|bug|feature|refactor"
+  - "write code|programming|develop|implement|fix|bug|feature|refactor"
 
 roles:
   - id: pm
@@ -29,7 +29,7 @@ roles:
     tools: [read, write_doc]
 
   - id: developer
-    name: Developer Engineer
+    name: Software Engineer
     prompt: roles/developer.prompt.md
     model: coding
     tools: [read, edit, bash]
@@ -57,27 +57,27 @@ Each division should clearly define:
 
 - What types of tasks it handles.
 - How it is matched by VP operations.
-- What roles it has and what their boundaries are.
-- How workflow passes inputs and outputs.
+- What roles it has and their respective boundaries.
+- How workflow passes input and output.
 - Which steps allow retries.
 - Which outputs become artifacts.
 
 ## Role Design Rules
 
-- `id` should be stable, short, and machine-friendly.
+- `id` should be stable, concise, and machine-friendly.
 - `triggers` should cover high-frequency expressions but avoid being too broad.
-- `roles` should only declare what is actually needed, do not pile on roles just to "look complete".
+- `roles` should only declare roles that are truly needed; do not pile on roles to "look complete".
 - `tools` must follow the principle of least privilege.
-- `model` selection should match responsibility intensity.
-- Each role should clearly state its responsibilities and boundaries, avoiding two roles being able to do the same core thing.
+- `model` selection should match the responsibility intensity.
+- Each role should have clear responsibilities and boundaries; avoid having two roles that can both do the same core thing.
 
 ## Workflow Rules
 
 - When `input` references upstream output, field names must be traceable.
-- `output` should align with downstream consumption fields.
-- Large outputs should be designed as artifact references rather than unrestricted inline text.
-- For processes requiring rollback or rework, model them through explicit steps and limited attempts first.
-- If a step can naturally partially succeed, consider how to express it through schema and precondition.
+- `output` should align with downstream consuming fields.
+- Large outputs should prioritize being designed as artifact references rather than unlimited inline text.
+- Workflows that need rollback or rework should prioritize modeling through explicit steps and limited attempts.
+- If a step naturally may partially succeed, consider how to express it through schema and precondition.
 
 ## Contracts and Validation
 
@@ -87,40 +87,40 @@ When adding new roles or steps, check:
 - Whether the output schema is clear enough.
 - Whether precondition is needed.
 - Whether it conflicts with existing role boundaries.
-- Whether it introduces high-risk tools never seen within the division.
+- Whether it introduces high-risk tools that have never appeared within the division.
 
-## Boundary with HR Agent
+## Boundaries with HR Agent
 
 - HR Agent can only add roles within existing divisions.
-- Workflow changes suggested by HR Agent are recommendations by default and do not take effect automatically.
+- Workflow changes suggested by HR Agent are only recommendations by default and do not take effect automatically.
 - New divisions must be added manually.
-- If a new tool collection is needed, prioritize having humans extend division definitions first, then consider letting HR use them.
+- If a new tool collection is needed, prioritize having a human extend the division definition first, then consider letting HR use it.
 
-## Acceptance Recommendations
+## Acceptance Suggestions
 
 After adding a new division, prepare at minimum:
 
 - One `fast` path task.
 - One `standard` or `full` path task.
 - One failure retry scenario.
-- One scenario requiring artifact output.
+- One scenario that requires artifact output.
 
 ## Templates and Trust Hints
 
-If subsequently exposing division/workflow as distributable templates or recipes:
+If later exposing division/workflow as distributable templates or recipes:
 
 - Templates should explicitly display `title / description / instructions / parameters / required_extensions`.
-- On first execution or source change, show trust warning instead of running silently.
-- If template content detects hidden characters, suspicious control characters, or other risk signals, default to block or at least strongly alert.
-- Experience layer trust warnings cannot replace runtime policy, sandbox, or capability validation.
+- On first execution or when source changes, a trust warning should be displayed rather than directly running silently.
+- If template content detects hidden characters, suspicious control characters, or other risk signals, it should block by default or at least strongly alert.
+- Experience-layer trust warnings cannot replace runtime policy, sandbox, or capability validation.
 
 ## Recommended Practices
 
 - Start with a small division, then gradually add roles.
-- First ensure `fast` or `standard` path works, then expand to `full`.
-- First verify hit rate and success rate with 1-2 high-frequency tasks, then continue adding capabilities.
+- First ensure the `fast` or `standard` path works, then expand to `full`.
+- First validate hit rate and success rate with 1-2 high-frequency tasks, then continue adding capabilities.
 
-## Related Documentation
+## Related Documents
 
 - [ADR-002 Division System](../adr/002-division-system.md)
 - [ADR-004 Workflow and Routing](../adr/004-workflow-routing.md)

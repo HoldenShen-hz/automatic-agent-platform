@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Collect legal issues, evidence, and draft outputs
-- **Assess**: Decide whether attorney review threshold is met
+- **Observe**: Collect legal issues, evidence, and draft output
+- **Assess**: Determine whether attorney review threshold is met
 - **Plan**: Form review request and approval path
-- **Execute**: Route pre-external output to human review
+- **Execute**: Route pre-release output to human review
 - **Feedback**: Record attorney review conclusions
 - **Learn**: Archive high-risk legal scenarios
 - **Improve**: Optimize legal domain guardrails and templates
-- **Release**: legal domain must retain attorney review closure
+- **Release**: Legal domain must retain attorney review closed loop
 
 ---
 
@@ -20,13 +20,13 @@
 
 ## Context
 
-Legal domain output is high-risk, and the Agent can only provide legal information, not directly form un-reviewed legal opinions.
+Legal domain output carries high risk; Agent can only provide legal information and cannot directly form un-reviewed legal opinions.
 
 ## Decision
 
-- All external or actionable `legal` outputs must be reviewed by a licensed attorney
-- Agent output must remain draft material and information support
+- All outbound or executable output from `legal` domain must be reviewed by a practicing attorney
+- Agent output must remain as draft and information support material
 
 ## Consequences
 
-- The human-robot collaboration boundary for the legal domain is formally written into architecture governance
+- Human-machine collaboration boundary in legal domain is formally written into architectural governance

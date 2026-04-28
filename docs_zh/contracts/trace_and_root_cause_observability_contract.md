@@ -13,7 +13,7 @@
 
 ## 2. 目标
 
-- 让一次任务从入口到 step、tool、LLM、decision 都能在 trace 上串起来。
+- 让一次 `HarnessRun` 从入口到 node、tool、LLM、decision 都能在 trace 上串起来。
 - 把业务 dashboard 与技术 dashboard 分开治理。
 - 让故障后自动生成初步 RCA 线索，而不是只留下分散日志。
 
@@ -21,12 +21,13 @@
 
 最小层级：
 
-- 一个 task = 一个 `trace`
-- 一个 agent step = 一个 `span`
+- 一个 `HarnessRun` = 一个 `trace`
+- 一个 `NodeRun` = 一个主执行 `span`
+- 一个 `NodeAttempt` = 一个尝试 `span`
 - 一次 tool call = 一个 `span`
 - 一次 LLM call = 一个 `span`
 - 一次 decision / escalation = 一个 `span`
-- 一次 OAPEFLIR stage = 一个上层 `span`
+- 一次 `oapeflir.view.*` 阶段解释可以映射为上层 view span，但不得充当 runtime truth
 
 必须传播的关联字段：
 
@@ -34,8 +35,11 @@
 - `span_id`
 - `parent_span_id`
 - `correlation_id`
-- `task_id`
-- `execution_id`
+- `harness_run_id`
+- `node_run_id?`
+- `attempt_id?`
+- `task_id?`
+- `execution_id?`
 - `session_id`
 
 推荐 baggage：
@@ -46,7 +50,7 @@
 - `agent_id?`
 - `user_id?`
 - `priority?`
-- `oapeflir_stage?`
+- `stage_view_ref?`
 - `loop_iteration?`
 - `domain_id?`
 
@@ -82,7 +86,7 @@
 | debug / operator takeover | `100%` |
 | error / dead-letter / stale write | `100%` |
 | approval / policy escalation | `100%` |
-| normal task | `10%` |
+| normal harness run | `10%` |
 | background / periodic maintenance | `1%` |
 
 ## 6. 指标分层
@@ -110,7 +114,7 @@
 
 至少支持识别：
 
-- 某角色连续卡在同一步
+- 某角色连续卡在同一 node
 - 某工具近期失败率激增
 - 某租户或事业部成本异常抬升
 - 某 worker 心跳抖动异常
@@ -121,7 +125,7 @@
 
 ```mermaid
 flowchart TD
-    A["Task Trace"] --> B["Step Spans"]
+    A["HarnessRun Trace"] --> B["NodeRun / NodeAttempt Spans"]
     B --> C["Tool / LLM / Decision Spans"]
     C --> D["Metrics + Events + Logs"]
     D --> E["RCA Summary"]
@@ -133,7 +137,7 @@ flowchart TD
 
 它必须支持：
 
-- trace 级串联
+- HarnessRun 级 trace 串联
 - 业务与技术指标分层
 - 故障后自动收束根因线索
 
@@ -142,6 +146,6 @@ flowchart TD
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-39: "一个task=一个trace"，架构§5.5声明HarnessRun为规范run truth；应为"一个HarnessRun=一个trace"。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-39: 本文原先把 `task` 当作 trace 主体，根因是 observability 合同继承了旧 task-centric 单机执行模型，没有随着 `HarnessRun / NodeRun / NodeAttempt` 成为 runtime truth 一起重写追踪主键。修复：正文现明确 `一个 HarnessRun = 一个 trace`，并把 `harness_run_id / node_run_id / attempt_id` 提升为必传关联字段，`task_id / execution_id` 只保留为 legacy / projection 关联键。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

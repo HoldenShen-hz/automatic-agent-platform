@@ -9,8 +9,8 @@ import {
   type MetaModelValidationResult,
 } from "../../../../src/domains/canonical-meta-model/types.js";
 
-test("META_MODEL_QUESTION_IDS contains 12 question IDs", () => {
-  assert.equal(META_MODEL_QUESTION_IDS.length, 12);
+test("META_MODEL_QUESTION_IDS contains 15 question IDs", () => {
+  assert.equal(META_MODEL_QUESTION_IDS.length, 15);
 });
 
 test("META_MODEL_QUESTION_IDS contains expected question IDs", () => {
@@ -27,6 +27,9 @@ test("META_MODEL_QUESTION_IDS contains expected question IDs", () => {
     "Q10_human_governance",
     "Q11_latency_sla",
     "Q12_pre_launch_certs",
+    "Q13_liability_owner",
+    "Q14_compensation_model",
+    "Q15_adversarial_scenarios",
   ];
 
   for (const id of expected) {

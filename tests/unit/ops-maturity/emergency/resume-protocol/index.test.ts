@@ -17,6 +17,7 @@ test.describe("ResumeProtocol", () => {
       const plan: ResumePlan = {
         scope: "platform",
         approvedBy: ["operator-1", "operator-2"],
+        approvedRoles: ["platform_admin", "platform_admin"],
         checkpointsVerified: true,
         forensicSnapshotReviewed: true,
         rollbackPlanReady: true,
@@ -28,10 +29,10 @@ test.describe("ResumeProtocol", () => {
       assert.equal(result, true);
     });
 
-    test("returns false when all conditions are met but only one string approver is provided", () => {
+    test("returns false when all conditions are met but only one approver is provided", () => {
       const plan: ResumePlan = {
         scope: "platform",
-        approvedBy: "operator-1",
+        approvedBy: ["operator-1"],
         checkpointsVerified: true,
         forensicSnapshotReviewed: true,
         rollbackPlanReady: true,
@@ -149,6 +150,7 @@ test.describe("ResumeProtocol", () => {
       const plan: ResumePlan = {
         scope: "platform",
         approvedBy: ["operator-1", "operator-2", "operator-3"],
+        approvedRoles: ["platform_admin", "platform_admin", "security_team"],
         checkpointsVerified: true,
         forensicSnapshotReviewed: true,
         rollbackPlanReady: true,
@@ -160,10 +162,10 @@ test.describe("ResumeProtocol", () => {
       assert.equal(result, true);
     });
 
-    test("returns false when approver is a single string with sufficient length", () => {
+    test("returns false when approver array contains only one approver", () => {
       const plan: ResumePlan = {
         scope: "platform",
-        approvedBy: "super-admin-operator",
+        approvedBy: ["super-admin-operator"],
         checkpointsVerified: true,
         forensicSnapshotReviewed: true,
         rollbackPlanReady: true,
@@ -175,10 +177,10 @@ test.describe("ResumeProtocol", () => {
       assert.equal(result, false);
     });
 
-    test("returns false when single string approver is only whitespace", () => {
+    test("returns false when single approver entry is only whitespace", () => {
       const plan: ResumePlan = {
         scope: "platform",
-        approvedBy: "   ",
+        approvedBy: ["   "],
         checkpointsVerified: true,
         forensicSnapshotReviewed: true,
         rollbackPlanReady: true,

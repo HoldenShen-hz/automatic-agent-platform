@@ -81,10 +81,6 @@ Negative:
 - NLU model requires training and maintenance
 - Ambiguity detection may not be 100% accurate
 
-Trade-offs:
-- Accessibility vs. accuracy
-- Convenience vs. complexity
-
 ## Cross-References
 
 - [ADR-040 Goal Decomposition Engine Architecture](./040-goal-decomposition-engine.md)

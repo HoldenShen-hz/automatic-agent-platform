@@ -6,17 +6,47 @@ export interface ComplianceEvidenceRecord {
   readonly controlId: string;
   readonly source: string;
   readonly artifactRef: string;
+  readonly evidenceType?: string;
+  readonly collectedBy?: string;
+  readonly content?: string;
+  readonly sourceSystem?: string;
+  readonly timestamp?: string;
   readonly collectedAt: string;
+}
+
+type ComplianceEvidenceCollectInput =
+  Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt"> & { collectedAt?: string };
+
+function normalizeEvidenceInput(input: ComplianceEvidenceCollectInput): Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt"> {
+  const source = input.source
+    ?? input.sourceSystem
+    ?? input.collectedBy
+    ?? "unknown";
+  const artifactRef = input.artifactRef
+    ?? input.content
+    ?? input.evidenceType
+    ?? "unspecified";
+  return {
+    ...input,
+    source,
+    artifactRef,
+    ...(input.evidenceType !== undefined ? { evidenceType: input.evidenceType } : {}),
+    ...(input.collectedBy !== undefined ? { collectedBy: input.collectedBy } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+    ...(input.sourceSystem !== undefined ? { sourceSystem: input.sourceSystem } : {}),
+    ...(input.timestamp !== undefined ? { timestamp: input.timestamp } : {}),
+  };
 }
 
 export class ComplianceEvidenceCollector {
   private readonly records = new Map<string, ComplianceEvidenceRecord[]>();
 
   public collect(
-    input: Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt"> & { collectedAt?: string },
+    input: ComplianceEvidenceCollectInput,
   ): ComplianceEvidenceRecord {
+    const normalized = normalizeEvidenceInput(input);
     const record: ComplianceEvidenceRecord = {
-      ...input,
+      ...normalized,
       evidenceId: newId("compliance_evidence"),
       collectedAt: input.collectedAt ?? nowIso(),
     };

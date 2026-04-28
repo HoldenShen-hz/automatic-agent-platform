@@ -215,7 +215,7 @@ test("DomainRegistration: filterAllowedTools returns enabled and required tools"
   }
 });
 
-test("DomainOnboarding: start creates session with modeling phase", () => {
+test("DomainOnboarding: start creates session with domain_modeling phase", () => {
   const ctx = createIntegrationContext("aa-onboard-start-");
   try {
     const registry = new DomainRegistryService();
@@ -225,7 +225,7 @@ test("DomainOnboarding: start creates session with modeling phase", () => {
     const session = onboarding.start("test_start");
 
     assert.equal(session.domainId, "test_start");
-    assert.equal(session.activePhase, "modeling");
+    assert.equal(session.activePhase, "domain_modeling");
     assert.equal(session.completed, false);
   } finally {
     ctx.cleanup();
@@ -236,7 +236,7 @@ test("DomainOnboarding: advance through all phases completes onboarding", () => 
   const ctx = createIntegrationContext("aa-onboard-advance-");
   try {
     const registry = new DomainRegistryService();
-    registerTestDomain(registry, "test_advance", "active");
+    registerTestDomain(registry, "test_advance");
 
     const onboarding = new DomainOnboardingService(registry);
     onboarding.start("test_advance");
@@ -265,7 +265,7 @@ test("DomainOnboarding: block marks current phase as blocked", () => {
     const session = onboarding.block("test_block", "block_reason");
 
     assert.equal(session.activePhase, null);
-    const modelingRecord = session.records.find((r) => r.phase === "modeling");
+    const modelingRecord = session.records.find((r) => r.phase === "domain_modeling");
     assert.equal(modelingRecord?.status, "blocked");
   } finally {
     ctx.cleanup();
@@ -282,9 +282,9 @@ test("DomainOnboarding: rollback restores to earlier phase", () => {
     onboarding.start("test_rollback");
     onboarding.advance("test_rollback", ["modeling_evidence"]);
 
-    const session = onboarding.rollback("test_rollback", "modeling", "rollback_cp", "test rollback");
+    const session = onboarding.rollback("test_rollback", "domain_modeling", "rollback_cp", "test rollback");
 
-    assert.equal(session.activePhase, "modeling");
+    assert.equal(session.activePhase, "domain_modeling");
     assert.ok(session.rollbackHistory.length === 1);
     assert.equal(session.rollbackHistory[0]?.reason, "test rollback");
   } finally {
@@ -374,10 +374,10 @@ test("DomainDescriptor: buildOnboardingChecklist returns all phases", () => {
 
     assert.equal(checklist.domainId, "test_checklist");
     assert.equal(checklist.phases.length, 4);
-    assert.equal(checklist.phases[0]?.phase, "modeling");
-    assert.equal(checklist.phases[1]?.phase, "development_validation");
+    assert.equal(checklist.phases[0]?.phase, "domain_modeling");
+    assert.equal(checklist.phases[1]?.phase, "pack_development");
     assert.equal(checklist.phases[2]?.phase, "security_certification");
-    assert.equal(checklist.phases[3]?.phase, "canary_launch");
+    assert.equal(checklist.phases[3]?.phase, "gray_rollout");
   } finally {
     ctx.cleanup();
   }
@@ -396,7 +396,7 @@ test("FullFlow: domain registration -> onboarding -> activation", () => {
 
     // Start onboarding
     const session1 = onboarding.start("full_flow_domain");
-    assert.equal(session1.activePhase, "modeling");
+    assert.equal(session1.activePhase, "domain_modeling");
 
     // Advance through phases using checklist
     for (const phase of descriptorService.buildOnboardingChecklist("full_flow_domain").phases) {

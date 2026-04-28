@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,9 +19,9 @@ This contract participates in the following phases of the OAPEFLIR eight-phase l
 
 ## 1. Scope
 
-This contract defines file lock read/write semantics, lease rules, crash recovery, and boundary with tool / sandbox.
+This contract defines file lock read/write semantics, lease rules, crash recovery, and boundaries with tool/sandbox.
 
-Related Documents:
+Related documents:
 
 - `tool_and_provider_execution_contract.md`
 - `sandbox_and_auth_contract.md`
@@ -29,17 +29,17 @@ Related Documents:
 - `runtime_repository_and_migration_contract.md`
 - `error_code_registry.md`
 
-## 2. Goals
+## 2. Objectives
 
-Phase 1a / 1b at minimum must:
+Phase 1a/1b minimum requirements:
 
-- Prevent the same file from being simultaneously modified by two write operations.
-- Make read/write conflicts detectable, waitable, and timeout-able.
-- Ensure stale locks from crashes can be cleaned up by startup scan and recovery chain.
+- Same file will not be simultaneously modified by two write operations.
+- Read/write conflicts are detectable, waitable, and timeoutable.
+- Orphaned locks after crashes can be cleaned up by startup inspection and recovery chain.
 
 ## 3. Key Objects
 
-### 3.1 FileLockRequest
+### 3.1 `FileLockRequest`
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -51,9 +51,9 @@ Phase 1a / 1b at minimum must:
 | `agent_id` | `string` | Agent ID |
 | `ttl_seconds` | `number` | Lease TTL |
 | `wait_timeout_ms` | `number` | Wait time for conflict release |
-| `reentrant_token` | `string?` | Same execution reentrant identifier |
+| `reentrant_token` | `string?` | Same-execution reentrant identifier |
 
-### 3.2 FileLockRecord
+### 3.2 `FileLockRecord`
 
 - `lock_id`
 - `target_path`
@@ -71,25 +71,25 @@ Phase 1a / 1b at minimum must:
 | Existing Lock | New Request | Result |
 | --- | --- | --- |
 | `read` | `read` | Shared allowed |
-| `read` | `write` | Block wait or fail |
-| `write` | `read` | Block wait or fail |
+| `read` | `write` | Block/wait or fail |
+| `write` | `read` | Block/wait or fail |
 | `write` | `write` | Exclusive conflict |
 
 Supplementary rules:
 
-- Reentrant requests for same `execution_id + normalized_path + mode` can reuse existing lock.
-- When same execution already holds `write` lock, requesting `read` lock for same file should directly reuse, not degrade.
-- "Two different executions but same task" is not allowed to bypass exclusive rules.
+- Reentrant requests for the same `execution_id + normalized_path + mode` may reuse existing lock.
+- When same execution already holds `write` lock, requesting `read` lock on same file should directly reuse, not downgrade.
+- "Two different executions but same task" must not bypass exclusive rules.
 
 ## 5. Lease and Renewal
 
-- Phase 1a default TTL recommended as `60s`.
+- Phase 1a default TTL recommendation is `60s`.
 - Active execution must renew via heartbeat or explicit `renewLock(...)`.
-- After lock expires, it does not mean automatically safe to write; recovery chain should first confirm holder execution is stale or terminated.
+- Lock expiration does not imply automatic safe-write; recovery chain should first confirm holder execution is stale or terminated.
 
 ## 6. Service Entry Points
 
-Minimum interfaces:
+Minimum interface:
 
 - `acquireLock(request)`
 - `renewLock(lockId, now)`
@@ -111,22 +111,22 @@ flowchart TD
     F --> H["Release Or Renew"]
 ```
 
-## 7. Boundary with Tools and Sandbox
+## 7. Boundaries with Tool and Sandbox
 
-- Read-only tools like `read_file / grep / list` can optionally acquire `read` lock on demand.
+- Read-only tools like `read_file / grep / list` may acquire `read` lock on demand by default.
 - Write tools like `write_file / edit / patch` must hold `write` lock first.
-- Tools like `bash` whose write set cannot be statically precisely inferred must not impersonate fine-grained file lock safety; should be guarded by coarser ExecPolicy and approval strategy.
+- Tools like `bash` where write set cannot be statically precisely inferred must not masquerade as fine-grained file lock safety; should be guarded by coarser ExecPolicy and approval policy.
 - FileLock does not replace sandbox path whitelist; it only solves same-path concurrency conflicts.
 
-## 8. Storage and Recovery Boundary
+## 8. Storage and Recovery Boundaries
 
-- Authoritative lock state must be persisted, must not exist only in memory Map.
-- Startup scan should clean locks where `expires_at < now` and holder execution is inactive.
+- Authoritative lock state must be persisted; must not exist only in memory Map.
+- Startup inspection should clean locks where `expires_at < now` and holder execution is inactive.
 - If execution terminates but lock still exists, recovery chain or cleaner should release.
 
 ## 9. Error Semantics
 
-Suggested stable error codes:
+Recommended stable error codes:
 
 - `tool.file_lock_conflict`
 - `tool.file_lock_timeout`
@@ -135,23 +135,23 @@ Suggested stable error codes:
 Rules:
 
 - Wait timeout should return conflict-type error, not generic `tool.execution_failed`.
-- When lock record damage or holder inconsistency is found, should report recovery error and enter scan processing.
+- When lock record corruption or holder inconsistency is found, should report recovery error and enter inspection handling.
 
-## 10. Phase Boundary
+## 10. Phase Boundaries
 
 Phase 1a explicitly does:
 
 - File-level locks
 - SQLite persistence
 - TTL + heartbeat renewal
-- Startup recovery and execution termination recovery
+- Startup reclamation and execution termination reclamation
 
-Currently does not do:
+Currently excluded:
 
 - Directory-level locks
 - Distributed lock service
-- Git worktree-level isolation replacement
+- Git worktree-level isolation alternatives
 
 ## 11. Closure Conclusion
 
-The goal of file locks is not "making all IO automatically safe", but compressing the most dangerous concurrent write conflicts into a clear, auditable, recoverable minimum boundary.
+The goal of file locks is not "make all IO automatically safe", but to compress the most dangerous concurrent write conflicts into a clear, auditable, recoverable minimum boundary.

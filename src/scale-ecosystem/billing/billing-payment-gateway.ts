@@ -73,6 +73,13 @@ export interface BillingPaymentSessionStatusSnapshot {
   failureCode?: string | null;
 }
 
+export interface BillingSubscriptionDefinition {
+  gatewayKind: BillingPaymentGatewayKind;
+  subscriptionRef: string;
+  status: "active" | "pending" | "cancelled";
+  updatedAt: string;
+}
+
 /**
  * Interface for payment gateway implementations.
  * Each gateway handles checkout session creation and status reconciliation
@@ -106,6 +113,49 @@ export interface BillingPaymentGateway {
       account: BillingAccountRecord;
     },
   ): BillingPaymentSessionStatusSnapshot | Promise<BillingPaymentSessionStatusSnapshot | null> | null;
+
+  createSubscription?(
+    input: {
+      account: BillingAccountRecord;
+      planId: string;
+      createdAt: string;
+    },
+  ): BillingSubscriptionDefinition | Promise<BillingSubscriptionDefinition>;
+
+  updatePlan?(
+    input: {
+      account: BillingAccountRecord;
+      subscriptionRef: string;
+      nextPlanId: string;
+      updatedAt: string;
+    },
+  ): BillingSubscriptionDefinition | Promise<BillingSubscriptionDefinition>;
+
+  captureInvoice?(
+    input: {
+      invoice: BillingInvoiceRecord;
+      account: BillingAccountRecord;
+      capturedAt: string;
+    },
+  ): BillingPaymentSessionStatusSnapshot | Promise<BillingPaymentSessionStatusSnapshot>;
+
+  markPaymentFailed?(
+    input: {
+      session: BillingPaymentSessionRecord;
+      invoice: BillingInvoiceRecord;
+      account: BillingAccountRecord;
+      occurredAt: string;
+      failureCode: string;
+    },
+  ): BillingPaymentSessionStatusSnapshot | Promise<BillingPaymentSessionStatusSnapshot>;
+
+  cancelSubscription?(
+    input: {
+      account: BillingAccountRecord;
+      subscriptionRef: string;
+      cancelledAt: string;
+    },
+  ): BillingSubscriptionDefinition | Promise<BillingSubscriptionDefinition>;
 }
 
 /**
@@ -163,6 +213,76 @@ export class ManualBillingPaymentGateway implements BillingPaymentGateway {
    */
   public fetchPaymentSessionStatus(): BillingPaymentSessionStatusSnapshot | null {
     return null;
+  }
+
+  public createSubscription(input: {
+    account: BillingAccountRecord;
+    planId: string;
+    createdAt: string;
+  }): BillingSubscriptionDefinition {
+    return {
+      gatewayKind: this.kind,
+      subscriptionRef: `manual_sub_${input.account.accountId}_${input.planId}`,
+      status: "active",
+      updatedAt: input.createdAt,
+    };
+  }
+
+  public updatePlan(input: {
+    account: BillingAccountRecord;
+    subscriptionRef: string;
+    nextPlanId: string;
+    updatedAt: string;
+  }): BillingSubscriptionDefinition {
+    return {
+      gatewayKind: this.kind,
+      subscriptionRef: input.subscriptionRef,
+      status: "active",
+      updatedAt: input.updatedAt,
+    };
+  }
+
+  public captureInvoice(input: {
+    invoice: BillingInvoiceRecord;
+    account: BillingAccountRecord;
+    capturedAt: string;
+  }): BillingPaymentSessionStatusSnapshot {
+    return {
+      gatewayKind: this.kind,
+      gatewaySessionRef: `manual_capture_${input.invoice.invoiceId}`,
+      status: "paid",
+      occurredAt: input.capturedAt,
+      failureCode: null,
+    };
+  }
+
+  public markPaymentFailed(input: {
+    session: BillingPaymentSessionRecord;
+    invoice: BillingInvoiceRecord;
+    account: BillingAccountRecord;
+    occurredAt: string;
+    failureCode: string;
+  }): BillingPaymentSessionStatusSnapshot {
+    return {
+      gatewayKind: this.kind,
+      gatewaySessionRef: input.session.gatewaySessionRef,
+      status: "failed",
+      occurredAt: input.occurredAt,
+      failureCode: input.failureCode,
+    };
+  }
+
+  public cancelSubscription(input: {
+    account: BillingAccountRecord;
+    subscriptionRef: string;
+    cancelledAt: string;
+  }): BillingSubscriptionDefinition {
+    return {
+      gatewayKind: this.kind,
+      subscriptionRef: input.subscriptionRef,
+      status: "cancelled",
+      updatedAt: input.cancelledAt,
+    };
   }
 }
 

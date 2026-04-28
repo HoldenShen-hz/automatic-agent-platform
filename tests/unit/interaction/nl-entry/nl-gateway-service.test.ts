@@ -75,7 +75,7 @@ test("NlEntryService constructor accepts custom options", () => {
     clarificationThreshold: 0.8,
     conversationWindowSize: 20,
   });
-  assert.equal(service.getClarificationThreshold(), 0.7); // from config, not custom
+  assert.equal(service.getClarificationThreshold(), 0.8);
 });
 
 test("NlEntryService.parse returns intent with correct structure", async () => {

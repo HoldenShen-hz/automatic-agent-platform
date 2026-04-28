@@ -10,9 +10,9 @@ Related documents:
 - `plugin_spi_contract.md`
 - `marketplace_catalog_and_revenue_contract.md`
 
-## 2. SDK Layers
+## 2. SDK Layering
 
-| Sub-domain | Directory | Target |
+| Subdomain | Directory | Purpose |
 | --- | --- | --- |
 | CLI | `src/sdk/cli/` | Operations, development, and verification entry point |
 | Client SDK | `src/sdk/client-sdk/` | Typed API calls |
@@ -33,8 +33,8 @@ interface SdkReleaseDescriptor {
 
 ## 4. CLI Surface
 
-- Each CLI entry point must correspond to a stable command semantics and help text.
-- If CLI output is consumed by scripts, a structured JSON schema or stable field format must be provided.
+- Each CLI entry must correspond to stable command semantics and help text.
+- CLI output for script consumption must provide structured JSON mode or stable field format.
 - CLI must not bypass API / contract to directly tamper with authoritative state.
 
 ## 5. Client SDK Surface
@@ -48,23 +48,23 @@ interface ApiClient {
 
 Rules:
 
-- Client SDK should be derived from the same API schema / contract and must not maintain a private field fork.
-- Network errors, authentication errors, and business rejections must retain distinguishable error types.
+- Client SDK should be derived from the same API schema / contract, without maintaining private field forks.
+- Network errors, authentication errors, and business rejections must preserve distinguishable error types.
 
 ## 6. Pack / Plugin SDK Surface
 
 - Pack SDK must expose manifest, compatibility, local test, and scaffold capabilities.
 - Plugin SDK must expose plugin definition, runtime context, and test harness.
-- Pack / Plugin SDK version declarations must be cross-verifiable against the marketplace compatibility matrix.
+- Pack/Plugin SDK version declarations must be cross-verifiable with the marketplace compatibility matrix.
 
 ## 7. Compatibility and Deprecation
 
 - Breaking changes must be explicitly listed in the release descriptor.
-- SDK may deprecate old surfaces, but a migration window or alternative command / interface must be provided.
+- SDK may deprecate old surfaces, but must provide migration window or alternative commands/interfaces.
 - CLI, Pack SDK, and Plugin SDK must not use different field naming for the same canonical object.
 
 ## 8. Testing Requirements
 
-- unit: schema, types, and error semantics for each SDK surface.
-- integration: CLI / Client / Pack / Plugin integration with platform contracts.
-- contract: version, compatibility, and breaking change metadata are stable and parseable.
+- unit: Schema, types, and error semantics for each SDK surface.
+- integration: CLI/Client/Pack/Plugin integration with platform contracts.
+- contract: Version, compatibility, and breaking change metadata must be stably parseable.

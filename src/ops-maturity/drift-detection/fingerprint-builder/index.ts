@@ -6,6 +6,14 @@ export interface BehaviorFingerprintInput {
   failureCategories: readonly string[];
   averageLatencyMs: number;
   averageCostUsd: number;
+  window?: {
+    readonly start: string;
+    readonly end: string;
+  };
+  toolUsageDistribution?: Readonly<Record<string, number>>;
+  successRate?: number;
+  riskDistribution?: Readonly<Record<"low" | "medium" | "high" | "critical", number>>;
+  driftScore?: number;
 }
 
 export interface BehaviorFingerprint {
@@ -22,6 +30,11 @@ export class BehaviorFingerprintBuilder {
       `failures:${[...input.failureCategories].sort().join(",")}`,
       `latency_bucket:${bucketLatency(input.averageLatencyMs)}`,
       `cost_bucket:${bucketCost(input.averageCostUsd)}`,
+      `window:${input.window?.start ?? "na"}:${input.window?.end ?? "na"}`,
+      `tool_usage:${JSON.stringify(input.toolUsageDistribution ?? {})}`,
+      `success_rate:${input.successRate ?? 0}`,
+      `risk_distribution:${JSON.stringify(input.riskDistribution ?? {})}`,
+      `drift_score:${input.driftScore ?? 0}`,
     ];
     const hash = createHash("sha256").update(normalizedFeatures.join("|")).digest("hex");
     return {

@@ -1,24 +1,24 @@
-# ADR-060 Explicit Planning Hub and Plan Hub
+# ADR-060 Explicit Planning Layer and Plan Hub
 
 - Status: Accepted
 - Decision Date: 2026-04-17
-- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
+- Related: ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model
 
 ## Context
 
-In early Phase 1A/1B architecture, the generation logic of execution plans (Plan) was scattered within `AgentExecutor`, implementing task decomposition through an implicit "dispatch mode". This design has three problems:
+In the early Phase 1A/1B architecture, the generation logic for execution plans (Plan) was scattered within `AgentExecutor`, implementing task decomposition through an implicit "dispatch mode". This design has three problems:
 
-1. **Not traceable**: No explicit Plan DTO, cannot independently validate plan content.
-2. **Not auditable**: Replanning decisions have no version chain, debugging is difficult.
-3. **Not reusable**: Planning strategies cannot be shared across multiple execution engines.
+1. **Non-traceable**: No explicit Plan DTO, making it impossible to independently validate plan content.
+2. **Non-auditable**: Replan decisions have no version chain, making debugging difficult.
+3. **Non-reusable**: Planning strategies cannot be shared across multiple execution engines.
 
-The OAPEFLIR Loop Model (ADR-016) requires Plan as an independent Hub, forming a clear boundary of Assess→Plan→Execute.
+The OAPEFLIR Loop model (ADR-016) requires Plan as an independent Hub, forming a clear Assess → Plan → Execute boundary.
 
 ## Decision
 
 ### 1. Establish Independent Plan Hub
 
-Plan Hub, as OAPEFLIR Stage 3 (between Assess and Execute), has the following responsibilities:
+Plan Hub serves as OAPEFLIR Phase 3 (between Assess and Execute), with responsibilities:
 
 - Receive `UnifiedAssessment` (from Assess Hub)
 - Output `Plan` DTO (as the sole input to Execute Hub)
@@ -49,10 +49,10 @@ interface Plan {
 
 | Constraint | Description |
 |------------|-------------|
-| **R3-SINGLE** | Execute layer can only receive Plan DTO, no bypass raw task direct execution |
-| **R3-BUILDER** | `WorkflowPlanner` degraded to data source for PlanBuilder, does not directly output execution instructions |
-| **R3-VERSION** | Each replan must generate version +1, cannot overwrite historical versions |
-| **R3-NOBYPASS** | Execute layer must reject input without valid Plan |
+| **R3-SINGLE** | Execute layer can only receive Plan DTO, not allow bypass raw task direct execution |
+| **R3-BUILDER** | `WorkflowPlanner` is degraded to PlanBuilder data source, does not directly output execution instructions |
+| **R3-VERSION** | Each replan must generate version +1, must not overwrite historical versions |
+| **R3-NOBYPASS** | Execute layer must reject inputs without valid Plan |
 
 ### 4. Plan→Execute Bridge
 
@@ -65,19 +65,19 @@ interface RuntimeExecuteBridge {
 }
 ```
 
-Execute layer receives Plan through this interface, no bypass allowed.
+Execute layer receives Plan through this interface and must not bypass it.
 
 ### 5. Eight Planning Strategies
 
-| Strategy | Use Case | Implementation Status |
-|----------|----------|----------------------|
+| Strategy | Applicable Scenario | Implementation Status |
+|----------|---------------------|----------------------|
 | `linear` | Single-step or sequential execution tasks | Implemented |
 | `dag` | Multi-step tasks with dependencies | Implemented |
 | `conditional` | Plans with branching decisions | Partially implemented |
 | `reactive` | Plans responding to external event changes | Partially implemented |
 | `hierarchical` | Multi-level abstraction plans | Not implemented |
 | `multi-agent` | Multi-Agent collaboration plans | Not implemented |
-| `adaptive` | Adjust plans based on execution feedback | Implemented (replan) |
+| `adaptive` | Plans adjusted based on execution feedback | Implemented (replan) |
 | `uncertainty-aware` | Probabilistic planning for handling uncertainty | Not implemented |
 
 ### 6. Replanning Triggers and Decisions
@@ -91,32 +91,32 @@ Execute layer receives Plan through this interface, no bypass allowed.
 | `time_budget_exceeded` | Time budget exceeded | `hierarchical` compression |
 | `quality_below_threshold` | Quality below threshold | `uncertainty-aware` |
 
-## Alternatives
+## Alternative Approaches
 
 ### Option A: Maintain dispatch implicit planning (current state)
 
-Positive: No need to refactor existing execution engines.
-Negative: Plan is not traceable, not auditable, not reusable.
+Advantages: No need to refactor existing execution engine.
+Costs: Plan is non-traceable, non-auditable, non-reusable.
 
 ### Option B: Plan as independent Hub (selected)
 
-Positive: Clear stage boundaries, complete version chain, extensible multi-strategy.
-Negative: Need to add planning/ module, approximately 1500 lines of code.
+Advantages: Clear phase boundaries, complete version chain, multi-strategy extensibility.
+Costs: Need to add new planning/ module, approximately 1500 lines of code.
 
 ## Consequences
 
 - New `src/core/planning/` module (approximately 9 files, 2000 lines).
 - `RuntimeExecuteBridge` as Plan→Execute decoupling layer.
-- Zod schema validation added at stage boundaries (PlanSchema).
-- All replanning decisions recorded in audit via `ReplanningDecision` DTO.
+- Zod schema validation added at phase boundaries (PlanSchema).
+- All replan decisions recorded in audit via `ReplanningDecision` DTO.
 
 ## Cross-References
 
-- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)
 - [ADR-072 Testing Strategy](./072-oapeflir-testing-strategy.md)
 
-## Source Sections
+## Source Section
 
 - `§5` Plan Hub Design
 - `§L.6` R3 Constraint Definition

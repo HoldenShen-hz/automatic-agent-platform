@@ -20,6 +20,8 @@ function createAction(
     actionId: "action_1",
     targetComponent: "queue_worker_1",
     operation: "restart",
+    runbookRef: "runbook://ops/restart-service",
+    approvalRef: "approval://ops/default",
     reasonCode: "high_error_rate",
     priority: "high",
     ...overrides,

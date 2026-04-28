@@ -25,7 +25,7 @@ test("integration: debugger registers and lists breakpoints", () => {
   const service = new WorkflowDebuggerService();
 
   service.registerBreakpoint(
-    { actorId: "dev_1", canDebugProduction: false },
+    { actorId: "dev_1", allowedRuntime: "non_prod" },
     "dev",
     {
       breakpointId: "bp_001",
@@ -48,7 +48,7 @@ test("integration: debugger rejects production breakpoint without permission", (
   assert.throws(
     () =>
       service.registerBreakpoint(
-        { actorId: "dev_1", canDebugProduction: false },
+        { actorId: "dev_1", allowedRuntime: "non_prod" },
         "prod",
         {
           breakpointId: "bp_prod_001",
@@ -67,7 +67,7 @@ test("integration: debugger evaluates trace and identifies breakpoint hits", () 
   const service = new WorkflowDebuggerService();
 
   service.registerBreakpoint(
-    { actorId: "sre_1", canDebugProduction: true },
+    { actorId: "sre_1", allowedRuntime: "replay_sandbox" },
     "prod",
     {
       breakpointId: "bp_eval_001",
@@ -134,7 +134,7 @@ test("integration: empty trace returns empty results", () => {
   const service = new WorkflowDebuggerService();
 
   service.registerBreakpoint(
-    { actorId: "tester", canDebugProduction: false },
+    { actorId: "tester", allowedRuntime: "non_prod" },
     "dev",
     {
       breakpointId: "bp_empty",

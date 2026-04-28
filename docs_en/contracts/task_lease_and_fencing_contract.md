@@ -2,7 +2,7 @@
 
 ---
 
-## OAPEFLIR Related
+## OAPEFLIR Association
 
 This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
@@ -21,7 +21,7 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 
 This contract defines task lease, renewal, reclaim, and fencing token rules in industrial-grade execution plane.
 
-It answers the question: after execution is dispatched to worker, how does the system ensure only current legitimate holder can continue writing results, avoiding double-write, dirty-write, and stale worker write-back.
+It answers the question: after `NodeRun` is dispatched to worker, how does the system ensure only current legitimate holder can continue writing results, avoiding double-write, dirty-write, and stale worker write-back.
 
 Related documents:
 
@@ -32,10 +32,10 @@ Related documents:
 
 ## 2. Goals
 
-- Establish authoritative lease for each active execution.
+- Establish authoritative lease for each active `NodeRun`.
 - Control execution rights lifecycle through `visibility timeout` and `lease renew`.
 - Use `fencing token` to reject old worker's write-back.
-- Unify recovery, takeover, retry, and dead-letter into one link/chain.
+- Unify recovery, takeover, retry, and dead-letter into one chain.
 
 ## 3. Non-Goals
 
@@ -59,9 +59,9 @@ Related documents:
 | Field | Type | Description |
 | --- | --- | --- |
 | `lease_id` | `string` | Lease ID |
-| `execution_id` | `string` | Target execution |
+| `node_run_id` | `string` | Target `NodeRun` |
 | `worker_id` | `string` | Current holder |
-| `attempt` | `integer` | Execution attempt |
+| `attempt_id` | `string` | Associated `NodeAttempt` |
 | `fencing_token` | `integer` | Monotonically increasing execution rights version |
 | `leased_at` | `timestamp` | Acquired at |
 | `expires_at` | `timestamp` | Current expiration time |
@@ -69,7 +69,7 @@ Related documents:
 
 Rules:
 
-- Same `execution_id` can only have one `active` lease at any moment.
+- Same `node_run_id` can only have one `active` lease at any moment.
 - Each time lease is re-dispatched, taken over, or reclaimed and re-granted, `fencing_token` must increment.
 - Any side-effect write must carry current `fencing_token`.
 
@@ -102,8 +102,8 @@ flowchart TD
 
 ## 8. Fencing Token Rules
 
-- `fencing_token` is execution write permission version number, not a display field.
-- Storage layer when updating execution, artifact, step output, tool result must compare token.
+- `fencing_token` is `NodeRun` write permission version number, not a display field.
+- Storage layer when updating `NodeRun`, artifact, tool result, side-effect receipt must compare token.
 - Writes less than current authoritative token must be rejected, and `stale_write_rejected` audit event recorded.
 - Even if worker locally caches old lease that hasn't yet perceived expiration, system must not accept it.
 
@@ -134,7 +134,7 @@ Handover refers to controlled operation where current worker actively transfers 
 
 ### 8A.4 Rules
 
-- Handover must complete in single transaction: release old lease → create new lease → increment fencing token → update execution owner and worker snapshot.
+- Handover must complete in single transaction: release old lease -> create new lease -> increment fencing token -> update execution owner and worker snapshot.
 - Only `active` lease can handover.
 - Old lease's `workerId` must match `workerId` in request.
 - After handover completes, must write `lease_audit` (event_type: `handover`), recording source worker, target worker, and lineage.
@@ -163,7 +163,7 @@ Handover refers to controlled operation where current worker actively transfers 
 `QueueDispatchRecord` minimum fields:
 
 - `dispatch_id`
-- `execution_id`
+- `node_run_id`
 - `queue_name`
 - `enqueued_at`
 - `dequeued_at?`
@@ -174,7 +174,7 @@ Handover refers to controlled operation where current worker actively transfers 
 `LeaseAuditRecord` minimum fields:
 
 - `audit_id`
-- `execution_id`
+- `node_run_id`
 - `lease_id`
 - `worker_id`
 - `event_type` (`lease_granted | lease_renewed | lease_expired | lease_reclaimed | stale_write_rejected | lease_released`)
@@ -192,7 +192,7 @@ Rules:
 `LeaseReconciliationRecord` minimum fields:
 
 - `reconciliation_id`
-- `execution_id`
+- `node_run_id`
 - `lease_id`
 - `issue_type` (`stale_lease | duplicate_owner | replay_recovery_needed | orphan_queue_claim`)
 - `detected_at`
@@ -201,7 +201,7 @@ Rules:
 
 ### 11.1 Dispatch Reconciliation Scan
 
-Reconciliation service scans all `pending` or `claimed` execution tickets, detecting following anomalies:
+Reconciliation service scans all `pending` or `claimed` `NodeRun` dispatch tickets, detecting following anomalies:
 
 | issue_type | Detection Condition | Fix Action |
 | --- | --- | --- |
@@ -214,7 +214,7 @@ Reconciliation service scans all `pending` or `claimed` execution tickets, detec
 
 Replacement ticket inherits following attributes from original:
 
-- `execution_id`, `priority`, `queue_name`
+- `node_run_id`, `priority`, `queue_name`
 - `dispatch_target`, `required_isolation_level`, `required_capabilities`
 - `dispatch_after`
 
@@ -240,7 +240,7 @@ Both emitted atomically in same transaction, event payload must contain `issueTy
 
 Industrial-grade minimum consistency requirements:
 
-- Execution current lease: strong consistency
+- `NodeRun` current lease: strong consistency
 - Fencing token comparison: strong consistency
 - Heartbeat display: eventual consistency
 - Worker UI status: eventual consistency
@@ -262,3 +262,20 @@ Phase 2+:
 Lease solves "who can execute now", fencing token solves "who can write results now".
 
 Industrial-grade systems must have both layers simultaneously to avoid duplicate execution and old results overwriting new results.
+
+## 15. Legacy / Deprecated Mapping
+
+| Old Name | New Semantics |
+| --- | --- |
+| `execution_id` | Legacy queue / repository field; v4.3 canonical object should map to `node_run_id` |
+| `attempt` | Legacy attempt sequence number; v4.3 canonical object should map to `attempt_id` / `NodeAttempt` |
+| `task lease` | Only preserves narrative semantics; authoritative object is `NodeRun` lease |
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-6: Uses deprecated term execution_id, architecture v4.0 unified to node_run_id. Root cause: this document沿用了 v3 execution-centric queue/lease terminology, but did not migrate along with `HarnessRun` / `NodeRun` authoritative object migration. Fix: `LeaseGrant`, `QueueDispatchRecord`, `LeaseAuditRecord`, `LeaseReconciliationRecord` and requeue semantics all converge to `node_run_id` / `attempt_id`; `execution_id` only preserved as legacy mapping note.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

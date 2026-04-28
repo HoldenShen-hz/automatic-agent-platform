@@ -4,10 +4,10 @@ import type { DomainDefinition } from "../registry/domain-model.js";
 import { type DomainOnboardingPhase, type DomainOnboardingRecord, nextOnboardingPhase } from "./index.js";
 
 const PHASE_SEQUENCE: readonly DomainOnboardingPhase[] = [
-  "modeling",
-  "development_validation",
+  "domain_modeling",
+  "pack_development",
   "security_certification",
-  "canary_launch",
+  "gray_rollout",
 ];
 
 export interface RollbackPoint {
@@ -38,7 +38,7 @@ export class DomainOnboardingService {
       this.sessions.set(domainId, [
         {
           domainId,
-          phase: "modeling",
+          phase: "domain_modeling",
           status: "in_progress",
           evidenceArtifactIds: [],
         },
@@ -68,6 +68,7 @@ export class DomainOnboardingService {
     const nextPhase = nextOnboardingPhase(current.phase);
     if (nextPhase == null) {
       this.sessions.set(domainId, replaced);
+      this.promoteDomainToRegisteredIfNeeded(domainId);
       this.registry.activate(domainId);
       return this.get(domainId);
     }
@@ -175,6 +176,19 @@ export class DomainOnboardingService {
       throw this.validationError("domain_onboarding.session_not_started", "Onboarding session has not been started.");
     }
     return session;
+  }
+
+  private promoteDomainToRegisteredIfNeeded(domainId: string): void {
+    const domain = this.registry.get(domainId);
+    if (domain == null) {
+      throw this.validationError("domain_onboarding.domain_not_found", `Domain ${domainId} is not registered.`);
+    }
+    if (domain.status === "draft" || domain.status === "validated" || domain.status === "testing") {
+      this.registry.register({
+        ...domain,
+        status: "registered",
+      });
+    }
   }
 
   private validationError(code: string, message: string): ValidationError {

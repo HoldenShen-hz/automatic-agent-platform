@@ -1,4 +1,25 @@
 import { z } from "zod";
+import { DomainExecutionProfileSchema } from "../domain-specs.js";
+
+const DOMAIN_STATUS_ALIASES = {
+  testing: "validated",
+} as const;
+
+const DOMAIN_PLUGIN_TYPE_ALIASES = {
+  planner: "tool",
+  presenter: "tool",
+  validator: "evaluator",
+} as const;
+
+const DOMAIN_PLUGIN_ROLE_ALIASES = {
+  tool: "tool",
+  adapter: "adapter",
+  retriever: "retriever",
+  evaluator: "evaluator",
+  planner: "planner",
+  presenter: "presenter",
+  validator: "validator",
+} as const;
 
 export const StepTemplateConfigSchema = z.object({
   stepName: z.string().min(1),
@@ -57,7 +78,18 @@ export const DomainCapabilityProfileSchema = z.object({
 export const PluginBindingSchema = z.object({
   bindingId: z.string().min(1),
   domainId: z.string().min(1),
-  pluginType: z.enum(["retriever", "validator", "planner", "presenter", "adapter"]),
+  pluginType: z.preprocess(
+    (value) => typeof value === "string"
+      ? DOMAIN_PLUGIN_TYPE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_TYPE_ALIASES] ?? value
+      : value,
+    z.enum(["tool", "adapter", "retriever", "evaluator"]),
+  ),
+  bindingRole: z.preprocess(
+    (value) => typeof value === "string"
+      ? DOMAIN_PLUGIN_ROLE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES] ?? value
+      : undefined,
+    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]).optional(),
+  ),
   pluginId: z.string().min(1),
   priority: z.number().int().default(0),
   enabled: z.boolean().default(true),
@@ -74,7 +106,13 @@ export const DomainDefinitionSchema = z.object({
   outputContracts: z.array(OutputContractConfigSchema).default([]),
   promptOverrides: z.record(z.string(), z.string()).default({}),
   capabilities: DomainCapabilityProfileSchema.default({}),
-  status: z.enum(["draft", "testing", "active", "deprecated"]).default("draft"),
+  status: z.preprocess(
+    (value) => typeof value === "string"
+      ? DOMAIN_STATUS_ALIASES[value as keyof typeof DOMAIN_STATUS_ALIASES] ?? value
+      : value,
+    z.enum(["draft", "validated", "registered", "active", "updating", "deprecated", "archived"]),
+  ).default("draft"),
+  executionProfile: DomainExecutionProfileSchema.default({}),
   externalAdapters: z.array(z.string()).default([]),
   pluginBindings: z.array(PluginBindingSchema).default([]),
 });
@@ -85,6 +123,14 @@ export type ToolBundleEntry = z.infer<typeof ToolBundleEntrySchema>;
 export type ToolBundleConfig = z.infer<typeof ToolBundleConfigSchema>;
 export type OutputContractConfig = z.infer<typeof OutputContractConfigSchema>;
 export type DomainCapabilityProfile = z.infer<typeof DomainCapabilityProfileSchema>;
-export type PluginBinding = z.infer<typeof PluginBindingSchema>;
-export type DomainDefinition = z.infer<typeof DomainDefinitionSchema>;
+type PluginBindingParsed = z.infer<typeof PluginBindingSchema>;
+export type PluginBinding = Omit<PluginBindingParsed, "pluginType"> & {
+  pluginType: PluginBindingParsed["pluginType"] | "planner" | "presenter" | "validator";
+};
+type DomainDefinitionParsed = z.infer<typeof DomainDefinitionSchema>;
+export type DomainDefinition = Omit<DomainDefinitionParsed, "status" | "pluginBindings" | "executionProfile"> & {
+  status: DomainDefinitionParsed["status"] | "testing";
+  pluginBindings: PluginBinding[];
+  executionProfile?: DomainDefinitionParsed["executionProfile"];
+};
 export type DomainDefinitionExtended = DomainDefinition;

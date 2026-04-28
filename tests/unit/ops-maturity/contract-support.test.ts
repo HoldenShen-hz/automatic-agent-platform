@@ -148,6 +148,7 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
     canResumeFromPanic({
       scope: "platform",
       approvedBy: ["sre", "security"],
+      approvedRoles: ["platform_admin", "security_team"],
       checkpointsVerified: true,
       forensicSnapshotReviewed: true,
       rollbackPlanReady: true,

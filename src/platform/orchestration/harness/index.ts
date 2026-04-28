@@ -475,16 +475,19 @@ export class HarnessRuntimeService {
     const replanCount = run.loopMetrics?.replanCount ?? 0;
     const totalCost = run.loopMetrics?.totalCost ?? 0;
     const durationMs = run.loopMetrics?.durationMs ?? 0;
-    if (iterationCount > run.maxIterations) {
+    const abortedByGuard = run.status === "aborted"
+      ? new Set(run.decision?.reasonCodes ?? [])
+      : new Set<string>();
+    if (iterationCount > run.maxIterations && !abortedByGuard.has("harness.guard.max_iterations_reached")) {
       violations.push("harness.invariant.iteration_exceeds_budget");
     }
-    if (replanCount > 3) {
+    if (replanCount > 3 && !abortedByGuard.has("harness.guard.max_replans_reached")) {
       violations.push("harness.invariant.replan_count_exceeds_budget");
     }
-    if (totalCost > run.constraintPack.budget.maxCost) {
+    if (totalCost > run.constraintPack.budget.maxCost && !abortedByGuard.has("harness.guard.max_cost_exceeded")) {
       violations.push("harness.invariant.total_cost_exceeds_budget");
     }
-    if (durationMs > run.constraintPack.budget.maxDurationMs) {
+    if (durationMs > run.constraintPack.budget.maxDurationMs && !abortedByGuard.has("harness.guard.max_duration_exceeded")) {
       violations.push("harness.invariant.duration_exceeds_budget");
     }
     if ((run.status === "completed" || run.status === "aborted") && run.completedAt == null) {

@@ -207,8 +207,6 @@ export class PluginTestHarness {
         return { documents: [], query: input };
       case "evaluator":
         return { passed: true, score: 1.0, input };
-      case "presenter":
-        return { formatted: true, content: input };
       default:
         return { output: input };
     }

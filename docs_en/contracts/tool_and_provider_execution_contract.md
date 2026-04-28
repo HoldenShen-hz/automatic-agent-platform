@@ -14,16 +14,19 @@ This contract defines the minimum unified interface for LLM provider calls, tool
 - `ToolCallRequest`
 - `ToolCallResult`
 - `ExecutionError`
-- `BudgetCheckResult`
+- `BudgetReservationDecision`
 
 ## 3. ModelRequest Minimum Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `request_id` | `string` | Request unique ID |
-| `task_id` | `string` | Associated task |
+| `harness_run_id` | `string` | Associated HarnessRun |
+| `node_run_id` | `string` | Associated NodeRun |
+| `attempt_id` | `string` | Associated NodeAttempt |
+| `task_id` | `string?` | Compatibility query entry; not truth primary key |
 | `agent_id` | `string` | Initiating role |
-| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Current loop stage |
+| `stage_view_ref` | `string?` | Current closed-loop stage view reference; does not drive execution semantics |
 | `domain_id` | `string?` | Current domain |
 | `provider` | `string` | Provider identifier |
 | `model` | `string` | Target model |
@@ -55,10 +58,12 @@ Rules:
 ## 5. ToolCallRequest Minimum Fields
 
 - `call_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id`
+- `attempt_id`
+- `task_id?`
 - `agent_id`
-- `execution_id?`
-- `stage?`
+- `stage_view_ref?`
 - `domain_id?`
 - `tool_name`
 - `arguments`
@@ -91,20 +96,27 @@ Rules:
 - `blocked`
 - `cancelled`
 
-## 7. BudgetCheckResult
+## 7. BudgetReservationDecision
 
 Must contain at least:
 
-- `allowed`
+- `reservation_id`
+- `ledger_id`
+- `decision` (`reserved | rejected | review_required`)
 - `estimated_cost_usd`
+- `reserved_amount_usd?`
 - `remaining_budget_usd`
-- `reason?`
+- `expires_at?`
+- `settlement_required`
+- `reason_code?`
+- `budget_scope_id?`
 
 Rules:
 
-- LLM calls must pass through budget guard before execution.
+- LLM calls must first create or reuse `BudgetReservation` before execution, not just do boolean allow judgment.
 - High-risk tool execution must simultaneously pass budget and permission checks.
 - Before workflow step actual execution, if structured input/output constraints exist, must first pass `workflow_io_compatibility_precheck_contract.md`.
+- After successful execution must produce `BudgetSettlement` or explicit release of reservation; failure or cancellation must also have auditable conclusion.
 
 ## 8. Error Semantics
 
@@ -134,6 +146,7 @@ Rules:
 - If call request carries `allowed_path_roots` or execution precheck has already resolved `resolved_paths_json`, tool access paths must satisfy both sandbox and path scope constraints.
 - If execution holds `allowed_tools_json`, both direct tool and skill must verify `tool_name` is in the whitelist at runtime; missing execution, illegal JSON, or empty/non-string array items must fail-closed.
 - All calls must be traceable back to `task_id`, `agent_id`, `trace_id`.
+- All calls must first be traceable back to `harness_run_id`, `node_run_id`, `attempt_id`; `task_id` only serves as compatibility query entry.
 - If different tools need to expose additional structured details, should prioritize stable `data / metadata` fields, rather than having upper layers guess top-level fields by tool name.
 - Target location rules for `edit / patch / replace` type tools are defined by `edit_replacement_chain_contract.md`.
 - Trimming and compaction rules when context approaches token limit are defined by `context_compaction_and_overflow_contract.md`.
@@ -151,6 +164,7 @@ Rules:
 - If tool argument lenient correction is enabled, it must also be limited to type boundaries that the schema explicitly declares as safely convergeable; unknown fields, structural ambiguity, and high-risk parameters must not be silently auto-corrected.
 - If tool argument correction occurs, correction trace must be exposed to auditable result surfaces such as `metadata` or warnings; high-frequency tools like `command_exec`, `edit_replace`, `question`, `todo_write` must not hide corrections in a black box.
 - For illegal types or structural ambiguity of high-risk tool parameters, executor must fail-closed with stable error codes, rather than letting the underlying implementation crash from type exceptions.
+- `ModelResponse` / `ToolCallResult` if returning user summary or learning signals, must chain back through `NodeAttemptReceipt` or its reference; must not directly treat provider/tool raw results as runtime truth.
 
 ## 10. Supplementary Rules
 
@@ -158,3 +172,12 @@ Rules:
 - Provider fallback observation must record at least: original provider, fallback provider, trigger reason, switch time, impact scope.
 - Tool sandbox result summary must record at least: exit status, sanitized summary, artifact refs, policy notes.
 - For user-visible text, tool output, and crawled content, NFC normalization should be done first, then control characters and Unicode Tags block should be cleaned to avoid steganographic injection and display layer confusion.
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-19: This document originally wrote `task_id / execution_id / agent_id` as provider/tool call primary keys, and compressed budget guard into `BudgetCheckResult.allowed` boolean result. Root cause: old execution contract沿用了单次请求视角 (adopted single-request perspective), did not bind call ownership to `HarnessRun / NodeRun / NodeAttempt` and budget reservation/settlement lifecycle. Fix: This version sets `harness_run_id / node_run_id / attempt_id` as canonical call identity, and converges budget object to `BudgetReservationDecision`.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

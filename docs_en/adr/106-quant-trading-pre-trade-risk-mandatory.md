@@ -4,14 +4,14 @@
 
 ## OAPEFLIR Association
 
-- **Observe**: Read orders, positions, and risk thresholds
+- **Observe**: Read orders, positions, and risk control thresholds
 - **Assess**: Perform pre-trade risk assessment
-- **Plan**: Decide whether to allow order placement
-- **Execute**: Only enter execution chain after risk approval
-- **Feedback**: Record block reasons and risk evidence
+- **Plan**: Decide whether to allow order submission
+- **Execute**: Only enter execution chain after risk control passes
+- **Feedback**: Record block reason and risk control evidence
 - **Learn**: Review abnormal order patterns
-- **Improve**: Adjust risk parameters
-- **Release**: trading domain must pass its own risk gate
+- **Improve**: Adjust risk control parameters
+- **Release**: Trading domain must pass domain-specific risk gate
 
 ---
 
@@ -20,12 +20,12 @@
 
 ## Context
 
-The cost of erroneous execution in quant trading domains is extremely high, requiring an independent pre-trade risk boundary separate from the platform's generic risk model.
+The cost of erroneous execution in the quant trading domain is extremely high; it must have pre-trade risk control independent of the platform's general risk controls.
 
 ## Decision
 
 - All trading actions must first pass pre-trade risk
-- Hard position and loss limits cannot be overridden by the Agent
+- Hard position and loss limits cannot be overridden by Agent
 
 ## Consequences
 

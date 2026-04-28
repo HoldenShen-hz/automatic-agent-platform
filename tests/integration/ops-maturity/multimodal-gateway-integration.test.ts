@@ -9,9 +9,9 @@ test("integration: multimodal request flows through gateway routing, safety, and
     requestId: "mm_req_2",
     modalities: ["text", "audio", "document"],
     inputParts: [
-      { partId: "part_text", type: "text", contentRef: "inline", text: "summarize call" },
-      { partId: "part_audio", type: "audio", contentRef: "aud://1", audioSampleCount: 48000, audioSampleRate: 24000 },
-      { partId: "part_doc", type: "document", contentRef: "doc://1", documentChunks: ["p1", "p2", "p3"] },
+      { partId: "part_text", type: "text", contentRef: "inline", text: "summarize call", mimeType: "text/plain" },
+      { partId: "part_audio", type: "audio", contentRef: "aud://1", mimeType: "audio/wav", audioSampleCount: 48000, audioSampleRate: 24000 },
+      { partId: "part_doc", type: "document", contentRef: "doc://1", mimeType: "application/pdf", documentChunks: ["p1", "p2", "p3"] },
     ],
     requestedOutputs: ["summary", "action_items"],
     safetyPolicyRef: "policy_mm_safe",
@@ -30,7 +30,7 @@ test("integration: multimodal gateway blocks over-budget requests without downgr
     requestId: "mm_req_3",
     modalities: ["document"],
     inputParts: [
-      { partId: "part_doc", type: "document", contentRef: "doc://big", documentChunks: ["1", "2", "3", "4", "5", "6"] },
+      { partId: "part_doc", type: "document", contentRef: "doc://big", mimeType: "application/pdf", documentChunks: ["1", "2", "3", "4", "5", "6"] },
     ],
     requestedOutputs: ["summary"],
     safetyPolicyRef: "policy_mm_safe",

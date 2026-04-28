@@ -119,6 +119,10 @@ export class RetryableApiClient {
     return this.request<T>({ path, method: "PUT", body });
   }
 
+  async patch<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>({ path, method: "PATCH", body });
+  }
+
   /**
    * Make a DELETE request with automatic retry.
    */
@@ -153,6 +157,30 @@ export class RetryableApiClient {
       (result as { totalCount?: number }).totalCount = totalCount;
     }
     return result;
+  }
+
+  async listHarnessRuns<T>(pagination?: PaginationSpec): Promise<PaginatedResponse<T>> {
+    return this.getPaginated<T>("/harness-runs", pagination);
+  }
+
+  async createHarnessRun<T>(body: unknown): Promise<ApiResponse<T>> {
+    return this.post<T>("/harness-runs", body);
+  }
+
+  async pauseHarnessRun<T>(runId: string, reason?: string): Promise<ApiResponse<T>> {
+    return this.post<T>(`/harness-runs/${encodeURIComponent(runId)}/pause`, reason == null ? {} : { reason });
+  }
+
+  async abortHarnessRun<T>(runId: string, reason?: string): Promise<ApiResponse<T>> {
+    return this.post<T>(`/harness-runs/${encodeURIComponent(runId)}/abort`, reason == null ? {} : { reason });
+  }
+
+  async listPacks<T>(pagination?: PaginationSpec): Promise<PaginatedResponse<T>> {
+    return this.getPaginated<T>("/packs", pagination);
+  }
+
+  async publishPack<T>(packId: string, body: unknown): Promise<ApiResponse<T>> {
+    return this.post<T>(`/packs/${encodeURIComponent(packId)}/publish`, body);
   }
 
   private async request<T>(request: ApiRequestSpec, attempt = 0): Promise<ApiResponse<T>> {

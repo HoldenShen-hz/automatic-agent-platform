@@ -20,6 +20,23 @@ export interface WorkflowBuilderResult {
   readonly template: InteractionTemplate;
   readonly builder: VisualWorkflowBuilder;
   readonly nextStepAllowed: boolean;
+  readonly saveReview: WorkflowBuilderSaveReview;
+}
+
+export interface WorkflowBuilderSaveReview {
+  readonly normalizedGraph: {
+    readonly nodeIds: readonly string[];
+    readonly edgePairs: readonly string[];
+  };
+  readonly validationMessages: readonly string[];
+  readonly riskPropagation: {
+    readonly highestRisk: "low" | "medium" | "high" | "critical";
+    readonly riskyNodeIds: readonly string[];
+  };
+  readonly worstPathAnalysis: {
+    readonly nodeIds: readonly string[];
+    readonly score: number;
+  };
 }
 
 function categorizeComponents(components: readonly DraggableComponent[]): ComponentCategory[] {
@@ -48,6 +65,88 @@ function buildPreview(template: InteractionTemplate, steps: readonly WizardStep[
     estimatedCost: `$${(template.steps.length * 0.03).toFixed(2)}`,
     riskAssessment: steps.some((item) => item.completed === false) ? "needs review" : "ready",
     stepByStepDescription: template.steps,
+  };
+}
+
+function normalizeGraph(nodes: readonly { nodeId: string; label: string }[], edges: readonly { fromNodeId: string; toNodeId: string }[]): WorkflowBuilderSaveReview["normalizedGraph"] {
+  return {
+    nodeIds: [...new Set(nodes.map((node) => node.nodeId))],
+    edgePairs: [...new Set(edges.map((edge) => `${edge.fromNodeId}->${edge.toNodeId}`))],
+  };
+}
+
+function validateGraph(nodes: readonly { nodeId: string; label: string }[], edges: readonly { fromNodeId: string; toNodeId: string }[]): string[] {
+  const nodeIds = new Set(nodes.map((node) => node.nodeId));
+  const messages: string[] = [];
+  for (const edge of edges) {
+    if (!nodeIds.has(edge.fromNodeId) || !nodeIds.has(edge.toNodeId)) {
+      messages.push("workflow_builder.invalid_edge_reference");
+    }
+  }
+  const visited = new Set<string>();
+  const stack = new Set<string>();
+  const adjacency = new Map<string, string[]>();
+  for (const node of nodes) {
+    adjacency.set(node.nodeId, []);
+  }
+  for (const edge of edges) {
+    adjacency.set(edge.fromNodeId, [...(adjacency.get(edge.fromNodeId) ?? []), edge.toNodeId]);
+  }
+  const hasCycle = (nodeId: string): boolean => {
+    if (stack.has(nodeId)) {
+      return true;
+    }
+    if (visited.has(nodeId)) {
+      return false;
+    }
+    visited.add(nodeId);
+    stack.add(nodeId);
+    for (const next of adjacency.get(nodeId) ?? []) {
+      if (hasCycle(next)) {
+        return true;
+      }
+    }
+    stack.delete(nodeId);
+    return false;
+  };
+  for (const node of nodes) {
+    if (hasCycle(node.nodeId)) {
+      messages.push("workflow_builder.cycle_detected");
+      break;
+    }
+  }
+  if (nodes.some((node) => node.label.trim().length === 0)) {
+    messages.push("workflow_builder.empty_node_label");
+  }
+  return messages;
+}
+
+function propagateRisk(nodes: readonly { nodeId: string; label: string }[]): WorkflowBuilderSaveReview["riskPropagation"] {
+  const riskyNodeIds = nodes
+    .filter((node) => /(approve|deploy|publish|delete|approval|发布|删除)/i.test(node.label))
+    .map((node) => node.nodeId);
+  return {
+    highestRisk: riskyNodeIds.length === 0
+      ? "low"
+      : riskyNodeIds.length >= 3
+        ? "critical"
+        : riskyNodeIds.length >= 2
+          ? "high"
+          : "medium",
+    riskyNodeIds,
+  };
+}
+
+function analyzeWorstPath(nodes: readonly { nodeId: string }[], edges: readonly { fromNodeId: string; toNodeId: string }[]): WorkflowBuilderSaveReview["worstPathAnalysis"] {
+  if (nodes.length === 0) {
+    return {
+      nodeIds: [],
+      score: 0,
+    };
+  }
+  return {
+    nodeIds: [nodes[0]!.nodeId, ...(edges.map((edge) => edge.toNodeId))].slice(0, Math.max(1, nodes.length)),
+    score: edges.length + nodes.length,
   };
 }
 
@@ -80,12 +179,19 @@ export class WorkflowBuilderService {
           : [`complete current step before leaving ${request.session.currentStepId}`],
       },
     };
+    const saveReview: WorkflowBuilderSaveReview = {
+      normalizedGraph: normalizeGraph(builder.canvas.nodes, builder.canvas.edges),
+      validationMessages: validateGraph(builder.canvas.nodes, builder.canvas.edges),
+      riskPropagation: propagateRisk(builder.canvas.nodes),
+      worstPathAnalysis: analyzeWorstPath(builder.canvas.nodes, builder.canvas.edges),
+    };
 
     return {
       session: request.session,
       template,
       builder,
       nextStepAllowed,
+      saveReview,
     };
   }
 }

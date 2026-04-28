@@ -20,10 +20,13 @@ export interface CrossRegionRouteRequest {
 }
 
 export interface CrossRegionRouteDecision {
+  readonly decisionId: string;
   readonly selectedRegionId: string | null;
   readonly candidateRegions: readonly string[];
   readonly residencyDecision: "allowed" | "blocked";
   readonly latencyScore: number | null;
+  readonly policyRef: string;
+  readonly auditTrail: readonly string[];
   readonly recoveryTopology: {
     readonly primaryRegionId: string | null;
     readonly failoverRegionId: string | null;
@@ -65,11 +68,19 @@ export class CrossRegionRoutingService {
         .map((region) => region.regionId),
     });
 
+    const auditTrail = [
+      `policy:${request.policy.policyId}`,
+      `cross_border:${request.policy.allowCrossBorder ? "allowed" : "blocked"}`,
+      `blocked:${blockedRegions.join(",") || "none"}`,
+    ];
     return {
+      decisionId: `cross_region_decision:${request.policy.policyId}:${selectedRegion?.regionId ?? "blocked"}`,
       selectedRegionId: selectedRegion?.regionId ?? null,
       candidateRegions: candidateDescriptors.map((region) => region.regionId),
       residencyDecision: selectedRegion == null ? "blocked" : "allowed",
       latencyScore: selectedRegion?.latencyScore ?? null,
+      policyRef: request.policy.policyId,
+      auditTrail,
       recoveryTopology: {
         primaryRegionId: request.primaryRegionId ?? selectedRegion?.regionId ?? null,
         failoverRegionId: failover.targetRegionId,

@@ -5,7 +5,7 @@
 
 ## Context
 
-Platform administrators cannot manage all affairs and need to delegate governance authority to subordinate organizations.
+Platform administrators cannot manage all affairs, and governance authority needs to be delegated to subordinate organizations.
 
 ## Decision
 
@@ -33,19 +33,19 @@ interface DelegationScope {
 
 ### Delegation Levels
 
-| Level | Delegatable Permissions |
-|-------|-------------------------|
-| Platform | All permissions |
-| Business Group | Within business group |
-| Department | Within department |
-| Team | Limited permissions |
+| Level | Delegable Permissions |
+|-------|----------------------|
+| Platform Level | All permissions |
+| Business Group Level | Permissions within business group |
+| Department Level | Permissions within department |
+| Team Level | Limited permissions |
 
 ### Constraints
 
 | Constraint Type | Description |
 |-----------------|-------------|
-| budget_limit | Budget cap |
-| risk_threshold | Risk cap |
+| budget_limit | Budget upper limit |
+| risk_threshold | Risk upper limit |
 | approval_required | Requires upper-level approval |
 | time_window | Valid time window |
 
@@ -61,17 +61,17 @@ Positive:
 
 - Distributed governance improves efficiency
 - Constraint mechanism prevents permission abuse
-- Audit trail ensures compliance
+- Audit tracking ensures compliance
 
 Negative:
 
 - Delegation relationships are complex
-- Permission revocation requires full process
+- Permission revocation requires complete process
 
 ## Cross-References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
 ## Source Sections
 

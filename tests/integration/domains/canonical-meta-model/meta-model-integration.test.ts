@@ -112,7 +112,7 @@ test("integration: MetaModelValidator computes completeness correctly", () => {
 
   const completeness = computeMetaModelCompleteness(model);
 
-  assert.equal(completeness, 50);
+  assert.equal(completeness, 40);
 });
 
 test("integration: MetaModelValidator partial answers count as incomplete", () => {

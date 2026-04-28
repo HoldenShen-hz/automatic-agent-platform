@@ -4,6 +4,8 @@ export interface SelfHealingAction {
   readonly actionId: string;
   readonly targetComponent: string;
   readonly operation: "restart" | "throttle" | "failover" | "rollback";
+  readonly runbookRef?: string;
+  readonly approvalRef?: string;
   readonly reasonCode?: string;
   readonly priority?: "low" | "medium" | "high" | "critical";
 }
@@ -47,8 +49,8 @@ const DEFAULT_HEALING_POLICY: HealingPolicy = {
 };
 
 function simulateHealthCheck(componentId: string, operation: SelfHealingAction["operation"]): VerificationResult {
-  const checkDelay = 100 + Math.random() * 200;
-  const healthCheckPassed = Math.random() > 0.1;
+  const checkDelay = 100 + componentId.length * 10 + operation.length * 5;
+  const healthCheckPassed = !/(rollback|failover)/.test(operation) || componentId.length % 2 === 0;
   const recoveryTimeMs = Math.round(checkDelay);
 
   if (healthCheckPassed) {
@@ -83,6 +85,16 @@ export class SelfHealingService {
   }
 
   public execute(action: SelfHealingAction): SelfHealingReceipt {
+    if ((action.runbookRef ?? "").trim().length === 0 || (action.approvalRef ?? "").trim().length === 0) {
+      return {
+        healed: false,
+        targetComponent: action.targetComponent,
+        operation: action.operation,
+        executedAt: nowIso(),
+        actionId: action.actionId,
+        rollbackAvailable: isRollbackAvailable(action.operation),
+      };
+    }
     const executedAt = nowIso();
 
     const previousState = this.componentHealth.get(action.targetComponent);
@@ -196,8 +208,8 @@ export class SelfHealingService {
   }
 
   private performHealingOperation(action: SelfHealingAction): boolean {
-    const baseSuccessRate = action.operation === "failover" ? 0.95 : 0.85;
-    return Math.random() < baseSuccessRate;
+    const deterministicScore = action.targetComponent.length + action.operation.length + (action.reasonCode?.length ?? 0);
+    return deterministicScore % (action.operation === "failover" ? 5 : 4) !== 0;
   }
 
   private evictOldHistory(): void {

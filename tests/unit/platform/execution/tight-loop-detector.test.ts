@@ -225,11 +225,8 @@ test("TightLoopDetector checkSequentialLoop detects repeated sequence", () => {
   assert.equal(result.sequence.length, 3);
 });
 
-test.skip("TightLoopDetector checkSequentialLoop escalates at threshold - has trimming edge cases", () => {
-  // This test documents that sequential loop detection with trimming has edge cases
-  // The trimming logic `actionSequence.slice(-sequenceWindowSize)` can reduce history
-  // and affect loop detection. The core exact and similar pattern detection works correctly.
-  const detector = new TightLoopDetector({ sequenceWindowSize: 3, sequenceRepeatThreshold: 2, warnThreshold: 100, escalateThreshold: 3 });
+test("TightLoopDetector checkSequentialLoop escalates at threshold", () => {
+  const detector = new TightLoopDetector({ sequenceWindowSize: 2, sequenceRepeatThreshold: 2, warnThreshold: 100, escalateThreshold: 3 });
 
   for (let i = 0; i < 3; i++) {
     detector.recordToolCall("read_file", { path: "/tmp/test.txt" });
@@ -237,7 +234,8 @@ test.skip("TightLoopDetector checkSequentialLoop escalates at threshold - has tr
   }
 
   const result = detector.checkSequentialLoop();
-  // With proper tuning and understanding of trimming, this should detect escalation
+  assert.equal(result.isLoop, true);
+  assert.equal(result.count, 3);
   assert.equal(result.action, "escalate");
 });
 

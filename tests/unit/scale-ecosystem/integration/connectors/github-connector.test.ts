@@ -14,6 +14,10 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
     connectorId: overrides.connectorId ?? "github-test",
     capability: overrides.capability ?? "create_pr",
     payload: overrides.payload ?? {},
+    policyRef: "policyRef" in overrides ? overrides.policyRef : "policy.connector.github-test",
+    secretBindings: "secretBindings" in overrides
+      ? overrides.secretBindings
+      : [{ secretRef: "secret://github-test/token", purpose: "api_token" }],
   };
 }
 
@@ -124,6 +128,26 @@ test("GitHubConnector.execute is case-sensitive for capability names", () => {
 test("GitHubConnector.execute rejects close_pr capability", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "close_pr" });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("GitHubConnector.execute fails closed when policyRef is missing", () => {
+  const connector = new GitHubConnector();
+  const request = createRequest({ policyRef: undefined });
+
+  const result = connector.execute(request);
+
+  assert.equal(result.success, false);
+  assert.equal(result.status, "failed");
+});
+
+test("GitHubConnector.execute fails closed when secretBindings are missing", () => {
+  const connector = new GitHubConnector();
+  const request = createRequest({ secretBindings: [] });
 
   const result = connector.execute(request);
 

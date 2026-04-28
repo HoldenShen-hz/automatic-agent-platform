@@ -57,16 +57,16 @@ test("DomainOnboardingService progresses phases and activates domain on final co
 
   const service = new DomainOnboardingService(registry);
   let session = service.start("coding");
-  assert.equal(session.activePhase, "modeling");
+  assert.equal(session.activePhase, "domain_modeling");
 
   session = service.advance("coding", ["artifact:modeling"]);
-  assert.equal(session.activePhase, "development_validation");
+  assert.equal(session.activePhase, "pack_development");
 
   session = service.advance("coding", ["artifact:validation"]);
   assert.equal(session.activePhase, "security_certification");
 
   session = service.advance("coding", ["artifact:security"]);
-  assert.equal(session.activePhase, "canary_launch");
+  assert.equal(session.activePhase, "gray_rollout");
 
   session = service.advance("coding", ["artifact:canary"]);
   assert.equal(session.completed, true);

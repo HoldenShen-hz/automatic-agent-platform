@@ -32,6 +32,34 @@ import {
   type ResumePlan,
 } from "../../../src/ops-maturity/emergency/resume-protocol/index.js";
 
+const defaultPlaneAcknowledgments = [
+  { plane: "P1", localStopState: "ack", evidenceRef: "panic:p1" },
+  { plane: "P2", localStopState: "ack", evidenceRef: "panic:p2" },
+] as const;
+
+function createActivationRequest(overrides: Partial<PanicActivationRequest> = {}): PanicActivationRequest {
+  return {
+    scope: overrides.scope ?? "platform",
+    reasonCode: overrides.reasonCode ?? "security.incident",
+    activeIncidents: overrides.activeIncidents ?? 1,
+    issuedBy: overrides.issuedBy ?? "operator-1",
+    requiredApprovers: overrides.requiredApprovers ?? ["operator-1", "security-lead"],
+    ...overrides,
+  };
+}
+
+function createValidResumePlan(overrides: Partial<ResumePlan> = {}): ResumePlan {
+  return {
+    scope: overrides.scope ?? "platform",
+    approvedBy: overrides.approvedBy ?? ["admin-1", "admin-2"],
+    approvedRoles: overrides.approvedRoles ?? ["platform_admin", "security_team"],
+    checkpointsVerified: overrides.checkpointsVerified ?? true,
+    forensicSnapshotReviewed: overrides.forensicSnapshotReviewed ?? true,
+    rollbackPlanReady: overrides.rollbackPlanReady ?? true,
+    validationRunPassed: overrides.validationRunPassed ?? true,
+  };
+}
+
 test.describe("ops-maturity root barrel index", () => {
   test.describe("emergency module exports - PanicFreezeMode type", () => {
     test("PanicFreezeMode is a string union type", () => {
@@ -46,10 +74,12 @@ test.describe("ops-maturity root barrel index", () => {
       const directive: PlatformPanicDirective = {
         directiveId: "panic-123",
         scope: "platform",
+        scopeLevel: "platform",
         reasonCode: "security.incident",
         issuedBy: "operator-1",
         issuedAt: "2026-04-24T00:00:00Z",
         freezeModes: ["deploy", "approval", "write", "automation"],
+        requiredApprovers: ["operator-1", "security-lead"],
       };
       assert.equal(directive.directiveId, "panic-123");
       assert.equal(directive.scope, "platform");
@@ -60,10 +90,12 @@ test.describe("ops-maturity root barrel index", () => {
       const directive: PlatformPanicDirective = {
         directiveId: "panic-124",
         scope: "platform",
+        scopeLevel: "platform",
         reasonCode: "security.incident",
         issuedBy: "operator-1",
         issuedAt: "2026-04-24T00:00:00Z",
         freezeModes: ["deploy"],
+        requiredApprovers: ["operator-1", "security-lead"],
         allowList: ["operator-2", "operator-3"],
       };
       assert.ok(directive.allowList);
@@ -98,22 +130,13 @@ test.describe("ops-maturity root barrel index", () => {
 
   test.describe("PanicActivationRequest interface", () => {
     test("creates request with minimal fields", () => {
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-      };
+      const request = createActivationRequest();
       assert.equal(request.scope, "platform");
       assert.equal(request.activeIncidents, 1);
     });
 
     test("creates request with all optional fields", () => {
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
+      const request = createActivationRequest({
         issuedAt: "2026-04-24T00:00:00Z",
         freezeModes: ["deploy", "write"],
         allowList: ["operator-2"],
@@ -121,7 +144,7 @@ test.describe("ops-maturity root barrel index", () => {
         forensicArtifactIds: ["art-1"],
         severity: "critical",
         triggerSignals: ["signal-1", "signal-2"],
-      };
+      });
       assert.ok(request.freezeModes);
       assert.ok(request.allowList);
       assert.ok(request.targetScopes);
@@ -244,6 +267,7 @@ test.describe("ops-maturity root barrel index", () => {
         runtimeState: {},
         configurationRefs: ["c1"],
         logRefs: ["l1"],
+        planeAcknowledgments: defaultPlaneAcknowledgments,
       };
       const summary = summarizeForensicSnapshot(snapshot);
       assert.ok(summary.includes("scope=platform"));
@@ -261,6 +285,7 @@ test.describe("ops-maturity root barrel index", () => {
         runtimeState: {},
         configurationRefs: [],
         logRefs: [],
+        planeAcknowledgments: [],
       };
       const summary = summarizeForensicSnapshot(snapshot);
       assert.ok(summary.includes("artifacts=0"));
@@ -271,99 +296,39 @@ test.describe("ops-maturity root barrel index", () => {
 
   test.describe("canResumeFromPanic", () => {
     test("returns true with all conditions met", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), true);
+      assert.equal(canResumeFromPanic(createValidResumePlan()), true);
     });
 
     test("returns false when only one approver", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
+      const plan = {
+        ...createValidResumePlan(),
         approvedBy: "only-one",
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      } as unknown as ResumePlan;
       assert.equal(canResumeFromPanic(plan), false);
     });
 
     test("returns false when checkpoints not verified", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: false,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ checkpointsVerified: false })), false);
     });
 
     test("returns false when forensic snapshot not reviewed", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: false,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ forensicSnapshotReviewed: false })), false);
     });
 
     test("returns false when rollback plan not ready", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: false,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ rollbackPlanReady: false })), false);
     });
 
     test("returns false when validation run not passed", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: false,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ validationRunPassed: false })), false);
     });
 
     test("filters empty approver strings", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "", "  ", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), true); // 2 valid approvers
+      assert.equal(canResumeFromPanic(createValidResumePlan({ approvedBy: ["admin-1", "", "  ", "admin-2"] })), true);
     });
 
     test("handles single approver in array format", () => {
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["only-one"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
-      assert.equal(canResumeFromPanic(plan), false);
+      assert.equal(canResumeFromPanic(createValidResumePlan({ approvedBy: ["only-one"] })), false);
     });
   });
 
@@ -376,12 +341,7 @@ test.describe("ops-maturity root barrel index", () => {
       const service = createTestService();
 
       // Activate panic
-      const request: PanicActivationRequest = {
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-      };
+      const request = createActivationRequest();
       const activation = service.activate(request);
       assert.ok(activation.directive.directiveId);
 
@@ -391,14 +351,7 @@ test.describe("ops-maturity root barrel index", () => {
       assert.equal(decision.blocked, true);
 
       // Resume with valid plan
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      const plan = createValidResumePlan();
       const receipt = service.resume("platform", plan);
       assert.equal(receipt.resumed, true);
 
@@ -410,13 +363,7 @@ test.describe("ops-maturity root barrel index", () => {
     test("scope matching: direct vs inherited", () => {
       const service = createTestService();
 
-      service.activate({
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-        targetScopes: ["platform", "platform/division-a"],
-      });
+      service.activate(createActivationRequest({ targetScopes: ["platform", "platform/division-a"] }));
 
       // Direct scope match
       const directDecision = service.evaluateExecution({ scope: "platform", mode: "deploy" });
@@ -434,13 +381,7 @@ test.describe("ops-maturity root barrel index", () => {
     test("allow list bypass", () => {
       const service = createTestService();
 
-      service.activate({
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-        allowList: ["bypass-operator"],
-      });
+      service.activate(createActivationRequest({ allowList: ["bypass-operator"] }));
 
       const bypassCheck: PanicExecutionCheck = {
         scope: "platform",
@@ -455,18 +396,12 @@ test.describe("ops-maturity root barrel index", () => {
     test("resume fails with incomplete plan", () => {
       const service = createTestService();
 
-      service.activate({
-        scope: "platform",
-        reasonCode: "security.incident",
-        activeIncidents: 1,
-        issuedBy: "operator-1",
-      });
+      service.activate(createActivationRequest());
 
-      const incompletePlan: ResumePlan = {
-        scope: "platform",
+      const incompletePlan = {
+        ...createValidResumePlan({ checkpointsVerified: false }),
         approvedBy: "only-one",
-        checkpointsVerified: false,
-      } as any;
+      } as unknown as ResumePlan;
 
       const receipt = service.resume("platform", incompletePlan);
       assert.equal(receipt.resumed, false);
@@ -477,14 +412,7 @@ test.describe("ops-maturity root barrel index", () => {
     test("resume fails for unknown scope", () => {
       const service = createTestService();
 
-      const plan: ResumePlan = {
-        scope: "unknown",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      const plan = createValidResumePlan({ scope: "unknown" });
 
       const receipt = service.resume("unknown", plan);
       assert.equal(receipt.resumed, false);
@@ -494,9 +422,9 @@ test.describe("ops-maturity root barrel index", () => {
     test("listActive returns sorted activations", () => {
       const service = createTestService();
 
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-      service.activate({ scope: "division-a", reasonCode: "capacity.issue", activeIncidents: 1, issuedBy: "op1" });
-      service.activate({ scope: "division-b", reasonCode: "deploy.failed", activeIncidents: 1, issuedBy: "op1" });
+      service.activate(createActivationRequest({ scope: "platform", issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
+      service.activate(createActivationRequest({ scope: "domain/division-a", reasonCode: "capacity.issue", issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
+      service.activate(createActivationRequest({ scope: "domain/division-b", reasonCode: "deploy.failed", issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
 
       const active = service.listActive();
       assert.equal(active.length, 3);
@@ -508,21 +436,14 @@ test.describe("ops-maturity root barrel index", () => {
 
     test("getResumeReceipt returns null before resume", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
       assert.equal(service.getResumeReceipt("platform"), null);
     });
 
     test("getResumeReceipt returns receipt after resume", () => {
       const service = createTestService();
-      service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-      const plan: ResumePlan = {
-        scope: "platform",
-        approvedBy: ["admin-1", "admin-2"],
-        checkpointsVerified: true,
-        forensicSnapshotReviewed: true,
-        rollbackPlanReady: true,
-        validationRunPassed: true,
-      };
+      service.activate(createActivationRequest({ issuedBy: "op1", requiredApprovers: ["op1", "security-lead"] }));
+      const plan = createValidResumePlan();
       service.resume("platform", plan);
       const receipt = service.getResumeReceipt("platform");
       assert.ok(receipt);

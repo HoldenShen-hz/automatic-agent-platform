@@ -1,8 +1,8 @@
 # Automatic Agent Platform — Module Framework Diagram Collection
 
-> **Version**: v1.1
-> **Date**: 2026-04-19
-> **Companion Docs**: `agent_platform_design_architecture.md` v2.7 · `code_file_structure.md` v1.0 · `migration_assessment.md` v1.1
+> **Version**: v1.2
+> **Date**: 2026-04-20
+> **Companion Docs**: `00-platform-architecture.md` v2.7 · `01-code-structure.md` · `02-code-architecture-reference.md`
 > **Description**: This document presents system-wide views and internal structure/interaction relationships of each layer and module in ASCII framework diagram format.
 
 ### Diagram Type Conventions
@@ -19,7 +19,7 @@ Each diagram in this document is annotated with its type, which readers should u
 
 ### Naming Convention Unification
 
-The following names are used consistently across this document, `code_file_structure.md`, and `migration_assessment.md`:
+The following names are used consistently across this document, `01-code-structure.md`, and `02-code-architecture-reference.md`:
 
 | Unified Name | Unused Aliases |
 |--------------|----------------|
@@ -55,7 +55,7 @@ The following names are used consistently across this document, `code_file_struc
 | §14 | Structure diagram | Layer 7 `ops-maturity/` operations maturity layer |
 | §15 | Structure diagram | Cross-layer modules (plugins · sdk · apps) |
 | §16 | Data flow diagram | End-to-end data flow overview diagram |
-| §16 | Constraint diagram | Dependency direction and layering constraints |
+| §17 | Constraint diagram | Dependency direction and layering constraints |
 | §18 | Structure diagram | Stability seven-layer model |
 | §19 | Structure diagram | P4 Runtime Bounded Context special diagram |
 | §20 | Structure diagram | P5 Storage Bounded Context special diagram |
@@ -186,7 +186,7 @@ platform/
 │   ┌────────────────────────────────▼─────────────────────────────────┐      │
 │   │  P5 State & Evidence Plane                                       │      │
 │   │  truth/ · events/ · projections/ · artifacts/ · memory/         │      │
-│   │  knowledge/ · audit/ · incident/ · checkpoints/ · dlq/         │      │
+│   │  knowledge/ · audit/ · incident/ · checkpoints/ · dlq/          │      │
 │   └──────────────────────────────────────────────────────────────────┘      │
 │                                                                             │
 │   ┌───── AI Operations (parallel support, non-linear main chain, deeply ──┐ │
@@ -707,31 +707,31 @@ domains/
 │  ┌──────────────────────────────────────────────────────────┐               │
 │  │  registry/  Domain Registry (Core Hub)                   │               │
 │  │  ┌────────────┐ ┌──────────────┐ ┌──────────────────┐   │               │
-│  │  │domain-      │ │contract-     │ │workflow-registry │   │               │
-│  │  │ registry    │ │ registry     │ │tool-bundle-      │   │               │
-│  │  │domain-      │ │plugin-spi     │ │ registry         │   │               │
-│  │  │ model       │ │plugin-spi-    │ │registry-         │   │               │
-│  │  │domain-      │ │ registry      │ │ bootstrap        │   │               │
-│  │  │ event       │ │plugin-        │ └──────────────────┘   │               │
-│  │  │smoke-test   │ │ runtime-host  │                         │               │
+│  │  │domain-     │ │contract-     │ │workflow-registry │   │               │
+│  │  │ registry   │ │ registry     │ │tool-bundle-      │   │               │
+│  │  │domain-     │ │plugin-spi    │ │ registry         │   │               │
+│  │  │ model      │ │plugin-spi-   │ │registry-         │   │               │
+│  │  │domain-     │ │ registry     │ │ bootstrap        │   │               │
+│  │  │ event      │ │plugin-       │ └──────────────────┘   │               │
+│  │  │smoke-test  │ │ runtime-host │                         │               │
 │  │  └────────────┘ └──────────────┘                         │               │
 │  └──────────────────────────────────────────────────────────┘               │
 │                                                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
 │  │risk-profile/ │ │knowledge-    │ │eval-         │ │prompt-       │       │
-│  │ Domain risk   │ │ schema/      │ │ framework/   │ │ library/     │       │
-│  │ profile       │ │ Domain        │ │ Domain eval  │ │ Domain        │       │
-│  │ [NEW §37]     │ │ knowledge     │ │ framework    │ │ Prompt lib   │       │
-│  │               │ │ structure     │ │ [NEW §37]    │ │ [NEW §37]    │       │
-│  │               │ │ [NEW §37]     │ │              │ │              │       │
+│  │ Domain risk  │ │ schema/      │ │ framework/   │ │ library/     │       │
+│  │ profile      │ │ Domain       │ │ Domain eval  │ │ Domain       │       │
+│  │ [NEW §37]    │ │ knowledge    │ │ framework    │ │ Prompt lib  │       │
+│  │              │ │ structure    │ │ [NEW §37]    │ │ [NEW §37]   │       │
+│  │              │ │ [NEW §37]    │ │              │ │              │       │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘       │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                        │
 │  │recipes/      │ │interaction-  │ │governance/   │                        │
 │  │ DomainRecipe │ │ policy/      │ │ Domain        │                        │
 │  │ Prototype    │ │ Cross-domain │ │ governance    │                        │
-│  │ templates     │ │ interaction  │ │ division-     │                        │
-│  │ [NEW §38]     │ │ policy       │ │  loader        │                        │
-│  │               │ │ [NEW §37]    │ │ hr-role-gov   │                        │
+│  │ templates    │ │ interaction  │ │ division-     │                        │
+│  │ [NEW §38]    │ │ policy       │ │  loader        │                        │
+│  │              │ │ [NEW §37]    │ │ hr-role-gov   │                        │
 │  └──────────────┘ └──────────────┘ └──────────────┘                        │
 │  ┌──────────────┐ ┌──────────────┐                                         │
 │  │  coding/     │ │ operations/  │  Domain instance examples                │
@@ -756,7 +756,7 @@ domains/
 ```text
 interaction/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                 Layer 4: Intelligent Interaction Layer (User-side OS)        │
+│                 Layer 4: Intelligent Interaction Layer (User-side OS)          │
 │                                                                              │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
 │  │   nl-gateway/ [§39]      │  │  goal-decomposer/ [§40]  │                 │
@@ -802,6 +802,7 @@ interaction/
 │  │  └────────────────────┘  │  │  │ onboarding/        │  │                 │
 │  └──────────────────────────┘  │  │  First-time use     │  │                 │
 │                                 │  │  guide experience   │  │                 │
+│                                 │  └────────────────────┘  │                 │
 │                                 └──────────────────────────┘                 │
 │                                                                              │
 │  Interaction flow:                                                           │
@@ -937,7 +938,7 @@ scale-ecosystem/
 │  │  │ improvement-       │  │  │  │  │ connector-runtime/ │  │                 │
 │  │  │  tracker/          │  │  │  │  │  Connector runtime  │  │                 │
 │  │  │  Improvement       │  │  │  │  │ health-monitor/   │  │                 │
-│  │  │  tracking          │  │  │  │  │  Connector health  │  │                 │
+│  │  │  tracking          │  │  │  │  │  │  Connector health  │  │                 │
 │  │  └────────────────────┘  │  │  │  │  monitoring       │  │                 │
 │  └──────────────────────────┘  │  └────────────────────┘  │                 │
 │                                 └──────────────────────────┘                 │
@@ -1130,7 +1131,7 @@ ops-maturity/
 
 ---
 
-## §16 Dependency Direction and Layering Constraints Diagram
+## §17 Dependency Direction and Layering Constraints Diagram
 
 > **Diagram type: Constraint diagram** — Expresses the allowed and prohibited dependency directions between layers, and same-layer decoupling methods. Does not express specific import paths or runtime invocation chains.
 
@@ -1436,7 +1437,7 @@ Wave 4 (Cleanup)      Remove Facade; BC1 Core Task Engine becomes independent
 Cross-cutting capability delivery methods:
   X1 → platform/shared/stability/ + platform/execution/ various BCs embedded
   X2 → platform/shared/observability/ unified injection (structured-logger · otel · metrics)
-  X3 → platform/ai-ops/compliance/ + org-governance/compliance-engine/
+  X3 → platform/compliance/ + org-governance/compliance-engine/
 ```
 
 ---
@@ -1459,9 +1460,9 @@ cache ────────────────────────�
 
 config ────────────────────────────▶ platform/control-plane/config-center (P2)
 api ───────────────────────────────▶ platform/interface/api (P1)
-storage ───────────────────────────▶ platform/state-evidence/ (P5, 7 BC split)
+storage ────────────────────────────▶ platform/state-evidence/ (P5, 7 BC split)
 events ────────────────────────────▶ platform/state-evidence/events (P5 BC3)
-locking ───────────────────────────▶ platform/execution/ (P4)
+locking ────────────────────────────▶ platform/execution/ (P4)
 queue ─────────────────────────────▶ platform/execution/ (P4)
 resource ──────────────────────────▶ platform/execution/ (P4)
 
@@ -1469,24 +1470,24 @@ runtime ────────────────────────
 agent-loop ────────────────────────▶ platform/orchestration/oapeflir (P3)
 planning ──────────────────────────▶ platform/orchestration/planner (P3)
 orchestration ─────────────────────▶ platform/orchestration/routing (P3)
-providers ─────────────────────────▶ platform/ai-ops/model-gateway
-tools ─────────────────────────────▶ platform/ai-ops/tool-executor
-workflow ──────────────────────────▶ platform/ai-ops/workflow
+providers ─────────────────────────▶ platform/model-gateway/
+tools ─────────────────────────────▶ platform/execution/tool-executor/
+workflow ──────────────────────────▶ platform/orchestration/oapeflir/workflow/
 artifacts ─────────────────────────▶ platform/state-evidence/artifacts (P5 BC7)
 feedback ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
 learning ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
-evaluation ────────────────────────▶ ops-maturity/compliance-reporter (L7)
+evaluation ────────────────────────▶ platform/prompt-engine/eval/ (L7)
 
 domain-registry ───────────────────▶ domains/registry (L3)
 divisions ─────────────────────────▶ domains/governance (L3)
 plugins ───────────────────────────▶ plugins/ (cross-layer)
 
-memory ────────────────────────────▶ interaction/memory (L4, new wrapper)
+memory ────────────────────────────▶ platform/state-evidence/memory/ (L5)
 knowledge ─────────────────────────▶ interaction/knowledge (L4, new wrapper)
 messages ──────────────────────────▶ interaction/message (L4)
 gateway ───────────────────────────▶ platform/interface (P1) + interaction/nl-gw (L4)
 
-security ──────────────────────────▶ org-governance/sso-scim (L5)
+security ──────────────────────────▶ platform/control-plane/iam/ (L5)
 approvals ─────────────────────────▶ org-governance/approval-routing (L5)
 compliance ────────────────────────▶ org-governance/compliance-engine (L5)
 cost ──────────────────────────────▶ org-governance/cost (L5)
@@ -1666,7 +1667,7 @@ Three-axis collaboration invariants:
 
 ## Appendix C: Diagram Index
 
-| Section | Diagram Type | v1.1 Change Description |
+| Section | Diagram Type | v1.2 Change Description |
 |---------|--------------|------------------------|
 | §1 | Structure diagram | Corrected visual weight; divided into three visual bands |
 | §2 | Data flow diagram | Annotated AI operations as parallel support |
@@ -1679,7 +1680,7 @@ Three-axis collaboration invariants:
 | §9 | Data flow diagram | **Rewritten**: Upgraded to platform protocol diagram + protocol chain series |
 | §10~§15 | Structure diagram | Added "expresses/does not express" declarations |
 | §16 | Data flow diagram | Added "expresses/does not express" declaration |
-| §16 | Constraint diagram | Added "expresses/does not express" declaration |
+| §17 | Constraint diagram | Added "expresses/does not express" declaration |
 | §18 | Structure diagram | Added "expresses/does not express" declaration |
 | §19 | Structure diagram | **New**: P4 Runtime 12 BC special diagram |
 | §20 | Structure diagram | **New**: P5 Storage 7 BC special diagram |

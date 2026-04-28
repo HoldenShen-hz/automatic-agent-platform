@@ -11,6 +11,7 @@ import {
   findLowestCommonAncestor,
   buildReportingChain,
   detectOrgChangeEvents,
+  buildOrgChangeImpactArtifacts,
 } from "../../../../../src/org-governance/org-model/hierarchy/index.js";
 
 test("validateOrgHierarchy returns empty array for valid hierarchy", () => {
@@ -145,9 +146,8 @@ test("buildReportingChain builds manager chain", () => {
     { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["ceo"], parentOrgNodeId: null },
     { orgNodeId: "dept1", nodeType: "department" as const, active: true, ownerUserIds: ["vp1"], parentOrgNodeId: "company" },
     { orgNodeId: "team1", nodeType: "team" as const, active: true, ownerUserIds: ["lead1"], parentOrgNodeId: "dept1" },
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team1" },
   ];
-  const chain = buildReportingChain(nodes, "emp1", "member1");
+  const chain = buildReportingChain(nodes, "emp1", "team1");
   assert.ok(chain.includes("lead1"));
   assert.ok(chain.includes("vp1"));
   assert.ok(chain.includes("ceo"));
@@ -155,40 +155,65 @@ test("buildReportingChain builds manager chain", () => {
 
 test("detectOrgChangeEvents detects offboarding", () => {
   const before = [
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team1" },
+    { orgNodeId: "team1", nodeType: "team" as const, active: true, ownerUserIds: ["lead1"], parentOrgNodeId: "dept1", legalEntityBoundary: { boundaryId: "le-1", legalEntityId: "entity-1", jurisdictionCountry: "CN", dataResidencyRegion: "cn-sh", crossBorderTransferPolicy: "approval_required", crossEntityApprovalRoles: ["legal_reviewer"], restrictedDataClasses: [] } },
   ];
   const after: typeof before = [];
-  const events = detectOrgChangeEvents(before, after);
+  const events = detectOrgChangeEvents(before, after, [
+    { principalId: "seat-1", userId: "emp1", homeNodeId: "team1", managerUserId: "lead1", active: true },
+  ]);
   assert.ok(events.some(e => e.type === "employee_offboarding"));
 });
 
 test("detectOrgChangeEvents detects onboarding", () => {
   const before: any[] = [];
   const after = [
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team1" },
+    { orgNodeId: "team1", nodeType: "team" as const, active: true, ownerUserIds: ["lead1"], parentOrgNodeId: "dept1" },
   ];
-  const events = detectOrgChangeEvents(before, after);
+  const events = detectOrgChangeEvents(before, after, [
+    { principalId: "seat-1", userId: "emp1", homeNodeId: "team1", managerUserId: "lead1", active: true },
+  ]);
   assert.ok(events.some(e => e.type === "employee_onboarding"));
 });
 
-test("detectOrgChangeEvents detects transfer", () => {
+test("detectOrgChangeEvents detects department merge and restructure", () => {
   const before = [
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team1" },
+    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["ceo"], parentOrgNodeId: null },
+    { orgNodeId: "dept-a", nodeType: "department" as const, active: true, ownerUserIds: ["mgr-a"], parentOrgNodeId: "company", costCenter: "CC-A", legalEntityBoundary: { boundaryId: "le-a", legalEntityId: "entity-a", jurisdictionCountry: "CN", dataResidencyRegion: "cn-sh", crossBorderTransferPolicy: "approval_required", crossEntityApprovalRoles: ["legal_reviewer"], restrictedDataClasses: [] } },
+    { orgNodeId: "team-a", nodeType: "team" as const, active: true, ownerUserIds: ["lead-a"], parentOrgNodeId: "dept-a" },
   ];
   const after = [
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team2" },
+    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["ceo"], parentOrgNodeId: null },
+    { orgNodeId: "dept-a", nodeType: "department" as const, active: true, ownerUserIds: ["mgr-b"], parentOrgNodeId: "company", costCenter: "CC-B", legalEntityBoundary: { boundaryId: "le-b", legalEntityId: "entity-b", jurisdictionCountry: "US", dataResidencyRegion: "us-east", crossBorderTransferPolicy: "approval_required", crossEntityApprovalRoles: ["compliance_officer"], restrictedDataClasses: [] } },
+    { orgNodeId: "team-a", nodeType: "team" as const, active: true, ownerUserIds: ["lead-b"], parentOrgNodeId: "dept-a" },
   ];
   const events = detectOrgChangeEvents(before, after);
-  assert.ok(events.some(e => e.type === "employee_transfer"));
+  assert.ok(events.some(e => e.type === "department_merge" || e.type === "org_restructure"));
 });
 
 test("detectOrgChangeEvents returns empty when no changes", () => {
   const before = [
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team1" },
+    { orgNodeId: "team1", nodeType: "team" as const, active: true, ownerUserIds: ["lead1"], parentOrgNodeId: "dept1" },
   ];
   const after = [
-    { orgNodeId: "member1", nodeType: "member" as const, active: true, ownerUserIds: ["emp1"], parentOrgNodeId: "team1" },
+    { orgNodeId: "team1", nodeType: "team" as const, active: true, ownerUserIds: ["lead1"], parentOrgNodeId: "dept1" },
   ];
   const events = detectOrgChangeEvents(before, after);
   assert.equal(events.length, 0);
+});
+
+test("buildOrgChangeImpactArtifacts emits downstream governance artifacts", () => {
+  const before = [
+    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["ceo"], parentOrgNodeId: null, costCenter: "", metadata: {} },
+    { orgNodeId: "dept-a", nodeType: "department" as const, active: true, ownerUserIds: ["mgr-a"], parentOrgNodeId: "company", costCenter: "CC-A", metadata: {}, legalEntityBoundary: { boundaryId: "le-a", legalEntityId: "entity-a", jurisdictionCountry: "CN", dataResidencyRegion: "cn-sh", crossBorderTransferPolicy: "approval_required", crossEntityApprovalRoles: ["legal_reviewer"], restrictedDataClasses: [] } },
+  ];
+  const after = [
+    { orgNodeId: "dept-a", nodeType: "department" as const, active: true, ownerUserIds: ["mgr-b"], parentOrgNodeId: "missing-company", costCenter: "CC-B", metadata: {}, legalEntityBoundary: { boundaryId: "le-b", legalEntityId: "entity-b", jurisdictionCountry: "US", dataResidencyRegion: "us-east", crossBorderTransferPolicy: "approval_required", crossEntityApprovalRoles: ["compliance_officer"], restrictedDataClasses: [] } },
+  ];
+  const artifacts = buildOrgChangeImpactArtifacts(before, after, [
+    { principalId: "seat-1", userId: "emp1", homeNodeId: "dept-a", managerUserId: "mgr-a", active: true },
+  ]);
+
+  assert.ok(artifacts.approvalReroutes.length > 0);
+  assert.ok(artifacts.identityDeprovisioningReports.length > 0);
+  assert.ok(artifacts.orphanAgentFreezePolicies.length > 0);
 });

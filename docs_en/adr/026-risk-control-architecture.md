@@ -5,61 +5,74 @@
 
 ## Context
 
-Agents as high-risk automated execution units must undergo risk assessment before and after execution to prevent dangerous operations from causing business losses.
+Agent, as a high-risk automated execution unit, must perform risk assessment before and after execution to prevent dangerous operations from causing business losses.
 
 ## Decision
 
-### 6-Factor Weighted Scoring Algorithm
+### 8-Factor Weighted Scoring Algorithm
 
 | Factor | Weight | Description |
 |--------|--------|-------------|
-| stepTypeRisk | 3 | Step type risk coefficient |
-| targetSystemRisk | 4 | Target system risk coefficient |
-| dataClassRisk | 3 | Data class risk coefficient |
-| blastRadius | 2 | Impact scope coefficient |
-| priorFailureRate | 2 | Historical failure rate |
-| confidence | 1 | Model confidence |
+| operationRisk | 3 | Current operation type and side effect risk |
+| targetResourceCriticality | 3 | Criticality of target resource or system |
+| dataSensitivity | 3 | Sensitivity level of input/output data |
+| autonomyModeRisk | 2 | Automation amplification risk from current runtime mode |
+| tenantImpact | 2 | Scope of tenant/organization affected |
+| blastRadius | 2 | Failure propagation radius |
+| historicalFailureRate | 2 | Historical failure rate of similar actions |
+| evidenceConfidence | 1 | Sufficiency of evidence and judgment confidence |
 
-### Risk Score Formula
+### Risk Scoring Formula
 
 ```
-risk_score = (stepTypeRisk*3 + targetSystemRisk*4 + dataClassRisk*3 + blastRadius*2 + priorFailureRate*2 + confidence*1) / 13
+risk_score = (
+  operationRisk*3 +
+  targetResourceCriticality*3 +
+  dataSensitivity*3 +
+  autonomyModeRisk*2 +
+  tenantImpact*2 +
+  blastRadius*2 +
+  historicalFailureRate*2 +
+  evidenceConfidence*1
+) / 18
 ```
 
 ### 4-Level Risk Mapping
 
 | Level | Threshold | Handling Strategy |
 |-------|-----------|-------------------|
-| low | 0-0.25 | Execute directly |
+| low | 0-0.25 | Direct execution |
 | medium | 0.25-0.5 | Log only |
 | high | 0.5-0.75 | Requires human approval |
 | critical | 0.75-1.0 | break_glass approval |
 
 ### Configuration
 
-- `config/risk/default.json` fully defines 6 factors and thresholds
+- `config/risk/default.json` fully defines 8 factors and thresholds
 - RiskEvaluationEngine implements score calculation
 
 ## Consequences
 
-Positive:
-- Quantified risk enables traceable decisions
+Benefits:
+
+- Quantified risk makes decisions traceable
 - Tiered handling strategy balances security and efficiency
 - Configurable weights adapt to different business scenarios
 
-Negative:
+Costs:
+
 - Risk assessment adds execution latency
 - Historical data accumulation takes time
 
-Trade-offs:
-- Security vs. latency
-- Flexibility vs. consistency
-
-## Cross-References
+## Cross References
 
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
 
-## Source Sections
+## Source Section
 
 - `§10` Risk Control Architecture
+
+## v4.3 ADR Remediation
+
+- A-18: This ADR originally kept the `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence` six-factor model. The root cause was that the risk ADR followed an early step-centric scoring draft and did not upgrade to incorporate autonomy mode, tenant impact scope, and evidence sufficiency into a unified risk assessment. Fix: The text now converges to the 8-factor canonical model and synchronizes the weights and formula.

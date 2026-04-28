@@ -10,7 +10,7 @@ test("WorkflowDebuggerService blocks unauthorized production breakpoints", () =>
     service.registerBreakpoint(
       {
         actorId: "viewer_1",
-        canDebugProduction: false,
+        allowedRuntime: "non_prod",
       },
       "prod",
       {
@@ -29,7 +29,7 @@ test("WorkflowDebuggerService evaluates trace hits and compares replayable snaps
   service.registerBreakpoint(
     {
       actorId: "sre_1",
-      canDebugProduction: true,
+      allowedRuntime: "replay_sandbox",
     },
     "prod",
     {

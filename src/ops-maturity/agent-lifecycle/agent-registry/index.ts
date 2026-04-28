@@ -57,6 +57,12 @@ export const TrustProfileComponentSchema = z.object({
   }).default({}),
 });
 
+export const ConnectorBindingComponentSchema = z.object({
+  connectorId: z.string().min(1),
+  bindingRef: z.string().min(1),
+  permissionScope: z.string().min(1).default("read"),
+});
+
 /**
  * Agent component: Trigger policy for proactive agents.
  * As defined in architecture doc §41.
@@ -87,6 +93,7 @@ export const AgentComponentsSchema = z.object({
   modelBinding: ModelBindingComponentSchema,
   trustProfile: TrustProfileComponentSchema,
   triggerSet: z.array(TriggerPolicySchema).default([]),
+  connectorBindings: z.array(ConnectorBindingComponentSchema).default([]),
   autonomyConfig: AutonomyConfigSchema,
 });
 
@@ -131,7 +138,7 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
   ["draft", ["testing"]],
   ["testing", ["staging", "draft"]],
   ["staging", ["canary", "testing"]],
-  ["canary", ["active", "staging", "paused"]],
+  ["canary", ["active", "staging"]],
   ["active", ["paused", "deprecated"]],
   ["paused", ["active", "deprecated"]],
   ["deprecated", ["archived", "active"]],

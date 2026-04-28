@@ -39,6 +39,8 @@ export interface SlaOperationsDecision {
   readonly breachRecords: readonly SlaBreachRecord[];
   readonly escalationActions: readonly SlaEscalationAction[];
   readonly penaltyDecisions: readonly SlaPenaltyDecision[];
+  readonly starvationProtected: boolean;
+  readonly preemptionCapApplied: boolean;
 }
 
 export interface SlaEscalationAction {
@@ -74,6 +76,8 @@ export class SlaOperationsService {
         breachRecords: [],
         escalationActions: [],
         penaltyDecisions: [],
+        starvationProtected: true,
+        preemptionCapApplied: false,
       };
     }
 
@@ -103,6 +107,8 @@ export class SlaOperationsService {
       severity: record.severity,
     }));
 
+    const starvationProtected = request.tiers.some((tier) => (reservedCapacity[tier.tierId] ?? 0) > 0);
+    const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) <= Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0));
     return {
       selectedTierId: selectedTier.tierId,
       routingHint: {
@@ -115,6 +121,8 @@ export class SlaOperationsService {
       breachRecords,
       escalationActions,
       penaltyDecisions,
+      starvationProtected,
+      preemptionCapApplied,
     };
   }
 }

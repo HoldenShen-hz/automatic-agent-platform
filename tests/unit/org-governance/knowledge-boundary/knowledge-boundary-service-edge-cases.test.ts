@@ -15,8 +15,11 @@ function createBoundary(overrides: Partial<KnowledgeBoundary> = {}): KnowledgeBo
     boundaryId: overrides.boundaryId ?? "kb_default",
     ownerOrgNodeId: overrides.ownerOrgNodeId ?? "dept_finance",
     namespaceIds: overrides.namespaceIds ?? [],
+    accessPolicy: overrides.accessPolicy,
+    auditOnAccess: overrides.auditOnAccess ?? true,
     defaultVisibility: overrides.defaultVisibility ?? "private",
     allowedOrgNodeIds: overrides.allowedOrgNodeIds ?? [],
+    fieldAllowlist: overrides.fieldAllowlist ?? [],
   };
 }
 
@@ -182,7 +185,11 @@ test("KnowledgeBoundaryService combines chinese wall and dynamic policy", () => 
 
 test("KnowledgeBoundaryService handles empty violation codes when allowed", () => {
   const service = new KnowledgeBoundaryService();
-  const boundary = createBoundary({ boundaryId: "kb_public", defaultVisibility: "public" });
+  const boundary = createBoundary({
+    boundaryId: "kb_public",
+    accessPolicy: "controlled" as const,
+    allowedOrgNodeIds: ["dept_any"],
+  });
 
   const decision = service.evaluateDynamicAccess({
     boundary,

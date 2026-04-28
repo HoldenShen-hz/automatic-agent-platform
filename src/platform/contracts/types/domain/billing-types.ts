@@ -35,6 +35,11 @@ export interface BillingAccountRecord {
   workspaceId: string | null;
   planId: string;
   status: BillingAccountStatus;
+  balanceSnapshot?: {
+    outstandingUsd: number;
+    creditUsd: number;
+    lastCalculatedAt: Timestamp;
+  };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

@@ -16,8 +16,8 @@ type Principal =
   | { type: 'user'; user_id: string }
   | { type: 'service'; service_id: string }
   | { type: 'agent'; agent_id: string }
-  | { type: 'pack'; pack_id: string }
-  | { type: 'tenant'; tenant_id: string }
+  | { type: 'worker'; worker_id: string }
+  | { type: 'plugin'; plugin_id: string }
   | { type: 'system' };
 ```
 
@@ -37,10 +37,15 @@ type Principal =
 
 | 层级 | 模式 | 说明 |
 |------|------|------|
-| L1 | SANDBOX_NONE | 无限制 |
-| L2 | SANDBOX_READonly | 只读文件系统 |
-| L3 | SANDBOX_NETWORK_ISOLATED | 网络隔离 |
-| L4 | SANDBOX_FULL | 完全隔离 |
+| L1 | read_only | 只读文件系统，无写权限 |
+| L2 | workspace_write | 仅允许写入受控 workspace |
+| L3 | scoped_external_access | 允许受控外部访问，仍受作用域约束 |
+| L4 | restricted_exec | 最严格执行模式，显式限制命令能力 |
+
+规则：
+
+- 不存在 `SANDBOX_NONE` 这类 default-allow 模式；平台默认 deny。
+- 沙箱层级按“可写性 / 外部访问 / 执行能力”治理，不按抽象“隔离强度”自定义命名。
 
 ### 数据分类
 
@@ -78,3 +83,8 @@ type Principal =
 ## 来源章节
 
 - `§11` 安全可靠架构
+
+## v4.3 ADR Remediation
+
+- A-16: 本 ADR 原先把 `pack / tenant` 当作 principal 类型，根因是安全建模把资源归属对象和主动调用主体混成了一套 identity taxonomy。修复：正文现把 canonical principal 收敛到 `user / service / agent / worker / plugin / system`。
+- A-17: 本 ADR 原先使用 `SANDBOX_NONE / SANDBOX_READonly / SANDBOX_NETWORK_ISOLATED / SANDBOX_FULL`，根因是早期沙箱模型按抽象强度命名，没有随主架构切换到 default-deny 的能力矩阵。修复：正文现改为 `read_only / workspace_write / scoped_external_access / restricted_exec`，并移除 `SANDBOX_NONE`。

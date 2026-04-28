@@ -4,12 +4,15 @@
 
 本 contract 定义 Phase 1a 平台必须持久化的核心实体、最小列集合、关键索引、外键策略和恢复语义。
 
-本版重点补齐 runtime execution 对应的存储落点，包括：
+本版重点补齐 v4.3 runtime truth 对应的存储落点，包括：
 
-- `executions`
-- `execution_prechecks`
-- `dead_letters`
-- `heartbeat_snapshots`
+- `harness_runs`
+- `plan_graph_bundles`
+- `node_runs`
+- `node_attempts`
+- `node_attempt_receipts`
+- `budget_ledgers`
+- `budget_reservations`
 
 同时定义 OAPEFLIR 闭环在存储层的分阶段边界：
 
@@ -30,13 +33,16 @@
 
 authoritative schema 至少包含以下核心表：
 
+- `harness_runs`
+- `plan_graph_bundles`
+- `node_runs`
+- `node_attempts`
+- `node_attempt_receipts`
+- `budget_ledgers`
+- `budget_reservations`
 - `tasks`
 - `workflow_state`
 - `workflow_step_outputs`
-- `executions`
-- `execution_prechecks`
-- `dead_letters`
-- `heartbeat_snapshots`
 - `sessions`
 - `messages`
 - `events`
@@ -49,7 +55,8 @@ authoritative schema 至少包含以下核心表：
 
 说明：
 
-- 上表定义的是 Phase 1a 必须稳定存在的最小核心表集合，不是实现可拥有的全部表。
+- 上表定义的是 v4.3 canonical truth + projection 最小核心表集合，不是实现可拥有的全部表。
+- `tasks`、`workflow_state`、`workflow_step_outputs`、`sessions`、`messages` 保留为 projection / interaction 表，不再单独承载 runtime truth。
 - 当前实现还允许并实际包含多类扩展表，例如：
   - 组织与租户域：`organizations`、`workspaces`、`tenants`、`deployment_bindings`
   - 供应链与治理域：`skill_registry`、`skill_execution_policies`、`extension_packages`、`marketplace_*`
@@ -175,101 +182,126 @@ authoritative schema 至少包含以下核心表：
 - `idx_step_outputs_task_id`
 - `idx_step_outputs_task_step UNIQUE(task_id, step_id)`
 
-## 7. `executions` 表最小列
+## 7. `harness_runs` / `plan_graph_bundles` / `node_runs` / `node_attempts` / `node_attempt_receipts`
 
-该表承接 `runtime_execution_contract.md` 中的 `ExecutionEnvelope`。
+这些表承接 v4.3 canonical runtime truth。
 
-| 列名 | 类型 | 说明 |
-| --- | --- | --- |
-| `id` | `TEXT PRIMARY KEY` | `execution_id` |
-| `task_id` | `TEXT NOT NULL` | 关联任务 |
-| `workflow_id` | `TEXT NULL` | 关联 workflow |
-| `parent_execution_id` | `TEXT NULL` | 上一次执行或 lineage 上游 |
-| `agent_id` | `TEXT NOT NULL` | 执行主体 |
-| `role_id` | `TEXT NULL` | 承担角色 |
-| `run_kind` | `TEXT NOT NULL` | `task_run / tool_call / approval_resume / replay` |
-| `status` | `TEXT NOT NULL` | 对齐 `ExecutionStatus`（`runtime_state_machine_contract.md` §6） |
-| `input_ref` | `TEXT NULL` | 输入快照或 artifact 引用 |
-| `trace_id` | `TEXT NOT NULL` | 链路追踪 ID |
-| `attempt` | `INTEGER NOT NULL` | 第几次尝试 |
-| `timeout_ms` | `INTEGER NOT NULL` | 最大运行时长 |
-| `budget_usd_limit` | `REAL NULL` | 预算上限 |
-| `requires_approval` | `INTEGER NOT NULL DEFAULT 0` | 是否需要审批 |
-| `sandbox_mode` | `TEXT NULL` | 解析后的 sandbox 模式 |
-| `allowed_tools_json` | `TEXT NULL` | execution 级工具白名单；runtime direct tool / skill 必须消费，非法 JSON 或非法数组项默认 fail-closed |
-| `allowed_paths_json` | `TEXT NULL` | execution 级路径白名单；runtime tool path scope 的权威输入之一，非法 JSON 或非法数组项默认 fail-closed |
-| `max_retries` | `INTEGER NOT NULL DEFAULT 0` | 最大重试次数 |
-| `retry_backoff` | `TEXT NOT NULL DEFAULT 'none'` | 重试策略 |
-| `last_error_code` | `TEXT NULL` | 最近错误码 |
-| `last_error_message` | `TEXT NULL` | 最近错误信息 |
-| `started_at` | `TEXT NULL` | 实际开始时间 |
-| `finished_at` | `TEXT NULL` | 终止时间 |
-| `created_at` | `TEXT NOT NULL` | 创建时间 |
-| `updated_at` | `TEXT NOT NULL` | 更新时间 |
+`harness_runs` 最小列：
 
-索引要求：
-
-- `idx_executions_task_created_at`
-- `idx_executions_task_status`
-- `idx_executions_trace_id`
-- `idx_executions_parent_execution_id`
-- `idx_executions_agent_status`
-- `idx_executions_task_attempt UNIQUE(task_id, attempt, run_kind)`
-
-## 8. `execution_prechecks` 表最小列
-
-该表承接 `ExecutionPrecheckResult`，用于保留每次 precheck 的 authoritative 结果。
-
-- `id TEXT PRIMARY KEY`
-- `execution_id TEXT NOT NULL`
-- `allowed INTEGER NOT NULL`
-- `reason_code TEXT NULL`
-- `resolved_budget_usd REAL NULL`
-- `resolved_timeout_ms INTEGER NOT NULL`
-- `resolved_sandbox_mode TEXT NOT NULL`
-- `resolved_tools_json TEXT NULL`
-- `resolved_paths_json TEXT NULL`
-- `checked_at TEXT NOT NULL`
-
-补充约束：
-
-- `resolved_paths_json` 不只是审计留痕；当 execution 带路径白名单时，runtime tool path scope check 应直接消费该字段并 fail-close。
-
-索引要求：
-
-- `idx_execution_prechecks_execution_id UNIQUE(execution_id)`
-- `idx_execution_prechecks_checked_at`
-
-## 9. `dead_letters` 与 `heartbeat_snapshots` 表最小列
-
-`dead_letters`：
-
-- `id TEXT PRIMARY KEY`
-- `execution_id TEXT NOT NULL`
-- `task_id TEXT NOT NULL`
-- `final_reason_code TEXT NOT NULL`
-- `retry_count INTEGER NOT NULL DEFAULT 0`
-- `last_error_message TEXT NULL`
-- `moved_at TEXT NOT NULL`
-
-`heartbeat_snapshots`：
-
-- `id TEXT PRIMARY KEY`
-- `execution_id TEXT NOT NULL`
-- `agent_id TEXT NOT NULL`
+- `harness_run_id TEXT PRIMARY KEY`
+- `tenant_id TEXT NOT NULL`
+- `confirmed_task_spec_id TEXT NOT NULL`
+- `request_envelope_id TEXT NOT NULL`
+- `request_hash TEXT NOT NULL`
 - `status TEXT NOT NULL`
-- `progress_message TEXT NULL`
-- `cpu_pct REAL NULL`
-- `memory_mb REAL NULL`
-- `sampled_at TEXT NOT NULL`
+- `constraint_pack_ref TEXT NOT NULL`
+- `version_lock_id TEXT NOT NULL`
+- `plan_graph_bundle_id TEXT NULL`
+- `budget_ledger_id TEXT NOT NULL`
+- `current_seq INTEGER NOT NULL`
+- `created_at TEXT NOT NULL`
+- `updated_at TEXT NOT NULL`
+- `terminal_at TEXT NULL`
+- `terminal_reason TEXT NULL`
+
+`plan_graph_bundles` 最小列：
+
+- `plan_graph_bundle_id TEXT PRIMARY KEY`
+- `harness_run_id TEXT NOT NULL`
+- `graph_version INTEGER NOT NULL`
+- `graph_json TEXT NOT NULL`
+- `scheduler_policy_json TEXT NOT NULL`
+- `budget_json TEXT NOT NULL`
+- `risk_profile_json TEXT NOT NULL`
+- `validation_report_json TEXT NOT NULL`
+- `artifact_refs_json TEXT NULL`
+- `created_at TEXT NOT NULL`
+
+`node_runs` 最小列：
+
+- `node_run_id TEXT PRIMARY KEY`
+- `harness_run_id TEXT NOT NULL`
+- `plan_graph_bundle_id TEXT NOT NULL`
+- `graph_version INTEGER NOT NULL`
+- `node_id TEXT NOT NULL`
+- `status TEXT NOT NULL`
+- `attempt_count INTEGER NOT NULL DEFAULT 0`
+- `lease_id TEXT NULL`
+- `fencing_token TEXT NULL`
+- `current_seq INTEGER NOT NULL`
+- `created_at TEXT NOT NULL`
+- `updated_at TEXT NOT NULL`
+- `terminal_reason TEXT NULL`
+
+`node_attempts` 最小列：
+
+- `node_attempt_id TEXT PRIMARY KEY`
+- `node_run_id TEXT NOT NULL`
+- `attempt_no INTEGER NOT NULL`
+- `attempt_kind TEXT NOT NULL`
+- `executor_ref TEXT NOT NULL`
+- `input_snapshot_ref TEXT NOT NULL`
+- `started_at TEXT NOT NULL`
+- `completed_at TEXT NULL`
+- `receipt_id TEXT NULL`
+
+`node_attempt_receipts` 最小列：
+
+- `node_attempt_receipt_id TEXT PRIMARY KEY`
+- `node_attempt_id TEXT NOT NULL`
+- `node_run_id TEXT NOT NULL`
+- `receipt_kind TEXT NOT NULL`
+- `status TEXT NOT NULL`
+- `output_ref TEXT NULL`
+- `error_json TEXT NULL`
+- `side_effect_refs_json TEXT NULL`
+- `budget_settlement_refs_json TEXT NULL`
+- `evidence_refs_json TEXT NULL`
+- `produced_at TEXT NOT NULL`
 
 索引要求：
 
-- `idx_dead_letters_execution_id UNIQUE(execution_id)`
-- `idx_dead_letters_task_id`
-- `idx_dead_letters_reason_moved_at`
-- `idx_heartbeat_execution_sampled_at`
-- `idx_heartbeat_agent_sampled_at`
+- `idx_harness_runs_request_hash UNIQUE(request_hash)`
+- `idx_harness_runs_tenant_status`
+- `idx_plan_graph_bundle_run_version UNIQUE(harness_run_id, graph_version)`
+- `idx_node_runs_harness_status`
+- `idx_node_runs_bundle_node UNIQUE(plan_graph_bundle_id, node_id, graph_version)`
+- `idx_node_attempts_node_run_attempt UNIQUE(node_run_id, attempt_no)`
+- `idx_node_attempt_receipts_attempt UNIQUE(node_attempt_id)`
+
+## 8. `budget_ledgers` 与 `budget_reservations`
+
+`budget_ledgers`：
+
+- `budget_ledger_id TEXT PRIMARY KEY`
+- `tenant_id TEXT NOT NULL`
+- `harness_run_id TEXT NOT NULL`
+- `currency TEXT NOT NULL`
+- `hard_cap REAL NOT NULL`
+- `soft_cap REAL NULL`
+- `reserved_amount REAL NOT NULL DEFAULT 0`
+- `settled_amount REAL NOT NULL DEFAULT 0`
+- `released_amount REAL NOT NULL DEFAULT 0`
+- `status TEXT NOT NULL`
+- `version INTEGER NOT NULL`
+
+`budget_reservations`：
+
+- `budget_reservation_id TEXT PRIMARY KEY`
+- `budget_ledger_id TEXT NOT NULL`
+- `harness_run_id TEXT NOT NULL`
+- `node_run_id TEXT NULL`
+- `amount REAL NOT NULL`
+- `resource_kind TEXT NOT NULL`
+- `status TEXT NOT NULL`
+- `expires_at TEXT NOT NULL`
+- `created_at TEXT NOT NULL`
+
+索引要求：
+
+- `idx_budget_ledgers_harness_run UNIQUE(harness_run_id)`
+- `idx_budget_reservations_ledger_status`
+- `idx_budget_reservations_node_run`
 
 ## 10. `sessions` 与 `messages` 表最小列
 
@@ -415,21 +447,23 @@ Phase 1a 明确采用以下策略：
 
 - `workflow_state.task_id -> tasks.id`
 - `workflow_step_outputs.task_id -> tasks.id`
-- `executions.task_id -> tasks.id`
-- `executions.parent_execution_id -> executions.id`
-- `execution_prechecks.execution_id -> executions.id`
-- `dead_letters.execution_id -> executions.id`
-- `dead_letters.task_id -> tasks.id`
-- `heartbeat_snapshots.execution_id -> executions.id`
+- `plan_graph_bundles.harness_run_id -> harness_runs.harness_run_id`
+- `node_runs.harness_run_id -> harness_runs.harness_run_id`
+- `node_runs.plan_graph_bundle_id -> plan_graph_bundles.plan_graph_bundle_id`
+- `node_attempts.node_run_id -> node_runs.node_run_id`
+- `node_attempt_receipts.node_attempt_id -> node_attempts.node_attempt_id`
+- `node_attempt_receipts.node_run_id -> node_runs.node_run_id`
+- `budget_ledgers.harness_run_id -> harness_runs.harness_run_id`
+- `budget_reservations.budget_ledger_id -> budget_ledgers.budget_ledger_id`
+- `budget_reservations.node_run_id -> node_runs.node_run_id`
 - `sessions.task_id -> tasks.id`
 - `messages.session_id -> sessions.id`
 - `event_consumer_acks.event_id -> events.id`
 - `approvals.task_id -> tasks.id`
-- `approvals.execution_id -> executions.id`
-- `file_locks.task_id -> tasks.id`
-- `file_locks.execution_id -> executions.id`
-- `tool_result_files.task_id -> tasks.id`
-- `tool_result_files.execution_id -> executions.id`
+- `approvals.harness_run_id -> harness_runs.harness_run_id`
+- `approvals.node_run_id -> node_runs.node_run_id`
+- `file_locks.node_run_id -> node_runs.node_run_id`
+- `tool_result_files.node_run_id -> node_runs.node_run_id`
 
 说明：
 
@@ -441,7 +475,7 @@ Phase 1a 明确采用以下策略：
 
 为与 `runtime_repository_and_migration_contract.md` 保持一致，存储层采用三态迁移语义：
 
-- `Current`：`tasks / workflow / executions / approvals / events / artifacts / memories` 等核心表为 authoritative。
+- `Current`：`harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` 为 runtime truth；`tasks / workflow / approvals / events / artifacts / memories` 等为混合 projection/evidence 表。
 - `Transition`：扩展表族可先以 append-only、shadow write、reporting-only 或 evidence-only 方式接入。
 - `Target`：`feedback / learning / improvement / rollout / knowledge / high-order memory` 成为稳定治理对象并与 typed ref / lineage 全面对齐。
 
@@ -714,8 +748,12 @@ CREATE TABLE IF NOT EXISTS memories (
   agent_id TEXT NULL,
   execution_id TEXT NULL,
   memory_layer TEXT NOT NULL,
+  layer_level INTEGER NOT NULL,
   content_json TEXT NOT NULL,
   embedding_ref TEXT NULL,
+  token_budget INTEGER NULL,
+  freshness_state TEXT NOT NULL DEFAULT 'fresh',
+  source_refs_json TEXT NULL,
   created_at TEXT NOT NULL
 );
 
@@ -734,12 +772,9 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 
 ## 16. Runtime 存储边界
 
-- `executions` 是 runtime run 的 authoritative 主表。
+- `harness_runs / node_runs / node_attempts / node_attempt_receipts / budget_*` 是 v4.3 runtime truth 主表族。
 - `runtime_repository_and_migration_contract.md` 定义这些表如何被 repository 消费以及 migration 如何演进。
-- `execution_prechecks` 记录单次执行是否真正通过 precheck，不允许只存在内存中。
-- `dead_letters` 记录失败分类与落袋结果，不替代任务主状态。
-- `heartbeat_snapshots` 只保留采样快照，不追求逐 heartbeat 全量事实源。
-- `events` 负责事实事件与恢复链，`event_consumer_acks` 负责按消费者确认，`heartbeat_snapshots` 负责存活观测，两者不要混用。
+- `events` 负责事实事件与恢复链，`event_consumer_acks` 负责按消费者确认，存活观测只是派生观测层，两者不要混用。
 - `file_locks` 是并发写保护的 authoritative 存储，不得只保留在进程内存中。
 
 ## 17. Artifact 索引边界
@@ -750,14 +785,13 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 
 ## 18. 恢复与事务要求
 
-- 任务状态、workflow 状态与 `executions.status` 的关键更新应尽量在同一事务内完成。
-- 新建 execution 时，应同时写入初始 `executions` 记录，不能先跑后补账。
-- precheck 完成后，`execution_prechecks` 与 `executions.status` 的推进应保持一致。
-- run 进入 `blocked` 且原因是审批时，审批记录与等待态持久化必须可靠。
-- run 进入终态或 dead-letter 时，应保证最后错误码、尝试次数和终态时间可恢复。
+- `harness_runs.status`、`node_runs.status` 与相关 projection 的关键更新应尽量在同一事务内完成。
+- 新建 `HarnessRun` / `NodeRun` / `NodeAttempt` 时，应同时写入初始 truth 记录，不能先跑后补账。
+- run 进入 `awaiting_hitl` 或 `policy_blocked` 时，审批记录与等待态持久化必须可靠。
+- run 进入终态时，应保证最后错误码、尝试次数、预算结算和终态时间可恢复。
 - Tier 1 事件写入不能被可选优化路径绕过。
-- 过期 file lock 的回收必须能基于 `file_locks` 与 `executions` 联合判定。
-- 恢复流程至少能基于 `tasks`、`workflow_state`、`executions`、`execution_prechecks`、`events`、`file_locks` 重建执行上下文。
+- 过期 file lock 的回收必须能基于 `file_locks` 与 `node_runs` 联合判定。
+- 恢复流程至少能基于 `harness_runs`、`plan_graph_bundles`、`node_runs`、`node_attempts`、`node_attempt_receipts`、`budget_reservations`、`events`、`file_locks` 重建执行上下文。
 
 ## 19. 补充规则
 
@@ -770,7 +804,7 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-33: 核心表(tasks/workflow_state/executions)无映射到v4.3规范对象(HarnessRun/NodeRun/PlanGraphBundle)，缺对应表或迁移路径。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
-- T-34: memories表DDL遗漏合约自身§13声明的最小列：layer_level/token_budget/freshness_state/source_refs_json。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-33: 本文原先把 `tasks / workflow_state / executions` 写成 storage truth 主链，根因是存储合同直接复用了 v3 单机表模型，没有随着 `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt / BudgetLedger` 成为 canonical runtime truth 一起迁移。修复：正文现把核心 truth 表族改为 `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations`，并把旧表降为 projection / compatibility 层。
+- T-34: 本文在 §13 的 `memories` 最小列里声明了 `layer_level / token_budget / freshness_state / source_refs_json`，但 SQLite DDL 附录仍缺这些列，根因是正文 schema 和附录 DDL 在一次 memory contract 扩展后没有同步维护。修复：正文与 DDL 现已对齐，`memories` 表的最小列和 DDL 同步包含这四个字段。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

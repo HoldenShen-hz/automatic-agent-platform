@@ -42,6 +42,7 @@
 - SBOM 生成
 - 漏洞扫描
 - 第三方插件隔离等级
+- `PluginTrustStore`
 
 ## 4. 分发单元分类
 
@@ -51,6 +52,17 @@
 | `skill bundle` | source provenance + permission declaration |
 | `plugin bundle` | signature / digest + capability declaration |
 | `MCP server` | trust level + isolation level + domain allowlist |
+
+## 4A. `PluginTrustStore` 最小字段
+
+- `trust_store_id`
+- `trust_roots`
+- `active_signing_keys`
+- `signing_key_rotation_policy`
+- `revocation_list_ref`
+- `security_advisory_ref`
+- `quarantine_status`
+- `tenant_impact_scope`
 
 ## 5. 隔离等级
 
@@ -63,6 +75,9 @@
 - `untrusted_third_party` 不得默认获得 destructive 权限。
 - MCP 不得伪装成本地 trusted tool。
 - 插件权限不得绕过 ToolRegistry 和 Policy Engine。
+- `PluginTrustStore` 必须支持 trust root 管理、签名密钥轮换、撤销列表、安全公告和隔离封禁。
+- 被撤销、被公告命中或进入 quarantine 的插件/依赖不得继续新安装或在受影响 tenant 上激活。
+- `tenant_impact_scope` 必须允许按 tenant / workspace / organization 定位供应链事件波及面。
 
 ## 6. 安全检查流程
 
@@ -85,6 +100,9 @@ flowchart TD
 - granted capability scope
 - scan result summary
 - disable / revoke action
+- trust root / signing key version
+- revocation / advisory / quarantine decision
+- tenant impact summary
 
 ## 8. 收口结论
 
@@ -102,6 +120,6 @@ flowchart TD
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-49: 缺架构§11.7 PluginTrustStore要求：trust root/signing key rotation/revocation list/security advisory/quarantine/tenant impact。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-49: 本文原先只覆盖“导入时扫描”和粗粒度 trust level，根因是供应链合同停留在安装前校验视角，没有把插件信任根、签名密钥轮换、撤销/公告和租户影响面做成持续治理对象。修复：正文现新增 `PluginTrustStore`，并把 trust root、signing key rotation、revocation list、security advisory、quarantine、tenant impact 写成必备能力。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

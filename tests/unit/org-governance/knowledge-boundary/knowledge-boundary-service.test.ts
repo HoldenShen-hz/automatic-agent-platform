@@ -9,8 +9,11 @@ test("KnowledgeBoundaryService evaluates access and redacts audit logs", () => {
     boundaryId: "kb_finance",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: ["finance_docs"],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: ["dept_audit"],
+    fieldAllowlist: [],
   };
 
   const denied = service.evaluateAccess(
@@ -49,8 +52,11 @@ test("KnowledgeBoundaryService grants access via allowedOrgNodeIds", () => {
     boundaryId: "kb_shared",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "controlled" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: ["dept_audit"],
+    fieldAllowlist: [],
   };
 
   const decision = service.evaluateAccess(
@@ -73,8 +79,11 @@ test("KnowledgeBoundaryService grants access via ownerOrgNodeId", () => {
     boundaryId: "kb_owner",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: [],
+    fieldAllowlist: [],
   };
 
   const decision = service.evaluateAccess(
@@ -96,8 +105,11 @@ test("KnowledgeBoundaryService denies access when chinese wall blocks", () => {
     boundaryId: "kb_conflict",
     ownerOrgNodeId: "dept_legal",
     namespaceIds: [],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: [],
+    fieldAllowlist: [],
   };
   const chineseWallPolicy = {
     policyId: "cwp_1",
@@ -127,8 +139,11 @@ test("KnowledgeBoundaryService allows access when chinese wall passes and bounda
     boundaryId: "kb_clear",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "controlled" as const,
+    auditOnAccess: true,
     defaultVisibility: "public" as const,
-    allowedOrgNodeIds: [],
+    allowedOrgNodeIds: ["dept_hr"],
+    fieldAllowlist: [],
   };
   const chineseWallPolicy = {
     policyId: "cwp_clear",
@@ -157,8 +172,11 @@ test("KnowledgeBoundaryService denies when chinese wall passes but boundary deni
     boundaryId: "kb_combined",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: [],
+    fieldAllowlist: [],
   };
   // Chinese wall clears (dept_hr not in conflict group)
   const chineseWallPolicy = {
@@ -190,8 +208,11 @@ test("KnowledgeBoundaryService returns correct access log record", () => {
     boundaryId: "kb_log_test",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "controlled" as const,
+    auditOnAccess: true,
     defaultVisibility: "public" as const,
-    allowedOrgNodeIds: [],
+    allowedOrgNodeIds: ["dept_hr"],
+    fieldAllowlist: [],
   };
 
   const decision = service.evaluateAccess(
@@ -218,8 +239,11 @@ test("KnowledgeBoundaryService stores multiple logs per boundary", () => {
     boundaryId: "kb_multi",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "controlled" as const,
+    auditOnAccess: true,
     defaultVisibility: "public" as const,
-    allowedOrgNodeIds: [],
+    allowedOrgNodeIds: ["dept_a", "dept_b"],
+    fieldAllowlist: [],
   };
 
   service.evaluateAccess(boundary, "user_a", "dept_a", "test1", [], undefined, "2026-04-23T10:00:00.000Z");
@@ -244,8 +268,11 @@ test("KnowledgeBoundaryService uses default occurredAt when not provided", () =>
     boundaryId: "kb_default_time",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "controlled" as const,
+    auditOnAccess: true,
     defaultVisibility: "public" as const,
-    allowedOrgNodeIds: [],
+    allowedOrgNodeIds: ["dept_hr"],
+    fieldAllowlist: [],
   };
 
   // Evaluate without providing occurredAt
@@ -268,8 +295,11 @@ test("KnowledgeBoundaryService deny reason codes include chinese wall codes plus
     boundaryId: "kb_deny_codes",
     ownerOrgNodeId: "dept_legal",
     namespaceIds: [],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: [],
+    fieldAllowlist: [],
   };
   const chineseWallPolicy = {
     policyId: "cwp_codes",
@@ -300,8 +330,11 @@ test("KnowledgeBoundaryService evaluates dynamic isolation policies and tracks v
     boundaryId: "kb_dynamic",
     ownerOrgNodeId: "dept_finance",
     namespaceIds: [],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: [],
+    fieldAllowlist: [],
   };
 
   const decision = service.evaluateDynamicAccess({

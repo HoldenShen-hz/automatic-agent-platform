@@ -53,10 +53,9 @@ test("isValidLifecycleTransition - all valid transitions", () => {
   assert.equal(isValidLifecycleTransition("staging", "canary"), true);
   assert.equal(isValidLifecycleTransition("staging", "testing"), true);
 
-  // canary -> active, canary -> staging, canary -> paused
+  // canary -> active, canary -> staging
   assert.equal(isValidLifecycleTransition("canary", "active"), true);
   assert.equal(isValidLifecycleTransition("canary", "staging"), true);
-  assert.equal(isValidLifecycleTransition("canary", "paused"), true);
 
   // active -> paused, active -> deprecated
   assert.equal(isValidLifecycleTransition("active", "paused"), true);

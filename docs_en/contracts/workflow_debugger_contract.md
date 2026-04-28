@@ -21,12 +21,12 @@ This contract defines execution flow debugging, breakpoint APIs, and run compari
 
 ## 4. Rules
 
-- Debug actions must not change the authoritative factual record of business output.
+- Debugging actions must not change the authoritative factual records of business output.
 - Comparison reports must be based on replayable evidence, not UI temporary state.
-- Production debugging must be subject to approval and access control.
+- Production debugging must be subject to approval and permission control.
 
 ## 5. Test Requirements
 
 - unit: breakpoint matching, trace frame normalization
-- integration: runtime trace -> debugger -> replay / compare
+- integration: runtime trace -> debugger -> replay/compare
 - contract: unauthorized users must not set production breakpoints

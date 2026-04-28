@@ -9,7 +9,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:node:test";
+import test from "node:test";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
@@ -53,17 +53,31 @@ function createTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStor
     });
 
     store.execution.insertExecution({
-      executionId,
+      id: executionId,
       taskId,
+      workflowId: "event_indexing_perf",
+      parentExecutionId: null,
+      agentId: "agent-event-indexer",
+      roleId: "general_executor",
+      runKind: "task_run",
+      status: "created",
+      inputRef: null,
+      traceId: newId("trace"),
       attempt: 1,
-      status: "pending",
-      isolationLevel: "standard",
+      timeoutMs: 60_000,
+      budgetUsdLimit: null,
+      requiresApproval: 0,
+      sandboxMode: "workspace_write",
+      allowedToolsJson: "[]",
+      allowedPathsJson: "[]",
+      maxRetries: 0,
+      retryBackoff: "none",
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      startedAt: null,
+      finishedAt: null,
       createdAt: now,
       updatedAt: now,
-      startedAt: null,
-      completedAt: null,
-      errorCode: null,
-      errorMessage: null,
     });
   });
 
@@ -80,7 +94,7 @@ function createEventRecord(
   const now = nowIso();
 
   store.event.insertEvent({
-    eventId,
+    id: eventId,
     taskId,
     executionId,
     eventType: "task_status_changed",
@@ -90,14 +104,8 @@ function createEventRecord(
       reason: "test_event",
       index: eventIndex,
     }),
-    schemaVersion: "v1",
-    occurredAt: now,
-    publishedAt: now,
-    consumerId: null,
-    deliveryStatus: "published",
-    deliveryAttempts: 0,
-    lastDeliveryAttemptAt: null,
-    errorCode: null,
+    traceId: newId("trace"),
+    createdAt: now,
   });
 
   return eventId;
@@ -419,7 +427,7 @@ test("performance: EventStore.markEventDelivered() throughput >1000 ops/sec", (t
 
     for (let i = 0; i < iterations; i++) {
       const eventId = eventIds[i % eventIds.length]!;
-      store.event.markEventDelivered(eventId, "consumer_1");
+      store.event.markEventAck(eventId, "consumer_1");
     }
 
     const elapsed = performance.now() - start;

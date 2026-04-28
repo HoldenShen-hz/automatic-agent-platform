@@ -1,47 +1,47 @@
 /**
  * Performance Test: Cache Operations
- * Measures cache get/set/delete throughput and latency
+ * Measures direct L1 cache get/set/delete throughput and latency.
  *
- * Design targets:
- * - Cache get: >50000 ops/sec
- * - Cache set: >20000 ops/sec
- * - Cache delete: >30000 ops/sec
- * - Cache hit ratio impact on read latency
+ * Root cause fixed here:
+ * this suite had drifted to an older synchronous cache API, while the current
+ * cache stores are async and namespace-aware. The old test shape produced
+ * misleading passes plus post-test unhandled rejections.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
-import {
-  MultiLevelCacheStore,
-  MemoryCacheStore,
-} from "../../src/platform/shared/cache/stores/multi-level-cache-store.js";
-import { StableHash } from "../../src/platform/shared/cache/utils/stable-hash.js";
+import type { CacheMeta } from "../../src/platform/shared/cache/cache-types.js";
+import { MemoryCacheStore } from "../../src/platform/shared/cache/stores/memory-cache-store.js";
+import { stableHash } from "../../src/platform/shared/cache/utils/stable-hash.js";
 
-function createTestCache(): MultiLevelCacheStore {
-  return new MultiLevelCacheStore({
-    maxSize: 10000,
-    maxAgeMs: 60000,
-    enableMetrics: false,
-  });
+const NAMESPACE = "perf";
+
+function createTestCache(): MemoryCacheStore {
+  return new MemoryCacheStore(10000);
 }
 
-function stableHash(key: string): string {
-  return new StableHash().update(key).digest();
+function createCacheMeta(ttlMs = 30000): CacheMeta {
+  const now = Date.now();
+  return {
+    scope: "memory",
+    tags: ["perf"],
+    version: "perf",
+    createdAt: now,
+    expiresAt: now + ttlMs,
+    lastAccessedAt: now,
+    hitCount: 0,
+    sizeBytes: 64,
+  };
 }
 
-// ============================================================================
-// Cache Get Benchmarks
-// ============================================================================
-
-test("performance: cache.get() throughput >50000 ops/sec", (t) => {
+test("performance: cache.get() throughput >50000 ops/sec", async (t) => {
   const cache = createTestCache();
 
-  // Pre-populate cache
   for (let i = 0; i < 1000; i++) {
     const key = `key-${i}`;
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
   }
 
   const iterations = 50000;
@@ -49,7 +49,7 @@ test("performance: cache.get() throughput >50000 ops/sec", (t) => {
 
   for (let i = 0; i < iterations; i++) {
     const key = `key-${i % 1000}`;
-    cache.get(stableHash(key));
+    await cache.get(NAMESPACE, stableHash(key));
   }
 
   const elapsed = performance.now() - start;
@@ -70,29 +70,26 @@ test("performance: cache.get() throughput >50000 ops/sec", (t) => {
   }
 });
 
-test("performance: cache.get() P99 latency <0.1ms", (t) => {
+test("performance: cache.get() P99 latency <0.1ms", async (t) => {
   const cache = createTestCache();
 
-  // Pre-populate cache
   for (let i = 0; i < 1000; i++) {
     const key = `key-${i}`;
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
   }
 
   const latencies: number[] = [];
   const iterations = 50000;
 
-  // Warmup
   for (let i = 0; i < 1000; i++) {
     const key = `key-${i % 1000}`;
-    cache.get(stableHash(key));
+    await cache.get(NAMESPACE, stableHash(key));
   }
 
-  // Measure
   for (let i = 0; i < iterations; i++) {
     const key = `key-${i % 1000}`;
     const start = performance.now();
-    cache.get(stableHash(key));
+    await cache.get(NAMESPACE, stableHash(key));
     latencies.push(performance.now() - start);
   }
 
@@ -114,11 +111,7 @@ test("performance: cache.get() P99 latency <0.1ms", (t) => {
   }
 });
 
-// ============================================================================
-// Cache Set Benchmarks
-// ============================================================================
-
-test("performance: cache.set() throughput >20000 ops/sec", (t) => {
+test("performance: cache.set() throughput >20000 ops/sec", async (t) => {
   const cache = createTestCache();
 
   const iterations = 20000;
@@ -126,7 +119,7 @@ test("performance: cache.set() throughput >20000 ops/sec", (t) => {
 
   for (let i = 0; i < iterations; i++) {
     const key = `new-key-${i}`;
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
   }
 
   const elapsed = performance.now() - start;
@@ -147,23 +140,21 @@ test("performance: cache.set() throughput >20000 ops/sec", (t) => {
   }
 });
 
-test("performance: cache.set() P99 latency <0.2ms", (t) => {
+test("performance: cache.set() P99 latency <0.2ms", async (t) => {
   const cache = createTestCache();
 
   const latencies: number[] = [];
   const iterations = 20000;
 
-  // Warmup
   for (let i = 0; i < 100; i++) {
     const key = `warmup-key-${i}`;
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
   }
 
-  // Measure
   for (let i = 0; i < iterations; i++) {
     const key = `new-key-${i}`;
     const start = performance.now();
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
     latencies.push(performance.now() - start);
   }
 
@@ -185,19 +176,14 @@ test("performance: cache.set() P99 latency <0.2ms", (t) => {
   }
 });
 
-// ============================================================================
-// Cache Delete Benchmarks
-// ============================================================================
-
-test("performance: cache.delete() throughput >30000 ops/sec", (t) => {
+test("performance: cache.delete() throughput >30000 ops/sec", async (t) => {
   const cache = createTestCache();
 
-  // Pre-populate cache
   const keys: string[] = [];
   for (let i = 0; i < 10000; i++) {
     const key = `delete-key-${i}`;
     keys.push(key);
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
   }
 
   const iterations = 5000;
@@ -205,7 +191,7 @@ test("performance: cache.delete() throughput >30000 ops/sec", (t) => {
 
   for (let i = 0; i < iterations; i++) {
     const key = keys[i % keys.length]!;
-    cache.delete(stableHash(key));
+    await cache.delete(NAMESPACE, stableHash(key));
   }
 
   const elapsed = performance.now() - start;
@@ -226,17 +212,12 @@ test("performance: cache.delete() throughput >30000 ops/sec", (t) => {
   }
 });
 
-// ============================================================================
-// Mixed Operations Benchmarks
-// ============================================================================
-
-test("performance: mixed cache operations (80% reads, 20% writes) >40000 ops/sec", (t) => {
+test("performance: mixed cache operations (80% reads, 20% writes) >40000 ops/sec", async (t) => {
   const cache = createTestCache();
 
-  // Pre-populate cache
   for (let i = 0; i < 1000; i++) {
     const key = `key-${i}`;
-    cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+    await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
   }
 
   const iterations = 50000;
@@ -245,13 +226,11 @@ test("performance: mixed cache operations (80% reads, 20% writes) >40000 ops/sec
   for (let i = 0; i < iterations; i++) {
     const op = i % 10;
     if (op < 8) {
-      // 80% reads
       const key = `key-${i % 1000}`;
-      cache.get(stableHash(key));
+      await cache.get(NAMESPACE, stableHash(key));
     } else {
-      // 20% writes
       const key = `new-key-${i}`;
-      cache.set(stableHash(key), { value: `value-${i}` }, 30000);
+      await cache.set(NAMESPACE, stableHash(key), { value: `value-${i}` }, createCacheMeta());
     }
   }
 
@@ -273,12 +252,7 @@ test("performance: mixed cache operations (80% reads, 20% writes) >40000 ops/sec
   }
 });
 
-// ============================================================================
-// Stable Hash Benchmarks
-// ============================================================================
-
 test("performance: StableHash digest throughput >100000 ops/sec", (t) => {
-  const hasher = new StableHash();
   const testStrings = [
     "key-value-pair-1",
     "system-prompt-with-governance-constraints",
@@ -291,7 +265,7 @@ test("performance: StableHash digest throughput >100000 ops/sec", (t) => {
 
   for (let i = 0; i < iterations; i++) {
     const str = testStrings[i % testStrings.length]!;
-    hasher.update(str).digest();
+    stableHash(str);
   }
 
   const elapsed = performance.now() - start;

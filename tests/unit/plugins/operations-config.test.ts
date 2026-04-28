@@ -113,7 +113,8 @@ test("operations validator plugin binding uses core basic-evaluator", () => {
   const binding = operationsDomainDefinition.pluginBindings.find((b) => b.bindingId === "ops.validator");
   assert.ok(binding !== undefined);
   assert.equal(binding!.pluginId, "plugin.core.basic-evaluator");
-  assert.equal(binding!.pluginType, "validator");
+  assert.equal(binding!.pluginType, "evaluator");
+  assert.equal(binding!.bindingRole, "validator");
   assert.equal(binding!.priority, 5);
   assert.equal(binding!.enabled, true);
 });
@@ -122,7 +123,8 @@ test("operations planner plugin binding uses core basic-planner", () => {
   const binding = operationsDomainDefinition.pluginBindings.find((b) => b.bindingId === "ops.planner");
   assert.ok(binding !== undefined);
   assert.equal(binding!.pluginId, "plugin.core.basic-planner");
-  assert.equal(binding!.pluginType, "planner");
+  assert.equal(binding!.pluginType, "tool");
+  assert.equal(binding!.bindingRole, "planner");
   assert.equal(binding!.priority, 1);
   assert.equal(binding!.enabled, true);
 });

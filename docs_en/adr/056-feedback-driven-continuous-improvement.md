@@ -50,22 +50,22 @@ interface LearningObject {
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Closed-loop improvement mechanism
 - Data-driven optimization
 - User participation enhances experience
 
-Negative:
+Costs:
 
 - Feedback processing requires resources
 - Pattern recognition accuracy depends on data volume
 
 ## Cross-References
 
-- [ADR-079 Feedback Hub and Seven Signal Preprocessing](./079-feedback-hub-signals.md)
+- [ADR-079 Feedback Hub and Seven Signal Types Preprocessing](./079-feedback-hub-signals.md)
 - [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
 
-## Source Sections
+## Source Section
 
 - `§56` Feedback-Driven Continuous Improvement Pipeline

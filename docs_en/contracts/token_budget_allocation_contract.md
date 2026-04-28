@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines fine-grained allocation rules for token budgets across roles, steps, retries, and decision chains.
+This contract defines fine-grained allocation rules for token budgets across roles, nodes, retries, and decision chains.
 
 Related documents:
 
@@ -12,13 +12,13 @@ Related documents:
 
 ## 2. Objectives
 
-Prevent a single role or single retry from consuming the entire task budget.
+Prevent a single role or single retry from consuming the entire run budget.
 
 ## 3. Allocation Dimensions
 
-- `per_task_budget`
+- `per_harness_run_budget`
 - `per_role_budget`
-- `per_step_budget`
+- `per_node_budget`
 - `per_stage_budget`
 - `per_retry_budget_cap`
 - `per_decision_context_budget`
@@ -38,6 +38,15 @@ Prevent a single role or single retry from consuming the entire task budget.
 - KV cache's fixed prefix / domain block / variable suffix must have separate budgets; the entire context cannot be treated as a single arbitrarily compressible bucket.
 - If Improve / Release stages require additional evaluation or rollout dry-run, they must be deducted from independent stage budget, not written back to execute stage cost.
 
+## 4A. Binding with `BudgetReservation` State Machine
+
+Fine-grained token budget is only a reservation slicing rule, cannot replace budget truth.
+
+- Actual consumption of token budget must be expressed through `BudgetReservation`.
+- Reservation lifecycle must obey state progression `reserved -> settled -> released` (or `expired / rejected`).
+- `per_harness_run_budget / per_node_budget / per_retry_budget_cap / per_stage_budget` only determine "how much reservation to request" as allocation strategy, must not directly skip reservation to write final cost.
+- If a `NodeAttempt` ends early or compaction / cache hit occurs, unconsumed token budget must be released back to `BudgetReservation`, must not be silently consumed.
+
 ## 5A. KV Cache Token Partitioning
 
 KV cache partition minimum model:
@@ -56,4 +65,13 @@ Rules:
 
 ## 5. Closure Conclusion
 
-If cost governance only stops at the task total, it can easily get out of control in long tasks; fine-grained token budget is what makes the system truly controllable.
+If cost governance only stops at the task total, it can easily get out of control in long tasks; fine-grained token budget only bound with `BudgetReservation` lifecycle makes the system truly controllable.
+
+
+## v4.3 Architecture Remediation
+
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+
+- T-48: This document originally wrote token budget as pure allocation dimension list. Root cause: documentation only covered prompt/token planning side, did not write how these budget slices land into frozen `BudgetReservation` truth state machine into the contract. Fix: This version adds binding rules with `BudgetReservation`, clarifying fine-grained token budget is only a reservation slicing strategy, actual consumption must obey `reserved -> settled -> released` lifecycle.
+
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

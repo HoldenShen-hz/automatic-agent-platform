@@ -6,13 +6,13 @@ This contract defines the hard boundary between the intelligence layer and the c
 
 Core principle: `LLM is responsible for suggestions, system code is responsible for decisions.`
 
-Related Documents:
+Related documents:
 
 - `policy_engine_contract.md`
 - `runtime_execution_contract.md`
 - `approval_and_hitl_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
 - Prevent model output from directly over-authorizing control systems.
 - Bring high-risk decisions back to deterministic system code.
@@ -82,7 +82,7 @@ The following fields, if appearing in model output, can only be treated as sugge
 
 - Agent output schema must distinguish between `suggested_*` and authoritative fields.
 - Repository / transition service only accepts structures after system layer validation.
-- Audit should be able to see the difference between "model suggestion" and "system final decision".
+- Audit should be able to see the difference between "model suggestion" and "system final decision."
 - UI / inspect / explainability views should simultaneously display suggested values, final values, and override reasons.
 - In OAPEFLIR closed loop, `Observe/Assess/Plan` can be assisted by models, but `Learn.validate`, `Improve.guardrail`, `Release.transition` must be executed by deterministic code.
 

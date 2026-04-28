@@ -175,10 +175,12 @@ test("security: blocks ../ traversal in command arguments", async () => {
 });
 
 test("security: blocks multiple ../ traversal in arguments", async () => {
-  const workspace = createTempWorkspace("arg-multi-traversal-");
-  const deepOutsideFile = join(workspace, "..", "..", "outside.txt");
+  const root = createTempWorkspace("arg-multi-traversal-root-");
+  const workspace = join(root, "nested", "workspace");
+  const deepOutsideFile = join(root, "outside.txt");
 
   try {
+    createFile(join(workspace, ".keep"), "workspace");
     createFile(deepOutsideFile, "deep outside");
 
     const executor = new CommandExecutor();
@@ -197,7 +199,7 @@ test("security: blocks multiple ../ traversal in arguments", async () => {
 
     assert.equal(result.status, "blocked");
   } finally {
-    cleanupPath(workspace);
+    cleanupPath(root);
   }
 });
 

@@ -138,7 +138,7 @@ Cons: High workload (~730 test cases + performance baselines).
 
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)
-- `doc/reviews/design_gap_analysis_v9.md` §7.1 G1 Solution
+- `docs_zh/reviews/architecture-design-vs-implementation-review.md` §G1 Solution (original design_gap_analysis_v9.md archived)
 
 ## Source Sections
 

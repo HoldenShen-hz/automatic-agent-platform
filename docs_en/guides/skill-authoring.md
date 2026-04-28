@@ -2,31 +2,31 @@
 
 ## Goal
 
-This guide defines how to use the system's built-in `skill creator` generation feature to initialize a skill skeleton and connect the skill to existing governance/runtime.
+This guide defines how to use the built-in `skill creator` generation feature to initialize a skill skeleton and integrate the skill into existing governance/runtime.
 
-## Minimal Flow
+## Minimum Flow
 
 1. Use `skill creator` to generate the skill directory skeleton.
-2. Edit the generated `SKILL.md` to add real workflow, input constraints, and safety instructions.
-3. If needed, register the skill with the skill registry.
+2. Edit the generated `SKILL.md`, supplementing with real workflow, input constraints, and safety notes.
+3. If needed, register the skill to the skill registry.
 4. Before going live, execute scaffold validate, permission check, and authoring review.
 
-## Minimal Structure
+## Minimum Structure
 
 Each skill must contain at least:
 
 - `SKILL.md`
 
-Creator optionally generates:
+Creator can optionally generate:
 
 - `scripts/`
 - `references/`
 - `assets/`
 - `agents/openai.yaml`
 
-## Required `SKILL.md` Sections
+## Required Sections in `SKILL.md`
 
-The generated `SKILL.md` should at minimum retain and complete:
+The generated `SKILL.md` should at least retain and complete:
 
 - `Description`
 - `When To Use`
@@ -41,12 +41,12 @@ The generated `SKILL.md` should at minimum retain and complete:
 - `SKILL.md` must not contain secrets, private tokens, or environment-specific endpoints.
 - Skills depending on `scripts/` or `references/` must specify the usage order in `Workflow`.
 
-## Registration Recommendations
+## Registration Suggestions
 
-- Skills that need to be included in platform governance should enter the skill registry after scaffold generation.
-- Registry metadata should stay consistent with skill files, especially `skill_id / version / required_tools / cache policy`.
+- Skills that need to be included in platform governance should be registered in the skill registry after scaffold generation.
+- Registry metadata should be consistent with skill files, especially `skill_id / version / required_tools / cache policy`.
 
-## Related Documentation
+## Related Documents
 
 - [Tool Skill Plugin Contract](../contracts/tool_skill_plugin_contract.md)
 - [Quickstart](./quickstart.md)

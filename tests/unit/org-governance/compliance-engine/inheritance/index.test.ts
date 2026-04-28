@@ -32,7 +32,7 @@ test("inheritPolicyLayers merges two layers", () => {
   assert.deepStrictEqual(result, { allow: true, maxRetries: 5, timeout: 30 });
 });
 
-test("inheritPolicyLayers merges boolean rules with OR semantics", () => {
+test("inheritPolicyLayers keeps require-style booleans strict via any-true semantics", () => {
   const layers: readonly PolicyLayer[] = [
     { policyId: "p1", rules: { requireApproval: false } },
     { policyId: "p2", rules: { requireApproval: true } },
@@ -40,7 +40,6 @@ test("inheritPolicyLayers merges boolean rules with OR semantics", () => {
 
   const result = inheritPolicyLayers(layers);
 
-  // OR semantics: false || true = true
   assert.strictEqual(result.requireApproval, true);
 });
 
@@ -66,7 +65,7 @@ test("inheritPolicyLayers merges boolean rules when both true", () => {
   assert.strictEqual(result.requireApproval, true);
 });
 
-test("inheritPolicyLayers merges number rules with max semantics", () => {
+test("inheritPolicyLayers keeps max-style limits at the stricter minimum", () => {
   const layers: readonly PolicyLayer[] = [
     { policyId: "p1", rules: { maxRetries: 3 } },
     { policyId: "p2", rules: { maxRetries: 5 } },
@@ -74,10 +73,10 @@ test("inheritPolicyLayers merges number rules with max semantics", () => {
 
   const result = inheritPolicyLayers(layers);
 
-  assert.strictEqual(result.maxRetries, 5);
+  assert.strictEqual(result.maxRetries, 3);
 });
 
-test("inheritPolicyLayers merges number rules when first is larger", () => {
+test("inheritPolicyLayers keeps max-style limits at the stricter minimum when first is larger", () => {
   const layers: readonly PolicyLayer[] = [
     { policyId: "p1", rules: { maxRetries: 10 } },
     { policyId: "p2", rules: { maxRetries: 5 } },
@@ -85,7 +84,7 @@ test("inheritPolicyLayers merges number rules when first is larger", () => {
 
   const result = inheritPolicyLayers(layers);
 
-  assert.strictEqual(result.maxRetries, 10);
+  assert.strictEqual(result.maxRetries, 5);
 });
 
 test("inheritPolicyLayers merges string rules with restricted priority", () => {
@@ -99,7 +98,7 @@ test("inheritPolicyLayers merges string rules with restricted priority", () => {
   assert.strictEqual(result.dataClassification, "restricted");
 });
 
-test("inheritPolicyLayers merges string rules when both non-empty and neither restricted", () => {
+test("inheritPolicyLayers keeps the stricter classification when neither side is restricted", () => {
   const layers: readonly PolicyLayer[] = [
     { policyId: "p1", rules: { dataClassification: "internal" } },
     { policyId: "p2", rules: { dataClassification: "public" } },
@@ -107,8 +106,7 @@ test("inheritPolicyLayers merges string rules when both non-empty and neither re
 
   const result = inheritPolicyLayers(layers);
 
-  // When neither is restricted, later value wins
-  assert.strictEqual(result.dataClassification, "public");
+  assert.strictEqual(result.dataClassification, "internal");
 });
 
 test("inheritPolicyLayers merges string rules when first is restricted", () => {
@@ -143,10 +141,8 @@ test("inheritPolicyLayers handles multiple layers", () => {
 
   const result = inheritPolicyLayers(layers);
 
-  // allow: false || true = true
-  assert.strictEqual(result.allow, true);
-  // maxRetries: Math.max(3, 7) = 7
-  assert.strictEqual(result.maxRetries, 7);
+  assert.strictEqual(result.allow, false);
+  assert.strictEqual(result.maxRetries, 3);
   // requireApproval: true
   assert.strictEqual(result.requireApproval, true);
   // timeout: 60
@@ -161,6 +157,16 @@ test("inheritPolicyLayers preserves keys from earlier layer when later layer has
 
   const result = inheritPolicyLayers(layers);
 
-  // Empty string is falsy but not undefined, so it would overwrite
-  assert.strictEqual(result.dataClassification, "");
+  assert.strictEqual(result.dataClassification, "internal");
+});
+
+test("inheritPolicyLayers keeps allow-style booleans fail-closed with AND semantics", () => {
+  const layers: readonly PolicyLayer[] = [
+    { policyId: "p1", rules: { allowExternalSharing: true } },
+    { policyId: "p2", rules: { allowExternalSharing: false } },
+  ];
+
+  const result = inheritPolicyLayers(layers);
+
+  assert.strictEqual(result.allowExternalSharing, false);
 });

@@ -39,8 +39,9 @@ describe("ComplianceReportPipelineService", () => {
       assert.equal(artifact.templateId, "soc2-audit");
       assert.equal(artifact.framework, "SOC2");
       assert.equal(artifact.reportType, "audit");
-      assert.equal(artifact.status, "complete");
+      assert.equal(artifact.status, "generated");
       assert.equal(artifact.missingEvidenceTypes.length, 0);
+      assert.equal(artifact.evidenceQualityScore, 100);
       assert.deepEqual(artifact.evidenceMap["access_log"], ["e1", "e2"]);
       assert.deepEqual(artifact.evidenceMap["config_snapshot"], ["e3"]);
     });
@@ -69,6 +70,7 @@ describe("ComplianceReportPipelineService", () => {
 
       assert.equal(artifact.status, "partial");
       assert.deepEqual(artifact.missingEvidenceTypes, ["config_snapshot", "metrics"]);
+      assert.equal(artifact.evidenceQualityScore, 33);
     });
 
     test("throws for unknown template", () => {
@@ -386,7 +388,8 @@ describe("ComplianceReportPipelineService", () => {
         requestedBy: "admin@example.com",
       });
 
-      assert.equal(artifact.status, "complete");
+      assert.equal(artifact.status, "generated");
+      assert.equal(artifact.evidenceQualityScore, 100);
       assert.ok(artifact.markdown.includes("coverage_ratio=1"));
     });
 
@@ -409,6 +412,7 @@ describe("ComplianceReportPipelineService", () => {
       });
 
       assert.equal(artifact.status, "partial");
+      assert.equal(artifact.evidenceQualityScore, 0);
       assert.ok(artifact.markdown.includes("coverage_ratio=0"));
     });
 
@@ -434,6 +438,7 @@ describe("ComplianceReportPipelineService", () => {
       });
 
       assert.equal(artifact.status, "partial");
+      assert.equal(artifact.evidenceQualityScore, 50);
       // 2 out of 4 = 0.50
       assert.ok(artifact.markdown.includes("coverage_ratio=0.50"));
     });

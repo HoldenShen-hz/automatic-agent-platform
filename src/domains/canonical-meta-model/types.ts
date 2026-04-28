@@ -11,6 +11,9 @@ export const META_MODEL_QUESTION_IDS = [
   "Q10_human_governance",
   "Q11_latency_sla",
   "Q12_pre_launch_certs",
+  "Q13_liability_owner",
+  "Q14_compensation_model",
+  "Q15_adversarial_scenarios",
 ] as const;
 
 export type MetaModelQuestionId = (typeof META_MODEL_QUESTION_IDS)[number];

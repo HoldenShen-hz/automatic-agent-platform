@@ -73,19 +73,25 @@ const CLARIFICATION_THRESHOLD = 0.7;  // 置信度 < 0.7 → 人工辅助
 const DEFAULT_MAX_DEPTH = 5;  // 最大分解深度 5 层
 ```
 
-### 9 种目标生命周期状态
+### GoalProjection 与 HarnessRun 生命周期关系
 
-| 状态 | 说明 |
+`Goal` 本身只描述分解输入；进入执行后，状态 truth 必须收敛到 `HarnessRun.status`。
+
+| GoalProjection 状态 | 对应 HarnessRun truth |
 |------|------|
-| draft | 草稿 |
-| decomposing | 分解中 |
-| planned | 已计划 |
-| executing | 执行中 |
-| paused | 暂停 |
-| completed | 完成 |
-| failed | 失败 |
-| cancelled | 取消 |
-| expired | 超时 |
+| draft | 尚未创建 `HarnessRun` |
+| decomposing | `created / admitted / planning` |
+| planned | `ready` |
+| executing | `running / replanning / compensating` |
+| paused | `pausing / paused / resuming` |
+| completed | `completed` |
+| failed | `failed` |
+| cancelled | `aborted` |
+
+规则：
+
+- `GoalProjection` 只允许作为上层投影或产品态显示，不得替代 `HarnessRun.status`。
+- 不再单独定义与 `HarnessRun` 平行的 9 态 goal truth 生命周期。
 
 ### 循环依赖检测
 
@@ -104,3 +110,7 @@ const DEFAULT_MAX_DEPTH = 5;  // 最大分解深度 5 层
 
 - 复杂目标分解可能不准确
 - 依赖关系分析
+
+## v4.3 ADR Remediation
+
+- A-28: 本 ADR 原先单独定义 9 态 goal lifecycle，根因是目标分解 ADR 把“分解产物状态”和“运行时 truth 状态”混成一套生命周期，没有随着 `HarnessRun` 成为唯一执行主状态机而收敛。修复：正文现把 goal 状态降为 `GoalProjection`，执行阶段统一映射到 `HarnessRun.status`。

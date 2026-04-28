@@ -15,7 +15,8 @@ export interface ChangepointDetectionResult {
   absoluteShift: number;
   relativeShift: number;
   reasonCode: string;
-  severity: "SEV3" | "none";
+  severity: "low" | "medium" | "high" | "none";
+  recommendedAction: "observe" | "require_review" | "pause_agent" | "none";
 }
 
 /**
@@ -61,6 +62,7 @@ export class ChangepointDetectorService {
         relativeShift: 0,
         reasonCode: "drift.insufficient_data",
         severity: "none",
+        recommendedAction: "none",
       };
     }
 
@@ -76,6 +78,7 @@ export class ChangepointDetectorService {
         relativeShift: 0,
         reasonCode: "drift.insufficient_data",
         severity: "none",
+        recommendedAction: "none",
       };
     }
 
@@ -89,6 +92,13 @@ export class ChangepointDetectorService {
     const EPSILON = 1e-9;
     const detected = relativeShift <= DRIFT_THRESHOLD_RELATIVE + EPSILON;
 
+    const severity = !detected
+      ? "none"
+      : relativeShift <= -0.25
+        ? "high"
+        : relativeShift <= -0.15
+          ? "medium"
+          : "low";
     return {
       detected,
       baselineMean,
@@ -96,7 +106,8 @@ export class ChangepointDetectorService {
       absoluteShift,
       relativeShift,
       reasonCode: detected ? "drift.changepoint_detected" : "drift.stable",
-      severity: detected ? "SEV3" : "none",
+      severity,
+      recommendedAction: severity === "high" ? "pause_agent" : severity === "medium" ? "require_review" : severity === "low" ? "observe" : "none",
     };
   }
 }

@@ -216,29 +216,30 @@ test("SdkWorkbenchService shortcuts use correct API version", () => {
   });
 
   const taskShortcut = shortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
-  assert.ok(taskShortcut?.previewUrl?.includes("/v3/tasks"));
+  assert.ok(taskShortcut?.previewUrl?.includes("/v3/harness-runs"));
 });
 
-test("SdkWorkbenchService shortcuts include correct task endpoint", () => {
+test("SdkWorkbenchService shortcuts include correct harness run endpoint", () => {
   const service = new SdkWorkbenchService();
   const shortcuts = service.listWorkbenchShortcuts(createTestClient());
 
   const taskShortcut = shortcuts.find((s) => s.shortcutId === "sdk.tasks.list");
   assert.ok(taskShortcut);
-  assert.ok(taskShortcut!.previewUrl!.includes("/v1/tasks"));
+  assert.ok(taskShortcut!.previewUrl!.includes("/v1/harness-runs"));
   assert.equal(taskShortcut!.kind, "api");
-  assert.equal(taskShortcut!.command, "GET /v1/tasks");
+  assert.equal(taskShortcut!.command, "GET /v1/harness-runs");
 });
 
-test("SdkWorkbenchService shortcuts include approval queue endpoint", () => {
+test("SdkWorkbenchService shortcuts include pack listing endpoint", () => {
   const service = new SdkWorkbenchService();
   const shortcuts = service.listWorkbenchShortcuts(createTestClient());
 
-  const approvalShortcut = shortcuts.find((s) => s.shortcutId === "sdk.approvals.queue");
-  assert.ok(approvalShortcut);
-  assert.ok(approvalShortcut!.previewUrl!.includes("/v1/approvals"));
-  assert.ok(approvalShortcut!.previewUrl!.includes("limit=10"));
-  assert.equal(approvalShortcut!.kind, "api");
+  const packShortcut = shortcuts.find((s) => s.shortcutId === "sdk.packs.list");
+  assert.ok(packShortcut);
+  assert.ok(packShortcut!.previewUrl!.includes("/v1/packs"));
+  assert.ok(packShortcut!.previewUrl!.includes("limit=10"));
+  assert.equal(packShortcut!.kind, "api");
+  assert.equal(packShortcut!.command, "GET /v1/packs");
 });
 
 test("SdkWorkbenchService shortcuts include pack test CLI command", () => {

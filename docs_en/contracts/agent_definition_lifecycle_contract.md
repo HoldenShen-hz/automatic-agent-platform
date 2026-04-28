@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines `AgentDefinition`, `AgentVersion`, and compound canary release for `§61`.
+This contract defines `§61`'s `AgentDefinition`, `AgentVersion`, and composite canary release.
 
 ## 2. Canonical Objects
 
@@ -40,7 +40,7 @@ This contract defines `AgentDefinition`, `AgentVersion`, and compound canary rel
 - `model_profile_refs`
 - `created_at`
 
-## 5. Test Requirements
+## 5. Testing Requirements
 
 - unit: agent lifecycle, version snapshot integrity
 - integration: agent rollout / rollback / retirement

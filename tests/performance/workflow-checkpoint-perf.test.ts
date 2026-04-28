@@ -19,7 +19,6 @@ import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/s
 import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { createWorkflowStepCheckpoint, type CreateWorkflowStepCheckpointInput } from "../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
-import type { ArtifactRef } from "../../src/platform/contracts/types/domain.js";
 
 function createTempDb(): SqliteDatabase {
   const dbPath = join(".tmp", `checkpoint-perf-${process.pid}-${Date.now()}.db`);
@@ -73,20 +72,80 @@ function createCheckpointAndStore(
 ): string {
   const artifactId = newId("artifact");
   const checkpoint = createWorkflowStepCheckpoint(input);
+  const serializedCheckpoint = JSON.stringify(checkpoint);
 
   db.transaction(() => {
-    store.artifacts.insertArtifact({
+    if (store.getTask(input.taskId) == null) {
+      const now = nowIso();
+      store.insertTask({
+        id: input.taskId,
+        parentId: null,
+        rootId: input.taskId,
+        divisionId: input.divisionId,
+        title: `Workflow checkpoint ${input.workflowId}`,
+        status: "in_progress",
+        source: "system",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+    }
+
+    if (input.executionId != null && store.execution.getExecution(input.executionId) == null) {
+      const now = nowIso();
+      store.insertExecution({
+        id: input.executionId,
+        taskId: input.taskId,
+        workflowId: input.workflowId,
+        parentExecutionId: null,
+        agentId: "agent-checkpoint",
+        roleId: input.roleId,
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: newId("trace"),
+        attempt: 1,
+        timeoutMs: 60_000,
+        budgetUsdLimit: null,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    store.insertArtifact({
       artifactId,
       taskId: input.taskId,
       executionId: input.executionId,
+      stepId: input.stepId,
       kind: "workflow_step_snapshot",
       storagePath: `/tmp/checkpoints/${input.taskId}/${input.stepId}.json`,
-      contentJson: JSON.stringify(checkpoint),
+      fileName: `${input.stepId}.json`,
       mimeType: "application/json",
-      sizeBytes: JSON.stringify(checkpoint).length,
+      sizeBytes: serializedCheckpoint.length,
       checksum: `sha256:${artifactId}`,
+      lineageJson: JSON.stringify({
+        workflowId: input.workflowId,
+        stepId: input.stepId,
+        outputKey: input.outputKey,
+      }),
       createdAt: nowIso(),
-      createdBy: "test",
     });
   });
 
@@ -308,7 +367,7 @@ test("performance: Retrieve checkpoints by task ID throughput >1000 ops/sec", (t
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.artifacts.listArtifactsForTask(taskId, "workflow_step_snapshot");
+      store.listArtifactsByTask(taskId).filter((artifact) => artifact.kind === "workflow_step_snapshot");
     }
 
     const elapsed = performance.now() - start;
@@ -353,13 +412,13 @@ test("performance: Retrieve checkpoints by task ID P99 latency <5ms", (t) => {
 
     // Warmup
     for (let i = 0; i < 50; i++) {
-      store.artifacts.listArtifactsForTask(taskId, "workflow_step_snapshot");
+      store.listArtifactsByTask(taskId).filter((artifact) => artifact.kind === "workflow_step_snapshot");
     }
 
     // Measure
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.artifacts.listArtifactsForTask(taskId, "workflow_step_snapshot");
+      store.listArtifactsByTask(taskId).filter((artifact) => artifact.kind === "workflow_step_snapshot");
       latencies.push(performance.now() - start);
     }
 

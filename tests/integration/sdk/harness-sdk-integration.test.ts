@@ -179,10 +179,7 @@ test("harness SDK: getTimeline returns recorded events", () => {
   assert.equal(runCreatedEvents.length, 1);
 });
 
-test.skip("harness SDK: persist and restore round-trip through in-memory store", () => {
-  // Skipped: Each HarnessSdk instance creates its own durable store, so persist/restore
-  // does not share state within the same test. The harness SDK's persist() method
-  // returns a DurableHarnessRecord but restore() looks in a fresh in-memory store.
+test("harness SDK: persist and restore round-trip through in-memory store", () => {
   const sdk = new HarnessSdk();
   let run = sdk.createRun({
     taskId: "task-persist-001",

@@ -2,7 +2,7 @@
 
 ## 1. 范围
 
-本 contract 定义 token 预算在角色、步骤、重试和决策链上的细粒度分配规则。
+本 contract 定义 token 预算在角色、节点、重试和决策链上的细粒度分配规则。
 
 相关文档：
 
@@ -12,13 +12,13 @@
 
 ## 2. 目标
 
-避免单个角色或单次重试吞掉整个任务预算。
+避免单个角色或单次重试吞掉整个 run 预算。
 
 ## 3. 分配维度
 
-- `per_task_budget`
+- `per_harness_run_budget`
 - `per_role_budget`
-- `per_step_budget`
+- `per_node_budget`
 - `per_stage_budget`
 - `per_retry_budget_cap`
 - `per_decision_context_budget`
@@ -38,6 +38,15 @@
 - KV cache 的 fixed prefix / domain block / variable suffix 必须拆分预算，不能把全部上下文当成一个可任意挤压的桶。
 - Improve / Release 阶段若需要额外评估或 rollout 试跑，必须从独立 stage budget 扣减，而不是回写 execute 阶段成本。
 
+## 4A. 与 `BudgetReservation` 状态机的绑定
+
+细粒度 token 预算只是 reservation 切片规则，不能替代预算 truth。
+
+- token 预算的实际占用必须通过 `BudgetReservation` 表达。
+- reservation 生命周期必须遵守 `reserved -> settled -> released`（或 `expired / rejected`）状态推进。
+- `per_harness_run_budget / per_node_budget / per_retry_budget_cap / per_stage_budget` 只是决定“申请多少 reservation”的分配策略，不得直接跳过 reservation 写最终成本。
+- 若一次 `NodeAttempt` 提前结束或发生 compaction / cache 命中，未消费的 token 预算必须释放回 `BudgetReservation`，不得静默吞掉。
+
 ## 5A. KV Cache Token 分区
 
 KV cache 分区最小模型：
@@ -56,13 +65,13 @@ KV cache 分区最小模型：
 
 ## 5. 收口结论
 
-成本治理若只停在任务总额，很容易在长任务里失控；细粒度 token budget 才能让系统真正可控。
+成本治理若只停在任务总额，很容易在长任务里失控；细粒度 token budget 只有与 `BudgetReservation` 生命周期绑定，系统才真正可控。
 
 
 ## v4.3 Architecture Remediation
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-48: 定义10种预算维度含KV cache分区但未引用冻结的BudgetReservation状态机(reserved→settled→released)。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧状态、旧 DTO 或旧术语仅允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
+- T-48: 本文原先把 token budget 写成纯分配维度列表，根因是文案只覆盖 prompt/token 规划侧，没有把这些预算切片如何落到冻结的 `BudgetReservation` truth 状态机写进合同。修复：正文现新增与 `BudgetReservation` 的绑定规则，明确细粒度 token 预算只是 reservation 切片策略，实际占用必须遵守 `reserved -> settled -> released` 生命周期。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

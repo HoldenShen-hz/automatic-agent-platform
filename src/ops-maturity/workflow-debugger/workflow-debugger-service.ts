@@ -35,7 +35,7 @@ export interface RunComparisonReport {
 
 export interface DebuggerActor {
   readonly actorId: string;
-  readonly canDebugProduction: boolean;
+  readonly allowedRuntime: "replay_sandbox" | "non_prod";
 }
 
 export class WorkflowDebuggerService {
@@ -46,7 +46,7 @@ export class WorkflowDebuggerService {
     environment: "prod" | "staging" | "dev",
     breakpoint: DebugBreakpointDefinition,
   ): DebugBreakpointDefinition {
-    if (environment === "prod" && !actor.canDebugProduction) {
+    if (environment === "prod" && actor.allowedRuntime !== "replay_sandbox") {
       throw new Error(`workflow_debugger.prod_breakpoint_forbidden:${actor.actorId}`);
     }
     this.breakpoints.set(

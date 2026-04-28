@@ -58,7 +58,7 @@ test("Onboarding: advances through all phases and completes", () => {
         budgetLimits: { maxTokensPerTask: 1000, maxCostPerTask: 1 },
         securityLevel: "restricted",
       },
-      status: "testing",
+      status: "validated",
       externalAdapters: [],
       pluginBindings: [],
     });
@@ -66,7 +66,7 @@ test("Onboarding: advances through all phases and completes", () => {
     const onboarding = new DomainOnboardingService(registry);
     onboarding.start("full_onboard");
 
-    const phases = ["modeling", "development_validation", "security_certification", "canary_launch"] as const;
+    const phases = ["domain_modeling", "pack_development", "security_certification", "gray_rollout"] as const;
     for (const phase of phases) {
       const session = onboarding.get("full_onboard");
       if (session.activePhase === phase) {

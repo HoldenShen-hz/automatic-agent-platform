@@ -23,8 +23,9 @@ interface CostDimension {
   tenant_id: string;
   domain_id?: string;
   agent_id?: string;
-  workflow_id?: string;
-  step_id?: string;
+  harness_run_id?: string;
+  node_run_id?: string;
+  budget_settlement_ref?: string;
   model_id?: string;
 }
 ```
@@ -50,7 +51,7 @@ interface CostDimension {
 
 ### 预算控制
 
-- 4 级预算：platform/tenant/pack/step
+- 4 级预算：platform/tenant/harness_run/node_run
 - 实时预算监控
 - 预算超支告警
 - 自动降级
@@ -74,3 +75,7 @@ interface CostDimension {
 
 - 计量增加开销
 - 优化建议
+
+## v4.3 ADR Remediation
+
+- A-23: 本 ADR 原先继续用 `workflow_id / step_id` 做成本维度，根因是成本引擎 ADR 沿用了线性 workflow 粒度，没有随着 v4.3 执行真相对象切换到 `HarnessRun / NodeRun / BudgetSettlement`。修复：正文现把 `CostDimension` 收敛到 `harness_run_id / node_run_id / budget_settlement_ref`。

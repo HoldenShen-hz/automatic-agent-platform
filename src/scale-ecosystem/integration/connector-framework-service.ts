@@ -7,6 +7,7 @@ import {
 } from "./connector-registry/index.js";
 import {
   buildConnectorExecutionKey,
+  ConnectorExecutionRequestSchema,
   type ConnectorExecutionRequest,
   type ConnectorExecutionResult,
 } from "./connector-runtime/index.js";
@@ -66,14 +67,24 @@ export class ConnectorFrameworkService {
       readonly executedAt?: string;
     },
   ): ConnectorExecutionResult & { readonly executionKey: string; readonly executedAt: string } {
-    const manifest = this.requireManifest(request.connectorId);
-    const executionKey = buildConnectorExecutionKey(request);
+    const normalizedRequest = ConnectorExecutionRequestSchema.parse(request);
+    const manifest = this.requireManifest(normalizedRequest.connectorId);
+    const executionKey = buildConnectorExecutionKey(normalizedRequest);
     if (options.environment === "prod" && manifest.lifecycleState !== "verified" && manifest.lifecycleState !== "enabled") {
-      throw new Error(`connector_framework.prod_requires_verified:${request.connectorId}`);
+      throw new Error(`connector_framework.prod_requires_verified:${normalizedRequest.connectorId}`);
+    }
+    if (normalizedRequest.secretBindings.length === 0 || normalizedRequest.policyRef == null) {
+      return {
+        connectorId: normalizedRequest.connectorId,
+        success: false,
+        status: "failed",
+        executionKey,
+        executedAt: options.executedAt ?? nowIso(),
+      };
     }
     if (options.eventType != null && !manifest.supportedEvents.includes(options.eventType)) {
       return {
-        connectorId: request.connectorId,
+        connectorId: normalizedRequest.connectorId,
         success: false,
         status: "failed",
         executionKey,
@@ -81,11 +92,11 @@ export class ConnectorFrameworkService {
       };
     }
 
-    const reports = this.health.get(request.connectorId) ?? [];
+    const reports = this.health.get(normalizedRequest.connectorId) ?? [];
     const health = summarizeConnectorHealth(reports);
     if (health === "failed") {
       return {
-        connectorId: request.connectorId,
+        connectorId: normalizedRequest.connectorId,
         success: false,
         status: "failed",
         executionKey,
@@ -94,7 +105,7 @@ export class ConnectorFrameworkService {
     }
 
     return {
-      connectorId: request.connectorId,
+      connectorId: normalizedRequest.connectorId,
       success: true,
       status: health === "degraded" ? "deferred" : "succeeded",
       executionKey,

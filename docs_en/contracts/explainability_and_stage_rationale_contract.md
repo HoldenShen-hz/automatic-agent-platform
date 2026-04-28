@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines explanation pipeline, `StageRationale` data model, and explanation depth grading for `§59`.
+This contract defines explanation pipeline, `StageRationale` data model, and explanation depth levels for `§59`.
 
 ## 2. Canonical Objects
 
@@ -12,7 +12,7 @@ This contract defines explanation pipeline, `StageRationale` data model, and exp
 - `ExplanationDepth`
 - `ExplanationCacheEntry`
 
-## 3. StageRationale Minimum Fields
+## 3. `StageRationale` Minimum Fields
 
 - `task_id`
 - `stage`
@@ -24,7 +24,7 @@ This contract defines explanation pipeline, `StageRationale` data model, and exp
 
 ## 4. Explanation Depth
 
-`ExplanationDepth` is fixed as:
+`ExplanationDepth` is fixed to:
 
 - `brief`
 - `standard`
@@ -33,10 +33,10 @@ This contract defines explanation pipeline, `StageRationale` data model, and exp
 Rules:
 
 - Higher depth can only add evidence and context, must not change factual conclusions.
-- Explanation content must comply with data classification and desensitization rules.
+- Explanation content must comply with data classification and redaction rules.
 
 ## 5. Test Requirements
 
 - unit: rationale schema, depth rendering, redaction
 - integration: runtime -> evidence -> explanation generation
-- contract: explanations must not leak over-privileged original content
+- contract: explanation must not leak over-permission original content

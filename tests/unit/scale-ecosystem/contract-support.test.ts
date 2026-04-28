@@ -63,8 +63,8 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
 
   assert.equal(
     sortMarketplaceCatalog([
-      { listingId: "l1", title: "Sandbox", trustLevel: "sandboxed", lifecycleState: "published", qualityMetrics: { reliabilityScore: 0.8, usabilityScore: 0.7, supportScore: 0.6 } },
-      { listingId: "l2", title: "Enterprise", trustLevel: "enterprise", lifecycleState: "published", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.85, supportScore: 0.9 } },
+      { listingId: "l1", title: "Community", trustLevel: "community", lifecycleState: "active", qualityMetrics: { reliabilityScore: 0.8, usabilityScore: 0.7, supportScore: 0.6 } },
+      { listingId: "l2", title: "Verified", trustLevel: "verified", lifecycleState: "active", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.85, supportScore: 0.9 } },
     ])[0]?.listingId,
     "l2",
   );

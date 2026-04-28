@@ -1,4 +1,4 @@
-# ADR-001 Three-Layer Separation of Authority
+# ADR-001 Three-Layer Decentralized Architecture
 
 - Status: Accepted
 - Decision Date: 2026-04-02

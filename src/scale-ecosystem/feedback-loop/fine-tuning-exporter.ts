@@ -218,7 +218,7 @@ export class FineTuningExporter {
       if (candidate.reviewStatus === "released" && candidate.candidateType === "prompt_tuning") {
         exports.push({
           taskId: candidate.sourceSignalIds[0] ?? "unknown",
-          input: candidate.proposedChange,
+          input: candidate.proposedChange.summary,
           output: candidate.candidateType,
           feedbackType: "user_correction",
           confidence: candidate.riskAssessment === "low" ? 0.9 : candidate.riskAssessment === "medium" ? 0.7 : 0.5,

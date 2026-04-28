@@ -273,7 +273,7 @@ test("performance: TaskStore.getTaskById() throughput >5000 ops/sec", (t) => {
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      store.getTaskById(taskIds[i % taskIds.length]!);
+      store.getTask(taskIds[i % taskIds.length]!);
     }
 
     const elapsed = performance.now() - start;
@@ -337,13 +337,13 @@ test("performance: TaskStore.getTaskById() P99 latency <0.5ms", (t) => {
 
     // Warmup
     for (let i = 0; i < 100; i++) {
-      store.getTaskById(taskIds[i % taskIds.length]!);
+      store.getTask(taskIds[i % taskIds.length]!);
     }
 
     // Measure
     for (let i = 0; i < iterations; i++) {
       const start = performance.now();
-      store.getTaskById(taskIds[i % taskIds.length]!);
+      store.getTask(taskIds[i % taskIds.length]!);
       latencies.push(performance.now() - start);
     }
 
@@ -412,7 +412,7 @@ test("performance: TaskStore.updateTaskStatus() throughput >2000 ops/sec", (t) =
 
     for (let i = 0; i < iterations; i++) {
       const taskId = taskIds[i % taskIds.length]!;
-      store.updateTaskStatus(taskId, "pending", null, "system");
+      store.updateTaskStatus(taskId, "pending", nowIso(), null, null);
     }
 
     const elapsed = performance.now() - start;

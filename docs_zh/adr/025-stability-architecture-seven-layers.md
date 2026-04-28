@@ -25,14 +25,14 @@
 
 ```typescript
 enum PolicyMode {
-  supervised = 'supervised',     // 人工监督
-  auto = 'auto',                 // 自动模式
-  full_auto = 'full_auto',       // 完全自动
-  read_only = 'read_only',       // 只读
-  maintenance = 'maintenance',   // 维护模式
-  incident_mode = 'incident_mode', // 事件模式
-  degraded = 'degraded',         // 降级模式
-  emergency = 'emergency'         // 紧急模式
+  full_auto = 'full_auto',
+  supervised_auto = 'supervised_auto',
+  read_only = 'read_only',
+  no_write = 'no-write',
+  no_external_call = 'no-external-call',
+  no_rollout = 'no-rollout',
+  manual_only = 'manual_only',
+  incident_mode = 'incident-mode'
 }
 ```
 
@@ -76,3 +76,7 @@ enum PolicyMode {
 ## 来源章节
 
 - `§9` 稳定性架构（7 层）
+
+## v4.3 ADR Remediation
+
+- A-19: 本 ADR 原先把 `supervised / degraded / maintenance / emergency` 混入 canonical `PolicyMode`，根因是稳定性 ADR 把告警/运营语义和运行时强约束模式合并成一套枚举。修复：正文现把模式枚举收敛到主架构规定的 8 种 runtime mode：`full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`。

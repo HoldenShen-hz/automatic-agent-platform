@@ -4,6 +4,7 @@ export * from "./cli/index.js";
 // Client SDK exports
 export * from "./client-sdk/index.js";
 export * from "./harness-sdk/index.js";
+export * from "./admin-sdk/index.js";
 
 // Pack SDK exports
 export { PackScaffoldService } from "./pack-sdk/pack-scaffold-service.js";
@@ -17,6 +18,7 @@ export { PluginTestHarness } from "./plugin-sdk/plugin-test-harness.js";
 export { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluator, validatePluginDefinition } from "./plugin-sdk/plugin-definition.js";
 export type {
   PluginType,
+  PluginRole,
   PluginCapability,
   PluginResourceLimits,
   PluginSecurityConfig,

@@ -16,15 +16,21 @@ function createTestService() {
   return new PlatformPanicService();
 }
 
+function createActivationRequest(overrides: Partial<PanicActivationRequest> = {}): PanicActivationRequest {
+  return {
+    scope: "platform",
+    reasonCode: "security.incident",
+    activeIncidents: 1,
+    issuedBy: "op1",
+    requiredApprovers: ["platform-admin-1", "platform-admin-2"],
+    ...overrides,
+  };
+}
+
 test.describe("PlatformPanicService scope inheritance", () => {
   test("evaluateExecution resolves child scopes via inheritance", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest());
     const check: PanicExecutionCheck = {
       scope: "platform/division-a/team-1",
       mode: "deploy",
@@ -38,12 +44,7 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("evaluateExecution resolves parent scope directly", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform/division-a",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest({ scope: "platform/division-a" }));
     const check: PanicExecutionCheck = {
       scope: "platform/division-a",
       mode: "deploy",
@@ -56,20 +57,8 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("evaluateExecution prefers more specific scope activation", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "capacity.issue",
-      activeIncidents: 1,
-      issuedBy: "op1",
-      freezeModes: ["deploy"],
-    });
-    service.activate({
-      scope: "platform/division-a",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-      freezeModes: ["deploy", "automation"],
-    });
+    service.activate(createActivationRequest({ reasonCode: "capacity.issue", freezeModes: ["deploy"] }));
+    service.activate(createActivationRequest({ scope: "platform/division-a", freezeModes: ["deploy", "automation"] }));
     const check: PanicExecutionCheck = {
       scope: "platform/division-a",
       mode: "automation",
@@ -84,15 +73,11 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("resume removes activation and allows subsequent execution", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest());
     const plan = {
       scope: "platform",
       approvedBy: ["operator-1", "operator-2"],
+      approvedRoles: ["platform_admin", "platform_admin"],
       checkpointsVerified: true,
       forensicSnapshotReviewed: true,
       rollbackPlanReady: true,
@@ -107,20 +92,14 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("activate overwrites existing activation for same scope", () => {
     const service = createTestService();
-    const activation1 = service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    const activation1 = service.activate(createActivationRequest());
     const originalDirectiveId = activation1.directive.directiveId;
 
-    const activation2 = service.activate({
-      scope: "platform",
+    const activation2 = service.activate(createActivationRequest({
       reasonCode: "security.vulnerability",
-      activeIncidents: 1,
       issuedBy: "op2",
-    });
+      requiredApprovers: ["platform-admin-3", "platform-admin-4"],
+    }));
 
     assert.notEqual(activation2.directive.directiveId, originalDirectiveId);
     assert.equal(activation2.directive.reasonCode, "security.vulnerability");
@@ -132,26 +111,22 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("listActive sorts by scope alphabetically", () => {
     const service = createTestService();
-    service.activate({ scope: "zebra", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-    service.activate({ scope: "alpha", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-    service.activate({ scope: "middle", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+    service.activate(createActivationRequest({ scope: "domain/zebra" }));
+    service.activate(createActivationRequest({ scope: "domain/alpha" }));
+    service.activate(createActivationRequest({ scope: "domain/middle" }));
 
     const active = service.listActive();
 
-    assert.equal(active[0]?.directive.scope, "alpha");
-    assert.equal(active[1]?.directive.scope, "middle");
-    assert.equal(active[2]?.directive.scope, "zebra");
+    assert.equal(active[0]?.directive.scope, "domain/alpha");
+    assert.equal(active[1]?.directive.scope, "domain/middle");
+    assert.equal(active[2]?.directive.scope, "domain/zebra");
   });
 
   test("targetScopes creates propagation records for multiple scopes", () => {
     const service = createTestService();
-    const activation = service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
+    const activation = service.activate(createActivationRequest({
       targetScopes: ["platform", "platform/division-a", "platform/division-b"],
-    });
+    }));
 
     assert.equal(activation.propagationRecords.length, 3);
     const direct = activation.propagationRecords.find((r) => r.targetScope === "platform");
@@ -165,13 +140,9 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("evaluateExecution blocks frozen mode even when panic is active", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
+    service.activate(createActivationRequest({
       freezeModes: ["deploy", "approval", "write", "automation"],
-    });
+    }));
     const check: PanicExecutionCheck = {
       scope: "platform",
       mode: "automation",
@@ -184,12 +155,7 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("resume fails when canResumeFromPanic returns false", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest());
     const plan = {
       scope: "platform",
       approvedBy: ["only-one-approver"], // only one approver, not two
@@ -215,15 +181,10 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("resume with string approver instead of array", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest());
     const plan = {
       scope: "platform",
-      approvedBy: "single-string-approver",
+      approvedBy: ["single-string-approver"],
       checkpointsVerified: true,
       forensicSnapshotReviewed: true,
       rollbackPlanReady: true,
@@ -238,12 +199,7 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("resume with empty approvers array", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest());
     const plan = {
       scope: "platform",
       approvedBy: [],
@@ -260,12 +216,7 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("resume with whitespace-only approvers", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-    });
+    service.activate(createActivationRequest());
     const plan = {
       scope: "platform",
       approvedBy: ["   ", "   "],
@@ -282,13 +233,7 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("evaluateExecution with allowList bypass still records directiveId", () => {
     const service = createTestService();
-    service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
-      allowList: ["bypass-actor"],
-    });
+    service.activate(createActivationRequest({ allowList: ["bypass-actor"] }));
     const check: PanicExecutionCheck = {
       scope: "platform",
       mode: "deploy",
@@ -318,13 +263,9 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("activate stores forensicArtifactIds in activation", () => {
     const service = createTestService();
-    const activation = service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
+    const activation = service.activate(createActivationRequest({
       forensicArtifactIds: ["artifact-1", "artifact-2", "artifact-3"],
-    });
+    }));
 
     assert.equal(activation.forensicSnapshot.artifactIds.length, 3);
     assert.deepEqual(activation.forensicSnapshot.artifactIds, ["artifact-1", "artifact-2", "artifact-3"]);
@@ -332,14 +273,10 @@ test.describe("PlatformPanicService scope inheritance", () => {
 
   test("activate stores severity and triggerSignals in forensicSnapshot", () => {
     const service = createTestService();
-    const activation = service.activate({
-      scope: "platform",
-      reasonCode: "security.incident",
-      activeIncidents: 1,
-      issuedBy: "op1",
+    const activation = service.activate(createActivationRequest({
       severity: "critical",
       triggerSignals: ["signal-1", "signal-2"],
-    });
+    }));
 
     assert.equal(activation.forensicSnapshot.runtimeState["severity"], "critical");
     assert.deepEqual(activation.forensicSnapshot.runtimeState["triggerSignals"], ["signal-1", "signal-2"]);

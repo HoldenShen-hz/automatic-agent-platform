@@ -59,13 +59,13 @@ type ListingCategory =
 
 ## Consequences
 
-Positive:
+Advantages:
 
 - Open ecosystem attracts partners
 - Market mechanism incentivizes high-quality Packs
 - Certification process ensures quality
 
-Negative:
+Costs:
 
 - Platform governance complexity
 - Quality inconsistency risk
@@ -75,6 +75,6 @@ Negative:
 - [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
 - [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§55` Agent Marketplace and Ecosystem

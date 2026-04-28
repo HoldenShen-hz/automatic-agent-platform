@@ -23,7 +23,7 @@ const orgNodes: OrgNode[] = [
   { orgNodeId: "ent_1", nodeType: "company", displayName: "Enterprise", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, metadata: {}, costCenter: "" },
   { orgNodeId: "dept_1", nodeType: "department", displayName: "Platform", parentOrgNodeId: "ent_1", ownerUserIds: ["director"], active: true, metadata: {}, costCenter: "" },
   { orgNodeId: "team_1", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept_1", ownerUserIds: ["manager"], active: true, metadata: {}, costCenter: "" },
-  { orgNodeId: "seat_1", nodeType: "member", displayName: "Engineer", parentOrgNodeId: "team_1", ownerUserIds: ["engineer"], active: true, metadata: {}, costCenter: "" },
+  { orgNodeId: "team_2", nodeType: "team", displayName: "Infrastructure", parentOrgNodeId: "dept_1", ownerUserIds: ["backup_manager"], active: true, metadata: {}, costCenter: "" },
 ];
 
 test("org-governance support modules expose contract-aligned helpers", () => {
@@ -57,20 +57,17 @@ test("org-governance support modules expose contract-aligned helpers", () => {
     true,
   );
 
-  assert.deepEqual(
-    resolveApprovalRoute(orgNodes, {
-      requesterId: "user_1",
-      orgNodeId: "team_1",
-      riskLevel: "medium",
-      amountUsd: 100,
-    }, { manager: "backup_manager" }),
-    {
-      matchedOrgNodeId: "team_1",
-      approverChain: ["backup_manager"],
-      delegated: true,
-      routingStrategy: "org_chart",
-    },
-  );
+  const routeDecision = resolveApprovalRoute(orgNodes, {
+    requesterId: "user_1",
+    orgNodeId: "team_1",
+    riskLevel: "medium",
+    amountUsd: 100,
+  }, { manager: "backup_manager" });
+  assert.equal(routeDecision.matchedOrgNodeId, "team_1");
+  assert.deepEqual(routeDecision.approverChain, ["backup_manager"]);
+  assert.equal(routeDecision.delegated, true);
+  assert.equal(routeDecision.routingStrategy, "org_chart");
+  assert.equal(routeDecision.routeSnapshot.amount.amountCny, 720);
 
   assert.equal(
     buildGovernanceAuditRecord({
@@ -90,7 +87,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
       { policyId: "root", rules: { residency: "cn", retention: 30 } },
       { policyId: "dept", rules: { retention: 7 } },
     ]),
-    { residency: "cn", retention: 30 },
+    { residency: "cn", retention: 7 },
   );
 
   assert.deepEqual(
@@ -139,16 +136,19 @@ test("org-governance support modules expose contract-aligned helpers", () => {
     boundaryId: "boundary_1",
     ownerOrgNodeId: "dept_1",
     namespaceIds: ["knowledge.platform"],
+    accessPolicy: "strict" as const,
+    auditOnAccess: true,
     defaultVisibility: "private" as const,
     allowedOrgNodeIds: ["team_1"],
+    fieldAllowlist: [],
   };
   assert.equal(canAccessKnowledgeBoundary(boundary, "team_1"), true);
   assert.equal(
-    evaluateKnowledgeShare(boundary, "seat_1", [
+    evaluateKnowledgeShare(boundary, "team_2", [
       {
         grantId: "grant_1",
         boundaryId: "boundary_1",
-        requesterOrgNodeId: "seat_1",
+        requesterOrgNodeId: "team_2",
         purpose: "incident_review",
         expiresAt: "2026-04-21T00:00:00.000Z",
       },
@@ -157,8 +157,8 @@ test("org-governance support modules expose contract-aligned helpers", () => {
   );
 
   assert.deepEqual(validateOrgHierarchy(orgNodes), []);
-  assert.deepEqual(listAncestorNodeIds(orgNodes, "seat_1"), ["team_1", "dept_1", "ent_1"]);
-  assert.equal(isLeafOrgNode(orgNodes[3]!), true);
+  assert.deepEqual(listAncestorNodeIds(orgNodes, "team_1"), ["dept_1", "ent_1"]);
+  assert.equal(isLeafOrgNode(orgNodes[2]!), true);
   assert.equal(mergeOrgNodes(orgNodes, [{ ...orgNodes[1]!, displayName: "Platform Org" }]).find((item) => item.orgNodeId === "dept_1")?.displayName, "Platform Org");
 
   assert.match(

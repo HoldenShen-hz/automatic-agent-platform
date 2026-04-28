@@ -35,7 +35,9 @@ const MINIMAL_PACKAGE_JSON = `{
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "node --test tests/"
+    "test": "node --test tests/",
+    "domain:lint": "agent-platform domain validate --domain-id={{DOMAIN_ID}} --lint-only",
+    "domain:validate": "agent-platform domain validate --domain-id={{DOMAIN_ID}}"
   }
 }`;
 
@@ -262,7 +264,14 @@ export class PackScaffoldService {
     const files: string[] = [manifestPath];
     for (const file of structure.files) {
       const filePath = join(rootDir, file.path);
-      writeFileSync(filePath, file.content.replace(/{{PACK_ID}}/g, config.packId).replace(/{{PACK_NAME}}/g, config.name), "utf-8");
+      writeFileSync(
+        filePath,
+        file.content
+          .replace(/{{PACK_ID}}/g, config.packId)
+          .replace(/{{PACK_NAME}}/g, config.name)
+          .replace(/{{DOMAIN_ID}}/g, config.domain),
+        "utf-8",
+      );
       files.push(filePath);
     }
 
@@ -312,8 +321,23 @@ function buildManifest(
   return {
     packId: config.packId,
     version: "0.1.0",
+    domainId: config.domain,
     domain: config.domain,
     owner: config.owner,
+    sideEffects: [],
+    dataClasses: [],
+    maxRiskClass: config.riskLevel,
+    tools: [],
+    connectors: [],
+    plugins: [],
+    evalRequirements: {
+      requiredDatasets: [],
+      blockingEvaluators: [],
+    },
+    compatibility: {
+      requiresActiveDomain: true,
+      supportedDomainSpecVersions: ["cdm-v2"],
+    },
     capabilities,
   };
 }

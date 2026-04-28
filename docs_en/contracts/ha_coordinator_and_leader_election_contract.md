@@ -4,7 +4,7 @@
 
 ## OAPEFLIR Association
 
-This contract participates in the following phases of the OAPEFLIR eight-phase loop:
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
 - **Observe**: Signal collection and aggregation
 - **Assess**: Pre-execution assessment and risk judgment
@@ -19,19 +19,19 @@ This contract participates in the following phases of the OAPEFLIR eight-phase l
 
 ## 1. Scope
 
-This contract defines primary/backup, leader election, and failover boundary under industrial-grade multi-coordinator deployment.
+This contract defines primary/backup, leader election, and failover boundaries under industrial-grade multi-coordinator deployment.
 
-Related Documents:
+Related documents:
 
 - `execution_plane_contract.md`
 - `task_lease_and_fencing_contract.md`
 - `enterprise_operations_plane_contract.md`
 
-## 2. Goals
+## 2. Objectives
 
-- Prevent coordinator from becoming a single point.
-- Ensure only one active leader at any moment is responsible for critical control actions.
-- Ensure leader switch does not destroy lease, dispatch, and recovery truth.
+- Prevent coordinator from becoming a single point of failure.
+- Ensure only one active leader is responsible for critical control actions at any given time.
+- Ensure leader switch does not break lease, dispatch, and recovery truth.
 
 ## 3. Key Objects
 
@@ -42,16 +42,16 @@ Related Documents:
 
 ## 4. Rules
 
-- Leader identity must be produced by authoritative backend, not rely on local memory.
+- Leader identity must be produced by authoritative backend, not relying on local memory.
 - Any leader switch must increment `leadership_epoch`.
-- Followers must not execute actions requiring leader authority, such as global repair, queue reconciliation, global freeze.
+- Followers must not execute actions requiring leader authority, such as global repair, queue reconciliation, or global freeze.
 - Old leader must not continue writing control plane results after losing epoch.
 
 ## 5. Election Requirements
 
-- Election mechanism must at least support: acquisition, renewal, expiration, reject old writes after preemption.
-- Leader lease should be shorter than on-call recovery window, but not so short as to cause frequent jitter.
+- Election mechanism must support at minimum: acquisition, renewal, expiration, and rejection of stale writes after preemption.
+- Leader lease should be shorter than on-duty recovery window but not so short as to cause frequent thrashing.
 
 ## 6. Closure Conclusion
 
-The essence of HA coordinator is not "running more nodes", but clearly defining control authority, epoch, and stale leader protection.
+The essence of HA coordinator is not "running multiple nodes", but clearly defining control authority, epoch, and stale leader protection.

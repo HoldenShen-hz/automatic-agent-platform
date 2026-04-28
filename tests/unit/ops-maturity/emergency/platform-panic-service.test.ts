@@ -16,14 +16,20 @@ function createTestService() {
   return new PlatformPanicService();
 }
 
-test("PlatformPanicService.activate creates panic directive", () => {
-  const service = createTestService();
-  const request: PanicActivationRequest = {
+function createActivationRequest(overrides: Partial<PanicActivationRequest> = {}): PanicActivationRequest {
+  return {
     scope: "platform",
     reasonCode: "security.incident",
     activeIncidents: 1,
     issuedBy: "operator-1",
+    requiredApprovers: ["platform-admin-1", "platform-admin-2"],
+    ...overrides,
   };
+}
+
+test("PlatformPanicService.activate creates panic directive", () => {
+  const service = createTestService();
+  const request = createActivationRequest();
 
   const activation = service.activate(request);
 
@@ -36,12 +42,7 @@ test("PlatformPanicService.activate creates panic directive", () => {
 
 test("PlatformPanicService.activate applies default freeze modes based on reason code", () => {
   const service = createTestService();
-  const request: PanicActivationRequest = {
-    scope: "platform",
-    reasonCode: "security.incident",
-    activeIncidents: 1,
-    issuedBy: "operator-1",
-  };
+  const request = createActivationRequest();
 
   const activation = service.activate(request);
 
@@ -50,12 +51,7 @@ test("PlatformPanicService.activate applies default freeze modes based on reason
 
 test("PlatformPanicService.activate applies limited freeze modes for non-security", () => {
   const service = createTestService();
-  const request: PanicActivationRequest = {
-    scope: "platform",
-    reasonCode: "capacity.issue",
-    activeIncidents: 1,
-    issuedBy: "operator-1",
-  };
+  const request = createActivationRequest({ reasonCode: "capacity.issue" });
 
   const activation = service.activate(request);
 
@@ -64,13 +60,7 @@ test("PlatformPanicService.activate applies limited freeze modes for non-securit
 
 test("PlatformPanicService.activate accepts custom freeze modes", () => {
   const service = createTestService();
-  const request: PanicActivationRequest = {
-    scope: "platform",
-    reasonCode: "capacity.issue",
-    activeIncidents: 1,
-    issuedBy: "operator-1",
-    freezeModes: ["deploy", "write"],
-  };
+  const request = createActivationRequest({ reasonCode: "capacity.issue", freezeModes: ["deploy", "write"] });
 
   const activation = service.activate(request);
 
@@ -79,12 +69,7 @@ test("PlatformPanicService.activate accepts custom freeze modes", () => {
 
 test("PlatformPanicService.activate rejects when shouldEnterPanicMode returns false", () => {
   const service = createTestService();
-  const request: PanicActivationRequest = {
-    scope: "platform",
-    reasonCode: "capacity.issue",
-    activeIncidents: 0, // no incidents
-    issuedBy: "operator-1",
-  };
+  const request = createActivationRequest({ reasonCode: "capacity.issue", activeIncidents: 0 });
 
   assert.throws(
     () => service.activate(request),
@@ -94,12 +79,7 @@ test("PlatformPanicService.activate rejects when shouldEnterPanicMode returns fa
 
 test("PlatformPanicService.getActive returns activation by scope", () => {
   const service = createTestService();
-  const request: PanicActivationRequest = {
-    scope: "platform",
-    reasonCode: "security.incident",
-    activeIncidents: 1,
-    issuedBy: "operator-1",
-  };
+  const request = createActivationRequest();
   service.activate(request);
 
   const activation = service.getActive("platform");
@@ -118,8 +98,13 @@ test("PlatformPanicService.getActive returns null for unknown scope", () => {
 
 test("PlatformPanicService.listActive returns all active activations", () => {
   const service = createTestService();
-  service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
-  service.activate({ scope: "division-a", reasonCode: "capacity.issue", activeIncidents: 1, issuedBy: "op2" });
+  service.activate(createActivationRequest({ issuedBy: "op1" }));
+  service.activate(createActivationRequest({
+    scope: "domain/division-a",
+    reasonCode: "capacity.issue",
+    issuedBy: "op2",
+    requiredApprovers: ["platform-admin-3", "platform-admin-4"],
+  }));
 
   const active = service.listActive();
 
@@ -141,7 +126,7 @@ test("PlatformPanicService.evaluateExecution allows when no panic active", () =>
 
 test("PlatformPanicService.evaluateExecution blocks frozen mode", () => {
   const service = createTestService();
-  service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+  service.activate(createActivationRequest({ issuedBy: "op1" }));
   const check: PanicExecutionCheck = {
     scope: "platform",
     mode: "deploy",
@@ -156,7 +141,7 @@ test("PlatformPanicService.evaluateExecution blocks frozen mode", () => {
 
 test("PlatformPanicService.evaluateExecution allows non-frozen mode", () => {
   const service = createTestService();
-  service.activate({ scope: "platform", reasonCode: "capacity.issue", activeIncidents: 1, issuedBy: "op1", freezeModes: ["deploy"] });
+  service.activate(createActivationRequest({ reasonCode: "capacity.issue", issuedBy: "op1", freezeModes: ["deploy"] }));
   const check: PanicExecutionCheck = {
     scope: "platform",
     mode: "approval", // not frozen
@@ -170,7 +155,7 @@ test("PlatformPanicService.evaluateExecution allows non-frozen mode", () => {
 
 test("PlatformPanicService.evaluateExecution allows allow-listed actor", () => {
   const service = createTestService();
-  service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1", allowList: ["operator-2"] });
+  service.activate(createActivationRequest({ issuedBy: "op1", allowList: ["operator-2"] }));
   const check: PanicExecutionCheck = {
     scope: "platform",
     mode: "deploy",
@@ -185,11 +170,12 @@ test("PlatformPanicService.evaluateExecution allows allow-listed actor", () => {
 
 test("PlatformPanicService.resume succeeds with valid plan", () => {
   const service = createTestService();
-  const activation = service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+  const activation = service.activate(createActivationRequest({ issuedBy: "op1" }));
   const originalDirectiveId = activation.directive.directiveId;
   const plan = {
     scope: "platform",
     approvedBy: ["operator-1", "operator-2"],
+    approvedRoles: ["platform_admin", "platform_admin"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
@@ -205,10 +191,10 @@ test("PlatformPanicService.resume succeeds with valid plan", () => {
 
 test("PlatformPanicService.resume fails without checkpoints", () => {
   const service = createTestService();
-  service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+  service.activate(createActivationRequest({ issuedBy: "op1" }));
   const plan = {
     scope: "platform",
-    approvedBy: "operator-1",
+    approvedBy: ["operator-1"],
     checkpointsVerified: false,
   } as any;
 
@@ -223,7 +209,7 @@ test("PlatformPanicService.resume fails without directive", () => {
   const service = createTestService();
   const plan = {
     scope: "unknown",
-    approvedBy: "operator-1",
+    approvedBy: ["operator-1"],
     checkpointsVerified: true,
   } as any;
 
@@ -235,10 +221,11 @@ test("PlatformPanicService.resume fails without directive", () => {
 
 test("PlatformPanicService.getResumeReceipt returns receipt after resume", () => {
   const service = createTestService();
-  service.activate({ scope: "platform", reasonCode: "security.incident", activeIncidents: 1, issuedBy: "op1" });
+  service.activate(createActivationRequest({ issuedBy: "op1" }));
   const plan = {
     scope: "platform",
     approvedBy: ["operator-1", "operator-2"],
+    approvedRoles: ["platform_admin", "platform_admin"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,

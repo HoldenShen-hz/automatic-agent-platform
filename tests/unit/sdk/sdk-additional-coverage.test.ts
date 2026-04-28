@@ -181,10 +181,10 @@ test("createApiClient creates client with all options", () => {
 });
 
 // ============================================================================
-// RetryableApiClient PATCH method - checking that PATCH is not currently supported
+// RetryableApiClient PATCH method support
 // ============================================================================
 
-test("RetryableApiClient does not have patch method (use post or put)", () => {
+test("RetryableApiClient exposes patch method for partial updates", () => {
   const config: ApiClientConfig = {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
@@ -192,12 +192,11 @@ test("RetryableApiClient does not have patch method (use post or put)", () => {
   };
   const client = new RetryableApiClient(config);
 
-  // The client only has get, post, put, delete methods
   assert.equal(typeof client.get, "function");
   assert.equal(typeof client.post, "function");
   assert.equal(typeof client.put, "function");
+  assert.equal(typeof client.patch, "function");
   assert.equal(typeof client.delete, "function");
-  assert.equal(typeof (client as any).patch, "undefined");
 });
 
 // ============================================================================

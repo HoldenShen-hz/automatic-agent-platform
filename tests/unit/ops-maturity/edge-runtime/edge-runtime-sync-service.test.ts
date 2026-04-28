@@ -7,7 +7,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { EdgeRuntimeSyncService, type EdgeRuntimeProfile, type OfflineExecutionRequest } from "../../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
+import {
+  EdgeRuntimeSyncService,
+  type EdgeRuntimeProfile,
+  type OfflineExecutionRequest,
+  type SyncEnvelope,
+} from "../../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
 
 describe("EdgeRuntimeSyncService", () => {
   const defaultProfile: EdgeRuntimeProfile = {
@@ -27,6 +32,38 @@ describe("EdgeRuntimeSyncService", () => {
     { modelId: "model-b", modalities: ["code"], maxTokens: 8192 },
     { modelId: "model-c", modalities: ["text"], maxTokens: 2048 },
   ];
+
+  function createEnvelope(
+    service: EdgeRuntimeSyncService,
+    overrides: Partial<SyncEnvelope> & { recordId?: string } = {},
+  ): SyncEnvelope {
+    const record = {
+      edgeNodeId: overrides.edgeNodeId ?? "node-001",
+      taskId: overrides.recordId?.split(":")[1] ?? "task-1",
+      createdAt: overrides.recordId?.split(":").slice(2).join(":") || "2026-04-26T08:00:00Z",
+    };
+    const envelope = service.buildSyncEnvelope(
+      defaultProfile,
+      record as any,
+      overrides.payloadDigest ?? "digest-1",
+      overrides.priority ?? 1,
+      overrides.dataClassification ?? "internal",
+      overrides.createdAt ?? record.createdAt,
+      overrides.prevHash ?? null,
+    );
+    return {
+      ...envelope,
+      envelopeId: overrides.envelopeId ?? envelope.envelopeId,
+      recordId: overrides.recordId ?? envelope.recordId,
+      edgeNodeId: overrides.edgeNodeId ?? envelope.edgeNodeId,
+      priority: overrides.priority ?? envelope.priority,
+      dataClassification: overrides.dataClassification ?? envelope.dataClassification,
+      payloadDigest: overrides.payloadDigest ?? envelope.payloadDigest,
+      prevHash: overrides.prevHash ?? envelope.prevHash,
+      signature: overrides.signature ?? envelope.signature,
+      createdAt: overrides.createdAt ?? envelope.createdAt,
+    };
+  }
 
   describe("executeOffline", () => {
     test("executes offline request with allowed model", () => {
@@ -191,24 +228,20 @@ describe("EdgeRuntimeSyncService", () => {
     test("accepts all envelopes when no conflicts", () => {
       const service = new EdgeRuntimeSyncService();
       const envelopes = [
-        {
+        createEnvelope(service, {
           envelopeId: "env-1",
           recordId: "node-001:task-1:2026-04-26T08:00:00Z",
-          edgeNodeId: "node-001",
           priority: 1,
-          dataClassification: "internal" as const,
           payloadDigest: "digest-1",
-          createdAt: "2026-04-26T08:00:00Z",
-        },
-        {
+        }),
+        createEnvelope(service, {
           envelopeId: "env-2",
           recordId: "node-001:task-2:2026-04-26T08:01:00Z",
-          edgeNodeId: "node-001",
           priority: 2,
-          dataClassification: "public" as const,
+          dataClassification: "public",
           payloadDigest: "digest-2",
           createdAt: "2026-04-26T08:01:00Z",
-        },
+        }),
       ];
 
       const receipt = service.sync(defaultProfile, envelopes, {});
@@ -221,15 +254,13 @@ describe("EdgeRuntimeSyncService", () => {
     test("rejects restricted data when policy denies", () => {
       const service = new EdgeRuntimeSyncService();
       const envelopes = [
-        {
+        createEnvelope(service, {
           envelopeId: "env-restricted",
           recordId: "node-001:task-1:2026-04-26T08:00:00Z",
-          edgeNodeId: "node-001",
           priority: 1,
-          dataClassification: "restricted" as const,
+          dataClassification: "restricted",
           payloadDigest: "digest-secret",
-          createdAt: "2026-04-26T08:00:00Z",
-        },
+        }),
       ];
 
       const receipt = service.sync(defaultProfile, envelopes, {});
@@ -243,15 +274,12 @@ describe("EdgeRuntimeSyncService", () => {
     test("merges when digest differs from cloud", () => {
       const service = new EdgeRuntimeSyncService();
       const envelopes = [
-        {
+        createEnvelope(service, {
           envelopeId: "env-conflict",
           recordId: "node-001:task-1:2026-04-26T08:00:00Z",
-          edgeNodeId: "node-001",
           priority: 1,
-          dataClassification: "internal" as const,
           payloadDigest: "edge-digest-v2",
-          createdAt: "2026-04-26T08:00:00Z",
-        },
+        }),
       ];
       const cloudDigests = {
         "node-001:task-1:2026-04-26T08:00:00Z": "cloud-digest-v1",
@@ -266,15 +294,12 @@ describe("EdgeRuntimeSyncService", () => {
     test("accepts edge when digest matches cloud", () => {
       const service = new EdgeRuntimeSyncService();
       const envelopes = [
-        {
+        createEnvelope(service, {
           envelopeId: "env-matched",
           recordId: "node-001:task-1:2026-04-26T08:00:00Z",
-          edgeNodeId: "node-001",
           priority: 1,
-          dataClassification: "internal" as const,
           payloadDigest: "same-digest",
-          createdAt: "2026-04-26T08:00:00Z",
-        },
+        }),
       ];
       const cloudDigests = {
         "node-001:task-1:2026-04-26T08:00:00Z": "same-digest",
@@ -296,8 +321,19 @@ describe("EdgeRuntimeSyncService", () => {
         },
       };
       const envelopes = [
-        { envelopeId: "env-low", recordId: "n1:r1:2026-04-26T08:00:00Z", edgeNodeId: "node-001", priority: 1, dataClassification: "internal" as const, payloadDigest: "d1", createdAt: "2026-04-26T08:00:00Z" },
-        { envelopeId: "env-high", recordId: "n1:r2:2026-04-26T08:01:00Z", edgeNodeId: "node-001", priority: 5, dataClassification: "internal" as const, payloadDigest: "d2", createdAt: "2026-04-26T08:01:00Z" },
+        createEnvelope(service, {
+          envelopeId: "env-low",
+          recordId: "node-001:r1:2026-04-26T08:00:00Z",
+          priority: 1,
+          payloadDigest: "d1",
+        }),
+        createEnvelope(service, {
+          envelopeId: "env-high",
+          recordId: "node-001:r2:2026-04-26T08:01:00Z",
+          priority: 5,
+          payloadDigest: "d2",
+          createdAt: "2026-04-26T08:01:00Z",
+        }),
       ];
 
       // When requireOrdering is true, ordering is reversed before processing

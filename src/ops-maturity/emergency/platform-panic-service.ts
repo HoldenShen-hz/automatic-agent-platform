@@ -4,14 +4,24 @@ import { shouldEnterPanicMode, type PanicDirectiveInput } from "./panic-controll
 import { canResumeFromPanic, type ResumePlan } from "./resume-protocol/index.js";
 
 export type PanicFreezeMode = "deploy" | "approval" | "write" | "automation";
+export type PanicScopeLevel = "platform" | "region" | "tenant" | "domain" | "run" | "node";
+
+export interface PanicAcknowledgment {
+  readonly plane: "P1" | "P2" | "P3" | "P4" | "P5";
+  readonly status: "ack" | "failed" | "timeout";
+  readonly localStopState: string;
+  readonly evidenceRef: string;
+}
 
 export interface PlatformPanicDirective {
   readonly directiveId: string;
   readonly scope: string;
+  readonly scopeLevel: PanicScopeLevel;
   readonly reasonCode: string;
   readonly issuedBy: string;
   readonly issuedAt: string;
   readonly freezeModes: readonly PanicFreezeMode[];
+  readonly requiredApprovers: readonly string[];
   readonly allowList?: readonly string[];
 }
 
@@ -27,6 +37,7 @@ export interface PanicActivationRequest extends PanicDirectiveInput {
   readonly issuedBy: string;
   readonly issuedAt?: string;
   readonly freezeModes?: readonly PanicFreezeMode[];
+  readonly requiredApprovers?: readonly string[];
   readonly allowList?: readonly string[];
   readonly targetScopes?: readonly string[];
   readonly forensicArtifactIds?: readonly string[];
@@ -58,10 +69,19 @@ export interface PlatformPanicActivation {
   readonly directive: PlatformPanicDirective;
   readonly propagationRecords: readonly PanicPropagationRecord[];
   readonly forensicSnapshot: ForensicSnapshot;
+  readonly acknowledgments: readonly PanicAcknowledgment[];
 }
 
 function matchesScope(activeScope: string, requestedScope: string): boolean {
   return requestedScope === activeScope || requestedScope.startsWith(`${activeScope}/`);
+}
+
+function deriveScopeLevel(scope: string): PanicScopeLevel {
+  const [level] = scope.split("/");
+  if (level === "platform" || level === "region" || level === "tenant" || level === "domain" || level === "run" || level === "node") {
+    return level;
+  }
+  throw new Error(`panic.invalid_scope_level:${scope}`);
 }
 
 function defaultFreezeModes(reasonCode: string): readonly PanicFreezeMode[] {
@@ -69,6 +89,16 @@ function defaultFreezeModes(reasonCode: string): readonly PanicFreezeMode[] {
     return ["deploy", "approval", "write", "automation"];
   }
   return ["deploy", "automation"];
+}
+
+function normalizeRequiredApprovers(
+  request: Pick<PanicActivationRequest, "requiredApprovers" | "issuedBy">,
+): readonly string[] {
+  const normalized = [...new Set((request.requiredApprovers ?? [request.issuedBy]).map((item) => item.trim()).filter((item) => item.length > 0))];
+  if (normalized.length < 2) {
+    throw new Error("panic.required_approvers_minimum_not_met");
+  }
+  return normalized;
 }
 
 export class PlatformPanicService {
@@ -84,12 +114,21 @@ export class PlatformPanicService {
     const directive: PlatformPanicDirective = {
       directiveId: newId("panic"),
       scope: request.scope,
+      scopeLevel: deriveScopeLevel(request.scope),
       reasonCode: request.reasonCode,
       issuedBy: request.issuedBy,
       issuedAt,
       freezeModes: request.freezeModes ?? defaultFreezeModes(request.reasonCode),
+      requiredApprovers: normalizeRequiredApprovers(request),
       ...(request.allowList != null ? { allowList: request.allowList } : {}),
     };
+    const panicPlanes = ["P1", "P2", "P3", "P4", "P5"] as const;
+    const acknowledgments: PanicAcknowledgment[] = panicPlanes.map((plane) => ({
+      plane,
+      status: "ack",
+      localStopState: "panic_frozen",
+      evidenceRef: `${directive.directiveId}:${plane.toLowerCase()}`,
+    }));
     const propagationRecords: PanicPropagationRecord[] = (request.targetScopes ?? [request.scope]).map((targetScope) => ({
       directiveId: directive.directiveId,
       targetScope,
@@ -110,8 +149,14 @@ export class PlatformPanicService {
             severity: request.severity,
             triggerSignals: request.triggerSignals,
           },
+          planeAcknowledgments: acknowledgments.map((ack) => ({
+            plane: ack.plane,
+            localStopState: ack.status,
+            evidenceRef: ack.evidenceRef,
+          })),
         },
       ),
+      acknowledgments,
     };
     this.activations.set(request.scope, activation);
     this.resumeReceipts.delete(request.scope);
