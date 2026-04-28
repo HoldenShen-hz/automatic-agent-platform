@@ -40,6 +40,8 @@ export class ChineseWallAccessSaga {
     let failedAction: ChineseWallAccessStep["action"] | null = null;
     const context = (): ChineseWallAccessSagaHandlerContext => ({ accessId, failedAction });
 
+    const preparedSet = new Set<string>();
+
     for (const step of steps) {
       if (step.action === "audit") {
         this.handlers.audit?.(step, context());
@@ -50,22 +52,45 @@ export class ChineseWallAccessSaga {
         });
         continue;
       }
-      if (!step.succeeded) {
-        failedAction = step.action;
+
+      if (step.action === "prepare_grant" || step.action === "prepare_release") {
+        this.handlers.prepareGrant?.(step, context());
+        preparedSet.add(step.stepId);
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
-          outcome: "failed",
+          outcome: "prepared",
         });
-        break;
+        continue;
       }
-      this.runAction(step, context());
-      committedActions.push(step.action);
-      executionLog.push({
-        stepId: step.stepId,
-        action: step.action,
-        outcome: "committed",
-      });
+
+      if (step.action === "commit_grant" || step.action === "commit_release") {
+        if (!preparedSet.has(step.stepId.replace("commit_", "prepare_"))) {
+          failedAction = step.action;
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "failed",
+          });
+          break;
+        }
+        if (!step.succeeded) {
+          failedAction = step.action;
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "failed",
+          });
+          break;
+        }
+        this.runAction(step, context());
+        committedActions.push(step.action);
+        executionLog.push({
+          stepId: step.stepId,
+          action: step.action,
+          outcome: "committed",
+        });
+      }
     }
 
     const failed = failedAction != null;

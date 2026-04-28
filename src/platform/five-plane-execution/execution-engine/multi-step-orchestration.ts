@@ -38,6 +38,7 @@ import type {
   MultiStepOrchestrationResult,
   MultiStepToolExecutionInput,
 } from "./multi-step-orchestration-types.js";
+import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
@@ -138,6 +139,11 @@ export type {
 } from "./multi-step-orchestration-types.js";
 
 export async function runMultiStepOrchestration(input: MultiStepToolExecutionInput): Promise<MultiStepOrchestrationResult> {
+  // R4-26/R4-27 (INV-GRAPH-001/INV-RUN-001): RuntimeEntryGuard is mandatory at dispatch entry
+  // All execution paths must pass through PlanGraphBundle validation before writing truth
+  const entryGuard = new RuntimeEntryGuard();
+  entryGuard.assertNoLegacyTruthWrite({ eventType: "routing:decided" });
+
   const { resetToolRegistry } = await import("../dispatcher/index.js");
   resetToolRegistry();
 

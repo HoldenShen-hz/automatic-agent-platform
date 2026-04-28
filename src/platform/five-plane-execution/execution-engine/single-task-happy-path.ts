@@ -60,6 +60,7 @@ import {
   type LlmModelCallResult,
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -137,6 +138,12 @@ function createContext(
 export async function runSingleTaskExecution(input: HappyPathInput) {
   initializeMiddleware();
   const middlewareChain = getGlobalMiddlewareChain();
+
+  // R4-26/R4-27 (INV-GRAPH-001/INV-RUN-001): RuntimeEntryGuard is mandatory at dispatch entry
+  // All execution paths must pass through PlanGraphBundle validation before writing truth
+  const entryGuard = new RuntimeEntryGuard();
+  // Verify that any event writes follow the platform.* fact event requirement
+  entryGuard.assertNoLegacyTruthWrite({ eventType: "routing:decided" });
 
   assertWorkflowValid(SINGLE_AGENT_MINIMAL_WORKFLOW);
 

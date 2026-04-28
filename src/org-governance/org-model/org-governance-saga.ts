@@ -2,7 +2,10 @@ export interface OrgGovernanceSagaStep {
   readonly stepId: string;
   readonly targetOrgNodeId: string;
   readonly action: "prepare" | "commit" | "compensate" | "audit";
+  readonly phase: OrgGovernancePhase;
 }
+
+export type OrgGovernancePhase = "identity" | "approval" | "budget" | "domain" | "agent";
 
 export interface OrgGovernanceSagaHandlerContext {
   readonly sagaId: string;
@@ -32,10 +35,41 @@ export interface OrgGovernanceSagaResult {
   }[];
 }
 
+const PHASE_ORDER: OrgGovernancePhase[] = ["identity", "approval", "budget", "domain", "agent"];
+
+function sortStepsByPhase(steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaStep[] {
+  return [...steps].sort((left, right) => {
+    const leftIdx = PHASE_ORDER.indexOf(left.phase);
+    const rightIdx = PHASE_ORDER.indexOf(right.phase);
+    if (leftIdx !== rightIdx) {
+      return leftIdx - rightIdx;
+    }
+    return left.stepId.localeCompare(right.stepId);
+  });
+}
+
+export interface OrgGovernanceSagaReceipt {
+  readonly sagaId: string;
+  readonly status: "committed" | "compensated";
+  readonly phaseCommitOrder: readonly OrgGovernancePhase[];
+  readonly preparedByPhase: Readonly<Record<OrgGovernancePhase, readonly string[]>>;
+  readonly committedByPhase: Readonly<Record<OrgGovernancePhase, readonly string[]>>;
+  readonly compensatedByPhase: Readonly<Record<OrgGovernancePhase, readonly string[]>>;
+  readonly failedPhase: OrgGovernancePhase | null;
+  readonly executionLog: readonly {
+    stepId: string;
+    action: OrgGovernanceSagaStep["action"];
+    phase: OrgGovernancePhase;
+    targetOrgNodeId: string;
+    outcome: "prepared" | "committed" | "compensated" | "audited" | "skipped" | "failed";
+  }[];
+}
+
 export class OrgGovernanceSaga {
   public constructor(private readonly handlers: OrgGovernanceSagaHandlers = {}) {}
 
   public execute(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaResult {
+    const sortedSteps = sortStepsByPhase(steps);
     const preparedNodeIds: string[] = [];
     const committedNodeIds: string[] = [];
     const compensatedNodeIds: string[] = [];
@@ -44,7 +78,7 @@ export class OrgGovernanceSaga {
     let failedStepId: string | null = null;
     const context = (): OrgGovernanceSagaHandlerContext => ({ sagaId, failedStepId });
 
-    for (const step of steps.filter((candidate) => candidate.action === "prepare")) {
+    for (const step of sortedSteps.filter((candidate) => candidate.action === "prepare")) {
       try {
         this.handlers.prepare?.(step, context());
         preparedNodeIds.push(step.targetOrgNodeId);
@@ -68,7 +102,7 @@ export class OrgGovernanceSaga {
 
     const preparedSet = new Set(preparedNodeIds);
     if (failedStepId == null) {
-      for (const step of steps.filter((candidate) => candidate.action === "commit")) {
+      for (const step of sortedSteps.filter((candidate) => candidate.action === "commit")) {
         if (!preparedSet.has(step.targetOrgNodeId)) {
           failedStepId = step.stepId;
           executionLog.push({
@@ -102,7 +136,7 @@ export class OrgGovernanceSaga {
     }
 
     if (failedStepId != null) {
-      const compensationSteps = steps.filter((candidate) => candidate.action === "compensate");
+      const compensationSteps = sortedSteps.filter((candidate) => candidate.action === "compensate");
       const compensationNodes = [...new Set([...committedNodeIds, ...preparedNodeIds])].reverse();
       for (const nodeId of compensationNodes) {
         const compensationStep =
@@ -111,6 +145,7 @@ export class OrgGovernanceSaga {
             stepId: `${failedStepId}:compensate:${nodeId}`,
             action: "compensate" as const,
             targetOrgNodeId: nodeId,
+            phase: "domain" as OrgGovernancePhase,
           };
         this.handlers.compensate?.(compensationStep, context());
         compensatedNodeIds.push(nodeId);
@@ -122,7 +157,7 @@ export class OrgGovernanceSaga {
         });
       }
     } else {
-      for (const step of steps.filter((candidate) => candidate.action === "compensate")) {
+      for (const step of sortedSteps.filter((candidate) => candidate.action === "compensate")) {
         this.handlers.compensate?.(step, context());
         compensatedNodeIds.push(step.targetOrgNodeId);
         executionLog.push({
@@ -134,7 +169,7 @@ export class OrgGovernanceSaga {
       }
     }
 
-    for (const step of steps.filter((candidate) => candidate.action === "audit")) {
+    for (const step of sortedSteps.filter((candidate) => candidate.action === "audit")) {
       this.handlers.audit?.(step, context());
       auditStepIds.push(step.stepId);
       executionLog.push({
@@ -156,4 +191,45 @@ export class OrgGovernanceSaga {
       executionLog,
     };
   }
+
+  public executeWithReceipt(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaReceipt {
+    const result = this.execute(sagaId, steps);
+
+    const preparedByPhase = buildPhaseMap(result.executionLog, "prepared");
+    const committedByPhase = buildPhaseMap(result.executionLog, "committed");
+    const compensatedByPhase = buildPhaseMap(result.executionLog, "compensated");
+
+    const failedPhaseEntry = result.executionLog.find((entry) => entry.outcome === "failed");
+    const failedPhase: OrgGovernancePhase | null = failedPhaseEntry
+      ? steps.find((s) => s.stepId === failedPhaseEntry.stepId)?.phase ?? null
+      : null;
+
+    return {
+      sagaId: result.sagaId,
+      status: result.status,
+      phaseCommitOrder: PHASE_ORDER,
+      preparedByPhase,
+      committedByPhase,
+      compensatedByPhase,
+      failedPhase,
+      executionLog: result.executionLog.map((entry) => {
+        const step = steps.find((s) => s.stepId === entry.stepId);
+        return { ...entry, phase: step?.phase ?? "domain" };
+      }),
+    };
+  }
+}
+
+function buildPhaseMap(
+  log: readonly { stepId: string; outcome: string; targetOrgNodeId: string }[],
+  outcomeFilter: string,
+): Readonly<Record<OrgGovernancePhase, readonly string[]>> {
+  const phaseMap: Record<OrgGovernancePhase, string[]> = {
+    identity: [],
+    approval: [],
+    budget: [],
+    domain: [],
+    agent: [],
+  };
+  return phaseMap;
 }
