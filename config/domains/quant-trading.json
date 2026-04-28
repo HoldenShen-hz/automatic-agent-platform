@@ -7,10 +7,6 @@
   "ringId": "ring1",
   "divisionId": "analytics",
   "latencyTier": "ultra_realtime",
-  "riskProfile": {
-    "defaultRiskLevel": "high",
-    "maxAutonomyLevel": "supervised"
-  },
   "riskSpec": {
     "advisoryOnly": false,
     "humanAccountable": true,

@@ -364,11 +364,26 @@ const createTaskPayloadSchema = z.object({
 const updateTaskPayloadSchema = z.object({
   title: nonEmptyStringSchema.optional(),
   /**
-   * Task status aligned with HarnessRunStatus canonical 13-state per §45.13.
-   * Legacy Task-level status is a projection of HarnessRun execution state.
-   * @see HarnessRunStatus for canonical runtime states.
+   * Task status aligned with HarnessRunStatus canonical 13-state per §5.5.
+   * Maps to runtime execution states: queued→admitted, pending→planning/ready,
+   * in_progress→running, awaiting_decision→hitl_wait, done→completed, failed→failed, cancelled→aborted.
+   * @see HarnessRunStatus in executable-contracts for canonical runtime states.
    */
-  status: z.enum(["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"]).optional(),
+  status: z.enum([
+    "created",
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+    "completed",
+    "failed",
+    "aborted",
+  ]).optional(),
   priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
   outputJson: z.string().optional(),
 }).strict();
@@ -384,7 +399,7 @@ export interface CreateTaskPayload {
 
 export interface UpdateTaskPayload {
   title?: string;
-  status?: "queued" | "pending" | "in_progress" | "awaiting_decision" | "done" | "failed" | "cancelled";
+  status?: "created" | "admitted" | "planning" | "ready" | "running" | "pausing" | "paused" | "resuming" | "replanning" | "compensating" | "completed" | "failed" | "aborted";
   priority?: "low" | "normal" | "high" | "urgent";
   outputJson?: string;
 }

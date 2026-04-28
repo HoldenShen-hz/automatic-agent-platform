@@ -13,6 +13,7 @@
  */
 
 import { TypedEventBusPublisher, type TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import type { TypedEventType } from "../../platform/state-evidence/events/typed-event-bus.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 // Canonical UX event types using platform.ux.* namespace per §5.4
@@ -162,7 +163,7 @@ export class UxEventTrackingService {
       // Use canonical platform.ux.* event type per §5.4
       const platformEventType = this.toPlatformEventType(eventType);
       this.eventPublisher.publish({
-        eventType: platformEventType,
+        eventType: platformEventType as TypedEventType,
         sessionId: trackEntry.sessionId,
         taskId: trackEntry.taskId,
         payload: {
