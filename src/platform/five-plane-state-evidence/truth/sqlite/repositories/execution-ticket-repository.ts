@@ -334,6 +334,8 @@ export class ExecutionTicketRepository {
 
   // R6-4: Deterministic graph scheduler per §14.9
   // Orders by priority/risk_class/critical_path_rank/created_order/scheduler_seed
+  // Note: critical_path_rank and scheduler_seed fields require schema migration
+  // For now, uses available fields: priority DESC, created_at ASC, id ASC (stable sort)
   public listDispatchableExecutionTickets(now: string, queueName: string | null = null): ExecutionTicketRecord[] {
     const params: Array<string | number> = [now];
     let sql = `${EXECUTION_TICKET_SELECT}
@@ -343,9 +345,9 @@ export class ExecutionTicketRepository {
       sql += " AND queue_name = ?";
       params.push(queueName);
     }
-    // R6-4: Deterministic ordering - critical_path_rank DESC, priority DESC, created_at ASC, id ASC
-    // This ensures deterministic scheduling across retries and restarts
-    sql += " ORDER BY critical_path_rank DESC, priority DESC, created_at ASC, id ASC";
+    // R6-4: Deterministic ordering - add id ASC for stable sort when priorities match
+    // Full §14.9 ordering (critical_path_rank, scheduler_seed) requires schema migration
+    sql += " ORDER BY priority DESC, created_at ASC, id ASC";
     return queryAll<ExecutionTicketRecord>(this.conn, sql, ...params);
   }
 
