@@ -1,4 +1,48 @@
 import type { RegisteredPlugin, PluginManifest } from "../domains/registry/plugin-spi.js";
+
+/**
+ * §23.4: DataTaintPropagation tracks cross-plugin data contamination labels.
+ * When data flows between plugins, taint labels must be propagated to ensure
+ * security and compliance requirements are maintained across plugin boundaries.
+ */
+export interface DataTaintLabel {
+  readonly sourcePluginId: string;
+  readonly label: string;
+  readonly severity: "low" | "medium" | "high" | "critical";
+  readonly propagatedAt: string;
+  readonly expiresAt?: string;
+}
+
+export interface DataTaintPropagation {
+  readonly originPluginId: string;
+  readonly labels: readonly DataTaintLabel[];
+  readonly originatingDataId: string;
+}
+
+/**
+ * §23.6: BundleRevocationSeverity classifies plugin revocation severity levels.
+ * Used to determine appropriate response when a plugin must be revoked.
+ */
+export enum BundleRevocationSeverity {
+  /** Informational - no action required */
+  INFO = "info",
+  /** Warning - consider remediation but not mandatory */
+  WARNING = "warning",
+  /** Moderate - should be disabled and replaced */
+  MODERATE = "moderate",
+  /** Severe - must be disabled immediately */
+  SEVERE = "severe",
+  /** Critical - emergency revocation with full system halt */
+  CRITICAL = "critical",
+}
+
+export interface BundleRevocationRecord {
+  readonly pluginId: string;
+  readonly severity: BundleRevocationSeverity;
+  readonly reason: string;
+  readonly revokedAt: string;
+  readonly affectedVersions: readonly string[];
+}
 import { createGithubAdapterPlugin } from "./adapters/github-adapter.js";
 import { createCrmAdapterPlugin } from "./adapters/crm-adapter.js";
 import { createGameDevAdapterPlugin } from "./adapters/game-dev-adapter.js";

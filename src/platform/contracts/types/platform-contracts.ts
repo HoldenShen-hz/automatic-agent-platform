@@ -34,6 +34,17 @@ export {
   createNodeAttemptReceipt,
 } from "../executable-contracts/index.js";
 
+// SideEffectRecord - canonical with 16 states per §5.3 (re-exported for convenience)
+// NOTE: Only ONE definition exists - in executable-contracts/schemas.ts.
+// The 4-state "SideEffectExpectation" below is deprecated legacy stub.
+export {
+  type SideEffectRecord,
+  type SideEffectKind,
+  type SideEffectStatus,
+  type SideEffectProfile,
+  createSideEffectRecord,
+} from "../executable-contracts/index.js";
+
 // =============================================================================
 // Re-exports from control-directive (canonical directives per §4.3)
 // =============================================================================

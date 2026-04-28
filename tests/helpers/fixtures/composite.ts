@@ -290,13 +290,13 @@ export function createCompleteHarnessRun(
   }));
 
   // Build graph directly with the correct structure
-  const graph = {
+  const graph: PlanGraphBundle["graph"] = {
     graphId: `graph-${harnessRunId}`,
-    nodes: nodes as readonly import("../../src/platform/contracts/executable-contracts/index.js").PlanNode[],
-    edges: edges as readonly import("../../src/platform/contracts/executable-contracts/index.js").PlanEdge[],
+    nodes: nodes as readonly PlanNode[],
+    edges: edges as readonly PlanEdge[],
     entryNodeIds: [nodeIds[0]] as readonly string[],
     terminalNodeIds: [nodeIds[nodeIds.length - 1]] as readonly string[],
-    joinStrategy: "all" as const,
+    joinStrategy: "all",
     graphHash: `hash-${harnessRunId}`,
   };
 

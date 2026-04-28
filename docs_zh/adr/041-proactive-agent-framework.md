@@ -73,3 +73,7 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 ## 来源章节
 
 - `§41` 主动式 Agent 框架
+
+## v4.3 ADR Remediation
+
+- R6-53: 修复 TriggerAction.create_task 引用 intake pipeline。ADR-041 原先在 TriggerAction.create_task 描述中未明确引用 §5.3 intake pipeline，已添加说明：create_task 必须经 §5.3 intake pipeline（TaskDraft → ConfirmedTaskSpec → RequestEnvelope），不得直接创建任务绕过管道。

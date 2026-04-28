@@ -179,3 +179,7 @@ interface Citation {
 - `§C.1-C.7` 治理层设计
 - `§8.7` Learn→Knowledge 集成
 - `§L.9` R4-EVIDENCE 约束
+
+## v4.3 ADR Remediation
+
+- R6-56: 修复 Knowledge TrustLevel 分离映射。ADR-078 原先 TrustLevel 表未完整展示 §10 risk model 的 inherent_risk + trust_score 分离映射。修复：TrustLevel 表已包含 inherent_risk 和 trust_score 两个独立维度，并说明 trust_score = baseline(0.5) + trust_delta，inherent_risk 和 trust_score 分离确保信任评估不隐式降低风险。

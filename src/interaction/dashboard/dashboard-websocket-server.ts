@@ -9,7 +9,7 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import type { DashboardDelta } from "./dashboard-projection-service.js";
+import type { DashboardDelta, DashboardChange } from "./dashboard-projection-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

@@ -149,3 +149,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 - `§G3` E2E 测试设计
 - `§G4` 性能基准测试
 - `§6.1` 工业级标准
+
+## v4.3 ADR Remediation
+
+- R6-55: 修复测试矩阵对齐 v4.3 canonical runtime 模块。ADR-072 原先测试矩阵按 OAPEFLIR 模块目录组织，与 v4.3 canonical runtime 模块结构（platform/interface/、platform/control-plane/、platform/orchestration/、platform/execution/、platform/state-evidence/、domains/、interaction/）不一致。修复：正文测试矩阵已使用 v4.3 runtime 模块结构。
