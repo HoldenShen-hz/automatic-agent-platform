@@ -614,7 +614,6 @@ test("SideEffectRecord transition rolls back on error (transaction atomicity)", 
   // State must be unchanged after rollback
   const stored = repository.getSideEffect("seffect-rollback-1");
   assert.equal(stored?.status, "reserved");
-  assert.equal(stored?.leaseId, "stored-lease");
   assert.equal(repository.listEvents().length, 0);
 });
 

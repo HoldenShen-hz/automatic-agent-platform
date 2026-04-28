@@ -572,6 +572,10 @@ export class ExecutionDispatchService {
         continue;
       }
 
+      // R6-7: Build scheduler event fields for dispatch decision trace
+      const workerPoolSnapshotRef = `worker_pool://${selectedWorker.workerId}/snapshot/${occurredAt}`;
+      const selectedNodeIds = [ticket.executionId];
+
       const trace = this.recordDecisionEvent(ticket, occurredAt, {
         dispatchTarget,
         remoteAvailability,
@@ -586,6 +590,11 @@ export class ExecutionDispatchService {
         fallbackApplied: selection.fallbackApplied,
         preemption: preemptionTrace,
         evaluations,
+        // R6-7: §14.9 scheduler event fields
+        readySet,
+        selectedNodeIds,
+        orderingPolicyVersion: "1.0",
+        workerPoolSnapshotRef,
       });
       this.db.transaction(() => {
         this.store.worker.claimExecutionTicket({

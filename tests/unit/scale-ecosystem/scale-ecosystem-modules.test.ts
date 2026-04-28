@@ -182,7 +182,7 @@ function createScheduleRequest(overrides: Partial<FairSchedulingRequest> = {}): 
     ...overrides.claim,
   };
   return {
-    quotaPolicy: createQuotaPolicy(),
+    quotaPolicy: overrides.quotaPolicy ?? createQuotaPolicy(),
     claim,
     queueItems: overrides.queueItems ?? [],
     preemptionCandidates: overrides.preemptionCandidates ?? [],

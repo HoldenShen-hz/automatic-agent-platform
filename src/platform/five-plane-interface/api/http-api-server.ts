@@ -311,7 +311,7 @@ export class HttpApiServer {
       // 1. Preflight (CORS OPTIONS) — no rate limit, no body
       if ((request.method ?? "GET") === "OPTIONS") {
         payload = {
-          statusCode: 204          ,
+          statusCode: 204,
           headers: buildPreflightHeaders(headers.origin, this.corsConfig),
           body: "",
         };
@@ -328,7 +328,7 @@ export class HttpApiServer {
         const rateLimitHeaders = this.buildRateLimitHeaders(result);
         if (!result.allowed) {
           payload = {
-            statusCode: 429            ,
+            statusCode: 429,
             headers: {
               "content-type": "application/json; charset=utf-8",
               "x-request-id": requestId,

@@ -55,6 +55,7 @@ export interface TaskRouteDeps {
   inspectService: InspectService;
   missionControlService: MissionControlService;
   taskStore?: AuthoritativeTaskStore;
+  intakeAdmissionService?: IntakeAdmissionService;
 }
 
 interface PaginationCursor {
@@ -201,10 +202,86 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
+
+        // R6-16: Validate required task spec fields before creation
+        // Required fields per platform architecture: taskId, domainId, principal
+        // title is required, divisionId maps to domainId for routing
+        if (!payload.title || payload.title.trim().length === 0) {
+          throw new ApiError(400, "api.missing_required_field", "title is required.");
+        }
+        if (!payload.divisionId || payload.divisionId.trim().length === 0) {
+          throw new ApiError(400, "api.missing_required_field", "divisionId is required for routing.");
+        }
+
         const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
 
+        // Build principal ref from API principal
+        const principalRef: PrincipalRef = createPrincipalRef({
+          principalId: principal.userId ?? principal.actorId ?? "unknown",
+          tenantId: tenantId ?? "global",
+          roles: principal.roles,
+        });
+
+        // R6-16: Route through intake pipeline if IntakeAdmissionService is available
+        // This provides proper task spec validation, risk classification, and admission control
+        if (deps.intakeAdmissionService) {
+          const defaultRiskPreview: RiskPreview = {
+            riskClass: "low",
+            reasons: [],
+          };
+          const defaultBudgetIntent: BudgetIntent = {
+            amount: 100,
+            currency: "USD",
+            resourceKinds: ["compute", "storage"],
+          };
+          const source: TaskInputSource = (payload.source as TaskInputSource) ?? "user";
+
+          const admissionResult = deps.intakeAdmissionService.admit({
+            tenantId: tenantId ?? "global",
+            principal: principalRef,
+            source,
+            goal: payload.title,
+            inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
+            riskPreview: defaultRiskPreview,
+            constraintPackRef: `constraints:${payload.divisionId}`,
+            budgetIntent: defaultBudgetIntent,
+            idempotencyKey: taskId,
+            traceId: ctx.requestId,
+          });
+
+          // Store the task using the authoritative task store
+          if (!deps.taskStore) {
+            throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+          }
+          deps.taskStore.task.insertTask({
+            id: taskId,
+            parentId: payload.parentId ?? null,
+            rootId: taskId,
+            divisionId: payload.divisionId,
+            tenantId,
+            title: payload.title,
+            status: "queued",
+            source: payload.source ?? "user",
+            priority: payload.priority ?? "normal",
+            inputJson: payload.inputJson ?? "{}",
+            normalizedInputJson: null,
+            outputJson: null,
+            estimatedCostUsd: null,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: null,
+          });
+
+          const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
+          return buildJsonResponse(ctx.requestId, 201, cockpit);
+        }
+
+        // Fallback: direct task creation without intake pipeline (legacy path)
+        // This bypasses proper intake validation and should be deprecated
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
         }
