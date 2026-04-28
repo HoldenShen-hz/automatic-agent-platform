@@ -196,7 +196,7 @@ export class AdapterExecutor {
       output: {
         error: errorCode,
         error_code: "RETRY_EXHAUSTED",
-        attempts,
+        attempts: attempt,
         lastError: lastError instanceof Error ? lastError.message : String(lastError),
       },
     };

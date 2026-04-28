@@ -3,6 +3,11 @@
   "phase": "9c",
   "divisionId": "research",
   "latencyTier": "business_day",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "academic-research.primary",
     "rollout": "baseline"

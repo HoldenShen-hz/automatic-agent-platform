@@ -9,6 +9,7 @@ import {
   type BudgetSettlement,
 } from "../contracts/executable-contracts/index.js";
 import { ValidationError } from "../contracts/errors.js";
+import { newId } from "../contracts/types/ids.js";
 import {
   RuntimeStateMachine,
   type RuntimeTransitionResult,

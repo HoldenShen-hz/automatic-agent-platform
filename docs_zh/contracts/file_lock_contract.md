@@ -96,8 +96,8 @@ Phase 1a / 1b 至少要做到：
 - `acquireLock(request)`
 - `renewLock(lockId, now)`
 - `releaseLock(lockId)`
-- `releaseAllByExecution(executionId)`
-- `listLocksByExecution(executionId)`
+- `releaseAllByHarnessRun(harnessRunId)`
+- `listLocksByHarnessRun(harnessRunId)`
 - `listExpiredLocks(now)`
 - `reapExpiredLocks(now)`
 

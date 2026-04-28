@@ -3,6 +3,11 @@
   "phase": "9b",
   "divisionId": "content",
   "latencyTier": "near_realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "advertising.primary",
     "rollout": "baseline"

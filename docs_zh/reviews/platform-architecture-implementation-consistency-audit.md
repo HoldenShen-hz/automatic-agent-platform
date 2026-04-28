@@ -173,28 +173,28 @@
 
 ### 2.4 HIGH — 使用废弃 ID 作为 canonical key
 
-| Contract                                             | 问题                                                                            |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `api_surface_contract.md:§3`                         | GET /executions/:executionId/inspect 用废弃 executionId；无 /harness-runs/ 端点 |
-| `artifact_unified_model_contract.md:§3.1`            | ArtifactRecord 用 executionId/planId（应为 harnessRunId/planGraphId）           |
-| `file_lock_contract.md:§3.1-3.2`                     | FileLockRequest/Record 用 execution_id/holder_execution_id                      |
-| `debug_inspect_health_backpressure_contract.md:§3.2` | TaskInspectView 用 workflow_state + executions[]                                |
-| `artifact_store_contract.md:§3`                      | ArtifactRecord 仅 task_id，缺 harness_run_id/node_run_id                        |
-| `audit_lineage_and_retention_contract.md:§5`         | 用 execution_id，缺 harness_run_id/node_run_id                                  |
-| `cost_and_budget_contract.md:§4`                     | CostEvent 用 task_id 为主键，harness_run_id/node_run_id 为 optional             |
-| `gateway_message_contract.md:§5`                     | DecisionRequest 用 task_id                                                      |
-| `gateway_streaming_contract.md:§3`                   | StreamEvent 用 task_id                                                          |
-| `policy_engine_contract.md:§3.1`                     | PolicyDecisionRequest 用 execution_id                                           |
-| `runtime_execution_contract.md:§3`                   | ExecutionEnvelope 含 workflow_id                                                |
-| `explainability_and_stage_rationale_contract.md:§3`  | StageRationale 用 task_id 为主键                                                |
+| Contract                                             | 问题                                                                            | 状态   | 根因与修复 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- | ------ | ---------- |
+| `api_surface_contract.md:§3`                         | GET /executions/:executionId/inspect 用废弃 executionId；无 /harness-runs/ 端点 | 已修复 | 根因：API contract 沿用旧 execution-centric 观测模型。修复：T-61 已将 harness-runs/node-runs inspect 提升为权威端点，/executions/:executionId/inspect 只保留兼容别名 |
+| `artifact_unified_model_contract.md:§3.1`            | ArtifactRecord 用 executionId/planId（应为 harnessRunId/planGraphId）           | 已修复 | 根因：artifact contract 复用旧 workflow-step 输出模型。修复：T-62 已以 harnessRunId/nodeRunId/planGraphBundleId 为权威 lineage |
+| `file_lock_contract.md:§3.1-3.2`                     | FileLockRequest/Record 用 execution_id/holder_execution_id                      | 已修复 | 根因：File lock 使用废弃 execution ID。修复：本文已更新服务入口方法名从 `releaseAllByExecution(executionId)` / `listLocksByExecution(executionId)` 改为 `releaseAllByHarnessRun(harnessRunId)` / `listLocksByHarnessRun(harnessRunId)` |
+| `debug_inspect_health_backpressure_contract.md:§3.2` | TaskInspectView 用 workflow_state + executions[]                                | 已修复 | 根因：调试 contract 继承旧 workflow/execution 观测模型。修复：T-63 已将 inspect 主链收口到 Task → HarnessRun → NodeRun[] |
+| `artifact_store_contract.md:§3`                      | ArtifactRecord 仅 task_id，缺 harness_run_id/node_run_id                        | 已修复 | 根因：artifact store contract 早于 v4.3 executable contract。修复：T-64 已要求 harness_run_id/node_run_id/plan_graph_bundle_id 作为最小运行链主键 |
+| `audit_lineage_and_retention_contract.md:§5`         | 用 execution_id，缺 harness_run_id/node_run_id                                  | 已修复 | 根因：审计 lineage 使用废弃 execution_id。修复：本文 §5 已将 harness_run_id/node_run_id 设为 canonical 关联键，execution_id 仅保留兼容查询 |
+| `cost_and_budget_contract.md:§4`                     | CostEvent 用 task_id 为主键，harness_run_id/node_run_id 为 optional             | 已修复 | 根因：成本合同以 task_id 为必填，harness_run_id 为可选。修复：架构 §18 以 HarnessRun 为预算主体，CostEvent 已将 harness_run_id 设为关联主体 |
+| `gateway_message_contract.md:§5`                     | DecisionRequest 用 task_id                                                      | 已修复 | 根因：网关消息 contract 按任务级 UI 模型定义审批。修复：T-65 已将 harness_run_id/node_run_id 提升为决策链权威关联键 |
+| `gateway_streaming_contract.md:§3`                   | StreamEvent 用 task_id                                                          | 已修复 | 根因：streaming contract 沿用任务级 gateway 模型。修复：T-66 已改用 harness_run_id/node_run_id 主链 |
+| `policy_engine_contract.md:§3.1`                     | PolicyDecisionRequest 用 execution_id                                           | 已修复 | 根因：policy engine 在执行模型升级后仍引用旧 runtime 参数。修复：T-67 已将 harness_run_id/node_run_id/attempt_id 提升为权威关联键 |
+| `runtime_execution_contract.md:§3`                   | ExecutionEnvelope 含 workflow_id                                                | 已修复 | 根因：ExecutionEnvelope 使用废弃 workflow_id。修复：本文 §3 已将 workflow_id 标注为 legacy projection 引用，非 truth 主键 |
+| `explainability_and_stage_rationale_contract.md:§3`  | StageRationale 用 task_id 为主键                                                | 已修复 | 根因：解释层复用旧认知视图草案，未绑定到具体运行链。修复：T-68 已以 harness_run_id/node_run_id/stage_view_ref 为权威键 |
 
 ### 2.5 HIGH — 关键 Contract 缺失 canonical 字段
 
-| Contract                                  | 问题                                                                                            |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `node-run-attempt-receipt-contract.md:§4` | NodeAttemptReceipt 缺 harnessRunId/planGraphBundleId/graphVersion/duration（架构§5.3 明确要求） |
-| `event_bus_contract.md:§3`                | EventEnvelope 缺 schema_version/idempotency_key/causation_id/partition_key/ttl/payloadHash      |
-| `plugin_spi_contract.md:§2.4`             | DomainPresenterPlugin.present() 接收废弃 DualChannelStepOutput 而非 NodeAttemptReceipt          |
+| Contract                                  | 问题                                                                                            | 状态   | 根因与修复 |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- | ------ | ---------- |
+| `node-run-attempt-receipt-contract.md:§4` | NodeAttemptReceipt 缺 harnessRunId/planGraphBundleId/graphVersion/duration（架构§5.3 明确要求） | 已修复 | 根因：contract 跟随底层存储命名暴露 table-shaped 字段名。修复：T-46 已将主键收敛到 receiptId，并补齐 harnessRunId/planGraphBundleId/graphVersion/durationMs |
+| `event_bus_contract.md:§3`                | EventEnvelope 缺 schema_version/idempotency_key/causation_id/partition_key/ttl/payloadHash      | 已修复 | 根因：EventEnvelope 字段定义不完整。修复：本文 §3 最小字段表已包含全部 6 个字段（schema_version/idempotency_key/causation_id/partition_key/ttl/payloadHash）及使用规则 |
+| `plugin_spi_contract.md:§2.4`             | DomainPresenterPlugin.present() 接收废弃 DualChannelStepOutput 而非 NodeAttemptReceipt          | 已修复 | 根因：Plugin SPI 仍沿用旧 step output 类型。修复：本文 §2.4 已明确 present() 接收 NodeAttemptReceipt，并在 §3 强制规则中标注 DualChannelStepOutput 为废弃警告 |
 
 ### 2.6 HIGH — workflow_debugger_contract 完全基于废弃模型
 

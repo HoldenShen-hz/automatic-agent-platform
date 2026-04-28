@@ -3,6 +3,11 @@
   "phase": "9b",
   "divisionId": "analytics",
   "latencyTier": "realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "ecommerce.primary",
     "rollout": "baseline"

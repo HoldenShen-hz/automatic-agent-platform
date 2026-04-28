@@ -3,6 +3,11 @@
   "phase": "9d",
   "divisionId": "security",
   "latencyTier": "realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "content-moderation.primary",
     "rollout": "baseline"

@@ -3,6 +3,11 @@
   "phase": "9a",
   "divisionId": "data",
   "latencyTier": "business_day",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "data-engineering.primary",
     "rollout": "baseline"

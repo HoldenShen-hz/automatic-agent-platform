@@ -3,6 +3,11 @@
   "phase": "9e",
   "divisionId": "general_ops",
   "latencyTier": "business_day",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "education.primary",
     "rollout": "baseline"

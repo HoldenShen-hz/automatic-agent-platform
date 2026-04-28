@@ -3,6 +3,11 @@
   "phase": "9f",
   "divisionId": "engineering_ops",
   "latencyTier": "near_realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "game-dev.primary",
     "rollout": "baseline"

@@ -46,11 +46,17 @@ export interface PromptBundleConstraints {
 
 export interface PromptBundleMetadata {
   owner: string;
+  /** @deprecated Use lifecycleStatus instead - deprecated boolean flag */
   deprecated: boolean;
+  /** §20.6: Prompt lifecycle status - draft→active→deprecated→archived */
+  lifecycleStatus: PromptLifecycleStatus;
   tags: string[];
   compatibilityTags: string[];
   trafficAllocation: PromptBundleTrafficAllocation;
 }
+
+/** §20.6: Prompt lifecycle phases */
+export type PromptLifecycleStatus = "draft" | "active" | "deprecated" | "archived";
 
 export interface PromptBundleTrafficAllocation {
   /** Percentage of traffic for this version (0-100) */

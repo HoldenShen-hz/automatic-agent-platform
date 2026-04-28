@@ -393,17 +393,19 @@ export class MissionControlService {
 
   private deriveRecentEvents(inspect: ReturnType<InspectService["getTaskInspectView"]>): readonly { eventType: string; timestamp: string; description: string }[] {
     const events: { eventType: string; timestamp: string; description: string }[] = [];
-    if (inspect.task.createdAtIso) {
-      events.push({ eventType: "task.created", timestamp: inspect.task.createdAtIso, description: "Task created" });
+    const createdAt = inspect.task.createdAt ?? inspect.task.createdAtIso;
+    const updatedAt = inspect.task.updatedAt ?? inspect.task.updatedAtIso;
+    if (createdAt) {
+      events.push({ eventType: "task.created", timestamp: createdAt, description: "Task created" });
     }
     if (inspect.execution?.startedAt) {
       events.push({ eventType: "execution.started", timestamp: inspect.execution.startedAt, description: "Execution started" });
     }
-    if (inspect.task.taskStatus === "done" && inspect.task.updatedAtIso) {
-      events.push({ eventType: "task.completed", timestamp: inspect.task.updatedAtIso, description: "Task completed" });
+    if (inspect.task.taskStatus === "done" && updatedAt) {
+      events.push({ eventType: "task.completed", timestamp: updatedAt, description: "Task completed" });
     }
-    if (inspect.task.taskStatus === "failed" && inspect.task.updatedAtIso) {
-      events.push({ eventType: "task.failed", timestamp: inspect.task.updatedAtIso, description: "Task failed" });
+    if (inspect.task.taskStatus === "failed" && updatedAt) {
+      events.push({ eventType: "task.failed", timestamp: updatedAt, description: "Task failed" });
     }
     return events.slice(0, 10);
   }

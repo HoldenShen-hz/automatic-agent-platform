@@ -27,6 +27,9 @@ This contract defines knowledge domain isolation, federated search, and Chinese 
 `FederatedSearchRequest` minimum fields:
 
 - `requester`
+- `requester_tenant_id`
+- `harness_run_id`
+- `node_run_id?`
 - `query`
 - `allowed_boundaries`
 - `purpose`
@@ -44,9 +47,14 @@ This contract defines knowledge domain isolation, federated search, and Chinese 
 - Default deny cross-boundary access.
 - Sharing must go through `KnowledgeShareGrant` or explicit policy.
 - Requests hitting Chinese Wall must be blocked and audited.
+- Federated search audit must simultaneously record boundary, tenant, and runtime lineage; recording only org dimension is prohibited.
 
-## 6. Test Requirements
+## 6. Testing Requirements
 
 - unit: boundary resolution, share grant, Chinese Wall checks
 - integration: federated search with mixed allow / deny boundaries
 - contract: unauthorized cross-boundary retrieval must not return original content
+
+## v4.3 Contract Remediation
+
+- T-74: This document originally only required requester/query/boundary without enforcing tenant and runtime chain audit. The root cause was that the knowledge boundary contract was designed from organizational isolation perspective, and subsequent multi-tenant runtime lineage was not added. Fix: The main text now requires `requester_tenant_id / harness_run_id / node_run_id` to enter the federated search request and audit chain.

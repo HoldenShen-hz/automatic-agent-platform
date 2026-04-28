@@ -3,6 +3,11 @@
   "phase": "9c",
   "divisionId": "analytics",
   "latencyTier": "near_realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "finance-accounting.primary",
     "rollout": "baseline"

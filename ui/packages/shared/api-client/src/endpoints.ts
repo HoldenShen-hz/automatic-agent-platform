@@ -78,6 +78,8 @@ export const endpointCatalog = {
   webhooks: { id: "admin.webhooks", path: "/webhooks", method: "GET", apiLayer: "C", planned: false },
   preferences: { id: "user.preferences", path: "/preferences", method: "GET", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
+  // §1.8 contract version negotiation
+  contractVersion: { id: "meta.contract-version", path: "/api/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
 } satisfies Record<string, EndpointDefinition>;
 
 function resolvePath(template: string, params: Record<string, string>): string {
@@ -242,4 +244,15 @@ export async function fetchWebhooks(client: RESTClient): Promise<readonly Webhoo
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {
   return client.get<UserPreferenceDTO>(endpointCatalog.preferences.path);
+}
+
+// §1.8 contract version negotiation
+export interface ContractVersionInfo {
+  readonly contractVersion: string;
+  readonly minServerVersion: string;
+  readonly supportedVersions: readonly string[];
+}
+
+export async function fetchContractVersion(client: RESTClient): Promise<ContractVersionInfo> {
+  return client.get<ContractVersionInfo>(endpointCatalog.contractVersion.path);
 }

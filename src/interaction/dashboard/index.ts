@@ -235,8 +235,15 @@ export class DashboardAggregationService implements DashboardPort {
   public buildOperatorDashboard(limit = 25): OperatorDashboard {
     const tasks = this.options.taskSource.list(limit);
     const system = this.options.systemSource.build();
-    const attentionQueue = this.buildAttentionQueue(tasks, system);
+    let attentionQueue = this.buildAttentionQueue(tasks, system);
     const recentCompletions = tasks.filter((item) => item.taskStatus === "done").slice(0, 5);
+
+    // Integrate projection deltas from DashboardProjectionService (R7-30 fix)
+    if (this.projectionService) {
+      const pendingDeltas = this.projectionService.consumePendingDeltas();
+      attentionQueue = this.mergeProjectionDeltas(attentionQueue, pendingDeltas);
+    }
+
     const summary: DailySummary = {
       tasksCompleted: recentCompletions.length,
       tasksInProgress: tasks.filter((item) => item.taskStatus === "in_progress").length,
@@ -427,5 +434,101 @@ export class DashboardAggregationService implements DashboardPort {
           : "dashboard.action_low_risk",
       };
     });
+  }
+
+  /**
+   * Integrates pending deltas from DashboardProjectionService into attention queue.
+   * Root cause fix for R7-30: DashboardAggregationService and DashboardProjectionService
+   * were two parallel systems not integrated.
+   */
+  private mergeProjectionDeltas(
+    attentionQueue: AttentionItem[],
+    pendingDeltas: readonly {
+      deltaId: string;
+      timestamp: string;
+      changes: readonly {
+        changeType: string;
+        entityId: string;
+        previousValue: unknown;
+        newValue: unknown;
+      }[];
+      affectedMetrics: readonly string[];
+    }[],
+  ): AttentionItem[] {
+    if (pendingDeltas.length === 0) {
+      return attentionQueue;
+    }
+
+    // Apply delta-driven updates to attention queue
+    const updatedQueue = [...attentionQueue];
+    for (const delta of pendingDeltas) {
+      for (const change of delta.changes) {
+        // Map projection changes to attention items
+        switch (change.changeType) {
+          case "task_failed": {
+            const existing = updatedQueue.find(
+              (item) => item.title.includes(change.entityId) && item.itemType === "incident",
+            );
+            if (!existing) {
+              updatedQueue.push({
+                itemType: "incident",
+                priority: "high",
+                title: `Task failed: ${change.entityId}`,
+                description: `Delta ${delta.deltaId} indicates failure`,
+                actionOptions: ["inspect", "retry"],
+                actionControls: this.buildActionControls("incident", "high", ["inspect", "retry"]),
+                createdAt: delta.timestamp,
+                domainId: "platform",
+              });
+            }
+            break;
+          }
+          case "task_completed": {
+            // Remove resolved incidents from attention queue
+            const idx = updatedQueue.findIndex(
+              (item) => item.itemType === "incident" && item.title.includes(change.entityId),
+            );
+            if (idx >= 0) {
+              updatedQueue.splice(idx, 1);
+            }
+            break;
+          }
+          case "incident_opened": {
+            updatedQueue.push({
+              itemType: "incident",
+              priority: "high",
+              title: `Incident: ${change.entityId}`,
+              description: `New incident from delta ${delta.deltaId}`,
+              actionOptions: ["inspect", "resolve"],
+              actionControls: this.buildActionControls("incident", "high", ["inspect", "resolve"]),
+              createdAt: delta.timestamp,
+              domainId: "platform",
+            });
+            break;
+          }
+          case "system_health_changed": {
+            const existingHealthIdx = updatedQueue.findIndex(
+              (item) => item.itemType === "incident" && item.title.includes("Platform health"),
+            );
+            if (existingHealthIdx >= 0) {
+              updatedQueue.splice(existingHealthIdx, 1);
+            }
+            updatedQueue.push({
+              itemType: "incident",
+              priority: "high",
+              title: "Platform health degraded",
+              description: `System health changed per delta ${delta.deltaId}`,
+              actionOptions: ["open_ops_dashboard", "run_doctor"],
+              actionControls: this.buildActionControls("incident", "high", ["open_ops_dashboard", "run_doctor"]),
+              createdAt: delta.timestamp,
+              domainId: "platform",
+            });
+            break;
+          }
+        }
+      }
+    }
+
+    return updatedQueue.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 }
