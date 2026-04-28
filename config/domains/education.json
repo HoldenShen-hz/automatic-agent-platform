@@ -4,9 +4,9 @@
   "divisionId": "general_ops",
   "latencyTier": "business_day",
   "riskSpec": {
-    "riskClass": "medium",
-    "reviewThreshold": "medium",
-    "maxSpendLimitUsd": 10.0
+    "advisoryOnly": false,
+    "humanAccountable": false,
+    "deterministicHotPathOnly": false
   },
   "workflowProfile": {
     "workflowId": "education.primary",

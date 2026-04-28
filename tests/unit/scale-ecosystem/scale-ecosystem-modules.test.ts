@@ -502,8 +502,9 @@ test("FairSchedulingService.schedule preempts when quota exceeded", () => {
     createPreemptionCandidate({ executionId: "low-prio", priority: 1 }),
   ];
 
+  // currentUsage 95 + requestedUnits 10 = 105 > burstLimit 100
   const decision = service.schedule(createScheduleRequest({
-    quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
+    quotaPolicy: createQuotaPolicy({ currentUsage: 95, hardLimit: 80, burstLimit: 100 }),
     preemptionCandidates: candidates,
   }));
 
@@ -514,8 +515,9 @@ test("FairSchedulingService.schedule preempts when quota exceeded", () => {
 
 test("FairSchedulingService.schedule reports quota exceeded without victim", () => {
   const service = new FairSchedulingService();
+  // currentUsage 95 + requestedUnits 10 = 105 > burstLimit 100
   const decision = service.schedule(createScheduleRequest({
-    quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
+    quotaPolicy: createQuotaPolicy({ currentUsage: 95, hardLimit: 80, burstLimit: 100 }),
     preemptionCandidates: [],
   }));
 
@@ -1006,6 +1008,7 @@ test("ConnectorFrameworkService.execute returns deferred for degraded connector"
 test("ConnectorFrameworkService.listBindings filters by connectorId", () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
+  service.register(createManifest("verified", { connectorId: "other_connector" }));
   service.bind("test_connector", "tenant-1", "dev");
   service.bind("test_connector", "tenant-2", "dev");
   service.bind("other_connector", "tenant-1", "dev");

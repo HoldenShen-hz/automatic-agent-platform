@@ -13,6 +13,7 @@ import type { DivisionRegistry } from "../../../domains/governance/division-load
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
 import { InspectService } from "../../shared/observability/inspect-service.js";
 import { DistributedRateLimiter, type RateLimitCheckResult } from "../ingress/distributed-rate-limiter.js";
+import { authenticateOptionalPrincipal, type ApiPrincipal } from "./api-auth-service.js";
 import { provideContext } from "../../shared/context/runtime-context.js";
 import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";

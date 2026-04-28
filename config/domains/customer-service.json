@@ -4,9 +4,9 @@
   "divisionId": "support",
   "latencyTier": "realtime",
   "riskSpec": {
-    "riskClass": "medium",
-    "reviewThreshold": "medium",
-    "maxSpendLimitUsd": 10.0
+    "advisoryOnly": false,
+    "humanAccountable": false,
+    "deterministicHotPathOnly": false
   },
   "workflowProfile": {
     "workflowId": "customer-service.primary",
