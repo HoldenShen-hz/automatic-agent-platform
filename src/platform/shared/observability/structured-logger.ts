@@ -45,6 +45,7 @@ export interface StructuredLogEntry {
   message: string;
   service: string;
   plane?: StructuredPlane;
+  /** Crosscutting fabric classification per §12.4: reliability/security/governance */
   crosscuttingFabric?: CrosscuttingFabricCategory;
   taskId?: string;
   agentId?: string;

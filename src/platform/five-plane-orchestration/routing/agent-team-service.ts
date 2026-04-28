@@ -143,7 +143,10 @@ export class AgentTeamService {
       workflowId: workflow.workflow.workflowId,
       riskLevel,
       lanes,
-      executionLoop: ["plan", "build", "review", "validate", "repair", "validate", "release"],
+      // §8.5 adaptive routing: low-risk tasks bypass full 7-stage pipeline
+      executionLoop: riskLevel === "low"
+        ? ["plan", "build", "release"]
+        : ["plan", "build", "review", "validate", "repair", "validate", "release"],
     };
   }
 }

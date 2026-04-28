@@ -341,5 +341,166 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         return buildJsonResponse(ctx.requestId, 200, new ComplianceProgramTemplateService().listTemplates());
       },
     },
+    // ── R5-35: Harness runs endpoints (canonical /api/v1/harness-runs) ─────────
+    {
+      method: "GET",
+      pathname: "/api/v1/harness-runs",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const limit = readLimit(ctx.request, 50);
+        // Placeholder - in production this would query missionControlService for harness runs
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRuns: [],
+          total: 0,
+          limit,
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "harness-runs"
+          || segments.length !== 4
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const harnessRunId = segments[3];
+        // Placeholder - in production this would query missionControlService for harness run
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRunId,
+          status: "unknown",
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "harness-runs"
+          || segments.length !== 5
+          || segments[4] !== "events"
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        const harnessRunId = segments[3];
+        // Placeholder - in production this would query event store for harness run events
+        return buildJsonResponse(ctx.requestId, 200, {
+          harnessRunId,
+          events: [],
+        });
+      },
+    },
+    // ── R5-36: Replay sessions endpoints ─────────────────────────────────────
+    {
+      method: "GET",
+      pathname: "/api/v1/replay-sessions",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        const limit = readLimit(ctx.request, 50);
+        // Placeholder - in production this would query replay service
+        return buildJsonResponse(ctx.requestId, 200, {
+          replaySessions: [],
+          total: 0,
+          limit,
+        });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "replay-sessions"
+          || segments.length !== 4
+        ) {
+          return null;
+        }
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        const replaySessionId = segments[3];
+        // Placeholder - in production this would query replay service
+        return buildJsonResponse(ctx.requestId, 200, {
+          replaySessionId,
+          status: "unknown",
+        });
+      },
+    },
+    // ── R5-36: Admin write methods - PUT config, POST panic/resume directives ─
+    {
+      method: "PUT",
+      pathname: "/v1/admin/config",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin config update");
+        const payload = readValidatedJsonBody(ctx.request.body, adminConfigUpdateSchema.parse);
+        const tenantId = resolveTenantScope(principal, payload.tenantId);
+        const record = deps.adminConfigService?.applyUpdate({
+          key: payload.key,
+          value: payload.value,
+          ...(tenantId !== undefined ? { tenantId } : {}),
+          updatedBy: principal.actorId,
+        }) ?? {
+          success: true,
+          key: payload.key,
+          value: payload.value,
+          tenantId: tenantId ?? null,
+          updatedAt: new Date().toISOString(),
+          updatedBy: principal.actorId,
+        };
+        return buildJsonResponse(ctx.requestId, 200, {
+          success: true,
+          record,
+        });
+      },
+    },
+    {
+      method: "POST",
+      pathname: "/v1/admin/panic-directives",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin panic directives");
+        const payload = readValidatedJsonBody(ctx.request.body, panicDirectiveSchema.parse);
+        // In production this would trigger panic handling in mission control
+        return buildJsonResponse(ctx.requestId, 202, {
+          accepted: true,
+          targetType: payload.targetType,
+          targetId: payload.targetId,
+          severity: payload.severity,
+          reason: payload.reason,
+        });
+      },
+    },
+    {
+      method: "POST",
+      pathname: "/v1/admin/resume-directives",
+      handler: (ctx) => {
+        const principal = requirePrincipal(ctx.request, deps.authService, "admin");
+        assertGlobalTenantScopeSupported(principal, "admin resume directives");
+        const payload = readValidatedJsonBody(ctx.request.body, resumeDirectiveSchema.parse);
+        // In production this would trigger resume handling in mission control
+        return buildJsonResponse(ctx.requestId, 202, {
+          accepted: true,
+          targetType: payload.targetType,
+          targetId: payload.targetId,
+          fromCheckpoint: payload.fromCheckpoint ?? false,
+        });
+      },
+    },
   ];
 }

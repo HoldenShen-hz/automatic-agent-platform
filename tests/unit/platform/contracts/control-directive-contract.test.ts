@@ -118,7 +118,7 @@ test("createOperationalDirective creates pause directive", () => {
   assert.equal(directive.operationalDirectiveId.startsWith("opdir_"), true);
   assert.equal(directive.scope.tenantId, "tenant-1");
   assert.equal(directive.reason, "maintenance window");
-  assert.equal(directive.params, {});
+  assert.deepEqual(directive.params, {});
 });
 
 test("createOperationalDirective creates resume directive", () => {

@@ -12,7 +12,12 @@ import { requireValidStartupEnv } from "./platform/control-plane/config-center/s
 import { runSingleTaskExecution } from "./platform/execution/execution-engine/single-task-execution.js";
 import { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
 import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
-import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
+import {
+  buildPlatformArchitectureBootstrapSummary,
+  assertStartupOrderEnforced,
+  type PlatformPlane,
+  type StartupOrderViolation,
+} from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";

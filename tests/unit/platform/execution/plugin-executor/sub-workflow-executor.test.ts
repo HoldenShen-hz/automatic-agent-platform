@@ -33,7 +33,7 @@ const createTestContext = (overrides: Partial<SubWorkflowContext> = {}): SubWork
   tenantId: "tenant-789",
   correlationId: "corr-abc",
   parentExecutionId: null,
-  sandboxTier: "container",
+  sandboxTier: "workspace_write",
   ...overrides,
 });
 

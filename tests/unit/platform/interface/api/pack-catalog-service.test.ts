@@ -57,7 +57,7 @@ test("PackCatalogService.createPack sets optional fields", () => {
     domainId: "opts-domain",
     createdBy: "opts-user",
     description: "A pack with options",
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     riskCount: 3,
     dependencyCount: 5,
     pluginCount: 10,

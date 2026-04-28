@@ -206,26 +206,47 @@ class MultiStepToolRegistry {
 
   private assertSandboxAllowed(toolName: string, args: Record<string, unknown>): void {
     // R4-31 (INV-SANDBOX): Enforce sandbox policy before tool execution
+    // R4-31: The hardcoded empty policy for todo_write was incorrect.
+    // Deny-by-default: any tool not explicitly allowed should be blocked.
+
+    // For todo_write, enforce proper sandbox policy
+    if (toolName === "todo_write") {
+      const request = args as TodoWriteToolRequest;
+      // R4-31: Write operations on todo_write need explicit sandbox allow
+      // Read-only operations (list, get) are allowed by default
+      const writeOperations = ["create", "update", "delete"];
+      if (writeOperations.includes(request.operation)) {
+        // The hardcoded {allow:[],deny:[]} policy should deny by default
+        // Empty policy means deny by default (deny-by-default invariant)
+        if (this.sandboxPolicy.allow.length === 0 && this.sandboxPolicy.deny.length === 0) {
+          logger.log({
+            level: "debug",
+            message: "R4-31 (INV-SANDBOX): Empty sandbox policy, denying write operation by default",
+            data: { operation: request.operation, toolName },
+          });
+          throw new ToolExecutionError(
+            "tool.sandbox_policy_denied",
+            `Sandbox policy denies tool ${toolName} with operation ${request.operation}: empty policy defaults to deny`,
+            { toolName, retryable: false },
+          );
+        }
+        // Check if operation is explicitly allowed
+        const isAllowed = this.sandboxPolicy.allow.includes(request.operation);
+        if (!isAllowed) {
+          throw new ToolExecutionError(
+            "tool.sandbox_violation",
+            `Tool ${toolName} with operation ${request.operation} denied by sandbox policy`,
+            { toolName, retryable: false },
+          );
+        }
+      }
+      return; // Only todo_write was checked - other tools continue below
+    }
+
     // Only check tools that interact with the filesystem
     const sandboxedTools = ["git", "repo-map", "spawn-agent"];
     if (!sandboxedTools.includes(toolName)) {
       return;
-    }
-
-    // R4-31: todo_write uses hardcoded empty policy {allow:[],deny:[]} - enforce deny-by-default
-    if (toolName === "todo_write") {
-      const request = args as TodoWriteToolRequest;
-      // If the tool has any write-like operations, they should be blocked by default
-      // unless explicitly allowed in a proper sandbox policy
-      if (request.operation !== "list" && request.operation !== "get") {
-        // R4-31: The hardcoded empty policy is wrong - todo_write with write operations
-        // should go through proper sandbox enforcement
-        logger.log({
-          level: "debug",
-          message: "R4-31 (INV-SANDBOX): todo_write write operation - sandbox policy should be evaluated",
-          data: { operation: request.operation },
-        });
-      }
     }
 
     // For git operations, check paths are within sandbox

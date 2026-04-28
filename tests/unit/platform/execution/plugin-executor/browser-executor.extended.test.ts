@@ -31,7 +31,7 @@ const createTestContext = (overrides: Partial<BrowserExecutionContext> = {}): Br
   tenantId: "tenant-789",
   correlationId: "corr-abc",
   sessionId: null,
-  sandboxTier: "container",
+  sandboxTier: "workspace_write",
   ...overrides,
 });
 
@@ -804,7 +804,7 @@ test("createBrowserExecutor with no options uses defaults", () => {
 
 test("BrowserExecutor handles sandboxTier none in context", async () => {
   const executor = new BrowserExecutor();
-  const context = createTestContext({ sandboxTier: "none" });
+  const context = createTestContext({ sandboxTier: "read_only" });
   const sessionId = executor.createSession(context);
 
   const result = await executor.click(sessionId, context, {
@@ -816,7 +816,7 @@ test("BrowserExecutor handles sandboxTier none in context", async () => {
 
 test("BrowserExecutor handles sandboxTier process in context", async () => {
   const executor = new BrowserExecutor();
-  const context = createTestContext({ sandboxTier: "process" });
+  const context = createTestContext({ sandboxTier: "read_only" });
   const sessionId = executor.createSession(context);
 
   const result = await executor.click(sessionId, context, {
@@ -828,7 +828,7 @@ test("BrowserExecutor handles sandboxTier process in context", async () => {
 
 test("BrowserExecutor handles sandboxTier container in context", async () => {
   const executor = new BrowserExecutor();
-  const context = createTestContext({ sandboxTier: "container" });
+  const context = createTestContext({ sandboxTier: "workspace_write" });
   const sessionId = executor.createSession(context);
 
   const result = await executor.click(sessionId, context, {

@@ -943,10 +943,10 @@ export class HarnessRuntimeService {
       });
       if (guardrailAssessment.suggestedAction === "abort" || decision.action === "abort") {
         baseRun = this.transitionRunStatus(baseRun, "aborted", "harness.loop_aborted");
-        baseRun = { ...baseRun, completedAt: nowIso() };
+        // R1-1 fix: terminalAt is set by RuntimeStateMachine.transition() on terminal transitions
       } else if (decision.action === "accept") {
         baseRun = this.transitionRunStatus(baseRun, "completed", "harness.loop_completed");
-        baseRun = { ...baseRun, completedAt: nowIso() };
+        // R1-1 fix: terminalAt is set by RuntimeStateMachine.transition() on terminal transitions
       } else if (decision.action === "replan") {
         baseRun = this.transitionRunStatus(baseRun, "replanning", "harness.loop_replanning");
         baseRun = this.transitionRunStatus(baseRun, "running", "harness.loop_replan_applied");

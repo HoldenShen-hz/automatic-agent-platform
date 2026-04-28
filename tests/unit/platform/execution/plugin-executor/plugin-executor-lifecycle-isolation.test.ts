@@ -241,7 +241,7 @@ test("PluginExecutorService.execute() handles plugin action that throws non-Erro
     taskId: "task-1",
     tenantId: null,
     correlationId: "corr-1",
-    sandboxTier: "process",
+    sandboxTier: "read_only",
   }, {});
 
   assert.equal(result.status, "error");
@@ -269,7 +269,7 @@ test("PluginExecutorService.execute() tracks error count on failure", async () =
       taskId: "task-1",
       tenantId: null,
       correlationId: "corr-1",
-      sandboxTier: "process",
+      sandboxTier: "read_only",
     }, {});
   }
 
@@ -297,8 +297,8 @@ test("PluginExecutorService registers plugins with all sandbox tiers", async () 
   const service = new PluginExecutorService();
   const tiers: Array<"none" | "process" | "container" | "scoped_external_access"> = [
     "none",
-    "process",
-    "container",
+    "read_only",
+    "workspace_write",
     "scoped_external_access",
   ];
 
@@ -355,7 +355,7 @@ test("PluginExecutorService handles manifest without sandbox config", async () =
     taskId: "task-1",
     tenantId: null,
     correlationId: "corr-1",
-    sandboxTier: "process",
+    sandboxTier: "read_only",
   }, {});
 
   assert.equal(result.status, "ok");
@@ -376,7 +376,7 @@ test("PluginExecutorService handles plugin with empty spiTypes", async () => {
     taskId: "task-1",
     tenantId: null,
     correlationId: "corr-1",
-    sandboxTier: "process" as const,
+    sandboxTier: "read_only" as const,
   };
 
   await assert.rejects(
@@ -757,7 +757,7 @@ test("BrowserExecutor handles inactive session gracefully", () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     sessionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const sessionId = executor.createSession(context);
@@ -780,7 +780,7 @@ test("BrowserExecutor.createSession() creates unique session IDs", () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     sessionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const id1 = executor.createSession(context);
@@ -797,7 +797,7 @@ test("BrowserExecutor.getExecutionLog() returns copy of results", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     sessionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const sessionId = executor.createSession(context);
@@ -904,7 +904,7 @@ test("SubWorkflowExecutor handles checkpointing disabled", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -932,7 +932,7 @@ test("SubWorkflowExecutor handles max nested depth boundary", () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: "parent:level1:level2:level3",
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -958,7 +958,7 @@ test("SubWorkflowExecutor.getStep() returns null for unknown step", async () => 
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1000,7 +1000,7 @@ test("SubWorkflowExecutor.skipStep() throws for completed step", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1040,7 +1040,7 @@ test("SubWorkflowExecutor.retryStep() throws for non-failed step", async () => {
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1069,7 +1069,7 @@ test("SubWorkflowExecutor.retryStep() throws when max retries exceeded", async (
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1101,7 +1101,7 @@ test("SubWorkflowExecutor.cancelWorkflow() handles completed workflow", async ()
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1130,7 +1130,7 @@ test("SubWorkflowExecutor.pauseWorkflow() handles completed workflow", async () 
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1159,7 +1159,7 @@ test("SubWorkflowExecutor.performRollbackFromId() throws for no rollback policy"
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {
@@ -1208,7 +1208,7 @@ test("SubWorkflowExecutor.getExecutionLog() returns copy of results", async () =
     tenantId: "tenant-789",
     correlationId: "corr-abc",
     parentExecutionId: null,
-    sandboxTier: "container" as const,
+    sandboxTier: "workspace_write" as const,
   };
 
   const definition = {

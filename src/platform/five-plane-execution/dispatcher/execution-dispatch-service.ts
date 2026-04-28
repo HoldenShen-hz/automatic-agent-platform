@@ -25,7 +25,7 @@ import {
 } from "../worker-pool/worker-load-balancing.js";
 import { WorkerRegistryService, type RegisteredWorkerView } from "../worker-pool/worker-registry-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { StorageError } from "../../contracts/errors.js";
+import { StorageError, AppError } from "../../contracts/errors.js";
 import {
   AFFINITY_SELECTION_BONUS,
   buildDispatchAgentExecutionRecord,

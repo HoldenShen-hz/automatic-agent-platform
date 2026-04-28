@@ -133,10 +133,11 @@ interface DomainPresenterPlugin {
   // 格式化输出
   present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>;
 
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期（canonical hook 名称）
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface OutputFormat {

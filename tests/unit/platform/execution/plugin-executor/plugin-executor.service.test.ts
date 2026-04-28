@@ -74,7 +74,7 @@ const createTestContext = (overrides: Partial<ExecutionContext> = {}): Execution
   taskId: "task-456",
   tenantId: "tenant-789",
   correlationId: "corr-abc",
-  sandboxTier: "process",
+  sandboxTier: "read_only",
   ...overrides,
 });
 
@@ -186,7 +186,7 @@ test("PluginExecutorService.execute() runs plugin action and returns result", as
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "process" });
+  const context = createTestContext({ sandboxTier: "read_only" });
   const result = await service.execute("test-plugin", "retriever", context, { taskId: "task-123" });
 
   assert.equal(result.status, "ok");
@@ -282,7 +282,7 @@ test("PluginExecutorService.execute() handles timeout and returns error status",
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "process" });
+  const context = createTestContext({ sandboxTier: "read_only" });
   const result = await service.execute("test-plugin", "retriever", context, {});
 
   assert.equal(result.status, "timeout");
@@ -334,7 +334,7 @@ test("PluginExecutorService handles none sandbox tier", async () => {
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "none" });
+  const context = createTestContext({ sandboxTier: "read_only" });
   const result = await service.execute("test-plugin", "retriever", context, {});
 
   assert.equal(result.status, "ok");
@@ -350,7 +350,7 @@ test("PluginExecutorService handles container sandbox tier", async () => {
   await service.load("test-plugin");
   await service.activate("test-plugin");
 
-  const context = createTestContext({ sandboxTier: "container" });
+  const context = createTestContext({ sandboxTier: "workspace_write" });
   const result = await service.execute("test-plugin", "retriever", context, {});
 
   assert.equal(result.status, "ok");

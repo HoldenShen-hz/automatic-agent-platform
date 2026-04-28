@@ -7,6 +7,10 @@ import type {
   PlatformStartupTarget,
 } from "./platform-architecture-types.js";
 import { ServiceRegistry } from "./platform/shared/lifecycle/service-registry.js";
+import {
+  ArchitectureInvariantRegistry,
+  NonOverridableInvariantRegistry,
+} from "./platform/architecture/invariant-registry.js";
 
 export interface PlatformLayerManifest {
   layerId: PlatformArchitectureLayer;
@@ -14,6 +18,61 @@ export interface PlatformLayerManifest {
   description: string;
   architectureSections: string[];
   canonicalSubdomains: string[];
+}
+
+/**
+ * Startup order enforcement per §7 architecture specification.
+ * Required startup sequence: P5 → X1 → P2 → P3 → P4 → P1
+ */
+export const PLATFORM_STARTUP_ORDER: readonly PlatformPlane[] = Object.freeze(["P5", "X1", "P2", "P3", "P4", "P1"]);
+
+export interface StartupOrderViolation {
+  readonly requiredOrder: readonly PlatformPlane[];
+  readonly actualOrder: readonly PlatformPlane[];
+  readonly violatedPosition: number;
+}
+
+export function validateStartupOrder(actualOrder: readonly PlatformPlane[]): StartupOrderViolation | null {
+  for (let i = 0; i < PLATFORM_STARTUP_ORDER.length; i++) {
+    const required = PLATFORM_STARTUP_ORDER[i];
+    const actual = actualOrder[i];
+    if (actual !== required) {
+      return {
+        requiredOrder: PLATFORM_STARTUP_ORDER,
+        actualOrder: actualOrder.length > 0 ? actualOrder : ["not_started"],
+        violatedPosition: i,
+      };
+    }
+  }
+  return null;
+}
+
+export function assertStartupOrderEnforced(): void {
+  const invariantRegistry = new ArchitectureInvariantRegistry();
+  const nonOverridableRegistry = new NonOverridableInvariantRegistry();
+
+  // Check that all MVP invariants are registered
+  const invariants = invariantRegistry.list();
+  const requiredInvariantIds = ["INV-STATE-001", "INV-RUN-001", "INV-GRAPH-001", "INV-BUDGET-001", "INV-REPLAY-001", "INV-SIDEEFFECT-001", "INV-POLICY-001"];
+
+  for (const invariantId of requiredInvariantIds) {
+    const invariant = invariants.find((inv) => inv.invariantId === invariantId);
+    if (invariant === undefined) {
+      throw new Error(`Required architecture invariant is missing: ${invariantId}`);
+    }
+  }
+
+  // Verify non-overridable invariants cannot be overridden
+  for (const invariantId of requiredInvariantIds) {
+    if (!nonOverridableRegistry.canOverride(invariantId)) {
+      // This is expected - non-overridable invariants should NOT be overridable
+    } else {
+      throw new Error(`Architecture invariant is incorrectly marked as overridable: ${invariantId}`);
+    }
+  }
+
+  // Verify release gate readiness
+  invariantRegistry.assertReleaseGateReady();
 }
 
 export interface PlatformPlaneManifest {

@@ -14,6 +14,10 @@ import {
 } from "../../../../../src/platform/contracts/control-directive/index.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
+/**
+ * @deprecated ControlDirectiveKind is deprecated per §4.3.
+ * Use OperationalDirectiveType or DecisionDirectiveType instead.
+ */
 test("ControlDirectiveKind accepts the canonical directive kinds", () => {
   const kinds: ControlDirectiveKind[] = ["pause", "resume", "cancel", "rollback", "escalate"];
   assert.equal(kinds.length, 5);
@@ -40,6 +44,9 @@ test("createControlDirective fails fast because ControlDirective is no longer ca
   );
 });
 
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ */
 test("createControlDirective generates a directiveId when not provided", () => {
   assert.throws(
     () =>
@@ -56,6 +63,9 @@ test("createControlDirective generates a directiveId when not provided", () => {
   );
 });
 
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ */
 test("createControlDirective uses provided directiveId", () => {
   assert.throws(
     () =>
@@ -73,6 +83,9 @@ test("createControlDirective uses provided directiveId", () => {
   );
 });
 
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ */
 test("createControlDirective sets createdAt to nowIso when not provided", () => {
   assert.throws(
     () =>
@@ -89,6 +102,9 @@ test("createControlDirective sets createdAt to nowIso when not provided", () => 
   );
 });
 
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ */
 test("createControlDirective uses provided createdAt timestamp", () => {
   assert.throws(
     () =>
@@ -170,6 +186,9 @@ test("createControlDirective throws when issuedBy is empty", () => {
   );
 });
 
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ */
 test("createControlDirective allows null tenantId and executionId", () => {
   assert.throws(
     () =>
@@ -186,6 +205,9 @@ test("createControlDirective allows null tenantId and executionId", () => {
   );
 });
 
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ */
 test("createControlDirective accepts all directive kinds", () => {
   for (const kind of ["pause", "resume", "cancel", "rollback", "escalate"] as ControlDirectiveKind[]) {
     assert.throws(
@@ -204,6 +226,10 @@ test("createControlDirective accepts all directive kinds", () => {
   }
 });
 
+/**
+ * @deprecated ControlDirective interface is deprecated per §4.3.
+ * Use OperationalDirective or DecisionDirective instead.
+ */
 test("ControlDirective interface accepts all fields", () => {
   const directive: ControlDirective = {
     directiveId: "dir-123",

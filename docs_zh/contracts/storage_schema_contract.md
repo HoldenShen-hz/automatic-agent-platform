@@ -523,12 +523,13 @@ CREATE TABLE IF NOT EXISTS workflow_state (
   task_id TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
   division_id TEXT NOT NULL,
   workflow_id TEXT NOT NULL,
-  current_step_index INTEGER NOT NULL,
+  plan_graph_bundle_id TEXT NULL,
+  current_node_id TEXT NULL,
   status TEXT NOT NULL,
   outputs_json TEXT NOT NULL,
   last_error_code TEXT NULL,
   retry_count INTEGER NOT NULL DEFAULT 0,
-  resumable_from_step TEXT NULL,
+  loop_iteration INTEGER NOT NULL DEFAULT 0,
   started_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -541,7 +542,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_state_updated_at
 CREATE TABLE IF NOT EXISTS workflow_step_outputs (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  step_id TEXT NOT NULL,
+  node_run_id TEXT NOT NULL,
   role_id TEXT NOT NULL,
   status TEXT NOT NULL,
   data_json TEXT NOT NULL,
@@ -555,8 +556,8 @@ CREATE TABLE IF NOT EXISTS workflow_step_outputs (
 
 CREATE INDEX IF NOT EXISTS idx_step_outputs_task_id
   ON workflow_step_outputs(task_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_step_outputs_task_step
-  ON workflow_step_outputs(task_id, step_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_step_outputs_task_node_run
+  ON workflow_step_outputs(task_id, node_run_id);
 
 CREATE TABLE IF NOT EXISTS executions (
   id TEXT PRIMARY KEY,
