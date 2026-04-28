@@ -1,11 +1,11 @@
 # OAPEFLIR v4.4 完整版
 
-## Executable Specification Edition：面向生产级 Agent 平台的可执行运行规范
+## Executable Specification Edition：认知/治理语义与迁移输入规范
 
 > **版本**：v4.4  
-> **状态**：Proposed → 可进入架构评审 / 详细设计 / 实现拆解  
-> **定位**：OAPEFLIR 从“受控认知流程”升级为“可编码、可测试、可恢复、可审计、可长期运行”的生产级 Agent Runtime 规范  
-> **核心变化**：全面吸收 v4.3 review 改进项，重点补齐 Event Registry、PlanGraph 可执行语义、确定性调度、SideEffect 交付语义、Reconciliation、Budget Ledger、Context Assembly、Version Lock、Memory Governance、Evaluation Gate、HITL 责任边界和测试矩阵。
+> **状态**：Reference Draft（迁移输入；非权威运行时基线）  
+> **定位**：OAPEFLIR v4.4 只保留认知/治理语义、投影视图与迁移设计输入；唯一可执行运行时入口仍是 `HarnessRuntime`，权威执行对象仍是 `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt`  
+> **核心变化**：保留对 Event Registry、PlanGraph、Deterministic Scheduler、SideEffect、Budget、HITL、Guardrail、Replay、Learning Release 的设计意图，但所有可执行权威语义都必须收敛到 `docs_zh/architecture/00-platform-architecture.md`、ADR-109~112 与 canonical executable contracts。
 
 ---
 
@@ -61,7 +61,7 @@
 
 OAPEFLIR v4.4 的核心定位是：
 
-> **把 Agent 的“观察、评估、规划、执行、反馈、学习、改进、发布”从抽象流程，落成一套可执行的生产级状态机与图运行协议。**
+> **把 Agent 的“观察、评估、规划、执行、反馈、学习、改进、发布”表达为一套受控认知/治理语义，用来解释和约束 `HarnessRuntime` 主链，而不是再定义第二套执行运行时。**
 
 v4.4 不再只描述“Agent 应该怎么思考”，而是明确：
 
@@ -81,7 +81,7 @@ v4.4 不再只描述“Agent 应该怎么思考”，而是明确：
 一句话概括：
 
 ```text
-OAPEFLIR v4.4 = PlanGraph + Event Sourcing + Deterministic Runtime + Governed SideEffect + HITL + Evaluation + Learning Release
+OAPEFLIR v4.4 = Controlled Cognitive/Governance Semantics over HarnessRuntime
 ```
 
 ---
@@ -130,7 +130,7 @@ Observe
 | Observe | 观察输入、事件、上下文、目标 | ObservationBundle | 否 |
 | Assess | 风险、权限、可行性、预算、策略评估 | AssessmentBundle | 否 |
 | Plan | 生成可执行 PlanGraph | PlanGraphBundle | 否 |
-| Execute | 执行 Graph Node，调用工具 / LLM / 人工等待 | NodeRun / ExecutionReceipt | 受控 |
+| Execute | 消费 `HarnessRuntime` 已推进的节点执行事实，并生成阶段视图 | `NodeRun` / `NodeAttemptReceipt` / `oapeflir.view.*` | 否（副作用仍由 Harness 主链受控提交） |
 | Feedback | 对执行结果、偏差、质量、风险进行反馈 | FeedbackEnvelope | 否 |
 | Learn | 从反馈中提取候选经验 | LearningCandidate | 否 |
 | Improve | 生成 Prompt / Policy / Tool / Domain 改进候选 | ImprovementChangeSet | 否 |
@@ -145,7 +145,7 @@ RequestEnvelope
    │
    ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  OAPEFLIR Runtime v4.4                  │
+│          HarnessRuntime + OAPEFLIR Semantic Overlay     │
 │                                                         │
 │  Observe ─→ Assess ─→ PlanGraph ─→ Graph Scheduler       │
 │                              │                          │
@@ -182,109 +182,39 @@ RequestEnvelope
 
 # 4. 核心运行实体
 
-## 4.1 OapeflirRun
+## 4.1 HarnessRun 是唯一权威 Run
 
-一次完整 OAPEFLIR 运行。
+`HarnessRun` 才是一次完整运行的唯一权威实体；本 spec 不再把 `OapeflirRun` 当作可执行 truth 对象。旧 `OapeflirRun` 只允许作为 migration alias 或 explainability projection 出现。
+
+## 4.2 OapeflirTraceProjection
 
 ```ts
-type OapeflirRun = {
-  runId: string;
-  tenantId: string;
-  domainId: string;
-  agentId?: string;
-
-  status: RunStatus;
-
-  requestEnvelopeRef: string;
-  constraintPackRef: string;
-  effectivePolicySnapshotRef: string;
-  runVersionLockRef: string;
-
-  observationBundleRef?: string;
-  assessmentBundleRef?: string;
-  planGraphBundleRef?: string;
-
-  currentGraphVersion: number;
-  currentIteration: number;
-  maxIterations: number;
-
-  budgetLedgerRef: string;
-
-  startedAt?: string;
-  pausedAt?: string;
-  completedAt?: string;
-  failedAt?: string;
-  abortedAt?: string;
-
-  finalDecision?: HarnessDecision;
-  finalOutputRef?: string;
-
-  traceId: string;
+type OapeflirTraceProjection = {
+  projectionId: string;
+  harnessRunId: string;
+  currentStage:
+    | "observe"
+    | "assess"
+    | "plan"
+    | "execute"
+    | "feedback"
+    | "learn"
+    | "improve"
+    | "release";
+  stageRationaleRefs: string[];
+  sourceEventIds: string[];
   evidenceRefs: string[];
+  updatedAt: string;
 };
 ```
 
-## 4.2 RunStatus
-
-```ts
-type RunStatus =
-  | "created"
-  | "admitted"
-  | "observing"
-  | "assessing"
-  | "planning"
-  | "ready"
-  | "running"
-  | "pausing"
-  | "paused"
-  | "resuming"
-  | "replanning"
-  | "compensating"
-  | "completed"
-  | "failed"
-  | "aborted";
-```
-
-## 4.3 Run 状态机
+## 4.3 状态权威边界
 
 ```text
-created
-  → admitted
-  → observing
-  → assessing
-  → planning
-  → ready
-  → running
-  → completed
-
-running
-  → pausing
-  → paused
-  → resuming
-  → running
-
-running
-  → replanning
-  → ready
-  → running
-
-running
-  → compensating
-  → failed / aborted
-
-任何非终态
-  → failed / aborted
-```
-
-## 4.4 Run 终态封闭规则
-
-```text
-1. completed / failed / aborted 为终态，不允许迁出。
-2. terminal run 不允许再次 running。
-3. redrive 必须创建新的 runId 或 redriveRunId，不得覆盖原 run。
-4. failed run 的 repair 只能追加 RepairRecord，不得修改原始失败事件。
-5. aborted run 可被 replay 分析，但不得原地恢复。
-6. completed run 只能生成 follow-up run，不得继续追加执行节点。
+1. HarnessRun.status 是唯一可执行 Run 状态来源。
+2. OAPEFLIR 阶段只表达 stage projection，不拥有 run status / lease / retry counter / budget state。
+3. 任何真实状态迁移都必须经 RuntimeStateMachine.transition(command)。
+4. replay / redrive / repair 只能追加新的 Harness / Node / Attempt / Evidence 记录，不得覆盖旧 truth。
 ```
 
 ---
@@ -296,7 +226,8 @@ running
 ```ts
 type NodeRun = {
   nodeRunId: string;
-  runId: string;
+  harnessRunId: string;
+  planGraphBundleId: string;
   graphVersion: number;
   nodeId: string;
 
@@ -318,7 +249,7 @@ type NodeRun = {
   sideEffectRefs: string[];
   evaluationReportRef?: string;
 
-  error?: OapeflirError;
+  error?: AppError;
   evidenceRefs: string[];
 };
 ```
@@ -327,60 +258,50 @@ type NodeRun = {
 
 ```ts
 type NodeRunStatus =
-  | "pending"
-  | "blocked"
+  | "created"
   | "ready"
   | "leased"
   | "running"
-  | "waiting"
+  | "retry_wait"
+  | "awaiting_hitl"
+  | "reconciling"
   | "succeeded"
   | "failed"
-  | "retrying"
-  | "cancelled"
   | "skipped"
-  | "compensating"
-  | "compensated";
+  | "cancelled"
+  | "dependency_failed"
+  | "policy_blocked"
+  | "aborted";
 ```
 
 ## 5.3 Node 状态迁移
 
 ```text
-pending
-  → blocked / ready
-
-blocked
-  → ready / skipped / cancelled
+created
+  → ready
 
 ready
   → leased
   → running
 
 running
-  → waiting
-  → running
+  → retry_wait
+  → awaiting_hitl
+  → reconciling
+  → succeeded / failed / skipped / cancelled / dependency_failed / policy_blocked / aborted
 
-running
-  → succeeded / failed / cancelled
-
-failed
-  → retrying
+retry_wait
   → ready
-
-succeeded
-  → compensating
-  → compensated
 ```
 
 ## 5.4 Node 终态封闭规则
 
 ```text
-1. succeeded 不允许重新 running。
-2. compensated 不允许变回 succeeded。
-3. cancelled 不允许 resume，除非 redrive 创建新的 nodeRunId。
-4. failed retry 必须创建新的 attemptId。
-5. retry 不得覆盖原失败记录。
-6. skipped 必须记录 skipReason。
-7. redrive 必须保留 lineage。
+1. `succeeded / failed / skipped / cancelled / dependency_failed / policy_blocked / aborted` 为终态，不得迁出。
+2. retry 只能通过追加新的 attemptId 表达，不得覆盖原失败记录。
+3. `awaiting_hitl` 恢复后必须回到活跃执行链，不得伪装成普通 `blocked`。
+4. `reconciling` 只表示副作用/外部状态确认阶段，不得写成 `compensating / compensated` 这类由 OAPEFLIR 拥有的节点状态。
+5. redrive 必须保留 lineage。
 ```
 
 ## 5.5 AttemptLineage
@@ -449,7 +370,7 @@ type PlanGraphBundle = {
   riskPropagationReport: GraphRiskPropagationReport;
   worstPathAnalysis: GraphWorstPathAnalysis;
 
-  generatedBy: "planner_agent" | "human_operator" | "template" | "repair_worker";
+  generatedBy: "planner_agent" | "human_operator" | "template";
 
   promptExecutionRef?: string;
   modelDecisionRef?: string;
@@ -489,9 +410,7 @@ type PlanGraph = {
 type PlanNode = {
   nodeId: string;
 
-  type:
-    | "observe"
-    | "assess"
+  kind:
     | "llm_call"
     | "tool_call"
     | "verify"
@@ -697,6 +616,8 @@ type GraphWorstPathAnalysis = {
 
 # 12. Graph Scheduler 确定性调度
 
+Graph Scheduler 属于 `HarnessRuntime` 的 P4 执行职责；OAPEFLIR 只消费调度事实并生成 scheduler rationale / view。
+
 ## 12.1 ReadyNodeSchedulingPolicy
 
 ```ts
@@ -731,7 +652,7 @@ type ReadyNodeSchedulingPolicy = {
 2. 同一 graph + 同一 runtime seed + 同一 event history，必须得到相同调度顺序。
 3. parallel node 也必须稳定排序。
 4. replay 时不得重新选择调度顺序。
-5. 调度决策必须记录为 scheduler.decision_recorded 事件。
+5. 调度决策必须记录为 `platform.scheduler.decision_recorded` 事件。
 ```
 
 ---
@@ -841,106 +762,44 @@ type OapeflirEvent = {
 };
 ```
 
-## 14.2 OapeflirEventType
+## 14.2 Event Type 分层
 
 ```ts
-type OapeflirEventType =
-  | "run.created"
-  | "run.admitted"
-  | "run.observing_started"
-  | "run.assessing_started"
-  | "run.planning_started"
-  | "run.ready"
-  | "run.running"
-  | "run.paused"
-  | "run.resumed"
-  | "run.replanning_started"
-  | "run.completed"
-  | "run.failed"
-  | "run.aborted"
+type PlatformFactEventType =
+  | "platform.harness_run.created"
+  | "platform.harness_run.admitted"
+  | "platform.harness_run.running"
+  | "platform.harness_run.completed"
+  | "platform.harness_run.failed"
+  | "platform.node_run.ready"
+  | "platform.node_run.leased"
+  | "platform.node_run.running"
+  | "platform.node_run.awaiting_hitl"
+  | "platform.node_run.reconciling"
+  | "platform.node_run.succeeded"
+  | "platform.node_run.failed"
+  | "platform.side_effect.proposed"
+  | "platform.side_effect.committed"
+  | "platform.budget.reserved"
+  | "platform.budget.consumed";
 
-  | "graph.generated"
-  | "graph.normalized"
-  | "graph.validated"
-  | "graph.risk_propagated"
-  | "graph.patch_requested"
-  | "graph.patch_applied"
-  | "graph.scheduler_decision_recorded"
+type OapeflirProjectionEventType =
+  | "oapeflir.view.run_lifecycle"
+  | "oapeflir.view.stage"
+  | "oapeflir.view.graph"
+  | "oapeflir.view.node_lifecycle"
+  | "oapeflir.view.side_effect"
+  | "oapeflir.view.hitl"
+  | "oapeflir.view.budget"
+  | "oapeflir.rationale.decision";
+```
 
-  | "node.ready"
-  | "node.leased"
-  | "node.started"
-  | "node.waiting"
-  | "node.succeeded"
-  | "node.failed"
-  | "node.retry_scheduled"
-  | "node.cancelled"
-  | "node.skipped"
-  | "node.compensating"
-  | "node.compensated"
+硬规则：
 
-  | "llm.call_started"
-  | "llm.call_completed"
-  | "llm.call_failed"
-
-  | "tool.call_started"
-  | "tool.call_completed"
-  | "tool.call_failed"
-
-  | "side_effect.proposed"
-  | "side_effect.approved"
-  | "side_effect.committed"
-  | "side_effect.confirmed"
-  | "side_effect.ambiguous"
-  | "side_effect.compensation_started"
-  | "side_effect.compensated"
-
-  | "reconciliation.started"
-  | "reconciliation.matched_confirmed"
-  | "reconciliation.ambiguous"
-  | "reconciliation.requires_manual_review"
-  | "reconciliation.resolved"
-
-  | "hitl.requested"
-  | "hitl.lock_acquired"
-  | "hitl.resolved"
-  | "hitl.timeout"
-  | "hitl.responsibility_recorded"
-
-  | "budget.reserved"
-  | "budget.consumed"
-  | "budget.released"
-  | "budget.exhausted"
-
-  | "memory.write_requested"
-  | "memory.write_rejected"
-  | "memory.write_committed"
-
-  | "evaluation.started"
-  | "evaluation.completed"
-  | "evaluation.failed"
-
-  | "learning.candidate_created"
-  | "learning.candidate_quarantined"
-  | "learning.candidate_validated"
-  | "learning.candidate_rejected"
-  | "learning.candidate_promoted"
-
-  | "release.eval_started"
-  | "release.eval_passed"
-  | "release.eval_failed"
-  | "release.canary_started"
-  | "release.stable"
-  | "release.rolled_back"
-
-  | "incident.created"
-  | "incident.escalated"
-  | "incident.resolved"
-
-  | "redrive.requested"
-  | "redrive.started"
-  | "redrive.completed"
-  | "redrive.failed";
+```text
+1. truth projector 只能消费 platform.* facts。
+2. OAPEFLIR 事件只能使用 `oapeflir.view.*` / `oapeflir.rationale.*`，不得伪装成 `run.*` / `node.*` / `side_effect.*` truth 事件。
+3. projection event 不得反向驱动 HarnessRun / NodeRun / Budget / SideEffect truth。
 ```
 
 ## 14.3 Event 硬规则
@@ -959,11 +818,13 @@ type OapeflirEventType =
 
 # 15. Budget Ledger
 
+Budget truth 归属 P5/Budget 服务；HarnessRuntime 只能通过 `BudgetReservation` / `BudgetSettlement` 与之交互。OAPEFLIR 不拥有独立 budget state。
+
 ## 15.1 BudgetLedger
 
 ```ts
 type BudgetLedger = {
-  runId: string;
+  harnessRunId: string;
 
   reservedCost: number;
   actualCost: number;
@@ -1024,6 +885,8 @@ type BudgetReservation = {
 ---
 
 # 16. SideEffect Manager
+
+SideEffect 由 HarnessRuntime 在 P4 主链中受控推进；OAPEFLIR 只能消费 side-effect fact 并生成解释性投影，不拥有独立 side effect commit authority。
 
 ## 16.1 SideEffectRecord
 
@@ -1316,11 +1179,9 @@ type PromptExecutionContract = {
   promptVersion: string;
 
   role:
-    | "observe"
     | "planner"
     | "generator"
     | "evaluator"
-    | "summarizer"
     | "judge";
 
   allowedContextTaintLevels: ToolOutputTaint[];
@@ -1387,7 +1248,7 @@ type LlmDecisionRecord = {
 
   replayMode:
     | "reuse_recorded_output"
-    | "reexecute_with_same_seed"
+    | "isolated_reexecution_replay"
     | "forbidden";
 
   createdAt: string;
@@ -1409,8 +1270,8 @@ type DeterministicRuntimeSeed = {
 硬规则：
 
 ```text
-1. Replay 默认复用 recorded LLM output。
-2. 只有 simulation 模式允许重新调用 LLM。
+1. Replay 默认复用 recorded LLM output（Trace Replay）。
+2. 只有隔离 simulation / sandbox 模式允许 `isolated_reexecution_replay`，且结果不得覆盖原始 truth/evidence。
 3. 所有非确定性输入必须记录：时间、随机数、环境变量、配置版本。
 4. Replay 不得产生真实 side effect。
 ```
@@ -1457,11 +1318,8 @@ type MemoryWriteRequest = {
 
   memoryScope:
     | "working"
-    | "session"
-    | "episodic"
-    | "semantic"
-    | "procedural"
-    | "shared";
+    | "long_term"
+    | "shared_knowledge";
 
   contentRef: string;
 
@@ -1483,9 +1341,9 @@ type MemoryWriteRequest = {
 ## 22.2 Memory 写入硬规则
 
 ```text
-1. Tool output 不得直接写 long-term memory。
-2. potential_prompt_injection 不得写 semantic / procedural memory。
-3. restricted 数据不得写 shared memory。
+1. Tool output 不得直接写 `long_term` 或 `shared_knowledge`。
+2. potential_prompt_injection 不得写 `long_term` / `shared_knowledge`。
+3. restricted 数据不得写 `shared_knowledge`。
 4. Memory write 必须经过 before_memory_write guardrail。
 5. shared memory 晋升必须有审核记录。
 ```
@@ -1493,6 +1351,8 @@ type MemoryWriteRequest = {
 ---
 
 # 23. Guardrails 五层执行模型
+
+五层 Guardrail 由 HarnessRuntime 执行链与 P2 控制平面共同强制；OAPEFLIR 只记录 guardrail view / rationale，不拥有独立 guardrail authority。
 
 ## 23.1 五层 Guardrails
 
@@ -1553,7 +1413,10 @@ type GuardrailHookResult = {
 type DecisionInputBundle = {
   verificationResult?: VerificationResult;
   evaluationReport?: EvaluationReport;
-  guardrailResults: GuardrailHookResult[];
+  nodeState?: NodeRun;
+  hitlState?: HitlLock;
+  riskState?: RiskAssessment;
+  guardrailFindings: GuardrailHookResult[];
   policyOutcomes: PolicyOutcome[];
   sideEffectStates: SideEffectRecord[];
   budgetState: BudgetLedger;
@@ -1608,7 +1471,7 @@ type HarnessDecision =
 
 | 概念 | 含义 | 示例 |
 |---|---|---|
-| RuntimeProfile | 平台能力层级 | core / durable / governed / enterprise / learning |
+| RuntimeProfile | 平台能力层级（由 Harness / 平台治理注入，不归 OAPEFLIR 拥有） | mvp / hardening / enterprise |
 | RuntimeMode | 当前运行保护模式 | full_auto / read_only / manual_only |
 | AutonomyMode | Agent 自主权等级 | suggestion / supervised / semi_auto / full_auto |
 
@@ -1621,6 +1484,7 @@ type RuntimeMode =
   | "read_only"
   | "no_write"
   | "no_external_call"
+  | "no_rollout"
   | "manual_only"
   | "incident_mode";
 ```
@@ -1658,6 +1522,7 @@ Patch
 Override
 Takeover
 Resume
+Reject
 Abort
 ```
 
@@ -1871,15 +1736,13 @@ type RunVersionLock = {
 ## 30.1 配置优先级
 
 ```text
-Platform Default
-< Environment Override
+Platform Policy
 < Tenant Policy
-< Org Policy
 < Domain Policy
-< Pack Policy
-< AgentVersion Policy
-< Run ConstraintPack
-< Emergency Directive
+< Task ConstraintPack
+
+Emergency Directive
+  = formal override recorded alongside the 4-level merged snapshot
 ```
 
 ## 30.2 EffectivePolicySnapshot
@@ -1891,7 +1754,7 @@ type EffectivePolicySnapshot = {
   resolvedAt: string;
 
   sources: {
-    level: string;
+    level: "platform" | "tenant" | "domain" | "task";
     version: string;
     ref: string;
   }[];
@@ -1903,9 +1766,10 @@ type EffectivePolicySnapshot = {
 硬规则：
 
 ```text
-1. Emergency Directive 最高优先级。
-2. 下级配置只能收紧，不能放松上级安全约束。
-3. 所有最终生效配置必须生成 EffectivePolicySnapshot。
+1. 优先级只允许 `platform < tenant < domain < task` 四级叠加；不得引入额外运行时优先级轴绕过 ConstraintPack。
+2. Emergency Directive 最高优先级，但仍通过正式 directive 与 snapshot 记录生效。
+3. 下级配置只能收紧，不能放松上级安全约束。
+4. 所有最终生效配置必须生成 EffectivePolicySnapshot。
 ```
 
 ---
@@ -2082,19 +1946,18 @@ ImprovementChangeSet
 ## 34.1 命名规范
 
 ```text
-OAPEFLIR.{LAYER}.{CATEGORY}.{SPECIFIC}
+PLATFORM.{plane}.{component}.{category}
 ```
 
 示例：
 
 ```text
-OAPEFLIR.GRAPH.VALIDATION.NO_ENTRY_NODE
-OAPEFLIR.GRAPH.VALIDATION.UNBOUNDED_LOOP
-OAPEFLIR.NODE.STATE.INVALID_TRANSITION
-OAPEFLIR.SIDEEFFECT.CONFIRMATION.TIMEOUT
-OAPEFLIR.HITL.LOCK.CONFLICT
-OAPEFLIR.REPLAY.NONDETERMINISTIC_INPUT
-OAPEFLIR.LEARNING.CANDIDATE.PII_DETECTED
+PLATFORM.ORCHESTRATION.GRAPH.validation_failed
+PLATFORM.EXECUTION.NODE.invalid_transition
+PLATFORM.EXECUTION.SIDE_EFFECT.confirmation_timeout
+PLATFORM.CONTROL_PLANE.HITL.lock_conflict
+PLATFORM.OPS_MATURITY.REPLAY.nondeterministic_input
+PLATFORM.OPS_MATURITY.LEARNING.pii_detected
 ```
 
 ## 34.2 OapeflirError
@@ -2127,18 +1990,18 @@ type OapeflirError = {
 
 | Metric | 说明 |
 |---|---|
-| `oapeflir.run.total` | Run 总数 |
-| `oapeflir.run.duration_ms` | Run 端到端耗时 |
-| `oapeflir.graph.node.count` | 图节点数 |
-| `oapeflir.graph.replan.count` | 重规划次数 |
-| `oapeflir.node.retry.count` | Node 重试次数 |
-| `oapeflir.side_effect.ambiguous.count` | 副作用不确定次数 |
-| `oapeflir.reconciliation.pending.count` | 待对账数 |
-| `oapeflir.hitl.pending.count` | 待人工数 |
-| `oapeflir.budget.remaining` | 剩余预算 |
-| `oapeflir.guardrail.block.count` | Guardrail 拦截数 |
-| `oapeflir.evaluation.score` | 评估分 |
-| `oapeflir.learning.candidate.count` | 学习候选数 |
+| `harness.run.total` | HarnessRun 总数 |
+| `harness.run.duration_ms` | HarnessRun 端到端耗时 |
+| `harness.graph.node.count` | 图节点数 |
+| `harness.graph.replan.count` | 重规划次数 |
+| `harness.node.retry.count` | Node 重试次数 |
+| `harness.side_effect.ambiguous.count` | 副作用不确定次数 |
+| `harness.reconciliation.pending.count` | 待对账数 |
+| `harness.hitl.pending.count` | 待人工数 |
+| `harness.budget.remaining` | 剩余预算 |
+| `harness.guardrail.block.count` | Guardrail 拦截数 |
+| `harness.evaluation.score` | 评估分 |
+| `harness.learning.candidate.count` | 学习候选数 |
 
 ---
 
@@ -2261,117 +2124,40 @@ replay mismatch
 # 39. 实现目录建议
 
 ```text
-src/platform/oapeflir/
+src/platform/orchestration/harness/
+  index.ts
+  runtime-state-machine.ts
   runtime/
-    oapeflir-runtime.ts
-    run-state-machine.ts
-    node-state-machine.ts
-
   graph/
-    plan-graph.ts
-    graph-normalizer.ts
-    graph-validator.ts
-    graph-risk-propagator.ts
-    graph-worst-path-analyzer.ts
-    graph-scheduler.ts
-    graph-patch.ts
-
-  events/
-    event-registry.ts
-    event-store.ts
-    event-schemas/
-    replay-behavior.ts
-
-  budget/
-    budget-ledger.ts
-    budget-reservation.ts
-
-  context/
-    context-assembler.ts
-    context-contract.ts
-    taint-policy.ts
-    redaction-policy.ts
-
-  prompt/
-    prompt-execution-contract.ts
-    prompt-boundary-policy.ts
-
-  llm/
-    llm-decision-record.ts
-    deterministic-runtime-seed.ts
-
-  side-effects/
-    side-effect-manager.ts
-    side-effect-contract.ts
-    reversibility-profile.ts
-    reconciliation-state-machine.ts
-    compensation-manager.ts
-
   decision/
-    decision-input-bundle.ts
-    decision-engine.ts
-    decision-precedence-policy.ts
+  replay/
 
-  guardrails/
-    input-guardrail.ts
-    planning-guardrail.ts
-    tool-guardrail.ts
-    memory-guardrail.ts
-    output-guardrail.ts
+src/platform/state-evidence/
+  outbox/
+  reconciliation/
+  side-effect-ledger/
+  truth/
 
-  hitl/
-    hitl-lock.ts
-    hitl-escalation-policy.ts
-    human-responsibility-record.ts
+src/platform/control-plane/
+  approval-center/
+  incident-control/
+  directives/
 
-  memory/
-    memory-write-request.ts
-    memory-governance.ts
-
-  evaluation/
-    evaluation-harness.ts
-    evaluation-gate.ts
-    outcome-grader.ts
-    regression-suite.ts
-
-  learning/
-    learning-candidate.ts
-    learning-quarantine.ts
-    improvement-changeset.ts
-
-  release/
-    release-pipeline.ts
-    canary-controller.ts
-    rollback-controller.ts
-
-  lineage/
-    causal-lineage-query.ts
-    evidence-collector.ts
-
-  errors/
-    oapeflir-error.ts
-    error-taxonomy.ts
-
+src/platform/shared/
   observability/
-    metrics.ts
-    incident-rules.ts
-    trace-exporter.ts
+  lifecycle/
 
-  tests/
-    state-machine/
-    graph/
-    side-effects/
-    replay/
-    hitl/
-    learning/
-    fault-injection/
+src/platform/oapeflir/
+  projection/
+  rationale/
+  adapters/
 ```
 
 ---
 
 # 40. v4.4 最小落地路线
 
-## Phase A：Executable Core
+## Ring 1：MVP
 
 交付：
 
@@ -2395,7 +2181,7 @@ Budget Ledger 基础版
 可确定性 replay 调度顺序
 ```
 
-## Phase B：Governed Execution
+## Ring 2：Hardening
 
 交付：
 
@@ -2416,7 +2202,7 @@ ambiguous 可进入 reconciliation
 policy / guardrail / evaluator 冲突可裁决
 ```
 
-## Phase C：Durable + HITL
+## Ring 2 扩展：Durable + HITL
 
 交付：
 
@@ -2437,7 +2223,7 @@ worker crash 后可恢复
 长时 run 版本锁生效
 ```
 
-## Phase D：Evaluation + Learning
+## Ring 3：Enterprise / Learning
 
 交付：
 
@@ -2484,44 +2270,33 @@ ADR-OAPEFLIR-Replay-Never-Produces-Real-SideEffect
 
 ---
 
-# 42. 最终判断
+# 42. 最终定位
 
-OAPEFLIR v4.4 相比 v4.3 的关键升级是：
+OAPEFLIR v4.4 相比早期独立 runtime 草案的关键收敛是：
 
 | 维度 | v4.3 | v4.4 |
 |---|---|---|
-| 运行规范 | 生产运行契约 | 可执行规范 |
-| Plan | Graph 化 | Graph 可验证、可调度、可 patch |
-| Event | 有事件概念 | Event Registry + Replay Semantics |
-| 状态机 | 有状态机 | 终态封闭 + retry lineage |
-| 调度 | ready node | deterministic scheduler |
-| SideEffect | proposed/committed/confirmed | delivery semantics + reconciliation |
-| HITL | lock + resolve | scope + SLA + responsibility |
-| Replay | 有边界 | runtime seed + no real side effect |
-| Context | 有上下文 | per-role context contract |
-| Prompt | 分角色 | prompt execution contract |
-| Learning | quarantine | candidate state machine + contamination block |
-| Evaluation | 有评测 | release gate threshold |
-| 实现 | 可设计 | 可编码、可测试、可验证 |
+| 角色定位 | 曾混入独立 runtime 草案 | 明确退回为 HarnessRuntime 之上的认知/治理语义 |
+| Plan | 可被误读为 OAPEFLIR 自有执行图 | 作为 `HarnessRuntime` 使用的 `PlanGraphBundle` 语义输入 |
+| Event | truth / projection 边界混杂 | 明确区分 `platform.*` facts 与 `oapeflir.view.*` / `oapeflir.rationale.*` projections |
+| 状态机 | 可能与运行时 truth 重叠 | 只描述与 `HarnessRun / NodeRun` 对齐的受控语义，不再自立真相状态机 |
+| SideEffect / Budget / HITL | 曾被写成 OAPEFLIR 自有能力 | 明确回收至 Harness/P2/P5 主链，OAPEFLIR 仅解释与投影 |
+| Replay / Context / Prompt | 设计意图存在 | 继续保留，但作为 canonical contract 的迁移输入而非独立运行时规范 |
+| 实现价值 | 易被误读为直接编码基线 | 适合作为迁移设计输入和语义补充，不单独充当权威实现基线 |
 
 最终结论：
 
-> **OAPEFLIR v4.4 已经可以作为企业级 Agent 平台的核心 Runtime 详细设计基线。**
+> **OAPEFLIR v4.4 只能作为认知/治理语义与迁移设计输入使用，不能单独作为企业级 Agent 平台的权威 Runtime 基线。**
 
 它不再是“Agent 流程图”，而是：
 
 ```text
-一个以 PlanGraph 为核心，
-以 Event Registry 为事实历史，
-以 Deterministic Scheduler 为执行顺序，
-以 SideEffect Manager 为风险边界，
-以 HITL Runtime 为人工控制面，
-以 Evaluation Harness 为质量门禁，
-以 Learning Release Pipeline 为演进机制的
-生产级 Agent Runtime。
+一个把 PlanGraph、Event、Replay、Guardrail、HITL、Learning 等设计意图
+收敛到 `HarnessRuntime` 主链边界之上的
+认知/治理语义补充规范与迁移输入。
 ```
 
-v4.4 之后的下一步不建议继续扩大架构范围，而应该进入：
+v4.4 之后的下一步不应该再把本文扩大成第二套运行时，而应该进入：
 
 ```text
 OAPEFLIR v4.4 Implementation Addendum
@@ -2545,32 +2320,15 @@ CI Test Matrix
 
 ## v4.3 Canonical Compatibility Override
 
-本节修复 `platform-architecture-implementation-consistency-audit.md` 中 F-1 至 F-25 的 OAPEFLIR spec 偏差。自本节起，本文所有将 OAPEFLIR 描述为 runtime、run owner、scheduler owner、budget owner、side-effect owner、error-code namespace owner 或 truth-event owner 的段落，均降级为迁移输入或投影视图说明。
+本节修复 `platform-architecture-implementation-consistency-audit.md` 中 F-1 至 F-25 的 OAPEFLIR spec 偏差。根因是这份 spec 在一次文档并版中同时保留了“旧的独立 OAPEFLIR runtime 草案”和“后补的 Harness 收敛段落”，导致前半部继续把 OAPEFLIR 写成执行权威，后半部又声明 Harness 才是执行权威，正文内部自相矛盾。
 
-权威规则：HarnessRuntime 是唯一执行入口；HarnessRun / NodeRun / PlanGraphBundle / BudgetReservation / SideEffectRecord 属于 platform runtime truth；OAPEFLIR 只产生 `oapeflir.view.*` 与 `oapeflir.rationale.*` 投影事件；错误码命名空间使用 `PLATFORM.{plane}.{component}.{category}`；LLM replay 默认是 trace replay，不假设 deterministic reexecute。
+本次正文修复后的直接落点：
 
-- F-1: Spec定位OAPEFLIR为"生产级Agent Runtime"含独立OapeflirRuntime；架构明确"OAPEFLIR不是执行引擎"仅为认知/治理语义框架。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-2: Spec定义OapeflirRun为规范运行实体含完整状态/预算；架构声明HarnessRun为唯一权威Run，OapeflirRun列于附录H废弃别名。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-3: Spec定义OAPEFLIR所有的RunStatus 15态驱动执行；架构禁止OAPEFLIR拥有run status/lease/retry counter/side effect commit/budget state。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-4: Spec呈现"OAPEFLIR Runtime"为顶层执行运行时；架构说HarnessRuntime为唯一可执行运行时入口。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-5: Spec用 run._/node._/side_effect._ 作为OAPEFLIR事件；架构强制OAPEFLIR仅用 oapeflir.view._/oapeflir.rationale.\*。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-6: Spec将Graph Scheduler置于OAPEFLIR Runtime内；架构将其置于P4执行平面HarnessRuntime管辖下。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-7: Spec假设LLM可确定性重放(reexecute_with_same_seed)；架构明确"不假设LLM可确定性重放"，默认Trace Replay。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-8: Spec用OAPEFLIR.\*错误码命名空间；架构强制PLATFORM.{plane}.{component}.{category}并禁止OAPEFLIR进入错误码命名空间。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-9: Spec定义13个NodeRunStatus含compensating/compensated由OAPEFLIR管辖；架构规范定义在HarnessRuntime下，所有权冲突。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-10: PlanNode字段名Spec用type(14种)，架构用kind。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-11: Spec将BudgetLedger置于OAPEFLIR所有含直接reservation语义；架构BudgetReservation归P5/Budget服务。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-12: Spec将SideEffectManager置于OAPEFLIR Runtime内；架构置于P4执行平面HarnessRuntime治理下。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-13: Spec建议所有运行时代码在src/platform/oapeflir/；架构推荐Harness中心目录结构，OAPEFLIR仅为trace/projection适配器。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-14: Spec声称v4.4为核心Runtime设计基线；架构v4.3将v4.4 Spec降级为"迁移输入"非权威基线。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-15: Spec的DecisionInputBundle缺少hitlState/nodeState；架构额外含riskState/guardrailFindings。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-16: Spec含observe/summarizer prompt角色；架构仅认Planner/Generator/Evaluator。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-17: Spec定义5个RuntimeProfile层级(core/durable/governed/enterprise/learning)作OAPEFLIR内置；架构§14.8/§42为独立定义。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-18: Spec列6种HITL能力；架构§45.27额外含reject。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-19: 两者均定义5层Guardrail但Spec置于OAPEFLIR治理，架构置于Harness§45.20 + P2控制平面。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-20: Spec定义6种Memory scope；架构用3层模型(Working/Long-term/Shared Knowledge)，分类法不同。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-21: Spec用oapeflir.run._指标前缀；架构用harness.run._。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-22: Spec用4阶段交付(A-D)；架构用3环模型(MVP/Hardening/Enterprise)。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-23: Spec含generatedBy含repair_worker；架构PlanGraphBundle无此字段，出处通过evidence refs追踪。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-24: Spec列9级策略优先级；架构ConstraintPack用4级合并(平台<租户<业务域<任务)。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
-- F-25: Spec Execute阶段产出ExecutionReceipt；架构标注为废弃，规范为NodeAttemptReceipt。修复：该描述不再作为 OAPEFLIR runtime authority；以 `docs_zh/architecture/00-platform-architecture.md`、ADR-110、ADR-111 与 canonical executable contracts 为准。
+- `§0 / §2 / §3 / §42`：OAPEFLIR 改回受控认知/治理语义，`HarnessRuntime` 是唯一执行入口。
+- `§4`：删除把 `OapeflirRun` 当作权威运行实体的写法，改为 `HarnessRun` truth + `OapeflirTraceProjection` 投影。
+- `§5`：`NodeRun` 字段与状态机收敛到 Harness/RuntimeStateMachine 权威语义，不再使用 `compensating / compensated` 作为节点状态。
+- `§7`：`PlanNode.type` 改为 `kind`，`generatedBy` 删除 `repair_worker`。
+- `§14`：事件分层改为 `platform.*` facts 与 `oapeflir.view.* / oapeflir.rationale.*` projections。
+- `§15 / §16 / §23 / §25 / §26 / §30`：预算、副作用、guardrail、runtime profile、HITL、策略优先级都明确收敛到 Harness/P2/P5 正式边界。
+- `§19 / §20 / §22 / §24`：prompt 角色、replay 方式、memory scope、decision bundle 收敛到现行 canonical contract。
+- `§34 / §35 / §39 / §40`：错误码、指标、实现目录、落地路线改为 `PLATFORM.*`、`harness.*`、Harness 中心目录与 `Ring 1/2/3`。
