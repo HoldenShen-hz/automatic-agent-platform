@@ -220,6 +220,11 @@ export class ExecutionDispatchService {
               leaseId: null,
               fallbackApplied: false,
               evaluations: [],
+              // R6-7: §14.9 scheduler event fields
+              readySet,
+              selectedNodeIds: [],
+              orderingPolicyVersion: "1.0",
+              workerPoolSnapshotRef: null,
             });
 
       return {
@@ -258,6 +263,11 @@ export class ExecutionDispatchService {
           leaseId: null,
           fallbackApplied: false,
           evaluations: [],
+          // R6-7: §14.9 scheduler event fields
+          readySet,
+          selectedNodeIds: [],
+          orderingPolicyVersion: "1.0",
+          workerPoolSnapshotRef: null,
         });
         continue;
       }

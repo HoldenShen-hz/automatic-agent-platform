@@ -36,7 +36,7 @@ function makeSideEffectTransitionCommand(
   aggregate: ReturnType<typeof createSideEffectRecord>,
   fromStatus: SideEffectStatus,
   toStatus: SideEffectStatus,
-  extra?: { leaseId?: string; fencingToken?: string },
+  extra?: { leaseId?: string; fencingToken?: string; preCommitPolicyProofRef?: string },
 ) {
   return {
     aggregateType: "SideEffectRecord" as const,
@@ -49,6 +49,9 @@ function makeSideEffectTransitionCommand(
     emittedBy: "test-suite",
     ...(extra?.leaseId != null ? { leaseId: extra.leaseId } : {}),
     ...(extra?.fencingToken != null ? { fencingToken: extra.fencingToken } : {}),
+    sideEffectSafety: {
+      preCommitPolicyProofRef: extra?.preCommitPolicyProofRef ?? "policy-proof-ref",
+    },
   };
 }
 

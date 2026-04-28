@@ -113,7 +113,7 @@ test('canResumeFromPanic trims and deduplicates approvers', () => {
 test('PlatformPanicService activates panic directive', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 3,
     issuedBy: 'admin1',
@@ -123,7 +123,7 @@ test('PlatformPanicService activates panic directive', () => {
   const activation = service.activate(request);
 
   assert.ok(activation.directive.directiveId.startsWith('panic-'));
-  assert.equal(activation.directive.scope, 'platform:prod');
+  assert.equal(activation.directive.scope, 'platform');
   assert.equal(activation.directive.reasonCode, 'security.breach');
   assert.equal(activation.directive.severity, 'full');
   assert.equal(activation.acknowledgments.length, 5); // P1-P5
@@ -133,7 +133,7 @@ test('PlatformPanicService activates panic directive', () => {
 test('PlatformPanicService requires minimum 2 approvers', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'system_overload',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -159,7 +159,7 @@ test('PlatformPanicService rejects invalid scope level', () => {
 test('PlatformPanicService evaluates execution blocked by freeze mode', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -168,7 +168,7 @@ test('PlatformPanicService evaluates execution blocked by freeze mode', () => {
   service.activate(request);
 
   const decision = service.evaluateExecution({
-    scope: 'platform:prod',
+    scope: 'platform',
     mode: 'deploy',
   });
 
@@ -180,7 +180,7 @@ test('PlatformPanicService evaluates execution blocked by freeze mode', () => {
 test('PlatformPanicService evaluates execution not blocked when mode not frozen', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -190,7 +190,7 @@ test('PlatformPanicService evaluates execution not blocked when mode not frozen'
   service.activate(request);
 
   const decision = service.evaluateExecution({
-    scope: 'platform:prod',
+    scope: 'platform',
     mode: 'write', // 'write' is not in freeze modes
   });
 
@@ -201,7 +201,7 @@ test('PlatformPanicService evaluates execution not blocked when mode not frozen'
 test('PlatformPanicService allows actor in allowList', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -211,7 +211,7 @@ test('PlatformPanicService allows actor in allowList', () => {
   service.activate(request);
 
   const decision = service.evaluateExecution({
-    scope: 'platform:prod',
+    scope: 'platform',
     mode: 'deploy',
     actorId: 'bypass-actor-id',
   });
@@ -223,7 +223,7 @@ test('PlatformPanicService allows actor in allowList', () => {
 test('PlatformPanicService resumes from panic with valid plan', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -232,7 +232,7 @@ test('PlatformPanicService resumes from panic with valid plan', () => {
   service.activate(request);
 
   const plan: ResumePlan = {
-    scope: 'platform:prod',
+    scope: 'platform',
     approvedBy: ['admin1', 'admin2'],
     approvedRoles: ['platform_admin', 'platform_admin'],
     checkpointsVerified: true,
@@ -241,7 +241,7 @@ test('PlatformPanicService resumes from panic with valid plan', () => {
     validationRunPassed: true,
   };
 
-  const receipt = service.resume('platform:prod', plan);
+  const receipt = service.resume('platform', plan);
 
   assert.equal(receipt.resumed, true);
   assert.ok(receipt.resumedAt != null);
@@ -251,7 +251,7 @@ test('PlatformPanicService resumes from panic with valid plan', () => {
 test('PlatformPanicService cannot resume without valid plan', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -260,12 +260,12 @@ test('PlatformPanicService cannot resume without valid plan', () => {
   service.activate(request);
 
   const plan: ResumePlan = {
-    scope: 'platform:prod',
+    scope: 'platform',
     approvedBy: ['user1'], // insufficient
     checkpointsVerified: false, // not verified
   };
 
-  const receipt = service.resume('platform:prod', plan);
+  const receipt = service.resume('platform', plan);
 
   assert.equal(receipt.resumed, false);
   assert.ok(receipt.reasonCodes.includes('panic.resume_checkpoints_incomplete'));
@@ -297,25 +297,25 @@ test('PlatformPanicService lists active directives sorted by scope', () => {
 test('PlatformPanicService propagates to target scopes', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'region',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
     requiredApprovers: ['admin1', 'admin2'],
-    targetScopes: ['platform:prod', 'platform:prod:us-east'],
+    targetScopes: ['region', 'region:us-east'],
   };
   service.activate(request);
 
   // Direct scope
-  const direct = service.getActive('platform:prod');
+  const direct = service.getActive('region');
   assert.ok(direct != null);
 
   // Inherited scope
-  const inherited = service.getActive('platform:prod:us-east');
+  const inherited = service.getActive('region:us-east');
   assert.ok(inherited != null);
 
   // Unrelated scope
-  const unrelated = service.getActive('platform:staging');
+  const unrelated = service.getActive('tenant');
   assert.equal(unrelated, null);
 });
 
@@ -348,7 +348,7 @@ test('PlatformPanicService resolves most specific scope match', () => {
 test('PlatformPanicService stores and retrieves resume receipt', () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform:prod',
+    scope: 'platform',
     reasonCode: 'security.breach',
     activeIncidents: 1,
     issuedBy: 'admin1',
@@ -357,7 +357,7 @@ test('PlatformPanicService stores and retrieves resume receipt', () => {
   service.activate(request);
 
   const plan: ResumePlan = {
-    scope: 'platform:prod',
+    scope: 'platform',
     approvedBy: ['admin1', 'admin2'],
     approvedRoles: ['platform_admin', 'platform_admin'],
     checkpointsVerified: true,
@@ -366,8 +366,8 @@ test('PlatformPanicService stores and retrieves resume receipt', () => {
     validationRunPassed: true,
   };
 
-  service.resume('platform:prod', plan);
-  const receipt = service.getResumeReceipt('platform:prod');
+  service.resume('platform', plan);
+  const receipt = service.getResumeReceipt('platform');
 
   assert.ok(receipt != null);
   assert.equal(receipt!.resumed, true);

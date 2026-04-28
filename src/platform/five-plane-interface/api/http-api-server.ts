@@ -8,7 +8,7 @@ import type { ChannelGatewayDeliveryService } from "../channel-gateway/channel-g
 import type { ApprovalService } from "../../control-plane/approval-center/approval-service.js";
 import { ConfigRolloutService } from "../../control-plane/config-center/config-rollout-service.js";
 import { TenantBoundaryRegistryService } from "../../control-plane/tenant/index.js";
-import { ApiAuthService } from "./api-auth-service.js";
+import { ApiAuthService, type ApiPrincipal } from "./api-auth-service.js";
 import type { DivisionRegistry } from "../../../domains/governance/division-loader.js";
 import { safeLoadDivisionRegistry } from "../../../domains/governance/safe-load-division-registry.js";
 import { InspectService } from "../../shared/observability/inspect-service.js";
@@ -262,6 +262,11 @@ export class HttpApiServer {
     const startedAt = Date.now();
     const headers = normalizeHeaders(options.headers);
     const method = options.method ?? "GET";
+    // Authenticate for inject requests too so rate limiting can use principal context
+    const principal = authenticateOptionalPrincipal(
+      { method, url: options.url, headers, body: options.body ?? undefined },
+      this.options.authService ?? null,
+    );
     const response = this.decoratePayload(
       method === "OPTIONS"
         ? {
@@ -274,7 +279,7 @@ export class HttpApiServer {
             url: options.url,
             headers,
             body: options.body ?? null,
-          }),
+          }, principal, {}),
       headers.origin,
     );
     this.recordPrometheusHttpMetric(method, options.url, response.statusCode, Date.now() - startedAt);
@@ -319,7 +324,7 @@ export class HttpApiServer {
       else if (this.rateLimiter != null) {
         const clientIp = request.socket?.remoteAddress ?? "unknown";
         const tenantId = principal?.tenantId ?? "anonymous";
-        const principalId = principal?.subject ?? "anonymous";
+        const principalId = principal?.actorId ?? "anonymous";
         // Use tenant + principal for rate limit key per §9.2
         const rateLimitKey = `${tenantId}:${principalId}:${clientIp}`;
         const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(rateLimitKey);
@@ -549,6 +554,7 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
+        intakeAdmissionService: this.options.intakeAdmissionService ?? null,
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({

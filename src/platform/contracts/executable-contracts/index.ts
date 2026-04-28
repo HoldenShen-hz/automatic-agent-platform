@@ -71,6 +71,50 @@ export interface ArtifactRef {
   readonly version?: string;
 }
 
+// =============================================================================
+// Inter-plane Contracts (canonical per §5.3)
+// =============================================================================
+
+export interface EventAppendCommand<TPayload = unknown> {
+  readonly commandId: string;
+  readonly traceId: string;
+  readonly principal: PrincipalRef;
+  readonly tenantId: string;
+  readonly aggregateType: string;
+  readonly aggregateId: string;
+  readonly aggregateSeq: number;
+  readonly eventType: string;
+  readonly payload: TPayload;
+  readonly idempotencyKey: string;
+  readonly replayBehavior?: EventReplayBehavior;
+  readonly createdAt: string;
+}
+
+export interface AuditAppendCommand<TPayload = unknown> {
+  readonly commandId: string;
+  readonly traceId: string;
+  readonly principal: PrincipalRef;
+  readonly tenantId: string;
+  readonly category: "decision" | "execution" | "approval" | "compliance" | "audit";
+  readonly targetRef: string;
+  readonly content: TPayload;
+  readonly evidenceRef?: string;
+  readonly createdAt: string;
+}
+
+export interface ArtifactWriteCommand {
+  readonly commandId: string;
+  readonly traceId: string;
+  readonly principal: PrincipalRef;
+  readonly tenantId: string;
+  readonly artifactId: string;
+  readonly uri: string;
+  readonly hash?: string;
+  readonly version?: string;
+  readonly retentionPolicyRef?: string;
+  readonly createdAt: string;
+}
+
 export interface UserConfirmationReceipt {
   readonly receiptId: string;
   readonly confirmedBy: PrincipalRef;
