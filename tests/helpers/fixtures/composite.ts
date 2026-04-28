@@ -317,7 +317,15 @@ export function createCompleteHarnessRun(
     }),
   );
 
-  return { harnessRun, planGraphBundle, budgetLedger, nodeRuns };
+  return {
+    harnessRun,
+    planGraphBundle: {
+      ...planGraphBundle,
+      graph,
+    },
+    budgetLedger,
+    nodeRuns,
+  };
 }
 
 /**

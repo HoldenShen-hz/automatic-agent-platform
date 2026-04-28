@@ -86,9 +86,9 @@ export class WebSocketBridge {
     taskScopeResolver: TaskProjectionScopeResolver | null = null,
   ) {
     this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
-    this.wss = new WebSocketServer({ server, path: "/ws" });
+    this.wss = new WebSocketServer({ server, path: "/ws/v1/stream" });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
-    logger.info("WebSocket bridge initialized", { path: "/ws" });
+    logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
   }
 
   /**

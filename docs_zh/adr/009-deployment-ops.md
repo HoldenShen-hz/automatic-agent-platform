@@ -136,3 +136,7 @@ Phase 1-2 采用 SQLite，但必须承认其边界：
 - `§3.8`
 - `§9`
 - `§12`
+
+## v4.3 ADR Remediation
+
+- R6-50: 修复目录结构引用。ADR-009 原先描述核心服务层放在 `src/core/`，与 v4.3 §35 canonical 目录结构 `src/platform/` 不符。修复：正文改为 `src/platform/`（v4.3 §35 canonical）。

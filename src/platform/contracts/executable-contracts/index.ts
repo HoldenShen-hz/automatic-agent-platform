@@ -130,6 +130,7 @@ export interface RequestEnvelope {
   readonly principal: PrincipalRef;
   readonly traceId: string;
   readonly idempotencyKey: string;
+  readonly priority: number;
   readonly requestHash: string;
   readonly constraintPackRef: string;
   readonly budgetIntent: BudgetIntent;

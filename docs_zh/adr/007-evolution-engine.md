@@ -112,3 +112,7 @@ HarnessRuntime / observability 应对以下事件给出告警或通知：
 - `OAPEFLIR §9`
 - `OAPEFLIR §E.1`
 - `OAPEFLIR §L.3.2`
+
+## v4.3 ADR Remediation
+
+- R6-51: 修复生命周期所有权归属。ADR-007 原先描述 "Supervisor / observability 继续负责生命周期管理"，与 v4.3 §45 将所有生命周期控制收口到 HarnessRuntime 的决策冲突。修复：正文改为 "HarnessRuntime 负责生命周期管理、实时监控、健康检查与指标采集"。

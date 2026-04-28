@@ -625,8 +625,8 @@ const REQUIRED_FIELDS = {
   HarnessDecision: ["harnessDecisionId", "decisionInputBundleId", "decisionKind", "decision", "deciderType", "deciderRef", "reasonCode", "createdAt"],
   HumanResponsibilityRecord: ["humanResponsibilityRecordId", "harnessDecisionId", "humanActorRef", "responsibilityScope", "acknowledgedRiskClass", "acknowledgementReceiptRef", "effectiveFrom"],
   EventEnvelope: ["eventId", "runId", "eventType", "schemaVersion", "aggregateType", "aggregateId", "aggregateSeq", "tenantId", "traceId", "payloadHash", "payload", "replayBehavior", "occurredAt"],
-  PlatformFactEvent: ["eventId", "eventType", "eventVersion", "aggregateType", "aggregateId", "aggregateSeq", "tenantId", "traceId", "payloadHash", "payload", "occurredAt"],
-  OapeflirViewEvent: ["eventId", "eventType", "eventVersion", "aggregateType", "aggregateId", "aggregateSeq", "tenantId", "traceId", "payloadHash", "payload", "occurredAt", "derivedFromEventIds", "projectionOnly"],
+  PlatformFactEvent: ["eventId", "eventType", "schemaVersion", "aggregateType", "aggregateId", "aggregateSeq", "tenantId", "traceId", "payloadHash", "payload", "occurredAt"],
+  OapeflirViewEvent: ["eventId", "eventType", "schemaVersion", "aggregateType", "aggregateId", "aggregateSeq", "tenantId", "traceId", "payloadHash", "payload", "occurredAt", "derivedFromEventIds", "projectionOnly"],
 } satisfies Record<CanonicalContractName, readonly string[]>;
 
 export const CONTRACT_JSON_SCHEMAS: Record<CanonicalContractName, ContractJsonSchema> =
