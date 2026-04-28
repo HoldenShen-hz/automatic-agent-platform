@@ -301,11 +301,17 @@ export class HttpApiServer {
     });
     let payload: ApiResponsePayload;
 
+    // Authenticate early so we can use principal/tenant for rate limiting
+    const principal = authenticateOptionalPrincipal(
+      { method: request.method, url: request.url, headers, body: undefined },
+      this.options.authService ?? null,
+    );
+
     try {
       // 1. Preflight (CORS OPTIONS) — no rate limit, no body
       if ((request.method ?? "GET") === "OPTIONS") {
         payload = {
-          statusCode: 204,
+          statusCode: 204          ,
           headers: buildPreflightHeaders(headers.origin, this.corsConfig),
           body: "",
         };
@@ -313,26 +319,36 @@ export class HttpApiServer {
       // 2. Rate limiting check (non-OPTIONS only)
       else if (this.rateLimiter != null) {
         const clientIp = request.socket?.remoteAddress ?? "unknown";
-        const endpoint = this.extractEndpointKey(request.url ?? "/");
-        const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(`${clientIp}:${endpoint}`);
+        const tenantId = principal?.tenantId ?? "anonymous";
+        const principalId = principal?.subject ?? "anonymous";
+        // Use tenant + principal for rate limit key per §9.2
+        const rateLimitKey = `${tenantId}:${principalId}:${clientIp}`;
+        const result: RateLimitCheckResult = await this.rateLimiter.checkAndConsume(rateLimitKey);
+        // Attach rate limit headers to response
+        const rateLimitHeaders = this.buildRateLimitHeaders(result);
         if (!result.allowed) {
-          payload = this.buildJsonErrorResponse(requestId, 429, {
-            code: "api.rate_limit_exceeded",
-            message: "Too many requests. Please retry later.",
-          });
-          if (result.retryAfterMs != null) {
-            payload = {
-              ...payload,
-              headers: { ...payload.headers, "retry-after-ms": String(result.retryAfterMs) },
-            };
-          }
+          payload = {
+            statusCode: 429            ,
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "x-request-id": requestId,
+              ...rateLimitHeaders,
+            },
+            body: JSON.stringify({
+              requestId,
+              error: {
+                code: "api.rate_limit_exceeded",
+                message: "Too many requests. Please retry later.",
+              },
+            }, null, 2),
+          };
         } else {
-          payload = await this.routeRequest(requestId, request, headers);
+          payload = await this.routeRequest(requestId, request, headers, principal, rateLimitHeaders);
         }
       }
       // 3. No rate limiter — normal routing
       else {
-        payload = await this.routeRequest(requestId, request, headers);
+        payload = await this.routeRequest(requestId, request, headers, principal, {});
       }
     } catch (error) {
       payload = this.handleError(error, requestId, {

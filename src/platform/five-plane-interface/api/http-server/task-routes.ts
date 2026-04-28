@@ -34,6 +34,9 @@ import type { InspectService } from "../../../shared/observability/inspect-servi
 import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { IntakeAdmissionService } from "../../orchestration/harness/runtime/intake-admission-service.js";
+import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource } from "../../contracts/executable-contracts/index.js";
+import { createPrincipalRef } from "../../contracts/executable-contracts/index.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
