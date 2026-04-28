@@ -22,10 +22,45 @@ export function mapTrustLevel(score: number): TrustLevel {
   return "untrusted";
 }
 
-export function mapTrustLevelToAutonomyLevel(level: TrustLevel): ArchitectureAutonomyLevel {
+export interface RiskCheckOptions {
+  readonly domainId?: string;
+  readonly riskClass?: "low" | "medium" | "high" | "critical";
+  readonly isHighRiskDomain?: boolean;
+  readonly requiresHumanAccountable?: boolean;
+}
+
+/**
+ * R1-10: Inherent risk check before mapping trust level to autonomy level.
+ * Per architecture, fully_trusted cannot map directly to full_auto without
+ * verifying no inherent risk/compliance/sandbox concerns exist.
+ */
+export function checkInherentRisk(options: RiskCheckOptions): boolean {
+  // Critical risk class or high-risk domain: no full auto
+  if (options.riskClass === "critical") {
+    return false;
+  }
+  if (options.riskClass === "high" || options.isHighRiskDomain) {
+    return false;
+  }
+  // Human accountable domains: no full auto
+  if (options.requiresHumanAccountable) {
+    return false;
+  }
+  return true;
+}
+
+export function mapTrustLevelToAutonomyLevel(
+  level: TrustLevel,
+  options?: RiskCheckOptions,
+): ArchitectureAutonomyLevel {
+  // R1-10: Before mapping fully_trusted to full_auto, verify inherent risk
+  if (level === "fully_trusted") {
+    if (options != null && !checkInherentRisk(options)) {
+      return "semi_auto"; // Downgrade due to inherent risk
+    }
+    return "full_auto";
+  }
   switch (level) {
-    case "fully_trusted":
-      return "semi_auto";
     case "trusted":
     case "semi_trusted":
       return "semi_auto";

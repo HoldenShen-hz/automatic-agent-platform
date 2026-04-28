@@ -131,7 +131,7 @@ export class DashboardWebSocketServer {
       }
     }
     this.connections.clear();
-    this.dashboardSubscribers.clear();
+    this.channelSubscribers.clear();
   }
 
   /**

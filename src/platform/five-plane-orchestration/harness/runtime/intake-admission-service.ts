@@ -219,11 +219,80 @@ export class IntakeAdmissionService {
       ambiguityPolicy: input.confirmationReceipt == null ? "require_confirmation" : "safe_default",
     });
 
-    // If clarification session exists and is still pending, return early with session
+    // R6-1: If clarification session exists and is still pending, return with clarification needed
+    // Per §5.3, ClarificationSession stage must gate the creation of ConfirmedTaskSpec
     if (clarificationSession != null && clarificationSession.stage === "pending_clarification") {
-      // Note: In a full implementation, we would emit a clarification_needed event
-      // and return a result that indicates the task is waiting for user confirmation
-      // For now, we proceed to create the confirmed task spec but flag it appropriately
+      // Emit clarification_needed event - cannot proceed without user confirmation
+      const clarificationEvent = createPlatformFactEvent({
+        eventType: "platform.intake.clarification_needed",
+        aggregateType: "TaskDraft",
+        aggregateId: taskDraft.taskDraftId,
+        aggregateSeq: 1,
+        tenantId: input.tenantId,
+        traceId: input.traceId,
+        payload: {
+          sessionId: clarificationSession.sessionId,
+          taskDraftId: clarificationSession.taskDraftId,
+          stage: clarificationSession.stage,
+          ambiguityFlags: clarificationSession.ambiguityFlags,
+          createdAt: clarificationSession.createdAt,
+          expiresAt: clarificationSession.expiresAt,
+          riskClass: input.riskPreview.riskClass,
+          goal: input.goal,
+        },
+        schemaOwner: "intake-admission-service",
+        consumerContractTests: ["intake-admission-service.test.ts"],
+      });
+
+      // Return early - confirmedTaskSpec will be created once user responds to clarification
+      // Use placeholder to satisfy type requirements; caller must check events for clarification_needed
+      const result: HarnessAdmissionResult = {
+        taskDraft,
+        confirmedTaskSpec: Object.assign({}, createConfirmedTaskSpec({
+          taskDraftId: taskDraft.taskDraftId,
+          tenantId: input.tenantId,
+          principal: input.principal,
+          goal: input.goal,
+          inputs: input.inputs ?? {},
+          constraintPackRef: input.constraintPackRef,
+          riskClass: input.riskPreview.riskClass,
+          confirmationReceipt: input.confirmationReceipt ?? undefined,
+          idempotencyKey: input.idempotencyKey,
+          traceId: input.traceId,
+        }), { _placeholder: true } as unknown as ConfirmedTaskSpec),
+        requestEnvelope: Object.assign({}, createRequestEnvelopeFromConfirmedTask({
+          confirmedTaskSpec: createConfirmedTaskSpec({
+            taskDraftId: taskDraft.taskDraftId,
+            tenantId: input.tenantId,
+            principal: input.principal,
+            goal: input.goal,
+            inputs: input.inputs ?? {},
+            constraintPackRef: input.constraintPackRef,
+            riskClass: input.riskPreview.riskClass,
+            confirmationReceipt: input.confirmationReceipt ?? undefined,
+            idempotencyKey: input.idempotencyKey,
+            traceId: input.traceId,
+          }),
+          budgetIntent: input.budgetIntent,
+          requestHash: `request:${input.idempotencyKey}`,
+        }), { _placeholder: true } as unknown as RequestEnvelope),
+        runVersionLock: Object.assign({}, createRunVersionLock({
+          harnessRunId: `pending:${input.idempotencyKey}`,
+          runtimeProfileVersion: input.runtimeProfileVersion ?? "runtime-profile:default",
+        }), { _placeholder: true } as unknown as RunVersionLock),
+        harnessRun: Object.assign({}, createHarnessRun({
+          tenantId: input.tenantId,
+          confirmedTaskSpecId: `pending:${input.idempotencyKey}`,
+          requestEnvelopeId: `pending:${input.idempotencyKey}`,
+          requestHash: `request:${input.idempotencyKey}`,
+          constraintPackRef: input.constraintPackRef,
+          versionLockId: `pending:${input.idempotencyKey}`,
+          budgetLedgerId: `pending:${input.idempotencyKey}`,
+        }), { _placeholder: true } as unknown as HarnessRun),
+        events: [clarificationEvent],
+      };
+      this.admittedByIdempotencyKey.set(input.idempotencyKey, result);
+      return result;
     }
 
     const confirmedTaskSpec = createConfirmedTaskSpec({

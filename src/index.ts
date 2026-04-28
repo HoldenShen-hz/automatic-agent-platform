@@ -134,20 +134,27 @@ export async function runPlatformRootDemo(): Promise<void> {
     request: "Create the minimal stable single-agent execution baseline.",
   });
 
+  // R4-63: Use HarnessRun/NodeRun model instead of deprecated currentStepIndex/stepOutputs
+  const harnessRun = snapshot.harnessRun;
+  const nodeRuns = snapshot.nodeRuns ?? [];
+
   console.log(
     JSON.stringify(
       {
-        task: {
-          id: snapshot.task.id,
-          status: snapshot.task.status,
-          output: snapshot.task.outputJson ? JSON.parse(snapshot.task.outputJson) : null,
-        },
-        workflow: snapshot.workflow
+        harnessRun: harnessRun
           ? {
-              status: snapshot.workflow.status,
-              currentStepIndex: snapshot.workflow.currentStepIndex,
+              harnessRunId: harnessRun.harnessRunId,
+              status: harnessRun.status,
+              tenantId: harnessRun.tenantId,
+              planGraphBundleId: harnessRun.planGraphBundleId,
             }
           : null,
+        nodeRuns: nodeRuns.map((node) => ({
+          nodeRunId: node.nodeRunId,
+          nodeId: node.nodeId,
+          status: node.status,
+          attemptCount: node.attemptCount,
+        })),
         execution: snapshot.execution
           ? {
               id: snapshot.execution.id,
@@ -155,13 +162,6 @@ export async function runPlatformRootDemo(): Promise<void> {
               traceId: snapshot.execution.traceId,
             }
           : null,
-        session: snapshot.session
-          ? {
-              id: snapshot.session.id,
-              status: snapshot.session.status,
-            }
-          : null,
-        stepOutputs: snapshot.stepOutputs.length,
         events: snapshot.events.map((event) => ({
           eventType: event.eventType,
           eventTier: event.eventTier,

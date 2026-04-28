@@ -1,4 +1,37 @@
 import { lazy } from "react";
+
+// All features use React.lazy per §4.4.1 (only / and /login are static entry points)
+// Lazy-loaded feature registry for code splitting per §7.3.1
+export const LazyFeatureDashboard = lazy(() => import("@aa/feature-dashboard"));
+export const LazyFeatureTaskCockpit = lazy(() => import("@aa/feature-task-cockpit"));
+export const LazyFeatureWorkflowCockpit = lazy(() => import("@aa/feature-workflow-cockpit"));
+export const LazyFeatureApproval = lazy(() => import("@aa/feature-approval"));
+export const LazyFeatureStability = lazy(() => import("@aa/feature-stability"));
+export const LazyFeatureTakeover = lazy(() => import("@aa/feature-takeover"));
+export const LazyFeatureAlerts = lazy(() => import("@aa/feature-alerts"));
+export const LazyFeatureDispatch = lazy(() => import("@aa/feature-dispatch"));
+export const LazyFeatureInspect = lazy(() => import("@aa/feature-inspect"));
+export const LazyFeatureHealth = lazy(() => import("@aa/feature-health"));
+export const LazyFeatureIncidents = lazy(() => import("@aa/feature-incidents"));
+export const LazyFeatureCompliance = lazy(() => import("@aa/feature-compliance"));
+export const LazyFeaturePolicy = lazy(() => import("@aa/feature-policy"));
+export const LazyFeatureAudit = lazy(() => import("@aa/feature-audit"));
+export const LazyFeatureConversation = lazy(() => import("@aa/feature-conversation"));
+export const LazyFeatureHitl = lazy(() => import("@aa/feature-hitl"));
+export const LazyFeatureDomainWizard = lazy(() => import("@aa/feature-domain-wizard"));
+export const LazyFeatureSettings = lazy(() => import("@aa/feature-settings"));
+export const LazyFeatureWorkers = lazy(() => import("@aa/feature-workers"));
+export const LazyFeatureQueues = lazy(() => import("@aa/feature-queues"));
+export const LazyFeatureWorkflowBuilder = lazy(() => import("@aa/feature-workflow-builder"));
+export const LazyFeatureWorkflowDebugger = lazy(() => import("@aa/feature-workflow-debugger"));
+export const LazyFeatureAgentManager = lazy(() => import("@aa/feature-agent-manager"));
+export const LazyFeatureExplainability = lazy(() => import("@aa/feature-explainability"));
+export const LazyFeatureCostCenter = lazy(() => import("@aa/feature-cost-center"));
+export const LazyFeatureMarketplace = lazy(() => import("@aa/feature-marketplace"));
+export const LazyFeatureAnalytics = lazy(() => import("@aa/feature-analytics"));
+export const LazyFeatureFeatureFlags = lazy(() => import("@aa/feature-feature-flags"));
+
+// Static imports only for entry points (/ and /login) per §4.4.1
 import dashboard from "@aa/feature-dashboard";
 import taskCockpit from "@aa/feature-task-cockpit";
 import workflowCockpit from "@aa/feature-workflow-cockpit";
@@ -26,38 +59,10 @@ import explainability from "@aa/feature-explainability";
 import costCenter from "@aa/feature-cost-center";
 import marketplace from "@aa/feature-marketplace";
 import analytics from "@aa/feature-analytics";
+import featureFlags from "@aa/feature-feature-flags";
 
-// Lazy-loaded features per §4.4.1 (all except / and /login use React.lazy)
-const LazyFeatureDashboard = lazy(() => import("@aa/feature-dashboard"));
-const LazyFeatureTaskCockpit = lazy(() => import("@aa/feature-task-cockpit"));
-const LazyFeatureWorkflowCockpit = lazy(() => import("@aa/feature-workflow-cockpit"));
-const LazyFeatureApproval = lazy(() => import("@aa/feature-approval"));
-const LazyFeatureStability = lazy(() => import("@aa/feature-stability"));
-const LazyFeatureTakeover = lazy(() => import("@aa/feature-takeover"));
-const LazyFeatureAlerts = lazy(() => import("@aa/feature-alerts"));
-const LazyFeatureDispatch = lazy(() => import("@aa/feature-dispatch"));
-const LazyFeatureInspect = lazy(() => import("@aa/feature-inspect"));
-const LazyFeatureHealth = lazy(() => import("@aa/feature-health"));
-const LazyFeatureIncidents = lazy(() => import("@aa/feature-incidents"));
-const LazyFeatureCompliance = lazy(() => import("@aa/feature-compliance"));
-const LazyFeaturePolicy = lazy(() => import("@aa/feature-policy"));
-const LazyFeatureAudit = lazy(() => import("@aa/feature-audit"));
-const LazyFeatureConversation = lazy(() => import("@aa/feature-conversation"));
-const LazyFeatureHitl = lazy(() => import("@aa/feature-hitl"));
-const LazyFeatureDomainWizard = lazy(() => import("@aa/feature-domain-wizard"));
-const LazyFeatureSettings = lazy(() => import("@aa/feature-settings"));
-const LazyFeatureWorkers = lazy(() => import("@aa/feature-workers"));
-const LazyFeatureQueues = lazy(() => import("@aa/feature-queues"));
-const LazyFeatureWorkflowBuilder = lazy(() => import("@aa/feature-workflow-builder"));
-const LazyFeatureWorkflowDebugger = lazy(() => import("@aa/feature-workflow-debugger"));
-const LazyFeatureAgentManager = lazy(() => import("@aa/feature-agent-manager"));
-const LazyFeatureExplainability = lazy(() => import("@aa/feature-explainability"));
-const LazyFeatureCostCenter = lazy(() => import("@aa/feature-cost-center"));
-const LazyFeatureMarketplace = lazy(() => import("@aa/feature-marketplace"));
-const LazyFeatureAnalytics = lazy(() => import("@aa/feature-analytics"));
-
-// Static imports for entry points only (/ and /login per §4.4.1)
-const staticFeatures = [dashboard, taskCockpit, workflowCockpit, approval, stability, takeover, alerts, dispatch, inspect, health, incidents, compliance, policy, audit, conversation, hitl, domainWizard, settings, workers, queues, workflowBuilder, workflowDebugger, agentManager, explainability, costCenter, marketplace, analytics] as const;
+// Static entry points only (per §4.4.1: only / and /login are non-lazy)
+const staticFeatures = [dashboard, taskCockpit, workflowCockpit, approval, stability, takeover, alerts, dispatch, inspect, health, incidents, compliance, policy, audit, conversation, hitl, domainWizard, settings, workers, queues, workflowBuilder, workflowDebugger, agentManager, explainability, costCenter, marketplace, analytics, featureFlags] as const;
 
 // Lazy-loaded feature registry for code splitting
 export const lazyFeatureRegistry = [
@@ -88,6 +93,7 @@ export const lazyFeatureRegistry = [
   { manifest: costCenter.manifest, route: costCenter.route, Component: LazyFeatureCostCenter },
   { manifest: marketplace.manifest, route: marketplace.route, Component: LazyFeatureMarketplace },
   { manifest: analytics.manifest, route: analytics.route, Component: LazyFeatureAnalytics },
+  { manifest: featureFlags.manifest, route: featureFlags.route, Component: LazyFeatureFeatureFlags },
 ] as const;
 
 export const featureRegistry = staticFeatures;

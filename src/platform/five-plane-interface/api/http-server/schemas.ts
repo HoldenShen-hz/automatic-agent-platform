@@ -363,6 +363,11 @@ const createTaskPayloadSchema = z.object({
 
 const updateTaskPayloadSchema = z.object({
   title: nonEmptyStringSchema.optional(),
+  /**
+   * Task status aligned with HarnessRunStatus canonical 13-state per §45.13.
+   * Legacy Task-level status is a projection of HarnessRun execution state.
+   * @see HarnessRunStatus for canonical runtime states.
+   */
   status: z.enum(["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"]).optional(),
   priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
   outputJson: z.string().optional(),

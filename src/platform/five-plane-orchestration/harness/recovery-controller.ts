@@ -17,11 +17,18 @@ export class RecoveryController {
 
   public handleFailure(run: HarnessRun, failure: HarnessFailureType): HarnessRun {
     if (failure === "operator_abort") {
-      return {
+      const result = {
         ...run,
         status: "aborted",
         completedAt: run.completedAt ?? new Date().toISOString(),
       };
+      // §45: Emit lifecycle transition event for abort
+      this.durableService.emitEvent({
+        eventType: "harness:recovery_aborted",
+        runId: run.runId,
+        payload: { failureType: failure, resultStatus: result.status },
+      });
+      return result;
     }
 
     const checkpointRef = this.durableService.getCheckpointRef(run.runId);
@@ -47,6 +54,12 @@ export class RecoveryController {
 
       case "worker_crash":
       default:
+        // Emit recovery started event for all other failure types
+        this.durableService.emitEvent({
+          eventType: "harness:recovery_started",
+          runId: run.runId,
+          payload: { failureType: failure, sourceRunId: sourceRun.runId },
+        });
         return recovering;
     }
   }

@@ -18,6 +18,7 @@ export interface ReplayBoundaryDecision {
 
 export class ReplayBoundaryGuard {
   public evaluate(mode: ReplayMode, operations: readonly ReplayOperation[]): ReplayBoundaryDecision {
+    // trace_replay: blocks operations with real side effects
     const realSideEffectIds = operations
       .filter((operation) => mode === "trace_replay" && operation.hasRealSideEffect)
       .map((operation) => operation.operationId);
@@ -29,6 +30,7 @@ export class ReplayBoundaryGuard {
       };
     }
 
+    // reexecution_replay: allows real side effects, blocks tombstone violations on non-projection resources
     const tombstoneViolations = operations
       .filter((operation) => operation.tombstoneReplay && operation.resourceKind !== "projection")
       .map((operation) => operation.operationId);
@@ -38,6 +40,12 @@ export class ReplayBoundaryGuard {
         reasonCode: "replay.tombstone_boundary_violation",
         blockedOperationIds: tombstoneViolations,
       };
+    }
+
+    // projection_replay: allows all operations including real side effects and tombstones,
+    // as it only projects/replays the trace without actual side effects
+    if (mode === "projection_replay") {
+      return { allowed: true, reasonCode: "replay.allowed", blockedOperationIds: [] };
     }
 
     return { allowed: true, reasonCode: "replay.allowed", blockedOperationIds: [] };

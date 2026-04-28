@@ -28,7 +28,7 @@
 
 采用 TypeScript 全栈 + 分阶段基础设施演进路线：
 
-- 核心服务层统一放在 `src/core/`。
+- 核心服务层统一放在 `src/platform/`（v4.3 §35 canonical）。
 - 接入层包括 CLI、TUI、HTTP Server、Gateway 和 Embedded Client。
 - 早期持久化使用 SQLite + WAL。
 - 通过结构化事件、工作流状态、产出物存储和恢复算法支持 crash recovery。

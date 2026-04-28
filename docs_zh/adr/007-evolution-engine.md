@@ -12,7 +12,7 @@
 
 通过 OAPEFLIR 副链 `Feedback → Learn → Improve → Release` 驱动进化，并由 deterministic guardrail 控制进入生产：
 
-- Supervisor / observability 继续负责生命周期管理、实时监控、健康检查与指标采集。
+- HarnessRuntime 负责生命周期管理、实时监控、健康检查与指标采集。
 - Feedback Hub 负责把执行信号归一为结构化 `FeedbackSignal`。
 - Learn Hub 只允许 evidence-backed 学习对象进入后续阶段，并显式维护 `promotionStatus`。
 - Improve Hub 只接收 `validated/promoted` 的 LearningObject。
@@ -65,7 +65,7 @@ v4.3 §45 将所有生命周期控制收口到 HarnessRuntime：
 
 ## 告警与观测
 
-Supervisor / observability 应对以下事件给出告警或通知：
+HarnessRuntime / observability 应对以下事件给出告警或通知：
 
 - 上下文逼近阈值。
 - Agent 疑似卡死。

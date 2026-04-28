@@ -141,6 +141,11 @@ export interface HarnessTimelineEvent {
   readonly recordedAt: string;
 }
 
+/**
+ * HarnessStep - semantic projection per §5.5.
+ * Represents step progress as a semantic marker, not a canonical execution identifier.
+ * @deprecated Per §5.5, stepId is legacy projection. Use nodeRunIds for canonical execution references.
+ */
 export interface HarnessStep {
   readonly stepId: string;
   readonly role: HarnessRole;
