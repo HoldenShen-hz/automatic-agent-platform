@@ -4,6 +4,21 @@ import { DurableEventBus, type EventHandler } from "./durable-event-bus.js";
 import { getEventSchema, type KnownEventType } from "./event-registry.js";
 import { AuthoritativeTaskStore } from "../truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-database.js";
+
+/**
+ * Circuit breaker state change event payload.
+ * Defined here to avoid circular dependency with circuit-breaker module.
+ */
+export interface CircuitBreakerStateChangePayload {
+  circuitName: string;
+  oldState: CircuitBreakerState;
+  newState: CircuitBreakerState;
+  nextAttemptAt: number | null;
+  occurredAt: string;
+}
+
+type CircuitBreakerState = "closed" | "open" | "half_open";
+
 import type {
   CostLimitReachedPayload,
   DecisionRequestedPayload,

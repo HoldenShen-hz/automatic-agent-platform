@@ -165,7 +165,7 @@ export interface HarnessStep {
   readonly nodeRunRefs?: readonly string[];
   readonly rationale?: string;
   readonly evidenceRefs?: readonly string[];
-  readonly toolCalls?: readonly Readonly<Record<string, unknown>>;
+  readonly toolCalls?: readonly Record<string, unknown>[];
   readonly latency?: number;
   readonly cost?: number;
   readonly error?: string | null;
