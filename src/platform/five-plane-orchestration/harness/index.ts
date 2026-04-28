@@ -1005,8 +1005,8 @@ export class HarnessRuntimeService {
               loopMetrics: currentMetrics,
             };
         if (progress.violation !== null && baseRun.status === "running") {
-          const aborted = this.transitionRunStatus(finalRun, "aborted", "harness.guard_aborted");
-          finalRun = { ...aborted, completedAt: nowIso() };
+          finalRun = this.transitionRunStatus(finalRun, "aborted", "harness.guard_aborted");
+          // R1-1 fix: terminalAt is set by RuntimeStateMachine.transition() on terminal transitions
         }
 
         this.ensureInvariantSafe(finalRun);

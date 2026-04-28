@@ -108,9 +108,6 @@ export class ConversationHistoryService {
     }
   }
 
-  /**
-   * Check if memory service is available
-   */
   public constructor(memoryService?: MemoryService) {
     this.memoryService = memoryService ?? null;
   }

@@ -46,10 +46,10 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       reasonCodes: ["autonomy.promotion_blocked_by_incident"],
     };
   }
-  if (score.currentAutonomy === "suggestion" && score.totalExecutions >= 50 && rate >= 0.95) {
+  if (score.currentAutonomy === "suggestion" && score.totalExecutions >= 50 && rate >= 0.95 && overrides < 0.05) {
     return { shouldPromote: true, currentLevel: score.currentAutonomy, targetLevel: "supervised", reasonCodes: ["autonomy.meets_supervised_threshold"] };
   }
-  if (score.currentAutonomy === "supervised" && score.totalExecutions >= 200 && rate >= 0.98) {
+  if (score.currentAutonomy === "supervised" && score.totalExecutions >= 200 && rate >= 0.98 && overrides < 0.01) {
     return { shouldPromote: true, currentLevel: score.currentAutonomy, targetLevel: "semi_auto", reasonCodes: ["autonomy.meets_semi_auto_threshold"] };
   }
   if (score.currentAutonomy === "semi_auto" && score.totalExecutions >= 500 && rate >= 0.99) {

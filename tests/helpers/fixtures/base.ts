@@ -3,6 +3,8 @@
  *
  * Minimal factories for creating valid test entities.
  * These create the smallest possible valid records for testing.
+ *
+ * R6-32 FIX: Added canonical fixture factories for HarnessRun/NodeRun/PlanGraphBundle/BudgetReservation.
  */
 
 import { nowIso } from "../../../src/platform/contracts/types/ids.js";
@@ -11,6 +13,17 @@ import type {
   ExecutionRecord,
   ApprovalRecord,
 } from "../../../src/platform/contracts/types/domain.js";
+import type {
+  HarnessRun,
+  HarnessRunStatus,
+  PlanGraphBundle,
+  PlanNode,
+  PlanEdge,
+  NodeRun,
+  NodeRunStatus,
+  BudgetLedger,
+  BudgetReservation,
+} from "../../../src/platform/contracts/executable-contracts/index.js";
 
 const DEFAULT_NOW = nowIso();
 

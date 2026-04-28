@@ -49,6 +49,18 @@ export class DomainRegistryService {
       pluginBindings: normalizedBindings,
     };
     this.validateDefinition(normalizedDefinition);
+
+    // §37 Smoke test gate: run smoke tests before allowing registration
+    // This ensures domain is viable before being registered
+    const smokeResult = this.smokeTests.run(normalizedDefinition);
+    if (!smokeResult.passed) {
+      throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during registration.", {
+        category: "validation",
+        source: "internal",
+        details: { issues: smokeResult.issues },
+      });
+    }
+
     this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);
     this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);

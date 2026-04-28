@@ -235,7 +235,7 @@ export interface PromptDefenseChainResult {
  * Each layer only executes if previous layer returns uncertain result.
  * Returns early with final verdict once a decisive result is reached.
  */
-export function executePromptDefenseChain(
+export async function executePromptDefenseChain(
   input: string,
   options: {
     threshold?: number;
@@ -243,7 +243,7 @@ export function executePromptDefenseChain(
     llmJudgeFn?: (input: string, threshold: number) => Promise<PromptDefenseLayerAssessment>;
     executeAllLayers?: boolean;
   } = {},
-): PromptDefenseLayerAssessment[] {
+): Promise<PromptDefenseLayerAssessment[]> {
   const threshold = options.threshold ?? 0.7;
   const config = options.config ?? DEFAULT_ML_CLASSIFIER_CONFIG;
   const executeAllLayers = options.executeAllLayers ?? false;

@@ -173,6 +173,8 @@ interface PresentedOutput {
 
 ## 4. PluginSpiRegistry 生命周期状态机
 
+> **生命周期钩子统一说明**：Plugin SPI 接口使用 canonical 钩子名称 `onLoad / onActivate / onDeactivate / onUnload`（对齐 tool_skill_plugin_contract.md）。PluginSpiRegistry 的方法是 registry-level 操作，不等同于 plugin 自身的生命周期钩子。
+
 ```typescript
 class PluginSpiRegistry {
   // 状态：unregistered → loading → registered → initialized → active ↔ suspended → inactive → unloaded
@@ -180,10 +182,10 @@ class PluginSpiRegistry {
   // 注册插件
   register(plugin: BasePlugin): void;
 
-  // 初始化插件
+  // 初始化插件（调用 plugin.onLoad）
   async initialize(pluginId: string, config: PluginConfig): Promise<void>;
 
-  // 激活插件
+  // 激活插件（调用 plugin.onActivate）
   async activate(pluginId: string): Promise<void>;
 
   // 按类型查找
@@ -195,10 +197,10 @@ class PluginSpiRegistry {
   // 批量执行（fan-out）
   async invokeAll(type: PluginType, method: string, args: unknown[]): Promise<unknown[]>;
 
-  // 挂起插件
+  // 挂起插件（调用 plugin.onDeactivate）
   async suspend(pluginId: string): Promise<void>;
 
-  // 停用插件
+  // 停用插件（调用 plugin.onUnload）
   async deactivate(pluginId: string): Promise<void>;
 
   // 卸载插件

@@ -251,6 +251,16 @@ export async function runPlatformStartupPlan(targetKind: Extract<PlatformStartup
 
 export async function main(): Promise<void> {
   const mode = resolveRootEntryMode();
+
+  // R4-59: Enforce startup order per §7 (P5→X1→P2→P3→P4→P1)
+  try {
+    assertStartupOrderEnforced();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(JSON.stringify({ error: "startup_order_violation", details: message }, null, 2));
+    throw error;
+  }
+
   if (mode === "demo") {
     await runPlatformRootDemo();
     return;
