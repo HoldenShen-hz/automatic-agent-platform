@@ -17,6 +17,8 @@ export interface BoundedDispatchEvent {
   readonly reasonCode: "queue.accepted" | "queue.max_depth_exceeded";
   readonly ordering_policy_version: string;
   readonly queue_class: string;
+  readonly harnessRunId?: string;
+  readonly executionId?: string;
 }
 
 export class BoundedDispatchQueueEventFactory {

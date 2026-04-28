@@ -3,6 +3,11 @@
   "phase": "9e",
   "divisionId": "operations",
   "latencyTier": "near_realtime",
+  "riskSpec": {
+    "riskClass": "medium",
+    "reviewThreshold": "medium",
+    "maxSpendLimitUsd": 10.0
+  },
   "workflowProfile": {
     "workflowId": "supply-chain.primary",
     "rollout": "baseline"

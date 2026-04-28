@@ -59,9 +59,21 @@ export {
   type DecisionDirective,
   createOperationalDirective,
   createDecisionDirective,
-  // Legacy - deprecated
+} from "../control-directive/index.js";
+
+// Legacy - deprecated per §4.3. Use OperationalDirective/DecisionDirective instead.
+export {
+  /**
+   * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
+   */
   type ControlDirectiveKind,
+  /**
+   * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
+   */
   type ControlDirective,
+  /**
+   * @deprecated ControlDirective factory is deprecated per §4.3. Use createOperationalDirective or createDecisionDirective instead.
+   */
   createControlDirective,
 } from "../control-directive/index.js";
 

@@ -358,3 +358,114 @@ export function hasBuiltinPlugin(pluginId: string): boolean {
 export function listBuiltinPluginIds(): string[] {
   return [...BUILTIN_PLUGIN_ENTRIES.keys()];
 }
+
+// §23.4: DataTaintPropagation - Track cross-plugin data contamination labels
+const DATA_TAINT_LABELS = new Map<string, DataTaintLabel>();
+
+/**
+ * §23.4: Propagate data taint labels when data flows between plugins.
+ * When a plugin uses data from another plugin, taint labels must be tracked.
+ */
+export function propagateDataTaint(
+  dataId: string,
+  targetPluginId: string,
+  labels: readonly string[],
+): DataTaintPropagation {
+  const now = new Date().toISOString();
+  const propagatedLabels: DataTaintLabel[] = [];
+
+  for (const label of labels) {
+    const taintEntry: DataTaintLabel = {
+      sourcePluginId: targetPluginId,
+      label,
+      severity: "medium",
+      propagatedAt: now,
+    };
+    DATA_TAINT_LABELS.set(`${dataId}:${label}:${targetPluginId}`, taintEntry);
+    propagatedLabels.push(taintEntry);
+  }
+
+  return {
+    originPluginId: targetPluginId,
+    labels: propagatedLabels,
+    originatingDataId: dataId,
+  };
+}
+
+/**
+ * §23.4: Get all taint labels for a data ID across all plugins.
+ */
+export function getDataTaintLabels(dataId: string): readonly DataTaintLabel[] {
+  const labels: DataTaintLabel[] = [];
+  for (const [key, entry] of DATA_TAINT_LABELS.entries()) {
+    if (key.startsWith(`${dataId}:`)) {
+      labels.push(entry);
+    }
+  }
+  return labels;
+}
+
+/**
+ * §23.4: Check if data has a specific taint label.
+ */
+export function hasDataTaintLabel(dataId: string, label: string): boolean {
+  for (const [key] of DATA_TAINT_LABELS.entries()) {
+    if (key.startsWith(`${dataId}:${label}:`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// §23.6: BundleRevocationSeverity - Plugin revocation severity tracking
+const REVOKED_BUNDLES = new Map<string, BundleRevocationRecord>();
+
+/**
+ * §23.6: Revoke a plugin bundle with severity classification.
+ * Immediately marks the plugin as revoked with given severity level.
+ */
+export function revokePluginBundle(
+  pluginId: string,
+  severity: BundleRevocationSeverity,
+  reason: string,
+  affectedVersions?: readonly string[],
+): BundleRevocationRecord {
+  const record: BundleRevocationRecord = {
+    pluginId,
+    severity,
+    reason,
+    revokedAt: new Date().toISOString(),
+    affectedVersions: affectedVersions ?? ["*"],
+  };
+  REVOKED_BUNDLES.set(pluginId, record);
+  return record;
+}
+
+/**
+ * §23.6: Check if a plugin bundle is revoked.
+ * Returns the revocation record if revoked, null otherwise.
+ */
+export function getPluginRevocationStatus(pluginId: string): BundleRevocationRecord | null {
+  return REVOKED_BUNDLES.get(pluginId) ?? null;
+}
+
+/**
+ * §23.6: Check if a plugin is currently revoked (any severity).
+ */
+export function isPluginRevoked(pluginId: string): boolean {
+  return REVOKED_BUNDLES.has(pluginId);
+}
+
+/**
+ * §23.6: List all revoked plugin bundles.
+ */
+export function listRevokedPlugins(): readonly BundleRevocationRecord[] {
+  return [...REVOKED_BUNDLES.values()];
+}
+
+/**
+ * §23.6: Remove revocation for a plugin (e.g., after re-certification).
+ */
+export function removePluginRevocation(pluginId: string): boolean {
+  return REVOKED_BUNDLES.delete(pluginId);
+}
