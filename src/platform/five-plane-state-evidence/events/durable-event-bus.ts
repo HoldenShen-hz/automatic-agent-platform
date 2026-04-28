@@ -261,6 +261,14 @@ export class DurableEventBus {
           payloadJson: JSON.stringify(validatedPayloads[index]),
           traceId: input.traceContext?.traceId ?? input.traceId ?? null,
           createdAt: nowIso(),
+          // §28.1 replay ordering fields
+          schemaVersion: "1.0",
+          aggregateId: input.aggregateId ?? null,
+          runId: input.runId ?? null,
+          sequence: input.sequence ?? null,
+          replayBehavior: null,
+          principal: input.principal ?? null,
+          evidenceRefs: null,
         });
         this.ensurePendingAcksForActiveConsumers(record);
         return record;
